@@ -7,10 +7,13 @@ import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
+import { SqliteCommitGuardReceipt, hasCurrentSqliteConnectionLease, observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	ClimateAutomationNotificationReceipt,
+	ClimateAutomationPredecessors,
+	ClimateAutomationPredecessorPorts,
+	ClimateAutomationPredecessorTransition,
 	ClimateAutomationRuntimeAssessment,
 	ClimateAutomationRuntimeCheckpoint,
 	ClimateAutomationRuntimeConsumer,
@@ -294,6 +297,45 @@ export interface ThermostatRuntimeDiagnostic {
 	headline_reason: string | null;
 	branches: ThermostatBranchDiagnostic[];
 }
+type PredecessorRow = Readonly<Record<string, string | number | boolean | null>>;
+interface OriginalCommandCompletion {
+	readonly context: ControllerContext;
+	readonly command: VirtualThermostatCommandEntity;
+	readonly lifecycle: object | undefined;
+	readonly projection: object | undefined;
+	readonly pins: readonly Readonly<{ receiver: object; key: string; value: unknown }>[];
+	operation?: Promise<void>;
+	packet?: object;
+	claim?: VirtualThermostatActuatorClaimEntity;
+	target?: IDevicePropertyData;
+	update?: IDevicePropertyData;
+	authority?: ReturnType<VirtualThermostatClaimsService['mintAuthority']>;
+	qualification?: ThermostatInstalledQualification | null;
+	guard?: () => boolean;
+	nativeOutcome?: 'refused' | 'accepted' | 'unknown';
+	nativeResult?: Awaited<ReturnType<NonNullable<ReturnType<VirtualThermostatTransportService['get']>>['send']>>;
+	nativePins?: readonly Readonly<{ receiver: object; key: string; value: unknown }>[];
+	phase: 'PREPARING' | 'NATIVE' | 'OUTCOME' | 'TERMINAL';
+	before?: PredecessorRow;
+	beforeReceipt?: SqliteCommitGuardReceipt;
+	after?: PredecessorRow;
+	receipt?: SqliteCommitGuardReceipt;
+	transaction?: Promise<unknown>;
+	manager?: EntityManager;
+	scope?: RuntimeBookkeepingScope;
+	invocation?: RuntimeNativeInvocation;
+	writes: number;
+	recognized: boolean;
+	saved: boolean;
+	invalid: boolean;
+	failure?: { cause: unknown };
+}
+interface OriginalPredecessorSet {
+	readonly records: readonly OriginalCommandCompletion[];
+	readonly recognized: Set<OriginalCommandCompletion>;
+	invalid: boolean;
+	closed: boolean;
+}
 interface ControllerContext {
 	intent?: Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>>;
 	config: VirtualThermostatConfigEntity;
@@ -397,6 +439,7 @@ interface RuntimeNativeInvocation {
 	readonly runner: QueryRunner;
 	readonly query: string;
 	readonly parameters: readonly unknown[];
+	readonly parametersReference: unknown[] | undefined;
 	consumed: boolean;
 }
 interface RuntimeBookkeepingOrigin {
@@ -501,6 +544,28 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly epochs = new Map<string, number>();
 	private readonly contexts = new Map<string, ControllerContext>();
 	private runtimeSettlementConsumer?: ClimateAutomationRuntimeConsumer;
+	private static readonly predecessorEntryCapture = VirtualThermostatRuntimeService.prototype.originalPredecessorEntryPins;
+	private static readonly predecessorMethods = Object.freeze([
+		['originalPredecessorPorts', VirtualThermostatRuntimeService.prototype.originalPredecessorPorts],
+		['originalPredecessorEntryPins', VirtualThermostatRuntimeService.prototype.originalPredecessorEntryPins],
+		['prepare', VirtualThermostatRuntimeService.prototype.prepare],
+		['originalPredecessorRow', VirtualThermostatRuntimeService.prototype.originalPredecessorRow],
+		['captureOriginalPredecessors', VirtualThermostatRuntimeService.prototype.captureOriginalPredecessors],
+		['originalPredecessorSize', VirtualThermostatRuntimeService.prototype.originalPredecessorSize],
+		['recognizeOriginalPredecessor', VirtualThermostatRuntimeService.prototype.recognizeOriginalPredecessor],
+		['joinOriginalPredecessors', VirtualThermostatRuntimeService.prototype.joinOriginalPredecessors],
+		['closeOriginalPredecessors', VirtualThermostatRuntimeService.prototype.closeOriginalPredecessors],
+		['dispatch', VirtualThermostatRuntimeService.prototype.dispatch],
+		['write', VirtualThermostatRuntimeService.prototype.write],
+		['saveBookkeeping', VirtualThermostatRuntimeService.prototype.saveBookkeeping],
+		['openBookkeeping', VirtualThermostatRuntimeService.prototype.openBookkeeping],
+		['observeBookkeepingRunner', VirtualThermostatRuntimeService.prototype.observeBookkeepingRunner],
+	] satisfies readonly (readonly [string, unknown])[]);
+	private readonly originalCommandCompletions = new WeakMap<VirtualThermostatCommandEntity, OriginalCommandCompletion>();
+	private readonly originalPredecessorSets = new WeakMap<ClimateAutomationPredecessors, OriginalPredecessorSet>();
+	private readonly activePredecessorSets = new Set<OriginalPredecessorSet>();
+	private predecessorNativeFrame?: RuntimeNativeInvocation;
+	private predecessorNativeReentry = false;
 	private runtimeFeedbackConsumer?: RuntimeFeedbackConsumer;
 	private runtimeFeedbackMethods?: OriginalFunctions<
 		Pick<
@@ -636,6 +701,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const attempt = this.bootstrapAttempt;
 		if (attempt && this.active && this.lifecycle === attempt.lifecycle) return attempt.promise;
 		if (this.active || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return Promise.resolve();
+		for (const original of this.activePredecessorSets) original.invalid = true;
 		const lifecycle = Object.freeze({});
 		this.active = true;
 		this.lifecycle = lifecycle;
@@ -684,6 +750,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				this.comfort,
 				this,
 				lifecycle,
+				this.originalPredecessorPorts(),
 			);
 			this.runtimeFeedbackConsumer = this.runtimeFeedbackMethods.registerRuntimeFeedbackConsumer.call(
 				this.transport,
@@ -1351,6 +1418,147 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			record.close();
 		}
 	}
+	/** Finite negative metadata captured before prepare's first await; never invokes an optional accessor. */
+	private originalPredecessorEntryPins(): readonly Readonly<{ receiver: object; key: string; value: unknown }>[] | undefined {
+		const pins: { receiver: object; key: string; value: unknown }[] = [];
+		const method = (receiver: object, key: string): boolean => {
+			for (let owner: object | null = receiver; owner; owner = nativePrototypeEvidence.getPrototypeOf(owner)) {
+				const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(owner, key);
+				if (descriptor) {
+					if (descriptor.get || descriptor.set || typeof descriptor.value !== 'function') return false;
+					pins.push({ receiver, key, value: descriptor.value }); return true;
+				}
+			}
+			return false;
+		};
+		for (const entry of [
+			{ key: 'transport', methods: ['get'] },
+			{ key: 'claims', methods: ['qualification', 'mintAuthority', 'isAuthorized'] },
+			{ key: 'dataSource', methods: ['transaction', 'createQueryRunner', 'createEntityManager'] },
+			{ key: 'structure', methods: ['runExclusive'] },
+		]) {
+			const field = nativeObjectEvidence.getOwnPropertyDescriptor(this, entry.key);
+			const value: unknown = field?.value;
+			if (!field || field.get || field.set || !value || typeof value !== 'object') return undefined;
+			pins.push({ receiver: this, key: entry.key, value });
+			for (const key of entry.methods) if (!method(value, key)) return undefined;
+			if (entry.key === 'dataSource') {
+				const field = nativeObjectEvidence.getOwnPropertyDescriptor(value, 'driver');
+				const driver: unknown = field?.value;
+				if (!field || field.get || field.set || !driver || typeof driver !== 'object') return undefined;
+				pins.push({ receiver: value, key: 'driver', value: driver });
+				for (const key of ['createQueryRunner', 'preparePersistentValue', 'prepareHydratedValue']) if (!method(driver, key)) return undefined;
+			}
+		}
+		return Object.freeze(pins);
+	}
+	/** Original receiver/function values: these ports convey history, never a live native allowance. */
+	private originalPredecessorPorts(): ClimateAutomationPredecessorPorts {
+		if (!VirtualThermostatRuntimeService.predecessorMethods.every(([key, method]) => creationMethodCurrent(this, key, method))) throw new Error('Original predecessor methods unavailable');
+		return Object.freeze({ owner: this, capture: this.captureOriginalPredecessors,
+			size: this.originalPredecessorSize, recognize: this.recognizeOriginalPredecessor,
+			join: this.joinOriginalPredecessors, close: this.closeOriginalPredecessors });
+	}
+	private originalPredecessorRow(values: Readonly<Record<string, unknown>>): PredecessorRow | undefined {
+		const row: Record<string, string | number | boolean | null> = {};
+		for (const [key, value] of Object.entries(values)) {
+			if (value !== null && typeof value !== 'string' && typeof value !== 'boolean' &&
+				!(typeof value === 'number' && Number.isFinite(value))) return undefined;
+			row[key] = value;
+		}
+		return Object.freeze(row);
+	}
+	private captureOriginalPredecessors(controllerId: string): ClimateAutomationPredecessors {
+		if (!this.active || !this.lifecycle) throw new Error('Original predecessor runtime unavailable');
+		const records: OriginalCommandCompletion[] = [];
+		for (const command of this.inFlightCommands.values()) {
+			if (command.controllerId !== controllerId || command.action !== 'on') continue;
+			const record = this.originalCommandCompletions.get(command);
+			if (!record || record.invalid || record.failure || record.phase !== 'NATIVE' ||
+				record.lifecycle !== this.lifecycle || this.contexts.get(controllerId) !== record.context ||
+				!record.before || record.beforeReceipt?.outcome !== 'committed' || !record.operation || this.inFlight.get(command.id) !== record.operation ||
+				!record.packet || !record.claim || !record.target || !record.update || !record.authority || !record.qualification || !record.guard ||
+				!record.projection || !record.nativePins || !record.nativePins.every((p) => creationMethodCurrent(p.receiver, p.key, p.value)) || records.length === 8 ||
+				records.some((old) => old.command.id === command.id) ||
+				!record.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.value))) {
+				throw new Error('Original finite predecessor admission unavailable');
+			}
+			records.push(record);
+		}
+		const projections: object[] = [];
+		for (const record of records) {
+			if (!record.projection) throw new Error('Original predecessor incarnation unavailable');
+			projections.push(record.projection);
+		}
+		const capture = Object.freeze(new ClimateAutomationPredecessors(Object.freeze(projections)));
+		const set: OriginalPredecessorSet = { records: Object.freeze(records), recognized: new Set(), invalid: false, closed: false };
+		this.originalPredecessorSets.set(capture, set);
+		this.activePredecessorSets.add(set);
+		return capture;
+	}
+	private originalPredecessorSize(capture: ClimateAutomationPredecessors): number {
+		const set = this.originalPredecessorSets.get(capture);
+		if (!set || set.closed || set.invalid) throw new Error('Original predecessor capture closed');
+		return set.records.length;
+	}
+	private recognizeOriginalPredecessor(capture: ClimateAutomationPredecessors, event: BeforeQueryEvent<unknown>): boolean {
+		const set = this.originalPredecessorSets.get(capture), invocation = this.predecessorNativeFrame;
+		if (!set || set.closed || set.invalid || this.predecessorNativeReentry || !invocation ||
+			invocation.runner !== event.queryRunner || invocation.query !== event.query ||
+			invocation.parametersReference !== event.parameters ||
+			invocation.parameters.length !== (event.parameters?.length ?? 0) ||
+			!invocation.parameters.every((v, i) => Object.is(v, event.parameters?.[i]))) return false;
+		const record = set.records.find((r) => r.scope === invocation.scope && r.manager?.queryRunner === event.queryRunner);
+		if (!record || record.invalid || record.failure || !record.after || set.recognized.has(record) ||
+			record.writes !== 1 || !record.nativePins?.every((p) => creationMethodCurrent(p.receiver, p.key, p.value)) ||
+			!record.pins.every((p) => creationMethodCurrent(p.receiver, p.key, p.value))) { if (record) record.invalid = true; return false; }
+		const effects = bookkeepingNativeEffects(event.query, invocation.parameters);
+		if (!effects || effects.length !== 1) return false;
+		const effect = effects[0];
+		if (effect.kind !== 'update' || effect.table !== 'devices_virtual_thermostat_command_journal' ||
+			Object.keys(effect.predicates).length !== 1 || effect.predicates.id?.length !== 1 ||
+			effect.predicates.id[0] !== record.after.id ||
+			!Object.keys(effect.assignments).length ||
+			!Object.entries(effect.assignments).every(([key, value]) =>
+				['status', 'dispatchedAt', 'settledAt', 'proofId', 'fault'].includes(key) &&
+				Object.hasOwn(record.after, key) && Object.is(record.after[key], value))) return false;
+		record.invocation = invocation;
+		record.recognized = true;
+		set.recognized.add(record);
+		return true;
+	}
+	private async joinOriginalPredecessors(capture: ClimateAutomationPredecessors): Promise<readonly ClimateAutomationPredecessorTransition[]> {
+		const set = this.originalPredecessorSets.get(capture);
+		if (!set || set.closed || set.invalid) throw new Error('Original predecessor capture closed');
+		// No feedback, queue, successor, timer or moving map is joined here.
+		const results = await Promise.allSettled(set.records.map((r) => r.operation));
+		for (let i = 0; i < results.length; i++) {
+			const result = results[i], record = set.records[i];
+			if (record.failure) throw record.failure.cause;
+			if (result.status === 'rejected') throw result.reason;
+		}
+		if (set.closed || set.invalid) throw new Error('Original predecessor capture retired');
+		return Object.freeze(set.records.map((record) => {
+			if (record.invalid || record.phase !== 'TERMINAL' || record.writes !== 1 || !record.saved ||
+				record.receipt?.outcome !== 'committed' || !record.transaction || !record.invocation ||
+				!set.recognized.has(record) || !record.before || !record.after || !record.projection ||
+				!record.nativeResult || !record.nativeOutcome || record.after.status !== (record.nativeOutcome === 'refused' ? 'cancelled' : record.nativeOutcome === 'accepted' ? 'accepted' : 'unknown') ||
+				!record.nativePins?.every((p) => creationMethodCurrent(p.receiver, p.key, p.value)) ||
+				!record.pins.every((p) => creationMethodCurrent(p.receiver, p.key, p.value))) {
+				throw new Error('Original terminal predecessor persistence unprovable');
+			}
+			return Object.freeze({ projection: record.projection, before: record.before, after: record.after });
+		}));
+	}
+	private closeOriginalPredecessors(capture: ClimateAutomationPredecessors): void {
+		const set = this.originalPredecessorSets.get(capture);
+		if (!set || set.closed) return;
+		set.closed = true;
+		set.recognized.clear();
+		this.activePredecessorSets.delete(set);
+		this.originalPredecessorSets.delete(capture);
+	}
+
 	private captureBookkeepingEngine(): () => boolean {
 		const source = this.dataSource,
 			driver = source.driver,
@@ -1774,6 +1982,23 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		entity: BookkeepingRow | BookkeepingRow[],
 	): ReturnType<EntityManager['save']> {
 		const scope = this.openBookkeeping(manager, context, purpose, Array.isArray(entity) ? entity : [entity]);
+		if (entity instanceof VirtualThermostatCommandEntity) {
+			const completion = this.originalCommandCompletions.get(entity);
+			if (completion && (purpose === 'dispatch-command' || purpose === 'command-outcome')) {
+				try {
+					if (!completion.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.value))) completion.invalid = true;
+					if (completion.invalid) throw new Error('Original predecessor history unavailable');
+					const rows = scope.rows;
+					const row = rows.length === 1 ? this.originalPredecessorRow(rows[0].values) : undefined;
+					if (!row || rows[0].table !== 'devices_virtual_thermostat_command_journal') completion.invalid = true;
+					else if (purpose === 'dispatch-command') completion.before = row;
+					else {
+						completion.scope = scope;
+						completion.after = row;
+					}
+				} catch { completion.invalid = true; }
+			}
+		}
 		const promise = this.bookkeepingOrigin.run({ role: 'ORM', scope }, () => scope.save.call(manager, entity));
 		const close = (): void => {
 			try {
@@ -1814,6 +2039,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					runner,
 					query: text,
 					parameters: Object.freeze([...(parameters ?? [])]),
+					parametersReference: parameters,
 					scope,
 					consumed: false,
 				};
@@ -1976,9 +2202,17 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			...args: Parameters<Broadcaster['broadcastBeforeQueryEvent']>
 		): ReturnType<Broadcaster['broadcastBeforeQueryEvent']> => {
 			const parent = origin.getStore();
-			return origin.run({ role: 'CALLBACK', scope: parent?.scope, invocation: parent?.invocation }, () =>
-				original5.call(broadcaster, ...args),
-			);
+			const previous = this.predecessorNativeFrame;
+			if (previous) this.predecessorNativeReentry = true;
+			this.predecessorNativeFrame = previous ? undefined : parent?.invocation;
+			try {
+				return origin.run({ role: 'CALLBACK', scope: parent?.scope, invocation: parent?.invocation }, () =>
+					original5.call(broadcaster, ...args),
+				);
+			} finally {
+				this.predecessorNativeFrame = previous;
+				if (!previous) this.predecessorNativeReentry = false;
+			}
 		};
 		Object.defineProperty(broadcaster, 'broadcastBeforeQueryEvent', {
 			configurable: true,
@@ -2303,13 +2537,38 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}
 		};
 		publishOutcome();
-		await this.structure.runExclusive(() => {
-			if (purpose !== 'command-outcome') this.assertContextLifecycle(context);
-			return this.dataSource.transaction(async (manager) => {
+		const completion = entity instanceof VirtualThermostatCommandEntity ? this.originalCommandCompletions.get(entity) : undefined;
+		const outcome = purpose === 'command-outcome' ? completion : undefined;
+		if (completion) {
+			try { if (!completion.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.value))) completion.invalid = true; }
+			catch { completion.invalid = true; }
+		}
+		if (outcome && ++outcome.writes !== 1) outcome.invalid = true;
+		try {
+			await this.structure.runExclusive(() => {
 				if (purpose !== 'command-outcome') this.assertContextLifecycle(context);
-				await this.saveBookkeeping(manager, context, purpose, entity);
+				const transaction = this.dataSource.transaction(async (manager) => {
+					if (purpose !== 'command-outcome') this.assertContextLifecycle(context);
+					if (completion && purpose === 'dispatch-command') {
+						try { completion.beforeReceipt = observeSqliteOuterOutcome(manager); }
+						catch { completion.invalid = true; }
+					}
+					if (outcome && outcome.writes === 1) {
+						try {
+							outcome.manager = manager;
+							outcome.receipt = observeSqliteOuterOutcome(manager);
+						} catch { outcome.invalid = true; }
+					}
+					await this.saveBookkeeping(manager, context, purpose, entity);
+				});
+				if (outcome && outcome.writes === 1) outcome.transaction = transaction;
+				return transaction;
 			});
-		});
+			if (outcome) outcome.saved = outcome.receipt?.outcome === 'committed';
+		} catch (cause) {
+			if (completion) completion.failure ??= { cause };
+			throw cause;
+		}
 		publishOutcome();
 		if (entity instanceof VirtualThermostatCommandEntity) this.recordFeedbackCommandAck(context, entity);
 	}
@@ -3810,6 +4069,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		action: 'on' | 'off',
 	): Promise<void> {
 		if (!this.contextLifecycleCurrent(context)) return;
+		let predecessorEntryPins: ReturnType<VirtualThermostatRuntimeService['originalPredecessorEntryPins']>;
+		if (action === 'on') {
+			try {
+				if (VirtualThermostatRuntimeService.predecessorMethods.every(([key, method]) => creationMethodCurrent(this, key, method))) predecessorEntryPins = VirtualThermostatRuntimeService.predecessorEntryCapture.call(this);
+			} catch { /* Optional history is closed; original preparation and native error semantics continue. */ }
+		}
 		const branch = context.branches.get(claim.id),
 			now = Date.now();
 		if (
@@ -3877,7 +4142,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				? { context, command, evaluation, outputSaved: false, terminal: false }
 				: undefined;
 		if (job) this.offJobs.set(command, job);
+		const originalCompletion: OriginalCommandCompletion | undefined = action === 'on' ? {
+			context, command, lifecycle: this.lifecycle, projection: context.intent?.projection,
+			pins: Object.freeze([
+				...(predecessorEntryPins ?? []),
+				...VirtualThermostatRuntimeService.predecessorMethods.map(([key, value]) => ({ receiver: this, key, value })),
+			]), phase: 'PREPARING', writes: 0, recognized: false, saved: false, invalid: predecessorEntryPins === undefined,
+		} : undefined;
+		if (originalCompletion) this.originalCommandCompletions.set(command, originalCompletion);
 		const operation = this.dispatch(context, claim, target, command).finally(() => {
+			if (originalCompletion) originalCompletion.phase = 'TERMINAL';
 			this.inFlight.delete(command.id);
 			this.inFlightCommands.delete(command.id);
 			if (job) {
@@ -3901,6 +4175,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				if (this.offJobs.get(command) === job) this.offJobs.delete(command);
 			}
 		});
+		if (originalCompletion) originalCompletion.operation = operation;
 		if (job) job.operation = operation;
 		this.inFlight.set(command.id, operation);
 		void operation.catch(() => undefined);
@@ -3913,6 +4188,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	): VirtualThermostatBranchRuntimeEntity | null {
 		if (!this.contextLifecycleCurrent(context)) return null;
 		if (context.claims.filter((member) => member.role === claim.role).length < 2) return null;
+		for (const original of this.inFlightCommands.values()) {
+			const completion = this.originalCommandCompletions.get(original);
+			if (completion?.context === context && original.claimId === claim.id) completion.invalid = true;
+		}
 		this.memberFaults.set(`${claim.id}:${claim.revision}`, reason);
 		const current = this.contexts.get(claim.controllerId);
 		if (current?.claims.find((member) => member.id === claim.id)?.revision !== claim.revision) return null;
@@ -3999,7 +4278,30 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					/* Optional provenance cannot replace the original native operation. */
 				}
 			}
+			const originalCompletion = this.originalCommandCompletions.get(command);
+			if (originalCompletion) {
+				try { if (!originalCompletion.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.value))) originalCompletion.invalid = true; }
+				catch { originalCompletion.invalid = true; }
+				originalCompletion.packet = packet;
+				originalCompletion.claim = claim;
+				originalCompletion.target = target;
+			originalCompletion.update = update;
+			originalCompletion.authority = authority;
+				originalCompletion.qualification = qualification;
+				originalCompletion.guard = guard;
+				originalCompletion.nativePins = Object.freeze([{ receiver: adapter, key: 'send', value: send }]);
+				originalCompletion.phase = 'NATIVE';
+			}
 			const result = await send.call(adapter, update, claim, qualification, guard, packet);
+			if (originalCompletion) {
+				originalCompletion.nativeResult = result;
+				originalCompletion.phase = 'OUTCOME';
+				try {
+					const outcome = nativeObjectEvidence.getOwnPropertyDescriptor(result, 'outcome');
+					if (!outcome || outcome.get || outcome.set || (outcome.value !== 'accepted' && outcome.value !== 'refused' && outcome.value !== 'unknown')) originalCompletion.invalid = true;
+					else originalCompletion.nativeOutcome = outcome.value;
+				} catch { originalCompletion.invalid = true; }
+			}
 			if (job) job.result = result.outcome;
 			refusedOn = command.action === 'on' && result.outcome === 'refused';
 			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
@@ -4018,6 +4320,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const completedJob = this.offJobs.get(command);
 			if (completedJob) completedJob.outputSaved = true;
 		} catch (error) {
+			const originalCompletion = this.originalCommandCompletions.get(command);
+			if (originalCompletion) originalCompletion.failure ??= { cause: error };
 			const failedJob = this.offJobs.get(command);
 			if (failedJob) failedJob.failure = { cause: error };
 			command.status = enteredTransport && !refusedOn ? 'unknown' : 'cancelled';

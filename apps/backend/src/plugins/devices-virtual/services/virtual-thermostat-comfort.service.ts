@@ -17,6 +17,7 @@ import {
 	ClimateAutomationRuntimeCapture,
 	ClimateAutomationRuntimeCheckpoint,
 	ClimateAutomationRuntimeConsumer,
+	ClimateAutomationPredecessorPorts,
 	ClimateAutomationScope,
 	ClimateAutomationSlotFacts,
 	ClimateAutomationWriteError,
@@ -885,11 +886,11 @@ export class VirtualThermostatComfortService {
 		});
 	}
 
-	openRuntimeSettlementConsumer(owner: object, lifecycle: object): ClimateAutomationRuntimeConsumer {
+	openRuntimeSettlementConsumer(owner: object, lifecycle: object, predecessors: ClimateAutomationPredecessorPorts): ClimateAutomationRuntimeConsumer {
 		if (!this.writer || !this.existingPins?.() || this.destroyed)
 			throw new DevicesValidationException('Original runtime settlement owner unavailable.');
 		const token = this.writer.registerRuntimeSettlementConsumer(
-			Object.freeze({ owner, lifecycle, comfort: this, providerKey: 'virtual-thermostat:v1' }),
+			Object.freeze({ owner, lifecycle, comfort: this, providerKey: 'virtual-thermostat:v1', predecessors }),
 		);
 		const writer = this.writer;
 		const original: RuntimeWriterMethods = writer;

@@ -301,6 +301,26 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 	});
 
 	// BEGIN closed existing-controller admission source drafts (UNRUN)
+	// BEGIN R132 closed predecessor registration negatives — UNRUN
+	it.each(['missing-port', 'foreign-owner', 'accessor-port'])('rejects %s before a fabricated predecessor can touch actual SQLite', (mode) => {
+		const queries = jest.spyOn(database, 'query');
+		let calls = 0;
+		const owner = {};
+		const ports = Object.freeze({ owner: mode === 'foreign-owner' ? {} : owner,
+			capture: () => { calls++; throw new Error('must not be called'); },
+			size: () => { calls++; return 9; }, recognize: () => { calls++; return true; },
+			join: () => { calls++; return Promise.resolve([]); }, close: () => { calls++; } });
+		const binding = { owner, lifecycle: {}, comfort: {}, providerKey: 'thermostat:v1', predecessors: ports };
+		if (mode === 'missing-port') Reflect.deleteProperty(binding, 'predecessors');
+		if (mode === 'accessor-port') Object.defineProperty(binding, 'predecessors', { get: () => { calls++; return ports; } });
+		Object.freeze(binding);
+		// Malformed negative data reaches the original method without a positive capability or type assertion.
+		expect(() => writer.registerRuntimeSettlementConsumer(binding)).toThrow();
+		expect(calls).toBe(0);
+		expect(queries).not.toHaveBeenCalled();
+	});
+	// END R132 closed predecessor registration negatives
+
 	it('poisons a caught ambient existing-controller root before any request getter or second lock', async () => {
 		const locks = jest.spyOn(lock, 'runExclusiveReleased');
 		let getters = 0;

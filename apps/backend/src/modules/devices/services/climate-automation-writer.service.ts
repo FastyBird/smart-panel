@@ -62,6 +62,9 @@ import {
 	ClimateAutomationRuntimeConsumer,
 	ClimateAutomationRuntimeConsumerBinding,
 	ClimateAutomationRuntimeDebt,
+	ClimateAutomationPredecessors,
+	ClimateAutomationPredecessorPorts,
+	ClimateAutomationPredecessorTransition,
 	ClimateAutomationScope,
 	ClimateAutomationSelection,
 	ClimateAutomationSettlementContinuity,
@@ -249,6 +252,31 @@ interface PinnedExisting {
 	readonly capability: ClimateAutomationExistingCapability;
 	readonly methods: OriginalFunctions<ClimateAutomationExistingCapability>;
 	readonly current: () => boolean;
+}
+interface ExistingSeedOwner {
+	readonly pinned: PinnedExisting;
+	readonly environment: ReturnType<ClimateAutomationExistingCapability['captureEnvironment']>;
+	readonly input: ClimateAutomationExistingInput;
+	readonly wall: Readonly<{ call: (receiver: DateConstructor) => number }>;
+	readonly mono: Readonly<{ call: (receiver: typeof performance) => number }>;
+	readonly clockCurrent: () => boolean;
+	readonly graphCapture: OriginalFunction<ClimateAutomationGraphParticipant, NonNullable<ClimateAutomationGraphParticipant['captureOwnedPublicationLifecycle']>>;
+}
+interface ExistingPredecessorSeed {
+	readonly facts: ClimateAutomationExistingFacts;
+	readonly slot: ClimateAutomationSlotFacts | null;
+	readonly reference: ClimateAutomationSourceFacts | null;
+	readonly source: Snapshot['source'];
+	readonly clock: ClimateAutomationExistingClock;
+	readonly previousClock: ExistingClockOwner | undefined;
+	readonly graphCurrent: () => boolean;
+}
+interface ExistingPredecessorGap {
+	readonly capture: ClimateAutomationPredecessors;
+	readonly ports: ClimateAutomationPredecessorPorts;
+	readonly current: () => boolean;
+	readonly closeObservation: () => void;
+	readonly close: () => void;
 }
 interface ExistingClockOwner {
 	readonly id: string;
@@ -467,6 +495,13 @@ const increment = (value: number) => {
  */
 @Injectable()
 export class ClimateAutomationWriterService {
+	private static readonly predecessorMethods = Object.freeze([
+		['captureExistingPredecessorGap', ClimateAutomationWriterService.prototype.captureExistingPredecessorGap],
+		['readExistingPredecessorSeed', ClimateAutomationWriterService.prototype.readExistingPredecessorSeed],
+		['expectedPredecessorFacts', ClimateAutomationWriterService.prototype.expectedPredecessorFacts],
+		['predecessorJsonObject', ClimateAutomationWriterService.prototype.predecessorJsonObject],
+		['deriveExistingClock', ClimateAutomationWriterService.prototype.deriveExistingClock],
+	] satisfies readonly (readonly [string, unknown])[]);
 	private readonly context = new AsyncLocalStorage<Context>();
 	private readonly creations = new WeakMap<object, CreationRecord>();
 	private readonly existingReports = new WeakMap<
@@ -493,6 +528,9 @@ export class ClimateAutomationWriterService {
 			readonly nativeClockOwner?: ExistingClockOwner;
 		}>
 	>();
+	private readonly predecessorIntentProjections = new WeakMap<object, Readonly<{
+		controllerId: string; slot: ClimateAutomationSlotFacts; nativeConfig: ClimateAutomationJson;
+	}>>();
 	private readonly runtimeConsumers = new Map<ClimateAutomationRuntimeConsumer, RuntimeConsumerRecord>();
 	private readonly runtimeCaptures = new Map<ClimateAutomationRuntimeCapture, RuntimeCaptureRecord>();
 	private readonly runtimeCheckpoints = new Map<ClimateAutomationRuntimeCheckpoint, RuntimeCheckpointRecord>();
@@ -2336,8 +2374,8 @@ export class ClimateAutomationWriterService {
 	registerRuntimeSettlementConsumer(
 		binding: ClimateAutomationRuntimeConsumerBinding,
 	): ClimateAutomationRuntimeConsumer {
-		if (!Object.isFrozen(binding) || Object.keys(binding).length !== 4) throw new Conflict('invalid');
-		for (const key of ['owner', 'lifecycle', 'comfort', 'providerKey']) {
+		if (!Object.isFrozen(binding) || Object.keys(binding).length !== 5) throw new Conflict('invalid');
+		for (const key of ['owner', 'lifecycle', 'comfort', 'providerKey', 'predecessors']) {
 			const field = nativeObjectEvidence.getOwnPropertyDescriptor(binding, key);
 			if (!field || field.get || field.set) throw new Conflict('invalid');
 		}
@@ -2354,7 +2392,22 @@ export class ClimateAutomationWriterService {
 				return previous.token;
 			throw new Conflict('unavailable');
 		}
+		const ports = binding.predecessors;
+		if (!Object.isFrozen(ports) || ports.owner !== binding.owner) throw new Conflict('invalid');
 		const pins: { receiver: object; key: string; method: unknown }[] = [];
+		for (const key of ['capture', 'size', 'recognize', 'join', 'close']) {
+			if (!creationHasDataMethod(ports, key)) throw new Conflict('unavailable');
+			pins.push({ receiver: ports, key, method: nativeFieldEvidence.get(ports, key) });
+		}
+		for (const [key, originalKey] of [
+			['capture', 'captureOriginalPredecessors'], ['size', 'originalPredecessorSize'],
+			['recognize', 'recognizeOriginalPredecessor'], ['join', 'joinOriginalPredecessors'],
+			['close', 'closeOriginalPredecessors'],
+		]) {
+			const method = nativeFieldEvidence.get(ports, key);
+			if (!creationMethodCurrent(binding.owner, originalKey, method)) throw new Conflict('unavailable');
+			pins.push({ receiver: binding.owner, key: originalKey, method });
+		}
 		for (const entry of [
 			{ receiver: binding.owner, names: ['onModuleDestroy', 'request', 'evaluate', 'reconcile'] },
 			{ receiver: binding.comfort, names: ['onModuleDestroy', 'settleForRuntime'] },
@@ -2787,11 +2840,160 @@ export class ClimateAutomationWriterService {
 	commitExistingControllerV1(request: ClimateAutomationExistingRequest): Promise<ClimateAutomationExistingOutcome> {
 		return this.commitExistingControllerRoot(request);
 	}
+	private captureExistingPredecessorGap(input: ClimateAutomationExistingInput): ExistingPredecessorGap | undefined {
+		const consumers = [...this.runtimeConsumers.values()].filter((record) => record.binding.providerKey === input.providerKey);
+		if (!consumers.length) return undefined;
+		if (consumers.length !== 1 || !this.runtimeConsumerCurrent(consumers[0])) throw new Conflict('unavailable');
+		const original = consumers[0], ports: ClimateAutomationPredecessorPorts = original.binding.predecessors;
+		const capture = ports.capture.call(ports.owner, input.controllerId);
+		let size: number;
+		try {
+			size = ports.size.call(ports.owner, capture);
+			if (capture.projections.length !== size || capture.projections.some((projection) =>
+				this.predecessorIntentProjections.get(projection)?.controllerId !== input.controllerId)) throw new Conflict('unavailable');
+		} catch (cause) {
+			try { ports.close.call(ports.owner, capture); } catch { /* Original validation P remains primary. */ }
+			throw cause;
+		}
+		if (size === 0) {
+			ports.close.call(ports.owner, capture);
+			return undefined;
+		}
+		let dirty = false, closed = false, observing = true;
+		const pins = Object.freeze(Object.entries(ports).filter(([key]) => key !== 'owner'));
+		const current = (): boolean => {
+			if (closed || dirty || !ClimateAutomationWriterService.predecessorMethods.every(([key, method]) => creationMethodCurrent(this, key, method)) || ports.owner !== original.binding.owner ||
+				(!pins.every(([key, method]) => creationMethodCurrent(ports, key, method)) ||
+				!original.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method)))) dirty = true;
+			return !closed && !dirty;
+		};
+		const observer: EntitySubscriberInterface = {
+			beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
+				if (!observing) return;
+				try {
+				if (!current()) return;
+				if (/^\s*(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(event.query)) return;
+				// R130 preserves this exact zero-row reservation; ordinary same-value row UPDATEs still veto.
+				if (event.query === `UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0` && !event.parameters?.length) return;
+				try { if (ports.recognize.call(ports.owner, capture, event)) return; }
+				catch { /* Negative evidence cannot replace native execution or its error. */ }
+				dirty = true;
+				} catch { dirty = true; /* Optional observation never replaces the original native callback or error. */ }
+			},
+		};
+		const beforeQuery = observer.beforeQuery, subscribers = this.dataSource.subscribers, observerPrototype = nativePrototypeEvidence.getPrototypeOf(observer);
+		subscribers.push(observer);
+		const closeObservation = (): void => {
+			if (!observing) return;
+			observing = false;
+			const index = subscribers.indexOf(observer);
+			if (index >= 0) subscribers.splice(index, 1);
+		};
+		return Object.freeze({ capture, ports,
+			current: () => current() && (!observing || (this.dataSource.subscribers === subscribers && subscribers.includes(observer) &&
+				nativePrototypeEvidence.getPrototypeOf(observer) === observerPrototype && creationMethodCurrent(observer, 'beforeQuery', beforeQuery))),
+			closeObservation,
+			close: () => { if (closed) return; closed = true; closeObservation(); ports.close.call(ports.owner, capture); },
+		});
+	}
+	private async readExistingPredecessorSeed(owned: ExistingSeedOwner, gap: ExistingPredecessorGap): Promise<ExistingPredecessorSeed> {
+		this.assertExistingRootEntry();
+		const originalClock = Object.freeze({ owner: this.existingClockLeases.get(owned.input.controllerId) });
+		const graph = this.existingGraphLifecycle(owned.pinned.participant.graph, owned.graphCapture);
+		const admitted = (): boolean => gap.current() && owned.pinned.current() && owned.environment.isCurrent() && owned.clockCurrent() && graph.current();
+		if (!admitted()) throw new Conflict('unavailable');
+		// runExclusiveReleased settles AFTER all structural ownership, including failure. No O wait inside.
+		return this.structureLock.runExclusiveReleased(async () => {
+			const operation: Operation = {
+				phase: 'BODY_OPEN', settlement: { jobs: Object.freeze<ValidationJob[]>([]) }, scope: shell(),
+				pending: 0, callbacks: [], mandatory: new Map(), jobs: new Map(), issued: new Set(),
+				guards: [admitted], tail: Promise.resolve(), mutationEpoch: 0, frozenEpoch: 0, sequence: 0,
+				existingReadonlyProbe: true,
+			};
+			let failure: { cause: unknown } | undefined;
+			try {
+				return await this.context.run({ operation, internal: true }, () => this.dataSource.transaction(async (manager) => {
+					operation.manager = manager; operation.runner = manager.queryRunner;
+					operation.existingQueryFence = this.installExistingQueryFence(operation, admitted);
+					return this.inParticipantTurn(operation, async (turn, phase) => {
+						phase.existingCurrent = admitted;
+						const facts = this.existingFacts(await owned.pinned.methods.readFactsInManager.call(
+							owned.pinned.capability, manager, turn, owned.input.controllerId));
+						if (!admitted()) throw new Conflict('unavailable');
+						const slot = await this.slot(manager, owned.input.controllerId);
+						const referenceRow = slot?.generationId ? await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: slot.generationId }) : null;
+						const reference = referenceRow ? this.sourceFacts(referenceRow) : null;
+						if (slot?.generationId && !reference) throw new Conflict('stale');
+						const source = reference ? Object.freeze({ key: { producerKey: reference.producerKey, subjectId: reference.subjectId },
+							value: await this.source(manager, reference.producerKey, reference.subjectId) }) : undefined;
+						const needsClock = owned.input.kind === 'override-create:v1' || owned.input.kind === 'override-cancel:v1' ||
+							this.existingJsonField(this.existingJsonField(facts.image?.comfort ?? null, 'configuration'), 'temporary_override') !== null;
+						const clock = this.deriveExistingClock(owned.input.controllerId, facts, slot,
+							needsClock ? owned.wall.call(Date) : NaN, needsClock ? owned.mono.call(performance) : NaN, originalClock);
+						if (!admitted()) throw new Conflict('unavailable');
+						// COMMIT is outside the READ_BEFORE turn. No guard/reservation/mutation is installed.
+						operation.phase = 'READY_TO_COMMIT';
+						return Object.freeze({ facts, slot, reference, source, clock,
+							previousClock: originalClock.owner, graphCurrent: graph.current });
+					});
+				}));
+			} catch (cause) {
+				failure = { cause }; throw cause;
+			} finally {
+				try { operation.existingQueryFence?.(); }
+				catch (cause) { if (!failure) throw cause; }
+				finally { operation.phase = 'SETTLED'; }
+			}
+		});
+	}
+	private expectedPredecessorFacts(seed: ExistingPredecessorSeed, transitions: readonly ClimateAutomationPredecessorTransition[]): ClimateAutomationExistingFacts {
+		if (!seed.slot || !transitions.length || transitions.length > 8) throw new Conflict('unavailable');
+		const replacements = new Map<string, ClimateAutomationPredecessorTransition>();
+		for (const transition of transitions) {
+			const original = this.predecessorIntentProjections.get(transition.projection);
+			const id = transition.before.id;
+			if (!original || original.controllerId !== seed.facts.controllerId ||
+				!same(original.slot, seed.slot) || !same(original.nativeConfig, seed.facts.rows.configurations[0]) ||
+				typeof id !== 'string' || replacements.has(id) || transition.after.id !== id ||
+				transition.before.action !== 'on' || transition.after.action !== 'on' ||
+				!['cancelled', 'accepted', 'unknown'].includes(String(transition.after.status))) throw new Conflict('stale');
+			const allowed = new Set(['status', 'settledAt', 'fault']);
+			if (Object.keys(transition.before).length !== Object.keys(transition.after).length ||
+				!Object.keys(transition.before).every((key) => Object.hasOwn(transition.after, key) &&
+					(allowed.has(key) || Object.is(transition.before[key], transition.after[key])))) throw new Conflict('stale');
+			replacements.set(id, transition);
+		}
+		const consumed = new Set<string>();
+		const commands = seed.facts.rows.commands.map((descriptor) => {
+			const raw = this.predecessorJsonObject(descriptor);
+			const rows = this.existingJsonField(raw, 'rows');
+			if (!Array.isArray(rows)) throw new Conflict('invalid');
+			return Object.freeze({ ...raw, rows: Object.freeze(rows.map((row) => {
+				const object = this.predecessorJsonObject(row), id = this.existingJsonField(object, 'id');
+				const transition = typeof id === 'string' ? replacements.get(id) : undefined;
+				if (!transition) return row;
+				if (typeof id !== 'string' || consumed.has(id) || (!same(row, transition.before) && !same(row, transition.after))) throw new Conflict('stale');
+				consumed.add(id); return transition.after;
+			})) });
+		});
+		if (consumed.size !== replacements.size) throw new Conflict('stale');
+		return this.existingFacts(Object.freeze({ ...seed.facts, rows: Object.freeze({ ...seed.facts.rows, commands: Object.freeze(commands) }) }));
+	}
+
+	private predecessorJsonObject(value: ClimateAutomationJson): Readonly<Record<string, ClimateAutomationJson>> {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Conflict('invalid');
+		const result: Record<string, ClimateAutomationJson> = {};
+		for (const key of Object.keys(value)) result[key] = this.existingJsonField(value, key);
+		return Object.freeze(result);
+	}
+
 	private async commitExistingControllerRoot(
 		request: ClimateAutomationExistingRequest,
 		runtimeCapture?: RuntimeCaptureRecord,
 	): Promise<ClimateAutomationExistingOutcome> {
 		this.assertExistingRootEntry();
+		if (!ClimateAutomationWriterService.predecessorMethods.every(([key, method]) => creationMethodCurrent(this, key, method)))
+			throw new ClimateAutomationWriteError('not_started', new Error('Original predecessor protocol unavailable'));
 		if (!creationHasDataMethod(this.structureLock, 'runExclusiveReleased'))
 			throw new ClimateAutomationWriteError('not_started', new Error('Original released writer unavailable'));
 		const originalLockMethods: OriginalFunctions<Pick<DeviceStructureLockService, 'runExclusiveReleased'>> =
@@ -2806,6 +3008,10 @@ export class ClimateAutomationWriterService {
 		let closeSettlementContinuity: ClimateAutomationSettlementContinuity['close'] | undefined;
 		let continuityOwner: RuntimeContinuityOwner | undefined;
 		let record: ExistingRecord | undefined;
+		let predecessorGap: ExistingPredecessorGap | undefined;
+		let predecessorSeed: ExistingPredecessorSeed | undefined;
+		let predecessorExpected: ClimateAutomationExistingFacts | undefined;
+		let originalRootFailure: { cause: unknown } | undefined;
 		try {
 			const owned = this.manualSnapshots.run(snapshot, () => {
 				const providerKey = request.providerKey;
@@ -2962,6 +3168,14 @@ export class ClimateAutomationWriterService {
 					Object.keys(owned.input.wire).length !== 0)
 			)
 				throw new Conflict('invalid');
+			predecessorGap = this.captureExistingPredecessorGap(owned.input);
+			if (predecessorGap) {
+				predecessorSeed = await this.readExistingPredecessorSeed(owned, predecessorGap);
+				// Both seed owners have actually released. Only the CLOSED set's own intrinsic O is joined.
+				const transitions = await predecessorGap.ports.join.call(predecessorGap.ports.owner, predecessorGap.capture);
+				if (!predecessorGap.current() || !predecessorSeed.graphCurrent()) throw new Conflict('unavailable');
+				predecessorExpected = this.expectedPredecessorFacts(predecessorSeed, transitions);
+			}
 			const outcome = await this.runReserved(async (manager, scope) => {
 				const handle = await this.participantCommand(
 					manager,
@@ -3010,6 +3224,14 @@ export class ClimateAutomationWriterService {
 									})
 								: undefined;
 							requireCurrent();
+							if (predecessorSeed && predecessorGap && predecessorExpected) {
+								if (!predecessorGap.current() || !predecessorSeed.graphCurrent() ||
+									!same(before, predecessorExpected) || !same(oldSlot, predecessorSeed.slot) ||
+									!same(reference, predecessorSeed.reference) || !same(source, predecessorSeed.source) ||
+									(predecessorSeed.previousClock && !predecessorSeed.previousClock.current())) throw new Conflict('stale');
+								// Still inside the new owner; following original read-after/final reads guard APPLY.
+								predecessorGap.closeObservation();
+							}
 							phase.existingInput = input;
 							phase.existingBefore = before;
 							phase.existingSlot = oldSlot;
@@ -3019,13 +3241,24 @@ export class ClimateAutomationWriterService {
 								this.existingJsonField(clockOverride, 'status') === 'active' ||
 								input.kind === 'override-create:v1' ||
 								input.kind === 'override-cancel:v1';
-							phase.existingClock = this.deriveExistingClock(
+							const observedClock = this.deriveExistingClock(
 								input.controllerId,
 								before,
 								oldSlot,
 								needsClock ? owned.wall.call(Date) : NaN,
 								needsClock ? owned.mono.call(performance) : NaN,
+								predecessorSeed ? Object.freeze({ owner: predecessorSeed.previousClock }) : undefined,
 							);
+							const seedClock = predecessorSeed?.clock;
+							if (seedClock && seedClock.overrideId !== null && seedClock.overrideId === observedClock.overrideId) {
+								const deadline = seedClock.deadline === null ? observedClock.deadline : observedClock.deadline === null ? seedClock.deadline : Math.min(seedClock.deadline, observedClock.deadline);
+								const watermark = seedClock.watermark === null ? observedClock.watermark : observedClock.watermark === null ? seedClock.watermark : Math.max(seedClock.watermark, observedClock.watermark);
+								const status = seedClock.status !== 'active' ? seedClock.status :
+									!Number.isFinite(observedClock.wallMs) || !Number.isFinite(observedClock.monoMs) ||
+									(seedClock.watermark !== null && observedClock.wallMs < seedClock.watermark) ? 'clock_uncertain' :
+									deadline !== null && observedClock.monoMs >= deadline ? 'expired' : observedClock.status;
+								phase.existingClock = Object.freeze({ ...observedClock, deadline, watermark, status });
+							} else phase.existingClock = observedClock;
 							phase.phase = 'NORMALIZE';
 							const supplied = await methods.normalizeInManager.call(cap, manager, turn, input, before);
 							requireCurrent();
@@ -3398,6 +3631,7 @@ export class ClimateAutomationWriterService {
 			}
 			return record.outcomeCandidate;
 		} catch (cause) {
+			originalRootFailure = { cause };
 			if (record) record.completionOpen = false;
 			// Last genuine cleanup preparation is before F5; never read again after successful B5.
 			if (record?.responseSealed === undefined && prepareHold && preparation === undefined) {
@@ -3463,6 +3697,11 @@ export class ClimateAutomationWriterService {
 					} catch {
 						/* Read handle cannot replace P or fixed A. */
 					}
+			}
+			try { predecessorGap?.close(); }
+			catch (cause) {
+				if (!originalRootFailure) throw new ClimateAutomationWriteError(
+					record?.operation.settlement.receipt?.outcome === 'committed' ? 'committed' : 'not_started', cause);
 			}
 		}
 	}
@@ -3930,6 +4169,7 @@ export class ClimateAutomationWriterService {
 		slot: ClimateAutomationSlotFacts | null,
 		wallMs: number,
 		monoMs: number,
+		retained?: Readonly<{ owner: ExistingClockOwner | undefined }>,
 	): ClimateAutomationExistingClock {
 		const comfort = this.existingJsonField(before.image?.comfort ?? null, 'configuration');
 		const override = this.existingJsonField(comfort, 'temporary_override');
@@ -3963,7 +4203,7 @@ export class ClimateAutomationWriterService {
 			: typeof watermarkField === 'number'
 				? watermarkField
 				: NaN;
-		const old = this.existingClockLeases.get(controllerId);
+		const old = retained ? retained.owner : this.existingClockLeases.get(controllerId);
 		// An authentic persisted incarnation may retain its earlier deadline/M/terminal veto across graph refresh.
 		// This cannot authorize a send: a fresh budget still needs this command's full facts, ACK and original response probe.
 		const sameLifetime = old?.id === id && old.incarnation === slot?.controllerIncarnation;
@@ -4213,7 +4453,11 @@ export class ClimateAutomationWriterService {
 	existingIntentProjection(token: ClimateAutomationIntentView): Readonly<{ available: true; manualHold: boolean }> {
 		const record = this.intentViews.get(token);
 		if (!record?.current()) throw new Conflict('unavailable');
-		return Object.freeze({ available: true, manualHold: record.slot.manualHold });
+		const projection: Readonly<{ available: true; manualHold: boolean }> = Object.freeze({ available: true, manualHold: record.slot.manualHold });
+		this.predecessorIntentProjections.set(projection, Object.freeze({
+			controllerId: record.controllerId, slot: record.slot, nativeConfig: record.nativeConfig,
+		}));
+		return projection;
 	}
 	isExistingIntentCurrent(token: ClimateAutomationIntentView): boolean {
 		return this.intentViews.get(token)?.current() === true;

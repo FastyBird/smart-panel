@@ -40,6 +40,7 @@ interface GuardedCommit {
 	guards: Array<() => boolean>;
 	phase: 'starting' | 'open' | 'sealed' | 'submitted' | 'committed' | 'rolling_back' | 'settled';
 	outcome: SqliteGuardedCommitOutcome;
+	observed?: true;
 	childFailure?: { cause: unknown };
 }
 
@@ -520,6 +521,17 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		};
 	}
 
+	/** Inert evidence for this OWN outer transaction. No guard, SQL, drain or permission is added. */
+	observeOuterOutcome(manager: EntityManager): SqliteCommitGuardReceipt {
+		const scope = this.guardedCommit;
+		if (manager !== this.manager || manager.queryRunner !== this || !scope || !this.isTransactionActive ||
+			this.transactionDepth !== 1 || scope.phase !== 'open') {
+			throw new Error('Native outcome observation requires its exact open outer manager');
+		}
+		scope.observed = true;
+		return Object.freeze({ get outcome() { return scope.outcome; } });
+	}
+
 	registerCommitGuard(manager: EntityManager, guard: () => boolean): SqliteCommitGuardReceipt {
 		const scope = this.guardedCommit;
 		if (manager.queryRunner !== this || !scope || !this.isTransactionActive || scope.phase !== 'open') {
@@ -545,8 +557,16 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			get: (target, property) => {
 				if (property === 'all') {
 					return (query: string, parameters: unknown[], callback: NativeQueryCallback) => {
-						if (query !== 'COMMIT' || scope.guards.length === 0) {
+						if (query !== 'COMMIT' || (scope.guards.length === 0 && !scope.observed)) {
 							return target.all(query, parameters, callback);
+						}
+						if (scope.guards.length === 0) {
+							// Observe the ORIGINAL guardless path. Do not seal or drain it as a guarded commit.
+							scope.outcome = 'unknown';
+							return target.all(query, parameters, function (error, rows) {
+								if (!error) scope.outcome = 'committed';
+								callback.call(this, error, rows);
+							});
 						}
 						this.dispatchGuardedCommit(scope, context, target, query, parameters, callback);
 						return target;
@@ -724,6 +744,14 @@ export function registerSqliteCommitGuard(manager: EntityManager, guard: () => b
 		throw new Error('SQLite COMMIT guards require a coordinated scoped manager');
 	}
 	return manager.queryRunner.registerCommitGuard(manager, guard);
+}
+
+/** Read-only native ACK, never a write/COMMIT admission. A SAVEPOINT cannot manufacture outer completion. */
+export function observeSqliteOuterOutcome(manager: EntityManager): SqliteCommitGuardReceipt {
+	if (!(manager.queryRunner instanceof CoordinatedSqliteQueryRunner)) {
+		throw new Error('Native outcome observation requires a coordinated scoped manager');
+	}
+	return manager.queryRunner.observeOuterOutcome(manager);
 }
 
 /** Read-only caller lease presence, including ordinary nontransactional queries. Not writer ownership. */
