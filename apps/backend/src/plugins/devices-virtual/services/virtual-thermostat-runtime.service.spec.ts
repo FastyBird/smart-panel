@@ -10025,6 +10025,7 @@ describe('virtual thermostat durable runtime', () => {
 			body: (held: R132Held) => Promise<void>,
 			beforeEntry?: (owner: VirtualThermostatRuntimeService, id: string, real: typeof fixture) => void,
 			boundary: 'beforeOn' | 'afterOn' = 'beforeOn',
+			freshBOriginalOff = false,
 		): Promise<void> => {
 			const setup = requireFixtureSetup(),
 				owner = runtime,
@@ -10035,6 +10036,7 @@ describe('virtual thermostat durable runtime', () => {
 				sensor = sensorId,
 				publicComfort = comfort;
 			const caseOwner = setup.caseOwner;
+			const freshOff = Object.freeze({ enabled: freshBOriginalOff, caseOwner, setup });
 			const originalWriter = mutationWriter;
 			const originalWriterContext = originalWriter['context'];
 			const originalWriterTurns = originalWriter['turns'];
@@ -10184,6 +10186,18 @@ describe('virtual thermostat durable runtime', () => {
 				const spy = jest.spyOn(real.transport, 'get').mockImplementation((...args) => {
 					const adapter = get.call(real.transport, ...args);
 					if (!adapter) return null;
+					if (
+						freshOff.enabled &&
+						freshOff.caseOwner === caseOwner &&
+						freshOff.setup === setup &&
+						!retired &&
+						!caseOwner.retired &&
+						!setup.retired &&
+						caseOwner.setup === setup &&
+						currentFixtureCase === caseOwner &&
+						args[0].value === false
+					)
+						return adapter; // Fresh B only: preserve the original OFF adapter/work identity.
 					const methods: Readonly<{
 						send: OriginalFunction<ThermostatActuationAdapter, ThermostatActuationAdapter['send']>;
 					}> = adapter;
@@ -10438,29 +10452,1067 @@ describe('virtual thermostat durable runtime', () => {
 		it.each(['fresh-instance', 'same-instance'])(
 			'R132 cannot use A history as %s B admission or wait on B while native A is held',
 			async (restart) => {
-				await withR132Held(async (held) => {
-					await held.readEntered.promise;
-					held.assertLive();
-					held.owner.onModuleDestroy();
-					held.readResume.open();
-					held.assertLive();
-					const b = restart === 'same-instance' ? held.owner : makeActualRuntime();
-					try {
-						const fences = held.real.controls.fences.length;
-						await b.onApplicationBootstrap();
-						expect(b['lifecycle']).toBeDefined();
-						expect(held.real.controls.fences.length).toBeGreaterThan(fences);
-						expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
-						const bContext = b['contexts'].get(held.id);
-						held.nativeResume.open();
-						await held.resultObserved.promise;
-						await held.operation;
-						await expect(held.mutation).rejects.toBeDefined();
-						expect(b['contexts'].get(held.id)).toBe(bContext);
-					} finally {
-						b.onModuleDestroy();
-					}
-				});
+				await withR132Held(
+					async (held) => {
+						await held.readEntered.promise;
+						held.assertLive();
+						held.owner.onModuleDestroy();
+						held.readResume.open();
+						held.assertLive();
+						const b = restart === 'same-instance' ? held.owner : makeActualRuntime();
+						if (restart === 'fresh-instance') {
+							// Permanent test receipt: original B O/owned feedback, never a separate native Promise.
+							const caseOwner = currentFixtureCase,
+								setup = caseOwner?.setup;
+							if (!caseOwner || !setup || caseOwner.retired || setup.retired || caseOwner.setup !== setup)
+								throw new Error('Original fresh B case/setup unavailable');
+							type Evaluation = (typeof b)['evaluate'];
+							type Context = Parameters<(typeof b)['reconcile']>[0];
+							type Completion = NonNullable<ReturnType<(typeof b)['evaluationCompletions']['get']>>;
+							type Child = Parameters<(typeof b)['serviceFeedback']>[0];
+							type Job = NonNullable<ReturnType<(typeof b)['offJobs']['get']>>;
+							type Outcome = { fulfilled: true } | { fulfilled: false; cause: unknown };
+							type Frame = {
+								readonly lifecycle: object;
+								ordinal: number;
+								origin: 'QUEUE' | 'FEEDBACK';
+								owned: boolean;
+								pending?: Promise<void>;
+								outcome?: Outcome;
+								context?: Context;
+								completion?: Completion;
+							};
+							type Service = {
+								readonly child: Child;
+								readonly authenticated: boolean;
+								pending?: Promise<void>;
+								outcome?: Outcome;
+							};
+							type Off = {
+								readonly job: Job;
+								readonly claim: Context['claims'][number];
+								readonly operation: Promise<void>;
+								readonly admission: Context['admission'];
+								readonly admissionCurrent: Context['admission']['isCurrent'];
+								readonly publishGuard: Context['publishGuard'];
+								readonly intent: Context['intent'];
+								readonly intentCurrent: NonNullable<Context['intent']>['isCurrent'] | undefined;
+								readonly claims: Context['claims'];
+								child?: Child;
+								work?: Child['work'];
+								outcome?: Outcome;
+								terminal?: Readonly<{
+									result: Job['result'];
+									failure: Job['failure'];
+									outputSaved: boolean;
+									terminal: boolean;
+									sampleSeen: boolean;
+									state: Child['state'] | undefined;
+								}>;
+							};
+							type Endpoint = {
+								readonly context: Context;
+								readonly completion: Completion;
+								readonly ordinal: number;
+								readonly admission: Context['admission'];
+								readonly admissionCurrent: Context['admission']['isCurrent'];
+								readonly publishGuard: Context['publishGuard'];
+								readonly intent: Context['intent'];
+								readonly claims: Context['claims'];
+							};
+							type Publication = {
+								readonly frame: Frame;
+								readonly context: Context;
+								readonly predecessor: Context | undefined;
+								setReturned: boolean;
+								completion?: Completion;
+							};
+							type Creation = { readonly child: Child; readonly work: NonNullable<Child['work']>; consumed: boolean };
+							const publicMethods: Readonly<{
+								request: OriginalFunction<typeof b, (typeof b)['request']>;
+								onApplicationBootstrap: OriginalFunction<typeof b, (typeof b)['onApplicationBootstrap']>;
+								onModuleDestroy: OriginalFunction<typeof b, (typeof b)['onModuleDestroy']>;
+							}> = b;
+							const originalRequest = publicMethods.request,
+								originalBootstrap = publicMethods.onApplicationBootstrap,
+								originalDestroy = publicMethods.onModuleDestroy;
+							const originalEvaluate: OriginalFunction<typeof b, Evaluation> = b['evaluate'];
+							const originalService: OriginalFunction<typeof b, (typeof b)['serviceFeedback']> = b['serviceFeedback'];
+							const contexts = b['contexts'],
+								completions = b['evaluationCompletions'],
+								inFlight = b['inFlight'],
+								children = b['feedbackChildren'];
+							const contextMethods: OriginalFunctions<typeof contexts> = contexts;
+							const completionMethods: OriginalFunctions<typeof completions> = completions;
+							const flightMethods: OriginalFunctions<typeof inFlight> = inFlight;
+							const childMethods: OriginalFunctions<typeof children> = children;
+							const originalContextSet = contextMethods.set,
+								originalContextDelete = contextMethods.delete,
+								originalContextClear = contextMethods.clear,
+								originalCompletionSet = completionMethods.set,
+								originalFlightSet = flightMethods.set,
+								originalChildSet = childMethods.set;
+							// Thirteen fixed mutable/owner slots; no per-evaluation or child history collection.
+							const owner = Object.freeze({ runtime: b, caseOwner, setup, controllerId: held.id, source: held.source });
+							const first: { evaluation?: Frame } = {};
+							const release: { value?: Off } = {};
+							const firstService: { ready: ReturnType<typeof barrier>; value?: Service } = { ready: barrier() };
+							const activeEvaluation: { value?: Frame } = {};
+							const activeService: { value?: Service } = {};
+							const endpoint: { value?: Endpoint } = {};
+							const publication: { value?: Publication } = {};
+							const creation: { value?: Creation } = {};
+							const state: {
+								closed: boolean;
+								retired: boolean;
+								unknown: boolean;
+								fault: boolean;
+								foreign: boolean;
+								credits: number;
+								omitted: number;
+								evaluations: number;
+								transitions: number;
+								sFulfilled: boolean;
+								sawTarget: boolean;
+								retirementComplete: boolean;
+								starting?: Promise<void>;
+								lifecycle?: object;
+								bootstrap?: (typeof b)['bootstrapAttempt'];
+							} = {
+								closed: false,
+								retired: false,
+								unknown: false,
+								fault: false,
+								foreign: false,
+								credits: 0,
+								omitted: 0,
+								evaluations: 0,
+								transitions: 0,
+								sFulfilled: false,
+								sawTarget: false,
+								retirementComplete: false,
+							};
+							const errors: { application?: { cause: unknown }; body?: { cause: unknown } } = {};
+							const cleanupFailure: { value?: { cause: unknown } } = {};
+							const cleanupCompletion: {
+								value?: Promise<void>;
+								resolve: () => void;
+								reject: (cause: unknown) => void;
+								issued: Set<Promise<void>>;
+								jobs: Job[];
+								joining: boolean;
+							} = { resolve: () => undefined, reject: () => undefined, issued: new Set(), jobs: [], joining: false };
+							const observe = (action: () => void): void => {
+								try {
+									const lifecycleField = Object.getOwnPropertyDescriptor(b, 'lifecycle');
+									const lifecycle: unknown = lifecycleField?.value;
+									if (lifecycleField?.get !== undefined || lifecycleField?.set !== undefined) state.unknown = true;
+									if (state.lifecycle !== undefined && lifecycle !== undefined && lifecycle !== state.lifecycle)
+										state.foreign = state.unknown = true;
+									action();
+								} catch {
+									state.fault = true;
+								}
+							};
+							const originalFailure = (cause: unknown): void => {
+								errors.application ??= { cause };
+							};
+							const sameDescriptor = (a: PropertyDescriptor | undefined, c: PropertyDescriptor): boolean =>
+								a !== undefined &&
+								a.value === c.value &&
+								a.get === c.get &&
+								a.set === c.set &&
+								a.configurable === c.configurable &&
+								a.enumerable === c.enumerable &&
+								a.writable === c.writable;
+							const live = (): boolean =>
+								!state.closed &&
+								!caseOwner.retired &&
+								!setup.retired &&
+								currentFixtureCase === caseOwner &&
+								caseOwner.setup === setup &&
+								b['active'] &&
+								state.lifecycle !== undefined &&
+								b['lifecycle'] === state.lifecycle &&
+								b['contexts'] === contexts &&
+								b['evaluationCompletions'] === completions &&
+								b['inFlight'] === inFlight &&
+								b['feedbackChildren'] === children &&
+								pinsCurrent();
+							const increment = (value: number): number => {
+								if (!Number.isSafeInteger(value) || value >= Number.MAX_SAFE_INTEGER) {
+									state.unknown = true;
+									return value;
+								}
+								return value + 1;
+							};
+							const certify = (): void => {
+								if (state.closed || state.unknown || state.fault || publication.value === undefined) return;
+								const pair = publication.value,
+									completion = pair.completion;
+								// This runs AFTER the original 4096/4107/4108 synchronous continuation, not in completion-set entry.
+								if (
+									!live() ||
+									!pair.setReturned ||
+									completion === undefined ||
+									activeEvaluation.value !== pair.frame ||
+									pair.predecessor !== endpoint.value?.context ||
+									pair.frame.context !== pair.context ||
+									pair.frame.completion !== completion ||
+									completions.get(pair.context) !== completion ||
+									contexts.get(held.id) !== pair.context ||
+									b['contextLifecycles'].get(pair.context) !== state.lifecycle ||
+									b['feedbackEpisodes'].get(held.id) !== completion.episode ||
+									b['feedbackContexts'].get(pair.context) !== completion.episode ||
+									completion.context !== pair.context ||
+									completion.lifecycle !== state.lifecycle ||
+									completion.episode.context !== pair.context ||
+									completion.episode.retired
+								) {
+									state.unknown = true;
+									return;
+								}
+								const admissionView: Readonly<{
+									isCurrent: OriginalFunction<Context['admission'], Context['admission']['isCurrent']>;
+								}> = pair.context.admission;
+								state.transitions = increment(state.transitions);
+								endpoint.value = {
+									context: pair.context,
+									completion,
+									ordinal: state.transitions,
+									admission: pair.context.admission,
+									admissionCurrent: admissionView.isCurrent,
+									publishGuard: pair.context.publishGuard,
+									intent: pair.context.intent,
+									claims: pair.context.claims,
+								};
+								publication.value = undefined;
+							};
+							const terminal = (): void => {
+								const off = release.value;
+								if (off === undefined) return;
+								if (off.job.failure !== undefined) originalFailure(off.job.failure.cause);
+								if (off.terminal !== undefined) return;
+								if (!off.job.terminal) {
+									state.unknown = true;
+									return;
+								}
+								off.terminal = Object.freeze({
+									result: off.job.result,
+									failure: off.job.failure,
+									outputSaved: off.job.outputSaved,
+									terminal: off.job.terminal,
+									sampleSeen: off.child?.sampleSeen === true,
+									state: off.child?.state,
+								});
+							};
+							const retiredWithoutService = (record: Creation): boolean =>
+								record.child.episode.retired &&
+								!record.child.queued &&
+								record.child.evaluation.status !== 'OPEN' &&
+								(record.child.job === undefined || record.child.job.terminal);
+							const evaluating = function (
+								this: VirtualThermostatRuntimeService,
+								...args: Parameters<Evaluation>
+							): ReturnType<Evaluation> {
+								const firstOpportunity = args[0] === held.id && !state.sawTarget;
+								if (args[0] === held.id) state.sawTarget = true; // Consume the FIRST opportunity even if metadata is invalid.
+								let frame: Frame | undefined = firstOpportunity
+									? { lifecycle: args[1], ordinal: 0, origin: 'QUEUE', owned: false }
+									: undefined;
+								if (frame !== undefined) first.evaluation = frame;
+								observe(() => {
+									if (state.closed) return;
+									certify();
+									if (
+										state.unknown ||
+										state.fault ||
+										this !== b ||
+										args[0] !== held.id ||
+										!live() ||
+										args[1] !== state.lifecycle ||
+										activeEvaluation.value !== undefined ||
+										publication.value !== undefined
+									) {
+										state.unknown = true;
+										return;
+									}
+									const service = activeService.value;
+									if (
+										service === undefined
+											? state.credits === 0 || args.length !== 2
+											: !service.authenticated ||
+												firstOpportunity ||
+												(args.length !== 3 && args.length !== 4) ||
+												(args[2] !== undefined && args[2] !== service.child.episode) ||
+												(args.length === 4 && (args[3] !== true || args[2] !== service.child.episode))
+									) {
+										state.unknown = true;
+										return;
+									}
+									if (service === undefined) state.credits--;
+									state.evaluations = increment(state.evaluations);
+									if (frame === undefined)
+										frame = {
+											lifecycle: args[1],
+											ordinal: state.evaluations,
+											origin: service === undefined ? 'QUEUE' : 'FEEDBACK',
+											owned: true,
+										};
+									else {
+										frame.ordinal = state.evaluations;
+										frame.owned = true;
+									}
+									activeEvaluation.value = frame;
+								});
+								let pending: ReturnType<Evaluation>;
+								try {
+									pending = originalEvaluate.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									observe(() => {
+										if (frame !== undefined) frame.outcome = { fulfilled: false, cause };
+									});
+									throw cause;
+								}
+								if (frame !== undefined) {
+									const captured = frame;
+									observe(() => {
+										captured.pending = pending;
+										void pending.then(
+											() => {
+												observe(() => {
+													if (!state.closed) certify();
+													captured.outcome = { fulfilled: true };
+													if (activeEvaluation.value === captured) activeEvaluation.value = undefined;
+												});
+											},
+											(cause: unknown) => {
+												originalFailure(cause);
+												observe(() => {
+													captured.outcome = { fulfilled: false, cause };
+													if (activeEvaluation.value === captured) activeEvaluation.value = undefined;
+												});
+											},
+										);
+									});
+								}
+								return pending;
+							};
+							const requesting = function (
+								this: VirtualThermostatRuntimeService,
+								...args: Parameters<typeof originalRequest>
+							): void {
+								observe(() => {
+									if (state.closed) return;
+									certify();
+									if (this !== b || args[0] !== held.id || !live() || state.starting === undefined) {
+										state.unknown = true;
+										return;
+									}
+									if (args[1] === undefined) {
+										state.omitted = increment(state.omitted);
+										if (state.omitted !== 1 || state.sFulfilled || first.evaluation !== undefined) state.unknown = true;
+									} else if (args[1] !== false || first.evaluation === undefined) state.unknown = true;
+									state.credits = increment(state.credits);
+								});
+								try {
+									return originalRequest.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+							};
+							const settingContext = function (
+								this: typeof contexts,
+								...args: Parameters<typeof originalContextSet>
+							): ReturnType<typeof originalContextSet> {
+								let pair: Publication | undefined;
+								observe(() => {
+									if (state.closed) return;
+									certify();
+									const frame = activeEvaluation.value;
+									if (
+										this !== contexts ||
+										!live() ||
+										args[0] !== held.id ||
+										frame === undefined ||
+										publication.value !== undefined ||
+										frame.context !== undefined ||
+										contexts.get(held.id) !== endpoint.value?.context ||
+										args[1].config.controllerId !== held.id ||
+										b['contextLifecycles'].get(args[1]) !== state.lifecycle
+									) {
+										state.unknown = true;
+										return;
+									}
+									pair = { frame, context: args[1], predecessor: endpoint.value?.context, setReturned: false };
+									publication.value = pair;
+								});
+								let result: ReturnType<typeof originalContextSet>;
+								try {
+									result = originalContextSet.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+								observe(() => {
+									if (pair !== undefined) pair.setReturned = true;
+								});
+								return result;
+							};
+							const deletingContext = function (
+								this: typeof contexts,
+								...args: Parameters<typeof originalContextDelete>
+							): ReturnType<typeof originalContextDelete> {
+								observe(() => {
+									if (!state.closed) state.unknown = true;
+								});
+								try {
+									return originalContextDelete.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+							};
+							const clearingContexts = function (
+								this: typeof contexts,
+								...args: Parameters<typeof originalContextClear>
+							): ReturnType<typeof originalContextClear> {
+								observe(() => {
+									if (!state.closed) state.unknown = true;
+								});
+								try {
+									return originalContextClear.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+							};
+							const settingCompletion = function (
+								this: typeof completions,
+								...args: Parameters<typeof originalCompletionSet>
+							): ReturnType<typeof originalCompletionSet> {
+								// feedbackContexts(newContext) does NOT exist yet at this source point.
+								let pair: Publication | undefined;
+								observe(() => {
+									if (state.closed) return;
+									const candidate = publication.value,
+										completion = args[1];
+									if (
+										this !== completions ||
+										!live() ||
+										candidate === undefined ||
+										!candidate.setReturned ||
+										activeEvaluation.value !== candidate.frame ||
+										!candidate.frame.owned ||
+										candidate.completion !== undefined ||
+										args[0] !== candidate.context ||
+										completion.context !== candidate.context ||
+										completion.lifecycle !== state.lifecycle ||
+										completion.episode.lifecycle !== state.lifecycle ||
+										completion.episode.controllerId !== held.id ||
+										completion.status !== 'OPEN' ||
+										typeof completion.identity !== 'object' ||
+										completion.identity === null ||
+										completion.identity === endpoint.value?.completion.identity ||
+										completion.episode.retired ||
+										b['feedbackEpisodes'].get(held.id) !== completion.episode ||
+										b['contextLifecycles'].get(candidate.context) !== state.lifecycle
+									) {
+										state.unknown = true;
+										return;
+									}
+									pair = candidate;
+								});
+								let result: ReturnType<typeof originalCompletionSet>;
+								try {
+									result = originalCompletionSet.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+								observe(() => {
+									if (pair === undefined || state.closed) return;
+									pair.completion = args[1];
+									pair.frame.context = args[0];
+									pair.frame.completion = args[1];
+									// Keep ONE pending pair until the original feedbackContexts.set continuation has run.
+								});
+								return result;
+							};
+							const settingFlight = function (
+								this: typeof inFlight,
+								...args: Parameters<typeof originalFlightSet>
+							): ReturnType<typeof originalFlightSet> {
+								let result: ReturnType<typeof originalFlightSet>;
+								try {
+									result = originalFlightSet.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+								observe(() => {
+									if (state.closed) return;
+									certify();
+									const frame = first.evaluation,
+										command = b['inFlightCommands'].get(args[0]);
+									if (state.unknown || state.fault || this !== inFlight || !live() || command === undefined) {
+										state.unknown = true;
+										return;
+									}
+									const job = b['offJobs'].get(command);
+									if (job === undefined) return;
+									if (frame === undefined || !frame.owned || job.evaluation !== frame.completion) {
+										state.unknown = true;
+										return;
+									}
+									const context = frame.context,
+										claim = context?.claims[0];
+									if (
+										release.value !== undefined ||
+										context === undefined ||
+										claim === undefined ||
+										context.claims.length !== 1 ||
+										claim.role !== 'heating' ||
+										claim.id !== held.command.claimId ||
+										claim.revision !== held.command.claimRevision ||
+										command.controllerId !== held.id ||
+										command.claimId !== claim.id ||
+										command.action !== 'off' ||
+										command === held.command ||
+										command.id === held.command.id ||
+										job.context !== context ||
+										job.command !== command ||
+										job.operation !== args[1] ||
+										args[1] === held.operation ||
+										frame.lifecycle !== state.lifecycle
+									) {
+										state.unknown = true;
+										return;
+									}
+									const admissionView: Readonly<{
+										isCurrent: OriginalFunction<Context['admission'], Context['admission']['isCurrent']>;
+									}> = context.admission;
+									const intentView:
+										| Readonly<{
+												isCurrent: OriginalFunction<
+													NonNullable<Context['intent']>,
+													NonNullable<Context['intent']>['isCurrent']
+												>;
+										  }>
+										| undefined = context.intent;
+									const off: Off = {
+										job,
+										claim,
+										operation: args[1],
+										admission: context.admission,
+										admissionCurrent: admissionView.isCurrent,
+										publishGuard: context.publishGuard,
+										intent: context.intent,
+										intentCurrent: intentView?.isCurrent,
+										claims: context.claims,
+									};
+									release.value = off;
+									void off.operation.then(
+										() => {
+											observe(() => {
+												off.outcome = { fulfilled: true };
+												terminal();
+											});
+										},
+										(cause: unknown) => {
+											originalFailure(cause);
+											observe(() => {
+												off.outcome = { fulfilled: false, cause };
+												terminal();
+											});
+										},
+									);
+								});
+								return result;
+							};
+							const settingChild = function (
+								this: typeof children,
+								...args: Parameters<typeof originalChildSet>
+							): ReturnType<typeof originalChildSet> {
+								let result: ReturnType<typeof originalChildSet>;
+								try {
+									result = originalChildSet.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									throw cause;
+								}
+								observe(() => {
+									if (state.closed) return;
+									certify();
+									const child = args[1],
+										previous = creation.value;
+									if (
+										this !== children ||
+										!live() ||
+										child.work !== args[0] ||
+										child.purpose === 'OFF_COMMAND_COMPLETION' ||
+										child.episode.controllerId !== held.id ||
+										child.episode.lifecycle !== state.lifecycle ||
+										child.episode.retired ||
+										b['contextLifecycles'].get(child.context) !== state.lifecycle ||
+										completions.get(child.context) !== child.evaluation ||
+										child.evaluation.context !== child.context ||
+										child.evaluation.episode !== child.episode ||
+										b['feedbackContexts'].get(child.context) !== child.episode
+									) {
+										state.unknown = true;
+										return;
+									}
+									const off = release.value;
+									if (off !== undefined && child.job === off.job) {
+										if (
+											off.child !== undefined ||
+											child.purpose !== 'GUARDED_OFF_DISPATCH' ||
+											child.context !== off.job.context ||
+											child.evaluation !== off.job.evaluation ||
+											off.job.child !== child
+										)
+											state.unknown = true;
+										else {
+											off.child = child;
+											off.work = args[0];
+										}
+										return; // FIRST insertion stays fixed through FIRST L terminal, never borrowed as a rolling slot.
+									}
+									if (previous !== undefined && !previous.consumed && !retiredWithoutService(previous)) {
+										state.unknown = true;
+										return;
+									}
+									creation.value = { child, work: args[0], consumed: false };
+								});
+								return result;
+							};
+							const servicing = function (
+								this: VirtualThermostatRuntimeService,
+								...args: Parameters<typeof originalService>
+							): ReturnType<typeof originalService> {
+								let frame: Service | undefined;
+								observe(() => {
+									if (state.closed) return;
+									certify();
+									const child = args[0],
+										inserted = creation.value,
+										selected = release.value;
+									const fixedFirstInsertion =
+										selected !== undefined &&
+										selected.child === child &&
+										selected.work === child.work &&
+										child.job === selected.job &&
+										firstService.value === undefined;
+									const rollingInsertion =
+										inserted !== undefined &&
+										inserted.child === child &&
+										inserted.work === child.work &&
+										!inserted.consumed;
+									const matching =
+										this === b &&
+										live() &&
+										activeService.value === undefined &&
+										(fixedFirstInsertion || rollingInsertion) &&
+										child.episode.lifecycle === state.lifecycle &&
+										!child.episode.retired &&
+										child.episode.controllerId === held.id &&
+										child.evaluation.status === 'COMPLETE' &&
+										child.evaluation.context === child.context &&
+										child.evaluation.episode === child.episode &&
+										b['contextLifecycles'].get(child.context) === state.lifecycle &&
+										completions.get(child.context) === child.evaluation &&
+										contexts.get(held.id) === child.context &&
+										b['feedbackEpisodes'].get(held.id) === child.episode &&
+										b['feedbackContexts'].get(child.context) === child.episode &&
+										((child.purpose === 'GUARDED_OFF_DISPATCH' &&
+											child.job !== undefined &&
+											child.job.terminal &&
+											child.job.context === child.context &&
+											child.job.evaluation === child.evaluation &&
+											child.job.child === child &&
+											child.job.result === 'accepted' &&
+											child.job.failure === undefined &&
+											child.job.outputSaved &&
+											child.sampleSeen === true &&
+											child.state === 'OFF_REPORTED') ||
+											(child.purpose === 'RECONCILIATION_OFF' && child.state === 'SUCCESS'));
+									if ((fixedFirstInsertion || rollingInsertion) && child.episode.failure.primary !== undefined)
+										originalFailure(child.episode.failure.primary.cause);
+									// A retired child cannot authorize another evaluation/publication, even if original L returns.
+									if (!matching) state.unknown = true;
+									frame = { child, authenticated: matching };
+									if (activeService.value !== undefined) state.unknown = true;
+									else activeService.value = frame;
+									const off = release.value;
+									if (off !== undefined && child === off.child) {
+										if (firstService.value !== undefined || this !== b || child.episode.lifecycle !== state.lifecycle)
+											state.unknown = true;
+										else {
+											firstService.value = frame;
+											terminal();
+										}
+									}
+								});
+								let pending: ReturnType<typeof originalService>;
+								try {
+									pending = originalService.call(this, ...args);
+								} catch (cause) {
+									originalFailure(cause);
+									observe(() => {
+										if (frame !== undefined) frame.outcome = { fulfilled: false, cause };
+										firstService.ready.open();
+									});
+									throw cause;
+								}
+								if (frame !== undefined) {
+									const captured = frame;
+									observe(() => {
+										captured.pending = pending;
+										if (firstService.value === captured) firstService.ready.open();
+										void pending.then(
+											() => {
+												observe(() => {
+													if (!state.closed) certify();
+													captured.outcome = { fulfilled: true };
+													if (captured.child.episode.failure.primary !== undefined)
+														originalFailure(captured.child.episode.failure.primary.cause);
+													if (creation.value?.child === captured.child) creation.value.consumed = true;
+													if (activeService.value === captured) activeService.value = undefined;
+												});
+											},
+											(cause: unknown) => {
+												originalFailure(cause);
+												observe(() => {
+													captured.outcome = { fulfilled: false, cause };
+													if (creation.value?.child === captured.child) creation.value.consumed = true;
+													if (activeService.value === captured) activeService.value = undefined;
+												});
+											},
+										);
+									});
+								}
+								return pending;
+							};
+							const shadows = [
+								{ receiver: b, key: 'evaluate', original: originalEvaluate, value: evaluating },
+								{ receiver: b, key: 'request', original: originalRequest, value: requesting },
+								{ receiver: b, key: 'serviceFeedback', original: originalService, value: servicing },
+								{ receiver: contexts, key: 'set', original: originalContextSet, value: settingContext },
+								{ receiver: contexts, key: 'delete', original: originalContextDelete, value: deletingContext },
+								{ receiver: contexts, key: 'clear', original: originalContextClear, value: clearingContexts },
+								{ receiver: completions, key: 'set', original: originalCompletionSet, value: settingCompletion },
+								{ receiver: inFlight, key: 'set', original: originalFlightSet, value: settingFlight },
+								{ receiver: children, key: 'set', original: originalChildSet, value: settingChild },
+							].map((entry) => ({
+								...entry,
+								before: Object.getOwnPropertyDescriptor(entry.receiver, entry.key),
+								installed: {
+									configurable: true,
+									enumerable: Object.getOwnPropertyDescriptor(entry.receiver, entry.key)?.enumerable ?? false,
+									writable: true,
+									value: entry.value,
+								},
+								owned: false,
+							}));
+							const pinsCurrent = (): boolean =>
+								shadows.every(
+									(entry) =>
+										entry.owned &&
+										sameDescriptor(Object.getOwnPropertyDescriptor(entry.receiver, entry.key), entry.installed),
+								);
+							const requireEvidence = (condition: boolean, message: string): void => {
+								if (errors.application !== undefined) throw errors.application.cause;
+								if (!condition) throw new Error(message);
+							};
+							const attemptCleanup = (action: () => void): void => {
+								try {
+									action();
+								} catch (cause) {
+									cleanupFailure.value ??= { cause };
+								}
+							};
+							const observer = {
+								retire: (): void => {
+									if (state.retired) return;
+									if (cleanupCompletion.value === undefined) {
+										cleanupCompletion.value = new Promise<void>((resolve, reject) => {
+											cleanupCompletion.resolve = resolve;
+											cleanupCompletion.reject = reject;
+										}); // Publish before ANY original retirement call or reentry, including outer before-cleanup retirement.
+									}
+									state.closed = state.retired = true;
+									attemptCleanup(() => {
+										for (const pending of [
+											state.starting,
+											first.evaluation?.owned ? first.evaluation.pending : undefined,
+											release.value?.operation,
+											firstService.value?.pending,
+											activeEvaluation.value?.pending,
+											activeService.value?.pending,
+										])
+											if (pending !== undefined) cleanupCompletion.issued.add(pending);
+										if (!state.foreign && state.lifecycle !== undefined && b['lifecycle'] === state.lifecycle) {
+											for (const pending of b['queues'].values()) cleanupCompletion.issued.add(pending);
+											for (const pending of inFlight.values()) cleanupCompletion.issued.add(pending);
+											for (const command of b['inFlightCommands'].values()) {
+												const job = b['offJobs'].get(command);
+												if (job !== undefined) cleanupCompletion.jobs.push(job);
+											}
+										}
+									}); // Snapshot BEFORE original destroy clears queues; no growing invocation history.
+									attemptCleanup(() => firstService.ready.open());
+									attemptCleanup(() => {
+										if (b['active'] || b['lifecycle'] !== undefined) {
+											if (state.lifecycle === undefined || b['lifecycle'] !== state.lifecycle) {
+												state.foreign = state.unknown = true;
+												cleanupFailure.value ??= { cause: new Error('Foreign fresh B lifecycle retained') };
+											} else originalDestroy.call(b);
+										}
+									});
+									attemptCleanup(() => held.readResume.open());
+									attemptCleanup(() => held.nativeResume.open());
+									state.retirementComplete = true;
+								},
+								cleanup: (): Promise<void> => {
+									observer.retire();
+									const completion = cleanupCompletion.value;
+									if (completion === undefined) throw new Error('Missing original B cleanup completion');
+									if (!state.retirementComplete || cleanupCompletion.joining) return completion;
+									cleanupCompletion.joining = true;
+									void (async (): Promise<void> => {
+										for (const pending of cleanupCompletion.issued) {
+											try {
+												await pending;
+											} catch (cause) {
+												originalFailure(cause);
+											}
+										}
+										observe(() => {
+											for (const job of cleanupCompletion.jobs)
+												if (job.failure !== undefined) originalFailure(job.failure.cause);
+										});
+										for (const entry of [...shadows].reverse())
+											attemptCleanup(() => {
+												if (!entry.owned) return;
+												if (
+													state.foreign ||
+													b['active'] ||
+													b['lifecycle'] !== undefined ||
+													b['runtimeSettlementConsumer'] !== undefined ||
+													b['runtimeFeedbackConsumer'] !== undefined ||
+													!sameDescriptor(Object.getOwnPropertyDescriptor(entry.receiver, entry.key), entry.installed)
+												)
+													throw new Error('Foreign or live fresh B descriptor retained');
+												if (entry.before !== undefined) Object.defineProperty(entry.receiver, entry.key, entry.before);
+												else if (!Reflect.deleteProperty(entry.receiver, entry.key))
+													throw new Error('Owned B shadow removal failed');
+												entry.owned = false;
+											});
+										attemptCleanup(() => unregisterCompletionObserver(observer));
+										if (errors.application !== undefined) throw errors.application.cause;
+										if (cleanupFailure.value !== undefined) throw cleanupFailure.value.cause;
+									})().then(cleanupCompletion.resolve, cleanupCompletion.reject);
+									return completion;
+								},
+							};
+							try {
+								registerCompletionObserver(observer); // Exact original case/setup, BEFORE any shadow/bootstrap.
+								if (
+									owner.runtime !== b ||
+									owner.source !== b['dataSource'] ||
+									b['active'] ||
+									b['lifecycle'] !== undefined ||
+									b['claims'] !== actualClaims ||
+									b['structure'] !== actualStructure ||
+									b['comfort'] !== held.comfort ||
+									originalEvaluate !== VirtualThermostatRuntimeService.prototype['evaluate'] ||
+									originalService !== VirtualThermostatRuntimeService.prototype['serviceFeedback'] ||
+									originalRequest !== VirtualThermostatRuntimeService.prototype.request
+								)
+									throw new Error('Original inactive B source/methods unavailable');
+								for (const entry of shadows) {
+									if (
+										entry.before !== undefined &&
+										(entry.before.get !== undefined ||
+											entry.before.set !== undefined ||
+											entry.before.value !== entry.original)
+									)
+										throw new Error('Original B DATA descriptor unavailable');
+									Object.defineProperty(entry.receiver, entry.key, entry.installed);
+									entry.owned = true;
+								}
+								const fences = held.real.controls.fences.length;
+								state.starting = originalBootstrap.call(b);
+								const bootstrap = b['bootstrapAttempt'];
+								if (bootstrap === undefined || bootstrap.promise !== state.starting) state.unknown = true;
+								else {
+									state.bootstrap = bootstrap;
+									state.lifecycle = bootstrap.lifecycle;
+								}
+								await state.starting;
+								state.sFulfilled = true;
+								expect(b['lifecycle']).toBeDefined();
+								const firstFrame = first.evaluation;
+								requireEvidence(firstFrame !== undefined && firstFrame.owned, 'Missing FIRST original B evaluation');
+								if (firstFrame === undefined || !firstFrame.owned || firstFrame.pending === undefined)
+									throw new Error('Missing original E Promise');
+								await firstFrame.pending;
+								observe(certify);
+								const off = release.value;
+								requireEvidence(off !== undefined, 'Missing FIRST B own OFF operation');
+								if (off === undefined) throw new Error('Missing original B O');
+								await off.operation;
+								observe(terminal);
+								requireEvidence(
+									off.child !== undefined && off.work !== undefined && off.child.queued,
+									'Missing original queued B feedback',
+								);
+								await firstService.ready.promise;
+								const feedback = firstService.value;
+								requireEvidence(
+									feedback !== undefined && feedback.pending !== undefined,
+									'Missing matching original B L',
+								);
+								if (feedback === undefined || feedback.pending === undefined)
+									throw new Error('Missing original L Promise');
+								await feedback.pending;
+								observe(certify);
+								const observed = off.terminal,
+									context = firstFrame.context,
+									claim = context?.claims[0];
+								requireEvidence(
+									!state.closed &&
+										!state.unknown &&
+										!state.fault &&
+										!state.foreign &&
+										live() &&
+										pinsCurrent() &&
+										state.omitted === 1 &&
+										state.sFulfilled &&
+										state.bootstrap?.promise === state.starting &&
+										b['timer'] !== undefined &&
+										firstFrame.outcome?.fulfilled === true &&
+										firstFrame.completion?.status === 'COMPLETE' &&
+										context !== undefined &&
+										context.claims.length === 1 &&
+										claim === off.claim &&
+										context.config.controllerId === held.id &&
+										claim?.role === 'heating' &&
+										off.outcome?.fulfilled === true &&
+										observed !== undefined &&
+										observed.failure === undefined &&
+										observed.result === 'accepted' &&
+										observed.outputSaved &&
+										observed.terminal &&
+										observed.sampleSeen &&
+										observed.state === 'OFF_REPORTED' &&
+										off.child?.purpose === 'GUARDED_OFF_DISPATCH' &&
+										feedback.child === off.child &&
+										feedback.authenticated &&
+										feedback.outcome?.fulfilled === true &&
+										publication.value === undefined,
+									'Original first B release receipt unavailable',
+								);
+								expect(held.real.controls.fences.length).toBeGreaterThan(fences);
+								expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
+								const bContext = b['contexts'].get(held.id);
+								const anchor = endpoint.value;
+								requireEvidence(anchor !== undefined && bContext === anchor.context, 'Original B anchor unavailable');
+								if (anchor === undefined) throw new Error('Missing authenticated B anchor');
+								held.nativeResume.open();
+								await held.resultObserved.promise;
+								await held.operation;
+								await expect(held.mutation).rejects.toBeDefined();
+								observe(certify);
+								const finalContext = b['contexts'].get(held.id),
+									end = endpoint.value;
+								const intentView:
+									| Readonly<{
+											isCurrent: OriginalFunction<
+												NonNullable<Context['intent']>,
+												NonNullable<Context['intent']>['isCurrent']
+											>;
+									  }>
+									| undefined = context?.intent;
+								const identitiesIntact =
+									context !== undefined &&
+									context.admission === off.admission &&
+									context.admission.isCurrent === off.admissionCurrent &&
+									context.publishGuard === off.publishGuard &&
+									context.intent === off.intent &&
+									intentView?.isCurrent === off.intentCurrent &&
+									context.claims === off.claims &&
+									off.job.context === context &&
+									off.job.evaluation === firstFrame.completion &&
+									off.job.command !== held.command &&
+									off.job.operation === off.operation &&
+									off.child?.work === off.work &&
+									off.child?.job === off.job;
+								const valid =
+									!state.closed &&
+									!state.unknown &&
+									!state.fault &&
+									!state.foreign &&
+									live() &&
+									pinsCurrent() &&
+									publication.value === undefined &&
+									identitiesIntact &&
+									anchor.context.admission === anchor.admission &&
+									anchor.admission.isCurrent === anchor.admissionCurrent &&
+									anchor.context.publishGuard === anchor.publishGuard &&
+									anchor.context.intent === anchor.intent &&
+									anchor.context.claims === anchor.claims &&
+									end !== undefined &&
+									finalContext === end.context &&
+									end.completion.context === end.context &&
+									end.completion.lifecycle === state.lifecycle &&
+									b['contextLifecycles'].get(end.context) === state.lifecycle &&
+									completions.get(end.context) === end.completion &&
+									b['feedbackContexts'].get(end.context) === end.completion.episode;
+								const ownership =
+									!valid || end === undefined
+										? 'UNKNOWN'
+										: end.context === bContext && end.ordinal === anchor.ordinal
+											? 'SAME_ANCHOR'
+											: end.ordinal > anchor.ordinal
+												? 'AUTHENTICATED_B_TRANSITIONS'
+												: 'UNKNOWN';
+								requireEvidence(true, 'Original B application failure'); // Preserve an observed original P before the ownership matcher.
+								expect(['SAME_ANCHOR', 'AUTHENTICATED_B_TRANSITIONS']).toContain(ownership);
+							} catch (cause) {
+								errors.body = { cause };
+							}
+							try {
+								await observer.cleanup();
+							} catch (cause) {
+								if (errors.body === undefined) errors.body = { cause };
+							}
+							if (errors.body !== undefined) throw errors.body.cause;
+							return; // Fresh only. The entire original same-instance block below remains RAW.
+						}
+						try {
+							const fences = held.real.controls.fences.length;
+							await b.onApplicationBootstrap();
+							expect(b['lifecycle']).toBeDefined();
+							expect(held.real.controls.fences.length).toBeGreaterThan(fences);
+							expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
+							const bContext = b['contexts'].get(held.id);
+							held.nativeResume.open();
+							await held.resultObserved.promise;
+							await held.operation;
+							await expect(held.mutation).rejects.toBeDefined();
+							expect(b['contexts'].get(held.id)).toBe(bContext);
+						} finally {
+							b.onModuleDestroy();
+						}
+					},
+					undefined,
+					'beforeOn',
+					restart === 'fresh-instance',
+				);
 			},
 			30_000,
 		);
