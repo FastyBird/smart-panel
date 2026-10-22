@@ -402,18 +402,31 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			before,
 		);
 	});
-	it('R132 original public preflight rejects actual same-SQLite-owner reentry instead of joining a predecessor', async () => {
+	it('R132 permits same-SQLite-owner read no-op but rejects a genuine public mutation root without joining a predecessor', async () => {
 		const controller = await owner(),
 			sensor = await ambient(),
 			heat = await actuator();
 		const input = dto(sensor, heat);
-		await configs.configure(controller, input);
+		const initial = await configs.configure(controller, input);
 		const before = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
+		const beforeConfig = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: controller,
+		});
 		await database.transaction(async () => {
-			await expect(comfort.settle(controller)).rejects.toMatchObject({ commitOutcome: 'not_started' });
+			await expect(comfort.settle(controller)).resolves.toBeUndefined();
+			await expect(
+				configs.configure(controller, {
+					...input,
+					expectedRevision: initial.revision,
+					policy: { ...input.policy, heatingSetpoint: 22 },
+				}),
+			).rejects.toMatchObject({ commitOutcome: 'not_started' });
 		});
 		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(
 			before,
+		);
+		expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).toEqual(
+			beforeConfig,
 		);
 	});
 	it.each([
@@ -477,7 +490,36 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				policy: { ...input.policy, heatingSetpoint: 23 },
 			}),
 		]);
-		expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+		const receivedOutcomes = outcomes.map((result) => {
+			if (result.status === 'fulfilled') return { status: result.status, value: result.value };
+			const reason: unknown = result.reason;
+			try {
+				if (reason instanceof ClimateAutomationWriteError) {
+					const outcomeDescriptor = Object.getOwnPropertyDescriptor(reason, 'commitOutcome');
+					const causeDescriptor = Object.getOwnPropertyDescriptor(reason, 'cause');
+					const commitOutcome: unknown = outcomeDescriptor?.value;
+					const cause: unknown = causeDescriptor?.value;
+					return {
+						status: result.status,
+						reason,
+						commitOutcome,
+						commitOutcomePresent: outcomeDescriptor !== undefined,
+						commitOutcomeValueAvailable: outcomeDescriptor !== undefined && 'value' in outcomeDescriptor,
+						causePresent: causeDescriptor !== undefined,
+						causeValueAvailable: causeDescriptor !== undefined && 'value' in causeDescriptor,
+						cause,
+					};
+				}
+			} catch {
+				// Observation cannot replace either original rejection, including an opaque exotic reason.
+				return { status: result.status, reason, metadataUnavailable: true };
+			}
+			return { status: result.status, reason };
+		});
+		expect({
+			fulfilledCount: outcomes.filter((result) => result.status === 'fulfilled').length,
+			outcomes: receivedOutcomes,
+		}).toEqual(expect.objectContaining({ fulfilledCount: 1 }));
 		expect(outcomes.filter((result) => result.status === 'rejected')).toHaveLength(1);
 		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
 		expect(row.revision).toBe(initial.revision + 1);

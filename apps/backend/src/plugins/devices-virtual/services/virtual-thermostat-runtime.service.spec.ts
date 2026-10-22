@@ -112,8 +112,8 @@ type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunctio
 jest.setTimeout(30_000);
 
 describe('virtual thermostat durable runtime', () => {
-	const completionObserverBackstops = new Set<Readonly<{ retire: () => void; cleanup: () => void }>>();
-	type FixtureBackstop = Readonly<{ retire: () => void; cleanup: () => void }>;
+	type FixtureBackstop = Readonly<{ retire: () => void; cleanup: () => void | Promise<void> }>;
+	const completionObserverBackstops = new Set<FixtureBackstop>();
 	type FixtureCaseLease = {
 		retired: boolean;
 		setup?: FixtureSetupLease;
@@ -831,7 +831,12 @@ describe('virtual thermostat durable runtime', () => {
 			attempt(() => mutationClaims?.onModuleDestroy());
 			attempt(() => mutationRegistry?.onModuleDestroy());
 			for (const fixture of realGuardFixtures) attempt(() => fixture.revoke());
-			for (const observer of observers) attempt(() => observer.cleanup());
+			for (const observer of observers) {
+				await attemptAsync(async () => {
+					const cleanupObserver: FixtureBackstop = observer;
+					await cleanupObserver.cleanup();
+				});
+			}
 			for (const fixture of realGuardFixtures) await attemptAsync(() => fixture.close());
 			await attemptAsync(async () => {
 				if (mutationPipeline) await mutationPipeline.close();
@@ -953,7 +958,11 @@ describe('virtual thermostat durable runtime', () => {
 		attempt(() => owned?.claims.onModuleDestroy());
 		attempt(() => owned?.registry.onModuleDestroy());
 		for (const fixture of owned?.fixtures ?? []) attempt(() => fixture.revoke());
-		for (const observer of observers) attempt(() => observer.cleanup());
+		for (const observer of observers) {
+			await attemptAsync(async () => {
+				await observer.cleanup();
+			});
+		}
 		for (const fixture of owned?.fixtures ?? []) await attemptAsync(() => fixture.close());
 		if (owned !== undefined) await attemptAsync(() => owned.pipeline.close());
 		// A late A teardown cannot restore the framework mocks/timers of B.
@@ -1127,7 +1136,12 @@ describe('virtual thermostat durable runtime', () => {
 			}
 		};
 		attempt(() => retireRuntimeFixture(owned));
-		for (const observer of owned.observers) attempt(() => observer.cleanup());
+		for (const observer of owned.observers) {
+			await attemptAsync(async () => {
+				const cleanupObserver: FixtureBackstop = observer;
+				await cleanupObserver.cleanup();
+			});
+		}
 		for (const fixture of owned.realGuardFixtures) await attemptAsync(() => fixture.close());
 		await attemptAsync(() => owned.mutationPipeline.close());
 		attempt(() => owned.producers.onModuleDestroy());
@@ -6287,7 +6301,12 @@ describe('virtual thermostat durable runtime', () => {
 			if (primary) throw primary.cause;
 			if (cleanup) throw cleanup.cause;
 		};
-		afterEach(() => {
+		afterEach(async () => {
+			const caseOwner = currentFixtureCase;
+			if (caseOwner !== undefined) {
+				caseOwner.retired = true;
+				if (caseOwner.setup !== undefined) caseOwner.setup.retired = true;
+			}
 			const observers = [...completionObserverBackstops];
 			let failure: { cause: unknown } | undefined;
 			for (const observer of observers) {
@@ -6315,7 +6334,7 @@ describe('virtual thermostat durable runtime', () => {
 			// Remove H before the outer resource hook asks Jest to restore the underlying owned spy S.
 			for (const observer of observers) {
 				try {
-					observer.cleanup();
+					await observer.cleanup();
 				} catch (cause) {
 					failure ??= { cause };
 				}
@@ -10015,14 +10034,18 @@ describe('virtual thermostat durable runtime', () => {
 				relay = relayId,
 				sensor = sensorId,
 				publicComfort = comfort;
+			const caseOwner = setup.caseOwner;
+			const originalWriter = mutationWriter;
+			const originalWriterContext = originalWriter['context'];
+			const originalWriterTurns = originalWriter['turns'];
+			const originalFlushTelemetry: OriginalFunction<typeof real, typeof real.flushTelemetry> = real.flushTelemetry;
 			const nativeEntered = barrier(),
 				nativeResume = barrier(),
 				resultObserved = barrier(),
 				readEntered = barrier(),
-				readResume = barrier(),
-				request = new AsyncLocalStorage<boolean>();
+				readResume = barrier();
+			let cleanupCompletion: Promise<void> | undefined;
 			let retired = false,
-				cleaned = false,
 				first = true,
 				firstRead = true;
 			let packet: Parameters<ThermostatActuationAdapter['send']>[4];
@@ -10048,9 +10071,30 @@ describe('virtual thermostat durable runtime', () => {
 				a.writable === b.writable;
 			const subscriber: import('typeorm').EntitySubscriberInterface = {
 				beforeQuery: async (event) => {
+					const context = originalWriterContext.getStore();
+					const turn = context?.turn;
+					const phase = turn === undefined ? undefined : originalWriterTurns.get(turn);
+					const operation = context?.operation;
+					const input = phase?.existingInput;
 					if (
 						retired ||
-						!request.getStore() ||
+						caseOwner.retired ||
+						setup.retired ||
+						caseOwner.setup !== setup ||
+						context === undefined ||
+						context.internal !== true ||
+						operation === undefined ||
+						phase === undefined ||
+						phase.operation !== operation ||
+						operation.phase !== 'BODY_OPEN' ||
+						operation.existingReadonlyProbe !== true ||
+						operation.failure !== undefined ||
+						phase.phase !== 'READ_BEFORE' ||
+						operation.manager !== event.manager ||
+						operation.runner !== event.queryRunner ||
+						input === undefined ||
+						input.kind !== 'preset:v1' ||
+						input.controllerId !== id ||
 						!firstRead ||
 						!event.query.startsWith('SELECT') ||
 						!event.query.includes('devices_virtual_thermostat_configs')
@@ -10080,28 +10124,47 @@ describe('virtual thermostat durable runtime', () => {
 					}
 					if (failure) throw failure.cause;
 				},
-				cleanup: async (): Promise<void> => {
-					if (cleaned) return;
-					cleaned = true;
+				cleanup: (): Promise<void> => {
+					if (cleanupCompletion !== undefined) return cleanupCompletion;
+					let resolveCompletion: () => void = () => undefined;
+					let rejectCompletion: (cause: unknown) => void = () => undefined;
+					const completion = new Promise<void>((resolve, reject) => {
+						resolveCompletion = resolve;
+						rejectCompletion = reject;
+					});
+					// Publish before retirement can synchronously reenter this exact cleanup.
+					cleanupCompletion = completion;
 					let failure: { cause: unknown } | undefined;
-					for (const cleanup of [
-						() => backstop.retire(),
-						async () => {
-							if (mutation !== undefined) await mutation.catch(() => undefined);
-						},
-						async () => {
-							if (operation !== undefined) await operation.catch(() => undefined);
-						},
-						...installedCleanups,
-					]) {
+					try {
+						backstop.retire();
+					} catch (cause) {
+						failure = { cause };
+					}
+					void (async (): Promise<void> => {
+						for (const cleanup of [
+							async () => {
+								if (mutation !== undefined) await mutation.catch(() => undefined);
+							},
+							async () => {
+								if (operation !== undefined) await operation.catch(() => undefined);
+							},
+							() => originalFlushTelemetry.call(real),
+							...installedCleanups,
+						]) {
+							try {
+								await cleanup();
+							} catch (cause) {
+								failure ??= { cause };
+							}
+						}
 						try {
-							await cleanup();
+							unregisterCompletionObserver(backstop);
 						} catch (cause) {
 							failure ??= { cause };
 						}
-					}
-					unregisterCompletionObserver(backstop);
-					if (failure) throw failure.cause;
+						if (failure !== undefined) throw failure.cause;
+					})().then(resolveCompletion, rejectCompletion);
+					return completion;
 				},
 			};
 			registerCompletionObserver(backstop);
@@ -10176,7 +10239,7 @@ describe('virtual thermostat durable runtime', () => {
 				operation = owner['inFlight'].get(command.id);
 				if (operation === undefined) throw new Error('Missing original intrinsic O');
 				beforeEntry?.(owner, id, real);
-				mutation = request.run(true, () => publicComfort.select(id, expected, 'eco', false));
+				mutation = publicComfort.select(id, expected, 'eco', false);
 				void mutation.catch(() => undefined);
 				await body({
 					owner,
