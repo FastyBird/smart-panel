@@ -128,15 +128,8 @@ type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => i
 	: Method;
 type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
-// Same prototype object at each original lookup; only the function-valued view is different.
-let originalPredecessorWriterMethods: {
-	readonly [Key in
-		| 'captureExistingPredecessorGap'
-		| 'readExistingPredecessorSeed'
-		| 'expectedPredecessorFacts'
-		| 'predecessorJsonObject'
-		| 'deriveExistingClock']: OriginalFunction<ClimateAutomationWriterService, ClimateAutomationWriterService[Key]>;
-};
+// Identity pins store only exact original values; no private class key is indexed here.
+let originalPredecessorWriterMethod: unknown;
 
 // Unasserted native Reflect views; initializer lookups return the SAME original function objects.
 let originalPublicationProbeLookup: Readonly<{
@@ -509,11 +502,33 @@ const increment = (value: number) => {
 @Injectable()
 export class ClimateAutomationWriterService {
 	private static readonly predecessorMethods = Object.freeze([
-		['captureExistingPredecessorGap', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.captureExistingPredecessorGap)],
-		['readExistingPredecessorSeed', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.readExistingPredecessorSeed)],
-		['expectedPredecessorFacts', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.expectedPredecessorFacts)],
-		['predecessorJsonObject', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.predecessorJsonObject)],
-		['deriveExistingClock', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.deriveExistingClock)],
+		[
+			'captureExistingPredecessorGap',
+			(({ ['captureExistingPredecessorGap']: originalPredecessorWriterMethod } =
+				ClimateAutomationWriterService.prototype),
+			originalPredecessorWriterMethod),
+		],
+		[
+			'readExistingPredecessorSeed',
+			(({ ['readExistingPredecessorSeed']: originalPredecessorWriterMethod } =
+				ClimateAutomationWriterService.prototype),
+			originalPredecessorWriterMethod),
+		],
+		[
+			'expectedPredecessorFacts',
+			(({ ['expectedPredecessorFacts']: originalPredecessorWriterMethod } = ClimateAutomationWriterService.prototype),
+			originalPredecessorWriterMethod),
+		],
+		[
+			'predecessorJsonObject',
+			(({ ['predecessorJsonObject']: originalPredecessorWriterMethod } = ClimateAutomationWriterService.prototype),
+			originalPredecessorWriterMethod),
+		],
+		[
+			'deriveExistingClock',
+			(({ ['deriveExistingClock']: originalPredecessorWriterMethod } = ClimateAutomationWriterService.prototype),
+			originalPredecessorWriterMethod),
+		],
 	] satisfies readonly (readonly [string, unknown])[]);
 	private readonly context = new AsyncLocalStorage<Context>();
 	private readonly creations = new WeakMap<object, CreationRecord>();

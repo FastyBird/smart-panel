@@ -126,24 +126,15 @@ type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => i
 	: Method;
 type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
-// Same prototype object at each original lookup; only the function-valued view is different.
-let originalPredecessorRuntimeMethods: {
-	readonly [Key in
-		| 'originalPredecessorPorts'
-		| 'originalPredecessorEntryPins'
-		| 'prepare'
-		| 'originalPredecessorRow'
-		| 'captureOriginalPredecessors'
-		| 'originalPredecessorSize'
-		| 'recognizeOriginalPredecessor'
-		| 'joinOriginalPredecessors'
-		| 'closeOriginalPredecessors'
-		| 'dispatch'
-		| 'write'
-		| 'saveBookkeeping'
-		| 'openBookkeeping'
-		| 'observeBookkeepingRunner']: OriginalFunction<VirtualThermostatRuntimeService, VirtualThermostatRuntimeService[Key]>;
-};
+// Identity pins store only exact original values; no private class key is indexed here.
+let originalPredecessorRuntimeMethod: unknown;
+type OriginalPredecessorEntryPinValues =
+	| readonly Readonly<{ receiver: object; key: string; value: unknown }>[]
+	| undefined;
+let originalPredecessorEntryCapture: (() => OriginalPredecessorEntryPinValues) &
+	Readonly<{
+		call: (receiver: VirtualThermostatRuntimeService) => OriginalPredecessorEntryPinValues;
+	}>;
 
 type FeedbackNativeScalar = string | number | boolean | null;
 type FeedbackNativeRow = Readonly<Record<string, unknown>>;
@@ -568,22 +559,84 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly contexts = new Map<string, ControllerContext>();
 	private runtimeSettlementConsumer?: ClimateAutomationRuntimeConsumer;
 	private static readonly predecessorEntryCapture =
-		((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.originalPredecessorEntryPins);
+		(({ ['originalPredecessorEntryPins']: originalPredecessorEntryCapture } =
+			VirtualThermostatRuntimeService.prototype),
+		originalPredecessorEntryCapture);
 	private static readonly predecessorMethods = Object.freeze([
-		['originalPredecessorPorts', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.originalPredecessorPorts)],
-		['originalPredecessorEntryPins', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.originalPredecessorEntryPins)],
-		['prepare', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.prepare)],
-		['originalPredecessorRow', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.originalPredecessorRow)],
-		['captureOriginalPredecessors', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.captureOriginalPredecessors)],
-		['originalPredecessorSize', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.originalPredecessorSize)],
-		['recognizeOriginalPredecessor', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.recognizeOriginalPredecessor)],
-		['joinOriginalPredecessors', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.joinOriginalPredecessors)],
-		['closeOriginalPredecessors', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.closeOriginalPredecessors)],
-		['dispatch', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.dispatch)],
-		['write', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.write)],
-		['saveBookkeeping', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.saveBookkeeping)],
-		['openBookkeeping', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.openBookkeeping)],
-		['observeBookkeepingRunner', ((originalPredecessorRuntimeMethods = VirtualThermostatRuntimeService.prototype), originalPredecessorRuntimeMethods.observeBookkeepingRunner)],
+		[
+			'originalPredecessorPorts',
+			(({ ['originalPredecessorPorts']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'originalPredecessorEntryPins',
+			(({ ['originalPredecessorEntryPins']: originalPredecessorRuntimeMethod } =
+				VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'prepare',
+			(({ ['prepare']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'originalPredecessorRow',
+			(({ ['originalPredecessorRow']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'captureOriginalPredecessors',
+			(({ ['captureOriginalPredecessors']: originalPredecessorRuntimeMethod } =
+				VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'originalPredecessorSize',
+			(({ ['originalPredecessorSize']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'recognizeOriginalPredecessor',
+			(({ ['recognizeOriginalPredecessor']: originalPredecessorRuntimeMethod } =
+				VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'joinOriginalPredecessors',
+			(({ ['joinOriginalPredecessors']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'closeOriginalPredecessors',
+			(({ ['closeOriginalPredecessors']: originalPredecessorRuntimeMethod } =
+				VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'dispatch',
+			(({ ['dispatch']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'write',
+			(({ ['write']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'saveBookkeeping',
+			(({ ['saveBookkeeping']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'openBookkeeping',
+			(({ ['openBookkeeping']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
+		[
+			'observeBookkeepingRunner',
+			(({ ['observeBookkeepingRunner']: originalPredecessorRuntimeMethod } = VirtualThermostatRuntimeService.prototype),
+			originalPredecessorRuntimeMethod),
+		],
 	] satisfies readonly (readonly [string, unknown])[]);
 	private readonly originalCommandCompletions = new WeakMap<
 		VirtualThermostatCommandEntity,
@@ -1491,21 +1544,42 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			)
 		)
 			throw new Error('Original predecessor methods unavailable');
-		const originalMethods: {
-			readonly [Key in
-				| 'captureOriginalPredecessors'
-				| 'originalPredecessorSize'
-				| 'recognizeOriginalPredecessor'
-				| 'joinOriginalPredecessors'
-				| 'closeOriginalPredecessors']: OriginalFunction<VirtualThermostatRuntimeService, VirtualThermostatRuntimeService[Key]>;
-		} = this;
+		let original_captureOriginalPredecessors: OriginalFunction<
+			VirtualThermostatRuntimeService,
+			VirtualThermostatRuntimeService['captureOriginalPredecessors']
+		>;
+		let original_originalPredecessorSize: OriginalFunction<
+			VirtualThermostatRuntimeService,
+			VirtualThermostatRuntimeService['originalPredecessorSize']
+		>;
+		let original_recognizeOriginalPredecessor: OriginalFunction<
+			VirtualThermostatRuntimeService,
+			VirtualThermostatRuntimeService['recognizeOriginalPredecessor']
+		>;
+		let original_joinOriginalPredecessors: OriginalFunction<
+			VirtualThermostatRuntimeService,
+			VirtualThermostatRuntimeService['joinOriginalPredecessors']
+		>;
+		let original_closeOriginalPredecessors: OriginalFunction<
+			VirtualThermostatRuntimeService,
+			VirtualThermostatRuntimeService['closeOriginalPredecessors']
+		>;
 		return Object.freeze({
 			owner: this,
-			capture: originalMethods.captureOriginalPredecessors,
-			size: originalMethods.originalPredecessorSize,
-			recognize: originalMethods.recognizeOriginalPredecessor,
-			join: originalMethods.joinOriginalPredecessors,
-			close: originalMethods.closeOriginalPredecessors,
+			capture:
+				(({ ['captureOriginalPredecessors']: original_captureOriginalPredecessors } = this),
+				original_captureOriginalPredecessors),
+			size:
+				(({ ['originalPredecessorSize']: original_originalPredecessorSize } = this), original_originalPredecessorSize),
+			recognize:
+				(({ ['recognizeOriginalPredecessor']: original_recognizeOriginalPredecessor } = this),
+				original_recognizeOriginalPredecessor),
+			join:
+				(({ ['joinOriginalPredecessors']: original_joinOriginalPredecessors } = this),
+				original_joinOriginalPredecessors),
+			close:
+				(({ ['closeOriginalPredecessors']: original_closeOriginalPredecessors } = this),
+				original_closeOriginalPredecessors),
 		});
 	}
 	private originalPredecessorRow(values: Readonly<Record<string, unknown>>): PredecessorRow | undefined {
