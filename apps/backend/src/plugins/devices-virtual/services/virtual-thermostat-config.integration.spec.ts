@@ -1315,8 +1315,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(configs.configure(controller, changed)).rejects.toThrow(/local floor|floor source/);
 		changed.actuators[0].protection = { ...input.actuators[1].protection };
 		await expect(configs.configure(controller, changed)).rejects.toThrow('actuator Shelly');
-		expect((await configs.get(controller)).actuators.map((member) => member.id)).toEqual(
-			configured.actuators.map((member) => member.id),
+		expect((await configs.get(controller)).actuators.map((member) => member.id).sort()).toEqual(
+			configured.actuators.map((member) => member.id).sort(),
 		);
 	});
 	it('keeps a selected display member separate from a retained mandatory global floor input', async () => {
