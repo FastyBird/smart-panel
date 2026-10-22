@@ -10461,7 +10461,7 @@ describe('virtual thermostat durable runtime', () => {
 						held.assertLive();
 						const b = restart === 'same-instance' ? held.owner : makeActualRuntime();
 						if (restart === 'fresh-instance') {
-							// Permanent test receipt: original B O/owned feedback, never a separate native Promise.
+							// Permanent FIRST isolation: accepted native receipt or known unsent, never A/later-work authority.
 							const caseOwner = currentFixtureCase,
 								setup = caseOwner?.setup;
 							if (!caseOwner || !setup || caseOwner.retired || setup.retired || caseOwner.setup !== setup)
@@ -10482,13 +10482,36 @@ describe('virtual thermostat durable runtime', () => {
 								context?: Context;
 								completion?: Completion;
 							};
+							type OnRecord = NonNullable<ReturnType<(typeof b)['originalCommandCompletions']['get']>>;
+							type Work = {
+								kind: 'FIRST_OFF' | 'OFF_O' | 'ON_O' | 'CHILD_WAITING' | 'FALLBACK_RESERVED' | 'FALLBACK_WAITING';
+								readonly context: Context;
+								readonly evaluation: Completion;
+								readonly episode: Completion['episode'];
+								readonly command?: VirtualThermostatCommandEntity;
+								readonly job?: Job;
+								readonly on?: OnRecord;
+								operation?: Promise<void>;
+								operationOwner?: Work;
+								operationObserved?: boolean;
+								outcome?: Outcome;
+								failureInspected?: boolean;
+								child?: Child;
+								work?: Child['work'];
+								queue?: Promise<void>;
+								issued: boolean;
+								consumed: boolean;
+								queueCovered: boolean;
+							};
 							type Service = {
 								readonly child: Child;
+								readonly record: Work;
 								readonly authenticated: boolean;
+								readonly retired: boolean;
 								pending?: Promise<void>;
 								outcome?: Outcome;
 							};
-							type Off = {
+							type Off = Work & {
 								readonly job: Job;
 								readonly claim: Context['claims'][number];
 								readonly operation: Promise<void>;
@@ -10527,7 +10550,7 @@ describe('virtual thermostat durable runtime', () => {
 								setReturned: boolean;
 								completion?: Completion;
 							};
-							type Creation = { readonly child: Child; readonly work: NonNullable<Child['work']>; consumed: boolean };
+							type Creation = Work;
 							const publicMethods: Readonly<{
 								request: OriginalFunction<typeof b, (typeof b)['request']>;
 								onApplicationBootstrap: OriginalFunction<typeof b, (typeof b)['onApplicationBootstrap']>;
@@ -10538,10 +10561,12 @@ describe('virtual thermostat durable runtime', () => {
 								originalDestroy = publicMethods.onModuleDestroy;
 							const originalEvaluate: OriginalFunction<typeof b, Evaluation> = b['evaluate'];
 							const originalService: OriginalFunction<typeof b, (typeof b)['serviceFeedback']> = b['serviceFeedback'];
+							const originalFeedback: OriginalFunction<typeof b, (typeof b)['requestFeedback']> = b['requestFeedback'];
 							const contexts = b['contexts'],
 								completions = b['evaluationCompletions'],
 								inFlight = b['inFlight'],
-								children = b['feedbackChildren'];
+								children = b['feedbackChildren'],
+								queues = b['queues'];
 							const contextMethods: OriginalFunctions<typeof contexts> = contexts;
 							const completionMethods: OriginalFunctions<typeof completions> = completions;
 							const flightMethods: OriginalFunctions<typeof inFlight> = inFlight;
@@ -10565,7 +10590,7 @@ describe('virtual thermostat durable runtime', () => {
 							const state: {
 								closed: boolean;
 								retired: boolean;
-								unknown: boolean;
+								invalid: boolean;
 								fault: boolean;
 								foreign: boolean;
 								credits: number;
@@ -10575,13 +10600,15 @@ describe('virtual thermostat durable runtime', () => {
 								sFulfilled: boolean;
 								sawTarget: boolean;
 								retirementComplete: boolean;
+								ownedFenceWork: number;
+								ownedOnWork: number;
 								starting?: Promise<void>;
 								lifecycle?: object;
 								bootstrap?: (typeof b)['bootstrapAttempt'];
 							} = {
 								closed: false,
 								retired: false,
-								unknown: false,
+								invalid: false,
 								fault: false,
 								foreign: false,
 								credits: 0,
@@ -10591,6 +10618,8 @@ describe('virtual thermostat durable runtime', () => {
 								sFulfilled: false,
 								sawTarget: false,
 								retirementComplete: false,
+								ownedFenceWork: 0,
+								ownedOnWork: 0,
 							};
 							const errors: { application?: { cause: unknown }; body?: { cause: unknown } } = {};
 							const cleanupFailure: { value?: { cause: unknown } } = {};
@@ -10600,15 +10629,23 @@ describe('virtual thermostat durable runtime', () => {
 								reject: (cause: unknown) => void;
 								issued: Set<Promise<void>>;
 								jobs: Job[];
+								onRecords: OnRecord[];
 								joining: boolean;
-							} = { resolve: () => undefined, reject: () => undefined, issued: new Set(), jobs: [], joining: false };
+							} = {
+								resolve: () => undefined,
+								reject: () => undefined,
+								issued: new Set(),
+								jobs: [],
+								onRecords: [],
+								joining: false,
+							};
 							const observe = (action: () => void): void => {
 								try {
 									const lifecycleField = Object.getOwnPropertyDescriptor(b, 'lifecycle');
 									const lifecycle: unknown = lifecycleField?.value;
-									if (lifecycleField?.get !== undefined || lifecycleField?.set !== undefined) state.unknown = true;
+									if (lifecycleField?.get !== undefined || lifecycleField?.set !== undefined) state.invalid = true;
 									if (state.lifecycle !== undefined && lifecycle !== undefined && lifecycle !== state.lifecycle)
-										state.foreign = state.unknown = true;
+										state.foreign = state.invalid = true;
 									action();
 								} catch {
 									state.fault = true;
@@ -10638,16 +10675,17 @@ describe('virtual thermostat durable runtime', () => {
 								b['evaluationCompletions'] === completions &&
 								b['inFlight'] === inFlight &&
 								b['feedbackChildren'] === children &&
+								b['queues'] === queues &&
 								pinsCurrent();
 							const increment = (value: number): number => {
 								if (!Number.isSafeInteger(value) || value >= Number.MAX_SAFE_INTEGER) {
-									state.unknown = true;
+									state.invalid = true;
 									return value;
 								}
 								return value + 1;
 							};
 							const certify = (): void => {
-								if (state.closed || state.unknown || state.fault || publication.value === undefined) return;
+								if (state.closed || state.invalid || state.fault || publication.value === undefined) return;
 								const pair = publication.value,
 									completion = pair.completion;
 								// This runs AFTER the original 4096/4107/4108 synchronous continuation, not in completion-set entry.
@@ -10669,7 +10707,7 @@ describe('virtual thermostat durable runtime', () => {
 									completion.episode.context !== pair.context ||
 									completion.episode.retired
 								) {
-									state.unknown = true;
+									state.invalid = true;
 									return;
 								}
 								const admissionView: Readonly<{
@@ -10694,7 +10732,7 @@ describe('virtual thermostat durable runtime', () => {
 								if (off.job.failure !== undefined) originalFailure(off.job.failure.cause);
 								if (off.terminal !== undefined) return;
 								if (!off.job.terminal) {
-									state.unknown = true;
+									state.invalid = true;
 									return;
 								}
 								off.terminal = Object.freeze({
@@ -10706,17 +10744,86 @@ describe('virtual thermostat durable runtime', () => {
 									state: off.child?.state,
 								});
 							};
-							const retiredWithoutService = (record: Creation): boolean =>
-								record.child.episode.retired &&
-								!record.child.queued &&
-								record.child.evaluation.status !== 'OPEN' &&
-								(record.child.job === undefined || record.child.job.terminal);
+							const inspectWork = (record: Work): boolean => {
+								if (record.job?.failure !== undefined) originalFailure(record.job.failure.cause);
+								if (record.on?.failure !== undefined) originalFailure(record.on.failure.cause);
+								if (
+									(record.job !== undefined &&
+										(record.job.context !== record.context ||
+											record.job.evaluation !== record.evaluation ||
+											record.job.command !== record.command ||
+											record.job.operation !== record.operation)) ||
+									(record.on !== undefined &&
+										(record.on.context !== record.context ||
+											record.on.command !== record.command ||
+											record.on.lifecycle !== state.lifecycle ||
+											record.on.operation !== record.operation ||
+											record.on.invalid))
+								) {
+									state.invalid = true;
+									return false;
+								}
+								const outcome = record.operationOwner?.outcome ?? record.outcome;
+								if (record.operation !== undefined) {
+									if (record.operationOwner !== undefined && record.operationOwner.operation !== record.operation) {
+										state.invalid = true;
+										return false;
+									}
+									if (
+										outcome === undefined ||
+										(record.job !== undefined && !record.job.terminal) ||
+										(record.on !== undefined && record.on.phase !== 'TERMINAL')
+									)
+										return false;
+								} else if (record.job !== undefined || record.on !== undefined) return false;
+								record.failureInspected = true;
+								return true;
+							};
+							const finishActiveService = (queuedSuccessor: boolean): void => {
+								const service = activeService.value;
+								if (service === undefined || service.outcome === undefined) return;
+								if (queuedSuccessor) service.record.queueCovered = true;
+								if (service.record.queueCovered && inspectWork(service.record)) activeService.value = undefined;
+							};
+							const observeOperation = (record: Work): void => {
+								const pending = record.operation;
+								if (pending === undefined || record.operationObserved || record.operationOwner !== undefined) return;
+								record.operationObserved = true;
+								void pending.then(
+									() =>
+										observe(() => {
+											record.outcome = { fulfilled: true };
+											inspectWork(record);
+											if (release.value === record) terminal();
+											finishActiveService(false);
+										}),
+									(cause: unknown) => {
+										originalFailure(cause);
+										observe(() => {
+											record.outcome = { fulfilled: false, cause };
+											inspectWork(record);
+											if (release.value === record) terminal();
+											finishActiveService(false);
+										});
+									},
+								);
+							};
+							const retireUnissued = (): void => {
+								const record = creation.value;
+								if (record === undefined || record.issued) return;
+								if (record.child !== undefined) {
+									if (!record.child.episode.retired || record.child.queued) return;
+								} else if (record.operation === undefined) return;
+								if (inspectWork(record)) creation.value = undefined;
+							};
 							const evaluating = function (
 								this: VirtualThermostatRuntimeService,
 								...args: Parameters<Evaluation>
 							): ReturnType<Evaluation> {
-								const firstOpportunity = args[0] === held.id && !state.sawTarget;
-								if (args[0] === held.id) state.sawTarget = true; // Consume the FIRST opportunity even if metadata is invalid.
+								const originalEpoch =
+									this === b && args[0] === held.id && state.lifecycle !== undefined && args[1] === state.lifecycle;
+								const firstOpportunity = originalEpoch && !state.closed && !state.sawTarget;
+								if (originalEpoch && !state.closed) state.sawTarget = true; // Consume the FIRST opportunity even if metadata is invalid.
 								let frame: Frame | undefined = firstOpportunity
 									? { lifecycle: args[1], ordinal: 0, origin: 'QUEUE', owned: false }
 									: undefined;
@@ -10725,7 +10832,7 @@ describe('virtual thermostat durable runtime', () => {
 									if (state.closed) return;
 									certify();
 									if (
-										state.unknown ||
+										state.invalid ||
 										state.fault ||
 										this !== b ||
 										args[0] !== held.id ||
@@ -10734,29 +10841,34 @@ describe('virtual thermostat durable runtime', () => {
 										activeEvaluation.value !== undefined ||
 										publication.value !== undefined
 									) {
-										state.unknown = true;
+										state.invalid = true;
 										return;
 									}
+									const queued = args.length === 2;
+									if (queued && state.credits > 0) finishActiveService(true);
 									const service = activeService.value;
 									if (
-										service === undefined
-											? state.credits === 0 || args.length !== 2
-											: !service.authenticated ||
+										queued
+											? state.credits === 0
+											: service === undefined ||
+												service.outcome !== undefined ||
+												!service.authenticated ||
+												service.retired ||
 												firstOpportunity ||
 												(args.length !== 3 && args.length !== 4) ||
 												(args[2] !== undefined && args[2] !== service.child.episode) ||
 												(args.length === 4 && (args[3] !== true || args[2] !== service.child.episode))
 									) {
-										state.unknown = true;
+										state.invalid = true;
 										return;
 									}
-									if (service === undefined) state.credits--;
+									if (queued) state.credits--;
 									state.evaluations = increment(state.evaluations);
 									if (frame === undefined)
 										frame = {
 											lifecycle: args[1],
 											ordinal: state.evaluations,
-											origin: service === undefined ? 'QUEUE' : 'FEEDBACK',
+											origin: queued ? 'QUEUE' : 'FEEDBACK',
 											owned: true,
 										};
 									else {
@@ -10769,7 +10881,8 @@ describe('virtual thermostat durable runtime', () => {
 								try {
 									pending = originalEvaluate.call(this, ...args);
 								} catch (cause) {
-									originalFailure(cause);
+									if (originalEpoch) originalFailure(cause);
+									else cleanupFailure.value ??= { cause };
 									observe(() => {
 										if (frame !== undefined) frame.outcome = { fulfilled: false, cause };
 									});
@@ -10802,26 +10915,43 @@ describe('virtual thermostat durable runtime', () => {
 							const requesting = function (
 								this: VirtualThermostatRuntimeService,
 								...args: Parameters<typeof originalRequest>
-							): void {
+							): ReturnType<typeof originalRequest> {
+								let before: Promise<void> | undefined;
+								let eligible = false;
 								observe(() => {
 									if (state.closed) return;
 									certify();
-									if (this !== b || args[0] !== held.id || !live() || state.starting === undefined) {
-										state.unknown = true;
-										return;
-									}
-									if (args[1] === undefined) {
-										state.omitted = increment(state.omitted);
-										if (state.omitted !== 1 || state.sFulfilled || first.evaluation !== undefined) state.unknown = true;
-									} else if (args[1] !== false || first.evaluation === undefined) state.unknown = true;
-									state.credits = increment(state.credits);
+									eligible =
+										this === b &&
+										args[0] === held.id &&
+										live() &&
+										state.starting !== undefined &&
+										(args.length === 1 ||
+											(args.length === 2 && (args[1] === undefined || typeof args[1] === 'boolean')));
+									if (!eligible) state.invalid = true;
+									before = queues.get(args[0]);
 								});
+								let result: ReturnType<typeof originalRequest>;
 								try {
-									return originalRequest.call(this, ...args);
+									result = originalRequest.call(this, ...args);
 								} catch (cause) {
 									originalFailure(cause);
 									throw cause;
 								}
+								observe(() => {
+									if (!eligible || state.closed) return;
+									if (queues.get(args[0]) === before) {
+										state.invalid = true;
+										return;
+									}
+									// Closed fixture: one bootstrap request before S; later original configuration/poll requests are scoped B work.
+									if (args[1] === undefined && !state.sFulfilled) {
+										state.omitted = increment(state.omitted);
+										if (state.omitted !== 1) state.invalid = true;
+									}
+									state.credits = increment(state.credits);
+								});
+								return result;
 							};
 							const settingContext = function (
 								this: typeof contexts,
@@ -10843,7 +10973,7 @@ describe('virtual thermostat durable runtime', () => {
 										args[1].config.controllerId !== held.id ||
 										b['contextLifecycles'].get(args[1]) !== state.lifecycle
 									) {
-										state.unknown = true;
+										state.invalid = true;
 										return;
 									}
 									pair = { frame, context: args[1], predecessor: endpoint.value?.context, setReturned: false };
@@ -10866,7 +10996,7 @@ describe('virtual thermostat durable runtime', () => {
 								...args: Parameters<typeof originalContextDelete>
 							): ReturnType<typeof originalContextDelete> {
 								observe(() => {
-									if (!state.closed) state.unknown = true;
+									if (!state.closed) state.invalid = true;
 								});
 								try {
 									return originalContextDelete.call(this, ...args);
@@ -10880,7 +11010,7 @@ describe('virtual thermostat durable runtime', () => {
 								...args: Parameters<typeof originalContextClear>
 							): ReturnType<typeof originalContextClear> {
 								observe(() => {
-									if (!state.closed) state.unknown = true;
+									if (!state.closed) state.invalid = true;
 								});
 								try {
 									return originalContextClear.call(this, ...args);
@@ -10920,7 +11050,7 @@ describe('virtual thermostat durable runtime', () => {
 										b['feedbackEpisodes'].get(held.id) !== completion.episode ||
 										b['contextLifecycles'].get(candidate.context) !== state.lifecycle
 									) {
-										state.unknown = true;
+										state.invalid = true;
 										return;
 									}
 									pair = candidate;
@@ -10955,80 +11085,159 @@ describe('virtual thermostat durable runtime', () => {
 								observe(() => {
 									if (state.closed) return;
 									certify();
-									const frame = first.evaluation,
+									const frame = activeEvaluation.value,
 										command = b['inFlightCommands'].get(args[0]);
-									if (state.unknown || state.fault || this !== inFlight || !live() || command === undefined) {
-										state.unknown = true;
-										return;
-									}
-									const job = b['offJobs'].get(command);
-									if (job === undefined) return;
-									if (frame === undefined || !frame.owned || job.evaluation !== frame.completion) {
-										state.unknown = true;
-										return;
-									}
-									const context = frame.context,
-										claim = context?.claims[0];
 									if (
-										release.value !== undefined ||
-										context === undefined ||
-										claim === undefined ||
-										context.claims.length !== 1 ||
-										claim.role !== 'heating' ||
-										claim.id !== held.command.claimId ||
-										claim.revision !== held.command.claimRevision ||
+										state.invalid ||
+										state.fault ||
+										this !== inFlight ||
+										!live() ||
+										command === undefined ||
+										frame === undefined ||
+										!frame.owned ||
+										frame.context === undefined ||
+										frame.completion === undefined ||
 										command.controllerId !== held.id ||
-										command.claimId !== claim.id ||
-										command.action !== 'off' ||
 										command === held.command ||
 										command.id === held.command.id ||
-										job.context !== context ||
-										job.command !== command ||
-										job.operation !== args[1] ||
 										args[1] === held.operation ||
 										frame.lifecycle !== state.lifecycle
 									) {
-										state.unknown = true;
+										state.invalid = true;
 										return;
 									}
-									const admissionView: Readonly<{
-										isCurrent: OriginalFunction<Context['admission'], Context['admission']['isCurrent']>;
-									}> = context.admission;
-									const intentView:
-										| Readonly<{
-												isCurrent: OriginalFunction<
-													NonNullable<Context['intent']>,
-													NonNullable<Context['intent']>['isCurrent']
-												>;
-										  }>
-										| undefined = context.intent;
-									const off: Off = {
-										job,
-										claim,
-										operation: args[1],
-										admission: context.admission,
-										admissionCurrent: admissionView.isCurrent,
-										publishGuard: context.publishGuard,
-										intent: context.intent,
-										intentCurrent: intentView?.isCurrent,
-										claims: context.claims,
-									};
-									release.value = off;
-									void off.operation.then(
-										() => {
-											observe(() => {
-												off.outcome = { fulfilled: true };
-												terminal();
-											});
-										},
-										(cause: unknown) => {
-											originalFailure(cause);
-											observe(() => {
-												off.outcome = { fulfilled: false, cause };
-												terminal();
-											});
-										},
-									);
+									const context = frame.context,
+										claim = context.claims[0],
+										job = b['offJobs'].get(command);
+									if (
+										context.claims.length !== 1 ||
+										claim === undefined ||
+										claim.role !== 'heating' ||
+										command.claimId !== claim.id ||
+										command.claimRevision !== claim.revision
+									) {
+										state.invalid = true;
+										return;
+									}
+									if (command.action === 'off') {
+										if (
+											job === undefined ||
+											job.context !== context ||
+											job.command !== command ||
+											job.evaluation !== frame.completion ||
+											job.operation !== args[1]
+										) {
+											state.invalid = true;
+											return;
+										}
+										if (frame === first.evaluation && release.value === undefined) {
+											if (claim.id !== held.command.claimId || claim.revision !== held.command.claimRevision) {
+												state.invalid = true;
+												return;
+											}
+											const admissionView: Readonly<{
+												isCurrent: OriginalFunction<Context['admission'], Context['admission']['isCurrent']>;
+											}> = context.admission;
+											const intentView:
+												| Readonly<{
+														isCurrent: OriginalFunction<
+															NonNullable<Context['intent']>,
+															NonNullable<Context['intent']>['isCurrent']
+														>;
+												  }>
+												| undefined = context.intent;
+											const off: Off = {
+												kind: 'FIRST_OFF',
+												context,
+												evaluation: frame.completion,
+												episode: frame.completion.episode,
+												command,
+												job,
+												claim,
+												operation: args[1],
+												issued: false,
+												consumed: false,
+												queueCovered: false,
+												admission: context.admission,
+												admissionCurrent: admissionView.isCurrent,
+												publishGuard: context.publishGuard,
+												intent: context.intent,
+												intentCurrent: intentView?.isCurrent,
+												claims: context.claims,
+											};
+											release.value = off;
+											const pending = creation.value;
+											if (pending?.job === job) {
+												pending.operation = args[1];
+												pending.operationOwner = off;
+											}
+											observeOperation(off);
+											return;
+										}
+										if (release.value?.job === job) {
+											state.invalid = true;
+											return;
+										}
+										retireUnissued();
+										let record = creation.value;
+										if (record !== undefined && record.job !== job) {
+											state.invalid = true;
+											return;
+										}
+										if (record === undefined) {
+											record = {
+												kind: 'OFF_O',
+												context,
+												evaluation: frame.completion,
+												episode: frame.completion.episode,
+												command,
+												job,
+												issued: false,
+												consumed: false,
+												queueCovered: false,
+											};
+											creation.value = record;
+										}
+										if (record.operation !== undefined && record.operation !== args[1]) {
+											state.invalid = true;
+											return;
+										}
+										record.operation = args[1];
+										observeOperation(record);
+									} else if (command.action === 'on') {
+										const on = b['originalCommandCompletions'].get(command);
+										if (
+											on === undefined ||
+											on.command !== command ||
+											on.context !== context ||
+											on.lifecycle !== state.lifecycle ||
+											on.operation !== args[1] ||
+											on.invalid
+										) {
+											state.invalid = true;
+											return;
+										}
+										retireUnissued();
+										if (creation.value !== undefined) {
+											state.invalid = true;
+											return;
+										}
+										const record: Work = {
+											kind: 'ON_O',
+											context,
+											evaluation: frame.completion,
+											episode: frame.completion.episode,
+											command,
+											on,
+											operation: args[1],
+											issued: false,
+											consumed: false,
+											queueCovered: false,
+										};
+										creation.value = record;
+										state.ownedOnWork = increment(state.ownedOnWork);
+										observeOperation(record);
+									} else state.invalid = true;
 								});
 								return result;
 							};
@@ -11047,10 +11256,11 @@ describe('virtual thermostat durable runtime', () => {
 									if (state.closed) return;
 									certify();
 									const child = args[1],
-										previous = creation.value;
+										off = release.value;
 									if (
 										this !== children ||
 										!live() ||
+										child.work === undefined ||
 										child.work !== args[0] ||
 										child.purpose === 'OFF_COMMAND_COMPLETION' ||
 										child.episode.controllerId !== held.id ||
@@ -11062,30 +11272,217 @@ describe('virtual thermostat durable runtime', () => {
 										child.evaluation.episode !== child.episode ||
 										b['feedbackContexts'].get(child.context) !== child.episode
 									) {
-										state.unknown = true;
+										state.invalid = true;
 										return;
 									}
-									const off = release.value;
 									if (off !== undefined && child.job === off.job) {
 										if (
 											off.child !== undefined ||
 											child.purpose !== 'GUARDED_OFF_DISPATCH' ||
-											child.context !== off.job.context ||
-											child.evaluation !== off.job.evaluation ||
+											child.context !== off.context ||
+											child.evaluation !== off.evaluation ||
 											off.job.child !== child
-										)
-											state.unknown = true;
-										else {
-											off.child = child;
-											off.work = args[0];
+										) {
+											state.invalid = true;
+											return;
 										}
-										return; // FIRST insertion stays fixed through FIRST L terminal, never borrowed as a rolling slot.
+										off.child = child;
+										off.work = args[0];
+									} else {
+										retireUnissued();
+										let record = creation.value;
+										if (
+											record !== undefined &&
+											(record.job === undefined || record.job !== child.job || record.child !== undefined)
+										) {
+											state.invalid = true;
+											return;
+										}
+										if (record === undefined) {
+											const frame = activeEvaluation.value;
+											if (
+												child.job !== undefined ||
+												frame?.owned !== true ||
+												frame.context !== child.context ||
+												frame.completion !== child.evaluation
+											) {
+												state.invalid = true;
+												return;
+											}
+											record = {
+												kind: 'CHILD_WAITING',
+												context: child.context,
+												evaluation: child.evaluation,
+												episode: child.episode,
+												issued: false,
+												consumed: false,
+												queueCovered: false,
+											};
+											creation.value = record;
+										}
+										record.child = child;
+										record.work = args[0];
+										record.kind = 'CHILD_WAITING';
 									}
-									if (previous !== undefined && !previous.consumed && !retiredWithoutService(previous)) {
-										state.unknown = true;
+									state.ownedFenceWork = increment(state.ownedFenceWork);
+								});
+								return result;
+							};
+							const requestingFeedback = function (
+								this: VirtualThermostatRuntimeService,
+								...args: Parameters<typeof originalFeedback>
+							): ReturnType<typeof originalFeedback> {
+								let record: Work | undefined;
+								let before: Promise<void> | undefined;
+								let queuedBefore: boolean | undefined;
+								let noOp = false;
+								let originalEpoch = false;
+								observe(() => {
+									const child = args[0];
+									originalEpoch =
+										this === b && state.lifecycle !== undefined && child.episode.lifecycle === state.lifecycle;
+									if (state.closed) return;
+									certify();
+									if (
+										this !== b ||
+										!live() ||
+										child.episode.controllerId !== held.id ||
+										child.episode.lifecycle !== state.lifecycle
+									) {
+										state.invalid = true;
 										return;
 									}
-									creation.value = { child, work: args[0], consumed: false };
+									before = queues.get(held.id);
+									queuedBefore = child.queued;
+									if (child.queued || child.episode.retired) {
+										noOp = true;
+										return;
+									}
+									if (child.purpose === 'OFF_COMMAND_COMPLETION') {
+										if (
+											child.work !== undefined ||
+											child.job !== undefined ||
+											child.state !== 'FAILED' ||
+											child.evaluation.context !== child.context ||
+											child.evaluation.episode !== child.episode ||
+											b['contextLifecycles'].get(child.context) !== state.lifecycle ||
+											completions.get(child.context) !== child.evaluation
+										) {
+											state.invalid = true;
+											return;
+										}
+										let job: Job | undefined;
+										for (const command of b['inFlightCommands'].values()) {
+											if (command.action !== 'off' || command.controllerId !== held.id) continue;
+											const candidate = b['offJobs'].get(command);
+											if (
+												candidate === undefined ||
+												candidate.context !== child.context ||
+												candidate.evaluation !== child.evaluation
+											)
+												continue;
+											if (
+												job !== undefined ||
+												candidate.command !== command ||
+												candidate.child !== undefined ||
+												child.context.claims.length !== 1 ||
+												child.context.claims[0]?.role !== 'heating' ||
+												command === held.command ||
+												command.id === held.command.id ||
+												command.claimId !== child.context.claims[0]?.id ||
+												command.claimRevision !== child.context.claims[0]?.revision
+											) {
+												state.invalid = true;
+												return;
+											}
+											job = candidate;
+										}
+										if (job === undefined) {
+											state.invalid = true;
+											return;
+										}
+										retireUnissued();
+										record = creation.value;
+										if (record !== undefined && (record.job !== job || record.child !== undefined)) {
+											state.invalid = true;
+											return;
+										}
+										if (record === undefined) {
+											record = {
+												kind: 'FALLBACK_RESERVED',
+												context: child.context,
+												evaluation: child.evaluation,
+												episode: child.episode,
+												command: job.command,
+												job,
+												operation: job.operation,
+												issued: false,
+												consumed: false,
+												queueCovered: false,
+											};
+											const off = release.value;
+											if (off?.job === job) record.operationOwner = off;
+											creation.value = record;
+										}
+										record.child = child;
+										record.kind = 'FALLBACK_RESERVED';
+									} else {
+										record =
+											release.value?.child === child
+												? release.value
+												: creation.value?.child === child
+													? creation.value
+													: undefined;
+										if (record === undefined || record.work !== child.work) {
+											state.invalid = true;
+											return;
+										}
+									}
+									if (record.issued || record.consumed) state.invalid = true;
+								});
+								let result: ReturnType<typeof originalFeedback>;
+								try {
+									result = originalFeedback.call(this, ...args);
+								} catch (cause) {
+									if (originalEpoch) originalFailure(cause);
+									else cleanupFailure.value ??= { cause };
+									observe(() => {
+										if (record !== undefined && args[0] === record.child) {
+											const after = queues.get(held.id);
+											if (after !== before) record.queue = after;
+										}
+										state.invalid = true; // A partial throw cannot mint a positive issuance token.
+									});
+									throw cause;
+								}
+								observe(() => {
+									if (state.closed || this !== b) return;
+									const child = args[0],
+										after = queues.get(held.id);
+									if (noOp) {
+										if (after !== before || child.queued !== queuedBefore) state.invalid = true;
+										return; // Already queued cannot rearm or overwrite an exact earlier obligation.
+									}
+									if (
+										record === undefined ||
+										record.child !== child ||
+										queuedBefore !== false ||
+										child.queued !== true ||
+										after === undefined ||
+										after === before ||
+										!live() ||
+										record.issued ||
+										record.consumed ||
+										child.context !== record.context ||
+										child.evaluation !== record.evaluation ||
+										child.episode !== record.episode
+									) {
+										state.invalid = true;
+										return;
+									}
+									record.queue = after;
+									record.issued = true;
+									if (child.purpose === 'OFF_COMMAND_COMPLETION') record.kind = 'FALLBACK_WAITING';
 								});
 								return result;
 							};
@@ -11095,66 +11492,109 @@ describe('virtual thermostat durable runtime', () => {
 							): ReturnType<typeof originalService> {
 								let frame: Service | undefined;
 								observe(() => {
-									if (state.closed) return;
-									certify();
-									const child = args[0],
-										inserted = creation.value,
-										selected = release.value;
-									const fixedFirstInsertion =
-										selected !== undefined &&
-										selected.child === child &&
-										selected.work === child.work &&
-										child.job === selected.job &&
-										firstService.value === undefined;
-									const rollingInsertion =
-										inserted !== undefined &&
-										inserted.child === child &&
-										inserted.work === child.work &&
-										!inserted.consumed;
-									const matching =
-										this === b &&
-										live() &&
-										activeService.value === undefined &&
-										(fixedFirstInsertion || rollingInsertion) &&
-										child.episode.lifecycle === state.lifecycle &&
-										!child.episode.retired &&
-										child.episode.controllerId === held.id &&
-										child.evaluation.status === 'COMPLETE' &&
-										child.evaluation.context === child.context &&
-										child.evaluation.episode === child.episode &&
-										b['contextLifecycles'].get(child.context) === state.lifecycle &&
-										completions.get(child.context) === child.evaluation &&
-										contexts.get(held.id) === child.context &&
-										b['feedbackEpisodes'].get(held.id) === child.episode &&
-										b['feedbackContexts'].get(child.context) === child.episode &&
-										((child.purpose === 'GUARDED_OFF_DISPATCH' &&
-											child.job !== undefined &&
-											child.job.terminal &&
-											child.job.context === child.context &&
-											child.job.evaluation === child.evaluation &&
-											child.job.child === child &&
-											child.job.result === 'accepted' &&
-											child.job.failure === undefined &&
-											child.job.outputSaved &&
-											child.sampleSeen === true &&
-											child.state === 'OFF_REPORTED') ||
-											(child.purpose === 'RECONCILIATION_OFF' && child.state === 'SUCCESS'));
-									if ((fixedFirstInsertion || rollingInsertion) && child.episode.failure.primary !== undefined)
-										originalFailure(child.episode.failure.primary.cause);
-									// A retired child cannot authorize another evaluation/publication, even if original L returns.
-									if (!matching) state.unknown = true;
-									frame = { child, authenticated: matching };
-									if (activeService.value !== undefined) state.unknown = true;
-									else activeService.value = frame;
-									const off = release.value;
-									if (off !== undefined && child === off.child) {
-										if (firstService.value !== undefined || this !== b || child.episode.lifecycle !== state.lifecycle)
-											state.unknown = true;
-										else {
-											firstService.value = frame;
-											terminal();
+									const child = args[0];
+									const record =
+										release.value?.child === child
+											? release.value
+											: creation.value?.child === child
+												? creation.value
+												: undefined;
+									if (
+										record === undefined ||
+										record.consumed ||
+										!record.issued ||
+										record.queue === undefined ||
+										this !== b ||
+										child.context !== record.context ||
+										child.evaluation !== record.evaluation ||
+										child.episode !== record.episode ||
+										child.queued !== true ||
+										child.evaluation.status !== 'COMPLETE' ||
+										child.evaluation.context !== child.context ||
+										b['contextLifecycles'].get(child.context) !== state.lifecycle ||
+										completions.get(child.context) !== child.evaluation ||
+										b['feedbackContexts'].get(child.context) !== record.episode ||
+										child.evaluation.episode !== child.episode ||
+										child.episode.controllerId !== held.id ||
+										child.episode.lifecycle !== state.lifecycle ||
+										(record.job !== undefined &&
+											(record.operation === undefined || record.job.operation !== record.operation))
+									) {
+										state.invalid = true;
+										return;
+									}
+									if (state.closed) {
+										if (
+											!state.retired ||
+											state.foreign ||
+											!pinsCurrent() ||
+											(b['lifecycle'] !== undefined && b['lifecycle'] !== state.lifecycle)
+										) {
+											state.invalid = true;
+											return;
+										}
+									} else {
+										if (!live()) {
+											state.invalid = true;
+											return;
 										}
 									}
+									finishActiveService(true); // Exact issued queued entry, including retired cleanup, certifies predecessor Q.
+									if (activeService.value !== undefined) {
+										state.invalid = true;
+										return;
+									}
+									const current =
+										!state.closed &&
+										contexts.get(held.id) === child.context &&
+										b['contextLifecycles'].get(child.context) === state.lifecycle &&
+										completions.get(child.context) === child.evaluation &&
+										b['feedbackEpisodes'].get(held.id) === child.episode &&
+										b['feedbackContexts'].get(child.context) === child.episode &&
+										!child.episode.retired;
+									const retired =
+										state.closed ||
+										(endpoint.value !== undefined &&
+											endpoint.value.context !== child.context &&
+											endpoint.value.completion.lifecycle === state.lifecycle &&
+											contexts.get(held.id) === endpoint.value.context &&
+											child.episode.retired);
+									if (!current && !retired) {
+										state.invalid = true;
+										return;
+									}
+									if (child.purpose === 'GUARDED_OFF_DISPATCH') {
+										if (child.work !== record.work || child.job !== record.job || record.job?.child !== child) {
+											state.invalid = true;
+											return;
+										}
+									} else if (child.purpose === 'OFF_COMMAND_COMPLETION') {
+										if (
+											record.kind !== 'FALLBACK_WAITING' ||
+											child.work !== undefined ||
+											child.job !== undefined ||
+											record.job === undefined ||
+											record.job.child !== undefined
+										) {
+											state.invalid = true;
+											return;
+										}
+									} else if (child.purpose !== 'RECONCILIATION_OFF' || child.work !== record.work) {
+										state.invalid = true;
+										return;
+									}
+									record.consumed = true;
+									frame = { child, record, authenticated: current, retired };
+									activeService.value = frame; // Transfer complete F/Q/job/O/P BEFORE freeing the rolling cell.
+									if (creation.value === record) creation.value = undefined;
+									if (release.value === record) {
+										if (firstService.value !== undefined) state.invalid = true;
+										else {
+											firstService.value = frame;
+											firstService.ready.open();
+										}
+									}
+									if (child.episode.failure.primary !== undefined) originalFailure(child.episode.failure.primary.cause);
 								});
 								let pending: ReturnType<typeof originalService>;
 								try {
@@ -11163,36 +11603,30 @@ describe('virtual thermostat durable runtime', () => {
 									originalFailure(cause);
 									observe(() => {
 										if (frame !== undefined) frame.outcome = { fulfilled: false, cause };
-										firstService.ready.open();
 									});
 									throw cause;
 								}
 								if (frame !== undefined) {
 									const captured = frame;
-									observe(() => {
-										captured.pending = pending;
-										if (firstService.value === captured) firstService.ready.open();
-										void pending.then(
-											() => {
-												observe(() => {
-													if (!state.closed) certify();
-													captured.outcome = { fulfilled: true };
-													if (captured.child.episode.failure.primary !== undefined)
-														originalFailure(captured.child.episode.failure.primary.cause);
-													if (creation.value?.child === captured.child) creation.value.consumed = true;
-													if (activeService.value === captured) activeService.value = undefined;
-												});
-											},
-											(cause: unknown) => {
-												originalFailure(cause);
-												observe(() => {
-													captured.outcome = { fulfilled: false, cause };
-													if (creation.value?.child === captured.child) creation.value.consumed = true;
-													if (activeService.value === captured) activeService.value = undefined;
-												});
-											},
-										);
-									});
+									captured.pending = pending;
+									void pending.then(
+										() =>
+											observe(() => {
+												if (!state.closed) certify();
+												captured.outcome = { fulfilled: true };
+												if (captured.child.episode.failure.primary !== undefined)
+													originalFailure(captured.child.episode.failure.primary.cause);
+												inspectWork(captured.record);
+												// Q is not done merely because L fulfilled; queued successor or retirement join owns Q closure.
+											}),
+										(cause: unknown) => {
+											originalFailure(cause);
+											observe(() => {
+												captured.outcome = { fulfilled: false, cause };
+												inspectWork(captured.record);
+											});
+										},
+									);
 								}
 								return pending;
 							};
@@ -11200,6 +11634,7 @@ describe('virtual thermostat durable runtime', () => {
 								{ receiver: b, key: 'evaluate', original: originalEvaluate, value: evaluating },
 								{ receiver: b, key: 'request', original: originalRequest, value: requesting },
 								{ receiver: b, key: 'serviceFeedback', original: originalService, value: servicing },
+								{ receiver: b, key: 'requestFeedback', original: originalFeedback, value: requestingFeedback },
 								{ receiver: contexts, key: 'set', original: originalContextSet, value: settingContext },
 								{ receiver: contexts, key: 'delete', original: originalContextDelete, value: deletingContext },
 								{ receiver: contexts, key: 'clear', original: originalContextClear, value: clearingContexts },
@@ -11252,6 +11687,11 @@ describe('virtual thermostat durable runtime', () => {
 											firstService.value?.pending,
 											activeEvaluation.value?.pending,
 											activeService.value?.pending,
+											release.value?.queue,
+											creation.value?.queue,
+											creation.value?.operation,
+											activeService.value?.record.queue,
+											activeService.value?.record.operation,
 										])
 											if (pending !== undefined) cleanupCompletion.issued.add(pending);
 										if (!state.foreign && state.lifecycle !== undefined && b['lifecycle'] === state.lifecycle) {
@@ -11260,6 +11700,8 @@ describe('virtual thermostat durable runtime', () => {
 											for (const command of b['inFlightCommands'].values()) {
 												const job = b['offJobs'].get(command);
 												if (job !== undefined) cleanupCompletion.jobs.push(job);
+												const on = b['originalCommandCompletions'].get(command);
+												if (on !== undefined) cleanupCompletion.onRecords.push(on);
 											}
 										}
 									}); // Snapshot BEFORE original destroy clears queues; no growing invocation history.
@@ -11267,7 +11709,7 @@ describe('virtual thermostat durable runtime', () => {
 									attemptCleanup(() => {
 										if (b['active'] || b['lifecycle'] !== undefined) {
 											if (state.lifecycle === undefined || b['lifecycle'] !== state.lifecycle) {
-												state.foreign = state.unknown = true;
+												state.foreign = state.invalid = true;
 												cleanupFailure.value ??= { cause: new Error('Foreign fresh B lifecycle retained') };
 											} else originalDestroy.call(b);
 										}
@@ -11293,6 +11735,19 @@ describe('virtual thermostat durable runtime', () => {
 										observe(() => {
 											for (const job of cleanupCompletion.jobs)
 												if (job.failure !== undefined) originalFailure(job.failure.cause);
+											for (const on of cleanupCompletion.onRecords)
+												if (on.failure !== undefined) originalFailure(on.failure.cause);
+											for (const record of [
+												release.value,
+												creation.value,
+												activeService.value?.record,
+												firstService.value?.record,
+											])
+												if (record !== undefined) {
+													if (!inspectWork(record)) state.invalid = true;
+													if (record.issued && !record.consumed) state.invalid = true;
+													record.queueCovered = true;
+												}
 										});
 										for (const entry of [...shadows].reverse())
 											attemptCleanup(() => {
@@ -11314,6 +11769,8 @@ describe('virtual thermostat durable runtime', () => {
 										attemptCleanup(() => unregisterCompletionObserver(observer));
 										if (errors.application !== undefined) throw errors.application.cause;
 										if (cleanupFailure.value !== undefined) throw cleanupFailure.value.cause;
+										if (state.invalid || state.fault)
+											throw new Error('Original B ownership/error obligation unavailable');
 									})().then(cleanupCompletion.resolve, cleanupCompletion.reject);
 									return completion;
 								},
@@ -11330,7 +11787,8 @@ describe('virtual thermostat durable runtime', () => {
 									b['comfort'] !== held.comfort ||
 									originalEvaluate !== VirtualThermostatRuntimeService.prototype['evaluate'] ||
 									originalService !== VirtualThermostatRuntimeService.prototype['serviceFeedback'] ||
-									originalRequest !== VirtualThermostatRuntimeService.prototype.request
+									originalRequest !== VirtualThermostatRuntimeService.prototype.request ||
+									originalFeedback !== VirtualThermostatRuntimeService.prototype['requestFeedback']
 								)
 									throw new Error('Original inactive B source/methods unavailable');
 								for (const entry of shadows) {
@@ -11344,10 +11802,13 @@ describe('virtual thermostat durable runtime', () => {
 									Object.defineProperty(entry.receiver, entry.key, entry.installed);
 									entry.owned = true;
 								}
-								const fences = held.real.controls.fences.length;
+								const fences = held.real.controls.fences.length,
+									sends = held.real.controls.sends.length;
+								const originalFences = held.real.controls.fences,
+									originalSends = held.real.controls.sends;
 								state.starting = originalBootstrap.call(b);
 								const bootstrap = b['bootstrapAttempt'];
-								if (bootstrap === undefined || bootstrap.promise !== state.starting) state.unknown = true;
+								if (bootstrap === undefined || bootstrap.promise !== state.starting) state.invalid = true;
 								else {
 									state.bootstrap = bootstrap;
 									state.lifecycle = bootstrap.lifecycle;
@@ -11366,57 +11827,105 @@ describe('virtual thermostat durable runtime', () => {
 								if (off === undefined) throw new Error('Missing original B O');
 								await off.operation;
 								observe(terminal);
-								requireEvidence(
-									off.child !== undefined && off.work !== undefined && off.child.queued,
-									'Missing original queued B feedback',
-								);
-								await firstService.ready.promise;
-								const feedback = firstService.value;
-								requireEvidence(
-									feedback !== undefined && feedback.pending !== undefined,
-									'Missing matching original B L',
-								);
-								if (feedback === undefined || feedback.pending === undefined)
-									throw new Error('Missing original L Promise');
-								await feedback.pending;
-								observe(certify);
-								const observed = off.terminal,
-									context = firstFrame.context,
-									claim = context?.claims[0];
-								requireEvidence(
+								if (errors.application !== undefined) throw errors.application.cause;
+								const context = firstFrame.context,
+									claim = context?.claims[0],
+									observed = off.terminal;
+								const baseEvidence =
 									!state.closed &&
-										!state.unknown &&
-										!state.fault &&
-										!state.foreign &&
-										live() &&
-										pinsCurrent() &&
-										state.omitted === 1 &&
-										state.sFulfilled &&
-										state.bootstrap?.promise === state.starting &&
-										b['timer'] !== undefined &&
-										firstFrame.outcome?.fulfilled === true &&
-										firstFrame.completion?.status === 'COMPLETE' &&
-										context !== undefined &&
-										context.claims.length === 1 &&
-										claim === off.claim &&
-										context.config.controllerId === held.id &&
-										claim?.role === 'heating' &&
-										off.outcome?.fulfilled === true &&
-										observed !== undefined &&
-										observed.failure === undefined &&
-										observed.result === 'accepted' &&
-										observed.outputSaved &&
-										observed.terminal &&
-										observed.sampleSeen &&
-										observed.state === 'OFF_REPORTED' &&
-										off.child?.purpose === 'GUARDED_OFF_DISPATCH' &&
-										feedback.child === off.child &&
+									!state.invalid &&
+									!state.fault &&
+									!state.foreign &&
+									live() &&
+									pinsCurrent() &&
+									publication.value === undefined &&
+									state.omitted === 1 &&
+									state.sFulfilled &&
+									state.bootstrap?.promise === state.starting &&
+									b['timer'] !== undefined &&
+									firstFrame.outcome?.fulfilled === true &&
+									firstFrame.completion?.status === 'COMPLETE' &&
+									context !== undefined &&
+									context.claims.length === 1 &&
+									claim === off.claim &&
+									context.config.controllerId === held.id &&
+									claim?.role === 'heating' &&
+									off.outcome?.fulfilled === true &&
+									observed !== undefined &&
+									observed.failure === undefined &&
+									observed.terminal;
+								const counterEvidence =
+									held.real.controls.fences === originalFences &&
+									held.real.controls.sends === originalSends &&
+									originalFences.length >= fences &&
+									originalSends.length >= sends &&
+									originalFences.every((property) => property === off.claim.sourcePropertyId) &&
+									originalSends.every((send) => send.property === off.claim.sourcePropertyId && send.on === true) &&
+									(originalFences.length === fences || state.ownedFenceWork > 0) &&
+									(originalSends.length === sends || state.ownedOnWork > 0);
+								const knownUnsent =
+									baseEvidence &&
+									counterEvidence &&
+									observed !== undefined &&
+									off.job.command.status === 'cancelled' &&
+									off.job.result === undefined &&
+									off.job.failure === undefined &&
+									off.job.outputSaved === false &&
+									off.job.terminal === true &&
+									off.job.child === undefined &&
+									off.child === undefined &&
+									off.work === undefined &&
+									observed.result === undefined &&
+									observed.outputSaved === false;
+								let firstOutcome: 'KNOWN_UNSENT_FIRST_OFF' | 'GENUINE_ACCEPTED_FIRST_OFF' | 'UNKNOWN' = knownUnsent
+									? 'KNOWN_UNSENT_FIRST_OFF'
+									: 'UNKNOWN';
+								if (!knownUnsent) {
+									requireEvidence(
+										baseEvidence &&
+											observed?.result === 'accepted' &&
+											observed.outputSaved &&
+											observed.sampleSeen &&
+											observed.state === 'OFF_REPORTED' &&
+											off.job.result === 'accepted' &&
+											off.job.outputSaved &&
+											off.job.failure === undefined &&
+											off.child !== undefined &&
+											off.work !== undefined &&
+											off.job.child === off.child &&
+											off.child.work === off.work &&
+											off.child.purpose === 'GUARDED_OFF_DISPATCH',
+										'Original FIRST B outcome unavailable',
+									);
+									await firstService.ready.promise;
+									const feedback = firstService.value;
+									requireEvidence(
+										feedback !== undefined && feedback.pending !== undefined,
+										'Missing matching original B L',
+									);
+									if (feedback === undefined || feedback.pending === undefined)
+										throw new Error('Missing original L Promise');
+									await feedback.pending;
+									observe(certify);
+									requireEvidence(
 										feedback.authenticated &&
-										feedback.outcome?.fulfilled === true &&
-										publication.value === undefined,
-									'Original first B release receipt unavailable',
+											!feedback.retired &&
+											feedback.outcome?.fulfilled === true &&
+											feedback.child === off.child &&
+											off.consumed &&
+											off.issued &&
+											!state.invalid &&
+											!state.fault &&
+											counterEvidence,
+										'Original first B release receipt unavailable',
+									);
+									expect(held.real.controls.fences.length).toBeGreaterThan(fences);
+									firstOutcome = 'GENUINE_ACCEPTED_FIRST_OFF';
+								}
+								requireEvidence(
+									firstOutcome !== 'UNKNOWN' && !state.invalid && !state.fault,
+									'Original FIRST B isolation outcome unavailable',
 								);
-								expect(held.real.controls.fences.length).toBeGreaterThan(fences);
 								expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
 								const bContext = b['contexts'].get(held.id);
 								const anchor = endpoint.value;
@@ -11449,11 +11958,12 @@ describe('virtual thermostat durable runtime', () => {
 									off.job.evaluation === firstFrame.completion &&
 									off.job.command !== held.command &&
 									off.job.operation === off.operation &&
-									off.child?.work === off.work &&
-									off.child?.job === off.job;
+									(firstOutcome === 'KNOWN_UNSENT_FIRST_OFF'
+										? off.job.child === undefined && off.child === undefined && off.work === undefined
+										: off.child?.work === off.work && off.child?.job === off.job);
 								const valid =
 									!state.closed &&
-									!state.unknown &&
+									!state.invalid &&
 									!state.fault &&
 									!state.foreign &&
 									live() &&
