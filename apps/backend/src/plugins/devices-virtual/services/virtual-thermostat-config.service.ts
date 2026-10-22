@@ -1511,13 +1511,26 @@ export class VirtualThermostatConfigService {
 		this.assertExistingTurn(manager, turn, ['NORMALIZE']);
 		comfort.synchronizeExistingClock(manager, turn, input, candidate);
 		const semantic = this.existingPreparedSemantic(candidate, record.rows, input.kind === 'configure-existing:v1');
-		const overrideIntent = comfort.existingSemanticIntent(turn);
+		let operationIntent = comfort.existingSemanticIntent(turn);
+		if (input.kind === 'restore-actuator:v1') {
+			// prepareExistingRecovery has already validated the original selected claim and every operator/CAS fence.
+			// This action is semantic intent only: it is never copied into candidate.config.comfort or private policy.
+			const request = existingObject(input.wire),
+				dto = existingObject(request.dto);
+			operationIntent = climateAutomationJson({
+				kind: input.kind,
+				claimId: request.claimId,
+				expectedRevision: dto.expectedRevision,
+				expectedClaimRevision: dto.expectedClaimRevision,
+				actorId: request.actorId,
+			});
+		}
 		const next =
-			overrideIntent === null
+			operationIntent === null
 				? semantic
 				: Object.freeze({
 						...semantic,
-						comfort: climateAutomationJson({ ...existingObject(semantic.comfort), operation: overrideIntent }),
+						comfort: climateAutomationJson({ ...existingObject(semantic.comfort), operation: operationIntent }),
 					});
 		const previous = old
 			? this.existingPreparedSemantic(old, record.rows)

@@ -28,6 +28,7 @@ import { ConfigService as ModuleConfigService } from '../../../modules/config/se
 import {
 	ClimateAutomationRuntimeCheckpoint,
 	ClimateAutomationRuntimeConsumer,
+	ClimateAutomationScope,
 } from '../../../modules/devices/contracts/climate-automation.contract';
 import { ClimateAutomationWriteError } from '../../../modules/devices/contracts/climate-automation.contract';
 import {
@@ -138,7 +139,6 @@ const nativeObjectEvidence: Readonly<{
 jest.setTimeout(30_000);
 
 describe('thermostat persistent ownership and draft configuration', () => {
-	let directory: string;
 	let database: SqliteDataSource;
 	let second: SqliteDataSource;
 	let registry: PropertyCommandAdmissionRegistryService;
@@ -150,6 +150,116 @@ describe('thermostat persistent ownership and draft configuration', () => {
 	let graph: VirtualDependencyGraphService;
 	let pipeline: TestingModule;
 	let backend: StoragePlugin;
+	type FixtureStorageControl = {
+		writes: number;
+		onWrite?: () => Promise<void>;
+		retire?: () => Promise<void>;
+	};
+	let storageControl: FixtureStorageControl;
+	type FixtureSetupWork = {
+		original: Promise<unknown>;
+		completion?: Promise<unknown>;
+	};
+	type FixtureSetup = {
+		retired: boolean;
+		control: FixtureStorageControl;
+		setupWork?: FixtureSetupWork;
+		primaryFailure?: { cause: unknown };
+		retirementFailure?: { cause: Error };
+		retirement?: Promise<void>;
+		directory?: string;
+		database?: SqliteDataSource;
+		second?: SqliteDataSource;
+		pipeline?: TestingModule;
+		ownership?: ClimateAutomationRegistryService;
+		claims?: VirtualThermostatClaimsService;
+		comfort?: VirtualThermostatComfortService;
+		automation?: VirtualThermostatAutomationService;
+	};
+	const requireSetup = (owned: FixtureSetup): void => {
+		if (!owned.retired) return;
+		owned.retirementFailure ??= { cause: new Error('Original thermostat setup retired') };
+		throw owned.retirementFailure.cause;
+	};
+	const isSetupRetirement = (owned: FixtureSetup, cause: unknown): boolean =>
+		owned.retirementFailure !== undefined && cause === owned.retirementFailure.cause;
+	const setupCall = <T>(owned: FixtureSetup, issue: () => Promise<T>, enroll?: (result: T) => void): Promise<T> => {
+		requireSetup(owned);
+		if (owned.setupWork !== undefined) throw new Error('Original setup operation is still owned');
+		let original: Promise<T>;
+		try {
+			original = issue();
+		} catch (cause: unknown) {
+			owned.primaryFailure ??= { cause };
+			throw cause;
+		}
+		const work: FixtureSetupWork = { original };
+		owned.setupWork = work; // Publish SAME original Promise BEFORE the helper's first await.
+		const completion = (async () => {
+			try {
+				let result: T;
+				try {
+					result = await original;
+				} catch (cause: unknown) {
+					owned.primaryFailure ??= { cause };
+					throw cause;
+				}
+				// Cleanup enrollment is permitted after retirement; application/global adoption is not.
+				// This synchronous exact-result record is covered by completion, not a later hook continuation.
+				if (enroll !== undefined) enroll(result);
+				requireSetup(owned);
+				return result;
+			} finally {
+				if (owned.setupWork === work) owned.setupWork = undefined;
+			}
+		})();
+		work.completion = completion;
+		return completion;
+	};
+	const retireSetup = (owned: FixtureSetup): Promise<void> => {
+		if (owned.retirement !== undefined) return owned.retirement;
+		// Publish memoized completion BEFORE retirement/reentry. Never store this Promise as setupWork.
+		owned.retirement = Promise.resolve().then(async () => {
+			const issued = owned.setupWork;
+			let cleanup: { cause: unknown } | undefined;
+			const attempt = async (action: () => void | Promise<void>): Promise<void> => {
+				try {
+					await action();
+				} catch (cause: unknown) {
+					cleanup ??= { cause };
+				}
+			};
+			if (issued !== undefined) {
+				try {
+					if (issued.completion === undefined) throw new Error('Original setup completion was not published');
+					await issued.completion;
+				} catch (cause: unknown) {
+					if (owned.primaryFailure === undefined && !isSetupRetirement(owned, cause)) cleanup ??= { cause };
+				}
+			}
+			// Exact late results are now enrolled, and no next setup operation can issue.
+			await attempt(() => owned.control.retire?.());
+			await attempt(() => owned.automation?.onModuleDestroy());
+			await attempt(() => owned.comfort?.onModuleDestroy());
+			await attempt(() => owned.claims?.onModuleDestroy());
+			await attempt(() => owned.pipeline?.close());
+			await attempt(() => owned.ownership?.onModuleDestroy());
+			await attempt(async () => {
+				if (owned.second?.isInitialized) await owned.second.destroy();
+			});
+			await attempt(async () => {
+				if (owned.database?.isInitialized) await owned.database.destroy();
+			});
+			await attempt(async () => {
+				if (owned.directory !== undefined) await rm(owned.directory, { recursive: true, force: true });
+			});
+			if (owned.primaryFailure !== undefined) throw owned.primaryFailure.cause;
+			if (cleanup !== undefined) throw cleanup.cause;
+		});
+		owned.retired = true;
+		return owned.retirement;
+	};
+	let fixtureSetup: FixtureSetup;
 	let writer: ClimateAutomationWriterService;
 	let ownership: ClimateAutomationRegistryService;
 	let automation: VirtualThermostatAutomationService;
@@ -172,180 +282,474 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			actualComfort,
 		);
 		next.onModuleInit();
-		if (actualRegistry === ownership) automation = next;
+		if (actualRegistry === ownership) {
+			automation = next;
+			if (fixtureSetup.ownership === actualRegistry && !fixtureSetup.retired) fixtureSetup.automation = next;
+		}
 		return next;
 	};
 	beforeEach(async () => {
-		directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-'));
-		const options = {
-			type: 'sqlite' as const,
-			database: join(directory, 'test.sqlite'),
-			entities: [__dirname + '/../../../**/*.entity.ts'],
-		};
-		database = await new SqliteDataSource({ ...options, synchronize: true }).initialize();
-		// Synchronized test schemas omit migration27's installed graph singleton seed.
-		await database.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
-		expect(await database.query('SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"')).toEqual(
-			[{ id: 1, revision: 0 }],
-		);
-		second = await new SqliteDataSource(options).initialize();
-		await database.query('PRAGMA busy_timeout = 5000');
-		await second.query('PRAGMA busy_timeout = 5000');
-		registry = new PropertyCommandAdmissionRegistryService();
-		events = new EventEmitter2();
-		structure = new DeviceStructureLockService();
-		ownership = new ClimateAutomationRegistryService();
-		writer = new ClimateAutomationWriterService(
-			database,
-			structure,
-			ownership,
-			new NestConfigService({ FB_CLI: 'off' }),
-		);
-		graph = new VirtualDependencyGraphService(database, new NestConfigService({ FB_CLI: 'off' }), writer);
-		claims = new VirtualThermostatClaimsService(database, structure, graph, registry, events);
-		pipeline = await Test.createTestingModule({
-			providers: [
-				PropertyValueService,
-				PropertyValueLockService,
-				PropertyValueSourceRegistryService,
-				PropertyProducerRegistryService,
-				StorageService,
-				{ provide: DataSource, useValue: database },
-				{ provide: EventEmitter2, useValue: events },
-				{ provide: NestConfigService, useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
-				{
-					provide: ModuleConfigService,
-					useValue: {
-						getModuleConfig: () =>
-							Object.assign(new StorageConfigModel(), { primaryStorage: 'existing-config-fixture' }),
-					},
+		const control: FixtureStorageControl = { writes: 0 };
+		const owned: FixtureSetup = { retired: false, control };
+		fixtureSetup = owned;
+		storageControl = control;
+		try {
+			const createdDirectory = await setupCall(
+				owned,
+				() => mkdtemp(join(tmpdir(), 'vd2-thermostat-')),
+				(result) => {
+					owned.directory = result;
 				},
-			],
-		}).compile();
-		const storage = pipeline.get(StorageService);
-		const plugin: StoragePlugin = {
-			name: 'existing-config-fixture',
-			initialize: () => Promise.resolve(),
-			destroy: () => Promise.resolve(),
-			isAvailable: () => true,
-			writePoints: () => Promise.resolve(),
-			query: <T>() => Promise.resolve<T[]>([]),
-			queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),
-			registerSchema: () => undefined,
-			dropMeasurement: () => Promise.resolve(),
-			getMeasurements: () => Promise.resolve([]),
-		};
-		backend = plugin;
-		storage.registerPlugin(plugin.name, plugin);
-		values = pipeline.get(PropertyValueService);
-		configs = new VirtualThermostatConfigService(database, structure, graph, claims, events, values, undefined, writer);
-		comfort = new VirtualThermostatComfortService(database, structure, graph, claims, events, writer);
-		registerOriginal();
-		await graph.onApplicationBootstrap();
-		await claims.onApplicationBootstrap();
-		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+			);
+			requireSetup(owned);
+			owned.directory = createdDirectory;
+			const options = {
+				type: 'sqlite' as const,
+				database: join(createdDirectory, 'test.sqlite'),
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+			};
+			const initializingDatabase = new SqliteDataSource({ ...options, synchronize: true });
+			owned.database = initializingDatabase; // Own the exact instance even if initialize rejects partway through.
+			const createdDatabase = await setupCall(
+				owned,
+				() => initializingDatabase.initialize(),
+				(result) => {
+					owned.database = result;
+				},
+			);
+			requireSetup(owned);
+			database = createdDatabase;
+			owned.database = createdDatabase;
+			// Synchronized test schemas omit migration27's installed graph singleton seed.
+			await setupCall(owned, () =>
+				createdDatabase.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)'),
+			);
+			requireSetup(owned);
+			expect(
+				await setupCall(owned, () =>
+					createdDatabase.query('SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"'),
+				),
+			).toEqual([{ id: 1, revision: 0 }]);
+			requireSetup(owned);
+			const initializingSecond = new SqliteDataSource(options);
+			owned.second = initializingSecond;
+			const createdSecond = await setupCall(
+				owned,
+				() => initializingSecond.initialize(),
+				(result) => {
+					owned.second = result;
+				},
+			);
+			requireSetup(owned);
+			second = createdSecond;
+			owned.second = createdSecond;
+			await setupCall(owned, () => createdDatabase.query('PRAGMA busy_timeout = 5000'));
+			requireSetup(owned);
+			await setupCall(owned, () => createdSecond.query('PRAGMA busy_timeout = 5000'));
+			requireSetup(owned);
+			registry = new PropertyCommandAdmissionRegistryService();
+			events = new EventEmitter2();
+			structure = new DeviceStructureLockService();
+			ownership = new ClimateAutomationRegistryService();
+			owned.ownership = ownership;
+			writer = new ClimateAutomationWriterService(
+				database,
+				structure,
+				ownership,
+				new NestConfigService({ FB_CLI: 'off' }),
+			);
+			graph = new VirtualDependencyGraphService(database, new NestConfigService({ FB_CLI: 'off' }), writer);
+			claims = new VirtualThermostatClaimsService(database, structure, graph, registry, events);
+			owned.claims = claims;
+			const ownedEvents = events,
+				ownedStructure = structure,
+				ownedWriter = writer,
+				ownedGraph = graph,
+				ownedClaims = claims;
+			const createdPipeline = await setupCall(
+				owned,
+				() =>
+					Test.createTestingModule({
+						providers: [
+							PropertyValueService,
+							PropertyValueLockService,
+							PropertyValueSourceRegistryService,
+							PropertyProducerRegistryService,
+							StorageService,
+							{ provide: DataSource, useValue: createdDatabase },
+							{ provide: EventEmitter2, useValue: ownedEvents },
+							{
+								provide: NestConfigService,
+								useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }),
+							},
+							{
+								provide: ModuleConfigService,
+								useValue: {
+									getModuleConfig: () =>
+										Object.assign(new StorageConfigModel(), { primaryStorage: 'existing-config-fixture' }),
+								},
+							},
+						],
+					}).compile(),
+				(result) => {
+					owned.pipeline = result;
+				},
+			);
+			requireSetup(owned);
+			pipeline = createdPipeline;
+			owned.pipeline = createdPipeline;
+			const storage = createdPipeline.get(StorageService);
+			const plugin: StoragePlugin = {
+				name: 'existing-config-fixture',
+				initialize: () => Promise.resolve(),
+				destroy: () => Promise.resolve(),
+				isAvailable: () => true,
+				writePoints: () => {
+					control.writes++;
+					const onWrite = control.onWrite;
+					return onWrite === undefined ? Promise.resolve() : onWrite();
+				},
+				query: <T>() => Promise.resolve<T[]>([]),
+				queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),
+				registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(),
+				getMeasurements: () => Promise.resolve([]),
+			};
+			backend = plugin;
+			storage.registerPlugin(plugin.name, plugin);
+			values = createdPipeline.get(PropertyValueService);
+			configs = new VirtualThermostatConfigService(
+				createdDatabase,
+				ownedStructure,
+				ownedGraph,
+				ownedClaims,
+				ownedEvents,
+				values,
+				undefined,
+				ownedWriter,
+			);
+			comfort = new VirtualThermostatComfortService(
+				createdDatabase,
+				ownedStructure,
+				ownedGraph,
+				ownedClaims,
+				ownedEvents,
+				ownedWriter,
+			);
+			owned.comfort = comfort;
+			registerOriginal();
+			await setupCall(owned, () => ownedGraph.onApplicationBootstrap());
+			requireSetup(owned);
+			await setupCall(owned, () => ownedClaims.onApplicationBootstrap());
+			requireSetup(owned);
+			await setupCall(owned, () =>
+				new VirtualThermostatOwnershipSubscriber(createdDatabase, ownedClaims).onApplicationBootstrap(),
+			);
+			requireSetup(owned);
+		} catch (cause: unknown) {
+			if (!isSetupRetirement(owned, cause)) owned.primaryFailure ??= { cause };
+			throw cause;
+		}
 	});
 	afterEach(async () => {
-		automation?.onModuleDestroy();
-		comfort?.onModuleDestroy();
-		claims?.onModuleDestroy();
-		await pipeline?.close();
-		ownership?.onModuleDestroy();
-		if (second?.isInitialized) await second.destroy();
-		if (database?.isInitialized) await database.destroy();
-		await rm(directory, { recursive: true, force: true });
+		// Retire THIS setup before any await, including when no case-control capture was reached.
+		const owned = fixtureSetup;
+		await retireSetup(owned);
 	});
-	const owner = async () => {
-		const id = uuid();
-		await database.getRepository(VirtualDeviceEntity).insert({
-			id,
-			name: 'Thermostat',
-			category: DeviceCategory.THERMOSTAT,
-			enabled: true,
-			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
+	// Affected flows capture this immutable resource set BEFORE their first await. No late global fallback.
+	type FixtureCase = Readonly<{
+		setup: FixtureSetup;
+		database: SqliteDataSource;
+		second: SqliteDataSource;
+		registry: PropertyCommandAdmissionRegistryService;
+		claims: VirtualThermostatClaimsService;
+		configs: VirtualThermostatConfigService;
+		events: EventEmitter2;
+		values: PropertyValueService;
+		structure: DeviceStructureLockService;
+		graph: VirtualDependencyGraphService;
+		pipeline: TestingModule;
+		backend: StoragePlugin;
+		writer: ClimateAutomationWriterService;
+		ownership: ClimateAutomationRegistryService;
+		comfort: VirtualThermostatComfortService;
+		control: FixtureStorageControl;
+		work: {
+			retired: boolean;
+			pending?: Promise<unknown>;
+			flowCleanup?: () => Promise<void>;
+			completion?: Promise<void>;
+		};
+		retire: () => Promise<void>;
+	}>;
+	const requireFixture = (scope: FixtureCase | undefined): void => {
+		if (scope !== undefined && (scope.setup.retired || scope.work.retired))
+			throw new Error('Original captured fixture retired');
+	};
+	const captureFixture = (): FixtureCase => {
+		const setup = fixtureSetup,
+			control = storageControl;
+		if (setup.retired) throw new Error('Original fixture already retired');
+		const work: FixtureCase['work'] = { retired: false };
+		const retire = (): Promise<void> => {
+			if (work.completion !== undefined) return work.completion;
+			// Publish completion before retirement/reentry; the microtask snapshots original issued work only.
+			work.completion = Promise.resolve().then(async () => {
+				const pending = work.pending,
+					cleanup = work.flowCleanup;
+				let primary: { cause: unknown } | undefined, secondary: { cause: unknown } | undefined;
+				try {
+					if (cleanup !== undefined) await cleanup();
+				} catch (cause: unknown) {
+					secondary = { cause };
+				}
+				try {
+					if (pending !== undefined) await pending;
+				} catch (cause: unknown) {
+					primary = { cause };
+				}
+				if (primary !== undefined) throw primary.cause;
+				if (secondary !== undefined) throw secondary.cause;
+			});
+			work.retired = true;
+			return work.completion;
+		};
+		control.retire = retire;
+		return Object.freeze({
+			setup,
+			database,
+			second,
+			registry,
+			claims,
+			configs,
+			events,
+			values,
+			structure,
+			graph,
+			pipeline,
+			backend,
+			writer,
+			ownership,
+			comfort,
+			control,
+			work,
+			retire,
 		});
+	};
+	const startFixtureCall = <T>(scope: FixtureCase | undefined, start: () => Promise<T>): Promise<T> => {
+		requireFixture(scope);
+		if (scope !== undefined && scope.work.pending !== undefined)
+			throw new Error('Overlapping original fixture work cannot replace its owner');
+		const issued = start();
+		if (scope !== undefined) scope.work.pending = issued;
+		return issued; // SAME original application/query Promise, no reaction or replacement here.
+	};
+	const finishFixtureCall = (scope: FixtureCase | undefined, issued: Promise<unknown>): void => {
+		if (scope !== undefined && scope.work.pending === issued) scope.work.pending = undefined;
+	};
+	const fixtureCall = <T>(
+		scope: FixtureCase | undefined,
+		start: () => Promise<T>,
+		retireValue?: (value: T) => void,
+	): Promise<T> => {
+		if (scope === undefined) return start(); // Unrelated default helper calls retain their original await/Promise.
+		const issued = startFixtureCall(scope, start);
+		return (async () => {
+			try {
+				const value = await issued;
+				if ((scope.setup.retired || scope.work.retired) && retireValue !== undefined) retireValue(value);
+				requireFixture(scope);
+				return value;
+			} finally {
+				finishFixtureCall(scope, issued);
+			}
+		})();
+	};
+	const registerCapturedOriginal = (
+		scope: FixtureCase,
+		configurations = scope.configs,
+		actualWriter = scope.writer,
+		actualRegistry = scope.ownership,
+		actualGraph = scope.graph,
+		actualComfort = scope.comfort,
+	): VirtualThermostatAutomationService => {
+		requireFixture(scope);
+		if (actualRegistry === scope.ownership) scope.setup.automation?.onModuleDestroy();
+		const next = new VirtualThermostatAutomationService(
+			actualWriter,
+			actualRegistry,
+			actualGraph,
+			new NestConfigService({ FB_CLI: 'off' }),
+			undefined,
+			configurations,
+			actualComfort,
+		);
+		next.onModuleInit();
+		if (actualRegistry === scope.ownership) {
+			requireFixture(scope);
+			scope.setup.automation = next;
+			automation = next;
+		}
+		return next;
+	};
+	const protectedImage = async (source: SqliteDataSource, scope?: FixtureCase) => {
+		const result: Record<string, unknown[]> = {};
+		for (const table of [
+			'devices_virtual_thermostat_configs',
+			'devices_virtual_thermostat_sources',
+			'devices_virtual_thermostat_actuator_claims',
+			'devices_virtual_thermostat_settings',
+			'devices_virtual_thermostat_member_protection',
+			'devices_virtual_thermostat_cooling_dependencies',
+			'devices_virtual_thermostat_recoveries',
+			'devices_virtual_thermostat_command_journal',
+			'devices_virtual_thermostat_runtime',
+			'devices_virtual_thermostat_branch_runtime',
+			'devices_virtual_thermostat_installations',
+			'devices_virtual_thermostat_installation_audit',
+			'devices_module_devices',
+			'devices_module_channels',
+			'devices_module_channels_properties',
+			'devices_shelly_ng_sample_sources',
+			'devices_virtual_dew_point_configs',
+			'devices_virtual_dew_point_sources',
+			'devices_virtual_transform_configs',
+			'devices_virtual_transform_sources',
+			'devices_virtual_aggregate_configs',
+			'devices_virtual_aggregate_inputs',
+			'devices_virtual_light_group_configs',
+			'devices_virtual_light_group_members',
+			'devices_virtual_light_group_bindings',
+			'devices_module_climate_automation_slots',
+			'devices_module_climate_automation_sources',
+			'devices_virtual_graph_revision',
+		])
+			result[table] = await fixtureCall(scope, () =>
+				source.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`),
+			);
+		return result;
+	};
+	const owner = async (scope?: FixtureCase) => {
+		const source = scope === undefined ? database : scope.database;
+		const id = uuid();
+		await fixtureCall(scope, () =>
+			source.getRepository(VirtualDeviceEntity).insert({
+				id,
+				name: 'Thermostat',
+				category: DeviceCategory.THERMOSTAT,
+				enabled: true,
+				mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
+			}),
+		);
 		return id;
 	};
-	const ambient = async (mode?: VirtualDeviceMode) => {
+	const ambient = async (mode?: VirtualDeviceMode, scope?: FixtureCase) => {
+		const source = scope === undefined ? database : scope.database;
 		const device = uuid(),
 			channel = uuid(),
 			property = uuid();
-		await database.getRepository(mode ? VirtualDeviceEntity : DeviceEntity).insert({
-			id: device,
-			name: 'Room temperature',
-			category: DeviceCategory.SENSOR,
-			enabled: true,
-			...(mode ? { mode } : {}),
-		} as never);
-		await database.getRepository(mode ? VirtualChannelEntity : ChannelEntity).insert({
-			id: channel,
-			name: 'Temperature',
-			identifier: 'temperature',
-			device,
-			category: ChannelCategory.TEMPERATURE,
-		} as never);
-		await database.getRepository(mode ? VirtualChannelPropertyEntity : ChannelPropertyEntity).insert({
-			id: property,
-			channel,
-			identifier: 'temperature',
-			category: PropertyCategory.TEMPERATURE,
-			permissions: [PermissionType.READ_ONLY],
-			dataType: DataTypeType.FLOAT,
-			...(mode ? { valueOrigin: VirtualValueOrigin.DERIVED } : {}),
-		} as never);
+		await fixtureCall(scope, () =>
+			source.getRepository(mode ? VirtualDeviceEntity : DeviceEntity).insert({
+				id: device,
+				name: 'Room temperature',
+				category: DeviceCategory.SENSOR,
+				enabled: true,
+				...(mode ? { mode } : {}),
+			} as never),
+		);
+		await fixtureCall(scope, () =>
+			source.getRepository(mode ? VirtualChannelEntity : ChannelEntity).insert({
+				id: channel,
+				name: 'Temperature',
+				identifier: 'temperature',
+				device,
+				category: ChannelCategory.TEMPERATURE,
+			} as never),
+		);
+		await fixtureCall(scope, () =>
+			source.getRepository(mode ? VirtualChannelPropertyEntity : ChannelPropertyEntity).insert({
+				id: property,
+				channel,
+				identifier: 'temperature',
+				category: PropertyCategory.TEMPERATURE,
+				permissions: [PermissionType.READ_ONLY],
+				dataType: DataTypeType.FLOAT,
+				...(mode ? { valueOrigin: VirtualValueOrigin.DERIVED } : {}),
+			} as never),
+		);
 		return property;
 	};
-	const actuator = async (mac = 'A8032ABE5084') => {
+	const actuator = async (mac = 'A8032ABE5084', scope?: FixtureCase) => {
+		const source = scope === undefined ? database : scope.database;
 		const device = uuid(),
 			channel = uuid(),
 			property = uuid();
-		await database.getRepository(ShellyNgDeviceEntity).insert({
-			id: device,
-			name: '1PM',
-			identifier: 'shellyplus1pm-' + mac.toLowerCase(),
-			category: DeviceCategory.SWITCHER,
-			enabled: true,
-			canonicalMac: mac,
-		});
-		await database.getRepository(ShellyNgChannelEntity).insert({
-			id: channel,
-			name: 'Switch',
-			identifier: 'switch:0',
-			device,
-			category: ChannelCategory.SWITCHER,
-		} as never);
-		await database.getRepository(ShellyNgChannelPropertyEntity).insert({
-			id: property,
-			channel,
-			identifier: 'output',
-			category: PropertyCategory.ON,
-			dataType: DataTypeType.BOOL,
-			permissions: [PermissionType.READ_WRITE],
-		} as never);
+		await fixtureCall(scope, () =>
+			source.getRepository(ShellyNgDeviceEntity).insert({
+				id: device,
+				name: '1PM',
+				identifier: 'shellyplus1pm-' + mac.toLowerCase(),
+				category: DeviceCategory.SWITCHER,
+				enabled: true,
+				canonicalMac: mac,
+			}),
+		);
+		await fixtureCall(scope, () =>
+			source.getRepository(ShellyNgChannelEntity).insert({
+				id: channel,
+				name: 'Switch',
+				identifier: 'switch:0',
+				device,
+				category: ChannelCategory.SWITCHER,
+			} as never),
+		);
+		await fixtureCall(scope, () =>
+			source.getRepository(ShellyNgChannelPropertyEntity).insert({
+				id: property,
+				channel,
+				identifier: 'output',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			} as never),
+		);
 		return property;
 	};
-	const setting = async (controller: string, category: ChannelCategory, propertyCategory: PropertyCategory) => {
+	const setting = async (
+		controller: string,
+		category: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		scope?: FixtureCase,
+	) => {
+		const source = scope === undefined ? database : scope.database;
 		const channel = uuid(),
 			property = uuid();
-		await database
-			.getRepository(VirtualChannelEntity)
-			.insert({ id: channel, name: 'Control', category, device: controller } as never);
-		await database.getRepository(VirtualChannelPropertyEntity).insert({
-			id: property,
-			channel,
-			category: propertyCategory,
-			identifier: propertyCategory,
-			dataType: propertyCategory === PropertyCategory.TEMPERATURE ? DataTypeType.FLOAT : DataTypeType.BOOL,
-			permissions: [PermissionType.READ_ONLY],
-			valueOrigin: VirtualValueOrigin.LOCAL,
-		} as never);
+		await fixtureCall(scope, () =>
+			source
+				.getRepository(VirtualChannelEntity)
+				.insert({ id: channel, name: 'Control', category, device: controller } as never),
+		);
+		await fixtureCall(scope, () =>
+			source.getRepository(VirtualChannelPropertyEntity).insert({
+				id: property,
+				channel,
+				category: propertyCategory,
+				identifier: propertyCategory,
+				dataType: propertyCategory === PropertyCategory.TEMPERATURE ? DataTypeType.FLOAT : DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+				valueOrigin: VirtualValueOrigin.LOCAL,
+			} as never),
+		);
 		return property;
 	};
-	const target = async (id: string, value: boolean | number): Promise<IDevicePropertyData> => {
-		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id },
-			relations: ['channel', 'channel.device'],
-		});
+	const target = async (id: string, value: boolean | number, scope?: FixtureCase): Promise<IDevicePropertyData> => {
+		const source = scope === undefined ? database : scope.database;
+		const property = await fixtureCall(scope, () =>
+			source.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id },
+				relations: ['channel', 'channel.device'],
+			}),
+		);
 		const channel = property.channel as ChannelEntity;
 		return { property, channel, device: channel.device as DeviceEntity, value };
 	};
@@ -1707,7 +2111,21 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(configs.configure(controller, input)).rejects.toThrow('matching its thermostat role');
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(0);
 		expect(await database.manager.count(VirtualThermostatSettingEntity)).toBe(0);
-		await expect(configs.command([await target(arbitrary, true)])).rejects.toThrow('registered');
+		await expect(configs.command([await target(arbitrary, true)])).rejects.toThrow(
+			'Thermostat revision or private initialization changed.',
+		);
+		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(0);
+		expect(await database.manager.count(VirtualThermostatSettingEntity)).toBe(0);
+		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(0);
+		expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
+		// A genuine initialized controller reaches the registered-property predicate; the arbitrary local property stays unbound.
+		const initialized = await configs.configure(controller, dto(sensor, relay));
+		const beforeCommand = await protectedImage(database);
+		await expect(configs.command([await target(arbitrary, true)])).rejects.toThrow(
+			'Only registered unchanged local thermostat settings accept commands.',
+		);
+		expect(await protectedImage(database)).toEqual(beforeCommand);
+		expect((await configs.get(controller)).revision).toBe(initialized.revision);
 	});
 
 	it('retains missing physical identity and unresolved claims after source deletion; remap never promotes a successor', async () => {
@@ -1914,77 +2332,221 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		expect(savedClaim.reason).toBe(priorClaim.reason);
 		expect(savedClaim.releaseEvidence).toBeNull();
 		expect(savedClaim.qualificationGeneration).not.toBe(priorClaim.qualificationGeneration);
+		expect(savedClaim.revision).toBe(priorClaim.revision + 1);
+		expect(savedConfig.revision).toBe(priorConfig.revision + 1);
+		const audit = await second.manager.findOneByOrFail(VirtualThermostatRecoveryEntity, { claimId });
+		expect(audit.claimRevision).toBe(savedClaim.revision);
+		expect(audit.configurationRevision).toBe(savedConfig.revision);
+		expect(await second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId })).toBe(1);
 		expect(() => claims.mintAuthority(claimId, 'on')).toThrow('not admitted');
 		await expect(registry.assertAllowed(await target(restoredProperty, true))).rejects.toThrow('reserved');
 	});
+
+	it.each(['operator', 'disconnection', 'config CAS', 'claim CAS', 'claim overflow', 'config overflow'])(
+		'refuses selected recovery %s boundary without any persisted effect',
+		async (mode) => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				relay = await actuator();
+			const configured = await configs.configure(controller, dto(sensor, relay));
+			const claim = configured.actuators[0];
+			if (mode === 'claim overflow')
+				await database.manager.update(
+					VirtualThermostatActuatorClaimEntity,
+					{ id: claim.id },
+					{ revision: Number.MAX_SAFE_INTEGER },
+				);
+			if (mode === 'config overflow')
+				await database.manager.update(
+					VirtualThermostatConfigEntity,
+					{ controllerId: controller },
+					{ revision: Number.MAX_SAFE_INTEGER },
+				);
+			const configRow = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+				controllerId: controller,
+			});
+			const claimRow = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id });
+			const before = await protectedImage(database);
+			type OriginalRestore = VirtualThermostatConfigService['restoreActuator'];
+			type RestoreArguments = Parameters<OriginalRestore>;
+			type NegativeRestoreArguments = [
+				RestoreArguments[0],
+				RestoreArguments[1],
+				Omit<RestoreArguments[2], 'disconnectionAcknowledged'> & { disconnectionAcknowledged: boolean },
+				RestoreArguments[3],
+			];
+			const restoreReceiver = configs;
+			const restoreMethods: OriginalFunctions<Pick<VirtualThermostatConfigService, 'restoreActuator'>> =
+				restoreReceiver;
+			const originalRestore: Readonly<{
+				call: (
+					receiver: VirtualThermostatConfigService,
+					...args: NegativeRestoreArguments
+				) => ReturnType<OriginalRestore>;
+			}> = restoreMethods.restoreActuator;
+			const restore = originalRestore.call(
+				restoreReceiver,
+				controller,
+				claim.id,
+				{
+					expectedRevision: configRow.revision + (mode === 'config CAS' ? 1 : 0),
+					expectedClaimRevision: claimRow.revision + (mode === 'claim CAS' ? 1 : 0),
+					physicalIdentity: claim.physical_identity,
+					sourcePropertyId: relay,
+					reason: 'Operator verified the original retained physical output',
+					disconnectionAcknowledged: mode !== 'disconnection',
+				},
+				mode === 'operator' ? '' : 'operator',
+			);
+			const message =
+				mode === 'operator' || mode === 'disconnection'
+					? 'An identified operator, disconnection acknowledgement and meaningful reason are required.'
+					: mode === 'claim overflow'
+						? 'Thermostat counter overflow.'
+						: mode === 'config overflow'
+							? 'Thermostat revision or private initialization changed.'
+							: 'Thermostat or claim revision changed; reload the retained reservation.';
+			await expect(restore).rejects.toBeInstanceOf(DevicesValidationException);
+			await expect(restore).rejects.toThrow(message);
+			expect(await protectedImage(database)).toEqual(before);
+			await expect(registry.assertAllowed(await target(relay, true))).rejects.toBeInstanceOf(
+				DevicesValidationException,
+			);
+		},
+	);
 
 	it.each([
 		{ outcome: 'commit', failure: 'post-commit' },
 		{ outcome: 'commit', failure: 'final' },
 		{ outcome: 'validation', failure: 'final' },
 	])('preserves the restore $outcome outcome when the $failure reload fails', async ({ outcome, failure }) => {
-		const controller = await owner();
-		const sensor = await ambient();
-		const relay = await actuator();
-		const configured = await configs.configure(controller, dto(sensor, relay));
+		const scope = captureFixture();
+		const controller = await owner(scope);
+		const sensor = await ambient(undefined, scope);
+		const relay = await actuator(undefined, scope);
+		const configured = await fixtureCall(scope, () => scope.configs.configure(controller, dto(sensor, relay)));
 		const claim = configured.actuators[0];
-		const relayTarget = await target(relay, true);
+		const relayTarget = await target(relay, true, scope);
+		let bodyFailure: { cause: unknown } | undefined;
+		const ownedClaims = scope.claims,
+			ownedManager = scope.database.manager;
+		let restoreFind: (() => void) | undefined = undefined,
+			completion: Promise<void> | undefined;
+		const retire = (): Promise<void> => {
+			if (completion !== undefined) return completion;
+			completion = Promise.resolve().then(async () => {
+				let failure: { cause: unknown } | undefined;
+				const attempt = async (action: () => void | Promise<void>): Promise<void> => {
+					try {
+						await action();
+					} catch (cause: unknown) {
+						failure ??= { cause };
+					}
+				};
+				const issuedMutation = scope.work.pending,
+					issuedRetry = ownedClaims['refreshInFlight'];
+				// Settle the already-issued original restore before restoring its native reader observer.
+				await attempt(async () => {
+					if (issuedMutation !== undefined) await issuedMutation;
+				});
+				await attempt(async () => {
+					if (issuedRetry !== undefined) await issuedRetry;
+				});
+				await attempt(() => ownedClaims.onModuleDestroy());
+				await attempt(() => {
+					restoreFind?.();
+				});
+				await attempt(() => {
+					jest.useRealTimers();
+				});
+				if (failure !== undefined) throw failure.cause;
+			});
+			return completion;
+		};
+		if (scope.work.flowCleanup !== undefined) throw new Error('Original retry cleanup already owned');
+		scope.work.flowCleanup = retire;
 		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
-		const originalFind: typeof database.manager.find = database.manager.find.bind(database.manager);
-		let failRefresh = outcome === 'validation';
-		const refresh = jest.spyOn(database.manager, 'find').mockImplementation(async (...args) => {
-			if (failRefresh && args[0] === VirtualThermostatActuatorClaimEntity) throw new Error('final reload unavailable');
+		const originalFind: typeof scope.database.manager.find = scope.database.manager.find.bind(scope.database.manager);
+		let failRefresh = outcome === 'validation',
+			claimFinds = 0;
+		let finalNotificationFinds: number | undefined;
+		const refresh = jest.spyOn(scope.database.manager, 'find').mockImplementation(async (...args) => {
+			if (args[0] === VirtualThermostatActuatorClaimEntity) {
+				claimFinds++;
+				if (failRefresh) throw new Error('final reload unavailable');
+			}
 			return (await originalFind(...args)) as Record<string, unknown>[];
 		});
+		const installedFind = nativeObjectEvidence.getOwnPropertyDescriptor(ownedManager, 'find');
+		restoreFind = () => {
+			const current = nativeObjectEvidence.getOwnPropertyDescriptor(ownedManager, 'find');
+			if (
+				!installedFind ||
+				!current ||
+				current.value !== installedFind.value ||
+				current.get !== installedFind.get ||
+				current.set !== installedFind.set ||
+				current.writable !== installedFind.writable ||
+				current.enumerable !== installedFind.enumerable ||
+				current.configurable !== installedFind.configurable
+			)
+				throw new Error('Foreign retry find descriptor retained');
+			refresh.mockRestore();
+		};
 		const publicationPhases: Readonly<{ acknowledged: boolean; structural: boolean; connection: boolean }>[] = [];
 		if (outcome === 'commit' && failure === 'post-commit') {
 			const originalPublisherMethods: OriginalFunctions<{
 				publishExistingAcknowledged: VirtualThermostatConfigService['publishExistingAcknowledged'];
-			}> = configs;
+			}> = scope.configs;
 			const originalPublisher = originalPublisherMethods.publishExistingAcknowledged;
-			jest.spyOn(configs, 'publishExistingAcknowledged').mockImplementationOnce((...args) => {
+			jest.spyOn(scope.configs, 'publishExistingAcknowledged').mockImplementationOnce((...args) => {
 				publicationPhases.push(
 					Object.freeze({
-						acknowledged: writer.isExistingPlanAcknowledged(args[1].descriptor),
-						structural: structure.hasCurrentStructuralLease(),
-						connection: hasCurrentSqliteConnectionLease(database),
+						acknowledged: scope.writer.isExistingPlanAcknowledged(args[1].descriptor),
+						structural: scope.structure.hasCurrentStructuralLease(),
+						connection: hasCurrentSqliteConnectionLease(scope.database),
 					}),
 				);
 				failRefresh = true;
-				return originalPublisher.call(configs, ...args);
+				return originalPublisher.call(scope.configs, ...args);
 			});
-			registerOriginal();
+			registerCapturedOriginal(scope);
 		} else if (outcome === 'commit') {
 			const originalPublisherMethods: OriginalFunctions<{
 				publishExistingAcknowledged: VirtualThermostatConfigService['publishExistingAcknowledged'];
-			}> = configs;
+			}> = scope.configs;
 			const originalPublisher = originalPublisherMethods.publishExistingAcknowledged;
-			jest.spyOn(configs, 'publishExistingAcknowledged').mockImplementationOnce((...args) => {
+			jest.spyOn(scope.configs, 'publishExistingAcknowledged').mockImplementationOnce((...args) => {
 				publicationPhases.push(
 					Object.freeze({
-						acknowledged: writer.isExistingPlanAcknowledged(args[1].descriptor),
-						structural: structure.hasCurrentStructuralLease(),
-						connection: hasCurrentSqliteConnectionLease(database),
+						acknowledged: scope.writer.isExistingPlanAcknowledged(args[1].descriptor),
+						structural: scope.structure.hasCurrentStructuralLease(),
+						connection: hasCurrentSqliteConnectionLease(scope.database),
 					}),
 				);
-				return originalPublisher.call(configs, ...args);
+				return originalPublisher.call(scope.configs, ...args);
 			});
-			registerOriginal();
-			events.once(THERMOSTAT_CONFIG_CHANGED, () => (failRefresh = true));
+			registerCapturedOriginal(scope);
+			scope.events.once(THERMOSTAT_CONFIG_CHANGED, () => {
+				finalNotificationFinds = claimFinds;
+				failRefresh = true;
+			});
 		}
 		try {
-			const restore = configs.restoreActuator(
-				controller,
-				claim.id,
-				{
-					expectedRevision: configured.revision + (outcome === 'validation' ? 1 : 0),
-					expectedClaimRevision: claim.revision,
-					physicalIdentity: claim.physical_identity,
-					sourcePropertyId: relay,
-					reason: 'The same physical relay has returned after discovery loss',
-					disconnectionAcknowledged: true,
-				},
-				'operator',
+			const restore = startFixtureCall(scope, () =>
+				scope.configs.restoreActuator(
+					controller,
+					claim.id,
+					{
+						expectedRevision: configured.revision + (outcome === 'validation' ? 1 : 0),
+						expectedClaimRevision: claim.revision,
+						physicalIdentity: claim.physical_identity,
+						sourcePropertyId: relay,
+						reason: 'The same physical relay has returned after discovery loss',
+						disconnectionAcknowledged: true,
+					},
+					'operator',
+				),
 			);
 			if (outcome === 'commit') {
 				await expect(restore).resolves.toMatchObject({ revision: configured.revision + 1, requested_mode: 'off' });
@@ -1992,32 +2554,58 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				await expect(restore).rejects.toBeInstanceOf(DevicesValidationException);
 				await expect(restore).rejects.toThrow('revision changed');
 			}
+			finishFixtureCall(scope, restore);
+			requireFixture(scope);
 			expect(publicationPhases).toEqual(
 				outcome === 'commit' ? [{ acknowledged: true, structural: false, connection: false }] : [],
 			);
 			expect(refresh).toHaveBeenCalled();
-			expect(() => claims.assertAllowed(relayTarget)).toThrow('reconciling');
-			expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
-			expect(jest.getTimerCount()).toBe(1);
-			expect(await second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId: claim.id })).toBe(
-				outcome === 'commit' ? 1 : 0,
-			);
+			const finalHintOnly = outcome === 'commit' && failure === 'final';
+			if (finalHintOnly) {
+				expect(finalNotificationFinds).toBeDefined();
+				expect(claimFinds).toBe(finalNotificationFinds);
+				expect(() => scope.claims.assertAllowed(relayTarget)).toThrow('reserved');
+				expect(jest.getTimerCount()).toBe(0);
+			} else {
+				expect(() => scope.claims.assertAllowed(relayTarget)).toThrow('reconciling');
+				expect(jest.getTimerCount()).toBe(1);
+			}
+			expect(() => scope.claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
 			expect(
-				(await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+				await fixtureCall(scope, () =>
+					scope.second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId: claim.id }),
+				),
+			).toBe(outcome === 'commit' ? 1 : 0);
+			expect(
+				(
+					await fixtureCall(scope, () =>
+						scope.second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }),
+					)
+				).revision,
 			).toBe(configured.revision + (outcome === 'commit' ? 1 : 0));
+			const findsBeforeTimer = claimFinds;
 			failRefresh = false;
-			const retryRefresh = jest.spyOn(claims, 'refresh');
+			requireFixture(scope);
 			await jest.advanceTimersByTimeAsync(1000);
-			expect(retryRefresh).toHaveBeenCalledTimes(1);
-			await (retryRefresh.mock.results[0].value as Promise<void>);
+			requireFixture(scope);
+			const issuedRetry = ownedClaims['refreshInFlight'];
+			if (issuedRetry !== undefined) await issuedRetry;
+			requireFixture(scope);
+			expect(claimFinds).toBe(findsBeforeTimer + (finalHintOnly ? 0 : 1));
 			expect(jest.getTimerCount()).toBe(0);
-			// A successful retry proves the recovery fence was released, including on rollback.
-			expect(() => claims.assertAllowed(relayTarget)).toThrow('reserved');
-		} finally {
-			refresh.mockRestore();
-			claims.onModuleDestroy();
-			jest.useRealTimers();
+			// Real recovery, including rollback, releases the fence; a post-terminal hint never schedules a reread.
+			expect(() => scope.claims.assertAllowed(relayTarget)).toThrow('reserved');
+		} catch (cause: unknown) {
+			bodyFailure = { cause };
 		}
+		let cleanupFailure: { cause: unknown } | undefined;
+		try {
+			await retire();
+		} catch (cause: unknown) {
+			cleanupFailure = { cause };
+		}
+		if (bodyFailure !== undefined) throw bodyFailure.cause;
+		if (cleanupFailure !== undefined) throw cleanupFailure.cause;
 	});
 
 	it('revokes queued ON sends at restore entry and keeps them revoked after rollback or commit', async () => {
@@ -2404,7 +2992,53 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				transformedFloor,
 			]);
 			await expect(customConfigs.preview(controller, input)).rejects.toBeInstanceOf(DevicesValidationException);
-			await expect(customConfigs.configure(controller, input)).rejects.toBeInstanceOf(DevicesValidationException);
+			const beforeMalformedConfigure = await protectedImage(database);
+			const ownedStorage = storageControl;
+			const writesBeforeMalformed = ownedStorage.writes;
+			const native = { businessDml: 0, commitStatements: 0, acknowledged: 0 };
+			const observer = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+					if (event.query === 'COMMIT') native.commitStatements++;
+					if (
+						/^(?:INSERT|UPDATE|DELETE|REPLACE)\b/i.test(event.query) &&
+						event.query !==
+							'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0'
+					)
+						native.businessDml++;
+				},
+				afterTransactionCommit: (): void => {
+					native.acknowledged++;
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				const configure = customConfigs.configure(controller, input);
+				let received: { cause: unknown } | undefined;
+				try {
+					await configure;
+				} catch (cause: unknown) {
+					received = { cause };
+				}
+				expect(received).toBeDefined();
+				expect(received?.cause).toBeInstanceOf(ClimateAutomationWriteError);
+				if (received === undefined) throw new Error('Original malformed NORMALIZE rejection required');
+				if (!(received.cause instanceof ClimateAutomationWriteError)) throw received.cause;
+				const error = received.cause,
+					originalCause: unknown = error.cause;
+				expect(error.commitOutcome).toBe('rolled_back');
+				expect(Object.hasOwn(error, 'cause')).toBe(true);
+				expect(originalCause).toBeInstanceOf(Error);
+				if (!(originalCause instanceof Error)) throw new Error('Plain original projection Error required');
+				expect(originalCause.constructor).toBe(Error);
+				expect(originalCause.message).toBe('Unsupported private thermostat projection');
+				expect(error.cause).toBe(originalCause);
+				expect(native).toEqual({ businessDml: 0, commitStatements: 0, acknowledged: 0 });
+				expect(ownedStorage.writes).toBe(writesBeforeMalformed);
+				await expect(configure).rejects.toBe(error);
+				expect(await protectedImage(database)).toEqual(beforeMalformedConfigure);
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
 			expect(
 				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
 			).toBe(1);
@@ -2544,10 +3178,14 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			expect(
 				await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id }),
 			).toMatchObject({ state: 'releasing', revision: claim.revision, releaseEvidence: null, releasedAt: null });
-			await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow('reserved');
+			await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow(
+				'Actuator ownership is reconciling; retry the command.',
+			);
 			await expect(claims.completeRelease(proof)).rejects.toThrow('Internal release proof');
 			sourceCurrent = true;
 			claims.recordQualification(qualification);
+			await claims.refresh();
+			await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow('reserved');
 			const fresh = claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), {
 				...evidence,
 				qualification: claims.qualification(claim, false),
@@ -2762,13 +3400,10 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				const relay = await actuator();
 				const probe = await createProtectionProbe(database, relay, converted);
 				const readProperty = (id: string) =>
-					database.manager
-						.createQueryBuilder(ChannelPropertyEntity, 'property')
-						.leftJoinAndSelect('property.channel', 'channel')
-						.leftJoinAndSelect('channel.device', 'device')
-						.where('property.id = :id', { id })
-						.callListeners(false)
-						.getOneOrFail();
+					database.manager.findOneOrFail(ChannelPropertyEntity, {
+						where: { id },
+						relations: ['channel', 'channel.device'],
+					});
 				const property = await readProperty(probe.sourceId);
 				const leaf = converted ? await readProperty(probe.physicalId) : property;
 				const transform = await database.manager.findOneBy(VirtualTransformConfigEntity, {
@@ -2941,6 +3576,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				heat = await actuator();
 			const settingId = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE),
 				input = dto(sensor, heat);
+			input.requestedMode = 'heat';
 			input.settings = [{ propertyId: settingId, setting: 'heating_setpoint' }];
 			await configs.configure(controller, input);
 			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
@@ -3045,6 +3681,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			).toBe(slot.manualGeneration);
 		});
 		it('uses actual original ACK and release before a mirror, then refuses later A effects after a real peer changes its parent', async () => {
+			const owned = { configs, second, events, control: storageControl };
 			const controller = await owner(),
 				sensor = await ambient(),
 				heat = await actuator();
@@ -3052,36 +3689,83 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				input = dto(sensor, heat);
 			input.settings = [{ propertyId: settingId, setting: 'heating_setpoint' }];
 			const entered = barrier(),
-				resume = barrier(),
-				original = backend.writePoints;
-			const writes = jest.spyOn(backend, 'writePoints').mockImplementationOnce(async (...args) => {
-				await original.call(backend, ...args);
+				resume = barrier();
+			let retired = false,
+				result: Promise<VirtualThermostatConfigurationModel> | undefined;
+			let completion: Promise<void> | undefined;
+			const retire = (): Promise<void> => {
+				if (completion !== undefined) return completion;
+				// Publish before retirement/reentry; notification entered is never forged by cleanup.
+				completion = Promise.resolve().then(async () => {
+					retired = true;
+					resume.open();
+					const issued = result;
+					if (issued !== undefined) await issued.catch(() => undefined);
+					owned.control.onWrite = undefined;
+				});
+				return completion;
+			};
+			owned.control.retire = retire;
+			owned.control.onWrite = async () => {
+				await Promise.resolve();
 				entered.open();
 				await resume.promise;
-			});
+			};
 			const properties = jest.fn();
-			events.on(EventType.CHANNEL_PROPERTY_UPDATED, properties);
-			const result = configs.configure(controller, input);
-			void result.catch(() => undefined);
+			owned.events.on(EventType.CHANNEL_PROPERTY_UPDATED, properties);
+			const writesBefore = owned.control.writes;
+			let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
 			try {
-				await entered.promise;
+				const issued = owned.configs.configure(controller, input);
+				result = issued;
+				await Promise.race([
+					entered.promise,
+					issued.then(
+						() => {
+							throw new Error('Configure completed without entering the original mirror');
+						},
+						(cause: unknown) => {
+							throw cause;
+						},
+					),
+				]);
+				if (retired) throw new Error('Original mirror fixture retired before peer observation');
 				expect(
-					(await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+					(await owned.second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }))
+						.revision,
 				).toBe(1);
-				await second.query('UPDATE devices_module_devices SET name = ? WHERE id = ?', ['peer B committed', controller]);
+				if (retired) throw new Error('Original mirror fixture retired before peer mutation');
+				await owned.second.query('UPDATE devices_module_devices SET name = ? WHERE id = ?', [
+					'peer B committed',
+					controller,
+				]);
 				resume.open();
-				await expect(result).rejects.toMatchObject({ commitOutcome: 'committed' });
-				expect(writes).toHaveBeenCalledTimes(1);
+				await expect(issued).rejects.toMatchObject({ commitOutcome: 'committed' });
+				if (retired) throw new Error('Original mirror fixture retired before tail reads');
+				expect(owned.control.writes - writesBefore).toBe(1);
 				expect(properties).not.toHaveBeenCalled();
-				expect((await second.manager.findOneByOrFail(DeviceEntity, { id: controller })).name).toBe('peer B committed');
+				expect((await owned.second.manager.findOneByOrFail(DeviceEntity, { id: controller })).name).toBe(
+					'peer B committed',
+				);
 				expect(
-					(await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+					(await owned.second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }))
+						.revision,
 				).toBe(1);
-			} finally {
-				resume.open();
-				await result.catch(() => undefined);
-				writes.mockRestore();
+			} catch (cause: unknown) {
+				primary = { cause };
 			}
+			try {
+				await retire();
+			} catch (cause: unknown) {
+				cleanup = { cause };
+			}
+			try {
+				owned.events.off(EventType.CHANNEL_PROPERTY_UPDATED, properties);
+			} catch (cause: unknown) {
+				cleanup ??= { cause };
+			}
+			if (primary !== undefined) throw primary.cause;
+			if (cleanup !== undefined) throw cleanup.cause;
 		});
 		it('refuses a fixed A response when an independent same-revision configuration mutation commits before B3', async () => {
 			const controller = await owner(),
@@ -3123,43 +3807,143 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			}
 		});
 		it('preserves a native after-ACK primary and performs no mirrors or response capture on that failed return', async () => {
-			const controller = await owner(),
-				sensor = await ambient(),
-				heat = await actuator(),
+			const scope = captureFixture();
+			const owned = scope;
+			const controller = await owner(scope),
+				sensor = await ambient(undefined, scope),
+				heat = await actuator(undefined, scope),
 				input = dto(sensor, heat);
 			const primary = new Error('native after-ACK sentinel');
+			let descriptor: ClimateAutomationScope | undefined;
 			let once = false;
 			const observer = {
-				afterTransactionCommit: () => {
-					if (!once) {
+				afterTransactionCommit: (event: import('typeorm').TransactionCommitEvent): void => {
+					const operation = owned.writer['context'].getStore()?.operation;
+					if (
+						!once &&
+						operation !== undefined &&
+						operation.existingReadonlyProbe !== true &&
+						operation.phase === 'READY_TO_COMMIT' &&
+						operation.mutationEpoch > 0 &&
+						operation.runner === event.queryRunner &&
+						operation.manager === event.manager &&
+						event.connection === owned.database &&
+						operation.receipt?.outcome === 'committed'
+					) {
+						const records = [...operation.issued].flatMap((handle) => {
+							const record = owned.writer['handles'].get(handle)?.existing;
+							return record === undefined ? [] : [record];
+						});
+						const record = records[0];
+						if (
+							records.length !== 1 ||
+							!record ||
+							record.operation !== operation ||
+							record.input.controllerId !== controller ||
+							record.input.kind !== 'configure-existing:v1'
+						)
+							return;
+						descriptor = record.plan.descriptor;
 						once = true;
 						throw primary;
 					}
 				},
 			};
-			database.subscribers.push(observer);
-			let preciseOriginalView1: OriginalFunctions<typeof values>;
-			const original = ((preciseOriginalView1 = values), preciseOriginalView1.captureDiagnosticSamples);
-			const capture = jest
-				.spyOn(values, 'captureDiagnosticSamples')
-				.mockImplementation((...args) => original.call(values, ...args));
-			registerOriginal();
-			const write = jest.spyOn(backend, 'writePoints');
-			try {
-				await expect(configs.configure(controller, input)).rejects.toMatchObject({
-					commitOutcome: 'committed',
-					cause: primary,
+			let issued: ReturnType<VirtualThermostatConfigService['configure']> | undefined;
+			let restoreCapture: (() => void) | undefined = undefined,
+				completion: Promise<void> | undefined;
+			const retire = (): Promise<void> => {
+				if (completion !== undefined) return completion;
+				completion = Promise.resolve().then(async () => {
+					let failure: { cause: unknown } | undefined;
+					const attempt = async (action: () => void | Promise<void>): Promise<void> => {
+						try {
+							await action();
+						} catch (cause: unknown) {
+							failure ??= { cause };
+						}
+					};
+					const pending = issued;
+					await attempt(async () => {
+						if (pending !== undefined) await pending.catch(() => undefined);
+					});
+					await attempt(() => {
+						restoreCapture?.();
+					});
+					await attempt(() => {
+						const index = owned.database.subscribers.indexOf(observer);
+						if (index >= 0) owned.database.subscribers.splice(index, 1);
+					});
+					if (failure !== undefined) throw failure.cause;
 				});
-				expect(
-					(await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
-				).toBe(1);
-				expect(capture).not.toHaveBeenCalled();
-				expect(write).not.toHaveBeenCalled();
-			} finally {
+				return completion;
+			};
+			if (scope.work.flowCleanup !== undefined) throw new Error('Original native D cleanup already owned');
+			scope.work.flowCleanup = retire;
+			owned.database.subscribers.push(observer);
+			let preciseOriginalView1: OriginalFunctions<typeof owned.values>;
+			const original = ((preciseOriginalView1 = owned.values), preciseOriginalView1.captureDiagnosticSamples);
+			// Existing NEGATIVE tripwire only: never a successful sample/guard authority, never called on this D-failure path.
+			const capture = jest
+				.spyOn(owned.values, 'captureDiagnosticSamples')
+				.mockImplementation((...args) => original.call(owned.values, ...args));
+			const installedCapture = nativeObjectEvidence.getOwnPropertyDescriptor(owned.values, 'captureDiagnosticSamples');
+			restoreCapture = () => {
+				const current = nativeObjectEvidence.getOwnPropertyDescriptor(owned.values, 'captureDiagnosticSamples');
+				if (
+					!installedCapture ||
+					!current ||
+					current.value !== installedCapture.value ||
+					current.get !== installedCapture.get ||
+					current.set !== installedCapture.set ||
+					current.writable !== installedCapture.writable ||
+					current.enumerable !== installedCapture.enumerable ||
+					current.configurable !== installedCapture.configurable
+				)
+					throw new Error('Foreign diagnostic tripwire descriptor retained');
 				capture.mockRestore();
-				write.mockRestore();
-				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			};
+			registerCapturedOriginal(scope);
+			const writesBefore = owned.control.writes;
+			let bodyFailure: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+			try {
+				issued = startFixtureCall(scope, () => owned.configs.configure(controller, input));
+				let received: { cause: unknown } | undefined;
+				try {
+					await issued;
+				} catch (cause: unknown) {
+					received = { cause };
+				}
+				finishFixtureCall(scope, issued);
+				if (received === undefined) throw new Error('Original configure rejection required');
+				if (!(received.cause instanceof ClimateAutomationWriteError)) throw received.cause;
+				const error = received.cause;
+				expect(error).toBeInstanceOf(ClimateAutomationWriteError);
+				expect(error.commitOutcome).toBe('committed');
+				expect(error.cause).toBe(primary);
+				requireFixture(scope);
+				expect(
+					(
+						await fixtureCall(scope, () =>
+							owned.second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }),
+						)
+					).revision,
+				).toBe(1);
+				expect(once).toBe(true);
+				expect(capture).not.toHaveBeenCalled();
+				expect(owned.control.writes).toBe(writesBefore);
+				if (descriptor === undefined) throw new Error('Original mutating D descriptor required');
+				expect(owned.configs['existingResponses'].has(descriptor)).toBe(false);
+			} catch (cause: unknown) {
+				bodyFailure = { cause };
 			}
+			try {
+				await retire();
+			} catch (cause: unknown) {
+				cleanupFailure = { cause };
+			}
+			if (bodyFailure !== undefined) throw bodyFailure.cause;
+			if (cleanupFailure !== undefined) throw cleanupFailure.cause;
 		});
 		it('restores a removed setting to read-only while retaining the native catalog and advancing only the actual structural delta', async () => {
 			const controller = await owner(),
@@ -3371,99 +4155,292 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		});
 
 		// BEGIN original clock-owner correction drafts (UNRUN)
-		const activeClock = async () => {
-			const controller = await owner(),
-				sensor = await ambient(),
-				heat = await actuator();
-			const first = await configs.configure(controller, dto(sensor, heat));
-			const definition = await comfort.configure(
-				controller,
-				{ expected_revision: first.revision, expected_graph_revision: first.graph_revision },
-				{
-					heating_range: { minimum: 10, maximum: 30 },
-					cooling_range: null,
-					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
-				},
+		const activeClock = async (scope: FixtureCase = captureFixture()) => {
+			const controller = await owner(scope),
+				sensor = await ambient(undefined, scope),
+				heat = await actuator(undefined, scope);
+			const first = await fixtureCall(scope, () => scope.configs.configure(controller, dto(sensor, heat)));
+			const definition = await fixtureCall(scope, () =>
+				scope.comfort.configure(
+					controller,
+					{ expected_revision: first.revision, expected_graph_revision: first.graph_revision },
+					{
+						heating_range: { minimum: 10, maximum: 30 },
+						cooling_range: null,
+						presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+					},
+				),
 			);
-			const created = await comfort.override(
-				controller,
-				{ expected_revision: definition.revision, expected_graph_revision: definition.graph_revision },
-				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
-				'original-clock-owner',
+			const created = await fixtureCall(scope, () =>
+				scope.comfort.override(
+					controller,
+					{ expected_revision: definition.revision, expected_graph_revision: definition.graph_revision },
+					{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+					'original-clock-owner',
+				),
 			);
 			return { controller, created };
 		};
 		// BEGIN lint397 malformed persisted timestamp drafts (UNRUN; cold genuine owners)
-		const coldClockRead = async (controllerId: string): Promise<boolean> => {
+		const coldClockRead = async (
+			controllerId: string,
+			recover = false,
+			scope: FixtureCase = captureFixture(),
+		): Promise<boolean> => {
+			requireFixture(scope);
+			const ownedDatabase = scope.database,
+				ownedValues = scope.values,
+				ownedEvents = scope.events;
 			const coldStructure = new DeviceStructureLockService();
 			const coldRegistry = new ClimateAutomationRegistryService();
 			const coldWriter = new ClimateAutomationWriterService(
-				database,
+				ownedDatabase,
 				coldStructure,
 				coldRegistry,
 				new NestConfigService({ FB_CLI: 'off' }),
 			);
 			const coldGraph = new VirtualDependencyGraphService(
-				database,
+				ownedDatabase,
 				new NestConfigService({ FB_CLI: 'off' }),
 				coldWriter,
 			);
 			const coldClaims = new VirtualThermostatClaimsService(
-				database,
+				ownedDatabase,
 				coldStructure,
 				coldGraph,
 				new PropertyCommandAdmissionRegistryService(),
-				events,
+				ownedEvents,
 			);
 			const coldConfigs = new VirtualThermostatConfigService(
-				database,
+				ownedDatabase,
 				coldStructure,
 				coldGraph,
 				coldClaims,
-				events,
-				values,
+				ownedEvents,
+				ownedValues,
 				undefined,
 				coldWriter,
 			);
 			const coldComfort = new VirtualThermostatComfortService(
-				database,
+				ownedDatabase,
 				coldStructure,
 				coldGraph,
 				coldClaims,
-				events,
+				ownedEvents,
 				coldWriter,
 			);
-			const coldAutomation = registerOriginal(coldConfigs, coldWriter, coldRegistry, coldGraph, coldComfort);
-			try {
-				await coldGraph.onApplicationBootstrap();
-				await coldClaims.onApplicationBootstrap();
-				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-				const intent = await coldComfort.readIntentInManager(database.manager, row);
+			let coldAutomation: VirtualThermostatAutomationService | undefined;
+			let issuedBootstrap: Promise<void> | undefined, issuedSettlement: Promise<void> | undefined;
+			let retired = false,
+				completion: Promise<void> | undefined;
+			const retire = (): Promise<void> => {
+				if (completion !== undefined) return completion;
+				completion = Promise.resolve().then(async () => {
+					retired = true;
+					const bootstrap = issuedBootstrap,
+						settlement = issuedSettlement;
+					let failure: { cause: unknown } | undefined;
+					const attempt = async (action: () => void | Promise<void>): Promise<void> => {
+						try {
+							await action();
+						} catch (cause: unknown) {
+							failure ??= { cause };
+						}
+					};
+					await attempt(() => coldAutomation?.onModuleDestroy());
+					await attempt(() => coldComfort.onModuleDestroy());
+					await attempt(() => coldClaims.onModuleDestroy());
+					await attempt(async () => {
+						if (bootstrap !== undefined) await bootstrap.catch(() => undefined);
+					});
+					await attempt(async () => {
+						if (settlement !== undefined) await settlement.catch(() => undefined);
+					});
+					await attempt(() => coldRegistry.onModuleDestroy());
+					if (failure !== undefined) throw failure.cause;
+				});
+				return completion;
+			};
+			if (scope.work.flowCleanup !== undefined) throw new Error('Original cold cleanup already owned');
+			scope.work.flowCleanup = retire;
+			const requireLive = (): void => {
+				requireFixture(scope);
+				if (retired) throw new Error('Original cold fixture retired');
+			};
+			const read = async (): Promise<boolean> => {
+				coldAutomation = registerCapturedOriginal(scope, coldConfigs, coldWriter, coldRegistry, coldGraph, coldComfort);
+				issuedBootstrap = startFixtureCall(scope, () => coldGraph.onApplicationBootstrap());
 				try {
-					return intent.isOverrideCurrent();
+					await issuedBootstrap;
+				} finally {
+					finishFixtureCall(scope, issuedBootstrap);
+				}
+				requireLive();
+				issuedBootstrap = startFixtureCall(scope, () => coldClaims.onApplicationBootstrap());
+				try {
+					await issuedBootstrap;
+				} finally {
+					finishFixtureCall(scope, issuedBootstrap);
+				}
+				requireLive();
+				const beforeCold = recover ? await protectedImage(ownedDatabase, scope) : undefined;
+				const row = await fixtureCall(scope, () =>
+					ownedDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId }),
+				);
+				requireLive();
+				const intent = await fixtureCall(
+					scope,
+					() => coldComfort.readIntentInManager(ownedDatabase.manager, row),
+					(intent) => intent.close(),
+				);
+				let initial: boolean;
+				try {
+					requireLive();
+					initial = intent.isOverrideCurrent();
 				} finally {
 					intent.close();
 				}
-			} finally {
-				coldAutomation.onModuleDestroy();
-				coldComfort.onModuleDestroy();
-				coldClaims.onModuleDestroy();
-				coldRegistry.onModuleDestroy();
+				if (!recover) return initial;
+				expect(initial).toBe(false);
+				expect(coldWriter['existingClockLeases'].get(controllerId)).toBeUndefined();
+				const originalOverride = row.comfort?.temporary_override;
+				if (
+					beforeCold === undefined ||
+					!originalOverride ||
+					typeof originalOverride.expires_at !== 'string' ||
+					typeof originalOverride.original_duration_ms !== 'number' ||
+					typeof originalOverride.wall_watermark_ms !== 'number'
+				)
+					throw new Error('Original persisted bounded active lifetime required');
+				expect(await protectedImage(ownedDatabase, scope)).toEqual(beforeCold);
+				requireLive();
+				const startWall = Date.now(),
+					startMono = performance.now();
+				issuedSettlement = startFixtureCall(scope, () => coldComfort.settle(controllerId));
+				try {
+					await issuedSettlement;
+				} finally {
+					finishFixtureCall(scope, issuedSettlement);
+				}
+				requireLive();
+				const endWall = Date.now(),
+					endMono = performance.now();
+				const installed = coldWriter['existingClockLeases'].get(controllerId);
+				if (!installed) throw new Error('Genuine cold ACK/response must install its original lifetime');
+				expect(installed.id).toBe(originalOverride.id);
+				expect(installed.deadline).toBeGreaterThanOrEqual(
+					startMono +
+						Math.max(
+							0,
+							Math.min(originalOverride.original_duration_ms, Date.parse(originalOverride.expires_at) - endWall),
+						),
+				);
+				expect(installed.deadline).toBeLessThanOrEqual(
+					endMono +
+						Math.max(
+							0,
+							Math.min(originalOverride.original_duration_ms, Date.parse(originalOverride.expires_at) - startWall),
+						),
+				);
+				const afterRow = await fixtureCall(scope, () =>
+					ownedDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId }),
+				);
+				const afterOverride = afterRow.comfort?.temporary_override;
+				if (!afterOverride || typeof afterOverride.wall_watermark_ms !== 'number')
+					throw new Error('Original cold recovery watermark required');
+				expect(afterOverride).toEqual({ ...originalOverride, wall_watermark_ms: afterOverride.wall_watermark_ms });
+				expect(afterOverride.wall_watermark_ms).toBeGreaterThanOrEqual(originalOverride.wall_watermark_ms);
+				expect(afterOverride.wall_watermark_ms).toBeGreaterThanOrEqual(startWall);
+				expect(afterOverride.wall_watermark_ms).toBeLessThanOrEqual(endWall);
+				expect(afterRow).toEqual({
+					...row,
+					comfort: { ...row.comfort, temporary_override: afterOverride },
+				});
+				const { devices_virtual_thermostat_configs: beforeConfigs, ...beforeOther } = beforeCold;
+				const afterCold = await protectedImage(ownedDatabase, scope);
+				const { devices_virtual_thermostat_configs: afterConfigs, ...afterOther } = afterCold;
+				expect(beforeConfigs).toHaveLength(1);
+				expect(afterConfigs).toHaveLength(1);
+				const rawBefore: unknown = beforeConfigs[0],
+					rawAfter: unknown = afterConfigs[0];
+				if (
+					!rawBefore ||
+					typeof rawBefore !== 'object' ||
+					Array.isArray(rawBefore) ||
+					!rawAfter ||
+					typeof rawAfter !== 'object' ||
+					Array.isArray(rawAfter)
+				)
+					throw new Error('Original complete native configuration rows required');
+				const rawFields: Readonly<{ get: (row: object, key: string) => unknown }> = Reflect;
+				const beforeRawComfort = rawFields.get(rawBefore, 'comfort');
+				if (typeof beforeRawComfort !== 'string') throw new Error('Original native comfort JSON required');
+				const rawComfort: unknown = JSON.parse(beforeRawComfort);
+				if (!rawComfort || typeof rawComfort !== 'object' || Array.isArray(rawComfort))
+					throw new Error('Original raw comfort object required');
+				// Exact serialization premise rejects whitespace/order/duplicate-key loss instead of normalizing it away.
+				expect(JSON.stringify(rawComfort)).toBe(beforeRawComfort);
+				expect(rawComfort).toEqual(row.comfort);
+				const rawOverride = rawFields.get(rawComfort, 'temporary_override');
+				if (!rawOverride || typeof rawOverride !== 'object' || Array.isArray(rawOverride))
+					throw new Error('Original raw override object required');
+				expect(rawOverride).toEqual(originalOverride);
+				expect(rawFields.get(rawOverride, 'wall_watermark_ms')).toBe(originalOverride.wall_watermark_ms);
+				// Only the already independently bounded hydrated watermark may replace its original raw token.
+				const expectedRawComfort = JSON.stringify({
+					...rawComfort,
+					temporary_override: { ...rawOverride, wall_watermark_ms: afterOverride.wall_watermark_ms },
+				});
+				expect(rawFields.get(rawAfter, 'comfort')).toBe(expectedRawComfort);
+				expect(Object.keys(rawAfter)).toEqual(Object.keys(rawBefore));
+				expect(rawAfter).toStrictEqual({ ...rawBefore, comfort: expectedRawComfort });
+				expect(afterOther).toEqual(beforeOther);
+				requireLive();
+				const recovered = await fixtureCall(
+					scope,
+					() => coldComfort.readIntentInManager(ownedDatabase.manager, afterRow),
+					(intent) => intent.close(),
+				);
+				try {
+					requireLive();
+					return recovered.isOverrideCurrent();
+				} finally {
+					recovered.close();
+				}
+			};
+			let result: boolean | undefined;
+			let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+			try {
+				result = await read();
+			} catch (cause: unknown) {
+				primary = { cause };
 			}
+			try {
+				await retire();
+			} catch (cause: unknown) {
+				cleanup = { cause };
+			}
+			if (scope.work.flowCleanup === retire) scope.work.flowCleanup = undefined;
+			if (primary !== undefined) throw primary.cause;
+			if (cleanup !== undefined) throw cleanup.cause;
+			if (result === undefined) throw new Error('Original cold read result required');
+			return result;
 		};
 		it('preserves a valid future timestamp string under a genuinely cold original writer and provider', async () => {
-			const { controller } = await activeClock();
-			const before = await whole();
-			expect(await coldClockRead(controller)).toBe(true);
-			expect(await whole()).toEqual(before);
+			const scope = captureFixture();
+			const { controller } = await activeClock(scope);
+			expect(await coldClockRead(controller, true, scope)).toBe(true);
 		});
 		it.each(['created_at', 'expires_at'] satisfies readonly ('created_at' | 'expires_at')[])(
 			'refuses malformed persisted %s in a cold original owner without changing same-incarnation rows',
 			async (field) => {
-				const { controller } = await activeClock();
-				const original = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
-					controllerId: controller,
-				});
+				const scope = captureFixture();
+				const { controller } = await activeClock(scope);
+				const original = await fixtureCall(scope, () =>
+					scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+						controllerId: controller,
+					}),
+				);
 				if (!original.comfort?.temporary_override) throw new Error('Actual persisted active override required');
 				const values: readonly unknown[] = [
 					Date.parse(original.comfort.temporary_override[field]),
@@ -3472,21 +4449,28 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				];
 				for (const value of values) {
 					// Complete stored JSON bypasses no authority: it is malformed data to be refused.
-					await second.query('UPDATE "devices_virtual_thermostat_configs" SET "comfort" = ? WHERE "controllerId" = ?', [
-						JSON.stringify({
-							...original.comfort,
-							temporary_override: { ...original.comfort.temporary_override, [field]: value },
+					await fixtureCall(scope, () =>
+						scope.second.query(
+							'UPDATE "devices_virtual_thermostat_configs" SET "comfort" = ? WHERE "controllerId" = ?',
+							[
+								JSON.stringify({
+									...original.comfort,
+									temporary_override: { ...original.comfort.temporary_override, [field]: value },
+								}),
+								controller,
+							],
+						),
+					);
+					const peer = await fixtureCall(scope, () =>
+						scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+							controllerId: controller,
 						}),
-						controller,
-					]);
-					const peer = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
-						controllerId: controller,
-					});
+					);
 					expect(peer.revision).toBe(original.revision);
 					expect(peer.comfort?.temporary_override?.id).toBe(original.comfort.temporary_override.id);
-					const before = await whole();
-					expect(await coldClockRead(controller)).toBe(false);
-					expect(await whole()).toEqual(before);
+					const before = await protectedImage(scope.database, scope);
+					expect(await coldClockRead(controller, false, scope)).toBe(false);
+					expect(await protectedImage(scope.database, scope)).toEqual(before);
 				}
 			},
 		);
@@ -3670,78 +4654,160 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		});
 
 		// BEGIN enabled-lock clock-admission regression drafts (UNRUN)
-		const enableRealMirrorLocks = async (): Promise<void> => {
-			// Replace the fixture-owned false-mode DI assembly, not a readonly flag or lock implementation.
-			automation.onModuleDestroy();
-			comfort.onModuleDestroy();
-			await pipeline.close();
-			pipeline = await Test.createTestingModule({
-				providers: [
-					PropertyValueService,
-					PropertyValueLockService,
-					PropertyValueSourceRegistryService,
-					PropertyProducerRegistryService,
-					StorageService,
-					{ provide: DataSource, useValue: database },
-					{ provide: EventEmitter2, useValue: events },
-					{ provide: NestConfigService, useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }) },
-					{
-						provide: ModuleConfigService,
-						useValue: {
-							getModuleConfig: () =>
-								Object.assign(new StorageConfigModel(), { primaryStorage: 'enabled-lock-clock-fixture' }),
+		const enableRealMirrorLocks = async (scope: FixtureCase): Promise<FixtureCase> => {
+			// Replace only THIS setup's false-mode assembly; late completion cannot install into a successor.
+			requireFixture(scope);
+			const owned = scope.setup,
+				originalPipeline = scope.pipeline;
+			let issuedCompilation: Promise<TestingModule> | undefined = undefined;
+			let replacement: TestingModule | undefined;
+			let adopted = false;
+			let completion: Promise<void> | undefined;
+			const retire = (): Promise<void> => {
+				if (completion !== undefined) return completion;
+				completion = Promise.resolve().then(async () => {
+					const issued = issuedCompilation;
+					let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+					if (issued !== undefined) {
+						try {
+							replacement = await issued;
+						} catch (cause: unknown) {
+							primary = { cause };
+						}
+					}
+					if (!adopted && replacement !== undefined) {
+						try {
+							await replacement.close();
+						} catch (cause: unknown) {
+							cleanup = { cause };
+						}
+					}
+					if (primary !== undefined) throw primary.cause;
+					if (cleanup !== undefined) throw cleanup.cause;
+				});
+				return completion;
+			};
+			if (scope.work.flowCleanup !== undefined) throw new Error('Original enabled-lock cleanup already owned');
+			scope.work.flowCleanup = retire;
+			scope.setup.automation?.onModuleDestroy();
+			scope.comfort.onModuleDestroy();
+			await fixtureCall(scope, () => {
+				if (owned.pipeline !== originalPipeline) throw new Error('Original enabled-lock module ownership changed');
+				owned.pipeline = undefined;
+				return originalPipeline.close();
+			});
+			if (owned.retired) throw new Error('Original enabled-lock setup retired');
+			issuedCompilation = startFixtureCall(scope, () =>
+				Test.createTestingModule({
+					providers: [
+						PropertyValueService,
+						PropertyValueLockService,
+						PropertyValueSourceRegistryService,
+						PropertyProducerRegistryService,
+						StorageService,
+						{ provide: DataSource, useValue: scope.database },
+						{ provide: EventEmitter2, useValue: scope.events },
+						{ provide: NestConfigService, useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }) },
+						{
+							provide: ModuleConfigService,
+							useValue: {
+								getModuleConfig: () =>
+									Object.assign(new StorageConfigModel(), { primaryStorage: 'enabled-lock-clock-fixture' }),
+							},
 						},
-					},
-				],
-			}).compile();
+					],
+				}).compile(),
+			);
+			let createdPipeline: TestingModule;
+			try {
+				createdPipeline = await issuedCompilation;
+				replacement = createdPipeline;
+			} finally {
+				finishFixtureCall(scope, issuedCompilation);
+			}
+			if (owned.retired || scope.work.retired) {
+				await retire();
+				throw new Error('Original enabled-lock setup retired');
+			}
+			requireFixture(scope);
+			owned.pipeline = createdPipeline;
+			adopted = true;
+			pipeline = createdPipeline;
+			const control: FixtureStorageControl = { writes: 0, retire: scope.retire };
+			owned.control = control;
+			storageControl = control;
 			const plugin: StoragePlugin = {
 				name: 'enabled-lock-clock-fixture',
 				initialize: () => Promise.resolve(),
 				destroy: () => Promise.resolve(),
 				isAvailable: () => true,
-				writePoints: () => Promise.resolve(),
+				writePoints: () => {
+					control.writes++;
+					const onWrite = control.onWrite;
+					return onWrite === undefined ? Promise.resolve() : onWrite();
+				},
 				query: <T>() => Promise.resolve<T[]>([]),
 				queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),
 				registerSchema: () => undefined,
 				dropMeasurement: () => Promise.resolve(),
 				getMeasurements: () => Promise.resolve([]),
 			};
-			backend = plugin;
-			pipeline.get(StorageService).registerPlugin(plugin.name, plugin);
-			values = pipeline.get(PropertyValueService);
-			configs = new VirtualThermostatConfigService(
-				database,
-				structure,
-				graph,
-				claims,
-				events,
-				values,
+			createdPipeline.get(StorageService).registerPlugin(plugin.name, plugin);
+			const createdValues = createdPipeline.get(PropertyValueService);
+			const createdConfigs = new VirtualThermostatConfigService(
+				scope.database,
+				scope.structure,
+				scope.graph,
+				scope.claims,
+				scope.events,
+				createdValues,
 				undefined,
-				writer,
+				scope.writer,
 			);
-			comfort = new VirtualThermostatComfortService(database, structure, graph, claims, events, writer);
-			expect(pipeline.get(PropertyValueLockService).isEnabled()).toBe(true);
-			registerOriginal();
+			const createdComfort = new VirtualThermostatComfortService(
+				scope.database,
+				scope.structure,
+				scope.graph,
+				scope.claims,
+				scope.events,
+				scope.writer,
+			);
+			requireFixture(scope);
+			owned.comfort = createdComfort;
+			backend = plugin;
+			values = createdValues;
+			configs = createdConfigs;
+			comfort = createdComfort;
+			const enabled = Object.freeze({
+				...scope,
+				pipeline: createdPipeline,
+				backend: plugin,
+				values: createdValues,
+				configs: createdConfigs,
+				comfort: createdComfort,
+				control,
+			});
+			expect(createdPipeline.get(PropertyValueLockService).isEnabled()).toBe(true);
+			registerCapturedOriginal(enabled);
+			return enabled;
 		};
 		it.each([false, true])(
 			'seals fixed A after real enabled mirror lock INSERT/DELETE with active override=%s and still closes on a later native write',
 			async (active) => {
-				await enableRealMirrorLocks();
-				const controller = await owner(),
-					sensor = await ambient(),
-					heat = await actuator();
-				const settingId = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE),
+				const captured = captureFixture();
+				const scope = await enableRealMirrorLocks(captured);
+				requireFixture(scope);
+				const controller = await owner(scope),
+					sensor = await ambient(undefined, scope),
+					heat = await actuator(undefined, scope);
+				const settingId = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, scope),
 					input = dto(sensor, heat);
 				input.settings = [{ propertyId: settingId, setting: 'heating_setpoint' }];
 				const captures: NonNullable<ReturnType<ClimateAutomationWriterService['existingOverrideLeaseForPlan']>>[] = [];
-				let preciseOriginalView4: OriginalFunctions<typeof writer>;
-				const originalLease = ((preciseOriginalView4 = writer), preciseOriginalView4.existingOverrideLeaseForPlan);
-				const capture = jest.spyOn(writer, 'existingOverrideLeaseForPlan').mockImplementation((descriptor) => {
-					const lease = originalLease.call(writer, descriptor);
-					if (lease) captures.push(lease);
-					return lease;
-				});
-				registerOriginal();
+				let preciseOriginalView4: OriginalFunctions<typeof scope.writer>;
+				const originalLease =
+					((preciseOriginalView4 = scope.writer), preciseOriginalView4.existingOverrideLeaseForPlan);
+
 				const writes: { query: string; parameters: readonly unknown[] }[] = [];
 				const observer = {
 					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
@@ -3751,53 +4817,137 @@ describe('thermostat persistent ownership and draft configuration', () => {
 						}
 					},
 				};
-				database.subscribers.push(observer);
-				const submitted = jest.spyOn(backend, 'writePoints');
+				const submitted = scope.control;
+				let installedLease: PropertyDescriptor | undefined;
+				let restoreCapture: (() => void) | undefined;
+				let completion: Promise<void> | undefined;
+				const precedingCleanup = scope.work.flowCleanup;
+				const retire = (): Promise<void> => {
+					if (completion !== undefined) return completion;
+					completion = Promise.resolve().then(async () => {
+						const pending = scope.work.pending;
+						let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+						try {
+							scope.setup.automation?.onModuleDestroy();
+						} catch (cause: unknown) {
+							cleanup = { cause };
+						}
+						try {
+							scope.comfort.onModuleDestroy();
+						} catch (cause: unknown) {
+							if (cleanup === undefined) cleanup = { cause };
+						}
+						try {
+							if (pending !== undefined) await pending;
+						} catch (cause: unknown) {
+							primary = { cause };
+						}
+						try {
+							const current = Object.getOwnPropertyDescriptor(scope.writer, 'existingOverrideLeaseForPlan');
+							if (
+								restoreCapture !== undefined &&
+								(!installedLease ||
+									!current ||
+									current.value !== installedLease.value ||
+									current.writable !== installedLease.writable ||
+									current.enumerable !== installedLease.enumerable ||
+									current.configurable !== installedLease.configurable ||
+									current.get !== installedLease.get ||
+									current.set !== installedLease.set)
+							)
+								throw new Error('Foreign original enabled-lock lease descriptor retained');
+							if (restoreCapture !== undefined) restoreCapture();
+						} catch (cause: unknown) {
+							if (cleanup === undefined) cleanup = { cause };
+						}
+						try {
+							const index = scope.database.subscribers.indexOf(observer);
+							if (index >= 0) scope.database.subscribers.splice(index, 1);
+						} catch (cause: unknown) {
+							if (cleanup === undefined) cleanup = { cause };
+						}
+						try {
+							if (precedingCleanup !== undefined) await precedingCleanup();
+						} catch (cause: unknown) {
+							if (cleanup === undefined) cleanup = { cause };
+						}
+						if (primary !== undefined) throw primary.cause;
+						if (cleanup !== undefined) throw cleanup.cause;
+					});
+					return completion;
+				};
+				scope.work.flowCleanup = retire;
+				let body: { cause: unknown } | undefined;
 				try {
-					const first = await configs.configure(controller, input);
+					const capture = jest.spyOn(scope.writer, 'existingOverrideLeaseForPlan').mockImplementation((descriptor) => {
+						const lease = originalLease.call(scope.writer, descriptor);
+						if (lease) captures.push(lease);
+						return lease;
+					});
+					restoreCapture = () => capture.mockRestore();
+					installedLease = Object.getOwnPropertyDescriptor(scope.writer, 'existingOverrideLeaseForPlan');
+					registerCapturedOriginal(scope);
+					scope.database.subscribers.push(observer);
+					const first = await fixtureCall(scope, () => scope.configs.configure(controller, input));
 					if (active) {
-						const definition = await comfort.configure(
-							controller,
-							{ expected_revision: first.revision, expected_graph_revision: first.graph_revision },
-							{
-								heating_range: { minimum: 10, maximum: 30 },
-								cooling_range: null,
-								presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
-							},
+						const definition = await fixtureCall(scope, () =>
+							scope.comfort.configure(
+								controller,
+								{ expected_revision: first.revision, expected_graph_revision: first.graph_revision },
+								{
+									heating_range: { minimum: 10, maximum: 30 },
+									cooling_range: null,
+									presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+								},
+							),
 						);
-						await comfort.override(
-							controller,
-							{ expected_revision: definition.revision, expected_graph_revision: definition.graph_revision },
-							{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
-							'enabled-lock-clock-owner',
+						await fixtureCall(scope, () =>
+							scope.comfort.override(
+								controller,
+								{ expected_revision: definition.revision, expected_graph_revision: definition.graph_revision },
+								{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+								'enabled-lock-clock-owner',
+							),
 						);
 					}
-					const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
-						controllerId: controller,
-					});
+					const before = await fixtureCall(scope, () =>
+						scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+							controllerId: controller,
+						}),
+					);
 					const originalOwner = captures.at(-1);
 					writes.length = 0;
-					submitted.mockClear();
-					const fixed = await configs.configure(controller, {
-						...input,
-						expectedRevision: before.revision,
-						policy: { ...input.policy, heatingSetpoint: 21 },
-					});
+					submitted.writes = 0;
+					const fixed = await fixtureCall(scope, () =>
+						scope.configs.configure(controller, {
+							...input,
+							expectedRevision: before.revision,
+							policy: { ...input.policy, heatingSetpoint: 21 },
+						}),
+					);
 					expect(fixed.controller).toBe(controller);
 					expect(fixed.revision).toBe(before.revision + 1);
 					expect(fixed.policy.heatingSetpoint).toBe(21);
 					if (!active)
 						expect(
-							(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }))
-								.comfort,
+							(
+								await fixtureCall(scope, () =>
+									scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }),
+								)
+							).comfort,
 						).toBeNull();
-					expect(await configs.command([await target(settingId, 22)])).toBe(true);
-					const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
-						controllerId: controller,
-					});
+					const commandOwner: OriginalFunctions<typeof scope.configs> = scope.configs;
+					const originalCommand = commandOwner.command;
+					const commandTarget = await target(settingId, 22, scope);
+					expect(await fixtureCall(scope, () => originalCommand.call(scope.configs, [commandTarget]))).toBe(true);
+					const after = await fixtureCall(scope, () =>
+						scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+							controllerId: controller,
+						}),
+					);
 					expect(after.policy.heatingSetpoint).toBe(22);
 					expect(after.revision).toBe(fixed.revision + 1);
-					expect(submitted).toHaveBeenCalled();
+					expect(submitted.writes).toBeGreaterThan(0);
 					const inserts = writes.filter(
 						(item) =>
 							item.query ===
@@ -3825,7 +4975,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 							),
 						).toHaveLength(1);
 					}
-					expect(await database.query('SELECT * FROM "devices_module_property_value_locks"')).toEqual([]);
+					expect(
+						await fixtureCall(scope, () => scope.database.query('SELECT * FROM "devices_module_property_value_locks"')),
+					).toEqual([]);
 					if (active) {
 						const installed = captures.at(-1);
 						if (!originalOwner || !installed || !after.comfort?.temporary_override)
@@ -3833,43 +4985,65 @@ describe('thermostat persistent ownership and draft configuration', () => {
 						expect(installed.id).toBe(originalOwner.id);
 						expect(installed.deadline).toBe(originalOwner.deadline);
 						expect(after.comfort.temporary_override.status).toBe('active');
-						const joined = await comfort.readIntentInManager(database.manager, after);
+						const joined = await fixtureCall(
+							scope,
+							() => scope.comfort.readIntentInManager(scope.database.manager, after),
+							(intent) => intent.close(),
+						);
 						try {
 							expect(joined.isOverrideCurrent()).toBe(true);
 							// A real affected-one write after admission closes this owner even if persisted A bytes are identical.
-							await database.query(
-								'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?',
-								[controller],
+							await fixtureCall(scope, () =>
+								scope.database.query(
+									'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?',
+									[controller],
+								),
 							);
-							expect(await database.query('SELECT changes() AS count')).toEqual([{ count: 1 }]);
+							expect(await fixtureCall(scope, () => scope.database.query('SELECT changes() AS count'))).toEqual([
+								{ count: 1 },
+							]);
 							expect(joined.isOverrideCurrent()).toBe(false);
 						} finally {
 							joined.close();
 						}
-						const unchanged = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
-							controllerId: controller,
-						});
+						const unchanged = await fixtureCall(scope, () =>
+							scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+								controllerId: controller,
+							}),
+						);
 						expect(unchanged).toEqual(after);
-						const fresh = await comfort.readIntentInManager(database.manager, unchanged);
+						const fresh = await fixtureCall(
+							scope,
+							() => scope.comfort.readIntentInManager(scope.database.manager, unchanged),
+							(intent) => intent.close(),
+						);
 						try {
 							expect(fresh.isOverrideCurrent()).toBe(false);
 						} finally {
 							fresh.close();
 						}
-						await comfort.settle(controller);
-						const refused = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
-							controllerId: controller,
-						});
+						await fixtureCall(scope, () => scope.comfort.settle(controller));
+						const refused = await fixtureCall(scope, () =>
+							scope.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+								controllerId: controller,
+							}),
+						);
 						expect(refused.comfort?.temporary_override).toMatchObject({ id: installed.id, status: 'clock_uncertain' });
 						const conservative = captures.at(-1);
 						if (!conservative) throw new Error('Actual conservative retained owner required');
 						expect(conservative.deadline).toBe(installed.deadline);
 					}
-				} finally {
-					capture.mockRestore();
-					submitted.mockRestore();
-					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				} catch (cause: unknown) {
+					body = { cause };
 				}
+				let cleanup: { cause: unknown } | undefined;
+				try {
+					await retire();
+				} catch (cause: unknown) {
+					cleanup = { cause };
+				}
+				if (body !== undefined) throw body.cause;
+				if (cleanup !== undefined) throw cleanup.cause;
 			},
 		);
 		// END enabled-lock clock-admission regression drafts

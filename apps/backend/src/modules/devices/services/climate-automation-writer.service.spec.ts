@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import {
 	SqliteDataSource,
 	createSqliteDataSource,
+	hasCurrentSqliteConnectionLease,
 	outsideSqliteTransaction,
 } from '../../../common/database/sqlite-data-source';
 import { AddClimateAutomationOwnership1000000000047 } from '../../../migrations/1000000000047-AddClimateAutomationOwnership';
@@ -395,9 +396,10 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 		} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
 		const locks = jest.spyOn(lock, 'runExclusiveReleased');
 		const observer = {
-			afterQuery: async (event: import('typeorm').AfterQueryEvent<unknown>) => {
+			beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
 				if (event.query !== 'SELECT 1 AS ordinary_existing_read') return;
 				observed = true;
+				expect(hasCurrentSqliteConnectionLease(database)).toBe(true);
 				expect(event.queryRunner.isTransactionActive).toBe(false);
 				await expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({
 					commitOutcome: 'not_started',
