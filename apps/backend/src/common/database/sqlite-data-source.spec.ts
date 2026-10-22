@@ -252,32 +252,133 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			},
 		);
 		it.each([undefined, null, false, 'release P', new Error('release P')])(
-			'keeps historical actual ACK while original owned release rejects with %p',
+			'keeps historical actual ACK while its manual owner release rejects with %p',
 			async (primary: unknown) => {
-				let receipt: SqliteCommitGuardReceipt | undefined, restore: (() => void) | undefined;
+				const runner = database.createQueryRunner();
+				const original: Readonly<{ release: QueryRunner['release'] }> = runner;
+				const release = original.release;
+				let receipt: SqliteCommitGuardReceipt | undefined;
+				let releaseCompleted = false;
+				const installed = jest.spyOn(runner, 'release').mockImplementation(async function (this: QueryRunner) {
+					await release.call(this);
+					releaseCompleted = true;
+					throw primary;
+				});
+				const ownedDescriptor = Object.getOwnPropertyDescriptor(runner, 'release');
+				let bodyFailure: { cause: unknown } | undefined;
+				let cleanupFailure: { cause: unknown } | undefined;
 				try {
-					await expect(
-						database.transaction(async (manager) => {
-							const runner = manager.queryRunner;
-							if (!runner) throw new Error('Missing genuine scoped runner');
-							const original: Readonly<{ release: QueryRunner['release'] }> = runner;
-							const release = original.release;
-							const installed = jest.spyOn(runner, 'release').mockImplementation(async () => {
-								await release.call(runner);
-								throw primary;
+					const lifecycle = (async () => {
+						let failure: { cause: unknown } | undefined;
+						try {
+							await runner.manager.transaction(async (manager) => {
+								receipt = observeSqliteOuterOutcome(manager);
+								await manager.insert(TransactionRecord, { name: 'native ACK then release P' });
 							});
-							restore = () => installed.mockRestore();
-							receipt = observeSqliteOuterOutcome(manager);
-							await manager.insert(TransactionRecord, { name: 'native ACK then release P' });
-						}),
-					).rejects.toBe(primary);
+						} catch (cause: unknown) {
+							failure = { cause };
+						} finally {
+							try {
+								await runner.release();
+							} catch (cause: unknown) {
+								failure ??= { cause };
+							}
+						}
+						if (failure !== undefined) throw failure.cause;
+					})();
+					await expect(lifecycle).rejects.toBe(primary);
+					expect(installed).toHaveBeenCalledTimes(1);
+					expect(installed.mock.contexts[0]).toBe(runner);
+					expect(releaseCompleted).toBe(true);
 					expect(receipt?.outcome).toBe('committed');
 					expect(await names()).toContain('native ACK then release P');
+				} catch (cause: unknown) {
+					bodyFailure = { cause };
 				} finally {
-					restore?.();
+					try {
+						const current = Object.getOwnPropertyDescriptor(runner, 'release');
+						if (
+							!ownedDescriptor ||
+							!current ||
+							current.value !== ownedDescriptor.value ||
+							current.get !== ownedDescriptor.get ||
+							current.set !== ownedDescriptor.set ||
+							current.writable !== ownedDescriptor.writable ||
+							current.enumerable !== ownedDescriptor.enumerable ||
+							current.configurable !== ownedDescriptor.configurable
+						) {
+							cleanupFailure = { cause: new Error('Manual owner release descriptor changed before cleanup') };
+						} else {
+							installed.mockRestore();
+						}
+					} catch (cause: unknown) {
+						cleanupFailure = { cause };
+					}
+					if (!releaseCompleted) {
+						try {
+							await release.call(runner);
+						} catch (cause: unknown) {
+							cleanupFailure ??= { cause };
+						}
+					}
 				}
+				if (bodyFailure !== undefined) throw bodyFailure.cause;
+				if (cleanupFailure !== undefined) throw cleanupFailure.cause;
 			},
 		);
+		it('returns the automatic managed lease without invoking the callback runner public release spy', async () => {
+			let receipt: SqliteCommitGuardReceipt | undefined;
+			let restore: (() => void) | undefined;
+			let releaseCalls = 0;
+			let bodyFailure: { cause: unknown } | undefined;
+			let cleanupFailure: { cause: unknown } | undefined;
+			try {
+				const result = await database.transaction(async (manager) => {
+					const runner = manager.queryRunner;
+					if (!runner) throw new Error('Missing genuine scoped runner');
+					const original: Readonly<{ release: QueryRunner['release'] }> = runner;
+					const release = original.release;
+					const installed = jest.spyOn(runner, 'release').mockImplementation(async function (this: QueryRunner) {
+						releaseCalls++;
+						await release.call(this);
+						throw new Error('Automatic route unexpectedly invoked public release');
+					});
+					const ownedDescriptor = Object.getOwnPropertyDescriptor(runner, 'release');
+					restore = () => {
+						const current = Object.getOwnPropertyDescriptor(runner, 'release');
+						if (
+							!ownedDescriptor ||
+							!current ||
+							current.value !== ownedDescriptor.value ||
+							current.get !== ownedDescriptor.get ||
+							current.set !== ownedDescriptor.set ||
+							current.writable !== ownedDescriptor.writable ||
+							current.enumerable !== ownedDescriptor.enumerable ||
+							current.configurable !== ownedDescriptor.configurable
+						) {
+							throw new Error('Managed callback release descriptor changed before cleanup');
+						}
+						installed.mockRestore();
+					};
+					receipt = observeSqliteOuterOutcome(manager);
+					await manager.insert(TransactionRecord, { name: 'managed lease without public release' });
+				});
+				expect(result).toBeUndefined();
+				expect(releaseCalls).toBe(0);
+				expect(receipt?.outcome).toBe('committed');
+				expect(await names()).toContain('managed lease without public release');
+			} catch (cause: unknown) {
+				bodyFailure = { cause };
+			} finally {
+				try {
+					restore?.();
+				} catch (cause: unknown) {
+					cleanupFailure = { cause };
+				}
+			}
+			if (bodyFailure !== undefined) throw bodyFailure.cause;
+			if (cleanupFailure !== undefined) throw cleanupFailure.cause;
+		});
 		// END R132 real native ACK observation drafts
 
 		it('composes same-manager nested guards on outer COMMIT without self-wait or admitting another lease', async () => {
