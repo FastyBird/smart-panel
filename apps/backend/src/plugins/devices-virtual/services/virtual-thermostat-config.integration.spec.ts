@@ -478,6 +478,129 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			heat = await actuator(),
 			input = dto(sensor, heat);
 		const initial = await configs.configure(controller, input);
+		// R175 permanent oracle: independent full native baseline, never a response-derived postimage.
+		type CasRow = Readonly<Record<string, unknown>>;
+		const captureNative = async (): Promise<Readonly<Record<string, readonly CasRow[]>>> => {
+			const result: Record<string, readonly CasRow[]> = {};
+			for (const table of [
+				'devices_virtual_thermostat_configs',
+				'devices_virtual_thermostat_sources',
+				'devices_virtual_thermostat_actuator_claims',
+				'devices_virtual_thermostat_settings',
+				'devices_virtual_thermostat_member_protection',
+				'devices_virtual_thermostat_cooling_dependencies',
+				'devices_virtual_thermostat_recoveries',
+				'devices_virtual_thermostat_command_journal',
+				'devices_virtual_thermostat_runtime',
+				'devices_virtual_thermostat_branch_runtime',
+				'devices_virtual_thermostat_installations',
+				'devices_virtual_thermostat_installation_audit',
+				'devices_module_devices',
+				'devices_module_channels',
+				'devices_module_channels_properties',
+				'devices_shelly_ng_sample_sources',
+				'devices_virtual_dew_point_configs',
+				'devices_virtual_dew_point_sources',
+				'devices_virtual_transform_configs',
+				'devices_virtual_transform_sources',
+				'devices_virtual_aggregate_configs',
+				'devices_virtual_aggregate_inputs',
+				'devices_virtual_light_group_configs',
+				'devices_virtual_light_group_members',
+				'devices_virtual_light_group_bindings',
+				'devices_module_climate_automation_slots',
+				'devices_module_climate_automation_sources',
+				'devices_virtual_graph_revision',
+			]) {
+				const rows = await database.query<Record<string, unknown>[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+				result[table] = Object.freeze(
+					rows.map((row) => {
+						expect(
+							Object.values(row).every(
+								(value) => value === null || ['string', 'number', 'boolean'].includes(typeof value),
+							),
+						).toBe(true);
+						return Object.freeze({ ...row });
+					}),
+				);
+			}
+			return Object.freeze(result);
+		};
+		const baseline = await captureNative();
+		const expectedPolicies = Object.freeze([
+			Object.freeze({ ...input.policy, heatingSetpoint: 22 }),
+			Object.freeze({ ...input.policy, heatingSetpoint: 23 }),
+		]); // This fixture has only primitive policy leaves and floor:null; callers are NOT frozen.
+		expect(input.policy.floor).toBeNull();
+		const beforeConfigs = baseline.devices_virtual_thermostat_configs;
+		const beforeSlots = baseline.devices_module_climate_automation_slots;
+		expect(beforeConfigs).toHaveLength(1);
+		expect(beforeSlots).toHaveLength(1);
+		const beforeConfig = beforeConfigs[0],
+			beforeSlot = beforeSlots[0];
+		expect(beforeConfig.controllerId).toBe(controller);
+		expect(beforeConfig.revision).toBe(initial.revision);
+		expect(beforeSlot).toEqual(
+			expect.objectContaining({
+				controllerId: controller,
+				providerKey: 'virtual-thermostat:v1',
+				state: 'EMPTY',
+				slotRevision: 1,
+				manualCounter: 1,
+				manualHold: 1,
+				ownerId: null,
+				baselineId: null,
+				generationId: null,
+				candidateId: null,
+				bundleId: null,
+				selection: null,
+				installEvidence: null,
+				legacyDigest: null,
+			}),
+		);
+		const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+		expect(beforeSlot.controllerIncarnation).toMatch(uuidPattern);
+		expect(beforeSlot.manualGeneration).toMatch(uuidPattern);
+		expect(baseline.devices_virtual_thermostat_sources).toHaveLength(1);
+		expect(baseline.devices_virtual_thermostat_actuator_claims).toHaveLength(1);
+		expect(baseline.devices_virtual_thermostat_sources[0]).toEqual(
+			expect.objectContaining({
+				controllerId: controller,
+				role: 'ambient',
+				sourcePropertyId: sensor,
+				sourcePropertyIdentity: sensor,
+				physicalIdentity: `property:${sensor}`,
+				maximumAgeSeconds: 300,
+				openValue: null,
+				closedValue: null,
+			}),
+		);
+		expect(baseline.devices_virtual_thermostat_actuator_claims[0]).toEqual(
+			expect.objectContaining({
+				controllerId: controller,
+				role: 'heating',
+				sourcePropertyId: heat,
+				sourcePropertyIdentity: heat,
+				providerProfile: 'shelly-ng.guarded-switch',
+				providerProfileVersion: 1,
+				revision: 1,
+				qualificationGeneration: null,
+				state: 'reserved',
+				leaseSeconds: 30,
+				reason: null,
+				releaseRequestedAt: null,
+				releasedAt: null,
+				releaseEvidence: null,
+			}),
+		);
+		for (const table of [
+			'devices_virtual_thermostat_settings',
+			'devices_virtual_thermostat_member_protection',
+			'devices_virtual_thermostat_cooling_dependencies',
+			'devices_virtual_thermostat_recoveries',
+			'devices_module_climate_automation_sources',
+		])
+			expect(baseline[table]).toEqual([]);
 		const outcomes = await Promise.allSettled([
 			configs.configure(controller, {
 				...input,
@@ -516,14 +639,166 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			}
 			return { status: result.status, reason };
 		});
+		const potentialWinners: { index: number; kind: 'fulfilled' | 'committed-response-rejected'; cause?: unknown }[] =
+			[];
+		const revisionLosers: number[] = [],
+			invalid: number[] = [];
+		for (const [index, result] of outcomes.entries()) {
+			if (result.status === 'fulfilled') {
+				potentialWinners.push({ index, kind: 'fulfilled' });
+				continue;
+			}
+			const reason: unknown = result.reason;
+			const observed = receivedOutcomes[index];
+			try {
+				const message =
+					reason instanceof DevicesValidationException
+						? nativeObjectEvidence.getOwnPropertyDescriptor(reason, 'message')
+						: undefined;
+				if (
+					message &&
+					'value' in message &&
+					!message.get &&
+					!message.set &&
+					message.value === 'Thermostat configuration revision changed.'
+				) {
+					revisionLosers.push(index);
+					continue;
+				}
+				if (
+					reason instanceof ClimateAutomationWriteError &&
+					'commitOutcome' in observed &&
+					observed.commitOutcomePresent &&
+					observed.commitOutcomeValueAvailable &&
+					observed.commitOutcome === 'committed' &&
+					'cause' in observed &&
+					observed.causePresent &&
+					observed.causeValueAvailable &&
+					observed.cause instanceof Error
+				) {
+					const message = nativeObjectEvidence.getOwnPropertyDescriptor(observed.cause, 'message');
+					if (
+						message &&
+						'value' in message &&
+						!message.get &&
+						!message.set &&
+						message.value === 'Original response plan unavailable'
+					) {
+						potentialWinners.push({ index, kind: 'committed-response-rejected', cause: observed.cause });
+						continue;
+					}
+				}
+			} catch {
+				// Exotic/missing observation is INVALID, never an alternative committed grammar.
+			}
+			invalid.push(index);
+		}
 		expect({
-			fulfilledCount: outcomes.filter((result) => result.status === 'fulfilled').length,
+			winnerCount: potentialWinners.length,
+			loserCount: revisionLosers.length,
+			invalid,
 			outcomes: receivedOutcomes,
-		}).toEqual(expect.objectContaining({ fulfilledCount: 1 }));
-		expect(outcomes.filter((result) => result.status === 'rejected')).toHaveLength(1);
-		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
-		expect(row.revision).toBe(initial.revision + 1);
-		expect([22, 23]).toContain(row.policy.heatingSetpoint);
+		}).toEqual(expect.objectContaining({ winnerCount: 1, loserCount: 1, invalid: [] }));
+		const winner = potentialWinners[0];
+		expect(revisionLosers[0]).not.toBe(winner.index);
+		expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(
+			winner.kind === 'fulfilled' ? 1 : 0,
+		);
+		expect(outcomes.filter((result) => result.status === 'rejected')).toHaveLength(winner.kind === 'fulfilled' ? 1 : 2);
+		if (winner.kind === 'committed-response-rejected') {
+			const observed = receivedOutcomes[winner.index];
+			expect('cause' in observed).toBe(true);
+			if ('cause' in observed) expect(observed.cause).toBe(winner.cause); // SAME original P, never fulfilled.
+		}
+		// One readonly capture AFTER both original results; no postimage-derived expected policy or retry.
+		const final = await captureNative();
+		for (const table of Object.keys(baseline)) {
+			if (table !== 'devices_virtual_thermostat_configs' && table !== 'devices_module_climate_automation_slots')
+				expect(final[table]).toEqual(baseline[table]);
+		}
+		expect(final.devices_virtual_thermostat_configs).toHaveLength(1);
+		expect(final.devices_module_climate_automation_slots).toHaveLength(1);
+		const finalConfig = final.devices_virtual_thermostat_configs[0],
+			finalSlot = final.devices_module_climate_automation_slots[0];
+		const unchanged = (row: CasRow, allowed: readonly string[]) =>
+			Object.fromEntries(Object.entries(row).filter(([key]) => !allowed.includes(key)));
+		const configColumns = [
+			'controllerId',
+			'displayFloorClaimId',
+			'ownerDeviceId',
+			'schemaVersion',
+			'revision',
+			'requestedMode',
+			'controlStrategy',
+			'locked',
+			'comfort',
+			'policy',
+			'heuristic',
+			'contactOpeningMs',
+			'contactClosingMs',
+			'configuredAt',
+			'releaseRequestedAt',
+		];
+		const slotColumns = [
+			'controllerId',
+			'providerKey',
+			'controllerIncarnation',
+			'slotRevision',
+			'manualGeneration',
+			'manualCounter',
+			'manualHold',
+			'state',
+			'ownerId',
+			'baselineId',
+			'generationId',
+			'candidateId',
+			'bundleId',
+			'selection',
+			'installEvidence',
+			'legacyDigest',
+		];
+		expect(Object.keys(beforeConfig).sort()).toEqual([...configColumns].sort());
+		expect(Object.keys(finalConfig).sort()).toEqual([...configColumns].sort());
+		expect(Object.keys(beforeSlot).sort()).toEqual([...slotColumns].sort());
+		expect(Object.keys(finalSlot).sort()).toEqual([...slotColumns].sort());
+		expect(unchanged(finalConfig, ['revision', 'policy', 'configuredAt'])).toEqual(
+			unchanged(beforeConfig, ['revision', 'policy', 'configuredAt']),
+		);
+		expect(finalConfig.revision).toBe(initial.revision + 1);
+		expect(typeof finalConfig.policy).toBe('string');
+		if (typeof finalConfig.policy !== 'string') throw new Error('Native CAS policy was not persisted JSON');
+		const policy: unknown = JSON.parse(finalConfig.policy);
+		if (!policy || typeof policy !== 'object' || Array.isArray(policy) || !('heatingSetpoint' in policy))
+			throw new Error('Native CAS policy missing original setpoint');
+		expect([22, 23]).toContain(policy.heatingSetpoint);
+		const persistedWinnerIndices = expectedPolicies.flatMap((expected, index) =>
+			expected.heatingSetpoint === policy.heatingSetpoint ? [index] : [],
+		);
+		expect(persistedWinnerIndices).toHaveLength(1);
+		expect(persistedWinnerIndices[0]).toBe(winner.index);
+		expect(policy).toEqual(expectedPolicies[persistedWinnerIndices[0]]);
+		expect(typeof finalConfig.configuredAt).toBe('string');
+		if (typeof finalConfig.configuredAt === 'string') {
+			expect(finalConfig.configuredAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/);
+			expect(Number.isFinite(Date.parse(finalConfig.configuredAt.replace(' ', 'T') + 'Z'))).toBe(true);
+		}
+		expect(unchanged(finalSlot, ['slotRevision', 'manualCounter', 'manualGeneration', 'manualHold'])).toEqual(
+			unchanged(beforeSlot, ['slotRevision', 'manualCounter', 'manualGeneration', 'manualHold']),
+		);
+		const slotRevision = beforeSlot.slotRevision,
+			manualCounter = beforeSlot.manualCounter;
+		if (
+			typeof slotRevision !== 'number' ||
+			typeof manualCounter !== 'number' ||
+			!Number.isSafeInteger(slotRevision) ||
+			!Number.isSafeInteger(manualCounter)
+		)
+			throw new Error('Original CAS slot counters unavailable');
+		expect(finalSlot.slotRevision).toBe(slotRevision + 1);
+		expect(finalSlot.manualCounter).toBe(manualCounter + 1);
+		expect(finalSlot.manualHold).toBe(1);
+		expect(finalSlot.manualGeneration).not.toBe(beforeSlot.manualGeneration);
+		expect(finalSlot.manualGeneration).toMatch(uuidPattern);
 	});
 	describe('R132 complete readonly caller snapshots', () => {
 		const r132WholeSnapshot = async (source = database) => {
