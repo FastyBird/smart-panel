@@ -3025,6 +3025,7 @@ export class ClimateAutomationWriterService {
 						operation.existingQueryFence = this.installExistingQueryFence(operation, admitted);
 						return this.inParticipantTurn(operation, async (turn, phase) => {
 							phase.existingCurrent = admitted;
+							phase.existingInput = owned.input;
 							const facts = this.existingFacts(
 								await owned.pinned.methods.readFactsInManager.call(
 									owned.pinned.capability,
@@ -3415,7 +3416,9 @@ export class ClimateAutomationWriterService {
 									!same(before, predecessorExpected) ||
 									!same(oldSlot, predecessorSeed.slot) ||
 									!same(reference, predecessorSeed.reference) ||
-									!same(source, predecessorSeed.source) ||
+									(source === undefined
+										? predecessorSeed.source !== undefined
+										: predecessorSeed.source === undefined || !same(source, predecessorSeed.source)) ||
 									(predecessorSeed.previousClock && !predecessorSeed.previousClock.current())
 								)
 									throw new Conflict('stale');

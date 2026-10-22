@@ -12986,13 +12986,28 @@ describe('virtual thermostat durable runtime', () => {
 		it.each(['before-send', 'after-send'] as const)(
 			'keeps original actual SDK %s outcome truthful when comfort entry waits on its first real read',
 			async (boundary) => {
+				const originalCase = currentFixtureCase;
+				const originalSetup = originalCase?.setup;
+				const originalWriter = mutationWriter;
+				const originalControllerId = controllerId;
+				const originalWriterContext = originalWriter['context'];
+				const originalWriterTurns = originalWriter['turns'];
+				const originalSource = Object.freeze({ runtime, database, fixture, relayId });
 				const onEntered = barrier(),
 					onResume = barrier(),
 					resultObserved = barrier(),
 					readEntered = barrier(),
 					readResume = barrier();
-				const requestContext = new AsyncLocalStorage<boolean>();
 				const outcomes: Awaited<ReturnType<ThermostatActuationAdapter['send']>>[] = [];
+				const heldSend: {
+					count: number;
+					invalid: boolean;
+					first?: Readonly<{
+						packet: Parameters<ThermostatActuationAdapter['send']>[4];
+						claimId: string;
+						claimRevision: number;
+					}>;
+				} = { count: 0, invalid: false };
 				const originalGetMethods: {
 					readonly get: {
 						call: (
@@ -13018,6 +13033,33 @@ describe('virtual thermostat durable runtime', () => {
 					return {
 						...adapter,
 						send: async (...sendArgs) => {
+							// Passive metadata only: invalid identity fails the test, never the native operation.
+							try {
+								if (sendArgs[0].property.id === originalSource.relayId && sendArgs[0].value === true) {
+									heldSend.count++;
+									if (
+										heldSend.count !== 1 ||
+										originalCase === undefined ||
+										originalCase.retired ||
+										originalSetup === undefined ||
+										originalSetup.retired ||
+										originalSetup.caseOwner !== originalCase ||
+										sendArgs[4] === undefined ||
+										sendArgs[1].controllerId !== originalControllerId ||
+										sendArgs[1].sourcePropertyId !== originalSource.relayId ||
+										sendArgs[1].sourcePropertyIdentity !== originalSource.relayId
+									)
+										heldSend.invalid = true;
+									else
+										heldSend.first = Object.freeze({
+											packet: sendArgs[4],
+											claimId: sendArgs[1].id,
+											claimRevision: sendArgs[1].revision,
+										});
+								}
+							} catch {
+								heldSend.invalid = true;
+							}
 							const outcome = await originalSend.call(adapter, ...sendArgs);
 							if (sendArgs[0].property.id === relayId && sendArgs[0].value === true) {
 								outcomes.push(outcome);
@@ -13035,8 +13077,30 @@ describe('virtual thermostat durable runtime', () => {
 				let pauseRead = true;
 				database.subscribers.push({
 					beforeQuery: async (event) => {
+						const context = originalWriterContext.getStore();
+						const turn = context?.turn;
+						const phase = turn === undefined ? undefined : originalWriterTurns.get(turn);
+						const operation = context?.operation;
+						const input = phase?.existingInput;
 						if (
-							!requestContext.getStore() ||
+							originalCase === undefined ||
+							originalCase.retired ||
+							originalSetup === undefined ||
+							originalSetup.retired ||
+							context === undefined ||
+							context.internal !== true ||
+							operation === undefined ||
+							phase === undefined ||
+							phase.operation !== operation ||
+							operation.phase !== 'BODY_OPEN' ||
+							operation.existingReadonlyProbe !== true ||
+							operation.failure !== undefined ||
+							phase.phase !== 'READ_BEFORE' ||
+							operation.manager !== event.manager ||
+							operation.runner !== event.queryRunner ||
+							input === undefined ||
+							input.kind !== 'preset:v1' ||
+							input.controllerId !== originalControllerId ||
 							!pauseRead ||
 							!event.query.startsWith('SELECT') ||
 							!event.query.includes('devices_virtual_thermostat_configs')
@@ -13052,6 +13116,55 @@ describe('virtual thermostat durable runtime', () => {
 					const expected = await comfortFence();
 					await fixture.report(sensorId, 18);
 					await onEntered.promise;
+					const selectedSend = heldSend.first;
+					expect(heldSend.invalid).toBe(false);
+					expect(heldSend.count).toBe(1);
+					if (selectedSend === undefined || selectedSend.packet === undefined)
+						throw new Error('Original held ON packet was not observed');
+					const heldId = selectedSend.packet.commandId;
+					// Never refresh this baseline after comfort entry or infer history from row order.
+					const preEntryOn = await originalSource.database.manager.findBy(VirtualThermostatCommandEntity, {
+						controllerId: originalControllerId,
+						action: 'on',
+					});
+					expect(originalCase?.retired).toBe(false);
+					expect(originalSetup?.retired).toBe(false);
+					expect(heldSend.invalid).toBe(false);
+					expect(heldSend.count).toBe(1);
+					expect(preEntryOn.filter((row) => row.id === heldId)).toHaveLength(1);
+					const priorOn = preEntryOn
+						.filter((row) => row.id !== heldId)
+						.map((row) =>
+							Object.freeze({
+								...row,
+								preparedAt: row.preparedAt.getTime(),
+								dispatchedAt: row.dispatchedAt?.getTime() ?? null,
+								settledAt: row.settledAt?.getTime() ?? null,
+							}),
+						);
+					for (const row of preEntryOn) {
+						expect(row).toMatchObject({
+							controllerId: originalControllerId,
+							claimId: selectedSend.claimId,
+							claimRevision: selectedSend.claimRevision,
+							configurationRevision: expected.expected_revision,
+							action: 'on',
+						});
+						if (row.id === heldId) {
+							expect(row.status).toBe('dispatching');
+							expect(row.dispatchedAt).not.toBeNull();
+							expect(row.settledAt).toBeNull();
+							expect(row.fault).toBeNull();
+						} else {
+							expect(row).toMatchObject({
+								status: 'cancelled',
+								dispatchedAt: null,
+								settledAt: null,
+								fault: null,
+								proofId: null,
+							});
+						}
+					}
 					const originalCapture = actualClaims.capture();
 					expect(originalCapture.isCurrent()).toBe(true);
 					// Positive reachability is beyond matched real SDK inspection/status and at actual HTTP ON pre/post onSend.
@@ -13059,7 +13172,7 @@ describe('virtual thermostat durable runtime', () => {
 						boundary === 'before-send' ? 0 : 1,
 					);
 					const fences = fixture.controls.fences.length;
-					mutation = requestContext.run(true, () => comfort.select(controllerId, expected, 'eco', false));
+					mutation = comfort.select(controllerId, expected, 'eco', false);
 					void mutation.catch(() => undefined);
 					expect(originalCapture.isCurrent()).toBe(false);
 					await readEntered.promise;
@@ -13080,9 +13193,34 @@ describe('virtual thermostat durable runtime', () => {
 					readResume.open();
 					await mutation;
 					await settle();
-					const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
-					expect(journal).toHaveLength(1);
-					expect(journal[0].status).toBe(boundary === 'before-send' ? 'cancelled' : 'unknown');
+					const journal = await originalSource.database.manager.findBy(VirtualThermostatCommandEntity, {
+						controllerId: originalControllerId,
+						action: 'on',
+					});
+					expect(heldSend.invalid).toBe(false);
+					expect(heldSend.count).toBe(1);
+					expect(journal.map((row) => row.id).sort()).toEqual([...priorOn.map((row) => row.id), heldId].sort());
+					for (const prior of priorOn) {
+						const row = journal.find((entry) => entry.id === prior.id);
+						if (row === undefined) throw new Error('Pre-entry ON history disappeared');
+						expect({
+							...row,
+							preparedAt: row.preparedAt.getTime(),
+							dispatchedAt: row.dispatchedAt?.getTime() ?? null,
+							settledAt: row.settledAt?.getTime() ?? null,
+						}).toEqual(prior);
+					}
+					const held = journal.find((row) => row.id === heldId);
+					if (held === undefined) throw new Error('Original held ON journal row disappeared');
+					expect(held).toMatchObject({
+						id: heldId,
+						controllerId: originalControllerId,
+						claimId: selectedSend.claimId,
+						claimRevision: selectedSend.claimRevision,
+						configurationRevision: expected.expected_revision,
+						action: 'on',
+					});
+					expect(held.status).toBe(boundary === 'before-send' ? 'cancelled' : 'unknown');
 					expect(originalCapture.isCurrent()).toBe(false);
 					expect(fixture.controls.errors).toEqual([]);
 				} finally {
