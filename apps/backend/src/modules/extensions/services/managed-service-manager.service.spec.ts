@@ -16,7 +16,7 @@ import {
 	ManagedServiceOwnerKind,
 	ServiceState,
 } from './managed-extension-service.interface';
-import { ManagedServiceManagerService } from './managed-service-manager.service';
+import { ManagedRuntimeAdmission, ManagedServiceManagerService } from './managed-service-manager.service';
 
 /**
  * Minimal mock service whose state can be controlled externally.
@@ -89,6 +89,217 @@ describe('ManagedServiceManagerService', () => {
 	afterEach(() => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
+	});
+
+	describe('start admission ownership', () => {
+		function register(service: IManagedExtensionService): void {
+			(manager as unknown as { startupComplete: boolean }).startupComplete = false;
+			manager.register(service);
+			(manager as unknown as { startupComplete: boolean }).startupComplete = true;
+		}
+
+		it('captures only the original service during start and retires its runtime on restart', async () => {
+			const service = createMockService('plugin', 'owner', 'connector');
+			const impostor = createMockService('plugin', 'owner', 'connector');
+			const admissions: ManagedRuntimeAdmission[] = [];
+			jest.spyOn(service, 'start').mockImplementation(() => {
+				expect(manager.captureCurrentStartAdmission(impostor)).toBeNull();
+				const admission = manager.captureCurrentStartAdmission(service);
+				expect(admission?.isCurrent()).toBe(true);
+				admissions.push(admission);
+				service._state = 'started';
+				return Promise.resolve();
+			});
+			register(service);
+			expect(manager.captureCurrentStartAdmission(service)).toBeNull();
+			await manager.startServiceManually('plugin', 'owner', 'connector');
+			expect(manager.captureCurrentStartAdmission(service)).toBeNull();
+			expect(admissions[0].isCurrent()).toBe(true);
+			await expect(manager.restartService('plugin', 'owner', 'connector')).resolves.toBe(true);
+			expect(admissions).toHaveLength(2);
+			expect(admissions[0].isCurrent()).toBe(false);
+			expect(admissions[1].isCurrent()).toBe(true);
+		});
+
+		it('retires a delayed original start before admitting its restart', async () => {
+			let complete!: () => void;
+			let entered!: () => void;
+			const starting = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			const service = createMockService('plugin', 'owner', 'connector');
+			const admissions: ManagedRuntimeAdmission[] = [];
+			const start = jest.spyOn(service, 'start').mockImplementation(() => {
+				admissions.push(manager.captureCurrentStartAdmission(service));
+				service._state = 'started';
+				if (admissions.length === 1) {
+					entered();
+					return new Promise<void>((resolve) => {
+						complete = resolve;
+					});
+				}
+				return Promise.resolve();
+			});
+			register(service);
+			const original = manager.startServiceManually('plugin', 'owner', 'connector');
+			await starting;
+			const restart = manager.restartService('plugin', 'owner', 'connector');
+			expect(admissions[0].isCurrent()).toBe(false);
+			complete();
+			await original;
+			await expect(restart).resolves.toBe(true);
+			expect(start).toHaveBeenCalledTimes(2);
+			expect(admissions[0].isCurrent()).toBe(false);
+			expect(admissions[1].isCurrent()).toBe(true);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ startCount: 1 }),
+			);
+		});
+
+		it('invalidates a delayed readiness start even when manual stop observes stopped', async () => {
+			let complete!: (value: { valid: boolean }) => void;
+			let entered!: () => void;
+			const checking = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate.mockImplementationOnce(() => {
+				entered();
+				return new Promise((resolve) => {
+					complete = resolve;
+				});
+			});
+			const service = createMockService('plugin', 'owner', 'connector');
+			const start = jest.spyOn(service, 'start');
+			register(service);
+			const first = manager.startServiceManually('plugin', 'owner', 'connector');
+			await checking;
+			await manager.stopServiceManually('plugin', 'owner', 'connector');
+			const second = manager.startServiceManually('plugin', 'owner', 'connector');
+			complete({ valid: true });
+			await first;
+			await expect(second).resolves.toBe(true);
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(pluginConfigValidator.validate).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not start or report a replaced registration after queued validation', async () => {
+			let complete!: (value: { valid: boolean }) => void;
+			let entered!: () => void;
+			const checking = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate.mockImplementationOnce(() => {
+				entered();
+				return new Promise((resolve) => {
+					complete = resolve;
+				});
+			});
+			const original = createMockService('plugin', 'owner', 'connector');
+			const start = jest.spyOn(original, 'start');
+			register(original);
+			const first = manager.startServiceManually('plugin', 'owner', 'connector');
+			await checking;
+			manager.unregister('plugin', 'owner', 'connector');
+			const replacement = createMockService('plugin', 'owner', 'connector');
+			register(replacement);
+			await expect(manager.startServiceManually('plugin', 'owner', 'connector')).resolves.toBe(true);
+			complete({ valid: true });
+			await expect(first).resolves.toBe(false);
+			expect(start).not.toHaveBeenCalled();
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ startCount: 1, lastError: undefined }),
+			);
+		});
+
+		it('drains the original invocation before restarting a re-registered service object', async () => {
+			let complete!: () => void;
+			let entered!: () => void;
+			const starting = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			const service = createMockService('plugin', 'owner', 'connector');
+			const admissions: ManagedRuntimeAdmission[] = [];
+			const start = jest.spyOn(service, 'start').mockImplementation(() => {
+				admissions.push(manager.captureCurrentStartAdmission(service));
+				if (admissions.length === 1) {
+					entered();
+					return new Promise<void>((resolve) => {
+						complete = () => {
+							service._state = 'started';
+							resolve();
+						};
+					});
+				}
+				service._state = 'started';
+				return Promise.resolve();
+			});
+			const stop = jest.spyOn(service, 'stop');
+			register(service);
+			const first = manager.startServiceManually('plugin', 'owner', 'connector');
+			await starting;
+			manager.unregister('plugin', 'owner', 'connector');
+			register(service);
+			const second = manager.startServiceManually('plugin', 'owner', 'connector');
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(admissions[0].isCurrent()).toBe(false);
+			complete();
+			await first;
+			await expect(second).resolves.toBe(true);
+			expect(stop).toHaveBeenCalledTimes(1);
+			expect(start).toHaveBeenCalledTimes(2);
+			expect(admissions[0].isCurrent()).toBe(false);
+			expect(admissions[1].isCurrent()).toBe(true);
+		});
+
+		it('does not let a late original failure change a replacement runtime', async () => {
+			let fail!: (error: Error) => void;
+			let entered!: () => void;
+			const starting = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			let originalAdmission: ManagedRuntimeAdmission | null = null;
+			const original = createMockService('plugin', 'owner', 'connector');
+			jest.spyOn(original, 'start').mockImplementation(() => {
+				originalAdmission = manager.captureCurrentStartAdmission(original);
+				entered();
+				return new Promise((_, reject) => {
+					fail = reject;
+				});
+			});
+			register(original);
+			const first = manager.startServiceManually('plugin', 'owner', 'connector');
+			await starting;
+			manager.unregister('plugin', 'owner', 'connector');
+			register(createMockService('plugin', 'owner', 'connector'));
+			await manager.startServiceManually('plugin', 'owner', 'connector');
+			fail(new Error('original failed'));
+			await first;
+			expect(originalAdmission?.isCurrent()).toBe(false);
+			expect(notifications.notify).not.toHaveBeenCalled();
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ startCount: 1, lastError: undefined }),
+			);
+		});
+
+		it('keeps a failed stop revoked while preserving its error and blocking restart', async () => {
+			const service = createMockService('plugin', 'owner', 'connector');
+			let admission: ManagedRuntimeAdmission | null = null;
+			jest.spyOn(service, 'start').mockImplementation(() => {
+				admission = manager.captureCurrentStartAdmission(service);
+				service._state = 'started';
+				return Promise.resolve();
+			});
+			jest.spyOn(service, 'stop').mockRejectedValue(new Error('cleanup failed'));
+			register(service);
+			await manager.startServiceManually('plugin', 'owner', 'connector');
+			await expect(manager.restartService('plugin', 'owner', 'connector')).resolves.toBe(false);
+			expect(admission?.isCurrent()).toBe(false);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', lastError: 'cleanup failed', startCount: 1 }),
+			);
+		});
 	});
 
 	describe('extension ownership and activation', () => {

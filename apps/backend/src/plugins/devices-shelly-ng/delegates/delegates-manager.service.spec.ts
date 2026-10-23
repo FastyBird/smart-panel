@@ -321,6 +321,63 @@ describe('DelegatesManagerService', () => {
 		);
 	});
 
+	describe('guarded session lifecycle admission', () => {
+		test('stays closed until the original runtime is ready and never revives a replaced owner', () => {
+			const runtime = { isCurrent: jest.fn().mockReturnValue(true) };
+			const first = svc.beginGuardedSessionAdmission(runtime);
+			expect(svc.captureGuardedSessionAdmission()).toBeNull();
+			expect(first.open()).toBe(true);
+			const captured = svc.captureGuardedSessionAdmission();
+			expect(captured?.isCurrent()).toBe(true);
+			const second = svc.beginGuardedSessionAdmission(runtime);
+			expect(captured?.isCurrent()).toBe(false);
+			expect(first.open()).toBe(false);
+			expect(second.open()).toBe(true);
+			first.revoke();
+			expect(svc.captureGuardedSessionAdmission()?.isCurrent()).toBe(true);
+			runtime.isCurrent.mockReturnValue(false);
+			expect(svc.captureGuardedSessionAdmission()).toBeNull();
+		});
+
+		test('does not open unmanaged, failed, or detached starts', async () => {
+			expect(svc.beginGuardedSessionAdmission(null).open()).toBe(false);
+			expect(svc.beginGuardedSessionAdmission({ isCurrent: () => false }).open()).toBe(false);
+			const owner = svc.beginGuardedSessionAdmission({ isCurrent: () => true });
+			expect(owner.open()).toBe(true);
+			const captured = svc.captureGuardedSessionAdmission();
+			await svc.detach();
+			expect(captured?.isCurrent()).toBe(false);
+			expect(owner.open()).toBe(false);
+		});
+
+		test('binds a native guarded session to its original lifecycle and delegate', () => {
+			const device = { id: 'device', identifier: 'shelly', canonicalMac: 'AABBCCDDEEFF' } as ShellyNgDeviceEntity;
+			const qualification = { guardScript: { canonicalMac: device.canonicalMac } } as Parameters<
+				DelegatesManagerService['prepareGuardRpcSession']
+			>[2];
+			const delegate = {
+				guardedTransportActive: true,
+				prepareGuardRpcSession: jest.fn((_component, _qualification, isCurrent: () => boolean) => ({ isCurrent })),
+			};
+			(svc as any).identifierToDelegates.set('shelly', new Set(['delegate']));
+			(svc as any).delegates.set('delegate', delegate);
+			(svc as any).delegateDeviceIds.set('delegate', device.id);
+			expect(svc.prepareGuardRpcSession(device, 0, qualification)).toBeNull();
+			expect(delegate.prepareGuardRpcSession).not.toHaveBeenCalled();
+			const owner = svc.beginGuardedSessionAdmission({ isCurrent: () => true });
+			owner.open();
+			const original = svc.prepareGuardRpcSession(device, 0, qualification);
+			expect(original?.isCurrent()).toBe(true);
+			const replacement = svc.beginGuardedSessionAdmission({ isCurrent: () => true });
+			replacement.open();
+			expect(original?.isCurrent()).toBe(false);
+			const current = svc.prepareGuardRpcSession(device, 0, qualification);
+			expect(current?.isCurrent()).toBe(true);
+			(svc as any).delegates.set('delegate', { ...delegate });
+			expect(current?.isCurrent()).toBe(false);
+		});
+	});
+
 	function arrangeBaseEntities() {
 		const device = {
 			id: uuid().toString(),

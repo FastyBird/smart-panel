@@ -133,6 +133,8 @@ const mockConfigService = (cfg = pluginConfigEnabled) => ({
 });
 
 const mockDelegates = () => ({
+	beginGuardedSessionAdmission: jest.fn(() => ({ open: jest.fn().mockReturnValue(true), revoke: jest.fn() })),
+	revokeGuardedSessionAdmission: jest.fn(),
 	insert: jest.fn(),
 	remove: jest.fn().mockResolvedValue(undefined),
 	detach: jest.fn().mockResolvedValue(undefined),
@@ -161,6 +163,7 @@ const mockDeviceConnectivityService = {
 };
 
 const mockPluginServiceManager = {
+	captureCurrentStartAdmission: jest.fn().mockReturnValue(null),
 	restartService: jest.fn().mockResolvedValue(true),
 };
 
@@ -662,6 +665,77 @@ describe('ShellyNgService', () => {
 		await svc.start();
 		expect(svc.getState()).toBe('started');
 		expect(ds9.__testing.shelliesInstances[1].registered).toHaveLength(2);
+	});
+
+	test('opens guarded admission only after normal managed startup and revokes before queued stop', async () => {
+		let finishDiscovery!: () => void;
+		let entered!: () => void;
+		const discovering = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const db = mockDbDiscoverer();
+		db.run.mockImplementationOnce(() => {
+			entered();
+			return new Promise<void>((resolve) => {
+				finishDiscovery = resolve;
+			});
+		});
+		const delegates = mockDelegates();
+		const runtime = { isCurrent: jest.fn().mockReturnValue(true) };
+		const manager = { ...mockPluginServiceManager, captureCurrentStartAdmission: jest.fn().mockReturnValue(runtime) };
+		svc = new ShellyNgService(
+			mockConfigService() as any,
+			db as any,
+			delegates as any,
+			mockDeviceManagerService as any,
+			mockDevicesService() as any,
+			mockDeviceConnectivityService as any,
+			manager as any,
+			mockWsServer as any,
+		);
+		const starting = svc.start();
+		await discovering;
+		const firstGate = delegates.beginGuardedSessionAdmission.mock.results[0].value;
+		expect(firstGate.open).not.toHaveBeenCalled();
+		const queuedStart = svc.start();
+		const stopping = svc.stop();
+		expect(delegates.revokeGuardedSessionAdmission).toHaveBeenCalledTimes(1);
+		finishDiscovery();
+		await starting;
+		await queuedStart;
+		await stopping;
+		expect(delegates.beginGuardedSessionAdmission).toHaveBeenCalledTimes(1);
+		expect(firstGate.open).not.toHaveBeenCalled();
+		expect(firstGate.revoke).toHaveBeenCalled();
+		expect(svc.getState()).toBe('stopped');
+
+		await svc.start();
+		const secondGate = delegates.beginGuardedSessionAdmission.mock.results[1].value;
+		expect(secondGate.open).toHaveBeenCalledTimes(1);
+		expect(manager.captureCurrentStartAdmission).toHaveBeenCalledWith(svc);
+	});
+
+	test('preserves the startup error when delegate cleanup also fails and never opens admission', async () => {
+		const db = mockDbDiscoverer();
+		const primary = new Error('database discovery failed');
+		db.run.mockRejectedValueOnce(primary);
+		const delegates = mockDelegates();
+		delegates.detach.mockRejectedValueOnce(new Error('delegate cleanup failed'));
+		svc = new ShellyNgService(
+			mockConfigService() as any,
+			db as any,
+			delegates as any,
+			mockDeviceManagerService as any,
+			mockDevicesService() as any,
+			mockDeviceConnectivityService as any,
+			mockPluginServiceManager as any,
+			mockWsServer as any,
+		);
+		await expect(svc.start()).rejects.toBe(primary);
+		const gate = delegates.beginGuardedSessionAdmission.mock.results[0].value;
+		expect(gate.open).not.toHaveBeenCalled();
+		expect(gate.revoke).toHaveBeenCalledTimes(1);
+		expect(svc.getState()).toBe('error');
 	});
 
 	test('getState() returns current service state', async () => {

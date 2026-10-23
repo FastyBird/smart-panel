@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -36,6 +38,24 @@ interface ReadinessRetryState {
 	timer: NodeJS.Timeout | null;
 }
 
+/** Readonly evidence tied to the original registration and start attempt. */
+export interface ManagedRuntimeAdmission {
+	isCurrent(): boolean;
+}
+
+interface ManagedStartAttempt {
+	registration: ServiceRegistration;
+	active: boolean;
+	invoked: boolean;
+	failed: boolean;
+	runtime: ManagedRuntimeAdmission;
+}
+
+interface PendingServiceStart {
+	attempt: ManagedStartAttempt;
+	promise: Promise<void>;
+}
+
 /**
  * Centralized service manager for extension-owned runtime lifecycle management.
  *
@@ -64,7 +84,9 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private readonly services: Map<string, ServiceRegistration> = new Map();
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
 	private readonly readinessRetries: Map<string, ReadinessRetryState> = new Map();
-	private readonly serviceStartPromises: Map<string, Promise<void>> = new Map();
+	private readonly serviceStartPromises = new WeakMap<IManagedExtensionService, PendingServiceStart>();
+	private readonly startAttempts = new WeakMap<ServiceRegistration, ManagedStartAttempt>();
+	private readonly startContext = new AsyncLocalStorage<ManagedStartAttempt>();
 	// Explicit "is there a raised issue for this service" flag, replacing detection derived from
 	// `lastError` (which stays set across unrelated conditions - e.g. a transient readiness
 	// warning - and so cannot tell "already raised" from "not raised yet"). Set by
@@ -139,6 +161,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			return;
 		}
 
+		this.revokeAdmission(this.services.get(key));
 		this.services.delete(key);
 		this.runtimeInfo.delete(key);
 		this.openIssues.delete(key);
@@ -193,7 +216,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		this.logger.log('Stopping all managed services for factory reset');
 
 		const sorted = this.getSortedServices().reverse();
-		for (const registration of sorted) registration.service.revokeCurrentAuthority?.();
+		for (const registration of sorted) this.revokeAdmission(registration);
 
 		for (const registration of sorted) {
 			const state = registration.service.getState();
@@ -234,7 +257,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		// Stop in reverse order (highest priority last started, first stopped)
 		const sorted = this.getSortedServices().reverse();
-		for (const registration of sorted) registration.service.revokeCurrentAuthority?.();
+		for (const registration of sorted) this.revokeAdmission(registration);
 
 		for (const registration of sorted) {
 			const state = registration.service.getState();
@@ -274,14 +297,16 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			return;
 		}
 
-		for (const registration of this.services.values()) {
-			if (
-				(payload?.type === 'plugin' || payload?.type === 'module') &&
-				(registration.owner.kind !== payload.type || registration.owner.type !== payload.source)
-			) {
-				continue;
-			}
-
+		const registrations = Array.from(this.services.values()).filter(
+			(registration) =>
+				(payload?.type !== 'plugin' && payload?.type !== 'module') ||
+				(registration.owner.kind === payload.type && registration.owner.type === payload.source),
+		);
+		// Close every affected runtime before waiting on any individual service.
+		for (const registration of registrations) {
+			if (!this.shouldBeRunning(registration)) this.revokeAdmission(registration);
+		}
+		for (const registration of registrations) {
 			await this.syncServiceState(registration);
 		}
 	}
@@ -425,13 +450,15 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		await this.stopService(registration);
 
-		if (registration.service.getState() !== 'stopped') {
+		if (!this.isCurrentRegistration(registration) || registration.service.getState() !== 'stopped') {
 			this.logger.warn(`Cannot restart service ${key}: stop did not reach the stopped state`);
 
 			return false;
 		}
 
 		await this.startService(registration);
+
+		if (!this.isCurrentRegistration(registration)) return false;
 
 		const resultingState = registration.service.getState();
 
@@ -472,6 +499,8 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		await this.startService(registration);
 
+		if (!this.isCurrentRegistration(registration)) return false;
+
 		const resultingState = registration.service.getState();
 
 		return resultingState === 'started' || resultingState === 'starting';
@@ -495,6 +524,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			return false;
 		}
 
+		this.revokeAdmission(registration);
 		this.clearReadinessRetry(key);
 
 		const currentState = registration.service.getState();
@@ -540,30 +570,92 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		await this.startService(registration);
 	}
 
-	private async startService(registration: ServiceRegistration, requireDesiredState: boolean = true): Promise<void> {
-		const key = this.getRegistrationKey(registration);
-		const pendingStart = this.serviceStartPromises.get(key);
+	/** Capture at start entry, before the service's own lifecycle queue can wait. */
+	captureCurrentStartAdmission(service: IManagedExtensionService): ManagedRuntimeAdmission | null {
+		const attempt = this.startContext.getStore();
 
-		if (pendingStart !== undefined) {
-			await pendingStart;
+		return attempt?.active && attempt.registration.service === service && attempt.runtime.isCurrent()
+			? attempt.runtime
+			: null;
+	}
+
+	private isCurrentRegistration(registration: ServiceRegistration): boolean {
+		return this.services.get(this.getRegistrationKey(registration)) === registration;
+	}
+
+	private revokeAdmission(registration: ServiceRegistration): void {
+		this.startAttempts.delete(registration);
+		try {
+			registration.service.revokeCurrentAuthority?.();
+		} catch (error) {
+			this.logger.error(
+				`Failed to revoke service authority: ${this.getRegistrationKey(registration)}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+		}
+	}
+
+	private async startService(registration: ServiceRegistration, requireDesiredState: boolean = true): Promise<void> {
+		if (!this.isCurrentRegistration(registration) || this.shutdownInProgress) return;
+		const pending = this.serviceStartPromises.get(registration.service);
+
+		if (pending) {
+			const current = this.startAttempts.get(registration) === pending.attempt;
+			await pending.promise;
+			if (current || !this.isCurrentRegistration(registration) || this.shutdownInProgress) return;
+			// Re-registering the same object must drain and clean up its original invocation.
+			if (pending.attempt.registration !== registration && pending.attempt.invoked) {
+				await this.stopService(registration);
+				if (registration.service.getState() !== 'stopped') return;
+			}
+			await this.startService(registration, requireDesiredState);
 			return;
 		}
+		const state = registration.service.getState();
+		if (state === 'started' || state === 'starting') return;
 
+		const key = this.getRegistrationKey(registration);
 		this.clearReadinessRetryTimer(key);
-
-		const startPromise = this.startServiceOnce(registration, key, requireDesiredState).finally(() => {
-			if (this.serviceStartPromises.get(key) === startPromise) this.serviceStartPromises.delete(key);
-		});
-		this.serviceStartPromises.set(key, startPromise);
-
-		await startPromise;
+		const attempt: ManagedStartAttempt = {
+			registration,
+			active: true,
+			invoked: false,
+			failed: false,
+			runtime: Object.freeze({
+				isCurrent: () =>
+					this.isCurrentRegistration(registration) &&
+					this.startAttempts.get(registration) === attempt &&
+					!this.shutdownInProgress &&
+					!attempt.failed &&
+					attempt.invoked &&
+					(!requireDesiredState || this.shouldBeRunning(registration)),
+			}),
+		};
+		this.startAttempts.set(registration, attempt);
+		// Install single-flight ownership before a validator can reenter the manager.
+		const entry: PendingServiceStart = {
+			attempt,
+			promise: Promise.resolve()
+				.then(() => this.startServiceOnce(registration, key, requireDesiredState, attempt))
+				.finally(() => {
+					attempt.active = false;
+					if (this.serviceStartPromises.get(registration.service) === entry)
+						this.serviceStartPromises.delete(registration.service);
+				}),
+		};
+		this.serviceStartPromises.set(registration.service, entry);
+		await entry.promise;
 	}
 
 	private async startServiceOnce(
 		registration: ServiceRegistration,
 		key: string,
 		requireDesiredState: boolean,
+		attempt: ManagedStartAttempt,
 	): Promise<void> {
+		const isCurrent = () =>
+			this.isCurrentRegistration(registration) && this.startAttempts.get(registration) === attempt;
+		if (!isCurrent()) return;
 		const currentState = registration.service.getState();
 
 		if (currentState === 'started' || currentState === 'starting') {
@@ -590,6 +682,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 						config as unknown as Record<string, unknown>,
 					);
 				} catch {
+					if (!isCurrent()) return;
 					const warning = 'Configuration readiness check is temporarily unavailable';
 					createExtensionLogger(registration.owner.type, 'ManagedServiceManagerService').warn(
 						`Service ${registration.serviceId} is enabled but not started because its ${warning.toLowerCase()}.`,
@@ -602,6 +695,8 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 					return;
 				}
+
+				if (!isCurrent()) return;
 
 				if (!validationResult.valid && validationResult.transient) {
 					const warning = 'Configuration readiness check is temporarily unavailable';
@@ -639,13 +734,16 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		// Readiness validators may perform asynchronous provider or database work. A disable event can
 		// complete while that work is pending and observe this service as still stopped, so re-read the
 		// user's intent immediately before allocating runtime resources.
+		if (!isCurrent()) return;
 		if (requireDesiredState && (this.shutdownInProgress || !this.shouldBeRunning(registration))) {
 			this.clearReadinessRetry(key);
 			return;
 		}
 
 		try {
-			await registration.service.start();
+			attempt.invoked = true;
+			await this.startContext.run(attempt, () => registration.service.start());
+			if (!isCurrent()) return;
 
 			// Update runtime info on successful start
 			const runtime = this.runtimeInfo.get(key);
@@ -661,6 +759,8 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 			await this.resolveServiceError(registration);
 		} catch (error) {
+			attempt.failed = true;
+			if (!isCurrent()) return;
 			const err = error as Error;
 
 			// Track the error. `openIssues` - not `lastError` - decides whether this is a fresh
@@ -688,6 +788,8 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	}
 
 	private async stopService(registration: ServiceRegistration): Promise<void> {
+		if (!this.isCurrentRegistration(registration)) return;
+		this.revokeAdmission(registration);
 		const key = this.getRegistrationKey(registration);
 		const currentState = registration.service.getState();
 
@@ -699,6 +801,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		try {
 			await registration.service.stop();
+			if (!this.isCurrentRegistration(registration)) return;
 
 			// Update runtime info on successful stop
 			const runtime = this.runtimeInfo.get(key);
@@ -709,6 +812,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 			this.logger.log(`Service stopped successfully: ${key}`);
 		} catch (error) {
+			if (!this.isCurrentRegistration(registration)) return;
 			const err = error as Error;
 
 			// Track the error
@@ -723,17 +827,25 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	}
 
 	private async syncServiceState(registration: ServiceRegistration): Promise<void> {
+		if (!this.isCurrentRegistration(registration)) return;
 		const key = this.getRegistrationKey(registration);
 		let currentState = registration.service.getState();
 		const shouldBeRunning = this.shouldBeRunning(registration);
 
-		if (!shouldBeRunning) this.clearReadinessRetry(key);
+		if (!shouldBeRunning) {
+			this.revokeAdmission(registration);
+			this.clearReadinessRetry(key);
+		}
+		const attempt = this.startAttempts.get(registration);
+		const isCurrent = () =>
+			this.isCurrentRegistration(registration) && this.startAttempts.get(registration) === attempt;
 
 		// Handle transitional states by waiting for them to complete
 		if (currentState === 'starting' || currentState === 'stopping') {
 			const targetState = currentState === 'starting' ? 'started' : 'stopped';
 
 			await this.waitForState(registration, targetState);
+			if (!isCurrent()) return;
 
 			currentState = registration.service.getState();
 		}
@@ -748,6 +860,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			// has a guard that returns early when state is 'stopping'.
 			try {
 				await registration.service.stop();
+				if (!isCurrent()) return;
 
 				const runtime = this.runtimeInfo.get(key);
 
@@ -757,6 +870,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 				this.logger.log(`Service force-stopped successfully: ${key}`);
 			} catch (error) {
+				if (!isCurrent()) return;
 				const err = error as Error;
 
 				const runtime = this.runtimeInfo.get(key);
@@ -794,6 +908,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 			try {
 				const result = await registration.service.onConfigChanged();
+				if (!isCurrent()) return;
 
 				// Check if service signals that restart is required
 				if (this.isConfigChangeResult(result) && result.restartRequired) {
