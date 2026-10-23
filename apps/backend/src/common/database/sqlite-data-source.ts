@@ -205,7 +205,7 @@ class SqliteConnectionCoordinator {
 		while (!parent.active || !parent.accepting) {
 			parent = parent.parent;
 			if (!parent || parent.lease !== lease) {
-				throw new Error('SQLite operation requires an active owning context on its original lease');
+				return Promise.reject(new Error('SQLite operation requires an active owning context on its original lease'));
 			}
 		}
 		const owner = parent;

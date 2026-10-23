@@ -1613,6 +1613,56 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		expect(await names()).toEqual(['healthy']);
 	});
 
+	it('returns a rejected repository Promise for an orphaned context while its manual transaction remains active', async () => {
+		const runner = database.createQueryRunner();
+		const resume = deferred();
+		let continuation: Promise<void> | undefined;
+		let returnedNormally = false;
+		let synchronousFailure: { cause: unknown } | undefined;
+		let rejection: unknown;
+		const queries: string[] = [];
+		database.subscribers.push({
+			beforeQuery: (event) => {
+				queries.push(event.query);
+				if (event.query !== 'SELECT 25 AS orphaned_manual_context') return;
+				continuation = resume.promise.then(async () => {
+					let write: Promise<TransactionRecord>;
+					try {
+						write = event.manager.getRepository(TransactionRecord).save({ name: 'forbidden-orphan-write' });
+						returnedNormally = true;
+					} catch (cause: unknown) {
+						synchronousFailure = { cause };
+						return;
+					}
+					await write.catch((cause: unknown) => {
+						rejection = cause;
+					});
+				});
+			},
+		});
+		try {
+			await runner.startTransaction();
+			await runner.manager.insert(TransactionRecord, { name: 'owner-before' });
+			await runner.manager.query('SELECT 25 AS orphaned_manual_context');
+			// All query contexts have retired, but the manual owner's transaction and lease remain live.
+			const beforeRejectedWrite = queries.length;
+			resume.resolve();
+			await continuation;
+			expect(synchronousFailure).toBeUndefined();
+			expect(returnedNormally).toBe(true);
+			expect(rejection).toEqual(new Error('SQLite operation requires an active owning context on its original lease'));
+			expect(queries).toHaveLength(beforeRejectedWrite);
+			expect(runner.isTransactionActive).toBe(true);
+			await runner.manager.insert(TransactionRecord, { name: 'owner-after' });
+			await runner.commitTransaction();
+			expect(await names()).toEqual(['owner-after', 'owner-before']);
+		} finally {
+			resume.resolve();
+			await continuation;
+			await runner.release();
+		}
+	});
+
 	it('expires inherited async leases and lets detached event work wait for committed state', async () => {
 		let detached: Promise<void>;
 		const launch = deferred();
