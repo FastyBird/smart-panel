@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { Logger } from '@nestjs/common';
+
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	VirtualChannelPropertyEntity,
@@ -151,6 +153,17 @@ describe('single-property read provenance with hydrated entities', () => {
 		expect(projection).toBeInstanceOf(VirtualChannelPropertyEntity);
 		expect(projection.sourceProperty).toBeInstanceOf(ChannelPropertyEntity);
 		const closed = assertClosed();
+		const coldValues = new PropertyValueService(
+			storage as unknown as StorageService,
+			registry,
+			new PropertyValueLockService({} as never),
+		);
+		storage.queryStrict.mockResolvedValueOnce(rows());
+		await expect(coldValues.readLatestStrict(projection)).resolves.toMatchObject({ value: 21, trend: 'rising' });
+		expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+		expect(storage.queryStrict).toHaveBeenCalledWith(expect.stringContaining(physicalId));
+		expect(storage.queryStrict).not.toHaveBeenCalledWith(expect.stringContaining(projectionId));
+		storage.queryStrict.mockClear();
 		storage.query.mockResolvedValue(rows());
 		await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 21, trend: 'rising' });
 		await expect(values.readLatestStrict(projection)).resolves.toMatchObject({ value: 21 });
@@ -228,6 +241,9 @@ describe('single-property read provenance with hydrated entities', () => {
 		physical.dataType = DataTypeType.BOOL;
 		held.resolve(rows());
 		await expect(pending).resolves.toBeNull();
+		storage.query.mockResolvedValue([]);
+		await expect(values.readLatest(physical)).resolves.toBeNull();
+		expect(storage.query).toHaveBeenCalledTimes(2);
 		closed();
 	});
 
@@ -252,6 +268,27 @@ describe('single-property read provenance with hydrated entities', () => {
 			expect(storage.query).not.toHaveBeenCalled();
 		},
 	);
+
+	it('retains existing cache after nonempty durable rows settle on a remapped projection', async () => {
+		const closed = assertClosed();
+		await values.write(physical, 10);
+		const entered = deferred<void>();
+		const held = deferred<{ rows: Row[]; binding: StorageBackendBinding }>();
+		storage.queryActiveStrictBound.mockImplementationOnce(() => {
+			entered.resolve();
+			return held.promise;
+		});
+		const pending = values.readLatestPersisted(projection);
+		const rejection = expect(pending).rejects.toThrow('source changed during read');
+		await entered.promise;
+		projection.sourcePropertyId = randomUUID();
+		held.resolve({ rows: rows(), binding });
+		await rejection;
+		await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 10 });
+		expect(storage.queryActiveStrictBound).toHaveBeenCalledTimes(1);
+		expect(storage.query).not.toHaveBeenCalled();
+		closed();
+	});
 
 	it.each([[], 'rows'] as const)(
 		'preserves a newer cache write after unchanged durable settlement (%s)',
@@ -298,6 +335,60 @@ describe('single-property read provenance with hydrated entities', () => {
 			closed();
 		},
 	);
+
+	it.each<[unknown, string]>([
+		[new Error('source capture failed'), 'source capture failed'],
+		[null, 'null'],
+		[undefined, 'undefined'],
+		[false, 'false'],
+		[0, '0'],
+		['source capture failed', 'source capture failed'],
+	])('logs best-effort source capture failures and preserves strict rejection (%p)', async (failure, message) => {
+		registry.register({
+			getType: () => physical.type,
+			resolve: () => {
+				throw failure;
+			},
+		});
+		const log = jest.spyOn(Logger.prototype, 'error').mockClear();
+		const produced = jest.spyOn(producers, 'read');
+		await expect(values.readLatest(physical)).resolves.toBeNull();
+		expect(log).toHaveBeenCalledTimes(1);
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining(`Failed to capture property value source error=${message}`),
+			undefined,
+			expect.objectContaining({ tag: 'devices-module' }),
+		);
+		log.mockClear();
+		await expect(values.readLatestStrict(physical)).rejects.toBe(failure);
+		expect(log).not.toHaveBeenCalled();
+		expect(produced).not.toHaveBeenCalled();
+		expect(storage.query).not.toHaveBeenCalled();
+		expect(storage.queryStrict).not.toHaveBeenCalled();
+	});
+
+	it.each(['id', 'type'])('does not read refused own %s accessors when logging capture failure', async (field) => {
+		const getter = jest.fn(() => {
+			throw new Error('refused getter must not run');
+		});
+		Object.defineProperty(physical, field, { configurable: true, get: getter });
+		const log = jest.spyOn(Logger.prototype, 'error').mockClear();
+		const produced = jest.spyOn(producers, 'read');
+		await expect(values.readLatest(physical)).resolves.toBeNull();
+		expect(log).toHaveBeenCalledTimes(1);
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining('Value source input must have data fields'),
+			undefined,
+			expect.objectContaining({ tag: 'devices-module' }),
+		);
+		log.mockClear();
+		await expect(values.readLatestStrict(physical)).rejects.toThrow('Value source input must have data fields');
+		expect(log).not.toHaveBeenCalled();
+		expect(getter).not.toHaveBeenCalled();
+		expect(produced).not.toHaveBeenCalled();
+		expect(storage.query).not.toHaveBeenCalled();
+		expect(storage.queryStrict).not.toHaveBeenCalled();
+	});
 
 	it('keeps best-effort storage errors contained and closes captures on disconnected/cache paths', async () => {
 		const closed = assertClosed();

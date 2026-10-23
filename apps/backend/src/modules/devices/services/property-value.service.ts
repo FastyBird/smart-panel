@@ -872,6 +872,8 @@ export class PropertyValueService {
 			capture = this.valueSourceRegistry.captureReadSource(property);
 		} catch (error) {
 			if (strict) throw error;
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(`Failed to capture property value source error=${err.message}`, err.stack);
 			return { state: null };
 		}
 		try {
