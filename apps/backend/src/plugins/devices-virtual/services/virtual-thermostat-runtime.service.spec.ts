@@ -2240,7 +2240,8 @@ describe('virtual thermostat durable runtime', () => {
 			).toBe(true);
 			for (const probe of protectionProbes) sample(probe, 20);
 			runtime.request(controllerId);
-			await waitForOnJournal();
+			// Observe the original dispatches; inspect() would request an extra evaluation that can
+			// drain the sibling before the mutation this scenario is intended to test.
 			await Promise.all([relayQueued, siblingEnergized]);
 			await runtime.flush();
 			const prepared = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
