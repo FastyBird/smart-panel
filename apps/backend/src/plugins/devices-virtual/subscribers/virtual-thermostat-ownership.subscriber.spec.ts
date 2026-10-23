@@ -87,4 +87,13 @@ describe('thermostat ownership persistence boundaries (real SQLite)', () => {
 		expect(invalidate).toHaveBeenCalledTimes(2);
 		expect(refresh).toHaveBeenCalledTimes(2);
 	});
+	it('preserves ordinary unclassified raw SQL behavior when no creation publication is admitted', async () => {
+		await database.query('INSERT INTO devices_module_devices(id) VALUES (1)');
+		invalidate.mockClear();
+		refresh.mockClear();
+		await database.query('/* explicit ordinary raw path */ UPDATE devices_module_devices SET id = 2 WHERE id = 1');
+		expect(await database.query('SELECT id FROM devices_module_devices')).toEqual([{ id: 2 }]);
+		expect(invalidate).not.toHaveBeenCalled();
+		expect(refresh).not.toHaveBeenCalled();
+	});
 });

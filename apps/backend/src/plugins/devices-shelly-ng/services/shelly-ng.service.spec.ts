@@ -8,17 +8,21 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { PluginConfigValidatorService } from '../../../modules/config/services/plugin-config-validator.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
+import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 import { DatabaseDiscovererService } from './database-discoverer.service';
 import { DeviceManagerService } from './device-manager.service';
+import { PollPlacementDiagnosticsService } from './poll-placement-diagnostics.service';
 import { ShellyNgService } from './shelly-ng.service';
 import { ShellyWsServerService } from './shelly-ws-server.service';
 
@@ -133,6 +137,8 @@ const mockConfigService = (cfg = pluginConfigEnabled) => ({
 });
 
 const mockDelegates = () => ({
+	beginGuardedSessionAdmission: jest.fn().mockReturnValue({ open: () => false, revoke: () => undefined }),
+	revokeGuardedSessionAdmission: jest.fn(),
 	insert: jest.fn(),
 	remove: jest.fn().mockResolvedValue(undefined),
 	detach: jest.fn().mockResolvedValue(undefined),
@@ -161,6 +167,7 @@ const mockDeviceConnectivityService = {
 };
 
 const mockPluginServiceManager = {
+	captureCurrentStartAdmission: jest.fn().mockReturnValue(null),
 	restartService: jest.fn().mockResolvedValue(true),
 };
 
@@ -179,8 +186,14 @@ describe('ShellyNgService', () => {
 		getConnectedDelegateIds: jest.Mock;
 		pollDevice: jest.Mock;
 		invalidateStatusPolls?: jest.Mock;
+		beginGuardedSessionAdmission?: jest.Mock;
+		revokeGuardedSessionAdmission?: jest.Mock;
 	}): ShellyNgService {
 		delegates.invalidateStatusPolls ??= jest.fn();
+		delegates.beginGuardedSessionAdmission ??= jest
+			.fn()
+			.mockReturnValue({ open: () => false, revoke: () => undefined });
+		delegates.revokeGuardedSessionAdmission ??= jest.fn();
 
 		const pollingService = new ShellyNgService(
 			mockConfigService({ ...pluginConfigEnabled, statusPollInterval: 1 }) as any,
@@ -215,6 +228,250 @@ describe('ShellyNgService', () => {
 		ds9.__testing.mdnsInstances.length = 0;
 		jest.clearAllMocks();
 		jest.useRealTimers();
+	});
+
+	describe('original managed guarded admission', () => {
+		const deferred = () => {
+			let finish: () => void = () => {
+				throw new Error('Deferred not initialized');
+			};
+			const promise = new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+			return { promise, resolve: () => finish() };
+		};
+		const fixture = async () => {
+			const config = { ...pluginConfigEnabled, mdns: { enabled: false, interface: null }, statusPollInterval: 0 };
+			const db = mockDbDiscoverer();
+			const validator = {
+				hasValidator: jest.fn().mockReturnValue(false),
+				validate: jest.fn().mockResolvedValue({ valid: true }),
+			};
+			const module = await Test.createTestingModule({
+				providers: [
+					ShellyNgService,
+					DelegatesManagerService,
+					ManagedServiceManagerService,
+					PollPlacementDiagnosticsService,
+					{ provide: ConfigService, useValue: mockConfigService(config) },
+					{ provide: NestConfigService, useValue: { get: jest.fn().mockReturnValue(null) } },
+					{ provide: PluginConfigValidatorService, useValue: validator },
+					{
+						provide: NotificationsService,
+						useValue: { notify: jest.fn().mockResolvedValue(null), resolve: jest.fn().mockResolvedValue(true) },
+					},
+					{ provide: DatabaseDiscovererService, useValue: db },
+					{ provide: DevicesService, useValue: mockDevicesService() },
+					{ provide: ShellyWsServerService, useValue: mockWsServer },
+				],
+			})
+				.useMocker(() => ({ setConnectionState: jest.fn().mockResolvedValue(undefined) }))
+				.compile();
+			expect(module.get(PollPlacementDiagnosticsService).isEnabled()).toBe(false);
+			testingModules.push(module);
+			const connector = module.get(ShellyNgService),
+				manager = module.get(ManagedServiceManagerService),
+				delegates = module.get(DelegatesManagerService);
+			svc = connector;
+			manager.register(connector);
+			const start = () => manager.startServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
+			const restart = () => manager.restartService(connector.owner.kind, connector.owner.type, connector.serviceId);
+			return { connector, manager, delegates, db, validator, config, start, restart };
+		};
+		const capture = (delegates: DelegatesManagerService) => {
+			const lease = delegates.captureGuardedSessionAdmission();
+			if (!lease) throw new Error('Expected live managed guarded admission');
+			return lease;
+		};
+
+		it('keeps direct unmanaged discovery closed and opens only a fresh successful original managed start', async () => {
+			const f = await fixture();
+			expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+			await f.connector.start();
+			expect(f.connector.getState()).toBe('started');
+			expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+			await f.connector.stop();
+			expect(await f.start()).toBe(true);
+			const lease = capture(f.delegates);
+			expect(lease.isCurrent()).toBe(true); // Manager's start operation has already closed.
+			await f.connector.start(); // Already started: no new gate or fabricated null-token authority.
+			expect(lease.isCurrent()).toBe(true);
+			const stopping = f.connector.stop();
+			expect(lease.isCurrent()).toBe(false); // Before withLock can acquire or doStop can drain.
+			expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+			await stopping;
+		});
+
+		it('cannot reopen a held start after direct revocation even while the original manager intent remains enabled', async () => {
+			const f = await fixture(),
+				entered = deferred(),
+				hold = deferred();
+			f.db.run.mockImplementationOnce(() => {
+				entered.resolve();
+				return hold.promise;
+			});
+			const starting = f.start();
+			try {
+				await entered.promise;
+				f.connector.revokeCurrentAuthority();
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				hold.resolve();
+				await starting;
+				expect(f.connector.getState()).toBe('started');
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				await f.restart();
+				expect(capture(f.delegates).isCurrent()).toBe(true);
+			} finally {
+				hold.resolve();
+				await starting;
+			}
+		});
+
+		it('closes at stop entry while that stop queues behind a held managed restart, and admits only a later generation', async () => {
+			const f = await fixture();
+			await f.start();
+			const original = capture(f.delegates),
+				entered = deferred(),
+				hold = deferred();
+			f.db.run.mockImplementationOnce(() => {
+				entered.resolve();
+				return hold.promise;
+			});
+			const restarting = f.restart();
+			try {
+				await entered.promise;
+				const stopping = f.connector.stop();
+				expect(original.isCurrent()).toBe(false);
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				hold.resolve();
+				await Promise.all([restarting, stopping]);
+				expect(f.connector.getState()).toBe('stopped');
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				await f.start();
+				expect(capture(f.delegates).isCurrent()).toBe(true);
+				expect(original.isCurrent()).toBe(false);
+			} finally {
+				hold.resolve();
+				await restarting;
+			}
+		});
+
+		it('keeps failed startup closed and allows a subsequent successful managed startup', async () => {
+			const f = await fixture();
+			f.db.run.mockRejectedValueOnce(new Error('fixture discovery failure'));
+			expect(await f.start()).toBe(false);
+			expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+			expect(await f.start()).toBe(true);
+			expect(capture(f.delegates).isCurrent()).toBe(true);
+		});
+
+		it('does not rescue pre-validator disable-enable work through the actual manager config prepass', async () => {
+			const f = await fixture(),
+				entered = deferred(),
+				validation = deferred();
+			f.validator.hasValidator.mockReturnValue(true);
+			f.validator.validate.mockImplementationOnce(async () => {
+				entered.resolve();
+				await validation.promise;
+				return { valid: true };
+			});
+			const old = f.start();
+			try {
+				await entered.promise;
+				f.config.enabled = false;
+				await f.manager.handleConfigUpdated({ type: 'plugin', source: f.connector.owner.type });
+				f.config.enabled = true;
+				await f.manager.handleConfigUpdated({ type: 'plugin', source: f.connector.owner.type });
+				validation.resolve();
+				await old;
+				expect(f.db.run).not.toHaveBeenCalled();
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				await f.start();
+				expect(capture(f.delegates).isCurrent()).toBe(true);
+			} finally {
+				validation.resolve();
+				await old;
+			}
+		});
+
+		it('retires same-service registration ABA without letting an old owner reopen or close the successor gate', async () => {
+			const f = await fixture(),
+				entered = deferred(),
+				hold = deferred();
+			const owners: ReturnType<DelegatesManagerService['beginGuardedSessionAdmission']>[] = [];
+			const runtimes: Parameters<DelegatesManagerService['beginGuardedSessionAdmission']>[0][] = [];
+			const begin = f.delegates.beginGuardedSessionAdmission.bind(f.delegates);
+			jest.spyOn(f.delegates, 'beginGuardedSessionAdmission').mockImplementation((runtime) => {
+				const owner = begin(runtime);
+				owners.push(owner);
+				runtimes.push(runtime);
+				return owner;
+			});
+			f.db.run.mockImplementationOnce(() => {
+				entered.resolve();
+				return hold.promise;
+			});
+			const old = f.start();
+			try {
+				await entered.promise;
+				const originalOwner = owners[0],
+					originalRuntime = runtimes[0];
+				if (!originalOwner || !originalRuntime) throw new Error('Expected original A owner/runtime');
+				expect(f.connector.getState()).toBe('starting');
+				f.manager.unregister(f.connector.owner.kind, f.connector.owner.type, f.connector.serviceId);
+				f.manager.register(f.connector);
+				expect(originalRuntime.isCurrent()).toBe(false);
+				expect(originalOwner.open()).toBe(false);
+				// Actual public manager contract rejects manual start in starting; no hidden state reset.
+				expect(await f.start()).toBe(false);
+				expect(owners).toHaveLength(1);
+				hold.resolve();
+				expect(await old).toBe(false);
+				expect(f.connector.getState()).toBe('started'); // Discovery may complete, original guarded authority cannot.
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				expect(f.db.run).toHaveBeenCalledTimes(1);
+				expect(
+					await f.manager.stopServiceManually(f.connector.owner.kind, f.connector.owner.type, f.connector.serviceId),
+				).toBe(true);
+				expect(f.connector.getState()).toBe('stopped');
+				expect(await f.start()).toBe(true);
+				expect(f.connector.getState()).toBe('started');
+				expect(f.db.run).toHaveBeenCalledTimes(2);
+				const current = capture(f.delegates);
+				expect(owners).toHaveLength(2);
+				expect(originalRuntime.isCurrent()).toBe(false);
+				expect(originalOwner.open()).toBe(false);
+				originalOwner.revoke();
+				expect(originalRuntime.isCurrent()).toBe(false);
+				expect(current.isCurrent()).toBe(true);
+			} finally {
+				hold.resolve();
+				await old;
+			}
+		});
+
+		it('detaches synchronously and never revives the old lease on restart', async () => {
+			const f = await fixture();
+			await f.start();
+			const old = capture(f.delegates);
+			const detaching = f.delegates.detach();
+			expect(old.isCurrent()).toBe(false);
+			expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+			await detaching;
+			await f.restart();
+			expect(capture(f.delegates).isCurrent()).toBe(true);
+			expect(old.isCurrent()).toBe(false);
+		});
+
+		it('closes through the actual manager shutdown prepass before its first service await', async () => {
+			const f = await fixture();
+			await f.start();
+			const old = capture(f.delegates);
+			const shutdown = f.manager.onModuleDestroy();
+			expect(old.isCurrent()).toBe(false);
+			expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+			await shutdown;
+		});
 	});
 
 	describe('status poll scheduler', () => {

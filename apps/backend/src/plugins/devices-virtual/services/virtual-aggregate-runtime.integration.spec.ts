@@ -5,9 +5,11 @@ import { v4 as uuid } from 'uuid';
 
 import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -25,6 +27,8 @@ import { PropertyValueLockService } from '../../../modules/devices/services/prop
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscribers/channel-property-entity.subscriber';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { StorageConfigModel } from '../../../modules/storage/models/config.model';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { HomeKitEventListener } from '../../devices-homekit/listeners/homekit-event.listener';
 import { HomeKitCommandDispatcher } from '../../devices-homekit/services/homekit-command.dispatcher';
@@ -59,6 +63,8 @@ jest.setTimeout(30000);
 const base = Date.parse('2026-10-13T10:00:00Z');
 
 describe('aggregate runtime with real SQLite bindings and value boundary', () => {
+	let coldStorageModule: TestingModule | undefined;
+	let coldStorage: StorageService | undefined;
 	let directory: string;
 	let database: SqliteDataSource;
 	let graph: VirtualDependencyGraphService;
@@ -123,6 +129,12 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		runtime?.onModuleDestroy();
 		state?.onModuleDestroy();
 		producers?.onModuleDestroy();
+		const shutdown = coldStorage?.onApplicationShutdown();
+		coldStorage = undefined;
+		const closing = coldStorageModule;
+		coldStorageModule = undefined;
+		await shutdown;
+		await closing?.close();
 		jest.useRealTimers();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
@@ -395,21 +407,43 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		const coldProducers = new PropertyProducerRegistryService();
 		const coldSources = new PropertyValueSourceRegistryService();
 		coldSources.register(new VirtualValueSourceService(graph));
-		const history = {
+		coldStorageModule = await Test.createTestingModule({
+			providers: [
+				StorageService,
+				{
+					provide: ConfigService,
+					useValue: {
+						getModuleConfig: () =>
+							Object.assign(new StorageConfigModel(), { primaryStorage: 'aggregate-cold-history' }),
+					},
+				},
+			],
+		}).compile();
+		coldStorage = coldStorageModule.get(StorageService);
+		const plugin: StoragePlugin = {
+			name: 'aggregate-cold-history',
+			initialize: () => Promise.resolve(),
+			destroy: () => Promise.resolve(),
+			isAvailable: () => true,
+			writePoints: () => Promise.resolve(),
+			query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('Raw query outside fixture')),
+			registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),
+			getMeasurements: () => Promise.resolve([]),
+		};
+		coldStorage.registerPlugin(plugin.name, plugin);
+		const history = Object.assign(coldStorage, {
 			...storage,
 			query: jest.fn().mockResolvedValue([{ time: new Date(base - 1000), numberValue: 24 }]),
-		};
+		});
 		const coldValues = new PropertyValueService(
-			history as unknown as StorageService,
+			history,
 			coldSources,
 			new PropertyValueLockService({} as never),
 			coldProducers,
 		);
-		new ChannelPropertyEntitySubscriber(
-			coldValues,
-			new DeviceConnectionStateService(history as unknown as StorageService),
-			database,
-		);
+		new ChannelPropertyEntitySubscriber(coldValues, new DeviceConnectionStateService(history), database);
 		const hydrated = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
 			where: { id: alias.id },
 			relations: ['channel', 'channel.device'],
@@ -1187,7 +1221,26 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 						.operator,
 				).toBe(VirtualAggregateOperator.MAX);
 				expect(await graph.revision()).toBe(priorRevision + 1);
-				expect(logged).toHaveBeenCalledTimes(1);
+				const committedErrors = logged.mock.calls.filter(
+					([message]) =>
+						message ===
+						'Virtual structural write committed, but graph validation failed; live authority remains unavailable until validation succeeds.',
+				);
+				expect(committedErrors).toHaveLength(1);
+				expect(committedErrors[0][1]).toBe(failure);
+				const privateReports = logged.mock.calls.filter(
+					([message]) => message === 'Owned graph publication incomplete',
+				);
+				expect(privateReports).toHaveLength(failureStage === 'listener' ? 1 : 0);
+				expect(logged).toHaveBeenCalledTimes(failureStage === 'listener' ? 2 : 1);
+				if (failureStage === 'listener') {
+					expect(privateReports[0][1]).toEqual({
+						installed: true,
+						attempted: 0,
+						completed: 0,
+						terminal: 'legacy_rejected',
+					});
+				}
 				expect(graph.isValidated()).toBe(false);
 				expect(graph.isRevisionCurrent(priorRevision)).toBe(false);
 				expect(graph.isRevisionCurrent(priorRevision + 1)).toBe(false);

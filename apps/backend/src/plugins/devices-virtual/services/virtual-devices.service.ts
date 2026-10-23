@@ -12,6 +12,7 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceValidationService, ValidationIssue } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
@@ -443,13 +444,17 @@ export class VirtualDevicesService {
 	 * distinguishing it here.
 	 */
 	async assertDeviceIsVirtual(deviceId: string): Promise<void> {
-		const device = this.dataSource
-			? await this.dataSource.manager
-					.createQueryBuilder(DeviceEntity, 'device')
-					.where('device.id = :id', { id: deviceId })
-					.callListeners(false)
-					.getOne()
-			: await this.devicesService.findOne(deviceId);
+		const original = DeviceCreationContext.readOriginalDeviceIdentity(deviceId);
+		const device =
+			original !== undefined
+				? await original
+				: this.dataSource
+					? await this.dataSource.manager
+							.createQueryBuilder(DeviceEntity, 'device')
+							.where('device.id = :id', { id: deviceId })
+							.callListeners(false)
+							.getOne()
+					: await this.devicesService.findOne(deviceId);
 
 		if (!device || device.type !== DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualOwnerNotVirtualException(

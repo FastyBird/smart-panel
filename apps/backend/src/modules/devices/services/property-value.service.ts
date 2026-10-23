@@ -2,7 +2,12 @@ import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
+import {
+	type CreationStorageDestinations,
+	type StorageBackendBinding,
+	StorageService,
+} from '../../storage/services/storage.service';
+import { StorageQueryOptions } from '../../storage/storage.types';
 import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
@@ -21,12 +26,46 @@ import {
 import { validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
 import {
+	ControllerMutationPublicationEngine,
+	ControllerMutationPublicationLease,
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	DiagnosticTreeObservation,
+	ReadCacheObservation,
+	captureDiagnosticTree,
+	closeDiagnosticTree,
+	controllerMutationMethodsCurrent,
+	creationHasDataMethod,
+	creationMethodCurrent,
+	diagnosticTreeCurrent,
+	originalControllerMutationMethods,
+	originalReadCacheApi,
+} from './device-creation-context';
+import {
+	type CreationProducerObservation,
+	DiagnosticPublications,
 	PropertyProducerEvaluation,
 	PropertyProducerLease,
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
-import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import {
+	PropertyReadSourceCapture,
+	PropertyValueSourceRegistryService,
+} from './property-value-source.registry.service';
+
+const originalSampleDatePrototype: Readonly<{
+	getTime: (...args: Parameters<Date['getTime']>) => ReturnType<Date['getTime']>;
+}> = Date.prototype;
+const originalSampleDateValue = originalSampleDatePrototype.getTime;
+const nativePrototypeEvidence: Readonly<{ getPrototypeOf: (receiver: object) => object | null }> = Object;
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
 /**
  * Number of recent data points used for trend computation.
@@ -88,11 +127,6 @@ export interface BoundedPropertyValueReadResult {
 	freshnessUnknownCount: number;
 }
 
-interface BoundedPropertyValueSourceGroup {
-	property: ChannelPropertyEntity;
-	indexes: number[];
-}
-
 export interface PersistedPropertyValueSnapshot {
 	readonly state: PropertyValueState | null;
 	readonly storageBinding: StorageBackendBinding;
@@ -108,9 +142,250 @@ interface InternalPropertyValueReadResult {
 	readonly storageBinding?: StorageBackendBinding;
 }
 
+type ReadReceiverCall<Receiver, Args extends unknown[], Result> = Readonly<{
+	call: (receiver: Receiver, ...args: Args) => Result;
+}>;
+const propertyReadSourcePrototype: OriginalFunctions<{
+	captureReadSource: (property: ChannelPropertyEntity) => PropertyReadSourceCapture;
+	readSourceKey: (token: PropertyReadSourceCapture) => string;
+	readSourceInput: (token: PropertyReadSourceCapture) => Readonly<ChannelPropertyEntity>;
+	isReadSourceCurrent: (token: PropertyReadSourceCapture) => boolean;
+	isReadSourceStructurallyCurrent: (token: PropertyReadSourceCapture) => boolean;
+	readSourceUnavailableReason: (token: PropertyReadSourceCapture) => string | null;
+	closeReadSource: (token: PropertyReadSourceCapture) => void;
+}> = PropertyValueSourceRegistryService.prototype;
+const propertyReadSourceMethods: Readonly<{
+	capture: ReadReceiverCall<
+		PropertyValueSourceRegistryService,
+		[property: ChannelPropertyEntity],
+		PropertyReadSourceCapture
+	>;
+	key: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], string>;
+	input: ReadReceiverCall<
+		PropertyValueSourceRegistryService,
+		[token: PropertyReadSourceCapture],
+		Readonly<ChannelPropertyEntity>
+	>;
+	check: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], boolean>;
+	structural: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], boolean>;
+	reason: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], string | null>;
+	close: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], void>;
+}> = Object.freeze({
+	capture: propertyReadSourcePrototype.captureReadSource,
+	key: propertyReadSourcePrototype.readSourceKey,
+	input: propertyReadSourcePrototype.readSourceInput,
+	check: propertyReadSourcePrototype.isReadSourceCurrent,
+	structural: propertyReadSourcePrototype.isReadSourceStructurallyCurrent,
+	reason: propertyReadSourcePrototype.readSourceUnavailableReason,
+	close: propertyReadSourcePrototype.closeReadSource,
+});
+const propertyReadEngine: Readonly<{ invalidateIds: (ids: readonly string[]) => void }> =
+	DeviceCreationPublicationEngine;
+const propertyReadInvalidate: ReadReceiverCall<typeof DeviceCreationPublicationEngine, [ids: readonly string[]], void> =
+	propertyReadEngine.invalidateIds;
+const propertyStoragePrototype: OriginalFunctions<{
+	captureCreationDestinations: () => CreationStorageDestinations;
+	areCreationDestinationsCurrent: (capture: CreationStorageDestinations) => boolean;
+}> = StorageService.prototype;
+const propertyStorageReadMethods: Readonly<{
+	capture: ReadReceiverCall<StorageService, [], CreationStorageDestinations>;
+	check: ReadReceiverCall<StorageService, [capture: CreationStorageDestinations], boolean>;
+}> = Object.freeze({
+	capture: propertyStoragePrototype.captureCreationDestinations,
+	check: propertyStoragePrototype.areCreationDestinationsCurrent,
+});
+interface PropertyReadAlias {
+	readonly registry: PropertyValueSourceRegistryService;
+	readonly id: string;
+	readonly source: PropertyReadSourceCapture;
+	readonly key: string;
+	readonly input: Readonly<ChannelPropertyEntity>;
+	readonly current: () => boolean;
+	readonly structuralCurrent: () => boolean;
+}
+interface PropertyReadQueries {
+	readonly query: ReadReceiverCall<
+		StorageService,
+		[query: string, options?: StorageQueryOptions],
+		Promise<PropertyValueRow[]>
+	>;
+	readonly queryStrict: ReadReceiverCall<
+		StorageService,
+		[query: string, options?: StorageQueryOptions],
+		Promise<PropertyValueRow[]>
+	>;
+	readonly queryActiveStrictBound: ReadReceiverCall<
+		StorageService,
+		[query: string],
+		Promise<Readonly<{ rows: PropertyValueRow[]; binding: StorageBackendBinding }>>
+	>;
+}
+interface PropertyReadKey {
+	readonly queries: PropertyReadQueries;
+	readonly token: ReadCacheObservation;
+	readonly current: () => boolean;
+}
+interface PreparedPropertyRead {
+	readonly state: PropertyValueState | null;
+	readonly recent: number[];
+	readonly numeric: boolean;
+}
+interface PropertyCacheProvenance {
+	readonly state: PropertyValueState;
+	readonly kind: 'reported' | 'historical' | 'owned';
+	readonly lease?: DeviceCreationPublicationLease | ControllerMutationPublicationLease;
+}
+interface PropertyBatchKey {
+	readonly token: ReadCacheObservation;
+	readonly initialState: PropertyValueState | undefined;
+	readonly initialProvenance: PropertyCacheProvenance | undefined;
+	backend?: PropertyReadKey;
+}
+interface PropertyBatchEntry {
+	readonly index: number;
+	readonly alias: PropertyReadAlias;
+	readonly cachedAtEntry: boolean;
+	prepared?: PreparedPropertyRead;
+}
+interface PropertyBatchResult {
+	readonly sourcePropertyId: string | null;
+	readonly state: PropertyValueState | null;
+	readonly source: BoundedPropertyValueSource;
+	readonly processed: boolean;
+}
+export class DiagnosticSamples {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export interface DiagnosticSampleData {
+	readonly sample: QualifiedPropertySample | null;
+	readonly evidence: IncorporatedPropertySample | null;
+}
+interface DiagnosticSampleRecord {
+	readonly aliases: ReadonlyMap<string, PropertyReadAlias>;
+	readonly closeAlias: Readonly<{ call: (receiver: PropertyValueService, alias: PropertyReadAlias) => void }>;
+	readonly samples: ReadonlyMap<
+		string,
+		Readonly<{
+			sample: (QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) | undefined;
+			tree: DiagnosticTreeObservation;
+			sourceCurrent: boolean;
+			guard:
+				| Readonly<{ call: (receiver: QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) => boolean }>
+				| undefined;
+		}>
+	>;
+	readonly producer: PropertyProducerRegistryService;
+	readonly publications: DiagnosticPublications;
+	readonly watchers: readonly ReadCacheObservation[];
+	readonly barrier: number;
+	finished: boolean;
+}
+
+/** Original report provenance only; not sample, command, claims or source authority. */
+export class OwnedSampleOrigin {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+interface OwnedSampleOriginRecord {
+	readonly token: OwnedSampleOrigin;
+	readonly original: PropertySampleEvidence;
+	readonly propertyId: string;
+	readonly fields: readonly Readonly<{ key: string; value: unknown }>[];
+	readonly methods: readonly Readonly<{ key: string; value: unknown }>[];
+	captured?: PropertySampleEvidence;
+	closed: boolean;
+	delivered: boolean;
+}
 @Injectable()
 export class PropertyValueService {
+	private readonly ownedSampleOrigins = new Map<OwnedSampleOrigin, OwnedSampleOriginRecord>();
+	private readonly ownedEvidence = new WeakMap<PropertySampleEvidence, OwnedSampleOriginRecord>();
+	private readonly ownedDeliveries = new WeakMap<object, OwnedSampleOriginRecord>();
+	openOwnedSampleOrigin(evidence: PropertySampleEvidence, propertyId: string): OwnedSampleOrigin | null {
+		if (!evidence || typeof evidence !== 'object' || !propertyId || this.ownedEvidence.has(evidence)) return null;
+		const fields: { key: string; value: unknown }[] = [];
+		for (const key of Object.keys(evidence)) {
+			const descriptor = Object.getOwnPropertyDescriptor(evidence, key);
+			if (!descriptor || descriptor.get || descriptor.set) return null;
+			fields.push({ key, value: descriptor.value });
+		}
+		if (!fields.some((field) => field.key === 'sourceIsCurrent' && typeof field.value === 'function')) return null;
+		const methods = [
+			'openOwnedSampleOrigin',
+			'forwardOwnedReportEvidence',
+			'captureOwnedFeedbackDelivery',
+			'closeOwnedSampleOrigin',
+		].map((key) => ({ key, value: nativeFieldEvidence.get(this, key) }));
+		const token = Object.freeze(new OwnedSampleOrigin());
+		const record: OwnedSampleOriginRecord = {
+			token,
+			original: evidence,
+			propertyId,
+			fields: Object.freeze(fields),
+			methods: Object.freeze(methods),
+			closed: false,
+			delivered: false,
+		};
+		this.ownedSampleOrigins.set(token, record);
+		this.ownedEvidence.set(evidence, record);
+		return token;
+	}
+	private ownedSampleOriginCurrent(record: OwnedSampleOriginRecord): boolean {
+		return (
+			!record.closed &&
+			creationMethodCurrent(Date.prototype, 'getTime', originalSampleDateValue) &&
+			this.ownedSampleOrigins.get(record.token) === record &&
+			record.methods.every((pin) => creationMethodCurrent(this, pin.key, pin.value)) &&
+			Object.keys(record.original).length === record.fields.length &&
+			record.fields.every((field) => {
+				const descriptor = Object.getOwnPropertyDescriptor(record.original, field.key);
+				return !!descriptor && !descriptor.get && !descriptor.set && descriptor.value === field.value;
+			})
+		);
+	}
+	forwardOwnedReportEvidence(original: PropertySampleEvidence, captured: PropertySampleEvidence): void {
+		const record = this.ownedEvidence.get(original);
+		if (!record || record.original !== original || record.captured || !this.ownedSampleOriginCurrent(record)) return;
+		for (const field of record.fields) {
+			const descriptor = Object.getOwnPropertyDescriptor(captured, field.key);
+			if (!descriptor || descriptor.get || descriptor.set) {
+				this.closeOwnedSampleOrigin(record.token);
+				return;
+			}
+			const value: unknown = descriptor.value;
+			if (field.value instanceof Date && value instanceof Date) {
+				if (originalSampleDateValue.call(field.value) !== originalSampleDateValue.call(value)) {
+					this.closeOwnedSampleOrigin(record.token);
+					return;
+				}
+			} else if (field.value !== value) {
+				this.closeOwnedSampleOrigin(record.token);
+				return;
+			}
+		}
+		record.captured = captured;
+		this.ownedEvidence.set(captured, record);
+	}
+	captureOwnedFeedbackDelivery(event: object): OwnedSampleOrigin | null {
+		const record = this.ownedDeliveries.get(event);
+		return record && this.ownedSampleOriginCurrent(record) ? record.token : null;
+	}
+	closeOwnedSampleOrigin(token: OwnedSampleOrigin): void {
+		const record = this.ownedSampleOrigins.get(token);
+		if (!record) return;
+		record.closed = true;
+		this.ownedEvidence.delete(record.original);
+		if (record.captured) this.ownedEvidence.delete(record.captured);
+		this.ownedSampleOrigins.delete(token);
+	}
+
+	private readonly diagnosticSamples = new WeakMap<DiagnosticSamples, DiagnosticSampleRecord>();
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
+
+	private readonly cacheProvenance = new Map<string, PropertyCacheProvenance>();
 
 	private valuesMap: Map<ChannelPropertyEntity['id'], PropertyValueState> = new Map();
 
@@ -137,6 +412,506 @@ export class PropertyValueService {
 		this.producers?.setEvidenceValidator((sources) => this.incorporatedEvidenceCurrent(sources));
 	}
 
+	private captureReadAlias(property: ChannelPropertyEntity): PropertyReadAlias {
+		const registry = this.valueSourceRegistry;
+		const names = {
+			capture: 'captureReadSource',
+			key: 'readSourceKey',
+			input: 'readSourceInput',
+			check: 'isReadSourceCurrent',
+			structural: 'isReadSourceStructurallyCurrent',
+			reason: 'readSourceUnavailableReason',
+			close: 'closeReadSource',
+		};
+		const methodsCurrent = () =>
+			this.valueSourceRegistry === registry &&
+			Object.entries(names).every(([key, name]) =>
+				creationMethodCurrent(registry, name, nativeFieldEvidence.get(propertyReadSourceMethods, key)),
+			);
+		if (!methodsCurrent()) throw new Error('Original read source API unavailable');
+		const source = propertyReadSourceMethods.capture.call(registry, property);
+		try {
+			const input = propertyReadSourceMethods.input.call(registry, source);
+			return {
+				registry,
+				source,
+				id: input.id,
+				key: propertyReadSourceMethods.key.call(registry, source),
+				input,
+				current: () => methodsCurrent() && propertyReadSourceMethods.check.call(registry, source),
+				structuralCurrent: () => methodsCurrent() && propertyReadSourceMethods.structural.call(registry, source),
+			};
+		} catch (cause) {
+			propertyReadSourceMethods.close.call(registry, source);
+			throw cause;
+		}
+	}
+	private closeReadAlias(alias: PropertyReadAlias): void {
+		propertyReadSourceMethods.close.call(alias.registry, alias.source);
+	}
+	private observeReadKey(key: string): PropertyReadKey {
+		if (
+			!['query', 'queryStrict', 'queryActiveStrictBound'].every((name) =>
+				creationHasDataMethod(this.storageService, name),
+			)
+		)
+			throw new Error('Original backend read methods unavailable');
+		const view: Readonly<{
+			query: (query: string, options?: StorageQueryOptions) => Promise<PropertyValueRow[]>;
+			queryStrict: (query: string, options?: StorageQueryOptions) => Promise<PropertyValueRow[]>;
+			queryActiveStrictBound: (
+				query: string,
+			) => Promise<Readonly<{ rows: PropertyValueRow[]; binding: StorageBackendBinding }>>;
+		}> = this.storageService;
+		const methods: PropertyReadQueries = {
+			query: view.query,
+			queryStrict: view.queryStrict,
+			queryActiveStrictBound: view.queryActiveStrictBound,
+		};
+		let destinations: CreationStorageDestinations | undefined;
+		if (
+			creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture) &&
+			creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check)
+		)
+			destinations = propertyStorageReadMethods.capture.call(this.storageService);
+		const token = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key);
+		return {
+			token,
+			queries: methods,
+			current: () =>
+				originalReadCacheApi.current() &&
+				destinations !== undefined &&
+				creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture) &&
+				creationMethodCurrent(
+					this.storageService,
+					'areCreationDestinationsCurrent',
+					propertyStorageReadMethods.check,
+				) &&
+				Object.entries(methods).every(([name, method]) => creationMethodCurrent(this.storageService, name, method)) &&
+				propertyStorageReadMethods.check.call(this.storageService, destinations),
+		};
+	}
+	private readCachedData(alias: PropertyReadAlias, cached: PropertyValueState): PropertyValueState | null {
+		// No backend query/await occurs on this data-only hit; no storage binding is claimed.
+		const token = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, alias.key);
+		try {
+			const current = alias.current() && originalReadCacheApi.current();
+			const owned = this.cacheProvenance.get(alias.key)?.kind === 'owned';
+			const reported = this.reportedReadState(alias.key);
+			const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, token);
+			return !current || !alias.structuralCurrent() ? null : decision === 'publish' ? cached : owned ? reported : null;
+		} finally {
+			originalReadCacheApi.close.call(originalReadCacheApi.receiver, token);
+		}
+	}
+
+	private reportedReadState(key: string): PropertyValueState | null {
+		const state = this.valuesMap.get(key);
+		const provenance = this.cacheProvenance.get(key);
+		if (!state || provenance?.state !== state || provenance.kind === 'historical') return null;
+		if (provenance.kind === 'owned') {
+			try {
+				if (!provenance.lease || !ownedValuePublicationCurrent(provenance.lease)) return null;
+			} catch {
+				return null;
+			}
+		}
+		return state;
+	}
+	private beginBatchReadKey(key: string): PropertyBatchKey {
+		return {
+			token: originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key),
+			initialState: this.valuesMap.get(key),
+			initialProvenance: this.cacheProvenance.get(key),
+		};
+	}
+	private closeBatchReadKeys(keys: ReadonlyMap<string, PropertyBatchKey>): void {
+		for (const key of keys.values()) {
+			originalReadCacheApi.close.call(originalReadCacheApi.receiver, key.token);
+			if (key.backend) originalReadCacheApi.close.call(originalReadCacheApi.receiver, key.backend.token);
+		}
+	}
+	/** Original key/policy DATA; the producer read is prepared before final checks. */
+	private overlayReadAlias(alias: PropertyReadAlias): PropertyValueState | null {
+		const produced = this.producers?.read(alias.key);
+		const reason = propertyReadSourceMethods.reason.call(alias.registry, alias.source);
+		if (!reason) return produced ?? null;
+		const blocked = new PropertyValueState();
+		blocked.producer = Object.assign(new PropertyProducerState(), {
+			quality: 'unavailable',
+			reasons: [reason],
+			sampledAt: null,
+			evaluatedAt: new Date().toISOString(),
+			expiresAt: null,
+			revision: produced?.producer?.revision ?? 0,
+		});
+		return blocked;
+	}
+	/** All row/trend preparation is complete before this finite callback/check/effect boundary. */
+	private finishBatchRead(
+		entries: readonly PropertyBatchEntry[],
+		keys: ReadonlyMap<string, PropertyBatchKey>,
+		preferNewerCache: boolean,
+		refreshEmptyTrend: boolean,
+	): Map<number, PropertyBatchResult> {
+		const proposals = entries.map((entry) => {
+			const cached = this.valuesMap.get(entry.alias.key);
+			const preferCache =
+				cached !== undefined &&
+				(entry.prepared === undefined || (preferNewerCache && this.isStateNewerOrEqual(cached, entry.prepared.state)));
+			return { entry, cached, preferCache, produced: this.overlayReadAlias(entry.alias) };
+		});
+		// Pure provider callbacks may run only here, before every final structural check.
+		const policies = proposals.map(({ entry }) => entry.alias.current());
+		const reports = proposals.map(({ entry }) => ({
+			state: this.reportedReadState(entry.alias.key),
+			provenance: this.cacheProvenance.get(entry.alias.key),
+		}));
+		const structures = proposals.map(({ entry }) => entry.alias.structuralCurrent());
+		const backends = new Map([...keys].map(([key, observation]) => [key, observation.backend?.current() !== false]));
+		const effectCurrent = creationMethodCurrent(
+			DeviceCreationPublicationEngine,
+			'invalidateIds',
+			propertyReadInvalidate,
+		);
+		const decisions = new Map(
+			[...keys].map(([key, observation]) => [
+				key,
+				originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token),
+			]),
+		);
+		const results = new Map<number, PropertyBatchResult>();
+		const publications = new Map<string, PreparedPropertyRead>();
+		// No row/provider getter/callback, await or event from here through all cache effects.
+		for (const [index, proposal] of proposals.entries()) {
+			const { entry, cached, preferCache, produced } = proposal;
+			const reported = reports[index]?.state ?? null;
+			const provenance = reports[index]?.provenance;
+			const key = keys.get(entry.alias.key);
+			if (!key) throw new Error('Original batch read observation unavailable');
+			const valid = policies[index] === true && structures[index] === true && backends.get(entry.alias.key) === true;
+			const publish = decisions.get(entry.alias.key) === 'publish';
+			const sameReport =
+				reported !== null &&
+				this.valuesMap.get(entry.alias.key) === reported &&
+				this.cacheProvenance.get(entry.alias.key) === provenance;
+			const replacement =
+				sameReport &&
+				provenance !== undefined &&
+				(provenance.kind === 'owned' || (provenance.kind === 'reported' && provenance !== key.initialProvenance));
+			const state = !valid
+				? null
+				: (produced ??
+					(publish
+						? preferCache
+							? (cached ?? null)
+							: (entry.prepared?.state ?? null)
+						: replacement
+							? reported
+							: null));
+			const source: BoundedPropertyValueSource = !valid
+				? null
+				: produced !== null || (!publish && replacement) || (publish && preferCache)
+					? 'cache'
+					: publish && entry.prepared !== undefined
+						? 'storage'
+						: null;
+			results.set(entry.index, {
+				sourcePropertyId: valid ? entry.alias.key : null,
+				state,
+				source,
+				processed: entry.cachedAtEntry || cached !== undefined || entry.prepared !== undefined || produced !== null,
+			});
+			if (effectCurrent && valid && publish && entry.prepared && !preferCache && !publications.has(entry.alias.key))
+				publications.set(entry.alias.key, entry.prepared);
+		}
+		for (const [key, prepared] of publications) this.publishReadState(key, prepared, false, refreshEmptyTrend);
+		return results;
+	}
+	private readRowsState(
+		property: ChannelPropertyEntity,
+		key: string,
+		rows: PropertyValueRow[],
+	): Readonly<{ state: PropertyValueState | null; recent: number[]; numeric: boolean }> {
+		const recent = rows
+			.map((row) => row.numberValue)
+			.filter((value): value is number => value !== undefined)
+			.reverse();
+		const trend = this.computeTrendFrom(property, recent);
+		return {
+			state: rows[0] ? this.toState(property, key, rows[0], trend) : null,
+			recent,
+			numeric: this.isNumericDataType(property.dataType),
+		};
+	}
+	private publishReadState(
+		key: string,
+		prepared: Readonly<{ state: PropertyValueState | null; recent: number[]; numeric: boolean }>,
+		authoritativeMiss = false,
+		refreshEmptyTrend = false,
+	): void {
+		if ((prepared.state !== null || refreshEmptyTrend) && prepared.numeric) {
+			propertyReadInvalidate.call(DeviceCreationPublicationEngine, [key]);
+			this.recentValuesMap.set(key, prepared.recent);
+		}
+		if (prepared.state) {
+			propertyReadInvalidate.call(DeviceCreationPublicationEngine, [key]);
+			this.setCachedState(key, prepared.state, 'historical');
+		} else if (authoritativeMiss) {
+			originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
+			this.valuesMap.delete(key);
+			this.cacheProvenance.delete(key);
+			this.recentValuesMap.delete(key);
+			this.bumpCacheVersion(key);
+		}
+	}
+	captureCreatedMethodGuard(): () => boolean {
+		const holders = [
+			{
+				receiver: this,
+				keys: [
+					'writeCreatedWithState',
+					'writeInternal',
+					'withCreatedValueLock',
+					'withValueLock',
+					'flushHistory',
+					'validateValue',
+					'isInvalidValue',
+					'setCachedState',
+					'computeTrend',
+					'computeTrendFrom',
+					'bumpCacheVersion',
+				],
+			},
+			{ receiver: this.storageService, keys: ['writeCreatedPoints'] },
+			{ receiver: this.valueLock, keys: ['runExclusive'] },
+		];
+		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
+		for (const { receiver, keys } of holders)
+			for (const key of keys) {
+				if (!creationHasDataMethod(receiver, key)) throw new Error('Original value pipeline unavailable');
+				const method: unknown = nativeFieldEvidence.get(receiver, key);
+				pins.push(Object.freeze({ receiver, key, method }));
+			}
+		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
+	}
+
+	/** Exact LOCAL creation snapshot; no alias resolution, replay, late hydration or history buffering. */
+	async writeCreatedWithState(
+		lease: DeviceCreationPublicationLease,
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		destinations: CreationStorageDestinations,
+	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.assert(lease);
+		const key = property.id;
+		DeviceCreationPublicationEngine.assert(lease, key);
+		DeviceCreationPublicationEngine.assertProperty(lease, property);
+		const child = DeviceCreationPublicationEngine.beginChild(lease, 'value', key);
+		const writeInternalProperty: Readonly<{
+			get: (owner: PropertyValueService, key: 'writeInternal') => PropertyValueService['writeInternal'];
+		}> = Reflect;
+		const writeInternal = writeInternalProperty.get(this, 'writeInternal');
+		const write: Readonly<{
+			call: (
+				receiver: PropertyValueService,
+				...args: Parameters<PropertyValueService['writeInternal']>
+			) => ReturnType<PropertyValueService['writeInternal']>;
+		}> = writeInternal;
+		let failure: { cause: unknown } | undefined;
+		try {
+			return await this.withCreatedValueLock(key, lease, async (valueLease) => {
+				DeviceCreationPublicationEngine.assertProperty(lease, property);
+				await valueLease.assertOwned();
+				DeviceCreationPublicationEngine.assertProperty(lease, property);
+				await DeviceCreationPublicationEngine.probe(lease, key);
+				DeviceCreationPublicationEngine.assertProperty(lease, property);
+				return write.call(this, property, key, value, false, undefined, undefined, false, false, {
+					lease,
+					destinations,
+				});
+			});
+		} catch (cause) {
+			failure = { cause };
+			throw cause;
+		} finally {
+			child.finish(failure);
+		}
+	}
+
+	captureMutationMethodGuard(): () => boolean {
+		const registry = this.valueSourceRegistry,
+			producer = this.producers,
+			storage = this.storageService,
+			lock = this.valueLock;
+		const common = this.captureCreatedMethodGuard();
+		if (!controllerMutationMethodsCurrent()) throw new Error('Original mutation engine unavailable');
+		const groups = [
+			{
+				receiver: this,
+				names: [
+					'writeMutationWithState',
+					'captureMutationPropertyObservation',
+					'captureCreatedMethodGuard',
+					'captureReadAlias',
+					'closeReadAlias',
+					'writeInternal',
+					'withCreatedValueLock',
+					'flushHistory',
+				],
+			},
+			{
+				receiver: this.storageService,
+				names: ['writeMutationPoints', 'captureCreationDestinations', 'areCreationDestinationsCurrent'],
+			},
+			{
+				receiver: ControllerMutationPublicationEngine,
+				names: [
+					'fromReserved',
+					'acknowledge',
+					'assert',
+					'check',
+					'assertValue',
+					'assertProperty',
+					'probe',
+					'destinations',
+					'noteSubmission',
+					'noteCompletion',
+					'report',
+					'expectQuery',
+					'isExpectedProbe',
+					'endQuery',
+					'invalidateIds',
+					'invalidateAll',
+					'observeQuery',
+					'close',
+				],
+			},
+		];
+		const pins: Readonly<{ receiver: object; name: string; method: unknown }>[] = [];
+		for (const group of groups)
+			for (const name of group.names) {
+				if (!creationHasDataMethod(group.receiver, name)) throw new Error('Original mutation value method unavailable');
+				const method: unknown = nativeFieldEvidence.get(group.receiver, name);
+				pins.push(Object.freeze({ receiver: group.receiver, name, method }));
+			}
+		return () =>
+			this.valueSourceRegistry === registry &&
+			this.producers === producer &&
+			this.storageService === storage &&
+			this.valueLock === lock &&
+			common() &&
+			controllerMutationMethodsCurrent() &&
+			pins.every((pin) => creationMethodCurrent(pin.receiver, pin.name, pin.method));
+	}
+	/** Veto-only fixed LOCAL publication slots; no live read, sample, producer guard, backend or authority mint. */
+	captureMutationPropertyObservation(
+		properties: readonly ChannelPropertyEntity[],
+	): Readonly<{ isCurrent: () => boolean; check: () => void; close: () => void }> {
+		if (!this.producers || !diagnosticValueProducerMethodsCurrent(this.producers))
+			throw new Error('Original publication producer observation unavailable');
+		const producer = this.producers,
+			aliases: PropertyReadAlias[] = [];
+
+		const originalMemberView1: Readonly<{
+			get: (
+				receiver: PropertyValueService,
+				key: 'closeReadAlias',
+			) => OriginalFunction<PropertyValueService, PropertyValueService['closeReadAlias']>;
+		}> = Reflect;
+		const closeAlias: Readonly<{ call: (receiver: PropertyValueService, alias: PropertyReadAlias) => void }> =
+			originalMemberView1.get(this, 'closeReadAlias');
+		let observation: CreationProducerObservation | undefined,
+			active = true,
+			closed = false;
+		const close = (): void => {
+			if (closed) return;
+			closed = true;
+			active = false;
+			for (const alias of aliases) closeAlias.call(this, alias);
+			if (observation) diagnosticValueProducerMethods.closeObservation.call(producer, observation);
+		};
+		try {
+			const ids = properties.map((property) => property.id);
+			if (new Set(ids).size !== ids.length) throw new Error('Unique original publication properties required');
+			if (ids.length) observation = diagnosticValueProducerMethods.begin.call(producer, ids);
+			for (const property of properties) {
+				const alias = this.captureReadAlias(property);
+				aliases.push(alias);
+				if (
+					alias.key !== property.id ||
+					propertyReadSourceMethods.reason.call(alias.registry, alias.source) !== null ||
+					diagnosticValueProducerMethods.owns.call(producer, property.id)
+				)
+					throw new Error('Original unowned LOCAL publication slot required');
+			}
+			const isCurrent = (): boolean =>
+				active &&
+				this.producers === producer &&
+				diagnosticValueProducerMethodsCurrent(producer) &&
+				(!observation || diagnosticValueProducerMethods.observationCurrent.call(producer, observation)) &&
+				aliases.every((alias) => alias.structuralCurrent());
+			if (!isCurrent()) throw new Error('Original LOCAL publication slot changed during capture');
+			const check = (): void => {
+				if (!isCurrent() || !aliases.every((alias) => alias.current()) || !isCurrent()) {
+					active = false;
+					throw new Error('Original publication source policy lost');
+				}
+			};
+			return Object.freeze({ isCurrent, check, close });
+		} catch (error) {
+			close();
+			throw error;
+		}
+	}
+	captureMutationDestinations(): CreationStorageDestinations {
+		if (!creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture))
+			throw new Error('Original mutation destinations unavailable');
+		return propertyStorageReadMethods.capture.call(this.storageService);
+	}
+	areMutationDestinationsCurrent(capture: CreationStorageDestinations): boolean {
+		return (
+			creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check) &&
+			propertyStorageReadMethods.check.call(this.storageService, capture)
+		);
+	}
+	/** Distinct original-owned mutation entry; no ordinary write/alias/history fallback. */
+	async writeMutationWithState(
+		lease: ControllerMutationPublicationLease,
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		destinations: CreationStorageDestinations,
+	): Promise<PropertyValueWriteResult> {
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease);
+		const key = property.id;
+		originalControllerMutationMethods.assertValue.call(ControllerMutationPublicationEngine, lease, key, value);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease, key);
+		originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
+		const writeInternalProperty: Readonly<{
+			get: (owner: PropertyValueService, key: 'writeInternal') => PropertyValueService['writeInternal'];
+		}> = Reflect;
+		const writeInternal = writeInternalProperty.get(this, 'writeInternal');
+		const write: Readonly<{
+			call: (
+				receiver: PropertyValueService,
+				...args: Parameters<PropertyValueService['writeInternal']>
+			) => ReturnType<PropertyValueService['writeInternal']>;
+		}> = writeInternal;
+		{
+			return await this.withCreatedValueLock(key, lease, async (valueLease) => {
+				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
+				await valueLease.assertOwned();
+				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
+				await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine, lease, key);
+				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
+				return write.call(this, property, key, value, false, undefined, undefined, false, false, {
+					lease,
+					destinations,
+				});
+			});
+		}
+	}
+
 	/**
 	 * Write property value to storage
 	 * @returns true if value changed, false if value was the same or invalid
@@ -146,6 +921,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<boolean> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return false;
 
@@ -165,6 +941,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return { changed: false, state: null };
 
@@ -181,6 +958,7 @@ export class PropertyValueService {
 		if (this.valueLock.isEnabled()) {
 			return this.writeWithState(property, value, valueTimestamp);
 		}
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return { changed: false, state: null };
 		return this.withValueLock(
@@ -196,6 +974,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		evidence: PropertySampleEvidence,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'sample');
 		if (key === null || key !== property.id || this.producers?.owns(key)) return { changed: false, state: null };
 		return this.withValueLock(
@@ -269,14 +1048,32 @@ export class PropertyValueService {
 						});
 					}
 					const snapshot = Object.assign(
-						Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
+						Object.create(nativePrototypeEvidence.getPrototypeOf(property)) as ChannelPropertyEntity,
 						property,
 					);
 					snapshot.value = clonePropertyValueState(result.state);
-					this.events?.emit(
-						EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
-						Object.freeze({ propertyId: key, property: snapshot, sample: this.cloneSample(sample, false) }),
-					);
+					const payload = Object.freeze({
+						propertyId: key,
+						property: snapshot,
+						sample: this.cloneSample(sample, false),
+					});
+					const origin = this.ownedEvidence.get(evidence);
+					if (
+						sample.value === false &&
+						origin &&
+						origin.captured === evidence &&
+						origin.propertyId === key &&
+						!origin.delivered &&
+						this.ownedSampleOriginCurrent(origin)
+					) {
+						origin.delivered = true;
+						this.ownedDeliveries.set(payload, origin);
+					}
+					try {
+						this.events?.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, payload);
+					} finally {
+						this.ownedDeliveries.delete(payload);
+					}
 				}
 				return result;
 			},
@@ -334,6 +1131,216 @@ export class PropertyValueService {
 				expiry !== null && Number.isFinite(new Date(expiry).getTime()) ? new Date(expiry).toISOString() : null,
 			reasons,
 		};
+	}
+
+	/** Full owned property closure is supplied by the original same-manager response lineage. */
+	captureDiagnosticSamples(properties: readonly ChannelPropertyEntity[]): DiagnosticSamples {
+		if (
+			!this.producers ||
+			!diagnosticValueMethodsCurrent(this) ||
+			!diagnosticValueProducerMethodsCurrent(this.producers)
+		)
+			throw new Error('Original diagnostic sample APIs required');
+		const producer = this.producers;
+
+		const originalMemberView2: Readonly<{
+			get: (
+				receiver: PropertyValueService,
+				key: 'closeReadAlias',
+			) => OriginalFunction<PropertyValueService, PropertyValueService['closeReadAlias']>;
+		}> = Reflect;
+		const closeAlias: Readonly<{ call: (receiver: PropertyValueService, alias: PropertyReadAlias) => void }> =
+			originalMemberView2.get(this, 'closeReadAlias');
+		const aliases = new Map<string, PropertyReadAlias>();
+		const samples = new Map<
+			string,
+			DiagnosticSampleRecord['samples'] extends ReadonlyMap<string, infer V> ? V : never
+		>();
+		const watchers: ReadCacheObservation[] = [];
+		let publications: DiagnosticPublications | undefined;
+		try {
+			const barrier = this.sampleGeneration;
+			for (const property of properties) {
+				const alias = this.captureReadAlias(property);
+				if (aliases.has(alias.id)) throw new Error('Duplicate diagnostic property');
+				aliases.set(alias.id, alias);
+			}
+			const keys = [...new Set([...aliases.values()].map((alias) => alias.key))];
+			for (const key of keys) {
+				watchers.push(originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key));
+				const sample = this.samples.get(key);
+				const tree = captureDiagnosticTree(sample);
+				const guard:
+					| Readonly<{
+							call: (receiver: QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) => boolean;
+					  }>
+					| undefined = sample?.isCurrent;
+				const sourceCurrent = !sample || guard === undefined || guard.call(sample);
+				samples.set(key, Object.freeze({ sample, tree, sourceCurrent, guard }));
+			}
+			publications = diagnosticValueProducerMethods.capture.call(producer, keys);
+			const token = Object.freeze(new DiagnosticSamples());
+			this.diagnosticSamples.set(token, {
+				aliases,
+				closeAlias,
+				samples,
+				producer,
+				publications,
+				watchers: Object.freeze(watchers),
+				barrier,
+				finished: false,
+			});
+			if (!diagnosticValueMethods.current.call(this, token)) throw new Error('Sample changed during original capture');
+			return token;
+		} catch (error) {
+			for (const alias of aliases.values()) closeAlias.call(this, alias);
+			for (const sample of samples.values()) closeDiagnosticTree(sample.tree);
+			for (const watcher of watchers) originalReadCacheApi.finish.call(originalReadCacheApi.receiver, watcher);
+			if (publications) diagnosticValueProducerMethods.close.call(producer, publications);
+			throw error;
+		}
+	}
+	diagnosticSampleBarrier(token: DiagnosticSamples): number {
+		const record = this.diagnosticSamples.get(token);
+		if (!record || !diagnosticValueMethods.current.call(this, token))
+			throw new Error('Original sample barrier unavailable');
+		return record.barrier;
+	}
+	diagnosticSamplesCurrent(token: DiagnosticSamples): boolean {
+		const record = this.diagnosticSamples.get(token);
+		if (
+			!record ||
+			record.finished ||
+			!diagnosticValueMethodsCurrent(this) ||
+			this.producers !== record.producer ||
+			!diagnosticValueProducerMethodsCurrent(record.producer) ||
+			!diagnosticValueProducerMethods.current.call(record.producer, record.publications)
+		)
+			return false;
+		for (const alias of record.aliases.values()) if (!alias.structuralCurrent()) return false;
+		for (const [key, entry] of record.samples)
+			if (this.samples.get(key) !== entry.sample || !diagnosticTreeCurrent(entry.tree)) return false;
+		return originalReadCacheApi.current();
+	}
+	evaluateDiagnosticSample(
+		token: DiagnosticSamples,
+		propertyId: string,
+		maxAgeMs: number,
+		now: number,
+	): DiagnosticSampleData {
+		if (
+			!Number.isFinite(now) ||
+			!Number.isFinite(maxAgeMs) ||
+			maxAgeMs < 0 ||
+			!diagnosticValueMethods.current.call(this, token)
+		)
+			throw new Error('Original sample observation lost');
+		const record = this.diagnosticSamples.get(token);
+		if (!record) throw new Error('Original samples unavailable');
+		const alias = record.aliases.get(propertyId);
+		if (!alias) throw new Error('Original diagnostic property unavailable');
+		if (!alias.current()) throw new Error('Original diagnostic source lost');
+		if (propertyReadSourceMethods.reason.call(alias.registry, alias.source) !== null)
+			return Object.freeze({ sample: null, evidence: null });
+		const seen = new Set<string>();
+		const visit = (key: string, depth: number): DiagnosticSampleData => {
+			if (depth > 16 || seen.size >= 256 || seen.has(key)) return { sample: null, evidence: null };
+			seen.add(key);
+			if (!record.samples.has(key)) return { sample: null, evidence: null };
+			const sourceAlias = record.aliases.get(key);
+			if (!sourceAlias || sourceAlias.key !== key) return { sample: null, evidence: null };
+			if (!sourceAlias.current()) throw new Error('Original diagnostic lineage source lost');
+			if (propertyReadSourceMethods.reason.call(sourceAlias.registry, sourceAlias.source) !== null)
+				return { sample: null, evidence: null };
+			const derived = diagnosticValueProducerMethods.evaluate.call(record.producer, record.publications, key, now);
+			if (derived) {
+				const meta = derived.state.producer;
+				if (
+					!meta ||
+					!derived.evidence ||
+					!derived.sources.length ||
+					derived.sources.length > 32 ||
+					derived.sources.some((source) => {
+						const current = visit(source.propertyId, depth + 1).evidence;
+						return !current || !sameDiagnosticEvidence(current, source);
+					})
+				)
+					return { sample: null, evidence: null };
+				const sampled = meta.sampledAt === null ? NaN : Date.parse(meta.sampledAt),
+					received = Date.parse(meta.evaluatedAt);
+				if (
+					!Number.isFinite(sampled) ||
+					!Number.isFinite(received) ||
+					sampled > received ||
+					received > now ||
+					now - sampled > maxAgeMs ||
+					derived.state.value === null ||
+					meta.quality === 'unavailable'
+				)
+					return { sample: null, evidence: null };
+				return {
+					sample: Object.freeze({
+						propertyId: key,
+						value: derived.state.value,
+						sampledAt: new Date(sampled),
+						receivedAt: new Date(received),
+						provenance: 'live',
+						quality: meta.quality,
+						reasons: Object.freeze([...meta.reasons]),
+						revision: meta.revision,
+					}),
+					evidence: derived.evidence,
+				};
+			}
+			// A producer-owned but unavailable output never falls through to a cached physical report.
+			if (diagnosticValueProducerMethods.has.call(record.producer, record.publications, key))
+				return { sample: null, evidence: null };
+			const entry = record.samples.get(key);
+			if (!entry?.sample || !entry.sourceCurrent) return { sample: null, evidence: null };
+			const sample = entry.sample;
+			const guard = entry.guard;
+			if (!diagnosticTreeCurrent(entry.tree)) throw new Error('Original physical sample changed');
+			if (guard && !guard.call(sample)) throw new Error('Original physical sample source lost');
+			if (!diagnosticValueMethods.current.call(this, token)) throw new Error('Sample changed during original callback');
+			if (
+				sample.quality !== 'good' ||
+				sample.sampledAt.getTime() > now ||
+				sample.receivedAt.getTime() > now ||
+				now - sample.sampledAt.getTime() > maxAgeMs
+			)
+				return { sample: null, evidence: null };
+			return {
+				sample: Object.freeze({
+					...sample,
+					sampledAt: new Date(sample.sampledAt.getTime()),
+					receivedAt: new Date(sample.receivedAt.getTime()),
+					reasons: Object.freeze([...sample.reasons]),
+				}),
+				evidence: Object.freeze({ propertyId: key, acceptanceGeneration: sample.acceptanceGeneration ?? 0 }),
+			};
+		};
+		const result = visit(alias.key, 0);
+		if (!diagnosticValueMethods.current.call(this, token)) throw new Error('Original sample changed during evaluation');
+		return Object.freeze(result);
+	}
+	/** Consuming pure terminal check; overlap is readonly data, never cache publication permission. */
+	finishDiagnosticSamples(token: DiagnosticSamples): boolean {
+		const record = this.diagnosticSamples.get(token);
+		if (!record || record.finished) return false;
+		let current = diagnosticValueMethods.current.call(this, token);
+		record.finished = true;
+		for (const watcher of record.watchers)
+			if (originalReadCacheApi.finish.call(originalReadCacheApi.receiver, watcher) === 'changed') current = false;
+		return current;
+	}
+	closeDiagnosticSamples(token: DiagnosticSamples): void {
+		const record = this.diagnosticSamples.get(token);
+		if (!record) return;
+		if (!record.finished) diagnosticValueMethods.finish.call(this, token);
+		this.diagnosticSamples.delete(token);
+		for (const alias of record.aliases.values()) record.closeAlias.call(this, alias);
+		for (const entry of record.samples.values()) closeDiagnosticTree(entry.tree);
+		diagnosticValueProducerMethods.close.call(record.producer, record.publications);
 	}
 
 	/** Captures physical source-lease continuity without treating later packets as new authority. */
@@ -627,6 +1634,7 @@ export class PropertyValueService {
 		storageBinding?: StorageBackendBinding,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.valueSourceRegistry.resolve(property);
 
 		return this.withValueLock(key, () =>
@@ -641,6 +1649,7 @@ export class PropertyValueService {
 		beforeWrite?: () => Promise<void>,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.valueSourceRegistry.resolve(property);
 
 		return this.withValueLock(key, async (valueLease) => {
@@ -671,7 +1680,12 @@ export class PropertyValueService {
 		valueTimestamp?: Date,
 		deferHistory = false,
 		producerWrite = false,
+		creation?: Readonly<{
+			lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease;
+			destinations: CreationStorageDestinations;
+		}>,
 	): Promise<PropertyValueWriteResult> {
+		if (creation) assertOwnedValuePublication(creation.lease, key);
 		// A projected property owns no series — the value belongs to its source, and only the source's
 		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
 		// the same reason: dereferencing here would persist the supplied value as a real measurement of
@@ -713,9 +1727,12 @@ export class PropertyValueService {
 			return { changed: false, state: null };
 		}
 
-		const cached = this.valuesMap.get(key);
+		const cached = creation ? undefined : this.valuesMap.get(key);
 		if (!strict && cached && cached.value === value) {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
+			if (creation) assertOwnedValuePublication(creation.lease, key);
+			originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
+			this.cacheProvenance.set(key, { state: cached, kind: 'reported' });
 			cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
 			this.bumpCacheVersion(key);
 			return { changed: false, state: cached };
@@ -783,7 +1800,9 @@ export class PropertyValueService {
 			(typeof value === 'string' && !isNaN(Number(value)) && this.isNumericDataType(property.dataType))
 		) {
 			const numValue = Number(value);
-			const recent = this.recentValuesMap.get(key) ?? [];
+			if (creation) assertOwnedValuePublication(creation.lease, key);
+			originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
+			const recent = creation ? [] : (this.recentValuesMap.get(key) ?? []);
 			recent.push(numValue);
 			if (recent.length > TREND_POINTS_COUNT) {
 				recent.shift();
@@ -795,9 +1814,19 @@ export class PropertyValueService {
 		const state = new PropertyValueState(value, now, trend);
 
 		// Update local cache regardless of storage availability
-		this.setCachedState(key, state);
+		if (creation) assertOwnedValuePublication(creation.lease, key);
+		this.setCachedState(key, state, creation ? 'owned' : 'reported', creation?.lease);
 
 		if (strict) {
+			return { changed: true, state };
+		}
+
+		if (creation) {
+			assertOwnedValuePublication(creation.lease, key);
+			if (creation.lease instanceof ControllerMutationPublicationLease)
+				await this.storageService.writeMutationPoints(creation.lease, creation.destinations, [point]);
+			else await this.storageService.writeCreatedPoints(creation.lease, creation.destinations, [point]);
+			assertOwnedValuePublication(creation.lease, key);
 			return { changed: true, state };
 		}
 
@@ -862,46 +1891,30 @@ export class PropertyValueService {
 			throw new Error('Persisted property value read did not bind a storage backend');
 		}
 
-		return { state: this.overlay(property, result.state), storageBinding: result.storageBinding };
+		return { state: result.state, storageBinding: result.storageBinding };
 	}
 
 	async readLatestManyStrict(
 		properties: ChannelPropertyEntity[],
 	): Promise<Map<ChannelPropertyEntity['id'], PropertyValueState | null>> {
-		const states = new Map<ChannelPropertyEntity['id'], PropertyValueState | null>();
-		const missingByKey = new Map<ChannelPropertyEntity['id'], ChannelPropertyEntity>();
-		const keyByProperty = new Map<ChannelPropertyEntity['id'], ChannelPropertyEntity['id']>();
-
-		for (const property of properties) {
-			const key = this.valueSourceRegistry.resolve(property);
-			keyByProperty.set(property.id, key);
-			const produced = this.overlay(property, null);
-			if (produced) {
-				states.set(property.id, produced);
-				continue;
+		const entries: PropertyBatchEntry[] = [];
+		const keys = new Map<string, PropertyBatchKey>();
+		try {
+			const missing = new Map<string, PropertyBatchEntry[]>();
+			for (const [index, property] of properties.entries()) {
+				const alias = this.captureReadAlias(property);
+				const entry = { index, alias, cachedAtEntry: this.valuesMap.has(alias.key) };
+				entries.push(entry);
+				if (!keys.has(alias.key)) keys.set(alias.key, this.beginBatchReadKey(alias.key));
+				if (this.overlayReadAlias(alias) || entry.cachedAtEntry) continue;
+				const group = missing.get(alias.key) ?? [];
+				group.push(entry);
+				missing.set(alias.key, group);
 			}
-			const cached = this.valuesMap.get(key);
-
-			if (cached) {
-				states.set(property.id, cached);
-			} else if (!missingByKey.has(key)) {
-				missingByKey.set(key, property);
-			}
-		}
-
-		if (missingByKey.size === 0) {
-			for (const property of properties)
-				states.set(property.id, this.overlay(property, states.get(property.id) ?? null));
-			return states;
-		}
-		if (!this.storageService.isConnected()) {
-			throw new Error('Property value storage is unavailable');
-		}
-
-		const predicate = Array.from(missingByKey.keys())
-			.map((key) => `propertyId = '${this.escapeTagValue(key)}'`)
-			.join(' OR ');
-		const query = `
+			if (missing.size) {
+				if (!this.storageService.isConnected()) throw new Error('Property value storage is unavailable');
+				const predicate = [...missing.keys()].map((key) => `propertyId = '${this.escapeTagValue(key)}'`).join(' OR ');
+				const query = `
         SELECT *
         FROM property_value
         WHERE (${predicate})
@@ -909,49 +1922,25 @@ export class PropertyValueService {
 		ORDER BY time DESC
 		LIMIT ${TREND_POINTS_COUNT}
       `;
-
-		try {
-			const rows = await this.storageService.queryStrict<PropertyValueRow>(query);
-			const rowsByKey = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
-
-			for (const row of rows) {
-				rowsByKey.set(row.propertyId, [...(rowsByKey.get(row.propertyId) ?? []), row]);
-			}
-
-			for (const [key, property] of missingByKey) {
-				const propertyRows = rowsByKey.get(key) ?? [];
-
-				if (this.isNumericDataType(property.dataType)) {
-					this.recentValuesMap.set(
-						key,
-						propertyRows
-							.map((row) => row.numberValue)
-							.filter((value): value is number => value !== undefined)
-							.reverse(),
-					);
+				let originalQuery: PropertyReadKey | undefined;
+				for (const key of missing.keys()) {
+					const observation = keys.get(key);
+					if (!observation) throw new Error('Original strict read unavailable');
+					observation.backend = this.observeReadKey(key);
+					originalQuery ??= observation.backend;
 				}
-
-				const state = propertyRows[0] ? this.toState(property, key, propertyRows[0]) : null;
-
-				if (state) {
-					this.setCachedState(key, state);
+				if (!originalQuery) throw new Error('Original property query unavailable');
+				const rows = await originalQuery.queries.queryStrict.call(this.storageService, query);
+				for (const [key, group] of missing) {
+					const propertyRows = rows.filter((row) => row.propertyId === key);
+					for (const entry of group) entry.prepared = this.readRowsState(entry.alias.input, key, propertyRows);
 				}
 			}
-
-			for (const property of properties) {
-				if (!states.has(property.id)) {
-					states.set(property.id, this.valuesMap.get(keyByProperty.get(property.id) ?? property.id) ?? null);
-				}
-			}
-
-			for (const property of properties)
-				states.set(property.id, this.overlay(property, states.get(property.id) ?? null));
-			return states;
-		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`Failed to batch read latest property values from storage error=${err.message}`, err.stack);
-
-			throw error;
+			const results = this.finishBatchRead(entries, keys, false, true);
+			return new Map(entries.map((entry) => [entry.alias.id, results.get(entry.index)?.state ?? null]));
+		} finally {
+			this.closeBatchReadKeys(keys);
+			for (const entry of entries) this.closeReadAlias(entry.alias);
 		}
 	}
 
@@ -964,130 +1953,100 @@ export class PropertyValueService {
 		properties: ChannelPropertyEntity[],
 		options: BoundedPropertyValueReadOptions = {},
 	): Promise<BoundedPropertyValueReadResult> {
-		if (properties.length > BOUNDED_READ_MAX_PROPERTIES) {
-			throw new RangeError(`At most ${BOUNDED_READ_MAX_PROPERTIES} property values may be read at once`);
-		}
-
-		const startedAt = Date.now();
-		const requestedDeadlineAt = options.deadlineAt?.getTime() ?? startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS;
-
-		if (!Number.isFinite(requestedDeadlineAt)) {
-			throw new RangeError('Property value read deadline must be a valid date');
-		}
-
-		const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
-
-		const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
-		const sourcePropertyIds = new Array<ChannelPropertyEntity['id'] | null>(properties.length);
-		const unresolvedBySource = new Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>();
-		let sourceResolutionFailed = false;
-
-		for (const [index, property] of properties.entries()) {
-			const sourcePropertyId = this.resolveBestEffort(property, 'bounded read');
-			sourcePropertyIds[index] = sourcePropertyId;
-			if (sourcePropertyId === null) {
-				sourceResolutionFailed = true;
-				items[index] = {
-					propertyId: property.id,
-					sourcePropertyId: null,
-					status: 'unprocessed',
-					source: null,
-					state: null,
-				};
-				continue;
+		const entries: PropertyBatchEntry[] = [];
+		const keys = new Map<string, PropertyBatchKey>();
+		try {
+			if (properties.length > BOUNDED_READ_MAX_PROPERTIES)
+				throw new RangeError(`At most ${BOUNDED_READ_MAX_PROPERTIES} property values may be read at once`);
+			const startedAt = Date.now();
+			const requestedDeadlineAt = options.deadlineAt?.getTime() ?? startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS;
+			if (!Number.isFinite(requestedDeadlineAt))
+				throw new RangeError('Property value read deadline must be a valid date');
+			const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
+			const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
+			const unresolved = new Map<string, PropertyBatchEntry[]>();
+			let sourceResolutionFailed = false;
+			for (const [index, property] of properties.entries()) {
+				let alias: PropertyReadAlias;
+				try {
+					alias = this.captureReadAlias(property);
+				} catch {
+					sourceResolutionFailed = true;
+					items[index] = {
+						propertyId: property.id,
+						sourcePropertyId: null,
+						status: 'unprocessed',
+						source: null,
+						state: null,
+					};
+					continue;
+				}
+				const entry = { index, alias, cachedAtEntry: this.valuesMap.has(alias.key) };
+				entries.push(entry);
+				if (!keys.has(alias.key)) keys.set(alias.key, this.beginBatchReadKey(alias.key));
+				if (this.overlayReadAlias(alias) || entry.cachedAtEntry) continue;
+				const group = unresolved.get(alias.key) ?? [];
+				group.push(entry);
+				unresolved.set(alias.key, group);
 			}
-			const produced = this.overlay(property, null);
-			if (produced) {
-				items[index] = this.toBoundedItem(property.id, sourcePropertyId, produced, 'cache');
-				continue;
-			}
-			const cached = this.valuesMap.get(sourcePropertyId);
-
-			if (cached) {
-				items[index] = this.toBoundedItem(property.id, sourcePropertyId, cached, 'cache');
-				continue;
-			}
-
-			const group = unresolvedBySource.get(sourcePropertyId);
-
-			if (group) {
-				group.indexes.push(index);
-			} else {
-				unresolvedBySource.set(sourcePropertyId, { property, indexes: [index] });
-			}
-		}
-
-		if (unresolvedBySource.size === 0) {
-			this.overlayBoundedItems(items, properties, sourcePropertyIds);
-			return this.buildBoundedResult(items, sourceResolutionFailed ? 'failed' : 'not_needed');
-		}
-
-		if (Date.now() >= deadlineAt) {
-			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
-			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
-
-			this.overlayBoundedItems(items, properties, sourcePropertyIds);
-			return this.buildBoundedResult(items, 'timed_out');
-		}
-
-		if (!this.storageService.isConnected()) {
-			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
-			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
-
-			this.overlayBoundedItems(items, properties, sourcePropertyIds);
-			return this.buildBoundedResult(items, 'disconnected');
-		}
-
-		const sourceEntries = [...unresolvedBySource.entries()];
-		let storageStatus: BoundedPropertyValueStorageStatus = sourceResolutionFailed ? 'failed' : 'available';
-
-		for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
-			if (Date.now() >= deadlineAt) {
-				storageStatus = 'timed_out';
-				break;
-			}
-
-			const chunk = sourceEntries.slice(offset, offset + BOUNDED_READ_SOURCE_CHUNK_SIZE);
-			const query = this.buildBoundedPropertyValueQuery(chunk.map(([sourcePropertyId]) => sourcePropertyId));
-
-			try {
-				const queryResult = await this.queryPropertyValuesBeforeDeadline(query, deadlineAt);
-
-				if (queryResult === null) {
+			const finish = (storageStatus: BoundedPropertyValueStorageStatus): BoundedPropertyValueReadResult => {
+				const results = this.finishBatchRead(entries, keys, true, false);
+				for (const entry of entries) {
+					const result = results.get(entry.index);
+					if (!result) throw new Error('Original bounded result unavailable');
+					items[entry.index] = result.processed
+						? this.toBoundedItem(entry.alias.id, result.sourcePropertyId, result.state, result.source)
+						: {
+								propertyId: entry.alias.id,
+								sourcePropertyId: result.sourcePropertyId,
+								status: 'unprocessed',
+								source: null,
+								state: null,
+							};
+				}
+				return this.buildBoundedResult(items, storageStatus);
+			};
+			if (unresolved.size === 0) return finish(sourceResolutionFailed ? 'failed' : 'not_needed');
+			if (Date.now() >= deadlineAt) return finish('timed_out');
+			if (!this.storageService.isConnected()) return finish('disconnected');
+			const sourceEntries = [...unresolved.entries()];
+			let storageStatus: BoundedPropertyValueStorageStatus = sourceResolutionFailed ? 'failed' : 'available';
+			for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
+				if (Date.now() >= deadlineAt) {
 					storageStatus = 'timed_out';
 					break;
 				}
-
-				this.applyBoundedStorageRows(items, properties, chunk, queryResult);
-
-				for (const [sourcePropertyId] of chunk) {
-					unresolvedBySource.delete(sourcePropertyId);
+				const chunk = sourceEntries.slice(offset, offset + BOUNDED_READ_SOURCE_CHUNK_SIZE);
+				const query = this.buildBoundedPropertyValueQuery(chunk.map(([key]) => key));
+				try {
+					let originalQuery: PropertyReadKey | undefined;
+					for (const [key] of chunk) {
+						const observation = keys.get(key);
+						if (!observation) throw new Error('Original bounded read unavailable');
+						observation.backend = this.observeReadKey(key);
+						originalQuery ??= observation.backend;
+					}
+					const rows = await this.queryPropertyValuesBeforeDeadline(query, deadlineAt, originalQuery);
+					if (rows === null) {
+						storageStatus = 'timed_out';
+						break;
+					}
+					const prepared = chunk.flatMap(([key, group]) => {
+						const sourceRows = rows.filter((row) => row.propertyId === key);
+						return group.map((entry) => ({ entry, value: this.readRowsState(entry.alias.input, key, sourceRows) }));
+					});
+					for (const item of prepared) item.entry.prepared = item.value;
+				} catch (error) {
+					const err = error as Error;
+					this.logger.error(`Failed to bounded-batch read latest property values error=${err.message}`, err.stack);
+					storageStatus = 'failed';
+					break;
 				}
-			} catch (error) {
-				const err = error as Error;
-				this.logger.error(`Failed to bounded-batch read latest property values error=${err.message}`, err.stack);
-				storageStatus = 'failed';
-				break;
 			}
-		}
-
-		this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
-		this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
-
-		this.overlayBoundedItems(items, properties, sourcePropertyIds);
-		return this.buildBoundedResult(items, storageStatus);
-	}
-
-	private overlayBoundedItems(
-		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		sourcePropertyIds: Array<string | null>,
-	): void {
-		for (const [index, property] of properties.entries()) {
-			const key = sourcePropertyIds[index];
-			if (key === null) continue;
-			const produced = this.overlay(property, null);
-			if (produced) items[index] = this.toBoundedItem(property.id, key, produced, items[index]?.source ?? 'cache');
+			return finish(storageStatus);
+		} finally {
+			this.closeBatchReadKeys(keys);
+			for (const entry of entries) this.closeReadAlias(entry.alias);
 		}
 	}
 
@@ -1109,6 +2068,7 @@ export class PropertyValueService {
 	private async queryPropertyValuesBeforeDeadline(
 		query: string,
 		deadlineAt: number,
+		observation: PropertyReadKey | undefined,
 	): Promise<PropertyValueRow[] | null> {
 		const remainingMs = deadlineAt - Date.now();
 
@@ -1123,7 +2083,8 @@ export class PropertyValueService {
 		);
 
 		try {
-			return await this.storageService.queryStrict<PropertyValueRow>(query, { signal: controller.signal });
+			if (!observation) throw new Error('Original bounded query unavailable');
+			return await observation.queries.queryStrict.call(this.storageService, query, { signal: controller.signal });
 		} catch (error) {
 			if (controller.signal.aborted) {
 				return null;
@@ -1132,43 +2093,6 @@ export class PropertyValueService {
 			throw error;
 		} finally {
 			clearTimeout(timeout);
-		}
-	}
-
-	private applyBoundedStorageRows(
-		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		chunk: Array<[ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup]>,
-		rows: PropertyValueRow[],
-	): void {
-		const rowsBySource = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
-
-		for (const row of rows) {
-			rowsBySource.set(row.propertyId, [...(rowsBySource.get(row.propertyId) ?? []), row]);
-		}
-
-		for (const [sourcePropertyId, group] of chunk) {
-			const sourceRows = rowsBySource.get(sourcePropertyId) ?? [];
-			const firstRow = sourceRows[0];
-			let storedState = firstRow ? this.toState(group.property, sourcePropertyId, firstRow) : null;
-			const concurrentCache = this.valuesMap.get(sourcePropertyId);
-			const useCache = concurrentCache !== undefined && this.isStateNewerOrEqual(concurrentCache, storedState);
-
-			if (!useCache && firstRow) {
-				this.updateRecentValuesFromRows(group.property, sourcePropertyId, sourceRows);
-				storedState = this.toState(group.property, sourcePropertyId, firstRow);
-			}
-
-			const state = useCache ? concurrentCache : storedState;
-			const source: BoundedPropertyValueSource = useCache ? 'cache' : 'storage';
-
-			if (!useCache && storedState) {
-				this.setCachedState(sourcePropertyId, storedState);
-			}
-
-			for (const index of group.indexes) {
-				items[index] = this.toBoundedItem(properties[index].id, sourcePropertyId, state, source);
-			}
 		}
 	}
 
@@ -1195,10 +2119,18 @@ export class PropertyValueService {
 	}
 
 	private bumpCacheVersion(key: ChannelPropertyEntity['id']): void {
+		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
 		this.cacheVersions.set(key, this.cacheVersion(key) + 1);
 	}
 
-	private setCachedState(key: ChannelPropertyEntity['id'], state: PropertyValueState): void {
+	private setCachedState(
+		key: ChannelPropertyEntity['id'],
+		state: PropertyValueState,
+		kind: 'reported' | 'historical' | 'owned' = 'reported',
+		lease?: DeviceCreationPublicationLease,
+	): void {
+		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
+		this.cacheProvenance.set(key, { state, kind, lease });
 		this.valuesMap.set(key, state);
 		this.bumpCacheVersion(key);
 	}
@@ -1251,27 +2183,54 @@ export class PropertyValueService {
 		});
 	}
 
-	private updateRecentValuesFromRows(
-		property: ChannelPropertyEntity,
-		sourcePropertyId: ChannelPropertyEntity['id'],
-		rows: PropertyValueRow[],
-	): void {
-		if (!this.isNumericDataType(property.dataType)) {
-			return;
-		}
-
-		this.recentValuesMap.set(
-			sourcePropertyId,
-			rows
-				.map((row) => row.numberValue)
-				.filter((value): value is number => value !== undefined)
-				.reverse(),
+	private withCreatedValueLock<T>(
+		key: string,
+		creation: DeviceCreationPublicationLease | ControllerMutationPublicationLease,
+		operation: (lease: PropertyValueLease) => Promise<T>,
+	): Promise<T> {
+		assertOwnedValuePublication(creation, key);
+		const runExclusiveOriginalMethods: Readonly<{ runExclusive: PropertyValueService['valueLock']['runExclusive'] }> =
+			this.valueLock;
+		const { runExclusive } = runExclusiveOriginalMethods;
+		const flushHistoryOriginalMethods = (owner: Readonly<{ flushHistory: PropertyValueService['flushHistory'] }>) =>
+			owner;
+		const { flushHistory } = flushHistoryOriginalMethods(this);
+		const flush: Readonly<{ call: (receiver: PropertyValueService) => Promise<void> }> = flushHistory;
+		const run: Readonly<{
+			call: (
+				receiver: PropertyValueLockService,
+				key: string,
+				operation: (lease: PropertyValueLease) => Promise<T>,
+			) => Promise<T>;
+		}> = runExclusive;
+		const previous = this.valueTails.get(key) ?? Promise.resolve();
+		let release: () => void = () => {};
+		const ticket = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const tail = previous.then(
+			() => ticket,
+			() => ticket,
 		);
+		this.valueTails.set(key, tail);
+		const enter = (): Promise<T> => {
+			assertOwnedValuePublication(creation, key);
+			return run.call(this.valueLock, key, async (lease) => {
+				assertOwnedValuePublication(creation, key);
+				await flush.call(this);
+				assertOwnedValuePublication(creation, key);
+				return operation(lease);
+			});
+		};
+		return previous.then(enter, enter).finally(() => {
+			release();
+			if (this.valueTails.get(key) === tail) this.valueTails.delete(key);
+		});
 	}
 
 	private toBoundedItem(
 		propertyId: ChannelPropertyEntity['id'],
-		sourcePropertyId: ChannelPropertyEntity['id'],
+		sourcePropertyId: ChannelPropertyEntity['id'] | null,
 		state: PropertyValueState | null,
 		source: BoundedPropertyValueSource,
 	): BoundedPropertyValueItem {
@@ -1286,54 +2245,6 @@ export class PropertyValueService {
 			source,
 			state: state as PropertyValueState & { value: string | number | boolean },
 		};
-	}
-
-	private refreshBoundedItemsFromCache(
-		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		sourcePropertyIds: Array<ChannelPropertyEntity['id'] | null>,
-	): void {
-		for (const [index, property] of properties.entries()) {
-			const sourcePropertyId = sourcePropertyIds[index];
-			if (sourcePropertyId === null) continue;
-			const cached = this.valuesMap.get(sourcePropertyId);
-
-			if (!cached) {
-				continue;
-			}
-			const current = items[index];
-
-			if (current?.state === cached) {
-				continue;
-			}
-			if (current?.state && !this.isStateNewerOrEqual(cached, current.state)) {
-				continue;
-			}
-
-			items[index] = this.toBoundedItem(property.id, sourcePropertyId, cached, 'cache');
-		}
-	}
-
-	private fillUnprocessedBoundedItems(
-		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		groups: Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>,
-	): void {
-		for (const [sourcePropertyId, group] of groups) {
-			for (const index of group.indexes) {
-				if (items[index] !== undefined) {
-					continue;
-				}
-
-				items[index] = {
-					propertyId: properties[index].id,
-					sourcePropertyId,
-					status: 'unprocessed',
-					source: null,
-					state: null,
-				};
-			}
-		}
 	}
 
 	private buildBoundedResult(
@@ -1381,106 +2292,80 @@ export class PropertyValueService {
 		bypassCache = false,
 		activeBackendOnly = false,
 	): Promise<InternalPropertyValueReadResult> {
-		let key: string;
+		let alias: PropertyReadAlias;
 		try {
-			key = this.valueSourceRegistry.resolve(property);
+			alias = this.captureReadAlias(property);
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
-			this.logger.error(`Failed to resolve property value source id=${property.id} error=${err.message}`, err.stack);
 			if (strict) throw error;
 			return { state: null };
 		}
-		const cacheVersionAtQueryStart = this.cacheVersion(key);
-
-		// Check local cache first
-		const cached = this.valuesMap.get(key);
-		if (!bypassCache && cached) {
-			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${cached.value}`);
-
-			return { state: cached };
-		}
-
-		// Return null if storage not connected
-		if (!this.storageService.isConnected()) {
-			if (strict) {
-				throw new Error('Property value storage is unavailable');
-			}
-
-			return { state: null };
-		}
-
+		const key = alias.key;
+		let observation: PropertyReadKey | undefined;
 		try {
+			const cached = this.valuesMap.get(key);
+			if (!bypassCache && cached) return { state: this.readCachedData(alias, cached) };
+			if (!this.storageService.isConnected()) {
+				if (strict) throw new Error('Property value storage is unavailable');
+				return { state: null };
+			}
+			const version = this.cacheVersion(key);
+			observation = this.observeReadKey(key);
 			const query = `
         SELECT * FROM property_value
         WHERE propertyId = '${key}'
         ORDER BY time DESC
         LIMIT ${TREND_POINTS_COUNT}
       `;
-
-			this.logger.debug(`Fetching latest value id=${property.id}`);
-
 			const boundResult = activeBackendOnly
-				? await this.storageService.queryActiveStrictBound<PropertyValueRow>(query)
+				? await observation.queries.queryActiveStrictBound.call(this.storageService, query)
 				: null;
-			const result = boundResult
+			const rows = boundResult
 				? boundResult.rows
 				: strict
-					? await this.storageService.queryStrict<PropertyValueRow>(query)
-					: await this.storageService.query<PropertyValueRow>(query);
-
-			if (!result.length) {
-				this.logger.debug(`No stored value found for id=${property.id}`);
-				if (bypassCache && this.cacheVersion(key) === cacheVersionAtQueryStart) {
-					this.valuesMap.delete(key);
-					this.recentValuesMap.delete(key);
-					this.bumpCacheVersion(key);
-				}
-
-				return { state: null, storageBinding: boundResult?.binding };
-			}
-
-			// Results are ordered DESC, so first = latest
-			const latest = result[0];
-
-			const cacheUnchanged = this.cacheVersion(key) === cacheVersionAtQueryStart;
-
-			if (cacheUnchanged) {
-				// Build recent values cache from query results (for trend computation)
-				if (this.isNumericDataType(property.dataType) && result.length >= 1) {
-					// Results are DESC, reverse to get ASC order for trend
-					const recentValues: number[] = [];
-					for (let i = result.length - 1; i >= 0; i--) {
-						const val = result[i].numberValue;
-						if (val != null) {
-							recentValues.push(val);
-						}
-					}
-					this.recentValuesMap.set(key, recentValues);
-				}
-			}
-
-			const state = this.toState(property, key, latest);
-
-			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${state.value}`);
-
-			if (cacheUnchanged) {
-				this.setCachedState(key, state);
-			}
-
-			return { state, storageBinding: boundResult?.binding };
+					? await observation.queries.queryStrict.call(this.storageService, query)
+					: await observation.queries.query.call(this.storageService, query);
+			const prepared = this.readRowsState(alias.input, key, rows);
+			const produced = activeBackendOnly ? this.overlayReadAlias(alias) : null;
+			const reported = this.reportedReadState(key);
+			const sourceCurrent = alias.current();
+			const structuralCurrent = alias.structuralCurrent();
+			const backendCurrent = observation.current();
+			const unchanged = this.cacheVersion(key) === version;
+			const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token);
+			if (
+				sourceCurrent &&
+				structuralCurrent &&
+				backendCurrent &&
+				unchanged &&
+				decision === 'publish' &&
+				creationMethodCurrent(DeviceCreationPublicationEngine, 'invalidateIds', propertyReadInvalidate)
+			)
+				this.publishReadState(key, prepared, bypassCache && !rows.length);
+			// An explicit bound persisted read is historical data, never refreshed live authority on veto.
+			if (activeBackendOnly)
+				return {
+					state: sourceCurrent && structuralCurrent && backendCurrent ? (produced ?? prepared.state) : prepared.state,
+					storageBinding: boundResult?.binding,
+				};
+			if (!sourceCurrent || !structuralCurrent || !backendCurrent) return { state: null };
+			return { state: unchanged && decision === 'publish' ? prepared.state : reported };
 		} catch (error) {
-			const err = error as Error;
-
+			const err = error instanceof Error ? error : new Error(String(error));
 			this.logger.error(`Failed to read latest value from storage id=${property.id} error=${err.message}`, err.stack);
-			if (strict) {
-				throw error;
-			}
-
+			if (strict) throw error;
 			return { state: null };
+		} finally {
+			if (observation) originalReadCacheApi.close.call(originalReadCacheApi.receiver, observation.token);
+			this.closeReadAlias(alias);
 		}
 	}
 
-	private toState(property: ChannelPropertyEntity, key: string, latest: PropertyValueRow): PropertyValueState {
+	private toState(
+		property: ChannelPropertyEntity,
+		key: string,
+		latest: PropertyValueRow,
+		trend: PropertyValueTrend | null = this.computeTrend(property, key),
+	): PropertyValueState {
 		let parsedValue: string | number | boolean | null;
 
 		switch (property.dataType) {
@@ -1512,7 +2397,7 @@ export class PropertyValueService {
 				: String(latest.time)
 			: null;
 
-		return new PropertyValueState(parsedValue, lastUpdated, this.computeTrend(property, key));
+		return new PropertyValueState(parsedValue, lastUpdated, trend);
 	}
 
 	private escapeTagValue(value: string): string {
@@ -1520,6 +2405,7 @@ export class PropertyValueService {
 	}
 
 	async delete(property: ChannelPropertyEntity): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'delete');
 		if (key === null) return;
 
@@ -1538,6 +2424,7 @@ export class PropertyValueService {
 		this.samples.delete(property.id);
 		this.liveWatermarks.delete(property.id);
 		this.producers?.remove(property.id);
+		this.cacheProvenance.delete(property.id);
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);
 		this.bumpCacheVersion(property.id);
@@ -1563,6 +2450,7 @@ export class PropertyValueService {
 	}
 
 	async deleteSinceStrict(property: ChannelPropertyEntity, since: Date): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.valueSourceRegistry.resolve(property);
 
 		return this.withValueLock(key, () => this.deleteSinceStrictInternal(property, since, key));
@@ -1580,6 +2468,8 @@ export class PropertyValueService {
 			throw new Error('Property value storage is unavailable');
 		}
 
+		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
+		this.cacheProvenance.delete(key);
 		this.valuesMap.delete(key);
 		this.recentValuesMap.delete(key);
 		this.bumpCacheVersion(key);
@@ -1594,11 +2484,12 @@ export class PropertyValueService {
 	 * Returns null for non-numeric types or insufficient data.
 	 */
 	private computeTrend(property: ChannelPropertyEntity, key: string): PropertyValueTrend | null {
-		if (!this.isNumericDataType(property.dataType)) {
-			return null;
-		}
+		return this.computeTrendFrom(property, this.recentValuesMap.get(key));
+	}
 
-		const recent = this.recentValuesMap.get(key);
+	private computeTrendFrom(property: ChannelPropertyEntity, recent: number[] | undefined): PropertyValueTrend | null {
+		if (!this.isNumericDataType(property.dataType)) return null;
+
 		if (!recent || recent.length < 2) {
 			return null;
 		}
@@ -1731,6 +2622,112 @@ export class PropertyValueService {
 			}
 		}
 
+		return false;
+	}
+}
+
+function sameDiagnosticEvidence(a: IncorporatedPropertySample, b: IncorporatedPropertySample): boolean {
+	return (
+		a.propertyId === b.propertyId &&
+		a.acceptanceGeneration === b.acceptanceGeneration &&
+		a.producer?.lease === b.producer?.lease &&
+		a.producer?.publication === b.producer?.publication &&
+		a.producer?.revision === b.producer?.revision &&
+		a.producer?.expiresAt === b.producer?.expiresAt &&
+		a.producer?.quality === b.producer?.quality
+	);
+}
+const diagnosticValuePrototype: OriginalFunctions<{
+	captureDiagnosticSamples: PropertyValueService['captureDiagnosticSamples'];
+	diagnosticSamplesCurrent: PropertyValueService['diagnosticSamplesCurrent'];
+	diagnosticSampleBarrier: PropertyValueService['diagnosticSampleBarrier'];
+	evaluateDiagnosticSample: PropertyValueService['evaluateDiagnosticSample'];
+	finishDiagnosticSamples: PropertyValueService['finishDiagnosticSamples'];
+	closeDiagnosticSamples: PropertyValueService['closeDiagnosticSamples'];
+}> = PropertyValueService.prototype;
+const diagnosticValueMethods = Object.freeze({
+	capture: diagnosticValuePrototype.captureDiagnosticSamples,
+	current: diagnosticValuePrototype.diagnosticSamplesCurrent,
+	barrier: diagnosticValuePrototype.diagnosticSampleBarrier,
+	evaluate: diagnosticValuePrototype.evaluateDiagnosticSample,
+	finish: diagnosticValuePrototype.finishDiagnosticSamples,
+	close: diagnosticValuePrototype.closeDiagnosticSamples,
+});
+const originalDiagnosticAliasCapture: unknown = nativeFieldEvidence.get(
+	PropertyValueService.prototype,
+	'captureReadAlias',
+);
+const originalDiagnosticAliasClose: unknown = nativeFieldEvidence.get(PropertyValueService.prototype, 'closeReadAlias');
+function diagnosticValueMethodsCurrent(receiver: PropertyValueService): boolean {
+	return (
+		creationMethodCurrent(receiver, 'captureReadAlias', originalDiagnosticAliasCapture) &&
+		creationMethodCurrent(receiver, 'closeReadAlias', originalDiagnosticAliasClose) &&
+		creationMethodCurrent(receiver, 'captureDiagnosticSamples', diagnosticValueMethods.capture) &&
+		creationMethodCurrent(receiver, 'diagnosticSamplesCurrent', diagnosticValueMethods.current) &&
+		creationMethodCurrent(receiver, 'diagnosticSampleBarrier', diagnosticValueMethods.barrier) &&
+		creationMethodCurrent(receiver, 'evaluateDiagnosticSample', diagnosticValueMethods.evaluate) &&
+		creationMethodCurrent(receiver, 'finishDiagnosticSamples', diagnosticValueMethods.finish) &&
+		creationMethodCurrent(receiver, 'closeDiagnosticSamples', diagnosticValueMethods.close)
+	);
+}
+const diagnosticValueProducerPrototype: OriginalFunctions<{
+	captureDiagnosticPublications: PropertyProducerRegistryService['captureDiagnosticPublications'];
+	diagnosticPublicationsCurrent: PropertyProducerRegistryService['diagnosticPublicationsCurrent'];
+	evaluateDiagnosticPublication: PropertyProducerRegistryService['evaluateDiagnosticPublication'];
+	diagnosticPublicationObserved: PropertyProducerRegistryService['diagnosticPublicationObserved'];
+	closeDiagnosticPublications: PropertyProducerRegistryService['closeDiagnosticPublications'];
+	owns: PropertyProducerRegistryService['owns'];
+	beginCreationObservation: PropertyProducerRegistryService['beginCreationObservation'];
+	isCreationObservationCurrent: PropertyProducerRegistryService['isCreationObservationCurrent'];
+	closeCreationObservation: PropertyProducerRegistryService['closeCreationObservation'];
+}> = PropertyProducerRegistryService.prototype;
+const diagnosticValueProducerMethods = Object.freeze({
+	capture: diagnosticValueProducerPrototype.captureDiagnosticPublications,
+	current: diagnosticValueProducerPrototype.diagnosticPublicationsCurrent,
+	evaluate: diagnosticValueProducerPrototype.evaluateDiagnosticPublication,
+	has: diagnosticValueProducerPrototype.diagnosticPublicationObserved,
+	close: diagnosticValueProducerPrototype.closeDiagnosticPublications,
+	owns: diagnosticValueProducerPrototype.owns,
+	begin: diagnosticValueProducerPrototype.beginCreationObservation,
+	observationCurrent: diagnosticValueProducerPrototype.isCreationObservationCurrent,
+	closeObservation: diagnosticValueProducerPrototype.closeCreationObservation,
+});
+function diagnosticValueProducerMethodsCurrent(receiver: PropertyProducerRegistryService): boolean {
+	return (
+		creationMethodCurrent(receiver, 'beginCreationObservation', diagnosticValueProducerMethods.begin) &&
+		creationMethodCurrent(
+			receiver,
+			'isCreationObservationCurrent',
+			diagnosticValueProducerMethods.observationCurrent,
+		) &&
+		creationMethodCurrent(receiver, 'closeCreationObservation', diagnosticValueProducerMethods.closeObservation) &&
+		creationMethodCurrent(receiver, 'owns', diagnosticValueProducerMethods.owns) &&
+		creationMethodCurrent(receiver, 'captureDiagnosticPublications', diagnosticValueProducerMethods.capture) &&
+		creationMethodCurrent(receiver, 'diagnosticPublicationsCurrent', diagnosticValueProducerMethods.current) &&
+		creationMethodCurrent(receiver, 'evaluateDiagnosticPublication', diagnosticValueProducerMethods.evaluate) &&
+		creationMethodCurrent(receiver, 'diagnosticPublicationObserved', diagnosticValueProducerMethods.has) &&
+		creationMethodCurrent(receiver, 'closeDiagnosticPublications', diagnosticValueProducerMethods.close)
+	);
+}
+
+function assertOwnedValuePublication(
+	lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease,
+	key: string,
+): void {
+	if (lease instanceof ControllerMutationPublicationLease)
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease, key);
+	else DeviceCreationPublicationEngine.assert(lease, key);
+}
+
+function ownedValuePublicationCurrent(
+	lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease,
+): boolean {
+	if (!(lease instanceof ControllerMutationPublicationLease))
+		return originalReadCacheApi.createdCurrent.call(originalReadCacheApi.receiver, lease);
+	try {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
+		return true;
+	} catch {
 		return false;
 	}
 }

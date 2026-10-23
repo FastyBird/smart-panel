@@ -1,0 +1,2130 @@
+import { EntityManager, EntityTarget, ObjectLiteral } from 'typeorm';
+
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional, forwardRef } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
+
+import {
+	ClimateAutomationControllerFacts,
+	ClimateAutomationCreationCapability,
+	ClimateAutomationExistingCapability,
+	ClimateAutomationGraphReplacementPlan,
+	ClimateAutomationJson,
+	ClimateAutomationManualCapability,
+	ClimateAutomationManualIntent,
+	ClimateAutomationOwnedRegistration,
+	ClimateAutomationParticipant,
+	ClimateAutomationParticipantConflict,
+	ClimateAutomationParticipantDocument,
+	ClimateAutomationParticipantImage,
+	ClimateAutomationParticipantTurn,
+	ClimateAutomationProvider,
+	ClimateAutomationRetainedRecoveryRow,
+	climateAutomationCanonical,
+	climateAutomationJson,
+	climateAutomationReduceManualIntent,
+	climateAutomationRetainedRecoveryRows,
+} from '../../../modules/devices/contracts/climate-automation.contract';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
+import {
+	creationHasDataMethod,
+	creationMethodCurrent,
+	ownDiagnosticData,
+} from '../../../modules/devices/services/device-creation-context';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
+import {
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
+import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
+import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
+import { VirtualDewPointConfigEntity, VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
+import {
+	VirtualAggregateConfigEntity,
+	VirtualAggregateInputEntity,
+	VirtualGraphRevisionEntity,
+	VirtualLightGroupBindingEntity,
+	VirtualLightGroupConfigEntity,
+	VirtualLightGroupMemberEntity,
+} from '../entities/virtual-producer.entity';
+import {
+	VirtualThermostatActuatorClaimEntity,
+	VirtualThermostatConfigEntity,
+	VirtualThermostatRecoveryEntity,
+	VirtualThermostatSettingEntity,
+	VirtualThermostatSourceEntity,
+} from '../entities/virtual-thermostat.entity';
+import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
+import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
+import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
+import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
+import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
+
+const nativeObjectEvidence: Readonly<{
+	getOwnPropertyDescriptor: (
+		receiver: object,
+		key: PropertyKey,
+	) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+}> = Object;
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+const nativeJsonEvidence: Readonly<{ parse: (text: string) => unknown }> = JSON;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
+
+interface AutomationReceiverCall<R, A extends unknown[], V> {
+	readonly call: (receiver: R, ...args: A) => V;
+}
+type AutomationMethodReferences = {
+	readonly readInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['readInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['readInManager']>;
+	readonly readControllerFactsInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>;
+	readonly validateManualIntentInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>;
+	readonly readRetainedHistoryInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>;
+	readonly applyManualIntentInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>;
+};
+
+/** PRIVATE version1 persisted column map. Never a public response or an installed qualification. */
+export const THERMOSTAT_AUTOMATION_COLUMNS = {
+	configurations: [
+		'controllerId',
+		'displayFloorClaimId',
+		'ownerDeviceId',
+		'schemaVersion',
+		'revision',
+		'requestedMode',
+		'controlStrategy',
+		'locked',
+		'comfort',
+		'policy',
+		'heuristic',
+		'contactOpeningMs',
+		'contactClosingMs',
+		'configuredAt',
+		'releaseRequestedAt',
+	],
+	sources: [
+		'id',
+		'controllerId',
+		'role',
+		'sourcePropertyId',
+		'sourcePropertyIdentity',
+		'physicalIdentity',
+		'contractFingerprint',
+		'maximumAgeSeconds',
+		'openValue',
+		'closedValue',
+	],
+	actuators: [
+		'id',
+		'controllerId',
+		'role',
+		'physicalIdentity',
+		'providerProfile',
+		'providerProfileVersion',
+		'sourcePropertyId',
+		'sourcePropertyIdentity',
+		'sourceDeviceId',
+		'sourceDeviceIdentity',
+		'contractFingerprint',
+		'revision',
+		'qualificationGeneration',
+		'state',
+		'leaseSeconds',
+		'reason',
+		'releaseRequestedAt',
+		'releasedAt',
+		'releaseEvidence',
+	],
+	settings: ['propertyId', 'controllerId', 'setting', 'contractFingerprint'],
+	protections: [
+		'claimId',
+		'schemaVersion',
+		'kind',
+		'revision',
+		'sourcePropertyId',
+		'sourcePropertyIdentity',
+		'physicalPropertyIdentity',
+		'contractFingerprint',
+		'maximumAgeSeconds',
+	],
+	cooling: [
+		'claimId',
+		'schemaVersion',
+		'revision',
+		'dewPointPropertyId',
+		'dewPointIdentity',
+		'dewPointFingerprint',
+		'surfacePropertyId',
+		'surfaceIdentity',
+		'physicalSurfaceIdentity',
+		'surfaceFingerprint',
+		'purpose',
+		'maximumAgeSeconds',
+	],
+	dewConfigurations: [
+		'outputPropertyId',
+		'schemaVersion',
+		'formulaVersion',
+		'maximumAgeSeconds',
+		'maximumSkewSeconds',
+		'revision',
+		'configuredAt',
+	],
+	dewSources: [
+		'outputPropertyId',
+		'role',
+		'sourcePropertyId',
+		'sourcePropertyIdentity',
+		'quantity',
+		'unit',
+		'domain',
+		'contractFingerprint',
+	],
+	transformConfigurations: [
+		'outputPropertyId',
+		'schemaVersion',
+		'policy',
+		'maximumAgeSeconds',
+		'revision',
+		'configuredAt',
+		'quantity',
+		'unit',
+	],
+	transformSources: ['id', 'outputPropertyId', 'sourcePropertyId', 'sourcePropertyIdentity', 'quantity', 'unit'],
+	aggregateConfigurations: [
+		'outputPropertyId',
+		'schemaVersion',
+		'profile',
+		'operator',
+		'minimumValidInputs',
+		'maximumAgeSeconds',
+		'outlierFilter',
+		'revision',
+	],
+	aggregateInputs: [
+		'id',
+		'outputPropertyId',
+		'sourcePropertyId',
+		'weight',
+		'sourcePropertyIdentity',
+		'quantity',
+		'unit',
+	],
+	groupConfigurations: ['groupChannelId', 'schemaVersion', 'profile', 'revision'],
+	groupMembers: ['id', 'groupChannelId', 'sourceChannelId', 'sourceChannelIdentity'],
+	groupBindings: [
+		'id',
+		'memberId',
+		'outputPropertyId',
+		'sourcePropertyId',
+		'sourcePropertyIdentity',
+		'quantity',
+		'unit',
+	],
+};
+for (const columns of Object.values(THERMOSTAT_AUTOMATION_COLUMNS)) Object.freeze(columns);
+Object.freeze(THERMOSTAT_AUTOMATION_COLUMNS);
+type JsonObject = Readonly<Record<string, ClimateAutomationJson>>;
+type TableName = keyof typeof THERMOSTAT_AUTOMATION_COLUMNS;
+export type ThermostatAutomationRows = Readonly<{
+	tables: Readonly<{ [K in TableName]: readonly object[] }>;
+	devices: readonly DeviceEntity[];
+	channels: readonly ChannelEntity[];
+	properties: readonly ChannelPropertyEntity[];
+}>;
+const MAX_ROWS = 16384;
+const equal = (a: unknown, b: unknown): boolean => climateAutomationCanonical(a) === climateAutomationCanonical(b);
+const fail = (): never => {
+	throw new Error('Unsupported private thermostat projection');
+};
+function object(value: unknown): Record<string, unknown> {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return fail();
+	const result: Record<string, unknown> = {};
+	for (const key of Object.keys(value))
+		Object.defineProperty(result, key, { value: nativeFieldEvidence.get(value, key), enumerable: true });
+	return result;
+}
+function list(value: unknown): readonly unknown[] {
+	if (!Array.isArray(value)) return fail();
+	return value;
+}
+function text(value: unknown): string {
+	if (typeof value !== 'string') return fail();
+	return value;
+}
+function id(value: unknown): string {
+	const result = text(value);
+	if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result)) return fail();
+	return result;
+}
+function own(value: unknown): ClimateAutomationJson {
+	const parsed: unknown = nativeJsonEvidence.parse(climateAutomationCanonical(value));
+	return climateAutomationJson(parsed);
+}
+function integer(value: unknown, minimum: number): number {
+	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < minimum) return fail();
+	return value;
+}
+function relation(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	if (typeof value === 'string') return id(value);
+	if (typeof value !== 'object' || Array.isArray(value)) return fail();
+	return id(nativeFieldEvidence.get(value, 'id'));
+}
+function persistedJson(value: unknown, column: string, path: readonly string[] = []): ClimateAutomationJson {
+	if (Array.isArray(value))
+		return Object.freeze(value.map((entry: unknown) => persistedJson(entry, column, [...path, '[]'])));
+	if (value === null || typeof value !== 'object') return climateAutomationJson(value);
+	if (value instanceof Date) return fail();
+	const result: Record<string, ClimateAutomationJson> = {};
+	for (const key of Object.keys(value)) {
+		const entry: unknown = nativeFieldEvidence.get(value, key);
+		const optional =
+			(column === 'comfort' &&
+				((path.length === 0 && key === 'automation_baseline') ||
+					(path.length === 1 &&
+						path[0] === 'temporary_override' &&
+						['original_duration_ms', 'wall_watermark_ms'].includes(key)))) ||
+			(column === 'policy' &&
+				((path.length === 0 && key === 'cooling') ||
+					(path.length === 1 && path[0] === 'cooling' && key === 'absoluteMinimumC')));
+		if (entry === undefined && optional) continue;
+		Object.defineProperty(result, key, { value: persistedJson(entry, column, [...path, key]), enumerable: true });
+	}
+	return Object.freeze(result);
+}
+function field(name: string, value: unknown): ClimateAutomationJson {
+	if (value === undefined) return fail();
+	if (value === null) return null;
+	if (['configuredAt', 'createdAt', 'updatedAt', 'releaseRequestedAt', 'releasedAt'].includes(name)) {
+		const time =
+			value instanceof Date
+				? value.getTime()
+				: typeof value === 'string' && /T.*(?:Z|[+-]\d\d:\d\d)$/.test(value)
+					? Date.parse(value)
+					: NaN;
+		if (!Number.isFinite(time)) return fail();
+		return new Date(time).toISOString();
+	}
+	if (name === 'id' || name.endsWith('Id') || name === 'qualificationGeneration') return id(value);
+	if (
+		['revision', 'schemaVersion', 'providerProfileVersion', 'minimumValidInputs', 'maximumAgeSeconds'].includes(name)
+	) {
+		const result = integer(value, 1);
+		if (name === 'maximumAgeSeconds' && result > 86400) return fail();
+		return result;
+	}
+	if (['maximumSkewSeconds', 'contactOpeningMs', 'contactClosingMs'].includes(name)) {
+		const result = integer(value, 0);
+		if (result > (name === 'maximumSkewSeconds' ? 3600 : 86400000)) return fail();
+		return result;
+	}
+	if (name === 'leaseSeconds' && (typeof value !== 'number' || !Number.isFinite(value) || value <= 0)) return fail();
+	return persistedJson(value, name);
+}
+function project(row: object, columns: readonly string[], optional: readonly string[] = []): JsonObject {
+	const result: Record<string, ClimateAutomationJson> = {};
+	for (const name of columns) {
+		const value: unknown = nativeFieldEvidence.get(row, name);
+		if (value === undefined && optional.includes(name)) continue;
+		result[name] = field(name, value);
+	}
+	return Object.freeze(result);
+}
+function sorted(rows: readonly ClimateAutomationJson[]): readonly ClimateAutomationJson[] {
+	return Object.freeze(
+		[...rows].sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b))),
+	);
+}
+function values(rows: readonly JsonObject[], keys: readonly string[]): string[] {
+	return rows.flatMap((row) => keys.flatMap((key) => (typeof row[key] === 'string' ? [text(row[key])] : [])));
+}
+const without = (row: JsonObject, keys: readonly string[]): JsonObject => {
+	const result: Record<string, ClimateAutomationJson> = {};
+	for (const key of Object.keys(row))
+		if (!keys.includes(key)) Object.defineProperty(result, key, { value: row[key], enumerable: true });
+	return Object.freeze(result);
+};
+/** Only mapped ROW fields are descriptive/generated. Nested policy JSON is never stripped. */
+const SEMANTIC_ROW_EXCLUSIONS: Partial<Record<TableName, readonly string[]>> = {
+	actuators: ['revision', 'qualificationGeneration', 'releaseEvidence', 'releasedAt', 'releaseRequestedAt'],
+	protections: ['revision'],
+	cooling: ['revision'],
+	dewConfigurations: ['revision', 'configuredAt'],
+	transformConfigurations: ['revision', 'configuredAt'],
+	aggregateConfigurations: ['revision'],
+	groupConfigurations: ['revision'],
+};
+function derivedStructural(configuration: ClimateAutomationJson): ClimateAutomationJson {
+	const section = object(configuration),
+		config = object(section.config),
+		catalog = object(section.catalog);
+	const rowSet = (value: unknown, exclusions: readonly string[] = []) =>
+		sorted(list(value).map((row) => without(jsonRecord(row), exclusions)));
+	const producerSets: Record<string, ClimateAutomationJson> = { ...jsonRecord(catalog.producerFacts) };
+	for (const key of [
+		'dewConfigurations',
+		'dewSources',
+		'transformConfigurations',
+		'transformSources',
+		'aggregateConfigurations',
+		'aggregateInputs',
+		'groupConfigurations',
+		'groupMembers',
+		'groupBindings',
+	]) {
+		const exclusions =
+			key === 'dewConfigurations' || key === 'transformConfigurations'
+				? ['revision', 'configuredAt']
+				: key === 'aggregateConfigurations' || key === 'groupConfigurations'
+					? ['revision']
+					: [];
+		Object.defineProperty(producerSets, key, {
+			value: rowSet(object(catalog.producerFacts)[key], exclusions),
+			enumerable: true,
+		});
+	}
+	const displayFields = ['createdAt', 'updatedAt', 'name', 'description'];
+	const devices = rowSet(catalog.devices, displayFields);
+	const catalogMeaning = {
+		...jsonRecord(catalog),
+		devices,
+		channels: rowSet(catalog.channels, displayFields),
+		properties: rowSet(catalog.properties, displayFields),
+		producerFacts: producerSets,
+	};
+	return own({
+		owner: devices.map(object).find((row) => row.id === config.controllerId) ?? null,
+		config: without(jsonRecord(config), ['displayFloorClaimId', 'configuredAt', 'releaseRequestedAt']),
+		policySafety: section.policySafety,
+		sources: rowSet(section.sources),
+		actuators: rowSet(section.actuators, SEMANTIC_ROW_EXCLUSIONS.actuators),
+		settings: rowSet(section.settings),
+		protections: rowSet(section.protections, SEMANTIC_ROW_EXCLUSIONS.protections),
+		coolingDependencies: rowSet(section.coolingDependencies, SEMANTIC_ROW_EXCLUSIONS.cooling),
+		heuristic: config.heuristic,
+		catalog: catalogMeaning,
+	});
+}
+function jsonRecord(value: unknown): JsonObject {
+	const result: Record<string, ClimateAutomationJson> = {};
+	for (const [key, entry] of Object.entries(object(own(value))))
+		Object.defineProperty(result, key, { value: own(entry), enumerable: true });
+	return Object.freeze(result);
+}
+
+/** Pure shared serializer; the TEST second provider callback must load FRESH rows, not reuse a first image. */
+export function thermostatAutomationImage(rows: ThermostatAutomationRows): ClimateAutomationParticipantImage | null {
+	if (rows.tables.configurations.length === 0) return null;
+	if (rows.tables.configurations.length !== 1) return fail();
+	const table = (name: TableName): readonly JsonObject[] => {
+		if (rows.tables[name].length > MAX_ROWS) return fail();
+		return rows.tables[name].map((row) => project(row, THERMOSTAT_AUTOMATION_COLUMNS[name]));
+	};
+	const config = table('configurations')[0];
+	if (!config) return fail();
+	const controllerId = id(config.controllerId);
+	const sources = table('sources').filter((row) => row.controllerId === controllerId);
+	const actuators = table('actuators').filter((row) => row.controllerId === controllerId);
+	const settings = table('settings').filter((row) => row.controllerId === controllerId);
+	const claims = new Set(values(actuators, ['id']));
+	const protections = table('protections').filter((row) => claims.has(text(row.claimId)));
+	const cooling = table('cooling').filter((row) => claims.has(text(row.claimId)));
+	const devices: readonly JsonObject[] = rows.devices.map((row) =>
+		project(
+			row,
+			[
+				'id',
+				'createdAt',
+				'updatedAt',
+				'type',
+				'category',
+				'identifier',
+				'name',
+				'description',
+				'enabled',
+				'hidden',
+				'hiddenBy',
+				'roomId',
+				'mode',
+				'canonicalMac',
+				'hasEthernet',
+			],
+			['updatedAt', 'mode', 'canonicalMac', 'hasEthernet'],
+		),
+	);
+	const channels: readonly JsonObject[] = rows.channels.map((row) =>
+		Object.freeze({
+			...project(
+				row,
+				['id', 'createdAt', 'updatedAt', 'type', 'category', 'identifier', 'name', 'description', 'parentId'],
+				['updatedAt'],
+			),
+			deviceId: relation(row.device),
+		}),
+	);
+	const properties: readonly JsonObject[] = rows.properties.map((row) =>
+		Object.freeze({
+			...project(
+				row,
+				[
+					'id',
+					'createdAt',
+					'updatedAt',
+					'type',
+					'category',
+					'identifier',
+					'name',
+					'permissions',
+					'dataType',
+					'format',
+					'invalid',
+					'step',
+					'valueOrigin',
+					'sourcePropertyId',
+					'energyClaimPropertyId',
+					'measurementQuantity',
+				],
+				['updatedAt', 'valueOrigin', 'sourcePropertyId', 'energyClaimPropertyId', 'measurementQuantity'],
+			),
+			channelId: relation(row.channel),
+			resolvedUnit: own(resolvePropertyUnit(row)),
+		}),
+	);
+	if ([devices, channels, properties].some((items) => items.length > MAX_ROWS)) return fail();
+	const ownedChannels = new Set(channels.filter((row) => row.deviceId === controllerId).map((row) => id(row.id)));
+	const ownedProperties = properties.filter((row) => row.channelId !== null && ownedChannels.has(id(row.channelId)));
+	const ownedIds = new Set(ownedProperties.map((row) => id(row.id)));
+	if (ownedIds.size > 4096 || ownedIds.size !== ownedProperties.length) return fail();
+	const producers = {
+		dewConfigurations: table('dewConfigurations'),
+		dewSources: table('dewSources'),
+		transformConfigurations: table('transformConfigurations'),
+		transformSources: table('transformSources'),
+		aggregateConfigurations: table('aggregateConfigurations'),
+		aggregateInputs: table('aggregateInputs'),
+		groupConfigurations: table('groupConfigurations'),
+		groupMembers: table('groupMembers'),
+		groupBindings: table('groupBindings'),
+	};
+	const wanted = new Set([
+		...ownedIds,
+		...values(
+			[...sources, ...actuators, ...settings, ...protections, ...cooling],
+			[
+				'sourcePropertyId',
+				'sourcePropertyIdentity',
+				'propertyId',
+				'physicalPropertyIdentity',
+				'dewPointPropertyId',
+				'dewPointIdentity',
+				'surfacePropertyId',
+				'surfaceIdentity',
+				'physicalSurfaceIdentity',
+			],
+		),
+	]);
+	// Bounded persisted dependency closure, not readiness polling or sample freshness.
+	for (let wave = 0; ; wave++) {
+		if (wanted.size > 4096 || wave > 16) return fail();
+		const count = wanted.size;
+		for (const name of ['dewSources', 'transformSources', 'aggregateInputs', 'groupBindings']) {
+			const inputs =
+				name === 'dewSources'
+					? producers.dewSources
+					: name === 'transformSources'
+						? producers.transformSources
+						: name === 'aggregateInputs'
+							? producers.aggregateInputs
+							: producers.groupBindings;
+			for (const row of inputs)
+				if (wanted.has(text(row.outputPropertyId)))
+					for (const reference of values([row], ['sourcePropertyId', 'sourcePropertyIdentity'])) wanted.add(reference);
+		}
+		for (const row of properties)
+			if (wanted.has(id(row.id)))
+				for (const reference of values([row], ['sourcePropertyId', 'energyClaimPropertyId'])) wanted.add(reference);
+		if (wanted.size === count) break;
+	}
+	const selectedProperties = properties.filter((row) => wanted.has(id(row.id)));
+	if (
+		selectedProperties.some(
+			(row) => row.channelId === null || !channels.some((channel) => channel.id === row.channelId),
+		)
+	)
+		return fail();
+	for (const property of rows.properties)
+		if (wanted.has(property.id) && property.channel && typeof property.channel !== 'string') {
+			const joinedChannel = property.channel;
+			const channel = channels.find((row) => row.id === joinedChannel.id);
+			if (!channel || channel.deviceId !== relation(joinedChannel.device)) return fail();
+		}
+	const wantedChannels = new Set([...ownedChannels, ...values(selectedProperties, ['channelId'])]);
+	const groups = producers.groupConfigurations.filter((row) => wantedChannels.has(text(row.groupChannelId)));
+	const members = producers.groupMembers.filter((row) =>
+		groups.some((group) => group.groupChannelId === row.groupChannelId),
+	);
+	for (const reference of values(members, ['sourceChannelId', 'sourceChannelIdentity'])) wantedChannels.add(reference);
+	const selectedChannels = channels.filter((row) => wantedChannels.has(id(row.id)));
+	if (selectedChannels.some((row) => row.deviceId === null)) return fail();
+	const wantedDevices = new Set([
+		controllerId,
+		...values([config, ...actuators], ['ownerDeviceId', 'sourceDeviceId', 'sourceDeviceIdentity']),
+		...values(selectedChannels, ['deviceId']),
+	]);
+	const catalogProducers: Record<string, ClimateAutomationJson> = {};
+	for (const [name, inputs] of Object.entries(producers))
+		catalogProducers[name] = sorted(
+			inputs.filter((row) =>
+				name === 'groupConfigurations'
+					? groups.includes(row)
+					: name === 'groupMembers'
+						? members.includes(row)
+						: wanted.has(text(row.outputPropertyId)),
+			),
+		);
+	const edgeRows = [
+		...producers.dewSources,
+		...producers.transformSources,
+		...producers.aggregateInputs,
+		...producers.groupBindings,
+	];
+	const edges = [
+		...ownedProperties
+			.filter(
+				(row) =>
+					(row.valueOrigin === undefined || row.valueOrigin === 'source') &&
+					row.sourcePropertyId !== null &&
+					row.sourcePropertyId !== undefined,
+			)
+			.map((row) => ({ outputPropertyId: id(row.id), sourcePropertyId: id(row.sourcePropertyId) })),
+		...edgeRows
+			.filter((row) => ownedIds.has(text(row.outputPropertyId)) && row.sourcePropertyId !== null)
+			.map((row) => ({ outputPropertyId: id(row.outputPropertyId), sourcePropertyId: id(row.sourcePropertyId) })),
+	];
+	if (edges.length > 8192) return fail();
+	const catalog = Object.freeze({
+		ownedOutputIds: Object.freeze([...ownedIds].sort()),
+		ownedChannelIds: Object.freeze([...ownedChannels].sort()),
+		edges: sorted(edges),
+		devices: sorted(devices.filter((row) => wantedDevices.has(id(row.id)))),
+		channels: sorted(selectedChannels),
+		properties: sorted(selectedProperties),
+		producerFacts: Object.freeze(catalogProducers),
+		missingPropertyIds: Object.freeze([...wanted].filter((key) => !properties.some((row) => row.id === key)).sort()),
+		missingChannelIds: Object.freeze(
+			[...wantedChannels].filter((key) => !channels.some((row) => row.id === key)).sort(),
+		),
+		missingDeviceIds: Object.freeze([...wantedDevices].filter((key) => !devices.some((row) => row.id === key)).sort()),
+	});
+	const policy = object(config.policy),
+		policySafety: Record<string, ClimateAutomationJson> = {},
+		requestedSetpoints: Record<string, ClimateAutomationJson> = {};
+	for (const key of Object.keys(policy))
+		Object.defineProperty(
+			['heatingSetpoint', 'coolingSetpoint'].includes(key) ? requestedSetpoints : policySafety,
+			key,
+			{ value: own(policy[key]), enumerable: true },
+		);
+	const configuration = Object.freeze({
+		projectionVersion: 1,
+		config: without(config, ['revision', 'requestedMode', 'locked', 'comfort', 'policy']),
+		policySafety: Object.freeze(policySafety),
+		sources: sorted(sources),
+		actuators: sorted(actuators),
+		settings: sorted(settings),
+		protections: sorted(protections),
+		coolingDependencies: sorted(cooling),
+		catalog,
+	});
+	const comfort = Object.freeze({
+		requestedMode: config.requestedMode,
+		locked: config.locked,
+		requestedSetpoints: Object.freeze(requestedSetpoints),
+		configuration: config.comfort,
+	});
+	const structural = derivedStructural(own(configuration));
+	const baseline = config.comfort === null ? null : object(config.comfort).automation_baseline;
+	return Object.freeze({
+		controllerId,
+		documentVersion: 1,
+		controllerRevision: integer(config.revision, 1),
+		configuration: own(configuration),
+		comfort: own(comfort),
+		structural: own(structural),
+		legacyBaseline: baseline === undefined ? null : own(baseline),
+	});
+}
+
+function finite(value: unknown): number {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return fail();
+	return value;
+}
+function policyFromImage(safety: Record<string, unknown>, requested: Record<string, unknown>): VirtualThermostatPolicy {
+	const floor = safety.floor === null ? null : object(safety.floor);
+	const cooling = safety.cooling === undefined || safety.cooling === null ? null : object(safety.cooling);
+	return {
+		heatingSetpoint: requested.heatingSetpoint === null ? null : finite(requested.heatingSetpoint),
+		coolingSetpoint: requested.coolingSetpoint === null ? null : finite(requested.coolingSetpoint),
+		coldTolerance: finite(safety.coldTolerance),
+		hotTolerance: finite(safety.hotTolerance),
+		neutralMargin: finite(safety.neutralMargin),
+		minimumOffMs: integer(safety.minimumOffMs, 0),
+		changeoverMs: integer(safety.changeoverMs, 0),
+		floor: floor ? { limit: finite(floor.limit), recoveryHysteresis: finite(floor.recoveryHysteresis) } : null,
+		...(cooling
+			? {
+					cooling: {
+						schemaVersion: 1,
+						marginC: finite(cooling.marginC),
+						recoveryHysteresisC: finite(cooling.recoveryHysteresisC),
+						...(cooling.absoluteMinimumC === undefined
+							? {}
+							: { absoluteMinimumC: cooling.absoluteMinimumC === null ? null : finite(cooling.absoluteMinimumC) }),
+					},
+				}
+			: {}),
+	};
+}
+
+function document(value: unknown): ClimateAutomationParticipantDocument {
+	const row = object(own(value));
+	const keys = ['controllerId', 'documentVersion', 'configuration', 'comfort', 'structural', 'legacyBaseline'];
+	if (Object.hasOwn(row, 'controllerRevision')) keys.push('controllerRevision');
+	if (
+		Object.keys(row).length !== keys.length ||
+		keys.some((key) => !Object.hasOwn(row, key)) ||
+		row.documentVersion !== 1
+	)
+		return fail();
+	if (Object.hasOwn(row, 'controllerRevision')) integer(row.controllerRevision, 1);
+	return Object.freeze({
+		controllerId: id(row.controllerId),
+		documentVersion: 1,
+		configuration: own(row.configuration),
+		comfort: own(row.comfort),
+		structural: own(row.structural),
+		legacyBaseline: own(row.legacyBaseline),
+	});
+}
+/** Unknown persisted JSON is fenced, not dropped. This is representation checking, NOT C1 apply permission. */
+export function thermostatAutomationMutationIssues(value: unknown): readonly string[] {
+	return thermostatMutationIssues(value, false);
+}
+/** Only the genuine existing NORMALIZE turn may retain malformed lifetime DATA for protective settlement/cancellation.
+ * C0/B planning remains strict. No clock field is rewritten, defaulted or turned into activation authority. */
+export function thermostatExistingRetainedIssues(
+	manager: EntityManager,
+	turn: ClimateAutomationParticipantTurn,
+	writer: ClimateAutomationWriterService,
+	value: ClimateAutomationParticipantImage,
+): readonly string[] {
+	writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+	const clock = writer.readExistingClock(manager, turn),
+		state = object(value.comfort).configuration;
+	const override = state === null ? null : object(state).temporary_override;
+	let retained = false;
+	if (override !== null && override !== undefined) {
+		const row = object(override),
+			status = row.status;
+		retained =
+			status === 'expired' ||
+			status === 'clock_uncertain' ||
+			status === 'cancelled' ||
+			(status === 'active' &&
+				row.id === clock.overrideId &&
+				(clock.status === 'expired' || clock.status === 'clock_uncertain'));
+	}
+	return thermostatMutationIssues(value, retained);
+}
+function thermostatMutationIssues(value: unknown, retainedLifetime: boolean): readonly string[] {
+	const captured = own(value),
+		doc = document(captured),
+		configuration = object(doc.configuration),
+		comfort = object(doc.comfort),
+		issues: string[] = [];
+	if (configuration.projectionVersion !== 1) issues.push('projection_version');
+	for (const source of list(configuration.sources).map(object))
+		for (const key of ['openValue', 'closedValue']) {
+			const scalar = source[key];
+			if (
+				scalar !== null &&
+				typeof scalar !== 'string' &&
+				typeof scalar !== 'boolean' &&
+				!(typeof scalar === 'number' && Number.isFinite(scalar))
+			)
+				issues.push('source_scalar_domain');
+		}
+	if (!equal(doc.structural, derivedStructural(doc.configuration))) issues.push('structural_projection');
+	if (!['off', 'heat', 'cool', 'auto'].includes(text(comfort.requestedMode)) || typeof comfort.locked !== 'boolean')
+		issues.push('manual_shape');
+	const check = (input: unknown, keys: readonly string[], name: string): void => {
+		if (input === null || input === undefined) return;
+		const row = object(input);
+		if (Object.keys(row).some((key) => !keys.includes(key))) issues.push(name);
+	};
+	check(
+		configuration,
+		[
+			'projectionVersion',
+			'config',
+			'policySafety',
+			'sources',
+			'actuators',
+			'settings',
+			'protections',
+			'coolingDependencies',
+			'catalog',
+		],
+		'unknown_section',
+	);
+	check(comfort, ['requestedMode', 'locked', 'requestedSetpoints', 'configuration'], 'unknown_section');
+	const config = object(configuration.config);
+	check(
+		config,
+		THERMOSTAT_AUTOMATION_COLUMNS.configurations.filter(
+			(key) => !['revision', 'requestedMode', 'locked', 'comfort', 'policy'].includes(key),
+		),
+		'unknown_config',
+	);
+	if (config.schemaVersion !== 1 || config.controlStrategy !== 'guarded_branches') issues.push('controller_schema');
+	check(
+		configuration.policySafety,
+		['coldTolerance', 'hotTolerance', 'neutralMargin', 'minimumOffMs', 'changeoverMs', 'floor', 'cooling'],
+		'unknown_policy',
+	);
+	const policy = object(configuration.policySafety);
+	if (validateVirtualThermostatPolicy(policyFromImage(policy, object(comfort.requestedSetpoints))).length)
+		issues.push('invalid_policy_limits');
+	if (policy.cooling !== null && policy.cooling !== undefined && object(policy.cooling).schemaVersion !== 1)
+		issues.push('cooling_schema');
+	check(policy.floor, ['limit', 'recoveryHysteresis'], 'unknown_floor');
+	check(policy.cooling, ['schemaVersion', 'marginC', 'recoveryHysteresisC', 'absoluteMinimumC'], 'unknown_cooling');
+	check(
+		config.heuristic,
+		[
+			'sampleWindowMs',
+			'minimumSamples',
+			'minimumSpanMs',
+			'maximumSampleAgeMs',
+			'slopeThresholdCPerMinute',
+			'confirmationMs',
+			'recoveryMs',
+			'maximumPauseMs',
+			'cooldownMs',
+		],
+		'unknown_heuristic',
+	);
+	check(
+		comfort.configuration,
+		[
+			'heating_range',
+			'cooling_range',
+			'presets',
+			'selected_preset',
+			'user_off',
+			'automation_enabled',
+			'automation_baseline',
+			'temporary_override',
+		],
+		'unknown_comfort',
+	);
+	if (comfort.configuration !== null) {
+		const state = object(comfort.configuration);
+		if (
+			typeof state.user_off !== 'boolean' ||
+			typeof state.automation_enabled !== 'boolean' ||
+			(state.selected_preset !== null && !['comfort', 'eco', 'away'].includes(text(state.selected_preset)))
+		)
+			issues.push('comfort_shape');
+		if (list(state.presets).length > 3) issues.push('comfort_shape');
+		for (const key of ['heating_range', 'cooling_range'])
+			if (state[key] !== null) {
+				const range = object(state[key]);
+				if (finite(range.minimum) > finite(range.maximum)) issues.push('range_limits');
+			}
+		if (!equal(doc.legacyBaseline, state.automation_baseline === undefined ? null : state.automation_baseline))
+			issues.push('baseline_projection');
+		check(state.heating_range, ['minimum', 'maximum'], 'unknown_range');
+		check(state.cooling_range, ['minimum', 'maximum'], 'unknown_range');
+		for (const entry of list(state.presets)) {
+			check(entry, ['preset', 'setpoints'], 'unknown_preset');
+			check(object(entry).setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints');
+		}
+		check(state.automation_baseline, ['preset', 'setpoints', 'actor_id', 'revision'], 'unknown_baseline');
+		if (state.automation_baseline !== null && state.automation_baseline !== undefined)
+			check(object(state.automation_baseline).setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints');
+		check(
+			state.temporary_override,
+			[
+				'id',
+				'source',
+				'actor_id',
+				'revision',
+				'created_at',
+				'original_duration_ms',
+				'wall_watermark_ms',
+				'expires_at',
+				'preset',
+				'setpoints',
+				'resolved_setpoints',
+				'status',
+				'terminated_at',
+			],
+			'unknown_override',
+		);
+		if (state.temporary_override !== null && state.temporary_override !== undefined) {
+			const override = object(state.temporary_override);
+			id(override.id);
+			integer(override.revision, 1);
+			if (
+				!['active', 'expired', 'cancelled', 'clock_uncertain'].includes(text(override.status)) ||
+				!['user', 'panel'].includes(text(override.source))
+			)
+				issues.push('override_shape');
+			if (!retainedLifetime)
+				for (const key of ['created_at', 'expires_at'])
+					if (
+						typeof override[key] !== 'string' ||
+						!/T.*(?:Z|[+-]\d\d:\d\d)$/.test(text(override[key])) ||
+						!Number.isFinite(Date.parse(text(override[key])))
+					)
+						issues.push('override_clock_shape');
+			if (
+				!retainedLifetime &&
+				override.original_duration_ms !== undefined &&
+				integer(override.original_duration_ms, 1) > 7 * 86400000
+			)
+				issues.push('override_clock_shape');
+			check(override.setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints');
+			check(override.resolved_setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints');
+		}
+	}
+	// Only these persisted counters may require a future increment. Opaque JSON is data.
+	const counter = (value: unknown): void => {
+		if (integer(value, 1) === Number.MAX_SAFE_INTEGER) issues.push('increment_overflow');
+	};
+	const capturedEnvelope = object(captured);
+	if (Object.hasOwn(capturedEnvelope, 'controllerRevision')) counter(capturedEnvelope.controllerRevision);
+	for (const section of ['actuators', 'protections', 'coolingDependencies'])
+		for (const row of list(configuration[section]).map(object)) counter(row.revision);
+	for (const baseline of [
+		doc.legacyBaseline,
+		comfort.configuration === null ? null : object(comfort.configuration).automation_baseline,
+	])
+		if (baseline !== null && baseline !== undefined) counter(object(baseline).revision);
+	if (comfort.configuration !== null) {
+		const override = object(comfort.configuration).temporary_override;
+		if (override !== null && override !== undefined) counter(object(override).revision);
+	}
+	const catalog = object(configuration.catalog);
+	check(
+		catalog,
+		[
+			'ownedOutputIds',
+			'ownedChannelIds',
+			'edges',
+			'devices',
+			'channels',
+			'properties',
+			'producerFacts',
+			'missingPropertyIds',
+			'missingChannelIds',
+			'missingDeviceIds',
+		],
+		'unknown_catalog',
+	);
+	const producers = object(catalog.producerFacts);
+	for (const section of [
+		'dewConfigurations',
+		'transformConfigurations',
+		'aggregateConfigurations',
+		'groupConfigurations',
+	])
+		for (const row of list(producers[section]).map(object)) counter(row.revision);
+	if (
+		Object.keys(producers).some(
+			(key) =>
+				![
+					'dewConfigurations',
+					'dewSources',
+					'transformConfigurations',
+					'transformSources',
+					'aggregateConfigurations',
+					'aggregateInputs',
+					'groupConfigurations',
+					'groupMembers',
+					'groupBindings',
+				].includes(key),
+		)
+	)
+		issues.push('unrepresented_producer');
+	const ownIds = list(catalog.ownedOutputIds).map(id);
+	const owner = list(catalog.devices)
+		.map(object)
+		.find((row) => row.id === doc.controllerId);
+	if (
+		config.ownerDeviceId !== doc.controllerId ||
+		!owner ||
+		owner.type !== 'virtual' ||
+		owner.mode !== 'climate_controller' ||
+		owner.category !== 'thermostat'
+	)
+		issues.push('controller_owner');
+	for (const raw of list(catalog.properties)) {
+		const property = object(raw);
+		if (property.valueOrigin !== undefined && !['source', 'local', 'derived'].includes(text(property.valueOrigin)))
+			issues.push('unknown_producer_origin');
+		if (
+			ownIds.includes(id(property.id)) &&
+			property.valueOrigin === 'derived' &&
+			!['dewConfigurations', 'transformConfigurations', 'aggregateConfigurations'].some((key) =>
+				list(producers[key]).some((entry) => object(entry).outputPropertyId === property.id),
+			)
+		)
+			issues.push('unrepresented_producer');
+	}
+	for (const key of ['dewConfigurations', 'transformConfigurations', 'aggregateConfigurations', 'groupConfigurations'])
+		for (const raw of list(producers[key])) {
+			const row = object(raw);
+			if (row.schemaVersion !== 1) issues.push('producer_schema');
+			if (key === 'dewConfigurations' && row.formulaVersion !== DEW_POINT_FORMULA) issues.push('unknown_dew_formula');
+			if (key === 'transformConfigurations') {
+				const policy = object(row.policy),
+					common = ['operator', 'inputRange', 'outputRange'];
+				const fields =
+					policy.operator === 'affine'
+						? ['scale', 'offset']
+						: policy.operator === 'piecewise_linear'
+							? ['points']
+							: policy.operator === 'ntc_beta'
+								? [
+										'referenceVoltage',
+										'seriesResistance',
+										'nominalResistance',
+										'nominalTemperatureCelsius',
+										'beta',
+										'thermistorLeg',
+									]
+								: policy.operator === 'steinhart_hart'
+									? [
+											'referenceVoltage',
+											'seriesResistance',
+											'coefficientA',
+											'coefficientB',
+											'coefficientC',
+											'thermistorLeg',
+										]
+									: policy.operator === 'extension'
+										? ['contractVersion', 'operatorId', 'operatorVersion', 'parameters']
+										: [];
+				if (!fields.length) issues.push('unknown_transform');
+				check(policy, [...common, ...fields], 'unknown_transform');
+				check(policy.inputRange, ['minimum', 'maximum'], 'unknown_transform_range');
+				check(policy.outputRange, ['minimum', 'maximum'], 'unknown_transform_range');
+				if (policy.points !== undefined)
+					for (const point of list(policy.points)) check(point, ['x', 'y'], 'unknown_transform_point');
+			}
+			if (key === 'aggregateConfigurations')
+				check(row.outlierFilter, ['kind', 'threshold'], 'unknown_aggregate_filter');
+		}
+	for (const raw of list(producers.dewSources))
+		check(object(raw).domain, ['minimum', 'minimumExclusive', 'maximum'], 'unknown_dew_domain');
+	return Object.freeze([...new Set(issues)].sort());
+}
+
+/** Descriptive effects only. Never a committed result, manual command or fresh authority. */
+export function classifyThermostatAutomationImages(before: unknown, next: unknown) {
+	const original = own(before),
+		proposed = own(next),
+		a = document(original),
+		b = document(proposed);
+	if (a.controllerId !== b.controllerId) return fail();
+	const problems = [
+		...new Set([...thermostatAutomationMutationIssues(original), ...thermostatAutomationMutationIssues(proposed)]),
+	].sort();
+	const exactFenceEqual = equal(original, proposed),
+		structuralChanged = !equal(derivedStructural(a.configuration), derivedStructural(b.configuration)),
+		comfortChanged = !equal(a.comfort, b.comfort);
+	const configA = object(object(a.configuration).config),
+		configB = object(object(b.configuration).config);
+	return Object.freeze({
+		exactFenceEqual,
+		structuralChanged,
+		comfortChanged,
+		presentationChanged: !equal(configA.displayFloorClaimId, configB.displayFloorClaimId),
+		semanticEqual:
+			!structuralChanged && !comfortChanged && equal(configA.displayFloorClaimId, configB.displayFloorClaimId),
+		unsupported: Object.freeze(problems),
+		requiresC1: true,
+	});
+}
+
+/** Pure plan only; no manager/lease/installation authority. New ownership needs C1 same-manager proof. */
+export function planThermostatAutomationGraph(before: unknown, next: unknown): ClimateAutomationGraphReplacementPlan {
+	const original = own(before),
+		proposed = own(next),
+		a = document(original),
+		b = document(proposed);
+	if (
+		a.controllerId !== b.controllerId ||
+		thermostatAutomationMutationIssues(original).length ||
+		thermostatAutomationMutationIssues(proposed).length
+	)
+		return fail();
+	const beforeCatalog = object(object(a.configuration).catalog),
+		afterCatalog = object(object(b.configuration).catalog);
+	const read = (catalog: Record<string, unknown>) => {
+		const ids = list(catalog.ownedOutputIds).map(id),
+			channels = list(catalog.channels).map(object),
+			properties = list(catalog.properties).map(object);
+		if (new Set(ids).size !== ids.length || ids.length > 4096) return fail();
+		for (const output of ids) {
+			const property = properties.find((row) => row.id === output),
+				channel = property && channels.find((row) => row.id === property.channelId);
+			if (!property || !channel || channel.deviceId !== a.controllerId) return fail();
+		}
+		const actualIds = properties
+			.filter((property) =>
+				channels.some((channel) => channel.id === property.channelId && channel.deviceId === a.controllerId),
+			)
+			.map((property) => id(property.id))
+			.sort();
+		if (!equal([...ids].sort(), actualIds)) return fail();
+		const producers = object(catalog.producerFacts);
+		const producerEdges = ['dewSources', 'transformSources', 'aggregateInputs', 'groupBindings'].flatMap((key) =>
+			list(producers[key]).map(object),
+		);
+		const edges = [
+			...properties.filter(
+				(property) =>
+					ids.includes(id(property.id)) &&
+					(property.valueOrigin === undefined || property.valueOrigin === 'source') &&
+					property.sourcePropertyId !== null &&
+					property.sourcePropertyId !== undefined,
+			),
+			...producerEdges.filter((edge) => ids.includes(id(edge.outputPropertyId)) && edge.sourcePropertyId !== null),
+		].map((row) =>
+			Object.freeze({
+				outputPropertyId: id(row.outputPropertyId ?? row.id),
+				sourcePropertyId: id(row.sourcePropertyId),
+			}),
+		);
+		const advertised = list(catalog.edges)
+			.map((raw) => {
+				const edge = object(raw);
+				return { outputPropertyId: id(edge.outputPropertyId), sourcePropertyId: id(edge.sourcePropertyId) };
+			})
+			.sort((left, right) => climateAutomationCanonical(left).localeCompare(climateAutomationCanonical(right)));
+		if (
+			!equal(
+				[...edges].sort((left, right) =>
+					climateAutomationCanonical(left).localeCompare(climateAutomationCanonical(right)),
+				),
+				advertised,
+			)
+		)
+			return fail();
+		if (edges.length > 8192) return fail();
+		edges.sort((left, right) => climateAutomationCanonical(left).localeCompare(climateAutomationCanonical(right)));
+		return { ids, edges: Object.freeze(edges) };
+	};
+	const old = read(beforeCatalog),
+		replacement = read(afterCatalog);
+	if (replacement.ids.some((output) => !old.ids.includes(output))) return fail();
+	return Object.freeze({
+		ownedOutputIds: Object.freeze([...new Set([...old.ids, ...replacement.ids])].sort()),
+		beforeEdges: old.edges,
+		replacementEdges: replacement.edges,
+	});
+}
+
+/** Manual-only internal provider. Registration grants no creation, source, graph or physical authority. */
+/** Lifecycle bookkeeping only; no exported provider or command authority. */
+const automationInitializations = new WeakMap<
+	object,
+	Readonly<{ initialize: (receiver: VirtualThermostatAutomationService) => void; destroy: () => void }>
+>();
+
+@Injectable()
+export class VirtualThermostatAutomationService implements OnModuleInit, OnModuleDestroy {
+	private readonly buildProvider: () => ClimateAutomationProvider;
+	// Nest forwards a constructor's own data fields onto its retained prototype instance.
+	private readonly initialization = Object.freeze({});
+
+	constructor(
+		private readonly writer: ClimateAutomationWriterService,
+		private readonly registry: ClimateAutomationRegistryService,
+		private readonly graph: VirtualDependencyGraphService,
+		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+		@Optional() private readonly authoring?: VirtualThermostatAuthoringService,
+		@Optional()
+		@Inject(forwardRef(() => VirtualThermostatConfigService))
+		private readonly configurations?: VirtualThermostatConfigService,
+		@Optional()
+		@Inject(forwardRef(() => VirtualThermostatComfortService))
+		private readonly comfort?: VirtualThermostatComfortService,
+	) {
+		// No stateful stager may run here: Nest can still hold a forward-reference prototype.
+		const originalWriter = writer,
+			originalRegistry = registry,
+			originalGraph = graph,
+			originalConfig = configService,
+			originalAuthoring = authoring,
+			originalConfigurations = configurations,
+			originalComfort = comfort;
+		let phase: 'unbuilt' | 'building' | 'built' | 'failed' | 'destroyed' = 'unbuilt';
+		let invoking = false,
+			valid = true;
+		let provider: ClimateAutomationProvider | undefined, registration: ClimateAutomationOwnedRegistration | undefined;
+		const primary: { present: boolean; cause?: unknown } = { present: false };
+		const unavailable = (): never => {
+			throw new ClimateAutomationParticipantConflict('unavailable');
+		};
+		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
+		const retain = (receiver: object, keys: readonly string[]): void => {
+			for (const key of keys) {
+				if (pins.some((pin) => pin.receiver === receiver && pin.key === key)) continue;
+				if (!creationHasDataMethod(receiver, key)) unavailable();
+				pins.push(Object.freeze({ receiver, key, method: nativeFieldEvidence.get(receiver, key) }));
+			}
+		};
+		const retainMethod = <Owner extends object, Key extends keyof Owner & string>(
+			receiver: Owner,
+			key: Key,
+		): Owner[Key] => {
+			if (!creationHasDataMethod(receiver, key)) unavailable();
+			const method = receiver[key];
+			pins.push(Object.freeze({ receiver, key, method }));
+			return method;
+		};
+		const originalRegistration: OriginalFunctions<Pick<ClimateAutomationRegistryService, 'registerProviderOwned'>> =
+			originalRegistry;
+		const register = retainMethod(originalRegistration, 'registerProviderOwned');
+		const originalConfigReader: Readonly<{ get: (key: string) => unknown }> = originalConfig;
+		const configGet: AutomationReceiverCall<NestConfigService, [string], unknown> = retainMethod(
+			originalConfigReader,
+			'get',
+		);
+		const ownerPins = Object.freeze(
+			[
+				{ key: 'writer', value: originalWriter },
+				{ key: 'registry', value: originalRegistry },
+				{ key: 'graph', value: originalGraph },
+				{ key: 'configService', value: originalConfig },
+				{ key: 'authoring', value: originalAuthoring },
+				{ key: 'configurations', value: originalConfigurations },
+				{ key: 'comfort', value: originalComfort },
+				{ key: 'initialization', value: this.initialization },
+			].map((pin) => Object.freeze(pin)),
+		);
+		let lifecycleReceiver: VirtualThermostatAutomationService | undefined;
+		const pinsCurrent = (): boolean => {
+			const receiver = lifecycleReceiver;
+			if (
+				valid &&
+				ownerPins.every((pin) => creationMethodCurrent(this, pin.key, pin.value)) &&
+				pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method)) &&
+				(receiver === undefined ||
+					(ownerPins.every((pin) => creationMethodCurrent(receiver, pin.key, pin.value)) &&
+						pins
+							.filter((pin) => pin.receiver === this)
+							.every((pin) => creationMethodCurrent(receiver, pin.key, pin.method))))
+			)
+				return true;
+			valid = false;
+			return false;
+		};
+		const bindingCurrent = (): boolean => phase !== 'destroyed' && phase !== 'failed' && pinsCurrent();
+		const check = (): void => {
+			if (primary.present) throw primary.cause;
+			if (phase === 'destroyed') throw new Error('Thermostat automation provider is destroyed');
+			if (!pinsCurrent()) unavailable();
+		};
+		const fail = (cause: unknown): never => {
+			if (!primary.present) {
+				primary.present = true;
+				primary.cause = cause;
+			}
+			valid = false;
+			if (phase !== 'destroyed') phase = 'failed';
+			throw primary.cause;
+		};
+		// Published closures retain these exact original functions and receiver; never look up a newer alias.
+		const methods: AutomationMethodReferences = this satisfies AutomationMethodReferences;
+		const read: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['readInManager']>,
+				ReturnType<VirtualThermostatAutomationService['readInManager']>
+			> = retainMethod(methods, 'readInManager'),
+			facts: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>,
+				ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>
+			> = retainMethod(methods, 'readControllerFactsInManager'),
+			validate: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>,
+				ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>
+			> = retainMethod(methods, 'validateManualIntentInManager'),
+			history: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>,
+				ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>
+			> = retainMethod(methods, 'readRetainedHistoryInManager'),
+			apply: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>,
+				ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>
+			> = retainMethod(methods, 'applyManualIntentInManager');
+		const originalMemberView1: Readonly<{
+			get: (
+				receiver: VirtualThermostatAutomationService,
+				key: 'readRowsInManager',
+			) => OriginalFunction<
+				VirtualThermostatAutomationService,
+				VirtualThermostatAutomationService['readRowsInManager']
+			>;
+		}> = Reflect;
+		if (!creationHasDataMethod(this, 'readRowsInManager')) unavailable();
+		const originalRows = originalMemberView1.get(this, 'readRowsInManager'),
+			ownRows = ownDiagnosticData;
+		pins.push(Object.freeze({ receiver: this, key: 'readRowsInManager', method: originalRows }));
+		const manual = Object.freeze<ClimateAutomationManualCapability>({
+			version: 1,
+			codec: 'virtual-thermostat-c0:v1',
+			validateInManager: (manager, turn, intent, before, next) =>
+				validate.call(this, manager, turn, intent, before, next),
+			readRetainedHistoryInManager: (manager, turn, controllerId) => history.call(this, manager, turn, controllerId),
+		});
+		const participant = Object.freeze<ClimateAutomationParticipant>({
+			version: 1,
+			graph: this.graph,
+			readInManager: (manager, turn, controllerId) => read.call(this, manager, turn, controllerId),
+			normalizeInManager: unavailable,
+			planGraphReplacementInManager: unavailable,
+			applyInManager: (manager, turn, before, next) => apply.call(this, manager, turn, before, next),
+			manualIntentV1: manual,
+		});
+		let creationBuilder: (() => ClimateAutomationCreationCapability) | undefined;
+		if (originalAuthoring) {
+			const originalCapture: OriginalFunctions<Pick<VirtualThermostatAuthoringService, 'captureCreationMethodPins'>> =
+				originalAuthoring;
+			const capture = retainMethod(originalCapture, 'captureCreationMethodPins');
+			const environmentOriginalMethods: Readonly<{
+				snapshotCreationInput: typeof originalAuthoring.snapshotCreationInput;
+				captureCreationEnvironment: typeof originalAuthoring.captureCreationEnvironment;
+				holdCreationAtEntry: typeof originalAuthoring.holdCreationAtEntry;
+				readCreationFacts: typeof originalAuthoring.readCreationFacts;
+				prepareCreation: typeof originalAuthoring.prepareCreation;
+				applyCreation: typeof originalAuthoring.applyCreation;
+			}> = originalAuthoring;
+			const snapshotInput = retainMethod(environmentOriginalMethods, 'snapshotCreationInput'),
+				environment = retainMethod(environmentOriginalMethods, 'captureCreationEnvironment'),
+				hold = retainMethod(environmentOriginalMethods, 'holdCreationAtEntry'),
+				readCreation = retainMethod(environmentOriginalMethods, 'readCreationFacts'),
+				prepare = retainMethod(environmentOriginalMethods, 'prepareCreation'),
+				applyCreation = retainMethod(environmentOriginalMethods, 'applyCreation');
+			const snapshotCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['snapshotCreationInput']>,
+				ReturnType<VirtualThermostatAuthoringService['snapshotCreationInput']>
+			> = snapshotInput;
+			const environmentCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				[],
+				ReturnType<VirtualThermostatAuthoringService['captureCreationEnvironment']>
+			> = environment;
+			const holdCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				[],
+				ReturnType<VirtualThermostatAuthoringService['holdCreationAtEntry']>
+			> = hold;
+			const readCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['readCreationFacts']>,
+				ReturnType<VirtualThermostatAuthoringService['readCreationFacts']>
+			> = readCreation;
+			const prepareCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['prepareCreation']>,
+				ReturnType<VirtualThermostatAuthoringService['prepareCreation']>
+			> = prepare;
+			const applyCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['applyCreation']>,
+				ReturnType<VirtualThermostatAuthoringService['applyCreation']>
+			> = applyCreation;
+			creationBuilder = () => {
+				const originalCurrent = capture.call(originalAuthoring);
+				check();
+				const current = (): boolean => {
+					if (bindingCurrent() && originalCurrent()) return true;
+					valid = false;
+					return false;
+				};
+				return Object.freeze<ClimateAutomationCreationCapability>({
+					version: 1,
+					graph: this.graph,
+					isCurrent: current,
+					snapshotInput: (device, configuration) => {
+						if (!current()) unavailable();
+						return snapshotCall.call(originalAuthoring, device, configuration);
+					},
+					captureEnvironment: () => {
+						if (!current()) unavailable();
+						return environmentCall.call(originalAuthoring);
+					},
+					holdAtEntry: () => {
+						if (!current()) unavailable();
+						return holdCall.call(originalAuthoring);
+					},
+					readFactsInManager: (manager, turn) => readCall.call(originalAuthoring, manager, turn),
+					prepareInManager: (manager, turn, request, before, revision) =>
+						prepareCall.call(originalAuthoring, manager, turn, request, before, revision),
+					applyInManager: (manager, turn, plan, context) =>
+						applyCall.call(originalAuthoring, manager, turn, plan, context),
+				});
+			};
+		}
+		let existingBuilder: (() => ClimateAutomationExistingCapability) | undefined;
+		if (configurations && comfort) {
+			const originalConfigurationCapture: OriginalFunctions<
+				Pick<VirtualThermostatConfigService, 'captureExistingMethodPins'>
+			> = configurations;
+			const captureConfiguration = retainMethod(originalConfigurationCapture, 'captureExistingMethodPins');
+			const originalComfortCapture: OriginalFunctions<
+				Pick<VirtualThermostatComfortService, 'captureExistingMethodPins'>
+			> = comfort;
+			const captureComfort = retainMethod(originalComfortCapture, 'captureExistingMethodPins');
+
+			const methods: OriginalFunctions<
+				Pick<
+					VirtualThermostatConfigService,
+					| 'snapshotExistingInput'
+					| 'captureExistingEnvironment'
+					| 'holdExistingAtEntry'
+					| 'readExistingFactsInManager'
+					| 'normalizeExistingInManager'
+					| 'materializeExistingInManager'
+					| 'applyExistingInManager'
+					| 'completeExistingAcknowledged'
+				>
+			> = configurations;
+			const snapshotExistingInput = retainMethod(methods, 'snapshotExistingInput'),
+				captureExistingEnvironment = retainMethod(methods, 'captureExistingEnvironment'),
+				holdExistingAtEntry = retainMethod(methods, 'holdExistingAtEntry'),
+				readExistingFactsInManager = retainMethod(methods, 'readExistingFactsInManager'),
+				normalizeExistingInManager = retainMethod(methods, 'normalizeExistingInManager'),
+				materializeExistingInManager = retainMethod(methods, 'materializeExistingInManager'),
+				applyExistingInManager = retainMethod(methods, 'applyExistingInManager'),
+				completeExistingAcknowledged = retainMethod(methods, 'completeExistingAcknowledged');
+			existingBuilder = () => {
+				const configurationCurrent = captureConfiguration.call(configurations, originalWriter);
+				check();
+				const comfortCurrent = captureComfort.call(comfort, originalWriter);
+				check();
+				const current = (): boolean => {
+					if (
+						bindingCurrent() &&
+						configurationCurrent() &&
+						comfortCurrent() &&
+						creationMethodCurrent(this, 'readRowsInManager', originalRows)
+					)
+						return true;
+					valid = false;
+					return false;
+				};
+				return Object.freeze<ClimateAutomationExistingCapability>({
+					version: 1,
+					codec: 'virtual-thermostat-existing:v1',
+					isCurrent: current,
+					snapshotInput: (kind, input) => snapshotExistingInput.call(configurations, kind, input, comfort),
+					captureEnvironment: () => captureExistingEnvironment.call(configurations),
+					holdAtEntry: () => holdExistingAtEntry.call(configurations),
+					readFactsInManager: async (manager, turn, controllerId) => {
+						this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+						if (!current()) unavailable();
+						const rows = await originalRows.call(this, manager, controllerId, true, turn);
+						this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+						if (!current() || !rows) return unavailable();
+						const ownedRows = ownRows(rows);
+						return readExistingFactsInManager.call(configurations, manager, turn, controllerId, ownedRows);
+					},
+					normalizeInManager: (manager, turn, input, before) =>
+						normalizeExistingInManager.call(configurations, manager, turn, input, before, comfort),
+					materializeInManager: (manager, turn, input, before, normalized, revision) =>
+						materializeExistingInManager.call(
+							configurations,
+							manager,
+							turn,
+							input,
+							before,
+							normalized,
+							revision,
+							comfort,
+						),
+					applyInManager: (manager, turn, before, plan) =>
+						applyExistingInManager.call(configurations, manager, turn, before, plan),
+					completeAcknowledged: (input, plan, slot, publication) =>
+						completeExistingAcknowledged.call(configurations, input, plan, slot, publication, comfort),
+				});
+			};
+		}
+		retain(this, [
+			'readInManager',
+			'readControllerFactsInManager',
+			'validateManualIntentInManager',
+			'readRetainedHistoryInManager',
+			'applyManualIntentInManager',
+			'readRowsInManager',
+		]);
+		retain(originalRegistry, ['registerProviderOwned']);
+		retain(originalConfig, ['get']);
+		if (originalAuthoring)
+			retain(originalAuthoring, [
+				'captureCreationMethodPins',
+				'draft',
+				'snapshotCreationInput',
+				'captureCreationEnvironment',
+				'readCreationFacts',
+				'prepareCreation',
+				'applyCreation',
+				'creationRawRow',
+				'creationCatalog',
+				'assertCreationCatalogProjection',
+				'holdCreationAtEntry',
+			]);
+		if (originalConfigurations && originalComfort) {
+			retain(originalConfigurations, [
+				'captureExistingMethodPins',
+				'snapshotExistingInput',
+				'captureExistingEnvironment',
+				'holdExistingAtEntry',
+				'readExistingFactsInManager',
+				'normalizeExistingInManager',
+				'materializeExistingInManager',
+				'applyExistingInManager',
+				'completeExistingAcknowledged',
+				'prepareExistingInManager',
+				'validate',
+				'property',
+				'settingContract',
+				'validatePolicy',
+				'formatExistingResponse',
+				'publishExistingAcknowledged',
+				'readExistingNativeRows',
+				'existingNativeRow',
+				'existingPreparedSemantic',
+				'existingCoolingBindings',
+				'existingExpectedReferences',
+				'existingPrepared',
+				'existingHydrated',
+				'existingMirrors',
+				'prepareExistingRecovery',
+				'coolingDependencies',
+				'validateExistingProjection',
+			]);
+			retain(originalComfort, [
+				'captureExistingMethodPins',
+				'isCurrent',
+				'readIntentInManager',
+				'snapshotExistingInput',
+				'prepareExistingInManager',
+				'isExistingWatermarkOnly',
+				'existingSemanticIntent',
+				'checkExistingMaterializationCounters',
+				'materializeExistingInManager',
+				'synchronizeExistingClock',
+				'materializeExistingClock',
+				'completeExistingLocalState',
+				'retainExistingResponse',
+				'isExistingResponsePrepared',
+				'commitExistingResponse',
+				'discardExistingResponse',
+				'reconcileExistingAcknowledged',
+				'notifyExistingAcknowledged',
+				'settle',
+				'executeExisting',
+			]);
+		}
+		const build = (): ClimateAutomationProvider => {
+			check();
+			const creation = creationBuilder?.();
+			check();
+			const existing = existingBuilder?.();
+			check();
+			return Object.freeze<ClimateAutomationProvider>({
+				creationV1: creation,
+				existingControllerV1: existing,
+				participantV1: participant,
+				readControllerInManager: (manager, controllerId) => facts.call(this, manager, controllerId),
+				validateSelectionInManager: unavailable,
+				createControllerInManager: unavailable,
+			});
+		};
+		this.buildProvider = build;
+		if (!creationMethodCurrent(this, 'buildProvider', build)) unavailable();
+		pins.push(Object.freeze({ receiver: this, key: 'buildProvider', method: build }));
+		Object.freeze(pins);
+		const initialization = Object.freeze({
+			initialize: (receiver: VirtualThermostatAutomationService): void => {
+				if (phase === 'destroyed') throw new Error('Thermostat automation provider is destroyed');
+				if (primary.present) throw primary.cause;
+				if (lifecycleReceiver !== undefined && lifecycleReceiver !== receiver)
+					return fail(new ClimateAutomationParticipantConflict('unavailable'));
+				lifecycleReceiver = receiver;
+				if (invoking) return fail(new ClimateAutomationParticipantConflict('unavailable'));
+				let duplicate = false;
+				invoking = true;
+				try {
+					check();
+					// Retain the genuine Nest hook receiver for cleanup even after later data-method loss.
+					automationInitializations.set(receiver, initialization);
+					if (registration) return;
+					const cli = configGet.call(originalConfig, 'FB_CLI');
+					check();
+					if (cli === 'on') return;
+					if (!provider) {
+						phase = 'building';
+						const completed = build();
+						check();
+						provider = completed;
+						phase = 'built';
+					}
+					const returned = register.call(originalRegistry, 'virtual-thermostat:v1', provider);
+					// Reentry/destroy can happen inside an observed original call. Own only its returned lease.
+					try {
+						check();
+					} catch (cause: unknown) {
+						try {
+							returned?.dispose();
+						} catch {
+							// Cleanup was attempted; the original primary cause wins even when falsy.
+						}
+						return fail(cause);
+					}
+					if (returned === null) {
+						duplicate = true;
+						throw new Error('Thermostat automation provider registration unavailable');
+					}
+					registration = returned;
+				} catch (cause: unknown) {
+					if (duplicate) throw cause; // Only null permits an explicit same-provider registration retry.
+					return fail(cause);
+				} finally {
+					invoking = false;
+				}
+			},
+			destroy: (): void => {
+				phase = 'destroyed';
+				valid = false;
+				const owned = registration;
+				registration = undefined;
+				owned?.dispose();
+			},
+		});
+		automationInitializations.set(this, initialization);
+		automationInitializations.set(this.initialization, initialization);
+	}
+
+	onModuleInit(): void {
+		const retained = automationInitializations.get(this);
+		if (retained) {
+			retained.initialize(this);
+			return;
+		}
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(this, 'initialization');
+		const key = descriptor?.value;
+		const initialization =
+			descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null
+				? automationInitializations.get(key)
+				: undefined;
+		if (!initialization) throw new ClimateAutomationParticipantConflict('unavailable');
+		initialization.initialize(this);
+	}
+
+	onModuleDestroy(): void {
+		const retained = automationInitializations.get(this);
+		if (retained) {
+			retained.destroy();
+			return;
+		}
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(this, 'initialization');
+		const key = descriptor?.value;
+		if (descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null)
+			automationInitializations.get(key)?.destroy();
+	}
+
+	async readInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
+	): Promise<ClimateAutomationParticipantImage | null> {
+		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		id(controllerId);
+		const rows = await this.readRowsInManager(manager, controllerId);
+		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		return rows === null ? null : thermostatAutomationImage(rows);
+	}
+
+	/** Separate trusted provider callback: no turn exists here; every invocation queries this manager anew. */
+	async readControllerFactsInManager(
+		manager: EntityManager,
+		controllerId: string,
+	): Promise<ClimateAutomationControllerFacts | null> {
+		id(controllerId);
+		const rows = await this.readRowsInManager(manager, controllerId);
+		if (rows === null) return null;
+		const image = thermostatAutomationImage(rows);
+		if (image === null) return null;
+		const singleton = await manager
+			.createQueryBuilder(VirtualGraphRevisionEntity, 'graph')
+			.where('graph.id = :id', { id: 1 })
+			.callListeners(false)
+			.getOne();
+		if (!singleton) throw new ClimateAutomationParticipantConflict('uninitialized');
+		if (!Number.isSafeInteger(singleton.revision) || singleton.revision < 0)
+			throw new ClimateAutomationParticipantConflict('invalid');
+		return Object.freeze({
+			controllerRevision: image.controllerRevision,
+			graphRevision: singleton.revision,
+			evidence: climateAutomationJson(image),
+			legacyBaseline: image.legacyBaseline,
+		});
+	}
+
+	private async readRowsInManager(
+		manager: EntityManager,
+		controllerId: string,
+		allowAbsent = false,
+		turn?: ClimateAutomationParticipantTurn,
+	): Promise<ThermostatAutomationRows | null> {
+		const check = (): void => {
+			if (turn) this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		};
+		const read = <T extends ObjectLiteral>(
+			entity: EntityTarget<T>,
+			condition = '1=1',
+			parameters: ObjectLiteral = {},
+		): Promise<T[]> => {
+			check();
+			return manager
+				.createQueryBuilder(entity, 'row')
+				.where(condition, parameters)
+				.callListeners(false)
+				.take(MAX_ROWS + 1)
+				.getMany()
+				.then((rows) => {
+					check();
+					if (rows.length > MAX_ROWS) return fail();
+					return rows;
+				});
+		};
+		const configurations = await read(VirtualThermostatConfigEntity, 'row.controllerId = :controllerId', {
+			controllerId,
+		});
+		if (!configurations.length && !allowAbsent) return null;
+		const sources = await read(VirtualThermostatSourceEntity, 'row.controllerId = :controllerId', { controllerId });
+		const actuators = await read(VirtualThermostatActuatorClaimEntity, 'row.controllerId = :controllerId', {
+			controllerId,
+		});
+		const settings = await read(VirtualThermostatSettingEntity, 'row.controllerId = :controllerId', { controllerId });
+		const claimIds = actuators.map((claim) => claim.id);
+		const protections = claimIds.length
+			? await read(ThermostatMemberProtectionEntity, 'row.claimId IN (:...claimIds)', { claimIds })
+			: [];
+		const cooling = claimIds.length
+			? await read(ThermostatCoolingDependencyEntity, 'row.claimId IN (:...claimIds)', { claimIds })
+			: [];
+		// Bounded catalog scans, filtered to the exact reference closure by the pure serializer.
+		// All queries use THIS reserved manager; no global repository, sample hydration or hidden read transaction.
+		const devices = await read(DeviceEntity);
+		const channels = await manager
+			.createQueryBuilder(ChannelEntity, 'row')
+			.leftJoinAndSelect('row.device', 'device')
+			.callListeners(false)
+			.take(MAX_ROWS + 1)
+			.getMany();
+		check();
+		const properties = await manager
+			.createQueryBuilder(ChannelPropertyEntity, 'row')
+			.leftJoinAndSelect('row.channel', 'channel')
+			.leftJoinAndSelect('channel.device', 'device')
+			.callListeners(false)
+			.take(MAX_ROWS + 1)
+			.getMany();
+		check();
+		if (channels.length > MAX_ROWS || properties.length > MAX_ROWS) return fail();
+		const rows: ThermostatAutomationRows = {
+			devices,
+			channels,
+			properties,
+			tables: {
+				configurations,
+				sources,
+				actuators,
+				settings,
+				protections,
+				cooling,
+				dewConfigurations: await read(VirtualDewPointConfigEntity),
+				dewSources: await read(VirtualDewPointSourceEntity),
+				transformConfigurations: await read(VirtualTransformConfigEntity),
+				transformSources: await read(VirtualTransformSourceEntity),
+				aggregateConfigurations: await read(VirtualAggregateConfigEntity),
+				aggregateInputs: await read(VirtualAggregateInputEntity),
+				groupConfigurations: await read(VirtualLightGroupConfigEntity),
+				groupMembers: await read(VirtualLightGroupMemberEntity),
+				groupBindings: await read(VirtualLightGroupBindingEntity),
+			},
+		};
+		return rows;
+	}
+
+	planInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantDocument,
+	): ClimateAutomationGraphReplacementPlan {
+		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+		return planThermostatAutomationGraph(before, next);
+	}
+
+	/** Full retained membership, not a retention policy. MAX_ROWS+1 refuses an oversized evidence set. */
+	async readRetainedHistoryInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
+	): Promise<readonly ClimateAutomationRetainedRecoveryRow[]> {
+		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		const owner = id(controllerId);
+		const rows = await manager
+			.createQueryBuilder(VirtualThermostatRecoveryEntity, 'recovery')
+			.where('recovery.controllerId = :owner', { owner })
+			.orderBy('recovery.id', 'ASC')
+			.take(MAX_ROWS + 1)
+			.callListeners(false)
+			.getMany();
+		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		if (rows.length > MAX_ROWS) throw new ClimateAutomationParticipantConflict('invalid');
+		return climateAutomationRetainedRecoveryRows(
+			rows.map((row) => ({
+				id: row.id,
+				controllerId: row.controllerId,
+				claimId: row.claimId,
+				physicalIdentity: row.physicalIdentity,
+				previousPropertyIdentity: row.previousPropertyIdentity,
+				restoredPropertyId: row.restoredPropertyId,
+				actorId: row.actorId,
+				reason: row.reason,
+				disconnectionAcknowledged: row.disconnectionAcknowledged,
+				configurationRevision: row.configurationRevision,
+				claimRevision: row.claimRevision,
+				createdAt: field('createdAt', row.createdAt),
+			})),
+			owner,
+		);
+	}
+
+	/** Dormant C1a validation only; original manager/phase checked BEFORE input access or SQL. */
+	async validateManualIntentInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		intent: ClimateAutomationManualIntent,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantDocument,
+	): Promise<void> {
+		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+		const refused = (): never => {
+			throw new ClimateAutomationParticipantConflict('invalid');
+		};
+		// Child MAX counters are immutable facts for this operation, not permission to increment them.
+		if (
+			[...thermostatAutomationMutationIssues(before), ...thermostatAutomationMutationIssues(next)].some(
+				(issue) => issue !== 'increment_overflow',
+			)
+		)
+			return refused();
+		const reduction = climateAutomationReduceManualIntent(before, intent);
+		if (!equal(next, reduction.document)) return refused();
+		const row = await this.manualConfig(manager, before.controllerId);
+		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+		if (!row || !equal(project(row, THERMOSTAT_AUTOMATION_COLUMNS.configurations), manualConfigurationColumns(before)))
+			throw new ClimateAutomationParticipantConflict('stale');
+		const owner = await manager
+			.createQueryBuilder(VirtualDeviceEntity, 'owner')
+			.where('owner.id = :controllerId', { controllerId: before.controllerId })
+			.callListeners(false)
+			.getOne();
+		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+		if (!owner || row.ownerDeviceId !== before.controllerId) return refused();
+		const values = manualRowValues(row, next);
+		if (
+			validateVirtualThermostatPolicy(values.policy).length ||
+			((values.requestedMode === 'heat' || values.requestedMode === 'auto') &&
+				values.policy.heatingSetpoint === null) ||
+			((values.requestedMode === 'cool' || values.requestedMode === 'auto') && values.policy.coolingSetpoint === null)
+		)
+			return refused();
+		if (values.comfort !== null && validateThermostatComfort(values.comfort, values.policy).length) return refused();
+		const config = object(before.configuration),
+			bindings = list(config.settings).map(object);
+		const actualBindings = await manager
+			.createQueryBuilder(VirtualThermostatSettingEntity, 'setting')
+			.where('setting.controllerId = :controllerId', { controllerId: before.controllerId })
+			.orderBy('setting.propertyId', 'ASC')
+			.callListeners(false)
+			.getMany();
+		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+		const bindingColumns = THERMOSTAT_AUTOMATION_COLUMNS.settings;
+		const ordered = (rows: readonly object[]) =>
+			[...rows].sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		if (!equal(ordered(actualBindings.map((binding) => project(binding, bindingColumns))), ordered(bindings)))
+			throw new ClimateAutomationParticipantConflict('stale');
+		for (const binding of bindings) {
+			const propertyId = id(binding.propertyId);
+			const property = await manager
+				.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.where('property.id = :propertyId', { propertyId })
+				.callListeners(false)
+				.getOne();
+			this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+			if (!property || !property.channel || typeof property.channel === 'string') return refused();
+			const channel = property.channel;
+			if (!channel.device || typeof channel.device === 'string') return refused();
+			const device = channel.device;
+			const setting = binding.setting;
+			const numeric = setting === 'heating_setpoint' || setting === 'cooling_setpoint';
+			const category =
+				setting === 'locked'
+					? ChannelCategory.THERMOSTAT
+					: setting === 'heating_setpoint' || setting === 'heating_enabled'
+						? ChannelCategory.HEATER
+						: setting === 'cooling_setpoint' || setting === 'cooling_enabled'
+							? ChannelCategory.COOLER
+							: null;
+			if (
+				device.id !== before.controllerId ||
+				!(device instanceof VirtualDeviceEntity) ||
+				property.valueOrigin !== VirtualValueOrigin.LOCAL ||
+				property.sourcePropertyId !== null ||
+				category === null ||
+				channel.category !== category ||
+				property.category !==
+					(setting === 'locked'
+						? PropertyCategory.LOCKED
+						: numeric
+							? PropertyCategory.TEMPERATURE
+							: PropertyCategory.ON) ||
+				(numeric
+					? ![DataTypeType.FLOAT, DataTypeType.INT].includes(property.dataType)
+					: property.dataType !== DataTypeType.BOOL) ||
+				!property.permissions.includes(PermissionType.READ_WRITE) ||
+				thermostatPropertyContract(property, channel, device) !== binding.contractFingerprint
+			)
+				return refused();
+			if (
+				((setting === 'heating_setpoint' || setting === 'heating_enabled') && values.policy.heatingSetpoint === null) ||
+				((setting === 'cooling_setpoint' || setting === 'cooling_enabled') && values.policy.coolingSetpoint === null)
+			)
+				return refused();
+		}
+		if (
+			intent.kind === 'manual-settings:v1' &&
+			intent.updates.some((update) => !bindings.some((binding) => binding.propertyId === update.propertyId))
+		)
+			return refused();
+	}
+
+	/** Actual affected-one controller CAS only. Core alone writes private manual/source/slot accounting. */
+	async applyManualIntentInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantImage,
+	): Promise<void> {
+		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
+		if (
+			next.controllerId !== before.controllerId ||
+			before.controllerRevision === Number.MAX_SAFE_INTEGER ||
+			next.controllerRevision !== before.controllerRevision + 1 ||
+			!equal(next.configuration, before.configuration) ||
+			!equal(next.structural, before.structural) ||
+			!equal(next.legacyBaseline, before.legacyBaseline)
+		)
+			throw new ClimateAutomationParticipantConflict('invalid');
+		const row = await this.manualConfig(manager, before.controllerId);
+		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
+		if (!row || !equal(project(row, THERMOSTAT_AUTOMATION_COLUMNS.configurations), manualConfigurationColumns(before)))
+			throw new ClimateAutomationParticipantConflict('stale');
+		const columns = THERMOSTAT_AUTOMATION_COLUMNS.configurations;
+		const records = await manager.query<Record<string, unknown>[]>(
+			'SELECT ' +
+				columns.map((column) => '"' + column + '"').join(',') +
+				' FROM "devices_virtual_thermostat_configs" WHERE "controllerId"=?',
+			[before.controllerId],
+		);
+		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
+		if (records.length !== 1) throw new ClimateAutomationParticipantConflict('stale');
+		const raw = records[0],
+			hydrated: Record<string, unknown> = {};
+		const metadata = manager.connection.getMetadata(VirtualThermostatConfigEntity);
+		for (const column of metadata.columns) {
+			const value: unknown = manager.connection.driver.prepareHydratedValue(raw[column.databaseName], column);
+			Object.defineProperty(hydrated, column.propertyName, { value, enumerable: true });
+		}
+		if (!equal(project(hydrated, columns), manualConfigurationColumns(before)))
+			throw new ClimateAutomationParticipantConflict('stale');
+		const values = manualRowValues(row, next);
+		const query = manager
+			.createQueryBuilder()
+			.update(VirtualThermostatConfigEntity)
+			.set({
+				requestedMode: values.requestedMode,
+				locked: values.locked,
+				policy: values.policy,
+				comfort: values.comfort,
+				revision: next.controllerRevision,
+			})
+			.callListeners(false);
+		for (const column of columns)
+			query.andWhere('"' + column + '" IS :manual_' + column, { ['manual_' + column]: raw[column] });
+		if ((await query.execute()).affected !== 1) throw new ClimateAutomationParticipantConflict('stale');
+		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
+	}
+	private manualConfig(manager: EntityManager, controllerId: string): Promise<VirtualThermostatConfigEntity | null> {
+		return manager
+			.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
+			.where('config.controllerId = :controllerId', { controllerId: id(controllerId) })
+			.callListeners(false)
+			.getOne();
+	}
+}
+
+/** Reconstruct ONLY the explicit persisted config row for original-column equality, not an apply/default. */
+function manualConfigurationColumns(image: ClimateAutomationParticipantImage): JsonObject {
+	const config = object(image.configuration),
+		comfort = object(image.comfort);
+	return jsonRecord({
+		...object(config.config),
+		revision: image.controllerRevision,
+		requestedMode: comfort.requestedMode,
+		locked: comfort.locked,
+		comfort: comfort.configuration,
+		policy: { ...object(config.policySafety), ...object(comfort.requestedSetpoints) },
+	});
+}
+function manualRowValues(
+	row: VirtualThermostatConfigEntity,
+	next: ClimateAutomationParticipantDocument,
+): Pick<VirtualThermostatConfigEntity, 'requestedMode' | 'locked' | 'policy' | 'comfort'>;
+function manualRowValues(row: VirtualThermostatConfigEntity, next: ClimateAutomationParticipantDocument): unknown {
+	const comfort = object(next.comfort),
+		points = object(comfort.requestedSetpoints);
+	const requestedMode = comfort.requestedMode;
+	if (
+		(requestedMode !== 'off' && requestedMode !== 'heat' && requestedMode !== 'cool' && requestedMode !== 'auto') ||
+		typeof comfort.locked !== 'boolean'
+	)
+		return fail();
+	const scalar = (value: unknown): number | null => (value === null ? null : finite(value));
+	const policy = {
+		...row.policy,
+		heatingSetpoint: scalar(points.heatingSetpoint),
+		coolingSetpoint: scalar(points.coolingSetpoint),
+	};
+	if (row.comfort === null) {
+		if (comfort.configuration !== null || next.legacyBaseline !== null) return fail();
+		return { requestedMode, locked: comfort.locked, policy, comfort: null };
+	}
+	const state = object(comfort.configuration),
+		selected = state.selected_preset;
+	if (
+		(selected !== null && selected !== 'comfort' && selected !== 'eco' && selected !== 'away') ||
+		typeof state.user_off !== 'boolean'
+	)
+		return fail();
+	if (
+		!equal(
+			without(jsonRecord(state), ['selected_preset', 'user_off']),
+			without(jsonRecord(row.comfort), ['selected_preset', 'user_off']),
+		)
+	)
+		return fail();
+	return {
+		requestedMode,
+		locked: comfort.locked,
+		policy,
+		comfort: { ...row.comfort, selected_preset: selected, user_off: state.user_off },
+	};
+}
+
+/** Existing configuration edits retain catalog lineage. Permissions/consumer membership can be structural
+ * without inventing a thermostat measurement edge. Both sides are independently derived from this full catalog. */
+export function thermostatExistingOwnedGraphPlan(
+	rows: ThermostatAutomationRows,
+	controllerId: string,
+): ClimateAutomationGraphReplacementPlan {
+	id(controllerId);
+	const channels = rows.channels.filter((row) => relation(row.device) === controllerId);
+	const channelIds = new Set(channels.map((row) => id(row.id)));
+	const outputs = rows.properties.filter((row) => channelIds.has(relation(row.channel)));
+	const ids = new Set(outputs.map((row) => id(row.id)));
+	if (ids.size !== outputs.length || ids.size > 4096) return fail();
+	const edges: ClimateAutomationGraphReplacementPlan['beforeEdges'][number][] = [];
+	for (const property of outputs) {
+		const origin: unknown = nativeFieldEvidence.get(property, 'valueOrigin'),
+			source: unknown = nativeFieldEvidence.get(property, 'sourcePropertyId');
+		if ((origin === undefined || origin === 'source') && source !== null && source !== undefined)
+			edges.push(Object.freeze({ outputPropertyId: id(property.id), sourcePropertyId: id(source) }));
+	}
+	const names: readonly TableName[] = ['dewSources', 'transformSources', 'aggregateInputs', 'groupBindings'];
+	for (const name of names)
+		for (const row of rows.tables[name]) {
+			const output: unknown = nativeFieldEvidence.get(row, 'outputPropertyId'),
+				source: unknown = nativeFieldEvidence.get(row, 'sourcePropertyId');
+			if (typeof output === 'string' && ids.has(output) && source !== null)
+				edges.push(Object.freeze({ outputPropertyId: id(output), sourcePropertyId: id(source) }));
+		}
+	edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+	if (edges.length > 8192) return fail();
+	return Object.freeze({
+		ownedOutputIds: Object.freeze([...ids].sort()),
+		beforeEdges: Object.freeze(edges),
+		replacementEdges: Object.freeze([...edges]),
+	});
+}
+
+/** Same closed persisted-column codec used by the C0 fence; optional mapped fields are omitted, opaque JSON stays strict. */
+export function thermostatOwnedPersistedColumn(value: unknown, column: 'policy' | 'comfort'): ClimateAutomationJson {
+	return persistedJson(value, column);
+}

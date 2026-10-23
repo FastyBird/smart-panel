@@ -647,4 +647,11 @@ describe('VirtualDeviceInformationListener', () => {
 			await expect(listener.claimDeviceInformationProperty(property)).resolves.toBe(property);
 		});
 	});
+	it('keeps handler destruction terminal without changing ordinary repair dependencies', () => {
+		listener.onModuleDestroy();
+		listener.onModuleDestroy();
+		expect(() => listener.onModuleInit()).toThrow('Owned information handler destroyed');
+		expect(channelsService.create).not.toHaveBeenCalled();
+		expect(channelsPropertiesService.create).not.toHaveBeenCalled();
+	});
 });

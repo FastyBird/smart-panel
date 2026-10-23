@@ -71,4 +71,50 @@ describe('DevicesTypeMapperService', () => {
 			);
 		});
 	});
+	describe('original owned creation mapping continuity', () => {
+		it('never revives A after same-object overwrite or A B A and keeps reads pure', () => {
+			const a = {
+				type: 'owned-creation',
+				class: MockDevice,
+				createDto: MockCreateDeviceDto,
+				updateDto: MockUpdateDeviceDto,
+			};
+			const b = { ...a };
+			expect(service.captureMapping('owned-creation')).toBeNull();
+			service.registerMapping(a);
+			const original = service.captureMapping('owned-creation');
+			expect(original?.isCurrent()).toBe(true);
+			expect(service.captureMapping('owned-creation')?.isCurrent()).toBe(true);
+			expect(service.getMapping('owned-creation')).toBe(a);
+			expect(original?.isCurrent()).toBe(true);
+			service.registerMapping(a);
+			expect(original?.isCurrent()).toBe(false);
+			const second = service.captureMapping('owned-creation');
+			service.registerMapping(b);
+			service.registerMapping(a);
+			expect(second?.isCurrent()).toBe(false);
+			expect(original?.isCurrent()).toBe(false);
+			expect(service.captureMapping('owned-creation')?.isCurrent()).toBe(true);
+		});
+
+		it('keeps ordinary accessor mappings usable but refuses owned capture without invoking their accessor', () => {
+			const mapping = {
+				type: 'owned-accessor',
+				class: MockDevice,
+				createDto: MockCreateDeviceDto,
+				updateDto: MockUpdateDeviceDto,
+			};
+			let reads = 0;
+			Object.defineProperty(mapping, 'class', {
+				get: () => {
+					reads++;
+					return MockDevice;
+				},
+			});
+			service.registerMapping(mapping);
+			expect(service.getMapping('owned-accessor')).toBe(mapping);
+			expect(service.captureMapping('owned-accessor')).toBeNull();
+			expect(reads).toBe(0);
+		});
+	});
 });

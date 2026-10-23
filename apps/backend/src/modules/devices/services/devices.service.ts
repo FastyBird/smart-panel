@@ -1,7 +1,8 @@
 import { validate } from 'class-validator';
+import type { ValidatorOptions } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
@@ -35,7 +36,7 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
-import { DeviceCreationContext } from './device-creation-context';
+import { DeviceCreationContext, DeviceCreationPublicationEngine } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
@@ -478,6 +479,8 @@ export class DevicesService {
 
 	/** Checks identity without loading the device graph or running value/status subscribers. */
 	async exists(id: string): Promise<boolean> {
+		const original = DeviceCreationContext.readOriginalDeviceIdentity(id);
+		if (original !== undefined) return (await original) !== null;
 		return this.repository.createQueryBuilder('device').where('device.id = :id', { id }).getExists();
 	}
 
@@ -545,288 +548,304 @@ export class DevicesService {
 		createDto: TCreateDTO,
 		creation?: DeviceCreationContext,
 	): Promise<TDevice> {
-		this.logger.debug('Creating new device');
-
-		const { type } = createDto;
-		creation?.assertType(type);
-
-		if (!type) {
-			this.logger.error('Validation failed: Missing required "type" attribute in data.');
-
-			throw new DevicesException('Device type attribute is required.');
-		}
-
-		const mapping = this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
-
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
-		// The climate-controller virtual category has writable local settings and
-		// exclusive physical claims. Its only creation ingress is the admitted
-		// producer writer that installs all three atomically.
-		if (
-			type === 'virtual' &&
-			(dtoInstance as TCreateDTO & { mode?: string }).mode === 'climate_controller' &&
-			!creation
-		)
-			throw new DevicesValidationException('Climate-controller devices require atomic thermostat producer creation.');
-
-		// Validate room assignment if provided
-		if (dtoInstance.room_id) {
-			await this.validateRoomAssignment(dtoInstance.room_id);
-		}
-
-		// Extract zone IDs before processing
-		const zoneIds = dtoInstance.zone_ids || [];
-		delete dtoInstance.zone_ids;
-
-		(dtoInstance.channels || []).forEach((channel) => {
-			channel.id = channel.id ?? uuid().toString();
-
-			(channel.properties || []).forEach((property) => {
-				property.id = property.id ?? uuid().toString();
-			});
-		});
-
-		const channels = dtoInstance.channels || [];
-
-		delete dtoInstance.channels;
-
-		const errors = await validate(dtoInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-			stopAtFirstError: false,
-		});
-
-		if (errors.length > 0) {
-			this.logger.error(`Validation failed for device creation error=${JSON.stringify(errors)}`);
-
-			throw new DevicesValidationException('Provided device data are invalid.');
-		}
-
-		const repository: Repository<TDevice> = creation
-			? creation.manager.getRepository(mapping.class)
-			: this.dataSource.getRepository(mapping.class);
-
-		const device = repository.create(toInstance(mapping.class, dtoInstance));
-
-		// Provenance only means something while the device is hidden. A create that names a reason
-		// without hiding anything would leave a `system` claim sitting on a visible row, and the first
-		// hide that follows — an operator's, carrying no reason of its own — would inherit it: the
-		// reconciliation reads such a row as a virtual device's abandoned source and makes it visible
-		// again, undoing a hide nothing in the system asked it to touch.
-		if (device.hidden !== true) {
-			device.hiddenBy = null;
-		}
-
-		// A create that names an id already in use is refused before anything is written.
-		//
-		// `id` is client-suppliable — the wizard generates its uuids up front — and `repository.save()`
-		// treats a row whose primary key exists as an *update*. So a create carrying an existing id
-		// silently overwrote that device instead of inserting, and the rollback below then removed it:
-		// a malformed request destroying a device it had nothing to do with. The rollback is what makes
-		// it destructive, but the overwrite was wrong on its own — a create that quietly becomes an
-		// update is not something any caller asked for.
-		//
-		// Asked of the base repository rather than the mapped one, because a collision with a device of
-		// *another* type is the same collision: ids are unique across the table, not per subclass, and
-		// the mapped repository's own discriminator would hide exactly the case that is hardest to
-		// explain afterwards.
-		if (device.id) {
-			const existing = creation
-				? await creation.manager
-						.createQueryBuilder(DeviceEntity, 'row')
-						.select('row.id')
-						.where('row.id = :id', { id: device.id })
-						.callListeners(false)
-						.getOne()
-				: await this.repository.findOne({ where: { id: device.id } });
-
-			if (existing) {
-				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} already exists, refusing to create over it`);
-
-				throw new DevicesValidationException(
-					`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
-				);
-			}
-		}
-
-		// Inserted, not saved. `save()` decides between INSERT and UPDATE by looking for the row first,
-		// which is the behaviour that let a create overwrite an existing device — and the check above
-		// closes that only for a caller who is alone. Two requests carrying the same client-generated uuid
-		// can both pass it before either writes, and the second `save()` would then update the first's row
-		// with the rollback still armed behind it. `insert()` always issues an INSERT, so the primary key
-		// constraint decides, and the database does not interleave. The check above stays for the message:
-		// a caller reusing an id deliberately gets a sentence rather than a constraint violation.
-		const inserted = await (
-			creation
-				? repository
-						.createQueryBuilder()
-						.insert()
-						.values(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
-						.updateEntity(false)
-						.execute()
-				: repository.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
-		).catch((error: unknown) => {
-			if (isPrimaryKeyCollision(error)) {
-				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
-
-				throw new DevicesValidationException(
-					`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
-				);
-			}
-
-			throw error;
-		});
-
-		// `@PrimaryGeneratedColumn('uuid')` generates in JS, so a request that supplied no id already has
-		// one on the entity by now; the returned identifier is read anyway rather than assumed, since it is
-		// what the row was actually written under.
-		const raw = Object.assign(device, inserted.identifiers[0] ?? {}) as TDevice;
-
-		// A nested create is one request and has to succeed or fail as one thing. The device row is
-		// already saved by the time its channels and properties are built, and a type owner's
-		// `beforeCreate` hook can legitimately reject one of them — a virtual property whose source
-		// cannot fill the slot it is being wired into, say. Without this, that rejection returns its 422
-		// and leaves the parent device (and any channel already created) behind, so the client sees a
-		// failure while the database keeps a half-built device, and a retry adds a second one.
-		//
-		// Rolled back by deleting the device row rather than by a transaction: the sqlite driver shares
-		// one QueryRunner process-wide, so opening a transaction here would interact with the known
-		// TOCTOU hazard tracked in the virtual-devices follow-ups. `ChannelEntity.device` is
-		// `onDelete: 'CASCADE'`, so the channels and their properties go with it. No event is emitted
-		// because none was: DEVICE_CREATED fires at the end of this method, so nothing ever observed
-		// this device existing.
+		creation?.assertOriginalAdmission();
+		const catalogChild = creation?.isOriginalOwned ? creation.beginCatalogChild('device', createDto) : undefined;
 		try {
-			for (const channelDtoInstance of channels) {
-				this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
+			this.logger.debug('Creating new device');
 
-				const nested = { ...channelDtoInstance, device: raw.id };
-				if (creation) await this.channelsService.create(nested, creation);
-				else await this.channelsService.create(nested);
+			creation?.assertOriginalAdmission();
+			const { type } = createDto;
+			creation?.assertType(type);
+
+			if (!type) {
+				this.logger.error('Validation failed: Missing required "type" attribute in data.');
+
+				throw new DevicesException('Device type attribute is required.');
 			}
 
-			// Set zone memberships if provided
-			if (zoneIds.length > 0) {
-				// Initial placement, not a change to an existing one: a create may legitimately carry both
-				// `hidden: true` and `zone_ids` — the wizard hides a source device it is replacing — and the
-				// placement lock is about mutating where an already-hidden device sits, which this is not.
-				await this.deviceZonesService.setDeviceZones(
-					raw.id,
-					zoneIds,
-					creation ? { initialPlacement: true, creation } : { initialPlacement: true },
-				);
+			const mapping = this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
+
+			creation?.assertMapping('device', mapping);
+			const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
+			creation?.assertOriginalAdmission();
+			// The climate-controller virtual category has writable local settings and
+			// exclusive physical claims. Its only creation ingress is the admitted
+			// producer writer that installs all three atomically.
+			if (
+				type === 'virtual' &&
+				(dtoInstance as TCreateDTO & { mode?: string }).mode === 'climate_controller' &&
+				!creation
+			)
+				throw new DevicesValidationException('Climate-controller devices require atomic thermostat producer creation.');
+
+			// Validate room assignment if provided
+			if (dtoInstance.room_id) {
+				await this.validateRoomAssignment(dtoInstance.room_id, creation?.manager);
 			}
-		} catch (error) {
-			if (creation) throw error;
-			this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
 
-			// The rows go with the device (channels cascade from it), but the events do not: every channel
-			// and property created before the failure has *already* announced itself with
-			// CHANNEL_CREATED / CHANNEL_PROPERTY_CREATED. A silent delete would leave websocket clients
-			// holding children that no longer exist, and the virtual property index holding mappings for
-			// them until some later structural event forced a rebuild. So the children are read back
-			// before the delete and their deletions announced after it.
-			//
-			// Channels are announced rather than unwound through ChannelsService.remove(): that path
-			// expects a fully built channel and re-parents children as it goes, which is the wrong shape
-			// for tearing down a half-created device — and the device delete has to happen either way,
-			// since the channel whose own creation threw was already persisted and is not in this list.
-			const orphanedChannels = await this.channelsService
-				.findAll(raw.id)
-				.catch((readError: unknown): ChannelEntity[] => {
-					this.logger.error(
-						`Failed to read back channels for rolled-back deviceId=${raw.id}`,
-						readError instanceof Error ? readError : undefined,
-					);
+			// Extract zone IDs before processing
+			const zoneIds = dtoInstance.zone_ids || [];
+			delete dtoInstance.zone_ids;
 
-					return [];
+			(dtoInstance.channels || []).forEach((channel) => {
+				channel.id = channel.id ?? uuid().toString();
+
+				(channel.properties || []).forEach((property) => {
+					property.id = property.id ?? uuid().toString();
 				});
+			});
 
-			// Properties go through their own removal, not the cascade: a property's stored values and
-			// device-status records live outside its row, and only the entity-removal lifecycle
-			// (ChannelPropertyEntitySubscriber.afterRemove) clears them. A raw delete leaves that history
-			// behind, and a retry supplying the same explicit property ids would find the failed attempt's
-			// values already sitting there. That removal emits the property's deletion event too, so only
-			// the channels need announcing below.
-			for (const channel of orphanedChannels) {
-				for (const property of channel.properties ?? []) {
-					try {
-						await this.channelsPropertiesService.remove(property.id);
-					} catch (cleanupError) {
-						this.logger.error(
-							`Failed to roll back property id=${property.id} for deviceId=${raw.id}`,
-							cleanupError instanceof Error ? cleanupError : undefined,
-						);
-					}
+			const channels = dtoInstance.channels || [];
+
+			delete dtoInstance.channels;
+
+			const errors = await this.validateCreationInstance(dtoInstance, creation, {
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				stopAtFirstError: false,
+			});
+
+			if (errors.length > 0) {
+				this.logger.error(`Validation failed for device creation error=${JSON.stringify(errors)}`);
+
+				throw new DevicesValidationException('Provided device data are invalid.');
+			}
+
+			const repository: Repository<TDevice> = creation
+				? creation.manager.getRepository(mapping.class)
+				: this.dataSource.getRepository(mapping.class);
+
+			const device = repository.create(toInstance(mapping.class, dtoInstance));
+			creation?.stampCatalog(device);
+
+			// Provenance only means something while the device is hidden. A create that names a reason
+			// without hiding anything would leave a `system` claim sitting on a visible row, and the first
+			// hide that follows — an operator's, carrying no reason of its own — would inherit it: the
+			// reconciliation reads such a row as a virtual device's abandoned source and makes it visible
+			// again, undoing a hide nothing in the system asked it to touch.
+			if (device.hidden !== true) {
+				device.hiddenBy = null;
+			}
+
+			// A create that names an id already in use is refused before anything is written.
+			//
+			// `id` is client-suppliable — the wizard generates its uuids up front — and `repository.save()`
+			// treats a row whose primary key exists as an *update*. So a create carrying an existing id
+			// silently overwrote that device instead of inserting, and the rollback below then removed it:
+			// a malformed request destroying a device it had nothing to do with. The rollback is what makes
+			// it destructive, but the overwrite was wrong on its own — a create that quietly becomes an
+			// update is not something any caller asked for.
+			//
+			// Asked of the base repository rather than the mapped one, because a collision with a device of
+			// *another* type is the same collision: ids are unique across the table, not per subclass, and
+			// the mapped repository's own discriminator would hide exactly the case that is hardest to
+			// explain afterwards.
+			if (device.id) {
+				const existing = creation
+					? await creation.manager
+							.createQueryBuilder(DeviceEntity, 'row')
+							.select('row.id')
+							.where('row.id = :id', { id: device.id })
+							.callListeners(false)
+							.getOne()
+					: await this.repository.findOne({ where: { id: device.id } });
+
+				if (existing) {
+					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} already exists, refusing to create over it`);
+
+					throw new DevicesValidationException(
+						`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+					);
 				}
 			}
 
-			// Removed as an entity, not deleted as a row. `repository.delete()` issues a DELETE and runs no
-			// subscriber, and a device's removal lifecycle does real work outside its own table:
-			// DeviceEntitySubscriber.afterRemove drops the device's stored connection statuses, and plugin
-			// subscribers (Shelly v1's, for one) tear down the in-memory adapter entry the creation put
-			// there. A child creation that succeeded before a later one failed can already have produced
-			// exactly that state, so a raw delete leaves it behind — with a retry supplying the same
-			// explicit id or identifier walking straight into the failed attempt's leftovers. Same
-			// reasoning as the properties above, one level up.
+			// Inserted, not saved. `save()` decides between INSERT and UPDATE by looking for the row first,
+			// which is the behaviour that let a create overwrite an existing device — and the check above
+			// closes that only for a caller who is alone. Two requests carrying the same client-generated uuid
+			// can both pass it before either writes, and the second `save()` would then update the first's row
+			// with the rollback still armed behind it. `insert()` always issues an INSERT, so the primary key
+			// constraint decides, and the database does not interleave. The check above stays for the message:
+			// a caller reusing an id deliberately gets a sentence rather than a constraint violation.
+			const inserted = await (
+				creation
+					? repository
+							.createQueryBuilder()
+							.insert()
+							.values(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+							.updateEntity(false)
+							.execute()
+					: repository.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+			).catch((error: unknown) => {
+				if (isPrimaryKeyCollision(error)) {
+					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
+
+					throw new DevicesValidationException(
+						`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+					);
+				}
+
+				throw error;
+			});
+
+			// `@PrimaryGeneratedColumn('uuid')` generates in JS, so a request that supplied no id already has
+			// one on the entity by now; the returned identifier is read anyway rather than assumed, since it is
+			// what the row was actually written under.
+			const raw = Object.assign(device, inserted.identifiers[0] ?? {}) as TDevice;
+
+			// A nested create is one request and has to succeed or fail as one thing. The device row is
+			// already saved by the time its channels and properties are built, and a type owner's
+			// `beforeCreate` hook can legitimately reject one of them — a virtual property whose source
+			// cannot fill the slot it is being wired into, say. Without this, that rejection returns its 422
+			// and leaves the parent device (and any channel already created) behind, so the client sees a
+			// failure while the database keeps a half-built device, and a retry adds a second one.
 			//
-			// Still not routed through `remove()`: that emits DEVICE_DELETED, and this device never
-			// emitted DEVICE_CREATED — that happens only after a creation completes. The compensating
-			// events below exist because the *children* did announce themselves; the device did not.
-			// Re-read first, and removed as *that* row rather than as `raw`. `raw` is the instance the
-			// create built, and it still carries whatever the request nested onto it — `DeviceEntity.channels`
-			// is `cascade: true`, so `remove()` handed that instance cascades across the in-memory graph and
-			// detaches children instead of letting the database's own `ON DELETE CASCADE` take them. That
-			// left channel properties behind with no channel at all, which the containment e2e caught. A
-			// freshly loaded row has no relations loaded, so the removal is exactly one DELETE on the device
-			// — subscribers and all — and the cascade below it is the schema's.
-			const rollbackTarget = await repository.findOne({
-				where: { id: raw.id } as FindOptionsWhere<TDevice>,
-			});
+			// Rolled back by deleting the device row rather than by a transaction: the sqlite driver shares
+			// one QueryRunner process-wide, so opening a transaction here would interact with the known
+			// TOCTOU hazard tracked in the virtual-devices follow-ups. `ChannelEntity.device` is
+			// `onDelete: 'CASCADE'`, so the channels and their properties go with it. No event is emitted
+			// because none was: DEVICE_CREATED fires at the end of this method, so nothing ever observed
+			// this device existing.
+			try {
+				for (const channelDtoInstance of channels) {
+					this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
 
-			if (rollbackTarget) {
-				await repository.remove(rollbackTarget);
+					const nested = { ...channelDtoInstance, device: raw.id };
+					if (creation) await this.channelsService.create(nested, creation);
+					else await this.channelsService.create(nested);
+				}
+
+				// Set zone memberships if provided
+				if (zoneIds.length > 0) {
+					// Initial placement, not a change to an existing one: a create may legitimately carry both
+					// `hidden: true` and `zone_ids` — the wizard hides a source device it is replacing — and the
+					// placement lock is about mutating where an already-hidden device sits, which this is not.
+					await this.deviceZonesService.setDeviceZones(
+						raw.id,
+						zoneIds,
+						creation ? { initialPlacement: true, creation } : { initialPlacement: true },
+					);
+				}
+			} catch (error) {
+				if (creation) throw error;
+				this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
+
+				// The rows go with the device (channels cascade from it), but the events do not: every channel
+				// and property created before the failure has *already* announced itself with
+				// CHANNEL_CREATED / CHANNEL_PROPERTY_CREATED. A silent delete would leave websocket clients
+				// holding children that no longer exist, and the virtual property index holding mappings for
+				// them until some later structural event forced a rebuild. So the children are read back
+				// before the delete and their deletions announced after it.
+				//
+				// Channels are announced rather than unwound through ChannelsService.remove(): that path
+				// expects a fully built channel and re-parents children as it goes, which is the wrong shape
+				// for tearing down a half-created device — and the device delete has to happen either way,
+				// since the channel whose own creation threw was already persisted and is not in this list.
+				const orphanedChannels = await this.channelsService
+					.findAll(raw.id)
+					.catch((readError: unknown): ChannelEntity[] => {
+						this.logger.error(
+							`Failed to read back channels for rolled-back deviceId=${raw.id}`,
+							readError instanceof Error ? readError : undefined,
+						);
+
+						return [];
+					});
+
+				// Properties go through their own removal, not the cascade: a property's stored values and
+				// device-status records live outside its row, and only the entity-removal lifecycle
+				// (ChannelPropertyEntitySubscriber.afterRemove) clears them. A raw delete leaves that history
+				// behind, and a retry supplying the same explicit property ids would find the failed attempt's
+				// values already sitting there. That removal emits the property's deletion event too, so only
+				// the channels need announcing below.
+				for (const channel of orphanedChannels) {
+					for (const property of channel.properties ?? []) {
+						try {
+							await this.channelsPropertiesService.remove(property.id);
+						} catch (cleanupError) {
+							this.logger.error(
+								`Failed to roll back property id=${property.id} for deviceId=${raw.id}`,
+								cleanupError instanceof Error ? cleanupError : undefined,
+							);
+						}
+					}
+				}
+
+				// Removed as an entity, not deleted as a row. `repository.delete()` issues a DELETE and runs no
+				// subscriber, and a device's removal lifecycle does real work outside its own table:
+				// DeviceEntitySubscriber.afterRemove drops the device's stored connection statuses, and plugin
+				// subscribers (Shelly v1's, for one) tear down the in-memory adapter entry the creation put
+				// there. A child creation that succeeded before a later one failed can already have produced
+				// exactly that state, so a raw delete leaves it behind — with a retry supplying the same
+				// explicit id or identifier walking straight into the failed attempt's leftovers. Same
+				// reasoning as the properties above, one level up.
+				//
+				// Still not routed through `remove()`: that emits DEVICE_DELETED, and this device never
+				// emitted DEVICE_CREATED — that happens only after a creation completes. The compensating
+				// events below exist because the *children* did announce themselves; the device did not.
+				// Re-read first, and removed as *that* row rather than as `raw`. `raw` is the instance the
+				// create built, and it still carries whatever the request nested onto it — `DeviceEntity.channels`
+				// is `cascade: true`, so `remove()` handed that instance cascades across the in-memory graph and
+				// detaches children instead of letting the database's own `ON DELETE CASCADE` take them. That
+				// left channel properties behind with no channel at all, which the containment e2e caught. A
+				// freshly loaded row has no relations loaded, so the removal is exactly one DELETE on the device
+				// — subscribers and all — and the cascade below it is the schema's.
+				const rollbackTarget = await repository.findOne({
+					where: { id: raw.id } as FindOptionsWhere<TDevice>,
+				});
+
+				if (rollbackTarget) {
+					await repository.remove(rollbackTarget);
+				}
+
+				for (const channel of orphanedChannels) {
+					this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+				}
+
+				throw error;
 			}
 
-			for (const channel of orphanedChannels) {
-				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+			// Hydrate the response after queued structural writers finish. Their validation gate may be
+			// temporarily closed while asynchronous device-information properties are being synthesized.
+			let savedDevice = creation
+				? await creation.manager
+						.createQueryBuilder(mapping.class, 'row')
+						.where('row.id = :id', { id: device.id })
+						.callListeners(false)
+						.getOneOrFail()
+				: ((await this.structureLock.runShared(() => this.getOneOrThrow(device.id))) as TDevice);
+
+			if (mapping.afterCreate && !creation) {
+				await mapping.afterCreate(savedDevice, dtoInstance);
+
+				// Reload a potentially updated device
+				savedDevice = (await this.structureLock.runShared(() => this.getOneOrThrow(device.id))) as TDevice;
 			}
 
-			throw error;
+			this.logger.debug(`Successfully created device with id=${savedDevice.id}`);
+
+			if (creation?.isOriginalOwned)
+				creation.deferCatalog('device', savedDevice, mapping, this.eventEmitter, dtoInstance);
+			else if (creation)
+				creation.defer(async () => {
+					if (mapping.afterCreate) await mapping.afterCreate(savedDevice, dtoInstance);
+					this.eventEmitter.emit(EventType.DEVICE_CREATED, await this.getOneOrThrow(savedDevice.id));
+				});
+			else this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
+
+			return savedDevice;
+		} catch (cause) {
+			catalogChild?.finish({ cause });
+			throw cause;
+		} finally {
+			catalogChild?.finish();
 		}
-
-		// Hydrate the response after queued structural writers finish. Their validation gate may be
-		// temporarily closed while asynchronous device-information properties are being synthesized.
-		let savedDevice = creation
-			? await creation.manager
-					.createQueryBuilder(mapping.class, 'row')
-					.where('row.id = :id', { id: device.id })
-					.callListeners(false)
-					.getOneOrFail()
-			: ((await this.structureLock.runShared(() => this.getOneOrThrow(device.id))) as TDevice);
-
-		if (mapping.afterCreate && !creation) {
-			await mapping.afterCreate(savedDevice, dtoInstance);
-
-			// Reload a potentially updated device
-			savedDevice = (await this.structureLock.runShared(() => this.getOneOrThrow(device.id))) as TDevice;
-		}
-
-		this.logger.debug(`Successfully created device with id=${savedDevice.id}`);
-
-		if (creation)
-			creation.defer(async () => {
-				if (mapping.afterCreate) await mapping.afterCreate(savedDevice, dtoInstance);
-				this.eventEmitter.emit(EventType.DEVICE_CREATED, await this.getOneOrThrow(savedDevice.id));
-			});
-		else this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
-
-		return savedDevice;
 	}
 
 	async update<TDevice extends DeviceEntity, TUpdateDTO extends UpdateDeviceDto>(
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TDevice> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		this.logger.debug(`Updating device with id=${id}`);
 
 		const device = await this.getOneOrThrow(id);
@@ -1139,6 +1158,7 @@ export class DevicesService {
 	}
 
 	async remove(id: string): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		return this.structureLock.runExclusive(async (): Promise<void> => {
 			this.logger.debug(`Removing device with id=${id}`);
 
@@ -1186,12 +1206,25 @@ export class DevicesService {
 		return buildDeviceGraphQuery(repository);
 	}
 
-	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
+	private validateCreationInstance(
+		instance: object,
+		creation: DeviceCreationContext | undefined,
+		options: ValidatorOptions,
+	) {
+		return creation ? creation.validate(instance, options) : validate(instance, options);
+	}
+
+	private async validateDto<T extends object>(
+		DtoClass: new () => T,
+		dto: any,
+		creation?: DeviceCreationContext,
+	): Promise<T> {
+		creation?.assertOriginalAdmission();
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
@@ -1254,10 +1287,16 @@ export class DevicesService {
 	 * @throws DevicesNotFoundException if room does not exist
 	 * @throws DevicesValidationException if space is not a room
 	 */
-	private async validateRoomAssignment(roomId: string): Promise<void> {
+	private async validateRoomAssignment(roomId: string, manager?: EntityManager): Promise<void> {
 		this.logger.debug(`Validating room assignment for roomId=${roomId}`);
 
-		const space = await this.spaceRepository.findOne({ where: { id: roomId } });
+		const space = manager
+			? await manager
+					.createQueryBuilder(SpaceEntity, 'space')
+					.where('space.id = :roomId', { roomId })
+					.callListeners(false)
+					.getOne()
+			: await this.spaceRepository.findOne({ where: { id: roomId } });
 
 		if (!space) {
 			this.logger.error(`Space with id=${roomId} not found`);

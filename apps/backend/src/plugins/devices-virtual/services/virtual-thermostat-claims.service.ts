@@ -1,6 +1,6 @@
 import { AsyncResource } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
-import { DataSource, Not, QueryRunner } from 'typeorm';
+import { BeforeQueryEvent, DataSource, EntitySubscriberInterface, Not, QueryRunner } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -10,6 +10,14 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import {
+	DiagnosticTreeObservation,
+	captureDiagnosticTree,
+	closeDiagnosticTree,
+	creationHasDataMethod,
+	creationMethodCurrent,
+	diagnosticTreeCurrent,
+} from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import {
 	PropertyCommandAdmissionRegistryService,
@@ -18,7 +26,10 @@ import {
 import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import { qualifiedRemoteDewPointBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
+import {
+	qualifiedRemoteDewPointBlockers,
+	remoteDewPointInstallationBlockers,
+} from '../../devices-shelly-ng/services/remote-dew-point-qualification';
 import {
 	SHELLY_GUARDED_PROFILE,
 	SHELLY_GUARDED_PROFILE_VERSION,
@@ -32,6 +43,38 @@ import {
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+
+const nativeObjectEvidence: Readonly<{
+	getOwnPropertyDescriptor: (
+		receiver: object,
+		key: PropertyKey,
+	) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+}> = Object;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
+
+/** Private builtin runtime observation; SQL shape alone never authenticates an owned effect. */
+export interface ThermostatRuntimeBookkeeping {
+	readonly version: 1;
+	readonly inspect: (
+		runner: QueryRunner,
+		query: string,
+		parameters: readonly unknown[],
+	) => Readonly<{
+		snapshot: PropertyCommandAdmissionSnapshot;
+		invocation: object;
+	}> | null;
+}
+interface RuntimeBookkeepingRegistration {
+	readonly admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean;
+	readonly capability: ThermostatRuntimeBookkeeping | undefined;
+	readonly inspect: OriginalFunction<ThermostatRuntimeBookkeeping, ThermostatRuntimeBookkeeping['inspect']> | undefined;
+	readonly consumed: WeakSet<object>;
+}
 
 /** Never accepted in a public request. The registry validates object identity, not a supplied JSON shape. */
 export interface ThermostatCommandAuthority {
@@ -48,15 +91,78 @@ export interface ThermostatReleaseProof {
 	readonly evidenceId: string;
 }
 
+/** Finite original installed evidence observation, never dispatch/install authority. */
+export class DiagnosticQualifications {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export interface ThermostatQualificationDiagnostic {
+	readonly providerProfile: string;
+	readonly protectionFingerprint: string | null;
+	readonly remoteLineageFingerprint: string | null;
+	readonly localSurfaceFingerprint: string | null;
+}
+interface DiagnosticQualificationRecord {
+	readonly epoch: number;
+	readonly entries: readonly Readonly<{
+		claim: VirtualThermostatActuatorClaimEntity;
+		evidence: ThermostatInstalledQualification | undefined;
+		deadline: number | undefined;
+		machineCurrent: boolean;
+		machine: Readonly<{ call: (receiver: ThermostatInstalledQualification) => boolean }> | undefined;
+		tree: DiagnosticTreeObservation;
+	}>[];
+	readonly reservations: readonly VirtualThermostatActuatorClaimEntity[];
+}
+
+/** Authentic native reconciliation evidence; never public readiness or dispatch authority. */
+export class PreparedExistingRecovery {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+interface ClaimsRetryInputs {
+	readonly enabled: boolean;
+	readonly refresh: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => Promise<void> }>;
+	readonly schedule: typeof setTimeout;
+	readonly clear: typeof clearTimeout;
+	readonly run: Readonly<{
+		call: (receiver: AsyncResource, callback: () => ReturnType<typeof setTimeout>) => ReturnType<typeof setTimeout>;
+	}>;
+	readonly current: () => boolean;
+}
+interface ClaimsNativeProof {
+	active: boolean;
+	installed: boolean;
+	rows: readonly VirtualThermostatActuatorClaimEntity[];
+	tree?: DiagnosticTreeObservation;
+	readonly observer: EntitySubscriberInterface;
+	readonly installedReservations: Map<string, VirtualThermostatActuatorClaimEntity>;
+	readonly installedByProperty: Map<string, VirtualThermostatActuatorClaimEntity>;
+	readonly engineCurrent: () => boolean;
+	readonly reservations: Map<string, VirtualThermostatActuatorClaimEntity>;
+	readonly byProperty: Map<string, VirtualThermostatActuatorClaimEntity>;
+}
+
 /** Durable reservations are independent of intent, device enabled state and expiry of command windows. */
 @Injectable()
 export class VirtualThermostatClaimsService implements OnApplicationBootstrap, OnModuleDestroy {
+	private readonly diagnosticQualifications = new WeakMap<DiagnosticQualifications, DiagnosticQualificationRecord>();
 	private readonly authorities = new WeakSet<object>();
 	private readonly authorityEpochs = new WeakMap<object, number>();
+	private readonly authorityMembership = new WeakMap<object, ClaimsNativeProof>();
+	private readonly preparations = new WeakMap<PreparedExistingRecovery, ClaimsRetryInputs>();
+	private readonly nativeProofs = new Set<ClaimsNativeProof>();
+	private membership?: ClaimsNativeProof;
+	private reloadAttempt?: object;
+	private recoveryRetryInputs?: ClaimsRetryInputs;
+	private retryClear?: typeof clearTimeout;
 	private readonly proofs = new WeakMap<
 		object,
 		{
 			authority: ThermostatCommandAuthority;
+			generation: ClaimsNativeProof;
 			qualification: ThermostatInstalledQualification;
 			isCurrent: () => boolean;
 			controllerRevision: number;
@@ -86,6 +192,11 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		void this.refresh().catch(() => undefined);
 	};
 	private runtimeAdmission?: (claim: VirtualThermostatActuatorClaimEntity) => boolean;
+	private runtimeRegistration?: RuntimeBookkeepingRegistration;
+	private readonly capturedMembership = new WeakMap<
+		PropertyCommandAdmissionSnapshot,
+		Readonly<{ epoch: number; generation: ClaimsNativeProof | undefined; ready: boolean }>
+	>();
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -125,29 +236,336 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		])
 			this.events.off(event, this.onStructure);
 		this.invalidate();
+		const index = this.dataSource.subscribers.indexOf(this.membershipObserver);
+		if (index >= 0) this.dataSource.subscribers.splice(index, 1);
 	}
-	invalidate(): void {
+	private invalidateAuthority(): void {
 		this.ready = false;
 		this.epoch++;
 	}
-	/** Keep command admission closed from ownership/installation operation entry through reloaded commit or rollback. */
+	invalidate(): void {
+		originalClaimsEngine.authority.call(this);
+		for (const proof of [...this.nativeProofs]) originalClaimsEngine.retire.call(this, proof);
+	}
+	/** Keep command admission closed from ownership/installation entry through original response settlement. */
 	holdRecoveryFence(): () => void {
 		this.recoveryFences++;
-		this.invalidate();
+		originalClaimsEngine.authority.call(this);
 		let released = false;
 		return () => {
 			if (released) return;
 			released = true;
 			this.recoveryFences--;
-			this.invalidate();
+			originalClaimsEngine.authority.call(this);
 		};
+	}
+	private captureRetryInputs(): ClaimsRetryInputs {
+		const enabled = getEnvValue<string>(this.configService, 'FB_CLI', null) !== 'on';
+
+		const originalMemberView1: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'refresh',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['refresh']>;
+		}> = Reflect;
+		let originalMemberView2: OriginalFunctions<VirtualThermostatClaimsService['retryContext']>;
+		const refresh = originalMemberView1.get(this, 'refresh'),
+			run = ((originalMemberView2 = this.retryContext), originalMemberView2.runInAsyncScope);
+
+		let originalMemberView3: OriginalFunctions<typeof config>;
+		const config = this.configService,
+			get = ((originalMemberView3 = config), originalMemberView3.get);
+		return Object.freeze({
+			enabled,
+			refresh,
+			schedule: setTimeout,
+			clear: clearTimeout,
+			run,
+			current: () => {
+				return (
+					!this.destroyed &&
+					this.configService === config &&
+					creationMethodCurrent(config, 'get', get) &&
+					creationMethodCurrent(this, 'refresh', refresh) &&
+					creationMethodCurrent(this.retryContext, 'runInAsyncScope', run)
+				);
+			},
+		});
+	}
+	/** The caller's hold is still active; all SQL/provider inputs settle before terminal B5/F5. */
+	async prepareExistingRecovery(): Promise<PreparedExistingRecovery> {
+		const inputs = this.captureRetryInputs();
+		this.recoveryRetryInputs = inputs;
+		try {
+			await inputs.refresh.call(this);
+		} catch {
+			/* Preserve the original isolated refresh policy. */
+		}
+		const token = Object.freeze(new PreparedExistingRecovery());
+		this.preparations.set(token, inputs);
+		return token;
+	}
+	/** No SQL/provider callback. Finite token closure does not close the service's current native proof. */
+	finishExistingRecovery(token: PreparedExistingRecovery): void {
+		const inputs = this.preparations.get(token);
+		if (!inputs) return;
+		this.preparations.delete(token);
+		try {
+			const current = inputs.current() && originalClaimsEngine.current.call(this, this.membership);
+			this.ready = current && this.recoveryFences === 0;
+			if (!current) originalClaimsEngine.retry.call(this, inputs);
+		} catch {
+			this.ready = false; /* Cleanup cannot replace an original native/response error. */
+		}
+	}
+	private retireNativeProof(proof: ClaimsNativeProof): void {
+		proof.active = false;
+		this.nativeProofs.delete(proof);
+		if (proof.tree) closeDiagnosticTree(proof.tree);
+		if (this.membership === proof) {
+			this.membership = undefined;
+			this.ready = false;
+		}
+	}
+	private nativeProofCurrent(proof: ClaimsNativeProof | undefined): proof is ClaimsNativeProof {
+		const current =
+			!!proof &&
+			proof === this.membership &&
+			proof.active &&
+			proof.installed &&
+			!this.destroyed &&
+			this.nativeProofs.has(proof) &&
+			proof.engineCurrent() &&
+			this.dataSource.subscribers.includes(proof.observer) &&
+			!!proof.tree &&
+			diagnosticTreeCurrent(proof.tree) &&
+			this.reservations === proof.installedReservations &&
+			this.byProperty === proof.installedByProperty &&
+			this.reservations.size === proof.reservations.size &&
+			this.byProperty.size === proof.byProperty.size &&
+			[...proof.reservations].every(([key, row]) => this.reservations.get(key) === row) &&
+			[...proof.byProperty].every(([key, row]) => this.byProperty.get(key) === row);
+		if (!current && proof === this.membership && proof) originalClaimsEngine.retire.call(this, proof);
+		return current;
+	}
+	private readonly membershipObserver: EntitySubscriberInterface = {
+		beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
+			if (this.destroyed) return;
+			const text = event.query.trim();
+			if (
+				/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|(?:SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT) typeorm_[0-9]+$)/i.test(
+					text,
+				)
+			)
+				return;
+			if (
+				event.query ===
+					'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0' &&
+				!event.parameters?.length
+			)
+				return;
+			// Supported repository counter schema ONLY: real writes, neutral to claims membership, not graph/clock authority.
+			if (
+				!event.parameters?.length &&
+				(event.query === 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)' ||
+					event.query === 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1')
+			)
+				return;
+			// The lock has no supported write-through to claims. This grants no value/socket authority.
+			if (bookkeepingLockEffect(event.query, event.parameters ?? [])) return;
+			const registration = this.runtimeRegistration;
+			if (
+				registration?.capability &&
+				registration.inspect &&
+				this.runtimeAdmission === registration.admission &&
+				creationMethodCurrent(registration.capability, 'version', 1) &&
+				creationMethodCurrent(registration.capability, 'inspect', registration.inspect)
+			) {
+				const observation = registration.inspect.call(
+					registration.capability,
+					event.queryRunner,
+					event.query,
+					event.parameters ?? [],
+				);
+				const captured = observation && this.capturedMembership.get(observation.snapshot);
+				if (
+					observation &&
+					captured?.ready &&
+					captured.epoch === this.epoch &&
+					captured.generation === this.membership &&
+					!registration.consumed.has(observation.invocation) &&
+					originalClaimsEngine.current.call(this, captured.generation)
+				) {
+					registration.consumed.add(observation.invocation);
+					return;
+				}
+			}
+			// Only the ORIGINAL private guarded statement retains this exact generation until post-UPDATE assertCurrent.
+			const write = this.releaseWrites.get(event.queryRunner);
+			if (
+				write &&
+				write.query === event.query &&
+				write.parameters.length === (event.parameters?.length ?? 0) &&
+				write.parameters.every((value, index) => Object.is(value, event.parameters?.[index]))
+			)
+				return;
+			originalClaimsEngine.invalidate.call(this);
+			const inputs = this.recoveryRetryInputs;
+			if (inputs) {
+				try {
+					originalClaimsEngine.retry.call(this, inputs);
+				} catch {
+					this.ready = false;
+				}
+			}
+		},
+	};
+
+	private observeNativeReload(): ClaimsNativeProof {
+		const source = this.dataSource,
+			manager = source.manager,
+			driver = source.driver,
+			entities = source.entityMetadatas,
+			subscribers = source.subscribers;
+		const metadata = this.dataSource.getMetadata(VirtualThermostatActuatorClaimEntity),
+			table = metadata.tableName,
+			target = metadata.target;
+		const connection = nativeObjectEvidence.getOwnPropertyDescriptor(driver, 'databaseConnection');
+		const originalColumns = metadata.columns;
+		const columns = originalColumns.map((column) => {
+			let originalMemberView4: OriginalFunctions<typeof column>;
+			let originalMemberView5: OriginalFunctions<typeof column>;
+			return Object.freeze({
+				column,
+				name: column.databaseName,
+				read: ((originalMemberView4 = column), originalMemberView4.getEntityValue),
+				write: ((originalMemberView5 = column), originalMemberView5.setEntityValue),
+				type: column.type,
+				property: column.propertyName,
+				nullable: column.isNullable,
+			});
+		});
+
+		const originalMemberView6: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'refresh',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['refresh']>;
+		}> = Reflect;
+		const originalMemberView7: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'requiresGuardedDispatch',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['requiresGuardedDispatch']>;
+		}> = Reflect;
+		const originalMemberView8: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'assertAllowed',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['assertAllowed']>;
+		}> = Reflect;
+		const originalMemberView9: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'qualification',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['qualification']>;
+		}> = Reflect;
+		const originalMemberView10: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'prepareExistingRecovery',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['prepareExistingRecovery']>;
+		}> = Reflect;
+		const originalMemberView11: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'finishExistingRecovery',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['finishExistingRecovery']>;
+		}> = Reflect;
+		let originalMemberView12: OriginalFunctions<typeof manager>;
+		let originalMemberView13: OriginalFunctions<typeof manager>;
+		let originalMemberView14: OriginalFunctions<typeof driver>;
+		const pins = [
+			{ receiver: this, key: 'refresh', method: originalMemberView6.get(this, 'refresh') },
+			{
+				receiver: this,
+				key: 'requiresGuardedDispatch',
+				method: originalMemberView7.get(this, 'requiresGuardedDispatch'),
+			},
+			{ receiver: this, key: 'assertAllowed', method: originalMemberView8.get(this, 'assertAllowed') },
+			{ receiver: this, key: 'qualification', method: originalMemberView9.get(this, 'qualification') },
+			{
+				receiver: this,
+				key: 'prepareExistingRecovery',
+				method: originalMemberView10.get(this, 'prepareExistingRecovery'),
+			},
+			{
+				receiver: this,
+				key: 'finishExistingRecovery',
+				method: originalMemberView11.get(this, 'finishExistingRecovery'),
+			},
+			{ receiver: manager, key: 'find', method: ((originalMemberView12 = manager), originalMemberView12.find) },
+			{ receiver: manager, key: 'query', method: ((originalMemberView13 = manager), originalMemberView13.query) },
+			{
+				receiver: driver,
+				key: 'prepareHydratedValue',
+				method: ((originalMemberView14 = driver), originalMemberView14.prepareHydratedValue),
+			},
+		];
+		const observer = this.membershipObserver;
+		if (!this.dataSource.subscribers.includes(observer))
+			throw new DevicesValidationException('Original native membership observer unavailable.');
+		const proof: ClaimsNativeProof = {
+			active: true,
+			installed: false,
+			rows: [],
+			observer,
+			installedReservations: this.reservations,
+			installedByProperty: this.byProperty,
+			reservations: new Map(),
+			byProperty: new Map(),
+			engineCurrent: () =>
+				creationMethodCurrent(this, 'dataSource', source) &&
+				creationMethodCurrent(source, 'isInitialized', true) &&
+				creationMethodCurrent(source, 'manager', manager) &&
+				creationMethodCurrent(source, 'driver', driver) &&
+				creationMethodCurrent(source, 'entityMetadatas', entities) &&
+				creationMethodCurrent(source, 'subscribers', subscribers) &&
+				!!connection &&
+				connection.get === undefined &&
+				connection.set === undefined &&
+				nativeObjectEvidence.getOwnPropertyDescriptor(driver, 'databaseConnection')?.value === connection.value &&
+				entities.includes(metadata) &&
+				creationMethodCurrent(metadata, 'tableName', table) &&
+				creationMethodCurrent(metadata, 'target', target) &&
+				creationMethodCurrent(metadata, 'columns', originalColumns) &&
+				originalColumns.length === columns.length &&
+				pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method)) &&
+				columns.every(
+					(item, index) =>
+						originalColumns[index] === item.column &&
+						creationMethodCurrent(item.column, 'databaseName', item.name) &&
+						creationMethodCurrent(item.column, 'type', item.type) &&
+						creationMethodCurrent(item.column, 'propertyName', item.property) &&
+						creationMethodCurrent(item.column, 'isNullable', item.nullable) &&
+						creationMethodCurrent(item.column, 'getEntityValue', item.read) &&
+						creationMethodCurrent(item.column, 'setEntityValue', item.write),
+				),
+		};
+		this.nativeProofs.add(proof);
+		return proof;
 	}
 	async refresh(): Promise<void> {
 		// Acquire before coalescing: a writer's post-commit refresh must never join a reader queued behind it.
 		await this.structureLock.runShared(async () => {
 			if (this.destroyed) return;
 			if (this.refreshInFlight !== undefined) return this.refreshInFlight;
+			if (!this.dataSource.subscribers.includes(this.membershipObserver)) {
+				this.invalidate();
+				this.dataSource.subscribers.push(this.membershipObserver);
+			}
 			const epoch = this.epoch;
+			this.recoveryRetryInputs = this.captureRetryInputs();
 			const refresh = this.reload(epoch);
 			this.refreshInFlight = refresh;
 			try {
@@ -158,61 +576,105 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		});
 	}
 	private async reload(epoch: number): Promise<void> {
+		const attempt = Object.freeze({}),
+			applicable = this.membership;
+		this.reloadAttempt = attempt;
+		const proof = this.observeNativeReload();
 		try {
 			const rows = await this.dataSource.manager.find(VirtualThermostatActuatorClaimEntity, {
 				where: { state: Not('released') },
 			});
-			if (this.destroyed) return;
-			if (epoch !== this.epoch) {
-				this.scheduleRetry();
+			if (
+				this.destroyed ||
+				epoch !== this.epoch ||
+				this.reloadAttempt !== attempt ||
+				!proof.active ||
+				!proof.engineCurrent()
+			) {
+				originalClaimsEngine.retire.call(this, proof);
+				if (applicable && this.membership === applicable && this.reloadAttempt === attempt)
+					originalClaimsEngine.retire.call(this, applicable);
+				if (!this.destroyed) this.scheduleRetry();
 				return;
 			}
+			proof.rows = Object.freeze([...rows]);
+			proof.tree = captureDiagnosticTree(proof.rows);
+			if (!diagnosticTreeCurrent(proof.tree))
+				throw new DevicesValidationException('Original native claim rows unavailable.');
+			for (const row of rows) {
+				proof.reservations.set(row.physicalIdentity, row);
+				proof.byProperty.set(row.sourcePropertyIdentity, row);
+			}
+			const previous = this.membership;
+			if (previous) originalClaimsEngine.retire.call(this, previous);
 			this.reservations.clear();
 			this.byProperty.clear();
-			for (const row of rows) {
-				this.reservations.set(row.physicalIdentity, row);
-				this.byProperty.set(row.sourcePropertyIdentity, row);
-			}
-			this.ready = this.recoveryFences === 0;
-			// Retry completion tracks fresh membership, independently of the recovery admission fence.
+			for (const [key, row] of proof.reservations) this.reservations.set(key, row);
+			for (const [key, row] of proof.byProperty) this.byProperty.set(key, row);
+			proof.installed = true;
+			this.membership = proof;
+			this.ready = this.recoveryFences === 0 && originalClaimsEngine.current.call(this, proof);
 			this.cancelRetry();
 			this.retryDelay = 1000;
 		} catch (error) {
-			if (!this.destroyed && epoch === this.epoch) {
-				this.invalidate();
-				this.scheduleRetry();
-			} else if (!this.destroyed) {
-				this.scheduleRetry();
-			}
+			originalClaimsEngine.retire.call(this, proof);
+			if (applicable && this.membership === applicable && this.reloadAttempt === attempt)
+				originalClaimsEngine.retire.call(this, applicable);
+			if (!this.destroyed && epoch === this.epoch && this.reloadAttempt === attempt) this.invalidate();
+			if (!this.destroyed) this.scheduleRetry();
 			throw error;
 		}
 	}
 	private scheduleRetry(): void {
-		if (this.destroyed || this.retryTimer || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
+		if (!this.destroyed && !this.retryTimer) this.schedulePreparedRetry(this.captureRetryInputs());
+	}
+	private schedulePreparedRetry(inputs: ClaimsRetryInputs): void {
+		if (this.destroyed || this.retryTimer || !inputs.enabled || !inputs.current()) return;
 		const delay = this.retryDelay;
 		this.retryDelay = Math.min(delay * 2, 30000);
-		this.retryTimer = this.retryContext.runInAsyncScope(() =>
-			setTimeout(() => {
+
+		const timer = inputs.run.call(this.retryContext, () =>
+			inputs.schedule(() => {
+				if (this.retryTimer !== timer) return;
 				this.retryTimer = undefined;
-				if (!this.destroyed) void this.refresh().catch(() => undefined);
+				if (inputs.current()) void inputs.refresh.call(this).catch(() => undefined);
 			}, delay),
 		);
-		this.retryTimer.unref();
+		this.retryTimer = timer;
+		this.retryClear = inputs.clear;
+		timer.unref();
 	}
 	private cancelRetry(): void {
-		if (this.retryTimer) clearTimeout(this.retryTimer);
+		const timer = this.retryTimer,
+			clear = this.retryClear;
 		this.retryTimer = undefined;
+		this.retryClear = undefined;
+		if (timer && clear) clear(timer);
 	}
 	/** Captures absence and ownership; unrelated leaves do not depend on catalog reconciliation. */
 	capture(): PropertyCommandAdmissionSnapshot {
 		const epoch = this.epoch;
-		const ready = this.ready;
+		const generation = this.membership;
+		const ready = this.ready && originalClaimsEngine.current.call(this, generation);
 		const claimedProperties = new Set(this.byProperty.keys());
+
+		const originalMemberView15: Readonly<{
+			get: (
+				receiver: VirtualThermostatClaimsService,
+				key: 'requiresGuardedDispatch',
+			) => OriginalFunction<VirtualThermostatClaimsService, VirtualThermostatClaimsService['requiresGuardedDispatch']>;
+		}> = Reflect;
+		const requires = originalMemberView15.get(this, 'requiresGuardedDispatch');
 		const isCurrent = (update?: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>) =>
-			!!update && !claimedProperties.has(update.property.id) && !this.requiresGuardedDispatch(update)
+			creationMethodCurrent(this, 'requiresGuardedDispatch', requires) &&
+			(!!update && !claimedProperties.has(update.property.id) && !requires.call(this, update)
 				? true
-				: ready && this.ready && epoch === this.epoch;
-		return {
+				: ready &&
+					this.ready &&
+					epoch === this.epoch &&
+					generation === this.membership &&
+					originalClaimsEngine.current.call(this, generation));
+		const snapshot: PropertyCommandAdmissionSnapshot = {
 			isCurrent,
 			isEffectCurrent: isCurrent,
 			assertEffectAllowed: async (effect): Promise<void> => {
@@ -227,6 +689,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				await this.assertAllowed(update);
 			},
 		};
+		this.capturedMembership.set(snapshot, Object.freeze({ epoch, generation, ready }));
+		return snapshot;
 	}
 	/** Claimable hardware and reserved property aliases require transport-time admission guards. */
 	requiresGuardedDispatch(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): boolean {
@@ -238,7 +702,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	/** Rejects ordinary commands to reserved leaves and closes claimable outputs during reconciliation. */
 	assertAllowed(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): Promise<void> {
 		if (!this.requiresGuardedDispatch(update)) return Promise.resolve();
-		if (!this.ready) throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
+		if (!this.ready || !originalClaimsEngine.current.call(this, this.membership))
+			throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
 		const identity = thermostatActuatorIdentity(update.property, update.channel, update.device);
 		const claim = (identity && this.reservations.get(identity)) || this.byProperty.get(update.property.id);
 		if (claim)
@@ -395,20 +860,161 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			return null;
 		return evidence;
 	}
+	captureDiagnosticQualifications(claims: readonly VirtualThermostatActuatorClaimEntity[]): DiagnosticQualifications {
+		if (this.destroyed || !diagnosticClaimMethodsCurrent(this))
+			throw new Error('Original qualification reader unavailable');
+		const epoch = this.epoch;
+		const ids = new Set(claims.map((claim) => claim.id));
+		if (ids.size !== claims.length) throw new Error('Duplicate diagnostic claim');
+		const entries: DiagnosticQualificationRecord['entries'][number][] = [];
+		try {
+			for (const claim of claims) {
+				const evidence = this.qualifications.get(claim.physicalIdentity);
+				const tree = captureDiagnosticTree({ claim, evidence });
+				const machine: Readonly<{ call: (receiver: ThermostatInstalledQualification) => boolean }> | undefined =
+					evidence?.machineLeaseIsCurrent;
+				const machineCurrent = !evidence || machine === undefined || machine.call(evidence);
+				entries.push(
+					Object.freeze({
+						claim,
+						evidence,
+						tree,
+						machineCurrent,
+						machine,
+						deadline: evidence ? this.remoteDeadlines.get(evidence) : undefined,
+					}),
+				);
+			}
+			const controllers = new Set(claims.map((claim) => claim.controllerId));
+			const reservations = Object.freeze(
+				[...this.reservations.values()].filter((row) => controllers.has(row.controllerId)),
+			);
+			const token = Object.freeze(new DiagnosticQualifications());
+			this.diagnosticQualifications.set(token, Object.freeze({ epoch, entries: Object.freeze(entries), reservations }));
+			if (!diagnosticClaimMethods.current.call(this, token)) throw new Error('Qualification changed during capture');
+			return token;
+		} catch (error) {
+			for (const entry of entries) closeDiagnosticTree(entry.tree);
+			throw error;
+		}
+	}
+	diagnosticQualificationsCurrent(token: DiagnosticQualifications): boolean {
+		const record = this.diagnosticQualifications.get(token);
+		if (!record || this.destroyed || record.epoch !== this.epoch || !diagnosticClaimMethodsCurrent(this)) return false;
+		for (const entry of record.entries) {
+			if (
+				this.qualifications.get(entry.claim.physicalIdentity) !== entry.evidence ||
+				!diagnosticTreeCurrent(entry.tree) ||
+				(entry.evidence && this.remoteDeadlines.get(entry.evidence) !== entry.deadline)
+			)
+				return false;
+		}
+		const controllers = new Set(record.entries.map((entry) => entry.claim.controllerId));
+		const reservations = [...this.reservations.values()].filter((row) => controllers.has(row.controllerId));
+		return (
+			reservations.length === record.reservations.length &&
+			reservations.every((row) => record.reservations.includes(row))
+		);
+	}
+	evaluateDiagnosticQualification(
+		token: DiagnosticQualifications,
+		claimId: string,
+		opposed: boolean,
+		clock: Readonly<{ wallMs: number; monoMs: number }>,
+	): ThermostatQualificationDiagnostic | null {
+		if (
+			!Number.isFinite(clock.wallMs) ||
+			!Number.isFinite(clock.monoMs) ||
+			!diagnosticClaimMethods.current.call(this, token)
+		)
+			throw new Error('Original diagnostic qualification lost');
+		const record = this.diagnosticQualifications.get(token);
+		if (!record) throw new Error('Original diagnostic qualification lost');
+		const entry = record.entries.find((entry) => entry.claim.id === claimId);
+		if (!entry) throw new Error('Claim not observed');
+		const { claim, evidence } = entry;
+		if (!evidence || !entry.machineCurrent) return null;
+		const machine = entry.machine;
+		if (machine && !machine.call(evidence)) throw new Error('Original installed machine lease lost');
+		opposed ||= thermostatHasOpposedBranches(
+			record.reservations.filter((row) => row.controllerId === claim.controllerId),
+		);
+		const remote = evidence.profile.remoteDewPoint;
+		if (
+			(claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== (evidence.providerProfile?.id ?? SHELLY_GUARDED_PROFILE) ||
+			(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !==
+				(evidence.providerProfile?.version ?? SHELLY_GUARDED_PROFILE_VERSION) ||
+			(evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE &&
+				(claim.role !== 'cooling' ||
+					(entry.deadline ?? -Infinity) <= clock.monoMs ||
+					!remote ||
+					remoteDewPointInstallationBlockers(
+						remote.artifact,
+						remote.authenticatedStatus,
+						remote.installation,
+						clock.wallMs,
+					).length > 0)) ||
+			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
+			(opposed &&
+				(!evidence.opposedOutputsInterlocked ||
+					(evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE &&
+						!remote?.installation.opposedOutputInterlockAuditId))) ||
+			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min ||
+			claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max
+		)
+			return null;
+		if (!diagnosticClaimMethods.current.call(this, token))
+			throw new Error('Qualification changed during original callbacks');
+		return Object.freeze({
+			providerProfile: evidence.providerProfile?.id ?? SHELLY_GUARDED_PROFILE,
+			protectionFingerprint: remote?.artifact.binding.protectionFingerprint ?? null,
+			remoteLineageFingerprint: remote?.artifact.binding.remoteLineageFingerprint ?? null,
+			localSurfaceFingerprint: remote?.artifact.binding.localSurface.calibrationFingerprint ?? null,
+		});
+	}
+	closeDiagnosticQualifications(token: DiagnosticQualifications): void {
+		const record = this.diagnosticQualifications.get(token);
+		if (!record) return;
+		this.diagnosticQualifications.delete(token);
+		for (const entry of record.entries) closeDiagnosticTree(entry.tree);
+	}
+
 	/** VD2-8 supplies durable startup/interlock admission. Until then energizing remains closed. */
-	registerRuntimeAdmission(admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean): () => void {
+	registerRuntimeAdmission(
+		admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean,
+		capability?: ThermostatRuntimeBookkeeping,
+	): () => void {
 		if (this.runtimeAdmission) throw new Error('Thermostat runtime admission already registered');
+		if (
+			capability &&
+			(!creationMethodCurrent(capability, 'version', 1) || !creationHasDataMethod(capability, 'inspect'))
+		)
+			throw new DevicesValidationException('Original runtime observation required.');
+		const record: RuntimeBookkeepingRegistration = Object.freeze({
+			admission,
+			capability,
+			inspect: capability?.inspect,
+			consumed: new WeakSet<object>(),
+		});
+		this.runtimeRegistration = record;
 		this.runtimeAdmission = admission;
 		this.epoch++;
+		let disposed = false;
 		return () => {
+			if (disposed) return;
+			disposed = true;
+			if (this.runtimeRegistration !== record) return;
+			this.runtimeRegistration = undefined;
 			this.runtimeAdmission = undefined;
 			this.epoch++;
 		};
 	}
 	mintAuthority(claimId: string, action: 'on' | 'off'): ThermostatCommandAuthority {
+		const generation = this.membership;
 		const claim = [...this.reservations.values()].find((row) => row.id === claimId);
 		if (
 			!this.ready ||
+			!originalClaimsEngine.current.call(this, this.membership) ||
 			!claim ||
 			(action === 'on' &&
 				(claim.state !== 'reserved' || !this.qualification(claim, false) || !this.runtimeAdmission?.(claim)))
@@ -423,12 +1029,17 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		});
 		this.authorities.add(authority);
 		this.authorityEpochs.set(authority, this.epoch);
+		if (!generation || generation !== this.membership || !originalClaimsEngine.current.call(this, generation))
+			throw new DevicesValidationException('Native claim membership unavailable.');
+		this.authorityMembership.set(authority, generation);
 		return authority;
 	}
 	isAuthorized(authority: ThermostatCommandAuthority, update: IDevicePropertyData): boolean {
 		const claim = this.reservations.get(authority?.physicalIdentity);
 		return (
 			this.ready &&
+			originalClaimsEngine.current.call(this, this.membership) &&
+			this.authorityMembership.get(authority) === this.membership &&
 			this.authorities.has(authority) &&
 			this.authorityEpochs.get(authority) === this.epoch &&
 			!!claim &&
@@ -444,7 +1055,10 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				(claim.state === 'reserved' &&
 					update.device.enabled &&
 					!!this.qualification(claim, false) &&
-					!!this.runtimeAdmission?.(claim)))
+					!!this.runtimeAdmission?.(claim))) &&
+			this.authorityEpochs.get(authority) === this.epoch &&
+			this.authorityMembership.get(authority) === this.membership &&
+			originalClaimsEngine.current.call(this, this.membership)
 		);
 	}
 
@@ -460,10 +1074,13 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			controllerRevision: number;
 		},
 	): ThermostatReleaseProof {
+		const generation = this.authorityMembership.get(authority);
 		const claim = this.reservations.get(authority?.physicalIdentity);
 		if (
 			!this.ready ||
+			!originalClaimsEngine.current.call(this, this.membership) ||
 			!this.authorities.has(authority) ||
+			this.authorityMembership.get(authority) !== this.membership ||
 			this.authorityEpochs.get(authority) !== this.epoch ||
 			authority.action !== 'off' ||
 			!claim ||
@@ -481,8 +1098,16 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		)
 			throw new DevicesValidationException('Qualified OFF and pending ON drainage proof is required.');
 		const proof = Object.freeze({ claimId: claim.id, revision: claim.revision, evidenceId: evidence.evidenceId });
+		if (
+			!generation ||
+			generation !== this.membership ||
+			!originalClaimsEngine.current.call(this, generation) ||
+			this.authorityEpochs.get(authority) !== this.epoch
+		)
+			throw new DevicesValidationException('Native release membership unavailable.');
 		this.proofs.set(proof, {
 			authority,
+			generation,
 			qualification: evidence.qualification,
 			isCurrent: evidence.isCurrent,
 			controllerRevision: evidence.controllerRevision,
@@ -511,6 +1136,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		const assertCurrent = (claim: VirtualThermostatActuatorClaimEntity): void => {
 			if (
 				!this.ready ||
+				!originalClaimsEngine.current.call(this, this.membership) ||
+				binding.generation !== this.membership ||
+				this.authorityMembership.get(binding.authority) !== binding.generation ||
 				this.authorityEpochs.get(binding.authority) !== this.epoch ||
 				claim.revision !== proof.revision ||
 				claim.state !== 'releasing' ||
@@ -520,41 +1148,126 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				claim.sourceDeviceId !== binding.sourceDeviceId ||
 				claim.contractFingerprint !== binding.contractFingerprint ||
 				this.qualification(claim, false) !== binding.qualification ||
-				!binding.isCurrent()
+				!binding.isCurrent() ||
+				binding.generation !== this.membership ||
+				!originalClaimsEngine.current.call(this, binding.generation) ||
+				this.authorityEpochs.get(binding.authority) !== this.epoch
 			)
 				throw new DevicesValidationException('Qualified release proof is no longer current.');
 		};
 		await this.structureLock.runExclusive(async () => {
-			await this.graph.withStructuralWrite(async (manager) => {
-				const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: proof.claimId });
-				const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
-				if (config?.revision !== binding.controllerRevision)
-					throw new DevicesValidationException('Qualified release configuration scope changed.');
-				assertCurrent(claim);
-				const update = manager
-					.createQueryBuilder()
-					.update(VirtualThermostatActuatorClaimEntity)
-					.set({
-						state: claim.reason === 'device_disabled' ? 'suspended' : 'released',
-						revision: claim.revision + 1,
-						releasedAt: new Date(),
-						releaseEvidence: { evidenceId: proof.evidenceId, outputConfirmedOff: true, pendingOnDrained: true },
-					})
-					.where({ id: claim.id, revision: proof.revision, state: 'releasing' });
-				const [query, parameters] = update.getQueryAndParameters();
-				const runner = manager.queryRunner;
-				if (!runner) throw new DevicesValidationException('Release transaction is required.');
-				this.releaseWrites.set(runner, { query, parameters });
-				try {
-					const result = await update.execute();
+			try {
+				await this.graph.withStructuralWrite(async (manager) => {
+					const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: proof.claimId });
+					const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
+					if (config?.revision !== binding.controllerRevision)
+						throw new DevicesValidationException('Qualified release configuration scope changed.');
 					assertCurrent(claim);
-					if (result.affected !== 1) throw new DevicesValidationException('Claim revision or release state changed.');
-				} finally {
-					this.releaseWrites.delete(runner);
+					const update = manager
+						.createQueryBuilder()
+						.update(VirtualThermostatActuatorClaimEntity)
+						.set({
+							state: claim.reason === 'device_disabled' ? 'suspended' : 'released',
+							revision: claim.revision + 1,
+							releasedAt: new Date(),
+							releaseEvidence: { evidenceId: proof.evidenceId, outputConfirmedOff: true, pendingOnDrained: true },
+						})
+						.where({ id: claim.id, revision: proof.revision, state: 'releasing' });
+					const [query, parameters] = update.getQueryAndParameters();
+					const runner = manager.queryRunner;
+					if (!runner) throw new DevicesValidationException('Release transaction is required.');
+					this.releaseWrites.set(runner, { query, parameters });
+					try {
+						const result = await update.execute();
+						assertCurrent(claim);
+						if (result.affected !== 1) throw new DevicesValidationException('Claim revision or release state changed.');
+					} finally {
+						this.releaseWrites.delete(runner);
+					}
+				});
+			} catch (error) {
+				this.invalidate();
+				try {
+					this.scheduleRetry();
+				} catch {
+					/* Original release error remains primary. */
 				}
-			});
+				throw error;
+			}
 			this.invalidate();
 			await this.refresh();
 		});
 	}
+}
+
+// Original closed synchronous bodies. These same function objects remain safe for post-B5 cleanup.
+const originalClaimsCurrentRead: Readonly<{
+	get: (
+		owner: object,
+		key: 'nativeProofCurrent',
+	) => Readonly<{ call: (receiver: VirtualThermostatClaimsService, proof: ClaimsNativeProof | undefined) => boolean }>;
+}> = Reflect;
+const originalClaimsRetireRead: Readonly<{
+	get: (
+		owner: object,
+		key: 'retireNativeProof',
+	) => Readonly<{ call: (receiver: VirtualThermostatClaimsService, proof: ClaimsNativeProof) => void }>;
+}> = Reflect;
+const originalClaimsRetryRead: Readonly<{
+	get: (
+		owner: object,
+		key: 'schedulePreparedRetry',
+	) => Readonly<{ call: (receiver: VirtualThermostatClaimsService, inputs: ClaimsRetryInputs) => void }>;
+}> = Reflect;
+const originalClaimsAuthorityRead: Readonly<{
+	get: (
+		owner: object,
+		key: 'invalidateAuthority',
+	) => Readonly<{ call: (receiver: VirtualThermostatClaimsService) => void }>;
+}> = Reflect;
+
+let originalMemberView16: OriginalFunctions<typeof VirtualThermostatClaimsService.prototype>;
+const originalClaimsEngine = Object.freeze({
+	current: originalClaimsCurrentRead.get(VirtualThermostatClaimsService.prototype, 'nativeProofCurrent'),
+	retire: originalClaimsRetireRead.get(VirtualThermostatClaimsService.prototype, 'retireNativeProof'),
+	retry: originalClaimsRetryRead.get(VirtualThermostatClaimsService.prototype, 'schedulePreparedRetry'),
+	authority: originalClaimsAuthorityRead.get(VirtualThermostatClaimsService.prototype, 'invalidateAuthority'),
+	invalidate: ((originalMemberView16 = VirtualThermostatClaimsService.prototype), originalMemberView16.invalidate),
+});
+
+const diagnosticClaimsPrototype: OriginalFunctions<{
+	captureDiagnosticQualifications: VirtualThermostatClaimsService['captureDiagnosticQualifications'];
+	diagnosticQualificationsCurrent: VirtualThermostatClaimsService['diagnosticQualificationsCurrent'];
+	evaluateDiagnosticQualification: VirtualThermostatClaimsService['evaluateDiagnosticQualification'];
+	closeDiagnosticQualifications: VirtualThermostatClaimsService['closeDiagnosticQualifications'];
+}> = VirtualThermostatClaimsService.prototype;
+const diagnosticClaimMethods = Object.freeze({
+	capture: diagnosticClaimsPrototype.captureDiagnosticQualifications,
+	current: diagnosticClaimsPrototype.diagnosticQualificationsCurrent,
+	evaluate: diagnosticClaimsPrototype.evaluateDiagnosticQualification,
+	close: diagnosticClaimsPrototype.closeDiagnosticQualifications,
+});
+function diagnosticClaimMethodsCurrent(receiver: VirtualThermostatClaimsService): boolean {
+	return (
+		creationMethodCurrent(receiver, 'captureDiagnosticQualifications', diagnosticClaimMethods.capture) &&
+		creationMethodCurrent(receiver, 'diagnosticQualificationsCurrent', diagnosticClaimMethods.current) &&
+		creationMethodCurrent(receiver, 'evaluateDiagnosticQualification', diagnosticClaimMethods.evaluate) &&
+		creationMethodCurrent(receiver, 'closeDiagnosticQualifications', diagnosticClaimMethods.close)
+	);
+}
+
+function bookkeepingLockEffect(query: string, parameters: readonly unknown[]): boolean {
+	const string = (index: number): boolean => typeof parameters[index] === 'string';
+	const integer = (index: number): boolean =>
+		typeof parameters[index] === 'number' && Number.isSafeInteger(parameters[index]);
+	return query ===
+		'INSERT INTO "devices_module_property_value_locks" ("propertyId", "ownerToken", "expiresAt") VALUES (?, ?, ?) ON CONFLICT("propertyId") DO NOTHING'
+		? parameters.length === 3 && string(0) && string(1) && integer(2)
+		: query ===
+			  'UPDATE "devices_module_property_value_locks" SET "ownerToken" = ?, "expiresAt" = ? WHERE "propertyId" = ? AND "ownerToken" = ?'
+			? parameters.length === 4 && string(0) && integer(1) && string(2) && string(3)
+			: query === 'DELETE FROM "devices_module_property_value_locks" WHERE "propertyId" = ? AND "ownerToken" = ?' &&
+				parameters.length === 2 &&
+				string(0) &&
+				string(1);
 }

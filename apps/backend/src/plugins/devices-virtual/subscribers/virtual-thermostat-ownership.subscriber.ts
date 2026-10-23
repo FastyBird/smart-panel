@@ -15,6 +15,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceCreationPublicationEngine } from '../../../modules/devices/services/device-creation-context';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
 import {
@@ -49,6 +50,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		);
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
+		DeviceCreationPublicationEngine.observeQuery(this.dataSource, event.queryRunner, event.query, event.parameters);
 		if (!this.installed || !this.isCatalogMutation(event.query)) return;
 		this.dirtyRunners.add(event.queryRunner);
 		if (this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)) return;

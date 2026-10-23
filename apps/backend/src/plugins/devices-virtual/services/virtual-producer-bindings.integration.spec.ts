@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test } from '@nestjs/testing';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
@@ -15,6 +17,7 @@ import {
 	ChannelCategory,
 	DataTypeType,
 	DeviceCategory,
+	EventType,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -22,12 +25,20 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import {
+	OwnedProducerOperation,
+	OwnedProducerPublisher,
+	OwnedReceiverFunction,
+	PropertyProducerLease,
+	PropertyProducerRegistryService,
+} from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscribers/channel-property-entity.subscriber';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import {
@@ -47,11 +58,14 @@ import {
 	VirtualLightGroupProfile,
 } from '../entities/virtual-producer.entity';
 
+import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
+import { VirtualDewPointRuntimeService } from './virtual-dew-point-runtime.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
+import { VirtualTransformRuntimeService } from './virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './virtual-value-source.service';
 
 jest.setTimeout(30_000);
@@ -517,7 +531,9 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		});
 		const resolver = new PropertyValueSourceRegistryService();
 		resolver.register(new VirtualValueSourceService());
-		const values = new PropertyValueService(null as never, resolver, null as never, producers);
+		const createValues = (registry: PropertyProducerRegistryService): PropertyValueService =>
+			new PropertyValueService(null as never, resolver, null as never, registry);
+		let values = createValues(producers);
 		const projection = Object.assign(new VirtualChannelPropertyEntity(), {
 			id: uuid(),
 			valueOrigin: VirtualValueOrigin.SOURCE,
@@ -525,12 +541,20 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		});
 		// A history backend is deliberately absent: qualified reads must not fall through to it.
 		expect((await values.readLatest(projection))?.producer.quality).toBe('unavailable');
+		producerState.onModuleDestroy();
 		producers.onModuleDestroy();
+		graph = new VirtualDependencyGraphService(database);
+		producers = new PropertyProducerRegistryService(new EventEmitter2());
+		producerState = new VirtualProducerStateService(database, producers, graph, new EventEmitter2());
+		producers.onModuleInit();
 		await producerState.onModuleInit();
+		await graph.onApplicationBootstrap();
+		values = createValues(producers);
 		expect((await values.readLatest(projection))?.producer).toMatchObject({ quality: 'unavailable', revision: 1 });
 		const property = await database
 			.getRepository(VirtualChannelPropertyEntity)
 			.findOneByOrFail({ id: output.propertyId });
+		await graph.withStructuralWrite((manager) => manager.delete(VirtualChannelPropertyEntity, property.id));
 		producerState.handlePropertyDeleted(property);
 		expect(producers.owns(output.propertyId)).toBe(false);
 	});
@@ -756,5 +780,685 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		} finally {
 			await migrated.destroy();
 		}
+	});
+
+	describe('owned unavailable batches and real producer staging', () => {
+		afterEach(() => {
+			producers.onModuleDestroy();
+			jest.restoreAllMocks();
+			jest.useRealTimers();
+		});
+		const property = async () => {
+			const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			return database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+				where: { id: output.propertyId },
+				relations: ['channel', 'channel.device'],
+			});
+		};
+		const admitted = (owner: OwnedProducerPublisher, rows: readonly VirtualChannelPropertyEntity[]) => {
+			const lifecycle = graph.captureOwnedPublicationLifecycle();
+			const batch = producers.beginObservedBatch(
+				owner,
+				rows.map((row) => row.id),
+				lifecycle.guard,
+			);
+			const operations: OwnedProducerOperation[] = rows.map((row) => ({
+				kind: 'unavailable',
+				propertyId: row.id,
+				property: row,
+				revision: 1,
+				reason: 'runtime_unavailable',
+				expected: producers.captureExpectedSlot(batch, row.id),
+			}));
+			const prepared = producers.prepareOwnedBatch(batch, { revision: 0, configurationRevisions: [], operations });
+			return { batch, prepared, lifecycle };
+		};
+		const owner = (events: EventEmitter2) => {
+			const result = producers.acquireOwnedPublisher('virtual-producer-state:v1', events);
+			if (!result) throw new Error('Expected real publisher owner');
+			return result;
+		};
+
+		it('closed nonquarantined fallback refuses an exact observed foreign live slot independently of owns', async () => {
+			producers.onModuleDestroy();
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property(),
+				owned = owner(new EventEmitter2());
+			const runtime = producers.register(row, 1);
+			const epoch = producers.version(runtime),
+				original = producers.read(row.id),
+				notified = jest.fn();
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+			const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+			expect(() =>
+				producers.prepareOwnedBatch(batch, {
+					revision: 0,
+					configurationRevisions: [],
+					operations: [
+						{
+							kind: 'fallback-unavailable',
+							propertyId: row.id,
+							property: row,
+							revision: 1,
+							reason: 'runtime_unavailable',
+							expected: producers.captureExpectedSlot(batch, row.id),
+						},
+					],
+				}),
+			).toThrow('Foreign fallback producer replacement');
+			expect(producers.isObservedBatchCurrent(batch)).toBe(false);
+			expect(producers.isCurrent(runtime)).toBe(true);
+			expect(producers.isAvailable(runtime)).toBe(true);
+			expect(producers.version(runtime)).toBe(epoch);
+			expect(producers.read(row.id)).toEqual(original);
+			expect(notified).not.toHaveBeenCalled();
+		});
+
+		it('explicit trusted configuration invalidation retains its ability to replace a previous runtime', async () => {
+			producers.onModuleDestroy();
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property();
+			const state = new VirtualProducerStateService(database, producers, graph, events);
+			try {
+				await state.onModuleInit();
+				await graph.onApplicationBootstrap();
+				const runtime = producers.register(row, 1);
+				state.installUnavailable(row, 2);
+				expect(producers.isCurrent(runtime)).toBe(false);
+				expect(producers.read(row.id)?.producer).toMatchObject({
+					revision: 2,
+					quality: 'unavailable',
+					reasons: ['runtime_unavailable'],
+				});
+			} finally {
+				state.onModuleDestroy();
+			}
+		});
+
+		it('the native deletion hint fences observations while a substituted fence is visibly refused', async () => {
+			producers.onModuleDestroy();
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property();
+			const observations = jest.spyOn(producers, 'beginObservedBatch');
+			const state = new VirtualProducerStateService(database, producers, graph, events);
+			try {
+				await state.onModuleInit();
+				await graph.onApplicationBootstrap();
+				const owned = observations.mock.calls.at(-1)?.[0];
+				if (!owned) throw new Error('Missing actual state owner');
+				const native = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+				state.handlePropertyDeleted(row);
+				expect(producers.isObservedBatchCurrent(native)).toBe(false);
+				const pending = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+				const substituted = jest.spyOn(producers, 'invalidateObservedId').mockImplementation(() => undefined);
+				expect(() => state.handlePropertyDeleted(row)).toThrow('Owned producer superseded');
+				expect(substituted).not.toHaveBeenCalled();
+				await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(false);
+				state.onModuleDestroy();
+				expect(producers.isObservedBatchCurrent(pending)).toBe(false);
+			} finally {
+				state.onModuleDestroy();
+			}
+		});
+
+		it.each(['current-owner', 'independent-runtime'])(
+			'the retired same-key replacement cannot authorize a live %s slot',
+			async (incumbent) => {
+				const row = await property(),
+					owned = owner(new EventEmitter2());
+				await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(true);
+				const a = admitted(owned, [row]);
+				expect(producers.installPreparedNoEvents(a.prepared)).toBe(true);
+				producers.closeObservedBatch(a.batch);
+				if (incumbent === 'independent-runtime') producers.register(row, 1);
+				const original = producers.read(row.id),
+					counts = producers.readOwnedOperationCounts();
+				expect(producers.retiredSameKeyPropertyIds(owned)).toEqual([]);
+				expect(producers.retiredSameKeyPropertyIds(owned)).toEqual([]);
+				expect(producers.readOwnedOperationCounts()).toEqual(counts);
+				const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+				expect(() =>
+					producers.prepareOwnedBatch(batch, {
+						revision: 0,
+						configurationRevisions: [],
+						operations: [
+							{
+								kind: 'replace-retired-unavailable',
+								propertyId: row.id,
+								property: row,
+								revision: 1,
+								reason: 'runtime_unavailable',
+								expected: producers.captureExpectedSlot(batch, row.id),
+							},
+						],
+					}),
+				).toThrow('Foreign retired producer replacement');
+				expect(producers.isObservedBatchCurrent(batch)).toBe(false);
+				expect(producers.read(row.id)).toEqual(original);
+				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+			},
+		);
+
+		it('captures only pre-admitted expected slots, retains absent ABA while active and drops all observations', async () => {
+			const row = await property();
+			const owned = owner(new EventEmitter2());
+			const a = admitted(owned, [row]);
+			const counts = producers.readOwnedOperationCounts();
+			const originalExpected = producers.captureExpectedSlot(a.batch, row.id);
+			expect(producers.captureExpectedSlot(a.batch, row.id)).toBe(producers.captureExpectedSlot(a.batch, row.id));
+			expect(producers.readOwnedOperationCounts()).toEqual(counts);
+			producers.register(row, 1);
+			producers.remove(row.id);
+			expect(producers.owns(row.id)).toBe(false);
+			expect(producers.validatePreparedBatch(a.prepared)).toBe(false);
+			expect(producers.installPreparedNoEvents(a.prepared)).toBe(false);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+			const b = admitted(owned, [row]);
+			expect(producers.captureExpectedSlot(b.batch, row.id)).not.toBe(originalExpected);
+			expect(() => producers.captureExpectedSlot(a.batch, row.id)).toThrow();
+			producers.closeObservedBatch(b.batch);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
+
+		it.each([
+			'register',
+			'remove',
+			'unregister',
+			'invalidate',
+			'beginEvaluation',
+			'commit',
+			'metadata',
+			'clock',
+			'expiry',
+			'validator',
+		])('invalidates live exact-slot observations on actual %s mutation', async (mutation) => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			if (mutation === 'metadata') producers.onModuleInit();
+			await graph.onApplicationBootstrap();
+			const row = await property();
+			const lease = producers.register(row, 1, {
+				isCurrent: graph.capturePublishGuard(),
+				reason: 'graph_validation_pending',
+			});
+			const now = Date.now();
+			const publication = {
+				quality: 'good',
+				reasons: [],
+				sampledAt: new Date(now),
+				evaluatedAt: new Date(now),
+				expiresAt: new Date(now + 60_000),
+			} satisfies import('../../../modules/devices/models/property-sample.model').DerivedPropertyPublication;
+			expect(producers.commit(lease, new PropertyValueState(5), publication, producers.version(lease))).toBe(true);
+			const a = admitted(owner(events), [row]);
+			if (mutation === 'register') producers.register(row, 1);
+			if (mutation === 'remove') producers.remove(row.id);
+			if (mutation === 'unregister') producers.unregister(lease);
+			if (mutation === 'invalidate') producers.invalidate(lease, ['runtime_unavailable']);
+			if (mutation === 'beginEvaluation') producers.beginEvaluation(lease);
+			if (mutation === 'commit')
+				expect(producers.commit(lease, new PropertyValueState(6), publication, producers.version(lease))).toBe(true);
+			if (mutation === 'metadata') events.emit(EventType.CHANNEL_PROPERTY_UPDATED, row);
+			if (mutation === 'clock') {
+				jest.useFakeTimers({ now: now - 1000 });
+				producers.read(row.id);
+			}
+			if (mutation === 'expiry') {
+				jest.useFakeTimers({ now: now + 60_001 });
+				producers.read(row.id);
+			}
+			if (mutation === 'validator') producers.setEvidenceValidator(() => false);
+			expect(producers.installPreparedNoEvents(a.prepared)).toBe(false);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
+
+		it('legacy unregister never mutates same-object same-revision B installed inside A invalidate event', async () => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property(),
+				a = producers.register(row, 1);
+			let b: PropertyProducerLease | undefined,
+				version: number | null = null;
+			events.once(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => {
+				b = producers.register(row, 1);
+				version = producers.version(b);
+			});
+			expect(producers.unregister(a)).toBe(false);
+			if (!b) throw new Error('Reentrant real registration did not execute');
+			expect(producers.isCurrent(b)).toBe(true);
+			expect(producers.version(b)).toBe(version);
+			expect(producers.isCurrent(a)).toBe(false);
+		});
+
+		it('one stale slot refuses the whole two-property batch with no owner-view or partial install', async () => {
+			const rows = [await property(), await property()],
+				owned = owner(new EventEmitter2());
+			const view = producers.readOwnedView(owned),
+				a = admitted(owned, rows);
+			const b = producers.register(rows[1], 1);
+			expect(producers.installPreparedNoEvents(a.prepared)).toBe(false);
+			expect(producers.owns(rows[0].id)).toBe(false);
+			expect(producers.isCurrent(b)).toBe(true);
+			expect(producers.readOwnedView(owned)).toBe(view);
+			expect(producers.readInstalledReport(a.prepared)).toMatchObject({ installed: false, attempted: 0, completed: 0 });
+		});
+
+		it('installs all final maps before initializing event1 and stops A before event2 after same-object B replacement', async () => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			await graph.onApplicationBootstrap();
+			const rows = [await property(), await property()],
+				owned = owner(events),
+				a = admitted(owned, rows);
+			const delivered: string[][] = [];
+			let b: PropertyProducerLease | undefined;
+			events.once(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (snapshot: ChannelPropertyEntity) => {
+				delivered.push(snapshot.value?.producer?.reasons ?? []);
+				expect(rows.map((row) => producers.read(row.id)?.producer?.reasons)).toEqual([
+					['runtime_unavailable'],
+					['runtime_unavailable'],
+				]);
+				b = producers.register(rows[1], 1);
+			});
+			expect(producers.installPreparedNoEvents(a.prepared)).toBe(true);
+			expect(producers.notifyInstalled(a.prepared, 0)).toBe('completed');
+			expect(producers.notifyInstalled(a.prepared, 1)).toBe('superseded');
+			expect(delivered).toEqual([['initializing']]);
+			if (!b) throw new Error('B not reached');
+			producers.disposeOwnedPublisher(owned);
+			expect(producers.isCurrent(b)).toBe(true);
+			expect(producers.readInstalledReport(a.prepared)).toMatchObject({ installed: true, attempted: 1, completed: 1 });
+		});
+
+		it('records partial delivery on a throwing listener, never retries and leaks no owned handle', async () => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property(),
+				owned = owner(events),
+				a = admitted(owned, [row]);
+			const delivered: string[] = [];
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => delivered.push('first'));
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => {
+				throw new Error('PRIVATE Q');
+			});
+			expect(producers.installPreparedNoEvents(a.prepared)).toBe(true);
+			expect(producers.notifyInstalled(a.prepared, 0)).toBe('rejected');
+			expect(producers.notifyInstalled(a.prepared, 0)).toBe('superseded');
+			expect(producers.notifyInstalled(a.prepared, 1)).toBe('superseded');
+			expect(delivered).toEqual(['first']);
+			expect(producers.readInstalledReport(a.prepared)).toEqual({
+				installed: true,
+				attempted: 1,
+				completed: 0,
+				terminal: 'notification_rejected',
+			});
+			expect(JSON.stringify([owned, a.batch, a.prepared])).toBe('[{},{},{}]');
+		});
+
+		it('keeps optional registry emitter absence honest and exact disposal cannot remove B or revive after destroy', async () => {
+			producers = new PropertyProducerRegistryService();
+			const row = await property(),
+				a = owner(new EventEmitter2());
+			expect(producers.acquireOwnedPublisher('virtual-producer-state:v1', new EventEmitter2())).toBeNull();
+			const first = admitted(a, [row]);
+			producers.disposeOwnedPublisher(a);
+			const b = owner(new EventEmitter2());
+			producers.disposeOwnedPublisher(a);
+			expect(producers.isOwnedPublisherCurrent(b)).toBe(true);
+			expect(producers.installPreparedNoEvents(first.prepared)).toBe(false);
+			const next = admitted(b, [row]);
+			expect(producers.installPreparedNoEvents(next.prepared)).toBe(true);
+			for (let i = 0; i < producers.ownedNotificationCount(next.prepared); i++)
+				expect(producers.notifyInstalled(next.prepared, i)).toBe('completed');
+			expect(producers.readInstalledReport(next.prepared)).toMatchObject({ attempted: 0, completed: 0 });
+			producers.onModuleDestroy();
+			expect(producers.acquireOwnedPublisher('virtual-producer-state:v1', new EventEmitter2())).toBeNull();
+			expect(() => producers.register(row, 1)).toThrow('destroyed');
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
+
+		it('does not invalidate fixed-ID observation when an unrelated good producer publishes', async () => {
+			const row = await property(),
+				unrelated = await property();
+			const a = admitted(owner(new EventEmitter2()), [row]);
+			const lease = producers.register(unrelated, 1);
+			const now = new Date();
+			expect(
+				producers.commit(
+					lease,
+					new PropertyValueState(4),
+					{
+						quality: 'good',
+						reasons: [],
+						sampledAt: now,
+						evaluatedAt: now,
+						expiresAt: new Date(now.getTime() + 60_000),
+					},
+					producers.version(lease),
+				),
+			).toBe(true);
+			expect(producers.validatePreparedBatch(a.prepared)).toBe(true);
+			producers.closeObservedBatch(a.batch);
+		});
+		it('real aggregate transform and dew runtime activation callbacks run only after required pending callbacks', async () => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			producerState = new VirtualProducerStateService(database, producers, graph, events);
+			// Empty catalog: these dependencies MUST remain unused, not fabricated evidence/readiness.
+			const module = await Test.createTestingModule({
+				providers: [
+					VirtualAggregateRuntimeService,
+					VirtualTransformRuntimeService,
+					VirtualDewPointRuntimeService,
+					{ provide: DataSource, useValue: database },
+					{ provide: PropertyProducerRegistryService, useValue: producers },
+					{ provide: VirtualDependencyGraphService, useValue: graph },
+					{ provide: EventEmitter2, useValue: events },
+					{ provide: ConfigService, useValue: new ConfigService({ FB_CLI: 'off' }) },
+					{ provide: PropertyValueService, useValue: Object.freeze({}) },
+					{ provide: DeviceConnectionStateService, useValue: Object.freeze({}) },
+				],
+			}).compile();
+			const aggregate = module.get(VirtualAggregateRuntimeService),
+				transform = module.get(VirtualTransformRuntimeService),
+				dew = module.get(VirtualDewPointRuntimeService);
+			try {
+				await producerState.onModuleInit();
+				await aggregate.onApplicationBootstrap();
+				await transform.onApplicationBootstrap();
+				await dew.onApplicationBootstrap();
+				const trace: string[] = [];
+				const aggregateMethods: Readonly<{
+					requestRecompute: OwnedReceiverFunction<
+						VirtualAggregateRuntimeService,
+						Parameters<VirtualAggregateRuntimeService['requestRecompute']>,
+						ReturnType<VirtualAggregateRuntimeService['requestRecompute']>
+					>;
+				}> = aggregate;
+				const transformMethods: Readonly<{
+					requestRecompute: OwnedReceiverFunction<
+						VirtualTransformRuntimeService,
+						Parameters<VirtualTransformRuntimeService['requestRecompute']>,
+						ReturnType<VirtualTransformRuntimeService['requestRecompute']>
+					>;
+				}> = transform;
+				const dewMethods: Readonly<{
+					requestRecompute: OwnedReceiverFunction<
+						VirtualDewPointRuntimeService,
+						Parameters<VirtualDewPointRuntimeService['requestRecompute']>,
+						ReturnType<VirtualDewPointRuntimeService['requestRecompute']>
+					>;
+				}> = dew;
+				const originalAggregate = aggregateMethods.requestRecompute,
+					originalTransform = transformMethods.requestRecompute,
+					originalDew = dewMethods.requestRecompute;
+				jest.spyOn(aggregate, 'requestRecompute').mockImplementation((sourceId) => {
+					trace.push(`aggregate:${graph.isValidated()}`);
+					originalAggregate.call(aggregate, sourceId);
+				});
+				jest.spyOn(transform, 'requestRecompute').mockImplementation((sourceId) => {
+					trace.push(`transform:${graph.isValidated()}`);
+					originalTransform.call(transform, sourceId);
+				});
+				jest.spyOn(dew, 'requestRecompute').mockImplementation(() => {
+					trace.push(`dew:${graph.isValidated()}`);
+					originalDew.call(dew);
+				});
+				let pendingCapture: (() => boolean) | undefined;
+				const stop = graph.observeValidation(() => {
+					trace.push(`required:${graph.isValidated()}`);
+					pendingCapture = graph.capturePublishGuard();
+					expect(pendingCapture()).toBe(false);
+					return Promise.resolve();
+				});
+				await graph.refreshQuarantine();
+				expect(trace).toEqual(['required:false', 'aggregate:true', 'transform:true', 'dew:true']);
+				if (!pendingCapture) throw new Error('Required real callback not reached');
+				expect(pendingCapture()).toBe(true);
+				graph.invalidateValidation();
+				expect(pendingCapture()).toBe(false);
+				stop();
+			} finally {
+				aggregate.onModuleDestroy();
+				transform.onModuleDestroy();
+				dew.onModuleDestroy();
+				await aggregate.flush();
+				await transform.flush();
+				await dew.flush();
+				await module.close();
+			}
+		});
+
+		it.each(['shared', 'distinct'])(
+			'stages alias repair metadata with %s emitters like the actual subscriber while leaving canonical physical sample qualified',
+			async (mode) => {
+				const events = new EventEmitter2(),
+					propertyEvents = mode === 'shared' ? events : new EventEmitter2();
+				producers = new PropertyProducerRegistryService(events);
+				producerState = new VirtualProducerStateService(database, producers, graph, propertyEvents);
+				producers.onModuleInit();
+				const sources = new PropertyValueSourceRegistryService();
+				sources.register(new VirtualValueSourceService(graph));
+				const storage = {
+					isConnected: () => true,
+					query: () => Promise.resolve([]),
+					enqueueWritePoint: () => undefined,
+					flushQueuedWrites: () => Promise.resolve(),
+				};
+				const module = await Test.createTestingModule({
+					providers: [
+						PropertyValueService,
+						DeviceConnectionStateService,
+						ChannelPropertyEntitySubscriber,
+						{ provide: DataSource, useValue: database },
+						{ provide: StorageService, useValue: storage },
+						{ provide: PropertyValueSourceRegistryService, useValue: sources },
+						{ provide: PropertyValueLockService, useValue: new PropertyValueLockService(database) },
+						{ provide: PropertyProducerRegistryService, useValue: producers },
+					],
+				}).compile();
+				const values = module.get(PropertyValueService);
+				try {
+					const physical = await measurement(),
+						a = await measurement(VirtualDeviceMode.PROJECTION),
+						b = await measurement(VirtualDeviceMode.PROJECTION);
+					await database.manager.update(VirtualChannelPropertyEntity, a.propertyId, {
+						valueOrigin: VirtualValueOrigin.SOURCE,
+						sourcePropertyId: b.propertyId,
+					});
+					await database.manager.update(VirtualChannelPropertyEntity, b.propertyId, {
+						valueOrigin: VirtualValueOrigin.SOURCE,
+						sourcePropertyId: a.propertyId,
+					});
+					await producerState.onModuleInit();
+					await graph.onApplicationBootstrap();
+					const source = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+						where: { id: physical.propertyId },
+						relations: ['channel'],
+					});
+					await values.writeSampleWithState(source, 21, {
+						sampledAt: new Date(Date.now() - 10),
+						receivedAt: new Date(),
+						provenance: 'live',
+					});
+					const physicalBefore = values.readQualifiedSample(source, 1000);
+					const snapshots: ChannelPropertyEntity[] = [];
+					propertyEvents.on(EventType.CHANNEL_PROPERTY_UPDATED, (row: ChannelPropertyEntity) => snapshots.push(row));
+					let actual: VirtualChannelPropertyEntity | undefined;
+					const stop = graph.observeValidation(async () => {
+						actual = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+							where: { id: a.propertyId },
+							relations: ['channel', 'channel.device'],
+						});
+						expect(graph.isValidated()).toBe(false);
+					});
+					await graph.withStructuralWrite(async (manager) => {
+						await manager.update(VirtualChannelPropertyEntity, a.propertyId, { sourcePropertyId: physical.propertyId });
+						await manager.update(VirtualChannelPropertyEntity, b.propertyId, { sourcePropertyId: physical.propertyId });
+					}, 0);
+					stop();
+					const prepared = snapshots.find((row) => row.id === a.propertyId);
+					if (!prepared || !actual) throw new Error('Actual alias notification/subscriber boundary not reached');
+					expect(prepared).toBeInstanceOf(VirtualChannelPropertyEntity);
+					expect(prepared.unit).toBe(actual.unit);
+					expect(prepared.value?.producer?.reasons).toEqual(actual.value?.producer?.reasons);
+					expect(prepared.value?.producer?.quality).toBe(actual.value?.producer?.quality);
+					expect(prepared.value?.producer?.revision).toBe(actual.value?.producer?.revision);
+					expect(prepared.value?.value).toBe(actual.value?.value);
+					expect(prepared.value?.lastUpdated).toBe(actual.value?.lastUpdated);
+					expect(prepared.value?.producer?.reasons).toEqual(['graph_validation_pending']);
+					expect(producers.owns(a.propertyId)).toBe(false);
+					expect(values.readQualifiedSample(source, 1000)).toEqual(physicalBefore);
+					expect((await values.readLatest(actual))?.value).toBe(21);
+				} finally {
+					await module.close();
+				}
+			},
+		);
+
+		it('owns plan getters once without freezing caller metadata and refuses failed preparation before install', async () => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property(),
+				owned = owner(events);
+			row.identifier = 'before';
+			const lifecycle = graph.captureOwnedPublicationLifecycle();
+			const batch = producers.beginObservedBatch(owned, [row.id], lifecycle.guard);
+			let reads = 0;
+			const operation = {
+				kind: 'unavailable',
+				propertyId: row.id,
+				property: row,
+				revision: 1,
+				reason: 'runtime_unavailable',
+				expected: producers.captureExpectedSlot(batch, row.id),
+			} satisfies OwnedProducerOperation;
+			Object.defineProperty(operation, 'revision', { enumerable: true, get: () => ++reads });
+			const prepared = producers.prepareOwnedBatch(batch, {
+				revision: 0,
+				configurationRevisions: [],
+				operations: [operation],
+			});
+			row.identifier = 'after';
+			expect(Object.isFrozen(row)).toBe(false);
+			expect(reads).toBe(1);
+			const snapshots: ChannelPropertyEntity[] = [];
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (snapshot: ChannelPropertyEntity) =>
+				snapshots.push(snapshot),
+			);
+			expect(producers.installPreparedNoEvents(prepared)).toBe(true);
+			expect(producers.notifyInstalled(prepared, 0)).toBe('completed');
+			expect(producers.notifyInstalled(prepared, 1)).toBe('completed');
+			expect(snapshots.map((snapshot) => snapshot.identifier)).toEqual(['before', 'before']);
+			expect(snapshots.map((snapshot) => snapshot.value?.producer?.revision)).toEqual([1, 1]);
+			producers.closeObservedBatch(batch);
+			const next = producers.beginObservedBatch(owned, [row.id], lifecycle.guard),
+				before = producers.readOwnedView(owned);
+			const invalid = {
+				kind: 'unavailable',
+				propertyId: row.id,
+				property: row,
+				revision: 1,
+				reason: 'runtime_unavailable',
+				expected: producers.captureExpectedSlot(next, row.id),
+			} satisfies OwnedProducerOperation;
+			Object.defineProperty(invalid, 'revision', {
+				get: () => {
+					throw new Error('TEST getter');
+				},
+			});
+			expect(() =>
+				producers.prepareOwnedBatch(next, { revision: 0, configurationRevisions: [], operations: [invalid] }),
+			).toThrow('TEST getter');
+			expect(producers.readOwnedView(owned)).toBe(before);
+			expect(producers.isObservedBatchCurrent(next)).toBe(false);
+			expect(() => producers.captureExpectedSlot(next, row.id)).toThrow();
+			producers.closeObservedBatch(next);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
+
+		it('sync pre-init hook admits only registry ownership and stale deletion A never removes same-ID B', async () => {
+			const row = await property();
+			await graph.onApplicationBootstrap();
+			const original = graph.capturePublishGuard();
+			producerState.installUnavailable(row, 1);
+			expect(graph.isValidated()).toBe(true);
+			expect(original()).toBe(true);
+			const b = producers.register(row, 1);
+			producerState.handlePropertyDeleted(row);
+			expect(producers.isCurrent(b)).toBe(true);
+			producerState.onModuleDestroy();
+			expect(producers.isCurrent(b)).toBe(true);
+		});
+
+		it('failed duplicate service init and its cleanup cannot steal or dispose incumbent', () =>
+			new Promise<void>((resolve) => {
+				const incumbent = owner(new EventEmitter2());
+				expect(() => producerState.onModuleInit()).toThrow('already registered');
+				producerState.onModuleDestroy();
+				expect(producers.isOwnedPublisherCurrent(incumbent)).toBe(true);
+				resolve();
+			}));
+
+		it('pure retain changes no lease epoch owner cell or events and unknown capture cannot admit', async () => {
+			const events = new EventEmitter2();
+			producers = new PropertyProducerRegistryService(events);
+			const row = await property(),
+				lease = producers.register(row, 1),
+				owned = owner(events);
+			const view = producers.readOwnedView(owned),
+				epoch = producers.version(lease),
+				delivered = jest.fn();
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, delivered);
+			const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+			const prepared = producers.prepareOwnedBatch(batch, {
+				revision: -1,
+				configurationRevisions: [],
+				operations: [{ kind: 'retain', propertyId: row.id, expected: producers.captureExpectedSlot(batch, row.id) }],
+			});
+			expect(producers.installPreparedNoEvents(prepared)).toBe(true);
+			expect(producers.ownedNotificationCount(prepared)).toBe(0);
+			expect(producers.readOwnedView(owned)).toBe(view);
+			expect(producers.version(lease)).toBe(epoch);
+			expect(producers.isCurrent(lease)).toBe(true);
+			expect(delivered).not.toHaveBeenCalled();
+			producers.closeObservedBatch(batch);
+			expect(() => producers.captureExpectedSlot({ toJSON: () => ({}) }, row.id)).toThrow();
+			expect(producers.isOwnedPublisherCurrent({ toJSON: () => ({}) })).toBe(false);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
+
+		it('retains revision metadata only for current owned entries and drops it on exact legacy replacement', async () => {
+			const row = await property(),
+				owned = owner(new EventEmitter2());
+			const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+			const prepared = producers.prepareOwnedBatch(batch, {
+				revision: 0,
+				configurationRevisions: [{ propertyId: row.id, revision: 7 }],
+				operations: [
+					{
+						kind: 'unavailable',
+						propertyId: row.id,
+						property: row,
+						revision: 7,
+						reason: 'runtime_unavailable',
+						expected: producers.captureExpectedSlot(batch, row.id),
+					},
+				],
+			});
+			expect(producers.installPreparedNoEvents(prepared)).toBe(true);
+			producers.closeObservedBatch(batch);
+			expect(producers.readOwnedView(owned).configurationRevisions).toEqual([{ propertyId: row.id, revision: 7 }]);
+			const b = producers.register(row, 7);
+			expect(producers.readOwnedView(owned).configurationRevisions).toEqual([]);
+			expect(producers.readOwnedView(owned).quarantineLeases).toEqual([]);
+			expect(producers.isCurrent(b)).toBe(true);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
 	});
 });

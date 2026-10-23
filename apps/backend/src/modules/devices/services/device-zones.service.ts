@@ -16,7 +16,7 @@ import {
 import { DeviceZoneEntity } from '../entities/device-zone.entity';
 import { DeviceEntity } from '../entities/devices.entity';
 
-import { DeviceCreationContext } from './device-creation-context';
+import { DeviceCreationContext, DeviceCreationPublicationEngine } from './device-creation-context';
 
 @Injectable()
 export class DeviceZonesService {
@@ -166,6 +166,7 @@ export class DeviceZonesService {
 	 * Remove a device from a zone
 	 */
 	async removeDeviceFromZone(deviceId: string, zoneId: string): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([deviceId]);
 		this.logger.debug(`Removing device ${deviceId} from zone ${zoneId}`);
 
 		// Read before the delete, not after it: the guard below has to run before anything is written.
@@ -248,6 +249,8 @@ export class DeviceZonesService {
 		zoneIds: string[],
 		{ initialPlacement = false, creation }: { initialPlacement?: boolean; creation?: DeviceCreationContext } = {},
 	): Promise<SpaceEntity[]> {
+		creation?.assertOriginalAdmission();
+		if (!creation?.isOriginalOwned) DeviceCreationPublicationEngine.invalidateIds([deviceId]);
 		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
 
 		// Verify device exists
@@ -267,7 +270,13 @@ export class DeviceZonesService {
 		// Validate all zones
 		const validatedZones: SpaceEntity[] = [];
 		for (const zoneId of zoneIds) {
-			const zone = await this.spaceRepository.findOne({ where: { id: zoneId } });
+			const zone = creation
+				? await creation.manager
+						.createQueryBuilder(SpaceEntity, 'space')
+						.where('space.id = :zoneId', { zoneId })
+						.callListeners(false)
+						.getOne()
+				: await this.spaceRepository.findOne({ where: { id: zoneId } });
 
 			if (!zone) {
 				this.logger.error(`Zone with id=${zoneId} not found`);
@@ -321,7 +330,22 @@ export class DeviceZonesService {
 			await manager.query(`DELETE FROM "${zoneTable}" WHERE "deviceId" = ?`, [deviceId]);
 
 			for (const zoneId of zoneIds) {
-				await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
+				if (creation?.isOriginalOwned) {
+					creation.assertOriginalAdmission();
+					const column = this.repository.metadata.findColumnWithPropertyName('createdAt');
+					if (!column) throw new Error('Device zone timestamp metadata unavailable');
+					const createdAt: unknown = manager.connection.driver.preparePersistentValue(
+						new Date(creation.catalogCreatedAt()),
+						column,
+					);
+					await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId", "createdAt") VALUES (?, ?, ?)`, [
+						deviceId,
+						zoneId,
+						createdAt,
+					]);
+					creation.assertOriginalAdmission();
+				} else
+					await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
 			}
 		};
 		if (creation) await persist(creation.manager);
