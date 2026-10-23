@@ -1045,8 +1045,9 @@ export class PropertyValueService {
 			// Capture every logical route before any cache/producer work, including duplicates.
 			for (const [index, property] of properties.entries()) {
 				// Preserve a safe logical ID even if the provider changes it during capture.
-				const id: unknown = Object.getOwnPropertyDescriptor(property, 'id')?.value;
+				let id: unknown = '';
 				try {
+					id = Object.getOwnPropertyDescriptor(property, 'id')?.value;
 					const capture = this.valueSourceRegistry.captureReadSource(property);
 					captures.push(capture);
 					entries[index] = {
@@ -1137,6 +1138,15 @@ export class PropertyValueService {
 				else if (produced)
 					items[index] = this.toBoundedItem(entry.input.id, entry.key, produced, items[index]?.source ?? 'cache');
 			}
+		}
+		// Producer callbacks above may invalidate an earlier route. Finish all provider
+		// checks before the final structural pass, which dispatches no provider methods.
+		for (const [index, entry] of entries.entries()) {
+			if (entry && !this.valueSourceRegistry.isReadSourceCurrent(entry.capture)) items[index] = undefined;
+		}
+		for (const [index, entry] of entries.entries()) {
+			if (!entry) continue;
+			if (!this.valueSourceRegistry.isReadSourceStructurallyCurrent(entry.capture)) items[index] = undefined;
 			items[index] ??= {
 				propertyId: entry.input.id,
 				sourcePropertyId: entry.key,

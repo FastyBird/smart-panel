@@ -678,6 +678,176 @@ describe('property read provenance with hydrated entities', () => {
 			if (change === 'registration') registry.register({ getType: () => physical.type, resolve: (input) => input.id });
 		};
 
+		describe('bounded R1 refusal and final veto', () => {
+			const commitColdProducer = (isCurrent: () => boolean) => {
+				const lease = producers.register(cold, 3, { isCurrent, reason: 'owner_closed' });
+				expect(
+					producers.commit(
+						lease,
+						new PropertyValueState(99),
+						{
+							quality: 'good',
+							reasons: [],
+							sampledAt: new Date(),
+							evaluatedAt: new Date(),
+							expiresAt: new Date(Date.now() + 60000),
+						},
+						producers.version(lease),
+					),
+				).toBe(true);
+			};
+
+			it('contains descriptor-throwing Proxy refusal between valid hydrated siblings', async () => {
+				const closed = assertClosed();
+				const opaque = new Proxy(projection, {
+					getOwnPropertyDescriptor(target, key) {
+						if (key === 'id') throw new Error('opaque ID descriptor');
+						return Reflect.getOwnPropertyDescriptor(target, key);
+					},
+				});
+				expect(opaque.id).toBe(projectionId);
+				expect(opaque.type).toBe(projection.type);
+				expect(opaque.dataType).toBe(projection.dataType);
+				storage.queryStrict.mockResolvedValue([...rows(), { propertyId: coldId, numberValue: 55 }]);
+				const result = await values.readLatestManyBounded([physical, opaque, cold]);
+				expect(result.items[0]).toMatchObject({
+					propertyId: physicalId,
+					sourcePropertyId: physicalId,
+					status: 'available',
+					source: 'storage',
+					state: { value: 21 },
+				});
+				expect(result.items[1]).toEqual(unprocessed('', null));
+				expect(result.items[2]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: coldId,
+					status: 'available',
+					source: 'storage',
+					state: { value: 55 },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 3,
+					availableCount: 2,
+					unknownCount: 1,
+					unprocessedCount: 1,
+					missingCount: 0,
+					cacheCount: 0,
+					storageCount: 2,
+					storageStatus: 'failed',
+					complete: false,
+				});
+				expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+				closed();
+			});
+
+			it.each(['sparse', 'undefined', 'null'] as const)(
+				'contains a pre-existing malformed %s entry between valid siblings',
+				async (kind) => {
+					const closed = assertClosed();
+					const properties = [physical, cold, cold];
+					if (kind === 'sparse') Reflect.deleteProperty(properties, '1');
+					else properties[1] = kind === 'null' ? null : undefined;
+					storage.queryStrict.mockResolvedValue([...rows(), { propertyId: coldId, numberValue: 55 }]);
+					const result = await values.readLatestManyBounded(properties);
+					expect(result.items.map((item) => item.propertyId)).toEqual([physicalId, '', coldId]);
+					expect(result.items[0]).toMatchObject({ status: 'available', state: { value: 21 } });
+					expect(result.items[1]).toEqual(unprocessed('', null));
+					expect(result.items[2]).toMatchObject({ status: 'available', state: { value: 55 } });
+					expect(result).toMatchObject({
+						requestedCount: 3,
+						availableCount: 2,
+						unknownCount: 1,
+						unprocessedCount: 1,
+						missingCount: 0,
+						storageCount: 2,
+						storageStatus: 'failed',
+						complete: false,
+					});
+					closed();
+				},
+			);
+
+			it('revalidates earlier cached A after B final real producer guard remaps A', async () => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				let armed = false,
+					reads = 0;
+				commitColdProducer(() => {
+					if (armed && ++reads === 2) projection.sourcePropertyId = coldId;
+					return true;
+				});
+				armed = true;
+				const result = await values.readLatestManyBounded([projection, cold]);
+				expect(projection.sourcePropertyId).toBe(coldId);
+				expect(reads).toBe(2);
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: coldId,
+					status: 'available',
+					source: 'cache',
+					state: { value: 99, producer: { quality: 'good', revision: 3 } },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					availableCount: 1,
+					unknownCount: 1,
+					unprocessedCount: 1,
+					missingCount: 0,
+					cacheCount: 1,
+					storageCount: 0,
+					storageStatus: 'not_needed',
+					complete: false,
+				});
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 10 });
+				closed();
+			});
+
+			it('structurally vetoes A remapped by a later B provider-currentness callback', async () => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				let armed = false,
+					reads = 0,
+					providerChecksAfterFinalProducer = 0;
+				expect(
+					registry.register({
+						getType: () => cold.type,
+						resolve: (input) => {
+							if (input.id === coldId && reads === 2 && ++providerChecksAfterFinalProducer === 2)
+								projection.sourcePropertyId = coldId;
+							return input.id;
+						},
+					}),
+				).toBe(true);
+				commitColdProducer(() => {
+					if (armed) reads++;
+					return true;
+				});
+				armed = true;
+				const result = await values.readLatestManyBounded([projection, cold]);
+				expect(projection.sourcePropertyId).toBe(coldId);
+				expect(providerChecksAfterFinalProducer).toBe(2);
+				expect(reads).toBe(2);
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					status: 'available',
+					source: 'cache',
+					state: { value: 99 },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					availableCount: 1,
+					unprocessedCount: 1,
+					complete: false,
+					storageStatus: 'not_needed',
+				});
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+				closed();
+			});
+		});
+
 		it('deduplicates real projections while retaining ordered duplicates and captured conversions', async () => {
 			const closed = assertClosed();
 			projection.dataType = DataTypeType.INT;
