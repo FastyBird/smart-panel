@@ -1220,7 +1220,11 @@ export class PropertyValueService {
 				const entry = entries[index];
 				return entry && this.valueSourceRegistry.isReadSourceCurrent(entry.capture) ? [{ index, entry }] : [];
 			});
-			const representative = currentEntries[0]?.entry;
+			// Group checks can invalidate an earlier member. The selected representative's
+			// full check is the last provider dispatch before shared cache/trend writes.
+			const representative = currentEntries.find(({ entry }) =>
+				this.valueSourceRegistry.isReadSourceCurrent(entry.capture),
+			)?.entry;
 			if (!representative) continue;
 			const sourceRows = rowsBySource.get(key) ?? [];
 			const firstRow = sourceRows[0];

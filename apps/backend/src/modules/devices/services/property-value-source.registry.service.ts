@@ -3,6 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import {
+	PropertyReadPolicyObservation,
+	isPropertyReadPolicyObservationCurrent,
+} from '../models/property-read-policy.model';
 
 /**
  * Answers "where does this property's value live?".
@@ -23,6 +27,9 @@ export interface IPropertyValueSource {
 
 	/** Whether a resolved value needs current producer authority rather than stored history. */
 	requiresLiveValue?(property: ChannelPropertyEntity): boolean | null;
+
+	/** Optional veto-only observation of declared policy invalidation data, never an arbitrary verifier. */
+	captureReadPolicyObservation?(): PropertyReadPolicyObservation;
 }
 
 /**
@@ -39,6 +46,7 @@ interface SourceFunctionView {
 	readonly resolve: (property: ChannelPropertyEntity) => string | null;
 	readonly unavailableReason?: (property: ChannelPropertyEntity) => string | null;
 	readonly requiresLiveValue?: (property: ChannelPropertyEntity) => boolean | null;
+	readonly captureReadPolicyObservation?: () => PropertyReadPolicyObservation;
 }
 interface SourceMethods {
 	readonly getType: Readonly<{ call: (receiver: IPropertyValueSource) => string }>;
@@ -50,6 +58,9 @@ interface SourceMethods {
 	}>;
 	readonly requiresLiveValue?: Readonly<{
 		call: (receiver: IPropertyValueSource, property: ChannelPropertyEntity) => boolean | null;
+	}>;
+	readonly captureReadPolicyObservation?: Readonly<{
+		call: (receiver: IPropertyValueSource) => PropertyReadPolicyObservation;
 	}>;
 }
 interface SourceRegistration {
@@ -80,6 +91,7 @@ interface SourceReadRecord {
 	readonly key: string;
 	readonly unavailable: string | null;
 	readonly live: boolean;
+	readonly policy?: PropertyReadPolicyObservation;
 }
 function ownReadArray(value: unknown, observations: ReadArrayDescriptors, seen = new Set<object>()): unknown {
 	const arrays: Readonly<{ isArray: (candidate: unknown) => candidate is unknown[] }> = Array;
@@ -141,7 +153,7 @@ function readSourceMethodCurrent(source: object, key: string, original: unknown)
 	return original === undefined;
 }
 function sourceMethods(source: IPropertyValueSource): SourceMethods | undefined {
-	for (const key of ['getType', 'resolve', 'unavailableReason', 'requiresLiveValue']) {
+	for (const key of ['getType', 'resolve', 'unavailableReason', 'requiresLiveValue', 'captureReadPolicyObservation']) {
 		let owner: object | null = source;
 		while (owner) {
 			const descriptor = Object.getOwnPropertyDescriptor(owner, key);
@@ -159,6 +171,7 @@ function sourceMethods(source: IPropertyValueSource): SourceMethods | undefined 
 		resolve: view.resolve,
 		unavailableReason: view.unavailableReason,
 		requiresLiveValue: view.requiresLiveValue,
+		captureReadPolicyObservation: view.captureReadPolicyObservation,
 	};
 	return Object.entries(methods).every(([key, value]) => readSourceMethodCurrent(source, key, value))
 		? Object.freeze(methods)
@@ -267,6 +280,9 @@ export class PropertyValueSourceRegistryService {
 			}
 		}
 		Object.freeze(input);
+		const policy = registration?.methods?.captureReadPolicyObservation?.call(registration.source);
+		if (registration?.methods?.captureReadPolicyObservation && !isPropertyReadPolicyObservationCurrent(policy))
+			throw new Error('Unqualified or stale read policy observation');
 		const result = evaluateReadSource(this.readRegistrations, type, registration, input);
 		const token = Object.freeze(new PropertyReadSourceCapture());
 		this.readCaptures.set(token, {
@@ -280,6 +296,7 @@ export class PropertyValueSourceRegistryService {
 			prototypeChain,
 			prototypeFields,
 			...result,
+			policy,
 		});
 		if (!this.isReadSourceCurrent(token)) throw new Error('Original value source changed during capture');
 		return token;
@@ -353,7 +370,7 @@ export class PropertyValueSourceRegistryService {
 				)
 					return false;
 			}
-			return true;
+			return record.policy === undefined || isPropertyReadPolicyObservationCurrent(record.policy);
 		} catch {
 			return false;
 		}

@@ -1,6 +1,10 @@
 import { Injectable, Optional } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	PropertyReadPolicyObservation,
+	observePropertyReadPolicy,
+} from '../../../modules/devices/models/property-read-policy.model';
 import { IPropertyValueSource } from '../../../modules/devices/services/property-value-source.registry.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
@@ -12,6 +16,10 @@ export class VirtualValueSourceService implements IPropertyValueSource {
 	constructor(@Optional() private readonly graph?: VirtualDependencyGraphService) {}
 	getType(): string {
 		return DEVICES_VIRTUAL_TYPE;
+	}
+
+	captureReadPolicyObservation(): PropertyReadPolicyObservation {
+		return observePropertyReadPolicy(this, ['graph'], this.graph ? [this.graph.captureReadPolicyObservation()] : []);
 	}
 
 	/** Projection reads also need validation even when no producer lease owns their alias. */

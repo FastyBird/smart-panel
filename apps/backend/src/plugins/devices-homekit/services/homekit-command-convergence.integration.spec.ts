@@ -27,6 +27,7 @@ import {
 	DeviceEntity,
 } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueLockEntity } from '../../../modules/devices/entities/property-value-lock.entity';
+import { observePropertyReadPolicy } from '../../../modules/devices/models/property-read-policy.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsTypeMapperService } from '../../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
@@ -151,9 +152,11 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		producers = new PropertyProducerRegistryService(events);
 		composites = new CompositePropertyCommandRegistryService();
 		const valueSources = new PropertyValueSourceRegistryService();
+		const graphReadPolicy = { validated: true };
 		valueSources.register(
 			new VirtualValueSourceService({
-				isValidated: () => true,
+				captureReadPolicyObservation: () => observePropertyReadPolicy(graphReadPolicy, ['validated']),
+				isValidated: () => graphReadPolicy.validated,
 				isQuarantined: () => false,
 				matchesValueSource: () => true,
 				// This fixture's SOURCE aliases all target physical simulator properties. The cold

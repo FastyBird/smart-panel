@@ -848,6 +848,205 @@ describe('property read provenance with hydrated entities', () => {
 			});
 		});
 
+		describe('bounded R2 policy and representative admission', () => {
+			it('vetoes original A after a later B provider check invalidates the real graph policy', async () => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				let armed = false,
+					reads = 0,
+					providerChecksAfterFinalProducer = 0;
+				expect(
+					registry.register({
+						getType: () => cold.type,
+						resolve: (input) => {
+							if (input.id === coldId && reads === 2 && ++providerChecksAfterFinalProducer === 2)
+								graph.invalidateValidation();
+							return input.id;
+						},
+					}),
+				).toBe(true);
+				const lease = producers.register(cold, 3, {
+					isCurrent: () => {
+						if (armed) reads++;
+						return true;
+					},
+					reason: 'owner_closed',
+				});
+				expect(
+					producers.commit(
+						lease,
+						new PropertyValueState(99),
+						{
+							quality: 'good',
+							reasons: [],
+							sampledAt: new Date(),
+							evaluatedAt: new Date(),
+							expiresAt: new Date(Date.now() + 60000),
+						},
+						producers.version(lease),
+					),
+				).toBe(true);
+				armed = true;
+				expect(graph.isValidated()).toBe(true);
+				const result = await values.readLatestManyBounded([projection, cold]);
+				expect(reads).toBe(2);
+				expect(providerChecksAfterFinalProducer).toBe(2);
+				expect(graph.isValidated()).toBe(false);
+				expect(projection.sourcePropertyId).toBe(physicalId);
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: coldId,
+					status: 'available',
+					source: 'cache',
+					state: { value: 99 },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					availableCount: 1,
+					unprocessedCount: 1,
+					unknownCount: 1,
+					cacheCount: 1,
+					storageCount: 0,
+					complete: false,
+					storageStatus: 'not_needed',
+				});
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+				closed();
+			});
+
+			it('admits no cache or trend when later shared-key B collection invalidates both captures', async () => {
+				const closed = assertClosed();
+				let armed = false,
+					mutations = 0;
+				expect(
+					registry.register({
+						getType: () => cold.type,
+						resolve: (input) => {
+							if (input.id !== coldId) return input.id;
+							if (armed) {
+								mutations++;
+								projection.sourcePropertyId = coldId;
+								cold.dataType = DataTypeType.BOOL;
+							}
+							return physicalId;
+						},
+					}),
+				).toBe(true);
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+				expect(storage.queryStrict.mock.calls[0][0].split(physicalId)).toHaveLength(2);
+				armed = true;
+				held.resolve(rows());
+				const result = await pending;
+				expect(mutations).toBe(1);
+				expect(cold.dataType).toBe(DataTypeType.BOOL);
+				expect(projection.sourcePropertyId).toBe(coldId);
+				expect(result.items).toEqual([unprocessed(projectionId, physicalId), unprocessed(coldId, physicalId)]);
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					unprocessedCount: 2,
+					availableCount: 0,
+					cacheCount: 0,
+					storageCount: 0,
+					complete: false,
+					storageStatus: 'available',
+				});
+				await expect(values.readLatest(physical)).resolves.toBeNull();
+				expect(storage.query).toHaveBeenCalledTimes(1);
+				await values.write(physical, 22);
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 22, trend: null });
+				closed();
+			});
+
+			it('selects a still-current sibling after the group collection revokes its earlier representative', async () => {
+				const closed = assertClosed();
+				cold.dataType = DataTypeType.INT;
+				let armed = false;
+				registry.register({
+					getType: () => cold.type,
+					resolve: (input) => {
+						if (input.id !== coldId) return input.id;
+						if (armed) projection.sourcePropertyId = coldId;
+						return physicalId;
+					},
+				});
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				armed = true;
+				held.resolve([{ propertyId: physicalId, numberValue: 21.6 }]);
+				const result = await pending;
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: physicalId,
+					status: 'available',
+					state: { value: 22 },
+				});
+				expect(result).toMatchObject({ availableCount: 1, unprocessedCount: 1, complete: false });
+				expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+				closed();
+			});
+
+			it('uses the captured real graph data for a successful final check without dispatch', () => {
+				const readPolicy = jest.spyOn(graph, 'isValidated');
+				const capture = registry.captureReadSource(projection);
+				readPolicy.mockClear();
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(true);
+				expect(readPolicy).not.toHaveBeenCalled();
+				graph.invalidateValidation();
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(readPolicy).not.toHaveBeenCalled();
+				registry.closeReadSource(capture);
+			});
+
+			it.each([
+				'invalidate/revalidate',
+				'graph replacement',
+				'graph method replacement',
+				'observation method replacement',
+			] as const)(
+				'never revives original graph policy after %s and final checks dispatch no graph methods',
+				async (change) => {
+					const capture = registry.captureReadSource(projection);
+					expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(true);
+					if (change === 'invalidate/revalidate') {
+						graph.invalidateValidation();
+						await graph.refreshQuarantine();
+						expect(graph.isValidated()).toBe(true);
+					}
+					if (change === 'graph replacement')
+						Object.assign(source, { graph: new VirtualDependencyGraphService(database) });
+					if (change === 'graph method replacement') graph.isValidated = () => true;
+					if (change === 'observation method replacement')
+						Object.assign(graph, {
+							captureReadPolicyObservation: () => {
+								throw new Error('must not dispatch');
+							},
+						});
+					expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+					expect(registry.isReadSourceCurrent(capture)).toBe(false);
+					expect(registry.readSourceKey(capture)).toBe(physicalId);
+					registry.closeReadSource(capture);
+				},
+			);
+
+			it('checks the real graph policy observation without dispatching policy methods or supplied getters', () => {
+				const capture = registry.captureReadSource(projection);
+				const policy = jest.spyOn(graph, 'isValidated');
+				// Replacement invalidates the observation by descriptor identity without executing it.
+				policy.mockImplementation(() => {
+					throw new Error('no final policy dispatch');
+				});
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(policy).not.toHaveBeenCalled();
+				registry.closeReadSource(capture);
+			});
+		});
+
 		it('deduplicates real projections while retaining ordered duplicates and captured conversions', async () => {
 			const closed = assertClosed();
 			projection.dataType = DataTypeType.INT;

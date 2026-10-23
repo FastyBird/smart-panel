@@ -12,6 +12,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { observePropertyReadPolicy } from '../../../modules/devices/models/property-read-policy.model';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DeviceContributionRegistryService } from '../../../modules/devices/services/device-contribution.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
@@ -45,7 +46,7 @@ describe('durable virtual measurement coverage and room planner integration', ()
 	let provider: VirtualMeasurementContributionService;
 	let planner: ClimateContributionPlannerService;
 	let generation: number;
-	let graphCurrent: boolean;
+	let graphState: { current: boolean };
 	let publications: Map<string, PropertyValueState>;
 	let values: PropertyValueService;
 	let storage: { query: jest.Mock; isConnected: jest.Mock; writePoints: jest.Mock; enqueueWritePoint: jest.Mock };
@@ -59,15 +60,16 @@ describe('durable virtual measurement coverage and room planner integration', ()
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 		}).initialize();
 		generation = 1;
-		graphCurrent = true;
+		graphState = { current: true };
 		publications = new Map();
 		const registry = new DeviceContributionRegistryService();
 		const valueSources = new PropertyValueSourceRegistryService();
 		valueSources.register(
 			new VirtualValueSourceService({
-				isValidated: () => graphCurrent,
+				isValidated: () => graphState.current,
+				captureReadPolicyObservation: () => observePropertyReadPolicy(graphState, ['current']),
 				isQuarantined: () => false,
-				matchesValueSource: () => graphCurrent,
+				matchesValueSource: () => graphState.current,
 				// This fixture supplies no validated source-policy metadata.
 				propertyRequiresLiveValue: () => null,
 			} as never),
@@ -88,8 +90,8 @@ describe('durable virtual measurement coverage and room planner integration', ()
 			database,
 			{
 				revision: () => Promise.resolve(1),
-				capturePublishGuard: () => () => graphCurrent,
-				isRevisionCurrent: () => graphCurrent,
+				capturePublishGuard: () => () => graphState.current,
+				isRevisionCurrent: () => graphState.current,
 			} as never,
 			{ getGeneration: () => generation } as never,
 			{ read: (id: string) => publications.get(id) ?? null } as never,
@@ -377,7 +379,7 @@ describe('durable virtual measurement coverage and room planner integration', ()
 		expect(plan.read()).toMatchObject({ temperature: null, diagnostics: { unavailablePropertyIds: [output.id] } });
 		generation++;
 		expect(plan.read().diagnostics.status).toBe('coverage_stale');
-		graphCurrent = false;
+		graphState.current = false;
 		expect((await planner.plan([raw, output])).read().diagnostics.status).toBe('coverage_stale');
 	});
 });
