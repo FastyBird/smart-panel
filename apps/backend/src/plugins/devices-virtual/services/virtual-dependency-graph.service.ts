@@ -7,6 +7,10 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	PropertyReadPolicyObservation,
+	observePropertyReadPolicy,
+} from '../../../modules/devices/models/property-read-policy.model';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -113,6 +117,24 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	capturePublishGuard(): () => boolean {
 		const generation = this.validationGeneration;
 		return () => this.isValidated() && generation === this.validationGeneration;
+	}
+
+	/** Read-only snapshot of the policy epoch and its direct method/metadata dependencies. */
+	captureReadPolicyObservation(): PropertyReadPolicyObservation {
+		return observePropertyReadPolicy(this, [
+			'validationGeneration',
+			'validationPending',
+			'quarantineRevision',
+			'quarantined',
+			'knownProperties',
+			'liveValueProperties',
+			'valueSources',
+			'isValidated',
+			'isQuarantined',
+			'matchesValueSource',
+			'propertyRequiresLiveValue',
+			'captureReadPolicyObservation',
+		]);
 	}
 
 	async revision(manager: EntityManager = this.dataSource.manager): Promise<number> {

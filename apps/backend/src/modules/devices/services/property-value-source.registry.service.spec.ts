@@ -12,6 +12,11 @@ import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/
 import { VirtualValueSourceService } from '../../../plugins/devices-virtual/services/virtual-value-source.service';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import {
+	PropertyReadPolicyObservation,
+	isPropertyReadPolicyObservationCurrent,
+	observePropertyReadPolicy,
+} from '../models/property-read-policy.model';
 
 import {
 	IPropertyValueSource,
@@ -119,6 +124,46 @@ describe('Read source provenance', () => {
 		expect(registry.isReadSourceCurrent(capture)).toBe(true);
 	});
 
+	it.each(['forged', 'callback', 'undefined'] as const)(
+		'refuses %s policy evidence without invoking a supplied verifier',
+		(kind) => {
+			const callback = jest.fn(() => true);
+			const evidence =
+				kind === 'forged' ? new PropertyReadPolicyObservation() : kind === 'callback' ? callback : undefined;
+			registry.register({ ...source(), captureReadPolicyObservation: () => evidence });
+			expect(() => registry.captureReadSource(property())).toThrow('Unqualified or stale read policy observation');
+			expect(callback).not.toHaveBeenCalled();
+		},
+	);
+
+	it('treats qualified observation only as a veto, never as replacement policy authority', () => {
+		const state = { generation: 1 };
+		let closed = false;
+		registry.register({
+			...source(),
+			unavailableReason: () => (closed ? 'closed' : null),
+			captureReadPolicyObservation: () => observePropertyReadPolicy(state, ['generation']),
+		});
+		const capture = registry.captureReadSource(property());
+		closed = true;
+		expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(true);
+		expect(registry.isReadSourceCurrent(capture)).toBe(false);
+		registry.closeReadSource(capture);
+	});
+
+	it('observes data descriptors without executing a replacement getter and rejects forged dependencies', () => {
+		const state = { generation: 1 };
+		const observation = observePropertyReadPolicy(state, ['generation']);
+		const getter = jest.fn(() => 1);
+		Object.defineProperty(state, 'generation', { get: getter });
+		expect(isPropertyReadPolicyObservationCurrent(observation)).toBe(false);
+		expect(() => observePropertyReadPolicy(state, ['generation'])).toThrow('requires data fields');
+		expect(() => observePropertyReadPolicy({}, ['missing'], [new PropertyReadPolicyObservation()])).toThrow(
+			'Unqualified',
+		);
+		expect(getter).not.toHaveBeenCalled();
+	});
+
 	it('does not adopt a provider registered after a fallback capture', () => {
 		const capture = registry.captureReadSource(property());
 		registry.register(source());
@@ -172,7 +217,7 @@ describe('Read source provenance', () => {
 		},
 	);
 
-	it.each(['getType', 'resolve', 'unavailableReason', 'requiresLiveValue'] as const)(
+	it.each(['getType', 'resolve', 'unavailableReason', 'requiresLiveValue', 'captureReadPolicyObservation'] as const)(
 		'refuses replaced %s without invoking its getter',
 		(method) => {
 			const provider = source();
@@ -298,9 +343,10 @@ describe('Read source provenance', () => {
 	});
 
 	it('retains real virtual projection identity and fences graph unavailability', () => {
-		let validated = true;
+		const state = { validated: true };
 		const graph = {
-			isValidated: () => validated,
+			isValidated: () => state.validated,
+			captureReadPolicyObservation: () => observePropertyReadPolicy(state, ['validated']),
 			isQuarantined: () => false,
 			matchesValueSource: () => true,
 			propertyRequiresLiveValue: () => true,
@@ -315,7 +361,7 @@ describe('Read source provenance', () => {
 		expect(registry.readSourceKey(capture)).toBe('physical');
 		expect(registry.readSourceInput(capture)).toBeInstanceOf(VirtualChannelPropertyEntity);
 		expect(registry.isReadSourceCurrent(capture)).toBe(true);
-		validated = false;
+		state.validated = false;
 		expect(registry.isReadSourceCurrent(capture)).toBe(false);
 		expect(registry.readSourceUnavailableReason(capture)).toBeNull();
 		expect(registry.unavailableReason(input)).toBe('graph_validation_pending');

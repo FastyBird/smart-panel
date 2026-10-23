@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { In } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -10,7 +11,12 @@ import {
 } from '../../../plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualValueSourceService } from '../../../plugins/devices-virtual/services/virtual-value-source.service';
+import { ConfigService } from '../../config/services/config.service';
+import { HOME_CURRENT_STATE_PROFILE_BUDDY_V1 } from '../../home-context/home-context.constants';
+import { HomeCurrentStateQueryService } from '../../home-context/services/home-current-state-query.service';
+import { StoragePlugin } from '../../storage/interfaces/storage-plugin.interface';
 import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
+import { StorageQueryOptions } from '../../storage/storage.types';
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
@@ -149,7 +155,7 @@ describe('property read provenance with hydrated entities', () => {
 			expect(captures).toHaveBeenCalled();
 			for (const result of captures.mock.results) {
 				if (result.type !== 'return') continue;
-				expect(closes).toHaveBeenCalledWith(result.value);
+				expect(closes.mock.calls.filter(([capture]) => capture === result.value)).toHaveLength(1);
 				expect(registry.isReadSourceCurrent(result.value)).toBe(false);
 			}
 		};
@@ -650,6 +656,861 @@ describe('property read provenance with hydrated entities', () => {
 			await expect(values.readLatestManyStrict([physical, cold])).rejects.toThrow('data fields');
 			expect(getter).not.toHaveBeenCalled();
 			expect(storage.queryStrict).not.toHaveBeenCalled();
+			closed();
+		});
+	});
+	describe('bounded source continuity', () => {
+		const unprocessed = (id: string, key: string | null) => ({
+			propertyId: id,
+			sourcePropertyId: key,
+			status: 'unprocessed',
+			source: null,
+			state: null,
+		});
+		const mutate = (change: string) => {
+			if (change === 'remap') projection.sourcePropertyId = coldId;
+			if (change === 'id') projection.id = randomUUID();
+			if (change === 'data type') projection.dataType = DataTypeType.STRING;
+			if (change === 'array') (projection.format as number[])[1] = 1000;
+			if (change === 'descriptor') Object.defineProperty(projection, 'dataType', { writable: false });
+			if (change === 'policy') graph.invalidateValidation();
+			if (change === 'method') source.resolve = () => physicalId;
+			if (change === 'registration') registry.register({ getType: () => physical.type, resolve: (input) => input.id });
+		};
+
+		describe('bounded R1 refusal and final veto', () => {
+			const commitColdProducer = (isCurrent: () => boolean) => {
+				const lease = producers.register(cold, 3, { isCurrent, reason: 'owner_closed' });
+				expect(
+					producers.commit(
+						lease,
+						new PropertyValueState(99),
+						{
+							quality: 'good',
+							reasons: [],
+							sampledAt: new Date(),
+							evaluatedAt: new Date(),
+							expiresAt: new Date(Date.now() + 60000),
+						},
+						producers.version(lease),
+					),
+				).toBe(true);
+			};
+
+			it('contains descriptor-throwing Proxy refusal between valid hydrated siblings', async () => {
+				const closed = assertClosed();
+				const opaque = new Proxy(projection, {
+					getOwnPropertyDescriptor(target, key) {
+						if (key === 'id') throw new Error('opaque ID descriptor');
+						return Reflect.getOwnPropertyDescriptor(target, key);
+					},
+				});
+				expect(opaque.id).toBe(projectionId);
+				expect(opaque.type).toBe(projection.type);
+				expect(opaque.dataType).toBe(projection.dataType);
+				storage.queryStrict.mockResolvedValue([...rows(), { propertyId: coldId, numberValue: 55 }]);
+				const result = await values.readLatestManyBounded([physical, opaque, cold]);
+				expect(result.items[0]).toMatchObject({
+					propertyId: physicalId,
+					sourcePropertyId: physicalId,
+					status: 'available',
+					source: 'storage',
+					state: { value: 21 },
+				});
+				expect(result.items[1]).toEqual(unprocessed('', null));
+				expect(result.items[2]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: coldId,
+					status: 'available',
+					source: 'storage',
+					state: { value: 55 },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 3,
+					availableCount: 2,
+					unknownCount: 1,
+					unprocessedCount: 1,
+					missingCount: 0,
+					cacheCount: 0,
+					storageCount: 2,
+					storageStatus: 'failed',
+					complete: false,
+				});
+				expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+				closed();
+			});
+
+			it.each(['sparse', 'undefined', 'null'] as const)(
+				'contains a pre-existing malformed %s entry between valid siblings',
+				async (kind) => {
+					const closed = assertClosed();
+					const properties = [physical, cold, cold];
+					if (kind === 'sparse') Reflect.deleteProperty(properties, '1');
+					else properties[1] = kind === 'null' ? null : undefined;
+					storage.queryStrict.mockResolvedValue([...rows(), { propertyId: coldId, numberValue: 55 }]);
+					const result = await values.readLatestManyBounded(properties);
+					expect(result.items.map((item) => item.propertyId)).toEqual([physicalId, '', coldId]);
+					expect(result.items[0]).toMatchObject({ status: 'available', state: { value: 21 } });
+					expect(result.items[1]).toEqual(unprocessed('', null));
+					expect(result.items[2]).toMatchObject({ status: 'available', state: { value: 55 } });
+					expect(result).toMatchObject({
+						requestedCount: 3,
+						availableCount: 2,
+						unknownCount: 1,
+						unprocessedCount: 1,
+						missingCount: 0,
+						storageCount: 2,
+						storageStatus: 'failed',
+						complete: false,
+					});
+					closed();
+				},
+			);
+
+			it('revalidates earlier cached A after B final real producer guard remaps A', async () => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				let armed = false,
+					reads = 0;
+				commitColdProducer(() => {
+					if (armed && ++reads === 2) projection.sourcePropertyId = coldId;
+					return true;
+				});
+				armed = true;
+				const result = await values.readLatestManyBounded([projection, cold]);
+				expect(projection.sourcePropertyId).toBe(coldId);
+				expect(reads).toBe(2);
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: coldId,
+					status: 'available',
+					source: 'cache',
+					state: { value: 99, producer: { quality: 'good', revision: 3 } },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					availableCount: 1,
+					unknownCount: 1,
+					unprocessedCount: 1,
+					missingCount: 0,
+					cacheCount: 1,
+					storageCount: 0,
+					storageStatus: 'not_needed',
+					complete: false,
+				});
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 10 });
+				closed();
+			});
+
+			it('structurally vetoes A remapped by a later B provider-currentness callback', async () => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				let armed = false,
+					reads = 0,
+					providerChecksAfterFinalProducer = 0;
+				expect(
+					registry.register({
+						getType: () => cold.type,
+						resolve: (input) => {
+							if (input.id === coldId && reads === 2 && ++providerChecksAfterFinalProducer === 2)
+								projection.sourcePropertyId = coldId;
+							return input.id;
+						},
+					}),
+				).toBe(true);
+				commitColdProducer(() => {
+					if (armed) reads++;
+					return true;
+				});
+				armed = true;
+				const result = await values.readLatestManyBounded([projection, cold]);
+				expect(projection.sourcePropertyId).toBe(coldId);
+				expect(providerChecksAfterFinalProducer).toBe(2);
+				expect(reads).toBe(2);
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					status: 'available',
+					source: 'cache',
+					state: { value: 99 },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					availableCount: 1,
+					unprocessedCount: 1,
+					complete: false,
+					storageStatus: 'not_needed',
+				});
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+				closed();
+			});
+		});
+
+		describe('bounded R2 policy and representative admission', () => {
+			it('vetoes original A after a later B provider check invalidates the real graph policy', async () => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				let armed = false,
+					reads = 0,
+					providerChecksAfterFinalProducer = 0;
+				expect(
+					registry.register({
+						getType: () => cold.type,
+						resolve: (input) => {
+							if (input.id === coldId && reads === 2 && ++providerChecksAfterFinalProducer === 2)
+								graph.invalidateValidation();
+							return input.id;
+						},
+					}),
+				).toBe(true);
+				const lease = producers.register(cold, 3, {
+					isCurrent: () => {
+						if (armed) reads++;
+						return true;
+					},
+					reason: 'owner_closed',
+				});
+				expect(
+					producers.commit(
+						lease,
+						new PropertyValueState(99),
+						{
+							quality: 'good',
+							reasons: [],
+							sampledAt: new Date(),
+							evaluatedAt: new Date(),
+							expiresAt: new Date(Date.now() + 60000),
+						},
+						producers.version(lease),
+					),
+				).toBe(true);
+				armed = true;
+				expect(graph.isValidated()).toBe(true);
+				const result = await values.readLatestManyBounded([projection, cold]);
+				expect(reads).toBe(2);
+				expect(providerChecksAfterFinalProducer).toBe(2);
+				expect(graph.isValidated()).toBe(false);
+				expect(projection.sourcePropertyId).toBe(physicalId);
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: coldId,
+					status: 'available',
+					source: 'cache',
+					state: { value: 99 },
+				});
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					availableCount: 1,
+					unprocessedCount: 1,
+					unknownCount: 1,
+					cacheCount: 1,
+					storageCount: 0,
+					complete: false,
+					storageStatus: 'not_needed',
+				});
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+				closed();
+			});
+
+			it('admits no cache or trend when later shared-key B collection invalidates both captures', async () => {
+				const closed = assertClosed();
+				let armed = false,
+					mutations = 0;
+				expect(
+					registry.register({
+						getType: () => cold.type,
+						resolve: (input) => {
+							if (input.id !== coldId) return input.id;
+							if (armed) {
+								mutations++;
+								projection.sourcePropertyId = coldId;
+								cold.dataType = DataTypeType.BOOL;
+							}
+							return physicalId;
+						},
+					}),
+				).toBe(true);
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+				expect(storage.queryStrict.mock.calls[0][0].split(physicalId)).toHaveLength(2);
+				armed = true;
+				held.resolve(rows());
+				const result = await pending;
+				expect(mutations).toBe(1);
+				expect(cold.dataType).toBe(DataTypeType.BOOL);
+				expect(projection.sourcePropertyId).toBe(coldId);
+				expect(result.items).toEqual([unprocessed(projectionId, physicalId), unprocessed(coldId, physicalId)]);
+				expect(result).toMatchObject({
+					requestedCount: 2,
+					unprocessedCount: 2,
+					availableCount: 0,
+					cacheCount: 0,
+					storageCount: 0,
+					complete: false,
+					storageStatus: 'available',
+				});
+				await expect(values.readLatest(physical)).resolves.toBeNull();
+				expect(storage.query).toHaveBeenCalledTimes(1);
+				await values.write(physical, 22);
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 22, trend: null });
+				closed();
+			});
+
+			it('selects a still-current sibling after the group collection revokes its earlier representative', async () => {
+				const closed = assertClosed();
+				cold.dataType = DataTypeType.INT;
+				let armed = false;
+				registry.register({
+					getType: () => cold.type,
+					resolve: (input) => {
+						if (input.id !== coldId) return input.id;
+						if (armed) projection.sourcePropertyId = coldId;
+						return physicalId;
+					},
+				});
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				armed = true;
+				held.resolve([{ propertyId: physicalId, numberValue: 21.6 }]);
+				const result = await pending;
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					sourcePropertyId: physicalId,
+					status: 'available',
+					state: { value: 22 },
+				});
+				expect(result).toMatchObject({ availableCount: 1, unprocessedCount: 1, complete: false });
+				expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+				closed();
+			});
+
+			it('uses the captured real graph data for a successful final check without dispatch', () => {
+				const readPolicy = jest.spyOn(graph, 'isValidated');
+				const capture = registry.captureReadSource(projection);
+				readPolicy.mockClear();
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(true);
+				expect(readPolicy).not.toHaveBeenCalled();
+				graph.invalidateValidation();
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(readPolicy).not.toHaveBeenCalled();
+				registry.closeReadSource(capture);
+			});
+
+			it.each([
+				'invalidate/revalidate',
+				'graph replacement',
+				'graph method replacement',
+				'observation method replacement',
+			] as const)(
+				'never revives original graph policy after %s and final checks dispatch no graph methods',
+				async (change) => {
+					const capture = registry.captureReadSource(projection);
+					expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(true);
+					if (change === 'invalidate/revalidate') {
+						graph.invalidateValidation();
+						await graph.refreshQuarantine();
+						expect(graph.isValidated()).toBe(true);
+					}
+					if (change === 'graph replacement')
+						Object.assign(source, { graph: new VirtualDependencyGraphService(database) });
+					if (change === 'graph method replacement') graph.isValidated = () => true;
+					if (change === 'observation method replacement')
+						Object.assign(graph, {
+							captureReadPolicyObservation: () => {
+								throw new Error('must not dispatch');
+							},
+						});
+					expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+					expect(registry.isReadSourceCurrent(capture)).toBe(false);
+					expect(registry.readSourceKey(capture)).toBe(physicalId);
+					registry.closeReadSource(capture);
+				},
+			);
+
+			it('checks the real graph policy observation without dispatching policy methods or supplied getters', () => {
+				const capture = registry.captureReadSource(projection);
+				const policy = jest.spyOn(graph, 'isValidated');
+				// Replacement invalidates the observation by descriptor identity without executing it.
+				policy.mockImplementation(() => {
+					throw new Error('no final policy dispatch');
+				});
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(policy).not.toHaveBeenCalled();
+				registry.closeReadSource(capture);
+			});
+		});
+
+		it('deduplicates real projections while retaining ordered duplicates and captured conversions', async () => {
+			const closed = assertClosed();
+			projection.dataType = DataTypeType.INT;
+			storage.queryStrict.mockResolvedValue([{ propertyId: physicalId, numberValue: 21.6, time: new Date() }]);
+			const result = await values.readLatestManyBounded([physical, projection, projection, cold]);
+			expect(result.items.map((item) => [item.propertyId, item.sourcePropertyId, item.state?.value])).toEqual([
+				[physicalId, physicalId, 21.6],
+				[projectionId, physicalId, 22],
+				[projectionId, physicalId, 22],
+				[coldId, coldId, undefined],
+			]);
+			expect(result).toMatchObject({
+				requestedCount: 4,
+				availableCount: 3,
+				missingCount: 1,
+				storageCount: 4,
+				storageStatus: 'available',
+			});
+			expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+			expect(storage.queryStrict.mock.calls[0][0].split(physicalId)).toHaveLength(2);
+			expect(storage.queryStrict.mock.calls[0][0]).not.toContain(projectionId);
+			closed();
+		});
+
+		it.each(['remap', 'id', 'data type', 'array', 'descriptor', 'policy', 'method'])(
+			'refuses a held uncached %s route and preserves valid sibling results',
+			async (change) => {
+				const closed = assertClosed();
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				mutate(change);
+				held.resolve([...rows(), { propertyId: coldId, numberValue: 55 }]);
+				const result = await pending;
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({ propertyId: coldId, state: { value: 55 }, source: 'storage' });
+				expect(result).toMatchObject({
+					storageStatus: 'available',
+					complete: false,
+					availableCount: 1,
+					unprocessedCount: 1,
+					storageCount: 1,
+				});
+				await expect(values.readLatest(physical)).resolves.toBeNull();
+				expect(storage.query).toHaveBeenCalledTimes(1);
+				await values.write(physical, 22);
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 22, trend: null });
+				closed();
+			},
+		);
+
+		it.each(['remap', 'id', 'data type', 'array', 'descriptor', 'policy', 'method'])(
+			'fences an earlier cache hit after held %s change without adopting a successor',
+			async (change) => {
+				const closed = assertClosed();
+				await values.write(physical, 10);
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				mutate(change);
+				producers.register(cold, 4);
+				const read = jest.spyOn(producers, 'read');
+				read.mockClear();
+				held.resolve([]);
+				const result = await pending;
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({
+					propertyId: coldId,
+					status: 'missing',
+					state: { producer: { revision: 4 } },
+				});
+				expect(read.mock.calls.every(([key]) => key === coldId)).toBe(true);
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 10 });
+				closed();
+			},
+		);
+
+		it('fences an ordinary route when a provider claims its previously implicit registration', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyBounded([physical, projection]);
+			expect(registry.register({ getType: () => physical.type, resolve: () => coldId })).toBe(true);
+			held.resolve(rows());
+			const result = await pending;
+			expect(result.items[0]).toEqual(unprocessed(physicalId, physicalId));
+			expect(result.items[1]).toMatchObject({
+				propertyId: projectionId,
+				sourcePropertyId: physicalId,
+				state: { value: 21 },
+			});
+			closed();
+		});
+
+		it('admits a shared source only through its remaining current projection', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyBounded([projection, physical, projection]);
+			projection.dataType = DataTypeType.BOOL;
+			held.resolve(rows());
+			const result = await pending;
+			expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+			expect(result.items[1]).toMatchObject({ propertyId: physicalId, state: { value: 21, trend: 'rising' } });
+			expect(result.items[2]).toEqual(unprocessed(projectionId, physicalId));
+			await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 21 });
+			closed();
+		});
+
+		it('rechecks a cache-only route after the real producer lifecycle callback remaps it', async () => {
+			const closed = assertClosed();
+			let armed = false,
+				reads = 0;
+			const lease = producers.register(physical, 2, {
+				isCurrent: () => {
+					if (armed && ++reads === 2) projection.sourcePropertyId = coldId;
+					return true;
+				},
+				reason: 'owner_closed',
+			});
+			expect(
+				producers.commit(
+					lease,
+					new PropertyValueState(99),
+					{
+						quality: 'good',
+						reasons: [],
+						sampledAt: new Date(),
+						evaluatedAt: new Date(),
+						expiresAt: new Date(Date.now() + 60000),
+					},
+					producers.version(lease),
+				),
+			).toBe(true);
+			armed = true;
+			const result = await values.readLatestManyBounded([projection]);
+			expect(reads).toBe(2);
+			expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+			expect(result).toMatchObject({ storageStatus: 'not_needed', complete: false, unprocessedCount: 1 });
+			expect(storage.queryStrict).not.toHaveBeenCalled();
+			closed();
+		});
+
+		it('captures every original before the first producer read can remap a later route', async () => {
+			const closed = assertClosed();
+			jest.spyOn(producers, 'read').mockImplementationOnce(() => {
+				projection.sourcePropertyId = coldId;
+				return null;
+			});
+			storage.queryStrict.mockResolvedValue(rows());
+			const result = await values.readLatestManyBounded([physical, projection]);
+			expect(result.items[0]).toMatchObject({ state: { value: 21 } });
+			expect(result.items[1]).toEqual(unprocessed(projectionId, physicalId));
+			expect(storage.queryStrict.mock.calls[0][0]).not.toContain(coldId);
+			closed();
+		});
+
+		it.each([false, true])('keeps concurrent writes after empty/nonempty rows (empty=%s)', async (empty) => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyBounded([physical, projection]);
+			await values.write(physical, 25, new Date('2026-10-23T11:00:00Z'));
+			held.resolve(empty ? [] : rows());
+			const result = await pending;
+			expect(result.items.every((item) => item.source === 'cache' && item.state?.value === 25)).toBe(true);
+			await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 25, trend: null });
+			closed();
+		});
+
+		it('does not resurrect deleted series or trends while its query is pending', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyBounded([physical, projection]);
+			await values.delete(physical);
+			held.resolve(rows());
+			expect((await pending).items).toEqual([
+				unprocessed(physicalId, physicalId),
+				unprocessed(projectionId, physicalId),
+			]);
+			await expect(values.readLatest(physical)).resolves.toBeNull();
+			await values.write(physical, 22);
+			await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 22, trend: null });
+			closed();
+		});
+
+		it.each([new Error('bounded primary'), null, undefined, false, 0, ''])(
+			'logs the primary diagnostic %p and retains valid cache without stale fallback',
+			async (primary) => {
+				const closed = assertClosed();
+				const log = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+				await values.write(cold, 12);
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyBounded([projection, cold]);
+				projection.sourcePropertyId = coldId;
+				held.reject(primary);
+				const result = await pending;
+				expect(result).toMatchObject({ storageStatus: 'failed', availableCount: 1, unprocessedCount: 1 });
+				expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+				expect(result.items[1]).toMatchObject({ state: { value: 12 }, source: 'cache' });
+				expect(log).toHaveBeenCalledWith(
+					expect.stringContaining(`error=${primary instanceof Error ? primary.message : String(primary)}`),
+					undefined,
+					expect.objectContaining({ tag: 'devices-module' }),
+				);
+				closed();
+			},
+		);
+
+		it('retains the original safe ID when capture itself changes the input and fails', async () => {
+			const closed = assertClosed();
+			jest.spyOn(graph, 'isQuarantined').mockImplementation((id) => {
+				projection.id = randomUUID();
+				return VirtualDependencyGraphService.prototype.isQuarantined.call(graph, id) as boolean;
+			});
+			const result = await values.readLatestManyBounded([physical, projection]);
+			expect(result.items[1]).toEqual(unprocessed(projectionId, null));
+			expect(projection.id).not.toBe(projectionId);
+			expect(result).toMatchObject({ storageStatus: 'failed', unprocessedCount: 1, missingCount: 1 });
+			closed();
+		});
+
+		it.each(['id', 'type'])('does not execute a refused own %s getter on capture failure', async (field) => {
+			const closed = assertClosed();
+			const getter = jest.fn(() => {
+				throw new Error('must not run');
+			});
+			Object.defineProperty(projection, field, { configurable: true, get: getter });
+			const result = await values.readLatestManyBounded([physical, projection]);
+			expect(result.items[1]).toEqual(unprocessed(field === 'id' ? '' : projectionId, null));
+			expect(getter).not.toHaveBeenCalled();
+			closed();
+		});
+
+		it('closes partial captures on refusal, disconnected, expired, cache-only and unavailable-policy exits', async () => {
+			const closed = assertClosed();
+			const getter = jest.fn(() => DataTypeType.FLOAT);
+			Object.defineProperty(cold, 'dataType', { configurable: true, get: getter });
+			storage.isConnected.mockReturnValue(false);
+			const refused = await values.readLatestManyBounded([physical, cold]);
+			expect(refused.items).toEqual([unprocessed(physicalId, physicalId), unprocessed(coldId, null)]);
+			expect(refused.storageStatus).toBe('disconnected');
+			expect(getter).not.toHaveBeenCalled();
+			const expired = await values.readLatestManyBounded([physical], { deadlineAt: new Date(0) });
+			expect(expired).toMatchObject({ storageStatus: 'timed_out', unprocessedCount: 1 });
+			await values.write(physical, 10);
+			expect(await values.readLatestManyBounded([physical])).toMatchObject({
+				storageStatus: 'not_needed',
+				availableCount: 1,
+			});
+			graph.invalidateValidation();
+			expect((await values.readLatestManyBounded([projection])).items[0]).toMatchObject({
+				status: 'missing',
+				state: { producer: { reasons: ['graph_validation_pending'] } },
+			});
+			expect(storage.queryStrict).not.toHaveBeenCalled();
+			closed();
+		});
+
+		it.each(['failure', 'deadline', 'delete', 'write', 'stale'] as const)(
+			'retains valid completed chunks and logical dispositions on later %s',
+			async (ending) => {
+				const repository = database.getRepository(ChannelPropertyEntity);
+				const ids = Array.from({ length: 101 }, () => randomUUID());
+				await repository.insert(
+					ids.map((id) => ({
+						id,
+						channel: (physical.channel as ChannelEntity).id,
+						category: PropertyCategory.TEMPERATURE,
+						dataType: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+					})),
+				);
+				try {
+					const loaded = await repository.findBy({ id: In(ids) });
+					const properties = ids.map((id) => loaded.find((property) => property.id === id));
+					const closed = assertClosed();
+					const held = deferred<Row[]>();
+					storage.queryStrict
+						.mockResolvedValueOnce(
+							ids.slice(0, 50).map((propertyId, index) => ({
+								propertyId,
+								numberValue: index,
+								time: new Date('2026-10-23T12:00:00Z'),
+							})),
+						)
+						.mockReturnValueOnce(held.promise)
+						.mockResolvedValue([]);
+					jest.useFakeTimers();
+					try {
+						const pending = values.readLatestManyBounded(properties);
+						await jest.advanceTimersByTimeAsync(0);
+						expect(storage.queryStrict).toHaveBeenCalledTimes(2);
+						if (ending === 'deadline') await jest.advanceTimersByTimeAsync(750);
+						else if (ending === 'failure') held.reject(new Error('second chunk failed'));
+						else {
+							if (ending === 'delete') await values.delete(properties[0]);
+							if (ending === 'write') await values.write(properties[0], 99, new Date('2026-10-23T11:00:00Z'));
+							if (ending === 'stale') properties[0].dataType = DataTypeType.BOOL;
+							held.resolve([]);
+						}
+						const result = await pending;
+						expect(result.items.map((item) => item.propertyId)).toEqual(ids);
+						expect(result.items[1]).toMatchObject({ source: 'storage', state: { value: 1 } });
+						if (ending === 'delete' || ending === 'stale') expect(result.items[0]).toEqual(unprocessed(ids[0], ids[0]));
+						else
+							expect(result.items[0]).toMatchObject({
+								source: ending === 'write' ? 'cache' : 'storage',
+								state: { value: ending === 'write' ? 99 : 0 },
+							});
+						if (ending === 'deadline' || ending === 'failure') {
+							expect(result).toMatchObject({
+								availableCount: 50,
+								unprocessedCount: 51,
+								storageCount: 50,
+								storageStatus: ending === 'deadline' ? 'timed_out' : 'failed',
+							});
+							expect(result.items[100]).toEqual(unprocessed(ids[100], ids[100]));
+							expect(storage.queryStrict).toHaveBeenCalledTimes(2);
+						} else {
+							expect(result.items[100]).toMatchObject({ status: 'missing', source: 'storage' });
+							expect(storage.queryStrict).toHaveBeenCalledTimes(3);
+						}
+						for (const [query] of storage.queryStrict.mock.calls)
+							expect((query.match(/propertyId =/g) ?? []).length).toBeLessThanOrEqual(50);
+						closed();
+						held.resolve([]);
+						await jest.advanceTimersByTimeAsync(0);
+						expect(jest.getTimerCount()).toBe(0);
+					} finally {
+						jest.useRealTimers();
+					}
+				} finally {
+					await repository.delete(ids);
+				}
+			},
+		);
+
+		it.each(['fulfill', 'reject'] as const)(
+			'bounds a real storage dispatch that ignores abort and consumes late %s',
+			async (settlement) => {
+				const closed = assertClosed();
+				const held = deferred<Row[]>();
+				const realStorage = new StorageService({
+					getModuleConfig: () => ({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+				} as unknown as ConfigService);
+				let signal: AbortSignal | undefined;
+				const query = jest.fn((_sql: string, options?: StorageQueryOptions) => {
+					signal = options?.signal;
+					return held.promise;
+				});
+				const fallback = jest.fn().mockResolvedValue([]);
+				realStorage.registerPlugin('primary', {
+					name: 'primary',
+					isAvailable: () => true,
+					queryStrict: query,
+				} as unknown as StoragePlugin);
+				realStorage.registerPlugin('fallback', {
+					name: 'fallback',
+					isAvailable: () => true,
+					queryStrict: fallback,
+				} as unknown as StoragePlugin);
+				const bounded = new PropertyValueService(
+					realStorage,
+					registry,
+					new PropertyValueLockService({} as never),
+					producers,
+				);
+				jest.useFakeTimers();
+				try {
+					const pending = bounded.readLatestManyBounded([projection], { deadlineAt: new Date(Date.now() + 30) });
+					let settled = false;
+					void pending.then(
+						() => {
+							settled = true;
+						},
+						() => {
+							settled = true;
+						},
+					);
+					await jest.advanceTimersByTimeAsync(29);
+					expect(signal?.aborted).toBe(false);
+					await jest.advanceTimersByTimeAsync(1);
+					expect(settled).toBe(true);
+					const result = await pending;
+					expect(result).toMatchObject({ storageStatus: 'timed_out', unprocessedCount: 1 });
+					expect(result.items[0]).toEqual(unprocessed(projectionId, physicalId));
+					expect(signal?.aborted).toBe(true);
+					closed();
+					if (settlement === 'fulfill') held.resolve(rows());
+					else held.reject(new Error('late backend rejection'));
+					await jest.advanceTimersByTimeAsync(0);
+					expect(fallback).not.toHaveBeenCalled();
+					expect(query).toHaveBeenCalledTimes(1);
+					expect(jest.getTimerCount()).toBe(0);
+					closed();
+				} finally {
+					held.resolve([]);
+					await jest.advanceTimersByTimeAsync(0);
+					jest.useRealTimers();
+					await realStorage.onApplicationShutdown();
+				}
+				// Same instance: no late cache/trend admission after closure.
+				const queryAfterDeadline = jest.spyOn(realStorage, 'queryStrict').mockResolvedValue([]);
+				await expect(bounded.readLatestStrict(physical)).resolves.toBeNull();
+				expect(queryAfterDeadline).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(['fulfill', 'reject'] as const)(
+			'treats exact-boundary %s as timeout even before the timer callback',
+			async (settlement) => {
+				const closed = assertClosed();
+				const held = deferred<Row[]>();
+				let signal: AbortSignal | undefined;
+				storage.queryStrict.mockImplementationOnce((_query, options?: StorageQueryOptions) => {
+					signal = options?.signal;
+					return held.promise;
+				});
+				jest.useFakeTimers();
+				try {
+					const start = Date.now();
+					const pending = values.readLatestManyBounded([projection], { deadlineAt: new Date(start + 10) });
+					jest.setSystemTime(start + 10);
+					if (settlement === 'fulfill') held.resolve(rows());
+					else held.reject(null);
+					expect(await pending).toMatchObject({ storageStatus: 'timed_out', unprocessedCount: 1 });
+					expect(signal?.aborted).toBe(true);
+					expect(jest.getTimerCount()).toBe(0);
+					closed();
+				} finally {
+					jest.useRealTimers();
+				}
+				await expect(values.readLatest(physical)).resolves.toBeNull();
+			},
+		);
+
+		it('propagates stale bounded input as unknown through the actual home-current-state caller', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const caller = new HomeCurrentStateQueryService(
+				{} as never,
+				{
+					findVisibleReadableStateCandidates: () => Promise.resolve({ properties: [projection, physical], total: 2 }),
+				} as unknown as ChannelsPropertiesService,
+				values,
+			);
+			const pending = caller.queryCurrentState({ profile: HOME_CURRENT_STATE_PROFILE_BUDDY_V1, operation: 'rows' });
+			await Promise.resolve();
+			expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+			projection.sourcePropertyId = coldId;
+			held.resolve(rows());
+			const result = await pending;
+			expect(result).toMatchObject({
+				evaluated: 1,
+				unknown: 1,
+				complete: false,
+				storage_status: 'available',
+				partial_reasons: ['unprocessed_values'],
+			});
+			expect(result.rows.map((row) => row.property_id)).toEqual([physicalId]);
 			closed();
 		});
 	});
