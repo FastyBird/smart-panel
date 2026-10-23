@@ -32,6 +32,11 @@ export class DeviceStructureLockService {
 	private activeReaders = 0;
 	private writerActive = false;
 
+	/** Reports only whether this caller still holds its original structural context. */
+	hasCurrentStructuralLease(): boolean {
+		return this.context.getStore()?.active === true;
+	}
+
 	async runShared<T>(fn: () => Promise<T>): Promise<T> {
 		const context = this.context.getStore();
 
@@ -56,6 +61,18 @@ export class DeviceStructureLockService {
 		}
 
 		return this.enqueue('exclusive', fn);
+	}
+
+	/** Settles only after this top-level owner's nested work and structural lease have released. */
+	async runExclusiveReleased<T>(fn: () => Promise<T>): Promise<T> {
+		if (this.context.getStore()?.active) {
+			throw new Error('Release-aware device structure work requires a top-level caller');
+		}
+
+		return new Promise<T>((resolve, reject) => {
+			this.queue.push({ mode: 'exclusive', fn, resolve, reject, releaseBeforeSettlement: true });
+			this.drain();
+		});
 	}
 
 	private enqueue<T>(mode: LockMode, fn: () => Promise<T>): Promise<T> {
@@ -99,6 +116,11 @@ export class DeviceStructureLockService {
 	}
 
 	private execute<T>(request: LockRequest<T>): void {
+		if (request.releaseBeforeSettlement) {
+			this.executeReleased(request);
+			return;
+		}
+
 		const context: LockContext = { mode: request.mode, active: true, nestedOperations: new Set() };
 
 		void Promise.resolve()
@@ -128,14 +150,33 @@ export class DeviceStructureLockService {
 			});
 	}
 
-	private runNested<T>(context: LockContext, fn: () => Promise<T>): Promise<T> {
-		let operation: Promise<T>;
+	private executeReleased<T>(request: LockRequest<T>): void {
+		const context: LockContext = { mode: 'exclusive', active: true, nestedOperations: new Set() };
+		const release = (): void => {
+			context.active = false;
+			this.writerActive = false;
+			this.drain();
+		};
 
-		try {
-			operation = Promise.resolve(fn());
-		} catch (error) {
-			operation = Promise.reject(error instanceof Error ? error : new Error(String(error)));
-		}
+		void Promise.resolve()
+			.then(() => this.context.run(context, request.fn))
+			.then(
+				async (value) => {
+					await this.waitForNestedOperations(context);
+					release();
+					request.resolve(value);
+				},
+				async (error: unknown) => {
+					await this.waitForNestedOperations(context);
+					release();
+					request.reject(error);
+				},
+			);
+	}
+
+	private runNested<T>(context: LockContext, fn: () => Promise<T>): Promise<T> {
+		// The executor captures synchronous throws without replacing the caller's rejection value.
+		const operation = new Promise<T>((resolve) => resolve(fn()));
 
 		context.nestedOperations.add(operation);
 		void operation.then(
@@ -163,6 +204,7 @@ interface LockContext {
 
 interface LockRequest<T> {
 	mode: LockMode;
+	releaseBeforeSettlement?: true;
 	fn: () => Promise<T>;
 	resolve: (value: T | PromiseLike<T>) => void;
 	reject: (reason?: unknown) => void;
