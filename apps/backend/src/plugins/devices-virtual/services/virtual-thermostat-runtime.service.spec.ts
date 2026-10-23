@@ -1373,6 +1373,180 @@ describe('virtual thermostat durable runtime', () => {
 		assertLive();
 	};
 
+	// B1 ownership only: exact A gate release, never native admission or business completion authority.
+	const captureHeldLeafGateOwner = (
+		work: FixtureWorkOwner,
+		openOriginalGates: readonly [() => void, () => void, () => void],
+	) => {
+		work.assertLive();
+		const owned = work.owned,
+			body = captureFixtureBodyOwner(owned),
+			owner = body.runtime,
+			state = owned.state,
+			lifecycle = owner['lifecycle'];
+		const descriptors = originalEntryDescriptors;
+		const before = {
+			onGate: descriptors.getOwnPropertyDescriptor(state, 'onGate'),
+			onQueued: descriptors.getOwnPropertyDescriptor(state, 'onQueued'),
+			onSent: descriptors.getOwnPropertyDescriptor(state, 'onSent'),
+		};
+		for (const descriptor of Object.values(before)) {
+			if (
+				!descriptor ||
+				descriptor.get !== undefined ||
+				descriptor.set !== undefined ||
+				descriptor.value !== null ||
+				descriptor.writable !== true ||
+				descriptor.configurable !== true ||
+				descriptor.enumerable !== true
+			)
+				throw new Error('Original held-leaf callback fields unavailable');
+		}
+		type FieldDescriptor = ReturnType<typeof descriptors.getOwnPropertyDescriptor>;
+		const sameDescriptor = (actual: FieldDescriptor, expected: FieldDescriptor): boolean =>
+			actual !== undefined &&
+			expected !== undefined &&
+			actual.value === expected.value &&
+			actual.get === expected.get &&
+			actual.set === expected.set &&
+			actual.configurable === expected.configurable &&
+			actual.enumerable === expected.enumerable &&
+			actual.writable === expected.writable;
+		let retired = false,
+			bodyComplete = false,
+			cleanupStarted = false,
+			gateDescriptor: FieldDescriptor,
+			completion: Promise<void> | undefined,
+			failure: { cause: unknown } | undefined;
+		let resolveCompletion: () => void = () => undefined;
+		let rejectCompletion: (cause: unknown) => void = () => undefined;
+		const publishCompletion = (): Promise<void> => {
+			if (completion === undefined) {
+				completion = new Promise<void>((yes, no) => {
+					resolveCompletion = yes;
+					rejectCompletion = no;
+				});
+				void completion.catch(() => undefined);
+			}
+			return completion;
+		};
+		let native: readonly Promise<void>[] = [];
+		const attempt = (action: () => void): void => {
+			try {
+				action();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+		};
+		const assertLive = (): void => {
+			work.assertLive();
+			body.assertLive();
+			if (retired) throw new Error('Original held-leaf gate owner retired');
+		};
+		const retire = (): void => {
+			void publishCompletion(); // Publish even for direct backstop retirement, before opener/reentry.
+			if (retired) return;
+			retired = true;
+			// Capture before any callback/retirement can clear the original queue maps.
+			attempt(() => {
+				if (owner['lifecycle'] === lifecycle)
+					native = [...new Set([...owner['queues'].values(), ...owner['inFlight'].values()])];
+				else if (owner['lifecycle'] !== undefined) throw new Error('Foreign held-leaf runtime lifecycle retained');
+			});
+			if (!bodyComplete)
+				attempt(() => {
+					if (owned.runtime !== owner || (owner['lifecycle'] !== lifecycle && owner['lifecycle'] !== undefined))
+						throw new Error('Foreign held-leaf runtime retained during retirement');
+					retireRuntimeFixture(owned); // Original A retirement, once via its existing lifetime memo, before opening ON.
+				});
+			for (const open of openOriginalGates) attempt(open); // SAME A resolvers, all attempted BEFORE any join.
+			attempt(() => work.retire());
+			attempt(() => body.retire());
+		};
+		const cleanup = (): Promise<void> => {
+			const pending = publishCompletion();
+			if (cleanupStarted) return pending;
+			cleanupStarted = true;
+			// Memoized completion is visible BEFORE opener callbacks or cleanup reentry.
+			retire();
+			const finish = async (): Promise<void> => {
+				for (const original of native) {
+					try {
+						await original;
+					} catch (cause) {
+						failure ??= { cause };
+					}
+				}
+				try {
+					await work.joinIssued();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				attempt(() => body.cleanup());
+				attempt(() => unregisterCompletionObserver(backstop));
+				// No callback/descriptor is restored here; a foreign replacement is never overwritten.
+				if (failure !== undefined) throw failure.cause;
+			};
+			void finish().then(resolveCompletion, rejectCompletion);
+			return pending;
+		};
+		const backstop: FixtureBackstop = { retire, cleanup };
+		registerCompletionObserver(backstop); // Before installing gate/callbacks or issuing body work.
+		const observe = async <Value>(original: Promise<Value>): Promise<Value> => {
+			const value = await work.observe(original); // Original rejection wins over a late liveness Q.
+			assertLive();
+			return value;
+		};
+		return Object.freeze({
+			assertLive,
+			completeBody: (): void => {
+				assertLive();
+				bodyComplete = true;
+			},
+			observe,
+			issue: <Value>(invoke: () => Promise<Value>): Promise<Value> => {
+				assertLive();
+				return work.issue(invoke); // SAME original application Promise, once.
+			},
+			observeValue: async <Value>(original: Value | Promise<Value>): Promise<Value> => {
+				const value = await original;
+				assertLive();
+				return value;
+			},
+			settle: (): Promise<void> => {
+				assertLive();
+				return settle(body, work.issue);
+			},
+			sample: body.sample,
+			installGate: (gate: Promise<void>): void => {
+				assertLive();
+				if (!sameDescriptor(descriptors.getOwnPropertyDescriptor(state, 'onGate'), before.onGate))
+					throw new Error('Foreign held-leaf gate field retained');
+				state.onGate = gate;
+				gateDescriptor = descriptors.getOwnPropertyDescriptor(state, 'onGate');
+			},
+			clearGate: (): void => {
+				assertLive();
+				if (!sameDescriptor(descriptors.getOwnPropertyDescriptor(state, 'onGate'), gateDescriptor))
+					throw new Error('Foreign held-leaf gate field retained');
+				state.onGate = null; // Original normal business clear, at its original phase.
+			},
+			installQueued: (callback: NonNullable<FixtureState['onQueued']>): void => {
+				assertLive();
+				if (!sameDescriptor(descriptors.getOwnPropertyDescriptor(state, 'onQueued'), before.onQueued))
+					throw new Error('Foreign held-leaf queued callback retained');
+				state.onQueued = callback;
+			},
+			installSent: (callback: NonNullable<FixtureState['onSent']>): void => {
+				assertLive();
+				if (!sameDescriptor(descriptors.getOwnPropertyDescriptor(state, 'onSent'), before.onSent))
+					throw new Error('Foreign held-leaf sent callback retained');
+				state.onSent = callback;
+			},
+			cleanup,
+		});
+	};
+
 	// Used only by the ownership negatives for an additional real fixture in the SAME case.
 	// No framework mock/timer restoration: those global resources belong to the enclosing current case.
 	const retireRuntimeFixture = (owned: RuntimeFixtureOwner): void => {
@@ -5780,36 +5954,62 @@ describe('virtual thermostat durable runtime', () => {
 		},
 	);
 
-	const registeredHeatingCommand = async (setting: 'heating_setpoint' | 'heating_enabled') => {
+	const registeredHeatingCommand = async (
+		setting: 'heating_setpoint' | 'heating_enabled',
+		selected?: FixtureWorkOwner,
+	) => {
+		const work = selected ?? captureFixtureWorkOwner();
+		work.assertLive();
+		const { database, controllerId } = work.owned;
 		const channelId = uuid(),
 			propertyId = uuid();
-		await database.manager.insert(VirtualChannelEntity, {
-			id: channelId,
-			name: 'Heating settings',
-			category: ChannelCategory.HEATER,
-			device: controllerId,
-		} as never);
-		await database.manager.insert(VirtualChannelPropertyEntity, {
-			id: propertyId,
-			channel: channelId,
-			identifier: setting,
-			category: setting === 'heating_setpoint' ? PropertyCategory.TEMPERATURE : PropertyCategory.ON,
-			dataType: setting === 'heating_setpoint' ? DataTypeType.FLOAT : DataTypeType.BOOL,
-			permissions: [PermissionType.READ_WRITE],
-			valueOrigin: VirtualValueOrigin.LOCAL,
-		} as never);
-		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id: propertyId },
-			relations: ['channel', 'channel.device'],
-		});
+		await work.observe(
+			work.issue(() =>
+				database.manager.insert(VirtualChannelEntity, {
+					id: channelId,
+					name: 'Heating settings',
+					category: ChannelCategory.HEATER,
+					device: controllerId,
+				} as never),
+			),
+		);
+		work.assertLive();
+		await work.observe(
+			work.issue(() =>
+				database.manager.insert(VirtualChannelPropertyEntity, {
+					id: propertyId,
+					channel: channelId,
+					identifier: setting,
+					category: setting === 'heating_setpoint' ? PropertyCategory.TEMPERATURE : PropertyCategory.ON,
+					dataType: setting === 'heating_setpoint' ? DataTypeType.FLOAT : DataTypeType.BOOL,
+					permissions: [PermissionType.READ_WRITE],
+					valueOrigin: VirtualValueOrigin.LOCAL,
+				} as never),
+			),
+		);
+		work.assertLive();
+		const property = await work.observe(
+			work.issue(() =>
+				database.manager.findOneOrFail(ChannelPropertyEntity, {
+					where: { id: propertyId },
+					relations: ['channel', 'channel.device'],
+				}),
+			),
+		);
+		work.assertLive();
 		const channel = property.channel as ChannelEntity,
 			device = channel.device as DeviceEntity;
-		await database.manager.insert(VirtualThermostatSettingEntity, {
-			propertyId,
-			controllerId,
-			setting,
-			contractFingerprint: thermostatPropertyContract(property, channel, device),
-		});
+		await work.observe(
+			work.issue(() =>
+				database.manager.insert(VirtualThermostatSettingEntity, {
+					propertyId,
+					controllerId,
+					setting,
+					contractFingerprint: thermostatPropertyContract(property, channel, device),
+				}),
+			),
+		);
+		work.assertLive();
 		return { property, channel, device };
 	};
 
@@ -5817,145 +6017,250 @@ describe('virtual thermostat durable runtime', () => {
 		'fences a queued parallel leaf and drains every journal after %s',
 		async (change) => {
 			const issuedWork = captureFixtureWorkOwner();
-			const sibling = await addMandatoryMember(undefined, undefined, issuedWork.owner);
-			fixtureState.packetTick = useThermostatPacketClock();
-			// Every evaluation boundary below is explicit. A real poll during SQLite I/O can drain the
-			// energized sibling before the mutation whose queued-ON fence this fixture is testing.
-			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
-			const commandTarget =
-				change === 'override expiry'
-					? null
-					: await registeredHeatingCommand(change === 'explicit OFF' ? 'heating_enabled' : 'heating_setpoint');
-			runtime.request(controllerId);
-			await settle();
-			await configureComfort(undefined, issuedWork);
-			sample(sensorId, 22);
-			let resumeOn!: () => void;
-			fixtureState.onGate = new Promise<void>((resolve) => {
-				resumeOn = resolve;
-			});
-			const relayQueued = new Promise<void>((resolve) => {
-				fixtureState.onQueued = resolve;
-			});
-			const siblingEnergized = new Promise<void>((resolve) => {
-				fixtureState.onSent = (propertyId) => {
-					if (propertyId === sibling) resolve();
-				};
-			});
-			const now = Date.now();
-			jest.setSystemTime(now);
-			if (change === 'manual configuration') {
-				await comfort.select(controllerId, await comfortFence(undefined, issuedWork), 'comfort', false);
-			} else {
-				await comfort.override(
-					controllerId,
-					await comfortFence(undefined, issuedWork),
-					{ preset: 'comfort', setpoints: null, expires_at: new Date(now + 1000).toISOString() },
-					'operator',
+			const {
+				database,
+				runtime,
+				comfort,
+				configs,
+				controllerId,
+				sensorId,
+				relayId,
+				state: fixtureState,
+			} = issuedWork.owned;
+			let resumeOn: () => void = () => undefined;
+			let releaseQueued: () => void = () => undefined;
+			let releaseSibling: () => void = () => undefined;
+			const scope = captureHeldLeafGateOwner(issuedWork, [
+				() => resumeOn(),
+				() => releaseQueued(),
+				() => releaseSibling(),
+			]);
+			const sample = scope.sample;
+			let bodyFailure: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+			try {
+				const sibling = await scope.observe(
+					scope.issue(() => addMandatoryMember(undefined, undefined, issuedWork.owner)),
 				);
-			}
-			// Every comfort revision invalidates the member protection basis. Prove current all-leaf
-			// OFF/drain first, then supply genuinely later receiver reports before allowing ON.
-			for (let phase = 0; phase < 2; phase++) {
-				runtime.request(controllerId, false);
-				await settle();
-			}
-			expect(
-				runtime
-					.readDiagnostics(controllerId)
-					.branches.every((branch) => branch.release_proven && !branch.pending_on && branch.activity === 'off'),
-			).toBe(true);
-			for (const probe of fixtureState.protectionProbes) sample(probe, 20);
-			runtime.request(controllerId);
-			await waitForOnJournal(issuedWork);
-			await Promise.all([relayQueued, siblingEnergized]);
-			await runtime.flush();
-			const prepared = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
-			expect(prepared).toHaveLength(2);
-			expect(new Set(prepared.map((command) => command.decisionRevision)).size).toBe(1);
-			const queuedClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
-				sourcePropertyId: relayId,
-			});
-			expect(prepared.find((command) => command.claimId === queuedClaim.id).status).toBe('dispatching');
-			const siblingJournal = prepared.find((command) => command.claimId !== queuedClaim.id);
-			await (runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.get(siblingJournal.id);
-			expect(
-				await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: siblingJournal.id }),
-			).toMatchObject({ status: 'accepted', proofId: null });
-			expect(fixtureState.samples.get(sibling)?.value).toBe(true);
-			expect(fixtureState.sentTargets.filter((send) => send.propertyId === sibling).at(-1)).toEqual({
-				propertyId: sibling,
-				on: true,
-			});
-			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
-			const mutationBoundary = fixtureState.sentTargets.length;
-			if (change === 'override expiry') {
-				jest.setSystemTime(now + 1000);
-			} else {
-				await expect(
-					configs.command([{ ...commandTarget, value: change === 'explicit OFF' ? false : 21 }]),
-				).resolves.toBe(true);
-				const committed = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				fixtureState.packetTick = useThermostatPacketClock();
+				// Every evaluation boundary below is explicit. A real poll during SQLite I/O can drain the
+				// energized sibling before the mutation whose queued-ON fence this fixture is testing.
+				clearInterval(runtime['timer']);
+				const commandTarget =
+					change === 'override expiry'
+						? null
+						: await scope.observe(
+								scope.issue(() =>
+									registeredHeatingCommand(
+										change === 'explicit OFF' ? 'heating_enabled' : 'heating_setpoint',
+										issuedWork,
+									),
+								),
+							);
+				runtime.request(controllerId);
+				await scope.observe(scope.settle());
+				await scope.observe(scope.issue(() => configureComfort(undefined, issuedWork)));
+				sample(sensorId, 22);
+				scope.installGate(
+					new Promise<void>((resolve) => {
+						resumeOn = resolve;
+					}),
+				);
+				const relayQueued = new Promise<void>((resolve) => {
+					releaseQueued = resolve;
+				});
+				scope.installQueued(releaseQueued);
+				let sentCallback: NonNullable<FixtureState['onSent']> = () => undefined;
+				const siblingEnergized = new Promise<void>((resolve) => {
+					releaseSibling = resolve;
+					sentCallback = (propertyId) => {
+						if (propertyId === sibling) resolve();
+					};
+				});
+				scope.installSent(sentCallback);
+				const now = Date.now();
+				jest.setSystemTime(now);
 				if (change === 'manual configuration') {
-					expect(committed.policy.heatingSetpoint).toBe(21);
-					expect(committed.comfort.selected_preset).toBeNull();
-					expect(committed.comfort.temporary_override).toBeNull();
+					const methods: OriginalFunctions<Pick<VirtualThermostatComfortService, 'select'>> = comfort;
+					const select = methods.select; // Same original lookup before the fence await.
+					const fence = await scope.observe(comfortFence(undefined, issuedWork));
+					await scope.observe(scope.issue(() => select.call(comfort, controllerId, fence, 'comfort', false)));
 				} else {
-					expect(committed.requestedMode).toBe('off');
-					expect(committed.comfort.user_off).toBe(true);
-					expect(committed.comfort.temporary_override.status).toBe('active');
+					const methods: OriginalFunctions<Pick<VirtualThermostatComfortService, 'override'>> = comfort;
+					const override = methods.override; // Same original lookup before the fence await.
+					const fence = await scope.observe(comfortFence(undefined, issuedWork));
+					await scope.observe(
+						scope.issue(() =>
+							override.call(
+								comfort,
+								controllerId,
+								fence,
+								{ preset: 'comfort', setpoints: null, expires_at: new Date(now + 1000).toISOString() },
+								'operator',
+							),
+						),
+					);
+				}
+				// Every comfort revision invalidates the member protection basis. Prove current all-leaf
+				// OFF/drain first, then supply genuinely later receiver reports before allowing ON.
+				for (let phase = 0; phase < 2; phase++) {
+					runtime.request(controllerId, false);
+					await scope.observe(scope.settle());
+				}
+				expect(
+					runtime
+						.readDiagnostics(controllerId)
+						.branches.every((branch) => branch.release_proven && !branch.pending_on && branch.activity === 'off'),
+				).toBe(true);
+				for (const probe of fixtureState.protectionProbes) sample(probe, 20);
+				runtime.request(controllerId);
+				await scope.observe(scope.issue(() => waitForOnJournal(issuedWork)));
+				await scope.observe(Promise.all([relayQueued, siblingEnergized]));
+				await scope.observe(scope.issue(() => runtime.flush()));
+				const prepared = await scope.observe(
+					scope.issue(() => database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })),
+				);
+				expect(prepared).toHaveLength(2);
+				expect(new Set(prepared.map((command) => command.decisionRevision)).size).toBe(1);
+				const queuedClaim = await scope.observe(
+					scope.issue(() =>
+						database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+							sourcePropertyId: relayId,
+						}),
+					),
+				);
+				expect(prepared.find((command) => command.claimId === queuedClaim.id).status).toBe('dispatching');
+				const siblingJournal = prepared.find((command) => command.claimId !== queuedClaim.id);
+				await scope.observeValue(runtime['inFlight'].get(siblingJournal.id));
+				expect(
+					await scope.observe(
+						scope.issue(() =>
+							database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: siblingJournal.id }),
+						),
+					),
+				).toMatchObject({ status: 'accepted', proofId: null });
+				expect(fixtureState.samples.get(sibling)?.value).toBe(true);
+				expect(fixtureState.sentTargets.filter((send) => send.propertyId === sibling).at(-1)).toEqual({
+					propertyId: sibling,
+					on: true,
+				});
+				expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+				const mutationBoundary = fixtureState.sentTargets.length;
+				if (change === 'override expiry') {
+					jest.setSystemTime(now + 1000);
+				} else {
+					await scope.observe(
+						expect(
+							scope.issue(() => configs.command([{ ...commandTarget, value: change === 'explicit OFF' ? false : 21 }])),
+						).resolves.toBe(true),
+					);
+					const committed = await scope.observe(
+						scope.issue(() => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })),
+					);
+					if (change === 'manual configuration') {
+						expect(committed.policy.heatingSetpoint).toBe(21);
+						expect(committed.comfort.selected_preset).toBeNull();
+						expect(committed.comfort.temporary_override).toBeNull();
+					} else {
+						expect(committed.requestedMode).toBe('off');
+						expect(committed.comfort.user_off).toBe(true);
+						expect(committed.comfort.temporary_override.status).toBe('active');
+					}
+				}
+				resumeOn();
+				scope.clearGate();
+				await scope.observe(scope.settle());
+				// Expiry persists a new configuration revision; poll again for release proof bound to that revision.
+				runtime.request(controllerId);
+				await scope.observe(scope.settle());
+				expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+				expect(fixtureState.sentTargets.slice(mutationBoundary)).toContainEqual({ propertyId: sibling, on: false });
+				const retained = await scope.observe(
+					scope.issue(() => database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })),
+				);
+				expect(retained.map((command) => command.id).sort()).toEqual(prepared.map((command) => command.id).sort());
+				expect(retained.find((command) => command.claimId === queuedClaim.id).status).toBe('cancelled');
+				expect(retained.find((command) => command.claimId !== queuedClaim.id).status).toBe('confirmed');
+				expect(retained.find((command) => command.id === siblingJournal.id).proofId).toBeTruthy();
+				if (change === 'override expiry') {
+					const expired = await scope.observe(
+						scope.issue(() => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })),
+					);
+					expect(expired.comfort.temporary_override.status).toBe('expired');
+					expect(expired.revision).toBeGreaterThan(prepared[0].configurationRevision);
+				}
+				expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
+				expect(runtime.readDiagnostics(controllerId).branches.every((branch) => !branch.pending_on)).toBe(true);
+				scope.completeBody();
+			} catch (cause) {
+				bodyFailure = { cause };
+			} finally {
+				try {
+					await scope.cleanup();
+				} catch (cause) {
+					cleanupFailure = { cause };
 				}
 			}
-			resumeOn();
-			fixtureState.onGate = null;
-			await settle();
-			// Expiry persists a new configuration revision; poll again for release proof bound to that revision.
-			runtime.request(controllerId);
-			await settle();
-			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
-			expect(fixtureState.sentTargets.slice(mutationBoundary)).toContainEqual({ propertyId: sibling, on: false });
-			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
-			expect(retained.map((command) => command.id).sort()).toEqual(prepared.map((command) => command.id).sort());
-			expect(retained.find((command) => command.claimId === queuedClaim.id).status).toBe('cancelled');
-			expect(retained.find((command) => command.claimId !== queuedClaim.id).status).toBe('confirmed');
-			expect(retained.find((command) => command.id === siblingJournal.id).proofId).toBeTruthy();
-			if (change === 'override expiry') {
-				const expired = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-				expect(expired.comfort.temporary_override.status).toBe('expired');
-				expect(expired.revision).toBeGreaterThan(prepared[0].configurationRevision);
-			}
-			expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
-			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => !branch.pending_on)).toBe(true);
+			if (bodyFailure !== undefined) throw bodyFailure.cause;
+			if (cleanupFailure !== undefined) throw cleanupFailure.cause;
 		},
 	);
 
 	it('keeps a partial late ON unresolved per leaf while releasing the rest of its group', async () => {
 		const issuedWork = captureFixtureWorkOwner();
-		const sibling = await addMandatoryMember(undefined, undefined, issuedWork.owner);
-		runtime.request(controllerId);
-		await settle();
-		let resumeOn!: () => void;
-		fixtureState.onGate = new Promise<void>((resolve) => {
-			resumeOn = resolve;
-		});
-		fixtureState.allowLateOn = true;
-		sample(sensorId, 18);
-		runtime.request(controllerId);
-		await waitForOnJournal(issuedWork);
-		await runtime.flush();
-		fixtureState.proofAllowed = (id) => id !== relayId;
-		fixtureState.samples.delete(sibling);
-		runtime.request(controllerId);
-		await runtime.flush();
-		resumeOn();
-		fixtureState.onGate = null;
-		await settle();
-		const pending = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
-		expect(pending.some((command) => command.status !== 'cancelled' && command.status !== 'confirmed')).toBe(true);
-		const diagnostics = runtime.readDiagnostics(controllerId);
-		expect(diagnostics.branches).toHaveLength(2);
-		expect(diagnostics.branches.some((branch) => branch.pending_on)).toBe(true);
-		expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+		const { database, runtime, controllerId, sensorId, relayId, state: fixtureState } = issuedWork.owned;
+		let resumeOn: () => void = () => undefined;
+		const releaseQueued: () => void = () => undefined;
+		const releaseSibling: () => void = () => undefined;
+		const scope = captureHeldLeafGateOwner(issuedWork, [
+			() => resumeOn(),
+			() => releaseQueued(),
+			() => releaseSibling(),
+		]);
+		const sample = scope.sample;
+		let bodyFailure: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+		try {
+			const sibling = await scope.observe(
+				scope.issue(() => addMandatoryMember(undefined, undefined, issuedWork.owner)),
+			);
+			runtime.request(controllerId);
+			await scope.observe(scope.settle());
+			scope.installGate(
+				new Promise<void>((resolve) => {
+					resumeOn = resolve;
+				}),
+			);
+			fixtureState.allowLateOn = true;
+			sample(sensorId, 18);
+			runtime.request(controllerId);
+			await scope.observe(scope.issue(() => waitForOnJournal(issuedWork)));
+			await scope.observe(scope.issue(() => runtime.flush()));
+			fixtureState.proofAllowed = (id) => id !== relayId;
+			fixtureState.samples.delete(sibling);
+			runtime.request(controllerId);
+			await scope.observe(scope.issue(() => runtime.flush()));
+			resumeOn();
+			scope.clearGate();
+			await scope.observe(scope.settle());
+			const pending = await scope.observe(
+				scope.issue(() => database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })),
+			);
+			expect(pending.some((command) => command.status !== 'cancelled' && command.status !== 'confirmed')).toBe(true);
+			const diagnostics = runtime.readDiagnostics(controllerId);
+			expect(diagnostics.branches).toHaveLength(2);
+			expect(diagnostics.branches.some((branch) => branch.pending_on)).toBe(true);
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+			scope.completeBody();
+		} catch (cause) {
+			bodyFailure = { cause };
+		} finally {
+			try {
+				await scope.cleanup();
+			} catch (cause) {
+				cleanupFailure = { cause };
+			}
+		}
+		if (bodyFailure !== undefined) throw bodyFailure.cause;
+		if (cleanupFailure !== undefined) throw cleanupFailure.cause;
 	});
 
 	it('waits for every opposed member to drain and measures changeover from the last qualified OFF', async () => {
@@ -18752,6 +19057,167 @@ describe('virtual thermostat durable runtime', () => {
 		expect(owned.observers).not.toContain(first);
 		expect(owned.observers).toContain(second);
 		expect(owned.database.isInitialized).toBe(false);
+	});
+	// R250: real SQLite ownership regressions only; no native admission or product-success claim.
+	describe('R250 original held-leaf gate owner with real SQLite consumers', () => {
+		it('retires and opens an incomplete body gate before joining its original SQLite transaction and closing A', async () => {
+			const work = captureFixtureWorkOwner(),
+				owned = work.owned,
+				source = owned.database,
+				id = owned.controllerId,
+				gate = fixtureGate(),
+				entered = fixtureGate(),
+				observersBefore = new Set(work.setup.observers),
+				caseObserversBefore = new Set(work.setup.caseOwner.observers);
+			let retiredAtOpen: boolean | undefined;
+			let readFinished = false;
+			const scope = captureHeldLeafGateOwner(work, [
+				() => {
+					retiredAtOpen = owned.state.retired;
+					gate.open();
+				},
+				() => undefined,
+				() => undefined,
+			]);
+			const body = await fixtureOutcome(
+				(async () => {
+					scope.installGate(gate.promise);
+					let original:
+						| Promise<Readonly<{ controllerId: string; revision: number; databaseOpen: boolean }>>
+						| undefined;
+					const issued = scope.issue(() => {
+						original = source.transaction(async (manager) => {
+							entered.open();
+							await gate.promise;
+							// Already-issued callback uses its ORIGINAL scoped manager after retirement, never a future B port.
+							const row = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+							readFinished = true;
+							return { controllerId: row.controllerId, revision: row.revision, databaseOpen: source.isInitialized };
+						});
+						return original;
+					});
+					expect(issued).toBe(original);
+					await Promise.race([
+						entered.promise,
+						issued.then(
+							() => {
+								throw new Error('Original transaction completed before its held entry was observed');
+							},
+							(cause: unknown) => {
+								throw cause;
+							},
+						),
+					]);
+					expect(readFinished).toBe(false);
+					expect(work.setup.issued.has(issued)).toBe(true);
+					expect(source.isInitialized).toBe(true);
+					// Deliberately do NOT completeBody or normally open/clear the gate.
+					const completion = scope.cleanup();
+					expect(owned.state.retired).toBe(true);
+					expect(retiredAtOpen).toBe(true);
+					expect(scope.cleanup()).toBe(completion);
+					await completion;
+					// These checks precede the independent result await: cleanup itself had to drain this original.
+					expect(readFinished).toBe(true);
+					expect(work.setup.issued.has(issued)).toBe(false);
+					expect(owned.issued.has(issued)).toBe(false);
+					expect(await issued).toEqual({ controllerId: id, revision: 1, databaseOpen: true });
+					expect(work.setup.observers).toEqual(observersBefore);
+					expect(work.setup.caseOwner.observers).toEqual(caseObserversBefore);
+					expect(source.isInitialized).toBe(true);
+					expect(owned.lifetime.cleanup).toBeUndefined();
+				})(),
+			);
+			// Use real cleanup on every body outcome; no copied priority algorithm is asserted as coverage.
+			const cleanup = await fixtureOutcome(scope.cleanup());
+			const closed = await fixtureOutcome(closeRuntimeFixture(owned));
+			if (!body.fulfilled) throw body.cause;
+			if (!cleanup.fulfilled) throw cleanup.cause;
+			if (!closed.fulfilled) throw closed.cause;
+			expect(source.isInitialized).toBe(false);
+			await expect(readFile(join(owned.directory, 'runtime.sqlite'))).rejects.toThrow();
+		});
+
+		it('memoizes successful body cleanup through opener reentry without retiring or closing its original fixture', async () => {
+			const work = captureFixtureWorkOwner(),
+				owned = work.owned,
+				source = owned.database,
+				id = owned.controllerId,
+				gate = fixtureGate(),
+				entered = fixtureGate(),
+				observersBefore = new Set(work.setup.observers),
+				caseObserversBefore = new Set(work.setup.caseOwner.observers);
+			let reenter: (() => void) | undefined;
+			let reenteredCompletion: Promise<void> | undefined;
+			const scope = captureHeldLeafGateOwner(work, [
+				() => {
+					gate.open();
+					reenter?.();
+				},
+				() => undefined,
+				() => undefined,
+			]);
+			const body = await fixtureOutcome(
+				(async () => {
+					scope.installGate(gate.promise);
+					let original:
+						| Promise<Readonly<{ controllerId: string; revision: number; databaseOpen: boolean }>>
+						| undefined;
+					const issued = scope.issue(() => {
+						original = source.transaction(async (manager) => {
+							entered.open();
+							await gate.promise;
+							const row = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+							return { controllerId: row.controllerId, revision: row.revision, databaseOpen: source.isInitialized };
+						});
+						return original;
+					});
+					expect(issued).toBe(original);
+					await Promise.race([
+						entered.promise,
+						issued.then(
+							() => {
+								throw new Error('Original transaction completed before its held entry was observed');
+							},
+							(cause: unknown) => {
+								throw cause;
+							},
+						),
+					]);
+					gate.open(); // Original normal opener, BEFORE successful-body completion.
+					scope.clearGate();
+					expect(await issued).toEqual({ controllerId: id, revision: 1, databaseOpen: true });
+					expect(owned.state.onGate).toBeNull();
+					expect(owned.state.retired).toBe(false);
+					expect(work.setup.issued.has(issued)).toBe(true);
+					scope.completeBody(); // Only after the real original transaction/result assertions.
+					reenter = () => {
+						reenteredCompletion = scope.cleanup();
+					};
+					const completion = scope.cleanup();
+					expect(reenteredCompletion).toBe(completion);
+					expect(scope.cleanup()).toBe(completion);
+					await completion;
+					expect(work.setup.issued.has(issued)).toBe(false);
+					expect(owned.issued.has(issued)).toBe(false);
+					expect(work.setup.observers).toEqual(observersBefore);
+					expect(work.setup.caseOwner.observers).toEqual(caseObserversBefore);
+					expect(owned.state.retired).toBe(false);
+					expect(owned.lifetime.retired).toBe(false);
+					expect(owned.runtime['active']).toBe(true);
+					expect(source.isInitialized).toBe(true);
+					expect(owned.lifetime.cleanup).toBeUndefined();
+				})(),
+			);
+			const cleanup = await fixtureOutcome(scope.cleanup());
+			const closed = await fixtureOutcome(closeRuntimeFixture(owned));
+			if (!body.fulfilled) throw body.cause;
+			if (!cleanup.fulfilled) throw cleanup.cause;
+			if (!closed.fulfilled) throw closed.cause;
+			expect(owned.state.retired).toBe(true);
+			expect(source.isInitialized).toBe(false);
+			await expect(readFile(join(owned.directory, 'runtime.sqlite'))).rejects.toThrow();
+		});
 	});
 });
 
