@@ -26,7 +26,10 @@ import {
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
-import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import {
+	PropertyReadSourceCapture,
+	PropertyValueSourceRegistryService,
+} from './property-value-source.registry.service';
 
 /**
  * Number of recent data points used for trend computation.
@@ -589,6 +592,14 @@ export class PropertyValueService {
 		const key = this.resolveBestEffort(property, 'producer overlay');
 		const produced = key === null ? null : this.producers?.read(key);
 		const reason = this.valueSourceRegistry.unavailableReason(property);
+		return this.overlaySource(produced, reason, state);
+	}
+
+	private overlaySource(
+		produced: PropertyValueState | null | undefined,
+		reason: string | null,
+		state: PropertyValueState | null,
+	): PropertyValueState | null {
 		if (reason) {
 			const blocked = new PropertyValueState();
 			blocked.producer = Object.assign(new PropertyProducerState(), {
@@ -826,21 +837,11 @@ export class PropertyValueService {
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		const produced = this.overlay(property, null);
-		if (produced) return produced;
-		return this.overlay(property, (await this.readLatestInternal(property, false)).state);
+		return (await this.readSingleProperty(property, false)).state;
 	}
 
 	async readLatestStrict(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		const produced = this.overlay(property, null);
-		if (produced) return produced;
-		try {
-			return this.overlay(property, (await this.readLatestInternal(property, true)).state);
-		} catch (error) {
-			const concurrentProducer = this.overlay(property, null);
-			if (concurrentProducer) return concurrentProducer;
-			throw error;
-		}
+		return (await this.readSingleProperty(property, true)).state;
 	}
 
 	/**
@@ -853,16 +854,74 @@ export class PropertyValueService {
 	}
 
 	async readLatestPersistedSnapshot(property: ChannelPropertyEntity): Promise<PersistedPropertyValueSnapshot> {
-		// Keep reads concurrent with later writes. readLatestInternal fences cache refresh by version;
-		// only history already admitted at this boundary must be visible to the durable read.
-		await this.flushHistory();
-		const result = await this.readLatestInternal(property, true, true, true);
-
+		const result = await this.readSingleProperty(property, true, true);
 		if (!result.storageBinding) {
 			throw new Error('Persisted property value read did not bind a storage backend');
 		}
+		return { state: result.state, storageBinding: result.storageBinding };
+	}
 
-		return { state: this.overlay(property, result.state), storageBinding: result.storageBinding };
+	/** One issued single-property read, including history drain and error fallback. */
+	private async readSingleProperty(
+		property: ChannelPropertyEntity,
+		strict: boolean,
+		persisted = false,
+	): Promise<InternalPropertyValueReadResult> {
+		let capture: PropertyReadSourceCapture;
+		try {
+			capture = this.valueSourceRegistry.captureReadSource(property);
+		} catch (error) {
+			if (strict) throw error;
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(`Failed to capture property value source error=${err.message}`, err.stack);
+			return { state: null };
+		}
+		try {
+			const input = this.valueSourceRegistry.readSourceInput(capture);
+			const key = this.valueSourceRegistry.readSourceKey(capture);
+			const reason = this.valueSourceRegistry.readSourceUnavailableReason(capture);
+			const overlay = (state: PropertyValueState | null) => {
+				this.assertReadSourceCurrent(capture);
+				return this.overlaySource(this.producers?.read(key), reason, state);
+			};
+			if (!persisted) {
+				const produced = overlay(null);
+				if (produced) return { state: produced };
+			}
+			try {
+				// Only history already admitted at this boundary must be visible. Later
+				// writes stay concurrent and retain the existing cache-version fence.
+				if (persisted) {
+					await this.flushHistory();
+					this.assertReadSourceCurrent(capture);
+				}
+				const result = await this.readLatestInternal(input, strict, persisted, persisted, capture);
+				return { ...result, state: overlay(result.state) };
+			} catch (error) {
+				// A replacement route cannot supply fallback for the original request.
+				// Never replace the primary rejection (including falsy thrown values).
+				try {
+					if (!persisted && this.valueSourceRegistry.isReadSourceCurrent(capture)) {
+						const produced = overlay(null);
+						if (produced) return { state: produced };
+					}
+				} catch {
+					// Failed fallback must preserve the original storage rejection.
+				}
+				throw error;
+			}
+		} catch (error) {
+			if (strict) throw error;
+			return { state: null };
+		} finally {
+			this.valueSourceRegistry.closeReadSource(capture);
+		}
+	}
+
+	private assertReadSourceCurrent(capture: PropertyReadSourceCapture): void {
+		if (!this.valueSourceRegistry.isReadSourceCurrent(capture)) {
+			throw new Error('Property value source changed during read');
+		}
 	}
 
 	async readLatestManyStrict(
@@ -1380,10 +1439,12 @@ export class PropertyValueService {
 		strict: boolean,
 		bypassCache = false,
 		activeBackendOnly = false,
+		capture?: PropertyReadSourceCapture,
 	): Promise<InternalPropertyValueReadResult> {
 		let key: string;
 		try {
-			key = this.valueSourceRegistry.resolve(property);
+			if (capture) this.assertReadSourceCurrent(capture);
+			key = capture ? this.valueSourceRegistry.readSourceKey(capture) : this.valueSourceRegistry.resolve(property);
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
 			this.logger.error(`Failed to resolve property value source id=${property.id} error=${err.message}`, err.stack);
@@ -1428,6 +1489,9 @@ export class PropertyValueService {
 					? await this.storageService.queryStrict<PropertyValueRow>(query)
 					: await this.storageService.query<PropertyValueRow>(query);
 
+			// Admit neither rows nor empty-result invalidations after routing changed.
+			if (capture) this.assertReadSourceCurrent(capture);
+
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);
 				if (bypassCache && this.cacheVersion(key) === cacheVersionAtQueryStart) {
@@ -1469,7 +1533,7 @@ export class PropertyValueService {
 
 			return { state, storageBinding: boundResult?.binding };
 		} catch (error) {
-			const err = error as Error;
+			const err = error instanceof Error ? error : new Error(String(error));
 
 			this.logger.error(`Failed to read latest value from storage id=${property.id} error=${err.message}`, err.stack);
 			if (strict) {

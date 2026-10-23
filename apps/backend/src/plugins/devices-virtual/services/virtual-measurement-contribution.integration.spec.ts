@@ -68,6 +68,8 @@ describe('durable virtual measurement coverage and room planner integration', ()
 				isValidated: () => graphCurrent,
 				isQuarantined: () => false,
 				matchesValueSource: () => graphCurrent,
+				// This fixture supplies no validated source-policy metadata.
+				propertyRequiresLiveValue: () => null,
 			} as never),
 		);
 		storage = {
