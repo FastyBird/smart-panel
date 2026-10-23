@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
@@ -14,6 +15,7 @@ import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, Property
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
+import { ChannelsPropertiesService } from './channels.properties.service';
 import { PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
@@ -35,10 +37,10 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
-describe('single-property read provenance with hydrated entities', () => {
+describe('property read provenance with hydrated entities', () => {
 	let database: SqliteDataSource;
-	let physicalId: string, projectionId: string;
-	let physical: ChannelPropertyEntity, projection: VirtualChannelPropertyEntity;
+	let physicalId: string, projectionId: string, coldId: string;
+	let physical: ChannelPropertyEntity, cold: ChannelPropertyEntity, projection: VirtualChannelPropertyEntity;
 	let registry: PropertyValueSourceRegistryService;
 	let source: VirtualValueSourceService;
 	let graph: VirtualDependencyGraphService;
@@ -64,6 +66,7 @@ describe('single-property read provenance with hydrated entities', () => {
 		const deviceId = randomUUID(),
 			channelId = randomUUID();
 		physicalId = randomUUID();
+		coldId = randomUUID();
 		projectionId = randomUUID();
 		await database
 			.getRepository(DeviceEntity)
@@ -81,7 +84,10 @@ describe('single-property read provenance with hydrated entities', () => {
 			permissions: [PermissionType.READ_ONLY],
 			format: [0, 100],
 		};
-		await database.getRepository(ChannelPropertyEntity).insert({ ...metadata, id: physicalId });
+		await database.getRepository(ChannelPropertyEntity).insert([
+			{ ...metadata, id: physicalId },
+			{ ...metadata, id: coldId },
+		]);
 		await database.getRepository(VirtualChannelPropertyEntity).insert({
 			...metadata,
 			id: projectionId,
@@ -95,6 +101,7 @@ describe('single-property read provenance with hydrated entities', () => {
 			where: { id: physicalId },
 			relations: ['channel', 'channel.device'],
 		});
+		cold = await database.getRepository(ChannelPropertyEntity).findOneByOrFail({ id: coldId });
 		projection = await database.getRepository(VirtualChannelPropertyEntity).findOneOrFail({
 			where: { id: projectionId },
 			relations: ['channel', 'channel.device', 'sourceProperty'],
@@ -442,5 +449,208 @@ describe('single-property read provenance with hydrated entities', () => {
 		await expect(values.readLatestStrict(physical)).resolves.toMatchObject({ value: 88 });
 		expect(storage.queryStrict).toHaveBeenCalledTimes(1);
 		closed();
+	});
+
+	describe('strict bulk source continuity', () => {
+		it('deduplicates queried series while retaining each captured projection conversion and result key', async () => {
+			const closed = assertClosed();
+			projection.dataType = DataTypeType.INT;
+			storage.queryStrict.mockResolvedValue([
+				{ propertyId: physicalId, numberValue: 21.6, time: new Date('2026-10-23T12:00:00Z') },
+				{ propertyId: physicalId, numberValue: 19 },
+			]);
+			const result = await values.readLatestManyStrict([physical, projection, projection, cold]);
+			expect([...result.keys()]).toEqual([physicalId, projectionId, coldId]);
+			expect(result.get(physicalId)).toMatchObject({ value: 21.6, trend: 'rising' });
+			expect(result.get(projectionId)).toMatchObject({ value: 22, trend: 'rising' });
+			expect(result.get(coldId)).toBeNull();
+			expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+			const query = storage.queryStrict.mock.calls[0][0];
+			expect(query.split(physicalId)).toHaveLength(2);
+			expect(query).toContain(coldId);
+			expect(query).not.toContain(projectionId);
+			closed();
+		});
+
+		it('hydrates the real strict channel caller from loaded ordinary and virtual entities in one query', async () => {
+			const closed = assertClosed();
+			const repository = database.getRepository(ChannelPropertyEntity);
+			const channels = new ChannelsPropertiesService(
+				repository,
+				{} as never,
+				values,
+				registry,
+				{} as never,
+				{} as never,
+				{} as never,
+				database,
+				new EventEmitter2(),
+			);
+			storage.queryStrict.mockResolvedValue(rows());
+			const channelId = (physical.channel as ChannelEntity).id;
+			const result = await channels.findBoundedForChannels([channelId], 10, true);
+			expect(result.totals[channelId]).toBe(3);
+			expect(result.properties.find(({ id }) => id === physicalId)?.value).toMatchObject({ value: 21 });
+			expect(result.properties.find(({ id }) => id === projectionId)).toBeInstanceOf(VirtualChannelPropertyEntity);
+			expect(result.properties.find(({ id }) => id === projectionId)?.value).toMatchObject({ value: 21 });
+			expect(result.properties.find(({ id }) => id === coldId)?.value).toBeNull();
+			expect(storage.queryStrict).toHaveBeenCalledTimes(1);
+			closed();
+		});
+
+		it.each(['remap', 'id', 'data type', 'array', 'descriptor', 'registration', 'policy', 'method'] as const)(
+			'rejects the entire held batch after %s changes before any cache or trend admission',
+			async (change) => {
+				const closed = assertClosed();
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyStrict([physical, projection, cold]);
+				const rejection = expect(pending).rejects.toThrow('source changed during read');
+				if (change === 'remap') projection.sourcePropertyId = randomUUID();
+				if (change === 'id') projection.id = randomUUID();
+				if (change === 'data type') projection.dataType = DataTypeType.STRING;
+				if (change === 'array') (projection.format as number[])[1] = 1000;
+				if (change === 'descriptor') Object.defineProperty(projection, 'dataType', { writable: false });
+				if (change === 'registration') {
+					expect(registry.register({ getType: () => physical.type, resolve: (input) => input.id })).toBe(true);
+				}
+				if (change === 'policy') graph.invalidateValidation();
+				if (change === 'method') source.resolve = () => physicalId;
+				held.resolve([...rows(), { propertyId: coldId, numberValue: 55 }]);
+				await rejection;
+				await expect(values.readLatest(physical)).resolves.toBeNull();
+				await expect(values.readLatest(cold)).resolves.toBeNull();
+				expect(storage.query).toHaveBeenCalledTimes(2);
+				await values.write(physical, 22);
+				await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 22, trend: null });
+				closed();
+			},
+		);
+
+		it('keeps the original route when duplicate provider registration is refused', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyStrict([projection]);
+			expect(registry.register(new VirtualValueSourceService(graph))).toBe(false);
+			held.resolve(rows());
+			expect((await pending).get(projectionId)).toMatchObject({ value: 21 });
+			closed();
+		});
+
+		it.each([false, true])('fences an earlier cache hit on nonempty/empty settlement (empty=%s)', async (empty) => {
+			const closed = assertClosed();
+			await values.write(physical, 10);
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyStrict([projection, cold]);
+			const rejection = expect(pending).rejects.toThrow('source changed during read');
+			projection.sourcePropertyId = coldId;
+			held.resolve(empty ? [] : [{ propertyId: coldId, numberValue: 55 }]);
+			await rejection;
+			await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 10 });
+			await expect(values.readLatest(cold)).resolves.toBeNull();
+			expect(storage.query).toHaveBeenCalledTimes(1);
+			closed();
+		});
+
+		it.each([false, true])('keeps a concurrent write on nonempty/empty settlement (empty=%s)', async (empty) => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyStrict([physical, projection]);
+			await values.write(physical, 25);
+			held.resolve(empty ? [] : rows());
+			const result = await pending;
+			expect(result.get(physicalId)).toMatchObject({ value: 25, trend: null });
+			expect(result.get(projectionId)).toMatchObject({ value: 25, trend: null });
+			await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 25, trend: null });
+			closed();
+		});
+
+		it('does not resurrect a series deleted while its query is pending', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyStrict([physical, projection]);
+			await values.delete(physical);
+			held.resolve(rows());
+			const result = await pending;
+			expect(result.get(physicalId)).toBeNull();
+			expect(result.get(projectionId)).toBeNull();
+			await expect(values.readLatest(physical)).resolves.toBeNull();
+			await values.write(physical, 22);
+			await expect(values.readLatest(physical)).resolves.toMatchObject({ value: 22, trend: null });
+			closed();
+		});
+
+		it.each([new Error('primary storage error'), null, undefined, false, 0, ''])(
+			'preserves the exact primary rejection %p after remap and closes every capture',
+			async (primary) => {
+				const closed = assertClosed();
+				const held = deferred<Row[]>();
+				storage.queryStrict.mockReturnValueOnce(held.promise);
+				const pending = values.readLatestManyStrict([projection, cold]);
+				const rejection = expect(pending).rejects.toBe(primary);
+				projection.sourcePropertyId = coldId;
+				producers.register(cold, 1);
+				const read = jest.spyOn(producers, 'read');
+				read.mockClear();
+				held.reject(primary);
+				await rejection;
+				expect(read).not.toHaveBeenCalled();
+				closed();
+			},
+		);
+
+		it('never overlays a successor producer on a stale successful batch', async () => {
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyStrict([projection]);
+			const rejection = expect(pending).rejects.toThrow('source changed during read');
+			projection.sourcePropertyId = coldId;
+			producers.register(cold, 1);
+			const read = jest.spyOn(producers, 'read');
+			read.mockClear();
+			held.resolve(rows());
+			await rejection;
+			expect(read).not.toHaveBeenCalled();
+		});
+
+		it('rechecks current-route producer state after query success', async () => {
+			const closed = assertClosed();
+			const held = deferred<Row[]>();
+			storage.queryStrict.mockReturnValueOnce(held.promise);
+			const pending = values.readLatestManyStrict([projection]);
+			producers.register(physical, 2);
+			held.resolve(rows());
+			expect((await pending).get(projectionId)).toMatchObject({
+				value: null,
+				producer: { quality: 'unavailable', revision: 2 },
+			});
+			closed();
+		});
+
+		it('closes captures for cache, unavailable policy, disconnected storage and partial capture failure', async () => {
+			const closed = assertClosed();
+			await expect(values.readLatestManyStrict([])).resolves.toEqual(new Map());
+			await values.write(physical, 10);
+			await expect(values.readLatestManyStrict([projection])).resolves.toMatchObject(
+				new Map([[projectionId, { value: 10 }]]),
+			);
+			graph.invalidateValidation();
+			expect((await values.readLatestManyStrict([projection])).get(projectionId)).toMatchObject({
+				value: null,
+				producer: { reasons: ['graph_validation_pending'] },
+			});
+			storage.isConnected.mockReturnValue(false);
+			await expect(values.readLatestManyStrict([physical, cold])).rejects.toThrow('storage is unavailable');
+			const getter = jest.fn(() => coldId);
+			Object.defineProperty(cold, 'id', { configurable: true, get: getter });
+			await expect(values.readLatestManyStrict([physical, cold])).rejects.toThrow('data fields');
+			expect(getter).not.toHaveBeenCalled();
+			expect(storage.queryStrict).not.toHaveBeenCalled();
+			closed();
+		});
 	});
 });

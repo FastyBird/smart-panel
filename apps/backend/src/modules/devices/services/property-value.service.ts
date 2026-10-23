@@ -927,90 +927,82 @@ export class PropertyValueService {
 	async readLatestManyStrict(
 		properties: ChannelPropertyEntity[],
 	): Promise<Map<ChannelPropertyEntity['id'], PropertyValueState | null>> {
-		const states = new Map<ChannelPropertyEntity['id'], PropertyValueState | null>();
-		const missingByKey = new Map<ChannelPropertyEntity['id'], ChannelPropertyEntity>();
-		const keyByProperty = new Map<ChannelPropertyEntity['id'], ChannelPropertyEntity['id']>();
-
-		for (const property of properties) {
-			const key = this.valueSourceRegistry.resolve(property);
-			keyByProperty.set(property.id, key);
-			const produced = this.overlay(property, null);
-			if (produced) {
-				states.set(property.id, produced);
-				continue;
-			}
-			const cached = this.valuesMap.get(key);
-
-			if (cached) {
-				states.set(property.id, cached);
-			} else if (!missingByKey.has(key)) {
-				missingByKey.set(key, property);
-			}
-		}
-
-		if (missingByKey.size === 0) {
-			for (const property of properties)
-				states.set(property.id, this.overlay(property, states.get(property.id) ?? null));
-			return states;
-		}
-		if (!this.storageService.isConnected()) {
-			throw new Error('Property value storage is unavailable');
-		}
-
-		const predicate = Array.from(missingByKey.keys())
-			.map((key) => `propertyId = '${this.escapeTagValue(key)}'`)
-			.join(' OR ');
-		const query = `
-        SELECT *
-        FROM property_value
-        WHERE (${predicate})
-		GROUP BY "propertyId"
-		ORDER BY time DESC
-		LIMIT ${TREND_POINTS_COUNT}
-      `;
-
+		const captures: PropertyReadSourceCapture[] = [];
 		try {
-			const rows = await this.storageService.queryStrict<PropertyValueRow>(query);
-			const rowsByKey = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
-
-			for (const row of rows) {
-				rowsByKey.set(row.propertyId, [...(rowsByKey.get(row.propertyId) ?? []), row]);
-			}
-
-			for (const [key, property] of missingByKey) {
-				const propertyRows = rowsByKey.get(key) ?? [];
-
-				if (this.isNumericDataType(property.dataType)) {
-					this.recentValuesMap.set(
-						key,
-						propertyRows
-							.map((row) => row.numberValue)
-							.filter((value): value is number => value !== undefined)
-							.reverse(),
-					);
-				}
-
-				const state = propertyRows[0] ? this.toState(property, key, propertyRows[0]) : null;
-
+			// Keep every requested route, even when several projections share a series.
+			// Capture all inputs before consulting cache/producer state or awaiting storage.
+			const entries = properties.map((property) => {
+				const capture = this.valueSourceRegistry.captureReadSource(property);
+				captures.push(capture);
+				return {
+					capture,
+					input: this.valueSourceRegistry.readSourceInput(capture),
+					key: this.valueSourceRegistry.readSourceKey(capture),
+					reason: this.valueSourceRegistry.readSourceUnavailableReason(capture),
+				};
+			});
+			const overlay = (entry: (typeof entries)[number], state: PropertyValueState | null) => {
+				this.assertReadSourceCurrent(entry.capture);
+				return this.overlaySource(this.producers?.read(entry.key), entry.reason, state);
+			};
+			const cachedStates = new Map<PropertyReadSourceCapture, PropertyValueState>();
+			const missingByKey = new Map<ChannelPropertyEntity['id'], (typeof entries)[number]>();
+			const versions = new Map<ChannelPropertyEntity['id'], number>();
+			for (const entry of entries) {
+				const state = overlay(entry, null) ?? this.valuesMap.get(entry.key);
 				if (state) {
-					this.setCachedState(key, state);
+					cachedStates.set(entry.capture, state);
+				} else if (!missingByKey.has(entry.key)) {
+					missingByKey.set(entry.key, entry);
+					versions.set(entry.key, this.cacheVersion(entry.key));
 				}
 			}
 
-			for (const property of properties) {
-				if (!states.has(property.id)) {
-					states.set(property.id, this.valuesMap.get(keyByProperty.get(property.id) ?? property.id) ?? null);
+			const rowsByKey = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
+			if (missingByKey.size > 0) {
+				if (!this.storageService.isConnected()) {
+					throw new Error('Property value storage is unavailable');
+				}
+				const query = this.buildBoundedPropertyValueQuery([...missingByKey.keys()]);
+				const rows = await this.storageService.queryStrict<PropertyValueRow>(query);
+				for (const row of rows) {
+					rowsByKey.set(row.propertyId, [...(rowsByKey.get(row.propertyId) ?? []), row]);
 				}
 			}
 
-			for (const property of properties)
-				states.set(property.id, this.overlay(property, states.get(property.id) ?? null));
+			// Strict batches fail as a whole. Check cached/produced routes too, before
+			// admitting any queried series or trend into shared cache.
+			for (const entry of entries) this.assertReadSourceCurrent(entry.capture);
+			const admitted = new Set<ChannelPropertyEntity['id']>();
+			for (const [key, entry] of missingByKey) {
+				if (this.cacheVersion(key) !== versions.get(key)) continue;
+				const propertyRows = rowsByKey.get(key) ?? [];
+				admitted.add(key);
+				this.updateRecentValuesFromRows(entry.input, key, propertyRows);
+				if (propertyRows[0]) {
+					this.setCachedState(key, this.toState(entry.input, key, propertyRows[0]));
+				}
+			}
+
+			const states = new Map<ChannelPropertyEntity['id'], PropertyValueState | null>();
+			for (const entry of entries) {
+				const row = rowsByKey.get(entry.key)?.[0];
+				// Conversion belongs to the requested projection's captured input.
+				// A later write still wins over queried rows for both cache and result.
+				const state =
+					cachedStates.get(entry.capture) ??
+					(row && admitted.has(entry.key)
+						? this.toState(entry.input, entry.key, row)
+						: (this.valuesMap.get(entry.key) ?? null));
+				states.set(entry.input.id, overlay(entry, state));
+			}
 			return states;
 		} catch (error) {
-			const err = error as Error;
+			const err = error instanceof Error ? error : new Error(String(error));
 			this.logger.error(`Failed to batch read latest property values from storage error=${err.message}`, err.stack);
-
 			throw error;
+		} finally {
+			for (const capture of captures) this.valueSourceRegistry.closeReadSource(capture);
 		}
 	}
 
