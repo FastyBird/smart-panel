@@ -7,18 +7,39 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceZoneEntity } from '../../../modules/devices/entities/device-zone.entity';
+import {
+	ChannelControlEntity,
+	ChannelEntity,
+	ChannelPropertyEntity,
+	DeviceControlEntity,
+	DeviceEntity,
+} from '../../../modules/devices/entities/devices.entity';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 
-import { HomeyChannelPropertyEntity } from './devices-homey.entity';
+import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './devices-homey.entity';
 
 describe('the Homey capability identity constraint under synchronize', () => {
 	let dataSource: DataSource;
+	let setup: Promise<void> | undefined;
 
-	beforeAll(async () => {
+	const initializeFixture = async (): Promise<void> => {
 		dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
-			entities: [__dirname + '/../../../**/*.entity.ts'],
+			// Homey STI roots/subclasses and their complete relation targets; no unrelated plugin schema.
+			entities: [
+				DeviceEntity,
+				DeviceControlEntity,
+				ChannelEntity,
+				ChannelControlEntity,
+				ChannelPropertyEntity,
+				DeviceZoneEntity,
+				SpaceEntity,
+				HomeyDeviceEntity,
+				HomeyChannelEntity,
+				HomeyChannelPropertyEntity,
+			],
 			synchronize: true,
 		});
 		await dataSource.initialize();
@@ -33,10 +54,17 @@ describe('the Homey capability identity constraint under synchronize', () => {
 			category: ChannelCategory.LIGHT,
 			device: 'device',
 		});
+	};
+
+	beforeAll(() => {
+		setup = initializeFixture();
+		return setup;
 	});
 
 	afterAll(async () => {
-		await dataSource.destroy();
+		// A failed/timed-out hook may still own initialization or seeding. Join it before closing.
+		await setup?.catch(() => undefined);
+		if (dataSource?.isInitialized) await dataSource.destroy();
 	});
 
 	const property = async (id: string, identifier: string): Promise<void> => {

@@ -5,6 +5,7 @@ import { StoragePoint } from '../../storage/storage.types';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
+import { PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
@@ -158,6 +159,56 @@ describe('Live property publication and buffered history', () => {
 		await values.writeLiveWithState(property, false);
 		await values.flushHistory();
 		expect(history.map((point) => point.fields.stringValue)).toEqual(['false', 'false']);
+	});
+
+	it('retains admitted derived history through disposal and shutdown without restoring live authority', async () => {
+		const producers = new PropertyProducerRegistryService();
+		const producedValues = new PropertyValueService(
+			storage,
+			new PropertyValueSourceRegistryService(),
+			new PropertyValueLockService({} as never),
+			producers,
+		);
+		const lease = producers.register(property, 1);
+		const now = new Date();
+		const publication = {
+			quality: 'good' as const,
+			reasons: [],
+			sampledAt: now,
+			evaluatedAt: now,
+			expiresAt: new Date(now.getTime() + 60_000),
+		};
+		await producedValues.publishDerived(property, lease, true, publication);
+		const entered = deferred();
+		const gate = deferred();
+		write.mockImplementationOnce(async (points) => {
+			entered.resolve();
+			await gate.promise;
+			history.push(...points);
+		});
+		const evaluation = producers.beginEvaluation(lease);
+		if (!evaluation) throw new Error('Missing producer evaluation');
+		const pending = producedValues.publishDerived(property, lease, false, publication, evaluation);
+		try {
+			await entered.promise;
+			expect(producers.unregister(lease)).toBe(true);
+			await expect(producedValues.readLatestStrict(property)).resolves.toMatchObject({
+				value: null,
+				producer: { reasons: ['producer_disposed'] },
+			});
+		} finally {
+			gate.resolve();
+			await pending;
+		}
+		await expect(pending).resolves.toMatchObject({ changed: false, state: { value: null } });
+		expect(producedValues.readQualifiedSample(property, 60_000)).toBeNull();
+		await storage.onApplicationShutdown();
+		expect(history.map((point) => point.fields.stringValue)).toEqual(['false', 'true', 'false']);
+		await expect(producedValues.readLatest(property)).resolves.toMatchObject({
+			value: null,
+			producer: { reasons: ['producer_disposed'] },
+		});
+		producers.onModuleDestroy();
 	});
 
 	it('drains the last live value on shutdown so a fresh value service can read it from storage', async () => {
