@@ -1268,6 +1268,141 @@ describe('ManagedServiceManagerService', () => {
 			expect(service.getState()).toBe('stopped');
 		});
 
+		it.each(['fulfill', 'reject'] as const)(
+			'continues config synchronization after a held stop times out, then handles its late %s',
+			async (settlement) => {
+				const service = createMockService('plugin', 'held-owner', 'connector');
+				const later = createMockService('plugin', 'later-owner', 'connector');
+				const admissions: ManagedRuntimeAdmission[] = [];
+				const start = jest.spyOn(service, 'start').mockImplementation(async () => {
+					admissions.push(manager.captureCurrentStartAdmission(service));
+					service._state = 'started';
+				});
+				const changed = jest.fn().mockResolvedValue(undefined);
+				later.onConfigChanged = changed;
+				(manager as unknown as { startupComplete: boolean }).startupComplete = false;
+				manager.register(service);
+				manager.register(later);
+				await manager.onApplicationBootstrap();
+				let finishStop!: () => void;
+				let enterStop!: () => void;
+				const entered = new Promise<void>((resolve) => {
+					enterStop = resolve;
+				});
+				const held = new Promise<void>((resolve, reject) => {
+					finishStop = () => {
+						service._state = settlement === 'fulfill' ? 'stopped' : 'error';
+						if (settlement === 'fulfill') resolve();
+						else reject(new Error('late stop failure'));
+					};
+				});
+				const stop = jest.spyOn(service, 'stop').mockImplementationOnce(() => {
+					service._state = 'stopping';
+					enterStop();
+					return held;
+				});
+				configService.getPluginConfig.mockImplementation((owner: string) => ({ enabled: owner !== 'held-owner' }));
+				const first = manager.handleConfigUpdated({ source: 'held-owner', type: 'plugin' });
+				await entered;
+				let completed = false;
+				const second = manager.handleConfigUpdated().then(() => {
+					completed = true;
+				});
+				let replacement: Promise<boolean> | undefined;
+				let replacementCompleted = false;
+				try {
+					await jest.advanceTimersByTimeAsync(10_050);
+					expect(completed).toBe(false);
+					expect(changed).not.toHaveBeenCalled();
+					await jest.advanceTimersByTimeAsync(10_000);
+					expect(completed).toBe(true);
+					expect(changed).toHaveBeenCalledTimes(1);
+					expect(stop).toHaveBeenCalledTimes(1);
+					expect(service.getState()).toBe('stopping');
+					expect(admissions[0].isCurrent()).toBe(false);
+					await expect(manager.getServiceStatus('plugin', 'held-owner', 'connector')).resolves.toEqual(
+						expect.objectContaining({ state: 'stopping', startCount: 1, lastStoppedAt: undefined }),
+					);
+					expect(jest.getTimerCount()).toBe(0);
+
+					if (settlement === 'fulfill') {
+						manager.unregister('plugin', 'held-owner', 'connector');
+						manager.register(service);
+						configService.getPluginConfig.mockReturnValue({ enabled: true });
+						replacement = manager.startServiceManually('plugin', 'held-owner', 'connector').then((result) => {
+							replacementCompleted = true;
+							return result;
+						});
+						await jest.advanceTimersByTimeAsync(30_000);
+						expect(replacementCompleted).toBe(false);
+						expect(start).toHaveBeenCalledTimes(1);
+						expect(stop).toHaveBeenCalledTimes(1);
+						expect(admissions[0].isCurrent()).toBe(false);
+					}
+				} finally {
+					// Also settle the old implementation after an assertion failure: no hanging test hooks.
+					finishStop();
+					await first;
+					await second;
+					if (replacement !== undefined) await replacement;
+				}
+				if (replacement !== undefined) await expect(replacement).resolves.toBe(true);
+				if (settlement === 'reject') {
+					await expect(manager.getServiceStatus('plugin', 'held-owner', 'connector')).resolves.toEqual(
+						expect.objectContaining({ state: 'error', lastError: 'late stop failure', startCount: 1 }),
+					);
+					configService.getPluginConfig.mockReturnValue({ enabled: true });
+					await manager.startServiceManually('plugin', 'held-owner', 'connector');
+				}
+				expect(start).toHaveBeenCalledTimes(2);
+				expect(stop).toHaveBeenCalledTimes(1);
+				expect(admissions[0].isCurrent()).toBe(false);
+				expect(admissions[1].isCurrent()).toBe(true);
+				expect(service.getState()).toBe('started');
+				expect(jest.getTimerCount()).toBe(0);
+			},
+		);
+
+		it('bounds a newly invoked forced config stop without discarding its pending lifecycle', async () => {
+			const service = createMockService('plugin', 'held-owner', 'connector', 'starting');
+			const later = createMockService('plugin', 'later-owner', 'connector', 'started');
+			const changed = jest.fn().mockResolvedValue(undefined);
+			later.onConfigChanged = changed;
+			configService.getPluginConfig.mockImplementation((owner: string) => ({ enabled: owner !== 'held-owner' }));
+			manager.register(service);
+			manager.register(later);
+			let finishStop!: () => void;
+			const held = new Promise<void>((resolve) => {
+				finishStop = resolve;
+			});
+			const stop = jest.spyOn(service, 'stop').mockImplementationOnce(async () => {
+				service._state = 'stopping';
+				await held;
+				service._state = 'stopped';
+			});
+			let completed = false;
+			const sync = manager.handleConfigUpdated().then(() => {
+				completed = true;
+			});
+			try {
+				await jest.advanceTimersByTimeAsync(10_050);
+				expect(stop).toHaveBeenCalledTimes(1);
+				expect(completed).toBe(false);
+				await jest.advanceTimersByTimeAsync(10_000);
+				expect(completed).toBe(true);
+				expect(changed).toHaveBeenCalledTimes(1);
+				expect(service.getState()).toBe('stopping');
+				expect(jest.getTimerCount()).toBe(0);
+			} finally {
+				finishStop();
+				await sync;
+				await manager.stopServiceManually('plugin', 'held-owner', 'connector');
+			}
+			expect(stop).toHaveBeenCalledTimes(1);
+			expect(service.getState()).toBe('stopped');
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
 		it('should force-stop a service stuck in starting state when plugin is disabled', async () => {
 			// Create a service that stays in 'starting' (simulates WhatsApp QR scan)
 			const service = createMockService('plugin', 'buddy-whatsapp', 'bot', 'starting');

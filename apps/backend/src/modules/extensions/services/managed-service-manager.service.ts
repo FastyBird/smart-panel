@@ -32,6 +32,7 @@ import {
 
 const READINESS_RETRY_INITIAL_DELAY_MS = 15_000;
 const READINESS_RETRY_MAX_ATTEMPTS = 3;
+const CONFIG_FORCE_STOP_TIMEOUT_MS = 10_000;
 
 interface ReadinessRetryState {
 	attempt: number;
@@ -877,6 +878,29 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		}
 	}
 
+	private async stopServiceForConfig(registration: ServiceRegistration): Promise<void> {
+		let timer: NodeJS.Timeout | undefined;
+
+		try {
+			// Bound only config synchronization. The original stop stays tracked and joined
+			// by lifecycle callers until it actually settles; never invoke an overlapping stop.
+			await Promise.race([
+				this.stopService(registration, true),
+				new Promise<void>((resolve) => {
+					timer = setTimeout(() => {
+						this.logger.warn(
+							`Timeout waiting for forced config stop of ${this.getRegistrationKey(registration)}; ` +
+								`service remains '${registration.service.getState()}', stop still pending`,
+						);
+						resolve();
+					}, CONFIG_FORCE_STOP_TIMEOUT_MS);
+				}),
+			]);
+		} finally {
+			if (timer !== undefined) clearTimeout(timer);
+		}
+	}
+
 	private async syncServiceState(registration: ServiceRegistration): Promise<void> {
 		if (!this.isCurrentRegistration(registration)) return;
 		const key = this.getRegistrationKey(registration);
@@ -911,7 +935,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		if (!shouldBeRunning && (currentState === 'starting' || currentState === 'stopping')) {
 			this.logger.log(`Service ${key} should be stopped while still in '${currentState}', forcing stop`);
 
-			await this.stopService(registration, true);
+			await this.stopServiceForConfig(registration);
 
 			return;
 		}
