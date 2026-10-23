@@ -91,9 +91,17 @@ export interface BoundedPropertyValueReadResult {
 	freshnessUnknownCount: number;
 }
 
+interface BoundedPropertyValueReadEntry {
+	resultVersion?: number;
+	capture: PropertyReadSourceCapture;
+	input: Readonly<ChannelPropertyEntity>;
+	key: string;
+	reason: string | null;
+}
+
 interface BoundedPropertyValueSourceGroup {
-	property: ChannelPropertyEntity;
 	indexes: number[];
+	version: number;
 }
 
 export interface PersistedPropertyValueSnapshot {
@@ -1029,116 +1037,113 @@ export class PropertyValueService {
 		const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
 
 		const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
-		const sourcePropertyIds = new Array<ChannelPropertyEntity['id'] | null>(properties.length);
-		const unresolvedBySource = new Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>();
+		const captures: PropertyReadSourceCapture[] = [];
+		const entries: Array<BoundedPropertyValueReadEntry | undefined> = [];
+		const unresolvedBySource = new Map<string, BoundedPropertyValueSourceGroup>();
 		let sourceResolutionFailed = false;
-
-		for (const [index, property] of properties.entries()) {
-			const sourcePropertyId = this.resolveBestEffort(property, 'bounded read');
-			sourcePropertyIds[index] = sourcePropertyId;
-			if (sourcePropertyId === null) {
-				sourceResolutionFailed = true;
-				items[index] = {
-					propertyId: property.id,
-					sourcePropertyId: null,
-					status: 'unprocessed',
-					source: null,
-					state: null,
-				};
-				continue;
+		try {
+			// Capture every logical route before any cache/producer work, including duplicates.
+			for (const [index, property] of properties.entries()) {
+				// Preserve a safe logical ID even if the provider changes it during capture.
+				const id: unknown = Object.getOwnPropertyDescriptor(property, 'id')?.value;
+				try {
+					const capture = this.valueSourceRegistry.captureReadSource(property);
+					captures.push(capture);
+					entries[index] = {
+						capture,
+						input: this.valueSourceRegistry.readSourceInput(capture),
+						key: this.valueSourceRegistry.readSourceKey(capture),
+						reason: this.valueSourceRegistry.readSourceUnavailableReason(capture),
+					};
+				} catch (error) {
+					const err = error instanceof Error ? error : new Error(String(error));
+					this.logger.error(`Failed to capture bounded property value source error=${err.message}`, err.stack);
+					sourceResolutionFailed = true;
+					// A refused accessor must not execute even to construct diagnostics/results.
+					items[index] = {
+						propertyId: typeof id === 'string' ? id : '',
+						sourcePropertyId: null,
+						status: 'unprocessed',
+						source: null,
+						state: null,
+					};
+				}
 			}
-			const produced = this.overlay(property, null);
-			if (produced) {
-				items[index] = this.toBoundedItem(property.id, sourcePropertyId, produced, 'cache');
-				continue;
+			for (const [index, entry] of entries.entries()) {
+				if (!entry || !this.valueSourceRegistry.isReadSourceCurrent(entry.capture)) continue;
+				const produced = this.overlaySource(this.producers?.read(entry.key), entry.reason, null);
+				if (!this.valueSourceRegistry.isReadSourceCurrent(entry.capture)) continue;
+				const state = produced ?? this.valuesMap.get(entry.key);
+				if (state) {
+					items[index] = this.toBoundedItem(entry.input.id, entry.key, state, 'cache');
+					entry.resultVersion = this.cacheVersion(entry.key);
+					continue;
+				}
+				const group = unresolvedBySource.get(entry.key);
+				if (group) group.indexes.push(index);
+				else unresolvedBySource.set(entry.key, { indexes: [index], version: this.cacheVersion(entry.key) });
 			}
-			const cached = this.valuesMap.get(sourcePropertyId);
+			const finish = (status: BoundedPropertyValueStorageStatus) => {
+				this.refreshBoundedItemsFromCache(items, entries);
+				this.overlayBoundedItems(items, entries);
+				return this.buildBoundedResult(items, status);
+			};
+			if (unresolvedBySource.size === 0) return finish(sourceResolutionFailed ? 'failed' : 'not_needed');
+			if (Date.now() >= deadlineAt) return finish('timed_out');
+			if (!this.storageService.isConnected()) return finish('disconnected');
 
-			if (cached) {
-				items[index] = this.toBoundedItem(property.id, sourcePropertyId, cached, 'cache');
-				continue;
-			}
-
-			const group = unresolvedBySource.get(sourcePropertyId);
-
-			if (group) {
-				group.indexes.push(index);
-			} else {
-				unresolvedBySource.set(sourcePropertyId, { property, indexes: [index] });
-			}
-		}
-
-		if (unresolvedBySource.size === 0) {
-			this.overlayBoundedItems(items, properties, sourcePropertyIds);
-			return this.buildBoundedResult(items, sourceResolutionFailed ? 'failed' : 'not_needed');
-		}
-
-		if (Date.now() >= deadlineAt) {
-			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
-			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
-
-			this.overlayBoundedItems(items, properties, sourcePropertyIds);
-			return this.buildBoundedResult(items, 'timed_out');
-		}
-
-		if (!this.storageService.isConnected()) {
-			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
-			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
-
-			this.overlayBoundedItems(items, properties, sourcePropertyIds);
-			return this.buildBoundedResult(items, 'disconnected');
-		}
-
-		const sourceEntries = [...unresolvedBySource.entries()];
-		let storageStatus: BoundedPropertyValueStorageStatus = sourceResolutionFailed ? 'failed' : 'available';
-
-		for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
-			if (Date.now() >= deadlineAt) {
-				storageStatus = 'timed_out';
-				break;
-			}
-
-			const chunk = sourceEntries.slice(offset, offset + BOUNDED_READ_SOURCE_CHUNK_SIZE);
-			const query = this.buildBoundedPropertyValueQuery(chunk.map(([sourcePropertyId]) => sourcePropertyId));
-
-			try {
-				const queryResult = await this.queryPropertyValuesBeforeDeadline(query, deadlineAt);
-
-				if (queryResult === null) {
+			const sourceEntries = [...unresolvedBySource.entries()];
+			let storageStatus: BoundedPropertyValueStorageStatus = sourceResolutionFailed ? 'failed' : 'available';
+			for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
+				if (Date.now() >= deadlineAt) {
 					storageStatus = 'timed_out';
 					break;
 				}
-
-				this.applyBoundedStorageRows(items, properties, chunk, queryResult);
-
-				for (const [sourcePropertyId] of chunk) {
-					unresolvedBySource.delete(sourcePropertyId);
+				const chunk = sourceEntries.slice(offset, offset + BOUNDED_READ_SOURCE_CHUNK_SIZE);
+				const query = this.buildBoundedPropertyValueQuery(chunk.map(([key]) => key));
+				try {
+					const rows = await this.queryPropertyValuesBeforeDeadline(query, deadlineAt);
+					if (rows === null) {
+						storageStatus = 'timed_out';
+						break;
+					}
+					this.applyBoundedStorageRows(items, entries, chunk, rows);
+				} catch (error) {
+					const err = error instanceof Error ? error : new Error(String(error));
+					this.logger.error(`Failed to bounded-batch read latest property values error=${err.message}`, err.stack);
+					storageStatus = 'failed';
+					break;
 				}
-			} catch (error) {
-				const err = error as Error;
-				this.logger.error(`Failed to bounded-batch read latest property values error=${err.message}`, err.stack);
-				storageStatus = 'failed';
-				break;
 			}
+			return finish(storageStatus);
+		} finally {
+			for (const capture of captures) this.valueSourceRegistry.closeReadSource(capture);
 		}
-
-		this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
-		this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
-
-		this.overlayBoundedItems(items, properties, sourcePropertyIds);
-		return this.buildBoundedResult(items, storageStatus);
 	}
 
 	private overlayBoundedItems(
 		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		sourcePropertyIds: Array<string | null>,
+		entries: Array<BoundedPropertyValueReadEntry | undefined>,
 	): void {
-		for (const [index, property] of properties.entries()) {
-			const key = sourcePropertyIds[index];
-			if (key === null) continue;
-			const produced = this.overlay(property, null);
-			if (produced) items[index] = this.toBoundedItem(property.id, key, produced, items[index]?.source ?? 'cache');
+		for (const [index, entry] of entries.entries()) {
+			if (!entry) continue;
+			// Stale routes are unprocessed, never a completed storage miss or successor value.
+			// Storage status still describes the attempt; valid siblings retain partial success.
+			if (!this.valueSourceRegistry.isReadSourceCurrent(entry.capture)) {
+				items[index] = undefined;
+			} else {
+				const produced = this.overlaySource(this.producers?.read(entry.key), entry.reason, null);
+				if (!this.valueSourceRegistry.isReadSourceCurrent(entry.capture)) items[index] = undefined;
+				else if (produced)
+					items[index] = this.toBoundedItem(entry.input.id, entry.key, produced, items[index]?.source ?? 'cache');
+			}
+			items[index] ??= {
+				propertyId: entry.input.id,
+				sourcePropertyId: entry.key,
+				status: 'unprocessed',
+				source: null,
+				state: null,
+			};
 		}
 	}
 
@@ -1168,18 +1173,24 @@ export class PropertyValueService {
 		}
 
 		const controller = new AbortController();
-		const timeout = setTimeout(
-			() => controller.abort(new Error('Property value storage query timed out')),
-			remainingMs,
-		);
-
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const expired = (): null => {
+			controller.abort(new Error('Property value storage query timed out'));
+			return null;
+		};
 		try {
-			return await this.storageService.queryStrict<PropertyValueRow>(query, { signal: controller.signal });
+			// Abort is advisory to plugins. Bound the response even if the issued backend
+			// ignores it; Promise.race also observes late rejections without admitting rows.
+			const deadline = new Promise<null>((resolve) => {
+				timeout = setTimeout(() => resolve(expired()), remainingMs);
+			});
+			const result = await Promise.race([
+				this.storageService.queryStrict<PropertyValueRow>(query, { signal: controller.signal }),
+				deadline,
+			]);
+			return Date.now() >= deadlineAt ? expired() : result;
 		} catch (error) {
-			if (controller.signal.aborted) {
-				return null;
-			}
-
+			if (Date.now() >= deadlineAt || controller.signal.aborted) return expired();
 			throw error;
 		} finally {
 			clearTimeout(timeout);
@@ -1188,37 +1199,35 @@ export class PropertyValueService {
 
 	private applyBoundedStorageRows(
 		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		chunk: Array<[ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup]>,
+		entries: Array<BoundedPropertyValueReadEntry | undefined>,
+		chunk: Array<[string, BoundedPropertyValueSourceGroup]>,
 		rows: PropertyValueRow[],
 	): void {
-		const rowsBySource = new Map<ChannelPropertyEntity['id'], PropertyValueRow[]>();
-
-		for (const row of rows) {
-			rowsBySource.set(row.propertyId, [...(rowsBySource.get(row.propertyId) ?? []), row]);
-		}
-
-		for (const [sourcePropertyId, group] of chunk) {
-			const sourceRows = rowsBySource.get(sourcePropertyId) ?? [];
+		const rowsBySource = new Map<string, PropertyValueRow[]>();
+		for (const row of rows) rowsBySource.set(row.propertyId, [...(rowsBySource.get(row.propertyId) ?? []), row]);
+		for (const [key, group] of chunk) {
+			const currentEntries = group.indexes.flatMap((index) => {
+				const entry = entries[index];
+				return entry && this.valueSourceRegistry.isReadSourceCurrent(entry.capture) ? [{ index, entry }] : [];
+			});
+			const representative = currentEntries[0]?.entry;
+			if (!representative) continue;
+			const sourceRows = rowsBySource.get(key) ?? [];
 			const firstRow = sourceRows[0];
-			let storedState = firstRow ? this.toState(group.property, sourcePropertyId, firstRow) : null;
-			const concurrentCache = this.valuesMap.get(sourcePropertyId);
-			const useCache = concurrentCache !== undefined && this.isStateNewerOrEqual(concurrentCache, storedState);
-
-			if (!useCache && firstRow) {
-				this.updateRecentValuesFromRows(group.property, sourcePropertyId, sourceRows);
-				storedState = this.toState(group.property, sourcePropertyId, firstRow);
+			const storedState = firstRow ? this.toState(representative.input, key, firstRow) : null;
+			const cached = this.valuesMap.get(key);
+			const changed = this.cacheVersion(key) !== group.version;
+			const useCache = changed || (cached !== undefined && this.isStateNewerOrEqual(cached, storedState));
+			if (!useCache) {
+				this.updateRecentValuesFromRows(representative.input, key, sourceRows);
+				if (firstRow) this.setCachedState(key, this.toState(representative.input, key, firstRow));
 			}
-
-			const state = useCache ? concurrentCache : storedState;
-			const source: BoundedPropertyValueSource = useCache ? 'cache' : 'storage';
-
-			if (!useCache && storedState) {
-				this.setCachedState(sourcePropertyId, storedState);
-			}
-
-			for (const index of group.indexes) {
-				items[index] = this.toBoundedItem(properties[index].id, sourcePropertyId, state, source);
+			for (const { index, entry } of currentEntries) {
+				// A deletion during the query cannot be resurrected by its old result.
+				if (changed && !cached) continue;
+				const state = useCache ? (cached ?? null) : firstRow ? this.toState(entry.input, key, firstRow) : null;
+				items[index] = this.toBoundedItem(entry.input.id, key, state, useCache ? 'cache' : 'storage');
+				entry.resultVersion = this.cacheVersion(key);
 			}
 		}
 	}
@@ -1341,49 +1350,20 @@ export class PropertyValueService {
 
 	private refreshBoundedItemsFromCache(
 		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		sourcePropertyIds: Array<ChannelPropertyEntity['id'] | null>,
+		entries: Array<BoundedPropertyValueReadEntry | undefined>,
 	): void {
-		for (const [index, property] of properties.entries()) {
-			const sourcePropertyId = sourcePropertyIds[index];
-			if (sourcePropertyId === null) continue;
-			const cached = this.valuesMap.get(sourcePropertyId);
-
-			if (!cached) {
-				continue;
-			}
+		for (const [index, entry] of entries.entries()) {
+			if (!entry || !this.valueSourceRegistry.isReadSourceCurrent(entry.capture)) continue;
+			const cached = this.valuesMap.get(entry.key);
 			const current = items[index];
-
-			if (current?.state === cached) {
+			if (entry.resultVersion !== undefined && this.cacheVersion(entry.key) !== entry.resultVersion) {
+				items[index] = cached ? this.toBoundedItem(entry.input.id, entry.key, cached, 'cache') : undefined;
 				continue;
 			}
-			if (current?.state && !this.isStateNewerOrEqual(cached, current.state)) {
-				continue;
-			}
-
-			items[index] = this.toBoundedItem(property.id, sourcePropertyId, cached, 'cache');
-		}
-	}
-
-	private fillUnprocessedBoundedItems(
-		items: Array<BoundedPropertyValueItem | undefined>,
-		properties: ChannelPropertyEntity[],
-		groups: Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>,
-	): void {
-		for (const [sourcePropertyId, group] of groups) {
-			for (const index of group.indexes) {
-				if (items[index] !== undefined) {
-					continue;
-				}
-
-				items[index] = {
-					propertyId: properties[index].id,
-					sourcePropertyId,
-					status: 'unprocessed',
-					source: null,
-					state: null,
-				};
-			}
+			if (!cached || current?.state === cached) continue;
+			// Preserve each cold projection's own conversion at the same observation.
+			if (current?.state && this.isStateNewerOrEqual(current.state, cached)) continue;
+			items[index] = this.toBoundedItem(entry.input.id, entry.key, cached, 'cache');
 		}
 	}
 
