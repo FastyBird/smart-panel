@@ -302,6 +302,167 @@ describe('ManagedServiceManagerService', () => {
 		});
 	});
 
+	describe('completed lifecycle ownership', () => {
+		function admittedService() {
+			const service = createMockService('plugin', 'owner', 'connector');
+			const admissions: ManagedRuntimeAdmission[] = [];
+			const start = jest.spyOn(service, 'start').mockImplementation(() => {
+				admissions.push(manager.captureCurrentStartAdmission(service));
+				service._state = 'started';
+				return Promise.resolve();
+			});
+			return { service, admissions, start, stop: jest.spyOn(service, 'stop') };
+		}
+
+		it('restarts a fully completed lifecycle after public unregister and same-object registration', async () => {
+			const { service, admissions, start, stop } = admittedService();
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			// Repeated bootstrap/config synchronization of the current owner is idempotent.
+			await manager.onApplicationBootstrap();
+			await manager.handleConfigUpdated();
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(stop).not.toHaveBeenCalled();
+			expect(admissions[0].isCurrent()).toBe(true);
+			manager.unregister('plugin', 'owner', 'connector');
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			expect(start).toHaveBeenCalledTimes(2);
+			expect(stop).toHaveBeenCalledTimes(1);
+			expect(admissions[0].isCurrent()).toBe(false);
+			expect(admissions[1].isCurrent()).toBe(true);
+			await manager.onApplicationBootstrap();
+			await manager.handleConfigUpdated();
+			expect(start).toHaveBeenCalledTimes(2);
+			expect(stop).toHaveBeenCalledTimes(1);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', startCount: 1, lastError: undefined }),
+			);
+		});
+
+		it.each(['started', 'starting'] as const)(
+			'preserves a fresh unmanaged %s service without claiming its lifecycle',
+			async (state) => {
+				const service = createMockService('plugin', 'owner', 'connector', state);
+				const start = jest.spyOn(service, 'start');
+				const stop = jest.spyOn(service, 'stop');
+				manager.register(service);
+				await manager.onApplicationBootstrap();
+				manager.unregister('plugin', 'owner', 'connector');
+				manager.register(service);
+				await manager.onApplicationBootstrap();
+				expect(start).not.toHaveBeenCalled();
+				expect(stop).not.toHaveBeenCalled();
+				expect(manager.captureCurrentStartAdmission(service)).toBeNull();
+				await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+					expect.objectContaining({ state, startCount: 0 }),
+				);
+			},
+		);
+
+		it('does not claim an unmanaged lifecycle started after a completed managed stop', async () => {
+			const { service, admissions, start, stop } = admittedService();
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			await expect(manager.stopServiceManually('plugin', 'owner', 'connector')).resolves.toBe(true);
+			await service.start(); // Ordinary unmanaged caller: no manager start context or new admission.
+			expect(admissions[1]).toBeNull();
+			manager.unregister('plugin', 'owner', 'connector');
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			expect(start).toHaveBeenCalledTimes(2);
+			expect(stop).toHaveBeenCalledTimes(1);
+			expect(admissions[0].isCurrent()).toBe(false);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', startCount: 0 }),
+			);
+		});
+
+		it('starts a different replacement object without stopping or inheriting the retired object', async () => {
+			const original = admittedService();
+			manager.register(original.service);
+			await manager.onApplicationBootstrap();
+			manager.unregister('plugin', 'owner', 'connector');
+			const replacement = admittedService();
+			manager.register(replacement.service);
+			await manager.onApplicationBootstrap();
+			expect(original.start).toHaveBeenCalledTimes(1);
+			expect(original.stop).not.toHaveBeenCalled();
+			expect(original.admissions[0].isCurrent()).toBe(false);
+			expect(replacement.start).toHaveBeenCalledTimes(1);
+			expect(replacement.admissions[0].isCurrent()).toBe(true);
+		});
+
+		it('keeps a disabled replacement closed and starts its own lifecycle when enabled', async () => {
+			const { service, admissions, start } = admittedService();
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			manager.unregister('plugin', 'owner', 'connector');
+			configService.getPluginConfig.mockReturnValue({ enabled: false });
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(admissions[0].isCurrent()).toBe(false);
+			// Enabling an already-running retired object must not take the config-handler shortcut.
+			configService.getPluginConfig.mockReturnValue({ enabled: true });
+			await manager.handleConfigUpdated();
+			expect(start).toHaveBeenCalledTimes(2);
+			expect(admissions[1].isCurrent()).toBe(true);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', startCount: 1 }),
+			);
+		});
+
+		it.each(['disabled', 'unregistered'])(
+			'rechecks a replacement %s during retirement of a completed lifecycle',
+			async (change) => {
+				const { service, admissions, start, stop } = admittedService();
+				manager.register(service);
+				await manager.onApplicationBootstrap();
+				let finishStop!: () => void;
+				let enteredStop!: () => void;
+				const stopping = new Promise<void>((resolve) => {
+					enteredStop = resolve;
+				});
+				const stopped = new Promise<void>((resolve) => {
+					finishStop = resolve;
+				});
+				stop.mockImplementation(async () => {
+					enteredStop();
+					await stopped;
+					service._state = 'stopped';
+				});
+				manager.unregister('plugin', 'owner', 'connector');
+				manager.register(service);
+				const replacement = manager.onApplicationBootstrap();
+				await stopping;
+				if (change === 'disabled') configService.getPluginConfig.mockReturnValue({ enabled: false });
+				else manager.unregister('plugin', 'owner', 'connector');
+				finishStop();
+				await replacement;
+				expect(start).toHaveBeenCalledTimes(1);
+				expect(admissions[0].isCurrent()).toBe(false);
+				expect(service.getState()).toBe('stopped');
+			},
+		);
+
+		it('does not report a new start or admission when retired lifecycle cleanup fails', async () => {
+			const { service, admissions, start, stop } = admittedService();
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			manager.unregister('plugin', 'owner', 'connector');
+			stop.mockRejectedValue(new Error('retired cleanup failed'));
+			manager.register(service);
+			await manager.onApplicationBootstrap();
+			await expect(manager.startServiceManually('plugin', 'owner', 'connector')).resolves.toBe(false);
+			expect(start).toHaveBeenCalledTimes(1);
+			expect(admissions[0].isCurrent()).toBe(false);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', startCount: 0, lastError: 'retired cleanup failed' }),
+			);
+		});
+	});
+
 	describe('replacement during stop and issue persistence', () => {
 		function registerWithoutStarting(service: IManagedExtensionService): void {
 			(manager as unknown as { startupComplete: boolean }).startupComplete = false;

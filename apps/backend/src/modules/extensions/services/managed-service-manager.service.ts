@@ -85,6 +85,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
 	private readonly readinessRetries: Map<string, ReadinessRetryState> = new Map();
 	private readonly serviceStartPromises = new WeakMap<IManagedExtensionService, PendingServiceStart>();
+	private readonly lifecycleOwners = new WeakMap<IManagedExtensionService, ServiceRegistration>();
 	private readonly serviceStopPromises = new WeakMap<IManagedExtensionService, Promise<void>>();
 	private readonly issueWrites = new Map<string, Promise<void>>();
 	private readonly startAttempts = new WeakMap<ServiceRegistration, ManagedStartAttempt>();
@@ -494,7 +495,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		const currentState = registration.service.getState();
 
-		if (currentState !== 'stopped' && currentState !== 'error') {
+		if (currentState !== 'stopped' && currentState !== 'error' && !this.hasRetiredLifecycle(registration)) {
 			this.logger.warn(`Cannot start service ${key} from state ${currentState}`);
 
 			return false;
@@ -502,7 +503,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		await this.startService(registration);
 
-		if (!this.isCurrentRegistration(registration)) return false;
+		if (!this.isCurrentRegistration(registration) || this.hasRetiredLifecycle(registration)) return false;
 
 		const resultingState = registration.service.getState();
 
@@ -586,6 +587,11 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		return this.services.get(this.getRegistrationKey(registration)) === registration;
 	}
 
+	private hasRetiredLifecycle(registration: ServiceRegistration): boolean {
+		const owner = this.lifecycleOwners.get(registration.service);
+		return owner !== undefined && owner !== registration;
+	}
+
 	private revokeAdmission(registration: ServiceRegistration): void {
 		this.startAttempts.delete(registration);
 		try {
@@ -618,15 +624,18 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			const current = this.startAttempts.get(registration) === pending.attempt;
 			await pending.promise;
 			if (current || !this.isCurrentRegistration(registration) || this.shutdownInProgress) return;
-			// Re-registering the same object must drain and clean up its original invocation.
-			if (pending.attempt.registration !== registration && pending.attempt.invoked) {
-				await this.stopService(registration);
-				if (registration.service.getState() !== 'stopped') return;
-			}
 			await this.startService(registration, requireDesiredState);
 			return;
 		}
 		const state = registration.service.getState();
+		if (this.hasRetiredLifecycle(registration) && state !== 'stopped') {
+			// Completion of start() does not transfer its runtime to a new registration.
+			// Force also joins a service already stopping through its own lifecycle queue.
+			await this.stopService(registration, true);
+			if (registration.service.getState() !== 'stopped') return;
+			await this.startService(registration, requireDesiredState);
+			return;
+		}
 		if (state === 'started' || state === 'starting') return;
 
 		const key = this.getRegistrationKey(registration);
@@ -757,6 +766,8 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		try {
 			attempt.invoked = true;
+			// Retain ownership beyond the single-flight promise, including partial startup failure.
+			this.lifecycleOwners.set(registration.service, registration);
 			await this.startContext.run(attempt, () => registration.service.start());
 			if (!isCurrent()) return;
 
@@ -823,9 +834,16 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 	private async stopServiceOnce(registration: ServiceRegistration, force: boolean): Promise<void> {
 		const key = this.getRegistrationKey(registration);
+		const owner = this.lifecycleOwners.get(registration.service);
+		const releaseStoppedOwner = () => {
+			if (registration.service.getState() === 'stopped' && this.lifecycleOwners.get(registration.service) === owner) {
+				this.lifecycleOwners.delete(registration.service);
+			}
+		};
 		const currentState = registration.service.getState();
 
 		if (currentState === 'stopped' || (!force && currentState === 'stopping')) {
+			releaseStoppedOwner();
 			return;
 		}
 
@@ -833,6 +851,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		try {
 			await registration.service.stop();
+			releaseStoppedOwner();
 			if (!this.isCurrentRegistration(registration)) return;
 
 			// Update runtime info on successful stop
@@ -867,6 +886,10 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		if (!shouldBeRunning) {
 			this.revokeAdmission(registration);
 			this.clearReadinessRetry(key);
+		}
+		if (shouldBeRunning && this.hasRetiredLifecycle(registration)) {
+			await this.startService(registration);
+			return;
 		}
 		const attempt = this.startAttempts.get(registration);
 		const isCurrent = () =>
