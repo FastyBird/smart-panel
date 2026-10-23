@@ -24,7 +24,12 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
+import {
+	ClimateAutomationSlotEntity,
+	ClimateAutomationSourceEntity,
+} from '../src/modules/devices/entities/climate-automation.entity';
 import { ChannelEntity, ChannelPropertyEntity } from '../src/modules/devices/entities/devices.entity';
+import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-virtual.constants';
@@ -292,6 +297,18 @@ describe('devices-virtual plugin (e2e)', () => {
 
 	afterAll(async () => {
 		await app.close();
+	});
+
+	it('boots the dormant ownership core through the real module and entity discovery without registering climate authority', async () => {
+		const registry = moduleRef.get(ClimateAutomationRegistryService);
+		expect(registry.captureProvider('virtual-thermostat:v1')).toBeNull();
+		for (const key of ['activity:v1', 'schedule:v1', 'presence:v1']) {
+			expect(registry.captureProducer(key)).toBeNull();
+		}
+		expect(dataSource.hasMetadata(ClimateAutomationSourceEntity)).toBe(true);
+		expect(dataSource.hasMetadata(ClimateAutomationSlotEntity)).toBe(true);
+		expect(await dataSource.getRepository(ClimateAutomationSourceEntity).count()).toBe(0);
+		expect(await dataSource.getRepository(ClimateAutomationSlotEntity).count()).toBe(0);
 	});
 
 	// Helper to make authenticated requests
