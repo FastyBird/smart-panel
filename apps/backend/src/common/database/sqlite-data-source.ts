@@ -195,17 +195,27 @@ class SqliteConnectionCoordinator {
 	}
 
 	track<T>(operation: () => Promise<T>, nested = false): Promise<T> {
-		const parent = this.context.getStore();
+		let parent = this.context.getStore();
 		if (!parent?.lease.active) return operation();
-		const child = this.createContext(parent.lease);
-		const recordFailure = parent.lease.runner.captureChildFailureRecorder(parent.lease);
-		const promise = this.runContext(child, nested ? () => this.runNested(operation, parent) : operation);
-		parent.operations.set(promise, child);
+		const lease = parent.lease;
+		// A completed query's continuation can still join its live transaction. Enroll that work
+		// under a live ancestor so ordinary settlement and guarded COMMIT both see its promise.
+		while (!parent.active) {
+			parent = parent.parent;
+			if (!parent || parent.lease !== lease) {
+				throw new Error('SQLite operation requires an active owning context on its original lease');
+			}
+		}
+		const owner = parent;
+		const child = this.createContext(lease);
+		const recordFailure = owner.lease.runner.captureChildFailureRecorder(owner.lease);
+		const promise = this.runContext(child, nested ? () => this.runNested(operation, owner) : operation);
+		owner.operations.set(promise, child);
 		void promise.then(
-			() => parent.operations.delete(promise),
+			() => owner.operations.delete(promise),
 			(cause: unknown) => {
 				recordFailure?.(cause);
-				parent.operations.delete(promise);
+				owner.operations.delete(promise);
 			},
 		);
 		return promise;

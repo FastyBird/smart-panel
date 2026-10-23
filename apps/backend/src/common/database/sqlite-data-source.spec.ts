@@ -441,6 +441,101 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			expect(await names()).toEqual([]);
 		});
 
+		it.each(['commit', 'refuse', 'child-failure'])(
+			'drains work issued from a completed query context before outer guarded COMMIT (%s)',
+			async (outcome) => {
+				const resumeStale = deferred(),
+					commitEntered = deferred(),
+					commitRelease = deferred(),
+					commitQueryEntered = deferred(),
+					childEntered = deferred(),
+					childRelease = deferred();
+				const failure = new Error('expired-context child failed');
+				const guard = jest.fn(() => outcome !== 'refuse');
+				let receipt: SqliteCommitGuardReceipt | undefined;
+				let lateChild: Promise<void> | undefined;
+				let childFailure: { cause: unknown } | undefined;
+				let seedCompleted = false;
+				let transactionSettled = false;
+				database.subscribers.push({
+					beforeTransactionCommit: async () => {
+						commitEntered.resolve();
+						await commitRelease.promise;
+					},
+					beforeQuery: async (event) => {
+						if (event.query === 'SELECT 23 AS stale_context_seed') {
+							// Promise registration captures this query's actual ALS context. Resume only
+							// after the query has returned and its operation contexts have expired.
+							lateChild = resumeStale.promise
+								.then(async () => {
+									expect(seedCompleted).toBe(true);
+									await event.manager.query("INSERT INTO transaction_record(name) VALUES ('late-child')");
+								})
+								.catch((cause: unknown) => {
+									childFailure = { cause };
+								});
+						} else if (event.query.includes("VALUES ('late-child')")) {
+							childEntered.resolve();
+							await childRelease.promise;
+							if (outcome === 'child-failure') throw failure;
+						} else if (event.query === 'COMMIT') {
+							commitQueryEntered.resolve();
+						}
+					},
+				});
+				const native = jest.spyOn(nativeConnection(), 'all');
+				const transaction = database.transaction(async (manager) => {
+					receipt = registerSqliteCommitGuard(manager, guard);
+					await manager.insert(TransactionRecord, { name: 'root-candidate' });
+					await manager.query('SELECT 23 AS stale_context_seed');
+					seedCompleted = true;
+				});
+				const observedTransaction = transaction.then(
+					() => {
+						transactionSettled = true;
+						return { status: 'fulfilled' as const };
+					},
+					(cause: unknown) => {
+						transactionSettled = true;
+						return { status: 'rejected' as const, cause };
+					},
+				);
+				try {
+					await commitEntered.promise;
+					resumeStale.resolve();
+					await childEntered.promise;
+					commitRelease.resolve();
+					await commitQueryEntered.promise;
+					// Let the real TypeORM COMMIT path reach native admission while the INSERT is held.
+					await new Promise<void>((resolve) => setImmediate(resolve));
+					expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+					expect(guard).not.toHaveBeenCalled();
+					expect(transactionSettled).toBe(false);
+					childRelease.resolve();
+					const result = await observedTransaction;
+					await lateChild;
+					if (outcome === 'commit') {
+						expect(result.status).toBe('fulfilled');
+						expect(receipt?.outcome).toBe('committed');
+						expect(await names()).toEqual(['late-child', 'root-candidate']);
+					} else {
+						expect(result).toMatchObject({ status: 'rejected', cause: { driverError: guardRefusal } });
+						expect(receipt?.outcome).toBe('refused');
+						expect(await names()).toEqual([]);
+					}
+					expect(childFailure).toEqual(outcome === 'child-failure' ? { cause: failure } : undefined);
+					if (outcome === 'child-failure') expect(childFailure?.cause).toBe(failure);
+					expect(guard).toHaveBeenCalledTimes(outcome === 'child-failure' ? 0 : 1);
+					expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(outcome === 'commit' ? 1 : 0);
+				} finally {
+					resumeStale.resolve();
+					commitRelease.resolve();
+					childRelease.resolve();
+					await Promise.allSettled([observedTransaction, lateChild]);
+				}
+			},
+		);
+
 		it('drains BeforeQuery children in successive same-lease waves before sealing and evaluating guards', async () => {
 			const firstEntered = deferred(),
 				firstRelease = deferred();
