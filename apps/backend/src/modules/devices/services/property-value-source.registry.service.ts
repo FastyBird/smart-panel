@@ -56,12 +56,24 @@ interface SourceRegistration {
 	readonly source: IPropertyValueSource;
 	readonly methods?: SourceMethods;
 }
+type ReadDescriptorFlags = Readonly<Pick<PropertyDescriptor, 'enumerable' | 'writable' | 'configurable'>>;
+type ReadArrayDescriptors = WeakMap<object, ReadonlyMap<PropertyKey, ReadDescriptorFlags>>;
+
+function sameDescriptorFlags(current: PropertyDescriptor, original: ReadDescriptorFlags): boolean {
+	return (
+		current.enumerable === original.enumerable &&
+		current.writable === original.writable &&
+		current.configurable === original.configurable
+	);
+}
+
 interface SourceReadRecord {
 	readonly type: string;
 	readonly registration: SourceRegistration | undefined;
 	readonly property: ChannelPropertyEntity;
 	readonly input: ChannelPropertyEntity;
 	readonly descriptors: ReadonlyMap<PropertyKey, PropertyDescriptor>;
+	readonly arrayDescriptors: ReadArrayDescriptors;
 	readonly prototype: object | null;
 	readonly prototypeChain: readonly object[];
 	readonly prototypeFields: readonly Readonly<{ owner: object; key: string; descriptor: PropertyDescriptor }>[];
@@ -69,35 +81,52 @@ interface SourceReadRecord {
 	readonly unavailable: string | null;
 	readonly live: boolean;
 }
-function ownReadArray(value: unknown, seen = new Set<object>()): unknown {
+function ownReadArray(value: unknown, observations: ReadArrayDescriptors, seen = new Set<object>()): unknown {
 	const arrays: Readonly<{ isArray: (candidate: unknown) => candidate is unknown[] }> = Array;
 	if (!arrays.isArray(value)) return value;
 	if (seen.has(value)) throw new Error('Cyclic read source array');
 	seen.add(value);
 	const result: unknown[] = new Array<unknown>(value.length);
+	const descriptors = new Map<PropertyKey, ReadDescriptorFlags>();
 	for (const key of Reflect.ownKeys(value)) {
-		if (key === 'length') continue;
 		const descriptor = Object.getOwnPropertyDescriptor(value, key);
 		if (!descriptor || descriptor.get || descriptor.set) throw new Error('Read source array requires data fields');
-		Object.defineProperty(result, key, { ...descriptor, value: ownReadArray(descriptor.value, seen) });
+		// Freeze changes the owned copy's flags. Retain original flags as capture-local facts,
+		// including the length descriptor, rather than comparing against that frozen copy.
+		descriptors.set(
+			key,
+			Object.freeze({
+				enumerable: descriptor.enumerable,
+				writable: descriptor.writable,
+				configurable: descriptor.configurable,
+			}),
+		);
+		if (key === 'length') continue;
+		Object.defineProperty(result, key, { ...descriptor, value: ownReadArray(descriptor.value, observations, seen) });
 	}
 	seen.delete(value);
+	observations.set(result, descriptors);
 	return Object.freeze(result);
 }
-function sameReadArray(current: unknown, owned: unknown): boolean {
+function sameReadArray(current: unknown, owned: unknown, observations: ReadArrayDescriptors): boolean {
 	const arrays: Readonly<{ isArray: (candidate: unknown) => candidate is unknown[] }> = Array;
 	if (!arrays.isArray(current) || !arrays.isArray(owned)) return current === owned;
+	const originalDescriptors = observations.get(owned);
+	if (!originalDescriptors) return false;
 	const keys = Reflect.ownKeys(current);
 	if (keys.length !== Reflect.ownKeys(owned).length || current.length !== owned.length) return false;
 	return keys.every((key) => {
 		const now = Object.getOwnPropertyDescriptor(current, key);
 		const before = Object.getOwnPropertyDescriptor(owned, key);
+		const original = originalDescriptors.get(key);
 		return (
 			now !== undefined &&
 			before !== undefined &&
+			original !== undefined &&
+			sameDescriptorFlags(now, original) &&
 			now.get === undefined &&
 			now.set === undefined &&
-			sameReadArray(now.value, before.value)
+			sameReadArray(now.value, before.value, observations)
 		);
 	});
 }
@@ -205,6 +234,14 @@ export class PropertyValueSourceRegistryService {
 	 * identity observations; this does not certify their nested graph or producer freshness.
 	 */
 	captureReadSource(property: ChannelPropertyEntity): PropertyReadSourceCapture {
+		// Reject own accessors before reading type or any other input value. Inherited
+		// entity getters remain intentional and are observed below with their descriptors.
+		const descriptors = new Map<PropertyKey, PropertyDescriptor>();
+		for (const key of Reflect.ownKeys(property)) {
+			const descriptor = Object.getOwnPropertyDescriptor(property, key);
+			if (!descriptor || descriptor.get || descriptor.set) throw new Error('Value source input must have data fields');
+			descriptors.set(key, Object.freeze(descriptor));
+		}
 		const type = property.type;
 		const registration = this.readRegistrations.get(type);
 		if (registration?.source !== this.sources[type]) throw new Error('Original source membership unavailable');
@@ -213,21 +250,18 @@ export class PropertyValueSourceRegistryService {
 		const prototype = prototypeReader.getPrototypeOf(property);
 		const prototypeChain: object[] = [];
 		for (let owner = prototype; owner; owner = prototypeReader.getPrototypeOf(owner)) prototypeChain.push(owner);
-		const descriptors = new Map<PropertyKey, PropertyDescriptor>();
+		const arrayDescriptors: ReadArrayDescriptors = new WeakMap();
 		const input = new ChannelPropertyEntity();
 		Object.setPrototypeOf(input, prototype);
-		for (const key of Reflect.ownKeys(property)) {
-			const descriptor = Object.getOwnPropertyDescriptor(property, key);
-			if (!descriptor || descriptor.get || descriptor.set) throw new Error('Value source input must have data fields');
-			descriptors.set(key, descriptor);
-			Object.defineProperty(input, key, { ...descriptor, value: ownReadArray(descriptor.value) });
+		for (const [key, descriptor] of descriptors) {
+			Object.defineProperty(input, key, { ...descriptor, value: ownReadArray(descriptor.value, arrayDescriptors) });
 		}
 		const prototypeFields: Array<Readonly<{ owner: object; key: string; descriptor: PropertyDescriptor }>> = [];
 		for (const key of ['type', 'requiresLiveValue', 'isProjecting']) {
 			for (let owner: object | null = property; owner; owner = prototypeReader.getPrototypeOf(owner)) {
 				const descriptor = Object.getOwnPropertyDescriptor(owner, key);
 				if (descriptor) {
-					prototypeFields.push({ owner, key, descriptor });
+					prototypeFields.push({ owner, key, descriptor: Object.freeze(descriptor) });
 					break;
 				}
 			}
@@ -241,6 +275,7 @@ export class PropertyValueSourceRegistryService {
 			property,
 			input,
 			descriptors,
+			arrayDescriptors,
 			prototype,
 			prototypeChain,
 			prototypeFields,
@@ -302,7 +337,8 @@ export class PropertyValueSourceRegistryService {
 					current.get !== original.get ||
 					current.set !== original.set ||
 					current.value !== original.value ||
-					!sameReadArray(current.value, owned.value)
+					!sameDescriptorFlags(current, original) ||
+					!sameReadArray(current.value, owned.value, record.arrayDescriptors)
 				)
 					return false;
 			}
@@ -312,7 +348,8 @@ export class PropertyValueSourceRegistryService {
 					!current ||
 					current.get !== field.descriptor.get ||
 					current.set !== field.descriptor.set ||
-					current.value !== field.descriptor.value
+					current.value !== field.descriptor.value ||
+					!sameDescriptorFlags(current, field.descriptor)
 				)
 					return false;
 			}

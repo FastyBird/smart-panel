@@ -335,4 +335,92 @@ describe('Read source provenance', () => {
 		expect(registry.readSourceInput(capture)).toMatchObject({ sourcePropertyId: 'physical' });
 		expect(registry.resolve(input)).toBe('replacement');
 	});
+
+	describe('R1 descriptor and accessor regressions', () => {
+		it.each(['enumerable', 'writable', 'configurable'] as const)(
+			'rejects an own-field %s-only change while retaining the original value',
+			(flag) => {
+				const input = property();
+				const capture = registry.captureReadSource(input);
+				Object.defineProperty(input, 'id', { [flag]: false });
+				expect(input.id).toBe('original');
+				expect(registry.readSourceInput(capture).id).toBe('original');
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(registry.isReadSourceCurrent(capture)).toBe(false);
+			},
+		);
+
+		it.each(['enumerable', 'writable', 'configurable'] as const)(
+			'rejects an array-element %s-only change against original flags, not frozen flags',
+			(flag) => {
+				const input = property();
+				input.format = [0, 100];
+				const capture = registry.captureReadSource(input);
+				expect(registry.isReadSourceCurrent(capture)).toBe(true);
+				Object.defineProperty(input.format, '1', { [flag]: false });
+				expect([...input.format]).toEqual([0, 100]);
+				expect(registry.readSourceInput(capture).format).toEqual([0, 100]);
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(registry.isReadSourceCurrent(capture)).toBe(false);
+			},
+		);
+
+		it('rejects an array length writable-only change without changing contents', () => {
+			const input = property();
+			input.format = [0, 100];
+			const capture = registry.captureReadSource(input);
+			expect(registry.isReadSourceCurrent(capture)).toBe(true);
+			// Array length is permanently nonenumerable/nonconfigurable; writable can legally close.
+			Object.defineProperty(input.format, 'length', { writable: false });
+			expect([...input.format]).toEqual([0, 100]);
+			expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+			expect(registry.isReadSourceCurrent(capture)).toBe(false);
+		});
+
+		it.each(['enumerable', 'writable', 'configurable'] as const)(
+			'rejects an observed prototype-field %s-only change',
+			(flag) => {
+				const input = property();
+				const prototype: object = Object.create(ChannelPropertyEntity.prototype) as object;
+				Object.defineProperty(prototype, 'type', {
+					value: 'channelpropertyentity',
+					enumerable: true,
+					writable: true,
+					configurable: true,
+				});
+				Object.setPrototypeOf(input, prototype);
+				const capture = registry.captureReadSource(input);
+				Object.defineProperty(prototype, 'type', { [flag]: false });
+				expect(input.type).toBe('channelpropertyentity');
+				expect(registry.isReadSourceStructurallyCurrent(capture)).toBe(false);
+				expect(registry.isReadSourceCurrent(capture)).toBe(false);
+			},
+		);
+
+		it('rejects an own type accessor before its getter can run', () => {
+			const input = property();
+			const getter = jest.fn(() => 'channelpropertyentity');
+			Object.defineProperty(input, 'type', { get: getter });
+			expect(() => registry.captureReadSource(input)).toThrow('data fields');
+			expect(getter).not.toHaveBeenCalled();
+		});
+
+		it('preflights all own fields before reading the intentional inherited type getter', () => {
+			const input = property();
+			const getter = jest.fn(() => 'channelpropertyentity');
+			const prototype: object = Object.create(ChannelPropertyEntity.prototype) as object;
+			Object.defineProperty(prototype, 'type', { get: getter });
+			Object.setPrototypeOf(input, prototype);
+			const capture = registry.captureReadSource(input);
+			expect(registry.readSourceKey(capture)).toBe('original');
+			expect(registry.isReadSourceCurrent(capture)).toBe(true);
+			expect(getter).toHaveBeenCalled();
+			getter.mockClear();
+			const ownGetter = jest.fn(() => 'unexpected');
+			Object.defineProperty(input, 'extra', { get: ownGetter });
+			expect(() => registry.captureReadSource(input)).toThrow('data fields');
+			expect(getter).not.toHaveBeenCalled();
+			expect(ownGetter).not.toHaveBeenCalled();
+		});
+	});
 });
