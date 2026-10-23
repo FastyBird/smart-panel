@@ -260,10 +260,15 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	unregister(lease: PropertyProducerLease): boolean {
 		// Keep a tombstone overlay so history cannot resurrect after disposal.
-		if (!this.invalidate(lease, ['producer_disposed'])) return false;
 		const entry = this.entries.get(lease.propertyId);
+		if (!entry || entry.lease !== lease) return false;
+		// Retire the original owner before synchronous listeners can publish, replace it or throw.
 		entry.epoch++;
 		entry.lease = Object.freeze({ propertyId: lease.propertyId, revision: lease.revision });
+		entry.state = this.unavailable(lease.revision, ['producer_disposed'], new Date());
+		entry.sourceSample = undefined;
+		entry.sourceSamples = undefined;
+		this.emit(entry.property, entry.state);
 		return true;
 	}
 

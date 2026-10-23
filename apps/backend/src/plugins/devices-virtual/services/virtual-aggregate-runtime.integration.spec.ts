@@ -192,6 +192,49 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 	};
 	const outputState = (output: ChannelPropertyEntity) => producers.read(output.id);
 
+	it('keeps a successor installed by the real producer-state consumer during aggregate disposal', async () => {
+		const source = await measurement(),
+			other = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [source, other]);
+		await start();
+		await sample(source, 20);
+		await sample(other, 20);
+		expect(values.readQualifiedSample(output, 10_000)?.value).toBe(20);
+		const register = jest.spyOn(producers, 'register');
+		const notifications: ChannelPropertyEntity[] = [];
+		const listener = (changed: ChannelPropertyEntity) => {
+			if (changed.id !== output.id || !changed.value?.producer.reasons.includes('producer_disposed')) return;
+			notifications.push(changed);
+			state.installUnavailable(output as VirtualChannelPropertyEntity, 1);
+		};
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, listener);
+		try {
+			runtime.onModuleDestroy();
+			expect(register).toHaveBeenCalledTimes(1);
+			const successor = register.mock.results[0].value as ReturnType<PropertyProducerRegistryService['register']>;
+			expect(producers.isAvailable(successor)).toBe(true);
+			expect(producers.read(output.id)).toMatchObject({
+				value: null,
+				producer: { revision: 1, reasons: ['runtime_unavailable'] },
+			});
+			expect(notifications).toHaveLength(1);
+			expect(notifications[0].value).toMatchObject({ producer: { reasons: ['producer_disposed'] } });
+			const writes = storage.writePoints.mock.calls.length;
+			await sample(source, 22);
+			await jest.advanceTimersByTimeAsync(1_000);
+			expect(storage.writePoints).toHaveBeenCalledTimes(writes);
+			expect(producers.isAvailable(successor)).toBe(true);
+			expect(values.readQualifiedSample(output, 10_000)).toBeNull();
+			await expect(values.readLatestStrict(output)).resolves.toMatchObject({ value: null });
+			runtime.onModuleDestroy();
+			expect(producers.isAvailable(successor)).toBe(true);
+		} finally {
+			events.off(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, listener);
+			register.mockRestore();
+		}
+	});
+
 	it('discovers only exact-profile eligible sources in a mixed catalog and skips unknown profiles', async () => {
 		const physical = await measurement();
 		const transformed = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);

@@ -398,6 +398,80 @@ describe('qualified samples and producer state', () => {
 		await values.publishDerived(property, fresh, 22, publication());
 		expect(values.readQualifiedSample(property, 10000)?.value).toBe(22);
 	});
+	it.each(['retain', 'replace', 'remove', 'throw'])(
+		'retires producer authority before a disposal listener can %s the entry',
+		async (action) => {
+			const lease = producers.register(property, 1);
+			await values.publishDerived(property, lease, 20, publication());
+			const evaluation = producers.beginEvaluation(lease);
+			if (!evaluation) throw new Error('Missing producer evaluation');
+			const failure = new Error('original disposal listener failure');
+			let successor: typeof lease | undefined;
+			const listener = jest.fn((changed: ChannelPropertyEntity) => {
+				if (!changed.value?.producer.reasons.includes('producer_disposed')) return;
+				expect(producers.isCurrent(lease)).toBe(false);
+				expect(producers.isEvaluationCurrent(lease, evaluation)).toBe(false);
+				expect(
+					producers.commit(lease, new PropertyValueState(99), publication(), evaluation.epoch, evaluation.generation),
+				).toBe(false);
+				if (action === 'replace') successor = producers.register(property, 2);
+				if (action === 'remove') producers.remove(property.id);
+				if (action === 'throw') throw failure;
+			});
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, listener);
+			try {
+				if (action === 'throw') {
+					let caught: unknown;
+					try {
+						producers.unregister(lease);
+					} catch (error) {
+						caught = error;
+					}
+					expect(caught).toBe(failure);
+				} else expect(producers.unregister(lease)).toBe(true);
+			} finally {
+				events.off(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, listener);
+			}
+			expect(listener).toHaveBeenCalledTimes(action === 'replace' ? 2 : 1);
+			expect(listener.mock.calls[0][0].value).toMatchObject({
+				value: null,
+				producer: { revision: 1, reasons: ['producer_disposed'] },
+			});
+			expect(producers.isCurrent(lease)).toBe(false);
+			expect(producers.unregister(lease)).toBe(false);
+			await expect(values.publishDerived(property, lease, 99, publication(), evaluation)).resolves.toMatchObject({
+				changed: false,
+			});
+			expect(storage.writePoints).toHaveBeenCalledTimes(1);
+			if (successor) {
+				expect(producers.isAvailable(successor)).toBe(true);
+				await values.publishDerived(property, successor, 22, publication());
+				expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
+			} else if (action !== 'remove') {
+				await expect(values.readLatestStrict(property)).resolves.toMatchObject({
+					value: null,
+					producer: { reasons: ['producer_disposed'] },
+				});
+				expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+				expect(storage.queryStrict).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('retires a producer after clock rollback without promoting its cached value or history', async () => {
+		const lease = producers.register(property, 1);
+		await values.publishDerived(property, lease, 20, publication());
+		jest.setSystemTime(base - 1_000);
+		expect(producers.unregister(lease)).toBe(true);
+		expect(producers.isCurrent(lease)).toBe(false);
+		jest.setSystemTime(base);
+		await expect(values.readLatest(property)).resolves.toMatchObject({
+			value: null,
+			producer: { reasons: ['producer_disposed'] },
+		});
+		expect(storage.writePoints).toHaveBeenCalledTimes(1);
+	});
+
 	it('serves an initializing overlay instead of old persisted history', async () => {
 		storage.query.mockResolvedValue([{ propertyId: property.id, numberValue: 99, time: new Date(base) }]);
 		producers.register(property, 1);
