@@ -302,6 +302,198 @@ describe('ManagedServiceManagerService', () => {
 		});
 	});
 
+	describe('replacement during stop and issue persistence', () => {
+		function registerWithoutStarting(service: IManagedExtensionService): void {
+			(manager as unknown as { startupComplete: boolean }).startupComplete = false;
+			manager.register(service);
+			(manager as unknown as { startupComplete: boolean }).startupComplete = true;
+		}
+
+		it('drains a pending stop before starting the re-registered exact service object', async () => {
+			const service = createMockService('plugin', 'owner', 'connector');
+			const admissions: ManagedRuntimeAdmission[] = [];
+			jest.spyOn(service, 'start').mockImplementation(() => {
+				admissions.push(manager.captureCurrentStartAdmission(service));
+				service._state = 'started';
+				return Promise.resolve();
+			});
+			let finishStop!: () => void;
+			const stopped = new Promise<void>((resolve) => {
+				finishStop = resolve;
+			});
+			const stop = jest.spyOn(service, 'stop').mockImplementation(async () => {
+				// Faithful to Shelly: state remains started while its lifecycle lock is occupied.
+				await stopped;
+				service._state = 'stopped';
+			});
+			registerWithoutStarting(service);
+			await manager.startServiceManually('plugin', 'owner', 'connector');
+			const originalStop = manager.stopServiceManually('plugin', 'owner', 'connector');
+			manager.unregister('plugin', 'owner', 'connector');
+			manager.register(service); // Public late-registration path must drain the original stop.
+			const replacementStart = manager.onApplicationBootstrap();
+			expect(service.getState()).toBe('started');
+			expect(admissions[0].isCurrent()).toBe(false);
+			finishStop();
+			const originalStopped = await originalStop;
+			await replacementStart;
+			expect(stop).toHaveBeenCalledTimes(1);
+			expect(admissions).toHaveLength(2);
+			expect(admissions[1].isCurrent()).toBe(true);
+			expect(originalStopped).toBe(false);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', startCount: 1, lastStoppedAt: undefined, lastError: undefined }),
+			);
+		});
+
+		it.each(['disabled', 'unregistered'])(
+			'does not restart a replacement %s while its old stop drains',
+			async (change) => {
+				const service = createMockService('plugin', 'owner', 'connector');
+				const start = jest.spyOn(service, 'start');
+				let finishStop!: () => void;
+				const stopped = new Promise<void>((resolve) => {
+					finishStop = resolve;
+				});
+				jest.spyOn(service, 'stop').mockImplementation(async () => {
+					await stopped;
+					service._state = 'stopped';
+				});
+				registerWithoutStarting(service);
+				await manager.startServiceManually('plugin', 'owner', 'connector');
+				const originalStop = manager.stopServiceManually('plugin', 'owner', 'connector');
+				manager.unregister('plugin', 'owner', 'connector');
+				manager.register(service);
+				const replacementStart = manager.onApplicationBootstrap();
+				if (change === 'disabled') configService.getPluginConfig.mockReturnValue({ enabled: false });
+				else manager.unregister('plugin', 'owner', 'connector');
+				finishStop();
+				await originalStop;
+				await replacementStart;
+				expect(start).toHaveBeenCalledTimes(1);
+				expect(service.getState()).toBe('stopped');
+			},
+		);
+
+		it.each(['pending', 'persisted'])('retires the old %s notification after successful replacement', async (phase) => {
+			const active = new Map<string, string>();
+			let finishWrite!: () => void;
+			let enteredWrite!: () => void;
+			const writing = new Promise<void>((resolve) => {
+				enteredWrite = resolve;
+			});
+			const write = new Promise<void>((resolve) => {
+				finishWrite = resolve;
+			});
+			notifications.notify.mockImplementation(async (input: { key: string; message: string }) => {
+				enteredWrite();
+				if (phase === 'pending') await write;
+				active.set(input.key, input.message);
+			});
+			notifications.resolve.mockImplementation((_: string, key: string) => Promise.resolve(active.delete(key)));
+			const original = createMockService('plugin', 'owner', 'connector');
+			jest.spyOn(original, 'start').mockRejectedValue(new Error('old failure'));
+			registerWithoutStarting(original);
+			const originalStart = manager.startServiceManually('plugin', 'owner', 'connector');
+			await writing;
+			if (phase === 'persisted') await originalStart;
+			manager.unregister('plugin', 'owner', 'connector');
+			const replacement = createMockService('plugin', 'owner', 'connector');
+			let admission: ManagedRuntimeAdmission | null = null;
+			let enteredStart!: () => void;
+			const starting = new Promise<void>((resolve) => {
+				enteredStart = resolve;
+			});
+			jest.spyOn(replacement, 'start').mockImplementation(() => {
+				admission = manager.captureCurrentStartAdmission(replacement);
+				replacement._state = 'started';
+				enteredStart();
+				return Promise.resolve();
+			});
+			registerWithoutStarting(replacement);
+			const replacementStart = manager.startServiceManually('plugin', 'owner', 'connector');
+			await starting;
+			expect(admission?.isCurrent()).toBe(true);
+			finishWrite();
+			await originalStart;
+			await expect(replacementStart).resolves.toBe(true);
+			expect(active.size).toBe(0);
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(admission?.isCurrent()).toBe(true);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'started', startCount: 1, lastError: undefined }),
+			);
+		});
+
+		it('retires the old write before publishing a newer legitimate replacement failure', async () => {
+			const active = new Map<string, string>();
+			const order: string[] = [];
+			let finishWrite!: () => void;
+			let enteredWrite!: () => void;
+			let finishCleanup!: () => void;
+			let enteredCleanup!: () => void;
+			const writing = new Promise<void>((resolve) => {
+				enteredWrite = resolve;
+			});
+			const write = new Promise<void>((resolve) => {
+				finishWrite = resolve;
+			});
+			const cleaning = new Promise<void>((resolve) => {
+				enteredCleanup = resolve;
+			});
+			const cleanup = new Promise<void>((resolve) => {
+				finishCleanup = resolve;
+			});
+			notifications.notify.mockImplementation(async (input: { key: string; message: string }) => {
+				if (input.message === 'old failure') {
+					enteredWrite();
+					await write;
+				}
+				active.set(input.key, input.message);
+				order.push(input.message);
+			});
+			notifications.resolve.mockImplementation(async (_: string, key: string) => {
+				enteredCleanup();
+				await cleanup;
+				order.push('resolve old');
+				return active.delete(key);
+			});
+			const original = createMockService('plugin', 'owner', 'connector');
+			jest.spyOn(original, 'start').mockRejectedValue(new Error('old failure'));
+			registerWithoutStarting(original);
+			const originalStart = manager.startServiceManually('plugin', 'owner', 'connector');
+			await writing;
+			manager.unregister('plugin', 'owner', 'connector');
+			const replacement = createMockService('plugin', 'owner', 'connector');
+			let admission: ManagedRuntimeAdmission | null = null;
+			let enteredStart!: () => void;
+			const starting = new Promise<void>((resolve) => {
+				enteredStart = resolve;
+			});
+			jest.spyOn(replacement, 'start').mockImplementation(() => {
+				admission = manager.captureCurrentStartAdmission(replacement);
+				replacement._state = 'error';
+				enteredStart();
+				return Promise.reject(new Error('replacement failure'));
+			});
+			registerWithoutStarting(replacement);
+			const replacementStart = manager.startServiceManually('plugin', 'owner', 'connector');
+			await starting;
+			finishWrite();
+			await cleaning;
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			finishCleanup();
+			await originalStart;
+			await expect(replacementStart).resolves.toBe(false);
+			expect(order).toEqual(['old failure', 'resolve old', 'replacement failure']);
+			expect(active.get('service:plugin:owner:connector')).toBe('replacement failure');
+			expect(admission?.isCurrent()).toBe(false);
+			await expect(manager.getServiceStatus('plugin', 'owner', 'connector')).resolves.toEqual(
+				expect.objectContaining({ state: 'error', startCount: 0, lastError: 'replacement failure' }),
+			);
+		});
+	});
+
 	describe('extension ownership and activation', () => {
 		it('registers module and plugin services under distinct authoritative keys', () => {
 			manager.register(createMockService('module', 'shared-owner', 'runtime'));

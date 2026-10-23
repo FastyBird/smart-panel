@@ -85,13 +85,15 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
 	private readonly readinessRetries: Map<string, ReadinessRetryState> = new Map();
 	private readonly serviceStartPromises = new WeakMap<IManagedExtensionService, PendingServiceStart>();
+	private readonly serviceStopPromises = new WeakMap<IManagedExtensionService, Promise<void>>();
+	private readonly issueWrites = new Map<string, Promise<void>>();
 	private readonly startAttempts = new WeakMap<ServiceRegistration, ManagedStartAttempt>();
 	private readonly startContext = new AsyncLocalStorage<ManagedStartAttempt>();
-	// Explicit "is there a raised issue for this service" flag, replacing detection derived from
+	// Track the registration owning each open issue, replacing detection derived from
 	// `lastError` (which stays set across unrelated conditions - e.g. a transient readiness
 	// warning - and so cannot tell "already raised" from "not raised yet"). Set by
-	// raiseServiceError, cleared by resolveServiceError.
-	private readonly openIssues = new Set<string>();
+	// the failure path, cleared by resolveServiceError during recovery or unregister.
+	private readonly openIssues = new Map<string, ServiceRegistration>();
 	private readonly isCliMode: boolean;
 
 	private startupComplete = false;
@@ -161,10 +163,11 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			return;
 		}
 
-		this.revokeAdmission(this.services.get(key));
+		const registration = this.services.get(key);
+		this.revokeAdmission(registration);
 		this.services.delete(key);
 		this.runtimeInfo.delete(key);
-		this.openIssues.delete(key);
+		void this.resolveServiceError(registration);
 		this.clearReadinessRetry(key);
 
 		this.logger.log(`Unregistered service: ${key}`);
@@ -537,7 +540,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		await this.stopService(registration);
 
-		return registration.service.getState() === 'stopped';
+		return this.isCurrentRegistration(registration) && registration.service.getState() === 'stopped';
 	}
 
 	/**
@@ -596,7 +599,19 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	}
 
 	private async startService(registration: ServiceRegistration, requireDesiredState: boolean = true): Promise<void> {
-		if (!this.isCurrentRegistration(registration) || this.shutdownInProgress) return;
+		if (
+			!this.isCurrentRegistration(registration) ||
+			this.shutdownInProgress ||
+			(requireDesiredState && !this.shouldBeRunning(registration))
+		)
+			return;
+		// A queued stop can still report started until the service's own lifecycle lock opens.
+		const pendingStop = this.serviceStopPromises.get(registration.service);
+		if (pendingStop !== undefined) {
+			await pendingStop;
+			await this.startService(registration, requireDesiredState);
+			return;
+		}
 		const pending = this.serviceStartPromises.get(registration.service);
 
 		if (pending) {
@@ -780,20 +795,37 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			this.logger.error(`Failed to start service ${key}: ${err.message}`, err.stack);
 
 			if (enteringError) {
-				this.openIssues.add(key);
+				this.openIssues.set(key, registration);
 
 				await this.raiseServiceError(registration, err.message);
 			}
 		}
 	}
 
-	private async stopService(registration: ServiceRegistration): Promise<void> {
+	private async stopService(registration: ServiceRegistration, force: boolean = false): Promise<void> {
 		if (!this.isCurrentRegistration(registration)) return;
 		this.revokeAdmission(registration);
+		const pending = this.serviceStopPromises.get(registration.service);
+		if (pending !== undefined) {
+			await pending;
+			return;
+		}
+		// Track the original object's stop independently of its registration or start attempt.
+		const stopping = Promise.resolve()
+			.then(() => this.stopServiceOnce(registration, force))
+			.finally(() => {
+				if (this.serviceStopPromises.get(registration.service) === stopping)
+					this.serviceStopPromises.delete(registration.service);
+			});
+		this.serviceStopPromises.set(registration.service, stopping);
+		await stopping;
+	}
+
+	private async stopServiceOnce(registration: ServiceRegistration, force: boolean): Promise<void> {
 		const key = this.getRegistrationKey(registration);
 		const currentState = registration.service.getState();
 
-		if (currentState === 'stopped' || currentState === 'stopping') {
+		if (currentState === 'stopped' || (!force && currentState === 'stopping')) {
 			return;
 		}
 
@@ -856,31 +888,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		if (!shouldBeRunning && (currentState === 'starting' || currentState === 'stopping')) {
 			this.logger.log(`Service ${key} should be stopped while still in '${currentState}', forcing stop`);
 
-			// Call stop() directly instead of stopService() because stopService()
-			// has a guard that returns early when state is 'stopping'.
-			try {
-				await registration.service.stop();
-				if (!isCurrent()) return;
-
-				const runtime = this.runtimeInfo.get(key);
-
-				if (runtime) {
-					runtime.lastStoppedAt = new Date();
-				}
-
-				this.logger.log(`Service force-stopped successfully: ${key}`);
-			} catch (error) {
-				if (!isCurrent()) return;
-				const err = error as Error;
-
-				const runtime = this.runtimeInfo.get(key);
-
-				if (runtime) {
-					runtime.lastError = err.message;
-				}
-
-				this.logger.error(`Failed to force-stop service ${key}: ${err.message}`, err.stack);
-			}
+			await this.stopService(registration, true);
 
 			return;
 		}
@@ -941,7 +949,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			this.logger.warn(`Readiness retries exhausted for service: ${key}`);
 
 			if (!this.openIssues.has(key)) {
-				this.openIssues.add(key);
+				this.openIssues.set(key, registration);
 
 				const runtime = this.runtimeInfo.get(key);
 
@@ -1185,31 +1193,33 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private async raiseServiceError(registration: ServiceRegistration, lastError: string): Promise<void> {
 		const key = this.getRegistrationKey(registration);
 
-		// notify() never throws (it swallows and logs its own failures), so nothing here needs a
-		// try/catch - awaiting it just makes sure the issue is persisted before this call returns.
-		await this.notifications.notify({
-			source: registration.owner.type,
-			kind: NotificationKind.ISSUE,
-			key: `service:${key}`,
-			severity: NotificationSeverity.ERROR,
-			title: `Service ${registration.serviceId} of ${registration.owner.type} failed`,
-			message: sanitizeErrorMessage(lastError),
-			actions: [
-				{
-					type: NotificationActionType.SERVICE,
-					label: 'Restart service',
-					extension_kind: registration.owner.kind,
-					extension_type: registration.owner.type,
-					service_id: registration.serviceId,
-					operation: 'restart',
-					primary: true,
-				},
-				{
-					type: NotificationActionType.LINK,
-					label: 'Open services',
-					url: `/extensions?tab=services&kind=${registration.owner.kind}`,
-				},
-			],
+		await this.enqueueIssueWrite(key, async () => {
+			if (!this.isCurrentRegistration(registration) || this.openIssues.get(key) !== registration) return;
+			// notify() contains storage failures; await persistence before any retirement of this key.
+			await this.notifications.notify({
+				source: registration.owner.type,
+				kind: NotificationKind.ISSUE,
+				key: `service:${key}`,
+				severity: NotificationSeverity.ERROR,
+				title: `Service ${registration.serviceId} of ${registration.owner.type} failed`,
+				message: sanitizeErrorMessage(lastError),
+				actions: [
+					{
+						type: NotificationActionType.SERVICE,
+						label: 'Restart service',
+						extension_kind: registration.owner.kind,
+						extension_type: registration.owner.type,
+						service_id: registration.serviceId,
+						operation: 'restart',
+						primary: true,
+					},
+					{
+						type: NotificationActionType.LINK,
+						label: 'Open services',
+						url: `/extensions?tab=services&kind=${registration.owner.kind}`,
+					},
+				],
+			});
 		});
 	}
 
@@ -1223,18 +1233,33 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private async resolveServiceError(registration: ServiceRegistration): Promise<void> {
 		const key = this.getRegistrationKey(registration);
 
-		if (!this.openIssues.has(key)) {
+		if (this.openIssues.get(key) !== registration) {
+			// A healthy replacement also waits for an already queued retirement of its predecessor.
+			await this.issueWrites.get(key);
 			return;
 		}
-
 		this.openIssues.delete(key);
 
-		try {
-			await this.notifications.resolve(registration.owner.type, `service:${key}`);
-		} catch (error) {
-			const err = error as Error;
+		await this.enqueueIssueWrite(key, async () => {
+			try {
+				await this.notifications.resolve(registration.owner.type, `service:${key}`);
+			} catch (error) {
+				const err = error as Error;
 
-			this.logger.error(`Failed to resolve the service issue for ${key}: ${err.message}`, err.stack);
+				this.logger.error(`Failed to resolve the service issue for ${key}: ${err.message}`, err.stack);
+			}
+		});
+	}
+
+	/** Serialize only this manager's writes for a service key, including retired registrations. */
+	private async enqueueIssueWrite(key: string, write: () => Promise<void>): Promise<void> {
+		const previous = this.issueWrites.get(key) ?? Promise.resolve();
+		const pending = previous.catch(() => undefined).then(write);
+		this.issueWrites.set(key, pending);
+		try {
+			await pending;
+		} finally {
+			if (this.issueWrites.get(key) === pending) this.issueWrites.delete(key);
 		}
 	}
 }
