@@ -1,8 +1,11 @@
 import { createHash } from 'node:crypto';
 import { DataSource } from 'typeorm';
 
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ConfigService } from '../../src/modules/config/services/config.service';
+import { PluginConfigValidatorService } from '../../src/modules/config/services/plugin-config-validator.service';
 import { ChannelPropertyEntity } from '../../src/modules/devices/entities/devices.entity';
 import { ChannelsPropertiesTypeMapperService } from '../../src/modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../src/modules/devices/services/channels.properties.service';
@@ -15,8 +18,12 @@ import { PropertyStateCoordinatorService } from '../../src/modules/devices/servi
 import { PropertyValueLockService } from '../../src/modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../src/modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../src/modules/devices/services/property-value.service';
+import { BaseManagedExtensionService } from '../../src/modules/extensions/services/base-managed-extension.service';
+import { ManagedServiceManagerService } from '../../src/modules/extensions/services/managed-service-manager.service';
+import { NotificationsService } from '../../src/modules/notifications/services/notifications.service';
 import { StorageService } from '../../src/modules/storage/services/storage.service';
 import { DelegatesManagerService } from '../../src/plugins/devices-shelly-ng/delegates/delegates-manager.service';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../../src/plugins/devices-shelly-ng/devices-shelly-ng.constants';
 import { UpdateShellyNgChannelPropertyDto } from '../../src/plugins/devices-shelly-ng/dto/update-channel-property.dto';
 import {
 	ShellyNgChannelPropertyEntity,
@@ -29,6 +36,13 @@ import { ShellyGuardRpcSession } from '../../src/plugins/devices-shelly-ng/servi
 import { VirtualThermostatActuatorClaimEntity } from '../../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { ThermostatInstalledQualification } from '../../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatTransportService } from '../../src/plugins/devices-virtual/services/virtual-thermostat-transport.service';
+
+const activeFixtureCleanups = new Set<() => Promise<void>>();
+
+/** Join test-owned managed lifecycles before the runtime suite tears down SQLite. */
+export async function disposeRealThermostatGuardFixtures(): Promise<void> {
+	for (const dispose of [...activeFixtureCleanups]) await dispose();
+}
 
 /** Keep packet age independent of SQLite/host latency, while retaining real asynchronous scheduling. */
 export function useThermostatPacketClock(): () => void {
@@ -260,8 +274,57 @@ export async function realThermostatGuardFixture(
 			localOnDrained: true,
 		} as never;
 	});
+	// The SDK/storage fixture is test-owned, but guarded publication still needs an actual
+	// original managed start invocation. No lookup or fixture flag can grant that admission.
+	const lifecycleManager = new ManagedServiceManagerService(
+		{ getPluginConfig: () => ({ enabled: true }) } as unknown as ConfigService,
+		new NestConfigService({ FB_CLI: 'off' }),
+		{ hasValidator: () => false } as unknown as PluginConfigValidatorService,
+		{ notify: () => Promise.resolve(null), resolve: () => Promise.resolve(false) } as unknown as NotificationsService,
+	);
+	const lifecycle = new (class extends BaseManagedExtensionService {
+		readonly owner = { kind: 'plugin', type: DEVICES_SHELLY_NG_PLUGIN_NAME } as const;
+		readonly serviceId = 'connector';
+
+		async start(): Promise<void> {
+			const runtime = lifecycleManager.captureCurrentStartAdmission(this);
+			await this.withLock(() => {
+				const admission = manager.beginGuardedSessionAdmission(runtime);
+				if (!admission.open()) {
+					this.state = 'error';
+					throw new Error('Real guard fixture was not started by its original managed lifecycle');
+				}
+				this.state = 'started';
+				return Promise.resolve();
+			});
+		}
+
+		revokeCurrentAuthority(): void {
+			manager.revokeGuardedSessionAdmission();
+		}
+
+		async stop(): Promise<void> {
+			this.revokeCurrentAuthority();
+			await this.withLock(async () => {
+				await Promise.all([...telemetry]);
+				this.state = 'stopped';
+			});
+		}
+	})();
+	lifecycleManager.register(lifecycle);
+	await lifecycleManager.onApplicationBootstrap();
+	if (lifecycle.getState() !== 'started') throw new Error('Real guard fixture lifecycle failed to start');
+
+	const dispose = async () => {
+		await lifecycleManager.onModuleDestroy();
+		lifecycleManager.unregister(lifecycle.owner.kind, lifecycle.owner.type, lifecycle.serviceId);
+		reports.onModuleDestroy();
+		activeFixtureCleanups.delete(dispose);
+	};
+	activeFixtureCleanups.add(dispose);
 	return {
 		values,
+		dispose,
 		flushTelemetry: () => Promise.all([...telemetry]),
 		report,
 		controls,

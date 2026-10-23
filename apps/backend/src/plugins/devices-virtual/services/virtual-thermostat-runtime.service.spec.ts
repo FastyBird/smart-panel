@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createProtectionProbe, memberInstallationSetup } from '../../../../test/support/thermostat-protection-fixture';
 import {
+	disposeRealThermostatGuardFixtures,
 	realThermostatGuardFixture,
 	useThermostatPacketClock,
 } from '../../../../test/support/thermostat-real-guard-fixture';
@@ -459,8 +460,9 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
-		jest.restoreAllMocks();
 		runtime?.onModuleDestroy();
+		await disposeRealThermostatGuardFixtures();
+		jest.restoreAllMocks();
 		jest.useRealTimers();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
