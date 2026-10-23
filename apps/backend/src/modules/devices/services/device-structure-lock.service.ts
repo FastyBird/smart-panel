@@ -42,7 +42,7 @@ export class DeviceStructureLockService {
 
 		// An exclusive operation already excludes structural writers. A nested shared operation must not
 		// wait behind its own caller. The same is true for a nested report operation on this chain.
-		if (context?.active) {
+		if (context?.active && context.accepting) {
 			return this.runNested(context, fn);
 		}
 
@@ -52,7 +52,7 @@ export class DeviceStructureLockService {
 	async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
 		const context = this.context.getStore();
 
-		if (context?.active) {
+		if (context?.active && context.accepting) {
 			if (context.mode === 'shared') {
 				throw new Error('Device structure lock cannot be upgraded from shared to exclusive');
 			}
@@ -65,7 +65,8 @@ export class DeviceStructureLockService {
 
 	/** Settles only after this top-level owner's nested work and structural lease have released. */
 	async runExclusiveReleased<T>(fn: () => Promise<T>): Promise<T> {
-		if (this.context.getStore()?.active) {
+		const context = this.context.getStore();
+		if (context?.active && context.accepting) {
 			throw new Error('Release-aware device structure work requires a top-level caller');
 		}
 
@@ -121,7 +122,7 @@ export class DeviceStructureLockService {
 			return;
 		}
 
-		const context: LockContext = { mode: request.mode, active: true, nestedOperations: new Set() };
+		const context: LockContext = { mode: request.mode, active: true, accepting: true, nestedOperations: new Set() };
 
 		void Promise.resolve()
 			.then(() => this.context.run(context, request.fn))
@@ -151,7 +152,7 @@ export class DeviceStructureLockService {
 	}
 
 	private executeReleased<T>(request: LockRequest<T>): void {
-		const context: LockContext = { mode: 'exclusive', active: true, nestedOperations: new Set() };
+		const context: LockContext = { mode: 'exclusive', active: true, accepting: true, nestedOperations: new Set() };
 		const release = (): void => {
 			context.active = false;
 			this.writerActive = false;
@@ -191,6 +192,8 @@ export class DeviceStructureLockService {
 		while (context.nestedOperations.size > 0) {
 			await Promise.allSettled(context.nestedOperations);
 		}
+		// No continuation may join this owner between the empty drain and its eventual release.
+		context.accepting = false;
 	}
 }
 
@@ -199,6 +202,7 @@ type LockMode = 'shared' | 'exclusive';
 interface LockContext {
 	mode: LockMode;
 	active: boolean;
+	accepting: boolean;
 	nestedOperations: Set<Promise<unknown>>;
 }
 

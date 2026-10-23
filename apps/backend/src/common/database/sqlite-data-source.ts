@@ -15,6 +15,7 @@ interface OperationContext {
 	lease: ConnectionLease;
 	parent?: OperationContext;
 	active: boolean;
+	accepting: boolean;
 	children: Promise<void>;
 	operations: Map<Promise<unknown>, OperationContext>;
 	managedStart?: boolean;
@@ -172,6 +173,7 @@ class SqliteConnectionCoordinator {
 			lease,
 			parent: parent?.lease === lease ? parent : undefined,
 			active: true,
+			accepting: true,
 			children: Promise.resolve(),
 			operations: new Map(),
 		};
@@ -182,10 +184,10 @@ class SqliteConnectionCoordinator {
 		return this.context.run(context, async () => {
 			try {
 				const result = await operation();
-				await this.drainOperations(context);
+				await this.drainOperations(context, true, true);
 				return result;
 			} catch (error) {
-				await this.drainOperations(context, false);
+				await this.drainOperations(context, false, true);
 				throw error;
 			} finally {
 				context.active = false;
@@ -200,7 +202,7 @@ class SqliteConnectionCoordinator {
 		const lease = parent.lease;
 		// A completed query's continuation can still join its live transaction. Enroll that work
 		// under a live ancestor so ordinary settlement and guarded COMMIT both see its promise.
-		while (!parent.active) {
+		while (!parent.active || !parent.accepting) {
 			parent = parent.parent;
 			if (!parent || parent.lease !== lease) {
 				throw new Error('SQLite operation requires an active owning context on its original lease');
@@ -297,12 +299,15 @@ class SqliteConnectionCoordinator {
 		return true;
 	}
 
-	private async drainOperations(context: OperationContext, propagateFailure = true): Promise<void> {
+	private async drainOperations(context: OperationContext, propagateFailure = true, retire = false): Promise<void> {
 		while (context.operations.size > 0) {
 			const results = await Promise.allSettled([...context.operations.keys()]);
 			const failed = results.find((result) => result.status === 'rejected');
 			if (propagateFailure && failed?.status === 'rejected') throw failed.reason as unknown;
 		}
+		// Close enrollment in the same turn as the final empty check, before the caller awaits us.
+		// Ownership remains active until runContext finishes; native COMMIT still checks that authority.
+		if (retire) context.accepting = false;
 	}
 
 	/** Sibling nested transactions must not overlap their SAVEPOINT lifetimes. */

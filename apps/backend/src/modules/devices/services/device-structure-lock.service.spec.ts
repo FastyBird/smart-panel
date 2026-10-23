@@ -253,6 +253,67 @@ describe('DeviceStructureLockService', () => {
 		},
 	);
 
+	it.each(['released', 'exclusive', 'shared'])(
+		'queues final-drain continuations behind the successor of a %s owner',
+		async (mode) => {
+			const attempted = deferred(),
+				childRelease = deferred(),
+				successorRelease = deferred();
+			let lateChild: Promise<void> | undefined;
+			let childEntered = false;
+			let successorEntered = false;
+			const errors: unknown[] = [];
+			const callback = (): Promise<void> => {
+				// Retain the real owner ALS context across ordinary microtasks. Returning an already
+				// fulfilled promise targets the final empty-drain/settlement interval with the fourth
+				// continuation; no lock internals are replaced.
+				queueMicrotask(() => {
+					queueMicrotask(() => {
+						queueMicrotask(() => {
+							queueMicrotask(() => {
+								attempted.resolve();
+								lateChild = lock.runShared(async () => {
+									childEntered = true;
+									await childRelease.promise;
+								});
+								void lateChild.catch((cause: unknown) => errors.push(cause));
+							});
+						});
+					});
+				});
+				return Promise.resolve();
+			};
+			const owner =
+				mode === 'released'
+					? lock.runExclusiveReleased(callback)
+					: mode === 'exclusive'
+						? lock.runExclusive(callback)
+						: lock.runShared(callback);
+			const successor = lock.runExclusive(async () => {
+				successorEntered = true;
+				await successorRelease.promise;
+			});
+			try {
+				await attempted.promise;
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(successorEntered).toBe(true);
+				expect(childEntered).toBe(false);
+				successorRelease.resolve();
+				await successor;
+				await owner;
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(childEntered).toBe(true);
+				childRelease.resolve();
+				await lateChild;
+				expect(errors).toEqual([]);
+			} finally {
+				successorRelease.resolve();
+				childRelease.resolve();
+				await Promise.allSettled([owner, successor, lateChild]);
+			}
+		},
+	);
+
 	describe('runExclusiveReleased', () => {
 		it('preserves the callback value and deactivates its captured original context before settlement', async () => {
 			const resume = deferred();

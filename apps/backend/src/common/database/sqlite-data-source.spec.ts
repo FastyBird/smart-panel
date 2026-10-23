@@ -536,6 +536,84 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			},
 		);
 
+		it.each([false, true])(
+			'closes final query-drain enrollment before retirement (child failure: %s)',
+			async (failChild) => {
+				const seedFinished = deferred(),
+					childEntered = deferred(),
+					childRelease = deferred();
+				const failure = new Error('final-drain child failed');
+				let lateChild: Promise<void> | undefined;
+				let childFailure: { cause: unknown } | undefined;
+				let receipt: SqliteCommitGuardReceipt | undefined;
+				const guard = jest.fn(() => true);
+				database.subscribers.push({
+					beforeQuery: async (event) => {
+						if (event.query === 'SELECT 24 AS retiring_context_seed') {
+							// Capture the actual query ALS context. The real AfterQuery notification queues
+							// this reaction before TypeORM adopts its native result promise. Two microtasks
+							// target the final empty-drain/retirement interval without replacing any method.
+							lateChild = new Promise<void>((resolve, reject) => {
+								void seedFinished.promise.then(() => {
+									queueMicrotask(() => {
+										queueMicrotask(() => {
+											void event.manager
+												.query("INSERT INTO transaction_record(name) VALUES ('retirement-child')")
+												.then(() => resolve(), reject);
+										});
+									});
+								});
+							}).catch((cause: unknown) => {
+								childFailure = { cause };
+							});
+						} else if (event.query.includes("VALUES ('retirement-child')")) {
+							childEntered.resolve();
+							await childRelease.promise;
+							if (failChild) throw failure;
+						}
+					},
+					afterQuery: (event) => {
+						if (event.query === 'SELECT 24 AS retiring_context_seed') seedFinished.resolve();
+					},
+				});
+				const native = jest.spyOn(nativeConnection(), 'all');
+				const transaction = database.transaction(async (manager) => {
+					receipt = registerSqliteCommitGuard(manager, guard);
+					await manager.insert(TransactionRecord, { name: 'retirement-root' });
+					await manager.query('SELECT 24 AS retiring_context_seed');
+				});
+				const observedTransaction = transaction.then(
+					() => ({ status: 'fulfilled' as const }),
+					(cause: unknown) => ({ status: 'rejected' as const, cause }),
+				);
+				try {
+					await childEntered.promise;
+					await new Promise<void>((resolve) => setImmediate(resolve));
+					expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+					expect(guard).not.toHaveBeenCalled();
+					childRelease.resolve();
+					const result = await observedTransaction;
+					await lateChild;
+					if (failChild) {
+						expect(result).toEqual({ status: 'rejected', cause: failure });
+						expect(childFailure?.cause).toBe(failure);
+						expect(receipt?.outcome).toBe('rolled_back');
+						expect(await names()).toEqual([]);
+					} else {
+						expect(result.status).toBe('fulfilled');
+						expect(childFailure).toBeUndefined();
+						expect(receipt?.outcome).toBe('committed');
+						expect(await names()).toEqual(['retirement-child', 'retirement-root']);
+					}
+					expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(failChild ? 0 : 1);
+				} finally {
+					seedFinished.resolve();
+					childRelease.resolve();
+					await Promise.allSettled([observedTransaction, lateChild]);
+				}
+			},
+		);
+
 		it('drains BeforeQuery children in successive same-lease waves before sealing and evaluating guards', async () => {
 			const firstEntered = deferred(),
 				firstRelease = deferred();
