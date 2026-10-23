@@ -1274,9 +1274,10 @@ describe('ManagedServiceManagerService', () => {
 				const service = createMockService('plugin', 'held-owner', 'connector');
 				const later = createMockService('plugin', 'later-owner', 'connector');
 				const admissions: ManagedRuntimeAdmission[] = [];
-				const start = jest.spyOn(service, 'start').mockImplementation(async () => {
+				const start = jest.spyOn(service, 'start').mockImplementation(() => {
 					admissions.push(manager.captureCurrentStartAdmission(service));
 					service._state = 'started';
+					return Promise.resolve();
 				});
 				const changed = jest.fn().mockResolvedValue(undefined);
 				later.onConfigChanged = changed;
