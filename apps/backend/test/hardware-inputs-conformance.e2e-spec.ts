@@ -60,6 +60,28 @@ describe('Hardware Input Conformance (e2e)', () => {
 	let analogInputChannelId: string;
 	let analogInputValuePropId: string;
 
+	const observeClickFailure = (response: { status: number; body: unknown }, ordinal: number): void => {
+		try {
+			if (response.status === 201) return;
+			const body = response.body as { error?: unknown } | null;
+			const source = body?.error && typeof body.error === 'object' ? body.error : body;
+			const errors: Record<string, string | string[]> = {};
+			const safe = (s: string) => (/bearer|eyJ|password|authorization|token/i.test(s) ? '[redacted]' : s.slice(0, 200));
+			const isString = (value: unknown): value is string => typeof value === 'string';
+			if (source && typeof source === 'object') {
+				for (const field of ['statusCode', 'code', 'message', 'error']) {
+					const value = (source as Record<string, unknown>)[field];
+					if (typeof value === 'string') errors[field] = safe(value);
+					else if (Array.isArray(value)) errors[field] = value.slice(0, 3).filter(isString).map(safe);
+				}
+			}
+			const ids = { inputControllerId, btn1ChannelId, btn1EventPropId };
+			console.error('[hardware-repeated-click-response]', { ordinal, ...ids, status: response.status, errors });
+		} catch {
+			// Observation must never replace the original status assertion.
+		}
+	};
+
 	beforeAll(async () => {
 		const dynamicAppModule = AppModule.register({
 			moduleExtensions: [],
@@ -492,18 +514,21 @@ describe('Hardware Input Conformance (e2e)', () => {
 					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
 					.set('Authorization', `Bearer ${accessToken}`)
 					.send({ data: { channel_id: btn1ChannelId, event: 'press' } })
+					.expect((response) => observeClickFailure(response, 1))
 					.expect(201);
 
 				const res2 = await request(app.getHttpServer())
 					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
 					.set('Authorization', `Bearer ${accessToken}`)
 					.send({ data: { channel_id: btn1ChannelId, event: 'press' } })
+					.expect((response) => observeClickFailure(response, 2))
 					.expect(201);
 
 				const res3 = await request(app.getHttpServer())
 					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
 					.set('Authorization', `Bearer ${accessToken}`)
 					.send({ data: { channel_id: btn1ChannelId, event: 'press' } })
+					.expect((response) => observeClickFailure(response, 3))
 					.expect(201);
 
 				expect(res1.body.data.dropped).toBe(false);

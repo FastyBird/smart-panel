@@ -345,6 +345,28 @@ function coordinatorFor(dataSource: DataSource): SqliteConnectionCoordinator {
 	return coordinator;
 }
 
+/** Match SQLite enum DDL without losing CHECK presence changes omitted by TypeORM. */
+function configureSqliteSchemaComparison(driver: SqliteDriver): void {
+	const normalizeType = driver.normalizeType.bind(driver) as SqliteDriver['normalizeType'];
+	const findChangedColumns = driver.findChangedColumns.bind(driver) as SqliteDriver['findChangedColumns'];
+
+	// createFullType() emits varchar for every enum, including those declared as text.
+	driver.normalizeType = (column) => ('enum' in column && column.enum ? 'varchar' : normalizeType(column));
+	driver.findChangedColumns = (tableColumns, columnMetadatas) => {
+		const changed = new Set(findChangedColumns(tableColumns, columnMetadatas));
+
+		// Keep every original finding, in metadata order, once. New columns remain
+		// the schema builder's responsibility; only compare CHECKs on existing columns.
+		return [...new Set(columnMetadatas)].filter(
+			(column) =>
+				changed.has(column) ||
+				tableColumns.some(
+					(loaded) => loaded.name === column.databaseName && Boolean(loaded.enum) !== Boolean(column.enum),
+				),
+		);
+	};
+}
+
 /**
  * TypeORM's SQLite driver normally shares a QueryRunner as well as a connection. Independent
  * runners prevent another request from mistaking an open transaction for its own. The coordinator
@@ -360,6 +382,7 @@ export class SqliteDataSource extends DataSource {
 	constructor(options: DataSourceOptions, coordinationOptions: SqliteCoordinationOptions = {}) {
 		super(options);
 		if (options.type !== 'sqlite') throw new Error('SqliteDataSource requires the sqlite driver');
+		configureSqliteSchemaComparison(this.driver as SqliteDriver);
 		const coordinator = coordinatorFor(this);
 		coordinator.configure(coordinationOptions);
 		this.driver.createQueryRunner = () => new CoordinatedSqliteQueryRunner(this.driver as SqliteDriver, coordinator);
