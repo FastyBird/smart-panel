@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { DataSource, EntityManager } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -13,7 +14,17 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
+import {
+	assertCreationCurrent,
+	captureCreation,
+	invokeCreation,
+	snapshotCreation,
+} from '../../../modules/devices/services/creation-capture';
+import {
+	CreationSettlement,
+	DeviceCreationContext,
+	DeviceCreationSettlementError,
+} from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -70,37 +81,108 @@ export class VirtualThermostatAuthoringService {
 	}
 
 	async create(dto: CreateVirtualThermostatProducerDto): Promise<VirtualCreatedThermostatModel> {
-		return this.lock.runExclusive(async () => {
-			const committed = await DeviceCreationContext.run<VirtualCreatedThermostatModel>(
-				(operation) => this.graph.withStructuralWrite(operation, dto.configuration.expectedGraphRevision),
-				'virtual',
-				async (context) => {
-					const draft = await this.draft(context.manager, dto);
-					await this.configurations.prepare(context.manager, draft.dto.id, dto.configuration, draft.device);
-					const device = await this.devices.create<VirtualDeviceEntity, CreateVirtualDeviceDto>(draft.dto, context);
-					const prepared = await this.configurations.prepare(context.manager, device.id, dto.configuration);
-					await this.configurations.persist(context.manager, device.id, prepared);
-					const persistedDevice = await buildDeviceGraphQuery(context.manager.getRepository(VirtualDeviceEntity))
-						.where('device.id = :id', { id: device.id })
-						.getOneOrFail();
-					const configuration = await this.configurations.snapshot(context.manager, device.id);
-					return Object.assign(new VirtualCreatedThermostatModel(), { device: persistedDevice, configuration });
-				},
-				() => undefined,
-			);
-			try {
-				await this.configurations.afterCommit(committed.device.id);
-			} catch (error) {
-				this.logger.error('Thermostat committed but post-commit publication failed', error);
+		// Every direct dispatch and all three registrations precede caller getters and lock queueing.
+		const own = captureCreation(this, ['draft', 'devices', 'graph', 'configurations', 'lock'] as (keyof this)[]);
+		const lock = captureCreation(this.lock, [
+			'runExclusive',
+			'hasCurrentStructuralLease',
+			'context',
+		] as (keyof DeviceStructureLockService)[]);
+		const graph = captureCreation(this.graph, [
+			'withCreationWrite',
+			'structuralWrite',
+			'refreshValidation',
+			'dataSource',
+		] as (keyof VirtualDependencyGraphService)[]);
+		const devices = captureCreation(this.devices, ['captureCreationCatalog', 'create', 'findOne']);
+		const configurations = captureCreation(this.configurations, ['prepare', 'persist', 'snapshot', 'afterCommit']);
+		const catalog = devices.values.captureCreationCatalog.call(devices.receiver, 'virtual');
+		const draftMethod = Reflect.get(own.values, 'draft') as VirtualThermostatAuthoringService['draft'];
+		const createDevice: (dto: CreateVirtualDeviceDto, context: DeviceCreationContext) => Promise<DeviceEntity> =
+			devices.values.create;
+		const pins = [own, lock, graph, devices, configurations, catalog];
+		const current = () => pins.every((pin) => pin.current());
+		const input = snapshotCreation(dto);
+		assertCreationCurrent(pins);
+		const settlement = new CreationSettlement<VirtualCreatedThermostatModel>();
+		try {
+			return (await lock.values.runExclusive.call(lock.receiver, async () => {
+				assertCreationCurrent(pins);
+				// Retain the original active structure owner, including at the native callback boundary.
+				const ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
+				const committed = await DeviceCreationContext.runPinned<VirtualCreatedThermostatModel>(
+					(operation, admit) =>
+						graph.values.withCreationWrite.call(
+							graph.receiver,
+							operation,
+							input.configuration.expectedGraphRevision,
+							admit,
+						) as Promise<VirtualCreatedThermostatModel>,
+					{ ...catalog, current },
+					ownerCurrent,
+					async (context) => {
+						const draft = await DeviceCreationContext.check<
+							Awaited<ReturnType<VirtualThermostatAuthoringService['draft']>>
+						>(context, () => invokeCreation(draftMethod, own.receiver, context.manager, input));
+						await DeviceCreationContext.check(context, () =>
+							configurations.values.prepare.call(
+								configurations.receiver,
+								context.manager,
+								draft.dto.id,
+								input.configuration,
+								draft.device,
+							),
+						);
+						const device = await DeviceCreationContext.check<DeviceEntity>(context, () =>
+							invokeCreation(createDevice, devices.receiver, draft.dto, context),
+						);
+						const prepared = await DeviceCreationContext.check(context, () =>
+							configurations.values.prepare.call(
+								configurations.receiver,
+								context.manager,
+								device.id,
+								input.configuration,
+							),
+						);
+						await DeviceCreationContext.check(context, () =>
+							configurations.values.persist.call(configurations.receiver, context.manager, device.id, prepared),
+						);
+						const persistedDevice = await DeviceCreationContext.check(context, () =>
+							buildDeviceGraphQuery(context.manager.getRepository(VirtualDeviceEntity))
+								.where('device.id = :id', { id: device.id })
+								.getOneOrFail(),
+						);
+						const configuration = await DeviceCreationContext.check(context, () =>
+							configurations.values.snapshot.call(configurations.receiver, context.manager, device.id),
+						);
+						return Object.assign(new VirtualCreatedThermostatModel(), { device: persistedDevice, configuration });
+					},
+					settlement,
+				);
+				try {
+					assertCreationCurrent(pins);
+					await configurations.values.afterCommit.call(configurations.receiver, committed.device.id);
+				} catch (error) {
+					this.logger.error('Thermostat committed but post-commit publication failed', error);
+				}
+				try {
+					assertCreationCurrent(pins);
+					const refreshed = await devices.values.findOne.call(devices.receiver, committed.device.id);
+					if (refreshed) committed.device = refreshed as VirtualDeviceEntity;
+				} catch (error) {
+					this.logger.error('Thermostat committed but post-commit device hydration failed', error);
+				}
+				return committed;
+			})) as VirtualCreatedThermostatModel;
+		} catch (cause) {
+			// Existing known business rollback vocabulary remains intact. Unknown/ACK errors retain evidence.
+			if (cause instanceof DeviceCreationSettlementError) {
+				if (cause.settlement.outcome === 'rolled_back') throw cause.cause;
+				throw cause;
 			}
-			try {
-				const refreshed = await this.devices.findOne<VirtualDeviceEntity>(committed.device.id);
-				if (refreshed) committed.device = refreshed;
-			} catch (error) {
-				this.logger.error('Thermostat committed but post-commit device hydration failed', error);
-			}
-			return committed;
-		});
+			if (settlement.receipt) throw new DeviceCreationSettlementError(settlement, cause, cause);
+			throw cause;
+		}
 	}
 
 	async propertyBinding(id: string): Promise<{ property: string; channel: string; device: string } | null> {
