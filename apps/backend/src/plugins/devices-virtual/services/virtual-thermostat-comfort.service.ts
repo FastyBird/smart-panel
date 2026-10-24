@@ -152,8 +152,8 @@ export class VirtualThermostatComfortService {
 		});
 	}
 
-	async get(controllerId: string) {
-		await this.settle(controllerId);
+	async get(controllerId: string, settle = (id: string) => this.settle(id)) {
+		await settle(controllerId);
 		return this.structure.runShared(async () => {
 			const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			if (!row) throw new NotFoundException('Thermostat configuration does not exist.');
@@ -272,7 +272,7 @@ export class VirtualThermostatComfortService {
 		try {
 			// Keep the old release boundary and exactly one final get for leases, clocks and retries.
 			// Its successful latest data is deliberately discarded, including a later writer's intent.
-			await invokeCreation(get, own.receiver, input.id);
+			await invokeCreation(get, own.receiver, input.id, (id) => invokeCreation(settle, own.receiver, id));
 		} catch (cause: unknown) {
 			operation.settlement.finalGetFailure = Object.freeze({ cause });
 			throw cause;

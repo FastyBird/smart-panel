@@ -482,6 +482,62 @@ describe('manual thermostat selection: reserved native intent', () => {
 		}
 	});
 
+	it('keeps original final settlement after a post-ACK settle replacement with an active override', async () => {
+		await comfort.override(
+			id,
+			await fence(),
+			{ preset: 'comfort', setpoints: null, expires_at: new Date(wall + 1000).toISOString() },
+			'operator',
+		);
+		const input = await fence();
+		const configurationAtAdmission = (await row()).comfort;
+		const override = configurationAtAdmission.temporary_override;
+		const original = captureCreation(comfort, ['settle']).values.settle;
+		const originalSettle = jest.spyOn(comfort, 'settle');
+		const finalGet = jest.spyOn(comfort, 'get');
+		const successor = jest.fn(() => Promise.resolve());
+		const notified = jest.fn();
+		events.on(THERMOSTAT_CONFIG_CHANGED, notified);
+		let replaced = false;
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				if (replaced) return;
+				replaced = true;
+				comfort.settle = successor;
+				wall += 1000;
+				monotonic += 1000;
+			},
+		});
+		try {
+			const result = await comfort.select(id, input, 'eco', false);
+			const current = await row();
+			// This maintenance oracle must also fail against the exact original 6361369 service.
+			expect(current.comfort.temporary_override.status).toBe('expired');
+			expect(current.revision).toBe(input.expected_revision + 2);
+			expect(successor).not.toHaveBeenCalled();
+			expect(originalSettle).toHaveBeenCalledTimes(2);
+			expect(finalGet).toHaveBeenCalledTimes(1);
+			expect(notified.mock.calls).toEqual([[id], [id]]);
+			expect(result).toEqual({
+				controller: id,
+				revision: input.expected_revision + 1,
+				graph_revision: input.expected_graph_revision + 1,
+				configuration: { ...configurationAtAdmission, selected_preset: 'eco' },
+				effective: {
+					heating_setpoint: 23,
+					cooling_setpoint: null,
+					source: 'override',
+					preset: 'comfort',
+					override_id: override.id,
+					expires_at: override.expires_at,
+				},
+				clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+			});
+		} finally {
+			comfort.settle = original;
+		}
+	});
+
 	it('runs real ownership reconciliation, preserves direct durable rows, and retries listener/refresh failure without replay', async () => {
 		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
 			id: randomUUID(),

@@ -164,7 +164,14 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			migrationsTransactionMode: 'each',
 		});
 		try {
-			expect(await prepared.runMigrations({ transaction: 'each' })).toHaveLength(49);
+			const expectedNames = Object.freeze(
+				prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort(),
+			);
+			const expectedCount = expectedNames.length;
+			expect(expectedCount).toBeGreaterThan(0);
+			const applied = await prepared.runMigrations({ transaction: 'each' });
+			expect(applied).toHaveLength(expectedCount);
+			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {
 			await prepared.destroy();
 		}
