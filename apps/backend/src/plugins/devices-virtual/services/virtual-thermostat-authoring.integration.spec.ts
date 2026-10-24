@@ -74,6 +74,7 @@ import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-the
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
+import { initializeThermostatCreationCatalog } from './thermostat-creation-catalog';
 import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
@@ -133,6 +134,7 @@ describe('atomic virtual thermostat authoring', () => {
 			synchronize: true,
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 		}).initialize();
+		await database.transaction((manager) => initializeThermostatCreationCatalog(manager, true));
 		events = new EventEmitter2();
 		values = new PropertyValueService(
 			{} as never,
@@ -623,6 +625,75 @@ describe('atomic virtual thermostat authoring', () => {
 		},
 	);
 
+	it.each(
+		(['V0', 'Before', 'After'] as const).flatMap((phase) =>
+			[undefined, null, false, 0, '', new Error('original proof rejection')].map((cause, index) => ({
+				phase,
+				cause,
+				index,
+			})),
+		),
+	)('keeps original proof rejection by presence at $phase cause$index', async ({ phase, cause }) => {
+		const input = request(relayId);
+		const sourceQuery = database.query.bind(database) as SqliteDataSource['query'];
+		const target = { V0: 1, Before: 2, After: 3 }[phase];
+		let observed = 0,
+			finalPhase = false,
+			finalHydrations = 0;
+		jest.spyOn(database, 'query').mockImplementation((async (...args: Parameters<SqliteDataSource['query']>) => {
+			if (args[0].startsWith('WITH root AS') && ++observed === target) {
+				// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Exact finite falsy/native cause fixture.
+				return Promise.reject(cause);
+			}
+			const raw: unknown = await sourceQuery(...args);
+			return raw;
+		}) as SqliteDataSource['query']);
+		const afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+		jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+			const result = await afterCommit(...args);
+			finalPhase = true;
+			return result;
+		});
+		const find = devices.findOne.bind(devices) as DevicesService['findOne'];
+		jest.spyOn(devices, 'findOne').mockImplementation(async (...args) => {
+			const selected = await find(...args);
+			if (finalPhase && args[0] === input.device.id) {
+				finalHydrations++;
+				if (selected) selected.name = 'later successful candidate';
+			}
+			return selected;
+		});
+		const run = DeviceCreationContext.runPinned;
+		let settlement: CreationSettlement<RetainedOriginalCreatedResponse>;
+		jest.spyOn(DeviceCreationContext, 'runPinned').mockImplementation((...args) => {
+			settlement = args[4] as CreationSettlement<RetainedOriginalCreatedResponse>;
+			return run(...args);
+		});
+		if (phase === 'V0') {
+			let failure: { cause: unknown } | undefined;
+			try {
+				await authoring.create(input);
+			} catch (caught) {
+				failure = { cause: caught };
+			}
+			expect(failure).toBeDefined();
+			expect(failure.cause).toBe(cause);
+			expect(settlement.outcome).toBe('rolled_back');
+			expect(finalHydrations).toBe(0);
+			await expectAbsent(input);
+		} else {
+			const created = await authoring.create(input);
+			expect(settlement.outcome).toBe('committed');
+			expect(responseWire(created)).toEqual(
+				responseWire(thermostatCreationResponse.pin().materialize(settlement.result.value)),
+			);
+			expect(created.device.name).toBe(input.device.name);
+			expect(finalHydrations).toBe(1);
+			expectImmutableResponse(settlement.result.value);
+			expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		}
+		expect(observed).toBe(target);
+	});
 	it('keeps latest ordinary hydration on uninterrupted success without rewriting the native original', async () => {
 		const input = request(relayId),
 			afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
@@ -1029,7 +1100,16 @@ describe('atomic virtual thermostat authoring', () => {
 	);
 
 	it('refuses graph revision overflow atomically', async () => {
-		await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: Number.MAX_SAFE_INTEGER });
+		expect(await database.manager.find(VirtualGraphRevisionEntity)).toEqual([{ id: 1, revision: 0 }]);
+		const updated = await database.manager.update(
+			VirtualGraphRevisionEntity,
+			{ id: 1 },
+			{ revision: Number.MAX_SAFE_INTEGER },
+		);
+		expect(updated.affected).toBe(1);
+		expect(await database.manager.find(VirtualGraphRevisionEntity)).toEqual([
+			{ id: 1, revision: Number.MAX_SAFE_INTEGER },
+		]);
 		const input = request(relayId);
 		await expect(authoring.create(input)).rejects.toThrow('overflow');
 		await expectAbsent(input, Number.MAX_SAFE_INTEGER);

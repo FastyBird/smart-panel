@@ -1,4 +1,4 @@
-import { Expose, Transform, Type } from 'class-transformer';
+import { Exclude, Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayNotEmpty,
 	IsArray,
@@ -15,7 +15,7 @@ import {
 } from 'class-validator';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { readSubmittedValue } from '../../../common/utils/transform.utils';
@@ -62,6 +62,11 @@ export class DeviceConnectionStatus {
 @Unique('UQ_devices_identifier_type', ['identifier', 'type'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class DeviceEntity extends BaseEntity {
+	@ApiHideProperty()
+	@Exclude()
+	@Column({ type: 'integer', nullable: true, select: false, insert: false, update: false })
+	private catalogBirth?: number | null;
+
 	@ApiProperty({ description: 'Device category', enum: DeviceCategory, example: DeviceCategory.GENERIC })
 	@Expose()
 	@IsEnum(DeviceCategory)
@@ -271,6 +276,11 @@ export class DeviceControlEntity extends BaseEntity {
 @Unique('UQ_channels_identifier_type', ['identifier', 'device'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelEntity extends BaseEntity {
+	@ApiHideProperty()
+	@Exclude()
+	@Column({ type: 'integer', nullable: true, select: false, insert: false, update: false })
+	private catalogBirth?: number | null;
+
 	@ApiProperty({ description: 'Channel category', enum: ChannelCategory, example: ChannelCategory.GENERIC })
 	@Expose()
 	@IsEnum(ChannelCategory)
@@ -428,6 +438,11 @@ export class ChannelControlEntity extends BaseEntity {
 @Unique('UQ_channels_properties_identifier_type', ['identifier', 'channel'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelPropertyEntity extends BaseEntity {
+	@ApiHideProperty()
+	@Exclude()
+	@Column({ type: 'integer', nullable: true, select: false, insert: false, update: false })
+	private catalogBirth?: number | null;
+
 	@ApiProperty({ description: 'Property category', enum: PropertyCategory, example: PropertyCategory.GENERIC })
 	@Expose()
 	@IsEnum(PropertyCategory)
