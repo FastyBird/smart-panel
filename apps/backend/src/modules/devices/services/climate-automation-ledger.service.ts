@@ -18,6 +18,7 @@ import {
 	ClimateAutomationLedgerScope,
 	ClimateAutomationProducer,
 	ClimateAutomationProvider,
+	ClimateAutomationSlotFacts,
 	ClimateAutomationSlotSnapshot,
 	ClimateAutomationSourceFacts,
 	ClimateAutomationSourceSnapshot,
@@ -29,8 +30,12 @@ import {
 	ClimateAutomationSourceEntity,
 } from '../entities/climate-automation.entity';
 
+import { ClimateAutomationLedgerLifecycle, LedgerLifecycleAccess } from './climate-automation-ledger-lifecycle';
+import { ClimateAutomationLedgerConflict, canonical, increment, ownedJson } from './climate-automation-ledger.utils';
 import { ClimateAutomationRegistryService } from './climate-automation.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
+
+export { ClimateAutomationLedgerConflict } from './climate-automation-ledger.utils';
 
 // Pin the original implementation and invoke it with the structural lock receiver below.
 // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -45,12 +50,6 @@ export class ClimateAutomationLedgerError extends Error {
 		cause: unknown,
 	) {
 		super('Private climate ledger transaction failed', { cause });
-	}
-}
-
-export class ClimateAutomationLedgerConflict extends Error {
-	constructor(readonly reason: 'invalid' | 'stale' | 'unavailable' | 'overflow') {
-		super(`Private climate ledger conflict: ${reason}`);
 	}
 }
 
@@ -70,9 +69,10 @@ interface SlotRecord {
 	readonly operation: Operation;
 	readonly controllerId: string;
 	readonly snapshot: ClimateAutomationSlotSnapshot;
+	readonly providerKey?: string;
 	readonly validate?: () => Promise<void>;
 }
-type Record = SourceRecord | SlotRecord;
+type Record = (SourceRecord | SlotRecord) & { readonly written?: boolean };
 interface Operation {
 	phase: Phase;
 	readonly scope: ClimateAutomationLedgerScope;
@@ -93,7 +93,7 @@ interface Operation {
  * transaction. A raw query rejection swallowed outside inReservedManager can yield a native COMMIT
  * refusal; its swallowed cause is unavailable here. Enroll child work to retain its rejection.
  * Snapshots are operation-local CAS inputs; success grants no publication/runtime right.
- * Slot creation/adoption/mutation and source finalization/revocation belong to subsequent layers.
+ * Controller creation/adoption, LIVE installation and publication belong to subsequent layers.
  */
 @Injectable()
 export class ClimateAutomationLedgerService {
@@ -228,12 +228,16 @@ export class ClimateAutomationLedgerService {
 		);
 	}
 
-	/** Ledger-only reads do not imply that a provider/controller exists. Controller reads fail closed. */
+	/**
+	 * Ledger-only reads confer no controller authority. An explicit providerKey permits capturing an
+	 * existing controller with missing sidecar metadata for initializeSlot; it never creates one.
+	 */
 	readSlot(
 		manager: EntityManager,
 		scope: ClimateAutomationLedgerScope,
 		controllerId: string,
 		withController = true,
+		providerKey?: string,
 	): Promise<ClimateAutomationSlotSnapshot> {
 		const operation = this.admit(manager, scope);
 		this.requireKey(operation, controllerId);
@@ -242,8 +246,10 @@ export class ClimateAutomationLedgerService {
 			const facts = row ? Object.freeze({ ...row }) : null;
 			let controller: ClimateAutomationControllerFacts | null = null;
 			let validate: (() => Promise<void>) | undefined;
-			if (facts && withController) {
-				const capture = this.registry.captureProvider(facts.providerKey);
+			if (withController && (facts || providerKey)) {
+				if (facts && providerKey && facts.providerKey !== providerKey)
+					throw new ClimateAutomationLedgerConflict('invalid');
+				const capture = this.registry.captureProvider(facts?.providerKey ?? providerKey);
 				const pin = this.pin(capture, 'readControllerInManager');
 				operation.guards.push(pin);
 				const read = async () => {
@@ -260,7 +266,14 @@ export class ClimateAutomationLedgerService {
 				};
 			}
 			const snapshot = Object.freeze({ facts, controller }) as ClimateAutomationSlotSnapshot;
-			this.issue(operation, snapshot, { kind: 'slot', operation, controllerId, snapshot, validate });
+			this.issue(operation, snapshot, {
+				kind: 'slot',
+				operation,
+				controllerId,
+				providerKey: facts?.providerKey ?? providerKey,
+				snapshot,
+				validate,
+			});
 			return snapshot;
 		});
 	}
@@ -351,6 +364,131 @@ export class ClimateAutomationLedgerService {
 		}
 	}
 
+	/** Explicit sidecar initialization for an existing controller; never controller creation/adoption. */
+	initializeSlot(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		request: Parameters<ClimateAutomationLedgerLifecycle['initializeSlot']>[0],
+	): Promise<ClimateAutomationSlotSnapshot> {
+		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.initializeSlot(request));
+	}
+
+	stageSlot(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		request: Parameters<ClimateAutomationLedgerLifecycle['stageSlot']>[0],
+	): Promise<ClimateAutomationSlotSnapshot> {
+		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.stageSlot(request));
+	}
+
+	retireSlot(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		expectedSlot: ClimateAutomationSlotSnapshot,
+		expectedSource: ClimateAutomationSourceSnapshot,
+	): Promise<ClimateAutomationSlotSnapshot> {
+		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.retireSlot(expectedSlot, expectedSource));
+	}
+
+	revokeSource(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		expectedSource: ClimateAutomationSourceSnapshot,
+		slots: readonly ClimateAutomationSlotSnapshot[],
+		deleted = false,
+	): Promise<ClimateAutomationSourceSnapshot> {
+		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.revokeSource(expectedSource, slots, deleted));
+	}
+
+	/** No LIVE finalization: the read-only registry cannot prove an actual controller installation. */
+	finalizeInactive(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		expected: ClimateAutomationSourceSnapshot,
+	): Promise<ClimateAutomationSourceSnapshot> {
+		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.finalizeInactive(expected));
+	}
+
+	private lifecycleCommand<T>(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		capture: (lifecycle: ClimateAutomationLedgerLifecycle) => () => Promise<T>,
+	): Promise<T> {
+		const operation = this.admit(manager, scope);
+		try {
+			const record = (snapshot: ClimateAutomationSourceSnapshot | ClimateAutomationSlotSnapshot): Record => {
+				const value = this.records.get(snapshot);
+				if (!value || value.operation !== operation) throw new ClimateAutomationLedgerConflict('invalid');
+				return value;
+			};
+			const access: LedgerLifecycleAccess = {
+				manager,
+				source: (snapshot) => {
+					const value = record(snapshot);
+					if (value.kind !== 'source') throw new ClimateAutomationLedgerConflict('invalid');
+					if (!value.snapshot.facts) throw new ClimateAutomationLedgerConflict('stale');
+					return value.snapshot.facts;
+				},
+				slot: (snapshot) => {
+					const value = record(snapshot);
+					if (value.kind !== 'slot') throw new ClimateAutomationLedgerConflict('invalid');
+					return {
+						...value.snapshot,
+						controllerId: value.controllerId,
+						providerKey: value.providerKey,
+						validateController: value.validate,
+					};
+				},
+				validate: (snapshot) => this.validateRow(manager, record(snapshot)),
+				producer: (key) => {
+					const pin = this.pin(this.registry.captureProducer(key), 'validateInManager');
+					operation.guards.push(pin);
+					return async (source) => {
+						this.requirePin(pin);
+						const actual = await Reflect.apply(pin.method, pin.receiver, [manager, source, 'prepare']);
+						this.requirePin(pin);
+						if (actual === null || canonical(actual) !== source.evidence)
+							throw new ClimateAutomationLedgerConflict('stale');
+					};
+				},
+				provider: (key) => {
+					const pin = this.pin(this.registry.captureProvider(key), 'validateSelectionInManager');
+					operation.guards.push(pin);
+					return async (id, facts, selection) => {
+						this.requirePin(pin);
+						const accepted = await Reflect.apply(pin.method, pin.receiver, [manager, id, facts, selection]);
+						this.requirePin(pin);
+						if (accepted !== true) throw new ClimateAutomationLedgerConflict('invalid');
+					};
+				},
+				issueSource: (facts, validate) =>
+					this.sourceSnapshot(operation, facts.producerKey, facts.subjectId, facts, validate),
+				issueSlot: (facts: ClimateAutomationSlotFacts, controller, validate) => {
+					const snapshot = Object.freeze({ facts, controller }) as ClimateAutomationSlotSnapshot;
+					this.issue(
+						operation,
+						snapshot,
+						{
+							kind: 'slot',
+							operation,
+							controllerId: facts.controllerId,
+							providerKey: facts.providerKey,
+							snapshot,
+							validate,
+						},
+						true,
+					);
+					return snapshot;
+				},
+			};
+			const work = capture(new ClimateAutomationLedgerLifecycle(access));
+			return this.enqueue(operation, work);
+		} catch (cause) {
+			this.fail(operation, cause);
+			throw cause;
+		}
+	}
+
 	private admit(manager: EntityManager, scope: ClimateAutomationLedgerScope): Operation {
 		const context = this.context.getStore();
 		const operation = this.scopes.get(scope);
@@ -407,21 +545,37 @@ export class ClimateAutomationLedgerService {
 		validate?: () => Promise<void>,
 	): ClimateAutomationSourceSnapshot {
 		const snapshot = Object.freeze({ facts }) as ClimateAutomationSourceSnapshot;
-		this.issue(operation, snapshot, { kind: 'source', operation, producerKey, subjectId, snapshot, validate });
+		this.issue(
+			operation,
+			snapshot,
+			{ kind: 'source', operation, producerKey, subjectId, snapshot, validate },
+			!!validate,
+		);
 		return snapshot;
 	}
-	private issue(operation: Operation, snapshot: object, record: Record): void {
+	private issue(operation: Operation, snapshot: object, record: Record, write = false): void {
 		this.records.set(snapshot, record);
 		operation.issued.add(snapshot);
 		const key =
 			record.kind === 'source'
 				? JSON.stringify(['source', record.producerKey, record.subjectId])
 				: JSON.stringify(['slot', record.controllerId]);
-		// A later read must not discard mandatory validation installed by a write on the same key.
+		// A read with its own controller validator must also retain prior selection/source validation.
 		const previous = operation.latest.get(key);
+		const latest = previous?.written && !write ? previous : { ...record, written: write };
 		operation.latest.set(
 			key,
-			previous?.validate && !record.validate ? { ...record, validate: previous.validate } : record,
+			previous?.validate && !write
+				? {
+						...latest,
+						validate: record.validate
+							? async () => {
+									await previous.validate();
+									await record.validate();
+								}
+							: previous.validate,
+					}
+				: latest,
 		);
 	}
 	private async source(
@@ -483,43 +637,4 @@ function dataMethod(receiver: object, key: PropertyKey): unknown {
 		if (descriptor) return 'value' in descriptor ? descriptor.value : undefined;
 	}
 	return undefined;
-}
-function increment(value: number): number {
-	if (!Number.isSafeInteger(value) || value < 1 || value >= Number.MAX_SAFE_INTEGER)
-		throw new ClimateAutomationLedgerConflict('overflow');
-	return value + 1;
-}
-
-/** Deterministic, owned JSON; traverse caller getters once, reject non-JSON and cycles. */
-function canonical(value: unknown, ancestors = new Set<object>()): string {
-	if (value === null || typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
-	if (typeof value === 'number' && Number.isFinite(value)) return JSON.stringify(value);
-	if (typeof value !== 'object' || ancestors.has(value)) throw new ClimateAutomationLedgerConflict('invalid');
-	ancestors.add(value);
-	try {
-		if (Array.isArray(value))
-			return '[' + Array.from(value, (item: unknown) => canonical(item, ancestors)).join(',') + ']';
-		if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)
-			throw new ClimateAutomationLedgerConflict('invalid');
-		return (
-			'{' +
-			Object.keys(value)
-				.sort()
-				.map((key) => JSON.stringify(key) + ':' + canonical(Reflect.get(value, key), ancestors))
-				.join(',') +
-			'}'
-		);
-	} finally {
-		ancestors.delete(value);
-	}
-}
-function ownedJson(value: unknown): ClimateAutomationJson {
-	const freeze = (item: ClimateAutomationJson): ClimateAutomationJson => {
-		if (item && typeof item === 'object') {
-			for (const child of Object.values(item)) freeze(child);
-			Object.freeze(item);
-		}
-		return item;
-	};
-	return freeze(JSON.parse(canonical(value)) as ClimateAutomationJson);
 }
