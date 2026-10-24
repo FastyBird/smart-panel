@@ -101,6 +101,81 @@ describe('pinned DeviceCreationContext (real coordinated SQLite)', () => {
 		if (database.isInitialized) await database.destroy();
 	});
 
+	it.each([false, true])('rolls back an activation-dependent pinned defer, caught=%s', async (caught) => {
+		const publish = jest.fn();
+		const ordinary = jest.fn();
+		let refusal: unknown;
+		const failure = await run(async (context) => {
+			await context.manager.insert(CreationRecord, { name: 'must roll back' });
+			context.defer(ordinary);
+			try {
+				context.defer(publish, true);
+			} catch (cause) {
+				refusal = cause;
+				if (!caught) throw cause;
+			}
+			return 7;
+		}).catch((cause: unknown) => cause);
+		expect(refusal).toBeInstanceOf(Error);
+		expect((refusal as Error).message).toBe(
+			'Activation-dependent publication is not supported on the pinned creation path',
+		);
+		expect(failure).toBeInstanceOf(DeviceCreationSettlementError);
+		expect((failure as DeviceCreationSettlementError).cause).toBe(refusal);
+		expect((failure as DeviceCreationSettlementError).settlementCause).toBe(refusal);
+		expect(settlement.outcome).toBe('rolled_back');
+		expect(settlement.result).toEqual(caught ? { value: 7 } : undefined);
+		expect(publish).not.toHaveBeenCalled();
+		expect(ordinary).not.toHaveBeenCalled();
+		expect(await database.manager.count(CreationRecord)).toBe(0);
+	});
+
+	it('publishes an unflagged pinned job after the native ACK under the original lock', async () => {
+		const observations: { outcome: string; structuralLease: boolean }[] = [];
+		const publish = jest.fn(() => {
+			observations.push({ outcome: settlement.outcome, structuralLease: lock.hasCurrentStructuralLease() });
+		});
+		expect(
+			await run(async (context) => {
+				await context.manager.insert(CreationRecord, { name: 'committed' });
+				context.defer(publish);
+				return 0;
+			}),
+		).toBe(0);
+		expect(publish).toHaveBeenCalledTimes(1);
+		expect(observations).toEqual([{ outcome: 'committed', structuralLease: true }]);
+		expect(await database.manager.count(CreationRecord)).toBe(1);
+	});
+
+	it.each([true, false])('preserves legacy activation-dependent publication, activated=%s', async (activated) => {
+		const stages: string[] = [];
+		const publish = jest.fn(() => {
+			stages.push('dependent');
+		});
+		const result = await lock.runExclusive(() =>
+			DeviceCreationContext.run(
+				(operation) => database.transaction(operation),
+				'virtual',
+				async (context) => {
+					await context.manager.insert(CreationRecord, { name: 'legacy committed' });
+					context.defer(publish, true);
+					context.defer(() => {
+						stages.push('ordinary');
+					});
+					return 7;
+				},
+				() => {
+					stages.push('activation');
+					if (!activated) throw new Error('legacy activation failed');
+				},
+			),
+		);
+		expect(result).toBe(7);
+		expect(stages).toEqual(activated ? ['activation', 'dependent', 'ordinary'] : ['activation', 'ordinary']);
+		expect(publish).toHaveBeenCalledTimes(activated ? 1 : 0);
+		expect(await database.manager.count(CreationRecord)).toBe(1);
+	});
+
 	it('closes root admission before draining an admitted whole traversal and its fixed descendants', async () => {
 		const entered = gate(),
 			resume = gate(),

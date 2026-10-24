@@ -98,7 +98,8 @@ export class DeviceCreationContext {
 				},
 			);
 			if (settlement.outcome !== 'committed') throw new Error('Missing original native creation ACK');
-			// Preserve legacy callback ordering/isolation INSIDE the caller's existing structural lock.
+			// Thermostat catalog callbacks precede the caller's configurations.afterCommit,
+			// all INSIDE the caller's original structural lock.
 			for (const publication of context.publications) {
 				try {
 					if (!catalog.current()) throw new Error('Original creation publication registration expired');
@@ -315,9 +316,16 @@ export class DeviceCreationContext {
 			throw new Error('Device creation context is not active for this integration');
 	}
 
-	/** Queues a callback for COMMIT; activation-dependent property hooks are suppressed if activation fails. */
+	/** Queues a callback for COMMIT; only legacy run supports activation-dependent hooks. */
 	defer(publication: () => Promise<void> | void, requiresActivation = false): void {
 		this.assertType(this.allowedType);
+		if (pinned.has(this) && requiresActivation) {
+			const record = records.get(this);
+			record.failure ??= {
+				cause: new Error('Activation-dependent publication is not supported on the pinned creation path'),
+			};
+			throw record.failure.cause;
+		}
 		(pinned.has(this) ? records.get(this).publications : this.publications).push({
 			publish: publication,
 			requiresActivation,
