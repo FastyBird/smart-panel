@@ -9,6 +9,8 @@ import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
+import { CreationCapture, captureCreation } from './creation-capture';
+
 export interface ChannelPropertyTypeMapping<
 	TProperty extends ChannelPropertyEntity,
 	TCreateDTO extends CreateChannelPropertyDto,
@@ -61,12 +63,34 @@ export class ChannelsPropertiesTypeMapperService {
 
 	private readonly mappings = new Map<string, ChannelPropertyTypeMapping<any, any, any>>();
 
+	private readonly creationRegistrations = new Map<string, object>();
+
+	/** Each register call retires prior captures, including same-object re-registration. */
+	captureMapping(type: string) {
+		const api = captureCreation(this, [
+			'captureMapping',
+			'getMapping',
+			'mappings',
+			'creationRegistrations',
+		] as (keyof this)[]);
+		const mapping = api.values.getMapping.call(this, type);
+		const fields = ['type', 'class', 'createDto', 'afterCreate', 'beforeCreate', 'withStructuralWrite'] as const;
+		const captured = captureCreation(mapping, fields as readonly (keyof typeof mapping)[]);
+		const registration = this.creationRegistrations.get(type);
+		return Object.freeze({
+			...captured,
+			current: () => api.current() && this.creationRegistrations.get(type) === registration && captured.current(),
+		}) as CreationCapture<typeof mapping>;
+	}
+
 	registerMapping<
 		TProperty extends ChannelPropertyEntity,
 		TCreateDTO extends CreateChannelPropertyDto,
 		TUpdateDTO extends UpdateChannelPropertyDto,
 	>(mapping: ChannelPropertyTypeMapping<TProperty, TCreateDTO, TUpdateDTO>): void {
-		this.mappings.set(mapping.type, mapping);
+		const type = mapping.type;
+		this.mappings.set(type, mapping);
+		this.creationRegistrations.set(type, {});
 
 		this.logger.log(`[REGISTERED] Property type '${mapping.type}' added. Total mappings: ${this.mappings.size}`);
 	}

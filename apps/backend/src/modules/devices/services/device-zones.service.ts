@@ -248,6 +248,7 @@ export class DeviceZonesService {
 		zoneIds: string[],
 		{ initialPlacement = false, creation }: { initialPlacement?: boolean; creation?: DeviceCreationContext } = {},
 	): Promise<SpaceEntity[]> {
+		creation?.assertActive();
 		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
 
 		// Verify device exists
@@ -267,7 +268,10 @@ export class DeviceZonesService {
 		// Validate all zones
 		const validatedZones: SpaceEntity[] = [];
 		for (const zoneId of zoneIds) {
-			const zone = await this.spaceRepository.findOne({ where: { id: zoneId } });
+			const zone = await (creation ? creation.manager.getRepository(SpaceEntity) : this.spaceRepository).findOne({
+				where: { id: zoneId },
+			});
+			creation?.assertActive();
 
 			if (!zone) {
 				this.logger.error(`Zone with id=${zoneId} not found`);
@@ -318,14 +322,20 @@ export class DeviceZonesService {
 				throw new DevicesNotAllowedException(DEVICE_PLACEMENT_LOCKED_MESSAGE);
 			}
 
+			creation?.assertActive();
 			await manager.query(`DELETE FROM "${zoneTable}" WHERE "deviceId" = ?`, [deviceId]);
+			creation?.assertActive();
 
 			for (const zoneId of zoneIds) {
 				await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
+				creation?.assertActive();
 			}
 		};
-		if (creation) await persist(creation.manager);
-		else await this.repository.manager.transaction(persist);
+		if (creation) {
+			creation.assertActive();
+			await persist(creation.manager);
+			creation.assertActive();
+		} else await this.repository.manager.transaction(persist);
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
 		if (creation) return validatedZones;

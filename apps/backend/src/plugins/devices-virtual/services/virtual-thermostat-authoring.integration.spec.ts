@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
 import { plainToInstance } from 'class-transformer';
 import { useContainer } from 'class-validator';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { EntitySubscriberInterface } from 'typeorm';
+import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	ChannelCategory,
@@ -20,12 +24,19 @@ import { ChannelsTypeMapperService } from '../../../modules/devices/services/cha
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import {
+	CreationSettlement,
+	DeviceCreationContext,
+	DeviceCreationSettlementError,
+} from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
@@ -50,6 +61,9 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
+import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
+import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -60,6 +74,8 @@ import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virt
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
+import { VirtualDewPointConfigService } from './virtual-dew-point-config.service';
+import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
 import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
@@ -74,14 +90,14 @@ describe('atomic virtual thermostat authoring', () => {
 	let configs: VirtualThermostatConfigService;
 	let devices: DevicesService;
 	let events: EventEmitter2;
+	let propertyMapper: ChannelsPropertiesTypeMapperService;
+	let lock: DeviceStructureLockService;
+	let graph: VirtualDependencyGraphService;
 	let ambientId: string;
 	let relayId: string;
 	let relayDeviceId: string;
 	const publications: EventType[] = [];
-	const values = {
-		write: jest.fn().mockResolvedValue(true),
-		readLatest: jest.fn().mockResolvedValue(null),
-	} as unknown as PropertyValueService;
+	let values: PropertyValueService;
 	beforeEach(async () => {
 		publications.length = 0;
 		jest.clearAllMocks();
@@ -92,6 +108,15 @@ describe('atomic virtual thermostat authoring', () => {
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 		}).initialize();
 		events = new EventEmitter2();
+		values = new PropertyValueService(
+			{} as never,
+			new PropertyValueSourceRegistryService(),
+			new PropertyValueLockService(database),
+			new PropertyProducerRegistryService(),
+			events,
+		);
+		jest.spyOn(values, 'write').mockResolvedValue(true);
+		jest.spyOn(values, 'readLatest').mockResolvedValue(null);
 		for (const event of [
 			EventType.DEVICE_CREATED,
 			EventType.CHANNEL_CREATED,
@@ -99,14 +124,14 @@ describe('atomic virtual thermostat authoring', () => {
 			EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
 		])
 			events.on(event, () => publications.push(event));
-		const lock = new DeviceStructureLockService();
-		const graph = new VirtualDependencyGraphService(database);
+		lock = new DeviceStructureLockService();
+		graph = new VirtualDependencyGraphService(database);
 		registry = new PropertyCommandAdmissionRegistryService();
 		claims = new VirtualThermostatClaimsService(database, lock, graph, registry, events);
 		configs = new VirtualThermostatConfigService(database, lock, graph, claims, events, values);
 		const deviceMapper = new DevicesTypeMapperService();
 		const channelMapper = new ChannelsTypeMapperService();
-		const propertyMapper = new ChannelsPropertiesTypeMapperService();
+		propertyMapper = new ChannelsPropertiesTypeMapperService();
 		propertyMapper.registerMapping({
 			type: 'virtual',
 			class: VirtualChannelPropertyEntity,
@@ -218,12 +243,13 @@ describe('atomic virtual thermostat authoring', () => {
 		publications.length = 0;
 	});
 	afterEach(async () => {
+		jest.restoreAllMocks();
 		claims?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 		jest.useRealTimers();
 		useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });
 	});
-	async function actuator(existingDevice?: string) {
+	async function actuator(existingDevice?: string, mac = 'A8032ABE5084') {
 		const device = existingDevice ?? uuid(),
 			channel = uuid(),
 			property = uuid();
@@ -235,7 +261,7 @@ describe('atomic virtual thermostat authoring', () => {
 				identifier: 'shellyplus1pm-' + uuid(),
 				category: DeviceCategory.SWITCHER,
 				enabled: true,
-				canonicalMac: 'A8032ABE5084',
+				canonicalMac: mac,
 			});
 		}
 		await database.getRepository(ShellyNgChannelEntity).insert({
@@ -255,7 +281,7 @@ describe('atomic virtual thermostat authoring', () => {
 		} as never);
 		return property;
 	}
-	const request = (relay: string): CreateVirtualThermostatProducerDto => {
+	const request = (relay: string, coolingRelay?: string): CreateVirtualThermostatProducerDto => {
 		const settings: { setting: string; property: string }[] = [];
 		const property = (channel: ChannelCategory, category: PropertyCategory, setting?: string) => {
 			const metadata = getPropertyMetadata(channel, category);
@@ -306,6 +332,15 @@ describe('atomic virtual thermostat authoring', () => {
 						property(ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, 'heating_setpoint'),
 						property(ChannelCategory.HEATER, PropertyCategory.STATUS),
 					]),
+					...(coolingRelay
+						? [
+								channel(ChannelCategory.COOLER, [
+									property(ChannelCategory.COOLER, PropertyCategory.ON, 'cooling_enabled'),
+									property(ChannelCategory.COOLER, PropertyCategory.TEMPERATURE, 'cooling_setpoint'),
+									property(ChannelCategory.COOLER, PropertyCategory.STATUS),
+								]),
+							]
+						: []),
 				],
 			},
 			configuration: {
@@ -314,7 +349,7 @@ describe('atomic virtual thermostat authoring', () => {
 				requested_mode: 'off',
 				policy: {
 					heatingSetpoint: 20,
-					coolingSetpoint: null,
+					coolingSetpoint: coolingRelay ? 25 : null,
 					coldTolerance: 0.5,
 					hotTolerance: 0.5,
 					neutralMargin: 1,
@@ -325,7 +360,10 @@ describe('atomic virtual thermostat authoring', () => {
 				contact_opening_ms: 0,
 				contact_closing_ms: 0,
 				sources: [{ role: 'ambient', source_property: ambientId, maximum_age_seconds: 300 }],
-				actuators: [{ role: 'heating', source_property: relay, lease_seconds: 30 }],
+				actuators: [
+					{ role: 'heating', source_property: relay, lease_seconds: 30 },
+					...(coolingRelay ? [{ role: 'cooling', source_property: coolingRelay, lease_seconds: 30 }] : []),
+				],
 				settings,
 			},
 		});
@@ -373,7 +411,9 @@ describe('atomic virtual thermostat authoring', () => {
 
 	it('commits the owner and canonical reservation together and rejects a second UUID alias', async () => {
 		const first = request(relayId);
+		const callerBefore = JSON.stringify(first);
 		const created = await authoring.create(first);
+		expect(JSON.stringify(first)).toBe(callerBefore);
 		expect(created.device.id).toBe(first.device.id);
 		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
 		const alias = await actuator(relayDeviceId);
@@ -514,5 +554,516 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(0);
 		expect(publications).toEqual([]);
 		expect(values.write).not.toHaveBeenCalled();
+	});
+	function gate() {
+		let resolve!: () => void;
+		const promise = new Promise<void>((done) => {
+			resolve = done;
+		});
+		return { promise, resolve };
+	}
+	async function expectAbsent(input: CreateVirtualThermostatProducerDto, revision = 0) {
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(0);
+		for (const channel of input.device.channels) {
+			expect(await database.manager.countBy(ChannelEntity, { id: channel.id })).toBe(0);
+			for (const property of channel.properties)
+				expect(await database.manager.countBy(ChannelPropertyEntity, { id: property.id })).toBe(0);
+		}
+		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(0);
+		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(0);
+		expect(await graph.revision()).toBe(revision);
+		expect(publications).toEqual([]);
+		expect(values.write).not.toHaveBeenCalled();
+	}
+
+	it('rolls back actual catalog work on same-object registration replacement inside a real beforeCreate pause', async () => {
+		const input = request(relayId),
+			entered = gate(),
+			resume = gate();
+		const mapping = propertyMapper.getMapping<
+			VirtualChannelPropertyEntity,
+			CreateVirtualChannelPropertyDto,
+			UpdateVirtualChannelPropertyDto
+		>('virtual');
+		const original = mapping.beforeCreate;
+		let paused = false;
+		mapping.beforeCreate = async function (...args) {
+			expect(this).toBe(mapping);
+			await original.call(this, ...args);
+			if (!paused) {
+				paused = true;
+				entered.resolve();
+				await resume.promise;
+			}
+		};
+		let expired!: DeviceCreationContext;
+		const create = devices.create.bind(devices) as DevicesService['create'];
+		jest.spyOn(devices, 'create').mockImplementation((dto, context) => {
+			expired = context;
+			return create(dto, context);
+		});
+		const pending = authoring.create(input);
+		const rejected = expect(pending).rejects.toThrow('expired');
+		try {
+			await Promise.race([entered.promise, pending]);
+			propertyMapper.registerMapping(mapping);
+		} finally {
+			resume.resolve();
+		}
+		await rejected;
+		await expectAbsent(input);
+		expect(await database.manager.countBy(ChannelPropertyEntity, { id: ambientId })).toBe(1);
+		expect(await database.manager.countBy(ChannelPropertyEntity, { id: relayId })).toBe(1);
+		const getter = jest.fn(() => {
+			throw new Error('expired input');
+		});
+		const late = Object.defineProperty({}, 'type', { get: getter }) as CreateVirtualDeviceDto;
+		await expect(devices.create(late, expired)).rejects.toThrow('not active');
+		expect(getter).not.toHaveBeenCalled();
+		const fresh = request(relayId);
+		expect((await authoring.create(fresh)).device.id).toBe(fresh.device.id);
+	});
+
+	it.each(['device', 'configuration', 'expectedGraphRevision', 'nested type'])(
+		'captures before the %s getter and snapshots caller data once',
+		async (field) => {
+			const input = request(relayId);
+			const saved = JSON.stringify(input);
+			let owner: object = input,
+				key = field;
+			if (field === 'expectedGraphRevision') {
+				owner = input.configuration;
+				key = field;
+			}
+			if (field === 'nested type') {
+				owner = input.device.channels[0].properties[0];
+				key = 'type';
+			}
+			const value: unknown = Reflect.get(owner, key);
+			const getter = jest.fn(() => {
+				propertyMapper.registerMapping(propertyMapper.getMapping('virtual'));
+				return value;
+			});
+			Object.defineProperty(owner, key, { get: getter, enumerable: true, configurable: true });
+			await expect(authoring.create(input)).rejects.toThrow('expired');
+			expect(getter).toHaveBeenCalledTimes(1);
+			Object.defineProperty(owner, key, { value, enumerable: true, configurable: true, writable: true });
+			if (field === 'expectedGraphRevision') Reflect.deleteProperty(owner, key);
+			expect(JSON.stringify(input)).toBe(saved);
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(0);
+		},
+	);
+
+	it('refuses the original capture after replacement while queued for the existing lock', async () => {
+		const entered = gate(),
+			resume = gate();
+		const holder = lock.runExclusive(async () => {
+			entered.resolve();
+			await resume.promise;
+		});
+		await entered.promise;
+		const input = request(relayId);
+		const pending = authoring.create(input);
+		const rejected = expect(pending).rejects.toThrow('expired');
+		propertyMapper.registerMapping(propertyMapper.getMapping('virtual'));
+		resume.resolve();
+		await holder;
+		await rejected;
+		await expectAbsent(input);
+	});
+
+	it('refuses replacement at actual BeforeQuery COMMIT even after all original configuration reads', async () => {
+		const input = request(relayId);
+		let commits = 0;
+		database.subscribers.push({
+			beforeQuery: (event) => {
+				if (event.query === 'COMMIT' && commits++ === 0)
+					propertyMapper.registerMapping(propertyMapper.getMapping('virtual'));
+			},
+		} satisfies EntitySubscriberInterface);
+		await expect(authoring.create(input)).rejects.toMatchObject({ settlement: { outcome: 'refused' } });
+		expect(commits).toBe(1);
+		await expectAbsent(input);
+	});
+
+	it('retains native ACK and the original result when an awaited commit subscriber rejects', async () => {
+		const input = request(relayId),
+			cause = new Error('after native ACK');
+		let commits = 0;
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				commits++;
+				throw cause;
+			},
+		});
+		const failed = await authoring.create(input).catch((error: unknown) => error);
+		expect(failed).toBeInstanceOf(DeviceCreationSettlementError);
+		const error = failed as DeviceCreationSettlementError;
+		expect(error.cause).toBe(cause);
+		expect(error.settlement.outcome).toBe('committed');
+		expect(error.settlement.result.value).toMatchObject({
+			device: { id: input.device.id },
+			configuration: { revision: 1 },
+		});
+		expect(commits).toBe(1);
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+		expect(publications).toEqual([]);
+		expect(values.write).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])(
+		'keeps B serialized through A configuration publication and hydration, callbackFailure=%s',
+		async (callbackFailure) => {
+			const input = request(relayId),
+				entered = gate(),
+				resume = gate(),
+				hydration = gate(),
+				hydrateResume = gate();
+			const writes: unknown[] = [];
+			let postCommit = false;
+			jest.spyOn(values, 'write').mockImplementation(async (_property, value) => {
+				writes.push(value);
+				if (value === 20) {
+					entered.resolve();
+					await resume.promise;
+					postCommit = true;
+					if (callbackFailure) throw new Error('A publication failed');
+				}
+				return true as never;
+			});
+			const find = devices.findOne.bind(devices) as DevicesService['findOne'];
+			jest.spyOn(devices, 'findOne').mockImplementation(async (...args) => {
+				if (postCommit && args[0] === input.device.id) {
+					hydration.resolve();
+					await hydrateResume.promise;
+				}
+				return find(...args);
+			});
+			const pendingA = authoring.create(input);
+			await Promise.race([entered.promise, pendingA]);
+			let bDone = false;
+			const pendingB = configs
+				.configure(input.device.id, {
+					...input.configuration,
+					expectedRevision: 1,
+					policy: { ...input.configuration.policy, heatingSetpoint: 25 },
+				})
+				.then((result) => {
+					bDone = true;
+					return result;
+				});
+			try {
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(bDone).toBe(false);
+				expect(writes).not.toContain(25);
+				resume.resolve();
+				await Promise.race([hydration.promise, pendingA]);
+				expect(bDone).toBe(false);
+				expect(writes).not.toContain(25);
+			} finally {
+				resume.resolve();
+				hydrateResume.resolve();
+			}
+			expect((await pendingA).configuration.revision).toBe(1);
+			expect((await pendingB).revision).toBe(2);
+			expect(writes.filter((value) => typeof value === 'number')).toEqual([20, 25]);
+			expect((await configs.get(input.device.id)).policy.heatingSetpoint).toBe(25);
+		},
+	);
+
+	it('refuses graph revision overflow atomically', async () => {
+		await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: Number.MAX_SAFE_INTEGER });
+		const input = request(relayId);
+		await expect(authoring.create(input)).rejects.toThrow('overflow');
+		await expectAbsent(input, Number.MAX_SAFE_INTEGER);
+	});
+
+	it('drains an actual unawaited Device/Channel/Property traversal through body closure before COMMIT', async () => {
+		const input = request(relayId),
+			entered = gate(),
+			resume = gate();
+		const mapping = propertyMapper.getMapping<
+			VirtualChannelPropertyEntity,
+			CreateVirtualChannelPropertyDto,
+			UpdateVirtualChannelPropertyDto
+		>('virtual');
+		const original = mapping.beforeCreate;
+		let paused = false,
+			root!: DeviceCreationContext,
+			catalogPromise!: Promise<DeviceEntity>;
+		mapping.beforeCreate = async function (...args) {
+			await original.call(this, ...args);
+			if (!paused) {
+				paused = true;
+				entered.resolve();
+				await resume.promise;
+			}
+		};
+		const catalog = devices.captureCreationCatalog('virtual');
+		const settlement = new CreationSettlement<number>();
+		const pending = lock.runExclusive(() =>
+			DeviceCreationContext.runPinned(
+				(work, admit) => graph.withCreationWrite(work, undefined, admit),
+				catalog,
+				AsyncLocalStorage.bind(() => lock.hasCurrentStructuralLease()),
+				(context) => {
+					root = context;
+					catalogPromise = devices.create(input.device, context);
+					return Promise.resolve(4);
+				},
+				settlement,
+			),
+		);
+		try {
+			await Promise.race([entered.promise, pending]);
+			expect(settlement.outcome).toBe('pending');
+			const getter = jest.fn(() => {
+				throw new Error('detached input');
+			});
+			await expect(
+				devices.create(Object.defineProperty({}, 'type', { get: getter }) as CreateVirtualDeviceDto, root),
+			).rejects.toThrow('not active');
+			expect(getter).not.toHaveBeenCalled();
+		} finally {
+			resume.resolve();
+		}
+		expect(await pending).toBe(4);
+		expect((await catalogPromise).id).toBe(input.device.id);
+		expect(settlement.outcome).toBe('committed');
+		for (const channel of input.device.channels)
+			for (const property of channel.properties)
+				expect(await database.manager.countBy(ChannelPropertyEntity, { id: property.id })).toBe(1);
+		expect(await graph.revision()).toBe(1);
+	});
+
+	it('skips expired original deferred dispatch after ACK without deleting the durable catalog', async () => {
+		const input = request(relayId);
+		let changed = false;
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				if (!changed) {
+					changed = true;
+					propertyMapper.registerMapping(propertyMapper.getMapping('virtual'));
+				}
+			},
+		});
+		const created = await authoring.create(input);
+		expect(created.device.id).toBe(input.device.id);
+		expect(created.configuration.revision).toBe(1);
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		expect(publications).toEqual([]);
+		expect(values.write).not.toHaveBeenCalled();
+	});
+
+	it('rechecks original registration on actual SQLite busy redispatch without an application retry', async () => {
+		Object.assign(database.options, { busyErrorRetry: 1 });
+		interface Native {
+			all(
+				sql: string,
+				params: unknown[],
+				callback: (this: unknown, error: Error | null, rows?: unknown[]) => void,
+			): unknown;
+		}
+		const native = (database.driver as SqliteDriver).databaseConnection as Native;
+		const original = native.all.bind(native) as Native['all'];
+		let attempts = 0;
+		jest.spyOn(native, 'all').mockImplementation(function (this: Native, sql, params, callback) {
+			if (sql === 'COMMIT' && ++attempts === 1) {
+				propertyMapper.registerMapping(propertyMapper.getMapping('virtual'));
+				queueMicrotask(() => {
+					callback.call(this, new Error('SQLITE_BUSY: original dispatch test'));
+				});
+				return this;
+			}
+			return original(sql, params, callback);
+		});
+		const input = request(relayId);
+		await expect(authoring.create(input)).rejects.toMatchObject({ settlement: { outcome: 'refused' } });
+		expect(attempts).toBe(1);
+		await expectAbsent(input);
+	});
+
+	it('authors required explicit floor protection with the actual catalog/configuration/claim transaction', async () => {
+		const probe = await createProtectionProbe(database, relayId);
+		const input = request(relayId);
+		input.configuration.policy.floor = { limit: 30, recoveryHysteresis: 2 };
+		input.configuration.actuators[0].protection = {
+			schemaVersion: 1,
+			kind: 'local_floor',
+			sourcePropertyId: probe.sourceId,
+			maximumAgeSeconds: 5,
+		};
+		const result = await authoring.create(input);
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			controllerId: input.device.id,
+		});
+		expect(
+			await database.manager.findOneByOrFail(ThermostatMemberProtectionEntity, { claimId: claim.id }),
+		).toMatchObject({ sourcePropertyId: probe.sourceId, revision: 1, maximumAgeSeconds: 5 });
+		expect(result.configuration.readiness).toBe('draft');
+	});
+	it('persists genuine cooled-surface dependencies and exact heating/cooling catalog branches in the creation transaction', async () => {
+		const coolingRelay = await actuator(undefined, 'A8032ABE5198');
+		await database.manager.update(ShellyNgDeviceEntity, { id: relayDeviceId }, { canonicalMac: 'A8032ABE5198' });
+		const surface = await createProtectionProbe(database, coolingRelay);
+		const humidityChannel = uuid(),
+			humidity = uuid(),
+			dewDevice = uuid(),
+			dewChannel = uuid(),
+			dew = uuid();
+		await database.manager.insert(ChannelEntity, {
+			id: humidityChannel,
+			device: relayDeviceId,
+			name: 'Humidity',
+			category: ChannelCategory.HUMIDITY,
+		} as never);
+		await database.manager.insert(ChannelPropertyEntity, {
+			id: humidity,
+			channel: humidityChannel,
+			identifier: 'humidity',
+			category: PropertyCategory.HUMIDITY,
+			dataType: DataTypeType.FLOAT,
+			unit: '%',
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		await database.manager.insert(VirtualDeviceEntity, {
+			id: dewDevice,
+			name: 'Dedicated dew point',
+			category: DeviceCategory.SENSOR,
+			mode: VirtualDeviceMode.SENSOR_TRANSFORM,
+			enabled: true,
+		});
+		await database.manager.insert(VirtualChannelEntity, {
+			id: dewChannel,
+			device: dewDevice,
+			name: 'Dew point',
+			category: ChannelCategory.ANALOG_INPUT,
+		} as never);
+		await database.manager.insert(VirtualChannelPropertyEntity, {
+			id: dew,
+			channel: dewChannel,
+			identifier: 'value',
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			unit: '°C',
+			valueOrigin: VirtualValueOrigin.DERIVED,
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		const dewPoints = new VirtualDewPointConfigService(database, lock, graph, {} as never, events);
+		await database.transaction(async (manager) => {
+			const prepared = await dewPoints.prepare(manager, dew, {
+				schemaVersion: 1,
+				formulaVersion: DEW_POINT_FORMULA,
+				expectedRevision: 0,
+				maximumAgeSeconds: 300,
+				maximumSkewSeconds: 60,
+				sources: [
+					{ role: 'dry_bulb', sourcePropertyId: ambientId },
+					{ role: 'relative_humidity', sourcePropertyId: humidity },
+				],
+			});
+			await dewPoints.persist(manager, prepared);
+		});
+		const input = request(relayId, coolingRelay);
+		input.configuration.policy.cooling = { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1 };
+		input.configuration.actuators[1].coolingProtection = {
+			schemaVersion: 1,
+			purpose: 'cooled_surface',
+			dewPointPropertyId: dew,
+			surfacePropertyId: surface.sourceId,
+			maximumAgeSeconds: 5,
+		};
+		const result = await authoring.create(input);
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			controllerId: input.device.id,
+			role: 'cooling',
+		});
+		expect(
+			await database.manager.findOneByOrFail(ThermostatCoolingDependencyEntity, { claimId: claim.id }),
+		).toMatchObject({
+			dewPointPropertyId: dew,
+			surfacePropertyId: surface.sourceId,
+			revision: 1,
+			maximumAgeSeconds: 5,
+		});
+		expect(result.configuration.readiness).toBe('draft');
+		expect(result.device.channels.map((channel) => channel.category)).toEqual(
+			expect.arrayContaining([ChannelCategory.HEATER, ChannelCategory.COOLER]),
+		);
+		expect(
+			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId: input.device.id }),
+		).toBe(2);
+	});
+
+	it('keeps actual unknown native creation unavailable even when its full catalog/configuration committed', async () => {
+		interface Native {
+			all(
+				sql: string,
+				params: unknown[],
+				callback: (this: unknown, error: Error | null, rows?: unknown[]) => void,
+			): unknown;
+		}
+		const native = (database.driver as SqliteDriver).databaseConnection as Native;
+		const original = native.all.bind(native) as Native['all'];
+		const cause = new Error('native ACK unavailable');
+		let commits = 0;
+		jest.spyOn(native, 'all').mockImplementation((sql, params, callback) => {
+			if (sql === 'COMMIT') commits++;
+			return original(sql, params, function (error, rows) {
+				callback.call(this, sql === 'COMMIT' && !error ? cause : error, rows);
+			});
+		});
+		const input = request(relayId);
+		await expect(authoring.create(input)).rejects.toMatchObject({
+			settlement: { outcome: 'unknown', result: { value: { configuration: { revision: 1 } } } },
+			cause: { driverError: cause },
+		});
+		expect(commits).toBe(1);
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		expect(await database.manager.countBy(VirtualThermostatConfigEntity, { controllerId: input.device.id })).toBe(1);
+		expect(publications).toEqual([]);
+		expect(values.write).not.toHaveBeenCalled();
+	});
+
+	it('preserves historical ACK/result and exact later structural settlement cause', async () => {
+		const cause = new Error('later structural settlement'),
+			input = request(relayId);
+		const original = lock.runExclusive.bind(lock) as DeviceStructureLockService['runExclusive'];
+		let first = true;
+		jest.spyOn(lock, 'runExclusive').mockImplementation(async (work) => {
+			const outer = first;
+			first = false;
+			const result = await original(work);
+			if (outer) throw cause;
+			return result;
+		});
+		await expect(authoring.create(input)).rejects.toMatchObject({
+			cause,
+			settlementCause: cause,
+			settlement: { outcome: 'committed', result: { value: { device: { id: input.device.id } } } },
+		});
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+	});
+
+	it('returns the committed response when actual graph refresh fails closed after ACK', async () => {
+		let acknowledged = false;
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				acknowledged = true;
+			},
+		});
+		const edges = graph.edges.bind(graph) as VirtualDependencyGraphService['edges'];
+		jest
+			.spyOn(graph, 'edges')
+			.mockImplementation((manager) =>
+				acknowledged ? Promise.reject(new Error('post-ACK validation read failed')) : edges(manager),
+			);
+		const input = request(relayId),
+			result = await authoring.create(input);
+		expect(result.device.id).toBe(input.device.id);
+		expect(result.configuration.revision).toBe(1);
+		expect(graph.isValidated()).toBe(false);
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
 	});
 });

@@ -7,6 +7,8 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
+import { CreationCapture, captureCreation } from './creation-capture';
+
 export interface DeviceTypeMapping<
 	TDevice extends DeviceEntity,
 	TCreateDTO extends CreateDeviceDto,
@@ -44,10 +46,32 @@ export class DevicesTypeMapperService {
 
 	private readonly mappings = new Map<string, DeviceTypeMapping<any, any, any>>();
 
+	private readonly creationRegistrations = new Map<string, object>();
+
+	/** Each register call retires prior captures, including same-object re-registration. */
+	captureMapping(type: string) {
+		const api = captureCreation(this, [
+			'captureMapping',
+			'getMapping',
+			'mappings',
+			'creationRegistrations',
+		] as (keyof this)[]);
+		const mapping = api.values.getMapping.call(this, type);
+		const fields = ['type', 'class', 'createDto', 'afterCreate', 'beforeCreate', 'withStructuralWrite'] as const;
+		const captured = captureCreation(mapping, fields as readonly (keyof typeof mapping)[]);
+		const registration = this.creationRegistrations.get(type);
+		return Object.freeze({
+			...captured,
+			current: () => api.current() && this.creationRegistrations.get(type) === registration && captured.current(),
+		}) as CreationCapture<typeof mapping>;
+	}
+
 	registerMapping<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto, TUpdateDTO extends UpdateDeviceDto>(
 		mapping: DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO>,
 	): void {
-		this.mappings.set(mapping.type, mapping);
+		const type = mapping.type;
+		this.mappings.set(type, mapping);
+		this.creationRegistrations.set(type, {});
 
 		this.logger.log(`[REGISTERED] Device type '${mapping.type}' added. Total mappings: ${this.mappings.size}`);
 	}

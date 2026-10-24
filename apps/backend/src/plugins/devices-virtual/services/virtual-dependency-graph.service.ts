@@ -62,8 +62,26 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		operation: (manager: EntityManager) => Promise<T>,
 		expectedGraphRevision?: number,
 	): Promise<T> {
+		return this.structuralWrite(operation, expectedGraphRevision);
+	}
+
+	/** Creation-only receipt admission on the SAME outer transaction, before the graph reservation. */
+	withCreationWrite<T>(
+		operation: (manager: EntityManager) => Promise<T>,
+		expectedGraphRevision: number | undefined,
+		admit: (manager: EntityManager) => void,
+	): Promise<T> {
+		return this.structuralWrite(operation, expectedGraphRevision, admit);
+	}
+
+	private async structuralWrite<T>(
+		operation: (manager: EntityManager) => Promise<T>,
+		expectedGraphRevision?: number,
+		admit?: (manager: EntityManager) => void,
+	): Promise<T> {
 		// The caller already owns DeviceStructureLockService. Never acquire another lock from this transaction.
 		const result = await this.dataSource.transaction(async (manager) => {
+			admit?.(manager);
 			// Even an ignored INSERT reserves SQLite's writer slot before a validation read. This also
 			// initializes synchronized databases, which do not run the migration's singleton seed.
 			await manager.query('INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
@@ -71,6 +89,8 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			if (expectedGraphRevision !== undefined && current.revision !== expectedGraphRevision) {
 				throw new DevicesValidationException('Virtual dependency graph revision changed; reload and retry.');
 			}
+			if (admit && (!Number.isSafeInteger(current.revision) || current.revision >= Number.MAX_SAFE_INTEGER))
+				throw new DevicesValidationException('Virtual dependency graph revision overflow.');
 			await manager.increment(VirtualGraphRevisionEntity, { id: 1 }, 'revision', 1);
 			return operation(manager);
 		});

@@ -71,4 +71,67 @@ describe('DevicesTypeMapperService', () => {
 			);
 		});
 	});
+	describe('original creation capture', () => {
+		const mapping = () => ({
+			type: 'mock',
+			class: MockDevice,
+			createDto: MockCreateDeviceDto,
+			updateDto: MockUpdateDeviceDto,
+		});
+		it('permanently retires same-object and A/B/A registrations while ordinary get retains identity', () => {
+			const a = mapping();
+			service.registerMapping(a);
+			const first = service.captureMapping('mock');
+			expect(first.current()).toBe(true);
+			expect(service.getMapping('mock')).toBe(a);
+			service.registerMapping(a);
+			expect(first.current()).toBe(false);
+			const second = service.captureMapping('mock');
+			service.registerMapping(mapping());
+			service.registerMapping(a);
+			expect(second.current()).toBe(false);
+			expect(service.captureMapping('mock').current()).toBe(true);
+			expect(() => service.captureMapping('absent')).toThrow('Unsupported');
+		});
+		it.each(['class', 'createDto', 'afterCreate', 'beforeCreate', 'withStructuralWrite'])(
+			'refuses %s accessors without invoking them, preserving ordinary lookup',
+			(key) => {
+				const a = mapping();
+				service.registerMapping(a);
+				const captured = service.captureMapping('mock');
+				const getter = jest.fn(() => {
+					throw new Error('successor getter');
+				});
+				Object.defineProperty(a, key, { configurable: true, get: getter });
+				expect(captured.current()).toBe(false);
+				expect(() => service.captureMapping('mock')).toThrow('Creation accessor');
+				expect(getter).not.toHaveBeenCalled();
+				expect(service.getMapping('mock')).toBe(a);
+			},
+		);
+		it('retains original optional absence, methods and receiver across data-field replacement', async () => {
+			const original = new MockDevice();
+			const a = {
+				...mapping(),
+				afterCreate: function (this: object) {
+					expect(this).toBe(a);
+					return Promise.resolve(original);
+				},
+			};
+			service.registerMapping(a);
+			const captured = service.captureMapping('mock');
+			expect(await captured.values.afterCreate.call(captured.receiver, original)).toBe(original);
+			const successor = () => {
+				throw new Error('successor method');
+			};
+			a.afterCreate = successor;
+			expect(captured.current()).toBe(false);
+			expect(await captured.values.afterCreate.call(captured.receiver, original)).toBe(original);
+			service.registerMapping(mapping());
+			const absent = service.captureMapping('mock');
+			expect(absent.values.afterCreate).toBeUndefined();
+			Reflect.set(absent.receiver, 'afterCreate', successor);
+			expect(absent.current()).toBe(false);
+		});
+	});
 });
