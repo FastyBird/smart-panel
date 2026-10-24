@@ -128,6 +128,8 @@ describe('migration transaction compatibility', () => {
 							cwd: backendRoot,
 							env: { ...process.env, FAIL_HISTORY_WRITE: failHistoryWrite ? '1' : '0' },
 							maxBuffer: 2 * 1024 * 1024,
+							timeout: 25_000,
+							killSignal: 'SIGKILL',
 						},
 					);
 					issuedChildren.push(child);
