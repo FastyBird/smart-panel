@@ -74,10 +74,33 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.structuralWrite(operation, expectedGraphRevision, admit);
 	}
 
+	/** Manual selection alone requires its original ACK/result before ordinary graph settlement. */
+	withComfortSelectionWrite<T>(
+		operation: (manager: EntityManager) => Promise<T>,
+		expectedGraphRevision: number,
+		admit: (manager: EntityManager) => void,
+		accepted: () => void,
+	): Promise<T> {
+		const refresh = this.refreshValidation.bind(this) as VirtualDependencyGraphService['refreshValidation'];
+		return this.structuralWrite(
+			operation,
+			expectedGraphRevision,
+			(manager) => {
+				admit(manager);
+				if (!Number.isSafeInteger(expectedGraphRevision) || expectedGraphRevision < 0)
+					throw new DevicesValidationException('Invalid virtual dependency graph revision.');
+			},
+			accepted,
+			() => refresh(false),
+		);
+	}
+
 	private async structuralWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
 		expectedGraphRevision?: number,
 		admit?: (manager: EntityManager) => void,
+		accepted?: () => void,
+		settleValidation?: () => Promise<void>,
 	): Promise<T> {
 		// The caller already owns DeviceStructureLockService. Never acquire another lock from this transaction.
 		const result = await this.dataSource.transaction(async (manager) => {
@@ -91,11 +114,15 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			}
 			if (admit && (!Number.isSafeInteger(current.revision) || current.revision >= Number.MAX_SAFE_INTEGER))
 				throw new DevicesValidationException('Virtual dependency graph revision overflow.');
+			if (accepted && current.revision < 0)
+				throw new DevicesValidationException('Invalid virtual dependency graph revision.');
 			await manager.increment(VirtualGraphRevisionEntity, { id: 1 }, 'revision', 1);
 			return operation(manager);
 		});
+		accepted?.();
 		try {
-			await this.refreshValidation(false);
+			if (settleValidation) await settleValidation();
+			else await this.refreshValidation(false);
 		} catch (error) {
 			// The owning COMMIT succeeded. Returning its result allows the caller to activate the
 			// persisted catalog while validation guards keep live authority unavailable until retry.
