@@ -154,6 +154,15 @@ async function verify(manager: EntityManager, state = 'INSTALLED', original?: re
 		invalid();
 }
 
+export class ThermostatCatalogMigrationMissingError extends Error {
+	constructor() {
+		super(
+			'Thermostat catalog migration 48 is not installed; run the configured database migrations before starting the server',
+		);
+		this.name = 'ThermostatCatalogMigrationMissingError';
+	}
+}
+
 export async function initializeThermostatCreationCatalog(
 	manager: EntityManager,
 	fresh: boolean,
@@ -169,7 +178,68 @@ export async function initializeThermostatCreationCatalog(
 		NAMES,
 	);
 	if (objects.length) return verify(manager);
-	if (!fresh || blocked) invalid();
+	if (blocked) invalid();
+	if (!fresh) {
+		const kinds = [...TABLES, 'migrations'];
+		const legacyObjects = await manager.query<Row[]>(
+			`SELECT name, type FROM sqlite_master WHERE name IN (${kinds.map(() => '?').join(',')}) OR name LIKE '%thermostat_catalog_birth%'`,
+			kinds,
+		);
+		const columns = await manager.query<Row[]>(
+			kinds
+				.map((table) => `SELECT '${table}' kind, name, type, pk FROM pragma_table_xinfo('${table}')`)
+				.join(' UNION ALL '),
+		);
+		const required = [
+			['id', 'type'],
+			['id', 'type', 'deviceId', 'parentId'],
+			['id', 'type', 'channelId'],
+			['id', 'timestamp', 'name'],
+		];
+		if (
+			legacyObjects.length === kinds.length &&
+			legacyObjects.every((row) => row.type === 'table' && kinds.includes(row.name as string)) &&
+			!columns.some((row) => typeof row.name === 'string' && /^(catalogBirth|catalog_birth)$/i.test(row.name)) &&
+			kinds.every((table, index) =>
+				required[index].every((name) =>
+					columns.some(
+						(row) =>
+							row.kind === table &&
+							row.name === name &&
+							typeof row.type === 'string' &&
+							row.type.toLowerCase() ===
+								(table === 'migrations'
+									? name === 'id'
+										? 'integer'
+										: name === 'timestamp'
+											? 'bigint'
+											: 'varchar'
+									: 'varchar') &&
+							row.pk === (name === 'id' ? 1 : 0),
+					),
+				),
+			)
+		) {
+			const history = await manager.query<Row[]>(
+				'SELECT CAST(timestamp AS TEXT) stamp, typeof(timestamp) kind, name FROM migrations ORDER BY timestamp',
+			);
+			if (
+				history.length === 48 &&
+				new Set(history.map((row) => row.name)).size === history.length &&
+				history.every(
+					(row) =>
+						row.kind === 'integer' &&
+						typeof row.stamp === 'string' &&
+						/^10000000000[0-3][0-9]$|^100000000004[0-7]$/.test(row.stamp) &&
+						typeof row.name === 'string' &&
+						row.name.endsWith(row.stamp),
+				) &&
+				history[47].name === 'AddClimateAutomationOwnership1000000000047'
+			)
+				throw new ThermostatCatalogMigrationMissingError();
+		}
+		invalid();
+	}
 	const journal = await manager.query<Row[]>(
 		"SELECT name FROM sqlite_master WHERE name = 'migrations' AND type = 'table'",
 	);

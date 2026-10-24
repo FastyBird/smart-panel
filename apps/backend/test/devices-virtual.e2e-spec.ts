@@ -3933,6 +3933,13 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				if (event.success && /^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query)) graphWrites++;
 			},
 		};
+		// Keep the checked-in Jest logger mock as the passthrough target, without adopting its call buffer.
+		const errorDescriptor = Object.getOwnPropertyDescriptor(Logger.prototype, 'error');
+		const originalError = errorDescriptor.value as Logger['error'];
+		const loggedErrors = jest.fn(function (this: Logger, ...args: Parameters<Logger['error']>) {
+			originalError.apply(this, args);
+		});
+		Object.defineProperty(Logger.prototype, 'error', { ...errorDescriptor, value: loggedErrors });
 		try {
 			useContainer(otherModule, { fallbackOnErrors: true });
 			await otherApp.init();
@@ -4114,7 +4121,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 											phase,
 											status: result.status,
 											body: result.body as unknown,
-											errors: jest.spyOn(Logger.prototype, 'error').mock.calls.map((args) =>
+											errors: loggedErrors.mock.calls.slice(-20).map((args) =>
 												args.map((value: unknown) =>
 													value instanceof Error
 														? {
@@ -4201,11 +4208,9 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						JSON.stringify({
 							phase,
 							mutations,
-							errors: jest
-								.spyOn(Logger.prototype, 'error')
-								.mock.calls.filter(
-									([message]) => typeof message === 'string' && message.startsWith('Thermostat committed'),
-								)
+							errors: loggedErrors.mock.calls
+								.filter(([message]) => typeof message === 'string' && message.startsWith('Thermostat committed'))
+								.slice(-20)
 								.map((args) =>
 									args.map((value: unknown) =>
 										value instanceof Error ? { message: value.message, stack: value.stack } : value,
@@ -4243,16 +4248,29 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				}
 			}
 		} finally {
-			if (process.env.P05B1B_TEST_ARTIFACT_DIR)
-				writeFileSync(
-					path.join(process.env.P05B1B_TEST_ARTIFACT_DIR, `identity-${operation}-${phase}.json`),
-					JSON.stringify({ phase, operation, mutations, proofs, successes, graphWrites }),
-				);
-			restoreQuery?.();
-			const index = dataSource.subscribers.indexOf(proofObserver);
-			if (index >= 0) dataSource.subscribers.splice(index, 1);
-			await otherApp.close();
-			useContainer(moduleRef, { fallbackOnErrors: true });
+			try {
+				try {
+					if (process.env.P05B1B_TEST_ARTIFACT_DIR)
+						writeFileSync(
+							path.join(process.env.P05B1B_TEST_ARTIFACT_DIR, `identity-${operation}-${phase}.json`),
+							JSON.stringify({ phase, operation, mutations, proofs, successes, graphWrites }),
+						);
+				} finally {
+					try {
+						restoreQuery?.();
+						const index = dataSource.subscribers.indexOf(proofObserver);
+						if (index >= 0) dataSource.subscribers.splice(index, 1);
+					} finally {
+						try {
+							await otherApp.close();
+						} finally {
+							useContainer(moduleRef, { fallbackOnErrors: true });
+						}
+					}
+				}
+			} finally {
+				Object.defineProperty(Logger.prototype, 'error', errorDescriptor);
+			}
 		}
 	};
 	it.each(['before-presence', 'during-hydration'])(

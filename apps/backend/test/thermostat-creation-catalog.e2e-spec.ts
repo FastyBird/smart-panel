@@ -5,7 +5,11 @@ import { DataSourceOptions, QueryFailedError } from 'typeorm';
 
 import { SqliteDataSource, createSqliteDataSource } from '../src/common/database/sqlite-data-source';
 import { AddHardwareInputCategories1000000000026 } from '../src/migrations/1000000000026-AddHardwareInputCategories';
-import { initializeThermostatCreationCatalog } from '../src/plugins/devices-virtual/services/thermostat-creation-catalog';
+import { AddThermostatCreationCatalogBirths1000000000048 } from '../src/migrations/1000000000048-AddThermostatCreationCatalogBirths';
+import {
+	ThermostatCatalogMigrationMissingError,
+	initializeThermostatCreationCatalog,
+} from '../src/plugins/devices-virtual/services/thermostat-creation-catalog';
 import { VirtualThermostatClaimsService } from '../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatOwnershipSubscriber } from '../src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber';
 
@@ -132,6 +136,76 @@ describe('thermostat creation catalog: actual full SQLite schema lifetime', () =
 		await independent.transaction((manager) => initializeThermostatCreationCatalog(manager, false));
 		expect(await snapshot(independent)).toEqual(installed);
 	});
+
+	it('reports an actionable missing48 error for actual legacy47 false/false, rolls back completely, then accepts explicit48', async () => {
+		const legacy = await open('missing48.sqlite', { migrations: migrationPaths(47), migrationsRun: true });
+		await seed(legacy);
+		const publicRows = await publicCatalog(legacy);
+		// Explicit preliminary full observation precedes the unchanged complete immediate baseline.
+		await snapshot(legacy);
+		const before = await snapshot(legacy);
+		const target = await open('missing48.sqlite', { synchronize: false, migrationsRun: false });
+		const refresh = jest.fn(),
+			invalidate = jest.fn();
+		const claims = { refresh, invalidate } as unknown as VirtualThermostatClaimsService;
+		const subscriber = new VirtualThermostatOwnershipSubscriber(target, claims);
+		const queries: string[] = [];
+		target.subscribers.push({
+			beforeQuery: (event) => {
+				queries.push(event.query);
+			},
+		});
+		await expect(subscriber.onApplicationBootstrap()).rejects.toThrow(ThermostatCatalogMigrationMissingError);
+		expect(await snapshot(target)).toEqual(before);
+		expect(queries.slice(0, 2)).toEqual([
+			'BEGIN TRANSACTION',
+			'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
+		]);
+		expect(queries).toContain('ROLLBACK');
+		expect(Reflect.get(subscriber, 'installed')).toBe(false);
+		expect(refresh).not.toHaveBeenCalled();
+		expect(invalidate).not.toHaveBeenCalled();
+		expect((await target.runMigrations({ transaction: 'each' })).map(({ name }) => name)).toEqual([
+			'AddThermostatCreationCatalogBirths1000000000048',
+		]);
+		const committed = await snapshot(target);
+		const normal = await open('missing48.sqlite', { synchronize: false, migrationsRun: false });
+		await new VirtualThermostatOwnershipSubscriber(normal, claims).onApplicationBootstrap();
+		expect(await snapshot(normal)).toEqual(committed);
+		expect(await publicCatalog(normal)).toEqual(publicRows);
+	});
+
+	it.each(['private-column', 'journaled-deleted', 'malformed-journal'])(
+		'keeps %s state a generic fatal identity error without repair or a missing48 diagnosis',
+		async (kind) => {
+			const database = await open('corrupt48.sqlite', { migrations: migrationPaths(47), migrationsRun: true });
+			await seed(database);
+			if (kind === 'private-column')
+				await database.query('ALTER TABLE devices_module_devices ADD COLUMN "catalogBirth" integer');
+			else if (kind === 'journaled-deleted') {
+				const migrated = await open('corrupt48.sqlite');
+				expect((await migrated.runMigrations({ transaction: 'each' })).map(({ name }) => name)).toEqual([
+					'AddThermostatCreationCatalogBirths1000000000048',
+				]);
+				// Offline schema removal deliberately retains the real committed48 journal entry.
+				await migrated.transaction((manager) =>
+					new AddThermostatCreationCatalogBirths1000000000048().down(manager.queryRunner),
+				);
+			} else await database.query('UPDATE migrations SET timestamp = 0 WHERE timestamp = 1000000000047');
+			await snapshot(database);
+			const before = await snapshot(database);
+			let failure: unknown;
+			try {
+				await database.transaction((manager) => initializeThermostatCreationCatalog(manager, false));
+			} catch (cause) {
+				failure = cause;
+			}
+			expect(await snapshot(database)).toEqual(before);
+			expect(failure).toBeInstanceOf(Error);
+			expect(failure).not.toBeInstanceOf(ThermostatCatalogMigrationMissingError);
+			expect((failure as Error).message).toBe('Invalid thermostat creation catalog identity');
+		},
+	);
 
 	it('M0 first explicit 0-48 install is complete and an offline down/reapply remains incremental', async () => {
 		const database = await open('first.sqlite');
