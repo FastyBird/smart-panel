@@ -3,6 +3,7 @@ import { Column, Entity, EntitySubscriberInterface, PrimaryGeneratedColumn } fro
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -124,6 +125,7 @@ describe('pinned DeviceCreationContext (real coordinated SQLite)', () => {
 		expect((failure as DeviceCreationSettlementError).cause).toBe(refusal);
 		expect((failure as DeviceCreationSettlementError).settlementCause).toBe(refusal);
 		expect(settlement.outcome).toBe('rolled_back');
+		expect(settlement.legacyPublicationFailure).toBeUndefined();
 		expect(settlement.result).toEqual(caught ? { value: 7 } : undefined);
 		expect(publish).not.toHaveBeenCalled();
 		expect(ordinary).not.toHaveBeenCalled();
@@ -144,6 +146,72 @@ describe('pinned DeviceCreationContext (real coordinated SQLite)', () => {
 		).toBe(0);
 		expect(publish).toHaveBeenCalledTimes(1);
 		expect(observations).toEqual([{ outcome: 'committed', structuralLease: true }]);
+		expect(await database.manager.count(CreationRecord)).toBe(1);
+	});
+
+	it.each([undefined, null, false, 0, '', new Error('first publication')])(
+		'retains exact first post-ACK failure after cleanup and continues jobs: %s',
+		async (cause) => {
+			const stages: string[] = [];
+			const log = jest.spyOn(ExtensionLoggerService.prototype, 'error');
+			let context!: DeviceCreationContext;
+			const result = await run(async (active) => {
+				context = active;
+				await active.manager.insert(CreationRecord, { name: 'durable' });
+				active.defer(() => {
+					stages.push('first');
+					expect(settlement.outcome).toBe('committed');
+					// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Exact unknown causes are the contract.
+					return Promise.reject(cause);
+				});
+				active.defer(() => {
+					stages.push('second');
+					throw new Error('later publication');
+				});
+				active.defer(() => {
+					stages.push('last');
+				});
+				return 0;
+			});
+			expect(result).toBe(0);
+			expect(settlement.result).toEqual({ value: 0 });
+			expect(settlement.outcome).toBe('committed');
+			expect(settlement.legacyPublicationFailure).toEqual({ cause });
+			expect(Object.isFrozen(settlement.legacyPublicationFailure)).toBe(true);
+			expect(settlement.legacyPublicationFailure.cause).toBe(cause);
+			if (cause instanceof Error) expect(Object.isFrozen(cause)).toBe(false);
+			expect(stages).toEqual(['first', 'second', 'last']);
+			expect(log).toHaveBeenCalledTimes(2);
+			const logged = log.mock.calls[0][1] as Error;
+			expect(logged).toBeInstanceOf(Error);
+			expect(cause instanceof Error ? logged : logged.cause).toBe(cause);
+			expect(() => context.assertType('virtual')).toThrow('not active');
+			expect(await database.manager.count(CreationRecord)).toBe(1);
+		},
+	);
+
+	it('records the publication marker before the existing logger exception path', async () => {
+		const cause = new Error('publication'),
+			loggerCause = new Error('logger');
+		const later = jest.fn();
+		jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation(() => {
+			expect(settlement.legacyPublicationFailure.cause).toBe(cause);
+			throw loggerCause;
+		});
+		const failure = await run(async (context) => {
+			await context.manager.insert(CreationRecord, { name: 'durable' });
+			context.defer(() => {
+				throw cause;
+			});
+			context.defer(later);
+			return 0;
+		}).catch((error: unknown) => error);
+		expect(failure).toBeInstanceOf(DeviceCreationSettlementError);
+		expect((failure as DeviceCreationSettlementError).cause).toBe(loggerCause);
+		expect(settlement.outcome).toBe('committed');
+		expect(settlement.result).toEqual({ value: 0 });
+		expect(settlement.legacyPublicationFailure.cause).toBe(cause);
+		expect(later).not.toHaveBeenCalled();
 		expect(await database.manager.count(CreationRecord)).toBe(1);
 	});
 

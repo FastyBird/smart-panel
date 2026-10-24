@@ -6,6 +6,7 @@ Reason: The test setup involves dynamic assignment and interaction with HTTP res
 as `any` by supertest, which TypeScript cannot strictly type-check. These casts are necessary for
 effective testing and mirror the pattern already used by the other e2e specs in this directory.
 */
+import { instanceToPlain } from 'class-transformer';
 import { useContainer } from 'class-validator';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -35,6 +36,7 @@ import { ChannelsPropertiesTypeMapperService } from '../src/modules/devices/serv
 import { ClimateAutomationLedgerService } from '../src/modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
+import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../src/modules/devices/utils/schema.utils';
@@ -47,6 +49,7 @@ import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-vir
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { ThermostatCoolingDependencyEntity } from '../src/plugins/devices-virtual/entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../src/plugins/devices-virtual/entities/thermostat-member-protection.entity';
@@ -58,10 +61,19 @@ import {
 } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDeviceInformationListener } from '../src/plugins/devices-virtual/listeners/virtual-device-information.listener';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
+import { VirtualCreatedThermostatModel } from '../src/plugins/devices-virtual/models/thermostat-authoring-response.model';
+import { VirtualThermostatConfigurationModel } from '../src/plugins/devices-virtual/models/thermostat-response.model';
 import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/services/virtual-dependency-graph.service';
+import { VirtualDewPointConfigService } from '../src/plugins/devices-virtual/services/virtual-dew-point-config.service';
+import { DEW_POINT_FORMULA } from '../src/plugins/devices-virtual/services/virtual-dew-point.utils';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
+import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
 import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
+import { RoomSpaceEntity } from '../src/plugins/spaces-home-control/entities/room-space.entity';
+import { ZoneSpaceEntity } from '../src/plugins/spaces-home-control/entities/zone-space.entity';
+
+import { createProtectionProbe } from './support/thermostat-protection-fixture';
 
 interface PropertyValueBody {
 	value: string | number | boolean | null;
@@ -243,6 +255,517 @@ async function ensureDeviceDeleted(
 	throw new Error(`Failed to delete device ${deviceId} after ${attempts} attempts (still present)`);
 }
 
+interface ThermostatWireScenario {
+	replaceBeforeCreate: boolean;
+	variant: string;
+	failure: string;
+}
+interface ThermostatHttpFixture {
+	app: INestApplication;
+	moduleRef: TestingModule;
+	dataSource: DataSource;
+	accessToken: string;
+}
+async function verifyThermostatWire(
+	{ app, moduleRef, dataSource, accessToken }: ThermostatHttpFixture,
+	{ replaceBeforeCreate, variant, failure }: ThermostatWireScenario,
+) {
+	const authPost = (path: string) =>
+		request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${accessToken}`);
+
+	const sensorDevice = uuid(),
+		sensorChannel = uuid(),
+		ambient = uuid();
+	const relayDevice = uuid(),
+		relayChannel = uuid(),
+		relay = uuid(),
+		canonicalMac = uuid().replaceAll('-', '').slice(0, 12).toUpperCase();
+	await dataSource.manager.insert(DeviceEntity, {
+		id: sensorDevice,
+		name: 'P05a ambient',
+		category: DeviceCategory.SENSOR,
+		enabled: true,
+	});
+	await dataSource.manager.insert(ChannelEntity, {
+		id: sensorChannel,
+		device: sensorDevice,
+		name: 'Temperature',
+		category: ChannelCategory.TEMPERATURE,
+	} as never);
+	await dataSource.manager.insert(ChannelPropertyEntity, {
+		id: ambient,
+		channel: sensorChannel,
+		identifier: 'temperature',
+		category: PropertyCategory.TEMPERATURE,
+		dataType: DataTypeType.FLOAT,
+		unit: '°C',
+		permissions: [PermissionType.READ_ONLY],
+	} as never);
+	await dataSource.manager.insert(ShellyNgDeviceEntity, {
+		id: relayDevice,
+		name: 'P05a relay',
+		identifier: 'p05a-' + uuid(),
+		canonicalMac,
+		category: DeviceCategory.SWITCHER,
+		enabled: true,
+	});
+	await dataSource.manager.insert(ShellyNgChannelEntity, {
+		id: relayChannel,
+		device: relayDevice,
+		identifier: 'switch:0',
+		name: 'Switch',
+		category: ChannelCategory.SWITCHER,
+	} as never);
+	await dataSource.manager.insert(ShellyNgChannelPropertyEntity, {
+		id: relay,
+		channel: relayChannel,
+		identifier: 'output',
+		category: PropertyCategory.ON,
+		dataType: DataTypeType.BOOL,
+		permissions: [PermissionType.READ_WRITE],
+	} as never);
+	const settings: { setting: string; property: string }[] = [];
+	function property(channel: ChannelCategory, category: PropertyCategory, setting?: string) {
+		const metadata = getPropertyMetadata(channel, category),
+			id = uuid();
+		if (setting) settings.push({ setting, property: id });
+		return {
+			id,
+			type: 'virtual',
+			identifier: category,
+			category,
+			data_type: metadata.data_type,
+			permissions: [PermissionType.READ_ONLY],
+			value_origin: 'local',
+			format: metadata.format,
+		};
+	}
+	function channel(category: ChannelCategory, properties: ReturnType<typeof property>[]) {
+		return { id: uuid(), type: 'virtual', identifier: category, name: category, category, properties };
+	}
+	const room = uuid(),
+		zone = uuid();
+	await dataSource.manager.insert(RoomSpaceEntity, { id: room, name: 'P05b room' });
+	await dataSource.manager.insert(ZoneSpaceEntity, { id: zone, name: 'P05b zone' });
+	const device = {
+		room_id: room,
+		zone_ids: [zone],
+		controls: [],
+		id: uuid(),
+		type: 'virtual',
+		name: 'P05a complete thermostat',
+		category: DeviceCategory.THERMOSTAT,
+		mode: 'climate_controller',
+		channels: [
+			channel(ChannelCategory.TEMPERATURE, [property(ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE)]),
+			channel(ChannelCategory.THERMOSTAT, [property(ChannelCategory.THERMOSTAT, PropertyCategory.LOCKED, 'locked')]),
+			channel(
+				ChannelCategory.DEVICE_INFORMATION,
+				[
+					PropertyCategory.MANUFACTURER,
+					PropertyCategory.MODEL,
+					PropertyCategory.SERIAL_NUMBER,
+					PropertyCategory.STATUS,
+				].map((category) => property(ChannelCategory.DEVICE_INFORMATION, category)),
+			),
+			channel(ChannelCategory.HEATER, [
+				property(ChannelCategory.HEATER, PropertyCategory.ON, 'heating_enabled'),
+				property(ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, 'heating_setpoint'),
+				property(ChannelCategory.HEATER, PropertyCategory.STATUS),
+			]),
+		],
+	};
+
+	let coolingRelay: string, floorProbe: string, surfaceProbe: string, dew: string;
+	let coolingMac: string;
+	if (variant === 'dual') {
+		const coolingDevice = uuid(),
+			coolingChannel = uuid();
+		coolingRelay = uuid();
+		coolingMac = uuid().replaceAll('-', '').slice(0, 12).toUpperCase();
+		await dataSource.manager.insert(ShellyNgDeviceEntity, {
+			id: coolingDevice,
+			name: 'P05b cooler',
+			identifier: uuid(),
+			canonicalMac: coolingMac,
+			category: DeviceCategory.SWITCHER,
+			enabled: true,
+		});
+		await dataSource.manager.insert(ShellyNgChannelEntity, {
+			id: coolingChannel,
+			device: coolingDevice,
+			identifier: 'switch:0',
+			name: 'Cooler',
+			category: ChannelCategory.SWITCHER,
+		} as never);
+		await dataSource.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: coolingRelay,
+			channel: coolingChannel,
+			identifier: 'output',
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		floorProbe = (await createProtectionProbe(dataSource, relay)).sourceId;
+		surfaceProbe = (await createProtectionProbe(dataSource, coolingRelay)).sourceId;
+		const humidityChannel = uuid(),
+			humidity = uuid(),
+			dewDevice = uuid(),
+			dewChannel = uuid();
+		dew = uuid();
+		await dataSource.manager.insert(ChannelEntity, {
+			id: humidityChannel,
+			device: sensorDevice,
+			name: 'Humidity',
+			category: ChannelCategory.HUMIDITY,
+		} as never);
+		await dataSource.manager.insert(ChannelPropertyEntity, {
+			id: humidity,
+			channel: humidityChannel,
+			identifier: 'humidity',
+			category: PropertyCategory.HUMIDITY,
+			dataType: DataTypeType.FLOAT,
+			unit: '%',
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		await dataSource.manager.insert(VirtualDeviceEntity, {
+			id: dewDevice,
+			name: 'P05b dedicated dew point',
+			category: DeviceCategory.SENSOR,
+			mode: 'sensor_transform',
+			enabled: true,
+		} as never);
+		await dataSource.manager.insert(VirtualChannelEntity, {
+			id: dewChannel,
+			device: dewDevice,
+			name: 'Dew point',
+			category: ChannelCategory.ANALOG_INPUT,
+		} as never);
+		await dataSource.manager.insert(VirtualChannelPropertyEntity, {
+			id: dew,
+			channel: dewChannel,
+			identifier: 'value',
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			unit: '°C',
+			valueOrigin: 'derived',
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		const dewPoints = moduleRef.get(VirtualDewPointConfigService);
+		await dataSource.transaction(async (manager) => {
+			const prepared = await dewPoints.prepare(manager, dew, {
+				schemaVersion: 1,
+				formulaVersion: DEW_POINT_FORMULA,
+				expectedRevision: 0,
+				maximumAgeSeconds: 300,
+				maximumSkewSeconds: 60,
+				sources: [
+					{ role: 'dry_bulb', sourcePropertyId: ambient },
+					{ role: 'relative_humidity', sourcePropertyId: humidity },
+				],
+			});
+			await dewPoints.persist(manager, prepared);
+		});
+		device.channels.push(
+			channel(ChannelCategory.COOLER, [
+				property(ChannelCategory.COOLER, PropertyCategory.ON, 'cooling_enabled'),
+				property(ChannelCategory.COOLER, PropertyCategory.TEMPERATURE, 'cooling_setpoint'),
+				property(ChannelCategory.COOLER, PropertyCategory.STATUS),
+			]),
+		);
+	}
+
+	const graph = moduleRef.get(VirtualDependencyGraphService),
+		revision = await graph.revision();
+	const legacyWrites = jest.spyOn(graph, 'withStructuralWrite');
+	const mapper = moduleRef.get(ChannelsPropertiesTypeMapperService);
+	const mapping = mapper.getMapping('virtual'),
+		originalHook = mapping.beforeCreate;
+	const values = moduleRef.get(PropertyValueService);
+	const ambientProperty = await dataSource.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambient });
+	await values.write(ambientProperty, 18);
+	const historyBefore = await values.readLatest(ambientProperty);
+	expect(historyBefore?.value).toBe(18);
+	const writes = jest.spyOn(values, 'write');
+	const emitted = jest.spyOn(moduleRef.get(EventEmitter2), 'emit');
+	if (replaceBeforeCreate)
+		mapping.beforeCreate = async function (...args) {
+			await originalHook.call(this, ...args);
+			mapper.registerMapping(mapping);
+		};
+
+	const configs = moduleRef.get(VirtualThermostatConfigService),
+		devices = moduleRef.get(DevicesService);
+	let loaded: VirtualDeviceEntity,
+		originalConfiguration: VirtualThermostatConfigurationModel,
+		originalWire: unknown,
+		healthyWire: unknown;
+	const wire = (selected: VirtualDeviceEntity, configuration: VirtualThermostatConfigurationModel): unknown =>
+		JSON.parse(
+			JSON.stringify(
+				instanceToPlain(Object.assign(new VirtualCreatedThermostatModel(), { device: selected, configuration }), {
+					excludeExtraneousValues: true,
+					exposeUnsetFields: false,
+					ignoreDecorators: false,
+					groups: ['api'],
+					enableCircularCheck: true,
+				}),
+			),
+		) as unknown;
+	const observer = {
+		afterLoad(entity: object) {
+			if (entity instanceof VirtualDeviceEntity && entity.id === device.id) loaded = entity;
+		},
+	};
+	dataSource.subscribers.push(observer);
+	const snapshot = configs.snapshot.bind(configs) as VirtualThermostatConfigService['snapshot'];
+	const snapshotSpy = jest.spyOn(configs, 'snapshot').mockImplementation(async (...args) => {
+		const configuration = await snapshot(...args);
+		originalConfiguration = configuration;
+		originalWire = wire(loaded, configuration);
+		return configuration;
+	});
+	let configured = false,
+		finalHydrations = 0,
+		catalogJobs = 0;
+	const afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+	const configSpy = jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+		const result = await afterCommit(...args);
+		configured = true;
+		if (failure === 'configuration') {
+			// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy post-ACK cause.
+			return Promise.reject(0);
+		}
+		return result;
+	});
+	const find = devices.findOne.bind(devices) as DevicesService['findOne'];
+	const findSpy = jest.spyOn(devices, 'findOne').mockImplementation(async (...args) => {
+		const finalPhaseAtEntry = configured;
+		const result = await find(...args);
+		if (finalPhaseAtEntry && args[0] === device.id) {
+			finalHydrations++;
+			healthyWire = wire(result as VirtualDeviceEntity, originalConfiguration);
+			if (failure === 'hydration') {
+				// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy post-ACK cause.
+				return Promise.reject(null);
+			}
+		}
+		return result;
+	});
+	const originalAfterCreate = mapping.afterCreate;
+	const originalPropertyIds = new Set(
+		device.channels.flatMap((entry) => entry.properties.map((property) => property.id)),
+	);
+	mapping.afterCreate = async function (...args) {
+		await originalAfterCreate?.call(this, ...args);
+		// Fault only this request's finite catalog jobs, leaving unrelated background repair intact.
+		if (!originalPropertyIds.has(args[0].id)) return;
+		catalogJobs++;
+		if (failure === 'catalog') {
+			// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy post-ACK cause.
+			return Promise.reject('');
+		}
+	};
+
+	const response = await authPost('/plugins/devices-virtual/producers/thermostats').send({
+		device,
+		configuration: {
+			schema_version: 1,
+			expected_revision: 0,
+			expected_graph_revision: revision,
+			requested_mode: 'off',
+			policy: {
+				heatingSetpoint: 20,
+				coolingSetpoint: variant === 'dual' ? 25 : null,
+				...(variant === 'dual' ? { cooling: { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1 } } : {}),
+				coldTolerance: 0.5,
+				hotTolerance: 0.5,
+				neutralMargin: 1,
+				minimumOffMs: 0,
+				changeoverMs: 0,
+				floor: variant === 'dual' ? { limit: 30, recoveryHysteresis: 2 } : null,
+			},
+			contact_opening_ms: 0,
+			contact_closing_ms: 0,
+			sources: [{ role: 'ambient', source_property: ambient, maximum_age_seconds: 300 }],
+			actuators: [
+				{
+					role: 'heating',
+					source_property: relay,
+					lease_seconds: 30,
+					...(variant === 'dual'
+						? {
+								protection: {
+									schema_version: 1,
+									kind: 'local_floor',
+									source_property: floorProbe,
+									maximum_age_seconds: 5,
+								},
+							}
+						: {}),
+				},
+				...(variant === 'dual'
+					? [
+							{
+								role: 'cooling',
+								source_property: coolingRelay,
+								lease_seconds: 30,
+								cooling_protection: {
+									schemaVersion: 1,
+									purpose: 'cooled_surface',
+									dew_point_property: dew,
+									surface_property: surfaceProbe,
+									maximum_age_seconds: 5,
+								},
+							},
+						]
+					: []),
+			],
+			settings,
+		},
+	});
+	snapshotSpy.mockRestore();
+	configSpy.mockRestore();
+	findSpy.mockRestore();
+	dataSource.subscribers.splice(dataSource.subscribers.indexOf(observer), 1);
+	mapping.afterCreate = originalAfterCreate;
+	if (response.status !== (replaceBeforeCreate ? 500 : 201))
+		throw new Error(JSON.stringify({ status: response.status, body: response.body as unknown }));
+	expect(response.status).toBe(replaceBeforeCreate ? 500 : 201);
+	if (replaceBeforeCreate) {
+		mapping.beforeCreate = originalHook;
+		mapper.registerMapping(mapping);
+	}
+	if (replaceBeforeCreate) {
+		expect(await dataSource.manager.countBy(DeviceEntity, { id: device.id })).toBe(0);
+		for (const expected of device.channels) {
+			expect(await dataSource.manager.countBy(ChannelEntity, { id: expected.id })).toBe(0);
+			for (const property of expected.properties)
+				expect(await dataSource.manager.countBy(ChannelPropertyEntity, { id: property.id })).toBe(0);
+		}
+		expect(await dataSource.manager.countBy(VirtualThermostatConfigEntity, { controllerId: device.id })).toBe(0);
+		expect(await dataSource.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId: device.id })).toBe(0);
+		expect(await graph.revision()).toBe(revision);
+		expect(writes).not.toHaveBeenCalled();
+		expect(
+			emitted.mock.calls.filter(([event]) =>
+				[EventType.DEVICE_CREATED, EventType.CHANNEL_CREATED, EventType.CHANNEL_PROPERTY_CREATED].includes(
+					event as EventType,
+				),
+			),
+		).toEqual([]);
+		expect(await values.readLatest(ambientProperty)).toEqual(historyBefore);
+		writes.mockRestore();
+		emitted.mockRestore();
+		legacyWrites.mockRestore();
+		return;
+	}
+	writes.mockRestore();
+	emitted.mockRestore();
+	const result = (
+		response.body as {
+			data: {
+				device: DeviceBody;
+				configuration: {
+					controller: string;
+					revision: number;
+					readiness: string;
+					requested_mode: string;
+					graph_revision: number;
+				};
+			};
+		}
+	).data;
+	expect(response.body).toEqual({
+		status: 'success',
+		timestamp: expect.any(String) as unknown,
+		request_id: expect.any(String) as unknown,
+		path: '/plugins/devices-virtual/producers/thermostats',
+		method: 'POST',
+		data: failure === 'none' ? healthyWire : originalWire,
+		metadata: {
+			request_duration_ms: expect.any(Number) as unknown,
+			server_time: expect.any(String) as unknown,
+			cpu_usage: expect.any(Number) as unknown,
+		},
+	});
+	expect(finalHydrations).toBe(1);
+	if (failure === 'none') {
+		const setpoint = settings.find((entry) => entry.setting === 'heating_setpoint');
+		expect(
+			result.device.channels.flatMap((entry) => entry.properties).find((entry) => entry.id === setpoint.property).value
+				.value,
+		).toBe(20);
+		const information = result.device.channels.find(
+			(entry) => entry.category === (ChannelCategory.DEVICE_INFORMATION as string),
+		);
+		for (const category of [PropertyCategory.MANUFACTURER, PropertyCategory.MODEL, PropertyCategory.SERIAL_NUMBER])
+			expect(information.properties.find((entry) => entry.category === category).value).toBeNull();
+	}
+	expect(catalogJobs).toBe(device.channels.reduce((count, entry) => count + entry.properties.length, 0));
+	expect(result.device.id).toBe(device.id);
+	expect(result.configuration).toMatchObject({
+		controller: device.id,
+		revision: 1,
+		readiness: 'draft',
+		requested_mode: 'off',
+	});
+	for (const expected of device.channels) {
+		const storedChannel = await dataSource.manager.findOneOrFail(ChannelEntity, {
+			where: { id: expected.id },
+			relations: ['device'],
+		});
+		expect((storedChannel.device as DeviceEntity).id).toBe(device.id);
+		for (const expectedProperty of expected.properties) {
+			const stored = await dataSource.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: expectedProperty.id },
+				relations: ['channel'],
+			});
+			expect((stored.channel as ChannelEntity).id).toBe(expected.id);
+			expect(stored.permissions).toEqual([
+				settings.some((setting) => setting.property === stored.id)
+					? PermissionType.READ_WRITE
+					: PermissionType.READ_ONLY,
+			]);
+		}
+	}
+	expect(
+		await dataSource.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: device.id }),
+	).toMatchObject({ revision: 1, requestedMode: 'off' });
+	expect(await dataSource.manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId: device.id })).toEqual([
+		expect.objectContaining({
+			physicalIdentity: `shelly-ng:${canonicalMac}:switch:0:output`,
+			sourcePropertyId: relay,
+			state: 'reserved',
+			revision: 1,
+		}),
+		...(variant === 'dual'
+			? [
+					expect.objectContaining({
+						physicalIdentity: `shelly-ng:${coolingMac}:switch:0:output`,
+						sourcePropertyId: coolingRelay,
+						state: 'reserved',
+						revision: 1,
+					}) as unknown,
+				]
+			: []),
+	]);
+	expect({
+		sources: await dataSource.manager.countBy(VirtualThermostatSourceEntity, { controllerId: device.id }),
+	}).toEqual({ sources: 1 });
+	expect(await dataSource.manager.countBy(VirtualThermostatSettingEntity, { controllerId: device.id })).toBe(
+		settings.length,
+	);
+	// This one-branch default does not require an explicit floor or cooled-surface dependency.
+	expect(await dataSource.manager.count(ThermostatMemberProtectionEntity)).toBe(variant === 'dual' ? 1 : 0);
+	expect(await dataSource.manager.count(ThermostatCoolingDependencyEntity)).toBe(variant === 'dual' ? 1 : 0);
+	// The creating transaction increments once; ordinary asynchronous status writes retain their legacy graph path.
+	expect(result.configuration.graph_revision).toBe(revision + 1);
+	expect(await graph.revision()).toBe(revision + 1 + legacyWrites.mock.calls.length);
+	legacyWrites.mockRestore();
+	expect(moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1')).toBeNull();
+}
+
 describe('devices-virtual plugin (e2e)', () => {
 	let app: INestApplication;
 	let accessToken: string;
@@ -336,250 +859,12 @@ describe('devices-virtual plugin (e2e)', () => {
 		expect(await dataSource.getRepository(ClimateAutomationSlotEntity).count()).toBe(0);
 	});
 
-	it.each([true, false])(
-		'uses the actual AppModule POST and catalogs with beforeCreate replacement=%s',
-		async (replaceBeforeCreate) => {
-			const sensorDevice = uuid(),
-				sensorChannel = uuid(),
-				ambient = uuid();
-			const relayDevice = uuid(),
-				relayChannel = uuid(),
-				relay = uuid();
-			await dataSource.manager.insert(DeviceEntity, {
-				id: sensorDevice,
-				name: 'P05a ambient',
-				category: DeviceCategory.SENSOR,
-				enabled: true,
-			});
-			await dataSource.manager.insert(ChannelEntity, {
-				id: sensorChannel,
-				device: sensorDevice,
-				name: 'Temperature',
-				category: ChannelCategory.TEMPERATURE,
-			} as never);
-			await dataSource.manager.insert(ChannelPropertyEntity, {
-				id: ambient,
-				channel: sensorChannel,
-				identifier: 'temperature',
-				category: PropertyCategory.TEMPERATURE,
-				dataType: DataTypeType.FLOAT,
-				unit: '°C',
-				permissions: [PermissionType.READ_ONLY],
-			} as never);
-			await dataSource.manager.insert(ShellyNgDeviceEntity, {
-				id: relayDevice,
-				name: 'P05a relay',
-				identifier: 'p05a-' + uuid(),
-				canonicalMac: replaceBeforeCreate ? 'A8032ABE5197' : 'A8032ABE5199',
-				category: DeviceCategory.SWITCHER,
-				enabled: true,
-			});
-			await dataSource.manager.insert(ShellyNgChannelEntity, {
-				id: relayChannel,
-				device: relayDevice,
-				identifier: 'switch:0',
-				name: 'Switch',
-				category: ChannelCategory.SWITCHER,
-			} as never);
-			await dataSource.manager.insert(ShellyNgChannelPropertyEntity, {
-				id: relay,
-				channel: relayChannel,
-				identifier: 'output',
-				category: PropertyCategory.ON,
-				dataType: DataTypeType.BOOL,
-				permissions: [PermissionType.READ_WRITE],
-			} as never);
-			const settings: { setting: string; property: string }[] = [];
-			function property(channel: ChannelCategory, category: PropertyCategory, setting?: string) {
-				const metadata = getPropertyMetadata(channel, category),
-					id = uuid();
-				if (setting) settings.push({ setting, property: id });
-				return {
-					id,
-					type: 'virtual',
-					identifier: category,
-					category,
-					data_type: metadata.data_type,
-					permissions: [PermissionType.READ_ONLY],
-					value_origin: 'local',
-					format: metadata.format,
-				};
-			}
-			function channel(category: ChannelCategory, properties: ReturnType<typeof property>[]) {
-				return { id: uuid(), type: 'virtual', identifier: category, name: category, category, properties };
-			}
-			const device = {
-				id: uuid(),
-				type: 'virtual',
-				name: 'P05a complete thermostat',
-				category: DeviceCategory.THERMOSTAT,
-				mode: 'climate_controller',
-				channels: [
-					channel(ChannelCategory.TEMPERATURE, [property(ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE)]),
-					channel(ChannelCategory.THERMOSTAT, [
-						property(ChannelCategory.THERMOSTAT, PropertyCategory.LOCKED, 'locked'),
-					]),
-					channel(
-						ChannelCategory.DEVICE_INFORMATION,
-						[
-							PropertyCategory.MANUFACTURER,
-							PropertyCategory.MODEL,
-							PropertyCategory.SERIAL_NUMBER,
-							PropertyCategory.STATUS,
-						].map((category) => property(ChannelCategory.DEVICE_INFORMATION, category)),
-					),
-					channel(ChannelCategory.HEATER, [
-						property(ChannelCategory.HEATER, PropertyCategory.ON, 'heating_enabled'),
-						property(ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, 'heating_setpoint'),
-						property(ChannelCategory.HEATER, PropertyCategory.STATUS),
-					]),
-				],
-			};
-			const graph = moduleRef.get(VirtualDependencyGraphService),
-				revision = await graph.revision();
-			const legacyWrites = jest.spyOn(graph, 'withStructuralWrite');
-			const mapper = moduleRef.get(ChannelsPropertiesTypeMapperService);
-			const mapping = mapper.getMapping('virtual'),
-				originalHook = mapping.beforeCreate;
-			const values = moduleRef.get(PropertyValueService);
-			const ambientProperty = await dataSource.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambient });
-			await values.write(ambientProperty, 18);
-			const historyBefore = await values.readLatest(ambientProperty);
-			expect(historyBefore?.value).toBe(18);
-			const writes = jest.spyOn(values, 'write');
-			const emitted = jest.spyOn(moduleRef.get(EventEmitter2), 'emit');
-			if (replaceBeforeCreate)
-				mapping.beforeCreate = async function (...args) {
-					await originalHook.call(this, ...args);
-					mapper.registerMapping(mapping);
-				};
-			const response = await authPost('/plugins/devices-virtual/producers/thermostats')
-				.send({
-					device,
-					configuration: {
-						schema_version: 1,
-						expected_revision: 0,
-						expected_graph_revision: revision,
-						requested_mode: 'off',
-						policy: {
-							heatingSetpoint: 20,
-							coolingSetpoint: null,
-							coldTolerance: 0.5,
-							hotTolerance: 0.5,
-							neutralMargin: 1,
-							minimumOffMs: 0,
-							changeoverMs: 0,
-							floor: null,
-						},
-						contact_opening_ms: 0,
-						contact_closing_ms: 0,
-						sources: [{ role: 'ambient', source_property: ambient, maximum_age_seconds: 300 }],
-						actuators: [{ role: 'heating', source_property: relay, lease_seconds: 30 }],
-						settings,
-					},
-				})
-				.expect(replaceBeforeCreate ? 500 : 201);
-			if (replaceBeforeCreate) {
-				mapping.beforeCreate = originalHook;
-				mapper.registerMapping(mapping);
-			}
-			if (replaceBeforeCreate) {
-				expect(await dataSource.manager.countBy(DeviceEntity, { id: device.id })).toBe(0);
-				for (const expected of device.channels) {
-					expect(await dataSource.manager.countBy(ChannelEntity, { id: expected.id })).toBe(0);
-					for (const property of expected.properties)
-						expect(await dataSource.manager.countBy(ChannelPropertyEntity, { id: property.id })).toBe(0);
-				}
-				expect(await dataSource.manager.countBy(VirtualThermostatConfigEntity, { controllerId: device.id })).toBe(0);
-				expect(
-					await dataSource.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId: device.id }),
-				).toBe(0);
-				expect(await graph.revision()).toBe(revision);
-				expect(writes).not.toHaveBeenCalled();
-				expect(
-					emitted.mock.calls.filter(([event]) =>
-						[EventType.DEVICE_CREATED, EventType.CHANNEL_CREATED, EventType.CHANNEL_PROPERTY_CREATED].includes(
-							event as EventType,
-						),
-					),
-				).toEqual([]);
-				expect(await values.readLatest(ambientProperty)).toEqual(historyBefore);
-				writes.mockRestore();
-				emitted.mockRestore();
-				legacyWrites.mockRestore();
-				return;
-			}
-			writes.mockRestore();
-			emitted.mockRestore();
-			const result = (
-				response.body as {
-					data: {
-						device: DeviceBody;
-						configuration: {
-							controller: string;
-							revision: number;
-							readiness: string;
-							requested_mode: string;
-							graph_revision: number;
-						};
-					};
-				}
-			).data;
-			expect(result.device.id).toBe(device.id);
-			expect(result.configuration).toMatchObject({
-				controller: device.id,
-				revision: 1,
-				readiness: 'draft',
-				requested_mode: 'off',
-			});
-			for (const expected of device.channels) {
-				const storedChannel = await dataSource.manager.findOneOrFail(ChannelEntity, {
-					where: { id: expected.id },
-					relations: ['device'],
-				});
-				expect((storedChannel.device as DeviceEntity).id).toBe(device.id);
-				for (const expectedProperty of expected.properties) {
-					const stored = await dataSource.manager.findOneOrFail(ChannelPropertyEntity, {
-						where: { id: expectedProperty.id },
-						relations: ['channel'],
-					});
-					expect((stored.channel as ChannelEntity).id).toBe(expected.id);
-					expect(stored.permissions).toEqual([
-						settings.some((setting) => setting.property === stored.id)
-							? PermissionType.READ_WRITE
-							: PermissionType.READ_ONLY,
-					]);
-				}
-			}
-			expect(
-				await dataSource.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: device.id }),
-			).toMatchObject({ revision: 1, requestedMode: 'off' });
-			expect(
-				await dataSource.manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId: device.id }),
-			).toEqual([
-				expect.objectContaining({
-					physicalIdentity: 'shelly-ng:A8032ABE5199:switch:0:output',
-					sourcePropertyId: relay,
-					state: 'reserved',
-					revision: 1,
-				}),
-			]);
-			expect({
-				sources: await dataSource.manager.countBy(VirtualThermostatSourceEntity, { controllerId: device.id }),
-			}).toEqual({ sources: 1 });
-			expect(await dataSource.manager.countBy(VirtualThermostatSettingEntity, { controllerId: device.id })).toBe(
-				settings.length,
-			);
-			// This one-branch default does not require an explicit floor or cooled-surface dependency.
-			expect(await dataSource.manager.count(ThermostatMemberProtectionEntity)).toBe(0);
-			expect(await dataSource.manager.count(ThermostatCoolingDependencyEntity)).toBe(0);
-			// The creating transaction increments once; ordinary asynchronous status writes retain their legacy graph path.
-			expect(result.configuration.graph_revision).toBe(revision + 1);
-			expect(await graph.revision()).toBe(revision + 1 + legacyWrites.mock.calls.length);
-			legacyWrites.mockRestore();
-			expect(moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1')).toBeNull();
-		},
-	);
+	it.each([
+		{ replaceBeforeCreate: true, variant: 'heating', failure: 'none' },
+		{ replaceBeforeCreate: false, variant: 'heating', failure: 'none' },
+	])('uses the actual AppModule POST with complete wire parity: %j', async (scenario) => {
+		await verifyThermostatWire({ app, moduleRef, dataSource, accessToken }, scenario);
+	});
 
 	// Helper to make authenticated requests
 	function authGet(path: string) {
@@ -3051,5 +3336,86 @@ describe('devices-virtual plugin (e2e)', () => {
 		it('should return 401 for unauthenticated requests', async () => {
 			await request(app.getHttpServer()).get('/modules/devices/devices').expect(401);
 		});
+	});
+});
+
+// Each added failure fixture owns its background services. The legacy wiring suite keeps its
+// original shared AppModule and both original thermostat cases above.
+describe('thermostat creation response (isolated real AppModule e2e)', () => {
+	let app: INestApplication;
+	let moduleRef: TestingModule;
+	let dataSource: DataSource;
+	let accessToken: string;
+	beforeEach(async () => {
+		const dynamicAppModule = AppModule.register({
+			moduleExtensions: [],
+			pluginExtensions: [],
+		});
+
+		const moduleFixture = await Test.createTestingModule({
+			imports: [dynamicAppModule],
+		}).compile();
+
+		app = moduleFixture.createNestApplication();
+
+		app.useGlobalPipes(
+			new ValidationPipe({
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				transform: true,
+			}),
+		);
+
+		useContainer(moduleFixture, { fallbackOnErrors: true });
+
+		await app.init();
+
+		// Wait for all modules to initialize
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		moduleRef = moduleFixture;
+		dataSource = moduleFixture.get<DataSource>(DataSource);
+
+		// Register and login to obtain an access token
+		await request(app.getHttpServer())
+			.post('/modules/auth/auth/register')
+			.send({
+				data: {
+					username: 'virtualdevicestest',
+					password: 'securePassword123!',
+					email: 'virtualdevicestest@example.com',
+				},
+			});
+
+		const loginResponse = await request(app.getHttpServer())
+			.post('/modules/auth/auth/login')
+			.send({
+				data: {
+					username: 'virtualdevicestest',
+					password: 'securePassword123!',
+				},
+			});
+
+		const loginBody = loginResponse.body as { data?: { access_token?: string } };
+
+		if (!loginBody.data?.access_token) {
+			throw new Error(
+				`E2E setup failed: login returned status ${loginResponse.status} — ${JSON.stringify(loginResponse.body)}`,
+			);
+		}
+
+		accessToken = loginBody.data.access_token;
+	});
+	afterEach(async () => {
+		await app?.close();
+		useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
+	});
+	it.each([
+		{ replaceBeforeCreate: false, variant: 'heating', failure: 'catalog' },
+		{ replaceBeforeCreate: false, variant: 'heating', failure: 'configuration' },
+		{ replaceBeforeCreate: false, variant: 'heating', failure: 'hydration' },
+		{ replaceBeforeCreate: false, variant: 'dual', failure: 'none' },
+	])('preserves the complete HTTP wire and durable creation: %j', async (scenario) => {
+		await verifyThermostatWire({ app, moduleRef, dataSource, accessToken }, scenario);
 	});
 });
