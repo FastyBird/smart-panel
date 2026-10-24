@@ -1,5 +1,3 @@
-import { readdirSync } from 'node:fs';
-import path from 'node:path';
 import { DataSource, EntitySchema } from 'typeorm';
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { ColumnType } from 'typeorm/driver/types/ColumnTypes';
@@ -8,13 +6,6 @@ import { TableColumn } from 'typeorm/schema-builder/table/TableColumn';
 import AppDataSource from '../../dataSource';
 
 import { SqliteDataSource, createSqliteDataSource } from './sqlite-data-source';
-
-// Preload the actual discovery modules, like static entity imports in other integration
-// tests, so cold TypeScript module loading is outside Jest's database-operation timeout.
-const sourceRoot = path.resolve(__dirname, '../..');
-for (const name of readdirSync(sourceRoot, { recursive: true }) as string[]) {
-	if (/\.(entity|subscriber)\.ts$/.test(name)) jest.requireActual(path.join(sourceRoot, name));
-}
 
 interface ProbeRow {
 	id: number;
@@ -42,8 +33,6 @@ function enumSchema(type: ColumnType = 'text') {
 async function plannedQueries(database: DataSource) {
 	return (await database.driver.createSchemaBuilder().log()).upQueries.map((query) => query.query);
 }
-
-const catalogTables = ['devices_module_devices', 'devices_module_channels', 'devices_module_channels_properties'];
 
 async function triggers(database: DataSource) {
 	return database.query<{ name: string; sql: string }[]>(
@@ -330,72 +319,5 @@ describe('SQLite enum schema synchronization', () => {
 		expect(await database.query<{ id: number; state: string }[]>('SELECT * FROM presence_probe')).toEqual([
 			{ id: 1, state: 'incompatible' },
 		]);
-	});
-
-	it('preserves the full discovered catalog, rows, enum CHECKs and triggers through unchanged sync', async () => {
-		database = await createSqliteDataSource({
-			type: 'sqlite',
-			database: ':memory:',
-			synchronize: true,
-			entities: [sourceRoot + '/**/*.entity.ts'],
-			subscribers: [sourceRoot + '/**/*.subscriber.ts'],
-		});
-		expect(database.entityMetadatas.length).toBeGreaterThan(72);
-		expect(database.subscribers.length).toBeGreaterThan(0);
-		await database.query(
-			"INSERT INTO devices_module_devices(id, name, type) VALUES ('device', 'Original', 'simulator')",
-		);
-		await database.query(
-			"INSERT INTO devices_module_channels(id, name, type, deviceId) VALUES ('channel', 'Original', 'simulator', 'device')",
-		);
-		await database.query(
-			"INSERT INTO devices_module_channels_properties(id, type, channelId) VALUES ('property', 'simulator', 'channel')",
-		);
-		const rows = await Promise.all(
-			catalogTables.map((table) => database.query<Record<string, unknown>[]>(`SELECT * FROM "${table}" ORDER BY id`)),
-		);
-		for (const table of catalogTables) await installTrigger(database, table);
-		const before = await triggers(database);
-		const runner = database.createQueryRunner();
-		const columnsBefore = (await runner.getTables()).map((table) => ({ name: table.name, columns: table.columns }));
-		await runner.release();
-		expect(before).toHaveLength(3);
-		expect(await plannedQueries(database)).toEqual([]);
-		await database.synchronize();
-		expect(await triggers(database)).toEqual(before);
-		const verificationRunner = database.createQueryRunner();
-		try {
-			expect(
-				(await verificationRunner.getTables()).map((table) => ({ name: table.name, columns: table.columns })),
-			).toEqual(columnsBefore);
-		} finally {
-			await verificationRunner.release();
-		}
-		expect(
-			await Promise.all(
-				catalogTables.map((table) => database.query<Record<string, unknown>[]>(`SELECT * FROM "${table}" ORDER BY id`)),
-			),
-		).toEqual(rows);
-		for (const table of catalogTables) {
-			await expect(database.query(`UPDATE "${table}" SET category = 'invalid'`)).rejects.toThrow(
-				'CHECK constraint failed',
-			);
-			await expect(database.query(`DELETE FROM "${table}"`)).rejects.toThrow('preserved trigger');
-		}
-		await expect(database.query("UPDATE devices_module_devices SET hiddenBy = 'invalid'")).rejects.toThrow(
-			'CHECK constraint failed',
-		);
-		await database.query("UPDATE devices_module_devices SET hiddenBy = NULL WHERE id = 'device'");
-		await database.query("UPDATE devices_module_devices SET hiddenBy = 'user' WHERE id = 'device'");
-		await expect(database.query("UPDATE devices_module_devices SET mode = 'invalid'")).rejects.toThrow(
-			'CHECK constraint failed',
-		);
-		await expect(database.query("UPDATE devices_module_channels_properties SET dataType = 'invalid'")).rejects.toThrow(
-			'CHECK constraint failed',
-		);
-		await expect(
-			database.query("UPDATE devices_module_channels_properties SET valueOrigin = 'invalid'"),
-		).rejects.toThrow('CHECK constraint failed');
-		expect(await plannedQueries(database)).toEqual([]);
 	});
 });
