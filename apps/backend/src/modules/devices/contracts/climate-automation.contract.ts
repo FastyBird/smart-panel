@@ -81,3 +81,18 @@ export interface ClimateAutomationCapturedRegistration<T> {
 	readonly implementation: T;
 	readonly isCurrent: () => boolean;
 }
+
+// Opaque identities are checked by the ledger's private WeakMaps, never by these readonly facts.
+declare const climateLedgerIdentity: unique symbol;
+export interface ClimateAutomationLedgerScope {
+	readonly [climateLedgerIdentity]: 'scope';
+}
+export interface ClimateAutomationSourceSnapshot {
+	readonly [climateLedgerIdentity]: 'source';
+	readonly facts: ClimateAutomationSourceFacts | null;
+}
+export interface ClimateAutomationSlotSnapshot {
+	readonly [climateLedgerIdentity]: 'slot';
+	readonly facts: ClimateAutomationSlotFacts | null;
+	readonly controller: ClimateAutomationControllerFacts | null;
+}
