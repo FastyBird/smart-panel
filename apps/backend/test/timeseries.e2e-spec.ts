@@ -29,6 +29,27 @@ describe('Property Timeseries (e2e)', () => {
 	let propertyId: string;
 	let storageMock: Record<string, jest.Mock>;
 
+	const observeDownsamplingFailure = (response: { status: number; body: unknown }): void => {
+		try {
+			if (response.status === 200) return;
+			const body = response.body as { error?: unknown } | null;
+			const source = body?.error && typeof body.error === 'object' ? body.error : body;
+			const errors: Record<string, string | string[]> = {};
+			const safe = (s: string) => (/bearer|eyJ|password|authorization|token/i.test(s) ? '[redacted]' : s.slice(0, 200));
+			const isString = (value: unknown): value is string => typeof value === 'string';
+			if (source && typeof source === 'object') {
+				for (const field of ['statusCode', 'code', 'message', 'error']) {
+					const value = (source as Record<string, unknown>)[field];
+					if (typeof value === 'string') errors[field] = safe(value);
+					else if (Array.isArray(value)) errors[field] = value.slice(0, 3).filter(isString).map(safe);
+				}
+			}
+			console.error('[timeseries-downsampling-response]', { channelId, propertyId, status: response.status, errors });
+		} catch {
+			// Observation must never replace the original status assertion.
+		}
+	};
+
 	beforeAll(async () => {
 		// Create a proxy-based mock that auto-stubs any method accessed on StorageService
 		const mockFns = new Map<string, jest.Mock>();
@@ -260,6 +281,7 @@ describe('Property Timeseries (e2e)', () => {
 					to: '2025-01-02T00:00:00Z',
 					bucket: '15m',
 				})
+				.expect(observeDownsamplingFailure)
 				.expect(200);
 
 			expect(response.body.data.bucket).toBe('15m');
