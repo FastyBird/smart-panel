@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
-import { plainToInstance } from 'class-transformer';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { useContainer } from 'class-validator';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { EntitySubscriberInterface } from 'typeorm';
@@ -68,10 +68,13 @@ import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
+import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
+import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
+import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualDewPointConfigService } from './virtual-dew-point-config.service';
@@ -82,6 +85,29 @@ import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './vir
 
 jest.setTimeout(30000);
 
+function responseWire(data: VirtualCreatedThermostatModel): unknown {
+	return JSON.parse(
+		JSON.stringify(
+			instanceToPlain(data, {
+				excludeExtraneousValues: true,
+				exposeUnsetFields: false,
+				ignoreDecorators: false,
+				groups: ['api'],
+				enableCircularCheck: true,
+			}),
+		),
+	) as unknown;
+}
+function expectImmutableResponse(value: unknown): void {
+	if (value === null || typeof value !== 'object') {
+		expect(typeof value).not.toBe('function');
+		return;
+	}
+	expect(value).not.toBeInstanceOf(Date);
+	expect(Object.isFrozen(value)).toBe(true);
+	expect([Object.prototype, Array.prototype, null]).toContain(Object.getPrototypeOf(value));
+	for (const entry of Object.values(value)) expectImmutableResponse(entry);
+}
 describe('atomic virtual thermostat authoring', () => {
 	let database: SqliteDataSource;
 	let authoring: VirtualThermostatAuthoringService;
@@ -466,6 +492,215 @@ describe('atomic virtual thermostat authoring', () => {
 		},
 	);
 
+	it.each(['catalog', 'configuration', 'hydration'] as const)(
+		'selects the entire original response after a real %s rejection and still finishes later phases',
+		async (phase) => {
+			const input = request(relayId),
+				cause = phase === 'configuration' ? undefined : phase === 'hydration' ? false : new Error('catalog');
+			let originalDevice: VirtualDeviceEntity, originalWire: unknown;
+			let originalConfiguration: VirtualThermostatConfigurationModel;
+			const stages: string[] = [];
+			let finalHydration = false;
+			database.subscribers.push({
+				afterLoad(entity) {
+					if (entity instanceof VirtualDeviceEntity && entity.id === input.device.id) originalDevice = entity;
+				},
+			});
+			const snapshot = configs.snapshot.bind(configs) as VirtualThermostatConfigService['snapshot'];
+			jest.spyOn(configs, 'snapshot').mockImplementation(async (...args) => {
+				originalConfiguration = await snapshot(...args);
+				originalWire = responseWire(
+					Object.assign(new VirtualCreatedThermostatModel(), {
+						device: originalDevice,
+						configuration: originalConfiguration,
+					}),
+				);
+				stages.push('snapshot');
+				return originalConfiguration;
+			});
+			const mapping = propertyMapper.getMapping('virtual');
+			mapping.afterCreate = async () => {
+				stages.push('catalog');
+				if (phase === 'catalog') {
+					// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Exact unknown rejection.
+					return Promise.reject(cause);
+				}
+			};
+			propertyMapper.registerMapping(mapping);
+			const afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+			jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+				stages.push('configuration');
+				finalHydration = true;
+				const result = await afterCommit(...args);
+				// These were captured before ACK and must no longer alias settlement or fallback.
+				originalDevice.name = 'shared entity mutated';
+				(originalDevice.createdAt as Date).setFullYear(2000);
+				originalConfiguration.reasons.push('shared configuration mutated');
+				if (phase === 'configuration') {
+					// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy rejection by presence.
+					return Promise.reject(cause);
+				}
+				return result;
+			});
+			const find = devices.findOne.bind(devices) as DevicesService['findOne'];
+			jest.spyOn(devices, 'findOne').mockImplementation(async (...args) => {
+				if (finalHydration) stages.push('hydration');
+				const result = await find(...args);
+				if (finalHydration && result) result.name = 'later successful candidate';
+				if (finalHydration && phase === 'hydration') {
+					// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy rejection by presence.
+					return Promise.reject(cause);
+				}
+				return result;
+			});
+			const run = DeviceCreationContext.runPinned;
+			let settlement: CreationSettlement<RetainedOriginalCreatedResponse>;
+			jest.spyOn(DeviceCreationContext, 'runPinned').mockImplementation((...args) => {
+				settlement = args[4] as CreationSettlement<RetainedOriginalCreatedResponse>;
+				return run(...args);
+			});
+			const created = await authoring.create(input);
+			expect(responseWire(created)).toEqual(originalWire);
+			originalDevice.channels[0].properties[0].permissions.push(PermissionType.READ_WRITE);
+			originalConfiguration.policy.heatingSetpoint = 99;
+			expect(responseWire(created)).toEqual(originalWire);
+			expect(stages.filter((stage) => stage !== 'catalog')).toEqual(['snapshot', 'configuration', 'hydration']);
+			expect(stages.filter((stage) => stage === 'catalog')).toHaveLength(
+				input.device.channels.reduce((count, channel) => count + channel.properties.length, 0),
+			);
+			expect(settlement.outcome).toBe('committed');
+			expect(settlement.legacyPublicationFailure?.cause).toBe(phase === 'catalog' ? cause : undefined);
+			expectImmutableResponse(settlement.result.value);
+			const response = thermostatCreationResponse.pin();
+			expect(responseWire(response.materialize(settlement.result.value))).toEqual(originalWire);
+			expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+			expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+			expect(values.write).toHaveBeenCalledTimes(input.configuration.settings.length);
+		},
+	);
+
+	it.each(['copy', 'materialization'] as const)(
+		'isolates candidate %s failure and keeps one hydration with the full original native result',
+		async (phase) => {
+			const input = request(relayId),
+				find = devices.findOne.bind(devices) as DevicesService['findOne'];
+			const afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+			let finalHydration = false,
+				finalReads = 0;
+			jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+				const result = await afterCommit(...args);
+				finalHydration = true;
+				return result;
+			});
+			const hydrate = jest.spyOn(devices, 'findOne').mockImplementation(async (...args) => {
+				const result = await find(...args);
+				if (finalHydration) finalReads++;
+				if (finalHydration && phase === 'copy') {
+					result.name = {
+						valueOf: () => {
+							throw new Error('must not coerce');
+						},
+					} as never;
+				}
+				return result;
+			});
+			let materializationAttempts = 0;
+			if (phase === 'materialization') {
+				const define = Object.defineProperty;
+				jest.spyOn(Object, 'defineProperty').mockImplementation((target, key, descriptor) => {
+					if (target instanceof VirtualCreatedThermostatModel && key === 'device' && ++materializationAttempts === 1)
+						throw new Error('candidate materialization failed');
+					return define(target, key, descriptor);
+				});
+			}
+			const result = await authoring.create(input);
+			expect(result.device.name).toBe(input.device.name);
+			if (phase === 'materialization') expect(materializationAttempts).toBe(2);
+			expect(hydrate).toHaveBeenCalledTimes(2);
+			expect(finalReads).toBe(1);
+			expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		},
+	);
+
+	it('keeps latest ordinary hydration on uninterrupted success without rewriting the native original', async () => {
+		const input = request(relayId),
+			afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+		jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+			const result = await afterCommit(...args);
+			await devices.update(
+				input.device.id,
+				plainToInstance(UpdateVirtualDeviceDto, { type: 'virtual', name: 'latest supported edit' }),
+			);
+			return result;
+		});
+		const run = DeviceCreationContext.runPinned;
+		let settlement: CreationSettlement<RetainedOriginalCreatedResponse>;
+		jest.spyOn(DeviceCreationContext, 'runPinned').mockImplementation((...args) => {
+			settlement = args[4] as CreationSettlement<RetainedOriginalCreatedResponse>;
+			return run(...args);
+		});
+		const created = await authoring.create(input);
+		expect(created.device.name).toBe('latest supported edit');
+		expect(settlement.result.value.fullWire.device.name).toBe(input.device.name);
+		expectImmutableResponse(settlement.result.value);
+		expect(settlement.legacyPublicationFailure).toBeUndefined();
+	});
+
+	it('keeps the original device without a retry when final ordinary hydration resolves null', async () => {
+		const input = request(relayId),
+			afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+		let finalPhase = false;
+		jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+			const result = await afterCommit(...args);
+			finalPhase = true;
+			return result;
+		});
+		const find = devices.findOne.bind(devices) as DevicesService['findOne'];
+		const read = jest
+			.spyOn(devices, 'findOne')
+			.mockImplementation((...args) => (finalPhase ? Promise.resolve(null) : find(...args)));
+		const created = await authoring.create(input);
+		expect(created.device.name).toBe(input.device.name);
+		expect(created.configuration.controller).toBe(input.device.id);
+		expect(read).toHaveBeenCalledTimes(2); // Original catalog deferred read, then exactly one final hydrate.
+		expect(values.write).toHaveBeenCalledTimes(input.configuration.settings.length);
+	});
+
+	it('pins the finite response getters before traversing the caller DTO', async () => {
+		const input = request(relayId),
+			original = Object.getOwnPropertyDescriptor(VirtualDeviceEntity.prototype, 'type');
+		const replacement = jest.fn(() => 'replacement'),
+			name = input.device.name;
+		Object.defineProperty(input.device, 'name', {
+			enumerable: true,
+			get() {
+				Object.defineProperty(VirtualDeviceEntity.prototype, 'type', { ...original, get: replacement });
+				return name;
+			},
+		});
+		try {
+			await expect(authoring.create(input)).rejects.toThrow('expired');
+			expect(replacement).not.toHaveBeenCalled();
+			await expectAbsent(input);
+		} finally {
+			Object.defineProperty(VirtualDeviceEntity.prototype, 'type', original);
+		}
+	});
+
+	it('treats original response capture failure as a body error before COMMIT', async () => {
+		const input = request(relayId),
+			snapshot = configs.snapshot.bind(configs) as VirtualThermostatConfigService['snapshot'];
+		jest.spyOn(configs, 'snapshot').mockImplementation(async (...args) => {
+			const configuration = await snapshot(...args);
+			configuration.reasons.push({ bad: true } as never);
+			return configuration;
+		});
+		await expect(authoring.create(input)).rejects.toThrow('scalar');
+		await expectAbsent(input);
+		expect(values.write).not.toHaveBeenCalled();
+	});
+
 	it('returns the durable creation when commit subscriber reconciliation fails closed', async () => {
 		const subscriber = new VirtualThermostatOwnershipSubscriber(database, claims);
 		await subscriber.onApplicationBootstrap();
@@ -686,31 +921,44 @@ describe('atomic virtual thermostat authoring', () => {
 		await expectAbsent(input);
 	});
 
-	it('retains native ACK and the original result when an awaited commit subscriber rejects', async () => {
-		const input = request(relayId),
-			cause = new Error('after native ACK');
-		let commits = 0;
-		database.subscribers.push({
-			afterTransactionCommit: () => {
-				commits++;
-				throw cause;
-			},
-		});
-		const failed = await authoring.create(input).catch((error: unknown) => error);
-		expect(failed).toBeInstanceOf(DeviceCreationSettlementError);
-		const error = failed as DeviceCreationSettlementError;
-		expect(error.cause).toBe(cause);
-		expect(error.settlement.outcome).toBe('committed');
-		expect(error.settlement.result.value).toMatchObject({
-			device: { id: input.device.id },
-			configuration: { revision: 1 },
-		});
-		expect(commits).toBe(1);
-		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
-		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
-		expect(publications).toEqual([]);
-		expect(values.write).not.toHaveBeenCalled();
-	});
+	it.each(['subscriber', 'release'] as const)(
+		'retains native ACK and the original result when awaited %s rejects',
+		async (phase) => {
+			const input = request(relayId),
+				cause = new Error('after native ACK');
+			let commits = 0;
+			database.subscribers.push({
+				afterTransactionCommit: (event) => {
+					commits++;
+					if (phase === 'subscriber') throw cause;
+					// The coordinated transaction owns its runner; its real release is the connection
+					// lease in withConnection's finally, rather than TypeORM's borrowed-runner release.
+					const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void };
+					const release = lease.release;
+					lease.release = () => {
+						lease.release = release;
+						release();
+						throw cause;
+					};
+				},
+			});
+			const failed = await authoring.create(input).catch((error: unknown) => error);
+			expect(failed).toBeInstanceOf(DeviceCreationSettlementError);
+			const error = failed as DeviceCreationSettlementError<RetainedOriginalCreatedResponse>;
+			expect(error.cause).toBe(cause);
+			expect(error.settlement.outcome).toBe('committed');
+			expect(error.settlement.result.value).toMatchObject({
+				fullWire: { device: { id: input.device.id }, configuration: { revision: 1 } },
+				identity: { controller: input.device.id, configurationRevision: 1 },
+			});
+			expectImmutableResponse(error.settlement.result.value);
+			expect(commits).toBe(1);
+			expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+			expect(publications).toEqual([]);
+			expect(values.write).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([false, true])(
 		'keeps B serialized through A configuration publication and hydration, callbackFailure=%s',
@@ -743,6 +991,13 @@ describe('atomic virtual thermostat authoring', () => {
 			const pendingA = authoring.create(input);
 			await Promise.race([entered.promise, pendingA]);
 			let bDone = false;
+			const selected: { lease: boolean; bDone: boolean; published25: boolean }[] = [];
+			const define = Object.defineProperty;
+			jest.spyOn(Object, 'defineProperty').mockImplementation((target, key, descriptor) => {
+				if (target instanceof VirtualCreatedThermostatModel && key === 'configuration')
+					selected.push({ lease: lock.hasCurrentStructuralLease(), bDone, published25: writes.includes(25) });
+				return define(target, key, descriptor);
+			});
 			const pendingB = configs
 				.configure(input.device.id, {
 					...input.configuration,
@@ -766,6 +1021,7 @@ describe('atomic virtual thermostat authoring', () => {
 				hydrateResume.resolve();
 			}
 			expect((await pendingA).configuration.revision).toBe(1);
+			expect(selected).toEqual([{ lease: true, bDone: false, published25: false }]);
 			expect((await pendingB).revision).toBe(2);
 			expect(writes.filter((value) => typeof value === 'number')).toEqual([20, 25]);
 			expect((await configs.get(input.device.id)).policy.heatingSetpoint).toBe(25);
@@ -1015,10 +1271,14 @@ describe('atomic virtual thermostat authoring', () => {
 			});
 		});
 		const input = request(relayId);
-		await expect(authoring.create(input)).rejects.toMatchObject({
-			settlement: { outcome: 'unknown', result: { value: { configuration: { revision: 1 } } } },
+		const failed = await authoring.create(input).catch((error: unknown) => error);
+		expect(failed).toMatchObject({
+			settlement: { outcome: 'unknown', result: { value: { fullWire: { configuration: { revision: 1 } } } } },
 			cause: { driverError: cause },
 		});
+		expectImmutableResponse(
+			(failed as DeviceCreationSettlementError<RetainedOriginalCreatedResponse>).settlement.result.value,
+		);
 		expect(commits).toBe(1);
 		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
 		expect(await database.manager.countBy(VirtualThermostatConfigEntity, { controllerId: input.device.id })).toBe(1);
@@ -1041,7 +1301,7 @@ describe('atomic virtual thermostat authoring', () => {
 		await expect(authoring.create(input)).rejects.toMatchObject({
 			cause,
 			settlementCause: cause,
-			settlement: { outcome: 'committed', result: { value: { device: { id: input.device.id } } } },
+			settlement: { outcome: 'committed', result: { value: { fullWire: { device: { id: input.device.id } } } } },
 		});
 		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
 	});

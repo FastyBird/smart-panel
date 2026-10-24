@@ -104,7 +104,8 @@ export class DeviceCreationContext {
 				try {
 					if (!catalog.current()) throw new Error('Original creation publication registration expired');
 					await publication.publish();
-				} catch (cause) {
+				} catch (cause: unknown) {
+					settlement.legacyPublicationFailure ??= Object.freeze({ cause });
 					logger.error(
 						'Device creation committed, but post-commit publication failed',
 						cause instanceof Error ? cause : new Error('Creation publication rejected', { cause }),
@@ -372,6 +373,8 @@ interface PinnedCreation {
 export class CreationSettlement<T> {
 	receipt?: SqliteCommitGuardReceipt;
 	result?: { value: T };
+	/** First rejection reaching the existing awaited post-ACK catalog catch; native truth is separate. */
+	legacyPublicationFailure?: Readonly<{ cause: unknown }>;
 	get outcome() {
 		return this.receipt?.outcome ?? 'not_started';
 	}

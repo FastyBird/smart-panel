@@ -44,6 +44,7 @@ import {
 import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 
+import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
@@ -96,28 +97,30 @@ export class VirtualThermostatAuthoringService {
 		] as (keyof VirtualDependencyGraphService)[]);
 		const devices = captureCreation(this.devices, ['captureCreationCatalog', 'create', 'findOne']);
 		const configurations = captureCreation(this.configurations, ['prepare', 'persist', 'snapshot', 'afterCommit']);
+		const responseDispatch = captureCreation(thermostatCreationResponse, ['pin']);
+		const response = responseDispatch.values.pin();
 		const catalog = devices.values.captureCreationCatalog.call(devices.receiver, 'virtual');
 		const draftMethod = Reflect.get(own.values, 'draft') as VirtualThermostatAuthoringService['draft'];
 		const createDevice: (dto: CreateVirtualDeviceDto, context: DeviceCreationContext) => Promise<DeviceEntity> =
 			devices.values.create;
-		const pins = [own, lock, graph, devices, configurations, catalog];
+		const pins = [own, lock, graph, devices, configurations, catalog, responseDispatch, response];
 		const current = () => pins.every((pin) => pin.current());
 		const input = snapshotCreation(dto);
 		assertCreationCurrent(pins);
-		const settlement = new CreationSettlement<VirtualCreatedThermostatModel>();
+		const settlement = new CreationSettlement<RetainedOriginalCreatedResponse>();
 		try {
 			return (await lock.values.runExclusive.call(lock.receiver, async () => {
 				assertCreationCurrent(pins);
 				// Retain the original active structure owner, including at the native callback boundary.
 				const ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
-				const committed = await DeviceCreationContext.runPinned<VirtualCreatedThermostatModel>(
+				const committed = await DeviceCreationContext.runPinned<RetainedOriginalCreatedResponse>(
 					(operation, admit) =>
 						graph.values.withCreationWrite.call(
 							graph.receiver,
 							operation,
 							input.configuration.expectedGraphRevision,
 							admit,
-						) as Promise<VirtualCreatedThermostatModel>,
+						) as Promise<RetainedOriginalCreatedResponse>,
 					{ ...catalog, current },
 					ownerCurrent,
 					async (context) => {
@@ -155,24 +158,34 @@ export class VirtualThermostatAuthoringService {
 						const configuration = await DeviceCreationContext.check(context, () =>
 							configurations.values.snapshot.call(configurations.receiver, context.manager, device.id),
 						);
-						return Object.assign(new VirtualCreatedThermostatModel(), { device: persistedDevice, configuration });
+						return response.capture(persistedDevice, configuration);
 					},
 					settlement,
 				);
+				let configFailure: Readonly<{ cause: unknown }> | undefined;
+				let hydrationFailure: Readonly<{ cause: unknown }> | undefined;
+				let selectedDevice = committed.fullWire.device;
 				try {
 					assertCreationCurrent(pins);
-					await configurations.values.afterCommit.call(configurations.receiver, committed.device.id);
-				} catch (error) {
+					await configurations.values.afterCommit.call(configurations.receiver, committed.identity.controller);
+				} catch (error: unknown) {
+					configFailure ??= Object.freeze({ cause: error });
 					this.logger.error('Thermostat committed but post-commit publication failed', error);
 				}
 				try {
 					assertCreationCurrent(pins);
-					const refreshed = await devices.values.findOne.call(devices.receiver, committed.device.id);
-					if (refreshed) committed.device = refreshed as VirtualDeviceEntity;
-				} catch (error) {
+					const refreshed = await devices.values.findOne.call(devices.receiver, committed.identity.controller);
+					if (refreshed) selectedDevice = response.captureDevice(refreshed as VirtualDeviceEntity);
+					// Selection and detachment remain inside the original lock and final isolated phase.
+					return response.materialize(
+						committed,
+						settlement.legacyPublicationFailure || configFailure ? committed.fullWire.device : selectedDevice,
+					);
+				} catch (error: unknown) {
+					hydrationFailure ??= Object.freeze({ cause: error });
 					this.logger.error('Thermostat committed but post-commit device hydration failed', error);
 				}
-				return committed;
+				return response.materialize(committed, hydrationFailure ? committed.fullWire.device : selectedDevice);
 			})) as VirtualCreatedThermostatModel;
 		} catch (cause) {
 			// Existing known business rollback vocabulary remains intact. Unknown/ACK errors retain evidence.
