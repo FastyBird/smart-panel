@@ -16,6 +16,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
+import { initializeThermostatCreationCatalog } from '../services/thermostat-creation-catalog';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
 import {
 	THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
@@ -35,6 +36,19 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		this.dataSource.subscribers.push(this);
 	}
 	async onApplicationBootstrap(): Promise<void> {
+		if (process.env.FB_CLI !== 'on') {
+			await this.dataSource.transaction((manager) =>
+				initializeThermostatCreationCatalog(
+					manager,
+					this.dataSource.options.synchronize === true,
+					false,
+					this.dataSource.subscribers.some(
+						(observer) =>
+							observer !== this && observer instanceof VirtualThermostatOwnershipSubscriber && observer.installed,
+					),
+				),
+			);
+		}
 		if (!(await this.dataSource.createQueryRunner().hasTable('devices_virtual_thermostat_actuator_claims'))) return;
 		for (const [name, sql] of Object.entries({
 			...THERMOSTAT_OWNERSHIP_TRIGGERS,

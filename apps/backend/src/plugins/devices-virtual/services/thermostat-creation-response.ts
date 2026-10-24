@@ -1,3 +1,4 @@
+import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import {
 	ChannelControlEntity,
 	DeviceConnectionStatus,
@@ -10,6 +11,7 @@ import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
+	VirtualDeviceMode,
 } from '../entities/devices-virtual.entity';
 import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
 import {
@@ -25,6 +27,8 @@ import {
 	VirtualThermostatSourceModel,
 	VirtualWindowTrendPolicyModel,
 } from '../models/thermostat-response.model';
+
+import { CatalogMember, thermostatCreationCatalog } from './thermostat-creation-catalog';
 
 const ResponseDate = Date;
 // eslint-disable-next-line @typescript-eslint/unbound-method -- Applied explicitly to validated Date instances.
@@ -156,7 +160,9 @@ function getter(prototype: object, key: string) {
 
 /** Pin all selected response dispatch before caller DTO traversal; never recapture on fallback. */
 function pin() {
+	const catalog = captureCreation(thermostatCreationCatalog, ['assert']);
 	const pins: { current(): boolean }[] = [];
+	const catalogPins: { current(): boolean }[] = [catalog];
 	function model<T extends object>(
 		constructor: new (...args: never[]) => T,
 		scalars: readonly (keyof T & string)[],
@@ -207,6 +213,98 @@ function pin() {
 				return result;
 			},
 		};
+	}
+	const constructors = [VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity];
+	const kinds = constructors.map((constructor) => {
+		const prototype = constructor.prototype;
+		for (let node: object | null = prototype; node; node = Object.getPrototypeOf(node) as object | null) {
+			const original = node;
+			const parent = Object.getPrototypeOf(node) as object | null;
+			const type = Object.getOwnPropertyDescriptor(node, 'type');
+			catalogPins.push(captureCreation(node as { constructor: unknown }, ['constructor']), {
+				current: () => {
+					const now = Object.getOwnPropertyDescriptor(original, 'type');
+					return (
+						Object.getPrototypeOf(original) === parent &&
+						['value', 'get', 'set', 'enumerable', 'configurable', 'writable'].every(
+							(key) => (type === undefined) === (now === undefined) && type?.[key] === now?.[key],
+						)
+					);
+				},
+			});
+		}
+		return prototype;
+	});
+	function data(value: object, key: string): unknown {
+		const field = Object.getOwnPropertyDescriptor(value, key);
+		if (!field || !('value' in field)) throw new Error('Incomplete thermostat catalog member');
+		return field.value as unknown;
+	}
+	function membership(root: unknown, qualified: boolean): readonly CatalogMember[] {
+		const seen = new Set<string>();
+		function receiver(value: unknown, kind: number): object {
+			if (
+				!value ||
+				typeof value !== 'object' ||
+				Array.isArray(value) ||
+				(qualified && Object.getPrototypeOf(value) !== kinds[kind])
+			)
+				throw new Error('Wrong thermostat catalog receiver');
+			const ownConstructor = Object.getOwnPropertyDescriptor(value, 'constructor');
+			if (qualified && ownConstructor && (!('value' in ownConstructor) || ownConstructor.value !== constructors[kind]))
+				throw new Error('Wrong thermostat catalog constructor');
+			const type = Object.getOwnPropertyDescriptor(value, 'type');
+			if ((type && (!('value' in type) || type.value !== 'virtual')) || (!qualified && !type))
+				throw new Error('Wrong thermostat catalog kind');
+			return value;
+		}
+		function row(value: unknown, kind: number): object {
+			const member = receiver(value, kind);
+			const id = data(member, 'id');
+			if (typeof id !== 'string' || !id) throw new Error('Invalid thermostat catalog identity');
+			const key = `${kind}:${id}`;
+			if (seen.has(key)) throw new Error('Duplicate thermostat catalog identity');
+			seen.add(key);
+			return member;
+		}
+		function list(value: object, key: string): unknown[] {
+			const entries = data(value, key);
+			if (!Array.isArray(entries)) throw new Error('Incomplete thermostat catalog array');
+			return entries;
+		}
+		function id(value: unknown, kind: number): string {
+			const identity =
+				typeof value === 'string'
+					? value
+					: value && typeof value === 'object'
+						? data(receiver(value, kind), 'id')
+						: null;
+			if (typeof identity !== 'string' || !identity) throw new Error('Invalid thermostat catalog owner');
+			return identity;
+		}
+		const device = row(root, 0),
+			deviceId = data(device, 'id') as string;
+		if (
+			data(device, 'category') !== DeviceCategory.THERMOSTAT ||
+			data(device, 'mode') !== VirtualDeviceMode.CLIMATE_CONTROLLER
+		)
+			throw new Error('Wrong thermostat controller kind');
+		const members: CatalogMember[] = [Object.freeze({ kind: 'device', id: deviceId, type: 'virtual' })];
+		for (const value of list(device, 'channels')) {
+			const channel = row(value, 1),
+				channelId = data(channel, 'id') as string;
+			if (id(data(channel, 'device'), 0) !== deviceId || data(channel, 'parentId') !== null)
+				throw new Error('Wrong thermostat channel hierarchy');
+			members.push(Object.freeze({ kind: 'channel', id: channelId, type: 'virtual', deviceId, parentId: null }));
+			for (const value of list(channel, 'properties')) {
+				const property = row(value, 2);
+				if (id(data(property, 'channel'), 1) !== channelId) throw new Error('Wrong thermostat property owner');
+				members.push(
+					Object.freeze({ kind: 'property', id: data(property, 'id') as string, type: 'virtual', channelId }),
+				);
+			}
+		}
+		return Object.freeze(members);
 	}
 	const base = { createdAt: dateField, updatedAt: dateField };
 	const producer = model(PropertyProducerState, ['quality', 'sampledAt', 'evaluatedAt', 'expiresAt', 'revision'], {
@@ -387,17 +485,28 @@ function pin() {
 			settings: optional(array(setting)),
 		},
 	);
+	function captureCatalogDevice(loadedDevice: unknown, expected: readonly CatalogMember[]): ResponseRecord {
+		if (![...pins, ...catalogPins].every((entry) => entry.current()))
+			throw new Error('Original thermostat response types expired');
+		const originalMembers = membership(loadedDevice, true);
+		catalog.values.assert(originalMembers, expected);
+		const detached = device.capture(loadedDevice as VirtualDeviceEntity);
+		catalog.values.assert(membership(detached, false), originalMembers);
+		return detached;
+	}
 	const response = model(VirtualCreatedThermostatModel, [], { device, configuration });
 	return Object.freeze({
 		current: () => pins.every((entry) => entry.current()),
+		catalog: Object.freeze({ current: () => catalogPins.every((entry) => entry.current()) }),
 		capture(
 			loadedDevice: VirtualDeviceEntity,
 			originalConfiguration: VirtualThermostatConfigurationModel,
+			expected?: readonly CatalogMember[],
 		): RetainedOriginalCreatedResponse {
 			const capturedConfiguration = configuration.capture(originalConfiguration);
 			return Object.freeze({
 				fullWire: Object.freeze({
-					device: device.capture(loadedDevice),
+					device: expected ? captureCatalogDevice(loadedDevice, expected) : device.capture(loadedDevice),
 					configuration: capturedConfiguration,
 				}),
 				identity: Object.freeze({
@@ -408,6 +517,7 @@ function pin() {
 			});
 		},
 		captureDevice: (loadedDevice: VirtualDeviceEntity): ResponseRecord => device.capture(loadedDevice),
+		captureCatalogDevice,
 		materialize(
 			original: RetainedOriginalCreatedResponse,
 			selectedDevice = original.fullWire.device,

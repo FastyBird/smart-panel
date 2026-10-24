@@ -8,15 +8,20 @@ effective testing and mirror the pattern already used by the other e2e specs in 
 */
 import { instanceToPlain } from 'class-transformer';
 import { useContainer } from 'class-validator';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, Logger, ValidationPipe } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
+import { createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { ConfigService } from '../src/modules/config/services/config.service';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -36,10 +41,13 @@ import { ChannelsPropertiesTypeMapperService } from '../src/modules/devices/serv
 import { ClimateAutomationLedgerService } from '../src/modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
+import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../src/modules/devices/utils/schema.utils';
+import { StorageService } from '../src/modules/storage/services/storage.service';
+import { SwaggerDocumentService } from '../src/modules/swagger/services/swagger-document.service';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -68,6 +76,7 @@ import { VirtualDewPointConfigService } from '../src/plugins/devices-virtual/ser
 import { DEW_POINT_FORMULA } from '../src/plugins/devices-virtual/services/virtual-dew-point.utils';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
+import { InfluxV1ConfigModel } from '../src/plugins/influx-v1/models/config.model';
 import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 import { RoomSpaceEntity } from '../src/plugins/spaces-home-control/entities/room-space.entity';
@@ -265,10 +274,79 @@ async function ensureDeviceDeleted(
 	throw new Error(`Failed to delete device ${deviceId} after ${attempts} attempts (still present)`);
 }
 
+// Test-only point DATA observation. Query-wrapper functions are not persisted sample fields.
+function observeAmbientPointData(rows: unknown, memory: boolean) {
+	if (!Array.isArray(rows)) throw new Error('Expected physical point rows');
+	const raw: Record<string, unknown>[] = [];
+	const data = rows.map((row: unknown) => {
+		if (!row || typeof row !== 'object' || Object.getOwnPropertySymbols(row).length)
+			throw new Error('Invalid point row');
+		const result: Record<string, string | number | boolean | null | undefined> = {};
+		const observed: Record<string, unknown> = {};
+		for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(row))) {
+			if (!('value' in descriptor)) throw new Error('Non-data physical point field');
+			const value: unknown = descriptor.value;
+			if (key === 'time') {
+				if (!value || typeof value !== 'object') throw new Error('Missing native point timestamp');
+				const fields = Object.getOwnPropertyDescriptors(value);
+				const own: Record<string, unknown> = {};
+				for (const [name, field] of Object.entries(fields)) {
+					if (!('value' in field)) throw new Error('Non-data timestamp wrapper field');
+					const entry: unknown = field.value;
+					if (typeof entry === 'function') {
+						if (!(memory ? ['toISOString', 'getTime'] : ['toNanoISOString', 'getNanoTime']).includes(name))
+							throw new Error('Unknown timestamp function');
+						own[name] = { kind: 'query-wrapper-function', name };
+					} else own[name] = { kind: typeof entry, value: entry };
+				}
+				observed.time = { ownFields: own, nativePrecision: memory ? 'milliseconds' : 'nanoseconds' };
+				const method = fields[memory ? 'toISOString' : 'toNanoISOString'];
+				if (!method || !('value' in method) || typeof method.value !== 'function')
+					throw new Error('Missing native timestamp method');
+				const stamp: unknown = Reflect.apply(method.value as (...args: never[]) => unknown, value, []);
+				if (typeof stamp !== 'string') throw new Error('Invalid native point timestamp');
+				if (memory && fields._nanoISO?.value !== stamp) throw new Error('Memory timestamp data disagrees');
+				result.time = stamp;
+			} else {
+				if (
+					value !== null &&
+					value !== undefined &&
+					typeof value !== 'string' &&
+					typeof value !== 'boolean' &&
+					!(typeof value === 'number' && Number.isFinite(value))
+				)
+					throw new Error('Non-scalar persisted point field');
+				observed[key] = { kind: typeof value, value };
+				result[key] =
+					value === undefined && ['numberValue', 'stringValue'].includes(key)
+						? null
+						: (value as string | number | boolean | null | undefined);
+			}
+		}
+		if (!Object.hasOwn(result, 'time') || typeof result.propertyId !== 'string')
+			throw new Error('Incomplete physical point');
+		// Only the two optional storage-protocol value fields have absence/null equivalence.
+		for (const key of ['numberValue', 'stringValue']) if (!Object.hasOwn(result, key)) result[key] = null;
+		raw.push(Object.freeze(observed));
+		return Object.freeze(result);
+	});
+	return Object.freeze({ raw: Object.freeze(raw), data: Object.freeze(data) });
+}
+
 interface ThermostatWireScenario {
 	replaceBeforeCreate: boolean;
 	variant: string;
 	failure: string;
+	overlapKinds?: boolean;
+	duplicateKind?: boolean;
+	storageAudit?: boolean;
+	interleave?: {
+		afterPublication?: (root: string) => Promise<void>;
+		afterHydration?: (device: VirtualDeviceEntity) => Promise<void>;
+		expectedFallback?: boolean;
+		foreignGraphWrites?: () => number;
+		auditName?: string;
+	};
 }
 interface ThermostatHttpFixture {
 	app: INestApplication;
@@ -278,8 +356,20 @@ interface ThermostatHttpFixture {
 }
 async function verifyThermostatWire(
 	{ app, moduleRef, dataSource, accessToken }: ThermostatHttpFixture,
-	{ replaceBeforeCreate, variant, failure }: ThermostatWireScenario,
+	{
+		replaceBeforeCreate,
+		variant,
+		failure,
+		interleave,
+		overlapKinds,
+		duplicateKind,
+		storageAudit,
+	}: ThermostatWireScenario,
 ) {
+	const hasHeating = variant !== 'cooling';
+	const hasCooling = variant === 'dual' || variant === 'cooling';
+	const hasFloor = variant === 'dual' || variant === 'floor';
+	let publicRequest: Record<string, unknown> | undefined;
 	const authPost = (path: string) =>
 		request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${accessToken}`);
 
@@ -378,17 +468,27 @@ async function verifyThermostatWire(
 					PropertyCategory.STATUS,
 				].map((category) => property(ChannelCategory.DEVICE_INFORMATION, category)),
 			),
-			channel(ChannelCategory.HEATER, [
-				property(ChannelCategory.HEATER, PropertyCategory.ON, 'heating_enabled'),
-				property(ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, 'heating_setpoint'),
-				property(ChannelCategory.HEATER, PropertyCategory.STATUS),
-			]),
+			...(hasHeating
+				? [
+						channel(ChannelCategory.HEATER, [
+							property(ChannelCategory.HEATER, PropertyCategory.ON, 'heating_enabled'),
+							property(ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, 'heating_setpoint'),
+							property(ChannelCategory.HEATER, PropertyCategory.STATUS),
+						]),
+					]
+				: []),
 		],
 	};
 
 	let coolingRelay: string, floorProbe: string, surfaceProbe: string, dew: string;
+	if (overlapKinds) {
+		device.channels[0].id = device.id;
+		device.channels[0].properties[0].id = device.id;
+	}
+	if (duplicateKind) device.channels[2].properties[1].id = device.channels[2].properties[0].id;
 	let coolingMac: string;
-	if (variant === 'dual') {
+	if (hasFloor) floorProbe = (await createProtectionProbe(dataSource, relay)).sourceId;
+	if (hasCooling) {
 		const coolingDevice = uuid(),
 			coolingChannel = uuid();
 		coolingRelay = uuid();
@@ -416,7 +516,6 @@ async function verifyThermostatWire(
 			dataType: DataTypeType.BOOL,
 			permissions: [PermissionType.READ_WRITE],
 		} as never);
-		floorProbe = (await createProtectionProbe(dataSource, relay)).sourceId;
 		surfaceProbe = (await createProtectionProbe(dataSource, coolingRelay)).sourceId;
 		const humidityChannel = uuid(),
 			humidity = uuid(),
@@ -487,6 +586,7 @@ async function verifyThermostatWire(
 
 	const graph = moduleRef.get(VirtualDependencyGraphService),
 		revision = await graph.revision();
+	const foreignGraphBaseline = interleave?.foreignGraphWrites?.() ?? 0;
 	// Own every temporary hook, observer and spy before the next await can reject.
 	const restore: Array<() => void> = [];
 	let rejection: { cause: unknown } | undefined;
@@ -503,6 +603,54 @@ async function verifyThermostatWire(
 		expect(historyBefore?.value).toBe(18);
 		const writes = jest.spyOn(values, 'write');
 		restore.push(() => writes.mockRestore());
+		const storage = moduleRef.get(StorageService);
+		let physicalAmbientHistory: ReturnType<typeof observeAmbientPointData>;
+		const proofWindows: { before: number[]; after?: number[] }[] = [];
+		if (storageAudit) {
+			physicalAmbientHistory = observeAmbientPointData(
+				await storage.queryStrict(`SELECT * FROM property_value WHERE propertyId = '${ambient}' ORDER BY time ASC`),
+				storage.isUsingFallback(),
+			);
+			expect(physicalAmbientHistory.data).toHaveLength(1);
+			expect(physicalAmbientHistory.data[0].propertyId).toBe(ambient);
+			expect(physicalAmbientHistory.data[0].numberValue).toBe(18);
+			const points = jest.spyOn(storage, 'writePoints'),
+				strictPoints = jest.spyOn(storage, 'writePointsStrict'),
+				deletes = jest.spyOn(values, 'delete');
+			restore.push(
+				() => points.mockRestore(),
+				() => strictPoints.mockRestore(),
+				() => deletes.mockRestore(),
+			);
+			const counts = () => [
+				writes.mock.calls.length,
+				points.mock.calls.length,
+				strictPoints.mock.calls.length,
+				deletes.mock.calls.length,
+			];
+			const pending = new WeakMap<import('typeorm').QueryRunner, { before: number[]; after?: number[] }>();
+			const observer = {
+				beforeQuery(event: import('typeorm').BeforeQueryEvent<unknown>) {
+					if (event.query.startsWith('WITH root AS')) {
+						const window = { before: counts() };
+						pending.set(event.queryRunner, window);
+						proofWindows.push(window);
+					}
+				},
+				afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
+					if (event.query.startsWith('WITH root AS')) {
+						const window = pending.get(event.queryRunner);
+						if (window) window.after = counts();
+					}
+				},
+			};
+			dataSource.subscribers.push(observer);
+			restore.push(() => {
+				const index = dataSource.subscribers.indexOf(observer);
+				if (index >= 0) dataSource.subscribers.splice(index, 1);
+			});
+		}
+
 		const emitted = jest.spyOn(moduleRef.get(EventEmitter2), 'emit');
 		restore.push(() => emitted.mockRestore());
 		const originalAfterCreate = mapping.afterCreate;
@@ -563,6 +711,7 @@ async function verifyThermostatWire(
 		configSpy.mockImplementation(async (...args) => {
 			const result = await afterCommit(...args);
 			configured = true;
+			await interleave?.afterPublication?.(device.id);
 			if (failure === 'configuration') {
 				// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy post-ACK cause.
 				return Promise.reject(0);
@@ -578,6 +727,7 @@ async function verifyThermostatWire(
 			if (finalPhaseAtEntry && args[0] === device.id) {
 				finalHydrations++;
 				healthyWire = wire(result as VirtualDeviceEntity, originalConfiguration);
+				await interleave?.afterHydration?.(result as VirtualDeviceEntity);
 				if (failure === 'hydration') {
 					// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Falsy post-ACK cause.
 					return Promise.reject(null);
@@ -599,7 +749,7 @@ async function verifyThermostatWire(
 			}
 		};
 
-		const response = await authPost('/plugins/devices-virtual/producers/thermostats').send({
+		publicRequest = {
 			device,
 			configuration: {
 				schema_version: 1,
@@ -607,36 +757,40 @@ async function verifyThermostatWire(
 				expected_graph_revision: revision,
 				requested_mode: 'off',
 				policy: {
-					heatingSetpoint: 20,
-					coolingSetpoint: variant === 'dual' ? 25 : null,
-					...(variant === 'dual' ? { cooling: { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1 } } : {}),
+					heatingSetpoint: hasHeating ? 20 : null,
+					coolingSetpoint: hasCooling ? 25 : null,
+					...(hasCooling ? { cooling: { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1 } } : {}),
 					coldTolerance: 0.5,
 					hotTolerance: 0.5,
 					neutralMargin: 1,
 					minimumOffMs: 0,
 					changeoverMs: 0,
-					floor: variant === 'dual' ? { limit: 30, recoveryHysteresis: 2 } : null,
+					floor: hasFloor ? { limit: 30, recoveryHysteresis: 2 } : null,
 				},
 				contact_opening_ms: 0,
 				contact_closing_ms: 0,
 				sources: [{ role: 'ambient', source_property: ambient, maximum_age_seconds: 300 }],
 				actuators: [
-					{
-						role: 'heating',
-						source_property: relay,
-						lease_seconds: 30,
-						...(variant === 'dual'
-							? {
-									protection: {
-										schema_version: 1,
-										kind: 'local_floor',
-										source_property: floorProbe,
-										maximum_age_seconds: 5,
-									},
-								}
-							: {}),
-					},
-					...(variant === 'dual'
+					...(hasHeating
+						? [
+								{
+									role: 'heating',
+									source_property: relay,
+									lease_seconds: 30,
+									...(hasFloor
+										? {
+												protection: {
+													schema_version: 1,
+													kind: 'local_floor',
+													source_property: floorProbe,
+													maximum_age_seconds: 5,
+												},
+											}
+										: {}),
+								},
+							]
+						: []),
+					...(hasCooling
 						? [
 								{
 									role: 'cooling',
@@ -655,11 +809,20 @@ async function verifyThermostatWire(
 				],
 				settings,
 			},
-		});
-		if (response.status !== (replaceBeforeCreate ? 500 : 201))
+		};
+		const response = await authPost('/plugins/devices-virtual/producers/thermostats').send(publicRequest);
+		if (interleave?.auditName && process.env.P05B1B_TEST_ARTIFACT_DIR)
+			writeFileSync(
+				path.join(process.env.P05B1B_TEST_ARTIFACT_DIR, `wire-${interleave.auditName}.json`),
+				JSON.stringify({ originalWire, healthyWire, response: response.body as unknown, finalHydrations }),
+			);
+		const expectedStatus = replaceBeforeCreate ? 500 : duplicateKind ? 422 : 201;
+		if (response.status !== expectedStatus)
 			throw new Error(JSON.stringify({ status: response.status, body: response.body as unknown }));
-		expect(response.status).toBe(replaceBeforeCreate ? 500 : 201);
-		if (replaceBeforeCreate) {
+		expect(response.status).toBe(expectedStatus);
+		if (replaceBeforeCreate || duplicateKind) {
+			if (duplicateKind)
+				expect(JSON.stringify(response.body)).toContain('Every catalog UUID must be explicit and distinct.');
 			expect(await dataSource.manager.countBy(DeviceEntity, { id: device.id })).toBe(0);
 			for (const expected of device.channels) {
 				expect(await dataSource.manager.countBy(ChannelEntity, { id: expected.id })).toBe(0);
@@ -701,7 +864,7 @@ async function verifyThermostatWire(
 				request_id: expect.any(String) as unknown,
 				path: '/plugins/devices-virtual/producers/thermostats',
 				method: 'POST',
-				data: failure === 'none' ? healthyWire : originalWire,
+				data: failure === 'none' && !interleave?.expectedFallback ? healthyWire : originalWire,
 				metadata: {
 					request_duration_ms: expect.any(Number) as unknown,
 					server_time: expect.any(String) as unknown,
@@ -709,12 +872,63 @@ async function verifyThermostatWire(
 				},
 			});
 			expect(finalHydrations).toBe(1);
-			if (failure === 'none') {
-				const setpoint = settings.find((entry) => entry.setting === 'heating_setpoint');
+			if (storageAudit) {
+				expect(proofWindows).toHaveLength(3);
+				for (const window of proofWindows) expect(window.after).toEqual(window.before);
+				const physicalAmbientAfter = observeAmbientPointData(
+					await storage.queryStrict(`SELECT * FROM property_value WHERE propertyId = '${ambient}' ORDER BY time ASC`),
+					storage.isUsingFallback(),
+				);
+				console.info(
+					'physical-point-data-comparison',
+					JSON.stringify({
+						before: physicalAmbientHistory,
+						after: physicalAmbientAfter,
+						qualification:
+							'Only optional numberValue/stringValue absence-null and known native query timestamp function handles differ in representation. All tag/scalar fields, order, actual18 and exact native timestamp remain in point DATA.',
+					}),
+				);
+				expect(physicalAmbientAfter.data).toHaveLength(1);
+				expect(physicalAmbientAfter.data[0].propertyId).toBe(ambient);
+				expect(physicalAmbientAfter.data[0].numberValue).toBe(18);
+				expect(physicalAmbientAfter.data).toStrictEqual(physicalAmbientHistory.data);
+				const settingHistory: Record<string, unknown> = {};
+				for (const setting of settings) {
+					const rows = await storage.queryStrict(
+						`SELECT * FROM property_value WHERE propertyId = '${setting.property}' ORDER BY time ASC`,
+					);
+					expect(rows.length).toBeGreaterThan(0);
+					settingHistory[setting.setting] = rows;
+				}
+				const observation = {
+					nativeQueryEventWindows: proofWindows,
+					physicalAmbientHistory,
+					physicalAmbientAfter,
+					settingHistory,
+					primaryAvailable: storage.isPrimaryAvailable(),
+					fallback: storage.isUsingFallback(),
+					qualification:
+						'Native query event interval only; not TypeORM async afterQuery joining or all M1/M2 destination fencing. Ordinary hydration cache/producer effects remain inherited.',
+				};
+				console.info('actual-storage-catalog-observation', JSON.stringify(observation));
+				if (process.env.P05B1B_TEST_ARTIFACT_DIR)
+					writeFileSync(
+						path.join(
+							process.env.P05B1B_TEST_ARTIFACT_DIR,
+							`storage-${storage.isUsingFallback() ? 'memory' : 'influx'}.json`,
+						),
+						JSON.stringify(observation),
+					);
+			}
+
+			if (failure === 'none' && !interleave?.expectedFallback) {
+				const setpoint = settings.find(
+					(entry) => entry.setting === (hasHeating ? 'heating_setpoint' : 'cooling_setpoint'),
+				);
 				expect(
 					result.device.channels.flatMap((entry) => entry.properties).find((entry) => entry.id === setpoint.property)
 						.value.value,
-				).toBe(20);
+				).toBe(hasHeating ? 20 : 25);
 				const information = result.device.channels.find(
 					(entry) => entry.category === (ChannelCategory.DEVICE_INFORMATION as string),
 				);
@@ -754,13 +968,17 @@ async function verifyThermostatWire(
 			expect(
 				await dataSource.manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId: device.id }),
 			).toEqual([
-				expect.objectContaining({
-					physicalIdentity: `shelly-ng:${canonicalMac}:switch:0:output`,
-					sourcePropertyId: relay,
-					state: 'reserved',
-					revision: 1,
-				}),
-				...(variant === 'dual'
+				...(hasHeating
+					? [
+							expect.objectContaining({
+								physicalIdentity: `shelly-ng:${canonicalMac}:switch:0:output`,
+								sourcePropertyId: relay,
+								state: 'reserved',
+								revision: 1,
+							}) as unknown,
+						]
+					: []),
+				...(hasCooling
 					? [
 							expect.objectContaining({
 								physicalIdentity: `shelly-ng:${coolingMac}:switch:0:output`,
@@ -778,11 +996,17 @@ async function verifyThermostatWire(
 				settings.length,
 			);
 			// This one-branch default does not require an explicit floor or cooled-surface dependency.
-			expect(await dataSource.manager.count(ThermostatMemberProtectionEntity)).toBe(variant === 'dual' ? 1 : 0);
-			expect(await dataSource.manager.count(ThermostatCoolingDependencyEntity)).toBe(variant === 'dual' ? 1 : 0);
+			expect(await dataSource.manager.count(ThermostatMemberProtectionEntity)).toBe(hasFloor ? 1 : 0);
+			expect(await dataSource.manager.count(ThermostatCoolingDependencyEntity)).toBe(hasCooling ? 1 : 0);
 			// The creating transaction increments once; ordinary asynchronous status writes retain their legacy graph path.
 			expect(result.configuration.graph_revision).toBe(revision + 1);
-			expect(await graph.revision()).toBe(revision + 1 + legacyWrites.mock.calls.length);
+			expect(await graph.revision()).toBe(
+				revision +
+					1 +
+					legacyWrites.mock.calls.length +
+					(interleave?.foreignGraphWrites?.() ?? 0) -
+					foreignGraphBaseline,
+			);
 			expect(moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1')).toBeNull();
 		}
 	} catch (cause: unknown) {
@@ -798,6 +1022,7 @@ async function verifyThermostatWire(
 		}
 	}
 	if (rejection) throw rejection.cause;
+	return { publicRequest, device, settings };
 }
 
 describe('devices-virtual plugin (e2e)', () => {
@@ -3485,5 +3710,899 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 		{ replaceBeforeCreate: false, variant: 'dual', failure: 'none' },
 	])('preserves the complete HTTP wire and durable creation: %j', async (scenario) => {
 		await verifyThermostatWire({ app, moduleRef, dataSource, accessToken }, scenario);
+	});
+});
+
+describe('P05b1b default migrated thermostat HTTP consumer', () => {
+	// Normal CI already starts Influx1.8. The local evidence wrapper may supply its owned database name.
+	const testInfluxDatabase = process.env.P05B1B_INFLUX_DATABASE ?? `p05b1b_test_${process.pid}`;
+	let app: INestApplication | undefined;
+	let moduleRef: TestingModule;
+	let dataSource: DataSource;
+	let directory: string | undefined;
+	let accessToken: string;
+	let originalEnvironment: Record<string, string | undefined>;
+	const environmentKeys = ['NODE_ENV', 'FB_DB_PATH', 'FB_CONFIG_PATH', 'FB_DB_SYNC', 'FB_DB_MIGRATIONS_RUN'];
+	beforeEach(async () => {
+		expect(process.env.FB_CLI).not.toBe('on');
+		originalEnvironment = Object.fromEntries(environmentKeys.map((key) => [key, process.env[key]]));
+		directory = mkdtempSync(path.join(tmpdir(), 'p05b1b-http-'));
+		process.env.NODE_ENV = 'production';
+		process.env.FB_DB_PATH = directory;
+		process.env.FB_CONFIG_PATH = directory;
+		process.env.FB_DB_SYNC = 'false';
+		process.env.FB_DB_MIGRATIONS_RUN = 'false';
+		writeFileSync(
+			path.join(directory, 'config.yaml'),
+			JSON.stringify({
+				plugins: {
+					'influx-v1-plugin': { enabled: true, host: '127.0.0.1', database: testInfluxDatabase },
+				},
+				modules: {},
+			}),
+		);
+		const source = path.resolve(__dirname, '../src');
+		const prepared = await createSqliteDataSource({
+			type: 'sqlite',
+			database: path.join(directory, 'database.sqlite'),
+			entities: [source + '/**/*.entity.ts'],
+			subscribers: [source + '/**/*.subscriber.ts'],
+			migrations: [source + '/migrations/*.ts'],
+			migrationsTransactionMode: 'each',
+		});
+		try {
+			expect(await prepared.runMigrations({ transaction: 'each' })).toHaveLength(49);
+		} finally {
+			await prepared.destroy();
+		}
+		moduleRef = await Test.createTestingModule({
+			imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
+		}).compile();
+		dataSource = moduleRef.get(DataSource);
+		expect(dataSource.options.database).toBe(path.join(directory, 'database.sqlite'));
+		expect(dataSource.options.synchronize).toBe(false);
+		expect(dataSource.options.migrationsRun).toBe(false);
+		const startupQueries: string[] = [];
+		const observer = {
+			beforeQuery(event: import('typeorm').BeforeQueryEvent<unknown>) {
+				startupQueries.push(event.query);
+			},
+		};
+		dataSource.subscribers.push(observer);
+		app = moduleRef.createNestApplication();
+		app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+		useContainer(moduleRef, { fallbackOnErrors: true });
+		await app.init();
+		expect(moduleRef.get(ConfigService).getPluginConfig<InfluxV1ConfigModel>('influx-v1-plugin').database).toBe(
+			testInfluxDatabase,
+		);
+		expect(moduleRef.get(StorageService).isPrimaryAvailable()).toBe(true);
+		expect(moduleRef.get(StorageService).isUsingFallback()).toBe(false);
+		dataSource.subscribers.splice(dataSource.subscribers.indexOf(observer), 1);
+		const reservation = startupQueries.findIndex(
+			(query) => query === 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
+		);
+		expect(reservation).toBeGreaterThan(0);
+		expect(startupQueries[reservation - 1]).toBe('BEGIN TRANSACTION');
+		expect(
+			await dataSource.query(
+				"SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%_thermostat_catalog_birth_%'",
+			),
+		).toHaveLength(6);
+		await request(app.getHttpServer())
+			.post('/modules/auth/auth/register')
+			.send({
+				data: {
+					username: 'cataloghttp',
+					password: 'securePassword123!',
+					email: 'cataloghttp@example.com',
+				},
+			})
+			.expect(204);
+		const login = await request(app.getHttpServer())
+			.post('/modules/auth/auth/login')
+			.send({
+				data: {
+					username: 'cataloghttp',
+					password: 'securePassword123!',
+				},
+			})
+			.expect(201);
+		accessToken = (login.body as { data: { access_token: string } }).data.access_token;
+		expect(accessToken).toEqual(expect.any(String));
+	});
+	afterEach(async () => {
+		try {
+			await app?.close();
+		} finally {
+			app = undefined;
+			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
+			if (directory) rmSync(directory, { recursive: true, force: true });
+			for (const key of environmentKeys) {
+				if (originalEnvironment[key] === undefined) delete process.env[key];
+				else process.env[key] = originalEnvironment[key];
+			}
+		}
+	});
+	it.each(['heating', 'dual', 'floor', 'cooling'])(
+		'preserves healthy %s and the entire real HTTP wire with physical Influx storage',
+		async (variant) => {
+			await verifyThermostatWire(
+				{ app, moduleRef, dataSource, accessToken },
+				{ replaceBeforeCreate: false, variant, failure: 'none' },
+			);
+		},
+	);
+	it('preserves actual physical Influx history and setting publication around the three bounded catalog SELECTs', async () => {
+		await verifyThermostatWire(
+			{ app, moduleRef, dataSource, accessToken },
+			{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
+		);
+	});
+	it('keeps actual CRUD and Swagger private while both stamp spellings are rejected at every catalog level', async () => {
+		const input = () => ({
+			id: uuid(),
+			type: 'virtual',
+			name: 'Privacy fixture',
+			category: DeviceCategory.GENERIC,
+			mode: 'projection',
+			channels: [
+				{
+					id: uuid(),
+					type: 'virtual',
+					name: 'Information',
+					identifier: 'device_information',
+					category: ChannelCategory.DEVICE_INFORMATION,
+					properties: [
+						{
+							id: uuid(),
+							type: 'virtual',
+							identifier: 'manufacturer',
+							category: PropertyCategory.MANUFACTURER,
+							data_type: DataTypeType.STRING,
+							permissions: [PermissionType.READ_ONLY],
+							value_origin: 'local',
+							value: 'privacy-baseline',
+						},
+					],
+				},
+			],
+		});
+		const post = (data: object) =>
+			request(app.getHttpServer())
+				.post('/modules/devices/devices')
+				.set('Authorization', `Bearer ${accessToken}`)
+				.send({ data });
+		const original = input();
+		const created = await post(original).expect(201);
+		expect(JSON.stringify(created.body)).not.toMatch(/catalogBirth|catalog_birth/);
+		const selected = await request(app.getHttpServer())
+			.get(`/modules/devices/devices/${original.id}`)
+			.set('Authorization', `Bearer ${accessToken}`)
+			.expect(200);
+		expect(JSON.stringify(selected.body)).not.toMatch(/catalogBirth|catalog_birth/);
+		for (const level of ['device', 'channel', 'property'])
+			for (const field of ['catalogBirth', 'catalog_birth']) {
+				const dto = input();
+				const target = level === 'device' ? dto : level === 'channel' ? dto.channels[0] : dto.channels[0].properties[0];
+				Reflect.set(target, field, 1);
+				const refused = await post(dto);
+				expect(refused.status).toBe(400);
+				expect((refused.body as { message: string[] }).message.join(' ')).toContain(
+					"Unexpected property 'catalog_birth' is not allowed.",
+				);
+				expect(await dataSource.manager.countBy(DeviceEntity, { id: dto.id })).toBe(0);
+			}
+		const document = moduleRef.get(SwaggerDocumentService).createDocument(app);
+		const bytes = JSON.stringify(document);
+		expect(bytes).not.toMatch(/catalogBirth|catalog_birth/);
+		if (process.env.P05B1B_PUBLIC_SCHEMA_OUTPUT) writeFileSync(process.env.P05B1B_PUBLIC_SCHEMA_OUTPUT, bytes);
+	});
+	const verifyIndependent = async (phase: string, operation: 'replace' | 'double-replace' | 'parent' | 'metadata') => {
+		const otherModule = await Test.createTestingModule({
+			imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
+		}).compile();
+		const otherApp = otherModule.createNestApplication();
+		otherApp.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+		const otherSource = otherModule.get(DataSource);
+		const owner = moduleRef.get(DeviceStructureLockService);
+		const otherOwner = otherModule.get(DeviceStructureLockService);
+		const successes: { id: string; birth: string; value: string }[] = [];
+		const table =
+			operation === 'replace' || operation === 'double-replace'
+				? 'devices_module_channels_properties'
+				: 'devices_module_channels';
+		const finalSnapshot = phase === 'after-detachment';
+		let restoreQuery: (() => void) | undefined;
+		const mutations: string[] = [];
+		const proofs: { transaction: boolean; raw: string; parameters: string }[] = [];
+		const proofObserver = {
+			afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
+				if (event.success && event.query.startsWith('WITH root AS'))
+					proofs.push({
+						transaction: event.queryRunner.isTransactionActive,
+						raw: JSON.stringify(event.rawResults),
+						parameters: JSON.stringify(event.parameters),
+					});
+			},
+		};
+		let graphWrites = 0;
+		let otherAccessToken: string;
+		const observer = {
+			afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
+				if (event.success && /^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query)) graphWrites++;
+			},
+		};
+		// Keep the checked-in Jest logger mock as the passthrough target, without adopting its call buffer.
+		const errorDescriptor = Object.getOwnPropertyDescriptor(Logger.prototype, 'error');
+		const originalError = errorDescriptor.value as Logger['error'];
+		const loggedErrors = jest.fn(function (this: Logger, ...args: Parameters<Logger['error']>) {
+			originalError.apply(this, args);
+		});
+		Object.defineProperty(Logger.prototype, 'error', { ...errorDescriptor, value: loggedErrors });
+		try {
+			useContainer(otherModule, { fallbackOnErrors: true });
+			await otherApp.init();
+			expect(otherSource).not.toBe(dataSource);
+			expect(otherSource.manager).not.toBe(dataSource.manager);
+			expect(otherSource.options.database).toBe(dataSource.options.database);
+			expect(otherOwner).not.toBe(owner);
+			expect(Object.getOwnPropertyDescriptor(otherSource.driver, 'databaseConnection')?.value).not.toBe(
+				Object.getOwnPropertyDescriptor(dataSource.driver, 'databaseConnection')?.value,
+			);
+			otherSource.subscribers.push(observer);
+			dataSource.subscribers.push(proofObserver);
+			useContainer(moduleRef, { fallbackOnErrors: true });
+			const replace = async (root: string) => {
+				mutations.push('entered');
+				expect(owner.hasCurrentStructuralLease()).toBe(true);
+				expect(otherOwner.hasCurrentStructuralLease()).toBe(false);
+				useContainer(otherModule, { fallbackOnErrors: true });
+				try {
+					const login = await request(otherApp.getHttpServer())
+						.post('/modules/auth/auth/login')
+						.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
+						.expect(201);
+					otherAccessToken = (login.body as { data: { access_token: string } }).data.access_token;
+					expect(otherAccessToken).toEqual(expect.any(String));
+					const info = await otherSource.manager.findOneOrFail(VirtualChannelEntity, {
+						where: { device: { id: root }, category: ChannelCategory.DEVICE_INFORMATION },
+						relations: ['properties'],
+					});
+					const original = info.properties.find(
+						(property) => property.category === PropertyCategory.MANUFACTURER,
+					) as VirtualChannelPropertyEntity;
+					expect(original.valueOrigin).toBe('local');
+					expect(original.sourcePropertyId).toBeNull();
+					expect(await otherSource.manager.countBy(VirtualThermostatSettingEntity, { propertyId: original.id })).toBe(
+						0,
+					);
+					expect(
+						await otherSource.manager.countBy(VirtualThermostatActuatorClaimEntity, {
+							sourcePropertyId: original.id,
+						}),
+					).toBe(0);
+
+					if (operation === 'replace' || operation === 'double-replace') {
+						const [before] = await otherSource.query<{ birth: string }[]>(
+							'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
+							[original.id],
+						);
+						const path = `/modules/devices/channels/${info.id}/properties`;
+						await request(otherApp.getHttpServer())
+							.delete(`${path}/${original.id}`)
+							.set('Authorization', `Bearer ${otherAccessToken}`)
+							.expect(204);
+						await request(otherApp.getHttpServer())
+							.post(path)
+							.set('Authorization', `Bearer ${otherAccessToken}`)
+							.send({
+								data: {
+									id: original.id,
+									type: 'virtual',
+									category: original.category,
+									identifier: original.identifier,
+									name: original.name,
+									data_type: original.dataType,
+									permissions: original.permissions,
+									format: original.format,
+									invalid: original.invalid,
+									step: original.step,
+									value_origin: 'local',
+									source_property: null,
+									value: 'B-successor-value',
+								},
+							})
+							.expect((response) => {
+								if (response.status !== 201)
+									console.info(
+										'independent-create-failure',
+										JSON.stringify({ phase, status: response.status, body: response.body as unknown }),
+									);
+							})
+							.expect(201);
+						const [after] = await otherSource.query<{ birth: string }[]>(
+							'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
+							[original.id],
+						);
+						expect(BigInt(after.birth)).toBeGreaterThan(BigInt(before.birth));
+						mutations.push(`A-birth:${before.birth};B-birth:${after.birth}`);
+						const stored = await otherSource.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: original.id });
+						expect(stored).toMatchObject({
+							id: original.id,
+							category: original.category,
+							identifier: original.identifier,
+							name: original.name,
+							dataType: original.dataType,
+							permissions: original.permissions,
+							unit: original.unit,
+							format: original.format,
+							invalid: original.invalid,
+							step: original.step,
+							valueOrigin: original.valueOrigin,
+							sourcePropertyId: original.sourcePropertyId,
+						});
+						expect((await otherModule.get(PropertyValueService).readLatest(stored))?.value).toBe('B-successor-value');
+						if (operation === 'double-replace') {
+							await request(otherApp.getHttpServer())
+								.delete(`${path}/${original.id}`)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.expect(204);
+							await request(otherApp.getHttpServer())
+								.post(path)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.send({
+									data: {
+										id: original.id,
+										type: 'virtual',
+										category: original.category,
+										identifier: original.identifier,
+										name: original.name,
+										data_type: original.dataType,
+										permissions: original.permissions,
+										format: original.format,
+										invalid: original.invalid,
+										step: original.step,
+										value_origin: 'local',
+										source_property: null,
+										value: 'C-restored-metadata-value',
+									},
+								})
+								.expect(201);
+							const [restored] = await otherSource.query<{ birth: string }[]>(
+								'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
+								[original.id],
+							);
+							expect(BigInt(restored.birth)).toBeGreaterThan(BigInt(after.birth));
+							mutations.push(`C-birth:${restored.birth}`);
+							const final = await otherSource.manager.findOneByOrFail(VirtualChannelPropertyEntity, {
+								id: original.id,
+							});
+							expect(final).toMatchObject({
+								id: original.id,
+								category: original.category,
+								identifier: original.identifier,
+								name: original.name,
+								dataType: original.dataType,
+								permissions: original.permissions,
+								unit: original.unit,
+								format: original.format,
+								invalid: original.invalid,
+								step: original.step,
+								valueOrigin: original.valueOrigin,
+								sourcePropertyId: original.sourcePropertyId,
+							});
+							successes.push({ id: final.id, birth: restored.birth, value: 'C-restored-metadata-value' });
+						} else successes.push({ id: stored.id, birth: after.birth, value: 'B-successor-value' });
+					} else {
+						const [before] = await otherSource.query<{ birth: string; parentId: string | null }[]>(
+							'SELECT CAST(catalogBirth AS TEXT) birth, parentId FROM devices_module_channels WHERE id = ?',
+							[info.id],
+						);
+						expect(before.parentId).toBeNull();
+						const parent = await otherSource.manager.findOneOrFail(VirtualChannelEntity, {
+							where: { device: { id: root }, category: ChannelCategory.TEMPERATURE },
+						});
+						expect(parent.id).not.toBe(info.id);
+						expect(parent.parentId).toBeNull();
+						const value = operation === 'parent' ? parent.id : 'B same-birth metadata';
+						await request(otherApp.getHttpServer())
+							.patch(`/modules/devices/channels/${info.id}`)
+							.set('Authorization', `Bearer ${otherAccessToken}`)
+							.send({
+								data: { type: 'virtual', ...(operation === 'parent' ? { parent: parent.id } : { name: value }) },
+							})
+							.expect((result) => {
+								if (result.status !== 200)
+									console.info(
+										'independent-channel-patch-failure',
+										JSON.stringify({
+											operation,
+											phase,
+											status: result.status,
+											body: result.body as unknown,
+											errors: loggedErrors.mock.calls.slice(-20).map((args) =>
+												args.map((value: unknown) =>
+													value instanceof Error
+														? {
+																name: value.name,
+																message: value.message,
+																stack: value.stack,
+																query: Reflect.get(value, 'query') as unknown,
+																parameters: Array.isArray(Reflect.get(value, 'parameters'))
+																	? (Reflect.get(value, 'parameters') as unknown[]).map((parameter) =>
+																			typeof parameter === 'string' &&
+																			/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(parameter)
+																				? parameter
+																				: '<REDACTED non-UUID>',
+																		)
+																	: undefined,
+															}
+														: typeof value === 'string'
+															? value
+															: typeof value,
+												),
+											),
+										}),
+									);
+							})
+							.expect(200);
+						const [after] = await otherSource.query<{ birth: string; parentId: string | null; name: string }[]>(
+							'SELECT CAST(catalogBirth AS TEXT) birth, parentId, name FROM devices_module_channels WHERE id = ?',
+							[info.id],
+						);
+						expect(after.birth).toBe(before.birth);
+						if (operation === 'parent') expect(after.parentId).toBe(parent.id);
+						else {
+							expect(after.parentId).toBeNull();
+							expect(after.name).toBe(value);
+						}
+						successes.push({ id: info.id, birth: after.birth, value });
+					}
+				} finally {
+					useContainer(moduleRef, { fallbackOnErrors: true });
+				}
+				expect(owner.hasCurrentStructuralLease()).toBe(true);
+			};
+			if (finalSnapshot) {
+				const query = dataSource.manager.query.bind(dataSource.manager) as typeof dataSource.manager.query;
+				let reads = 0;
+				const held = jest
+					.spyOn(dataSource.manager, 'query')
+					.mockImplementation(async (...args: Parameters<typeof query>) => {
+						const raw: unknown = await query(...args);
+						if (typeof args[0] === 'string' && args[0].startsWith('WITH root AS') && ++reads === 2) {
+							// V0 uses the distinct scoped manager. This is global Before=1, After=2.
+							// The real After snapshot completed after candidate detachment.
+							expect(proofs).toHaveLength(3);
+							await replace((args[1] as string[])[0]);
+						}
+						return raw;
+					});
+				restoreQuery = () => held.mockRestore();
+			}
+
+			try {
+				await verifyThermostatWire(
+					{ app, moduleRef, dataSource, accessToken },
+					{
+						replaceBeforeCreate: false,
+						variant: 'heating',
+						failure: 'none',
+						interleave: {
+							expectedFallback: operation !== 'metadata' && !finalSnapshot,
+							foreignGraphWrites: () => graphWrites,
+							auditName: `${operation}-${phase}`,
+							...(!finalSnapshot && phase === 'before-presence'
+								? { afterPublication: replace }
+								: !finalSnapshot
+									? { afterHydration: (device: VirtualDeviceEntity) => replace(device.id) }
+									: {}),
+						},
+					},
+				);
+			} finally {
+				if (successes.length !== 1)
+					console.info(
+						'independent-writer-not-completed',
+						JSON.stringify({
+							phase,
+							mutations,
+							errors: loggedErrors.mock.calls
+								.filter(([message]) => typeof message === 'string' && message.startsWith('Thermostat committed'))
+								.slice(-20)
+								.map((args) =>
+									args.map((value: unknown) =>
+										value instanceof Error ? { message: value.message, stack: value.stack } : value,
+									),
+								),
+						}),
+					);
+			}
+			expect(successes).toHaveLength(1);
+			const earlyVeto = operation !== 'metadata' && phase === 'before-presence';
+			expect(proofs).toHaveLength(earlyVeto ? 2 : 3);
+			expect(proofs.map(({ transaction }) => transaction)).toEqual(earlyVeto ? [true, false] : [true, false, false]);
+			const birthAt = (index: number) =>
+				(JSON.parse(proofs[index].raw) as { section: string; payload: string }[])
+					.filter(({ section }) => section === 'member')
+					.map(({ payload }) => JSON.parse(payload) as { id: string; birth: string })
+					.find(({ id }) => id === successes[0].id).birth;
+			if (operation === 'replace' || operation === 'double-replace') {
+				expect(BigInt(birthAt(0))).toBeLessThan(BigInt(successes[0].birth));
+				if (!finalSnapshot) expect(birthAt(phase === 'before-presence' ? 1 : 2)).toBe(successes[0].birth);
+				if (phase === 'during-hydration' || finalSnapshot) expect(birthAt(1)).toBe(birthAt(0));
+				if (finalSnapshot) expect(birthAt(2)).toBe(birthAt(0));
+			} else for (let index = 0; index < proofs.length; index++) expect(birthAt(index)).toBe(successes[0].birth);
+
+			for (const winner of successes) {
+				expect(
+					await otherSource.query(`SELECT CAST(catalogBirth AS TEXT) birth FROM ${table} WHERE id = ?`, [winner.id]),
+				).toEqual([{ birth: winner.birth }]);
+				if (operation === 'replace' || operation === 'double-replace') {
+					const stored = await otherSource.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: winner.id });
+					expect((await otherModule.get(PropertyValueService).readLatest(stored))?.value).toBe(winner.value);
+				} else {
+					const stored = await otherSource.manager.findOneByOrFail(VirtualChannelEntity, { id: winner.id });
+					expect(operation === 'parent' ? stored.parentId : stored.name).toBe(winner.value);
+				}
+			}
+		} finally {
+			try {
+				try {
+					if (process.env.P05B1B_TEST_ARTIFACT_DIR)
+						writeFileSync(
+							path.join(process.env.P05B1B_TEST_ARTIFACT_DIR, `identity-${operation}-${phase}.json`),
+							JSON.stringify({ phase, operation, mutations, proofs, successes, graphWrites }),
+						);
+				} finally {
+					try {
+						restoreQuery?.();
+						const index = dataSource.subscribers.indexOf(proofObserver);
+						if (index >= 0) dataSource.subscribers.splice(index, 1);
+					} finally {
+						try {
+							await otherApp.close();
+						} finally {
+							useContainer(moduleRef, { fallbackOnErrors: true });
+						}
+					}
+				}
+			} finally {
+				Object.defineProperty(Logger.prototype, 'error', errorDescriptor);
+			}
+		}
+	};
+	it.each(['before-presence', 'during-hydration'])(
+		'vetoes a genuine independent same-file public remove/create successor at %s',
+		(phase) => verifyIndependent(phase, 'replace'),
+	);
+	it.each(['before-presence', 'during-hydration'])(
+		'vetoes a genuine independent acyclic same-device parent PATCH at %s without rebirth',
+		(phase) => verifyIndependent(phase, 'parent'),
+	);
+	it('keeps genuine independent same-birth metadata and graph advances eligible with original configuration', () =>
+		verifyIndependent('before-presence', 'metadata'));
+	it('keeps the detached healthy response when genuine B wins after the final After snapshot', () =>
+		verifyIndependent('after-detachment', 'replace'));
+
+	it('vetoes genuine B-to-C sameUUID information-row restoration during the one ordinary hydration', () =>
+		verifyIndependent('during-hydration', 'double-replace'));
+	it.each([
+		'device-parent',
+		'channel-parent',
+		'base-prototype',
+		'subclass-prototype',
+		'own-constructor',
+		'own-type-accessor',
+		'missing-channels',
+		'partial-properties',
+		'duplicate-property',
+		'missing-parent-null',
+		'undefined-parent-null',
+		'wrong-device-owner',
+		'wrong-channel-owner',
+		'null-properties',
+		'nonarray-channels',
+		'extra-property',
+		'extra-channel',
+		'own-wrong-type',
+	])(
+		'refuses a real hydrated receiver with a wrong %s kind before the pinned virtual getter can bless it',
+		async (kind) => {
+			const descriptor = Object.getOwnPropertyDescriptor(VirtualDeviceEntity.prototype, 'type');
+			let candidate: VirtualDeviceEntity | undefined;
+			let forced = 0;
+			Object.defineProperty(VirtualDeviceEntity.prototype, 'type', {
+				...descriptor,
+				get: function (this: VirtualDeviceEntity) {
+					if (this === candidate) forced++;
+					const value: unknown = descriptor.get.call(this);
+					return value;
+				},
+			});
+			try {
+				await verifyThermostatWire(
+					{ app, moduleRef, dataSource, accessToken },
+					{
+						replaceBeforeCreate: false,
+						variant: 'heating',
+						failure: 'none',
+						interleave: {
+							expectedFallback: true,
+							afterHydration: (device) => {
+								candidate = device;
+								switch (kind) {
+									case 'device-parent':
+										device.channels[0].device = Object.assign(new VirtualChannelEntity(), {
+											id: device.id,
+										}) as unknown as DeviceEntity;
+										break;
+									case 'channel-parent':
+										device.channels[0].properties[0].channel = Object.assign(new VirtualDeviceEntity(), {
+											id: device.channels[0].id,
+										}) as unknown as ChannelEntity;
+										break;
+									case 'base-prototype':
+										Object.setPrototypeOf(device, DeviceEntity.prototype);
+										break;
+									case 'subclass-prototype': {
+										class Successor extends VirtualDeviceEntity {}
+										Object.setPrototypeOf(device, Successor.prototype);
+										break;
+									}
+									case 'own-constructor':
+										Object.defineProperty(device, 'constructor', { value: VirtualChannelEntity, configurable: true });
+										break;
+									case 'own-type-accessor':
+										Object.defineProperty(device, 'type', {
+											get: () => {
+												forced++;
+												return 'virtual';
+											},
+											configurable: true,
+										});
+										break;
+									case 'missing-channels':
+										Reflect.deleteProperty(device, 'channels');
+										break;
+									case 'partial-properties':
+										device.channels[0].properties = [];
+										break;
+									case 'duplicate-property':
+										device.channels[0].properties.push(device.channels[0].properties[0]);
+										break;
+									case 'missing-parent-null':
+										Reflect.deleteProperty(device.channels[0], 'parentId');
+										break;
+									case 'wrong-device-owner':
+										device.channels[0].device = Object.assign(new VirtualDeviceEntity(), { id: uuid() });
+										break;
+									case 'wrong-channel-owner':
+										device.channels[0].properties[0].channel = Object.assign(new VirtualChannelEntity(), {
+											id: uuid(),
+										});
+										break;
+									case 'null-properties':
+										Reflect.set(device.channels[0], 'properties', null);
+										break;
+									case 'nonarray-channels':
+										Reflect.set(device, 'channels', {});
+										break;
+									case 'extra-property':
+										device.channels[0].properties.push(
+											Object.assign(new VirtualChannelPropertyEntity(), device.channels[0].properties[0], {
+												id: uuid(),
+											}),
+										);
+										break;
+									case 'extra-channel':
+										device.channels.push(
+											Object.assign(new VirtualChannelEntity(), device.channels[0], { id: uuid(), properties: [] }),
+										);
+										break;
+									case 'own-wrong-type':
+										Object.defineProperty(device, 'type', { value: 'simulator', configurable: true });
+										break;
+									case 'undefined-parent-null':
+										device.channels[0].parentId = undefined;
+										break;
+								}
+								return Promise.resolve();
+							},
+						},
+					},
+				);
+				expect(forced).toBe(0);
+			} finally {
+				console.info('wrong-parent-kind-getter', JSON.stringify({ kind, forced }));
+				Object.defineProperty(VirtualDeviceEntity.prototype, 'type', descriptor);
+			}
+		},
+	);
+	it('accepts healthy loaded Virtual parents with exact owned identities and complete wire', async () => {
+		await verifyThermostatWire(
+			{ app, moduleRef, dataSource, accessToken },
+			{
+				replaceBeforeCreate: false,
+				variant: 'heating',
+				failure: 'none',
+				interleave: {
+					afterHydration: (device) => {
+						for (const channel of device.channels) {
+							channel.device = Object.assign(new VirtualDeviceEntity(), { id: device.id });
+							for (const property of channel.properties)
+								property.channel = Object.assign(new VirtualChannelEntity(), { id: channel.id });
+						}
+						return Promise.resolve();
+					},
+				},
+			},
+		);
+	});
+	it('accepts overlapping UUIDs across physical kinds through the actual supported thermostat POST', async () => {
+		const created = await verifyThermostatWire(
+			{ app, moduleRef, dataSource, accessToken },
+			{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', overlapKinds: true },
+		);
+		expect(created.device.channels[0].id).toBe(created.device.id);
+		expect(created.device.channels[0].properties[0].id).toBe(created.device.id);
+	});
+	it('retains original same-physical-kind duplicate refusal and complete atomic absence', async () => {
+		await verifyThermostatWire(
+			{ app, moduleRef, dataSource, accessToken },
+			{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', duplicateKind: true },
+		);
+	});
+});
+
+describe('P05b1b fresh full AppModule schema composition', () => {
+	it('reserves two real startup owners and preserves a no-change full sync/restart with normal memory fallback', async () => {
+		const keys = ['NODE_ENV', 'FB_DB_PATH', 'FB_CONFIG_PATH', 'FB_DB_SYNC', 'FB_DB_MIGRATIONS_RUN'];
+		const environment = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+		const directory = mkdtempSync(path.join(tmpdir(), 'p05b1b-fresh-nest-'));
+		const applications: INestApplication[] = [];
+		let failure: { cause: unknown } | undefined;
+		const state = async (source: DataSource) => {
+			const schema = await source.query<{ name: string; type: string; sql: string }[]>(
+				"SELECT name,type,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
+			);
+			const rows: Record<string, unknown> = {};
+			for (const table of schema.filter(({ type }) => type === 'table'))
+				rows[table.name] = await source.query(`SELECT * FROM "${table.name.replaceAll('"', '""')}"`);
+			return { schema, rows };
+		};
+		const construct = async () => {
+			const module = await Test.createTestingModule({
+				imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
+			}).compile();
+			const app = module.createNestApplication();
+			app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+			applications.push(app);
+			return { app, module, source: module.get(DataSource) };
+		};
+		try {
+			process.env.NODE_ENV = 'production';
+			process.env.FB_DB_PATH = directory;
+			process.env.FB_CONFIG_PATH = directory;
+			process.env.FB_DB_SYNC = 'true';
+			process.env.FB_DB_MIGRATIONS_RUN = 'false';
+			writeFileSync(
+				path.join(directory, 'config.yaml'),
+				JSON.stringify({ plugins: { 'influx-v1-plugin': { enabled: false } }, modules: {} }),
+			);
+			// Finish the requested offline ORM DDL before racing the two actual serving readiness hooks.
+			const first = await construct(),
+				second = await construct();
+			expect(first.source).not.toBe(second.source);
+			expect(first.source.manager).not.toBe(second.source.manager);
+			expect(first.source.options.database).toBe(second.source.options.database);
+			const observations = [[], []] as [string[], string[]];
+			const catalogReads = [[], []] as [number[], number[]];
+			for (const [index, item] of [first, second].entries())
+				item.source.subscribers.push({
+					beforeQuery: (event) => {
+						observations[index].push(event.query);
+						if (
+							event.query.startsWith('SELECT name FROM sqlite_master WHERE name IN') &&
+							Array.isArray(event.parameters) &&
+							event.parameters.length === 8 &&
+							event.parameters.every(
+								(value: unknown) => typeof value === 'string' && value.includes('_thermostat_catalog_birth_'),
+							)
+						)
+							catalogReads[index].push(observations[index].length - 1);
+					},
+				});
+			await Promise.all([first.app.init(), second.app.init()]);
+			for (const queries of observations) {
+				const index = queries.indexOf(
+					'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
+				);
+				expect(index).toBeGreaterThan(0);
+				expect(queries[index - 1]).toBe('BEGIN TRANSACTION');
+			}
+			for (const [index, reads] of catalogReads.entries()) {
+				expect(reads.length).toBeGreaterThan(0);
+				const read = reads[0];
+				expect(observations[index][read - 1]).toBe(
+					'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
+				);
+				expect(observations[index][read - 2]).toBe('BEGIN TRANSACTION');
+			}
+			for (const item of [first, second]) {
+				expect(item.module.get(StorageService).isPrimaryAvailable()).toBe(false);
+				expect(item.module.get(StorageService).isUsingFallback()).toBe(true);
+			}
+			await first.source.manager.insert(DeviceEntity, {
+				id: 'fresh-device',
+				name: 'Fresh preserved row',
+				category: DeviceCategory.GENERIC,
+			});
+			await first.source.manager.insert(ChannelEntity, {
+				id: 'fresh-channel',
+				name: 'Fresh channel',
+				category: ChannelCategory.GENERIC,
+				device: 'fresh-device',
+			});
+			await first.source.manager.insert(ChannelPropertyEntity, {
+				id: 'fresh-property',
+				category: PropertyCategory.GENERIC,
+				identifier: 'fresh',
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				channel: 'fresh-channel',
+			});
+			const before = await state(first.source);
+			expect(
+				before.schema.filter(({ name, type }) => type === 'trigger' && name.includes('_thermostat_catalog_birth_')),
+			).toHaveLength(6);
+			expect((await first.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
+			await first.source.synchronize();
+			expect(await state(first.source)).toEqual(before);
+			await second.app.close();
+			applications.splice(applications.indexOf(second.app), 1);
+			await first.app.close();
+			applications.splice(applications.indexOf(first.app), 1);
+			const third = await construct();
+			await third.app.init();
+			expect(await state(third.source)).toEqual(before);
+			expect((await third.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
+			useContainer(third.module, { fallbackOnErrors: true });
+			expect(third.module.get(StorageService).isPrimaryAvailable()).toBe(false);
+			expect(third.module.get(StorageService).isUsingFallback()).toBe(true);
+			await request(third.app.getHttpServer())
+				.post('/modules/auth/auth/register')
+				.send({
+					data: { username: 'memorycatalog', password: 'securePassword123!', email: 'memorycatalog@example.com' },
+				})
+				.expect(204);
+			const login = await request(third.app.getHttpServer())
+				.post('/modules/auth/auth/login')
+				.send({ data: { username: 'memorycatalog', password: 'securePassword123!' } })
+				.expect(201);
+			const accessToken = (login.body as { data: { access_token: string } }).data.access_token;
+			await verifyThermostatWire(
+				{ app: third.app, moduleRef: third.module, dataSource: third.source, accessToken },
+				{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
+			);
+		} catch (cause: unknown) {
+			failure = { cause };
+		} finally {
+			for (const app of applications.reverse()) {
+				try {
+					await app.close();
+				} catch (cause: unknown) {
+					failure ??= { cause };
+				}
+			}
+			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
+			for (const key of keys) {
+				if (environment[key] === undefined) delete process.env[key];
+				else process.env[key] = environment[key];
+			}
+			rmSync(directory, { recursive: true, force: true });
+		}
+		if (failure) throw failure.cause;
 	});
 });
