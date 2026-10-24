@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { TAILSCALE_DATA_SUBDIR } from '../remote-access-tailscale.constants';
+import { TAILSCALE_DATA_SUBDIR, TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS } from '../remote-access-tailscale.constants';
 import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
@@ -38,18 +38,13 @@ jest.mock('node:fs/promises', () => {
 
 const SECRET_AUTH_KEY = 'tskey-auth-kABCDE1234-verysecretsuffixvalue123456';
 
-// All three timeouts are shrunk to real, sub-second values for this whole
-// file. Everything here uses real (not fake) timers throughout: the
-// auth-key flow awaits real `fs/promises` calls before it ever reaches
-// `cli.spawnUp()`, and those go through libuv's thread pool — a scenario
-// fake timers cannot safely interleave with (they intercept
-// setTimeout/setImmediate, but real disk I/O completion is independent of
-// the JS timer system, so `waitUntil` below still needs a *real* setTimeout
-// to yield the event loop). Shrinking the constants keeps the genuine
-// timeout tests fast without fake time. TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS
-// is kept well below TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS, same as in
-// production, so the two never race in the "first block never arrives"
-// tests below.
+// Auth-key I/O and the timeout-specific cases keep real timers: real fs/promises
+// completion goes through libuv's thread pool independently of a fake clock.
+// The interactive-only concurrency case below owns a fake clock because its
+// requirements/supervisor/process are promise/EventEmitter fixtures with no disk
+// I/O. Advancing that clock proves first-block ordering without relying on wall
+// time between registering the 50ms overall and 15ms first-block deadlines.
+// Constants stay short for the genuine real-time timeout cases.
 jest.mock('../remote-access-tailscale.constants', () => ({
 	...jest.requireActual<typeof import('../remote-access-tailscale.constants')>('../remote-access-tailscale.constants'),
 	TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS: 50,
@@ -438,26 +433,42 @@ describe('TailscaleLoginService', () => {
 
 			cli.spawnUp.mockReturnValueOnce(child);
 
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
 			const first = service.login();
 			const second = service.login();
+			// Observe both promises immediately; keep the original assertions/awaits below.
+			const settled = Promise.allSettled([first, second]);
+			let advance: Promise<void> | undefined;
+			try {
+				resolveRequirements([
+					{ code: 'operator-granted', satisfied: true, message: 'granted', remedy: null },
+					{ code: 'daemon-active', satisfied: true, message: 'active', remedy: null },
+				]);
+				await flushMicrotasks();
 
-			resolveRequirements([
-				{ code: 'operator-granted', satisfied: true, message: 'granted', remedy: null },
-				{ code: 'daemon-active', satisfied: true, message: 'active', remedy: null },
-			]);
+				const secondResult = expect(second).resolves.toEqual(expect.objectContaining({ state: 'pending-auth' }));
+				advance = jest.advanceTimersByTimeAsync(TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS);
+				await Promise.all([secondResult, advance]);
 
-			await expect(second).resolves.toEqual(expect.objectContaining({ state: 'pending-auth' }));
+				expect(cli.spawnUp).toHaveBeenCalledTimes(1);
 
-			expect(cli.spawnUp).toHaveBeenCalledTimes(1);
+				child.stdout.emit(
+					'data',
+					Buffer.from(
+						'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
+					),
+				);
 
-			child.stdout.emit(
-				'data',
-				Buffer.from(
-					'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
-				),
-			);
-
-			await first;
+				await first;
+			} finally {
+				try {
+					service.stopPendingLogin();
+					await Promise.allSettled([settled, advance]);
+					await flushMicrotasks();
+				} finally {
+					jest.useRealTimers();
+				}
+			}
 		});
 
 		it('allows a new login (either mode) once the in-flight keyed one has completed', async () => {
