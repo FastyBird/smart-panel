@@ -4114,17 +4114,28 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 											phase,
 											status: result.status,
 											body: result.body as unknown,
-											errors: jest
-												.spyOn(Logger.prototype, 'error')
-												.mock.calls.map((args) =>
-													args.map((value: unknown) =>
-														value instanceof Error
-															? { name: value.name, message: value.message, stack: value.stack }
-															: typeof value === 'string'
-																? value
-																: typeof value,
-													),
+											errors: jest.spyOn(Logger.prototype, 'error').mock.calls.map((args) =>
+												args.map((value: unknown) =>
+													value instanceof Error
+														? {
+																name: value.name,
+																message: value.message,
+																stack: value.stack,
+																query: Reflect.get(value, 'query') as unknown,
+																parameters: Array.isArray(Reflect.get(value, 'parameters'))
+																	? (Reflect.get(value, 'parameters') as unknown[]).map((parameter) =>
+																			typeof parameter === 'string' &&
+																			/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(parameter)
+																				? parameter
+																				: '<REDACTED non-UUID>',
+																		)
+																	: undefined,
+															}
+														: typeof value === 'string'
+															? value
+															: typeof value,
 												),
+											),
 										}),
 									);
 							})

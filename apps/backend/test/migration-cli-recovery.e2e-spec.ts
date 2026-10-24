@@ -40,6 +40,83 @@ describe('migration transaction compatibility', () => {
 		);
 	};
 
+	const assertSeedAndNativeFts = async (database: DataSource): Promise<void> => {
+		expect(await database.query('SELECT id, deviceId FROM devices_module_channels ORDER BY id')).toEqual([
+			{ id: 'fixture-channel', deviceId: 'fixture-device' },
+		]);
+		expect(
+			await database.query(
+				'SELECT id, channelId, sourcePropertyId FROM devices_module_channels_properties ORDER BY id',
+			),
+		).toEqual([
+			{ id: 'fixture-projection', channelId: 'fixture-channel', sourcePropertyId: 'fixture-source' },
+			{ id: 'fixture-source', channelId: 'fixture-channel', sourcePropertyId: null },
+		]);
+		expect(await database.query('SELECT id, name FROM devices_module_devices ORDER BY id')).toEqual([
+			{ id: 'fixture-device', name: 'Fixture device' },
+		]);
+		const names = [
+			'TRG_home_search_devices_insert',
+			'TRG_home_search_devices_update',
+			'TRG_home_search_devices_delete',
+			'TRG_home_search_properties_insert',
+			'TRG_home_search_properties_update',
+			'TRG_home_search_properties_delete',
+		];
+		const triggers = await database.query<{ name: string; sql: string }[]>(
+			`SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND name IN (${names.map(() => '?').join(',')}) ORDER BY name`,
+			names,
+		);
+		expect(triggers.map(({ name }) => name)).toEqual([...names].sort());
+		for (const { sql } of triggers) expect(sql).toContain('home_context_entity_search_fts');
+		const runner = database.createQueryRunner();
+		await runner.startTransaction();
+		try {
+			const match = (term: string): Promise<unknown> =>
+				runner.query(
+					'SELECT entity_id, count(*) n FROM home_context_entity_search_fts WHERE home_context_entity_search_fts MATCH ? GROUP BY entity_id ORDER BY entity_id',
+					[term],
+				);
+			await runner.query(
+				"INSERT INTO devices_module_devices(id,name,type) VALUES ('fts-device','p05insertdevice','fixture')",
+			);
+			await runner.query(
+				"INSERT INTO devices_module_channels_properties(id,name,type,channelId) VALUES ('fts-property','p05insertproperty','fixture','fixture-channel')",
+			);
+			expect(await match('p05insertdevice')).toEqual([{ entity_id: 'fts-device', n: 1 }]);
+			expect(await match('p05insertproperty')).toEqual([{ entity_id: 'fts-property', n: 1 }]);
+			await runner.query("UPDATE devices_module_devices SET name = 'p05updatedevice' WHERE id = 'fts-device'");
+			await runner.query(
+				"UPDATE devices_module_channels_properties SET name = 'p05updateproperty' WHERE id = 'fts-property'",
+			);
+			expect(await match('p05insertdevice OR p05insertproperty')).toEqual([]);
+			expect(await match('p05updatedevice')).toEqual([{ entity_id: 'fts-device', n: 1 }]);
+			expect(await match('p05updateproperty')).toEqual([{ entity_id: 'fts-property', n: 1 }]);
+			await runner.query("DELETE FROM devices_module_channels_properties WHERE id = 'fts-property'");
+			await runner.query("DELETE FROM devices_module_devices WHERE id = 'fts-device'");
+			expect(await match('p05updatedevice OR p05updateproperty')).toEqual([]);
+		} finally {
+			await runner.rollbackTransaction();
+			await runner.release();
+		}
+	};
+
+	const assertMigration25Prefix = async (database: DataSource, selected: string[]): Promise<void> => {
+		const journal = await database.query<{ timestamp: number }[]>('SELECT timestamp FROM migrations ORDER BY id');
+		expect(journal).toHaveLength(selected.length);
+		expect(journal.every(({ timestamp }) => timestamp <= 1000000000025)).toBe(true);
+		expect(
+			await database.query(
+				"SELECT name FROM sqlite_master WHERE name IN ('devices_virtual_graph_revision', 'devices_virtual_thermostat_configs', 'devices_virtual_thermostat_catalog_birth_allocator')",
+			),
+		).toEqual([]);
+		const columns = await database.query<{ name: string }[]>('PRAGMA table_info(devices_module_channels_properties)');
+		expect(columns.map(({ name }) => name)).toEqual(
+			expect.arrayContaining(['sourcePropertyId', 'energyClaimPropertyId']),
+		);
+		expect(columns.map(({ name }) => name)).not.toContain('catalogBirth');
+	};
+
 	let ownedDirectory: string;
 	let issuedWork: Promise<void>;
 	const ownedDataSources: DataSource[] = [];
@@ -58,14 +135,12 @@ describe('migration transaction compatibility', () => {
 		}
 	});
 
-	it('replays the recovery contract through separate TypeORM CLI processes', async () => {
+	it('recovers isolated migration 26 from a chronological prefix through three TypeORM CLI processes', async () => {
 		const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'smart-panel-migration-cli-recovery-'));
 		ownedDirectory = directory;
 		const database = path.join(directory, 'database.sqlite');
 		const fixturePath = path.join(directory, 'data-source.ts');
-		const migration25Files = migrationFiles.filter(
-			(file) => !file.endsWith('1000000000026-AddHardwareInputCategories.ts'),
-		);
+		const migration25Files = migrationFiles.filter((file) => Number(path.basename(file).slice(0, 13)) <= 1000000000025);
 		const alpha12DataSource = createDataSource('each', database, migration25Files);
 		ownedDataSources.push(alpha12DataSource);
 		const backendRoot = path.resolve(__dirname, '..');
@@ -76,6 +151,7 @@ describe('migration transaction compatibility', () => {
 		issuedWork = (async () => {
 			await alpha12DataSource.initialize();
 			await alpha12DataSource.runMigrations();
+			await assertMigration25Prefix(alpha12DataSource, migration25Files);
 			await seedMigration25Rows(alpha12DataSource);
 			await alpha12DataSource.destroy();
 
@@ -148,6 +224,14 @@ describe('migration transaction compatibility', () => {
 			const failed = await runCli(true);
 			expect(failed.code).not.toBe(0);
 			expect(failed.output).toContain('injected migration history write failure');
+			const failedVerification = new DataSource({ type: 'sqlite', database });
+			ownedDataSources.push(failedVerification);
+			await failedVerification.initialize();
+			await assertMigration25Prefix(failedVerification, migration25Files);
+			await assertSeedAndNativeFts(failedVerification);
+			expect(await failedVerification.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
+			expect(await failedVerification.query('PRAGMA foreign_key_check')).toEqual([]);
+			await failedVerification.destroy();
 
 			const recovered = await runCli(false);
 			expect(recovered.code).toBe(0);
@@ -166,6 +250,7 @@ describe('migration transaction compatibility', () => {
 			).toEqual([{ count: 1 }]);
 			expect(await verificationDataSource.query(`PRAGMA integrity_check`)).toEqual([{ integrity_check: 'ok' }]);
 			expect(await verificationDataSource.query(`PRAGMA foreign_key_check`)).toEqual([]);
+			await assertSeedAndNativeFts(verificationDataSource);
 			await verificationDataSource.destroy();
 		})();
 		await issuedWork;

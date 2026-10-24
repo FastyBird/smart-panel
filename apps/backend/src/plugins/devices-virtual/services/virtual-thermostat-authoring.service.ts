@@ -118,10 +118,20 @@ export class VirtualThermostatAuthoringService {
 			devices.values.create;
 		const entryPins = [own, lock, graph, devices, configurations, catalog, responseDispatch, response];
 		const pins = [...entryPins, readerDispatch, reader];
-		const current = () => pins.every((pin) => pin.current());
+		const settlement = new CreationSettlement<CreatedCatalogResponse>();
+		let proofFailure: Readonly<{ stage: string; cause: unknown; raw: ReturnType<typeof reader.evidence> }> | undefined;
+		const current = () => {
+			if (settlement.outcome !== 'committed') return pins.every((pin) => pin.current());
+			// Reader expiry vetoes the response, never the original post-ACK callback policy.
+			try {
+				assertCreationCurrent([readerDispatch, reader]);
+			} catch (cause: unknown) {
+				proofFailure ??= Object.freeze({ stage: 'publication', cause, raw: reader.evidence() });
+			}
+			return entryPins.every((pin) => pin.current());
+		};
 		const input = snapshotCreation(dto);
 		assertCreationCurrent(pins);
-		const settlement = new CreationSettlement<CreatedCatalogResponse>();
 		try {
 			return (await lock.values.runExclusive.call(lock.receiver, async () => {
 				assertCreationCurrent(pins);
@@ -191,9 +201,6 @@ export class VirtualThermostatAuthoringService {
 				);
 				let configFailure: Readonly<{ cause: unknown }> | undefined;
 				let hydrationFailure: Readonly<{ cause: unknown }> | undefined;
-				let proofFailure:
-					| Readonly<{ stage: string; cause: unknown; raw: ReturnType<typeof reader.evidence> }>
-					| undefined;
 				let before: CatalogWitness | undefined;
 				let selectedDevice = committed.fullWire.device;
 				try {

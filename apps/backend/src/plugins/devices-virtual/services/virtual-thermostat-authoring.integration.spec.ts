@@ -118,6 +118,7 @@ describe('atomic virtual thermostat authoring', () => {
 	let devices: DevicesService;
 	let events: EventEmitter2;
 	let propertyMapper: ChannelsPropertiesTypeMapperService;
+	let properties: ChannelsPropertiesService;
 	let lock: DeviceStructureLockService;
 	let graph: VirtualDependencyGraphService;
 	let ambientId: string;
@@ -184,7 +185,7 @@ describe('atomic virtual thermostat authoring', () => {
 			createDto: CreateVirtualDeviceDto,
 			updateDto: UpdateVirtualDeviceDto,
 		});
-		const properties = new ChannelsPropertiesService(
+		properties = new ChannelsPropertiesService(
 			database.getRepository(ChannelPropertyEntity),
 			propertyMapper,
 			{} as never,
@@ -581,6 +582,134 @@ describe('atomic virtual thermostat authoring', () => {
 			expect(values.write).toHaveBeenCalledTimes(input.configuration.settings.length);
 		},
 	);
+
+	it.each(['first-hook', 'first-hook-restored', 'graph-settlement'] as const)(
+		'reader expiry preserves every original publication after native ACK at %s',
+		async (phase) => {
+			const input = request(relayId),
+				originalManager = database.manager,
+				physical = Object.getOwnPropertyDescriptor(database.driver, 'databaseConnection')?.value as unknown;
+			const ids = input.device.channels.flatMap((channel) => channel.properties.map(({ id }) => id));
+			const hooks: string[] = [],
+				reloads: string[] = [],
+				emitted: string[] = [];
+			const ownerChecks: boolean[] = [];
+			let settlement: CreationSettlement<RetainedOriginalCreatedResponse>;
+			const run = DeviceCreationContext.runPinned;
+			jest.spyOn(DeviceCreationContext, 'runPinned').mockImplementation((...args) => {
+				settlement = args[4] as CreationSettlement<RetainedOriginalCreatedResponse>;
+				return run(...args);
+			});
+			const expire = () => {
+				expect(settlement.outcome).toBe('committed');
+				expect(Reflect.set(database, 'manager', database.createEntityManager())).toBe(true);
+				expect(database.manager).not.toBe(originalManager);
+				expect(database.isInitialized).toBe(true);
+				expect(Object.getOwnPropertyDescriptor(database.driver, 'databaseConnection')?.value).toBe(physical);
+			};
+			const mapping = propertyMapper.getMapping('virtual');
+			mapping.afterCreate = (property) => {
+				hooks.push(property.id);
+				ownerChecks.push(lock.hasCurrentStructuralLease());
+				expect(settlement.outcome).toBe('committed');
+				if (hooks.length === 1 && phase !== 'graph-settlement') expire();
+				if (hooks.length === ids.length && phase === 'first-hook-restored')
+					expect(Reflect.set(database, 'manager', originalManager)).toBe(true);
+				return Promise.resolve(property);
+			};
+			propertyMapper.registerMapping(mapping);
+			const reload = properties.getOneOrThrow.bind(properties) as ChannelsPropertiesService['getOneOrThrow'];
+			jest.spyOn(properties, 'getOneOrThrow').mockImplementation(async (id) => {
+				reloads.push(id);
+				ownerChecks.push(lock.hasCurrentStructuralLease());
+				return reload(id);
+			});
+			const catalog = devices.captureCreationCatalog('virtual');
+			for (const event of [EventType.CHANNEL_PROPERTY_CREATED, EventType.CHANNEL_CREATED, EventType.DEVICE_CREATED])
+				events.on(event, (entity: { id: string }) => {
+					emitted.push(entity.id);
+					ownerChecks.push(lock.hasCurrentStructuralLease());
+				});
+			if (phase === 'graph-settlement') {
+				const write = graph.withCreationWrite.bind(graph) as VirtualDependencyGraphService['withCreationWrite'];
+				jest.spyOn(graph, 'withCreationWrite').mockImplementation(async (...args) => {
+					const result = await write(...args);
+					expire();
+					return result;
+				});
+			}
+			let configured = false,
+				finalHydrations = 0;
+			const afterCommit = configs.afterCommit.bind(configs) as VirtualThermostatConfigService['afterCommit'];
+			const configuredSpy = jest.spyOn(configs, 'afterCommit').mockImplementation(async (...args) => {
+				expect(hooks).toEqual(ids);
+				expect(reloads).toEqual(ids);
+				ownerChecks.push(lock.hasCurrentStructuralLease());
+				const result = await afterCommit(...args);
+				configured = true;
+				return result;
+			});
+			const find = devices.findOne.bind(devices) as DevicesService['findOne'];
+			jest.spyOn(devices, 'findOne').mockImplementation(async (...args) => {
+				const selected = await find(...args);
+				if (configured && args[0] === input.device.id) {
+					finalHydrations++;
+					ownerChecks.push(lock.hasCurrentStructuralLease());
+					selected.name = 'later candidate after reader expiry';
+				}
+				return selected;
+			});
+			try {
+				const created = await authoring.create(input);
+				expect(hooks).toEqual(ids);
+				expect(reloads).toEqual(ids);
+				expect(emitted).toEqual([
+					...input.device.channels.flatMap((channel) => [...channel.properties.map(({ id }) => id), channel.id]),
+					input.device.id,
+				]);
+				expect(catalog.current()).toBe(true);
+				expect(settlement.receipt.outcome).toBe('committed');
+				expect(settlement.legacyPublicationFailure).toBeUndefined();
+				expect(configuredSpy).toHaveBeenCalledTimes(1);
+				expect(finalHydrations).toBe(1);
+				expect(ownerChecks.every(Boolean)).toBe(true);
+				expect(responseWire(created)).toEqual(
+					responseWire(thermostatCreationResponse.pin().materialize(settlement.result.value)),
+				);
+				expect(created.device.name).toBe(input.device.name);
+			} finally {
+				Reflect.set(database, 'manager', originalManager);
+			}
+		},
+	);
+
+	it('refuses reader-only expiry at actual BeforeQuery COMMIT without native submission', async () => {
+		const input = request(relayId),
+			originalManager = database.manager;
+		type Native = { all(sql: string, parameters: unknown[], callback: (...args: unknown[]) => void): unknown };
+		const native = (database.driver as SqliteDriver).databaseConnection as Native;
+		const original = native.all;
+		let submissions = 0,
+			observed = 0;
+		jest.spyOn(native, 'all').mockImplementation(function (this: Native, ...args) {
+			if (args[0] === 'COMMIT') submissions++;
+			return original.apply(this, args);
+		});
+		database.subscribers.push({
+			beforeQuery: (event) => {
+				if (event.query === 'COMMIT' && observed++ === 0)
+					Reflect.set(database, 'manager', database.createEntityManager());
+			},
+		} satisfies EntitySubscriberInterface);
+		try {
+			await expect(authoring.create(input)).rejects.toMatchObject({ settlement: { outcome: 'refused' } });
+			expect(observed).toBe(1);
+			expect(submissions).toBe(0);
+			await expectAbsent(input);
+		} finally {
+			Reflect.set(database, 'manager', originalManager);
+		}
+	});
 
 	it.each(['copy', 'materialization'] as const)(
 		'isolates candidate %s failure and keeps one hydration with the full original native result',
