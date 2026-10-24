@@ -59,6 +59,7 @@ import { ChannelsControlsService } from './services/channels.controls.service';
 import { ChannelsPropertiesTypeMapperService } from './services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
+import { ClimateAutomationLedgerService } from './services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from './services/climate-automation.registry.service';
 import { CommandLatencyTraceCollectorService } from './services/command-latency-trace-collector.service';
 import { CompositePropertyCommandRegistryService } from './services/composite-property-command.registry.service';
@@ -128,6 +129,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		WebsocketModule,
 	],
 	providers: [
+		ClimateAutomationLedgerService,
 		ClimateAutomationRegistryService,
 		DeviceContributionRegistryService,
 		PropertyCommandEntryInterceptor,
@@ -192,6 +194,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		ChannelsPropertiesController,
 	],
 	exports: [
+		ClimateAutomationLedgerService,
 		ClimateAutomationRegistryService,
 		DeviceContributionRegistryService,
 		DevicesService,
