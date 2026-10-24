@@ -161,7 +161,8 @@ function getter(prototype: object, key: string) {
 /** Pin all selected response dispatch before caller DTO traversal; never recapture on fallback. */
 function pin() {
 	const catalog = captureCreation(thermostatCreationCatalog, ['assert']);
-	const pins: { current(): boolean }[] = [catalog];
+	const pins: { current(): boolean }[] = [];
+	const catalogPins: { current(): boolean }[] = [catalog];
 	function model<T extends object>(
 		constructor: new (...args: never[]) => T,
 		scalars: readonly (keyof T & string)[],
@@ -220,7 +221,7 @@ function pin() {
 			const original = node;
 			const parent = Object.getPrototypeOf(node) as object | null;
 			const type = Object.getOwnPropertyDescriptor(node, 'type');
-			pins.push(captureCreation(node as { constructor: unknown }, ['constructor']), {
+			catalogPins.push(captureCreation(node as { constructor: unknown }, ['constructor']), {
 				current: () => {
 					const now = Object.getOwnPropertyDescriptor(original, 'type');
 					return (
@@ -485,7 +486,8 @@ function pin() {
 		},
 	);
 	function captureCatalogDevice(loadedDevice: unknown, expected: readonly CatalogMember[]): ResponseRecord {
-		if (!pins.every((entry) => entry.current())) throw new Error('Original thermostat response types expired');
+		if (![...pins, ...catalogPins].every((entry) => entry.current()))
+			throw new Error('Original thermostat response types expired');
 		const originalMembers = membership(loadedDevice, true);
 		catalog.values.assert(originalMembers, expected);
 		const detached = device.capture(loadedDevice as VirtualDeviceEntity);
@@ -495,6 +497,7 @@ function pin() {
 	const response = model(VirtualCreatedThermostatModel, [], { device, configuration });
 	return Object.freeze({
 		current: () => pins.every((entry) => entry.current()),
+		catalog: Object.freeze({ current: () => catalogPins.every((entry) => entry.current()) }),
 		capture(
 			loadedDevice: VirtualDeviceEntity,
 			originalConfiguration: VirtualThermostatConfigurationModel,

@@ -117,14 +117,15 @@ export class VirtualThermostatAuthoringService {
 		const createDevice: (dto: CreateVirtualDeviceDto, context: DeviceCreationContext) => Promise<DeviceEntity> =
 			devices.values.create;
 		const entryPins = [own, lock, graph, devices, configurations, catalog, responseDispatch, response];
-		const pins = [...entryPins, readerDispatch, reader];
+		const observationPins = [readerDispatch, reader, response.catalog];
+		const pins = [...entryPins, ...observationPins];
 		const settlement = new CreationSettlement<CreatedCatalogResponse>();
 		let proofFailure: Readonly<{ stage: string; cause: unknown; raw: ReturnType<typeof reader.evidence> }> | undefined;
 		const current = () => {
 			if (settlement.outcome !== 'committed') return pins.every((pin) => pin.current());
-			// Reader expiry vetoes the response, never the original post-ACK callback policy.
+			// Catalog observations veto the response, never the original post-ACK callback policy.
 			try {
-				assertCreationCurrent([readerDispatch, reader]);
+				assertCreationCurrent(observationPins);
 			} catch (cause: unknown) {
 				proofFailure ??= Object.freeze({ stage: 'publication', cause, raw: reader.evidence() });
 			}
@@ -212,6 +213,7 @@ export class VirtualThermostatAuthoringService {
 				}
 				try {
 					before = await reader.read(committed.identity.controller, committed.members);
+					assertCreationCurrent(observationPins);
 					readerDispatch.values.same(before, committed.catalog);
 				} catch (cause: unknown) {
 					proofFailure ??= Object.freeze({ stage: 'Before', cause, raw: reader.evidence() });
@@ -219,10 +221,16 @@ export class VirtualThermostatAuthoringService {
 				try {
 					assertCreationCurrent(entryPins);
 					const refreshed = await devices.values.findOne.call(devices.receiver, committed.identity.controller);
+					try {
+						assertCreationCurrent(observationPins);
+					} catch (cause: unknown) {
+						proofFailure ??= Object.freeze({ stage: 'hydration', cause, raw: reader.evidence() });
+					}
 					if (refreshed) selectedDevice = response.captureCatalogDevice(refreshed, committed.members);
 					if (refreshed && !proofFailure && !settlement.legacyPublicationFailure && !configFailure) {
 						try {
 							const after = await reader.read(committed.identity.controller, committed.members);
+							assertCreationCurrent(observationPins);
 							readerDispatch.values.same(after, committed.catalog);
 							readerDispatch.values.same(after, before);
 						} catch (cause: unknown) {
