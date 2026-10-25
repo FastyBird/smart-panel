@@ -78,11 +78,11 @@ export class VirtualThermostatComfortController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Select thermostat baseline preset',
 		description:
-			'Select the current preset/manual baseline without overwriting an override. Clearing user OFF requires an explicit action; HVAC mode is separate.',
+			"Select a preset/manual baseline without overwriting an override. Returns this operation's persisted intent accepted by its native database acknowledgement, including the effective intent derived from that postimage. It may be superseded by subsequent maintenance or concurrent writes; GET reads current arbitration. This response does not establish an unexpired lease or output permission. Clearing user OFF requires an explicit action; HVAC mode is separate.",
 		operationId: 'select-devices-virtual-plugin-thermostat-preset',
 	})
 	@ApiUnprocessableEntityResponse('Missing preset, locked controller or revision conflict')
-	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Selected baseline')
+	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Committed selection intent')
 	@Post('selection')
 	select(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { DataSource } from 'typeorm';
@@ -6,10 +7,12 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
+import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { VirtualDeviceEntity } from '../entities/devices-virtual.entity';
 import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
 
+import { thermostatComfortSelection } from './thermostat-comfort-selection';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import {
@@ -149,8 +152,8 @@ export class VirtualThermostatComfortService {
 		});
 	}
 
-	async get(controllerId: string) {
-		await this.settle(controllerId);
+	async get(controllerId: string, settle = (id: string) => this.settle(id)) {
+		await settle(controllerId);
 		return this.structure.runShared(async () => {
 			const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			if (!row) throw new NotFoundException('Thermostat configuration does not exist.');
@@ -184,12 +187,97 @@ export class VirtualThermostatComfortService {
 		});
 	}
 
-	async select(id: string, fence: ThermostatComfortFence, preset: ThermostatPreset | null, clearUserOff: boolean) {
-		return this.mutate(id, fence, (row) => {
-			if (!row.comfort) throw new DevicesValidationException('Configure explicit comfort ranges and presets first.');
-			row.comfort.selected_preset = preset;
-			if (clearUserOff) row.comfort.user_off = false;
-		});
+	async select(
+		id: string,
+		fence: ThermostatComfortFence,
+		preset: ThermostatPreset | null,
+		clearUserOff: boolean,
+	): Promise<Awaited<ReturnType<VirtualThermostatComfortService['get']>>> {
+		// Service admission starts here; the controller already evaluated its primitive arguments.
+		const own = captureCreation(this, [
+			'database',
+			'structure',
+			'graph',
+			'claims',
+			'events',
+			'leases',
+			'pendingNotifications',
+			'logger',
+			'settle',
+			'get',
+			'changed',
+			'isCurrent',
+		] as (keyof this)[]);
+		const lock = captureCreation(this.structure, [
+			'runExclusive',
+			'runShared',
+			'hasCurrentStructuralLease',
+			'context',
+		] as (keyof DeviceStructureLockService)[]);
+		const graph = captureCreation(this.graph, [
+			'withComfortSelectionWrite',
+			'structuralWrite',
+			'refreshValidation',
+			'dataSource',
+			'revision',
+		] as (keyof VirtualDependencyGraphService)[]);
+		const claims = captureCreation(this.claims, ['invalidate', 'refresh']);
+		const events = captureCreation(this.events, ['emit']);
+		const helper = captureCreation(thermostatComfortSelection, ['pin']);
+		const selection = helper.values.pin(this.database);
+		const pins = [own, lock, graph, claims, events, helper, selection];
+		const current = () => pins.every((pin) => pin.current());
+		const check = () => {
+			if (!current()) throw new DevicesValidationException('Original thermostat selection dispatch expired.');
+		};
+		const settle = Reflect.get(own.values, 'settle') as VirtualThermostatComfortService['settle'];
+		const get = Reflect.get(own.values, 'get') as VirtualThermostatComfortService['get'];
+		const changed = Reflect.get(own.values, 'changed') as VirtualThermostatComfortService['changed'];
+		const notifications = {
+			invalidate: () => claims.values.invalidate.call(claims.receiver),
+			refresh: () => claims.values.refresh.call(claims.receiver),
+			emit: () => events.values.emit.call(events.receiver, THERMOSTAT_CONFIG_CHANGED, id),
+		};
+		const input = selection.input(id, fence, preset, clearUserOff);
+		check();
+		let ownerCurrent = () => false;
+		const operation = selection.operation(input, () => ownerCurrent(), current);
+		try {
+			// Independent maintenance may commit and make the selection fence stale.
+			await invokeCreation(settle, own.receiver, input.id);
+		} catch (cause: unknown) {
+			operation.settlement.preSettleFailure = Object.freeze({ cause });
+			throw cause;
+		}
+		try {
+			await lock.values.runExclusive.call(lock.receiver, async () => {
+				check();
+				// Bind the ORIGINAL async owner for the native callback, never a fresh ambient lookup.
+				ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
+				await graph.values.withComfortSelectionWrite.call(
+					graph.receiver,
+					operation.write,
+					input.expected_graph_revision,
+					operation.admit,
+					operation.accepted,
+				);
+				operation.accepted();
+				// New admission proof expiry cannot discard the inherited post-ACK work.
+				await invokeCreation(changed, own.receiver, input.id, notifications);
+			});
+		} catch (cause: unknown) {
+			operation.settlement.transactionFailure = Object.freeze({ cause });
+			throw cause;
+		}
+		try {
+			// Keep the old release boundary and exactly one final get for leases, clocks and retries.
+			// Its successful latest data is deliberately discarded, including a later writer's intent.
+			await invokeCreation(get, own.receiver, input.id, (id) => invokeCreation(settle, own.receiver, id));
+		} catch (cause: unknown) {
+			operation.settlement.finalGetFailure = Object.freeze({ cause });
+			throw cause;
+		}
+		return operation.copy();
 	}
 
 	/** Trusted bridge port only: no public DTO or route accepts an automation source/actor. */
@@ -306,18 +394,25 @@ export class VirtualThermostatComfortService {
 		return this.get(id);
 	}
 
-	private async changed(id: string): Promise<void> {
+	private async changed(
+		id: string,
+		dispatch = {
+			invalidate: () => this.claims.invalidate(),
+			refresh: () => this.claims.refresh(),
+			emit: () => this.events.emit(THERMOSTAT_CONFIG_CHANGED, id),
+		},
+	): Promise<void> {
 		// Admission revocation is fail-closed. Publication/refresh after COMMIT cannot undo or replay the mutation.
-		this.claims.invalidate();
+		dispatch.invalidate();
 		let failed = false;
 		try {
-			await this.claims.refresh();
+			await dispatch.refresh();
 		} catch (error) {
 			failed = true;
 			this.logger.error('Comfort committed; claim reconciliation awaits retry.', error);
 		}
 		try {
-			this.events.emit(THERMOSTAT_CONFIG_CHANGED, id);
+			dispatch.emit();
 		} catch (error) {
 			failed = true;
 			this.logger.error('Comfort committed; notification awaits retry.', error);
