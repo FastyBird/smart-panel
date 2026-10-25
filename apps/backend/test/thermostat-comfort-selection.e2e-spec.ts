@@ -541,6 +541,37 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			.post(endpoint(id) + route)
 			.set('Authorization', `Bearer ${bearer}`)
 			.send(body);
+	const observeIndependentFailure = (phase: string, value: unknown, service = false): void => {
+		try {
+			const read = (object: unknown, key: string): unknown =>
+				object && typeof object === 'object'
+					? (Object.getOwnPropertyDescriptor(object, key)?.value as unknown)
+					: undefined;
+			const status = service ? undefined : read(value, 'status');
+			if (status === 201) return;
+			const error = service ? (value instanceof Error ? value : undefined) : read(read(value, 'body'), 'error');
+			const details = read(error, 'details');
+			const fields =
+				service && error instanceof Error
+					? [error.name, error.message]
+					: [
+							read(error, 'code'),
+							read(error, 'message'),
+							read(Array.isArray(details) ? read(details, '0') : details, 'reason'),
+						];
+			const strings = fields
+				.filter((field): field is string => typeof field === 'string')
+				.slice(0, 3)
+				.map((field) => field.slice(0, 200));
+			console.error('P06c independent HTTP failure', {
+				phase,
+				status: typeof status === 'number' ? status : undefined,
+				strings,
+			});
+		} catch {
+			// Observation cannot change the original response or service rejection.
+		}
+	};
 	const frozenClock = () => {
 		const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Date'),
 			OriginalDate = Date;
@@ -703,7 +734,9 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
 			const body = { preset: 'comfort', setpoints: null, expires_at: '2026-10-25T00:01:00Z' };
 			if (kind === 'cancel') {
-				await lifecyclePost(id, '/override', { ...(await fences(id)), ...body }).expect(201);
+				await lifecyclePost(id, '/override', { ...(await fences(id)), ...body })
+					.expect((response) => observeIndependentFailure(`${kind}:preliminary-create`, response))
+					.expect(201);
 				await module.get(VirtualThermostatRuntimeService).flush();
 			}
 			const input = await fences(id),
@@ -735,23 +768,36 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				let bSuccess = 0;
 				const final = jest.spyOn(comfort, 'get').mockImplementationOnce(async (controller, settle) => {
 					jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
-					await other.override(
-						id,
-						{
-							expected_revision: input.expected_revision + 1,
-							expected_graph_revision: input.expected_graph_revision + 1,
-						},
-						{ preset: null, setpoints: { heating_setpoint: 19, cooling_setpoint: null }, expires_at: body.expires_at },
-						'B',
-						'panel',
-					);
+					await other
+						.override(
+							id,
+							{
+								expected_revision: input.expected_revision + 1,
+								expected_graph_revision: input.expected_graph_revision + 1,
+							},
+							{
+								preset: null,
+								setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+								expires_at: body.expires_at,
+							},
+							'B',
+							'panel',
+						)
+						.catch((cause: unknown) => {
+							observeIndependentFailure(`${kind}:B-in-final-get`, cause, true);
+							throw cause;
+						});
 					bSuccess++;
 					return original(controller, settle);
 				});
 				const response =
 					kind === 'override'
-						? await lifecyclePost(id, '/override', { ...input, ...body }).expect(201)
-						: await lifecyclePost(id, '/override/cancel', { ...input, override_id: aId }).expect(201);
+						? await lifecyclePost(id, '/override', { ...input, ...body })
+								.expect((response) => observeIndependentFailure(`${kind}:A-create`, response))
+								.expect(201)
+						: await lifecyclePost(id, '/override/cancel', { ...input, override_id: aId })
+								.expect((response) => observeIndependentFailure(`${kind}:A-cancel`, response))
+								.expect(201);
 				expect(bSuccess).toBe(1);
 				expect(final).toHaveBeenCalledTimes(1);
 				const a = publicRecord(2, actor, 'user');
