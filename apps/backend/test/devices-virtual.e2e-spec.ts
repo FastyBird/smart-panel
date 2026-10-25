@@ -4586,6 +4586,34 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 
 describe('P05b1b fresh full AppModule schema composition', () => {
 	it('reserves two real startup owners and preserves a no-change full sync/restart with normal memory fallback', async () => {
+		let phase = 'setup';
+		const report = (stage: string, cause: unknown): void => {
+			try {
+				const data: Record<string, unknown> = { phase: stage, causePresent: true, causeType: typeof cause };
+				const own = (value: unknown, key: string): unknown =>
+					value !== null && (typeof value === 'object' || typeof value === 'function')
+						? Object.getOwnPropertyDescriptor(value, key)?.value
+						: undefined;
+				for (const [prefix, value, keys] of [
+					['', cause, ['name', 'message', 'code', 'query']],
+					['driverError.', own(cause, 'driverError'), ['code', 'message']],
+				] as const)
+					for (const key of keys) {
+						const v = own(value, key);
+						const limit = key === 'query' ? 4096 : 200;
+						if (typeof v === 'string') {
+							const safe = key === 'message' && /[\r\n{}]|password|token|bearer/i.test(v) ? '<redacted>' : v;
+							data[prefix + key] = safe.slice(0, limit);
+							if (safe.length > limit) data[prefix + key + 'Truncated'] = true;
+						} else if (typeof v === 'number' && Number.isFinite(v)) data[prefix + key] = v;
+						else if (typeof v === 'boolean') data[prefix + key] = v;
+						else if (v === null) data[prefix + key] = null;
+					}
+				console.error('Schema composition failure', JSON.stringify(data));
+			} catch {
+				// Observation failure must not replace the original cause.
+			}
+		};
 		const keys = ['NODE_ENV', 'FB_DB_PATH', 'FB_CONFIG_PATH', 'FB_DB_SYNC', 'FB_DB_MIGRATIONS_RUN'];
 		const environment = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 		const directory = mkdtempSync(path.join(tmpdir(), 'p05b1b-fresh-nest-'));
@@ -4620,8 +4648,10 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				JSON.stringify({ plugins: { 'influx-v1-plugin': { enabled: false } }, modules: {} }),
 			);
 			// Finish the requested offline ORM DDL before racing the two actual serving readiness hooks.
-			const first = await construct(),
-				second = await construct();
+			phase = 'construct:first';
+			const first = await construct();
+			phase = 'construct:second';
+			const second = await construct();
 			expect(first.source).not.toBe(second.source);
 			expect(first.source.manager).not.toBe(second.source.manager);
 			expect(first.source.options.database).toBe(second.source.options.database);
@@ -4642,6 +4672,7 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 							catalogReads[index].push(observations[index].length - 1);
 					},
 				});
+			phase = 'init:concurrent';
 			await Promise.all([first.app.init(), second.app.init()]);
 			for (const queries of observations) {
 				const index = queries.indexOf(
@@ -4662,17 +4693,20 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				expect(item.module.get(StorageService).isPrimaryAvailable()).toBe(false);
 				expect(item.module.get(StorageService).isUsingFallback()).toBe(true);
 			}
+			phase = 'row:device';
 			await first.source.manager.insert(DeviceEntity, {
 				id: 'fresh-device',
 				name: 'Fresh preserved row',
 				category: DeviceCategory.GENERIC,
 			});
+			phase = 'row:channel';
 			await first.source.manager.insert(ChannelEntity, {
 				id: 'fresh-channel',
 				name: 'Fresh channel',
 				category: ChannelCategory.GENERIC,
 				device: 'fresh-device',
 			});
+			phase = 'row:property';
 			await first.source.manager.insert(ChannelPropertyEntity, {
 				id: 'fresh-property',
 				category: PropertyCategory.GENERIC,
@@ -4681,46 +4715,61 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				permissions: [PermissionType.READ_ONLY],
 				channel: 'fresh-channel',
 			});
+			phase = 'state:before-sync';
 			const before = await state(first.source);
 			expect(
 				before.schema.filter(({ name, type }) => type === 'trigger' && name.includes('_thermostat_catalog_birth_')),
 			).toHaveLength(6);
+			phase = 'schema:log-first';
 			expect((await first.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
+			phase = 'schema:synchronize';
 			await first.source.synchronize();
+			phase = 'state:after-sync';
 			expect(await state(first.source)).toEqual(before);
+			phase = 'close:second';
 			await second.app.close();
 			applications.splice(applications.indexOf(second.app), 1);
+			phase = 'close:first';
 			await first.app.close();
 			applications.splice(applications.indexOf(first.app), 1);
+			phase = 'construct:third';
 			const third = await construct();
+			phase = 'init:third';
 			await third.app.init();
+			phase = 'state:restart';
 			expect(await state(third.source)).toEqual(before);
+			phase = 'schema:log-third';
 			expect((await third.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
 			useContainer(third.module, { fallbackOnErrors: true });
 			expect(third.module.get(StorageService).isPrimaryAvailable()).toBe(false);
 			expect(third.module.get(StorageService).isUsingFallback()).toBe(true);
+			phase = 'auth:register';
 			await request(third.app.getHttpServer())
 				.post('/modules/auth/auth/register')
 				.send({
 					data: { username: 'memorycatalog', password: 'securePassword123!', email: 'memorycatalog@example.com' },
 				})
 				.expect(204);
+			phase = 'auth:login';
 			const login = await request(third.app.getHttpServer())
 				.post('/modules/auth/auth/login')
 				.send({ data: { username: 'memorycatalog', password: 'securePassword123!' } })
 				.expect(201);
 			const accessToken = (login.body as { data: { access_token: string } }).data.access_token;
+			phase = 'verify:wire';
 			await verifyThermostatWire(
 				{ app: third.app, moduleRef: third.module, dataSource: third.source, accessToken },
 				{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
 			);
 		} catch (cause: unknown) {
+			report(phase, cause);
 			failure = { cause };
 		} finally {
 			for (const app of applications.reverse()) {
 				try {
 					await app.close();
 				} catch (cause: unknown) {
+					report('cleanup:close', cause);
 					failure ??= { cause };
 				}
 			}
