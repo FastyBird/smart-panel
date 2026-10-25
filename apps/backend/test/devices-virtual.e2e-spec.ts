@@ -68,6 +68,7 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDeviceInformationListener } from '../src/plugins/devices-virtual/listeners/virtual-device-information.listener';
+import { VirtualIndexMaintenanceListener } from '../src/plugins/devices-virtual/listeners/virtual-index-maintenance.listener';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
 import { VirtualCreatedThermostatModel } from '../src/plugins/devices-virtual/models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../src/plugins/devices-virtual/models/thermostat-response.model';
@@ -1025,6 +1026,111 @@ async function verifyThermostatWire(
 	return { publicRequest, device, settings };
 }
 
+/** Retain this app's original index/status setup work; never start a replacement rebuild or refresh. */
+function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, status: VirtualStatusListener) {
+	type Receipt = { done: Promise<void>; failure?: { cause: unknown } };
+	const pending = new Set<Receipt>();
+	const restore: (() => void)[] = [];
+	let owned: Receipt[] | undefined;
+	let finished = false;
+	const repairs = new Map<NodeJS.Timeout, () => void>();
+	function retain(work: Promise<void>): Receipt {
+		const receipt: Receipt = { done: Promise.resolve() };
+		pending.add(receipt);
+		owned?.push(receipt);
+		receipt.done = work.then<void, void>(
+			() => void pending.delete(receipt),
+			(cause: unknown) => {
+				receipt.failure = { cause };
+				pending.delete(receipt);
+			},
+		);
+		return receipt;
+	}
+	function wrap(
+		target: object,
+		key: string,
+		invoke: (original: (...args: unknown[]) => unknown, args: unknown[]) => unknown,
+	) {
+		const own = Object.getOwnPropertyDescriptor(target, key);
+		const original = Reflect.get(target, key) as (...args: unknown[]) => unknown;
+		if (own || typeof original !== 'function') throw new Error(`Unsupported setup completion method: ${key}`);
+		Object.defineProperty(target, key, {
+			configurable: true,
+			writable: true,
+			value: (...args: unknown[]) => invoke(original.bind(target), args),
+		});
+		restore.push(() => {
+			if (!Reflect.deleteProperty(target, key)) throw new Error(`Cannot restore setup completion method: ${key}`);
+		});
+	}
+	try {
+		// Install before app.init(): a link may join a loop already admitted by an earlier setup event.
+		wrap(index, 'runRebuildLoop', (original, args) => {
+			const work = original(...args) as Promise<void>;
+			// A repair's original timer clears repairTimer before admitting/coalescing its next pass.
+			// Settle its receipt only after that original loop finishes, including every awaited status callback.
+			const settleDeliveredRepairs = (): void => {
+				for (const [timer, settle] of repairs) {
+					if (Reflect.get(index, 'repairTimer') !== timer) {
+						repairs.delete(timer);
+						settle();
+					}
+				}
+			};
+			const observed = work.then(settleDeliveredRepairs, settleDeliveredRepairs);
+			retain(work);
+			retain(observed);
+			return work;
+		});
+		wrap(index, 'scheduleRepairPass', (original, args) => {
+			const result = original(...args);
+			const timer = Reflect.get(index, 'repairTimer') as NodeJS.Timeout | null;
+			if (timer && !repairs.has(timer)) {
+				retain(new Promise<void>((settle) => repairs.set(timer, settle)));
+			}
+			return result;
+		});
+		wrap(status, 'recompute', (original, args) => {
+			const work = original(...args) as Promise<void>;
+			retain(work);
+			return work;
+		});
+	} catch (cause: unknown) {
+		for (const cleanup of restore.reverse()) cleanup();
+		throw cause;
+	}
+	return {
+		begin(): void {
+			if (owned) throw new Error('Link setup completion already owns a request');
+			owned = [...pending];
+		},
+		async finish(): Promise<void> {
+			if (finished) return;
+			owned ??= [...pending];
+			let failure: { cause: unknown } | undefined;
+			try {
+				// These are retained original promises, including callbacks admitted by awaited callbacks.
+				// The original loop owns coalesced passes; original repair timers retain their own receipts.
+				for (const receipt of owned) {
+					await receipt.done;
+					failure ??= receipt.failure;
+				}
+			} finally {
+				finished = true;
+				for (const cleanup of restore.splice(0).reverse()) {
+					try {
+						cleanup();
+					} catch (cause: unknown) {
+						failure ??= { cause };
+					}
+				}
+			}
+			if (failure) throw failure.cause;
+		},
+	};
+}
+
 describe('devices-virtual plugin (e2e)', () => {
 	let app: INestApplication;
 	let accessToken: string;
@@ -1032,6 +1138,7 @@ describe('devices-virtual plugin (e2e)', () => {
 	let dataSource: DataSource;
 	let valueSourceRegistry: PropertyValueSourceRegistryService;
 	let virtualPropertyIndex: VirtualPropertyIndexService;
+	let linkSetupCompletion: ReturnType<typeof captureLinkSetupCompletion>;
 
 	beforeAll(async () => {
 		const dynamicAppModule = AppModule.register({
@@ -1044,6 +1151,10 @@ describe('devices-virtual plugin (e2e)', () => {
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
+		linkSetupCompletion = captureLinkSetupCompletion(
+			moduleFixture.get(VirtualIndexMaintenanceListener),
+			moduleFixture.get(VirtualStatusListener),
+		);
 
 		app.useGlobalPipes(
 			new ValidationPipe({
@@ -1097,7 +1208,11 @@ describe('devices-virtual plugin (e2e)', () => {
 	}, 60_000);
 
 	afterAll(async () => {
-		await app.close();
+		try {
+			await linkSetupCompletion?.finish();
+		} finally {
+			await app?.close();
+		}
 	});
 
 	it('boots the dormant ownership core through the real module and entity discovery without registering climate authority', async () => {
@@ -1351,26 +1466,39 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 
 		it("adds an on property linked to the simulator's relay on", async () => {
-			const response = await authPost(`/modules/devices/channels/${lightChannelId}/properties`)
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: PropertyCategory.ON,
-						identifier: 'on',
-						name: 'On',
-						permissions: [PermissionType.READ_WRITE],
-						data_type: DataTypeType.BOOL,
-						source_property: sourceOnPropertyId,
-					},
-				})
-				.expect(201);
+			linkSetupCompletion.begin();
+			let rejection: { cause: unknown } | undefined;
+			try {
+				const response = await authPost(`/modules/devices/channels/${lightChannelId}/properties`)
+					.send({
+						data: {
+							type: DEVICES_VIRTUAL_TYPE,
+							category: PropertyCategory.ON,
+							identifier: 'on',
+							name: 'On',
+							permissions: [PermissionType.READ_WRITE],
+							data_type: DataTypeType.BOOL,
+							source_property: sourceOnPropertyId,
+						},
+					})
+					.expect(201);
 
-			const body = response.body as { data: ChannelPropertyBody };
+				const body = response.body as { data: ChannelPropertyBody };
 
-			lightOnPropertyId = body.data.id;
+				lightOnPropertyId = body.data.id;
 
-			expect(body.data.source_property).toBe(sourceOnPropertyId);
-			expect(body.data.value_origin).toBe('source');
+				expect(body.data.source_property).toBe(sourceOnPropertyId);
+				expect(body.data.value_origin).toBe('source');
+			} catch (cause: unknown) {
+				rejection = { cause };
+			} finally {
+				try {
+					await linkSetupCompletion.finish();
+				} catch (cause: unknown) {
+					rejection ??= { cause };
+				}
+			}
+			if (rejection) throw rejection.cause;
 		});
 
 		// ─── The configuration-time write guard ─────────────────────────────────────────
