@@ -1,17 +1,23 @@
 import { useContainer } from 'class-validator';
-import { randomUUID } from 'node:crypto';
+import crypto, { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
 import { SqliteDataSource, createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { TokenOwnerType } from '../src/modules/auth/auth.constants';
+import { AuthService } from '../src/modules/auth/services/auth.service';
+import { TokensService } from '../src/modules/auth/services/tokens.service';
+import { hashToken } from '../src/modules/auth/utils/token.utils';
 import { DeviceCategory } from '../src/modules/devices/devices.constants';
 import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../src/modules/devices/services/property-command-admission.registry.service';
@@ -525,6 +531,307 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			} finally {
 				claims.onModuleDestroy();
 				await source.destroy();
+			}
+		},
+	);
+	const aId = 'e1d7660a-a4c6-48ac-9abb-251908c9bda1',
+		bId = 'e2d7660a-a4c6-48ac-9abb-251908c9bdb2';
+	const lifecyclePost = (id: string, route: string, body: object, bearer = token) =>
+		request(app.getHttpServer() as Parameters<typeof request>[0])
+			.post(endpoint(id) + route)
+			.set('Authorization', `Bearer ${bearer}`)
+			.send(body);
+	const observeIndependentFailure = (phase: string, value: unknown, service = false): void => {
+		try {
+			const read = (object: unknown, key: string): unknown =>
+				object && typeof object === 'object'
+					? (Object.getOwnPropertyDescriptor(object, key)?.value as unknown)
+					: undefined;
+			const status = service ? undefined : read(value, 'status');
+			if (status === 201) return;
+			const error = service ? (value instanceof Error ? value : undefined) : read(read(value, 'body'), 'error');
+			const details = read(error, 'details');
+			const fields =
+				service && error instanceof Error
+					? [error.name, error.message]
+					: [
+							read(error, 'code'),
+							read(error, 'message'),
+							read(Array.isArray(details) ? read(details, '0') : details, 'reason'),
+						];
+			const strings = fields
+				.filter((field): field is string => typeof field === 'string')
+				.slice(0, 3)
+				.map((field) => field.slice(0, 200));
+			console.error('P06c independent HTTP failure', {
+				phase,
+				status: typeof status === 'number' ? status : undefined,
+				strings,
+			});
+		} catch {
+			// Observation cannot change the original response or service rejection.
+		}
+	};
+	const frozenClock = () => {
+		const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Date'),
+			OriginalDate = Date;
+		const wall = Date.UTC(2026, 9, 25);
+		class SystemDate extends OriginalDate {
+			constructor(value: number | string = wall) {
+				super(value);
+			}
+		}
+		Object.defineProperty(globalThis, 'Date', { ...descriptor, value: SystemDate });
+		jest.spyOn(Date, 'now').mockReturnValue(wall);
+		jest.spyOn(performance, 'now').mockReturnValue(100);
+		return { wall, restore: () => Object.defineProperty(globalThis, 'Date', descriptor) };
+	};
+	const publicRecord = (
+		revision: number,
+		actor: string,
+		source: 'user' | 'panel',
+		identity = aId,
+		setpoint: number | null = null,
+	) => ({
+		id: identity,
+		source,
+		actor_id: actor,
+		revision,
+		created_at: '2026-10-25T00:00:00.000Z',
+		expires_at: '2026-10-25T00:01:00.000Z',
+		preset: setpoint === null ? ('comfort' as const) : null,
+		setpoints: setpoint === null ? null : { heating_setpoint: setpoint, cooling_setpoint: null },
+		resolved_setpoints: { heating_setpoint: setpoint ?? 23, cooling_setpoint: null },
+		status: 'active' as 'active' | 'cancelled',
+		terminated_at: null as string | null,
+	});
+	const lifecycleExpected = (
+		id: string,
+		input: Awaited<ReturnType<typeof fences>>,
+		override: ReturnType<typeof publicRecord>,
+		config = baseConfiguration(),
+	) => {
+		const active = override.status === 'active';
+		return {
+			controller: id,
+			revision: input.expected_revision + 1,
+			graph_revision: input.expected_graph_revision + 1,
+			configuration: { ...config, temporary_override: override },
+			effective: {
+				source: config.user_off ? 'user_off' : active ? 'override' : 'manual',
+				preset: active ? override.preset : null,
+				heating_setpoint: active ? override.resolved_setpoints.heating_setpoint : 20,
+				cooling_setpoint: null,
+				override_id: active ? override.id : null,
+				expires_at: active ? override.expires_at : null,
+			},
+			clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+		};
+	};
+
+	it('runs real authenticated user and display override/replacement/exact-cancel lifecycle with private lifetime and public omissions', async () => {
+		const clock = frozenClock(),
+			jwt = Reflect.get(module.get(AuthService), 'jwtService') as JwtService;
+		const actor = jwt.decode<{ sub: string }>(token).sub;
+		const displayId = randomUUID(),
+			bearer = jwt.sign({ sub: displayId, type: TokenOwnerType.DISPLAY });
+		const credential = await module.get(TokensService).createLongLiveToken({
+			token: bearer,
+			ownerType: TokenOwnerType.DISPLAY,
+			ownerId: displayId,
+			name: 'P06c fixture',
+			description: null,
+			expiresAt: null,
+		});
+		const displayActor = `display:${displayId}:token:${credential.id}`;
+		expect(await module.get(TokensService).findAuthenticationTokenByHash(hashToken(bearer))).toMatchObject({
+			id: credential.id,
+			ownerType: TokenOwnerType.DISPLAY,
+			ownerId: displayId,
+			revoked: false,
+		});
+		await expect(jwt.verifyAsync(bearer)).resolves.toMatchObject({ sub: displayId, type: TokenOwnerType.DISPLAY });
+		const config = { ...baseConfiguration(), user_off: true },
+			id = await seed(config, 'off');
+		const requestOverride = { preset: 'comfort', setpoints: null, expires_at: '2026-10-25T02:01:00+02:00' };
+		try {
+			let input = await fences(id);
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			const a = await lifecyclePost(id, '/override', { ...input, ...requestOverride }).expect(201);
+			const expectedA = publicRecord(2, actor, 'user');
+			expect((a.body as { data: unknown }).data).toEqual(lifecycleExpected(id, input, expectedA, config));
+			expect(a.body as object).toMatchObject({ status: 'success', method: 'POST', path: endpoint(id) + '/override' });
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).comfort
+					.temporary_override,
+			).toEqual({ ...expectedA, original_duration_ms: 60000, wall_watermark_ms: clock.wall });
+			input = await fences(id);
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
+			const b = await lifecyclePost(
+				id,
+				'/override',
+				{
+					...input,
+					preset: null,
+					setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+					expires_at: '2026-10-25T00:01:00Z',
+				},
+				bearer,
+			).expect(201);
+			const expectedB = publicRecord(3, displayActor, 'panel', bId, 19);
+			expect((b.body as { data: unknown }).data).toEqual(lifecycleExpected(id, input, expectedB, config));
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).comfort
+					.temporary_override,
+			).toEqual({ ...expectedB, original_duration_ms: 60000, wall_watermark_ms: clock.wall });
+			for (const body of [
+				{ ...input, ...requestOverride, source: 'panel' },
+				{ ...input, ...requestOverride, actor_id: displayActor },
+				{ ...input, ...requestOverride, id: bId },
+			])
+				await lifecyclePost(id, '/override', body).expect(400);
+			await lifecyclePost(id, '/override/cancel', { ...(await fences(id)), override_id: aId }, bearer).expect(422);
+			input = await fences(id);
+			const cancel = await lifecyclePost(id, '/override/cancel', { ...input, override_id: bId }).expect(201); // current user may cancel a display-created override
+			const terminal = { ...expectedB, status: 'cancelled' as const, terminated_at: '2026-10-25T00:00:00.000Z' };
+			expect((cancel.body as { data: unknown }).data).toEqual(lifecycleExpected(id, input, terminal, config));
+			const stored = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			expect(stored.comfort.temporary_override).toEqual({
+				...terminal,
+				original_duration_ms: 60000,
+				wall_watermark_ms: clock.wall,
+			});
+			expect(stored.requestedMode).toBe('off');
+			await lifecyclePost(id, '/override/cancel', { ...(await fences(id)), override_id: bId }, bearer).expect(422);
+			await request(app.getHttpServer() as Parameters<typeof request>[0])
+				.post(endpoint(id) + '/override')
+				.send({ ...(await fences(id)), ...requestOverride })
+				.expect(401);
+			await lifecyclePost(id, '/override', {
+				...(await fences(id)),
+				...requestOverride,
+				setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+			}).expect(422);
+			await lifecyclePost(id, '/override', {
+				...(await fences(id)),
+				preset: null,
+				setpoints: null,
+				expires_at: requestOverride.expires_at,
+			}).expect(422);
+		} finally {
+			await module.get(VirtualThermostatRuntimeService).flush();
+			clock.restore();
+		}
+	});
+
+	it.each(['override', 'cancel'] as const)(
+		'returns exact independent %s A HTTP after a completed genuine B override',
+		async (kind) => {
+			const clock = frozenClock(),
+				id = await seed(),
+				comfort = module.get(VirtualThermostatComfortService),
+				actor = module.get(JwtService).decode<{ sub: string }>(token).sub;
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			const body = { preset: 'comfort', setpoints: null, expires_at: '2026-10-25T00:01:00Z' };
+			if (kind === 'cancel') {
+				await lifecyclePost(id, '/override', { ...(await fences(id)), ...body })
+					.expect((response) => observeIndependentFailure(`${kind}:preliminary-create`, response))
+					.expect(201);
+				await module.get(VirtualThermostatRuntimeService).flush();
+			}
+			const input = await fences(id),
+				source = await new SqliteDataSource({
+					type: 'sqlite',
+					database: database.options.database as string,
+					entities: [sourceRoot + '/**/*.entity.ts'],
+				}).initialize();
+			const lock = new DeviceStructureLockService(),
+				graph = new VirtualDependencyGraphService(source),
+				events = new EventEmitter2(),
+				claims = new VirtualThermostatClaimsService(
+					source,
+					lock,
+					graph,
+					new PropertyCommandAdmissionRegistryService(),
+					events,
+				),
+				other = new VirtualThermostatComfortService(source, lock, graph, claims, events);
+			try {
+				await new VirtualThermostatOwnershipSubscriber(source, claims).onApplicationBootstrap();
+				await claims.onApplicationBootstrap();
+				expect(lock).not.toBe(module.get(DeviceStructureLockService));
+				expect(Reflect.get(source.driver, 'databaseConnection')).not.toBe(
+					Reflect.get(database.driver, 'databaseConnection'),
+				);
+				expect(Reflect.get(comfort, 'leases')).not.toBe(Reflect.get(other, 'leases'));
+				const original = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
+				let bSuccess = 0;
+				const final = jest.spyOn(comfort, 'get').mockImplementationOnce(async (controller, settle) => {
+					jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
+					await other
+						.override(
+							id,
+							{
+								expected_revision: input.expected_revision + 1,
+								expected_graph_revision: input.expected_graph_revision + 1,
+							},
+							{
+								preset: null,
+								setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+								expires_at: body.expires_at,
+							},
+							'B',
+							'panel',
+						)
+						.catch((cause: unknown) => {
+							observeIndependentFailure(`${kind}:B-in-final-get`, cause, true);
+							throw cause;
+						});
+					bSuccess++;
+					return original(controller, settle);
+				});
+				const response =
+					kind === 'override'
+						? await lifecyclePost(id, '/override', { ...input, ...body })
+								.expect((response) => observeIndependentFailure(`${kind}:A-create`, response))
+								.expect(201)
+						: await lifecyclePost(id, '/override/cancel', { ...input, override_id: aId })
+								.expect((response) => observeIndependentFailure(`${kind}:A-cancel`, response))
+								.expect(201);
+				expect(bSuccess).toBe(1);
+				expect(final).toHaveBeenCalledTimes(1);
+				const a = publicRecord(2, actor, 'user');
+				if (kind === 'cancel') {
+					a.status = 'cancelled';
+					a.terminated_at = '2026-10-25T00:00:00.000Z';
+				}
+				expect((response.body as { data: unknown }).data).toEqual(lifecycleExpected(id, input, a));
+				final.mockRestore();
+				await module.get(VirtualThermostatRuntimeService).flush();
+				const b = publicRecord(input.expected_revision + 2, 'B', 'panel', bId, 19),
+					current = await get(id).expect(200);
+				expect((current.body as { data: unknown }).data).toEqual(
+					lifecycleExpected(
+						id,
+						{
+							expected_revision: input.expected_revision + 1,
+							expected_graph_revision: input.expected_graph_revision + 1,
+						},
+						b,
+					),
+				);
+				const stored = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				expect(stored.comfort.temporary_override).toEqual({
+					...b,
+					original_duration_ms: 60000,
+					wall_watermark_ms: clock.wall,
+				});
+				expect(stored.revision).toBe(input.expected_revision + 2);
+			} finally {
+				await module.get(VirtualThermostatRuntimeService).flush();
+				claims.onModuleDestroy();
+				await source.destroy();
+				clock.restore();
 			}
 		},
 	);

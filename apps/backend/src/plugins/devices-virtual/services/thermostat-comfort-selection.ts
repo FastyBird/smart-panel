@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
 import { NotFoundException } from '@nestjs/common';
@@ -20,6 +22,7 @@ import {
 	ThermostatComfortConfiguration,
 	ThermostatEffectiveComfort,
 	ThermostatPreset,
+	ThermostatSetpoints,
 	effectiveThermostatComfort,
 	validateThermostatComfort,
 } from './virtual-thermostat-comfort.utils';
@@ -40,7 +43,28 @@ interface DefinitionInput extends ThermostatComfortFence {
 		readonly automation: 'preserve' | 'enable' | 'disable';
 	};
 }
-type ComfortInput = SelectionInput | DefinitionInput;
+type Override = { preset: ThermostatPreset | null; setpoints: ThermostatSetpoints | null; expires_at: string };
+interface OverrideInput extends ThermostatComfortFence {
+	readonly kind: 'override';
+	readonly id: string;
+	readonly override: Override;
+	readonly actorId: string;
+	readonly source: 'user' | 'panel';
+}
+interface CancelInput extends ThermostatComfortFence {
+	readonly kind: 'cancel';
+	readonly id: string;
+	readonly overrideId: string;
+}
+type ComfortInput = SelectionInput | DefinitionInput | OverrideInput | CancelInput;
+interface Lease {
+	id: string;
+	revision: number;
+	deadline: number;
+	watermark: number;
+	status: 'expired' | 'clock_uncertain' | null;
+}
+
 interface SelectionResult {
 	controller: string;
 	revision: number;
@@ -62,20 +86,24 @@ function revision(value: number, minimum: number, capacity = false): boolean {
 	return Number.isSafeInteger(value) && value >= minimum && (!capacity || value < Number.MAX_SAFE_INTEGER);
 }
 
-/** Closed selection/definition intents only. Receipt/result presence survives transaction, release and final-read errors. */
+/** Closed comfort intents only. Receipt/result presence survives transaction, release and final-read errors. */
 export class ThermostatSelectionSettlement {
 	receipt?: SqliteCommitGuardReceipt;
 	result?: Readonly<{ value: SelectionResult }>;
 	preSettleFailure?: Readonly<{ cause: unknown }>;
 	transactionFailure?: Readonly<{ cause: unknown }>;
 	finalGetFailure?: Readonly<{ cause: unknown }>;
+	localAction?: Readonly<{
+		stage: 'checking' | 'installing' | 'deleting' | 'installed' | 'deleted' | 'superseded' | 'no-target';
+	}>;
+	localFailure?: Readonly<{ cause: unknown }>;
 	get outcome() {
 		return this.receipt?.outcome ?? 'not_started';
 	}
 }
 
 /** Capture before service fence getters. No caller supplies a manager, change callback or result. */
-function pin(database: DataSource) {
+function pin(database: DataSource, kind: ComfortInput['kind'] = 'selection', leases?: Map<string, Lease>) {
 	const serialize = canonical;
 	const detach = ownedJson;
 	const validate = validateThermostatComfort;
@@ -100,8 +128,44 @@ function pin(database: DataSource) {
 	)
 		refuse();
 	const native = captureCreation(physical, ['all']);
+	// Only the two lifetime operations admit these dispatches. No clock values are sampled here.
+	const dated = kind === 'override' || kind === 'cancel';
+	const dateGlobal = dated ? captureCreation(globalThis, ['Date']) : undefined;
+	const date = dated
+		? captureCreation(
+				dateGlobal.values.Date as unknown as DateConstructor,
+				kind === 'override' ? ['now', 'parse', 'prototype'] : ['prototype'],
+			)
+		: undefined;
+	const iso = dated ? captureCreation(date.values.prototype, ['toISOString']) : undefined;
+	const monotonic = kind === 'override' ? captureCreation(performance, ['now']) : undefined;
+	const uuid = kind === 'override' ? captureCreation(crypto, ['randomUUID']) : undefined;
+	const local =
+		dated && leases instanceof Map
+			? captureCreation(leases, kind === 'override' ? ['get', 'set'] : ['get', 'delete'])
+			: undefined;
+	if (
+		dated &&
+		(!local ||
+			typeof local.values.get !== 'function' ||
+			(kind === 'override' ? typeof local.values.set !== 'function' : typeof local.values.delete !== 'function') ||
+			typeof dateGlobal.values.Date !== 'function' ||
+			typeof iso.values.toISOString !== 'function' ||
+			(kind === 'override' &&
+				(typeof date.values.now !== 'function' ||
+					typeof date.values.parse !== 'function' ||
+					typeof monotonic.values.now !== 'function' ||
+					typeof uuid.values.randomUUID !== 'function')))
+	)
+		refuse();
+	const lifetimePins = [dateGlobal, date, iso, monotonic, uuid, local].filter((pin) => pin !== undefined);
 	const current = () =>
-		source.current() && root.current() && driver.current() && native.current() && database.isInitialized;
+		source.current() &&
+		root.current() &&
+		driver.current() &&
+		native.current() &&
+		database.isInitialized &&
+		lifetimePins.every((pin) => pin.current());
 	const check = () => {
 		if (!current()) refuse();
 	};
@@ -204,10 +268,64 @@ function pin(database: DataSource) {
 			check();
 			return Object.freeze({ kind: 'definition', id, ...capturedFence, definition: payload });
 		},
+		overrideInput(
+			id: string,
+			fence: ThermostatComfortFence,
+			input: Override,
+			actorId: string,
+			source: 'user' | 'panel',
+		): OverrideInput {
+			const read = reader();
+			const capturedFence = fences(id, fence, read);
+			record(input);
+			const preset = read(input, 'preset');
+			const supplied = read(input, 'setpoints');
+			const expires_at = read(input, 'expires_at');
+			if (
+				(preset !== null && preset !== 'comfort' && preset !== 'eco' && preset !== 'away') ||
+				typeof expires_at !== 'string' ||
+				typeof actorId !== 'string' ||
+				!actorId ||
+				(source !== 'user' && source !== 'panel')
+			)
+				refuse('Override needs an identified actor and a future expiry within seven days.');
+			let setpoints: ThermostatSetpoints | null = null;
+			if (supplied !== null) {
+				record(supplied);
+				const heating = read(supplied, 'heating_setpoint'),
+					cooling = read(supplied, 'cooling_setpoint');
+				if (
+					(heating !== null && (typeof heating !== 'number' || !Number.isFinite(heating))) ||
+					(cooling !== null && (typeof cooling !== 'number' || !Number.isFinite(cooling)))
+				)
+					refuse('unsupported_branch_or_setpoint_range');
+				setpoints = { heating_setpoint: heating as number | null, cooling_setpoint: cooling as number | null };
+			}
+			const payload = detach({ preset, setpoints, expires_at }) as unknown as Override;
+			check();
+			return Object.freeze({ kind: 'override', id, ...capturedFence, override: payload, actorId, source });
+		},
+		cancelInput(id: string, fence: ThermostatComfortFence, overrideId: string): CancelInput {
+			const capturedFence = fences(id, fence, reader());
+			if (typeof overrideId !== 'string' || !overrideId)
+				refuse('Override identity/state changed; reload before cancelling.');
+			check();
+			return Object.freeze({ kind: 'cancel', id, ...capturedFence, overrideId });
+		},
 		operation(input: ComfortInput, ownerCurrent: () => boolean, dispatchCurrent: () => boolean) {
-			if (input.kind !== 'selection' && input.kind !== 'definition') refuse('Invalid thermostat comfort intent kind.');
+			if (
+				!['selection', 'definition', 'override', 'cancel'].includes(input.kind) ||
+				((input.kind === 'override' || input.kind === 'cancel') && (input.kind !== kind || !local))
+			)
+				refuse('Invalid thermostat comfort intent kind.');
 			const settlement = new ThermostatSelectionSettlement();
 			let ready = false;
+			let slot:
+				| Readonly<{ reference: Lease | undefined; id: string | undefined; revision: number | undefined }>
+				| undefined;
+			let plan:
+				| Readonly<{ controller: string; id: string; revision: number; deadline: number; watermark: number }>
+				| undefined;
 			let original: EntityManager | undefined;
 			let scopedCurrent: (() => boolean) | undefined;
 			const valid = () => current() && dispatchCurrent() && scopedCurrent?.() === true && ownerCurrent();
@@ -216,6 +334,43 @@ function pin(database: DataSource) {
 			};
 			return Object.freeze({
 				settlement,
+				captureSlot(): void {
+					if (input.kind !== 'override' && input.kind !== 'cancel') return;
+					const reference = local.values.get.call(local.receiver, input.id);
+					slot = Object.freeze({ reference, id: reference?.id, revision: reference?.revision });
+				},
+				localAction(): void {
+					if (input.kind !== 'override' && input.kind !== 'cancel') return;
+					// No post-ACK admission gate. A superseded destination skips only this initial action.
+					try {
+						settlement.localAction = Object.freeze({ stage: 'checking' });
+						if (!slot || settlement.outcome !== 'committed' || !settlement.result) refuse();
+						const current = local.values.get.call(local.receiver, input.id);
+						if (current !== slot.reference || current?.id !== slot.id || current?.revision !== slot.revision) {
+							settlement.localAction = Object.freeze({ stage: 'superseded' });
+						} else if (input.kind === 'override') {
+							if (!plan) refuse();
+							settlement.localAction = Object.freeze({ stage: 'installing' });
+							// The immutable private plan is not the mutable lease used by isCurrent/settle.
+							local.values.set.call(local.receiver, plan.controller, {
+								id: plan.id,
+								revision: plan.revision,
+								deadline: plan.deadline,
+								watermark: plan.watermark,
+								status: null,
+							});
+							settlement.localAction = Object.freeze({ stage: 'installed' });
+						} else if (current && slot.id === input.overrideId) {
+							settlement.localAction = Object.freeze({ stage: 'deleting' });
+							local.values.delete.call(local.receiver, input.id);
+							settlement.localAction = Object.freeze({ stage: 'deleted' });
+						} else settlement.localAction = Object.freeze({ stage: 'no-target' });
+					} catch (cause: unknown) {
+						// Dispatch may have partially acted; retain phase/cause, never compensate or replay.
+						settlement.localFailure = Object.freeze({ cause });
+						throw cause;
+					}
+				},
 				admit(manager: EntityManager): void {
 					// FIRST: a foreign manager or nested savepoint cannot create an outer success receipt.
 					const receipt = observe(manager);
@@ -246,7 +401,7 @@ function pin(database: DataSource) {
 						Reflect.get(runner, 'transactionDepth') === 1 &&
 						driver.receiver.databaseConnection === physical;
 					// Pure, synchronous, original-owner check. P01 drains its own admitted children.
-					guard(manager, () => ready && !!settlement.result && valid());
+					guard(manager, () => ready && !!settlement.result && (input.kind !== 'override' || !!plan) && valid());
 					assert();
 				},
 				async write(manager: EntityManager): Promise<SelectionResult> {
@@ -276,12 +431,15 @@ function pin(database: DataSource) {
 					)
 						refuse('Thermostat is missing, detached, locked or its revision changed/overflowed.');
 					let intended: ThermostatComfortConfiguration;
+					let birth:
+						| Readonly<{ controller: string; id: string; revision: number; deadline: number; watermark: number }>
+						| undefined;
 					if (input.kind === 'selection') {
 						if (!row.comfort) refuse('Configure explicit comfort ranges and presets first.');
 						intended = JSON.parse(serialize(row.comfort)) as ThermostatComfortConfiguration;
 						intended.selected_preset = input.preset;
 						if (input.clearUserOff) intended.user_off = false;
-					} else {
+					} else if (input.kind === 'definition') {
 						const definition = input.definition;
 						const old = row.comfort;
 						// Exact configure merge, before reserved-policy validation. No new arbitration authority.
@@ -298,6 +456,65 @@ function pin(database: DataSource) {
 							automation_baseline: definition.automation === 'disable' ? null : (old?.automation_baseline ?? null),
 							temporary_override: old?.temporary_override ?? null,
 						};
+					} else {
+						if (!row.comfort)
+							refuse(
+								input.kind === 'override'
+									? 'Configure explicit comfort ranges and presets first.'
+									: 'Override identity/state changed; reload before cancelling.',
+							);
+						intended = JSON.parse(serialize(row.comfort)) as ThermostatComfortConfiguration;
+						const DateConstructor = dateGlobal.values.Date as DateConstructor;
+						const utc = (value: Date) => iso.values.toISOString.call(value);
+						if (input.kind === 'override') {
+							const now = date.values.now.call(date.receiver);
+							const duration = date.values.parse.call(date.receiver, input.override.expires_at) - now;
+							if (
+								!/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(input.override.expires_at) ||
+								!Number.isFinite(duration) ||
+								duration <= 0 ||
+								duration > 7 * 86400000
+							)
+								refuse('Override needs an identified actor and a future expiry within seven days.');
+							const resolved = input.override.preset
+								? intended.presets.find((entry) => entry.preset === input.override.preset)?.setpoints
+								: input.override.setpoints;
+							if (!resolved) refuse('Override preset or setpoints are missing.');
+							const identity = uuid.values.randomUUID.call(uuid.receiver);
+							const initial = monotonic.values.now.call(monotonic.receiver);
+							const deadline = initial + duration;
+							// Deliberate birth-fault refusal. Later finite samples cannot repair this budget.
+							if (!Number.isFinite(initial) || !Number.isFinite(deadline))
+								refuse('Override initial clock is not finite.');
+							birth = Object.freeze({
+								controller: input.id,
+								id: identity,
+								revision: row.revision + 1,
+								deadline,
+								watermark: now,
+							});
+							intended.temporary_override = {
+								preset: input.override.preset,
+								setpoints: input.override.setpoints,
+								id: identity,
+								source: input.source,
+								actor_id: input.actorId,
+								revision: row.revision + 1,
+								original_duration_ms: duration,
+								wall_watermark_ms: now,
+								created_at: utc(new DateConstructor(now)),
+								expires_at: utc(new DateConstructor(now + duration)),
+								resolved_setpoints: { ...resolved },
+								status: 'active',
+								terminated_at: null,
+							};
+						} else {
+							const override = intended.temporary_override;
+							if (override?.id !== input.overrideId || !['active', 'clock_uncertain'].includes(override.status))
+								refuse('Override identity/state changed; reload before cancelling.');
+							override.status = 'cancelled';
+							override.terminated_at = utc(new DateConstructor());
+						}
 					}
 					const errors = validate(intended, row.policy);
 					if (errors.length) refuse(errors.join(', '));
@@ -339,6 +556,8 @@ function pin(database: DataSource) {
 						effective: effective(postimage.policy, postimage.comfort),
 						clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
 					}) as unknown as SelectionResult;
+					// The provisional scalar plan is qualified only by the exact persisted postimage above.
+					plan = birth;
 					settlement.result = Object.freeze({ value });
 					ready = true;
 					return value;

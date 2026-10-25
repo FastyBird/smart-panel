@@ -95,11 +95,11 @@ export class VirtualThermostatComfortController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Create temporary thermostat override',
 		description:
-			'An authenticated user or display selects a preset or explicit setpoints until an absolute expiry. Source and actor are assigned by the server. Does not clear user OFF or bypass guards.',
+			"An authenticated user or display creates or replaces a preset/explicit-setpoint override until an absolute expiry. Source and actor are assigned by the server. Returns this operation's persisted six-field intent accepted by its native database acknowledgement. Subsequent maintenance or concurrent writes may supersede it; GET reads current arbitration. The response does not establish an unexpired lease or output permission, clear user OFF or bypass guards.",
 		operationId: 'create-devices-virtual-plugin-thermostat-override',
 	})
 	@ApiUnprocessableEntityResponse('Invalid override, locked controller or revision conflict')
-	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Durable temporary override')
+	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Committed override intent')
 	@Post('override')
 	override(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -132,11 +132,11 @@ export class VirtualThermostatComfortController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Cancel temporary thermostat override',
 		description:
-			'Terminate only the identified active override and recompute the current baseline. Does not replay a historical command or clear user OFF.',
+			"Terminate only the exactly identified active or clock-uncertain override, retaining its identity and lifetime metadata. Returns this operation's persisted six-field cancellation intent accepted by its native database acknowledgement, with its then-current baseline. Subsequent maintenance or concurrent writes may supersede it; GET reads current arbitration. Wrong, terminal or stale targets still reject. The response grants no output permission, replays no historical command and does not clear user OFF.",
 		operationId: 'cancel-devices-virtual-plugin-thermostat-override',
 	})
 	@ApiUnprocessableEntityResponse('Override identity or revision conflict')
-	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Recomputed current baseline')
+	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Committed cancellation intent')
 	@Post('override/cancel')
 	cancel(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
