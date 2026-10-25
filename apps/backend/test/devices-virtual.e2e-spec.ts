@@ -3716,14 +3716,28 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 	});
 });
 
+type ChannelWriterFailure = { cause: unknown };
+type ChannelWriterCleanup = { failure?: ChannelWriterFailure };
+type ObserveChannelWriterCleanup = (progress?: ReturnType<typeof captureChannelWriterProgress>) => Promise<void>;
+
 function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 	type Runner = import('typeorm').QueryRunner;
 	type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
 	type Owner = { active: boolean; accepting: boolean; mode: string };
 	const gate = () => {
-		let release: () => void;
-		const promise = new Promise<void>((resolve) => (release = resolve));
-		return { promise, release: () => release() };
+		let release: () => void, refuse: (cause: unknown) => void;
+		const promise = new Promise<void>((resolve, reject) => {
+			release = resolve;
+			refuse = reject;
+		});
+		return {
+			promise,
+			release: () => release(),
+			reject: (cause: unknown) => {
+				refuse(cause);
+				void promise.catch(() => undefined);
+			},
+		};
 	};
 	const evaluation = gate(),
 		written = gate(),
@@ -3810,6 +3824,9 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 						record('ack', values[0]);
 						try {
 							return (callback as NativeMethod).apply(this, values) as unknown;
+						} catch (cause) {
+							done.reject(cause);
+							throw cause;
 						} finally {
 							done.release();
 						}
@@ -3908,8 +3925,8 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 		}
 		throw cause;
 	}
-	let closing: Promise<void>;
-	let cleanupFailure: { cause: unknown } | undefined;
+	let closing: Promise<ChannelWriterCleanup>;
+	let cleanupFailure: ChannelWriterFailure | undefined;
 	return {
 		async beforePatch(id: string, root: string) {
 			expect(target).toBe(root);
@@ -3987,10 +4004,329 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 						}
 					}
 				}
+				return { failure: cleanupFailure };
 			})());
 		},
 	};
 }
+
+function withChannelWriterCleanup<Args extends unknown[]>(
+	operation: (observe: ObserveChannelWriterCleanup, ...args: Args) => Promise<void>,
+): (...args: Args) => Promise<void> {
+	return async (...args) => {
+		let originalFailure: ChannelWriterFailure | undefined, cleanupFailure: ChannelWriterFailure | undefined;
+		const observe: ObserveChannelWriterCleanup = async (progress) => {
+			if (!progress) return;
+			try {
+				const outcome = await progress.close();
+				if (cleanupFailure === undefined && outcome.failure !== undefined) cleanupFailure = outcome.failure;
+			} catch (cause) {
+				// An unexpected rejected close must also allow the original app/finally cleanup to run.
+				if (cleanupFailure === undefined) cleanupFailure = { cause };
+			}
+		};
+		try {
+			await operation(observe, ...args);
+		} catch (cause) {
+			originalFailure = { cause };
+		}
+		// Original body/app-close/finally precedence is unchanged, including falsy thrown values.
+		if (originalFailure !== undefined) throw originalFailure.cause;
+		if (cleanupFailure !== undefined) throw cleanupFailure.cause;
+	};
+}
+
+function createChannelWriterCleanupModel(
+	faults: { restore?: ChannelWriterFailure; install?: ChannelWriterFailure } = {},
+	capture = captureChannelWriterProgress,
+) {
+	const restores: string[] = [];
+	const callbackThis = {};
+	const original = function (
+		this: unknown,
+		_query: string,
+		_parameters: unknown[],
+		callback: (this: unknown, ...values: unknown[]) => unknown,
+	) {
+		callback.call(callbackThis, null, []);
+		return this;
+	};
+	const native = (label: string) =>
+		new Proxy(
+			{ all: original, run: original },
+			{
+				defineProperty(target, key, descriptor) {
+					if (descriptor.value === original) {
+						restores.push(`${label}:${String(key)}`);
+						if (label === 'A' && key === 'run' && faults.restore !== undefined) throw faults.restore.cause;
+					} else if (label === 'B' && key === 'run' && faults.install !== undefined) throw faults.install.cause;
+					return Reflect.defineProperty(target, key, descriptor);
+				},
+			},
+		);
+	const nativeA = native('A'),
+		nativeB = native('B');
+	const sourceA = {
+		driver: { databaseConnection: nativeA },
+		subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+	};
+	const sourceB = {
+		driver: { databaseConnection: nativeB },
+		subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+	};
+	const structure = { context: { getStore: () => ({ active: true, accepting: true, mode: 'exclusive' }) } };
+	const evaluate = () => Promise.resolve('original evaluation');
+	const runtime = { evaluate };
+	const a = {
+		get: (type: unknown) => (type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime),
+	};
+	const b = { get: () => sourceB };
+	return {
+		capture: () => capture(a as unknown as TestingModule, b as unknown as TestingModule),
+		nativeA,
+		nativeB,
+		original,
+		sourceA,
+		sourceB,
+		runtime,
+		evaluate,
+		restores,
+	};
+}
+
+function cleanupModelJob() {
+	let release: () => void, refuse: (cause: unknown) => void;
+	const promise = new Promise<void>((resolve, reject) => {
+		release = resolve;
+		refuse = reject;
+	});
+	return { promise, release: () => release(), reject: (cause: unknown) => refuse(cause) };
+}
+
+async function cleanupModelResult(operation: Promise<unknown>) {
+	return operation.then(
+		() => ({ rejected: false as const }),
+		(cause: unknown) => ({ rejected: true as const, cause }),
+	);
+}
+
+function expectCleanupModelFailure(result: Awaited<ReturnType<typeof cleanupModelResult>>, cause: unknown): void {
+	expect(result.rejected).toBe(true);
+	expect(Object.hasOwn(result, 'cause')).toBe(true);
+	if (!('cause' in result)) throw new Error('Expected original failure cause presence');
+	expect(result.cause).toBe(cause);
+}
+
+describe('channel writer cleanup failure controls (no native credit)', () => {
+	it.each(['job', 'callback', 'restore'] as const)(
+		'exposes the exact %s failure only after joining and attempting every undo',
+		async (kind) => {
+			const cause: unknown = kind === 'job' ? undefined : kind === 'callback' ? false : 0;
+			const model = createChannelWriterCleanupModel(kind === 'restore' ? { restore: { cause } } : {});
+			const progress = model.capture();
+			const held = cleanupModelJob();
+			progress.own(held.promise);
+			if (kind === 'callback') {
+				let forwarded: ChannelWriterFailure | undefined;
+				try {
+					model.nativeA.all('callback completion model', [], () => {
+						throw cause;
+					});
+				} catch (failure) {
+					forwarded = { cause: failure };
+				}
+				expect(forwarded).toBeDefined();
+				expect(forwarded?.cause).toBe(cause);
+			}
+			const first = progress.close(),
+				second = progress.close();
+			expect(first).toBe(second);
+			let settled = false;
+			void first.then(() => {
+				settled = true;
+			});
+			try {
+				await Promise.resolve();
+				expect(settled).toBe(false);
+			} finally {
+				if (kind === 'job') held.reject(cause);
+				else held.release();
+			}
+			const outcome = await first;
+			expect(outcome?.failure).toBeDefined();
+			expect(outcome.failure?.cause).toBe(cause);
+			expect(Object.hasOwn(outcome.failure, 'cause')).toBe(true);
+			expect(model.restores).toEqual(['B:run', 'B:all', 'A:run', 'A:all']);
+			expect(model.sourceA.subscribers).toEqual([]);
+			expect(model.sourceB.subscribers).toEqual([]);
+			expect(model.runtime.evaluate).toBe(model.evaluate);
+			expect(model.nativeA.all).toBe(model.original);
+			expect(model.nativeB.run).toBe(model.original);
+			expect(progress.close()).toBe(first);
+			expect(model.restores).toHaveLength(4);
+		},
+	);
+
+	it.each([undefined, null, false, 0, ''])(
+		'keeps primary %p while normal and pending fallback both observe cleanup and close their apps',
+		async (cause) => {
+			const model = createChannelWriterCleanupModel(),
+				progress = model.capture();
+			const wire = cleanupModelJob(),
+				owned = cleanupModelJob();
+			progress.own(owned.promise);
+			progress.own(wire.promise);
+			const cleanupCause = new Error('owned observer job failed');
+			const events: string[] = [];
+			const closeB = jest.fn(() => {
+				events.push('B-close');
+				return Promise.resolve();
+			});
+			const closeA = jest.fn(() => {
+				events.push('A-close');
+				return Promise.resolve();
+			});
+			const normal = withChannelWriterCleanup(async (observe) => {
+				try {
+					await wire.promise;
+				} finally {
+					try {
+						await observe(progress);
+						await closeB();
+					} finally {
+						events.push('B-container-reset', 'logger-descriptor-restored');
+					}
+				}
+			})();
+			const fallback = withChannelWriterCleanup(async (observe) => {
+				try {
+					await observe(progress);
+					await closeA();
+				} finally {
+					events.push('A-container-reset', 'directory-removed', 'environment-restored');
+				}
+			})();
+			owned.reject(cleanupCause);
+			wire.reject(cause);
+			const [normalResult, fallbackResult] = await Promise.all([
+				cleanupModelResult(normal),
+				cleanupModelResult(fallback),
+			]);
+			expectCleanupModelFailure(normalResult, cause);
+			expectCleanupModelFailure(fallbackResult, cleanupCause);
+			expect(closeB).toHaveBeenCalledTimes(1);
+			expect(closeA).toHaveBeenCalledTimes(1);
+			expect(events).toEqual(
+				expect.arrayContaining([
+					'B-close',
+					'A-close',
+					'B-container-reset',
+					'logger-descriptor-restored',
+					'A-container-reset',
+					'directory-removed',
+					'environment-restored',
+				]),
+			);
+			expect(model.restores).toHaveLength(4);
+		},
+	);
+
+	it('retains original app-close precedence over cleanup while still attempting both apps and finalizers', async () => {
+		const model = createChannelWriterCleanupModel(),
+			progress = model.capture(),
+			wire = cleanupModelJob(),
+			owned = cleanupModelJob();
+		progress.own(owned.promise);
+		progress.own(wire.promise);
+		const cleanupCause = new Error('secondary owned job'),
+			appBCause = new Error('original B close');
+		const closeB = jest.fn(() => Promise.reject(appBCause));
+		const appACause: ChannelWriterFailure = { cause: false };
+		const closeA = jest.fn(async () => {
+			await Promise.resolve();
+			throw appACause.cause;
+		});
+		const events: string[] = [];
+		const normal = withChannelWriterCleanup(async (observe) => {
+			try {
+				await wire.promise;
+			} finally {
+				try {
+					await observe(progress);
+					await closeB();
+				} finally {
+					events.push('B-reset', 'descriptor');
+				}
+			}
+		})();
+		const fallback = withChannelWriterCleanup(async (observe) => {
+			try {
+				await observe(progress);
+				await closeA();
+			} finally {
+				events.push('A-reset', 'environment');
+			}
+		})();
+		owned.reject(cleanupCause);
+		wire.release();
+		const [b, a] = await Promise.all([cleanupModelResult(normal), cleanupModelResult(fallback)]);
+		expectCleanupModelFailure(b, appBCause);
+		expectCleanupModelFailure(a, false);
+		expect(closeB).toHaveBeenCalledTimes(1);
+		expect(closeA).toHaveBeenCalledTimes(1);
+		expect(events).toEqual(expect.arrayContaining(['B-reset', 'descriptor', 'A-reset', 'environment']));
+	});
+
+	it('observes even an unexpected rejecting close after app closure and finally, preserving undefined presence', async () => {
+		const model = createChannelWriterCleanupModel(),
+			progress = model.capture();
+		const originalClose = progress.close.bind(progress) as typeof progress.close;
+		const close = jest.spyOn(progress, 'close').mockRejectedValueOnce(undefined);
+		const app = jest.fn(() => Promise.resolve()),
+			finalizer = jest.fn();
+		try {
+			const result = await cleanupModelResult(
+				withChannelWriterCleanup(async (observe) => {
+					try {
+						await observe(progress);
+						await app();
+					} finally {
+						finalizer();
+					}
+				})(),
+			);
+			expectCleanupModelFailure(result, undefined);
+			expect(Object.hasOwn(result, 'cause')).toBe(true);
+			expect(app).toHaveBeenCalledTimes(1);
+			expect(finalizer).toHaveBeenCalledTimes(1);
+		} finally {
+			await originalClose();
+			close.mockRestore();
+		}
+	});
+
+	it.each([undefined, false])('retains partial-install primary %p after attempting every existing undo', (cause) => {
+		const model = createChannelWriterCleanupModel({
+			install: { cause },
+			restore: { cause: new Error('secondary restore') },
+		});
+		let failure: ChannelWriterFailure | undefined;
+		try {
+			model.capture();
+		} catch (caught) {
+			failure = { cause: caught };
+		}
+		expect(failure).toBeDefined();
+		expect(failure?.cause).toBe(cause);
+		expect(Object.hasOwn(failure, 'cause')).toBe(true);
+		expect(model.restores).toEqual(['B:all', 'A:run', 'A:all']);
+		expect(model.sourceA.subscribers).toEqual([]);
+		expect(model.sourceB.subscribers).toEqual([]);
+		expect(model.nativeA.all).toBe(model.original);
+		expect(model.nativeB.all).toBe(model.original);
+		expect(model.runtime.evaluate).toBe(model.evaluate);
+	});
+});
 
 describe('channel writer observation forwarding model (no native credit)', () => {
 	it.each(['all', 'run'] as const)(
@@ -4174,9 +4510,9 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		accessToken = (login.body as { data: { access_token: string } }).data.access_token;
 		expect(accessToken).toEqual(expect.any(String));
 	});
-	afterEach(async () => {
+	async function finishHttpConsumer(observe: ObserveChannelWriterCleanup): Promise<void> {
 		try {
-			await pendingProgress?.close();
+			await observe(pendingProgress);
 			pendingProgress = undefined;
 			await app?.close();
 			console.info('channel-admission-A-closed', { initialized: dataSource?.isInitialized });
@@ -4189,7 +4525,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				else process.env[key] = originalEnvironment[key];
 			}
 		}
-	});
+	}
+	afterEach(withChannelWriterCleanup(finishHttpConsumer));
 	it.each(['heating', 'dual', 'floor', 'cooling'])(
 		'preserves healthy %s and the entire real HTTP wire with physical Influx storage',
 		async (variant) => {
@@ -4264,7 +4601,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		expect(bytes).not.toMatch(/catalogBirth|catalog_birth/);
 		if (process.env.P05B1B_PUBLIC_SCHEMA_OUTPUT) writeFileSync(process.env.P05B1B_PUBLIC_SCHEMA_OUTPUT, bytes);
 	});
-	const verifyIndependent = async (phase: string, operation: 'replace' | 'double-replace' | 'parent' | 'metadata') => {
+	async function verifyIndependentObserved(
+		observe: ObserveChannelWriterCleanup,
+		phase: string,
+		operation: 'replace' | 'double-replace' | 'parent' | 'metadata',
+	): Promise<void> {
 		const otherModule = await Test.createTestingModule({
 			imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
 		}).compile();
@@ -4642,7 +4983,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						if (index >= 0) dataSource.subscribers.splice(index, 1);
 					} finally {
 						try {
-							await progress?.close();
+							await observe(progress);
 							pendingProgress = undefined;
 							await otherApp.close();
 							if (progress) console.info('channel-admission-B-closed', { initialized: otherSource.isInitialized });
@@ -4655,7 +4996,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				Object.defineProperty(Logger.prototype, 'error', errorDescriptor);
 			}
 		}
-	};
+	}
+	const verifyIndependent = withChannelWriterCleanup(verifyIndependentObserved);
 	it.each(['before-presence', 'during-hydration'])(
 		'vetoes a genuine independent same-file public remove/create successor at %s',
 		(phase) => verifyIndependent(phase, 'replace'),
