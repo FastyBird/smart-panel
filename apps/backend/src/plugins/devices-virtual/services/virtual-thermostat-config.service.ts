@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { DataSource, EntityManager, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -15,6 +16,7 @@ import {
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
@@ -49,6 +51,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
+import { thermostatComfortSelection } from './thermostat-comfort-selection';
 import { ThermostatCoolingDependencyService } from './thermostat-cooling-dependency.service';
 import {
 	resolveThermostatProtectionSource,
@@ -359,64 +362,98 @@ export class VirtualThermostatConfigService {
 	}
 	/** Atomic merged settings validation: a single bound cannot create an overlapping persisted deadband. */
 	async command(updates: readonly IDevicePropertyData[]): Promise<boolean> {
-		if (!updates.length) return true;
-		return this.structureLock.runExclusive(async () => {
-			let controllerId: string;
-			await this.graph.withStructuralWrite(async (manager) => {
-				const rows = [] as VirtualThermostatSettingEntity[];
-				for (const update of updates) {
-					const setting = await manager.findOneBy(VirtualThermostatSettingEntity, { propertyId: update.property.id });
-					if (
-						!setting ||
-						setting.contractFingerprint !== thermostatPropertyContract(update.property, update.channel, update.device)
-					)
-						fail('Only registered unchanged local thermostat settings accept commands.');
-					rows.push(setting);
+		const own = captureCreation(this, [
+			'command',
+			'dataSource',
+			'structureLock',
+			'graph',
+			'claims',
+			'events',
+			'values',
+		] as (keyof this)[]);
+		const lock = captureCreation(this.structureLock, [
+			'runExclusive',
+			'runShared',
+			'hasCurrentStructuralLease',
+			'context',
+		] as (keyof DeviceStructureLockService)[]);
+		const graph = captureCreation(this.graph, [
+			'withComfortSelectionWrite',
+			'structuralWrite',
+			'refreshValidation',
+			'dataSource',
+			'revision',
+		] as (keyof VirtualDependencyGraphService)[]);
+		const claims = captureCreation(this.claims, ['invalidate', 'refresh']);
+		const values = captureCreation(this.values, ['write', 'readLatest']);
+		const events = captureCreation(this.events, ['emit']);
+		const helper = captureCreation(thermostatComfortSelection, ['pin']);
+		const valueSet = EventType.CHANNEL_PROPERTY_VALUE_SET,
+			configChanged = THERMOSTAT_CONFIG_CHANGED;
+		const selection = helper.values.pin(this.dataSource, 'registered-settings');
+		const { input, destinations } = selection.registeredInput(updates);
+		if (input === null) return true;
+		const pins = [own, lock, graph, claims, values, events, helper, selection];
+		const current = () => pins.every((pin) => pin.current());
+		const check = () => {
+			if (!current()) fail('Original thermostat settings dispatch expired.');
+		};
+		check();
+		let ownerCurrent = () => false;
+		const operation = selection.operation(input, () => ownerCurrent(), current);
+		try {
+			await lock.values.runExclusive.call(lock.receiver, async () => {
+				check();
+				ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
+				try {
+					await graph.values.withComfortSelectionWrite.call(
+						graph.receiver,
+						operation.write,
+						undefined,
+						operation.admit,
+						operation.accepted,
+						'registered-settings',
+					);
+					operation.accepted();
+				} catch (cause: unknown) {
+					operation.settlement.transactionFailure = Object.freeze({ cause });
+					throw cause;
 				}
-				controllerId = rows[0].controllerId;
-				if (rows.some((row) => row.controllerId !== controllerId))
-					fail('Thermostat setting batch must have one owner.');
-				const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-				const owner = await manager.findOneBy(VirtualDeviceEntity, { id: controllerId });
-				if (!owner?.enabled || (config.locked && rows.some((row) => row.setting !== 'locked')))
-					fail('Thermostat is disabled or locked.');
-				let heat = ['heat', 'auto'].includes(config.requestedMode),
-					cool = ['cool', 'auto'].includes(config.requestedMode);
-				for (const [index, row] of rows.entries()) {
-					const value = updates[index].value;
-					if (row.setting.endsWith('setpoint')) {
-						if (typeof value !== 'number' || !Number.isFinite(value)) fail('Setpoint must be finite.');
-						if (row.setting === 'heating_setpoint') config.policy.heatingSetpoint = value as number;
-						else config.policy.coolingSetpoint = value as number;
-					} else {
-						if (typeof value !== 'boolean') fail('Thermostat enable and lock settings must be boolean.');
-						if (row.setting === 'heating_enabled') heat = value as boolean;
-						else if (row.setting === 'cooling_enabled') cool = value as boolean;
-						else config.locked = value as boolean;
+				// Ordinary inherited maintenance has no new post-ACK currentness veto.
+				let stage = 'claims.invalidate';
+				let index: number | undefined;
+				try {
+					claims.values.invalidate.call(claims.receiver);
+					stage = 'claims.refresh';
+					await claims.values.refresh.call(claims.receiver);
+					for (index = 0; index < destinations.length; index++) {
+						const property = destinations[index],
+							value = input.commands[index].value;
+						stage = 'values.write';
+						await invokeCreation(values.values.write, values.receiver, property, value);
+						stage = 'values.readLatest';
+						const latest = await invokeCreation(values.values.readLatest, values.receiver, property);
+						stage = 'property.value';
+						property.value = latest;
+						stage = 'VALUE_SET';
+						events.values.emit.call(events.receiver, valueSet, property);
 					}
+					index = undefined;
+					stage = 'configChanged';
+					events.values.emit.call(events.receiver, configChanged, input.id);
+					return true;
+				} catch (cause: unknown) {
+					operation.settlement.maintenanceFailure = Object.freeze({ stage, index, cause });
+					throw cause;
 				}
-				if (config.comfort) {
-					if (rows.some((row) => row.setting.endsWith('setpoint'))) config.comfort.selected_preset = null;
-					if (rows.some((row) => row.setting.endsWith('enabled'))) config.comfort.user_off = !heat && !cool;
-					const errors = validateThermostatComfort(config.comfort, config.policy);
-					if (errors.length) fail(errors.join(', '));
-				}
-				config.requestedMode = heat ? (cool ? 'auto' : 'heat') : cool ? 'cool' : 'off';
-				this.validatePolicy(config.policy, config.requestedMode);
-				config.revision++;
-				await manager.save(config);
 			});
-			this.claims.invalidate();
-			await this.claims.refresh();
-			for (const update of updates) {
-				await this.values.write(update.property, update.value);
-				update.property.value = await this.values.readLatest(update.property);
-				this.events.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, update.property);
-			}
-			this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
 			return true;
-		});
+		} catch (cause: unknown) {
+			operation.settlement.structuralFailure = Object.freeze({ cause });
+			throw cause;
+		}
 	}
+
 	async isRegisteredSetting(
 		property: VirtualChannelPropertyEntity,
 		manager: EntityManager = this.dataSource.manager,

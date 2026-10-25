@@ -18,16 +18,40 @@ import { TokenOwnerType } from '../src/modules/auth/auth.constants';
 import { AuthService } from '../src/modules/auth/services/auth.service';
 import { TokensService } from '../src/modules/auth/services/tokens.service';
 import { hashToken } from '../src/modules/auth/utils/token.utils';
-import { DeviceCategory } from '../src/modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../src/modules/devices/devices.constants';
+import { IDevicePropertyData } from '../src/modules/devices/platforms/device.platform';
 import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
+import { PlatformRegistryService } from '../src/modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../src/modules/devices/services/property-command-admission.registry.service';
+import { PropertyCommandDispatchService } from '../src/modules/devices/services/property-command-dispatch.service';
+import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
+import { DisplayEntity } from '../src/modules/displays/entities/displays.entity';
+import { WsAuthService } from '../src/modules/websocket/services/ws-auth.service';
+import { VIRTUAL_THERMOSTAT_COMMAND_HANDLER } from '../src/plugins/devices-virtual/devices-virtual.constants';
 import {
 	ThermostatComfortPresetDto,
 	ThermostatComfortRangeDto,
 } from '../src/plugins/devices-virtual/dto/thermostat-comfort.dto';
-import { VirtualDeviceEntity, VirtualDeviceMode } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
+	VirtualValueOrigin,
+} from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualGraphRevisionEntity } from '../src/plugins/devices-virtual/entities/virtual-producer.entity';
-import { VirtualThermostatConfigEntity } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
+import {
+	VirtualThermostatConfigEntity,
+	VirtualThermostatSettingEntity,
+} from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
+import { VirtualDevicePlatform } from '../src/plugins/devices-virtual/platforms/virtual-device.platform';
 import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from '../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from '../src/plugins/devices-virtual/services/virtual-thermostat-comfort.service';
@@ -35,8 +59,27 @@ import {
 	ThermostatComfortConfiguration,
 	ThermostatPreset,
 } from '../src/plugins/devices-virtual/services/virtual-thermostat-comfort.utils';
+import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
+import { thermostatPropertyContract } from '../src/plugins/devices-virtual/services/virtual-thermostat-contract.utils';
 import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { VirtualThermostatOwnershipSubscriber } from '../src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber';
+import { RoomSpaceEntity } from '../src/plugins/spaces-home-control/entities/room-space.entity';
+import {
+	ClimateIntentService,
+	PrimaryClimateDevice,
+} from '../src/plugins/spaces-home-control/services/climate-intent.service';
+import { SpaceClimateStateService } from '../src/plugins/spaces-home-control/services/space-climate-state.service';
+import {
+	ClimateIntentType,
+	ClimateMode,
+	ClimateRole,
+} from '../src/plugins/spaces-home-control/spaces-home-control.constants';
+
+interface SocketResult {
+	status: string;
+	message: string;
+	results: unknown[];
+}
 
 const baseConfiguration = (): ThermostatComfortConfiguration => ({
 	heating_range: { minimum: 10, maximum: 30 },
@@ -835,4 +878,242 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			}
 		},
 	);
+	it('P06d uses persisted display socket authentication, installed command handler/dispatch/DI and real room dispatch', async () => {
+		const id = await seed(null, 'off');
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{
+				policy: {
+					heatingSetpoint: 20,
+					coolingSetpoint: 24,
+					coldTolerance: 0.5,
+					hotTolerance: 0.5,
+					neutralMargin: 1,
+					minimumOffMs: 0,
+					changeoverMs: 0,
+					floor: null,
+				},
+			},
+		);
+		const targets: IDevicePropertyData[] = [];
+		const branchChannels = new Map<ChannelCategory, string>();
+		for (const [role, category, propertyCategory, value] of [
+			['heating_setpoint', ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, 24],
+			['cooling_setpoint', ChannelCategory.COOLER, PropertyCategory.TEMPERATURE, 28],
+			['heating_enabled', ChannelCategory.HEATER, PropertyCategory.ON, true],
+			['cooling_enabled', ChannelCategory.COOLER, PropertyCategory.ON, true],
+		] as const) {
+			let channelId = branchChannels.get(category);
+			if (!channelId) {
+				channelId = randomUUID();
+				branchChannels.set(category, channelId);
+				await database.manager.insert(VirtualChannelEntity, {
+					id: channelId,
+					device: id,
+					name: category,
+					identifier: category,
+					category,
+				});
+			}
+			const propertyId = randomUUID();
+			await database.manager.insert(VirtualChannelPropertyEntity, {
+				id: propertyId,
+				channel: channelId,
+				identifier: propertyCategory,
+				category: propertyCategory,
+				permissions: [PermissionType.READ_WRITE],
+				dataType: typeof value === 'number' ? DataTypeType.FLOAT : DataTypeType.BOOL,
+				format: typeof value === 'number' ? [5, 40] : null,
+				valueOrigin: VirtualValueOrigin.LOCAL,
+				sourcePropertyId: null,
+			});
+			const property = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+				where: { id: propertyId },
+				relations: ['channel', 'channel.device'],
+			});
+			const channel = property.channel as VirtualChannelEntity,
+				device = channel.device as VirtualDeviceEntity;
+			await database.manager.insert(VirtualThermostatSettingEntity, {
+				propertyId,
+				controllerId: id,
+				setting: role,
+				contractFingerprint: thermostatPropertyContract(property, channel, device),
+			});
+			targets.push({ property, channel, device, value });
+		}
+		const displayId = randomUUID();
+		await database.manager.insert(DisplayEntity, { id: displayId, macAddress: '02:00:00:00:06:04' });
+		// This fixture intentionally has no shared environment secret. Use the installed socket verifier's signer.
+		const jwt = Reflect.get(module.get(WsAuthService), 'jwtService') as JwtService;
+		const bearer = jwt.sign({ sub: displayId, type: TokenOwnerType.DISPLAY });
+		const credential = await module.get(TokensService).createLongLiveToken({
+			token: bearer,
+			ownerType: TokenOwnerType.DISPLAY,
+			ownerId: displayId,
+			name: 'P06d socket',
+			description: null,
+			expiresAt: null,
+		});
+		expect(await database.manager.findOneBy(DisplayEntity, { id: displayId })).not.toBeNull();
+		expect(await module.get(TokensService).findAuthenticationTokenByHash(hashToken(bearer))).toMatchObject({
+			id: credential.id,
+			revoked: false,
+		});
+		const configs = module.get(VirtualThermostatConfigService),
+			platform = module.get(VirtualDevicePlatform);
+		expect(module.get(VIRTUAL_THERMOSTAT_COMMAND_HANDLER)).toBe(configs);
+		expect(module.get(PlatformRegistryService).get(targets[0].device)).toBe(platform);
+		const command = jest.spyOn(configs, 'command'),
+			dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+		const authenticated = jest.spyOn(module.get(WsAuthService), 'validateClient');
+		await app.listen(0, '127.0.0.1');
+		const socket = new WebSocket(
+			`ws://127.0.0.1:${new URL(await app.getUrl()).port}/socket.io/?EIO=4&transport=websocket`,
+		);
+		let connected: () => void, failed: (cause: unknown) => void;
+		const connection = new Promise<void>((resolve, reject) => {
+			connected = resolve;
+			failed = reject;
+		});
+		const acks = new Map<number, (result: SocketResult) => void>();
+		let sequence = 0;
+		socket.addEventListener('error', failed);
+		socket.addEventListener('message', (message) => {
+			const packet = message.data as string;
+			if (packet.startsWith('0')) socket.send('40' + JSON.stringify({ token: bearer }));
+			else if (packet.startsWith('40')) connected();
+			else if (packet.startsWith('44')) failed(new Error('Socket namespace authentication refused'));
+			else if (packet === '2') socket.send('3');
+			else if (packet.startsWith('43')) {
+				const index = packet.indexOf('['),
+					key = Number(packet.slice(2, index));
+				acks.get(key)((JSON.parse(packet.slice(index)) as SocketResult[])[0]);
+				acks.delete(key);
+			}
+		});
+		const send = (updates: IDevicePropertyData[]) =>
+			new Promise<SocketResult>((resolve) => {
+				const request = ++sequence;
+				acks.set(request, resolve);
+				socket.send(
+					`42${request}` +
+						JSON.stringify([
+							'command',
+							{
+								event: 'DevicesModule.ChannelProperty.Set',
+								payload: {
+									request_id: randomUUID(),
+									context: { origin: 'panel.device', display_id: displayId },
+									properties: updates.map((entry) => ({
+										device: id,
+										channel: entry.channel.id,
+										property: entry.property.id,
+										value: entry.value,
+									})),
+								},
+							},
+						]),
+				);
+			});
+		try {
+			await connection;
+			expect(authenticated).toHaveBeenCalledTimes(1);
+			await expect(authenticated.mock.results[0].value).resolves.toBe(true);
+			const principal = authenticated.mock.calls[0][0].data as {
+				user: { type: string; ownerType: string; id: string };
+			};
+			expect(principal.user).toMatchObject({ type: 'token', ownerType: TokenOwnerType.DISPLAY, id: displayId });
+			let revision = 1,
+				g = await module.get(VirtualDependencyGraphService).revision();
+			for (const updates of [targets.slice(2), targets.slice(0, 2)]) {
+				const response = await send(updates);
+				expect(response).toMatchObject({
+					status: 'ok',
+					message: 'Event handled successfully',
+					results: [
+						{
+							handler: 'DevicesModule.Internal.SetPropertyValue',
+							success: true,
+							data: { results: [{ device: id, success: true }] },
+						},
+					],
+				});
+				expect(
+					(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).revision,
+				).toBe(++revision);
+				expect(await module.get(VirtualDependencyGraphService).revision()).toBe(++g);
+			}
+			expect(command).toHaveBeenCalledTimes(2);
+			expect(dispatch).toHaveBeenCalledTimes(2);
+			const spaceId = randomUUID();
+			await database.manager.insert(RoomSpaceEntity, { id: spaceId, name: 'P06d room' });
+			const state = module.get(SpaceClimateStateService);
+			// Discovery is fixed fixture data; command service, dispatcher, registered platform and useExisting writer remain real.
+			jest.spyOn(state, 'getClimateState').mockResolvedValue({
+				hasClimate: true,
+				mode: ClimateMode.AUTO,
+				lastAppliedMode: ClimateMode.AUTO,
+				heatingSetpoint: 24,
+				coolingSetpoint: 28,
+				minSetpoint: 5,
+				maxSetpoint: 40,
+			} as never);
+			jest.spyOn(state, 'getPrimaryClimateDevicesInSpace').mockResolvedValue([
+				{
+					device: Object.assign(targets[0].device, { status: { online: true, status: ConnectionState.CONNECTED } }),
+					deviceCategory: DeviceCategory.THERMOSTAT,
+					role: ClimateRole.AUTO,
+					heaterChannel: targets[2].channel,
+					heaterOnProperty: targets[2].property,
+					heaterSetpointProperty: targets[0].property,
+					coolerChannel: targets[3].channel,
+					coolerOnProperty: targets[3].property,
+					coolerSetpointProperty: targets[1].property,
+					heaterMinSetpoint: 5,
+					heaterMaxSetpoint: 40,
+					coolerMinSetpoint: 5,
+					coolerMaxSetpoint: 40,
+					supportsHeating: true,
+					supportsCooling: true,
+				} as PrimaryClimateDevice,
+			]);
+			const result = await module.get(ClimateIntentService).executeClimateIntent(spaceId, {
+				type: ClimateIntentType.CLIMATE_SET,
+				mode: ClimateMode.HEAT,
+				heatingSetpoint: 21,
+				coolingSetpoint: 25,
+			});
+			await expect(dispatch.mock.results[2].value).resolves.toMatchObject({ success: true });
+			expect(result).toMatchObject({ success: true, affectedDevices: 1 });
+			expect(command).toHaveBeenCalledTimes(3);
+			expect(dispatch).toHaveBeenCalledTimes(3);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toMatchObject(
+				{
+					revision: 4,
+					requestedMode: 'heat',
+					policy: { heatingSetpoint: 21, coolingSetpoint: 25 },
+				},
+			);
+			expect(await module.get(VirtualDependencyGraphService).revision()).toBe(g + 1);
+			const write = jest.spyOn(module.get(PropertyValueService), 'write').mockRejectedValueOnce(false);
+			const response = await send([{ ...targets[0], value: 22 }]);
+			expect(response).toMatchObject({
+				status: 'ok',
+				results: [{ handler: 'DevicesModule.Internal.SetPropertyValue', success: false, reason: 'Internal error' }],
+			});
+			expect(write).toHaveBeenCalled();
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).revision,
+			).toBe(5);
+		} finally {
+			if (socket.readyState !== WebSocket.CLOSED) {
+				const closed = new Promise<void>((resolve) =>
+					socket.addEventListener('close', () => resolve(), { once: true }),
+				);
+				socket.close();
+				await closed;
+			}
+		}
+	});
 });
