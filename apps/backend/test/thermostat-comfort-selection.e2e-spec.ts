@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import request from 'supertest';
-import { DataSource } from 'typeorm';
+import { AfterQueryEvent, DataSource } from 'typeorm';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -387,7 +387,12 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			preset: 'eco',
 			clear_user_off: false,
 		}).expect(422);
-		await post(id, { ...input, expected_revision: 9, preset: 'eco', clear_user_off: false }).expect(422);
+		await post(id, { ...input, expected_revision: 9, preset: 'eco', clear_user_off: false })
+			.expect((response) => {
+				// Characterize the installed response on an existing expected refusal, without another request.
+				observeIndependentFailure('expected422:stale-row', response);
+			})
+			.expect(422);
 		await post(id, {
 			...input,
 			expected_graph_revision: input.expected_graph_revision + 1,
@@ -584,22 +589,78 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			.post(endpoint(id) + route)
 			.set('Authorization', `Bearer ${bearer}`)
 			.send(body);
+	const readDiagnosticField = (object: unknown, key: string): unknown =>
+		object && typeof object === 'object' ? (Object.getOwnPropertyDescriptor(object, key)?.value as unknown) : undefined;
+	let independentDiagnostic:
+		| {
+				stage: string;
+				input?: { expected_revision: number; expected_graph_revision: number };
+				queries: {
+					stage: string;
+					source: 'A' | 'B';
+					operation: string;
+					table: string;
+					success: boolean;
+					target: boolean;
+					revision?: number;
+				}[];
+		  }
+		| undefined;
+	const observeIndependentQuery = (source: 'A' | 'B', controllerId: string) => ({
+		afterQuery(event: AfterQueryEvent<unknown>): void {
+			try {
+				if (!independentDiagnostic) return;
+				const table = event.query.includes('"devices_virtual_thermostat_configs"')
+					? 'config'
+					: event.query.includes('"devices_virtual_graph_revision"')
+						? 'graph'
+						: undefined;
+				if (!table) return;
+				const raw: unknown = event.rawResults;
+				const first: unknown = Array.isArray(raw) ? (raw as unknown[])[0] : undefined;
+				const revision =
+					table === 'graph'
+						? (readDiagnosticField(first, 'VirtualGraphRevisionEntity_revision') ??
+							readDiagnosticField(first, 'graph_revision') ??
+							readDiagnosticField(first, 'revision'))
+						: (readDiagnosticField(first, 'VirtualThermostatConfigEntity_revision') ??
+							readDiagnosticField(first, 'config_revision') ??
+							readDiagnosticField(first, 'revision'));
+				independentDiagnostic.queries.push({
+					stage: independentDiagnostic.stage,
+					source,
+					operation: event.query.trimStart().split(' ', 1)[0].slice(0, 12),
+					table,
+					success: event.success,
+					target:
+						table === 'graph' ||
+						event.parameters?.includes(controllerId) === true ||
+						readDiagnosticField(first, 'VirtualThermostatConfigEntity_controllerId') === controllerId ||
+						readDiagnosticField(first, 'config_controllerId') === controllerId,
+					revision: typeof revision === 'number' ? revision : undefined,
+				});
+				if (independentDiagnostic.queries.length > 40) independentDiagnostic.queries.shift();
+			} catch {
+				// Passive scalar observation never issues SQL or changes the original query outcome.
+			}
+		},
+	});
 	const observeIndependentFailure = (phase: string, value: unknown, service = false): void => {
 		try {
-			const read = (object: unknown, key: string): unknown =>
-				object && typeof object === 'object'
-					? (Object.getOwnPropertyDescriptor(object, key)?.value as unknown)
-					: undefined;
+			const read = readDiagnosticField;
 			const status = service ? undefined : read(value, 'status');
 			if (status === 201) return;
-			const error = service ? (value instanceof Error ? value : undefined) : read(read(value, 'body'), 'error');
+			// Installed Superagent Response.body is a prototype accessor over these own data slots.
+			// Read only the already parsed body; never invoke arbitrary accessors or serialize a response.
+			const body = read(value, 'body') ?? read(value, '_body') ?? read(read(value, 'res'), 'body');
+			const error = service ? (value instanceof Error ? value : undefined) : read(body, 'error');
 			const details = read(error, 'details');
 			const fields =
 				service && error instanceof Error
 					? [error.name, error.message]
 					: [
-							read(error, 'code'),
-							read(error, 'message'),
+							read(error, 'code') ?? read(body, 'error'),
+							read(error, 'message') ?? read(body, 'message'),
 							read(Array.isArray(details) ? read(details, '0') : details, 'reason'),
 						];
 			const strings = fields
@@ -611,8 +672,9 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				status: typeof status === 'number' ? status : undefined,
 				strings,
 			});
+			if (independentDiagnostic) console.error('P06c independent SQL evidence', JSON.stringify(independentDiagnostic));
 		} catch {
-			// Observation cannot change the original response or service rejection.
+			// Observation cannot change the original response or service rejection, including falsy causes.
 		}
 	};
 	const frozenClock = () => {
@@ -780,14 +842,18 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				await lifecyclePost(id, '/override', { ...(await fences(id)), ...body })
 					.expect((response) => observeIndependentFailure(`${kind}:preliminary-create`, response))
 					.expect(201);
-				await module.get(VirtualThermostatRuntimeService).flush();
 			}
-			const input = await fences(id),
-				source = await new SqliteDataSource({
-					type: 'sqlite',
-					database: database.options.database as string,
-					entities: [sourceRoot + '/**/*.entity.ts'],
-				}).initialize();
+			independentDiagnostic = { stage: 'independent-initialize', queries: [] };
+			const queryObserver = observeIndependentQuery('A', id);
+			database.subscribers.push(queryObserver);
+			const source = await new SqliteDataSource({
+				type: 'sqlite',
+				database: database.options.database as string,
+				entities: [sourceRoot + '/**/*.entity.ts'],
+			}).initialize();
+			independentDiagnostic.stage = 'independent-bootstrap';
+			const secondQueryObserver = observeIndependentQuery('B', id);
+			source.subscribers.push(secondQueryObserver);
 			const lock = new DeviceStructureLockService(),
 				graph = new VirtualDependencyGraphService(source),
 				events = new EventEmitter2(),
@@ -802,14 +868,21 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			try {
 				await new VirtualThermostatOwnershipSubscriber(source, claims).onApplicationBootstrap();
 				await claims.onApplicationBootstrap();
+				// Finish owned setup and the existing cancellation maintenance join before request fencing.
+				if (kind === 'cancel') await module.get(VirtualThermostatRuntimeService).flush();
+				independentDiagnostic.stage = 'capture';
+				const input = await fences(id);
+				independentDiagnostic.input = input;
 				expect(lock).not.toBe(module.get(DeviceStructureLockService));
 				expect(Reflect.get(source.driver, 'databaseConnection')).not.toBe(
 					Reflect.get(database.driver, 'databaseConnection'),
 				);
 				expect(Reflect.get(comfort, 'leases')).not.toBe(Reflect.get(other, 'leases'));
+				independentDiagnostic.stage = 'owned-setup-complete';
 				const original = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
 				let bSuccess = 0;
 				const final = jest.spyOn(comfort, 'get').mockImplementationOnce(async (controller, settle) => {
+					independentDiagnostic.stage = 'B-final-get';
 					jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
 					await other
 						.override(
@@ -833,6 +906,7 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 					bSuccess++;
 					return original(controller, settle);
 				});
+				independentDiagnostic.stage = 'A-request';
 				const response =
 					kind === 'override'
 						? await lifecyclePost(id, '/override', { ...input, ...body })
@@ -874,6 +948,8 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				await module.get(VirtualThermostatRuntimeService).flush();
 				claims.onModuleDestroy();
 				await source.destroy();
+				database.subscribers.splice(database.subscribers.indexOf(queryObserver), 1);
+				independentDiagnostic = undefined;
 				clock.restore();
 			}
 		},
