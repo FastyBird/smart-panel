@@ -4919,38 +4919,60 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 							[original.id],
 						);
 						const path = `/modules/devices/channels/${info.id}/properties`;
-						await request(otherApp.getHttpServer())
-							.delete(`${path}/${original.id}`)
-							.set('Authorization', `Bearer ${otherAccessToken}`)
-							.expect(204);
-						await request(otherApp.getHttpServer())
-							.post(path)
-							.set('Authorization', `Bearer ${otherAccessToken}`)
-							.send({
-								data: {
-									id: original.id,
-									type: 'virtual',
-									category: original.category,
-									identifier: original.identifier,
-									name: original.name,
-									data_type: original.dataType,
-									permissions: original.permissions,
-									format: original.format,
-									invalid: original.invalid,
-									step: original.step,
-									value_origin: 'local',
-									source_property: null,
-									value: 'B-successor-value',
-								},
-							})
-							.expect((response) => {
-								if (response.status !== 201)
-									console.info(
-										'independent-create-failure',
-										JSON.stringify({ phase, status: response.status, body: response.body as unknown }),
-									);
-							})
-							.expect(201);
+						const bDeleteAnchor = createHttpAnchor(
+							'B:delete',
+							'DELETE',
+							'/modules/devices/channels/:channel/properties/:property',
+							204,
+							operation,
+							phase,
+						);
+						await bDeleteAnchor.wait(
+							request(otherApp.getHttpServer())
+								.delete(`${path}/${original.id}`)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.expect(bDeleteAnchor.response)
+								.expect(204),
+						);
+						const bCreateAnchor = createHttpAnchor(
+							'B:successor-post',
+							'POST',
+							'/modules/devices/channels/:channel/properties',
+							201,
+							operation,
+							phase,
+						);
+						await bCreateAnchor.wait(
+							request(otherApp.getHttpServer())
+								.post(path)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.send({
+									data: {
+										id: original.id,
+										type: 'virtual',
+										category: original.category,
+										identifier: original.identifier,
+										name: original.name,
+										data_type: original.dataType,
+										permissions: original.permissions,
+										format: original.format,
+										invalid: original.invalid,
+										step: original.step,
+										value_origin: 'local',
+										source_property: null,
+										value: 'B-successor-value',
+									},
+								})
+								.expect(bCreateAnchor.response)
+								.expect((response) => {
+									if (response.status !== 201)
+										console.info(
+											'independent-create-failure',
+											JSON.stringify({ phase, status: response.status, body: response.body as unknown }),
+										);
+								})
+								.expect(201),
+						);
 						const [after] = await otherSource.query<{ birth: string }[]>(
 							'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
 							[original.id],
@@ -4974,53 +4996,31 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						});
 						expect((await otherModule.get(PropertyValueService).readLatest(stored))?.value).toBe('B-successor-value');
 						if (operation === 'double-replace') {
-							const bDeleteAnchor = createHttpAnchor(
-								'B:delete',
-								'DELETE',
-								'/modules/devices/channels/:channel/properties/:property',
-								204,
-								operation,
-								phase,
-							);
-							await bDeleteAnchor.wait(
-								request(otherApp.getHttpServer())
-									.delete(`${path}/${original.id}`)
-									.set('Authorization', `Bearer ${otherAccessToken}`)
-									.expect(bDeleteAnchor.response)
-									.expect(204),
-							);
-							const bCreateAnchor = createHttpAnchor(
-								'B:successor-post',
-								'POST',
-								'/modules/devices/channels/:channel/properties',
-								201,
-								operation,
-								phase,
-							);
-							await bCreateAnchor.wait(
-								request(otherApp.getHttpServer())
-									.post(path)
-									.set('Authorization', `Bearer ${otherAccessToken}`)
-									.send({
-										data: {
-											id: original.id,
-											type: 'virtual',
-											category: original.category,
-											identifier: original.identifier,
-											name: original.name,
-											data_type: original.dataType,
-											permissions: original.permissions,
-											format: original.format,
-											invalid: original.invalid,
-											step: original.step,
-											value_origin: 'local',
-											source_property: null,
-											value: 'C-restored-metadata-value',
-										},
-									})
-									.expect(bCreateAnchor.response)
-									.expect(201),
-							);
+							await request(otherApp.getHttpServer())
+								.delete(`${path}/${original.id}`)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.expect(204);
+							await request(otherApp.getHttpServer())
+								.post(path)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.send({
+									data: {
+										id: original.id,
+										type: 'virtual',
+										category: original.category,
+										identifier: original.identifier,
+										name: original.name,
+										data_type: original.dataType,
+										permissions: original.permissions,
+										format: original.format,
+										invalid: original.invalid,
+										step: original.step,
+										value_origin: 'local',
+										source_property: null,
+										value: 'C-restored-metadata-value',
+									},
+								})
+								.expect(201);
 							const [restored] = await otherSource.query<{ birth: string }[]>(
 								'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
 								[original.id],
