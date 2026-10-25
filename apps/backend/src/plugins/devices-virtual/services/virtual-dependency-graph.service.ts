@@ -74,12 +74,13 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.structuralWrite(operation, expectedGraphRevision, admit);
 	}
 
-	/** Selection, definition, override and cancellation intents require their original ACK/result before ordinary graph settlement. */
+	/** Closed thermostat intents require their own original ACK/result before ordinary graph settlement. */
 	withComfortSelectionWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
-		expectedGraphRevision: number,
+		expectedGraphRevision: number | undefined,
 		admit: (manager: EntityManager) => void,
 		accepted: () => void,
+		kind?: 'registered-settings',
 	): Promise<T> {
 		const refresh = this.refreshValidation.bind(this) as VirtualDependencyGraphService['refreshValidation'];
 		return this.structuralWrite(
@@ -87,7 +88,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			expectedGraphRevision,
 			(manager) => {
 				admit(manager);
-				if (!Number.isSafeInteger(expectedGraphRevision) || expectedGraphRevision < 0)
+				if (
+					!(kind === 'registered-settings' && expectedGraphRevision === undefined) &&
+					(!Number.isSafeInteger(expectedGraphRevision) ||
+						expectedGraphRevision === undefined ||
+						expectedGraphRevision < 0)
+				)
 					throw new DevicesValidationException('Invalid virtual dependency graph revision.');
 			},
 			accepted,

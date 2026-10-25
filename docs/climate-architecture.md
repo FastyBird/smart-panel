@@ -48,6 +48,28 @@ HTTP and event snapshots share process epoch and sequence stamps, so a fetch cov
 refresh loop; newer hints, commands, reconnects or device replacement fence older pending responses. Socket payloads
 are not treated as actuator acknowledgement or independent control evidence.
 
+## Registered manual thermostat settings
+
+The existing command port accepts one atomic batch of registered heating/cooling setpoints, enable flags and lock.
+It captures scalar intent once, then reserves SQLite's writer before reading registrations, current endpoint
+contracts, owner and configuration. One conditional update preserves the starting lock rule and validates the
+whole policy and optional comfort together. Its original native ACK qualifies the complete intended configuration,
+owner and graph image; it does not introduce a public revision fence or a new endpoint. Empty batches still return
+true without database or maintenance work.
+
+For a nonempty batch, true means that historical native intent was accepted and the original awaited ordinary
+maintenance returned normally: graph settlement, claims invalidation/refresh, then each ordered property write,
+readback, assignment and VALUE_SET notification, followed by the configuration-ID event. Duplicate entries keep
+last-assignment policy semantics and repeat their original mirror work. Setpoints clear preset selection even
+when equal; enable flags update the OFF latch. Null comfort and override/automation/protection metadata are retained.
+
+Ordinary value writes can return false or swallow storage failures, and readback is best-effort. Acceptance therefore
+does not certify durable mirror/history completion, immutable destinations, completed event descendants, current
+winner or physical output. An independent SQLite writer with its own service and lock can commit B while A retains
+its local structural owner; A's original mirrors can subsequently run after B. There is no post-ACK latest-winner
+veto, replay or compensation. Runtime ID notifications retain their existing current-state reads. Effect ownership,
+manualHold, automatic bridge installation and hardware qualification remain separate work.
+
 ## Thermostat comfort intent
 
 The controller stores optional comfort configuration alongside its version-1 requested settings. A null comfort
