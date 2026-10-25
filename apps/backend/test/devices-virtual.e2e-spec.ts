@@ -70,6 +70,7 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDeviceInformationListener } from '../src/plugins/devices-virtual/listeners/virtual-device-information.listener';
+import { VirtualIndexMaintenanceListener } from '../src/plugins/devices-virtual/listeners/virtual-index-maintenance.listener';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
 import { VirtualCreatedThermostatModel } from '../src/plugins/devices-virtual/models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../src/plugins/devices-virtual/models/thermostat-response.model';
@@ -1028,6 +1029,117 @@ async function verifyThermostatWire(
 	return { publicRequest, device, settings };
 }
 
+/** Retain this app's original index/status setup work; never start a replacement rebuild or refresh. */
+function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, status: VirtualStatusListener) {
+	type Receipt = { done: Promise<void>; failure?: { cause: unknown } };
+	const pending = new Set<Receipt>();
+	const restore: (() => void)[] = [];
+	let owned: Receipt[] | undefined;
+	let finished = false;
+	const repairs = new Map<NodeJS.Timeout, () => void>();
+	function retain(work: Promise<void>): Receipt {
+		const receipt: Receipt = { done: Promise.resolve() };
+		pending.add(receipt);
+		owned?.push(receipt);
+		receipt.done = work.then<void, void>(
+			() => void pending.delete(receipt),
+			(cause: unknown) => {
+				receipt.failure = { cause };
+				pending.delete(receipt);
+			},
+		);
+		return receipt;
+	}
+	function wrap(
+		target: object,
+		key: string,
+		invoke: (original: (...args: unknown[]) => unknown, args: unknown[]) => unknown,
+	) {
+		const own = Object.getOwnPropertyDescriptor(target, key);
+		const original = Reflect.get(target, key) as (...args: unknown[]) => unknown;
+		if (own || typeof original !== 'function') throw new Error(`Unsupported setup completion method: ${key}`);
+		Object.defineProperty(target, key, {
+			configurable: true,
+			writable: true,
+			value: (...args: unknown[]) => invoke(original.bind(target), args),
+		});
+		restore.push(() => {
+			if (!Reflect.deleteProperty(target, key)) throw new Error(`Cannot restore setup completion method: ${key}`);
+		});
+	}
+	try {
+		// Install before app.init(): a link may join a loop already admitted by an earlier setup event.
+		wrap(index, 'runRebuildLoop', (original, args) => {
+			const work = original(...args) as Promise<void>;
+			// A repair's original timer clears repairTimer before admitting/coalescing its next pass.
+			// Settle its receipt only after that original loop finishes, including every awaited status callback.
+			const settleDeliveredRepairs = (): void => {
+				for (const [timer, settle] of repairs) {
+					if (Reflect.get(index, 'repairTimer') !== timer) {
+						repairs.delete(timer);
+						settle();
+					}
+				}
+			};
+			const observed = work.then(settleDeliveredRepairs, settleDeliveredRepairs);
+			retain(work);
+			retain(observed);
+			return work;
+		});
+		wrap(index, 'scheduleRepairPass', (original, args) => {
+			const result = original(...args);
+			const timer = Reflect.get(index, 'repairTimer') as NodeJS.Timeout | null;
+			if (timer && !repairs.has(timer)) {
+				retain(new Promise<void>((settle) => repairs.set(timer, settle)));
+			}
+			return result;
+		});
+		wrap(status, 'recompute', (original, args) => {
+			const work = original(...args) as Promise<void>;
+			retain(work);
+			return work;
+		});
+	} catch (cause: unknown) {
+		for (const cleanup of restore.reverse()) {
+			try {
+				cleanup();
+			} catch {
+				// Keep the original installation cause while attempting every remaining undo.
+			}
+		}
+		throw cause;
+	}
+	return {
+		begin(): void {
+			if (owned) throw new Error('Link setup completion already owns a request');
+			owned = [...pending];
+		},
+		async finish(): Promise<void> {
+			if (finished) return;
+			owned ??= [...pending];
+			let failure: { cause: unknown } | undefined;
+			try {
+				// These are retained original promises, including callbacks admitted by awaited callbacks.
+				// The original loop owns coalesced passes; original repair timers retain their own receipts.
+				for (const receipt of owned) {
+					await receipt.done;
+					failure ??= receipt.failure;
+				}
+			} finally {
+				finished = true;
+				for (const cleanup of restore.splice(0).reverse()) {
+					try {
+						cleanup();
+					} catch (cause: unknown) {
+						failure ??= { cause };
+					}
+				}
+			}
+			if (failure) throw failure.cause;
+		},
+	};
+}
+
 describe('devices-virtual plugin (e2e)', () => {
 	let app: INestApplication;
 	let accessToken: string;
@@ -1035,6 +1147,7 @@ describe('devices-virtual plugin (e2e)', () => {
 	let dataSource: DataSource;
 	let valueSourceRegistry: PropertyValueSourceRegistryService;
 	let virtualPropertyIndex: VirtualPropertyIndexService;
+	let linkSetupCompletion: ReturnType<typeof captureLinkSetupCompletion>;
 
 	beforeAll(async () => {
 		const dynamicAppModule = AppModule.register({
@@ -1047,6 +1160,10 @@ describe('devices-virtual plugin (e2e)', () => {
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
+		linkSetupCompletion = captureLinkSetupCompletion(
+			moduleFixture.get(VirtualIndexMaintenanceListener),
+			moduleFixture.get(VirtualStatusListener),
+		);
 
 		app.useGlobalPipes(
 			new ValidationPipe({
@@ -1100,7 +1217,11 @@ describe('devices-virtual plugin (e2e)', () => {
 	}, 60_000);
 
 	afterAll(async () => {
-		await app.close();
+		try {
+			await linkSetupCompletion?.finish();
+		} finally {
+			await app?.close();
+		}
 	});
 
 	it('boots the dormant ownership core through the real module and entity discovery without registering climate authority', async () => {
@@ -1354,26 +1475,39 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 
 		it("adds an on property linked to the simulator's relay on", async () => {
-			const response = await authPost(`/modules/devices/channels/${lightChannelId}/properties`)
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: PropertyCategory.ON,
-						identifier: 'on',
-						name: 'On',
-						permissions: [PermissionType.READ_WRITE],
-						data_type: DataTypeType.BOOL,
-						source_property: sourceOnPropertyId,
-					},
-				})
-				.expect(201);
+			linkSetupCompletion.begin();
+			let rejection: { cause: unknown } | undefined;
+			try {
+				const response = await authPost(`/modules/devices/channels/${lightChannelId}/properties`)
+					.send({
+						data: {
+							type: DEVICES_VIRTUAL_TYPE,
+							category: PropertyCategory.ON,
+							identifier: 'on',
+							name: 'On',
+							permissions: [PermissionType.READ_WRITE],
+							data_type: DataTypeType.BOOL,
+							source_property: sourceOnPropertyId,
+						},
+					})
+					.expect(201);
 
-			const body = response.body as { data: ChannelPropertyBody };
+				const body = response.body as { data: ChannelPropertyBody };
 
-			lightOnPropertyId = body.data.id;
+				lightOnPropertyId = body.data.id;
 
-			expect(body.data.source_property).toBe(sourceOnPropertyId);
-			expect(body.data.value_origin).toBe('source');
+				expect(body.data.source_property).toBe(sourceOnPropertyId);
+				expect(body.data.value_origin).toBe('source');
+			} catch (cause: unknown) {
+				rejection = { cause };
+			} finally {
+				try {
+					await linkSetupCompletion.finish();
+				} catch (cause: unknown) {
+					rejection ??= { cause };
+				}
+			}
+			if (rejection) throw rejection.cause;
 		});
 
 		// ─── The configuration-time write guard ─────────────────────────────────────────
@@ -4146,8 +4280,9 @@ describe('channel writer cleanup failure controls (no native credit)', () => {
 				settled = true;
 			});
 			try {
-				await Promise.resolve();
+				await new Promise<void>((resolve) => setImmediate(resolve));
 				expect(settled).toBe(false);
+				expect(model.restores).toEqual([]);
 			} finally {
 				if (kind === 'job') held.reject(cause);
 				else held.release();
@@ -4411,6 +4546,72 @@ describe('channel writer observation forwarding model (no native credit)', () =>
 	);
 });
 
+function createHttpAnchor(
+	stage: string,
+	method: string,
+	route: string,
+	expectedStatus: number,
+	operation = 'setup',
+	phase = 'before-case',
+) {
+	const own = (value: unknown, key: string): unknown =>
+		value !== null && (typeof value === 'object' || typeof value === 'function')
+			? (Object.getOwnPropertyDescriptor(value, key)?.value as unknown)
+			: undefined;
+	const emit = (response: unknown, failure?: { cause: unknown }): void => {
+		try {
+			const status = own(response, 'status') ?? own(response, 'statusCode');
+			if (failure === undefined && status === expectedStatus) return;
+			const body = own(response, 'body') ?? own(response, '_body') ?? own(own(response, 'res'), 'body');
+			const error = own(body, 'error');
+			const cause = failure === undefined ? undefined : failure.cause;
+			const fields =
+				failure === undefined
+					? [own(error, 'code'), own(error, 'message'), own(body, 'message'), error]
+					: [own(cause, 'code'), own(cause, 'name'), own(cause, 'message')];
+			const strings: string[] = [];
+			for (const field of fields) {
+				if (strings.length === 3) break;
+				if (typeof field === 'string') strings.push(field.slice(0, 200));
+				else if (Array.isArray(field))
+					for (let index = 0; index < 3 && strings.length < 3; index++) {
+						const text = own(field, String(index));
+						if (typeof text === 'string') strings.push(text.slice(0, 200));
+					}
+			}
+			console.info(
+				'http-await-failure',
+				JSON.stringify({
+					case: expect.getState().currentTestName?.slice(0, 300),
+					operation,
+					phase,
+					stage,
+					method,
+					route,
+					expectedStatus,
+					actualStatus: typeof status === 'number' ? status : undefined,
+					strings,
+					causePresent: failure !== undefined,
+					causeKind: failure === undefined ? undefined : cause === null ? 'null' : typeof cause,
+				}),
+			);
+		} catch {
+			// Observation cannot replace the original response or rejection, including falsy causes.
+		}
+	};
+	return {
+		response: (response: unknown): void => emit(response),
+		async wait<T>(work: PromiseLike<T>): Promise<T> {
+			try {
+				return await work;
+			} catch (cause: unknown) {
+				emit(undefined, { cause });
+				throw cause;
+			}
+		},
+	};
+}
+
 describe('P05b1b default migrated thermostat HTTP consumer', () => {
 	// Normal CI already starts Influx1.8. The local evidence wrapper may supply its owned database name.
 	const testInfluxDatabase = process.env.P05B1B_INFLUX_DATABASE ?? `p05b1b_test_${process.pid}`;
@@ -4488,25 +4689,33 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				"SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%_thermostat_catalog_birth_%'",
 			),
 		).toHaveLength(6);
-		await request(app.getHttpServer())
-			.post('/modules/auth/auth/register')
-			.send({
-				data: {
-					username: 'cataloghttp',
-					password: 'securePassword123!',
-					email: 'cataloghttp@example.com',
-				},
-			})
-			.expect(204);
-		const login = await request(app.getHttpServer())
-			.post('/modules/auth/auth/login')
-			.send({
-				data: {
-					username: 'cataloghttp',
-					password: 'securePassword123!',
-				},
-			})
-			.expect(201);
+		const aRegisterAnchor = createHttpAnchor('A:setup-register', 'POST', '/modules/auth/auth/register', 204);
+		await aRegisterAnchor.wait(
+			request(app.getHttpServer())
+				.post('/modules/auth/auth/register')
+				.send({
+					data: {
+						username: 'cataloghttp',
+						password: 'securePassword123!',
+						email: 'cataloghttp@example.com',
+					},
+				})
+				.expect(aRegisterAnchor.response)
+				.expect(204),
+		);
+		const aLoginAnchor = createHttpAnchor('A:setup-login', 'POST', '/modules/auth/auth/login', 201);
+		const login = await aLoginAnchor.wait(
+			request(app.getHttpServer())
+				.post('/modules/auth/auth/login')
+				.send({
+					data: {
+						username: 'cataloghttp',
+						password: 'securePassword123!',
+					},
+				})
+				.expect(aLoginAnchor.response)
+				.expect(201),
+		);
 		accessToken = (login.body as { data: { access_token: string } }).data.access_token;
 		expect(accessToken).toEqual(expect.any(String));
 	});
@@ -4650,10 +4859,14 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		});
 		Object.defineProperty(Logger.prototype, 'error', { ...errorDescriptor, value: loggedErrors });
 		const loginOther = async () => {
-			const login = await request(otherApp.getHttpServer())
-				.post('/modules/auth/auth/login')
-				.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
-				.expect(201);
+			const bLoginAnchor = createHttpAnchor('B:login', 'POST', '/modules/auth/auth/login', 201, operation, phase);
+			const login = await bLoginAnchor.wait(
+				request(otherApp.getHttpServer())
+					.post('/modules/auth/auth/login')
+					.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
+					.expect(bLoginAnchor.response)
+					.expect(201),
+			);
 			otherAccessToken = (login.body as { data: { access_token: string } }).data.access_token;
 			expect(otherAccessToken).toEqual(expect.any(String));
 		};
@@ -4761,31 +4974,53 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						});
 						expect((await otherModule.get(PropertyValueService).readLatest(stored))?.value).toBe('B-successor-value');
 						if (operation === 'double-replace') {
-							await request(otherApp.getHttpServer())
-								.delete(`${path}/${original.id}`)
-								.set('Authorization', `Bearer ${otherAccessToken}`)
-								.expect(204);
-							await request(otherApp.getHttpServer())
-								.post(path)
-								.set('Authorization', `Bearer ${otherAccessToken}`)
-								.send({
-									data: {
-										id: original.id,
-										type: 'virtual',
-										category: original.category,
-										identifier: original.identifier,
-										name: original.name,
-										data_type: original.dataType,
-										permissions: original.permissions,
-										format: original.format,
-										invalid: original.invalid,
-										step: original.step,
-										value_origin: 'local',
-										source_property: null,
-										value: 'C-restored-metadata-value',
-									},
-								})
-								.expect(201);
+							const bDeleteAnchor = createHttpAnchor(
+								'B:delete',
+								'DELETE',
+								'/modules/devices/channels/:channel/properties/:property',
+								204,
+								operation,
+								phase,
+							);
+							await bDeleteAnchor.wait(
+								request(otherApp.getHttpServer())
+									.delete(`${path}/${original.id}`)
+									.set('Authorization', `Bearer ${otherAccessToken}`)
+									.expect(bDeleteAnchor.response)
+									.expect(204),
+							);
+							const bCreateAnchor = createHttpAnchor(
+								'B:successor-post',
+								'POST',
+								'/modules/devices/channels/:channel/properties',
+								201,
+								operation,
+								phase,
+							);
+							await bCreateAnchor.wait(
+								request(otherApp.getHttpServer())
+									.post(path)
+									.set('Authorization', `Bearer ${otherAccessToken}`)
+									.send({
+										data: {
+											id: original.id,
+											type: 'virtual',
+											category: original.category,
+											identifier: original.identifier,
+											name: original.name,
+											data_type: original.dataType,
+											permissions: original.permissions,
+											format: original.format,
+											invalid: original.invalid,
+											step: original.step,
+											value_origin: 'local',
+											source_property: null,
+											value: 'C-restored-metadata-value',
+										},
+									})
+									.expect(bCreateAnchor.response)
+									.expect(201),
+							);
 							const [restored] = await otherSource.query<{ birth: string }[]>(
 								'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
 								[original.id],
