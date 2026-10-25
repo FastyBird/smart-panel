@@ -53,11 +53,11 @@ export class VirtualThermostatComfortController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Configure explicit thermostat presets',
 		description:
-			'Configure Celsius ranges and comfort/eco/away setpoints without seeding temperatures . Automation requires explicit opt-in; no engines run here. A live override retains its resolved setpoints.',
+			"Configure Celsius ranges and ordered comfort/eco/away definitions without seeding temperatures. Returns this operation's persisted six-field intent accepted by its native database acknowledgement. Subsequent maintenance or concurrent writes may supersede it; GET reads current arbitration. This response does not establish an unexpired lease or output permission. Automation requires explicit opt-in; no engines run here. A live override retains its resolved setpoints.",
 		operationId: 'configure-devices-virtual-plugin-thermostat-comfort',
 	})
 	@ApiUnprocessableEntityResponse('Invalid branch, range, deadband or revision')
-	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Configured comfort arbitration')
+	@ApiSuccessResponse(ThermostatComfortResponseModel, 'Committed comfort definition intent')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Put()
 	configure(

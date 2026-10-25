@@ -74,7 +74,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.structuralWrite(operation, expectedGraphRevision, admit);
 	}
 
-	/** Manual selection alone requires its original ACK/result before ordinary graph settlement. */
+	/** Selection and definition intents require their original ACK/result before ordinary graph settlement. */
 	withComfortSelectionWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
 		expectedGraphRevision: number,

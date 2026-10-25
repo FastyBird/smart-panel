@@ -1,3 +1,4 @@
+import { plainToInstance } from 'class-transformer';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -18,6 +19,7 @@ import * as ledgerJson from '../../../modules/devices/services/climate-automatio
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { ConfigureThermostatComfortDto } from '../dto/thermostat-comfort.dto';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
@@ -56,6 +58,27 @@ const configuration = (): ThermostatComfortConfiguration => ({
 	temporary_override: null,
 });
 
+const definition = () => ({
+	heating_range: { minimum: 11, maximum: 29 },
+	cooling_range: null,
+	presets: [
+		{ preset: 'eco' as const, setpoints: { heating_setpoint: 18, cooling_setpoint: null } },
+		{ preset: 'comfort' as const, setpoints: { heating_setpoint: 24, cooling_setpoint: null } },
+	],
+});
+const definedConfiguration = (): ThermostatComfortConfiguration => ({
+	heating_range: { minimum: 11, maximum: 29 },
+	cooling_range: null,
+	presets: [
+		{ preset: 'eco', setpoints: { heating_setpoint: 18, cooling_setpoint: null } },
+		{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } },
+	],
+	selected_preset: null,
+	user_off: false,
+	automation_enabled: false,
+	automation_baseline: null,
+	temporary_override: null,
+});
 describe('manual thermostat selection: reserved native intent', () => {
 	let database: SqliteDataSource;
 	let lock: DeviceStructureLockService;
@@ -169,22 +192,27 @@ describe('manual thermostat selection: reserved native intent', () => {
 		expect(await graph.revision()).toBe(input.expected_graph_revision);
 	});
 
-	it('rejects a lost conditional UPDATE and unexpected trigger postimage before native submission', async () => {
-		const before = await fence();
-		const dispatch = jest.spyOn(native(), 'all');
-		await database.query(
-			'CREATE TRIGGER ignore_selection BEFORE UPDATE ON devices_virtual_thermostat_configs BEGIN SELECT RAISE(IGNORE); END',
-		);
-		await expect(comfort.select(id, before, 'eco', false)).rejects.toThrow('conditional update');
-		expect(dispatch.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
-		await database.query('DROP TRIGGER ignore_selection');
-		await database.query(
-			"CREATE TRIGGER change_selection AFTER UPDATE ON devices_virtual_thermostat_configs BEGIN UPDATE devices_virtual_thermostat_configs SET comfort = json_set(NEW.comfort, '$.user_off', json('true')) WHERE controllerId = NEW.controllerId; END",
-		);
-		await expect(comfort.select(id, before, 'eco', false)).rejects.toThrow('postimage');
-		expect((await row()).comfort).toEqual(configuration());
-		expect(await fence()).toEqual(before);
-	});
+	it.each(['selection', 'definition'] as const)(
+		'rejects lost UPDATE and wrong postimage for %s before native submission',
+		async (kind) => {
+			const before = await fence();
+			const dispatch = jest.spyOn(native(), 'all');
+			await database.query(
+				'CREATE TRIGGER ignore_selection BEFORE UPDATE ON devices_virtual_thermostat_configs BEGIN SELECT RAISE(IGNORE); END',
+			);
+			const write = () =>
+				kind === 'selection' ? comfort.select(id, before, 'eco', false) : comfort.configure(id, before, definition());
+			await expect(write()).rejects.toThrow('conditional update');
+			expect(dispatch.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
+			await database.query('DROP TRIGGER ignore_selection');
+			await database.query(
+				"CREATE TRIGGER change_selection AFTER UPDATE ON devices_virtual_thermostat_configs BEGIN UPDATE devices_virtual_thermostat_configs SET comfort = json_set(NEW.comfort, '$.user_off', json('true')) WHERE controllerId = NEW.controllerId; END",
+			);
+			await expect(write()).rejects.toThrow('postimage');
+			expect((await row()).comfort).toEqual(configuration());
+			expect(await fence()).toEqual(before);
+		},
+	);
 
 	it('captures direct dispatch before fence getters and snapshots each primitive fence once', async () => {
 		const before = await fence();
@@ -363,37 +391,47 @@ describe('manual thermostat selection: reserved native intent', () => {
 		},
 	);
 
-	it('rejects UNKNOWN at the real native callback without changed or final get, even when the row committed', async () => {
-		const connection = native(),
-			all = connection.all.bind(connection) as NativeConnection['all'];
-		const cause = new Error('native acknowledgement unavailable');
-		let receipt: SqliteCommitGuardReceipt;
-		database.subscribers.push({
-			beforeTransactionCommit: (event) => {
-				receipt = observeSqliteOuterOutcome(event.manager);
-			},
-		});
-		jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
-			return all(sql, parameters, function (error, rows) {
-				callback.call(this, sql === 'COMMIT' && !error ? cause : error, rows);
+	it.each(['selection', 'definition'] as const)(
+		'rejects %s UNKNOWN at native callback without normal changed/get despite durable commit',
+		async (kind) => {
+			const connection = native(),
+				all = connection.all.bind(connection) as NativeConnection['all'];
+			const cause = new Error('native acknowledgement unavailable');
+			let receipt: SqliteCommitGuardReceipt;
+			database.subscribers.push({
+				beforeTransactionCommit: (event) => {
+					receipt = observeSqliteOuterOutcome(event.manager);
+				},
 			});
-		});
-		const notified = jest.fn();
-		events.on(THERMOSTAT_CONFIG_CHANGED, notified);
-		const get = jest.spyOn(comfort, 'get');
-		await expect(comfort.select(id, await fence(), 'eco', false)).rejects.toMatchObject({ driverError: cause });
-		expect(receipt.outcome).toBe('unknown');
-		expect(notified).not.toHaveBeenCalled();
-		expect(get).not.toHaveBeenCalled();
-		expect((await row()).revision).toBe(2);
-		expect((await row()).comfort.selected_preset).toBe('eco');
-	});
+			jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
+				return all(sql, parameters, function (error, rows) {
+					callback.call(this, sql === 'COMMIT' && !error ? cause : error, rows);
+				});
+			});
+			const notified = jest.fn();
+			events.on(THERMOSTAT_CONFIG_CHANGED, notified);
+			const get = jest.spyOn(comfort, 'get');
+			await expect(
+				kind === 'selection'
+					? comfort.select(id, await fence(), 'eco', false)
+					: comfort.configure(id, await fence(), definition()),
+			).rejects.toMatchObject({ driverError: cause });
+			expect(receipt.outcome).toBe('unknown');
+			expect(notified).not.toHaveBeenCalled();
+			expect(get).not.toHaveBeenCalled();
+			expect((await row()).revision).toBe(2);
+			expect((await row()).comfort.selected_preset).toBe(kind === 'selection' ? 'eco' : null);
+		},
+	);
 
-	it.each(['subscriber', 'release'] as const)(
+	it.each(['subscriber', 'release', 'definition-subscriber'] as const)(
 		'retains ACK/result and the exact falsy awaited %s error independently',
 		async (phase) => {
 			const pinned = thermostatComfortSelection.pin(database);
-			const input = pinned.input(id, await fence(), 'eco', false);
+			const input =
+				phase === 'definition-subscriber'
+					? pinned.definitionInput(id, await fence(), definition())
+					: pinned.input(id, await fence(), 'eco', false);
 			let ownerCurrent = () => false;
 			const operation = pinned.operation(
 				input,
@@ -402,7 +440,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			);
 			database.subscribers.push({
 				afterTransactionCommit: (event) => {
-					if (phase === 'subscriber') throw JSON.parse('false') as unknown;
+					if (phase !== 'release') throw JSON.parse('false') as unknown;
 					const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void };
 					const release = lease.release;
 					lease.release = () => {
@@ -424,16 +462,22 @@ describe('manual thermostat selection: reserved native intent', () => {
 				}),
 			).rejects.toBe(false);
 			expect(operation.settlement.outcome).toBe('committed');
-			expect(operation.settlement.result.value).toMatchObject({
-				revision: 2,
-				configuration: { selected_preset: 'eco' },
-			});
+			if (phase === 'definition-subscriber') expect(operation.settlement.result.value).toEqual(definedResult(input));
+			else
+				expect(operation.settlement.result.value).toMatchObject({
+					revision: 2,
+					configuration: { selected_preset: 'eco' },
+				});
 			expect(Object.isFrozen(operation.settlement.result.value.configuration.presets[0].setpoints)).toBe(true);
 			expect((await row()).revision).toBe(2);
 			const get = jest.spyOn(comfort, 'get');
 			const notified = jest.fn();
 			events.on(THERMOSTAT_CONFIG_CHANGED, notified);
-			await expect(comfort.select(id, await fence(), 'away', false)).rejects.toBe(false);
+			await expect(
+				phase === 'definition-subscriber'
+					? comfort.configure(id, await fence(), definition())
+					: comfort.select(id, await fence(), 'away', false),
+			).rejects.toBe(false);
 			expect(get).not.toHaveBeenCalled();
 			expect(notified).not.toHaveBeenCalled();
 			expect((await row()).revision).toBe(3);
@@ -538,132 +582,140 @@ describe('manual thermostat selection: reserved native intent', () => {
 		}
 	});
 
-	it('runs real ownership reconciliation, preserves direct durable rows, and retries listener/refresh failure without replay', async () => {
-		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
-			id: randomUUID(),
-			controllerId: id,
-			physicalIdentity: 'reserved-fixture',
-			role: 'heating',
-			state: 'missing',
-			sourcePropertyId: null,
-			sourcePropertyIdentity: 'retained-property',
-			sourceDeviceId: null,
-			sourceDeviceIdentity: 'retained-device',
-			contractFingerprint: 'retained-contract',
-			leaseSeconds: 30,
-			revision: 1,
-		});
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
-		// Retained, unarmed records make direct-write invariance non-vacuous; no installation is activated.
-		await database.query(
-			`INSERT INTO devices_virtual_thermostat_sources
+	it.each(['selection', 'definition'] as const)(
+		'runs real ownership reconciliation and direct durable invariance for %s with notification retry',
+		async (kind) => {
+			await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+				id: randomUUID(),
+				controllerId: id,
+				physicalIdentity: 'reserved-fixture',
+				role: 'heating',
+				state: 'missing',
+				sourcePropertyId: null,
+				sourcePropertyIdentity: 'retained-property',
+				sourceDeviceId: null,
+				sourceDeviceIdentity: 'retained-device',
+				contractFingerprint: 'retained-contract',
+				leaseSeconds: 30,
+				revision: 1,
+			});
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
+			// Retained, unarmed records make direct-write invariance non-vacuous; no installation is activated.
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_sources
 			(id,controllerId,role,sourcePropertyIdentity,contractFingerprint,maximumAgeSeconds)
 			VALUES (?,?,'ambient','retained-source','retained-source-contract',60)`,
-			[randomUUID(), id],
-		);
-		await database.query(
-			`INSERT INTO devices_virtual_thermostat_member_protection
+				[randomUUID(), id],
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_member_protection
 			(claimId,revision,sourcePropertyIdentity,physicalPropertyIdentity,contractFingerprint,maximumAgeSeconds)
 			VALUES (?,4,'floor-source','physical-floor','floor-contract',30)`,
-			[claim.id],
-		);
-		await database.query(
-			`INSERT INTO devices_virtual_thermostat_cooling_dependencies
+				[claim.id],
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_cooling_dependencies
 			(claimId,revision,dewPointIdentity,dewPointFingerprint,surfaceIdentity,physicalSurfaceIdentity,surfaceFingerprint,maximumAgeSeconds)
 			VALUES (?,5,'dew-point','dew-contract','surface','physical-surface','surface-contract',30)`,
-			[claim.id],
-		);
-		await database.query(
-			`INSERT INTO devices_virtual_thermostat_recoveries
+				[claim.id],
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_recoveries
 			(id,controllerId,claimId,physicalIdentity,previousPropertyIdentity,restoredPropertyId,actorId,reason,disconnectionAcknowledged,configurationRevision,claimRevision,createdAt)
 			VALUES (?,?,?,'reserved-fixture','old-property','restored-property','operator','retained recovery',1,1,1,CURRENT_TIMESTAMP)`,
-			[randomUUID(), id, claim.id],
-		);
-		await database.query(
-			`INSERT INTO devices_virtual_thermostat_command_journal
+				[randomUUID(), id, claim.id],
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_command_journal
 			(id,controllerId,claimId,claimRevision,configurationRevision,decisionRevision,action,status,preparedAt)
 			VALUES (?,?,?,1,1,7,'on','unknown',CURRENT_TIMESTAMP)`,
-			[randomUUID(), id, claim.id],
-		);
-		await database.query(
-			`INSERT INTO devices_virtual_thermostat_installation_audit
+				[randomUUID(), id, claim.id],
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_installation_audit
 			(id,claimId,revision,action,actorId,occurredAt,snapshot)
 			VALUES (?,?,3,'revoked','operator',CURRENT_TIMESTAMP,'{"retained":"unarmed"}')`,
-			[randomUUID(), claim.id],
-		);
-		await database.query(`INSERT INTO devices_module_climate_automation_sources
+				[randomUUID(), claim.id],
+			);
+			await database.query(`INSERT INTO devices_module_climate_automation_sources
 			(generationId,ownerId,producerKey,subjectId,generationIndex,revision,isCurrent,state,evidence,evidenceDigest)
 			VALUES ('retained-generation','retained-owner','activity:v1','retained-subject',3,2,1,'PENDING','{"retained":true}','retained-digest')`);
-		await database.query(
-			`INSERT INTO devices_module_climate_automation_slots
+			await database.query(
+				`INSERT INTO devices_module_climate_automation_slots
 			(controllerId,providerKey,controllerIncarnation,slotRevision,manualGeneration,manualCounter,manualHold,state,legacyDigest)
 			VALUES (?,'virtual-thermostat:v1','retained-incarnation',11,'retained-manual',7,1,'LEGACY','retained-legacy')`,
-			[id],
-		);
-		claims.recordQualification({
-			physicalIdentity: claim.physicalIdentity,
-			upstreamWritersExcluded: true,
-			opposedOutputsInterlocked: false,
-			profile: {
-				evidenceId: 'software-fixture-only',
-				revision: 1,
-				deviceId: 'fixture',
-				firmware: 'fixture',
-				model: 'SNSW-001P16EU',
-				componentId: 0,
-				releaseOrderingQualified: true,
-				independentProtectionQualified: true,
-				testedLeaseSeconds: { min: 1, max: 60 },
-			},
-		});
-		expect(claims.qualification(claim, false)).not.toBeNull();
-		const tables = (
-			await database.query<{ name: string }[]>(
-				"SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'devices_virtual_thermostat_%' OR name LIKE 'devices_module_climate_automation_%') ORDER BY name",
+				[id],
+			);
+			claims.recordQualification({
+				physicalIdentity: claim.physicalIdentity,
+				upstreamWritersExcluded: true,
+				opposedOutputsInterlocked: false,
+				profile: {
+					evidenceId: 'software-fixture-only',
+					revision: 1,
+					deviceId: 'fixture',
+					firmware: 'fixture',
+					model: 'SNSW-001P16EU',
+					componentId: 0,
+					releaseOrderingQualified: true,
+					independentProtectionQualified: true,
+					testedLeaseSeconds: { min: 1, max: 60 },
+				},
+			});
+			expect(claims.qualification(claim, false)).not.toBeNull();
+			const tables = (
+				await database.query<{ name: string }[]>(
+					"SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'devices_virtual_thermostat_%' OR name LIKE 'devices_module_climate_automation_%') ORDER BY name",
+				)
 			)
-		)
-			.map(({ name }) => name)
-			.filter((name) => name !== 'devices_virtual_thermostat_configs');
-		const snapshot = async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
-			const records: Record<string, unknown> = {};
-			for (const table of tables)
-				records[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
-			return records;
-		};
-		const before = await snapshot(database.manager);
-		const beforeConfig = await row();
-		const invalidated = jest.spyOn(claims, 'invalidate'),
-			revoked = jest.spyOn(claims, 'revokeAllQualifications');
-		const realRefresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
-		const refresh = jest.spyOn(claims, 'refresh').mockImplementation(realRefresh);
-		let seam: Record<string, unknown> | undefined;
-		database.subscribers.push({
-			beforeQuery: async (event) => {
-				if (event.query === 'COMMIT') seam = await snapshot(event.manager);
-			},
-		});
-		const failure = () => {
-			throw new Error('listener pending');
-		};
-		events.on(THERMOSTAT_CONFIG_CHANGED, failure);
-		const input = await fence();
-		const result = await comfort.select(id, input, 'eco', false);
-		expect(seam).toEqual(before);
-		expect(invalidated).toHaveBeenCalled();
-		expect(revoked).toHaveBeenCalled();
-		expect(claims.qualification(claim, false)).toBeNull();
-		expect(refresh.mock.calls.length).toBeGreaterThanOrEqual(2);
-		events.off(THERMOSTAT_CONFIG_CHANGED, failure);
-		const notified = jest.fn();
-		events.on(THERMOSTAT_CONFIG_CHANGED, notified);
-		refresh.mockRejectedValueOnce(false);
-		await comfort.settle(id); // existing caught failure keeps retry pending
-		await comfort.settle(id);
-		expect(notified).toHaveBeenCalledWith(id);
-		expect((await row()).revision).toBe(result.revision);
-		expect(await snapshot(database.manager)).toEqual(before);
-		expect({ ...(await row()), comfort: beforeConfig.comfort, revision: beforeConfig.revision }).toEqual(beforeConfig);
-	});
+				.map(({ name }) => name)
+				.filter((name) => name !== 'devices_virtual_thermostat_configs');
+			const snapshot = async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
+				const records: Record<string, unknown> = {};
+				for (const table of tables)
+					records[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+				return records;
+			};
+			const before = await snapshot(database.manager);
+			const beforeConfig = await row();
+			const invalidated = jest.spyOn(claims, 'invalidate'),
+				revoked = jest.spyOn(claims, 'revokeAllQualifications');
+			const realRefresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+			const refresh = jest.spyOn(claims, 'refresh').mockImplementation(realRefresh);
+			let seam: Record<string, unknown> | undefined;
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query === 'COMMIT') seam = await snapshot(event.manager);
+				},
+			});
+			const failure = () => {
+				throw new Error('listener pending');
+			};
+			events.on(THERMOSTAT_CONFIG_CHANGED, failure);
+			const input = await fence();
+			const result =
+				kind === 'selection'
+					? await comfort.select(id, input, 'eco', false)
+					: await comfort.configure(id, input, definition());
+			expect(seam).toEqual(before);
+			expect(invalidated).toHaveBeenCalled();
+			expect(revoked).toHaveBeenCalled();
+			expect(claims.qualification(claim, false)).toBeNull();
+			expect(refresh.mock.calls.length).toBeGreaterThanOrEqual(2);
+			events.off(THERMOSTAT_CONFIG_CHANGED, failure);
+			const notified = jest.fn();
+			events.on(THERMOSTAT_CONFIG_CHANGED, notified);
+			refresh.mockRejectedValueOnce(false);
+			await comfort.settle(id); // existing caught failure keeps retry pending
+			await comfort.settle(id);
+			expect(notified).toHaveBeenCalledWith(id);
+			expect((await row()).revision).toBe(result.revision);
+			expect(await snapshot(database.manager)).toEqual(before);
+			expect({ ...(await row()), comfort: beforeConfig.comfort, revision: beforeConfig.revision }).toEqual(
+				beforeConfig,
+			);
+		},
+	);
 
 	it.each(['expire', 'uncertain', 'active'] as const)(
 		'keeps final get %s maintenance while returning the reserved active override intent',
@@ -782,5 +834,380 @@ describe('manual thermostat selection: reserved native intent', () => {
 			database.transaction((manager) => manager.transaction((nested) => Promise.resolve(operation.admit(nested)))),
 		).rejects.toThrow('exact open outer manager');
 		expect((await row()).revision).toBe(1);
+	});
+	const definedResult = (
+		input: { expected_revision: number; expected_graph_revision: number },
+		configuration = definedConfiguration(),
+	) => ({
+		controller: id,
+		revision: input.expected_revision + 1,
+		graph_revision: input.expected_graph_revision + 1,
+		configuration,
+		effective: {
+			heating_setpoint: 20,
+			cooling_setpoint: null,
+			source: configuration.user_off ? 'user_off' : 'manual',
+			preset: null,
+			override_id: null,
+			expires_at: null,
+		},
+		clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+	});
+
+	it.each(['DTO', 'plain'] as const)(
+		'owns %s input before await; later valid nested mutations cannot change full admitted A',
+		async (kind) => {
+			const input = await fence();
+			const plain = {
+				...input,
+				...definition(),
+				automation_enabled: undefined,
+			};
+			const dto = kind === 'DTO' ? plainToInstance(ConfigureThermostatComfortDto, plain) : plain;
+			if (kind === 'DTO') {
+				expect(dto).toBeInstanceOf(ConfigureThermostatComfortDto);
+				expect(Object.getPrototypeOf(dto.heating_range)).not.toBe(Object.prototype);
+			}
+			const held = gate();
+			const original = comfort.settle.bind(comfort) as VirtualThermostatComfortService['settle'];
+			jest.spyOn(comfort, 'settle').mockImplementationOnce(async (controller) => {
+				await held.promise;
+				await original(controller);
+			});
+			const a = comfort.configure(id, dto, dto);
+			dto.presets[0].setpoints.heating_setpoint = 19;
+			dto.heating_range.minimum = 12;
+			dto.presets.reverse();
+			held.resolve();
+			const result = await a;
+			expect({ row: (await row()).comfort, response: result }).toEqual({
+				row: definedConfiguration(),
+				response: definedResult(input),
+			});
+		},
+	);
+
+	it('reads aliased known fields once without enumerating unrelated getters', async () => {
+		const input = await fence(),
+			counts = { heating: 0, cooling: 0, range: 0 };
+		const setpoints = {
+			get heating_setpoint() {
+				counts.heating++;
+				return 18;
+			},
+			get cooling_setpoint(): number | null {
+				counts.cooling++;
+				return null;
+			},
+		};
+		const payload = {
+			...input,
+			get heating_range() {
+				counts.range++;
+				return { minimum: 0, maximum: 30 };
+			},
+			cooling_range: null,
+			presets: [
+				{ preset: 'eco' as const, setpoints },
+				{ preset: 'comfort' as const, setpoints },
+			],
+			get unrelated() {
+				throw new Error('must not enumerate');
+			},
+			automation_enabled: null,
+		};
+		const result = await comfort.configure(id, payload, payload);
+		expect(counts).toEqual({ heating: 1, cooling: 1, range: 1 });
+		expect(result.configuration.heating_range.minimum).toBe(0);
+		expect(result.configuration.presets.map((entry) => entry.setpoints.heating_setpoint)).toEqual([18, 18]);
+	});
+
+	it.each([undefined, null, false, 0, ''])(
+		'propagates exact getter cause %p before maintenance/transaction',
+		async (cause) => {
+			const input = await fence(),
+				before = await row();
+			const settle = jest.spyOn(comfort, 'settle');
+			const payload = {
+				...definition(),
+				get heating_range(): { minimum: number; maximum: number } {
+					throw cause as unknown;
+				},
+			};
+			await expect(comfort.configure(id, input, payload)).rejects.toBe(cause);
+			expect(settle).not.toHaveBeenCalled();
+			expect(await row()).toEqual(before);
+			expect(await fence()).toEqual(input);
+		},
+	);
+
+	it.each(['runComfortIntent', 'get'] as const)('pins original %s before nested input getters', async (key) => {
+		const input = await fence(),
+			original = Reflect.get(comfort, key) as unknown;
+		const successor = jest.fn();
+		const payload = {
+			...definition(),
+			get heating_range() {
+				Reflect.set(comfort, key, successor);
+				return { minimum: 11, maximum: 29 };
+			},
+		};
+		try {
+			await expect(comfort.configure(id, input, payload)).rejects.toThrow('dispatch expired');
+			expect(successor).not.toHaveBeenCalled();
+		} finally {
+			Reflect.set(comfort, key, original);
+		}
+		expect(await fence()).toEqual(input);
+	});
+
+	it('refuses malformed selected shapes and unsafe fences before maintenance, plus stored capacities', async () => {
+		const input = await fence(),
+			settle = jest.spyOn(comfort, 'settle');
+		for (const payload of [
+			{ ...definition(), heating_range: undefined },
+			{ ...definition(), heating_range: { minimum: NaN, maximum: 30 } },
+			{ ...definition(), automation_enabled: 1 },
+			{ ...definition(), presets: new Array(1) },
+			{
+				...definition(),
+				presets: [{ preset: 'eco', setpoints: { heating_setpoint: undefined, cooling_setpoint: null } }],
+			},
+		])
+			await expect(comfort.configure(id, input, payload as ReturnType<typeof definition>)).rejects.toThrow(
+				'Invalid thermostat',
+			);
+		for (const invalid of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])
+			await expect(comfort.configure(id, { ...input, expected_revision: invalid }, definition())).rejects.toThrow(
+				'revision fences',
+			);
+		for (const invalid of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1])
+			await expect(comfort.configure(id, { ...input, expected_graph_revision: invalid }, definition())).rejects.toThrow(
+				'revision fences',
+			);
+		expect(settle).not.toHaveBeenCalled();
+		expect(await fence()).toEqual(input);
+		const pinned = thermostatComfortSelection.pin(database);
+		expect(() =>
+			pinned.operation(
+				{ kind: 'unknown' } as never,
+				() => true,
+				() => true,
+			),
+		).toThrow('intent kind');
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{ revision: Number.MAX_SAFE_INTEGER },
+		);
+		await expect(comfort.configure(id, await fence(), definition())).rejects.toThrow('overflowed');
+		await database.query('UPDATE devices_virtual_graph_revision SET revision = ?', [Number.MAX_SAFE_INTEGER]);
+		await expect(comfort.configure(id, await fence(), definition())).rejects.toThrow('overflow');
+	});
+
+	it.each(['omitted', 'undefined', 'null'] as const)(
+		'defaults automation false on first definition for %s',
+		async (flag) => {
+			await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: null });
+			const input = await fence();
+			const payload =
+				flag === 'omitted' ? definition() : { ...definition(), automation_enabled: flag === 'null' ? null : undefined };
+			expect(await comfort.configure(id, input, payload)).toEqual(definedResult(input));
+			expect((await row()).comfort).toEqual(definedConfiguration());
+		},
+	);
+
+	it.each(['omitted', 'undefined', 'null', 'true', 'false'] as const)(
+		'preserves exact baseline/nullish semantics for %s',
+		async (flag) => {
+			const baseline = { preset: 'away' as const, setpoints: null, actor_id: 'retained-actor', revision: 7 };
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: id },
+				{
+					requestedMode: 'off',
+					comfort: { ...configuration(), automation_enabled: flag !== 'true', automation_baseline: baseline },
+				},
+			);
+			const input = await fence();
+			const payload = {
+				...definition(),
+				presets: [
+					...definition().presets,
+					{ preset: 'away' as const, setpoints: { heating_setpoint: 13, cooling_setpoint: null } },
+				],
+			};
+			const flagValue = flag === 'null' ? null : flag === 'true' ? true : flag === 'false' ? false : undefined;
+			const request = flag === 'omitted' ? payload : { ...payload, automation_enabled: flagValue };
+			if (flag === 'false') request.presets.pop(); // baseline-only name may be removed only after clearing
+			const result = await comfort.configure(id, input, request);
+			const expected = {
+				...definedConfiguration(),
+				presets:
+					flag === 'false'
+						? definedConfiguration().presets
+						: [
+								...definedConfiguration().presets,
+								{ preset: 'away' as const, setpoints: { heating_setpoint: 13, cooling_setpoint: null } },
+							],
+				automation_enabled: flag !== 'false',
+				automation_baseline: flag === 'false' ? null : baseline,
+			};
+			expect(result.configuration).toEqual(expected);
+			expect((await row()).comfort).toEqual(expected);
+			expect(result.effective).toEqual({
+				source: flag === 'false' ? 'manual' : 'automation',
+				preset: flag === 'false' ? null : 'away',
+				heating_setpoint: flag === 'false' ? 20 : 13,
+				cooling_setpoint: null,
+				override_id: null,
+				expires_at: null,
+			});
+		},
+	);
+
+	it.each(['active', 'clock_uncertain', 'expired', 'cancelled'] as const)(
+		'retains complete %s override without re-resolving edited or removed names',
+		async (status) => {
+			const override = {
+				id: randomUUID(),
+				source: 'panel' as const,
+				actor_id: 'original-actor',
+				revision: 9,
+				created_at: new Date(wall).toISOString(),
+				expires_at: new Date(wall + 10000).toISOString(),
+				original_duration_ms: 10000,
+				wall_watermark_ms: wall,
+				preset: 'comfort' as const,
+				setpoints: null,
+				resolved_setpoints: { heating_setpoint: 23, cooling_setpoint: null },
+				status,
+				terminated_at: status === 'expired' || status === 'cancelled' ? new Date(wall).toISOString() : null,
+			};
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: id },
+				{ comfort: { ...configuration(), temporary_override: override } },
+			);
+			for (const presets of [definition().presets, definition().presets.slice(0, 1)]) {
+				const input = await fence();
+				const result = await comfort.configure(id, input, { ...definition(), presets });
+				expect(result.configuration).toEqual({ ...definedConfiguration(), presets, temporary_override: override });
+				expect((await row()).comfort).toEqual({ ...definedConfiguration(), presets, temporary_override: override });
+				expect(result.effective.heating_setpoint).toBe(status === 'active' || status === 'clock_uncertain' ? 23 : 20);
+			}
+			if (status === 'active' || status === 'clock_uncertain')
+				await expect(
+					comfort.configure(id, await fence(), {
+						...definition(),
+						heating_range: { minimum: 11, maximum: 22 },
+						presets: [],
+					}),
+				).rejects.toThrow('setpoint_range');
+		},
+	);
+
+	it('allows first definitions/empty presets and preserves OFF default versus existing false; validates reserved policy', async () => {
+		for (const requestedMode of ['off', 'heat'] as const) {
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: id },
+				{ comfort: null, requestedMode },
+			);
+			const result = await comfort.configure(id, await fence(), { ...definition(), presets: [] });
+			expect(result.configuration).toEqual({
+				...definedConfiguration(),
+				presets: [],
+				user_off: requestedMode === 'off',
+			});
+		}
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{ requestedMode: 'off', comfort: { ...configuration(), selected_preset: 'away' } },
+		);
+		const input = await fence();
+		await expect(comfort.configure(id, input, definition())).rejects.toThrow('invalid_preset');
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: configuration() });
+		for (const payload of [
+			{ ...definition(), heating_range: { minimum: 21, maximum: 30 } },
+			{ ...definition(), cooling_range: { minimum: 10, maximum: 30 } },
+			{
+				...definition(),
+				presets: [{ preset: 'eco' as const, setpoints: { heating_setpoint: 18, cooling_setpoint: 25 } }],
+			},
+		])
+			await expect(comfort.configure(id, input, payload)).rejects.toThrow();
+		expect(await fence()).toEqual(input);
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: configuration() });
+		const result = await comfort.configure(id, input, definition());
+		expect(result.configuration.user_off).toBe(false);
+		const current = await row();
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{ policy: { ...current.policy, coolingSetpoint: 25 } },
+		);
+		await expect(
+			comfort.configure(id, await fence(), {
+				heating_range: { minimum: 10, maximum: 30 },
+				cooling_range: { minimum: 10, maximum: 30 },
+				presets: [{ preset: 'eco', setpoints: { heating_setpoint: 24, cooling_setpoint: 24 } }],
+			}),
+		).rejects.toThrow('overlapping_setpoints');
+	});
+
+	it('keeps definition original final settle after ACK replacement/time advance, historical A, and exact final error', async () => {
+		await comfort.override(
+			id,
+			await fence(),
+			{ preset: 'comfort', setpoints: null, expires_at: new Date(wall + 1000).toISOString() },
+			'operator',
+		);
+		const input = await fence(),
+			override = (await row()).comfort.temporary_override;
+		const original = captureCreation(comfort, ['settle']).values.settle;
+		const settle = jest.spyOn(comfort, 'settle'),
+			get = jest.spyOn(comfort, 'get'),
+			successor = jest.fn(() => Promise.resolve());
+		let advanced = false;
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				if (!advanced) {
+					advanced = true;
+					comfort.settle = successor;
+					wall += 1000;
+					monotonic += 1000;
+				}
+			},
+		});
+		try {
+			const result = await comfort.configure(id, input, definition());
+			expect((await row()).comfort.temporary_override.status).toBe('expired');
+			expect((await row()).revision).toBe(input.expected_revision + 2);
+			expect(successor).not.toHaveBeenCalled();
+			expect(settle).toHaveBeenCalledTimes(2);
+			expect(get).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({
+				...definedResult(input, { ...definedConfiguration(), temporary_override: override }),
+				effective: {
+					source: 'override',
+					preset: 'comfort',
+					heating_setpoint: 23,
+					cooling_setpoint: null,
+					override_id: override.id,
+					expires_at: override.expires_at,
+				},
+			});
+		} finally {
+			comfort.settle = original;
+		}
+		get.mockRestore();
+		const failure = false,
+			final = jest.spyOn(comfort, 'get').mockRejectedValueOnce(failure),
+			next = await fence();
+		await expect(comfort.configure(id, next, definition())).rejects.toBe(failure);
+		expect(final).toHaveBeenCalledTimes(1);
+		expect((await row()).revision).toBe(next.expected_revision + 1);
 	});
 });
