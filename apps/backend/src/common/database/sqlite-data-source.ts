@@ -402,6 +402,16 @@ export class SqliteDataSource extends DataSource {
 		return coordinatorFor(this).currentRunner ?? super.createQueryRunner(mode);
 	}
 
+	/** Fresh writer admission. Opt-in BeforeStart and pending BEGIN observers must be SQL-free. */
+	async transactionWithWriteIntent<T>(callback: (manager: EntityManager) => Promise<T>): Promise<T> {
+		const coordinator = coordinatorFor(this);
+		coordinator.assertAvailable();
+		if (!this.isInitialized) throw new Error('SQLite write admission requires an initialized DataSource');
+		if (coordinator.currentRunner) throw new Error('SQLite write admission requires a fresh connection lease');
+		const runner = this.createQueryRunner() as CoordinatedSqliteQueryRunner;
+		return runner.transactionWithWriteIntent(callback);
+	}
+
 	createEntityManager(queryRunner?: QueryRunner): EntityManager {
 		const manager = super.createEntityManager(queryRunner);
 		const coordinator = coordinatorFor(this);
@@ -442,6 +452,8 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	private operationDepth = 0;
 	private transactionControlDepth = 0;
 	private guardedCommit?: GuardedCommit;
+	private writeIntentRequested = false;
+	private writeAdmission?: 'pending' | 'armed';
 	private readonly nativeCommitContext = new AsyncLocalStorage<GuardedCommit | undefined>();
 
 	constructor(
@@ -466,6 +478,16 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	}
 
 	async query(query: string, parameters?: unknown[], useStructuredResult = false): Promise<any> {
+		if (this.writeAdmission) {
+			// Consume the internal permit before any await or query observer can reenter.
+			const permitted = this.writeAdmission === 'armed' && query === 'BEGIN IMMEDIATE TRANSACTION';
+			this.writeAdmission = 'pending';
+			if (!permitted) {
+				return this.coordinator.track(() =>
+					Promise.reject(new Error('SQLite write admission forbids queries before BEGIN acknowledgement')),
+				);
+			}
+		}
 		const command = query.replace(/^(?:\s|;|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*/, '');
 		if (this.transactionControlDepth === 0 && /^(BEGIN|COMMIT|END|ROLLBACK|SAVEPOINT|RELEASE)\b/i.test(command)) {
 			throw new Error('Use QueryRunner transaction methods for SQLite transaction control');
@@ -485,14 +507,27 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async startTransaction(isolationLevel?: IsolationLevel): Promise<void> {
 		this.coordinator.assertAvailable();
+		if (this.writeAdmission) {
+			// Suppress only this managed attempt's TypeORM catch rollback, never a direct caller's rollback.
+			this.coordinator.markFailedStart();
+			return this.coordinator.track(() =>
+				Promise.reject(
+					new Error('SQLite write admission forbids reentrant transaction start before BEGIN acknowledgement'),
+				),
+			);
+		}
 		if (!this.lease?.active) this.lease = await this.coordinator.acquire(this);
 		const previousDepth = this.transactionDepth;
+		const writeIntent = this.writeIntentRequested && previousDepth === 0;
+		this.writeIntentRequested = false;
 		// Start subscribers already run on this lease: retain their failures before the body can attach guards.
 		const outerScope: GuardedCommit | undefined =
 			previousDepth === 0 ? { lease: this.lease, guards: [], phase: 'starting', outcome: 'pending' } : undefined;
 		if (outerScope) this.guardedCommit = outerScope;
 		try {
-			await this.withTransactionControl(() => super.startTransaction(isolationLevel));
+			await this.withTransactionControl(() =>
+				writeIntent ? this.startWithWriteIntent() : super.startTransaction(isolationLevel),
+			);
 			if (outerScope) outerScope.phase = 'open';
 		} catch (error) {
 			// TypeORM sets isTransactionActive before BEGIN and does not restore it on SQL failure.
@@ -512,9 +547,36 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			}
 			throw error;
 		} finally {
+			if (writeIntent) this.writeAdmission = undefined;
 			if (outerScope) this.settleCommitScope();
 			this.releaseIfSettled();
 		}
+	}
+
+	async transactionWithWriteIntent<T>(callback: (manager: EntityManager) => Promise<T>): Promise<T> {
+		this.writeIntentRequested = true;
+		try {
+			return await this.withConnection(() => this.manager.transaction(callback));
+		} finally {
+			this.writeIntentRequested = false;
+			this.writeAdmission = undefined;
+			await this.release();
+		}
+	}
+
+	private async startWithWriteIntent(): Promise<void> {
+		this.writeAdmission = 'pending';
+		this.isTransactionActive = true;
+		try {
+			await this.broadcaster.broadcast('BeforeTransactionStart');
+			this.writeAdmission = 'armed';
+			await this.query('BEGIN IMMEDIATE TRANSACTION');
+		} finally {
+			// Original query settlement, not an all-descendants AfterQuery receipt.
+			this.writeAdmission = undefined;
+		}
+		this.transactionDepth += 1;
+		await this.broadcaster.broadcast('AfterTransactionStart');
 	}
 
 	async commitTransaction(): Promise<void> {

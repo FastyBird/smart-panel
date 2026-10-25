@@ -404,6 +404,7 @@ interface PhysicalDriver {
 }
 function pinReader(source: DataSource) {
 	if (!(source instanceof SqliteDataSource) || !source.isInitialized) invalid();
+	const sqliteSource = source;
 	const sourcePin = captureCreation(source, [
 		'manager',
 		'driver',
@@ -419,7 +420,7 @@ function pinReader(source: DataSource) {
 		target: typeof VirtualDeviceEntity | typeof VirtualChannelEntity | typeof VirtualChannelPropertyEntity,
 		table: string,
 	): string {
-		const metadata = captureCreation(sourcePin.values.getMetadata.call(source, target), [
+		const metadata = captureCreation(sourcePin.values.getMetadata.call(sqliteSource, target), [
 			'target',
 			'discriminatorValue',
 			'tableName',

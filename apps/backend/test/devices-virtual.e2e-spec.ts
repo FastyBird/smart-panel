@@ -8,6 +8,7 @@ effective testing and mirror the pattern already used by the other e2e specs in 
 */
 import { instanceToPlain } from 'class-transformer';
 import { useContainer } from 'class-validator';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -61,6 +62,7 @@ import {
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { ThermostatCoolingDependencyEntity } from '../src/plugins/devices-virtual/entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../src/plugins/devices-virtual/entities/thermostat-member-protection.entity';
+import { VirtualThermostatRuntimeEntity } from '../src/plugins/devices-virtual/entities/virtual-thermostat-runtime.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -77,6 +79,7 @@ import { VirtualDewPointConfigService } from '../src/plugins/devices-virtual/ser
 import { DEW_POINT_FORMULA } from '../src/plugins/devices-virtual/services/virtual-dew-point.utils';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
+import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { InfluxV1ConfigModel } from '../src/plugins/influx-v1/models/config.model';
 import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
@@ -1097,7 +1100,13 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 			return work;
 		});
 	} catch (cause: unknown) {
-		for (const cleanup of restore.reverse()) cleanup();
+		for (const cleanup of restore.reverse()) {
+			try {
+				cleanup();
+			} catch {
+				// Keep the original installation cause while attempting every remaining undo.
+			}
+		}
 		throw cause;
 	}
 	return {
@@ -3841,9 +3850,772 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 	});
 });
 
+type ChannelWriterFailure = { cause: unknown };
+type ChannelWriterCleanup = { failure?: ChannelWriterFailure };
+type ObserveChannelWriterCleanup = (progress?: ReturnType<typeof captureChannelWriterProgress>) => Promise<void>;
+
+function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
+	type Runner = import('typeorm').QueryRunner;
+	type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
+	type Owner = { active: boolean; accepting: boolean; mode: string };
+	const gate = () => {
+		let release: () => void, refuse: (cause: unknown) => void;
+		const promise = new Promise<void>((resolve, reject) => {
+			release = resolve;
+			refuse = reject;
+		});
+		return {
+			promise,
+			release: () => release(),
+			reject: (cause: unknown) => {
+				refuse(cause);
+				void promise.catch(() => undefined);
+			},
+		};
+	};
+	const evaluation = gate(),
+		written = gate(),
+		finished = gate(),
+		writer = gate();
+	const selected = new AsyncLocalStorage<boolean>();
+	const sourceA = a.get(DataSource),
+		sourceB = b.get(DataSource);
+	const lock = a.get(DeviceStructureLockService);
+	const context = Reflect.get(lock, 'context') as { getStore(): Owner | undefined };
+	const runtime = a.get(VirtualThermostatRuntimeService);
+	const originalEvaluate = Reflect.get(runtime, 'evaluate') as NativeMethod;
+	const ownEvaluate = Object.getOwnPropertyDescriptor(runtime, 'evaluate');
+	const jobs: Promise<unknown>[] = [],
+		callbacks: Promise<void>[] = [],
+		restore: (() => void)[] = [];
+	const facts: { source: string; query: string; edge: string; selected: boolean; runner: Runner; success: boolean }[] =
+		[];
+	let target = '',
+		channel = '',
+		owner: Owner,
+		held = false,
+		window = false,
+		unknown = false;
+	let aRunner: Runner, bRunner: Runner;
+	const depth = (runner: Runner) => Reflect.get(runner, 'transactionDepth') as number;
+	try {
+		for (const [label, source] of [
+			['A', sourceA],
+			['B', sourceB],
+		] as const) {
+			const native = Reflect.get(source.driver, 'databaseConnection') as object;
+			const admissions: { query: string; parameters: unknown; runner: Runner; selected: boolean }[] = [];
+			const observer: import('typeorm').EntitySubscriberInterface = {
+				beforeQuery(event) {
+					if (admissions.length === 512) {
+						unknown = true;
+						return;
+					}
+					admissions.push({
+						query: event.query,
+						parameters: event.parameters,
+						runner: event.queryRunner,
+						selected: selected.getStore() === true,
+					});
+				},
+			};
+			source.subscribers.push(observer);
+			restore.push(() => {
+				const index = source.subscribers.indexOf(observer);
+				if (index >= 0) source.subscribers.splice(index, 1);
+			});
+			for (const method of ['all', 'run']) {
+				const original = Reflect.get(native, method) as NativeMethod;
+				const own = Object.getOwnPropertyDescriptor(native, method);
+				const wrapper: NativeMethod = function (...args) {
+					const query = args[0] as string,
+						callback = args.at(-1);
+					const matches = admissions.filter((entry) => entry.query === query && entry.parameters === args[1]);
+					for (const entry of matches) admissions.splice(admissions.indexOf(entry), 1);
+					const admission = matches.length === 1 ? matches[0] : undefined;
+					const relevant = admission && (label === 'A' ? admission.selected : window);
+					const record = (edge: string, error?: unknown) => {
+						if (!relevant) return;
+						if (facts.length === 256) {
+							unknown = true;
+							return;
+						}
+						facts.push({
+							source: label,
+							query,
+							edge,
+							selected: admission.selected,
+							runner: admission.runner,
+							success: edge === 'ack' && error == null,
+						});
+					};
+					if (typeof callback !== 'function') return original.apply(this, args) as unknown;
+					const done = gate();
+					callbacks.push(done.promise);
+					record('submit');
+					const forwarded = args.slice();
+					forwarded[forwarded.length - 1] = function (this: unknown, ...values: unknown[]) {
+						record('ack', values[0]);
+						try {
+							return (callback as NativeMethod).apply(this, values) as unknown;
+						} catch (cause) {
+							done.reject(cause);
+							throw cause;
+						} finally {
+							done.release();
+						}
+					};
+					try {
+						const result: unknown = original.apply(this, forwarded);
+						if (label === 'B' && window && query === 'BEGIN IMMEDIATE TRANSACTION') {
+							if (!held || !admission || depth(admission.runner) !== 0) unknown = true;
+							bRunner = admission?.runner;
+							writer.release();
+						}
+						return result;
+					} catch (error) {
+						done.release();
+						throw error;
+					}
+				};
+				Object.defineProperty(native, method, { configurable: true, writable: true, value: wrapper });
+				restore.push(() => {
+					if (Reflect.get(native, method) !== wrapper) throw new Error('Progress observer replaced');
+					if (own) Object.defineProperty(native, method, own);
+					else Reflect.deleteProperty(native, method);
+				});
+			}
+		}
+		const wrappedEvaluate: NativeMethod = function (...args) {
+			const first = !target;
+			if (first) {
+				target = args[0] as string;
+				owner = context.getStore();
+			}
+			const job = (async () => {
+				if (first) await evaluation.promise;
+				try {
+					return await selected.run(first, () => originalEvaluate.apply(this, args) as unknown);
+				} finally {
+					if (first) finished.release();
+				}
+			})();
+			if (first) jobs.push(job);
+			return job;
+		};
+		Object.defineProperty(runtime, 'evaluate', { configurable: true, writable: true, value: wrappedEvaluate });
+		restore.push(() => {
+			if (Reflect.get(runtime, 'evaluate') !== wrappedEvaluate)
+				throw new Error('Progress evaluation observer replaced');
+			if (ownEvaluate) Object.defineProperty(runtime, 'evaluate', ownEvaluate);
+			else Reflect.deleteProperty(runtime, 'evaluate');
+		});
+		const after = async (
+			event:
+				| import('typeorm').InsertEvent<VirtualThermostatRuntimeEntity>
+				| import('typeorm').UpdateEvent<VirtualThermostatRuntimeEntity>,
+		) => {
+			if (
+				held ||
+				!selected.getStore() ||
+				!(event.entity instanceof VirtualThermostatRuntimeEntity) ||
+				event.entity.controllerId !== target
+			)
+				return;
+			const ack = [...facts]
+				.reverse()
+				.find(
+					(row) =>
+						row.source === 'A' &&
+						row.runner === event.queryRunner &&
+						row.edge === 'ack' &&
+						/^(INSERT|UPDATE) .*"devices_virtual_thermostat_runtime"/.test(row.query),
+				);
+			expect(ack?.success).toBe(true);
+			expect(context.getStore()).toBe(owner);
+			expect(owner).toMatchObject({ active: true, accepting: true, mode: 'exclusive' });
+			expect(event.queryRunner.isTransactionActive).toBe(true);
+			expect(depth(event.queryRunner)).toBe(1);
+			aRunner = event.queryRunner;
+			held = true;
+			written.release();
+			await writer.promise;
+		};
+		const subscriber: import('typeorm').EntitySubscriberInterface = { afterInsert: after, afterUpdate: after };
+		sourceA.subscribers.push(subscriber);
+		restore.push(() => {
+			const index = sourceA.subscribers.indexOf(subscriber);
+			if (index >= 0) sourceA.subscribers.splice(index, 1);
+		});
+	} catch (cause) {
+		evaluation.release();
+		writer.release();
+		for (const undo of restore.reverse()) {
+			try {
+				undo();
+			} catch {
+				/* Preserve the installation failure while attempting every restoration. */
+			}
+		}
+		throw cause;
+	}
+	let closing: Promise<ChannelWriterCleanup>;
+	let cleanupFailure: ChannelWriterFailure | undefined;
+	return {
+		async beforePatch(id: string, root: string) {
+			expect(target).toBe(root);
+			channel = id;
+			evaluation.release();
+			await Promise.race([written.promise, finished.promise]);
+			expect(held).toBe(true);
+			window = true;
+		},
+		own(promise: Promise<unknown>) {
+			jobs.push(promise);
+		},
+		verify() {
+			expect(unknown).toBe(false);
+			expect(aRunner).toBeDefined();
+			expect(bRunner).toBeDefined();
+			expect(aRunner).not.toBe(bRunner);
+			const index = (label: string, query: string, edge: string) =>
+				facts.findIndex(
+					(row) => row.source === label && row.query === query && row.edge === edge && (edge !== 'ack' || row.success),
+				);
+			const aCommit = index('A', 'COMMIT', 'ack'),
+				bSubmit = index('B', 'BEGIN IMMEDIATE TRANSACTION', 'submit'),
+				bBegin = index('B', 'BEGIN IMMEDIATE TRANSACTION', 'ack');
+			expect(bSubmit).toBeGreaterThanOrEqual(0);
+			expect(aCommit).toBeGreaterThan(bSubmit);
+			expect(bBegin).toBeGreaterThan(aCommit);
+			const current = facts.filter((row) => row.source === 'B' && row.runner === bRunner);
+			expect(current[0].query).toBe('BEGIN IMMEDIATE TRANSACTION');
+			expect(
+				current
+					.slice(2)
+					.some(
+						(row) =>
+							row.edge === 'ack' && row.success && row.query.includes('FROM "devices_module_channels_properties"'),
+					),
+			).toBe(true);
+			expect(
+				current.some((row) => row.edge === 'ack' && row.success && /^UPDATE "devices_module_channels"/.test(row.query)),
+			).toBe(true);
+			expect(index('B', 'COMMIT', 'ack')).toBeGreaterThan(bBegin);
+			console.info(
+				'channel-writer-progress',
+				JSON.stringify({
+					target,
+					channel,
+					facts: facts.map(({ runner, ...row }) => ({
+						...row,
+						runner: runner === aRunner ? 'A-selected' : runner === bRunner ? 'B-selected' : 'other',
+					})),
+				}),
+			);
+		},
+		close() {
+			evaluation.release();
+			writer.release();
+			return (closing ??= (async () => {
+				let issuedJobs = 0,
+					issuedCallbacks = 0;
+				try {
+					do {
+						const pending = [...jobs.slice(issuedJobs), ...callbacks.slice(issuedCallbacks)];
+						issuedJobs = jobs.length;
+						issuedCallbacks = callbacks.length;
+						for (const result of await Promise.allSettled(pending)) {
+							if (result.status === 'rejected') cleanupFailure ??= { cause: result.reason as unknown };
+						}
+					} while (issuedJobs < jobs.length || issuedCallbacks < callbacks.length);
+				} finally {
+					for (const undo of restore.reverse()) {
+						try {
+							undo();
+						} catch (cause) {
+							cleanupFailure ??= { cause };
+						}
+					}
+				}
+				return { failure: cleanupFailure };
+			})());
+		},
+	};
+}
+
+function withChannelWriterCleanup<Args extends unknown[]>(
+	operation: (observe: ObserveChannelWriterCleanup, ...args: Args) => Promise<void>,
+): (...args: Args) => Promise<void> {
+	return async (...args) => {
+		let originalFailure: ChannelWriterFailure | undefined, cleanupFailure: ChannelWriterFailure | undefined;
+		const observe: ObserveChannelWriterCleanup = async (progress) => {
+			if (!progress) return;
+			try {
+				const outcome = await progress.close();
+				if (cleanupFailure === undefined && outcome.failure !== undefined) cleanupFailure = outcome.failure;
+			} catch (cause) {
+				// An unexpected rejected close must also allow the original app/finally cleanup to run.
+				if (cleanupFailure === undefined) cleanupFailure = { cause };
+			}
+		};
+		try {
+			await operation(observe, ...args);
+		} catch (cause) {
+			originalFailure = { cause };
+		}
+		// Original body/app-close/finally precedence is unchanged, including falsy thrown values.
+		if (originalFailure !== undefined) throw originalFailure.cause;
+		if (cleanupFailure !== undefined) throw cleanupFailure.cause;
+	};
+}
+
+function createChannelWriterCleanupModel(
+	faults: { restore?: ChannelWriterFailure; install?: ChannelWriterFailure } = {},
+	capture = captureChannelWriterProgress,
+) {
+	const restores: string[] = [];
+	const callbackThis = {};
+	const original = function (
+		this: unknown,
+		_query: string,
+		_parameters: unknown[],
+		callback: (this: unknown, ...values: unknown[]) => unknown,
+	) {
+		callback.call(callbackThis, null, []);
+		return this;
+	};
+	const native = (label: string) =>
+		new Proxy(
+			{ all: original, run: original },
+			{
+				defineProperty(target, key, descriptor) {
+					if (descriptor.value === original) {
+						restores.push(`${label}:${String(key)}`);
+						if (label === 'A' && key === 'run' && faults.restore !== undefined) throw faults.restore.cause;
+					} else if (label === 'B' && key === 'run' && faults.install !== undefined) throw faults.install.cause;
+					return Reflect.defineProperty(target, key, descriptor);
+				},
+			},
+		);
+	const nativeA = native('A'),
+		nativeB = native('B');
+	const sourceA = {
+		driver: { databaseConnection: nativeA },
+		subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+	};
+	const sourceB = {
+		driver: { databaseConnection: nativeB },
+		subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+	};
+	const structure = { context: { getStore: () => ({ active: true, accepting: true, mode: 'exclusive' }) } };
+	const evaluate = () => Promise.resolve('original evaluation');
+	const runtime = { evaluate };
+	const a = {
+		get: (type: unknown) => (type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime),
+	};
+	const b = { get: () => sourceB };
+	return {
+		capture: () => capture(a as unknown as TestingModule, b as unknown as TestingModule),
+		nativeA,
+		nativeB,
+		original,
+		sourceA,
+		sourceB,
+		runtime,
+		evaluate,
+		restores,
+	};
+}
+
+function cleanupModelJob() {
+	let release: () => void, refuse: (cause: unknown) => void;
+	const promise = new Promise<void>((resolve, reject) => {
+		release = resolve;
+		refuse = reject;
+	});
+	return { promise, release: () => release(), reject: (cause: unknown) => refuse(cause) };
+}
+
+async function cleanupModelResult(operation: Promise<unknown>) {
+	return operation.then(
+		() => ({ rejected: false as const }),
+		(cause: unknown) => ({ rejected: true as const, cause }),
+	);
+}
+
+function expectCleanupModelFailure(result: Awaited<ReturnType<typeof cleanupModelResult>>, cause: unknown): void {
+	expect(result.rejected).toBe(true);
+	expect(Object.hasOwn(result, 'cause')).toBe(true);
+	if (!('cause' in result)) throw new Error('Expected original failure cause presence');
+	expect(result.cause).toBe(cause);
+}
+
+describe('channel writer cleanup failure controls (no native credit)', () => {
+	it.each(['job', 'callback', 'restore'] as const)(
+		'exposes the exact %s failure only after joining and attempting every undo',
+		async (kind) => {
+			const cause: unknown = kind === 'job' ? undefined : kind === 'callback' ? false : 0;
+			const model = createChannelWriterCleanupModel(kind === 'restore' ? { restore: { cause } } : {});
+			const progress = model.capture();
+			const held = cleanupModelJob();
+			progress.own(held.promise);
+			if (kind === 'callback') {
+				let forwarded: ChannelWriterFailure | undefined;
+				try {
+					model.nativeA.all('callback completion model', [], () => {
+						throw cause;
+					});
+				} catch (failure) {
+					forwarded = { cause: failure };
+				}
+				expect(forwarded).toBeDefined();
+				expect(forwarded?.cause).toBe(cause);
+			}
+			const first = progress.close(),
+				second = progress.close();
+			expect(first).toBe(second);
+			let settled = false;
+			void first.then(() => {
+				settled = true;
+			});
+			try {
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(settled).toBe(false);
+				expect(model.restores).toEqual([]);
+			} finally {
+				if (kind === 'job') held.reject(cause);
+				else held.release();
+			}
+			const outcome = await first;
+			expect(outcome?.failure).toBeDefined();
+			expect(outcome.failure?.cause).toBe(cause);
+			expect(Object.hasOwn(outcome.failure, 'cause')).toBe(true);
+			expect(model.restores).toEqual(['B:run', 'B:all', 'A:run', 'A:all']);
+			expect(model.sourceA.subscribers).toEqual([]);
+			expect(model.sourceB.subscribers).toEqual([]);
+			expect(model.runtime.evaluate).toBe(model.evaluate);
+			expect(model.nativeA.all).toBe(model.original);
+			expect(model.nativeB.run).toBe(model.original);
+			expect(progress.close()).toBe(first);
+			expect(model.restores).toHaveLength(4);
+		},
+	);
+
+	it.each([undefined, null, false, 0, ''])(
+		'keeps primary %p while normal and pending fallback both observe cleanup and close their apps',
+		async (cause) => {
+			const model = createChannelWriterCleanupModel(),
+				progress = model.capture();
+			const wire = cleanupModelJob(),
+				owned = cleanupModelJob();
+			progress.own(owned.promise);
+			progress.own(wire.promise);
+			const cleanupCause = new Error('owned observer job failed');
+			const events: string[] = [];
+			const closeB = jest.fn(() => {
+				events.push('B-close');
+				return Promise.resolve();
+			});
+			const closeA = jest.fn(() => {
+				events.push('A-close');
+				return Promise.resolve();
+			});
+			const normal = withChannelWriterCleanup(async (observe) => {
+				try {
+					await wire.promise;
+				} finally {
+					try {
+						await observe(progress);
+						await closeB();
+					} finally {
+						events.push('B-container-reset', 'logger-descriptor-restored');
+					}
+				}
+			})();
+			const fallback = withChannelWriterCleanup(async (observe) => {
+				try {
+					await observe(progress);
+					await closeA();
+				} finally {
+					events.push('A-container-reset', 'directory-removed', 'environment-restored');
+				}
+			})();
+			owned.reject(cleanupCause);
+			wire.reject(cause);
+			const [normalResult, fallbackResult] = await Promise.all([
+				cleanupModelResult(normal),
+				cleanupModelResult(fallback),
+			]);
+			expectCleanupModelFailure(normalResult, cause);
+			expectCleanupModelFailure(fallbackResult, cleanupCause);
+			expect(closeB).toHaveBeenCalledTimes(1);
+			expect(closeA).toHaveBeenCalledTimes(1);
+			expect(events).toEqual(
+				expect.arrayContaining([
+					'B-close',
+					'A-close',
+					'B-container-reset',
+					'logger-descriptor-restored',
+					'A-container-reset',
+					'directory-removed',
+					'environment-restored',
+				]),
+			);
+			expect(model.restores).toHaveLength(4);
+		},
+	);
+
+	it('retains original app-close precedence over cleanup while still attempting both apps and finalizers', async () => {
+		const model = createChannelWriterCleanupModel(),
+			progress = model.capture(),
+			wire = cleanupModelJob(),
+			owned = cleanupModelJob();
+		progress.own(owned.promise);
+		progress.own(wire.promise);
+		const cleanupCause = new Error('secondary owned job'),
+			appBCause = new Error('original B close');
+		const closeB = jest.fn(() => Promise.reject(appBCause));
+		const appACause: ChannelWriterFailure = { cause: false };
+		const closeA = jest.fn(async () => {
+			await Promise.resolve();
+			throw appACause.cause;
+		});
+		const events: string[] = [];
+		const normal = withChannelWriterCleanup(async (observe) => {
+			try {
+				await wire.promise;
+			} finally {
+				try {
+					await observe(progress);
+					await closeB();
+				} finally {
+					events.push('B-reset', 'descriptor');
+				}
+			}
+		})();
+		const fallback = withChannelWriterCleanup(async (observe) => {
+			try {
+				await observe(progress);
+				await closeA();
+			} finally {
+				events.push('A-reset', 'environment');
+			}
+		})();
+		owned.reject(cleanupCause);
+		wire.release();
+		const [b, a] = await Promise.all([cleanupModelResult(normal), cleanupModelResult(fallback)]);
+		expectCleanupModelFailure(b, appBCause);
+		expectCleanupModelFailure(a, false);
+		expect(closeB).toHaveBeenCalledTimes(1);
+		expect(closeA).toHaveBeenCalledTimes(1);
+		expect(events).toEqual(expect.arrayContaining(['B-reset', 'descriptor', 'A-reset', 'environment']));
+	});
+
+	it('observes even an unexpected rejecting close after app closure and finally, preserving undefined presence', async () => {
+		const model = createChannelWriterCleanupModel(),
+			progress = model.capture();
+		const originalClose = progress.close.bind(progress) as typeof progress.close;
+		const close = jest.spyOn(progress, 'close').mockRejectedValueOnce(undefined);
+		const app = jest.fn(() => Promise.resolve()),
+			finalizer = jest.fn();
+		try {
+			const result = await cleanupModelResult(
+				withChannelWriterCleanup(async (observe) => {
+					try {
+						await observe(progress);
+						await app();
+					} finally {
+						finalizer();
+					}
+				})(),
+			);
+			expectCleanupModelFailure(result, undefined);
+			expect(Object.hasOwn(result, 'cause')).toBe(true);
+			expect(app).toHaveBeenCalledTimes(1);
+			expect(finalizer).toHaveBeenCalledTimes(1);
+		} finally {
+			await originalClose();
+			close.mockRestore();
+		}
+	});
+
+	it.each([undefined, false])('retains partial-install primary %p after attempting every existing undo', (cause) => {
+		const model = createChannelWriterCleanupModel({
+			install: { cause },
+			restore: { cause: new Error('secondary restore') },
+		});
+		let failure: ChannelWriterFailure | undefined;
+		try {
+			model.capture();
+		} catch (caught) {
+			failure = { cause: caught };
+		}
+		expect(failure).toBeDefined();
+		expect(failure?.cause).toBe(cause);
+		expect(Object.hasOwn(failure, 'cause')).toBe(true);
+		expect(model.restores).toEqual(['B:all', 'A:run', 'A:all']);
+		expect(model.sourceA.subscribers).toEqual([]);
+		expect(model.sourceB.subscribers).toEqual([]);
+		expect(model.nativeA.all).toBe(model.original);
+		expect(model.nativeB.all).toBe(model.original);
+		expect(model.runtime.evaluate).toBe(model.evaluate);
+	});
+});
+
+describe('channel writer observation forwarding model (no native credit)', () => {
+	it.each(['all', 'run'] as const)(
+		'preserves %s return/callback/throw and joins then restores its own observations',
+		async (method) => {
+			const returned = {},
+				callbackThis = {},
+				query = 'model query',
+				parameters: unknown[] = ['model parameter'];
+			const calls: { receiver: unknown; query: string; parameters: unknown[] }[] = [];
+			let injected: Error | undefined;
+			const original = function (
+				this: unknown,
+				sql: string,
+				bindings: unknown[],
+				callback: (this: unknown, ...values: unknown[]) => unknown,
+			) {
+				calls.push({ receiver: this, query: sql, parameters: bindings });
+				if (injected) throw injected;
+				callback.call(callbackThis, false, parameters);
+				return returned;
+			};
+			const nativeA = { all: original, run: original },
+				nativeB = { all: original, run: original };
+			const sourceA = {
+				driver: { databaseConnection: nativeA },
+				subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+			};
+			const sourceB = {
+				driver: { databaseConnection: nativeB },
+				subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+			};
+			const owner = { active: true, accepting: true, mode: 'exclusive' };
+			const structure = { context: { getStore: () => owner } };
+			const evaluate = jest.fn(function (this: unknown, id: string) {
+				expect(this).toBe(runtime);
+				expect(id).toBe('model-controller');
+				return Promise.resolve(false);
+			});
+			const runtime = { evaluate };
+			const moduleA = {
+				get: (type: unknown) =>
+					type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime,
+			};
+			const moduleB = { get: () => sourceB };
+			const descriptor = Object.getOwnPropertyDescriptor(nativeA, method);
+			const control = captureChannelWriterProgress(
+				moduleA as unknown as TestingModule,
+				moduleB as unknown as TestingModule,
+			);
+			const observed: { receiver: unknown; values: unknown[] }[] = [];
+			let job: Promise<unknown>;
+			try {
+				const result = nativeA[method](query, parameters, function (this: unknown, ...values) {
+					observed.push({ receiver: this, values });
+				});
+				expect(result).toBe(returned);
+				expect(calls).toEqual([{ receiver: nativeA, query, parameters }]);
+				expect(calls[0].parameters).toBe(parameters);
+				expect(observed).toEqual([{ receiver: callbackThis, values: [false, parameters] }]);
+				expect(observed[0].values[1]).toBe(parameters);
+				injected = new Error('native synchronous throw model');
+				let failure: unknown;
+				try {
+					nativeA[method](query, parameters, () => undefined);
+				} catch (cause) {
+					failure = cause;
+				}
+				expect(failure).toBe(injected);
+				job = runtime.evaluate('model-controller');
+				expect(evaluate).not.toHaveBeenCalled();
+			} finally {
+				await control.close();
+			}
+			expect(await job).toBe(false);
+			expect(evaluate).toHaveBeenCalledTimes(1);
+			expect(runtime.evaluate).toBe(evaluate);
+			expect(Object.getOwnPropertyDescriptor(nativeA, method)).toEqual(descriptor);
+			expect(sourceA.subscribers).toEqual([]);
+			expect(sourceB.subscribers).toEqual([]);
+		},
+	);
+});
+
+function createHttpAnchor(
+	stage: string,
+	method: string,
+	route: string,
+	expectedStatus: number,
+	operation = 'setup',
+	phase = 'before-case',
+) {
+	const own = (value: unknown, key: string): unknown =>
+		value !== null && (typeof value === 'object' || typeof value === 'function')
+			? (Object.getOwnPropertyDescriptor(value, key)?.value as unknown)
+			: undefined;
+	const emit = (response: unknown, failure?: { cause: unknown }): void => {
+		try {
+			const status = own(response, 'status') ?? own(response, 'statusCode');
+			if (failure === undefined && status === expectedStatus) return;
+			const body = own(response, 'body') ?? own(response, '_body') ?? own(own(response, 'res'), 'body');
+			const error = own(body, 'error');
+			const cause = failure === undefined ? undefined : failure.cause;
+			const fields =
+				failure === undefined
+					? [own(error, 'code'), own(error, 'message'), own(body, 'message'), error]
+					: [own(cause, 'code'), own(cause, 'name'), own(cause, 'message')];
+			const strings: string[] = [];
+			for (const field of fields) {
+				if (strings.length === 3) break;
+				if (typeof field === 'string') strings.push(field.slice(0, 200));
+				else if (Array.isArray(field))
+					for (let index = 0; index < 3 && strings.length < 3; index++) {
+						const text = own(field, String(index));
+						if (typeof text === 'string') strings.push(text.slice(0, 200));
+					}
+			}
+			console.info(
+				'http-await-failure',
+				JSON.stringify({
+					case: expect.getState().currentTestName?.slice(0, 300),
+					operation,
+					phase,
+					stage,
+					method,
+					route,
+					expectedStatus,
+					actualStatus: typeof status === 'number' ? status : undefined,
+					strings,
+					causePresent: failure !== undefined,
+					causeKind: failure === undefined ? undefined : cause === null ? 'null' : typeof cause,
+				}),
+			);
+		} catch {
+			// Observation cannot replace the original response or rejection, including falsy causes.
+		}
+	};
+	return {
+		response: (response: unknown): void => emit(response),
+		async wait<T>(work: PromiseLike<T>): Promise<T> {
+			try {
+				return await work;
+			} catch (cause: unknown) {
+				emit(undefined, { cause });
+				throw cause;
+			}
+		},
+	};
+}
+
 describe('P05b1b default migrated thermostat HTTP consumer', () => {
 	// Normal CI already starts Influx1.8. The local evidence wrapper may supply its owned database name.
 	const testInfluxDatabase = process.env.P05B1B_INFLUX_DATABASE ?? `p05b1b_test_${process.pid}`;
+	let pendingProgress: ReturnType<typeof captureChannelWriterProgress> | undefined;
 	let app: INestApplication | undefined;
 	let moduleRef: TestingModule;
 	let dataSource: DataSource;
@@ -3917,31 +4689,42 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				"SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%_thermostat_catalog_birth_%'",
 			),
 		).toHaveLength(6);
-		await request(app.getHttpServer())
-			.post('/modules/auth/auth/register')
-			.send({
-				data: {
-					username: 'cataloghttp',
-					password: 'securePassword123!',
-					email: 'cataloghttp@example.com',
-				},
-			})
-			.expect(204);
-		const login = await request(app.getHttpServer())
-			.post('/modules/auth/auth/login')
-			.send({
-				data: {
-					username: 'cataloghttp',
-					password: 'securePassword123!',
-				},
-			})
-			.expect(201);
+		const aRegisterAnchor = createHttpAnchor('A:setup-register', 'POST', '/modules/auth/auth/register', 204);
+		await aRegisterAnchor.wait(
+			request(app.getHttpServer())
+				.post('/modules/auth/auth/register')
+				.send({
+					data: {
+						username: 'cataloghttp',
+						password: 'securePassword123!',
+						email: 'cataloghttp@example.com',
+					},
+				})
+				.expect(aRegisterAnchor.response)
+				.expect(204),
+		);
+		const aLoginAnchor = createHttpAnchor('A:setup-login', 'POST', '/modules/auth/auth/login', 201);
+		const login = await aLoginAnchor.wait(
+			request(app.getHttpServer())
+				.post('/modules/auth/auth/login')
+				.send({
+					data: {
+						username: 'cataloghttp',
+						password: 'securePassword123!',
+					},
+				})
+				.expect(aLoginAnchor.response)
+				.expect(201),
+		);
 		accessToken = (login.body as { data: { access_token: string } }).data.access_token;
 		expect(accessToken).toEqual(expect.any(String));
 	});
-	afterEach(async () => {
+	async function finishHttpConsumer(observe: ObserveChannelWriterCleanup): Promise<void> {
 		try {
+			await observe(pendingProgress);
+			pendingProgress = undefined;
 			await app?.close();
+			console.info('channel-admission-A-closed', { initialized: dataSource?.isInitialized });
 		} finally {
 			app = undefined;
 			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
@@ -3951,7 +4734,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				else process.env[key] = originalEnvironment[key];
 			}
 		}
-	});
+	}
+	afterEach(withChannelWriterCleanup(finishHttpConsumer));
 	it.each(['heating', 'dual', 'floor', 'cooling'])(
 		'preserves healthy %s and the entire real HTTP wire with physical Influx storage',
 		async (variant) => {
@@ -4026,7 +4810,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		expect(bytes).not.toMatch(/catalogBirth|catalog_birth/);
 		if (process.env.P05B1B_PUBLIC_SCHEMA_OUTPUT) writeFileSync(process.env.P05B1B_PUBLIC_SCHEMA_OUTPUT, bytes);
 	});
-	const verifyIndependent = async (phase: string, operation: 'replace' | 'double-replace' | 'parent' | 'metadata') => {
+	async function verifyIndependentObserved(
+		observe: ObserveChannelWriterCleanup,
+		phase: string,
+		operation: 'replace' | 'double-replace' | 'parent' | 'metadata',
+	): Promise<void> {
 		const otherModule = await Test.createTestingModule({
 			imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
 		}).compile();
@@ -4056,6 +4844,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		};
 		let graphWrites = 0;
 		let otherAccessToken: string;
+		const progressCase = phase === 'during-hydration' && operation === 'parent';
+		let progress: ReturnType<typeof captureChannelWriterProgress> | undefined;
 		const observer = {
 			afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
 				if (event.success && /^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query)) graphWrites++;
@@ -4068,6 +4858,18 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			originalError.apply(this, args);
 		});
 		Object.defineProperty(Logger.prototype, 'error', { ...errorDescriptor, value: loggedErrors });
+		const loginOther = async () => {
+			const bLoginAnchor = createHttpAnchor('B:login', 'POST', '/modules/auth/auth/login', 201, operation, phase);
+			const login = await bLoginAnchor.wait(
+				request(otherApp.getHttpServer())
+					.post('/modules/auth/auth/login')
+					.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
+					.expect(bLoginAnchor.response)
+					.expect(201),
+			);
+			otherAccessToken = (login.body as { data: { access_token: string } }).data.access_token;
+			expect(otherAccessToken).toEqual(expect.any(String));
+		};
 		try {
 			useContainer(otherModule, { fallbackOnErrors: true });
 			await otherApp.init();
@@ -4078,6 +4880,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			expect(Object.getOwnPropertyDescriptor(otherSource.driver, 'databaseConnection')?.value).not.toBe(
 				Object.getOwnPropertyDescriptor(dataSource.driver, 'databaseConnection')?.value,
 			);
+			if (progressCase) {
+				await loginOther();
+				progress = captureChannelWriterProgress(moduleRef, otherModule);
+				pendingProgress = progress;
+			}
 			otherSource.subscribers.push(observer);
 			dataSource.subscribers.push(proofObserver);
 			useContainer(moduleRef, { fallbackOnErrors: true });
@@ -4087,12 +4894,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				expect(otherOwner.hasCurrentStructuralLease()).toBe(false);
 				useContainer(otherModule, { fallbackOnErrors: true });
 				try {
-					const login = await request(otherApp.getHttpServer())
-						.post('/modules/auth/auth/login')
-						.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
-						.expect(201);
-					otherAccessToken = (login.body as { data: { access_token: string } }).data.access_token;
-					expect(otherAccessToken).toEqual(expect.any(String));
+					if (!progressCase) await loginOther();
 					const info = await otherSource.manager.findOneOrFail(VirtualChannelEntity, {
 						where: { device: { id: root }, category: ChannelCategory.DEVICE_INFORMATION },
 						relations: ['properties'],
@@ -4117,38 +4919,60 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 							[original.id],
 						);
 						const path = `/modules/devices/channels/${info.id}/properties`;
-						await request(otherApp.getHttpServer())
-							.delete(`${path}/${original.id}`)
-							.set('Authorization', `Bearer ${otherAccessToken}`)
-							.expect(204);
-						await request(otherApp.getHttpServer())
-							.post(path)
-							.set('Authorization', `Bearer ${otherAccessToken}`)
-							.send({
-								data: {
-									id: original.id,
-									type: 'virtual',
-									category: original.category,
-									identifier: original.identifier,
-									name: original.name,
-									data_type: original.dataType,
-									permissions: original.permissions,
-									format: original.format,
-									invalid: original.invalid,
-									step: original.step,
-									value_origin: 'local',
-									source_property: null,
-									value: 'B-successor-value',
-								},
-							})
-							.expect((response) => {
-								if (response.status !== 201)
-									console.info(
-										'independent-create-failure',
-										JSON.stringify({ phase, status: response.status, body: response.body as unknown }),
-									);
-							})
-							.expect(201);
+						const bDeleteAnchor = createHttpAnchor(
+							'B:delete',
+							'DELETE',
+							'/modules/devices/channels/:channel/properties/:property',
+							204,
+							operation,
+							phase,
+						);
+						await bDeleteAnchor.wait(
+							request(otherApp.getHttpServer())
+								.delete(`${path}/${original.id}`)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.expect(bDeleteAnchor.response)
+								.expect(204),
+						);
+						const bCreateAnchor = createHttpAnchor(
+							'B:successor-post',
+							'POST',
+							'/modules/devices/channels/:channel/properties',
+							201,
+							operation,
+							phase,
+						);
+						await bCreateAnchor.wait(
+							request(otherApp.getHttpServer())
+								.post(path)
+								.set('Authorization', `Bearer ${otherAccessToken}`)
+								.send({
+									data: {
+										id: original.id,
+										type: 'virtual',
+										category: original.category,
+										identifier: original.identifier,
+										name: original.name,
+										data_type: original.dataType,
+										permissions: original.permissions,
+										format: original.format,
+										invalid: original.invalid,
+										step: original.step,
+										value_origin: 'local',
+										source_property: null,
+										value: 'B-successor-value',
+									},
+								})
+								.expect(bCreateAnchor.response)
+								.expect((response) => {
+									if (response.status !== 201)
+										console.info(
+											'independent-create-failure',
+											JSON.stringify({ phase, status: response.status, body: response.body as unknown }),
+										);
+								})
+								.expect(201),
+						);
 						const [after] = await otherSource.query<{ birth: string }[]>(
 							'SELECT CAST(catalogBirth AS TEXT) birth FROM devices_module_channels_properties WHERE id = ?',
 							[original.id],
@@ -4234,6 +5058,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						expect(parent.id).not.toBe(info.id);
 						expect(parent.parentId).toBeNull();
 						const value = operation === 'parent' ? parent.id : 'B same-birth metadata';
+						await progress?.beforePatch(info.id, root);
 						await request(otherApp.getHttpServer())
 							.patch(`/modules/devices/channels/${info.id}`)
 							.set('Authorization', `Bearer ${otherAccessToken}`)
@@ -4311,7 +5136,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			}
 
 			try {
-				await verifyThermostatWire(
+				const wire = verifyThermostatWire(
 					{ app, moduleRef, dataSource, accessToken },
 					{
 						replaceBeforeCreate: false,
@@ -4329,6 +5154,9 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						},
 					},
 				);
+				progress?.own(wire);
+				await wire;
+				progress?.verify();
 			} finally {
 				if (successes.length !== 1)
 					console.info(
@@ -4390,7 +5218,10 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						if (index >= 0) dataSource.subscribers.splice(index, 1);
 					} finally {
 						try {
+							await observe(progress);
+							pendingProgress = undefined;
 							await otherApp.close();
+							if (progress) console.info('channel-admission-B-closed', { initialized: otherSource.isInitialized });
 						} finally {
 							useContainer(moduleRef, { fallbackOnErrors: true });
 						}
@@ -4400,7 +5231,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				Object.defineProperty(Logger.prototype, 'error', errorDescriptor);
 			}
 		}
-	};
+	}
+	const verifyIndependent = withChannelWriterCleanup(verifyIndependentObserved);
 	it.each(['before-presence', 'during-hydration'])(
 		'vetoes a genuine independent same-file public remove/create successor at %s',
 		(phase) => verifyIndependent(phase, 'replace'),
