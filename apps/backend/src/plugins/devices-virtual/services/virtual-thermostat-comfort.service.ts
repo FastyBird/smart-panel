@@ -1,5 +1,4 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { DataSource } from 'typeorm';
 
@@ -212,78 +211,25 @@ export class VirtualThermostatComfortService {
 		actorId: string,
 		source: 'user' | 'panel' = 'user',
 	) {
-		let identity: string;
-		let deadline: number;
-		let watermark: number;
-		return this.mutate(
-			id,
-			fence,
-			(row) => {
-				if (!row.comfort) throw new DevicesValidationException('Configure explicit comfort ranges and presets first.');
-				const now = Date.now();
-				const duration = Date.parse(input.expires_at) - now;
-				if (
-					!actorId ||
-					typeof input.expires_at !== 'string' ||
-					!/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(input.expires_at) ||
-					!Number.isFinite(duration) ||
-					duration <= 0 ||
-					duration > 7 * 86400000
-				)
-					throw new DevicesValidationException(
-						'Override needs an identified actor and a future expiry within seven days.',
-					);
-				const resolved = input.preset
-					? row.comfort.presets.find((entry) => entry.preset === input.preset)?.setpoints
-					: input.setpoints;
-				if (!resolved) throw new DevicesValidationException('Override preset or setpoints are missing.');
-				identity = randomUUID();
-				deadline = performance.now() + duration;
-				watermark = now;
-				row.comfort.temporary_override = {
-					...input,
-					id: identity,
-					source,
-					actor_id: actorId,
-					revision: row.revision + 1,
-					original_duration_ms: duration,
-					wall_watermark_ms: now,
-					created_at: new Date(now).toISOString(),
-					expires_at: new Date(now + duration).toISOString(),
-					resolved_setpoints: { ...resolved },
-					status: 'active',
-					terminated_at: null,
-				};
-			},
-			() =>
-				this.leases.set(id, { id: identity, revision: fence.expected_revision + 1, deadline, watermark, status: null }),
-		);
+		return this.runComfortIntent('override', id, fence, input, undefined, actorId, source);
 	}
 
 	async cancel(id: string, fence: ThermostatComfortFence, overrideId: string) {
-		return this.mutate(
-			id,
-			fence,
-			(row) => {
-				const override = row.comfort?.temporary_override;
-				if (override?.id !== overrideId || !['active', 'clock_uncertain'].includes(override.status))
-					throw new DevicesValidationException('Override identity/state changed; reload before cancelling.');
-				override.status = 'cancelled';
-				override.terminated_at = new Date().toISOString();
-			},
-			() => this.leases.delete(id),
-		);
+		return this.runComfortIntent('cancel', id, fence, overrideId);
 	}
 
 	private async runComfortIntent(
-		kind: 'selection' | 'definition',
+		kind: 'selection' | 'definition' | 'override' | 'cancel',
 		id: string,
 		fence: ThermostatComfortFence,
 		value:
 			| Parameters<ReturnType<typeof thermostatComfortSelection.pin>['definitionInput']>[2]
-			| ThermostatPreset
+			| Parameters<ReturnType<typeof thermostatComfortSelection.pin>['overrideInput']>[2]
+			| string
 			| null,
 		clearUserOff?: boolean,
+		actorId?: string,
+		source?: 'user' | 'panel',
 	): Promise<Awaited<ReturnType<VirtualThermostatComfortService['get']>>> {
 		// Service admission starts here; the controller already extracted its fields; nested inputs are still caller-owned.
 		const own = captureCreation(this, [
@@ -317,7 +263,13 @@ export class VirtualThermostatComfortService {
 		const claims = captureCreation(this.claims, ['invalidate', 'refresh']);
 		const events = captureCreation(this.events, ['emit']);
 		const helper = captureCreation(thermostatComfortSelection, ['pin']);
-		const selection = helper.values.pin(this.database);
+		const selection = helper.values.pin(
+			this.database,
+			kind,
+			kind === 'override' || kind === 'cancel'
+				? (Reflect.get(own.values, 'leases') as Parameters<typeof helper.values.pin>[2])
+				: undefined,
+		);
 		const pins = [own, lock, graph, claims, events, helper, selection];
 		const current = () => pins.every((pin) => pin.current());
 		const check = () => {
@@ -331,12 +283,22 @@ export class VirtualThermostatComfortService {
 			refresh: () => claims.values.refresh.call(claims.receiver),
 			emit: () => events.values.emit.call(events.receiver, THERMOSTAT_CONFIG_CHANGED, id),
 		};
-		if (kind !== 'selection' && kind !== 'definition')
+		if (!['selection', 'definition', 'override', 'cancel'].includes(kind))
 			throw new DevicesValidationException('Invalid thermostat comfort intent kind.');
 		const input =
 			kind === 'selection'
 				? selection.input(id, fence, value as ThermostatPreset | null, clearUserOff)
-				: selection.definitionInput(id, fence, value as Parameters<typeof selection.definitionInput>[2]);
+				: kind === 'definition'
+					? selection.definitionInput(id, fence, value as Parameters<typeof selection.definitionInput>[2])
+					: kind === 'override'
+						? selection.overrideInput(
+								id,
+								fence,
+								value as Parameters<typeof selection.overrideInput>[2],
+								actorId,
+								source,
+							)
+						: selection.cancelInput(id, fence, value as string);
 		check();
 		let ownerCurrent = () => false;
 		const operation = selection.operation(input, () => ownerCurrent(), current);
@@ -352,6 +314,7 @@ export class VirtualThermostatComfortService {
 				check();
 				// Bind the ORIGINAL async owner for the native callback, never a fresh ambient lookup.
 				ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
+				operation.captureSlot();
 				await graph.values.withComfortSelectionWrite.call(
 					graph.receiver,
 					operation.write,
@@ -360,6 +323,7 @@ export class VirtualThermostatComfortService {
 					operation.accepted,
 				);
 				operation.accepted();
+				operation.localAction();
 				// New admission proof expiry cannot discard the inherited post-ACK work.
 				await invokeCreation(changed, own.receiver, input.id, notifications);
 			});

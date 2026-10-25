@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { randomUUID } from 'node:crypto';
+import crypto, { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -19,7 +19,7 @@ import * as ledgerJson from '../../../modules/devices/services/climate-automatio
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
-import { ConfigureThermostatComfortDto } from '../dto/thermostat-comfort.dto';
+import { ConfigureThermostatComfortDto, CreateThermostatOverrideDto } from '../dto/thermostat-comfort.dto';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
@@ -582,9 +582,10 @@ describe('manual thermostat selection: reserved native intent', () => {
 		}
 	});
 
-	it.each(['selection', 'definition'] as const)(
+	it.each(['selection', 'definition', 'override', 'cancel'] as const)(
 		'runs real ownership reconciliation and direct durable invariance for %s with notification retry',
 		async (kind) => {
+			if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'original');
 			await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
 				id: randomUUID(),
 				controllerId: id,
@@ -696,7 +697,11 @@ describe('manual thermostat selection: reserved native intent', () => {
 			const result =
 				kind === 'selection'
 					? await comfort.select(id, input, 'eco', false)
-					: await comfort.configure(id, input, definition());
+					: kind === 'definition'
+						? await comfort.configure(id, input, definition())
+						: kind === 'override'
+							? await comfort.override(id, input, requestOverride(), 'operator')
+							: await comfort.cancel(id, input, beforeConfig.comfort.temporary_override.id);
 			expect(seam).toEqual(before);
 			expect(invalidated).toHaveBeenCalled();
 			expect(revoked).toHaveBeenCalled();
@@ -1209,5 +1214,1021 @@ describe('manual thermostat selection: reserved native intent', () => {
 		await expect(comfort.configure(id, next, definition())).rejects.toBe(failure);
 		expect(final).toHaveBeenCalledTimes(1);
 		expect((await row()).revision).toBe(next.expected_revision + 1);
+	});
+	// P06c oracles use fixed seed/request/clock values and an independently issued server UUID.
+	const aId = 'd175660a-a4c6-48ac-9abb-251908c9bda1';
+	const bId = 'b775660a-a4c6-48ac-9abb-251908c9bdb2';
+	type LocalMap = NonNullable<Parameters<typeof thermostatComfortSelection.pin>[2]>;
+	const localMap = (service = comfort) => Reflect.get(service, 'leases') as LocalMap;
+	const requestOverride = (duration = 1000) => ({
+		preset: 'comfort' as const,
+		setpoints: null,
+		expires_at: new Date(wall + duration).toISOString(),
+	});
+	const recordOverride = (revision: number, identity = aId, start = wall, duration = 1000) => ({
+		id: identity,
+		source: 'user' as const,
+		actor_id: 'operator',
+		revision,
+		preset: 'comfort' as const,
+		setpoints: null,
+		created_at: new Date(start).toISOString(),
+		expires_at: new Date(start + duration).toISOString(),
+		original_duration_ms: duration,
+		wall_watermark_ms: start,
+		resolved_setpoints: { heating_setpoint: 23, cooling_setpoint: null },
+		status: 'active' as const,
+		terminated_at: null,
+	});
+	const lifecycleResult = (input: Awaited<ReturnType<typeof fence>>, configured: ThermostatComfortConfiguration) => {
+		const active = ['active', 'clock_uncertain'].includes(configured.temporary_override?.status)
+			? configured.temporary_override
+			: null;
+		return {
+			controller: id,
+			revision: input.expected_revision + 1,
+			graph_revision: input.expected_graph_revision + 1,
+			configuration: configured,
+			effective: {
+				source: configured.user_off ? 'user_off' : active ? 'override' : 'manual',
+				preset: active?.preset ?? null,
+				heating_setpoint: active?.resolved_setpoints.heating_setpoint ?? 20,
+				cooling_setpoint: null,
+				override_id: active?.id ?? null,
+				expires_at: active?.expires_at ?? null,
+			},
+			clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+		};
+	};
+
+	it.each(['plain', 'DTO'] as const)(
+		'owns override %s aliases once before await and ignores unrelated fields',
+		async (kind) => {
+			const input = await fence(),
+				reads = { revision: 0, graph: 0, heat: 0, cool: 0 };
+			const plain = {
+				...input,
+				preset: null,
+				setpoints: { heating_setpoint: 0, cooling_setpoint: null },
+				expires_at: new Date(wall + 1000).toISOString(),
+			};
+			const dto = kind === 'DTO' ? plainToInstance(CreateThermostatOverrideDto, plain) : plain;
+			Object.defineProperties(dto, {
+				expected_revision: {
+					get: () => {
+						reads.revision++;
+						return input.expected_revision;
+					},
+				},
+				expected_graph_revision: {
+					get: () => {
+						reads.graph++;
+						return input.expected_graph_revision;
+					},
+				},
+				unrelated: {
+					get: () => {
+						throw new Error('not a supported field');
+					},
+				},
+			});
+			let target = 0;
+			Object.defineProperties(dto.setpoints, {
+				heating_setpoint: {
+					get: () => {
+						reads.heat++;
+						return target;
+					},
+				},
+				cooling_setpoint: {
+					get: () => {
+						reads.cool++;
+						return null;
+					},
+				},
+			});
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: id },
+				{ comfort: { ...configuration(), heating_range: { minimum: 0, maximum: 30 } } },
+			);
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			const hold = gate(),
+				original = comfort.settle.bind(comfort) as VirtualThermostatComfortService['settle'];
+			jest.spyOn(comfort, 'settle').mockImplementationOnce(async (controller) => {
+				await hold.promise;
+				await original(controller);
+			});
+			const pending = comfort.override(id, dto, dto, 'operator');
+			target = 1;
+			dto.expires_at = new Date(wall + 2000).toISOString();
+			hold.resolve();
+			const expected = {
+				...recordOverride(2),
+				preset: null,
+				setpoints: { heating_setpoint: 0, cooling_setpoint: null },
+				resolved_setpoints: { heating_setpoint: 0, cooling_setpoint: null },
+			};
+			expect(await pending).toEqual(
+				lifecycleResult(input, {
+					...configuration(),
+					heating_range: { minimum: 0, maximum: 30 },
+					temporary_override: expected,
+				}),
+			);
+			expect((await row()).comfort.temporary_override).toEqual(expected);
+			expect(reads).toEqual({ revision: 1, graph: 1, heat: 1, cool: 1 });
+		},
+	);
+
+	it.each([undefined, null, false, 0, ''])('keeps exact new-kind getter cause %p before maintenance', async (cause) => {
+		const input = await fence(),
+			settle = jest.spyOn(comfort, 'settle');
+		await expect(
+			comfort.override(
+				id,
+				input,
+				{
+					...requestOverride(),
+					get setpoints(): null {
+						throw cause as unknown;
+					},
+				},
+				'operator',
+			),
+		).rejects.toBe(cause);
+		await expect(
+			comfort.cancel(
+				id,
+				{
+					get expected_revision(): number {
+						throw cause as unknown;
+					},
+					expected_graph_revision: input.expected_graph_revision,
+				},
+				aId,
+			),
+		).rejects.toBe(cause);
+		expect(settle).not.toHaveBeenCalled();
+		expect(await fence()).toEqual(input);
+	});
+
+	it.each(['now', 'parse', 'iso', 'mono', 'uuid', 'set', 'get', 'delete'] as const)(
+		'captures new-kind %s dispatch before getters',
+		async (key) => {
+			const map = localMap();
+			const target =
+				key === 'now' || key === 'parse'
+					? Date
+					: key === 'iso'
+						? Date.prototype
+						: key === 'mono'
+							? performance
+							: key === 'uuid'
+								? crypto
+								: map;
+			const field = key === 'iso' ? 'toISOString' : key === 'mono' ? 'now' : key === 'uuid' ? 'randomUUID' : key;
+			const descriptor = Object.getOwnPropertyDescriptor(target, field);
+			const replacement = jest.fn(() => {
+				throw new Error('successor must not execute');
+			});
+			const input = await fence(),
+				settle = jest.spyOn(comfort, 'settle');
+			const swapped = {
+				get expected_revision() {
+					Object.defineProperty(target, field, { configurable: true, value: replacement });
+					return input.expected_revision;
+				},
+				expected_graph_revision: input.expected_graph_revision,
+			};
+			try {
+				await expect(
+					key === 'delete'
+						? comfort.cancel(id, swapped, aId)
+						: comfort.override(id, swapped, requestOverride(), 'operator'),
+				).rejects.toThrow('expired');
+				expect(replacement).not.toHaveBeenCalled();
+				expect(settle).not.toHaveBeenCalled();
+			} finally {
+				if (descriptor) Object.defineProperty(target, field, descriptor);
+				else Reflect.deleteProperty(target, field);
+			}
+			expect(await fence()).toEqual(input);
+		},
+	);
+
+	it('does not add irrelevant clock or Map checks to selection/definition or monotonic/UUID checks to cancel', async () => {
+		const input = await fence(),
+			map = localMap(),
+			date = Object.getOwnPropertyDescriptor(Date, 'now'),
+			mono = Object.getOwnPropertyDescriptor(performance, 'now');
+		const replacement = () => {
+			throw new Error('irrelevant dispatch');
+		};
+		Object.defineProperty(map, 'set', { configurable: true, get: replacement });
+		Object.defineProperty(Date, 'now', { configurable: true, get: replacement });
+		try {
+			const pin = thermostatComfortSelection.pin(database); // old pin(database) compatibility
+			expect(pin.current()).toBe(true);
+			pin.input(id, input, 'eco', false);
+			pin.definitionInput(id, input, definition());
+		} finally {
+			Reflect.deleteProperty(map, 'set');
+			Object.defineProperty(Date, 'now', date);
+		}
+		await comfort.override(id, await fence(), requestOverride(), 'operator');
+		const uncertain = await row();
+		uncertain.comfort.temporary_override.status = 'clock_uncertain';
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: uncertain.comfort });
+		Object.defineProperty(performance, 'now', { configurable: true, get: replacement });
+		try {
+			await comfort.cancel(id, await fence(), (await row()).comfort.temporary_override.id);
+		} finally {
+			if (mono) Object.defineProperty(performance, 'now', mono);
+			else Reflect.deleteProperty(performance, 'now');
+		}
+	});
+
+	it.each([1, 7 * 86400000, 0, -1, 7 * 86400000 + 1])('keeps exact absolute-duration boundary %p', async (duration) => {
+		jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+		const input = await fence();
+		if (duration > 0 && duration <= 7 * 86400000) {
+			expect(await comfort.override(id, input, requestOverride(duration), 'operator')).toEqual(
+				lifecycleResult(input, { ...configuration(), temporary_override: recordOverride(2, aId, wall, duration) }),
+			);
+			expect(localMap().get(id).deadline).toBe(monotonic + duration);
+		} else {
+			await expect(comfort.override(id, input, requestOverride(duration), 'operator')).rejects.toThrow('seven days');
+			expect(await fence()).toEqual(input);
+		}
+	});
+
+	it('samples wall only in the reserved phase and monotonic after UUID resolution; normalizes timezone without renewal', async () => {
+		const start = wall,
+			initial = monotonic,
+			input = await fence();
+		let reserved = false;
+		const issuance = jest.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+			expect(reserved).toBe(true);
+			monotonic = initial + 50;
+			return aId;
+		});
+		database.subscribers.push({
+			afterQuery: (event) => {
+				if (/SELECT.*FROM "devices_module_devices" "owner"/.test(event.query)) {
+					reserved = true;
+					wall = start + 100;
+				}
+			},
+		});
+		const result = await comfort.override(
+			id,
+			input,
+			{ preset: 'comfort', setpoints: null, expires_at: '2026-10-25T02:00:01+02:00' },
+			'operator',
+		);
+		expect(reserved).toBe(true);
+		expect(issuance).toHaveBeenCalledTimes(1);
+		expect(result).toEqual(
+			lifecycleResult(input, { ...configuration(), temporary_override: recordOverride(2, aId, start + 100, 900) }),
+		);
+		expect(localMap().get(id).deadline).toBe(initial + 50 + 900);
+	});
+
+	it('lets queue delay expire the absolute request without renewing it at entry or ACK', async () => {
+		const entered = gate(),
+			release = gate(),
+			input = await fence(),
+			request = requestOverride();
+		const owner = lock.runExclusive(async () => {
+			entered.resolve();
+			await release.promise;
+		});
+		await entered.promise;
+		const a = comfort.override(id, input, request, 'operator');
+		wall += 1000;
+		monotonic += 1000;
+		release.resolve();
+		try {
+			await expect(a).rejects.toThrow('seven days');
+			expect(await fence()).toEqual(input);
+		} finally {
+			release.resolve();
+			await Promise.allSettled([a, owner]);
+		}
+	});
+
+	it.each([NaN, Infinity, -Infinity])(
+		'refuses isolated nonfinite creation birth %p before A UPDATE/COMMIT/install',
+		async (fault) => {
+			const input = await fence();
+			let birth = false,
+				sampled = 0,
+				reserved = false;
+			jest.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+				expect(reserved).toBe(true);
+				birth = true;
+				return aId;
+			});
+			jest.spyOn(performance, 'now').mockImplementation(() => {
+				if (birth) {
+					birth = false;
+					sampled++;
+					return fault;
+				}
+				return monotonic;
+			});
+			const queries: string[] = [];
+			database.subscribers.push({
+				beforeQuery: (event) => {
+					queries.push(event.query);
+				},
+				afterQuery: (event) => {
+					if (/SELECT.*FROM "devices_module_devices" "owner"/.test(event.query)) reserved = true;
+				},
+			});
+			const set = jest.spyOn(localMap(), 'set');
+			await expect(comfort.override(id, input, requestOverride(), 'operator')).rejects.toThrow('initial clock');
+			expect(sampled).toBe(1);
+			expect(queries.filter((sql) => sql === 'COMMIT')).toEqual([]);
+			expect(queries.filter((sql) => /^UPDATE "devices_virtual_thermostat_configs"/.test(sql))).toEqual([]);
+			expect(set).not.toHaveBeenCalled();
+			expect(await fence()).toEqual(input);
+			expect((await row()).comfort).toEqual(configuration());
+		},
+	);
+
+	it('accounts for an independent initial expiry even when the subsequent creation birth refuses', async () => {
+		await comfort.override(id, await fence(), requestOverride(), 'old');
+		const old = (await row()).comfort.temporary_override;
+		wall += 1000;
+		monotonic += 1000;
+		const input = { expected_revision: 3, expected_graph_revision: (await graph.revision()) + 1 };
+		let birth = false;
+		jest.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+			birth = true;
+			return aId;
+		});
+		jest.spyOn(performance, 'now').mockImplementation(() => {
+			if (birth) {
+				birth = false;
+				return NaN;
+			}
+			return monotonic;
+		});
+		await expect(comfort.override(id, input, requestOverride(), 'operator')).rejects.toThrow('initial clock');
+		expect((await row()).comfort.temporary_override).toEqual({
+			...old,
+			status: 'expired',
+			terminated_at: new Date(wall).toISOString(),
+		});
+		expect(await fence()).toEqual(input);
+		expect(localMap().has(id)).toBe(false);
+	});
+
+	it('has no premature current lease while real native ACK is held and never renews the initial deadline', async () => {
+		jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+		const input = await fence(),
+			expected = lifecycleResult(input, { ...configuration(), temporary_override: recordOverride(2) });
+		const connection = native(),
+			all = connection.all.bind(connection) as NativeConnection['all'],
+			held = gate();
+		let acknowledge: (() => void) | undefined, proposed: VirtualThermostatConfigEntity;
+		database.subscribers.push({
+			beforeTransactionCommit: async (event) => {
+				proposed = await event.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			},
+		});
+		jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
+			return all(sql, parameters, function (error, rows) {
+				if (sql === 'COMMIT' && !error && !acknowledge) {
+					acknowledge = () => {
+						callback.call(this, error, rows);
+					};
+					held.resolve();
+				} else callback.call(this, error, rows);
+			});
+		});
+		const a = comfort.override(id, input, requestOverride(), 'operator');
+		try {
+			await Promise.race([held.promise, a]);
+			expect(proposed.comfort.temporary_override.id).toBe(aId);
+			expect(comfort.isCurrent(proposed)).toBe(false);
+			expect(localMap().has(id)).toBe(false);
+			wall += 200;
+			monotonic += 200;
+			acknowledge();
+			expect(await a).toEqual(expected);
+			expect(localMap().get(id).deadline).toBe(1100);
+			expect(Object.isFrozen(localMap().get(id))).toBe(false);
+			expect(comfort.isCurrent(await row())).toBe(true);
+			wall++;
+			monotonic++;
+			expect(comfort.isCurrent(await row())).toBe(true);
+			expect(localMap().get(id).watermark).toBe(wall);
+			await comfort.settle(id);
+			expect((await row()).comfort.temporary_override.wall_watermark_ms).toBe(wall);
+		} finally {
+			acknowledge?.();
+			await Promise.allSettled([a]);
+		}
+	});
+
+	it.each(['active', 'clock_uncertain'] as const)(
+		'cancels exact %s metadata using original system Date, independent of duration clock and creation revision',
+		async (status) => {
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			await comfort.override(id, await fence(), requestOverride(), 'operator');
+			await comfort.select(id, await fence(), null, false);
+			const before = await row(),
+				old = before.comfort.temporary_override;
+			expect(old.revision).toBe(2);
+			expect(localMap().get(id).revision).toBe(3);
+			if (status === 'clock_uncertain') {
+				old.status = status;
+				old.resolved_setpoints.heating_setpoint = 99;
+				await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: before.comfort });
+				localMap().clear();
+			}
+			const input = await fence(),
+				system = wall + 12345,
+				originalDate = Date;
+			class SystemDate extends originalDate {
+				constructor(value: string | number = system) {
+					super(value);
+				}
+			}
+			const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Date');
+			Object.defineProperty(globalThis, 'Date', { ...descriptor, value: SystemDate });
+			try {
+				const terminal = {
+					...old,
+					status: 'cancelled' as const,
+					terminated_at: new originalDate(system).toISOString(),
+				};
+				expect(await comfort.cancel(id, input, aId)).toEqual(
+					lifecycleResult(input, { ...configuration(), temporary_override: terminal }),
+				);
+				expect((await row()).comfort.temporary_override).toEqual(terminal);
+				expect(localMap().has(id)).toBe(false);
+			} finally {
+				Object.defineProperty(globalThis, 'Date', descriptor);
+			}
+		},
+	);
+
+	it('retains cancellation mismatch/terminal/stale refusals and independent initial expiry', async () => {
+		jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+		await comfort.override(id, await fence(), requestOverride(), 'operator');
+		const input = await fence();
+		await expect(comfort.cancel(id, input, bId)).rejects.toThrow('Override identity/state changed');
+		await expect(comfort.cancel(id, { ...input, expected_revision: 1 }, aId)).rejects.toThrow('revision');
+		await expect(
+			comfort.cancel(id, { ...input, expected_graph_revision: input.expected_graph_revision - 1 }, aId),
+		).rejects.toThrow('graph revision');
+		wall += 1000;
+		monotonic += 1000;
+		await expect(comfort.cancel(id, input, aId)).rejects.toThrow('revision');
+		expect((await row()).comfort.temporary_override.status).toBe('expired');
+		await expect(comfort.cancel(id, await fence(), aId)).rejects.toThrow('Override identity/state changed');
+		await comfort.override(id, await fence(), requestOverride(), 'operator');
+		await comfort.cancel(id, await fence(), aId);
+		await expect(comfort.cancel(id, await fence(), aId)).rejects.toThrow('Override identity/state changed');
+	});
+
+	it.each(['override', 'cancel'] as const)(
+		'rejects %s refusal/UNKNOWN/ACK-awaited errors with no initial local action',
+		async (kind) => {
+			for (const phase of ['refused', 'unknown', 'subscriber', 'release'] as const) {
+				if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'old');
+				const input = await fence(),
+					map = localMap(),
+					reference = map.get(id),
+					subscribers = [...database.subscribers];
+				const connection = native(),
+					all = connection.all.bind(connection) as NativeConnection['all'];
+				const failure = new Error('native acknowledgement unavailable');
+				if (phase === 'unknown')
+					jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
+						return all(sql, parameters, function (error, rows) {
+							callback.call(this, sql === 'COMMIT' && !error ? failure : error, rows);
+						});
+					});
+				database.subscribers.push({
+					beforeQuery: (event) => {
+						if (phase === 'refused' && event.query === 'COMMIT') Reflect.set(database, 'isInitialized', false);
+						if (event.query === 'ROLLBACK') Reflect.set(database, 'isInitialized', true);
+					},
+					afterTransactionCommit: (event) => {
+						if (phase === 'subscriber') throw JSON.parse('false') as unknown;
+						if (phase === 'release') {
+							const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void };
+							const release = lease.release;
+							lease.release = () => {
+								lease.release = release;
+								release();
+								throw JSON.parse('0') as unknown;
+							};
+						}
+					},
+				});
+				const pinned = thermostatComfortSelection.pin(database, kind, map);
+				const captured =
+					kind === 'override'
+						? pinned.overrideInput(id, input, requestOverride(), 'operator', 'user')
+						: pinned.cancelInput(id, input, reference.id);
+				let owner = () => false;
+				const operation = pinned.operation(
+					captured,
+					() => owner(),
+					() => true,
+				);
+				const execute = lock.runExclusive(async () => {
+					owner = AsyncLocalStorage.bind(() => lock.hasCurrentStructuralLease());
+					operation.captureSlot();
+					await graph.withComfortSelectionWrite(
+						operation.write,
+						input.expected_graph_revision,
+						operation.admit,
+						operation.accepted,
+					);
+					operation.accepted();
+					operation.localAction();
+				});
+				try {
+					if (phase === 'subscriber' || phase === 'release')
+						await expect(execute).rejects.toBe(phase === 'subscriber' ? false : 0);
+					else
+						await expect(execute).rejects.toMatchObject({
+							driverError: phase === 'unknown' ? failure : { name: 'SqliteCommitGuardRefusedError' },
+						});
+					expect(operation.settlement.localAction).toBeUndefined();
+					expect(map.get(id)).toBe(reference);
+					expect(operation.settlement.outcome).toBe(
+						phase === 'refused' ? 'refused' : phase === 'unknown' ? 'unknown' : 'committed',
+					);
+					if (phase !== 'refused') expect(operation.settlement.result.value.revision).toBe(input.expected_revision + 1);
+				} finally {
+					Reflect.set(database, 'isInitialized', true);
+					database.subscribers.splice(0, database.subscribers.length, ...subscribers);
+					jest.restoreAllMocks();
+					jest.spyOn(Date, 'now').mockImplementation(() => wall);
+					jest.spyOn(performance, 'now').mockImplementation(() => monotonic);
+					await Promise.allSettled([execute]);
+				}
+			}
+		},
+	);
+
+	it.each(['override', 'cancel'] as const)(
+		'returns full historical %s A after completed independent B, preserving B identity and its separate lease',
+		async (kind) => {
+			const otherSource = await open(),
+				other = await attach(otherSource);
+			expect(other.lock).not.toBe(lock);
+			expect(localMap(other.comfort)).not.toBe(localMap());
+			expect(Reflect.get(otherSource.driver, 'databaseConnection')).not.toBe(native());
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'operator');
+			const old = kind === 'cancel' ? recordOverride(2) : null,
+				input = await fence();
+			const originalDate = Date,
+				system = new Date('2026-10-25T00:00:00Z'),
+				descriptor = Object.getOwnPropertyDescriptor(globalThis, 'Date');
+			class FixedDate extends originalDate {
+				constructor(value: string | number = system.getTime()) {
+					super(value);
+				}
+			}
+			Object.defineProperty(globalThis, 'Date', { ...descriptor, value: FixedDate });
+			const expected = lifecycleResult(input, {
+				...configuration(),
+				temporary_override:
+					kind === 'override'
+						? recordOverride(2)
+						: { ...old, status: 'cancelled', terminated_at: system.toISOString() },
+			});
+			const original = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
+			let successes = 0;
+			const final = jest.spyOn(comfort, 'get').mockImplementation(async (controller, settle) => {
+				jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
+				await other.comfort.override(
+					id,
+					await fence(),
+					{
+						preset: null,
+						setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+						expires_at: new Date(wall + 2000).toISOString(),
+					},
+					'B',
+					'panel',
+				);
+				successes++;
+				return original(controller, settle);
+			});
+			try {
+				const result =
+					kind === 'override'
+						? await comfort.override(id, input, requestOverride(), 'operator')
+						: await comfort.cancel(id, input, aId);
+				expect(successes).toBe(1);
+				expect(result).toEqual(expected);
+				expect(final).toHaveBeenCalledTimes(1);
+				const current = await row();
+				expect(current.revision).toBe(input.expected_revision + 2);
+				expect(current.comfort.temporary_override).toEqual({
+					...recordOverride(input.expected_revision + 2, bId, wall, 2000),
+					preset: null,
+					setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+					resolved_setpoints: { heating_setpoint: 19, cooling_setpoint: null },
+					source: 'panel',
+					actor_id: 'B',
+				});
+				expect(other.comfort.isCurrent(current)).toBe(true);
+				expect(comfort.isCurrent(current)).toBe(true);
+			} finally {
+				Object.defineProperty(globalThis, 'Date', descriptor);
+			}
+		},
+	);
+
+	it.each(['override', 'cancel'] as const)(
+		'has no delayed %s local action after same-service B at release/final-get',
+		async (kind) => {
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'operator');
+			const input = await fence(),
+				original = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
+			let successes = 0;
+			jest.spyOn(comfort, 'get').mockImplementation(async (controller, settle) => {
+				if (!successes) {
+					successes++;
+					jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
+					await comfort.override(id, await fence(), requestOverride(2000), 'B');
+				}
+				return original(controller, settle);
+			});
+			const result =
+				kind === 'override'
+					? await comfort.override(id, input, requestOverride(), 'operator')
+					: await comfort.cancel(id, input, aId);
+			expect(result.revision).toBe(input.expected_revision + 1);
+			expect(successes).toBe(1);
+			const current = await row();
+			expect(current.comfort.temporary_override.id).toBe(bId);
+			expect(localMap().get(id).id).toBe(bId);
+			expect(comfort.isCurrent(current)).toBe(true);
+		},
+	);
+
+	it.each(['map', 'slot', 'revision', 'watermark', 'absent'] as const)(
+		'guards the original cancellation %s slot at initial action, before final maintenance can mask it',
+		async (change) => {
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			await comfort.override(id, await fence(), requestOverride(), 'operator');
+			const map = localMap(),
+				old = map.get(id),
+				input = await fence();
+			const replacement = { ...old, revision: old.revision + 10, deadline: old.deadline + 1 };
+			const successor = new Map([[id, replacement]]);
+			let seam = false;
+			let originalAtSeam: ReturnType<LocalMap['get']>, successorAtSeam: ReturnType<LocalMap['get']>;
+			database.subscribers.push({
+				afterTransactionCommit: () => {
+					if (change === 'map') Reflect.set(comfort, 'leases', successor);
+					if (change === 'slot') map.set(id, replacement);
+					if (change === 'revision') old.revision++;
+					if (change === 'watermark') old.watermark++;
+					if (change === 'absent') map.delete(id);
+				},
+			});
+			events.once(THERMOSTAT_CONFIG_CHANGED, () => {
+				seam = true;
+				originalAtSeam = map.get(id);
+				successorAtSeam = successor.get(id);
+			});
+			const get = jest.spyOn(comfort, 'get'),
+				changed = jest.spyOn(claims, 'invalidate');
+			await comfort.cancel(id, input, aId);
+			expect(seam).toBe(true);
+			if (change === 'map') expect(successorAtSeam).toBe(replacement);
+			if (change === 'slot') expect(originalAtSeam).toBe(replacement);
+			if (change === 'revision') expect(originalAtSeam).toBe(old);
+			if (change === 'watermark' || change === 'absent' || change === 'map') expect(originalAtSeam).toBeUndefined();
+			expect(get).toHaveBeenCalledTimes(1);
+			expect(changed).toHaveBeenCalled();
+			// Controlled dispatch/lifetime substitution, not a cross-process shared Map.
+		},
+	);
+
+	it.each(['override', 'cancel'] as const)(
+		'retains committed %s evidence and exact partially-acting falsy Map failure',
+		async (kind) => {
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'operator');
+			const input = await fence(),
+				map = localMap(),
+				key = kind === 'override' ? 'set' : 'delete';
+			let afterAck = false;
+			const set = map.set.bind(map) as LocalMap['set'],
+				remove = map.delete.bind(map) as LocalMap['delete'];
+			if (key === 'set')
+				jest.spyOn(map, 'set').mockImplementation((controller, lease) => {
+					set(controller, lease);
+					if (afterAck) throw JSON.parse('false') as unknown;
+					return map;
+				});
+			else
+				jest.spyOn(map, 'delete').mockImplementation((controller) => {
+					const result = remove(controller);
+					if (afterAck) throw JSON.parse('false') as unknown;
+					return result;
+				});
+			const pinned = thermostatComfortSelection.pin(database, kind, map),
+				captured =
+					kind === 'override'
+						? pinned.overrideInput(id, input, requestOverride(), 'operator', 'user')
+						: pinned.cancelInput(id, input, aId);
+			let owner = () => false;
+			const operation = pinned.operation(
+				captured,
+				() => owner(),
+				() => true,
+			);
+			database.subscribers.push({
+				afterTransactionCommit: () => {
+					afterAck = true;
+				},
+			});
+			await expect(
+				lock.runExclusive(async () => {
+					owner = AsyncLocalStorage.bind(() => lock.hasCurrentStructuralLease());
+					operation.captureSlot();
+					await graph.withComfortSelectionWrite(
+						operation.write,
+						input.expected_graph_revision,
+						operation.admit,
+						operation.accepted,
+					);
+					operation.accepted();
+					operation.localAction();
+				}),
+			).rejects.toBe(false);
+			expect(operation.settlement.outcome).toBe('committed');
+			expect(operation.settlement.result.value.revision).toBe(input.expected_revision + 1);
+			expect(operation.settlement.localFailure).toEqual({ cause: false });
+			expect(operation.settlement.localAction.stage).toBe(kind === 'override' ? 'installing' : 'deleting');
+			expect(map.has(id)).toBe(kind === 'override');
+			expect((await row()).revision).toBe(input.expected_revision + 1);
+		},
+	);
+
+	it('retains new override historical A through original final-settle replacement and expiry; rejects exact final error', async () => {
+		jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+		const input = await fence(),
+			expected = lifecycleResult(input, { ...configuration(), temporary_override: recordOverride(2) });
+		const original = captureCreation(comfort, ['settle']).values.settle,
+			settle = jest.spyOn(comfort, 'settle'),
+			get = jest.spyOn(comfort, 'get'),
+			successor = jest.fn(() => Promise.resolve());
+		let advanced = false;
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				if (!advanced) {
+					advanced = true;
+					comfort.settle = successor;
+					wall += 1000;
+					monotonic += 1000;
+				}
+			},
+		});
+		try {
+			expect(await comfort.override(id, input, requestOverride(), 'operator')).toEqual(expected);
+			expect((await row()).revision).toBe(3);
+			expect((await row()).comfort.temporary_override.status).toBe('expired');
+			expect(successor).not.toHaveBeenCalled();
+			expect(settle).toHaveBeenCalledTimes(2);
+			expect(get).toHaveBeenCalledTimes(1);
+		} finally {
+			comfort.settle = original;
+			get.mockRestore();
+		}
+		const failure = false,
+			final = jest.spyOn(comfort, 'get').mockRejectedValueOnce(failure),
+			next = await fence();
+		await expect(comfort.override(id, next, requestOverride(), 'operator')).rejects.toBe(failure);
+		expect(final).toHaveBeenCalledTimes(1);
+		expect((await row()).revision).toBe(next.expected_revision + 1);
+	});
+	it.each([
+		['override', 'slot'],
+		['cancel', 'slot'],
+		['override', 'map'],
+		['cancel', 'map'],
+	] as const)(
+		'keeps an independently created B lease at the initial %s %s substitution seam',
+		async (kind, substitution) => {
+			// B has its own handle/lock/Map. Copying its lease into A below is an explicit lifetime control.
+			const otherSource = await open(),
+				other = await attach(otherSource);
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'operator');
+			const map = localMap(),
+				input = await fence();
+			let installed = false,
+				observed = false,
+				bSuccess = 0;
+			let initialLease: ReturnType<LocalMap['get']>, initialCurrent: boolean;
+			let bRow: VirtualThermostatConfigEntity, bLease: ReturnType<LocalMap['get']>;
+			database.subscribers.push({
+				afterTransactionCommit: async () => {
+					if (installed) return;
+					installed = true;
+					jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
+					const current = await otherSource.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+						controllerId: id,
+					});
+					await other.comfort.override(
+						id,
+						{ expected_revision: current.revision, expected_graph_revision: await other.graph.revision() },
+						requestOverride(2000),
+						'B',
+					);
+					bSuccess++;
+					bRow = await otherSource.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+					bLease = localMap(other.comfort).get(id);
+					expect(other.comfort.isCurrent(bRow)).toBe(true);
+					if (substitution === 'map') Reflect.set(comfort, 'leases', new Map([[id, bLease]]));
+					else map.set(id, bLease);
+				},
+			});
+			const get = jest.spyOn(comfort, 'get');
+			events.once(THERMOSTAT_CONFIG_CHANGED, () => {
+				observed = true;
+				initialLease = localMap().get(id);
+				initialCurrent = comfort.isCurrent(bRow);
+			});
+			const result =
+				kind === 'override'
+					? await comfort.override(id, input, requestOverride(), 'operator')
+					: await comfort.cancel(id, input, aId);
+			expect(observed).toBe(true);
+			expect(initialLease).toBe(bLease);
+			expect(initialCurrent).toBe(true);
+			expect(bSuccess).toBe(1);
+			expect(get).toHaveBeenCalledTimes(1);
+			expect(result.revision).toBe(input.expected_revision + 1);
+			expect((await row()).comfort.temporary_override.id).toBe(bId);
+			expect(localMap().get(id)).toBe(bLease);
+			expect(comfort.isCurrent(await row())).toBe(true);
+		},
+	);
+
+	it('owns override input validation, XOR/branches and safe fences without changing reserved whole-comfort policy', async () => {
+		const input = await fence(),
+			payload = requestOverride(),
+			settle = jest.spyOn(comfort, 'settle');
+		for (const invalid of [undefined, NaN, Infinity, '20'])
+			await expect(
+				comfort.override(
+					id,
+					input,
+					{ ...payload, preset: null, setpoints: { heating_setpoint: invalid as number, cooling_setpoint: null } },
+					'operator',
+				),
+			).rejects.toThrow('setpoint_range');
+		for (const actor of ['', null, false])
+			await expect(comfort.override(id, input, payload, actor as string)).rejects.toThrow('identified actor');
+		await expect(comfort.override(id, input, payload, 'operator', 'automation' as never)).rejects.toThrow(
+			'identified actor',
+		);
+		for (const kind of ['override', 'cancel'])
+			for (const bad of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
+				const unsafe = { ...input, expected_graph_revision: bad };
+				await expect(
+					kind === 'override' ? comfort.override(id, unsafe, payload, 'operator') : comfort.cancel(id, unsafe, aId),
+				).rejects.toThrow('revision fences');
+			}
+		expect(settle).not.toHaveBeenCalled();
+		for (const request of [
+			{ ...payload, setpoints: { heating_setpoint: 19, cooling_setpoint: null } },
+			{ ...payload, preset: null, setpoints: null },
+			{ ...payload, preset: null, setpoints: { heating_setpoint: 31, cooling_setpoint: null } },
+			{ ...payload, preset: null, setpoints: { heating_setpoint: 19, cooling_setpoint: 25 } },
+			{ ...payload, expires_at: '2026-10-25T00:00:01' },
+		])
+			await expect(comfort.override(id, input, request, 'operator')).rejects.toThrow();
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{ comfort: { ...configuration(), presets: [] } },
+		);
+		await expect(comfort.override(id, input, payload, 'operator')).rejects.toThrow('preset or setpoints are missing');
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: null });
+		await expect(comfort.override(id, input, payload, 'operator')).rejects.toThrow('Configure explicit comfort');
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{ comfort: configuration(), locked: true },
+		);
+		await expect(comfort.override(id, input, payload, 'operator')).rejects.toThrow('locked');
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: id },
+			{ locked: false, revision: Number.MAX_SAFE_INTEGER },
+		);
+		await expect(comfort.override(id, await fence(), payload, 'operator')).rejects.toThrow('overflowed');
+	});
+
+	it.each(['uuid', 'monotonic'] as const)(
+		'propagates exact falsy %s dispatch failure at creation resolution',
+		async (dispatch) => {
+			const input = await fence();
+			let birth = false;
+			jest.spyOn(crypto, 'randomUUID').mockImplementation(() => {
+				if (dispatch === 'uuid') throw JSON.parse('false') as unknown;
+				birth = true;
+				return aId;
+			});
+			jest.spyOn(performance, 'now').mockImplementation(() => {
+				if (birth) throw JSON.parse('0') as unknown;
+				return monotonic;
+			});
+			await expect(comfort.override(id, input, requestOverride(), 'operator')).rejects.toBe(
+				dispatch === 'uuid' ? false : 0,
+			);
+			expect(await fence()).toEqual(input);
+			expect(localMap().has(id)).toBe(false);
+		},
+	);
+
+	it.each(['override', 'cancel'] as const)(
+		'has no service initial %s action on ACK plus awaited subscriber failure',
+		async (kind) => {
+			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
+			if (kind === 'cancel') await comfort.override(id, await fence(), requestOverride(), 'operator');
+			const input = await fence(),
+				map = localMap(),
+				reference = map.get(id),
+				get = jest.spyOn(comfort, 'get');
+			let receipt: SqliteCommitGuardReceipt;
+			database.subscribers.push({
+				beforeTransactionCommit: (event) => {
+					receipt = observeSqliteOuterOutcome(event.manager);
+				},
+				afterTransactionCommit: () => {
+					throw JSON.parse('false') as unknown;
+				},
+			});
+			await expect(
+				kind === 'override'
+					? comfort.override(id, input, requestOverride(), 'operator')
+					: comfort.cancel(id, input, aId),
+			).rejects.toBe(false);
+			expect(receipt.outcome).toBe('committed');
+			expect(map.get(id)).toBe(reference);
+			expect(get).not.toHaveBeenCalled();
+			expect((await row()).revision).toBe(input.expected_revision + 1);
+		},
+	);
+	it('retains exact undefined from the original post-ACK Map get with committed result and honest stage', async () => {
+		const input = await fence(),
+			map = localMap();
+		let afterAck = false;
+		const original = map.get.bind(map) as LocalMap['get'];
+		jest.spyOn(map, 'get').mockImplementation((controller) => {
+			if (afterAck) throw undefined as unknown;
+			return original(controller);
+		});
+		const pin = thermostatComfortSelection.pin(database, 'override', map);
+		let owner = () => false;
+		const operation = pin.operation(
+			pin.overrideInput(id, input, requestOverride(), 'operator', 'user'),
+			() => owner(),
+			() => true,
+		);
+		database.subscribers.push({
+			afterTransactionCommit: () => {
+				afterAck = true;
+			},
+		});
+		await expect(
+			lock.runExclusive(async () => {
+				owner = AsyncLocalStorage.bind(() => lock.hasCurrentStructuralLease());
+				operation.captureSlot();
+				await graph.withComfortSelectionWrite(
+					operation.write,
+					input.expected_graph_revision,
+					operation.admit,
+					operation.accepted,
+				);
+				operation.accepted();
+				operation.localAction();
+			}),
+		).rejects.toBeUndefined();
+		expect(operation.settlement.outcome).toBe('committed');
+		expect(operation.settlement.result.value.revision).toBe(2);
+		expect(operation.settlement.localFailure).toEqual({ cause: undefined });
+		expect(operation.settlement.localAction.stage).toBe('checking');
 	});
 });
