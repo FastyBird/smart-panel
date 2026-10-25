@@ -8,6 +8,7 @@ effective testing and mirror the pattern already used by the other e2e specs in 
 */
 import { instanceToPlain } from 'class-transformer';
 import { useContainer } from 'class-validator';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -61,6 +62,7 @@ import {
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { ThermostatCoolingDependencyEntity } from '../src/plugins/devices-virtual/entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../src/plugins/devices-virtual/entities/thermostat-member-protection.entity';
+import { VirtualThermostatRuntimeEntity } from '../src/plugins/devices-virtual/entities/virtual-thermostat-runtime.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -76,6 +78,7 @@ import { VirtualDewPointConfigService } from '../src/plugins/devices-virtual/ser
 import { DEW_POINT_FORMULA } from '../src/plugins/devices-virtual/services/virtual-dew-point.utils';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
+import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { InfluxV1ConfigModel } from '../src/plugins/influx-v1/models/config.model';
 import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
@@ -3713,9 +3716,369 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 	});
 });
 
+function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
+	type Runner = import('typeorm').QueryRunner;
+	type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
+	type Owner = { active: boolean; accepting: boolean; mode: string };
+	const gate = () => {
+		let release: () => void;
+		const promise = new Promise<void>((resolve) => (release = resolve));
+		return { promise, release: () => release() };
+	};
+	const evaluation = gate(),
+		written = gate(),
+		finished = gate(),
+		writer = gate();
+	const selected = new AsyncLocalStorage<boolean>();
+	const sourceA = a.get(DataSource),
+		sourceB = b.get(DataSource);
+	const lock = a.get(DeviceStructureLockService);
+	const context = Reflect.get(lock, 'context') as { getStore(): Owner | undefined };
+	const runtime = a.get(VirtualThermostatRuntimeService);
+	const originalEvaluate = Reflect.get(runtime, 'evaluate') as NativeMethod;
+	const ownEvaluate = Object.getOwnPropertyDescriptor(runtime, 'evaluate');
+	const jobs: Promise<unknown>[] = [],
+		callbacks: Promise<void>[] = [],
+		restore: (() => void)[] = [];
+	const facts: { source: string; query: string; edge: string; selected: boolean; runner: Runner; success: boolean }[] =
+		[];
+	let target = '',
+		channel = '',
+		owner: Owner,
+		held = false,
+		window = false,
+		unknown = false;
+	let aRunner: Runner, bRunner: Runner;
+	const depth = (runner: Runner) => Reflect.get(runner, 'transactionDepth') as number;
+	try {
+		for (const [label, source] of [
+			['A', sourceA],
+			['B', sourceB],
+		] as const) {
+			const native = Reflect.get(source.driver, 'databaseConnection') as object;
+			const admissions: { query: string; parameters: unknown; runner: Runner; selected: boolean }[] = [];
+			const observer: import('typeorm').EntitySubscriberInterface = {
+				beforeQuery(event) {
+					if (admissions.length === 512) {
+						unknown = true;
+						return;
+					}
+					admissions.push({
+						query: event.query,
+						parameters: event.parameters,
+						runner: event.queryRunner,
+						selected: selected.getStore() === true,
+					});
+				},
+			};
+			source.subscribers.push(observer);
+			restore.push(() => {
+				const index = source.subscribers.indexOf(observer);
+				if (index >= 0) source.subscribers.splice(index, 1);
+			});
+			for (const method of ['all', 'run']) {
+				const original = Reflect.get(native, method) as NativeMethod;
+				const own = Object.getOwnPropertyDescriptor(native, method);
+				const wrapper: NativeMethod = function (...args) {
+					const query = args[0] as string,
+						callback = args.at(-1);
+					const matches = admissions.filter((entry) => entry.query === query && entry.parameters === args[1]);
+					for (const entry of matches) admissions.splice(admissions.indexOf(entry), 1);
+					const admission = matches.length === 1 ? matches[0] : undefined;
+					const relevant = admission && (label === 'A' ? admission.selected : window);
+					const record = (edge: string, error?: unknown) => {
+						if (!relevant) return;
+						if (facts.length === 256) {
+							unknown = true;
+							return;
+						}
+						facts.push({
+							source: label,
+							query,
+							edge,
+							selected: admission.selected,
+							runner: admission.runner,
+							success: edge === 'ack' && error == null,
+						});
+					};
+					if (typeof callback !== 'function') return original.apply(this, args) as unknown;
+					const done = gate();
+					callbacks.push(done.promise);
+					record('submit');
+					const forwarded = args.slice();
+					forwarded[forwarded.length - 1] = function (this: unknown, ...values: unknown[]) {
+						record('ack', values[0]);
+						try {
+							return (callback as NativeMethod).apply(this, values) as unknown;
+						} finally {
+							done.release();
+						}
+					};
+					try {
+						const result: unknown = original.apply(this, forwarded);
+						if (label === 'B' && window && query === 'BEGIN IMMEDIATE TRANSACTION') {
+							if (!held || !admission || depth(admission.runner) !== 0) unknown = true;
+							bRunner = admission?.runner;
+							writer.release();
+						}
+						return result;
+					} catch (error) {
+						done.release();
+						throw error;
+					}
+				};
+				Object.defineProperty(native, method, { configurable: true, writable: true, value: wrapper });
+				restore.push(() => {
+					if (Reflect.get(native, method) !== wrapper) throw new Error('Progress observer replaced');
+					if (own) Object.defineProperty(native, method, own);
+					else Reflect.deleteProperty(native, method);
+				});
+			}
+		}
+		const wrappedEvaluate: NativeMethod = function (...args) {
+			const first = !target;
+			if (first) {
+				target = args[0] as string;
+				owner = context.getStore();
+			}
+			const job = (async () => {
+				if (first) await evaluation.promise;
+				try {
+					return await selected.run(first, () => originalEvaluate.apply(this, args) as unknown);
+				} finally {
+					if (first) finished.release();
+				}
+			})();
+			if (first) jobs.push(job);
+			return job;
+		};
+		Object.defineProperty(runtime, 'evaluate', { configurable: true, writable: true, value: wrappedEvaluate });
+		restore.push(() => {
+			if (Reflect.get(runtime, 'evaluate') !== wrappedEvaluate)
+				throw new Error('Progress evaluation observer replaced');
+			if (ownEvaluate) Object.defineProperty(runtime, 'evaluate', ownEvaluate);
+			else Reflect.deleteProperty(runtime, 'evaluate');
+		});
+		const after = async (
+			event:
+				| import('typeorm').InsertEvent<VirtualThermostatRuntimeEntity>
+				| import('typeorm').UpdateEvent<VirtualThermostatRuntimeEntity>,
+		) => {
+			if (
+				held ||
+				!selected.getStore() ||
+				!(event.entity instanceof VirtualThermostatRuntimeEntity) ||
+				event.entity.controllerId !== target
+			)
+				return;
+			const ack = [...facts]
+				.reverse()
+				.find(
+					(row) =>
+						row.source === 'A' &&
+						row.runner === event.queryRunner &&
+						row.edge === 'ack' &&
+						/^(INSERT|UPDATE) .*"devices_virtual_thermostat_runtime"/.test(row.query),
+				);
+			expect(ack?.success).toBe(true);
+			expect(context.getStore()).toBe(owner);
+			expect(owner).toMatchObject({ active: true, accepting: true, mode: 'exclusive' });
+			expect(event.queryRunner.isTransactionActive).toBe(true);
+			expect(depth(event.queryRunner)).toBe(1);
+			aRunner = event.queryRunner;
+			held = true;
+			written.release();
+			await writer.promise;
+		};
+		const subscriber: import('typeorm').EntitySubscriberInterface = { afterInsert: after, afterUpdate: after };
+		sourceA.subscribers.push(subscriber);
+		restore.push(() => {
+			const index = sourceA.subscribers.indexOf(subscriber);
+			if (index >= 0) sourceA.subscribers.splice(index, 1);
+		});
+	} catch (cause) {
+		evaluation.release();
+		writer.release();
+		for (const undo of restore.reverse()) {
+			try {
+				undo();
+			} catch {
+				/* Preserve the installation failure while attempting every restoration. */
+			}
+		}
+		throw cause;
+	}
+	let closing: Promise<void>;
+	let cleanupFailure: { cause: unknown } | undefined;
+	return {
+		async beforePatch(id: string, root: string) {
+			expect(target).toBe(root);
+			channel = id;
+			evaluation.release();
+			await Promise.race([written.promise, finished.promise]);
+			expect(held).toBe(true);
+			window = true;
+		},
+		own(promise: Promise<unknown>) {
+			jobs.push(promise);
+		},
+		verify() {
+			expect(unknown).toBe(false);
+			expect(aRunner).toBeDefined();
+			expect(bRunner).toBeDefined();
+			expect(aRunner).not.toBe(bRunner);
+			const index = (label: string, query: string, edge: string) =>
+				facts.findIndex(
+					(row) => row.source === label && row.query === query && row.edge === edge && (edge !== 'ack' || row.success),
+				);
+			const aCommit = index('A', 'COMMIT', 'ack'),
+				bSubmit = index('B', 'BEGIN IMMEDIATE TRANSACTION', 'submit'),
+				bBegin = index('B', 'BEGIN IMMEDIATE TRANSACTION', 'ack');
+			expect(bSubmit).toBeGreaterThanOrEqual(0);
+			expect(aCommit).toBeGreaterThan(bSubmit);
+			expect(bBegin).toBeGreaterThan(aCommit);
+			const current = facts.filter((row) => row.source === 'B' && row.runner === bRunner);
+			expect(current[0].query).toBe('BEGIN IMMEDIATE TRANSACTION');
+			expect(
+				current
+					.slice(2)
+					.some(
+						(row) =>
+							row.edge === 'ack' && row.success && row.query.includes('FROM "devices_module_channels_properties"'),
+					),
+			).toBe(true);
+			expect(
+				current.some((row) => row.edge === 'ack' && row.success && /^UPDATE "devices_module_channels"/.test(row.query)),
+			).toBe(true);
+			expect(index('B', 'COMMIT', 'ack')).toBeGreaterThan(bBegin);
+			console.info(
+				'channel-writer-progress',
+				JSON.stringify({
+					target,
+					channel,
+					facts: facts.map(({ runner, ...row }) => ({
+						...row,
+						runner: runner === aRunner ? 'A-selected' : runner === bRunner ? 'B-selected' : 'other',
+					})),
+				}),
+			);
+		},
+		close() {
+			evaluation.release();
+			writer.release();
+			return (closing ??= (async () => {
+				let issuedJobs = 0,
+					issuedCallbacks = 0;
+				try {
+					do {
+						const pending = [...jobs.slice(issuedJobs), ...callbacks.slice(issuedCallbacks)];
+						issuedJobs = jobs.length;
+						issuedCallbacks = callbacks.length;
+						for (const result of await Promise.allSettled(pending)) {
+							if (result.status === 'rejected') cleanupFailure ??= { cause: result.reason as unknown };
+						}
+					} while (issuedJobs < jobs.length || issuedCallbacks < callbacks.length);
+				} finally {
+					for (const undo of restore.reverse()) {
+						try {
+							undo();
+						} catch (cause) {
+							cleanupFailure ??= { cause };
+						}
+					}
+				}
+			})());
+		},
+	};
+}
+
+describe('channel writer observation forwarding model (no native credit)', () => {
+	it.each(['all', 'run'] as const)(
+		'preserves %s return/callback/throw and joins then restores its own observations',
+		async (method) => {
+			const returned = {},
+				callbackThis = {},
+				query = 'model query',
+				parameters: unknown[] = ['model parameter'];
+			const calls: { receiver: unknown; query: string; parameters: unknown[] }[] = [];
+			let injected: Error | undefined;
+			const original = function (
+				this: unknown,
+				sql: string,
+				bindings: unknown[],
+				callback: (this: unknown, ...values: unknown[]) => unknown,
+			) {
+				calls.push({ receiver: this, query: sql, parameters: bindings });
+				if (injected) throw injected;
+				callback.call(callbackThis, false, parameters);
+				return returned;
+			};
+			const nativeA = { all: original, run: original },
+				nativeB = { all: original, run: original };
+			const sourceA = {
+				driver: { databaseConnection: nativeA },
+				subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+			};
+			const sourceB = {
+				driver: { databaseConnection: nativeB },
+				subscribers: [] as import('typeorm').EntitySubscriberInterface[],
+			};
+			const owner = { active: true, accepting: true, mode: 'exclusive' };
+			const structure = { context: { getStore: () => owner } };
+			const evaluate = jest.fn(function (this: unknown, id: string) {
+				expect(this).toBe(runtime);
+				expect(id).toBe('model-controller');
+				return Promise.resolve(false);
+			});
+			const runtime = { evaluate };
+			const moduleA = {
+				get: (type: unknown) =>
+					type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime,
+			};
+			const moduleB = { get: () => sourceB };
+			const descriptor = Object.getOwnPropertyDescriptor(nativeA, method);
+			const control = captureChannelWriterProgress(
+				moduleA as unknown as TestingModule,
+				moduleB as unknown as TestingModule,
+			);
+			const observed: { receiver: unknown; values: unknown[] }[] = [];
+			let job: Promise<unknown>;
+			try {
+				const result = nativeA[method](query, parameters, function (this: unknown, ...values) {
+					observed.push({ receiver: this, values });
+				});
+				expect(result).toBe(returned);
+				expect(calls).toEqual([{ receiver: nativeA, query, parameters }]);
+				expect(calls[0].parameters).toBe(parameters);
+				expect(observed).toEqual([{ receiver: callbackThis, values: [false, parameters] }]);
+				expect(observed[0].values[1]).toBe(parameters);
+				injected = new Error('native synchronous throw model');
+				let failure: unknown;
+				try {
+					nativeA[method](query, parameters, () => undefined);
+				} catch (cause) {
+					failure = cause;
+				}
+				expect(failure).toBe(injected);
+				job = runtime.evaluate('model-controller');
+				expect(evaluate).not.toHaveBeenCalled();
+			} finally {
+				await control.close();
+			}
+			expect(await job).toBe(false);
+			expect(evaluate).toHaveBeenCalledTimes(1);
+			expect(runtime.evaluate).toBe(evaluate);
+			expect(Object.getOwnPropertyDescriptor(nativeA, method)).toEqual(descriptor);
+			expect(sourceA.subscribers).toEqual([]);
+			expect(sourceB.subscribers).toEqual([]);
+		},
+	);
+});
+
 describe('P05b1b default migrated thermostat HTTP consumer', () => {
 	// Normal CI already starts Influx1.8. The local evidence wrapper may supply its owned database name.
 	const testInfluxDatabase = process.env.P05B1B_INFLUX_DATABASE ?? `p05b1b_test_${process.pid}`;
+	let pendingProgress: ReturnType<typeof captureChannelWriterProgress> | undefined;
 	let app: INestApplication | undefined;
 	let moduleRef: TestingModule;
 	let dataSource: DataSource;
@@ -3813,7 +4176,10 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 	});
 	afterEach(async () => {
 		try {
+			await pendingProgress?.close();
+			pendingProgress = undefined;
 			await app?.close();
+			console.info('channel-admission-A-closed', { initialized: dataSource?.isInitialized });
 		} finally {
 			app = undefined;
 			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
@@ -3928,6 +4294,8 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		};
 		let graphWrites = 0;
 		let otherAccessToken: string;
+		const progressCase = phase === 'during-hydration' && operation === 'parent';
+		let progress: ReturnType<typeof captureChannelWriterProgress> | undefined;
 		const observer = {
 			afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
 				if (event.success && /^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query)) graphWrites++;
@@ -3940,6 +4308,14 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			originalError.apply(this, args);
 		});
 		Object.defineProperty(Logger.prototype, 'error', { ...errorDescriptor, value: loggedErrors });
+		const loginOther = async () => {
+			const login = await request(otherApp.getHttpServer())
+				.post('/modules/auth/auth/login')
+				.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
+				.expect(201);
+			otherAccessToken = (login.body as { data: { access_token: string } }).data.access_token;
+			expect(otherAccessToken).toEqual(expect.any(String));
+		};
 		try {
 			useContainer(otherModule, { fallbackOnErrors: true });
 			await otherApp.init();
@@ -3950,6 +4326,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			expect(Object.getOwnPropertyDescriptor(otherSource.driver, 'databaseConnection')?.value).not.toBe(
 				Object.getOwnPropertyDescriptor(dataSource.driver, 'databaseConnection')?.value,
 			);
+			if (progressCase) {
+				await loginOther();
+				progress = captureChannelWriterProgress(moduleRef, otherModule);
+				pendingProgress = progress;
+			}
 			otherSource.subscribers.push(observer);
 			dataSource.subscribers.push(proofObserver);
 			useContainer(moduleRef, { fallbackOnErrors: true });
@@ -3959,12 +4340,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 				expect(otherOwner.hasCurrentStructuralLease()).toBe(false);
 				useContainer(otherModule, { fallbackOnErrors: true });
 				try {
-					const login = await request(otherApp.getHttpServer())
-						.post('/modules/auth/auth/login')
-						.send({ data: { username: 'cataloghttp', password: 'securePassword123!' } })
-						.expect(201);
-					otherAccessToken = (login.body as { data: { access_token: string } }).data.access_token;
-					expect(otherAccessToken).toEqual(expect.any(String));
+					if (!progressCase) await loginOther();
 					const info = await otherSource.manager.findOneOrFail(VirtualChannelEntity, {
 						where: { device: { id: root }, category: ChannelCategory.DEVICE_INFORMATION },
 						relations: ['properties'],
@@ -4106,6 +4482,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						expect(parent.id).not.toBe(info.id);
 						expect(parent.parentId).toBeNull();
 						const value = operation === 'parent' ? parent.id : 'B same-birth metadata';
+						await progress?.beforePatch(info.id, root);
 						await request(otherApp.getHttpServer())
 							.patch(`/modules/devices/channels/${info.id}`)
 							.set('Authorization', `Bearer ${otherAccessToken}`)
@@ -4183,7 +4560,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			}
 
 			try {
-				await verifyThermostatWire(
+				const wire = verifyThermostatWire(
 					{ app, moduleRef, dataSource, accessToken },
 					{
 						replaceBeforeCreate: false,
@@ -4201,6 +4578,9 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						},
 					},
 				);
+				progress?.own(wire);
+				await wire;
+				progress?.verify();
 			} finally {
 				if (successes.length !== 1)
 					console.info(
@@ -4262,7 +4642,10 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						if (index >= 0) dataSource.subscribers.splice(index, 1);
 					} finally {
 						try {
+							await progress?.close();
+							pendingProgress = undefined;
 							await otherApp.close();
+							if (progress) console.info('channel-admission-B-closed', { initialized: otherSource.isInitialized });
 						} finally {
 							useContainer(moduleRef, { fallbackOnErrors: true });
 						}

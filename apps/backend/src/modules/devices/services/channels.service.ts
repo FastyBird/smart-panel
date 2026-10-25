@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
@@ -203,10 +204,15 @@ export class ChannelsService {
 		id: string,
 		deviceId?: string,
 		type?: string,
+		manager?: EntityManager,
 	): Promise<TChannel | null> {
 		const mapping = type ? this.channelsMapperService.getMapping<TChannel, any, any>(type) : null;
 
-		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+		const repository = manager
+			? manager.getRepository(mapping?.class ?? ChannelEntity)
+			: mapping
+				? this.dataSource.getRepository(mapping.class)
+				: this.repository;
 
 		let channel: TChannel | null;
 
@@ -597,65 +603,62 @@ export class ChannelsService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
-		// Validate parent channel belongs to the same device (if parent is being updated)
-		if (dtoInstance.parent !== undefined && dtoInstance.parent !== null) {
-			const parentChannel = await this.repository.findOne({
-				where: { id: dtoInstance.parent },
-				relations: ['device'],
-			});
-
-			if (!parentChannel) {
-				this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
-
-				throw new DevicesValidationException('The specified parent channel does not exist.');
-			}
-
-			const parentDeviceId = typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
-			const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
-
-			if (parentDeviceId !== channelDeviceId) {
-				this.logger.error(
-					`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${channelDeviceId})`,
-				);
-
-				throw new DevicesValidationException('Parent channel must belong to the same device.');
-			}
-
-			// Check for circular reference by walking up the parent chain
-			const visited = new Set<string>([id]);
-			let currentParentId: string | null = dtoInstance.parent;
-
-			while (currentParentId !== null) {
-				if (visited.has(currentParentId)) {
-					this.logger.error(
-						`Circular parent reference detected: setting parent to ${dtoInstance.parent} would create a cycle`,
-					);
-
-					throw new DevicesValidationException(
-						'Circular parent reference detected. A channel cannot be its own ancestor.',
-					);
-				}
-
-				visited.add(currentParentId);
-
-				const currentParent = await this.repository.findOne({ where: { id: currentParentId } });
-
-				currentParentId = currentParent?.parentId ?? null;
-			}
-		}
-
-		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
-
 		// Get the fields to update from DTO (excluding undefined values)
 		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
 
-		// Under the structure lock, and with the hook inside it, for the reason the create above spells
-		// out: a channel's category is part of the structure a device recategorisation judges itself
-		// against, and the hook that judges *this* change reads the device's category in turn.
-		const entityFieldsChanged = await this.structureLock.runExclusive(async (): Promise<boolean> => {
+		const save = async (manager?: EntityManager): Promise<boolean> => {
+			const repository = manager?.getRepository(mapping.class) ?? this.dataSource.getRepository(mapping.class);
+			const channels = manager?.getRepository(ChannelEntity) ?? this.repository;
 			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
 			// was validating; saving the earlier entity would otherwise insert it again.
-			const current = (await this.getOneOrThrow(id)) as TChannel;
+			const current = (await this.getOneOrThrow(id, manager)) as TChannel;
+			// Validate parent channel belongs to the same device (if parent is being updated)
+			if (dtoInstance.parent !== undefined && dtoInstance.parent !== null) {
+				const parentChannel = await channels.findOne({
+					where: { id: dtoInstance.parent },
+					relations: ['device'],
+				});
+
+				if (!parentChannel) {
+					this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
+
+					throw new DevicesValidationException('The specified parent channel does not exist.');
+				}
+
+				const parentDeviceId =
+					typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+				const channelDeviceId = typeof current.device === 'string' ? current.device : current.device.id;
+
+				if (parentDeviceId !== channelDeviceId) {
+					this.logger.error(
+						`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${channelDeviceId})`,
+					);
+
+					throw new DevicesValidationException('Parent channel must belong to the same device.');
+				}
+
+				// Check for circular reference by walking up the parent chain
+				const visited = new Set<string>([id]);
+				let currentParentId: string | null = dtoInstance.parent;
+
+				while (currentParentId !== null) {
+					if (visited.has(currentParentId)) {
+						this.logger.error(
+							`Circular parent reference detected: setting parent to ${dtoInstance.parent} would create a cycle`,
+						);
+
+						throw new DevicesValidationException(
+							'Circular parent reference detected. A channel cannot be its own ancestor.',
+						);
+					}
+
+					visited.add(currentParentId);
+
+					const currentParent = await channels.findOne({ where: { id: currentParentId } });
+
+					currentParentId = currentParent?.parentId ?? null;
+				}
+			}
 			const previous = { ...current } as Readonly<Partial<TChannel>>;
 			const entityFieldsChanged = Object.keys(updateFields).some((key) => {
 				const newValue = (updateFields as Record<string, unknown>)[key];
@@ -691,7 +694,22 @@ export class ChannelsService {
 			await repository.save(current);
 
 			return entityFieldsChanged;
-		});
+		};
+
+		const source = this.dataSource instanceof SqliteDataSource ? this.dataSource : undefined;
+		const borrowed = source && hasCurrentSqliteConnectionLease(source);
+		// Match the original lock's admission synchronously; presence alone also includes retiring/shared owners.
+		const owner = (
+			this.structureLock as unknown as {
+				context: { getStore(): { active: boolean; accepting: boolean; mode: string } | undefined };
+			}
+		).context?.getStore();
+		if (borrowed && !(owner?.active === true && owner.accepting === true && owner.mode === 'exclusive')) {
+			throw new Error('Channel update requires an accepting exclusive structure owner before its SQLite lease');
+		}
+		const entityFieldsChanged = await this.structureLock.runExclusive(() =>
+			source ? (borrowed ? save(source.createQueryRunner().manager) : source.transactionWithWriteIntent(save)) : save(),
+		);
 
 		let updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 
@@ -805,8 +823,8 @@ export class ChannelsService {
 		});
 	}
 
-	async getOneOrThrow(id: string): Promise<ChannelEntity> {
-		const channel = await this.findOne(id);
+	async getOneOrThrow(id: string, manager?: EntityManager): Promise<ChannelEntity> {
+		const channel = manager ? await this.findOne(id, undefined, undefined, manager) : await this.findOne(id);
 
 		if (!channel) {
 			this.logger.error(`Channel with id=${id} not found`);
