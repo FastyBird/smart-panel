@@ -15,6 +15,10 @@ import { SqliteDataSource, createSqliteDataSource } from '../src/common/database
 import { DeviceCategory } from '../src/modules/devices/devices.constants';
 import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../src/modules/devices/services/property-command-admission.registry.service';
+import {
+	ThermostatComfortPresetDto,
+	ThermostatComfortRangeDto,
+} from '../src/plugins/devices-virtual/dto/thermostat-comfort.dto';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualGraphRevisionEntity } from '../src/plugins/devices-virtual/entities/virtual-producer.entity';
 import { VirtualThermostatConfigEntity } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
@@ -62,11 +66,61 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			.post(endpoint(id) + '/selection')
 			.set('Authorization', `Bearer ${token}`)
 			.send(body);
+	const put = (id: string, body: object) =>
+		request(app.getHttpServer() as Parameters<typeof request>[0])
+			.put(endpoint(id))
+			.set('Authorization', `Bearer ${token}`)
+			.send(body);
+	const definition = () => ({
+		heating_range: { minimum: 11, maximum: 29 },
+		cooling_range: null,
+		presets: [
+			{ preset: 'away' as const, setpoints: { heating_setpoint: 13, cooling_setpoint: null } },
+			{ preset: 'eco' as const, setpoints: { heating_setpoint: 18, cooling_setpoint: null } },
+			{ preset: 'comfort' as const, setpoints: { heating_setpoint: 24, cooling_setpoint: null } },
+		],
+	});
+	const defined = (): ThermostatComfortConfiguration => ({
+		heating_range: { minimum: 11, maximum: 29 },
+		cooling_range: null,
+		presets: [
+			{ preset: 'away', setpoints: { heating_setpoint: 13, cooling_setpoint: null } },
+			{ preset: 'eco', setpoints: { heating_setpoint: 18, cooling_setpoint: null } },
+			{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } },
+		],
+		selected_preset: null,
+		user_off: false,
+		automation_enabled: false,
+		automation_baseline: null,
+		temporary_override: null,
+	});
+	const definitionExpected = (
+		id: string,
+		input: Awaited<ReturnType<typeof fences>>,
+		selected: 'away' | null = null,
+	) => ({
+		controller: id,
+		revision: input.expected_revision + 1,
+		graph_revision: input.expected_graph_revision + 1,
+		configuration: { ...defined(), selected_preset: selected },
+		effective: {
+			source: selected ? 'preset' : 'manual',
+			preset: selected,
+			heating_setpoint: selected ? 13 : 20,
+			cooling_setpoint: null,
+			override_id: null,
+			expires_at: null,
+		},
+		clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+	});
 	const get = (id: string) =>
 		request(app.getHttpServer() as Parameters<typeof request>[0])
 			.get(endpoint(id))
 			.set('Authorization', `Bearer ${token}`);
-	async function seed(comfort = baseConfiguration(), requestedMode: 'heat' | 'off' = 'heat') {
+	async function seed(
+		comfort: ThermostatComfortConfiguration | null = baseConfiguration(),
+		requestedMode: 'heat' | 'off' = 'heat',
+	) {
 		const id = randomUUID();
 		await database.manager.insert(VirtualDeviceEntity, {
 			id,
@@ -323,64 +377,155 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 		await database.manager.update(VirtualGraphRevisionEntity, { id: 1 }, { revision: input.expected_graph_revision });
 	});
 
-	it('returns exact independent A HTTP intent after ACK while a real later B completes and GET reads B', async () => {
-		const id = await seed(),
-			input = await fences(id),
-			comfort = module.get(VirtualThermostatComfortService);
-		const source = await new SqliteDataSource({
-			type: 'sqlite',
-			database: database.options.database as string,
-			entities: [sourceRoot + '/**/*.entity.ts'],
-		}).initialize();
-		const lock = new DeviceStructureLockService(),
-			graph = new VirtualDependencyGraphService(source),
-			events = new EventEmitter2();
-		const claims = new VirtualThermostatClaimsService(
-			source,
-			lock,
-			graph,
-			new PropertyCommandAdmissionRegistryService(),
-			events,
-		);
-		const other = new VirtualThermostatComfortService(source, lock, graph, claims, events);
-		try {
-			await new VirtualThermostatOwnershipSubscriber(source, claims).onApplicationBootstrap();
-			await claims.onApplicationBootstrap();
-			expect(Reflect.get(source.driver, 'databaseConnection')).not.toBe(
-				Reflect.get(database.driver, 'databaseConnection'),
-			);
-			const realGet = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
-			let bDone = false;
-			const final = jest.spyOn(comfort, 'get').mockImplementationOnce(async (controller) => {
-				await other.select(
-					id,
-					{ expected_revision: 2, expected_graph_revision: input.expected_graph_revision + 1 },
-					'away',
-					false,
-				);
-				bDone = true;
-				return realGet(controller);
-			});
-			const response = await post(id, { ...input, preset: 'eco', clear_user_off: false }).expect(201);
-			expect(bDone).toBe(true);
-			expect(final).toHaveBeenCalledTimes(1);
-			expect((response.body as { data: unknown }).data).toEqual(expected(id, input, baseConfiguration(), 'eco'));
-			final.mockRestore();
-			const latest = await get(id).expect(200);
-			expect((latest.body as { data: unknown }).data).toEqual(
-				expected(
-					id,
-					{ expected_revision: 2, expected_graph_revision: input.expected_graph_revision + 1 },
-					baseConfiguration(),
-					'away',
-				),
-			);
-			expect((await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).revision).toBe(
-				3,
-			);
-		} finally {
-			claims.onModuleDestroy();
-			await source.destroy();
-		}
+	it('PUT authors first comfort=null and replaces definitions using real transformed DTOs and literal full wire/row', async () => {
+		const id = await seed(null);
+		const service = module.get(VirtualThermostatComfortService);
+		const configure = jest.spyOn(service, 'configure');
+		const input = await fences(id);
+		const first = await put(id, { ...input, ...definition() }).expect(200);
+		expect(first.body as object).toMatchObject({ status: 'success', method: 'PUT', path: endpoint(id) });
+		expect((first.body as { data: unknown }).data).toEqual(definitionExpected(id, input));
+		expect(configure.mock.calls[0][2].heating_range).toBeInstanceOf(ThermostatComfortRangeDto);
+		expect(configure.mock.calls[0][2].presets[0]).toBeInstanceOf(ThermostatComfortPresetDto);
+		const stored = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		expect(stored.comfort).toEqual(defined());
+		expect(stored.revision).toBe(2);
+		expect((await fences(id)).expected_graph_revision).toBe(input.expected_graph_revision + 1);
+		const next = await fences(id);
+		const replaced = await put(id, { ...next, ...definition(), presets: [], automation_enabled: false }).expect(200);
+		expect((replaced.body as { data: unknown }).data).toEqual({
+			...definitionExpected(id, next),
+			configuration: { ...defined(), presets: [] },
+		});
+		expect(
+			(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).comfort,
+		).toEqual({ ...defined(), presets: [] });
+		await request(app.getHttpServer() as Parameters<typeof request>[0])
+			.put(endpoint(id))
+			.send({ ...next, ...definition() })
+			.expect(401);
 	});
+
+	it.each(['active', 'clock_uncertain'] as const)(
+		'PUT keeps complete %s captured override wire and omits internal metadata',
+		async (status) => {
+			const config = baseConfiguration(),
+				now = Date.now();
+			const override = {
+				id: randomUUID(),
+				source: 'panel' as const,
+				actor_id: 'retained-display',
+				revision: 1,
+				created_at: new Date(now).toISOString(),
+				expires_at: new Date(now + 60000).toISOString(),
+				original_duration_ms: 60000,
+				wall_watermark_ms: now,
+				preset: 'comfort' as const,
+				setpoints: null,
+				resolved_setpoints: { heating_setpoint: 23, cooling_setpoint: null },
+				status,
+				terminated_at: null,
+			};
+			config.temporary_override = override;
+			const id = await seed(config),
+				input = await fences(id);
+			const response = await put(id, { ...input, ...definition() }).expect(200);
+			const { original_duration_ms: duration, wall_watermark_ms: watermark, ...publicOverride } = override;
+			expect(duration).toBe(60000);
+			expect(watermark).toBe(now);
+			expect((response.body as { data: unknown }).data).toEqual({
+				...definitionExpected(id, input),
+				configuration: { ...defined(), temporary_override: publicOverride },
+				effective: {
+					source: 'override',
+					preset: 'comfort',
+					heating_setpoint: 23,
+					cooling_setpoint: null,
+					override_id: override.id,
+					expires_at: override.expires_at,
+				},
+			});
+			const persisted = (await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }))
+				.comfort.temporary_override;
+			expect(persisted).toEqual({ ...override, wall_watermark_ms: expect.any(Number) as number });
+		},
+	);
+
+	it.each(['selection', 'definition'] as const)(
+		'returns exact independent %s A HTTP after ACK while completed native B wins latest',
+		async (kind) => {
+			const id = await seed(),
+				input = await fences(id),
+				comfort = module.get(VirtualThermostatComfortService);
+			const source = await new SqliteDataSource({
+				type: 'sqlite',
+				database: database.options.database as string,
+				entities: [sourceRoot + '/**/*.entity.ts'],
+			}).initialize();
+			const lock = new DeviceStructureLockService(),
+				graph = new VirtualDependencyGraphService(source),
+				events = new EventEmitter2();
+			const claims = new VirtualThermostatClaimsService(
+				source,
+				lock,
+				graph,
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+			);
+			const other = new VirtualThermostatComfortService(source, lock, graph, claims, events);
+			try {
+				await new VirtualThermostatOwnershipSubscriber(source, claims).onApplicationBootstrap();
+				await claims.onApplicationBootstrap();
+				expect(lock).not.toBe(module.get(DeviceStructureLockService));
+				expect(Reflect.get(source.driver, 'databaseConnection')).not.toBe(
+					Reflect.get(database.driver, 'databaseConnection'),
+				);
+				const realGet = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
+				let bSuccess = 0;
+				const final = jest.spyOn(comfort, 'get').mockImplementationOnce(async (controller) => {
+					await other.select(
+						id,
+						{ expected_revision: 2, expected_graph_revision: input.expected_graph_revision + 1 },
+						'away',
+						false,
+					);
+					bSuccess++;
+					return realGet(controller);
+				});
+				const response =
+					kind === 'selection'
+						? await post(id, { ...input, preset: 'eco', clear_user_off: false }).expect(201)
+						: await put(id, { ...input, ...definition() }).expect(200);
+				expect(bSuccess).toBe(1);
+				expect(final).toHaveBeenCalledTimes(1);
+				expect((response.body as { data: unknown }).data).toEqual(
+					kind === 'selection' ? expected(id, input, baseConfiguration(), 'eco') : definitionExpected(id, input),
+				);
+				final.mockRestore();
+				const latest = await get(id).expect(200);
+				expect((latest.body as { data: unknown }).data).toEqual(
+					kind === 'selection'
+						? expected(
+								id,
+								{ expected_revision: 2, expected_graph_revision: input.expected_graph_revision + 1 },
+								baseConfiguration(),
+								'away',
+							)
+						: definitionExpected(
+								id,
+								{ expected_revision: 2, expected_graph_revision: input.expected_graph_revision + 1 },
+								'away',
+							),
+				);
+				const durable = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				if (kind === 'definition') expect(durable.comfort).toEqual({ ...defined(), selected_preset: 'away' });
+				expect(
+					(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).revision,
+				).toBe(3);
+			} finally {
+				claims.onModuleDestroy();
+				await source.destroy();
+			}
+		},
+	);
 });

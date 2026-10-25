@@ -25,10 +25,22 @@ import {
 } from './virtual-thermostat-comfort.utils';
 
 interface SelectionInput extends ThermostatComfortFence {
+	readonly kind: 'selection';
 	readonly id: string;
 	readonly preset: ThermostatPreset | null;
 	readonly clearUserOff: boolean;
 }
+type Definition = Pick<ThermostatComfortConfiguration, 'heating_range' | 'cooling_range' | 'presets'> & {
+	automation_enabled?: boolean | null;
+};
+interface DefinitionInput extends ThermostatComfortFence {
+	readonly kind: 'definition';
+	readonly id: string;
+	readonly definition: Pick<Definition, 'heating_range' | 'cooling_range' | 'presets'> & {
+		readonly automation: 'preserve' | 'enable' | 'disable';
+	};
+}
+type ComfortInput = SelectionInput | DefinitionInput;
 interface SelectionResult {
 	controller: string;
 	revision: number;
@@ -50,7 +62,7 @@ function revision(value: number, minimum: number, capacity = false): boolean {
 	return Number.isSafeInteger(value) && value >= minimum && (!capacity || value < Number.MAX_SAFE_INTEGER);
 }
 
-/** Concrete selection only. Receipt/result presence survives transaction, release and final-read errors. */
+/** Closed selection/definition intents only. Receipt/result presence survives transaction, release and final-read errors. */
 export class ThermostatSelectionSettlement {
 	receipt?: SqliteCommitGuardReceipt;
 	result?: Readonly<{ value: SelectionResult }>;
@@ -93,29 +105,107 @@ function pin(database: DataSource) {
 	const check = () => {
 		if (!current()) refuse();
 	};
+	// DTO prototypes and own undefined are ordinary inputs. Read only this finite schema,
+	// caching by object AND field so aliases (including fence/definition aliases) read once.
+	const reader = () => {
+		const cache = new Map<object, Map<string, unknown>>();
+		return (object: unknown, field: string): unknown => {
+			if (!object || typeof object !== 'object') refuse('Invalid thermostat definition structure.');
+			let fields = cache.get(object);
+			if (!fields) cache.set(object, (fields = new Map<string, unknown>()));
+			if (!fields.has(field)) fields.set(field, Reflect.get(object, field));
+			return fields.get(field);
+		};
+	};
+	const record = (value: unknown): object => {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) refuse('Invalid thermostat definition structure.');
+		return value;
+	};
+	const fences = (id: string, fence: ThermostatComfortFence, read: ReturnType<typeof reader>) => {
+		record(fence);
+		const expected_revision = read(fence, 'expected_revision');
+		const expected_graph_revision = read(fence, 'expected_graph_revision');
+		if (
+			typeof id !== 'string' ||
+			!id ||
+			typeof expected_revision !== 'number' ||
+			!revision(expected_revision, 1) ||
+			typeof expected_graph_revision !== 'number' ||
+			!revision(expected_graph_revision, 0)
+		)
+			refuse('Invalid thermostat selection or revision fences.');
+		return { expected_revision, expected_graph_revision };
+	};
 	return Object.freeze({
 		current,
 		input(id: string, fence: ThermostatComfortFence, preset: ThermostatPreset | null, clearUserOff: boolean) {
 			const input: SelectionInput = Object.freeze({
+				kind: 'selection',
 				id,
-				expected_revision: fence.expected_revision,
-				expected_graph_revision: fence.expected_graph_revision,
+				...fences(id, fence, reader()),
 				preset,
 				clearUserOff,
 			});
 			check();
-			if (
-				typeof id !== 'string' ||
-				!id ||
-				!revision(input.expected_revision, 1) ||
-				!revision(input.expected_graph_revision, 0) ||
-				(preset !== null && !['comfort', 'eco', 'away'].includes(preset)) ||
-				typeof clearUserOff !== 'boolean'
-			)
+			if ((preset !== null && !['comfort', 'eco', 'away'].includes(preset)) || typeof clearUserOff !== 'boolean')
 				refuse('Invalid thermostat selection or revision fences.');
 			return input;
 		},
-		operation(input: SelectionInput, ownerCurrent: () => boolean, dispatchCurrent: () => boolean) {
+		definitionInput(id: string, fence: ThermostatComfortFence, definition: Definition): DefinitionInput {
+			record(definition);
+			const read = reader();
+			const capturedFence = fences(id, fence, read);
+			const number = (value: unknown): number => {
+				if (typeof value !== 'number' || !Number.isFinite(value)) refuse('Invalid thermostat definition number.');
+				return value;
+			};
+			const range = (value: unknown) =>
+				value === null
+					? null
+					: {
+							minimum: number(read(record(value), 'minimum')),
+							maximum: number(read(value, 'maximum')),
+						};
+			const heating_range = range(read(definition, 'heating_range'));
+			const cooling_range = range(read(definition, 'cooling_range'));
+			const entries = read(definition, 'presets');
+			if (!Array.isArray(entries)) refuse('Invalid thermostat definition presets.');
+			const length = read(entries, 'length');
+			if (typeof length !== 'number' || !Number.isInteger(length) || length < 0 || length > 3)
+				refuse('Invalid thermostat definition presets.');
+			const presets: ThermostatComfortConfiguration['presets'] = [];
+			for (let index = 0; index < length; index++) {
+				if (!Object.hasOwn(entries, index)) refuse('Invalid thermostat definition preset entry.');
+				const entry = record(read(entries, String(index)));
+				const preset = read(entry, 'preset');
+				if (preset !== 'comfort' && preset !== 'eco' && preset !== 'away')
+					refuse('Invalid thermostat definition preset.');
+				const setpoints = record(read(entry, 'setpoints'));
+				const heating = read(setpoints, 'heating_setpoint');
+				const cooling = read(setpoints, 'cooling_setpoint');
+				presets.push({
+					preset,
+					setpoints: {
+						heating_setpoint: heating === null ? null : number(heating),
+						cooling_setpoint: cooling === null ? null : number(cooling),
+					},
+				});
+			}
+			const enabled = read(definition, 'automation_enabled');
+			if (enabled !== undefined && enabled !== null && typeof enabled !== 'boolean')
+				refuse('Invalid thermostat automation flag.');
+			const automation = enabled === true ? 'enable' : enabled === false ? 'disable' : 'preserve';
+			const payload = detach({
+				heating_range,
+				cooling_range,
+				presets,
+				automation,
+			}) as unknown as DefinitionInput['definition'];
+			check();
+			return Object.freeze({ kind: 'definition', id, ...capturedFence, definition: payload });
+		},
+		operation(input: ComfortInput, ownerCurrent: () => boolean, dispatchCurrent: () => boolean) {
+			if (input.kind !== 'selection' && input.kind !== 'definition') refuse('Invalid thermostat comfort intent kind.');
 			const settlement = new ThermostatSelectionSettlement();
 			let ready = false;
 			let original: EntityManager | undefined;
@@ -185,11 +275,30 @@ function pin(database: DataSource) {
 						!revision(row.revision, 1, true)
 					)
 						refuse('Thermostat is missing, detached, locked or its revision changed/overflowed.');
-					if (!row.comfort) refuse('Configure explicit comfort ranges and presets first.');
-					// ownedJson rejects non-JSON and recursively freezes the retained value; mutate a fresh copy.
-					const intended = JSON.parse(serialize(row.comfort)) as ThermostatComfortConfiguration;
-					intended.selected_preset = input.preset;
-					if (input.clearUserOff) intended.user_off = false;
+					let intended: ThermostatComfortConfiguration;
+					if (input.kind === 'selection') {
+						if (!row.comfort) refuse('Configure explicit comfort ranges and presets first.');
+						intended = JSON.parse(serialize(row.comfort)) as ThermostatComfortConfiguration;
+						intended.selected_preset = input.preset;
+						if (input.clearUserOff) intended.user_off = false;
+					} else {
+						const definition = input.definition;
+						const old = row.comfort;
+						// Exact configure merge, before reserved-policy validation. No new arbitration authority.
+						intended = {
+							heating_range: definition.heating_range,
+							cooling_range: definition.cooling_range,
+							presets: definition.presets,
+							selected_preset: old?.selected_preset ?? null,
+							user_off: old?.user_off ?? row.requestedMode === 'off',
+							automation_enabled:
+								definition.automation === 'preserve'
+									? (old?.automation_enabled ?? false)
+									: definition.automation === 'enable',
+							automation_baseline: definition.automation === 'disable' ? null : (old?.automation_baseline ?? null),
+							temporary_override: old?.temporary_override ?? null,
+						};
+					}
 					const errors = validate(intended, row.policy);
 					if (errors.length) refuse(errors.join(', '));
 					const intendedJson = serialize(intended);
