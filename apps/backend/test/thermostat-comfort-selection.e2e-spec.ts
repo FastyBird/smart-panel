@@ -101,6 +101,7 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 	let database: DataSource;
 	let directory: string;
 	let token: string;
+	let closedCase: { directory: string; database: DataSource; runtime: VirtualThermostatRuntimeService } | undefined;
 	const keys = ['NODE_ENV', 'FB_DB_PATH', 'FB_CONFIG_PATH', 'FB_DB_SYNC', 'FB_DB_MIGRATIONS_RUN'];
 	let environment: Record<string, string | undefined>;
 	const sourceRoot = path.resolve(__dirname, '../src');
@@ -244,9 +245,22 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
 		};
 	}
-	beforeAll(async () => {
+	// Controllers, runtime timer/queues and clocks belong to one test case, including each it.each variant.
+	// A later case must never inherit an earlier controller's structural maintenance in its SQLite graph.
+	beforeEach(async () => {
+		app = undefined;
+		module = undefined;
+		database = undefined;
+		directory = undefined;
+		if (closedCase) {
+			expect(closedCase.database.isInitialized).toBe(false);
+			expect((Reflect.get(closedCase.runtime, 'queues') as Map<string, unknown>).size).toBe(0);
+			expect((Reflect.get(closedCase.runtime, 'contexts') as Map<string, unknown>).size).toBe(0);
+			expect(Reflect.get(closedCase.runtime, 'active')).toBe(false);
+		}
 		environment = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 		directory = mkdtempSync(path.join(tmpdir(), 'p06a-http-'));
+		if (closedCase) expect(directory).not.toBe(closedCase.directory);
 		Object.assign(process.env, {
 			NODE_ENV: 'production',
 			FB_DB_PATH: directory,
@@ -287,6 +301,10 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 		app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 		useContainer(module, { fallbackOnErrors: true });
 		await app.init();
+		const runtime = module.get(VirtualThermostatRuntimeService);
+		expect(Reflect.get(runtime, 'active')).toBe(true);
+		expect((Reflect.get(runtime, 'contexts') as Map<string, unknown>).size).toBe(0);
+		expect((Reflect.get(runtime, 'queues') as Map<string, unknown>).size).toBe(0);
 		expect(database.subscribers.some((subscriber) => subscriber instanceof VirtualThermostatOwnershipSubscriber)).toBe(
 			true,
 		);
@@ -302,12 +320,22 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 	});
 	afterEach(async () => {
 		jest.restoreAllMocks();
-		await module?.get(VirtualThermostatRuntimeService).flush();
-	});
-	afterAll(async () => {
+		const runtime = module?.get(VirtualThermostatRuntimeService);
 		try {
-			await module?.get(VirtualThermostatRuntimeService).flush();
-			await app?.close();
+			try {
+				// Preserve the existing maintenance join, now scoped to this case's actual application.
+				await runtime?.flush();
+			} finally {
+				if (app) await app.close();
+				else await module?.close();
+			}
+			if (database && runtime) {
+				expect(database.isInitialized).toBe(false);
+				expect((Reflect.get(runtime, 'queues') as Map<string, unknown>).size).toBe(0);
+				expect((Reflect.get(runtime, 'contexts') as Map<string, unknown>).size).toBe(0);
+				expect(Reflect.get(runtime, 'active')).toBe(false);
+				closedCase = { directory, database, runtime };
+			}
 		} finally {
 			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
 			for (const key of keys) {
