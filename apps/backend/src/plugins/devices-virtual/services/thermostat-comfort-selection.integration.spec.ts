@@ -3048,4 +3048,836 @@ describe('manual thermostat selection: reserved native intent', () => {
 			});
 		});
 	});
+	describe('release-request native intent', () => {
+		type ReleaseImage = NonNullable<ThermostatSelectionSettlement['releaseResult']>['value'];
+		let clockDescriptor: PropertyDescriptor;
+		let instant: number;
+		let property: string;
+		let configs: VirtualThermostatConfigService;
+		const policy = () => ({
+			heatingSetpoint: 20,
+			coolingSetpoint: null,
+			coldTolerance: 0.5,
+			hotTolerance: 0.5,
+			neutralMargin: 1,
+			minimumOffMs: 0,
+			changeoverMs: 0,
+			floor: null,
+		});
+		const retainedComfort = () => ({
+			...configuration(),
+			selected_preset: 'eco' as const,
+			automation_enabled: true,
+			automation_baseline: { preset: 'away' as const, setpoints: null, actor_id: 'bridge', revision: 19 },
+			temporary_override: null,
+		});
+		const expectedConfig = (revision = 2, time = instant, owner: string | null = id) => ({
+			controllerId: id,
+			displayFloorClaimId: 'a-bound',
+			ownerDeviceId: owner,
+			schemaVersion: 1,
+			revision,
+			requestedMode: 'off',
+			controlStrategy: 'guarded_branches',
+			locked: true,
+			comfort: retainedComfort(),
+			policy: policy(),
+			heuristic: null,
+			contactOpeningMs: 123,
+			contactClosingMs: 456,
+			configuredAt: wall,
+			releaseRequestedAt: time,
+		});
+		const expectedClaim = (name: string, state: 'reserved' | 'missing' | 'released' = 'reserved') => ({
+			id: name,
+			controllerId: id,
+			role: 'heating' as const,
+			physicalIdentity: 'physical-' + name,
+			providerProfile: 'shelly-ng.guarded-switch',
+			providerProfileVersion: 1,
+			sourcePropertyId: state === 'reserved' ? property : null,
+			sourcePropertyIdentity: 'property-' + name,
+			sourceDeviceId: state === 'reserved' ? id : null,
+			sourceDeviceIdentity: 'device-' + name,
+			contractFingerprint: 'contract-' + name,
+			revision: 7,
+			qualificationGeneration: 'generation-' + name,
+			state,
+			leaseSeconds: 17.5,
+			reason: 'retained-' + name,
+			releaseRequestedAt: wall - 700,
+			releasedAt: wall - 400,
+			releaseEvidence: { evidenceId: 'retained-' + name, outputConfirmedOff: true },
+		});
+		const seedClaims = () => [
+			expectedClaim('a-bound'),
+			expectedClaim('b-missing', 'missing'),
+			expectedClaim('c-history', 'released'),
+		];
+		const expectedSelected = (revision = 8, time = instant) =>
+			seedClaims()
+				.slice(0, 2)
+				.map((claim) => ({
+					...claim,
+					state: claim.sourcePropertyId ? 'releasing' : 'missing',
+					revision,
+					releaseRequestedAt: time,
+					reason: 'explicit_release_requested',
+				}));
+		const observedClaims = async () =>
+			(
+				await database.manager.find(VirtualThermostatActuatorClaimEntity, {
+					where: { controllerId: id },
+					order: { id: 'ASC' },
+				})
+			).map((claim) => ({
+				id: claim.id,
+				controllerId: claim.controllerId,
+				role: claim.role,
+				physicalIdentity: claim.physicalIdentity,
+				providerProfile: claim.providerProfile,
+				providerProfileVersion: claim.providerProfileVersion,
+				sourcePropertyId: claim.sourcePropertyId,
+				sourcePropertyIdentity: claim.sourcePropertyIdentity,
+				sourceDeviceId: claim.sourceDeviceId,
+				sourceDeviceIdentity: claim.sourceDeviceIdentity,
+				contractFingerprint: claim.contractFingerprint,
+				revision: claim.revision,
+				qualificationGeneration: claim.qualificationGeneration,
+				state: claim.state,
+				leaseSeconds: claim.leaseSeconds,
+				reason: claim.reason,
+				releaseRequestedAt: claim.releaseRequestedAt?.getTime() ?? null,
+				releasedAt: claim.releasedAt?.getTime() ?? null,
+				releaseEvidence: claim.releaseEvidence,
+			}));
+		const observedConfig = async () => {
+			const config = await row();
+			const scalars = { ...config };
+			delete scalars.ownerDevice;
+			return {
+				...scalars,
+				configuredAt: config.configuredAt.getTime(),
+				releaseRequestedAt: config.releaseRequestedAt?.getTime() ?? null,
+			};
+		};
+		function observeImages(after?: () => Promise<void>) {
+			const images: ReleaseImage[] = [];
+			const original = graph.withComfortSelectionWrite.bind(
+				graph,
+			) as VirtualDependencyGraphService['withComfortSelectionWrite'];
+			jest.spyOn(graph, 'withComfortSelectionWrite').mockImplementation(async (write, fence, admit, accepted, kind) => {
+				const result = await original(
+					async (manager) => {
+						const value = await write(manager);
+						if (kind === 'release-request') images.push(value as ReleaseImage);
+						return value;
+					},
+					fence,
+					admit,
+					accepted,
+					kind,
+				);
+				await after?.();
+				return result;
+			});
+			return images;
+		}
+		beforeEach(async () => {
+			instant = wall + 1234;
+			clockDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Date');
+			const OriginalDate = Date;
+			class ReservedDate extends OriginalDate {
+				constructor(value: string | number = instant) {
+					super(value);
+				}
+			}
+			Object.defineProperty(globalThis, 'Date', { ...clockDescriptor, value: ReservedDate });
+			const channel = randomUUID();
+			property = randomUUID();
+			await database.manager.insert(VirtualChannelEntity, {
+				id: channel,
+				device: id,
+				name: 'source',
+				category: ChannelCategory.HEATER,
+			});
+			await database.manager.insert(VirtualChannelPropertyEntity, {
+				id: property,
+				channel,
+				identifier: 'on',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+				valueOrigin: VirtualValueOrigin.LOCAL,
+			});
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: id },
+				{
+					displayFloorClaimId: 'a-bound',
+					locked: true,
+					comfort: retainedComfort(),
+					contactOpeningMs: 123,
+					contactClosingMs: 456,
+				},
+			);
+			for (const claim of seedClaims())
+				await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+					...claim,
+					releaseRequestedAt: new Date(claim.releaseRequestedAt),
+					releasedAt: new Date(claim.releasedAt),
+				});
+			configs = new VirtualThermostatConfigService(database, lock, graph, claims, events, {} as PropertyValueService);
+		});
+		afterEach(() => Object.defineProperty(globalThis, 'Date', clockDescriptor));
+		it('owns all fifteen/nineteen columns and complete membership, repeats and rejects a stale fence', async () => {
+			const images = observeImages(),
+				g = await graph.revision();
+			await configs.requestRelease(id, 1);
+			expect(await observedConfig()).toEqual(expectedConfig());
+			expect(await observedClaims()).toEqual([...expectedSelected(), expectedClaim('c-history', 'released')]);
+			expect(images[0]).toEqual({
+				input: { kind: 'release-request', id, expectedRevision: 1 },
+				configuration: expectedConfig(),
+				claims: expectedSelected(),
+				claimIds: ['a-bound', 'b-missing'],
+				graph_revision: g + 1,
+				timestamp: instant,
+			});
+			expect(Object.isFrozen(images[0].configuration.comfort.presets[0].setpoints)).toBe(true);
+			expect(Object.isFrozen(images[0].claims[0].releaseEvidence)).toBe(true);
+			instant += 1000;
+			await configs.requestRelease(id, 2);
+			expect(await observedConfig()).toEqual(expectedConfig(3));
+			expect(await observedClaims()).toEqual([...expectedSelected(9), expectedClaim('c-history', 'released')]);
+			await expect(configs.requestRelease(id, 2)).rejects.toThrow('revision');
+			expect(await graph.revision()).toBe(g + 2);
+		});
+		it('retains disabled locked nullable-owner remediation and zero membership', async () => {
+			await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { ownerDeviceId: null });
+			await database.manager.update(VirtualDeviceEntity, { id }, { enabled: false });
+			await configs.requestRelease(id, 1);
+			expect(await observedConfig()).toEqual(expectedConfig(2, instant, null));
+			await database.manager.delete(VirtualThermostatActuatorClaimEntity, { controllerId: id });
+			await database.manager.delete(VirtualDeviceEntity, { id });
+			await configs.requestRelease(id, 2);
+			expect(await observedConfig()).toEqual(expectedConfig(3, instant, null));
+			expect(await observedClaims()).toEqual([]);
+		});
+		it.each(['active', 'clock_uncertain'] as const)(
+			'preserves full %s override and protective metadata without revalidating release eligibility',
+			async (status) => {
+				const comfort = {
+					...retainedComfort(),
+					temporary_override: {
+						id: 'retained-override',
+						source: 'user' as const,
+						actor_id: 'operator',
+						revision: 4,
+						created_at: new Date(wall - 2000).toISOString(),
+						expires_at: new Date(wall + 60000).toISOString(),
+						original_duration_ms: 62000,
+						wall_watermark_ms: wall,
+						preset: 'comfort' as const,
+						setpoints: null,
+						resolved_setpoints: { heating_setpoint: 23, cooling_setpoint: null },
+						status,
+						terminated_at: null,
+					},
+				};
+				const protective = {
+					...policy(),
+					floor: { limit: 35, recoveryHysteresis: 2 },
+					minimumOffMs: 1200,
+					changeoverMs: 5000,
+				};
+				const heuristic = {
+					sampleWindowMs: 60000,
+					minimumSamples: 3,
+					minimumSpanMs: 20000,
+					maximumSampleAgeMs: 30000,
+					slopeThresholdCPerMinute: 2,
+					confirmationMs: 10000,
+					recoveryMs: 20000,
+					maximumPauseMs: 120000,
+					cooldownMs: 30000,
+				};
+				await database.manager.update(
+					VirtualThermostatConfigEntity,
+					{ controllerId: id },
+					{ comfort, policy: protective, heuristic },
+				);
+				await configs.requestRelease(id, 1);
+				expect(await observedConfig()).toEqual({ ...expectedConfig(), comfort, policy: protective, heuristic });
+				expect(await observedClaims()).toEqual([...expectedSelected(), expectedClaim('c-history', 'released')]);
+			},
+		);
+		it('includes suspended and empty bound-source claims with original truthiness and unchanged scalar metadata', async () => {
+			const channel = randomUUID();
+			await database.manager.insert(VirtualChannelEntity, {
+				id: channel,
+				device: id,
+				name: 'empty source',
+				category: ChannelCategory.HEATER,
+			});
+			await database.manager.insert(VirtualChannelPropertyEntity, {
+				id: '',
+				channel,
+				identifier: 'on',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+				valueOrigin: VirtualValueOrigin.LOCAL,
+			});
+			await database.query(
+				'UPDATE "devices_virtual_thermostat_actuator_claims" SET "state" = ?, "sourcePropertyId" = ?, "leaseSeconds" = ?, "providerProfileVersion" = ?, "qualificationGeneration" = ? WHERE "id" = ?',
+				['suspended', '', Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER, null, 'b-missing'],
+			);
+			const before = await observedClaims();
+			expect(before).toEqual([
+				expectedClaim('a-bound'),
+				{
+					...expectedClaim('b-missing', 'missing'),
+					state: 'suspended',
+					sourcePropertyId: '',
+					leaseSeconds: Number.POSITIVE_INFINITY,
+					providerProfileVersion: Number.MAX_SAFE_INTEGER,
+					qualificationGeneration: null,
+				},
+				expectedClaim('c-history', 'released'),
+			]);
+			expect(before[1].leaseSeconds).toBe(Number.POSITIVE_INFINITY);
+			expect(Number.isFinite(before[1].leaseSeconds)).toBe(false);
+			expect(await observedConfig()).toEqual({ ...expectedConfig(1), requestedMode: 'heat', releaseRequestedAt: null });
+			await configs.requestRelease(id, 1);
+			expect(await observedConfig()).toEqual(expectedConfig());
+			expect(await observedClaims()).toEqual([
+				expectedSelected()[0],
+				{
+					...expectedSelected()[1],
+					sourcePropertyId: '',
+					leaseSeconds: Number.POSITIVE_INFINITY,
+					providerProfileVersion: Number.MAX_SAFE_INTEGER,
+					qualificationGeneration: null,
+				},
+				expectedClaim('c-history', 'released'),
+			]);
+		});
+		it.each(['configuration', 'claim', 'graph'] as const)(
+			'refuses changed %s counter capacity without partial intent',
+			async (counter) => {
+				if (counter === 'configuration')
+					await database.manager.update(
+						VirtualThermostatConfigEntity,
+						{ controllerId: id },
+						{ revision: Number.MAX_SAFE_INTEGER },
+					);
+				if (counter === 'claim')
+					await database.manager.update(
+						VirtualThermostatActuatorClaimEntity,
+						{ id: 'b-missing' },
+						{ revision: Number.MAX_SAFE_INTEGER },
+					);
+				if (counter === 'graph')
+					await database.query('INSERT OR REPLACE INTO devices_virtual_graph_revision (id, revision) VALUES (1, ?)', [
+						Number.MAX_SAFE_INTEGER,
+					]);
+				const configBefore = await observedConfig(),
+					claimsBefore = await observedClaims(),
+					g = await graph.revision();
+				await expect(
+					configs.requestRelease(id, counter === 'configuration' ? Number.MAX_SAFE_INTEGER : 1),
+				).rejects.toThrow('overflow');
+				expect(await observedConfig()).toEqual(configBefore);
+				expect(await observedClaims()).toEqual(claimsBefore);
+				expect(await graph.revision()).toBe(g);
+			},
+		);
+		it.each(['cas', 'metadata', 'membership'] as const)(
+			'rolls back every row on real same-manager %s interference',
+			async (fault) => {
+				const initialConfig = await observedConfig(),
+					initialClaims = await observedClaims(),
+					g = await graph.revision();
+				let drifted = false,
+					admitted: EntityManager;
+				const original = graph.withComfortSelectionWrite.bind(
+					graph,
+				) as VirtualDependencyGraphService['withComfortSelectionWrite'];
+				jest.spyOn(graph, 'withComfortSelectionWrite').mockImplementation((write, fence, admit, accepted, kind) =>
+					original(
+						write,
+						fence,
+						(manager) => {
+							admitted = manager;
+							admit(manager);
+						},
+						accepted,
+						kind,
+					),
+				);
+				database.subscribers.push({
+					listenTo: () => (fault === 'metadata' ? VirtualThermostatActuatorClaimEntity : VirtualThermostatConfigEntity),
+					afterUpdate: async (event) => {
+						if (drifted) return;
+						drifted = true;
+						expect(event.manager).toBe(admitted);
+						if (fault === 'membership')
+							await event.manager.insert(VirtualThermostatActuatorClaimEntity, {
+								...expectedClaim('extra', 'missing'),
+								releaseRequestedAt: null,
+								releasedAt: null,
+							});
+						else
+							await event.manager
+								.createQueryBuilder()
+								.update(VirtualThermostatActuatorClaimEntity)
+								.set(fault === 'cas' ? { revision: 99 } : { leaseSeconds: 31.25 })
+								.where({ id: fault === 'cas' ? 'b-missing' : 'a-bound' })
+								.callListeners(false)
+								.execute();
+					},
+				});
+				await expect(configs.requestRelease(id, 1)).rejects.toThrow(
+					fault === 'cas' ? 'conditional claim' : 'unexpected complete postimage',
+				);
+				expect(drifted).toBe(true);
+				expect(await observedConfig()).toEqual(initialConfig);
+				expect(await observedClaims()).toEqual(initialClaims);
+				expect(await graph.revision()).toBe(g);
+			},
+		);
+		it('retains released history and nonempty related tables at the direct native A seam', async () => {
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_settings (propertyId,controllerId,setting,contractFingerprint) VALUES (?,?,'heating_enabled','retained')`,
+				[property, id],
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_member_protection (claimId,revision,sourcePropertyIdentity,physicalPropertyIdentity,contractFingerprint,maximumAgeSeconds) VALUES ('a-bound',4,'floor','floor-leaf','floor-contract',30)`,
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_cooling_dependencies (claimId,revision,dewPointIdentity,dewPointFingerprint,surfaceIdentity,physicalSurfaceIdentity,surfaceFingerprint,maximumAgeSeconds) VALUES ('a-bound',5,'dew','dew-contract','surface','surface-leaf','surface-contract',30)`,
+			);
+			await database.query(
+				`INSERT INTO devices_virtual_thermostat_command_journal (id,controllerId,claimId,claimRevision,configurationRevision,decisionRevision,action,status,preparedAt) VALUES ('journal',?,'a-bound',7,1,7,'on','unknown',CURRENT_TIMESTAMP)`,
+				[id],
+			);
+			const tables = [
+				'devices_virtual_thermostat_settings',
+				'devices_virtual_thermostat_member_protection',
+				'devices_virtual_thermostat_cooling_dependencies',
+				'devices_virtual_thermostat_command_journal',
+			];
+			const snapshot = async (manager: EntityManager) => {
+				const result: Record<string, unknown[]> = {};
+				for (const table of tables)
+					result[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+				result.history = await manager.query<unknown[]>(
+					`SELECT * FROM devices_virtual_thermostat_actuator_claims WHERE id='c-history'`,
+				);
+				return result;
+			};
+			const before = await snapshot(database.manager);
+			let seam: typeof before;
+			let admitted: EntityManager;
+			let targetCount = 0;
+			const originalGraph = graph.withComfortSelectionWrite.bind(
+				graph,
+			) as VirtualDependencyGraphService['withComfortSelectionWrite'];
+			jest.spyOn(graph, 'withComfortSelectionWrite').mockImplementation((write, fence, admit, accepted, kind) =>
+				originalGraph(
+					write,
+					fence,
+					function (this: unknown, manager: EntityManager) {
+						Reflect.apply(admit, this, [manager]);
+						admitted = manager;
+					},
+					accepted,
+					kind,
+				),
+			);
+			for (const records of Object.values(before)) expect(records.length).toBeGreaterThan(0);
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query !== 'COMMIT' || event.manager !== admitted || event.queryRunner !== admitted.queryRunner)
+						return;
+					targetCount++;
+					expect(targetCount).toBe(1);
+					seam = await snapshot(event.manager);
+				},
+			});
+			await configs.requestRelease(id, 1);
+			expect(targetCount).toBe(1);
+			expect(seam).toEqual(before);
+			expect(await observedClaims()).toEqual([...expectedSelected(), expectedClaim('c-history', 'released')]);
+		});
+		it('waits for actual native ACK and runs the complete captured ordinary lifecycle in order', async () => {
+			const order: string[] = [],
+				submitted = gate(),
+				releaseACK = gate();
+			let graphReturned = false;
+			let admitted: EntityManager;
+			let targetArmed = false;
+			let targetCount = 0;
+			let targetSubmissions = 0;
+			let targetCallbacks = 0;
+			let nonTargetCommits = 0;
+			let callbackWork: Promise<void> | undefined;
+			const connection = native(),
+				all = connection.all.bind(connection) as NativeConnection['all'];
+			database.subscribers.push({
+				beforeQuery: (event) => {
+					if (event.query !== 'COMMIT' || event.manager !== admitted || event.queryRunner !== admitted.queryRunner)
+						return;
+					expect(native()).toBe(connection);
+					targetCount++;
+					expect(targetCount).toBe(1);
+					expect(targetArmed).toBe(false);
+					targetArmed = true;
+				},
+			});
+			jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
+				if (sql !== 'COMMIT' || !targetArmed) {
+					if (sql === 'COMMIT') nonTargetCommits++;
+					return all(sql, parameters, callback);
+				}
+				targetArmed = false;
+				targetSubmissions++;
+				return all(sql, parameters, function (error, rows) {
+					targetCallbacks++;
+					if (error) {
+						callback.call(this, error, rows);
+						return;
+					}
+					submitted.resolve();
+					callbackWork = releaseACK.promise.then(() => {
+						order.push('ACK');
+						callback.call(this, error, rows);
+					});
+				});
+			});
+			const originalGraph = graph.withComfortSelectionWrite.bind(
+				graph,
+			) as VirtualDependencyGraphService['withComfortSelectionWrite'];
+			jest.spyOn(graph, 'withComfortSelectionWrite').mockImplementation(async (write, fence, admit, accepted, kind) => {
+				const value = await originalGraph(
+					write,
+					fence,
+					function (this: unknown, manager: EntityManager) {
+						Reflect.apply(admit, this, [manager]);
+						admitted = manager;
+					},
+					accepted,
+					kind,
+				);
+				graphReturned = true;
+				order.push('graph');
+				return value;
+			});
+			const hold = claims.holdRecoveryFence.bind(claims) as VirtualThermostatClaimsService['holdRecoveryFence'];
+			jest.spyOn(claims, 'holdRecoveryFence').mockImplementation(() => {
+				order.push('hold');
+				const release = hold();
+				return () => {
+					order.push('release');
+					release();
+				};
+			});
+			const revoke = claims.revokeAllQualifications.bind(
+				claims,
+			) as VirtualThermostatClaimsService['revokeAllQualifications'];
+			jest.spyOn(claims, 'revokeAllQualifications').mockImplementation(() => {
+				if (!order.includes('entry')) order.push('revoke');
+				revoke();
+			});
+			events.on(THERMOSTAT_CONFIG_CHANGED, () => order.push(graphReturned ? 'event' : 'entry'));
+			const invalidate = claims.invalidate.bind(claims) as VirtualThermostatClaimsService['invalidate'];
+			jest.spyOn(claims, 'invalidate').mockImplementation(() => {
+				if (graphReturned && !order.includes('release')) order.push('invalidate');
+				invalidate();
+			});
+			const refresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+			jest.spyOn(claims, 'refresh').mockImplementation(async () => {
+				if (graphReturned) order.push('refresh');
+				await refresh();
+			});
+			const get = configs.get.bind(configs) as VirtualThermostatConfigService['get'];
+			const read = jest.spyOn(configs, 'get').mockImplementation(async (...args) => {
+				expect(lock.hasCurrentStructuralLease()).toBe(true);
+				order.push('get');
+				return get(...args);
+			});
+			const a = configs.requestRelease(id, 1);
+			let primary: { cause: unknown } | undefined;
+			let fallbackFired = false;
+			const fallback = setTimeout(() => {
+				fallbackFired = true;
+				releaseACK.resolve();
+			}, 2000);
+			try {
+				await Promise.race([
+					submitted.promise,
+					a.then(() => {
+						throw new Error('request completed without native hold');
+					}),
+				]);
+				expect(order).toEqual(['hold', 'revoke', 'entry']);
+				expect(read).not.toHaveBeenCalled();
+			} catch (cause: unknown) {
+				primary = { cause };
+			} finally {
+				releaseACK.resolve();
+				const request = await Promise.allSettled([a]);
+				const callbacks = await Promise.allSettled(callbackWork !== undefined ? [callbackWork] : []);
+				clearTimeout(fallback);
+				for (const result of [...request, ...callbacks])
+					if (!primary && result.status === 'rejected') primary = { cause: result.reason as unknown };
+			}
+			if (primary) throw primary.cause;
+			expect(fallbackFired).toBe(false);
+			expect(targetCount).toBe(1);
+			expect(targetSubmissions).toBe(1);
+			expect(targetCallbacks).toBe(1);
+			expect(targetArmed).toBe(false);
+			expect(nonTargetCommits).toBeGreaterThanOrEqual(1);
+			expect(order).toEqual([
+				'hold',
+				'revoke',
+				'entry',
+				'ACK',
+				'graph',
+				'invalidate',
+				'refresh',
+				'event',
+				'get',
+				'release',
+				'refresh',
+			]);
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+		it.each(['refusal', 'unknown', 'subscriber', 'release'] as const)(
+			'retains native %s cause/image/outcome without initial explicit phase',
+			async (fault) => {
+				let graphReturned = false;
+				const images = observeImages(() => {
+						graphReturned = true;
+						return Promise.resolve();
+					}),
+					connection = native(),
+					all = connection.all.bind(connection) as NativeConnection['all'];
+				let receipt: SqliteCommitGuardReceipt;
+				const failure = new Error('release ACK unavailable'),
+					originalOwner = Reflect.get(lock, 'hasCurrentStructuralLease');
+				const get = jest.spyOn(configs, 'get');
+				database.subscribers.push({
+					beforeTransactionCommit: (event) => {
+						receipt = observeSqliteOuterOutcome(event.manager);
+					},
+					beforeQuery: (event) => {
+						if (fault === 'refusal' && event.query === 'COMMIT') lock.hasCurrentStructuralLease = () => false;
+					},
+					afterTransactionCommit: (event) => {
+						if (fault === 'subscriber') throw JSON.parse('false') as unknown;
+						if (fault === 'release') {
+							const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void },
+								release = lease.release;
+							lease.release = () => {
+								lease.release = release;
+								release();
+								throw JSON.parse('false') as unknown;
+							};
+						}
+					},
+				});
+				jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
+					return all(sql, parameters, function (error, rows) {
+						callback.call(this, fault === 'unknown' && sql === 'COMMIT' && !error ? failure : error, rows);
+					});
+				});
+				let rejected: { cause: unknown };
+				try {
+					await configs.requestRelease(id, 1);
+				} catch (cause: unknown) {
+					rejected = { cause };
+				} finally {
+					lock.hasCurrentStructuralLease = originalOwner;
+				}
+				expect(rejected).toBeDefined();
+				if (fault === 'subscriber' || fault === 'release') expect(rejected.cause).toBe(false);
+				else
+					expect(rejected.cause).toMatchObject({
+						driverError: fault === 'unknown' ? failure : { name: 'SqliteCommitGuardRefusedError' },
+					});
+				expect(receipt.outcome).toBe(fault === 'refusal' ? 'refused' : fault === 'unknown' ? 'unknown' : 'committed');
+				expect(images[0].configuration).toEqual(expectedConfig());
+				expect(images[0].claims).toEqual(expectedSelected());
+				expect((await row()).revision).toBe(fault === 'refusal' ? 1 : 2);
+				expect(graphReturned).toBe(false);
+				expect(get).not.toHaveBeenCalled();
+			},
+		);
+		it('defers a native capture fault through original entry/cleanup despite entry method replacement', async () => {
+			const order: string[] = [],
+				successor = jest.fn();
+			const hold = claims.holdRecoveryFence.bind(claims) as VirtualThermostatClaimsService['holdRecoveryFence'];
+			jest.spyOn(claims, 'holdRecoveryFence').mockImplementation(() => {
+				order.push('hold');
+				const release = hold();
+				return () => {
+					order.push('release');
+					release();
+				};
+			});
+			jest.spyOn(claims, 'revokeAllQualifications').mockImplementation(() => {
+				order.push('revoke');
+			});
+			const refresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+			jest.spyOn(claims, 'refresh').mockImplementation(async () => {
+				order.push('refresh');
+				await refresh();
+			});
+			const replacement = Reflect.get(claims, 'refresh');
+			events.on(THERMOSTAT_CONFIG_CHANGED, () => {
+				order.push('entry');
+				claims.refresh = successor;
+			});
+			const descriptor = Object.getOwnPropertyDescriptor(database, 'driver');
+			Object.defineProperty(database, 'driver', {
+				configurable: true,
+				get: () => {
+					throw new Error('must not invoke accessor');
+				},
+			});
+			try {
+				await expect(configs.requestRelease(id, 1)).rejects.toThrow('Creation accessor is unsupported: driver');
+			} finally {
+				Object.defineProperty(database, 'driver', descriptor);
+				claims.refresh = replacement;
+			}
+			expect(order).toEqual(['hold', 'revoke', 'entry', 'release', 'refresh']);
+			expect(successor).not.toHaveBeenCalled();
+		});
+		it('keeps original pretry failure bypass and postACK get/release/final-refresh falsy precedence', async () => {
+			const release = jest.fn(),
+				hold = jest.spyOn(claims, 'holdRecoveryFence').mockReturnValue(release);
+			const emit = jest.spyOn(events, 'emit').mockImplementationOnce(() => {
+				throw JSON.parse('false') as unknown;
+			});
+			await expect(configs.requestRelease(id, 1)).rejects.toBe(false);
+			expect(release).not.toHaveBeenCalled();
+			emit.mockRestore();
+			hold.mockRestore();
+			const originalHold = claims.holdRecoveryFence.bind(claims) as VirtualThermostatClaimsService['holdRecoveryFence'];
+			let releaseThrows = false,
+				final = false;
+			jest.spyOn(claims, 'holdRecoveryFence').mockImplementation(() => {
+				const done = originalHold();
+				return () => {
+					done();
+					final = true;
+					if (releaseThrows) throw JSON.parse('null') as unknown;
+				};
+			});
+			const refresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+			const finalRefresh = jest.fn();
+			jest.spyOn(claims, 'refresh').mockImplementation(async () => {
+				if (final) {
+					finalRefresh();
+					throw JSON.parse('false') as unknown;
+				}
+				await refresh();
+			});
+			jest.spyOn(configs, 'get').mockRejectedValue(false);
+			await expect(configs.requestRelease(id, 1)).rejects.toBe(false);
+			expect(finalRefresh).toHaveBeenCalledTimes(1);
+			expect(await observedConfig()).toEqual(expectedConfig());
+			releaseThrows = true;
+			final = false;
+			await expect(configs.requestRelease(id, 2)).rejects.toBeNull();
+			expect(finalRefresh).toHaveBeenCalledTimes(1);
+			expect(await observedConfig()).toEqual(expectedConfig(3));
+		});
+		it('completes real independent B once before A only get while preserving full private A and entire latest A-service diagnostics', async () => {
+			const second = await open(),
+				attached = await attach(second);
+			expect(Reflect.get(second.driver, 'databaseConnection')).not.toBe(native());
+			expect(attached.lock).not.toBe(lock);
+			const b = new VirtualThermostatConfigService(
+				second,
+				attached.lock,
+				attached.graph,
+				attached.claims,
+				attached.events,
+				{} as PropertyValueService,
+			);
+			const g = await graph.revision(),
+				firstInstant = instant;
+			let bCompleted = 0;
+			const images = observeImages(async () => {
+				instant += 1000;
+				await b.requestRelease(id, 2);
+				bCompleted++;
+			});
+			const response = await configs.requestRelease(id, 1);
+			expect(bCompleted).toBe(1);
+			expect(await observedConfig()).toEqual(expectedConfig(3));
+			expect(await observedClaims()).toEqual([...expectedSelected(9), expectedClaim('c-history', 'released')]);
+			expect(images[0]).toEqual({
+				input: { kind: 'release-request', id, expectedRevision: 1 },
+				configuration: expectedConfig(2, firstInstant),
+				claims: expectedSelected(8, firstInstant),
+				claimIds: ['a-bound', 'b-missing'],
+				graph_revision: g + 1,
+				timestamp: firstInstant,
+			});
+			const publicClaim = (name: string, state: string, revision: number, time: number) => ({
+				cooling_diagnostics: null,
+				cooling_protection: null,
+				protection: null,
+				id: name,
+				group_identity: id + ':heating',
+				provider_profile: 'shelly-ng.guarded-switch',
+				provider_profile_version: 1,
+				role: 'heating',
+				source_property: name === 'a-bound' ? property : null,
+				source_identity: 'property-' + name,
+				physical_identity: 'physical-' + name,
+				revision,
+				qualification_generation: 'generation-' + name,
+				state,
+				lease_seconds: 17.5,
+				reason: name === 'c-history' ? 'retained-' + name : 'explicit_release_requested',
+				release_requested_at: new Date(time).toISOString(),
+				released_at: new Date(wall - 400).toISOString(),
+				release_evidence: { evidenceId: 'retained-' + name, outputConfirmedOff: true },
+			});
+			expect(response).toEqual({
+				display_floor_claim: 'a-bound',
+				controller: id,
+				schema_version: 1,
+				control_strategy: 'guarded_branches',
+				revision: 3,
+				graph_revision: g + 2,
+				requested_mode: 'off',
+				locked: true,
+				policy: policy(),
+				heuristic: null,
+				contact_opening_ms: 123,
+				contact_closing_ms: 456,
+				readiness: 'draft',
+				reasons: [
+					'controller_runtime_unavailable',
+					'heating_hardware_qualification_missing',
+					'heating_releasing',
+					'heating_actuator_missing',
+					'heating_hardware_qualification_missing',
+					'heating_missing',
+				],
+				sources: [],
+				actuators: [publicClaim('a-bound', 'releasing', 9, instant), publicClaim('b-missing', 'missing', 9, instant)],
+				released_actuators: [publicClaim('c-history', 'released', 7, wall - 700)],
+				settings: [],
+			});
+		});
+	});
 });

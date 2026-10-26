@@ -222,40 +222,102 @@ export class VirtualThermostatConfigService {
 	}
 	/** Durable release demand. Detach/remap/delete remains forbidden until qualified proof is recorded. */
 	async requestRelease(controllerId: string, expectedRevision: number) {
-		const release = this.claims.holdRecoveryFence();
-		this.claims.revokeAllQualifications();
-		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+		// The available entry/cleanup tuple is independent of new native/input capture faults.
+		const entryClaims = captureCreation(this.claims, ['holdRecoveryFence', 'revokeAllQualifications', 'refresh']);
+		const events = captureCreation(this.events, ['emit']);
+		const lock = captureCreation(this.structureLock, [
+			'runExclusive',
+			'runShared',
+			'hasCurrentStructuralLease',
+			'context',
+		] as (keyof DeviceStructureLockService)[]);
+		const exclusive = lock.values.runExclusive as (
+			work: () => ReturnType<VirtualThermostatConfigService['get']>,
+		) => ReturnType<VirtualThermostatConfigService['get']>;
+		const read = captureCreation(this, ['get']);
+		const get = Reflect.get(read.values, 'get') as VirtualThermostatConfigService['get'],
+			configChanged = THERMOSTAT_CONFIG_CHANGED;
+		let ownerCurrent = () => false;
+		const captured = (() => {
+			try {
+				const own = captureCreation(this, [
+					'requestRelease',
+					'dataSource',
+					'structureLock',
+					'graph',
+					'claims',
+					'events',
+					'get',
+				] as (keyof this)[]);
+				const claims = captureCreation(entryClaims.receiver, ['invalidate']);
+				const graph = captureCreation(this.graph, [
+					'withComfortSelectionWrite',
+					'structuralWrite',
+					'refreshValidation',
+					'dataSource',
+					'revision',
+				] as (keyof VirtualDependencyGraphService)[]);
+				const helper = captureCreation(thermostatComfortSelection, ['pin']);
+				const selection = helper.values.pin(this.dataSource, 'release-request');
+				const input = selection.releaseInput(controllerId, expectedRevision);
+				const pins = [own, entryClaims, claims, events, lock, graph, helper, selection];
+				const current = () => pins.every((pin) => pin.current());
+				const check = () => {
+					if (!current()) fail('Original thermostat release dispatch expired.');
+				};
+				const operation = selection.operation(input, () => ownerCurrent(), current);
+				return { value: { graph, claims, input, operation, check } };
+			} catch (cause: unknown) {
+				return { failure: Object.freeze({ cause }) };
+			}
+		})();
+		// Preserve the original pre-try entry topology, including an entry action's own short circuit.
+		const release = entryClaims.values.holdRecoveryFence.call(entryClaims.receiver);
+		entryClaims.values.revokeAllQualifications.call(entryClaims.receiver);
+		events.values.emit.call(events.receiver, configChanged, controllerId);
 		try {
-			return await this.structureLock.runExclusive(async () => {
-				await this.graph.withStructuralWrite(async (manager) => {
-					const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-					if (config.revision !== expectedRevision) fail('Thermostat revision changed.');
-					config.revision++;
-					config.requestedMode = 'off';
-					config.releaseRequestedAt = new Date();
-					await manager.save(config);
-					const claims = await manager.findBy(VirtualThermostatActuatorClaimEntity, {
-						controllerId,
-						state: Not('released'),
-					});
-					for (const claim of claims) {
-						claim.state = claim.sourcePropertyId ? 'releasing' : 'missing';
-						claim.revision++;
-						claim.releaseRequestedAt = config.releaseRequestedAt;
-						claim.reason = 'explicit_release_requested';
-					}
-					await manager.save(claims);
-				});
-				this.claims.invalidate();
-				await this.claims.refresh();
-				this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
-				return this.get(controllerId);
+			return await invokeCreation(exclusive, lock.receiver, async () => {
+				if (captured.failure) throw captured.failure.cause;
+				const { graph, claims, input, operation, check } = captured.value;
+				check();
+				ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
+				try {
+					await graph.values.withComfortSelectionWrite.call(
+						graph.receiver,
+						operation.write,
+						undefined,
+						operation.admit,
+						operation.accepted,
+						'release-request',
+					);
+					operation.accepted();
+				} catch (cause: unknown) {
+					operation.settlement.transactionFailure = Object.freeze({ cause });
+					throw cause;
+				}
+				let stage = 'claims.invalidate';
+				try {
+					claims.values.invalidate.call(claims.receiver);
+					stage = 'claims.refresh';
+					await entryClaims.values.refresh.call(entryClaims.receiver);
+					stage = 'configChanged';
+					events.values.emit.call(events.receiver, configChanged, input.id);
+					stage = 'get';
+					return await invokeCreation(get, read.receiver, input.id);
+				} catch (cause: unknown) {
+					operation.settlement.maintenanceFailure = Object.freeze({ stage, cause });
+					throw cause;
+				}
 			});
+		} catch (cause: unknown) {
+			if (captured.value) captured.value.operation.settlement.structuralFailure = Object.freeze({ cause });
+			throw cause;
 		} finally {
 			release();
-			await this.claims.refresh().catch(() => undefined);
+			await entryClaims.values.refresh.call(entryClaims.receiver).catch(() => undefined);
 		}
 	}
+
 	/** Rebind a lost database endpoint only to the same reserved physical switch. Operator intent is not release proof. */
 	async restoreActuator(
 		controllerId: string,
