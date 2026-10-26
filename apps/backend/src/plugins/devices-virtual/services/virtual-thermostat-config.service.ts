@@ -225,13 +225,8 @@ export class VirtualThermostatConfigService {
 		// The available entry/cleanup tuple is independent of new native/input capture faults.
 		const entryClaims = captureCreation(this.claims, ['holdRecoveryFence', 'revokeAllQualifications', 'refresh']);
 		const events = captureCreation(this.events, ['emit']);
-		const lock = captureCreation(this.structureLock, [
-			'runExclusive',
-			'runShared',
-			'hasCurrentStructuralLease',
-			'context',
-		] as (keyof DeviceStructureLockService)[]);
-		const exclusive = lock.values.runExclusive as (
+		const exclusiveLock = captureCreation(this.structureLock, ['runExclusive']);
+		const exclusive = exclusiveLock.values.runExclusive as (
 			work: () => ReturnType<VirtualThermostatConfigService['get']>,
 		) => ReturnType<VirtualThermostatConfigService['get']>;
 		const read = captureCreation(this, ['get']);
@@ -240,6 +235,11 @@ export class VirtualThermostatConfigService {
 		let ownerCurrent = () => false;
 		const captured = (() => {
 			try {
+				const lock = captureCreation(exclusiveLock.receiver, [
+					'runShared',
+					'hasCurrentStructuralLease',
+					'context',
+				] as (keyof DeviceStructureLockService)[]);
 				const own = captureCreation(this, [
 					'requestRelease',
 					'dataSource',
@@ -260,13 +260,13 @@ export class VirtualThermostatConfigService {
 				const helper = captureCreation(thermostatComfortSelection, ['pin']);
 				const selection = helper.values.pin(this.dataSource, 'release-request');
 				const input = selection.releaseInput(controllerId, expectedRevision);
-				const pins = [own, entryClaims, claims, events, lock, graph, helper, selection];
+				const pins = [own, entryClaims, claims, events, exclusiveLock, lock, graph, helper, selection];
 				const current = () => pins.every((pin) => pin.current());
 				const check = () => {
 					if (!current()) fail('Original thermostat release dispatch expired.');
 				};
 				const operation = selection.operation(input, () => ownerCurrent(), current);
-				return { value: { graph, claims, input, operation, check } };
+				return { value: { lock, graph, claims, input, operation, check } };
 			} catch (cause: unknown) {
 				return { failure: Object.freeze({ cause }) };
 			}
@@ -276,9 +276,9 @@ export class VirtualThermostatConfigService {
 		entryClaims.values.revokeAllQualifications.call(entryClaims.receiver);
 		events.values.emit.call(events.receiver, configChanged, controllerId);
 		try {
-			return await invokeCreation(exclusive, lock.receiver, async () => {
+			return await invokeCreation(exclusive, exclusiveLock.receiver, async () => {
 				if (captured.failure) throw captured.failure.cause;
-				const { graph, claims, input, operation, check } = captured.value;
+				const { lock, graph, claims, input, operation, check } = captured.value;
 				check();
 				ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
 				try {

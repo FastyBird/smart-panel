@@ -24,6 +24,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import * as ledgerJson from '../../../modules/devices/services/climate-automation-ledger.utils';
+import * as creationCaptures from '../../../modules/devices/services/creation-capture';
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
@@ -3756,6 +3757,145 @@ describe('manual thermostat selection: reserved native intent', () => {
 			}
 			expect(order).toEqual(['hold', 'revoke', 'entry', 'release', 'refresh']);
 			expect(successor).not.toHaveBeenCalled();
+		});
+		it('defers admission-only lock capture faults through original entry, exclusive dispatch and cleanup', async () => {
+			const order: string[] = [],
+				invalidations: string[] = [],
+				capturedReceivers: object[] = [];
+			let phase = 'entry';
+			let capturedFailure: { cause: unknown }, protectedFailure: { cause: unknown }, rejected: { cause: unknown };
+			const successorRefresh = jest.fn(),
+				successorExclusive = jest.fn();
+			const entry = () => {
+				order.push('entry');
+				claims.refresh = successorRefresh;
+				lock.runExclusive = successorExclusive;
+			};
+			const fields: [object, string][] = [
+				[creationCaptures, 'captureCreation'],
+				[claims, 'holdRecoveryFence'],
+				[claims, 'revokeAllQualifications'],
+				[claims, 'invalidate'],
+				[claims, 'refresh'],
+				[lock, 'runExclusive'],
+				[lock, 'hasCurrentStructuralLease'],
+				[graph, 'withComfortSelectionWrite'],
+				[configs, 'get'],
+			];
+			const descriptors = fields.map(([receiver, key]) => ({
+				receiver,
+				key,
+				descriptor: Object.getOwnPropertyDescriptor(receiver, key),
+			}));
+			const g = await graph.revision();
+			let failure: { cause: unknown };
+			try {
+				const originalCapture = creationCaptures.captureCreation;
+				jest.spyOn(creationCaptures, 'captureCreation').mockImplementation(function <T extends object>(
+					this: unknown,
+					receiver: T,
+					keys: readonly (keyof T)[],
+				) {
+					capturedReceivers.push(receiver);
+					try {
+						return Reflect.apply(originalCapture, this, [receiver, keys]);
+					} catch (cause: unknown) {
+						capturedFailure = { cause };
+						throw cause;
+					}
+				});
+				const hold = claims.holdRecoveryFence.bind(claims) as VirtualThermostatClaimsService['holdRecoveryFence'];
+				jest.spyOn(claims, 'holdRecoveryFence').mockImplementation(() => {
+					order.push('hold');
+					const release = hold();
+					return () => {
+						phase = 'cleanup';
+						order.push('release');
+						release();
+					};
+				});
+				const revoke = claims.revokeAllQualifications.bind(
+					claims,
+				) as VirtualThermostatClaimsService['revokeAllQualifications'];
+				jest.spyOn(claims, 'revokeAllQualifications').mockImplementation(() => {
+					order.push('revoke');
+					revoke();
+				});
+				const invalidate = claims.invalidate.bind(claims) as VirtualThermostatClaimsService['invalidate'];
+				jest.spyOn(claims, 'invalidate').mockImplementation(() => {
+					invalidations.push(phase);
+					invalidate();
+				});
+				const originalRefresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+				const refresh = jest.spyOn(claims, 'refresh').mockImplementation(async () => {
+					order.push('refresh');
+					await originalRefresh();
+				});
+				const originalExclusive = lock.runExclusive.bind(lock) as DeviceStructureLockService['runExclusive'];
+				const exclusive = jest.spyOn(lock, 'runExclusive').mockImplementation(async (work) => {
+					phase = 'protected';
+					order.push('exclusive');
+					try {
+						return await originalExclusive(work);
+					} catch (cause: unknown) {
+						order.push('protected-reject');
+						protectedFailure = { cause };
+						throw cause;
+					}
+				});
+				events.on(THERMOSTAT_CONFIG_CHANGED, entry);
+				const originalOwner = lock.hasCurrentStructuralLease.bind(
+					lock,
+				) as DeviceStructureLockService['hasCurrentStructuralLease'];
+				const getter = jest.fn(() => originalOwner);
+				Object.defineProperty(lock, 'hasCurrentStructuralLease', { configurable: true, get: getter });
+				const graphWrite = jest.spyOn(graph, 'withComfortSelectionWrite'),
+					get = jest.spyOn(configs, 'get');
+				try {
+					await configs.requestRelease(id, 1);
+				} catch (cause: unknown) {
+					rejected = { cause };
+				}
+				expect(order).toEqual(['hold', 'revoke', 'entry', 'exclusive', 'protected-reject', 'release', 'refresh']);
+				expect(capturedFailure).toBeDefined();
+				expect(rejected?.cause).toBe(capturedFailure?.cause);
+				expect(protectedFailure?.cause).toBe(capturedFailure?.cause);
+				expect(rejected?.cause).toEqual(new Error('Creation accessor is unsupported: hasCurrentStructuralLease'));
+				expect(getter).not.toHaveBeenCalled();
+				expect(exclusive).toHaveBeenCalledTimes(1);
+				expect(refresh).toHaveBeenCalledTimes(1);
+				expect(successorRefresh).not.toHaveBeenCalled();
+				expect(successorExclusive).not.toHaveBeenCalled();
+				expect(invalidations).not.toContain('protected');
+				expect(capturedReceivers).not.toContain(thermostatComfortSelection);
+				expect(graphWrite).not.toHaveBeenCalled();
+				expect(get).not.toHaveBeenCalled();
+				expect(await observedConfig()).toEqual({
+					...expectedConfig(1),
+					requestedMode: 'heat',
+					releaseRequestedAt: null,
+				});
+				expect(await observedClaims()).toEqual(seedClaims());
+				expect(await graph.revision()).toBe(g);
+			} catch (cause: unknown) {
+				failure = { cause };
+			} finally {
+				try {
+					events.off(THERMOSTAT_CONFIG_CHANGED, entry);
+				} catch (cause: unknown) {
+					failure ??= { cause };
+				}
+				for (const { receiver, key, descriptor } of descriptors.reverse()) {
+					try {
+						if (descriptor) Object.defineProperty(receiver, key, descriptor);
+						else if (!Reflect.deleteProperty(receiver, key))
+							failure ??= { cause: new Error('Cannot restore regression descriptor') };
+					} catch (cause: unknown) {
+						failure ??= { cause };
+					}
+				}
+			}
+			if (failure) throw failure.cause;
 		});
 		it('keeps original pretry failure bypass and postACK get/release/final-refresh falsy precedence', async () => {
 			const release = jest.fn(),
