@@ -109,6 +109,21 @@ describe('manual thermostat selection: reserved native intent', () => {
 	let id: string;
 	let wall: number;
 	let monotonic: number;
+	type SetupWitness = {
+		attempt: number | null;
+		stage:
+			| 'sync-setup'
+			| 'open-source'
+			| 'attach-construction'
+			| 'ownership-bootstrap'
+			| 'claims-bootstrap'
+			| 'seed-device'
+			| 'seed-config'
+			| 'complete';
+		completed: boolean;
+	};
+	let setupAttempt = 0;
+	let newestSetup: SetupWitness | undefined;
 	const sources: SqliteDataSource[] = [];
 	const services: VirtualThermostatClaimsService[] = [];
 	const row = () => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
@@ -127,7 +142,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 		sources.push(source);
 		return source.initialize();
 	}
-	async function attach(source: SqliteDataSource) {
+	async function attach(source: SqliteDataSource, setup?: SetupWitness) {
 		const structure = new DeviceStructureLockService();
 		const dependency = new VirtualDependencyGraphService(source);
 		const emitter = new EventEmitter2();
@@ -139,7 +154,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			emitter,
 		);
 		services.push(ownership);
+		if (setup) setup.stage = 'ownership-bootstrap';
 		await new VirtualThermostatOwnershipSubscriber(source, ownership).onApplicationBootstrap();
+		if (setup) setup.stage = 'claims-bootstrap';
 		await ownership.onApplicationBootstrap();
 		return {
 			lock: structure,
@@ -150,14 +167,23 @@ describe('manual thermostat selection: reserved native intent', () => {
 		};
 	}
 	beforeEach(async () => {
+		const setup: SetupWitness = {
+			attempt: setupAttempt < 255 ? ++setupAttempt : null,
+			stage: 'sync-setup',
+			completed: false,
+		};
+		newestSetup = setup;
 		wall = Date.UTC(2026, 9, 25);
 		monotonic = 100;
 		jest.spyOn(Date, 'now').mockImplementation(() => wall);
 		jest.spyOn(performance, 'now').mockImplementation(() => monotonic);
 		directory = mkdtempSync(path.join(tmpdir(), 'selection-native-'));
+		setup.stage = 'open-source';
 		database = await open(true);
-		({ lock, graph, claims, comfort, events } = await attach(database));
+		setup.stage = 'attach-construction';
+		({ lock, graph, claims, comfort, events } = await attach(database, setup));
 		id = randomUUID();
+		setup.stage = 'seed-device';
 		await database.manager.insert(VirtualDeviceEntity, {
 			id,
 			name: 'Manual intent',
@@ -165,6 +191,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			category: DeviceCategory.THERMOSTAT,
 			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
 		});
+		setup.stage = 'seed-config';
 		await database.manager.insert(VirtualThermostatConfigEntity, {
 			controllerId: id,
 			ownerDeviceId: id,
@@ -187,8 +214,19 @@ describe('manual thermostat selection: reserved native intent', () => {
 			contactClosingMs: 0,
 			configuredAt: new Date(wall),
 		});
+		setup.stage = 'complete';
+		setup.completed = true;
 	});
 	afterEach(async () => {
+		const setup = newestSetup;
+		if (setup && !setup.completed) {
+			const view = { attempt: setup.attempt, stage: setup.stage, completed: setup.completed, finished: 'UNKNOWN' };
+			try {
+				console.error('native-setup-phase', view);
+			} catch {
+				// Missing observation stays UNKNOWN; original cleanup retains its own failure policy.
+			}
+		}
 		jest.restoreAllMocks();
 		for (const service of services.splice(0)) service.onModuleDestroy();
 		for (const source of sources.splice(0)) if (source.isInitialized) await source.destroy();
