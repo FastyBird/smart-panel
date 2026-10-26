@@ -119,6 +119,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			| 'claims-bootstrap'
 			| 'seed-device'
 			| 'seed-config'
+			| 'release-request-setup'
 			| 'complete';
 		completed: boolean;
 	};
@@ -3223,6 +3224,11 @@ describe('manual thermostat selection: reserved native intent', () => {
 			return images;
 		}
 		beforeEach(async () => {
+			const setup = newestSetup;
+			if (setup) {
+				setup.stage = 'release-request-setup';
+				setup.completed = false;
+			}
 			instant = wall + 1234;
 			clockDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Date');
 			const OriginalDate = Date;
@@ -3267,6 +3273,10 @@ describe('manual thermostat selection: reserved native intent', () => {
 					releasedAt: new Date(claim.releasedAt),
 				});
 			configs = new VirtualThermostatConfigService(database, lock, graph, claims, events, {} as PropertyValueService);
+			if (setup) {
+				setup.stage = 'complete';
+				setup.completed = true;
+			}
 		});
 		afterEach(() => Object.defineProperty(globalThis, 'Date', clockDescriptor));
 		it('owns all fifteen/nineteen columns and complete membership, repeats and rejects a stale fence', async () => {
@@ -3706,14 +3716,22 @@ describe('manual thermostat selection: reserved native intent', () => {
 					all = connection.all.bind(connection) as NativeConnection['all'];
 				let receipt: SqliteCommitGuardReceipt;
 				const failure = new Error('release ACK unavailable'),
-					originalOwner = Reflect.get(lock, 'hasCurrentStructuralLease');
+					ownerCurrent = jest.spyOn(lock, 'hasCurrentStructuralLease'),
+					ownerDescriptor = Object.getOwnPropertyDescriptor(lock, 'hasCurrentStructuralLease');
+				let ownerCallsAtCommit: number | undefined, ownerResult: unknown;
 				const get = jest.spyOn(configs, 'get');
 				database.subscribers.push({
 					beforeTransactionCommit: (event) => {
 						receipt = observeSqliteOuterOutcome(event.manager);
 					},
 					beforeQuery: (event) => {
-						if (fault === 'refusal' && event.query === 'COMMIT') lock.hasCurrentStructuralLease = () => false;
+						if (fault === 'refusal' && event.query === 'COMMIT') {
+							expect(Object.getOwnPropertyDescriptor(lock, 'hasCurrentStructuralLease')?.value).toBe(ownerCurrent);
+							expect(Object.getOwnPropertyDescriptor(lock, 'hasCurrentStructuralLease')).toEqual(ownerDescriptor);
+							ownerCallsAtCommit ??= ownerCurrent.mock.calls.length;
+							ownerCurrent.mockReturnValue(false);
+							expect(Object.getOwnPropertyDescriptor(lock, 'hasCurrentStructuralLease')).toEqual(ownerDescriptor);
+						}
 					},
 					afterTransactionCommit: (event) => {
 						if (fault === 'subscriber') throw JSON.parse('false') as unknown;
@@ -3728,7 +3746,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 						}
 					},
 				});
-				jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
+				const dispatch = jest.spyOn(connection, 'all').mockImplementation(function (sql, parameters, callback) {
 					return all(sql, parameters, function (error, rows) {
 						callback.call(this, fault === 'unknown' && sql === 'COMMIT' && !error ? failure : error, rows);
 					});
@@ -3739,7 +3757,8 @@ describe('manual thermostat selection: reserved native intent', () => {
 				} catch (cause: unknown) {
 					rejected = { cause };
 				} finally {
-					lock.hasCurrentStructuralLease = originalOwner;
+					ownerResult = ownerCallsAtCommit === undefined ? undefined : ownerCurrent.mock.results[ownerCallsAtCommit];
+					ownerCurrent.mockRestore();
 				}
 				expect(rejected).toBeDefined();
 				if (fault === 'subscriber' || fault === 'release') expect(rejected.cause).toBe(false);
@@ -3750,7 +3769,15 @@ describe('manual thermostat selection: reserved native intent', () => {
 				expect(receipt.outcome).toBe(fault === 'refusal' ? 'refused' : fault === 'unknown' ? 'unknown' : 'committed');
 				expect(images[0].configuration).toEqual(expectedConfig());
 				expect(images[0].claims).toEqual(expectedSelected());
-				expect((await row()).revision).toBe(fault === 'refusal' ? 1 : 2);
+				const persisted = await row();
+				expect(persisted.revision).toBe(fault === 'refusal' ? 1 : 2);
+				if (fault === 'refusal') {
+					expect(ownerCallsAtCommit).toBeDefined();
+					expect(ownerResult).toEqual({ type: 'return', value: false });
+					expect(dispatch.mock.calls.some(([sql]) => sql === 'COMMIT')).toBe(false);
+					expect(persisted.requestedMode).toBe('heat');
+					expect(persisted.releaseRequestedAt).toBeNull();
+				}
 				expect(graphReturned).toBe(false);
 				expect(get).not.toHaveBeenCalled();
 			},
