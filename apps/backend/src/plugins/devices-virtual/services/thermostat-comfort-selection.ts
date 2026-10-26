@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import { DataSource, EntityManager, QueryRunner } from 'typeorm';
+import { DataSource, EntityManager, IsNull, QueryRunner } from 'typeorm';
 
 import { NotFoundException } from '@nestjs/common';
 
@@ -23,6 +23,7 @@ import {
 import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
 import {
 	ThermostatSetting,
+	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 	VirtualThermostatSettingEntity,
 } from '../entities/virtual-thermostat.entity';
@@ -57,8 +58,49 @@ interface ManualResult {
 	readonly commands: RegisteredInput['commands'];
 }
 
+interface ReleaseInput {
+	readonly kind: 'release-request';
+	readonly id: string;
+	readonly expectedRevision: number;
+}
+interface ReleaseResult {
+	readonly input: ReleaseInput;
+	readonly configuration: ReturnType<typeof configImage>;
+	readonly claims: readonly ReturnType<typeof claimImage>[];
+	readonly claimIds: readonly string[];
+	readonly graph_revision: number;
+	readonly timestamp: number;
+}
+
+function claimImage(row: VirtualThermostatActuatorClaimEntity, milliseconds: (date: Date | null) => number | null) {
+	return {
+		id: row.id,
+		controllerId: row.controllerId,
+		role: row.role,
+		physicalIdentity: row.physicalIdentity,
+		providerProfile: row.providerProfile,
+		providerProfileVersion: row.providerProfileVersion,
+		sourcePropertyId: row.sourcePropertyId,
+		sourcePropertyIdentity: row.sourcePropertyIdentity,
+		sourceDeviceId: row.sourceDeviceId,
+		sourceDeviceIdentity: row.sourceDeviceIdentity,
+		contractFingerprint: row.contractFingerprint,
+		revision: row.revision,
+		qualificationGeneration: row.qualificationGeneration,
+		state: row.state,
+		leaseSeconds: row.leaseSeconds,
+		reason: row.reason,
+		releaseRequestedAt: milliseconds(row.releaseRequestedAt),
+		releasedAt: milliseconds(row.releasedAt),
+		releaseEvidence: row.releaseEvidence,
+	};
+}
+
 /** Fixed persisted columns only; DB dates become owned scalars, never live-entity canonicalization. */
-function configImage(row: VirtualThermostatConfigEntity) {
+function configImage(
+	row: VirtualThermostatConfigEntity,
+	milliseconds = (date: Date | null): number | null => (date === null ? null : date.getTime()),
+) {
 	return {
 		controllerId: row.controllerId,
 		displayFloorClaimId: row.displayFloorClaimId,
@@ -73,8 +115,8 @@ function configImage(row: VirtualThermostatConfigEntity) {
 		heuristic: row.heuristic,
 		contactOpeningMs: row.contactOpeningMs,
 		contactClosingMs: row.contactClosingMs,
-		configuredAt: row.configuredAt.getTime(),
-		releaseRequestedAt: row.releaseRequestedAt === null ? null : row.releaseRequestedAt.getTime(),
+		configuredAt: milliseconds(row.configuredAt),
+		releaseRequestedAt: milliseconds(row.releaseRequestedAt),
 	};
 }
 
@@ -142,6 +184,7 @@ export class ThermostatSelectionSettlement {
 	receipt?: SqliteCommitGuardReceipt;
 	result?: Readonly<{ value: SelectionResult }>;
 	manualResult?: Readonly<{ value: ManualResult }>;
+	releaseResult?: Readonly<{ value: ReleaseResult }>;
 	maintenanceFailure?: Readonly<{ stage: string; index?: number; cause: unknown }>;
 	structuralFailure?: Readonly<{ cause: unknown }>;
 	preSettleFailure?: Readonly<{ cause: unknown }>;
@@ -159,7 +202,7 @@ export class ThermostatSelectionSettlement {
 /** Capture before service fence getters. No caller supplies a manager, change callback or result. */
 function pin(
 	database: DataSource,
-	kind: ComfortInput['kind'] | RegisteredInput['kind'] = 'selection',
+	kind: ComfortInput['kind'] | RegisteredInput['kind'] | ReleaseInput['kind'] = 'selection',
 	leases?: Map<string, Lease>,
 ) {
 	const serialize = canonical;
@@ -191,6 +234,16 @@ function pin(
 		refuse();
 	const native = physical ? captureCreation(physical, ['all']) : undefined;
 	// Only the two lifetime operations admit these dispatches. No clock values are sampled here.
+	const releaseDateGlobal = kind === 'release-request' ? captureCreation(globalThis, ['Date']) : undefined;
+	const releaseDate = releaseDateGlobal
+		? captureCreation(releaseDateGlobal.values.Date as unknown as DateConstructor, ['prototype'])
+		: undefined;
+	const releaseScalar = releaseDate ? captureCreation(releaseDate.values.prototype, ['getTime']) : undefined;
+	if (
+		releaseDateGlobal &&
+		(typeof releaseDateGlobal.values.Date !== 'function' || typeof releaseScalar.values.getTime !== 'function')
+	)
+		refuse();
 	const dated = kind === 'override' || kind === 'cancel';
 	const dateGlobal = dated ? captureCreation(globalThis, ['Date']) : undefined;
 	const date = dated
@@ -220,7 +273,17 @@ function pin(
 					typeof uuid.values.randomUUID !== 'function')))
 	)
 		refuse();
-	const lifetimePins = [dateGlobal, date, iso, monotonic, uuid, local].filter((pin) => pin !== undefined);
+	const lifetimePins = [
+		dateGlobal,
+		date,
+		iso,
+		monotonic,
+		uuid,
+		local,
+		releaseDateGlobal,
+		releaseDate,
+		releaseScalar,
+	].filter((pin) => pin !== undefined);
 	const current = () =>
 		source.current() &&
 		root.current() &&
@@ -268,6 +331,12 @@ function pin(
 	};
 	return Object.freeze({
 		current,
+		releaseInput(id: string, expectedRevision: number): ReleaseInput {
+			if (kind !== 'release-request' || typeof id !== 'string' || !id || !revision(expectedRevision, 1))
+				refuse('Invalid thermostat release or revision fence.');
+			check();
+			return Object.freeze({ kind: 'release-request', id, expectedRevision });
+		},
 		registeredInput(updates: readonly IDevicePropertyData[]) {
 			if (!manual) refuse('Invalid thermostat settings intent kind.');
 			const read = reader();
@@ -476,10 +545,17 @@ function pin(
 			check();
 			return Object.freeze({ kind: 'cancel', id, ...capturedFence, overrideId });
 		},
-		operation(input: ComfortInput | RegisteredInput, ownerCurrent: () => boolean, dispatchCurrent: () => boolean) {
+		operation(
+			input: ComfortInput | RegisteredInput | ReleaseInput,
+			ownerCurrent: () => boolean,
+			dispatchCurrent: () => boolean,
+		) {
 			if (
-				!['selection', 'definition', 'override', 'cancel', 'registered-settings'].includes(input.kind) ||
+				!['selection', 'definition', 'override', 'cancel', 'registered-settings', 'release-request'].includes(
+					input.kind,
+				) ||
 				(input.kind === 'registered-settings' && !manual) ||
+				(input.kind === 'release-request' && kind !== 'release-request') ||
 				((input.kind === 'override' || input.kind === 'cancel') && (input.kind !== kind || !local))
 			)
 				refuse('Invalid thermostat comfort intent kind.');
@@ -496,6 +572,151 @@ function pin(
 			const valid = () => current() && dispatchCurrent() && scopedCurrent?.() === true && ownerCurrent();
 			const assert = () => {
 				if (!valid()) refuse();
+			};
+			const writeRelease = async (manager: EntityManager, input: ReleaseInput): Promise<ReleaseResult> => {
+				const readConfig = () =>
+					manager
+						.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
+						.where('config.controllerId = :id', { id: input.id })
+						.callListeners(false)
+						.getOneOrFail();
+				const readClaims = () =>
+					manager
+						.createQueryBuilder(VirtualThermostatActuatorClaimEntity, 'claim')
+						.where('claim.controllerId = :id AND claim.state != :released', { id: input.id, released: 'released' })
+						.orderBy('claim.id', 'ASC')
+						.callListeners(false)
+						.getMany();
+				const readGraph = () =>
+					manager
+						.createQueryBuilder(VirtualGraphRevisionEntity, 'graph')
+						.where('graph.id = 1')
+						.callListeners(false)
+						.getOneOrFail();
+				const milliseconds = (date: Date | null): number | null =>
+					date === null ? null : releaseScalar.values.getTime.call(date);
+				// Only JSON columns use JSON ownership. Unchanged fixed scalars gain no validation policy.
+				const configuration = (row: VirtualThermostatConfigEntity) =>
+					Object.freeze({
+						...configImage(row, milliseconds),
+						comfort: detach(row.comfort) as unknown as typeof row.comfort,
+						policy: detach(row.policy) as unknown as typeof row.policy,
+						heuristic: detach(row.heuristic) as unknown as typeof row.heuristic,
+					});
+				const image = (row: VirtualThermostatActuatorClaimEntity) =>
+					Object.freeze({
+						...claimImage(row, milliseconds),
+						releaseEvidence: detach(row.releaseEvidence) as unknown as typeof row.releaseEvidence,
+					});
+				const sameConfig = (actual: ReturnType<typeof configuration>, intended: ReturnType<typeof configuration>) =>
+					(Object.keys(intended) as (keyof typeof intended)[]).every((key) =>
+						key === 'comfort' || key === 'policy' || key === 'heuristic'
+							? serialize(actual[key]) === serialize(intended[key])
+							: Object.is(actual[key], intended[key]),
+					);
+				const sameClaim = (actual: ReturnType<typeof image>, intended: ReturnType<typeof image>) =>
+					(Object.keys(intended) as (keyof typeof intended)[]).every((key) =>
+						key === 'releaseEvidence'
+							? serialize(actual[key]) === serialize(intended[key])
+							: Object.is(actual[key], intended[key]),
+					);
+				const row = await readConfig();
+				assert();
+				if (row.revision !== input.expectedRevision || !revision(row.revision, 1, true))
+					refuse('Thermostat revision changed or overflowed.');
+				// One original system-Date observation at the old reserved phase, never at ACK.
+				const DateConstructor = releaseDateGlobal.values.Date as unknown as DateConstructor;
+				const instant = new DateConstructor();
+				const timestamp = releaseScalar.values.getTime.call(instant);
+				const intended = Object.freeze({
+					...configuration(row),
+					requestedMode: 'off' as const,
+					revision: row.revision + 1,
+					releaseRequestedAt: timestamp,
+				});
+				const graph = await readGraph(),
+					selected = await readClaims();
+				assert();
+				if (!revision(graph.revision, 1)) refuse('Invalid virtual dependency graph revision.');
+				const graphRevision = graph.revision;
+				const starting = selected.map(image);
+				const claims = Object.freeze(
+					starting.map((claim) => {
+						if (!revision(claim.revision, 1, true)) refuse('Thermostat claim revision overflow.');
+						return Object.freeze({
+							...claim,
+							state: claim.sourcePropertyId ? ('releasing' as const) : ('missing' as const),
+							revision: claim.revision + 1,
+							releaseRequestedAt: timestamp,
+							reason: 'explicit_release_requested',
+						});
+					}),
+				);
+				const updated = await manager
+					.createQueryBuilder()
+					.update(VirtualThermostatConfigEntity)
+					.set({ requestedMode: 'off', releaseRequestedAt: instant, revision: intended.revision })
+					.where({
+						controllerId: input.id,
+						revision: row.revision,
+						ownerDeviceId: row.ownerDeviceId === null ? IsNull() : row.ownerDeviceId,
+					})
+					.execute();
+				assert();
+				if (updated.affected !== 1) refuse('Thermostat release lost its conditional configuration update.');
+				for (const [index, claim] of starting.entries()) {
+					const changed = await manager
+						.createQueryBuilder()
+						.update(VirtualThermostatActuatorClaimEntity)
+						.set({
+							state: claims[index].state,
+							revision: claims[index].revision,
+							releaseRequestedAt: instant,
+							reason: 'explicit_release_requested',
+						})
+						.where({
+							id: claim.id,
+							controllerId: input.id,
+							revision: claim.revision,
+							state: claim.state,
+							role: claim.role,
+							physicalIdentity: claim.physicalIdentity,
+							providerProfile: claim.providerProfile,
+							providerProfileVersion: claim.providerProfileVersion,
+							sourcePropertyId: claim.sourcePropertyId === null ? IsNull() : claim.sourcePropertyId,
+							sourcePropertyIdentity: claim.sourcePropertyIdentity,
+							sourceDeviceId: claim.sourceDeviceId === null ? IsNull() : claim.sourceDeviceId,
+							sourceDeviceIdentity: claim.sourceDeviceIdentity,
+							contractFingerprint: claim.contractFingerprint,
+							qualificationGeneration:
+								claim.qualificationGeneration === null ? IsNull() : claim.qualificationGeneration,
+						})
+						.execute();
+					assert();
+					if (changed.affected !== 1) refuse('Thermostat release lost a conditional claim update.');
+				}
+				const postimage = await readConfig(),
+					members = await readClaims(),
+					postGraph = await readGraph();
+				assert();
+				if (
+					!sameConfig(configuration(postimage), intended) ||
+					members.length !== claims.length ||
+					members.some((member, index) => !sameClaim(image(member), claims[index])) ||
+					postGraph.revision !== graphRevision
+				)
+					refuse('Thermostat release persisted an unexpected complete postimage.');
+				const value: ReleaseResult = Object.freeze({
+					input,
+					configuration: intended,
+					claims,
+					claimIds: Object.freeze(claims.map((claim) => claim.id)),
+					graph_revision: graphRevision,
+					timestamp,
+				});
+				settlement.releaseResult = Object.freeze({ value });
+				ready = true;
+				return value;
 			};
 			const writeRegistered = async (manager: EntityManager, input: RegisteredInput): Promise<ManualResult> => {
 				const readGraph = () =>
@@ -723,15 +944,18 @@ function pin(
 							ready &&
 							(input.kind === 'registered-settings'
 								? !!settlement.manualResult
-								: !!settlement.result && (input.kind !== 'override' || !!plan)) &&
+								: input.kind === 'release-request'
+									? !!settlement.releaseResult
+									: !!settlement.result && (input.kind !== 'override' || !!plan)) &&
 							valid(),
 					);
 					assert();
 				},
-				async write(manager: EntityManager): Promise<SelectionResult | ManualResult> {
+				async write(manager: EntityManager): Promise<SelectionResult | ManualResult | ReleaseResult> {
 					assert();
 					if (manager !== original) refuse();
 					if (input.kind === 'registered-settings') return writeRegistered(manager, input);
+					if (input.kind === 'release-request') return writeRelease(manager, input);
 					const row = await manager
 						.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
 						.where('config.controllerId = :id', { id: input.id })
@@ -891,7 +1115,11 @@ function pin(
 					// A later read, even an identical postimage, cannot upgrade UNKNOWN to ACK.
 					if (
 						settlement.outcome !== 'committed' ||
-						(input.kind === 'registered-settings' ? !settlement.manualResult : !settlement.result)
+						(input.kind === 'registered-settings'
+							? !settlement.manualResult
+							: input.kind === 'release-request'
+								? !settlement.releaseResult
+								: !settlement.result)
 					)
 						throw new Error('Missing original native thermostat selection ACK/result');
 				},

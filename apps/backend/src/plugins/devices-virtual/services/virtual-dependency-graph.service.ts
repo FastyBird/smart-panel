@@ -80,7 +80,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		expectedGraphRevision: number | undefined,
 		admit: (manager: EntityManager) => void,
 		accepted: () => void,
-		kind?: 'registered-settings',
+		kind?: 'registered-settings' | 'release-request',
 	): Promise<T> {
 		const refresh = this.refreshValidation.bind(this) as VirtualDependencyGraphService['refreshValidation'];
 		return this.structuralWrite(
@@ -89,7 +89,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			(manager) => {
 				admit(manager);
 				if (
-					!(kind === 'registered-settings' && expectedGraphRevision === undefined) &&
+					!((kind === 'registered-settings' || kind === 'release-request') && expectedGraphRevision === undefined) &&
 					(!Number.isSafeInteger(expectedGraphRevision) ||
 						expectedGraphRevision === undefined ||
 						expectedGraphRevision < 0)

@@ -48,6 +48,7 @@ import {
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualGraphRevisionEntity } from '../src/plugins/devices-virtual/entities/virtual-producer.entity';
 import {
+	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 	VirtualThermostatSettingEntity,
 } from '../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
@@ -343,6 +344,150 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				else process.env[key] = environment[key];
 			}
 			if (directory) rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it('P06e authenticates the Admin release POST, retains complete demand and returns the entire current model', async () => {
+		const clock = frozenClock();
+		try {
+			const id = await seed(),
+				claimId = randomUUID(),
+				historyId = randomUUID();
+			const claim = {
+				id: claimId,
+				controllerId: id,
+				role: 'heating' as const,
+				physicalIdentity: 'retained-physical',
+				providerProfile: 'shelly-ng.guarded-switch',
+				providerProfileVersion: 1,
+				sourcePropertyId: null,
+				sourcePropertyIdentity: 'lost-property',
+				sourceDeviceId: null,
+				sourceDeviceIdentity: 'lost-device',
+				contractFingerprint: 'retained-contract',
+				revision: 7,
+				qualificationGeneration: 'retained-generation',
+				state: 'missing' as const,
+				leaseSeconds: 17.5,
+				reason: 'endpoint_lost',
+				releaseRequestedAt: null,
+				releasedAt: null,
+				releaseEvidence: { retained: true },
+			};
+			await database.manager.insert(VirtualThermostatActuatorClaimEntity, claim);
+			const history = {
+				...claim,
+				id: historyId,
+				physicalIdentity: 'historical-physical',
+				state: 'released' as const,
+				releasedAt: new Date(clock.wall - 1000),
+			};
+			await database.manager.insert(VirtualThermostatActuatorClaimEntity, history);
+			const path = `/plugins/devices-virtual/producers/thermostats/${id}/release`;
+			const release = (revision: unknown) =>
+				request(app.getHttpServer() as Parameters<typeof request>[0])
+					.post(path)
+					.set('Authorization', `Bearer ${token}`)
+					.send({ expected_revision: revision });
+			await request(app.getHttpServer() as Parameters<typeof request>[0])
+				.post(path)
+				.send({ expected_revision: 1 })
+				.expect(401);
+			await release('invalid').expect(400);
+			const g = await module.get(VirtualDependencyGraphService).revision();
+			const response = await release(1).expect(201);
+			const publicClaim = (historical: boolean) => ({
+				cooling_diagnostics: null,
+				cooling_protection: null,
+				protection: null,
+				id: historical ? historyId : claimId,
+				group_identity: id + ':heating',
+				provider_profile: 'shelly-ng.guarded-switch',
+				provider_profile_version: 1,
+				role: 'heating',
+				source_property: null,
+				source_identity: 'lost-property',
+				physical_identity: historical ? 'historical-physical' : 'retained-physical',
+				revision: historical ? 7 : 8,
+				qualification_generation: 'retained-generation',
+				state: historical ? 'released' : 'missing',
+				lease_seconds: 17.5,
+				reason: historical ? 'endpoint_lost' : 'explicit_release_requested',
+				release_requested_at: historical ? null : new Date(clock.wall).toISOString(),
+				released_at: historical ? new Date(clock.wall - 1000).toISOString() : null,
+				release_evidence: { retained: true },
+			});
+			const expected = {
+				display_floor_claim: null,
+				controller: id,
+				schema_version: 1,
+				control_strategy: 'guarded_branches',
+				revision: 2,
+				graph_revision: g + 1,
+				requested_mode: 'off',
+				locked: false,
+				policy: {
+					heatingSetpoint: 20,
+					coolingSetpoint: null,
+					coldTolerance: 0.5,
+					hotTolerance: 0.5,
+					neutralMargin: 1,
+					minimumOffMs: 0,
+					changeoverMs: 0,
+					floor: null,
+				},
+				heuristic: null,
+				contact_opening_ms: 0,
+				contact_closing_ms: 0,
+				readiness: 'draft',
+				reasons: [
+					'controller_runtime_unavailable',
+					'heating_actuator_missing',
+					'heating_hardware_qualification_missing',
+					'heating_missing',
+				],
+				sources: [],
+				actuators: [publicClaim(false)],
+				released_actuators: [publicClaim(true)],
+				settings: [],
+			};
+			expect((response.body as { data: unknown }).data).toEqual(expected);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual({
+				controllerId: id,
+				displayFloorClaimId: null,
+				ownerDeviceId: id,
+				schemaVersion: 1,
+				revision: 2,
+				requestedMode: 'off',
+				controlStrategy: 'guarded_branches',
+				locked: false,
+				comfort: baseConfiguration(),
+				policy: expected.policy,
+				heuristic: null,
+				contactOpeningMs: 0,
+				contactClosingMs: 0,
+				configuredAt: new Date(clock.wall),
+				releaseRequestedAt: new Date(clock.wall),
+			});
+			expect(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId })).toEqual({
+				...claim,
+				revision: 8,
+				releaseRequestedAt: new Date(clock.wall),
+				reason: 'explicit_release_requested',
+			});
+			expect(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: historyId })).toEqual(
+				history,
+			);
+			await release(1).expect(422);
+			jest
+				.spyOn(module.get(VirtualThermostatConfigService), 'get')
+				.mockRejectedValueOnce(new Error('postACK current reader failure'));
+			await release(2).expect(500);
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).revision,
+			).toBe(3);
+		} finally {
+			clock.restore();
 		}
 	});
 

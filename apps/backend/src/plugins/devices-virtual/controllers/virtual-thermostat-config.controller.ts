@@ -119,7 +119,7 @@ export class VirtualThermostatConfigController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Request thermostat actuator release',
 		description:
-			'Persist user OFF and prioritized release demand while retaining every reservation. Dispatch acceptance, timeout and unrelated OFF readback do not free hardware.',
+			'Atomically persist requested HVAC OFF and release demand for every retained non-released reservation, preserving comfort and recovery metadata. Return the latest configuration and diagnostics after ordinary maintenance. Dispatch acceptance, timeout and unrelated OFF readback do not free hardware.',
 		operationId: 'release-devices-virtual-plugin-thermostat',
 	})
 	@ApiUnprocessableEntityResponse('Configuration revision conflict')

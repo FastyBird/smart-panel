@@ -113,6 +113,29 @@ Admin authoring and Panel selection/override/cancel controls expose server diagn
 tests cover legacy/manual controllers, explicit branch setpoints, OFF-latch actions, expiry invalidation and stale
 requests. Independent backend review, composed UI acceptance and release gates remain before VD3-7 is complete.
 
+## Release demand and completion
+
+The existing authenticated `POST thermostats/{id}/release` consumes `expected_revision`. Its reserved native
+intent conditionally changes only requested HVAC mode to OFF, configuration revision and release-request time.
+Every current non-released claim, including missing, releasing and suspended members, receives the same reserved
+system-Date instant, its next revision and explicit release reason. A claim with a bound source becomes releasing;
+a missing source remains missing. Released history, identities, qualification generations, evidence, comfort
+(including the separate user-OFF latch, presets, overrides and automation), settings and protective dependencies survive.
+Disabled, locked and orphan configurations remain eligible for this remedial request. A fresh repeat is a new demand;
+a stale revision refuses.
+
+The private immutable native result retains the entire accepted configuration and selected claims from that request.
+A normal return requires its original native COMMIT acknowledgement and normal graph return, followed by the existing
+claims invalidation, refresh, ID notification, one current configuration GET and structural/fence cleanup. The public
+response is that entire latest GET, so a completed independent writer can supersede the private historical intent.
+It is neither a historical HTTP snapshot nor an atomic guarantee over every diagnostic or asynchronous participant.
+Existing entry failures before the protected block and later maintenance/finally errors retain their original precedence;
+a rejected request can coexist with committed intent. Readback never upgrades an uncertain native outcome.
+
+Release demand frees no reservation, remaps no endpoint and supplies no physical OFF or pending-ON-drain proof.
+Only the existing qualified completion path can release ownership. Full configure, restore/audit, automatic baseline,
+publication/current-winner guarantees and installed hardware qualification remain separate boundaries.
+
 ## Input graph and measurements
 
 Virtual measurement bindings are durable graph edges. An aggregate reports a read-only temperature from compatible sources according to its configured operator, freshness and quorum. The output has its own identity and history, while source identity, timestamp and quality remain visible for diagnostics. Losing quorum or seeing only stale inputs makes the current output unavailable; history is not treated as a live reading.
