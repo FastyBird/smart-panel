@@ -41,6 +41,14 @@ interface FullAbort {
 	ready: Promise<void>;
 	resolveReason: () => void;
 }
+interface TerminalQuery {
+	closing: FullAbort;
+	sql: string;
+	context?: OperationContext;
+	connected: boolean;
+	dispatched: boolean;
+	retry?: boolean;
+}
 interface OperationContext {
 	lease: ConnectionLease;
 	parent?: OperationContext;
@@ -829,6 +837,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	private guardedCommit?: GuardedCommit;
 	private startupPermit?: string;
 	private terminalControlPermit?: { scope: GuardedCommit; context: OperationContext; sql: string };
+	private readonly terminalQuery = new AsyncLocalStorage<TerminalQuery | undefined>();
 	private readonly startupQuery = new AsyncLocalStorage<{ connected: boolean }>();
 	private writeIntentRequested = false;
 	private writeAdmission?: 'pending' | 'armed';
@@ -873,6 +882,9 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			await closing.ready;
 			throw closing.reason.cause;
 		}
+		const terminal: TerminalQuery | undefined = closing
+			? { closing, sql: query, connected: false, dispatched: false }
+			: undefined;
 		const startup = this.startupPermit === query;
 		this.startupPermit = undefined;
 		if (this.guardedCommit && !this.guardedCommit.noMutation && !startup) this.guardedCommit.issuedBeforeCapture = true;
@@ -902,14 +914,16 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				throw cause;
 			}
 			const outerCommit = command === 'COMMIT' && this.transactionDepth === 1 ? scope : undefined;
+			const invoke = () => {
+				if (terminal) terminal.context = this.coordinator.captureCommitContext(terminal.closing.scope.lease);
+				return this.terminalQuery.run(terminal, () =>
+					this.nativeCommitContext.run(outerCommit, () => super.query(query, parameters, useStructuredResult)),
+				);
+			};
 			// Keep the original nonparticipating path, including its promise/child settlement topology.
 			if (!ticket)
 				return this.coordinator.track(() =>
-					this.withConnection(() =>
-						this.startupQuery.run({ connected: !startup }, () =>
-							this.nativeCommitContext.run(outerCommit, () => super.query(query, parameters, useStructuredResult)),
-						),
-					),
+					this.withConnection(() => this.startupQuery.run({ connected: !startup }, invoke)),
 				);
 			return await this.coordinator.track(() =>
 				this.withConnection(async () => {
@@ -919,9 +933,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 						const failed = new Promise<never>((_resolve, reject) => {
 							ticket.dispatchFailure = reject;
 						});
-						const original = this.noMutationQuery.run(ticket, () =>
-							this.nativeCommitContext.run(outerCommit, () => super.query(query, parameters, useStructuredResult)),
-						);
+						const original = this.noMutationQuery.run(ticket, () => invoke());
 						return (await Promise.race([original, failed])) as unknown;
 					} catch (cause: unknown) {
 						this.captureQueryFailure(ticket, cause);
@@ -1691,6 +1703,18 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async connect(): Promise<NativeSqliteConnection> {
 		const entryScope = this.guardedCommit;
+		const terminal = this.terminalQuery.getStore();
+		const entryClosing = this.lease?.closing;
+		const terminalConnect =
+			entryClosing &&
+			terminal?.closing === entryClosing &&
+			!terminal.connected &&
+			terminal.context === this.coordinator.captureCommitContext(entryClosing.scope.lease);
+		if (entryClosing && !terminalConnect) {
+			await entryClosing.ready;
+			throw entryClosing.reason.cause;
+		}
+		if (terminalConnect) terminal.connected = true;
 		const entryWindow =
 			entryScope?.noMutation && entryScope.phase !== 'committed' && entryScope.phase !== 'settled'
 				? entryScope
@@ -1720,17 +1744,52 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			(activeScope?.noMutation && activeScope.phase !== 'committed' && activeScope.phase !== 'settled'
 				? activeScope
 				: undefined);
-		const scope = commitScope ?? window;
+		// A guard can attach after this connection is obtained. Keep a passive facade for that
+		// original outer scope; unguarded native calls still forward unchanged while it is open.
+		const connectionScope = entryScope ?? activeScope;
+		const scope = commitScope ?? window ?? connectionScope;
+		const closing = scope?.lease.closing ?? this.lease?.closing;
+		if (closing && (!terminalConnect || terminal.closing !== closing)) {
+			await closing.ready;
+			throw closing.reason.cause;
+		}
 		if (!scope) return connection;
 		const ticket = this.noMutationQuery.getStore();
 		if (window) entryRefusal ??= this.validateNoMutationDispatch(window, ticket, ticket?.sql ?? '');
-		const context = this.coordinator.captureCommitContext(scope.lease);
+		const context =
+			commitScope || window || terminalConnect ? this.coordinator.captureCommitContext(scope.lease) : undefined;
 		const callbackContext = window ? AsyncLocalStorage.snapshot() : undefined;
 		// The facade belongs to this original query ticket. Never modify the shared native object.
 		return new Proxy(connection, {
 			get: (target, property) => {
-				if (property === 'all' || (window && property === 'run')) {
-					return (query: string, parameters: unknown[], callback: NativeQueryCallback) => {
+				if (property === 'all' || ((window || connectionScope) && property === 'run')) {
+					return (...args: Parameters<NativeSqliteConnection['all']>) => {
+						const [query, parameters] = args;
+						const last = args[args.length - 1];
+						const callback: NativeQueryCallback | undefined = typeof last === 'function' ? last : undefined;
+						const closing = scope.lease.closing;
+						if (!window && closing) {
+							if (
+								!terminalConnect ||
+								terminal.closing !== closing ||
+								!scope.lease.active ||
+								scope !== this.guardedCommit ||
+								!terminal.context.active ||
+								property !== 'all' ||
+								terminal.sql !== query ||
+								(!terminal.retry &&
+									(terminal !== this.terminalQuery.getStore() ||
+										terminal.dispatched ||
+										terminal.context !== this.coordinator.captureCommitContext(scope.lease)))
+							) {
+								const refusal = new SqliteCommitGuardRefusedError(closing.reason?.cause);
+								if (!callback) throw refusal;
+								callback.call(target, refusal);
+								return target;
+							}
+							terminal.dispatched = true;
+							terminal.retry = false;
+						}
 						if (window) {
 							const refusal = entryRefusal ?? this.validateNoMutationDispatch(window, ticket, query);
 							if (
@@ -1776,8 +1835,14 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 							!commitScope ||
 							(scope.guards.length === 0 && !scope.observed && !scope.noMutation)
 						) {
-							const original = window ? (window.noMutation[property] ?? target[property]) : target.all;
-							return original.call(window?.noMutation.native ?? target, query, parameters, callback) as unknown;
+							const original = window ? (window.noMutation[property] ?? target[property]) : target[property];
+							if (!window && closing && query === 'ROLLBACK')
+								return target.all(query, parameters, function (error, rows) {
+									// TypeORM owns this retry; retain only this original live cleanup capability.
+									if (error?.toString().includes('SQLITE_BUSY:')) terminal.retry = true;
+									callback.call(this, error, rows);
+								});
+							return original.apply(window?.noMutation.native ?? target, args) as unknown;
 						}
 						if (scope.guards.length === 0 && !scope.noMutation) {
 							// Observe the ORIGINAL guardless path. Do not seal or drain it as a guarded commit.

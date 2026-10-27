@@ -2049,6 +2049,7 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 					}
 				},
 				afterQuery(event) {
+					if (event.query.includes("VALUES ('wave-two')") && !event.success) probe.events.push('refused:wave-two');
 					if (event.query.includes("VALUES ('wave-one')")) {
 						child = event.manager.query("INSERT INTO transaction_record(name) VALUES ('wave-two')");
 						void child.catch(() => undefined);
@@ -2072,8 +2073,16 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				release.resolve();
 				await expect(outer).rejects.toBe(primary);
 				await independent;
-				expect(probe.events.indexOf('returned:wave-two')).toBeLessThan(probe.events.indexOf('submit:ROLLBACK'));
-				expect(probe.events.indexOf('returned:wave-two')).toBeGreaterThan(-1);
+				const [result] = await Promise.allSettled([child]);
+				expect(result.status).toBe('rejected');
+				if (result.status === 'rejected') {
+					expect(result.reason).toBeInstanceOf(QueryFailedError);
+					expect((result.reason as QueryFailedError).driverError).toBeInstanceOf(SqliteCommitGuardRefusedError);
+					expect((result.reason as QueryFailedError).driverError.cause).toBe(primary);
+				}
+				expect(probe.events.indexOf('refused:wave-two')).toBeGreaterThan(-1);
+				expect(probe.events.indexOf('refused:wave-two')).toBeLessThan(probe.events.indexOf('submit:ROLLBACK'));
+				expect(probe.events).not.toContain('submit:wave-two');
 				expect(await names()).toEqual(['independent']);
 			} finally {
 				release.resolve();
@@ -2261,6 +2270,219 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				await Promise.allSettled([outer, b, rollback, hook]);
 				probe.restore();
 			}
+		});
+	});
+
+	describe('guarded closing base query admission', () => {
+		it.each([
+			['before', 'base'],
+			['after', 'base'],
+			['before', 'forwarded'],
+			['after', 'forwarded'],
+		] as const)('refuses %s rollback hook SQL through original %s query', async (phase, route) => {
+			await database.manager.save(TransactionRecord, { name: 'retained' });
+			const before = await database.manager.find(TransactionRecord, { order: { id: 'ASC' } });
+			const primary = new Error('original guarded body failure');
+			const sql = "INSERT INTO transaction_record(name) VALUES ('rollback-hook-escape')";
+			const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+				run: NativeConnection['all'];
+			};
+			const run = jest.spyOn(native, 'run'),
+				all = jest.spyOn(native, 'all');
+			let runner: QueryRunner, receipt: SqliteCommitGuardReceipt;
+			const outcomes: PromiseSettledResult<unknown>[] = [];
+			const attempt = async (event: { queryRunner: QueryRunner; manager: import('typeorm').EntityManager }) => {
+				if (event.queryRunner !== runner) return;
+				const forward =
+					route === 'forwarded'
+						? jest.spyOn(runner, 'query').mockImplementation(function (this: QueryRunner, ...args) {
+								return SqliteQueryRunner.prototype.query.apply(this, args) as Promise<unknown>;
+							})
+						: undefined;
+				try {
+					const request =
+						route === 'forwarded'
+							? event.manager.query(sql)
+							: (SqliteQueryRunner.prototype.query.call(runner, sql) as Promise<unknown>);
+					outcomes.push(...(await Promise.allSettled([request])));
+				} finally {
+					forward?.mockRestore();
+				}
+			};
+			database.subscribers.push({
+				beforeTransactionRollback: (event) => (phase === 'before' ? attempt(event) : undefined),
+				afterTransactionRollback: (event) => (phase === 'after' ? attempt(event) : undefined),
+			});
+			const outer = database.transaction(async (manager) => {
+				runner = manager.queryRunner;
+				receipt = registerSqliteCommitGuard(manager, () => true);
+				await manager.save(TransactionRecord, { name: 'candidate' });
+				throw primary;
+			});
+			void outer.catch(() => undefined);
+			try {
+				await expect(outer).rejects.toBe(primary);
+				expect(outcomes).toHaveLength(1);
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+				expect(outcomes[0]).toEqual({ status: 'rejected', reason: primary });
+				expect(run.mock.calls.filter(([query]) => query === sql)).toHaveLength(0);
+				expect(all.mock.calls.filter(([query]) => query === sql || query === 'COMMIT')).toHaveLength(0);
+				expect(all.mock.calls.filter(([query]) => query === 'ROLLBACK')).toHaveLength(1);
+				expect(receipt.outcome).toBe('rolled_back');
+				const healthy = await database.transaction(async (manager) => {
+					registerSqliteCommitGuard(manager, () => true);
+					return manager.save(TransactionRecord, { name: 'healthy successor' });
+				});
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([...before, healthy]);
+				expect(all.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(1);
+			} finally {
+				await Promise.allSettled([outer]);
+				all.mockRestore();
+				run.mockRestore();
+			}
+		});
+		it.each([
+			["INSERT INTO transaction_record(name) VALUES ('preconnected-run-escape')", true],
+			["/* native all */ INSERT INTO transaction_record(name) VALUES ('preconnected-all-escape')", true],
+			["INSERT INTO transaction_record(name) VALUES ('preconnected-run-escape')", false],
+			["/* native all */ INSERT INTO transaction_record(name) VALUES ('preconnected-all-escape')", false],
+		] as const)('refuses a preconnected base query after rollback: %s, early guard=%s', async (sql, early) => {
+			await database.manager.save(TransactionRecord, { name: 'retained' });
+			const before = await database.manager.find(TransactionRecord, { order: { id: 'ASC' } });
+			const primary = new Error('original preconnected body failure');
+			const entered = deferred(),
+				release = deferred();
+			const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+				run: NativeConnection['all'];
+			};
+			const run = jest.spyOn(native, 'run'),
+				all = jest.spyOn(native, 'all');
+			let runner: QueryRunner, receipt: SqliteCommitGuardReceipt, pending: Promise<unknown>;
+			let outcome: PromiseSettledResult<unknown>;
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query === sql) {
+						entered.resolve();
+						await release.promise;
+					}
+				},
+				afterTransactionRollback: async (event) => {
+					if (event.queryRunner !== runner) return;
+					release.resolve();
+					[outcome] = await Promise.allSettled([pending]);
+				},
+			});
+			const outer = database.transaction(async (manager) => {
+				runner = manager.queryRunner;
+				if (early) receipt = registerSqliteCommitGuard(manager, () => true);
+				await manager.save(TransactionRecord, { name: 'candidate' });
+				pending = SqliteQueryRunner.prototype.query.call(runner, sql) as Promise<unknown>;
+				void pending.catch(() => undefined);
+				await entered.promise;
+				if (!early) receipt = registerSqliteCommitGuard(manager, () => true);
+				throw primary;
+			});
+			void outer.catch(() => undefined);
+			try {
+				await expect(outer).rejects.toBe(primary);
+				expect(outcome.status).toBe('rejected');
+				if (outcome.status === 'rejected') {
+					expect(outcome.reason).toBeInstanceOf(QueryFailedError);
+					expect((outcome.reason as QueryFailedError).driverError).toBeInstanceOf(SqliteCommitGuardRefusedError);
+					expect((outcome.reason as QueryFailedError).driverError.cause).toBe(primary);
+				}
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+				expect(run.mock.calls.filter(([query]) => query === sql)).toHaveLength(0);
+				expect(all.mock.calls.filter(([query]) => query === sql || query === 'COMMIT')).toHaveLength(0);
+				expect(all.mock.calls.filter(([query]) => query === 'ROLLBACK')).toHaveLength(1);
+				expect(receipt.outcome).toBe('rolled_back');
+			} finally {
+				release.resolve();
+				await Promise.allSettled([outer, pending]);
+				all.mockRestore();
+				run.mockRestore();
+			}
+		});
+		it('preserves the owned closing ROLLBACK retry after a synthetic BUSY callback', async () => {
+			Object.assign(database.options, { busyErrorRetry: 1 });
+			await database.manager.save(TransactionRecord, { name: 'retained' });
+			const before = await database.manager.find(TransactionRecord, { order: { id: 'ASC' } });
+			const primary = new Error('original rollback retry primary');
+			const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection;
+			const original = native.all;
+			let submissions = 0,
+				acknowledgements = 0;
+			const spy = jest.spyOn(native, 'all').mockImplementation(function (this: unknown, sql, parameters, callback) {
+				if (sql !== 'ROLLBACK') return original.call(this, sql, parameters, callback);
+				submissions++;
+				if (submissions === 1) {
+					callback.call(this, new Error('SQLITE_BUSY: synthetic callback, no native attempt'));
+					return this;
+				}
+				return original.call(this, sql, parameters, function (this: unknown, error, rows) {
+					if (!error) acknowledgements++;
+					callback.call(this, error, rows);
+				});
+			});
+			try {
+				await expect(
+					database.transaction(async (manager) => {
+						registerSqliteCommitGuard(manager, () => true);
+						await manager.save(TransactionRecord, { name: 'candidate' });
+						throw primary;
+					}),
+				).rejects.toBe(primary);
+				expect(submissions).toBe(2);
+				expect(acknowledgements).toBe(1);
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+			} finally {
+				spy.mockRestore();
+			}
+		});
+		it('preserves unarmed native overloads and the original Database return through its passive facade', async () => {
+			const raw = (database.driver as SqliteDriver).databaseConnection as unknown;
+			let callbacks = 0;
+			await database.transaction(async (manager) => {
+				const connection = (await manager.queryRunner.connect()) as Record<
+					'run' | 'all',
+					(...args: unknown[]) => unknown
+				>;
+				const invoke = (method: 'run' | 'all', sql: string, parameters?: unknown[]) =>
+					new Promise<{
+						rows: unknown[];
+						receiver: { lastID?: number; changes?: number };
+					}>((resolve, reject) => {
+						const callback = function (
+							this: { lastID?: number; changes?: number },
+							error: Error | null,
+							rows: unknown[],
+						) {
+							callbacks++;
+							if (error) reject(error);
+							else resolve({ rows, receiver: this });
+						};
+						const args = parameters === undefined ? [sql, callback] : [sql, parameters, callback];
+						expect(Reflect.apply(connection[method], connection, args)).toBe(raw);
+					});
+				const first = await invoke('run', "INSERT INTO transaction_record(name) VALUES ('first')");
+				expect(first.receiver.lastID).toBe(1);
+				expect(first.receiver.changes).toBe(1);
+				const second = await invoke('run', 'INSERT INTO transaction_record(name) VALUES (?)', ['second']);
+				expect(second.receiver.lastID).toBe(2);
+				expect(second.receiver.changes).toBe(1);
+				expect((await invoke('all', 'SELECT id,name FROM transaction_record ORDER BY id')).rows).toEqual([
+					{ id: 1, name: 'first' },
+					{ id: 2, name: 'second' },
+				]);
+				expect((await invoke('all', 'SELECT id,name FROM transaction_record WHERE id=?', [2])).rows).toEqual([
+					{ id: 2, name: 'second' },
+				]);
+			});
+			expect(callbacks).toBe(4);
+			expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([
+				{ id: 1, name: 'first' },
+				{ id: 2, name: 'second' },
+			]);
 		});
 	});
 
