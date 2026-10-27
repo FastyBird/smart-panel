@@ -1,3 +1,4 @@
+import { types as nodeTypes } from 'node:util';
 import {
 	Column,
 	DataSource,
@@ -7,6 +8,7 @@ import {
 	InsertEvent,
 	MigrationInterface,
 	PrimaryGeneratedColumn,
+	QueryFailedError,
 	QueryRunner,
 } from 'typeorm';
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
@@ -184,6 +186,7 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		});
 
 		it('queues preconnected native B until the real rollback callback and retains original A error before AfterQuery children', async () => {
+			const commits = nativeCommitProbe();
 			await database.manager.query(
 				'INSERT INTO "transaction_record" ("id", "name") VALUES (1, \'original\'), (2, \'retained\')',
 			);
@@ -272,7 +275,9 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				after: await database.manager.find(TransactionRecord, { order: { id: 'ASC' } }),
 			});
 			expect((originalError as { driverError: unknown }).driverError).toBe(nativeError);
+			expect(finalError).toHaveProperty('query', 'COMMIT');
 			expect(finalError.driverError.cause).toBe(originalError);
+			expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
 			expect(submitted.filter((sql) => sql === bSql || sql.includes('reentry'))).toEqual([]);
 			expect(children).toHaveLength(1);
 			expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
@@ -1712,6 +1717,550 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 					expect(() => window.applied()).toThrow(SqliteCommitGuardRefusedError);
 				}),
 			).rejects.toBeDefined();
+		});
+	});
+
+	describe('guarded original lease completion and queued full abort', () => {
+		function timeline(beforeSubmit?: (sql: string) => void) {
+			const events: string[] = [];
+			const native = (database.driver as SqliteDriver).databaseConnection as Record<
+				'run' | 'all',
+				(...args: unknown[]) => unknown
+			>;
+			const restores: (() => void)[] = [];
+			for (const method of ['run', 'all'] as const) {
+				const original = native[method];
+				const spy = jest.spyOn(native, method).mockImplementation(function (this: unknown, ...args: unknown[]) {
+					const sql = args[0] as string;
+					const label = sql.includes("VALUES ('wave-two')")
+						? 'wave-two'
+						: sql.includes("VALUES ('wave-one')")
+							? 'wave-one'
+							: sql;
+					events.push(`submit:${label}`);
+					beforeSubmit?.(sql);
+					const callback = args[args.length - 1] as (...values: unknown[]) => unknown;
+					args[args.length - 1] = function (this: unknown, ...values: unknown[]) {
+						events.push(`callback:${label}`);
+						try {
+							return Reflect.apply(callback, this, values);
+						} finally {
+							events.push(`returned:${label}`);
+						}
+					};
+					return Reflect.apply(original, this, args);
+				});
+				restores.push(() => spy.mockRestore());
+			}
+			return { events, restore: () => restores.reverse().forEach((restore) => restore()) };
+		}
+
+		it.each([false, true])(
+			'joins actual wave-two callback before guard and native control, guard=%s',
+			async (allow) => {
+				const probe = timeline();
+				const firstEntered = deferred(),
+					firstRelease = deferred(),
+					secondEntered = deferred(),
+					secondRelease = deferred();
+				let one: Promise<unknown>, two: Promise<unknown>;
+				const guard = jest.fn(() => {
+					probe.events.push('guard');
+					return allow;
+				});
+				database.subscribers.push({
+					beforeQuery: async (event) => {
+						if (event.query === 'COMMIT') {
+							one = event.manager.query("INSERT INTO transaction_record(name) VALUES ('wave-one')");
+							void one.catch(() => undefined);
+						} else if (event.query.includes("VALUES ('wave-one')")) {
+							firstEntered.resolve();
+							await firstRelease.promise;
+						} else if (event.query.includes("VALUES ('wave-two')")) {
+							secondEntered.resolve();
+							await secondRelease.promise;
+						}
+					},
+					afterQuery: (event) => {
+						if (event.query.includes("VALUES ('wave-one')")) {
+							two = event.manager.query("INSERT INTO transaction_record(name) VALUES ('wave-two')");
+							void two.catch(() => undefined);
+						}
+					},
+				});
+				const transaction = database.transaction(async (manager) => {
+					registerSqliteCommitGuard(manager, guard);
+					await manager.save(TransactionRecord, { name: 'root-candidate' });
+				});
+				const observed = allow
+					? expect(transaction).resolves.toBeUndefined()
+					: expect(transaction).rejects.toMatchObject({
+							driverError: expect.any(SqliteCommitGuardRefusedError) as unknown,
+						});
+				try {
+					await firstEntered.promise;
+					expect(guard).not.toHaveBeenCalled();
+					firstRelease.resolve();
+					await secondEntered.promise;
+					expect(guard).not.toHaveBeenCalled();
+					secondRelease.resolve();
+					await observed;
+					expect(guard).toHaveBeenCalledTimes(1);
+					expect(await names()).toEqual(allow ? ['root-candidate', 'wave-one', 'wave-two'] : []);
+					expect(probe.events.indexOf('returned:wave-two')).toBeGreaterThan(-1);
+					expect(probe.events.indexOf('returned:wave-two')).toBeLessThan(probe.events.indexOf('guard'));
+					expect(probe.events.indexOf('returned:wave-two')).toBeLessThan(
+						probe.events.indexOf(`submit:${allow ? 'COMMIT' : 'ROLLBACK'}`),
+					);
+					expect(probe.events.filter((event) => event === 'submit:COMMIT')).toHaveLength(allow ? 1 : 0);
+					expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(
+						allow
+							? [
+									{ id: 1, name: 'root-candidate' },
+									{ id: 2, name: 'wave-one' },
+									{ id: 3, name: 'wave-two' },
+								]
+							: [],
+					);
+				} finally {
+					firstRelease.resolve();
+					secondRelease.resolve();
+					await Promise.allSettled([transaction, observed, one]);
+					await Promise.allSettled([two]);
+					probe.restore();
+				}
+			},
+		);
+
+		it.each([undefined, null, false, 0, '', new Error('original nested body')])(
+			'refuses queued B/C with exact primary before full recovery: %p',
+			async (primary) => {
+				const entered = deferred(),
+					release = deferred();
+				const probe = timeline((sql) => {
+					if (sql === 'ROLLBACK') {
+						expect(bDone).toBe(true);
+						expect(cDone).toBe(true);
+					}
+				});
+				let a: Promise<unknown>, b: Promise<unknown>, c: Promise<unknown>;
+				let bDone = false,
+					cDone = false,
+					bodies = 0,
+					nestedStarts = 0;
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				const original = SqliteQueryRunner.prototype.query;
+				let inject = true;
+				jest.spyOn(SqliteQueryRunner.prototype, 'query').mockImplementation(function (...args) {
+					if (inject && args[0].startsWith('ROLLBACK TO SAVEPOINT')) {
+						inject = false;
+						return Promise.reject(new Error('injected original savepoint rollback failure'));
+					}
+					return original.apply(this, args) as Promise<unknown>;
+				});
+				database.subscribers.push({
+					beforeTransactionStart(event) {
+						if ((Reflect.get(event.queryRunner, 'transactionDepth') as number) > 0) nestedStarts++;
+					},
+					afterTransactionRollback: async (event) => {
+						if ((Reflect.get(event.queryRunner, 'transactionDepth') as number) === 0) {
+							const denied = event.manager.transaction(() => {
+								bodies++;
+								return Promise.resolve();
+							});
+							const result = await Promise.allSettled([denied]);
+							expect(result[0]).toEqual({ status: 'rejected', reason: primary });
+							await expect(
+								event.manager.query("INSERT INTO transaction_record(name) VALUES ('hook-escape')"),
+							).rejects.toBe(primary);
+						}
+					},
+				});
+				const outer = database.transaction(async (manager) => {
+					registerSqliteCommitGuard(manager, () => true);
+					await manager.query("INSERT INTO transaction_record(name) VALUES ('root')");
+					a = manager.transaction(async (nested) => {
+						await nested.query("INSERT INTO transaction_record(name) VALUES ('A')");
+						entered.resolve();
+						await release.promise;
+						throw primary as unknown as Error;
+					});
+					void a.catch(() => undefined);
+					await entered.promise;
+					b = manager.transaction(() => {
+						bodies++;
+						return Promise.resolve();
+					});
+					c = manager.transaction(() => {
+						bodies++;
+						return Promise.resolve();
+					});
+					void b.then(
+						() => {
+							bDone = true;
+						},
+						() => {
+							bDone = true;
+						},
+					);
+					void c.then(
+						() => {
+							cDone = true;
+						},
+						() => {
+							cDone = true;
+						},
+					);
+					release.resolve();
+					await Promise.all([a, b, c]);
+				});
+				void outer.catch(() => undefined);
+				try {
+					const results = await Promise.allSettled([outer]);
+					expect(results[0]).toEqual({ status: 'rejected', reason: primary });
+					const children = await Promise.allSettled([a, b, c]);
+					for (const result of children) {
+						expect(result.status).toBe('rejected');
+						if (result.status === 'rejected') expect(Object.is(result.reason, primary)).toBe(true);
+					}
+					expect(bodies).toBe(0);
+					expect(nestedStarts).toBe(1);
+					expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([]);
+					await database.manager.save(TransactionRecord, { name: 'healthy' });
+					expect(await names()).toEqual(['healthy']);
+				} finally {
+					release.resolve();
+					await Promise.allSettled([outer, a, b, c]);
+					probe.restore();
+				}
+			},
+		);
+
+		it('keeps logical native-origin identity when queued siblings are refused by terminal full rollback', async () => {
+			await database.manager.query("INSERT INTO transaction_record(id,name) VALUES (1,'original')");
+			const before = await database.manager.find(TransactionRecord, { order: { id: 'ASC' } });
+			const entered = deferred(),
+				release = deferred();
+			let a: Promise<unknown>, b: Promise<unknown>, c: Promise<unknown>, origin: unknown;
+			let bodies = 0;
+			let nativeOrigin: unknown;
+			database.subscribers.push({
+				afterQuery(event) {
+					if (event.query.includes("VALUES (1,'duplicate')")) nativeOrigin = event.error as unknown;
+				},
+			});
+			const outer = database.transaction(async (manager) => {
+				const window = captureSqliteNoMutationWindow(manager, () => true);
+				window.applied();
+				a = manager.transaction(async (nested) => {
+					await nested.query("UPDATE transaction_record SET name='candidate' WHERE id=1");
+					entered.resolve();
+					await release.promise;
+					try {
+						await nested.query("INSERT OR ROLLBACK INTO transaction_record(id,name) VALUES (1,'duplicate')");
+					} catch (cause) {
+						origin = cause;
+						throw cause;
+					}
+				});
+				void a.catch(() => undefined);
+				await entered.promise;
+				b = manager.transaction(() => {
+					bodies++;
+					return Promise.resolve();
+				});
+				c = manager.transaction(() => {
+					bodies++;
+					return Promise.resolve();
+				});
+				void b.catch(() => undefined);
+				void c.catch(() => undefined);
+				release.resolve();
+				await Promise.all([a, b, c]);
+			});
+			void outer.catch(() => undefined);
+			try {
+				await Promise.allSettled([outer]);
+				const results = await Promise.allSettled([a, b, c, outer]);
+				expect(origin).toBeInstanceOf(QueryFailedError);
+				expect((origin as QueryFailedError).name).toBe('QueryFailedError');
+				expect((origin as QueryFailedError).driverError).toBe(nativeOrigin);
+				expect(nodeTypes.isNativeError(nativeOrigin)).toBe(true);
+				expect(nativeOrigin).toMatchObject({ code: 'SQLITE_CONSTRAINT', errno: 19 });
+				for (const result of results) {
+					expect(result.status).toBe('rejected');
+					if (result.status === 'rejected') expect(result.reason).toBe(origin);
+				}
+				console.info('queued-abort-origin', {
+					logicalClass: origin instanceof QueryFailedError,
+					nativeErrorBrand: nodeTypes.isNativeError(nativeOrigin),
+					nativeErrorSameRealm: nativeOrigin instanceof Error,
+					sameOriginForAll: results.every((result) => result.status === 'rejected' && result.reason === origin),
+				});
+				expect(bodies).toBe(0);
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+				await database.transaction(async (manager) => {
+					await manager.query('SELECT 1');
+				});
+			} finally {
+				release.resolve();
+				await Promise.allSettled([outer, a, b, c]);
+			}
+		});
+		it.each([false, true])('keeps healthy sibling savepoint order, guarded=%s', async (guarded) => {
+			const order: string[] = [];
+			await database.transaction(async (manager) => {
+				if (guarded) registerSqliteCommitGuard(manager, () => true);
+				await Promise.all(
+					['A', 'B', 'C'].map((name) =>
+						manager.transaction(async (nested) => {
+							order.push(`${name}:start`);
+							if (name === 'A') {
+								await nested.queryRunner.startTransaction();
+								await nested.query("INSERT INTO transaction_record(name) VALUES ('discarded-savepoint')");
+								await nested.queryRunner.rollbackTransaction();
+							}
+							await nested.query('INSERT INTO transaction_record(name) VALUES (?)', [name]);
+							order.push(`${name}:end`);
+						}),
+					),
+				);
+			});
+			expect(order).toEqual(['A:start', 'A:end', 'B:start', 'B:end', 'C:start', 'C:end']);
+			expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([
+				{ id: 1, name: 'A' },
+				{ id: 2, name: 'B' },
+				{ id: 3, name: 'C' },
+			]);
+		});
+
+		it('joins an already-issued parentless child before uncaught-body rollback and leaves independent work independent', async () => {
+			const probe = timeline();
+			const entered = deferred(),
+				release = deferred(),
+				bodyThrows = deferred();
+			let child: Promise<unknown>, independent: Promise<unknown>;
+			const primary = new Error('body primary');
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query.includes("VALUES ('wave-two')")) {
+						entered.resolve();
+						await release.promise;
+					}
+				},
+				afterQuery(event) {
+					if (event.query.includes("VALUES ('wave-one')")) {
+						child = event.manager.query("INSERT INTO transaction_record(name) VALUES ('wave-two')");
+						void child.catch(() => undefined);
+					}
+				},
+			});
+			const outer = database.transaction(async (manager) => {
+				registerSqliteCommitGuard(manager, () => true);
+				await manager.query("INSERT INTO transaction_record(name) VALUES ('wave-one')");
+				await entered.promise;
+				independent = outsideSqliteTransaction(database, () =>
+					database.manager.query("INSERT INTO transaction_record(name) VALUES ('independent')"),
+				);
+				void independent.catch(() => undefined);
+				bodyThrows.resolve();
+				throw primary;
+			});
+			void outer.catch(() => undefined);
+			try {
+				await bodyThrows.promise;
+				release.resolve();
+				await expect(outer).rejects.toBe(primary);
+				await independent;
+				expect(probe.events.indexOf('returned:wave-two')).toBeLessThan(probe.events.indexOf('submit:ROLLBACK'));
+				expect(probe.events.indexOf('returned:wave-two')).toBeGreaterThan(-1);
+				expect(await names()).toEqual(['independent']);
+			} finally {
+				release.resolve();
+				await Promise.allSettled([outer, child, independent]);
+				probe.restore();
+			}
+		});
+
+		it('drains the later original wave after retaining an earlier real native failure', async () => {
+			const probe = timeline();
+			const entered = deferred(),
+				release = deferred();
+			let later: Promise<unknown>, first: unknown;
+			const guard = jest.fn(() => true);
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query.includes("VALUES ('wave-two')")) {
+						entered.resolve();
+						await release.promise;
+					}
+				},
+				afterQuery(event) {
+					if (event.query.includes("VALUES (1,'duplicate')")) {
+						later = event.manager.query("INSERT INTO transaction_record(name) VALUES ('wave-two')");
+						void later.catch(() => undefined);
+					}
+				},
+			});
+			const outer = database.transaction(async (manager) => {
+				registerSqliteCommitGuard(manager, guard);
+				await manager.query("INSERT INTO transaction_record(id,name) VALUES (1,'original')");
+				try {
+					await manager.query("INSERT INTO transaction_record(id,name) VALUES (1,'duplicate')");
+				} catch (cause) {
+					first = cause;
+				}
+			});
+			void outer.catch(() => undefined);
+			try {
+				await entered.promise;
+				release.resolve();
+				const outcome = (await Promise.allSettled([outer]))[0];
+				expect(outcome.status).toBe('rejected');
+				if (outcome.status === 'rejected') expect(outcome.reason).toMatchObject({ driverError: { cause: first } });
+				expect(guard).not.toHaveBeenCalled();
+				expect(probe.events.indexOf('returned:wave-two')).toBeGreaterThan(-1);
+				expect(probe.events.indexOf('returned:wave-two')).toBeLessThan(probe.events.indexOf('submit:ROLLBACK'));
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([]);
+			} finally {
+				release.resolve();
+				await Promise.allSettled([outer, later]);
+				probe.restore();
+			}
+		});
+		it('keeps an admitted BeforeStart invocation real while terminal closure refuses its later SQL', async () => {
+			const queryEntered = deferred(),
+				queryRelease = deferred(),
+				startEntered = deferred(),
+				startRelease = deferred();
+			let a: Promise<unknown>,
+				b: Promise<unknown>,
+				bSettled = false,
+				body = 0,
+				starts = 0;
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query.includes("VALUES (1,'duplicate')")) {
+						queryEntered.resolve();
+						await queryRelease.promise;
+					}
+				},
+				beforeTransactionStart: async (event) => {
+					if ((Reflect.get(event.queryRunner, 'transactionDepth') as number) > 0) {
+						starts++;
+						startEntered.resolve();
+						await startRelease.promise;
+					}
+				},
+			});
+			const outer = database.transaction(async (manager) => {
+				const window = captureSqliteNoMutationWindow(manager, () => true);
+				window.applied();
+				await manager.query("INSERT INTO transaction_record(id,name) VALUES (1,'original')");
+				a = manager.query("INSERT INTO transaction_record(id,name) VALUES (1,'duplicate')");
+				void a.catch(() => undefined);
+				b = manager.transaction(() => {
+					body++;
+					return Promise.resolve();
+				});
+				void b.then(
+					() => {
+						bSettled = true;
+					},
+					() => {
+						bSettled = true;
+					},
+				);
+				await Promise.all([a, b]);
+			});
+			void outer.catch(() => undefined);
+			try {
+				await queryEntered.promise;
+				await startEntered.promise;
+				queryRelease.resolve();
+				const first = (await Promise.allSettled([a]))[0];
+				expect(first.status).toBe('rejected');
+				expect(starts).toBe(1);
+				expect(bSettled).toBe(false);
+				startRelease.resolve();
+				const results = await Promise.allSettled([outer, b]);
+				if (first.status === 'rejected')
+					for (const result of results) {
+						expect(result.status).toBe('rejected');
+						if (result.status === 'rejected') expect(result.reason).toBe(first.reason);
+					}
+				expect(body).toBe(0);
+				expect(await names()).toEqual([]);
+			} finally {
+				queryRelease.resolve();
+				startRelease.resolve();
+				await Promise.allSettled([outer, a, b]);
+			}
+		});
+		it('refuses an already-signaled first sibling before it resumes using one manual closure reason', async () => {
+			const probe = timeline();
+			let bodies = 0,
+				starts = 0;
+			let b: Promise<unknown>, rollback: Promise<void>, hook: Promise<unknown>;
+			let reason: unknown;
+			const primary = new Error('outer returns after explicit rollback');
+			database.subscribers.push({
+				beforeQuery: async (event) => {
+					if (event.query === 'ROLLBACK')
+						await expect(
+							event.manager.query("INSERT INTO transaction_record(name) VALUES ('rollback-hook-escape')"),
+						).rejects.toBe(reason);
+				},
+				beforeTransactionStart(event) {
+					if ((Reflect.get(event.queryRunner, 'transactionDepth') as number) > 0) starts++;
+				},
+				beforeTransactionRollback: async (event) => {
+					if ((Reflect.get(event.queryRunner, 'transactionDepth') as number) === 1) {
+						hook = event.manager.transaction(() => {
+							bodies++;
+							return Promise.resolve();
+						});
+						const result = (await Promise.allSettled([hook]))[0];
+						expect(result.status).toBe('rejected');
+						if (result.status === 'rejected') expect(result.reason).toBe(reason);
+					}
+				},
+			});
+			const outer = database.transaction(async (manager) => {
+				registerSqliteCommitGuard(manager, () => true);
+				await manager.query("INSERT INTO transaction_record(name) VALUES ('root')");
+				// The first sibling's predecessor is already complete; runNested crosses its original await.
+				b = manager.transaction(() => {
+					bodies++;
+					return Promise.resolve();
+				});
+				void b.catch((cause: unknown) => {
+					reason = cause;
+				});
+				// No await between issuing B and closing the actual original outer transaction.
+				rollback = manager.queryRunner.rollbackTransaction();
+				const result = await Promise.allSettled([b, rollback]);
+				expect(result[0].status).toBe('rejected');
+				expect(result[1].status).toBe('fulfilled');
+				throw primary;
+			});
+			void outer.catch(() => undefined);
+			try {
+				await expect(outer).rejects.toBe(primary);
+				expect(reason).toMatchObject({
+					name: 'SqliteNestedTransactionAbortedError',
+					message: 'Queued nested SQLite transaction was refused because its owning transaction is closing',
+				});
+				expect((reason as Error).cause).toBeUndefined();
+				expect(bodies).toBe(0);
+				expect(starts).toBe(0);
+				expect(probe.events.filter((event) => event.startsWith('submit:SAVEPOINT'))).toHaveLength(0);
+				expect(probe.events.filter((event) => event === 'submit:ROLLBACK')).toHaveLength(1);
+				expect(await names()).toEqual([]);
+			} finally {
+				await Promise.allSettled([outer, b, rollback, hook]);
+				probe.restore();
+			}
 		});
 	});
 
