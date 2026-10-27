@@ -25,6 +25,14 @@ export interface BoundStorageQueryResult<T> {
 	readonly binding: StorageBackendBinding;
 }
 
+export interface ControllerStorageWriteCapture {
+	readonly connection: () => boolean;
+	readonly write: () => Promise<void>;
+}
+type ControllerWriteObservation<T> =
+	| { readonly ok: true; readonly value: T }
+	| { readonly ok: false; readonly cause: unknown };
+
 interface StorageBackendBindingState {
 	readonly plugin: StoragePlugin;
 	readonly role: 'primary' | 'fallback';
@@ -220,6 +228,84 @@ export class StorageService implements OnApplicationShutdown {
 	}
 
 	// ─── Core Read/Write ──────────────────────────────────────────────
+
+	/** Retain original owned history destinations before the property's queue, deferring faults to their original phase. */
+	captureControllerWrite(points: StoragePoint[]): ControllerStorageWriteCapture {
+		const retain = <T>(read: () => T): ControllerWriteObservation<T> => {
+			try {
+				return { ok: true, value: read() };
+			} catch (cause: unknown) {
+				return { ok: false, cause };
+			}
+		};
+		const read = <T>(observation: ControllerWriteObservation<T>): T => {
+			if (observation.ok === false) throw observation.cause;
+			return observation.value;
+		};
+		// Retain both roles and all descriptors before invoking either plugin's availability method.
+		const roles = [this.fallback, this.primary];
+		const captured = roles.map((plugin, index) =>
+			plugin
+				? {
+						plugin,
+						role: index === 0 ? ('fallback' as const) : ('primary' as const),
+						health: retain(() => captureCreation(plugin, ['isAvailable'])),
+						writer: retain(() => captureCreation(plugin, ['writePoints'])),
+					}
+				: null,
+		);
+		const available = (destination: (typeof captured)[number]): boolean =>
+			destination ? invokeCreation(read(destination.health).values.isAvailable, destination.plugin) : false;
+		const connection = retain(() => Boolean(available(captured[1]) || available(captured[0])));
+		const prepared = retain(() => {
+			if (connection.ok === false || !connection.value) return [];
+			return captured.map((destination) => {
+				if (!destination) return null;
+				const writer = read(destination.writer).values.writePoints;
+				const healthy = available(destination);
+				return { ...destination, writer, available: healthy, points: ownControllerEffectValue(points) };
+			});
+		});
+		const deliver = ControllerPublicationContext.captureCallback(async () => {
+			if (!read(connection)) return;
+			for (const destination of read(prepared)) {
+				if (!destination?.available) continue;
+				try {
+					await ControllerPublicationContext.effect(`storage.${destination.role}`, () =>
+						invokeCreation(destination.writer, destination.plugin, destination.points),
+					);
+				} catch (cause: unknown) {
+					let message = 'Original storage callback failed';
+					try {
+						if (cause instanceof Error) message = cause.message;
+						else if (typeof cause === 'string') message = cause;
+						else if (
+							typeof cause === 'number' ||
+							typeof cause === 'boolean' ||
+							typeof cause === 'bigint' ||
+							typeof cause === 'symbol'
+						)
+							message = String(cause);
+						else if (cause === null) message = 'null';
+						else if (cause === undefined) message = 'undefined';
+					} catch {
+						// Diagnostic formatting must not suppress the next original destination.
+					}
+					try {
+						if (destination.role === 'fallback') this.logger.warn(`Fallback write failed: ${message}`);
+						else this.logger.error(`Primary write failed: ${message}`);
+					} catch {
+						// Best-effort diagnostics cannot change the original write policy.
+					}
+				}
+			}
+		});
+		let operation: Promise<void> | undefined;
+		return Object.freeze({
+			connection: () => read(connection),
+			write: () => (operation ??= deliver()),
+		});
+	}
 
 	async writePoints(points: StoragePoint[]): Promise<void> {
 		if (ControllerPublicationContext.current()) {

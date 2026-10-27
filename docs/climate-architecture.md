@@ -149,6 +149,10 @@ failure and retired observation eligibility. An expired observation guard does n
 Runtime predecessor completion joins only original command, OFF feedback and outcome-save promises outside locks those
 jobs need; unrelated future polls and ON work are independent. These boundaries provide neither exactly-once external
 writes nor a global storage winner history.
+Owned property history pins its original storage roles, methods, availability and independent point bytes before its
+keyed queue or history drain. A changed owned write uses that admission timestamp for history and cache; unchanged
+values retain their existing delayed freshness refresh. Early metadata failures apply only if the corresponding
+connection or history phase is reached. Ordinary, strict and provider-report timestamp policies remain unchanged.
 
 Admin activity authoring explains explicit opt-in and write-free preview in all six locales. Existing Panel activity
 and comfort controls use the same authenticated routes. Schedule/presence engines, broader bridge integrations, installed

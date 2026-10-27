@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { DataSource } from 'typeorm';
+
+import { ConfigService as NestConfigService } from '@nestjs/config';
+
 import { ConfigService } from '../../config/services/config.service';
-import { ConnectionState } from '../../devices/devices.constants';
+import { ConnectionState, DataTypeType } from '../../devices/devices.constants';
+import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { ControllerPublicationContext } from '../../devices/services/controller-publication-context';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../devices/services/device-structure-lock.service';
+import { PropertyProducerRegistryService } from '../../devices/services/property-producer.registry.service';
+import { PropertyValueLockService } from '../../devices/services/property-value-lock.service';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
+import { PropertyValueService } from '../../devices/services/property-value.service';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
-import { StorageQueryOptions } from '../storage.types';
+import { StoragePoint, StorageQueryOptions } from '../storage.types';
 
 import { StorageService } from './storage.service';
 
@@ -18,6 +27,537 @@ describe('StorageService', () => {
 			query: jest.fn(),
 			registerSchema: jest.fn(),
 		}) as unknown as jest.Mocked<StoragePlugin>;
+
+	const gate = () => {
+		let release!: () => void;
+		const promise = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		return { promise, release };
+	};
+	const propertyFixture = () => {
+		const storage = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'memory' }),
+		} as unknown as ConfigService);
+		const registry = new PropertyValueSourceRegistryService();
+		const lock = new PropertyValueLockService(
+			{} as DataSource,
+			new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }),
+		);
+		expect(lock.isEnabled()).toBe(false);
+		const values = new PropertyValueService(storage, registry, lock);
+		const property = {
+			id: 'setting',
+			type: 'owned-fixture',
+			dataType: DataTypeType.FLOAT,
+			invalid: null,
+			format: [0, 100],
+			step: null,
+		} as ChannelPropertyEntity;
+		return { storage, registry, values, property, lock };
+	};
+	const cached = (values: PropertyValueService) =>
+		(Reflect.get(values, 'valuesMap') as Map<string, { value: unknown; lastUpdated: string }>).get('setting');
+	const failOriginal = (cause: unknown): never => {
+		throw cause;
+	};
+	const originalFailures = [new Error('original storage failure'), undefined, null, false, 0, ''];
+
+	it.each([false, true])('pins queued owned property history with eligibility=%s', async (eligibleAtDelivery) => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary'),
+			fallback = createPlugin('memory'),
+			successorPrimary = createPlugin('primary'),
+			successorFallback = createPlugin('memory');
+		const predecessorEntered = gate(),
+			predecessorRelease = gate(),
+			fallbackEntered = gate(),
+			fallbackRelease = gate();
+		let primaryCalls = 0,
+			fallbackCalls = 0;
+		let primaryPoints: StoragePoint[] = [],
+			fallbackPoints: StoragePoint[] = [],
+			fallbackBefore: StoragePoint[] = [];
+		const primaryReceivers: StoragePlugin[] = [],
+			fallbackReceivers: StoragePlugin[] = [];
+		primary.writePoints.mockImplementation(async function (this: StoragePlugin, points) {
+			if (points[0].fields.numberValue === 10) {
+				predecessorEntered.release();
+				await predecessorRelease.promise;
+			} else if (points[0].fields.numberValue === 20) {
+				primaryCalls++;
+				primaryReceivers.push(this);
+				primaryPoints = points;
+			}
+		});
+		fallback.writePoints.mockImplementation(async function (this: StoragePlugin, points) {
+			if (points[0].fields.numberValue !== 20) return;
+			fallbackCalls++;
+			fallbackReceivers.push(this);
+			fallbackPoints = points;
+			fallbackBefore = structuredClone(points);
+			fallbackEntered.release();
+			await fallbackRelease.promise;
+			points[0].fields.numberValue = 99;
+			points[0].tags.propertyId = 'changed-by-fallback';
+			points[0].timestamp.setFullYear(2032);
+		});
+		storage.registerPlugin('primary', primary);
+		storage.registerPlugin('memory', fallback);
+		const predecessor = values.writeStrict(property, 10);
+		let queued!: Promise<boolean>, parent!: Promise<void>, work!: Promise<void>;
+		let eligible = true,
+			settled = false;
+		const publication = new ControllerPublicationContext(() => eligible);
+		const timestamp = new Date('2026-01-02T03:04:05.000Z');
+		const expected = [
+			{
+				measurement: 'property_value',
+				tags: { propertyId: 'setting' },
+				fields: { numberValue: 20 },
+				timestamp: new Date(timestamp),
+			},
+		];
+		try {
+			await predecessorEntered.promise;
+			work = ControllerPublicationContext.complete(() => {
+				parent = publication.run(() => {
+					queued = values.write(property, 20, timestamp);
+					return Promise.resolve();
+				});
+				return parent;
+			});
+			void work.then(
+				() => {
+					settled = true;
+				},
+				() => {
+					settled = true;
+				},
+			);
+			await parent;
+			storage.registerPlugin('primary', successorPrimary);
+			storage.registerPlugin('memory', successorFallback);
+			primary.writePoints = createPlugin('replacement-primary-method').writePoints;
+			fallback.writePoints = createPlugin('replacement-fallback-method').writePoints;
+			primary.isAvailable.mockReturnValue(false);
+			fallback.isAvailable.mockReturnValue(false);
+			property.id = 'mutated';
+			property.format = [0, 1];
+			timestamp.setFullYear(2030);
+			eligible = eligibleAtDelivery;
+			predecessorRelease.release();
+			await predecessor;
+			expect(await Promise.race([fallbackEntered.promise.then(() => 'fallback'), queued.then(() => 'finished')])).toBe(
+				'fallback',
+			);
+			expect(settled).toBe(false);
+			expect(primaryCalls).toBe(0);
+			fallbackRelease.release();
+			expect(await queued).toBe(true);
+			await work;
+			expect(fallbackBefore).toEqual(expected);
+			expect(primaryPoints).toEqual(expected);
+			expect(primaryReceivers[0]).toBe(primary);
+			expect(fallbackReceivers[0]).toBe(fallback);
+			expect(primaryCalls).toBe(1);
+			expect(fallbackCalls).toBe(1);
+			expect(primaryPoints).not.toBe(fallbackPoints);
+			expect(primaryPoints[0].fields).not.toBe(fallbackPoints[0].fields);
+			expect(primaryPoints[0].tags).not.toBe(fallbackPoints[0].tags);
+			expect(primaryPoints[0].timestamp).not.toBe(fallbackPoints[0].timestamp);
+			for (const successor of [successorPrimary, successorFallback])
+				expect(
+					successor.writePoints.mock.calls.some(([points]) => points.some((point) => point.fields.numberValue === 20)),
+				).toBe(false);
+			const cache = Reflect.get(values, 'valuesMap') as Map<string, { value: number }>;
+			expect(cache.get('setting').value).toBe(eligibleAtDelivery ? 20 : 10);
+			expect(publication.facts().filter((fact) => fact.name.startsWith('storage.'))).toEqual([
+				{ name: 'storage.fallback', submitted: true, settled: true, failed: false, retired: !eligibleAtDelivery },
+				{ name: 'storage.primary', submitted: true, settled: true, failed: false, retired: !eligibleAtDelivery },
+			]);
+		} finally {
+			predecessorRelease.release();
+			fallbackRelease.release();
+			await Promise.allSettled([predecessor, ...[queued, parent, work].filter((job) => job !== undefined)]);
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each([false, true])(
+		'retains owned destinations through an actual buffered drain, rejected=%s',
+		async (rejectBuffer) => {
+			const { storage, values, property } = propertyFixture();
+			const primary = createPlugin('primary'),
+				successor = createPlugin('primary');
+			const entered = gate(),
+				release = gate();
+			const events: string[] = [];
+			let direct: StoragePoint[] = [];
+			primary.writePoints.mockImplementation(async (points) => {
+				if (points[0].measurement === 'buffered-original') {
+					entered.release();
+					await release.promise;
+					events.push('buffered-ended');
+					if (rejectBuffer) throw new Error('original buffered callback failed');
+				} else {
+					direct = structuredClone(points);
+					events.push('owned-written');
+				}
+			});
+			storage.registerPlugin('primary', primary);
+			const historical = storage.enqueueWritePoint({ measurement: 'buffered-original', fields: { numberValue: 1 } });
+			let queued: Promise<boolean> | undefined;
+			try {
+				await entered.promise;
+				queued = new ControllerPublicationContext(() => true).run(() => values.write(property, 20));
+				await historical;
+				const buffer = Reflect.get(storage, 'writes') as { waiters: unknown[] };
+				expect(buffer.waiters.length).toBeGreaterThan(0);
+				storage.registerPlugin('primary', successor);
+				primary.writePoints = createPlugin('replacement-method').writePoints;
+				primary.isAvailable.mockReturnValue(false);
+				release.release();
+				expect(await queued).toBe(true);
+				expect(events).toEqual(['buffered-ended', 'owned-written']);
+				expect(direct).toHaveLength(1);
+				expect(direct[0]).toMatchObject({
+					measurement: 'property_value',
+					tags: { propertyId: 'setting' },
+					fields: { numberValue: 20 },
+				});
+				expect(successor.writePoints).not.toHaveBeenCalled();
+			} finally {
+				release.release();
+				await Promise.allSettled([historical, ...(queued !== undefined ? [queued] : [])]);
+				await storage.onApplicationShutdown();
+			}
+		},
+	);
+
+	it('does not upgrade a queued disconnected owned write to a later healthy backend', async () => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary'),
+			successor = createPlugin('primary');
+		const entered = gate(),
+			release = gate();
+		primary.writePoints.mockImplementation(async () => {
+			entered.release();
+			await release.promise;
+		});
+		const original = primary.writePoints;
+		storage.registerPlugin('primary', primary);
+		const previous = values.writeStrict(property, 10);
+		let queued: Promise<boolean> | undefined;
+		const publication = new ControllerPublicationContext(() => true);
+		try {
+			await entered.promise;
+			primary.isAvailable.mockReturnValue(false);
+			queued = publication.run(() => values.write(property, 20));
+			storage.registerPlugin('primary', successor);
+			release.release();
+			await previous;
+			expect(await queued).toBe(true);
+			expect(cached(values).value).toBe(20);
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(successor.writePoints).not.toHaveBeenCalled();
+			expect(publication.facts().some((fact) => fact.name.startsWith('storage.'))).toBe(false);
+		} finally {
+			release.release();
+			await Promise.allSettled([previous, ...(queued !== undefined ? [queued] : [])]);
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each(originalFailures)('keeps a captured connection failure %s outside history best effort', async (cause) => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary');
+		storage.registerPlugin('primary', primary);
+		primary.isAvailable.mockImplementation(() => failOriginal(cause));
+		const publication = new ControllerPublicationContext(() => true);
+		try {
+			await expect(publication.run(() => values.write(property, 20))).rejects.toBe(cause);
+			expect(cached(values).value).toBe(20);
+			expect(primary.writePoints).not.toHaveBeenCalled();
+			const failed = publication.facts().find((fact) => fact.name === 'property.value');
+			expect(failed).toMatchObject({ submitted: true, settled: true, failed: true });
+			expect(Object.hasOwn(failed.failure, 'cause')).toBe(true);
+			expect(failed.failure.cause).toBe(cause);
+		} finally {
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each(originalFailures)('keeps captured history preparation failure %s best effort', async (cause) => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary'),
+			fallback = createPlugin('memory');
+		storage.registerPlugin('primary', primary);
+		storage.registerPlugin('memory', fallback);
+		fallback.isAvailable.mockImplementation(() => failOriginal(cause));
+		const capture = storage.captureControllerWrite.bind(storage) as StorageService['captureControllerWrite'];
+		let observed: ReturnType<StorageService['captureControllerWrite']> | undefined;
+		const observer = jest.spyOn(storage, 'captureControllerWrite').mockImplementation((points) => {
+			const original = capture(points);
+			observed = original;
+			return original;
+		});
+		const publication = new ControllerPublicationContext(() => true);
+		try {
+			await expect(publication.run(() => values.write(property, 20))).resolves.toBe(true);
+			expect(observer).toHaveBeenCalledTimes(1);
+			const original = observed.write();
+			expect(observed.write()).toBe(original);
+			await expect(original).rejects.toBe(cause);
+			expect(cached(values).value).toBe(20);
+			expect(primary.isAvailable).toHaveBeenCalledTimes(1);
+			expect(fallback.isAvailable).toHaveBeenCalledTimes(1);
+			expect(primary.writePoints).not.toHaveBeenCalled();
+			expect(fallback.writePoints).not.toHaveBeenCalled();
+			expect(publication.facts().some((fact) => fact.name.startsWith('storage.'))).toBe(false);
+		} finally {
+			observer.mockRestore();
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each(originalFailures)(
+		'retains each original role failure %s without retry or suppressing its peer',
+		async (cause) => {
+			for (const role of ['primary', 'fallback'] as const) {
+				const { storage, values, property } = propertyFixture();
+				const primary = createPlugin('primary'),
+					fallback = createPlugin('memory');
+				storage.registerPlugin('primary', primary);
+				storage.registerPlugin('memory', fallback);
+				(role === 'primary' ? primary : fallback).writePoints.mockRejectedValue(cause);
+				const publication = new ControllerPublicationContext(() => true);
+				try {
+					await expect(publication.run(() => values.write(property, 20))).resolves.toBe(true);
+					expect(primary.writePoints).toHaveBeenCalledTimes(1);
+					expect(fallback.writePoints).toHaveBeenCalledTimes(1);
+					const failed = publication.facts().find((fact) => fact.name === `storage.${role}`);
+					expect(failed).toMatchObject({ submitted: true, settled: true, failed: true });
+					expect(Object.hasOwn(failed.failure, 'cause')).toBe(true);
+					expect(failed.failure.cause).toBe(cause);
+				} finally {
+					await storage.onApplicationShutdown();
+				}
+			}
+		},
+	);
+
+	it.each(['null', 'sentinel', 'invalid', 'unsupported', 'unchanged', 'projection'] as const)(
+		'discards captured errors for an owned %s no-history decision',
+		async (kind) => {
+			const { storage, values, property, registry } = propertyFixture();
+			const primary = createPlugin('primary');
+			storage.registerPlugin('primary', primary);
+			if (kind === 'unchanged') await values.writeWithState(property, 20);
+			primary.writePoints.mockClear();
+			primary.isAvailable.mockImplementation(() => failOriginal(0));
+			property.invalid = '-1';
+			if (kind === 'unsupported') property.dataType = 'unsupported' as DataTypeType;
+			if (kind === 'projection')
+				expect(registry.register({ getType: () => property.type, resolve: () => 'other-series' })).toBe(true);
+			const value = kind === 'null' ? null : kind === 'sentinel' ? -1 : kind === 'invalid' ? 200 : 20;
+			const publication = new ControllerPublicationContext(() => true);
+			try {
+				await expect(
+					publication.run(() => values.write(property, value, kind === 'unchanged' ? undefined : new Date(NaN))),
+				).resolves.toBe(false);
+				expect(primary.writePoints).not.toHaveBeenCalled();
+				expect(publication.facts().some((fact) => fact.name.startsWith('storage.'))).toBe(false);
+			} finally {
+				await storage.onApplicationShutdown();
+			}
+		},
+	);
+
+	it('discards captured history faults for a real producer-owned property', async () => {
+		const { storage, property, registry, lock } = propertyFixture();
+		const producers = new PropertyProducerRegistryService();
+		producers.register(property, 1);
+		const values = new PropertyValueService(storage, registry, lock, producers);
+		const primary = createPlugin('primary');
+		storage.registerPlugin('primary', primary);
+		primary.isAvailable.mockImplementation(() => failOriginal(0));
+		try {
+			await expect(new ControllerPublicationContext(() => true).run(() => values.write(property, 20))).resolves.toBe(
+				false,
+			);
+			expect(primary.writePoints).not.toHaveBeenCalled();
+			expect(cached(values)).toBeUndefined();
+		} finally {
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each([false, true])('retains invalid Date failure at the original unchanged=%s boundary', async (unchanged) => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary');
+		storage.registerPlugin('primary', primary);
+		if (unchanged) await values.writeWithState(property, 20);
+		primary.writePoints.mockClear();
+		primary.isAvailable.mockImplementation(() => failOriginal(0));
+		try {
+			await expect(
+				new ControllerPublicationContext(() => true).run(() => values.write(property, 20, new Date(NaN))),
+			).rejects.toBeInstanceOf(RangeError);
+			expect(primary.writePoints).not.toHaveBeenCalled();
+			expect(cached(values)?.value).toBe(unchanged ? 20 : undefined);
+		} finally {
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each([false, true])('pins changed history time but retains delayed unchanged=%s refresh', async (unchanged) => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary');
+		const entered = gate(),
+			release = gate();
+		const start = new Date('2026-01-01T00:00:00.000Z'),
+			later = new Date('2026-01-01T00:00:10.000Z');
+		let calls = 0;
+		const points: StoragePoint[][] = [];
+		primary.writePoints.mockImplementation(async (batch) => {
+			points.push(structuredClone(batch));
+			if (++calls === 1) {
+				entered.release();
+				await release.promise;
+			}
+		});
+		storage.registerPlugin('primary', primary);
+		jest.useFakeTimers({
+			now: start,
+			doNotFake: [
+				'hrtime',
+				'nextTick',
+				'performance',
+				'queueMicrotask',
+				'setImmediate',
+				'clearImmediate',
+				'setInterval',
+				'clearInterval',
+				'setTimeout',
+				'clearTimeout',
+			],
+		});
+		const previous = values.writeStrict(property, unchanged ? 20 : 10);
+		let queued: Promise<boolean> | undefined;
+		try {
+			await entered.promise;
+			queued = new ControllerPublicationContext(() => true).run(() => values.write(property, 20));
+			jest.setSystemTime(later);
+			release.release();
+			await previous;
+			expect(await queued).toBe(!unchanged);
+			expect(cached(values).lastUpdated).toBe((unchanged ? later : start).toISOString());
+			expect(points).toHaveLength(unchanged ? 1 : 2);
+			expect(points[points.length - 1][0].timestamp).toEqual(start);
+		} finally {
+			release.release();
+			await Promise.allSettled([previous, ...(queued !== undefined ? [queued] : [])]);
+			try {
+				await storage.onApplicationShutdown();
+			} finally {
+				jest.useRealTimers();
+			}
+		}
+	});
+
+	it('invokes retained methods directly without consulting their own call metadata', async () => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary');
+		storage.registerPlugin('primary', primary);
+		let touched = 0;
+		for (const method of [primary.writePoints, primary.isAvailable]) {
+			Object.defineProperty(method, 'call', {
+				get: () => {
+					touched++;
+					throw new Error('replacement call getter');
+				},
+			});
+		}
+		try {
+			await expect(new ControllerPublicationContext(() => true).run(() => values.write(property, 20))).resolves.toBe(
+				true,
+			);
+			expect(primary.writePoints).toHaveBeenCalledTimes(1);
+			expect(primary.isAvailable).toHaveBeenCalledTimes(2);
+			expect(touched).toBe(0);
+		} finally {
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it('does not execute a history accessor or promote optional diagnostic failure', async () => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary'),
+			fallback = createPlugin('memory');
+		storage.registerPlugin('primary', primary);
+		storage.registerPlugin('memory', fallback);
+		let accessed = 0;
+		Object.defineProperty(fallback, 'writePoints', {
+			configurable: true,
+			get: () => {
+				accessed++;
+				return primary.writePoints;
+			},
+		});
+		const propertyLogger = Object.getOwnPropertyDescriptor(values, 'logger');
+		Object.defineProperty(values, 'logger', {
+			...propertyLogger,
+			value: {
+				error: () => {
+					throw new Error('optional diagnostics failed');
+				},
+			},
+		});
+		try {
+			await expect(new ControllerPublicationContext(() => true).run(() => values.write(property, 20))).resolves.toBe(
+				true,
+			);
+			expect(accessed).toBe(0);
+			expect(primary.writePoints).not.toHaveBeenCalled();
+		} finally {
+			Object.defineProperty(values, 'logger', propertyLogger);
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it('does not let error getters or optional logger failures suppress the original peer', async () => {
+		const { storage, values, property } = propertyFixture();
+		const primary = createPlugin('primary'),
+			fallback = createPlugin('memory');
+		storage.registerPlugin('primary', primary);
+		storage.registerPlugin('memory', fallback);
+		const reason = new Error('original callback reason');
+		Object.defineProperty(reason, 'message', {
+			get: () => {
+				throw new Error('unsafe diagnostic getter');
+			},
+		});
+		fallback.writePoints.mockRejectedValue(reason);
+		const originalLogger = Object.getOwnPropertyDescriptor(storage, 'logger');
+		Object.defineProperty(storage, 'logger', {
+			...originalLogger,
+			value: {
+				warn: () => {
+					throw new Error('optional logger failed');
+				},
+			},
+		});
+		const publication = new ControllerPublicationContext(() => true);
+		try {
+			await expect(publication.run(() => values.write(property, 21))).resolves.toBe(true);
+			expect(primary.writePoints).toHaveBeenCalledTimes(1);
+			expect(publication.facts().find((fact) => fact.name === 'storage.fallback')?.failure?.cause).toBe(reason);
+		} finally {
+			Object.defineProperty(storage, 'logger', originalLogger);
+			await storage.onApplicationShutdown();
+		}
+	});
 
 	it.each([undefined, null, false, 0, ''])(
 		'preserves owned strict rejection %s and still permits an available fallback',

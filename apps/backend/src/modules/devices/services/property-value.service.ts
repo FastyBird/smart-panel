@@ -2,7 +2,12 @@ import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
+import {
+	type ControllerStorageWriteCapture,
+	type StorageBackendBinding,
+	StorageService,
+} from '../../storage/services/storage.service';
+import { StoragePoint } from '../../storage/storage.types';
 import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
@@ -120,6 +125,12 @@ interface InternalPropertyValueReadResult {
 	readonly storageBinding?: StorageBackendBinding;
 }
 
+interface OwnedPropertyHistory {
+	readonly timestamp: Date;
+	readonly point: StoragePoint | undefined;
+	readonly storage: ControllerStorageWriteCapture;
+}
+
 @Injectable()
 export class PropertyValueService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
@@ -167,11 +178,26 @@ export class PropertyValueService {
 				const key = this.valueSourceRegistry.readSourceKey(capture);
 				const eligible = () => publication.isEligible() && this.valueSourceRegistry.isReadSourceCurrent(capture);
 				return (
-					await ControllerPublicationContext.effect('property.value', () =>
-						this.withValueLock(key, () =>
-							this.writeInternal(input, key, value, false, undefined, timestamp, false, false, eligible),
-						),
-					)
+					await ControllerPublicationContext.effect('property.value', () => {
+						const fields = this.storageFields(input.dataType, value);
+						const pointTimestamp = timestamp ?? new Date();
+						const point = fields
+							? {
+									measurement: 'property_value',
+									tags: { propertyId: key },
+									fields,
+									timestamp: pointTimestamp,
+								}
+							: undefined;
+						const history: OwnedPropertyHistory = {
+							timestamp: pointTimestamp,
+							point,
+							storage: this.storageService.captureControllerWrite(point ? [point] : []),
+						};
+						return this.withValueLock(key, () =>
+							this.writeInternal(input, key, value, false, undefined, timestamp, false, false, eligible, history),
+						);
+					})
 				).changed;
 			} finally {
 				this.valueSourceRegistry.closeReadSource(capture);
@@ -701,6 +727,28 @@ export class PropertyValueService {
 		});
 	}
 
+	private storageFields(
+		dataType: DataTypeType,
+		value: string | boolean | number | null,
+	): { stringValue?: string; numberValue?: number } | undefined {
+		switch (dataType) {
+			case DataTypeType.ENUM:
+			case DataTypeType.STRING:
+				return { stringValue: String(value) };
+			case DataTypeType.BOOL:
+				return { stringValue: String(value ? 'true' : 'false') };
+			case DataTypeType.CHAR:
+			case DataTypeType.UCHAR:
+			case DataTypeType.SHORT:
+			case DataTypeType.USHORT:
+			case DataTypeType.INT:
+			case DataTypeType.UINT:
+			case DataTypeType.FLOAT:
+				return { numberValue: Number(value) };
+			default:
+				return undefined;
+		}
+	}
 	private async writeInternal(
 		property: ChannelPropertyEntity,
 		key: ChannelPropertyEntity['id'],
@@ -711,6 +759,7 @@ export class PropertyValueService {
 		deferHistory = false,
 		producerWrite = false,
 		ownedCurrent?: () => boolean,
+		ownedHistory?: OwnedPropertyHistory,
 	): Promise<PropertyValueWriteResult> {
 		// A projected property owns no series — the value belongs to its source, and only the source's
 		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
@@ -771,37 +820,15 @@ export class PropertyValueService {
 			return { changed: false, state: null };
 		}
 
-		const formattedValue: { stringValue?: string; numberValue?: number } = {};
-
-		switch (property.dataType) {
-			case DataTypeType.ENUM:
-			case DataTypeType.STRING:
-				formattedValue.stringValue = String(value);
-				break;
-
-			case DataTypeType.BOOL:
-				formattedValue.stringValue = String(value ? 'true' : 'false');
-				break;
-
-			case DataTypeType.CHAR:
-			case DataTypeType.UCHAR:
-			case DataTypeType.SHORT:
-			case DataTypeType.USHORT:
-			case DataTypeType.INT:
-			case DataTypeType.UINT:
-			case DataTypeType.FLOAT:
-				formattedValue.numberValue = Number(value);
-				break;
-
-			default:
-				this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
-
-				return { changed: false, state: null };
+		const formattedValue = ownedHistory ? ownedHistory.point?.fields : this.storageFields(property.dataType, value);
+		if (!formattedValue) {
+			this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
+			return { changed: false, state: null };
 		}
 
-		const timestamp = valueTimestamp ?? new Date();
+		const timestamp = ownedHistory?.timestamp ?? valueTimestamp ?? new Date();
 		const now = timestamp.toISOString();
-		const point = {
+		const point = ownedHistory?.point ?? {
 			measurement: 'property_value',
 			tags: { propertyId: key },
 			fields: formattedValue,
@@ -843,19 +870,30 @@ export class PropertyValueService {
 			return { changed: true, state };
 		}
 
-		if (!this.storageService.isConnected()) {
+		if (!(ownedHistory ? ownedHistory.storage.connection() : this.storageService.isConnected())) {
 			return { changed: true, state }; // Value changed in cache
 		}
 
 		try {
 			if (deferHistory) {
 				await this.storageService.enqueueWritePoint(point);
+			} else if (ownedHistory) {
+				await ownedHistory.storage.write();
 			} else {
 				await this.storageService.writePoints([point]);
 			}
 
 			this.logger.debug(`Value ${deferHistory ? 'queued' : 'saved'} id=${property.id} dataType=${property.dataType}`);
 		} catch (error) {
+			if (ownedHistory) {
+				try {
+					const message = error instanceof Error ? error.message : String(error);
+					this.logger.error(`Failed to write original property history id=${property.id} error=${message}`);
+				} catch {
+					// Optional diagnostics cannot turn best-effort history into a new failure.
+				}
+				return { changed: true, state };
+			}
 			const err = error as Error;
 
 			this.logger.error(
