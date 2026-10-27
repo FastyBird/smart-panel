@@ -98,6 +98,94 @@ const definedConfiguration = (): ThermostatComfortConfiguration => ({
 	automation_baseline: null,
 	temporary_override: null,
 });
+// Passive observation only: never substitutes a phase or readiness promise.
+function initializeWitness(started: bigint, clock: () => bigint = () => process.hrtime.bigint()) {
+	const phases: { phase: string; elapsedMs: number }[] = [];
+	let settlement: 'UNKNOWN' | 'fulfilled' | 'rejected' = 'UNKNOWN';
+	let restoration: 'pending' | 'complete' | 'uncertain' = 'pending';
+	let teardown = false;
+	const undos: (() => void)[] = [];
+	const safely = (action: () => void) => {
+		try {
+			action();
+		} catch {
+			/* Diagnostics cannot replace original behavior. */
+		}
+	};
+	const snapshot = () => ({ phases: phases.map((entry) => ({ ...entry })), settlement, restoration });
+	const restore = () => {
+		let uncertain = restoration === 'uncertain';
+		for (const undo of undos.splice(0).reverse()) {
+			try {
+				undo();
+			} catch {
+				uncertain = true;
+			}
+		}
+		restoration = uncertain ? 'uncertain' : 'complete';
+	};
+	const finish = (outcome: 'fulfilled' | 'rejected') =>
+		safely(() => {
+			settlement = outcome;
+			restore();
+			if (teardown) safely(() => console.error('native-initialize-late-settlement', snapshot()));
+		});
+	return {
+		snapshot,
+		teardown: () => {
+			teardown = true;
+		},
+		initialize<T>(source: object & { driver: object; initialize(): Promise<T> }): Promise<T> {
+			try {
+				for (const [target, key] of [
+					[source.driver, 'connect'],
+					[source, 'buildMetadatas'],
+					[source.driver, 'afterConnect'],
+					[source, 'synchronize'],
+				] as const) {
+					const own = Object.getOwnPropertyDescriptor(target, key);
+					const original = Reflect.get(target, key) as (...args: unknown[]) => unknown;
+					const wrapper = function (this: unknown, ...args: unknown[]) {
+						safely(() => {
+							if (phases.length < 8)
+								phases.push({
+									phase: key,
+									elapsedMs: Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Number(clock() - started) / 1e6)),
+								});
+						});
+						return Reflect.apply(original, this, args);
+					};
+					undos.push(() => {
+						if (Object.getOwnPropertyDescriptor(target, key)?.value !== wrapper) {
+							throw new Error('Observation descriptor changed');
+						}
+						if (own) Object.defineProperty(target, key, own);
+						else if (!Reflect.deleteProperty(target, key)) throw new Error('Observation restoration refused');
+					});
+					Object.defineProperty(target, key, { configurable: true, writable: true, value: wrapper });
+				}
+			} catch {
+				restoration = 'uncertain';
+				restore();
+			}
+			let pending: Promise<T>;
+			try {
+				pending = source.initialize();
+			} catch (cause) {
+				finish('rejected');
+				throw cause;
+			}
+			safely(() => {
+				void pending.then(
+					() => finish('fulfilled'),
+					() => finish('rejected'),
+				);
+			});
+			return pending;
+		},
+	};
+}
+
 describe('manual thermostat selection: reserved native intent', () => {
 	let database: SqliteDataSource;
 	let lock: DeviceStructureLockService;
@@ -122,6 +210,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			| 'release-request-setup'
 			| 'complete';
 		completed: boolean;
+		initialize: ReturnType<typeof initializeWitness>;
 	};
 	let setupAttempt = 0;
 	let newestSetup: SetupWitness | undefined;
@@ -133,7 +222,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 		expected_graph_revision: await graph.revision(),
 	});
 	const native = () => Reflect.get(database.driver, 'databaseConnection') as NativeConnection;
-	async function open(synchronize = false) {
+	async function open(synchronize = false, witness?: ReturnType<typeof initializeWitness>) {
 		const source = new SqliteDataSource({
 			type: 'sqlite',
 			database: path.join(directory, 'selection.sqlite'),
@@ -141,6 +230,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			synchronize,
 		});
 		sources.push(source);
+		if (witness) return witness.initialize(source);
 		return source.initialize();
 	}
 	async function attach(source: SqliteDataSource, setup?: SetupWitness) {
@@ -168,10 +258,12 @@ describe('manual thermostat selection: reserved native intent', () => {
 		};
 	}
 	beforeEach(async () => {
+		const started = process.hrtime.bigint();
 		const setup: SetupWitness = {
 			attempt: setupAttempt < 255 ? ++setupAttempt : null,
 			stage: 'sync-setup',
 			completed: false,
+			initialize: initializeWitness(started),
 		};
 		newestSetup = setup;
 		wall = Date.UTC(2026, 9, 25);
@@ -180,7 +272,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 		jest.spyOn(performance, 'now').mockImplementation(() => monotonic);
 		directory = mkdtempSync(path.join(tmpdir(), 'selection-native-'));
 		setup.stage = 'open-source';
-		database = await open(true);
+		database = await open(true, setup.initialize);
 		setup.stage = 'attach-construction';
 		({ lock, graph, claims, comfort, events } = await attach(database, setup));
 		id = randomUUID();
@@ -220,10 +312,11 @@ describe('manual thermostat selection: reserved native intent', () => {
 	});
 	afterEach(async () => {
 		const setup = newestSetup;
+		setup?.initialize.teardown();
 		if (setup && !setup.completed) {
 			const view = { attempt: setup.attempt, stage: setup.stage, completed: setup.completed, finished: 'UNKNOWN' };
 			try {
-				console.error('native-setup-phase', view);
+				console.error('native-setup-phase', { ...view, initialize: setup.initialize.snapshot() });
 			} catch {
 				// Missing observation stays UNKNOWN; original cleanup retains its own failure policy.
 			}
