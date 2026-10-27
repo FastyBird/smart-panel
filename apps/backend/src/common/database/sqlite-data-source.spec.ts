@@ -10,6 +10,7 @@ import {
 	PrimaryGeneratedColumn,
 	QueryFailedError,
 	QueryRunner,
+	TransactionNotStartedError,
 } from 'typeorm';
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { SqliteQueryRunner } from 'typeorm/driver/sqlite/SqliteQueryRunner';
@@ -2271,6 +2272,95 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				probe.restore();
 			}
 		});
+	});
+
+	describe('released runner lease reuse', () => {
+		it.each([
+			['refusal', 'query'],
+			['refusal', 'connect'],
+			['body', 'query'],
+			['body', 'connect'],
+		] as const)(
+			'reuses the same runner after %s through %s while keeping its old facade closed',
+			async (route, entry) => {
+				const runner = database.createQueryRunner();
+				const primary = new Error('original guarded rollback primary');
+				const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection;
+				const all = jest.spyOn(native, 'all');
+				let original: unknown, receipt: SqliteCommitGuardReceipt, stale: NativeConnection;
+				try {
+					try {
+						await runner.manager.transaction(async (manager) => {
+							expect(manager.queryRunner).toBe(runner);
+							receipt = registerSqliteCommitGuard(manager, () => route === 'body');
+							stale = (await runner.connect()) as NativeConnection;
+							await manager.save(TransactionRecord, { name: 'rolled-back candidate' });
+							if (route === 'body') throw primary;
+						});
+					} catch (cause) {
+						original = cause;
+					}
+					if (route === 'body') expect(original).toBe(primary);
+					else {
+						expect(original).toBeInstanceOf(QueryFailedError);
+						expect((original as QueryFailedError).driverError).toBeInstanceOf(SqliteCommitGuardRefusedError);
+					}
+					expect(receipt.outcome).toBe(route === 'body' ? 'rolled_back' : 'refused');
+					if (entry === 'connect')
+						expect(Object.getPrototypeOf(await runner.connect())).toBe(Object.getPrototypeOf(native));
+					expect(await runner.query('SELECT 47 AS value')).toEqual([{ value: 47 }]);
+					const sql = "INSERT INTO transaction_record(name) VALUES ('stale-facade-escape')";
+					const staleQuery = new Promise<unknown>((resolve, reject) => {
+						stale.all(sql, [], function (error, rows) {
+							if (error) reject(error);
+							else resolve(rows);
+						});
+					});
+					const [outcome] = await Promise.allSettled([staleQuery]);
+					expect(outcome.status).toBe('rejected');
+					if (outcome.status === 'rejected') {
+						expect(outcome.reason).toBeInstanceOf(SqliteCommitGuardRefusedError);
+						expect((outcome.reason as Error).cause).toBe(original);
+					}
+					expect(all.mock.calls.filter(([query]) => query === sql)).toHaveLength(0);
+					expect(await runner.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([]);
+					await runner.manager.transaction(async (manager) => {
+						expect(manager.queryRunner).toBe(runner);
+						registerSqliteCommitGuard(manager, () => true);
+						await manager.save(TransactionRecord, { name: 'fresh scope' });
+					});
+					expect(await runner.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual([
+						{ id: 1, name: 'fresh scope' },
+					]);
+					expect(all.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(1);
+				} finally {
+					await runner.release();
+					all.mockRestore();
+				}
+			},
+		);
+
+		it.each(['commitTransaction', 'rollbackTransaction'] as const)(
+			'keeps unleased transaction control error: %s',
+			async (method) => {
+				const runner = database.createQueryRunner();
+				const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+					run: NativeConnection['all'];
+				};
+				const all = jest.spyOn(native, 'all'),
+					run = jest.spyOn(native, 'run');
+				try {
+					await expect(runner[method]()).rejects.toBeInstanceOf(TransactionNotStartedError);
+					expect(all).not.toHaveBeenCalled();
+					expect(run).not.toHaveBeenCalled();
+					expect(await runner.query('SELECT 53 AS value')).toEqual([{ value: 53 }]);
+				} finally {
+					await runner.release();
+					run.mockRestore();
+					all.mockRestore();
+				}
+			},
+		);
 	});
 
 	describe('guarded closing base query admission', () => {

@@ -867,7 +867,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	}
 
 	async query(query: string, parameters?: unknown[], useStructuredResult = false): Promise<any> {
-		const closing = this.lease?.closing;
+		const closing = this.lease?.active ? this.lease.closing : undefined;
 		const permit = this.terminalControlPermit;
 		this.terminalControlPermit = undefined;
 		if (
@@ -1611,7 +1611,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		try {
 			await this.coordinator.drainCurrent();
 			await this.withTransactionControl(() =>
-				this.guardedCommit?.noMutation || this.lease.closing
+				this.guardedCommit?.noMutation || (this.lease?.active && this.lease.closing)
 					? this.noMutationTransactionControl('commit')
 					: super.commitTransaction(),
 			);
@@ -1633,11 +1633,11 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		try {
 			await this.coordinator.drainCurrent(false);
 			await this.withTransactionControl(async () => {
-				if (this.lease.closing) await this.coordinator.drainOwned(this.lease);
-				await (scope?.noMutation || this.lease.closing
+				if (this.lease?.active && this.lease.closing) await this.coordinator.drainOwned(this.lease);
+				await (scope?.noMutation || (this.lease?.active && this.lease.closing)
 					? this.noMutationTransactionControl('rollback')
 					: super.rollbackTransaction());
-				if (this.lease.closing) await this.coordinator.drainOwned(this.lease);
+				if (this.lease?.active && this.lease.closing) await this.coordinator.drainOwned(this.lease);
 			});
 		} catch (error) {
 			if (this.lease?.active && this.isTransactionActive) await this.recoverTransaction({ cause: error });
@@ -1704,7 +1704,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	async connect(): Promise<NativeSqliteConnection> {
 		const entryScope = this.guardedCommit;
 		const terminal = this.terminalQuery.getStore();
-		const entryClosing = this.lease?.closing;
+		const entryClosing = this.lease?.active ? this.lease.closing : undefined;
 		const terminalConnect =
 			entryClosing &&
 			terminal?.closing === entryClosing &&
@@ -1748,7 +1748,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		// original outer scope; unguarded native calls still forward unchanged while it is open.
 		const connectionScope = entryScope ?? activeScope;
 		const scope = commitScope ?? window ?? connectionScope;
-		const closing = scope?.lease.closing ?? this.lease?.closing;
+		const closing = scope?.lease.closing ?? (this.lease?.active ? this.lease.closing : undefined);
 		if (closing && (!terminalConnect || terminal.closing !== closing)) {
 			await closing.ready;
 			throw closing.reason.cause;
