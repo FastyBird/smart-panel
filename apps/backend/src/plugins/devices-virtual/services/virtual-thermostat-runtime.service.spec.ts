@@ -88,6 +88,22 @@ import {
 jest.setTimeout(30_000);
 
 describe('virtual thermostat durable runtime', () => {
+	let queuedLeafWitness: { variant: string; phase: string; completed: boolean } | undefined;
+	const reportQueuedLeafWitness = (): void => {
+		const current = queuedLeafWitness;
+		queuedLeafWitness = undefined;
+		if (!current || current.completed) return;
+		try {
+			console.error('[queued-leaf-incomplete]', {
+				variant: current.variant,
+				phase: current.phase,
+				completion: 'not-reached',
+				settlement: 'UNKNOWN',
+			});
+		} catch {
+			// A diagnostic must not replace the original test or teardown error.
+		}
+	};
 	let directory: string;
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
@@ -460,6 +476,7 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
+		reportQueuedLeafWitness();
 		runtime?.onModuleDestroy();
 		await disposeRealThermostatGuardFixtures();
 		jest.restoreAllMocks();
@@ -2190,17 +2207,22 @@ describe('virtual thermostat durable runtime', () => {
 	it.each(['override expiry', 'explicit OFF', 'manual configuration'] as const)(
 		'fences a queued parallel leaf and drains every journal after %s',
 		async (change) => {
+			const queuedLeafTrace = { variant: change, phase: 'add-member', completed: false };
+			queuedLeafWitness = queuedLeafTrace;
 			const sibling = await addMandatoryMember();
 			packetTick = useThermostatPacketClock();
 			// Every evaluation boundary below is explicit. A real poll during SQLite I/O can drain the
 			// energized sibling before the mutation whose queued-ON fence this fixture is testing.
 			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+			queuedLeafTrace.phase = 'command-registration';
 			const commandTarget =
 				change === 'override expiry'
 					? null
 					: await registeredHeatingCommand(change === 'explicit OFF' ? 'heating_enabled' : 'heating_setpoint');
 			runtime.request(controllerId);
+			queuedLeafTrace.phase = 'initial-settle';
 			await settle();
+			queuedLeafTrace.phase = 'configure-comfort';
 			await configureComfort();
 			sample(sensorId, 22);
 			let resumeOn!: () => void;
@@ -2217,6 +2239,7 @@ describe('virtual thermostat durable runtime', () => {
 			});
 			const now = Date.now();
 			jest.setSystemTime(now);
+			queuedLeafTrace.phase = 'select-or-override';
 			if (change === 'manual configuration') {
 				await comfort.select(controllerId, await comfortFence(), 'comfort', false);
 			} else {
@@ -2231,6 +2254,7 @@ describe('virtual thermostat durable runtime', () => {
 			// OFF/drain first, then supply genuinely later receiver reports before allowing ON.
 			for (let phase = 0; phase < 2; phase++) {
 				runtime.request(controllerId, false);
+				queuedLeafTrace.phase = `protection-settle-${phase}`;
 				await settle();
 			}
 			expect(
@@ -2242,17 +2266,23 @@ describe('virtual thermostat durable runtime', () => {
 			runtime.request(controllerId);
 			// Observe the original dispatches; inspect() would request an extra evaluation that can
 			// drain the sibling before the mutation this scenario is intended to test.
+			queuedLeafTrace.phase = 'original-dispatch-gates';
 			await Promise.all([relayQueued, siblingEnergized]);
+			queuedLeafTrace.phase = 'post-dispatch-flush';
 			await runtime.flush();
+			queuedLeafTrace.phase = 'prepared-command-read';
 			const prepared = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(prepared).toHaveLength(2);
 			expect(new Set(prepared.map((command) => command.decisionRevision)).size).toBe(1);
+			queuedLeafTrace.phase = 'queued-claim-read';
 			const queuedClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
 				sourcePropertyId: relayId,
 			});
 			expect(prepared.find((command) => command.claimId === queuedClaim.id).status).toBe('dispatching');
 			const siblingJournal = prepared.find((command) => command.claimId !== queuedClaim.id);
+			queuedLeafTrace.phase = 'sibling-inflight';
 			await (runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.get(siblingJournal.id);
+			queuedLeafTrace.phase = 'sibling-accepted-read';
 			expect(
 				await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: siblingJournal.id }),
 			).toMatchObject({ status: 'accepted', proofId: null });
@@ -2262,6 +2292,7 @@ describe('virtual thermostat durable runtime', () => {
 				on: true,
 			});
 			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			queuedLeafTrace.phase = 'expiry-or-manual-mutation';
 			const mutationBoundary = sentTargets.length;
 			if (change === 'override expiry') {
 				jest.setSystemTime(now + 1000);
@@ -2280,26 +2311,32 @@ describe('virtual thermostat durable runtime', () => {
 					expect(committed.comfort.temporary_override.status).toBe('active');
 				}
 			}
+			queuedLeafTrace.phase = 'released-on-settle';
 			resumeOn();
 			onGate = null;
 			await settle();
+			queuedLeafTrace.phase = 'expiry-revision-settle';
 			// Expiry persists a new configuration revision; poll again for release proof bound to that revision.
 			runtime.request(controllerId);
 			await settle();
 			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
 			expect(sentTargets.slice(mutationBoundary)).toContainEqual({ propertyId: sibling, on: false });
+			queuedLeafTrace.phase = 'retained-command-read';
 			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(retained.map((command) => command.id).sort()).toEqual(prepared.map((command) => command.id).sort());
 			expect(retained.find((command) => command.claimId === queuedClaim.id).status).toBe('cancelled');
 			expect(retained.find((command) => command.claimId !== queuedClaim.id).status).toBe('confirmed');
 			expect(retained.find((command) => command.id === siblingJournal.id).proofId).toBeTruthy();
 			if (change === 'override expiry') {
+				queuedLeafTrace.phase = 'expired-config-read';
 				const expired = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 				expect(expired.comfort.temporary_override.status).toBe('expired');
 				expect(expired.revision).toBeGreaterThan(prepared[0].configurationRevision);
 			}
+			queuedLeafTrace.phase = 'final-diagnostic-assertions';
 			expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => !branch.pending_on)).toBe(true);
+			queuedLeafTrace.completed = true;
 		},
 	);
 

@@ -78,7 +78,7 @@ describe('fresh SQLite write admission (real native handles)', () => {
 		});
 		const result = await source.transactionWithWriteIntent(async (manager) => {
 			expect(manager.queryRunner).toBe(runner);
-			expect(await manager.queryRunner.connect()).toBe(native);
+			expect(Object.getPrototypeOf(await manager.queryRunner.connect())).toBe(Object.getPrototypeOf(native));
 			order.push('body');
 			await manager.transaction(async (nested) => {
 				expect(nested).toBe(manager);

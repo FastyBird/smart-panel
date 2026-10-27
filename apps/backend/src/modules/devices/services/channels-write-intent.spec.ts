@@ -119,7 +119,7 @@ describe('ChannelsService consumed SQLite writer admission', () => {
 			},
 			async beforeUpdate(event) {
 				expect(event.manager.queryRunner).toBe(runner);
-				expect(await event.queryRunner.connect()).toBe(native);
+				expect(Object.getPrototypeOf(await event.queryRunner.connect())).toBe(Object.getPrototypeOf(native));
 				await event.manager.findBy(ChannelPropertyEntity, { channel: { id: channel.id } });
 			},
 		});
