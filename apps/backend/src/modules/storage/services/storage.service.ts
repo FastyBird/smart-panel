@@ -543,7 +543,7 @@ export class StorageService implements OnApplicationShutdown {
 				role,
 				plugin,
 				method,
-				available: methods.values.isAvailable.call(plugin),
+				available: invokeCreation(methods.values.isAvailable, plugin),
 				options: input ? { ...input } : undefined,
 			};
 		});
@@ -593,7 +593,7 @@ export class StorageService implements OnApplicationShutdown {
 		const roles = (['primary', 'fallback'] as const).map((role) => {
 			const plugin = this[role];
 			const capture = plugin ? captureCreation(plugin, ['query', 'queryStrict', 'isAvailable']) : null;
-			const available = capture ? capture.values.isAvailable.call(plugin) === true : false;
+			const available = capture ? invokeCreation(capture.values.isAvailable, plugin) === true : false;
 			return { role, plugin, capture, available };
 		});
 		return () => {
@@ -604,7 +604,8 @@ export class StorageService implements OnApplicationShutdown {
 					roles.every(
 						({ role, plugin, capture, available }) =>
 							this[role] === plugin &&
-							(!capture || (capture.current() && (capture.values.isAvailable.call(plugin) === true) === available)),
+							(!capture ||
+								(capture.current() && (invokeCreation(capture.values.isAvailable, plugin) === true) === available)),
 					)
 				);
 			} catch {

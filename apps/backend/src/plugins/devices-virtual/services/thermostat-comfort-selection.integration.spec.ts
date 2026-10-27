@@ -52,6 +52,7 @@ import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.se
 import { ThermostatComfortConfiguration } from './virtual-thermostat-comfort.utils';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+import { ThermostatRuntimeOwnership } from './virtual-thermostat-runtime-ownership';
 
 interface NativeConnection {
 	all(query: string, parameters: unknown[], callback: (error: Error | null, rows?: unknown[]) => void): unknown;
@@ -287,6 +288,8 @@ describe('manual thermostat selection: reserved native intent', () => {
 	let id: string;
 	let wall: number;
 	let monotonic: number;
+	const predecessorCases = nativeFixtureLifecycle();
+	let releasePredecessors: (() => void) | undefined;
 	type SetupWitness = {
 		attempt: number | null;
 		stage:
@@ -430,6 +433,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 				// Missing observation stays UNKNOWN; original cleanup retains its own failure policy.
 			}
 		}
+		releasePredecessors?.();
+		await predecessorCases.finish(() => Promise.resolve());
+		releasePredecessors = undefined;
 		await lifecycle.finish(async () => {
 			jest.restoreAllMocks();
 			for (const service of services.splice(0)) service.onModuleDestroy();
@@ -478,6 +484,125 @@ describe('manual thermostat selection: reserved native intent', () => {
 			});
 		},
 	);
+	it.each([
+		[false, 0],
+		[false, undefined],
+		[true, 0],
+		[true, undefined],
+	] as const)(
+		'joins every original predecessor on rejection with settleFailure=%s and cause=%s',
+		(settleFails, cause) => {
+			const releaseB = gate(),
+				releaseLater = gate(),
+				captured = gate(),
+				settledEntry = gate();
+			let rejectA: ((cause: unknown) => void) | undefined;
+			releasePredecessors = () => {
+				rejectA?.(cause);
+				releaseB.resolve();
+				releaseLater.resolve();
+				captured.resolve();
+				settledEntry.resolve();
+			};
+			return predecessorCases.start(async () => {
+				await comfort.override(id, await fence(), requestOverride(), 'original');
+				const original = await row();
+				const input = await fence();
+				wall += 1000;
+				monotonic += 1000;
+				const ownership = new ThermostatRuntimeOwnership();
+				// B is earlier in the snapshot, but A rejects first. Preserve rejection order, not array order.
+				const b = ownership.admit(id),
+					a = ownership.admit(id);
+				const aCompletion = ownership.completion(a),
+					bCompletion = ownership.completion(b);
+				const lateFailure = new Error('later original B failure');
+				const fail = (failure: unknown): never => {
+					throw failure;
+				};
+				const aEvaluation = new Promise<void>((_resolve, reject) => {
+					rejectA = reject;
+				});
+				const runB = ownership.run(b, () => releaseB.promise.then(() => fail(lateFailure)));
+				const runA = ownership.run(a, () => aEvaluation);
+				void runA.catch(() => undefined);
+				void runB.catch(() => undefined);
+				const settle = comfort.settle.bind(comfort) as VirtualThermostatComfortService['settle'];
+				let originalSettlementFailure: { cause: unknown } | undefined;
+				jest.spyOn(comfort, 'settle').mockImplementation(async (controller) => {
+					try {
+						await settle(controller);
+					} catch (failure: unknown) {
+						originalSettlementFailure = { cause: failure };
+						throw failure;
+					} finally {
+						settledEntry.resolve();
+					}
+					if (settleFails) fail(false);
+				});
+				Object.assign(comfort, {
+					automation: {
+						revoke: () => undefined,
+						captureInstalledIntent: () => Promise.resolve(null),
+						beginMutation: () => {
+							const originals = ownership.capture(id);
+							captured.resolve();
+							return originals;
+						},
+					},
+				});
+				const request = comfort.cancel(id, input, original.comfort.temporary_override.id);
+				let requestFinished = false,
+					laterFinished = false;
+				const outcome = request.then(
+					() => ({ failed: false as const }),
+					(failure: unknown) => ({ failed: true as const, cause: failure }),
+				);
+				void outcome.then(() => {
+					requestFinished = true;
+				});
+				let later: Promise<void> | undefined;
+				try {
+					await captured.promise;
+					// This later decision must not enlarge the already captured finite set.
+					later = ownership.run(ownership.admit(id), () => releaseLater.promise);
+					void later.then(() => {
+						laterFinished = true;
+					});
+					await settledEntry.promise;
+					if (originalSettlementFailure) throw originalSettlementFailure.cause;
+					rejectA(cause);
+					await Promise.allSettled([runA, aCompletion]);
+					// Let the already-issued rejection continuations run; no wall-clock or production timer changes.
+					await new Promise<void>((resolve) => setImmediate(resolve));
+					expect(requestFinished).toBe(false);
+					expect(laterFinished).toBe(false);
+					releaseB.resolve();
+					const result = await outcome;
+					expect(result.failed).toBe(true);
+					if (result.failed === false) throw new Error('Original predecessor rejection required');
+					expect(result.cause).toBe(settleFails ? false : cause);
+					expect(laterFinished).toBe(false);
+					expect((await row()).comfort.temporary_override).toMatchObject({
+						id: original.comfort.temporary_override.id,
+						status: 'expired',
+					});
+				} finally {
+					releasePredecessors();
+					await Promise.allSettled([
+						runA,
+						runB,
+						aCompletion,
+						bCompletion,
+						request,
+						outcome,
+						...(later !== undefined ? [later] : []),
+					]);
+				}
+			});
+		},
+	);
+
 	it('rejects a genuinely deleted/recreated UUID with a retained FK-null configuration', async () => {
 		const input = await fence();
 		await database.manager.delete(VirtualDeviceEntity, { id });

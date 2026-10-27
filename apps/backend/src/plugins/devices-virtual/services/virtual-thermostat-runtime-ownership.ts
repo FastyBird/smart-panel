@@ -122,7 +122,16 @@ export class ThermostatRuntimeOwnership {
 	/** Snapshot synchronously at mutation entry; the caller joins outside the locks these originals require. */
 	capture(controllerId: string): Promise<void> {
 		const originals = [...(this.pending.get(controllerId) ?? [])].map((decision) => decision.completion);
-		return Promise.all(originals).then(() => undefined);
+		let failure: { cause: unknown } | undefined;
+		return Promise.all(
+			originals.map((original) =>
+				original.catch((cause: unknown) => {
+					failure ??= { cause };
+				}),
+			),
+		).then(() => {
+			if (failure) throw failure.cause;
+		});
 	}
 }
 

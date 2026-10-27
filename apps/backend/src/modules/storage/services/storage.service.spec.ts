@@ -863,6 +863,102 @@ describe('StorageService', () => {
 		},
 	);
 
+	it.each([
+		['property', 'replacement'],
+		['property', 'getter'],
+		['status single', 'replacement'],
+		['status single', 'getter'],
+		['status batch', 'replacement'],
+		['status batch', 'getter'],
+	])('checks original %s read health despite held-query call metadata %s', async (kind, metadata) => {
+		const { storage, values, property } = propertyFixture();
+		const plugin = createPlugin('primary');
+		let available = true,
+			callAccesses = 0;
+		const receivers: StoragePlugin[] = [];
+		plugin.isAvailable.mockImplementation(function (this: StoragePlugin) {
+			receivers.push(this);
+			return available;
+		});
+		const entered = gate(),
+			release = gate();
+		plugin.query.mockImplementation(async () => {
+			entered.release();
+			await release.promise;
+			return [
+				kind === 'property'
+					? { propertyId: 'setting', numberValue: 20, time: '2026-01-01T00:00:00Z' }
+					: {
+							deviceId: 'original-device',
+							propertyId: 'original-status',
+							onlineI: 1,
+							status: ConnectionState.CONNECTED,
+							time: '2026-01-01T00:00:00Z',
+						},
+			];
+		});
+		storage.registerPlugin('primary', plugin);
+		const statuses = new DeviceConnectionStateService(storage);
+		const device = { id: 'original-device' };
+		const publication = new ControllerPublicationContext(() => true);
+		const read = publication.run(async () =>
+			kind === 'property'
+				? values.readLatest(property)
+				: kind === 'status single'
+					? statuses.readLatest(device)
+					: (await statuses.readLatestMany([device])).get(device.id),
+		);
+		const descriptor = Object.getOwnPropertyDescriptor(plugin.isAvailable, 'call');
+		try {
+			await entered.promise;
+			const callsAtEntry = plugin.isAvailable.mock.calls.length;
+			available = false;
+			Object.defineProperty(plugin.isAvailable, 'call', {
+				configurable: true,
+				...(metadata === 'getter'
+					? {
+							get: () => {
+								callAccesses++;
+								throw new Error('replacement call getter');
+							},
+						}
+					: {
+							value: () => {
+								callAccesses++;
+								return true;
+							},
+						}),
+			});
+			release.release();
+			const result = await read;
+			if (kind === 'property') {
+				expect(result).toBeNull();
+				expect(cached(values)).toBeUndefined();
+				expect((Reflect.get(values, 'recentValuesMap') as Map<string, unknown>).has('setting')).toBe(false);
+				expect((Reflect.get(values, 'cacheVersions') as Map<string, unknown>).has('setting')).toBe(false);
+			} else {
+				expect(result).toMatchObject({ status: ConnectionState.UNKNOWN });
+				expect((Reflect.get(statuses, 'statusMap') as Map<string, unknown>).has(device.id)).toBe(false);
+			}
+			expect(callAccesses).toBe(0);
+			expect(plugin.isAvailable.mock.calls.length).toBeGreaterThan(callsAtEntry);
+			expect(receivers.every((receiver) => receiver === plugin)).toBe(true);
+			if (descriptor) Object.defineProperty(plugin.isAvailable, 'call', descriptor);
+			else Reflect.deleteProperty(plugin.isAvailable, 'call');
+			available = true;
+			plugin.query.mockResolvedValue([]);
+			if (kind === 'property') expect(await values.readLatest(property)).toBeNull();
+			else expect(await statuses.readLatest(device)).toMatchObject({ status: ConnectionState.UNKNOWN });
+			expect(plugin.query).toHaveBeenCalledTimes(2);
+		} finally {
+			release.release();
+			await Promise.allSettled([read]);
+			if (descriptor) Object.defineProperty(plugin.isAvailable, 'call', descriptor);
+			else Reflect.deleteProperty(plugin.isAvailable, 'call');
+			await storage.onApplicationShutdown();
+		}
+	});
+
 	it('preserves the original strict mirror callback and immutable bytes after required persistence loses eligibility', async () => {
 		const storage = new StorageService({
 			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
