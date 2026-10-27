@@ -186,6 +186,96 @@ function initializeWitness(started: bigint, clock: () => bigint = () => process.
 	};
 }
 
+// Cold entity metadata and real schema setup use the neighboring native configuration fixture's integration budget.
+// Business test deadlines remain unchanged. A hook timeout does not cancel its original setup promise.
+const NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS = 30_000;
+function nativeFixtureLifecycle() {
+	type Attempt = { setup?: Promise<void>; cleanup?: Promise<void>; finished: boolean };
+	let attempt: Attempt | undefined;
+	return {
+		start(work: () => Promise<void>): Promise<void> {
+			if (attempt && !attempt.finished) throw new Error('Previous native fixture cleanup has not completed');
+			const original: Attempt = { finished: false };
+			attempt = original;
+			try {
+				original.setup = work();
+			} catch (cause: unknown) {
+				// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Preserve original non-Error setup failures.
+				original.setup = Promise.reject(cause);
+			}
+			void original.setup.catch(() => undefined);
+			return original.setup;
+		},
+		finish(cleanup: () => Promise<void>): Promise<void> {
+			const original = attempt;
+			if (!original) return Promise.resolve();
+			if (original.cleanup !== undefined) return original.cleanup;
+			const setup = original.setup;
+			if (setup === undefined) throw new Error('Original native setup promise has not been issued');
+			original.cleanup = (async () => {
+				await setup.catch(() => undefined);
+				await cleanup();
+				original.finished = true;
+			})();
+			return original.cleanup;
+		},
+	};
+}
+
+describe('native fixture setup ownership (pure controls, no native qualification)', () => {
+	it('retains original setup/cleanup promises and prevents premature close or a successor setup', async () => {
+		const lifecycle = nativeFixtureLifecycle();
+		let release!: () => void;
+		const pending = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const cleanup = jest.fn(() => Promise.resolve());
+		const replacement = jest.fn(() => Promise.resolve());
+		expect(lifecycle.start(() => pending)).toBe(pending);
+		const finish = lifecycle.finish(cleanup);
+		try {
+			expect(lifecycle.finish(replacement)).toBe(finish);
+			expect(cleanup).not.toHaveBeenCalled();
+			expect(() => lifecycle.start(replacement)).toThrow('Previous native fixture cleanup');
+			expect(replacement).not.toHaveBeenCalled();
+			release();
+			await finish;
+			expect(cleanup).toHaveBeenCalledTimes(1);
+			await lifecycle.start(replacement);
+			await lifecycle.finish(cleanup);
+			expect(replacement).toHaveBeenCalledTimes(1);
+			expect(cleanup).toHaveBeenCalledTimes(2);
+		} finally {
+			release();
+			await finish;
+		}
+	});
+	it.each([0, undefined])('preserves original setup rejection %s while joining it before cleanup', async (cause) => {
+		const lifecycle = nativeFixtureLifecycle();
+		const cleanup = jest.fn(() => Promise.resolve());
+		const pending = lifecycle.start(() => {
+			throw cause as unknown;
+		});
+		await expect(pending).rejects.toBe(cause);
+		await lifecycle.finish(cleanup);
+		expect(cleanup).toHaveBeenCalledTimes(1);
+	});
+	it('retains failed cleanup without repeating it or admitting fresh native work', async () => {
+		const lifecycle = nativeFixtureLifecycle();
+		await lifecycle.start(() => Promise.resolve());
+		const cleanup = jest.fn(() => {
+			throw JSON.parse('false') as unknown;
+		});
+		const fresh = jest.fn(() => Promise.resolve());
+		const finish = lifecycle.finish(cleanup);
+		await expect(finish).rejects.toBe(false);
+		expect(lifecycle.finish(fresh)).toBe(finish);
+		expect(() => lifecycle.start(fresh)).toThrow('Previous native fixture cleanup');
+		expect(cleanup).toHaveBeenCalledTimes(1);
+		expect(fresh).not.toHaveBeenCalled();
+	});
+});
+
 describe('manual thermostat selection: reserved native intent', () => {
 	let database: SqliteDataSource;
 	let lock: DeviceStructureLockService;
@@ -257,7 +347,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			comfort: new VirtualThermostatComfortService(source, structure, dependency, ownership, emitter),
 		};
 	}
-	beforeEach(async () => {
+	const lifecycle = nativeFixtureLifecycle();
+	beforeEach(() => lifecycle.start(initializeFixture), NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS);
+	async function initializeFixture(): Promise<void> {
 		const started = process.hrtime.bigint();
 		const setup: SetupWitness = {
 			attempt: setupAttempt < 255 ? ++setupAttempt : null,
@@ -309,7 +401,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 		});
 		setup.stage = 'complete';
 		setup.completed = true;
-	});
+	}
 	afterEach(async () => {
 		const setup = newestSetup;
 		setup?.initialize.teardown();
@@ -321,11 +413,13 @@ describe('manual thermostat selection: reserved native intent', () => {
 				// Missing observation stays UNKNOWN; original cleanup retains its own failure policy.
 			}
 		}
-		jest.restoreAllMocks();
-		for (const service of services.splice(0)) service.onModuleDestroy();
-		for (const source of sources.splice(0)) if (source.isInitialized) await source.destroy();
-		if (directory) rmSync(directory, { recursive: true, force: true });
-	});
+		await lifecycle.finish(async () => {
+			jest.restoreAllMocks();
+			for (const service of services.splice(0)) service.onModuleDestroy();
+			for (const source of sources.splice(0)) if (source.isInitialized) await source.destroy();
+			if (directory) rmSync(directory, { recursive: true, force: true });
+		});
+	}, NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS);
 
 	it('rejects a genuinely deleted/recreated UUID with a retained FK-null configuration', async () => {
 		const input = await fence();
