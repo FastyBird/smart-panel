@@ -56,10 +56,14 @@ export interface LedgerLifecycleAccess {
 export class ClimateAutomationLedgerLifecycle {
 	constructor(private readonly access: LedgerLifecycleAccess) {}
 
-	initializeSlot(request: Readonly<{ expected: Slot; releaseManualHold: boolean }>): () => Promise<Slot> {
+	initializeSlot(
+		request: Readonly<{ expected: Slot; releaseManualHold: boolean; explicitOptIn?: true; freshIncarnation?: true }>,
+	): () => Promise<Slot> {
 		const expected = request.expected;
 		const captured = this.access.slot(expected);
 		const release = request.releaseManualHold;
+		const explicitOptIn = request.explicitOptIn === true;
+		const freshIncarnation = request.freshIncarnation === true;
 		if (release !== true) throw new Conflict('invalid');
 		return async () => {
 			await this.access.validate(expected);
@@ -67,12 +71,16 @@ export class ClimateAutomationLedgerLifecycle {
 			// Unlike E's initializer this only initializes sidecar metadata for an EXISTING controller.
 			// Never create a controller, adopt legacy comfort, or clear a hold on an owned row.
 			if (!controller || !validateController || !providerKey) throw new Conflict('unavailable');
-			if ((previous && previous.state !== 'EMPTY') || controller.legacyBaseline !== null) throw new Conflict('stale');
+			if (
+				(previous && !(explicitOptIn ? ['EMPTY', 'RETIRED', 'LEGACY'] : ['EMPTY']).includes(previous.state)) ||
+				controller.legacyBaseline !== null
+			)
+				throw new Conflict('stale');
 			await validateController();
 			const next: ClimateAutomationSlotFacts = Object.freeze({
 				controllerId,
 				providerKey,
-				controllerIncarnation: previous?.controllerIncarnation ?? randomUUID(),
+				controllerIncarnation: freshIncarnation ? randomUUID() : (previous?.controllerIncarnation ?? randomUUID()),
 				slotRevision: previous ? increment(previous.slotRevision) : 1,
 				manualGeneration: randomUUID(),
 				manualCounter: previous ? increment(previous.manualCounter) : 1,
@@ -173,6 +181,26 @@ export class ClimateAutomationLedgerLifecycle {
 				slotRevision: increment(previous.slotRevision),
 			});
 			await this.writeSlot(previous, next, source);
+			return this.access.issueSlot(next, null, async () => {});
+		};
+	}
+
+	/** An admitted manual/config intent fences this slot in the same native unit as its controller. */
+	fenceManual(expected: Slot, manualHold: boolean, takeover = true): () => Promise<Slot> {
+		const { facts: previous } = this.access.slot(expected);
+		if (!previous || typeof manualHold !== 'boolean' || typeof takeover !== 'boolean') throw new Conflict('invalid');
+		if (!takeover && manualHold !== previous.manualHold) throw new Conflict('invalid');
+		return async () => {
+			await this.access.validate(expected);
+			const next: ClimateAutomationSlotFacts = Object.freeze({
+				...previous,
+				state: ['LIVE', 'PROVISIONAL'].includes(previous.state) ? 'RETIRED' : previous.state,
+				slotRevision: increment(previous.slotRevision),
+				manualGeneration: takeover ? randomUUID() : previous.manualGeneration,
+				manualCounter: takeover ? increment(previous.manualCounter) : previous.manualCounter,
+				manualHold,
+			});
+			await this.writeSlot(previous, next);
 			return this.access.issueSlot(next, null, async () => {});
 		};
 	}

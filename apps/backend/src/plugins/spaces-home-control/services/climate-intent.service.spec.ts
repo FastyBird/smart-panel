@@ -187,6 +187,48 @@ describe('ClimateIntentService', () => {
 		mockPlatform.processBatch.mockResolvedValue(true);
 	});
 
+	it('retains the activity target plan and supplies its original currentness guard at physical dispatch', async () => {
+		const device = createMockPrimaryClimateDevice();
+		let current = true;
+		const isCurrent = () => current;
+		const dispatch = module.get(PropertyCommandDispatchService);
+		const guarded = jest.spyOn(dispatch, 'dispatchBatch').mockImplementation((commands, options) => {
+			expect(commands.every((command) => command.device.id === device.device.id)).toBe(true);
+			expect(options?.isRequestCurrent).toBe(isCurrent);
+			current = false;
+			expect(options.isRequestCurrent()).toBe(false);
+			return Promise.resolve({ success: false } as Awaited<
+				ReturnType<PropertyCommandDispatchService['dispatchBatch']>
+			>);
+		});
+		const result = await service.executeClimateIntent(
+			mockSpaceId,
+			{ type: ClimateIntentType.SET_MODE, mode: ClimateMode.HEAT },
+			{
+				targets: [device],
+				isCurrent,
+			},
+		);
+		expect(guarded).toHaveBeenCalled();
+		expect(result.success).toBe(false);
+		expect(climateStateService.getPrimaryClimateDevicesInSpace).not.toHaveBeenCalled();
+	});
+
+	it('refuses an already retired activity context before intent creation or physical dispatch', async () => {
+		const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+		const result = await service.executeClimateIntent(
+			mockSpaceId,
+			{ type: ClimateIntentType.SET_MODE, mode: ClimateMode.HEAT },
+			{
+				targets: [createMockPrimaryClimateDevice()],
+				isCurrent: () => false,
+			},
+		);
+		expect(result.success).toBe(false);
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(spacesService.findOne).not.toHaveBeenCalled();
+	});
+
 	describe('getClimateState', () => {
 		it('should delegate to SpaceClimateStateService', async () => {
 			const expectedState = createMockClimateState();

@@ -60,7 +60,10 @@ import {
 	ThermostatComfortConfiguration,
 	ThermostatPreset,
 } from '../src/plugins/devices-virtual/services/virtual-thermostat-comfort.utils';
-import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
+import {
+	THERMOSTAT_CONFIG_CHANGED,
+	VirtualThermostatConfigService,
+} from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
 import { thermostatPropertyContract } from '../src/plugins/devices-virtual/services/virtual-thermostat-contract.utils';
 import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { VirtualThermostatOwnershipSubscriber } from '../src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber';
@@ -301,7 +304,7 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 		app = module.createNestApplication();
 		app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 		useContainer(module, { fallbackOnErrors: true });
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 		const runtime = module.get(VirtualThermostatRuntimeService);
 		expect(Reflect.get(runtime, 'active')).toBe(true);
 		expect((Reflect.get(runtime, 'contexts') as Map<string, unknown>).size).toBe(0);
@@ -327,8 +330,12 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				// Preserve the existing maintenance join, now scoped to this case's actual application.
 				await runtime?.flush();
 			} finally {
-				if (app) await app.close();
-				else await module?.close();
+				if (app) {
+					const originalServer = app.getHttpServer() as { listening: boolean; address(): unknown };
+					await app.close();
+					expect(originalServer.listening).toBe(false);
+					expect(originalServer.address()).toBeNull();
+				} else await module?.close();
 			}
 			if (database && runtime) {
 				expect(database.isInitialized).toBe(false);
@@ -494,6 +501,8 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 	it('returns all six wire fields for every explicit preset/null and preserves requested mode and OFF choices', async () => {
 		for (const preset of ['comfort', 'eco', 'away', null] as const) {
 			const config = baseConfiguration();
+			// Each table entry remains an applied selection, including clearing a prior preset.
+			if (preset === null) config.selected_preset = 'comfort';
 			config.user_off = true;
 			const id = await seed(config, 'off');
 			for (const clear of [false, true]) {
@@ -509,6 +518,58 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 					(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).requestedMode,
 				).toBe('off');
 			}
+		}
+	});
+
+	it('returns the complete current wire without native or mutation-event churn for an authenticated exact repeat', async () => {
+		const clock = frozenClock();
+		const events = module.get(EventEmitter2);
+		const changed = jest.fn();
+		const runtime = module.get(VirtualThermostatRuntimeService);
+		const request = runtime.request.bind(runtime) as VirtualThermostatRuntimeService['request'];
+		const issued: Promise<void>[] = [];
+		const requests = jest.spyOn(runtime, 'request').mockImplementation((...args) => {
+			const original = request(...args);
+			issued.push(original);
+			return original;
+		});
+		try {
+			const id = await seed();
+			const first = await post(id, { ...(await fences(id)), preset: 'eco', clear_user_off: false }).expect(201);
+			// Finish only the original requests issued by the applied command before measuring its repeat.
+			const originals = [...issued];
+			expect(originals.length).toBeGreaterThan(0);
+			await Promise.all(originals);
+			requests.mockClear();
+			const input = await fences(id);
+			const snapshot = async () => {
+				const tables = await database.query<{ name: string }[]>(
+					"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+				);
+				return Promise.all(
+					tables.map(async ({ name }) => ({
+						name,
+						rows: (await database.query<Record<string, unknown>[]>(`SELECT * FROM "${name}"`)).sort((a, b) =>
+							JSON.stringify(a).localeCompare(JSON.stringify(b)),
+						),
+					})),
+				);
+			};
+			const before = await snapshot();
+			events.on(THERMOSTAT_CONFIG_CHANGED, changed);
+			const repeat = await post(id, { ...input, preset: 'eco', clear_user_off: false }).expect(201);
+			expect((repeat.body as { data: unknown }).data).toEqual((first.body as { data: unknown }).data);
+			expect((await get(id).expect(200)).body as { data: unknown }).toMatchObject({
+				data: (first.body as { data: unknown }).data,
+			});
+			expect(await fences(id)).toEqual(input);
+			expect(await snapshot()).toEqual(before);
+			expect(changed).not.toHaveBeenCalled();
+			expect(requests).not.toHaveBeenCalled();
+		} finally {
+			requests.mockRestore();
+			events.off(THERMOSTAT_CONFIG_CHANGED, changed);
+			clock.restore();
 		}
 	});
 
@@ -1216,7 +1277,7 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 		const command = jest.spyOn(configs, 'command'),
 			dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
 		const authenticated = jest.spyOn(module.get(WsAuthService), 'validateClient');
-		await app.listen(0, '127.0.0.1');
+		expect((app.getHttpServer() as { listening: boolean }).listening).toBe(true);
 		const socket = new WebSocket(
 			`ws://127.0.0.1:${new URL(await app.getUrl()).port}/socket.io/?EIO=4&transport=websocket`,
 		);

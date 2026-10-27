@@ -20,6 +20,7 @@ import {
 } from '../models/property-value-state.model';
 import { validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
+import { ControllerPublicationContext, ownControllerEffectValue } from './controller-publication-context';
 import {
 	PropertyProducerEvaluation,
 	PropertyProducerLease,
@@ -157,6 +158,25 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<boolean> {
+		const publication = ControllerPublicationContext.current();
+		if (publication) {
+			const input = ownControllerEffectValue(property);
+			const timestamp = valueTimestamp ? new Date(valueTimestamp) : undefined;
+			const capture = this.valueSourceRegistry.captureReadSource(input);
+			try {
+				const key = this.valueSourceRegistry.readSourceKey(capture);
+				const eligible = () => publication.isEligible() && this.valueSourceRegistry.isReadSourceCurrent(capture);
+				return (
+					await ControllerPublicationContext.effect('property.value', () =>
+						this.withValueLock(key, () =>
+							this.writeInternal(input, key, value, false, undefined, timestamp, false, false, eligible),
+						),
+					)
+				).changed;
+			} finally {
+				this.valueSourceRegistry.closeReadSource(capture);
+			}
+		}
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return false;
 
@@ -690,6 +710,7 @@ export class PropertyValueService {
 		valueTimestamp?: Date,
 		deferHistory = false,
 		producerWrite = false,
+		ownedCurrent?: () => boolean,
 	): Promise<PropertyValueWriteResult> {
 		// A projected property owns no series — the value belongs to its source, and only the source's
 		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
@@ -734,6 +755,7 @@ export class PropertyValueService {
 
 		const cached = this.valuesMap.get(key);
 		if (!strict && cached && cached.value === value) {
+			if (ownedCurrent && !ownedCurrent()) return { changed: false, state: clonePropertyValueState(cached) };
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
 			this.bumpCacheVersion(key);
@@ -791,15 +813,16 @@ export class PropertyValueService {
 		if (strict) {
 			await this.storageService.writePointsStrict([point], storageBinding);
 
-			if (this.cacheVersion(key) !== cacheVersionAtWriteStart) {
+			if (this.cacheVersion(key) !== cacheVersionAtWriteStart || (ownedCurrent && !ownedCurrent())) {
 				return { changed: true, state: new PropertyValueState(value, now) };
 			}
 		}
 
 		// Update recent values cache for trend computation
 		if (
-			typeof value === 'number' ||
-			(typeof value === 'string' && !isNaN(Number(value)) && this.isNumericDataType(property.dataType))
+			(!ownedCurrent || ownedCurrent()) &&
+			(typeof value === 'number' ||
+				(typeof value === 'string' && !isNaN(Number(value)) && this.isNumericDataType(property.dataType)))
 		) {
 			const numValue = Number(value);
 			const recent = this.recentValuesMap.get(key) ?? [];
@@ -814,7 +837,7 @@ export class PropertyValueService {
 		const state = new PropertyValueState(value, now, trend);
 
 		// Update local cache regardless of storage availability
-		this.setCachedState(key, state);
+		if (!ownedCurrent || ownedCurrent()) this.setCachedState(key, state);
 
 		if (strict) {
 			return { changed: true, state };
@@ -1427,6 +1450,8 @@ export class PropertyValueService {
 		activeBackendOnly = false,
 		capture?: PropertyReadSourceCapture,
 	): Promise<InternalPropertyValueReadResult> {
+		const publication = ControllerPublicationContext.current();
+		const health = publication ? this.storageService.captureControllerReadHealth() : null;
 		let key: string;
 		try {
 			if (capture) this.assertReadSourceCurrent(capture);
@@ -1477,6 +1502,10 @@ export class PropertyValueService {
 
 			// Admit neither rows nor empty-result invalidations after routing changed.
 			if (capture) this.assertReadSourceCurrent(capture);
+			if (publication && (!publication.isEligible() || !health())) {
+				const current = this.valuesMap.get(key);
+				return { state: current ? clonePropertyValueState(current) : null, storageBinding: boundResult?.binding };
+			}
 
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);

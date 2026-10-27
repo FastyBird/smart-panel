@@ -444,7 +444,7 @@
 		"setpoint": "Target temperature (°C)",
 		"delta": "Temperature change (°C)",
 		"climateMode": "Climate mode",
-		"climateUnsupported": "You can save climate settings, but activity modes cannot apply them yet.",
+		"climateAutomation": "Enable automation on the thermostat, then choose a preset or temperature action. Preview checks targets without applying changes. Manual hold, OFF and protective limits still apply.",
 		"securityUnsupported": "You can save security settings, but activity modes cannot apply them yet.",
 		"invalid": "Check the settings before saving.",
 		"readOnly": "You do not have permission to edit activity modes.",

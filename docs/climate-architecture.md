@@ -88,14 +88,23 @@ The optional `comfort` definition on the existing thermostat configuration PUT p
 Incompatible active override setpoints must be cancelled before such a change; neither reconfiguration nor preset
 editing silently replaces a live override.
 
-A live override keeps the setpoints resolved at its creation and precedes an explicitly enabled trusted automation
-baseline, then the current selected preset/manual baseline. The internal `applyAutomationBaseline` port accepts only
-a current validated preset or explicit setpoints, authenticated bridge actor identity and revision fences; it has no
-public HTTP route. Operator configuration defaults automation disabled. Explicitly disabling it clears its baseline. Background edits change that baseline only. Cancellation and expiry resolve the then-current baseline;
-there is no saved settings restoration or historical command replay. Explicit OFF through the registered enable
-controls latches OFF across comfort edits. An explicit non-OFF command or `clear_user_off` selection action clears
-the latch; clearing it does not change the separate requested HVAC mode. All existing protective inputs, claims,
-qualification and unresolved-output barriers still dominate comfort and are checked again at physical dispatch.
+A live override keeps the setpoints resolved at its creation and precedes an explicitly enabled, currently installed
+automation baseline, then the current selected preset/manual baseline. Effective automation requires a private LIVE
+source and slot, the same controller incarnation, and matching native installation evidence. Actor-tagged JSON alone
+is diagnostic data and cannot supply authority. Comfort GET and both runtime evaluations use the same private view.
+The legacy internal `applyAutomationBaseline` method has no public HTTP route and does not install an effective source.
+Operator configuration defaults automation disabled. An explicit opt-in can initialize an EMPTY slot only for the
+validated same controller with no legacy baseline; a non-null legacy baseline must first be explicitly disabled.
+
+Registered manual commands retire the exact installed slot and clear its owned baseline in the same native write.
+Numeric and enable commands take manual hold; lock-only commands fence the installation without taking that hold.
+Preset selection, explicit manual selection, configuration replacement, release, and canonical restore use their
+existing revision fences and native units. A compatible comfort definition or temporary override retains the installed
+intent through a native evidence refresh; incompatible definitions retire it. Cancellation and expiry resolve the
+then-current baseline, without saved-settings restoration or historical command replay. Explicit OFF through the
+registered enable controls latches OFF across comfort edits. An explicit non-OFF command or `clear_user_off` selection
+action clears the latch; clearing it does not change the separate requested HVAC mode. Protective inputs, claims,
+qualification and unresolved-output barriers remain dominant and are checked again at physical dispatch.
 
 Override expiry uses both an absolute wall-clock deadline and a process-local monotonic budget. Equality expires.
 Committed terminal expiry cannot revive on rollback or restart. A restart recovers remaining absolute lifetime capped
@@ -107,20 +116,71 @@ prove unobservable wall-clock shifts across downtime without an independent trus
 expiry observation occurs at committed settlement; a synchronous guard cannot promise persistence across a crash.
 Temporary overrides are bounded to seven days. Cache state is bounded to one live identity per controller.
 
-This backend stage does not implement a space activity/schedule/presence engine. The trusted baseline port is ready
-for the separate bridge, and no engine invokes it here.
-Admin authoring and Panel selection/override/cancel controls expose server diagnostics in all six locales. Local UI
-tests cover legacy/manual controllers, explicit branch setpoints, OFF-latch actions, expiry invalidation and stale
-requests. Independent backend review, composed UI acceptance and release gates remain before VD3-7 is complete.
+## Activity climate automation
+
+An operator enables thermostat automation and authors an explicit activity preset or numeric temperature action.
+The existing authenticated activity preview resolves targets without writes. Activation uses the existing climate
+intent path to install a private source and controller slot; preset values never come from an activity name and no
+numeric defaults are seeded. Unsupported presets report an explicit unsupported result. A preset with an unsupported physical target is refused
+before any virtual bundle is installed, so an unsuccessful climate result cannot leave an ineligible LIVE source. Ordinary physical numeric
+commands retain their existing public manual dispatch and currentness checks.
+
+ACTIVATING operation admission is distinct from installed-current source authority. The same successful climate result
+may remain installed when another activity domain makes the overall activation partial. Deactivation, configuration
+replacement/reset, space deletion and type changes fence and retire the exact source in their original native unit.
+Space lifecycle admission takes the structural owner before the database lease; postcommit space events retain their
+original payload, order and cardinality. Nest lifecycle hooks own registration and disposal. CLI execution does not
+register live installation or runtime actuation.
+
+Controller deletion records private native provenance in the same admitted unit that retires its exact installed
+baseline and fences its slot. A retained EMPTY or RETIRED slot, missing configuration, or actor-tagged JSON is not
+recreation authority. Trusted same-ID recreation conditionally consumes the exact deletion image, retains that evidence,
+and creates a fresh incarnation and manual generation with increasing slot revision and counter. Unproven deletion,
+changed retained rows, replaced providers and lost consumption CAS refuse atomically. Existing unresolved reservations
+and append-only runtime journal constraints remain protective; recreation never deletes those records to bypass a refusal.
+
+Private native postimages and receipts establish SQLite intent atomicity, not an atomic snapshot of the later public
+GET or a distributed transaction with device transport and storage plugins. Original publication callbacks retain their
+captured receivers, methods, destinations and full point bytes. Finite effect records distinguish submission, settlement,
+failure and retired observation eligibility. An expired observation guard does not suppress an original post-ACK callback.
+Runtime predecessor completion joins only original command, OFF feedback and outcome-save promises outside locks those
+jobs need; unrelated future polls and ON work are independent. These boundaries provide neither exactly-once external
+writes nor a global storage winner history.
+
+Admin activity authoring explains explicit opt-in and write-free preview in all six locales. Existing Panel activity
+and comfort controls use the same authenticated routes. Schedule/presence engines, broader bridge integrations, installed
+hardware acceptance and whole-epic release approval remain separate work.
+
+### Owned transport continuity
+
+Owned automation validates pure OFF metadata and captures transport readiness before ordinary command adapter
+preparation. Generation-bearing evidence and custom opt-in providers require matching nonempty generations and
+readiness capability v1. The built-in Shelly guarded-switch v1 heating path also supports an exact SQL NULL claim
+with generation absent throughout the qualification prototype chain, or an own data property whose value is undefined.
+Those two descriptor shapes remain distinct. Explicit null, inherited values/accessors, missing claim generation,
+empty strings and mismatches refuse. Custom shadows, remote profiles and cooling cannot use this legacy exception.
+
+Legacy readiness is a frozen internal capability v2 with `qualificationBinding: legacy-null-managed-shelly` and no
+generation property. It neither upgrades the actuation protocol nor supplies command, session or native receipt authority.
+Native source/slot/incarnation, claim revision, exact qualification identity, original registration and managed session,
+physical identity, protective inputs and OFF/drain evidence remain mandatory. An expired original capture is never
+renewed by capturing a successor. Standalone readiness cannot observe a qualification-map replacement; runtime retains
+its original qualification and native-image fences.
+
+Pure OFF metadata performs no machine predicate, provider/session preparation or sample work. The existing qualifier
+may already have checked its trusted machine predicate before this boundary. Owned readiness refusal reports suspended
+transport readiness independently from effective comfort selection. Once an original OFF fence/send is admitted, its
+original sample and outcome callbacks still run; expiry prevents new proof or ON authority, not those original callbacks.
 
 ## Release demand and completion
 
 The existing authenticated `POST thermostats/{id}/release` consumes `expected_revision`. Its reserved native
-intent conditionally changes only requested HVAC mode to OFF, configuration revision and release-request time.
+intent conditionally changes requested HVAC mode to OFF, configuration revision and release-request time. When a native
+installed source owns the baseline, that same full postimage clears the owned baseline and retires its slot.
 Every current non-released claim, including missing, releasing and suspended members, receives the same reserved
 system-Date instant, its next revision and explicit release reason. A claim with a bound source becomes releasing;
 a missing source remains missing. Released history, identities, qualification generations, evidence, comfort
-(including the separate user-OFF latch, presets, overrides and automation), settings and protective dependencies survive.
+(including the separate user-OFF latch, presets, overrides and unowned legacy diagnostics), settings and protective dependencies survive.
 Disabled, locked and orphan configurations remain eligible for this remedial request. A fresh repeat is a new demand;
 a stale revision refuses.
 
@@ -258,3 +318,9 @@ A virtual light group exposes only compatible common controls from its physical 
 ## Verification boundary
 
 The [virtual devices epic](../tasks/epics/EPIC-VIRTUAL-DEVICE-CAPABILITIES.md) tracks composed-head software acceptance and the separate installed-hardware gate. Focused tests cover measurement freshness/quality, converter domains, graph repair, group child outcomes, controller guard and restart behavior, and ordinary physical command regressions. Passing those tests establishes software behavior, not installed floor calibration, actuator isolation or independent protective equipment. The [Shelly commissioning record](work/virtual-thermostat/shelly-commissioning.md) holds the pilot evidence and remaining operator qualification procedure.
+
+### Native unchanged-operation boundary
+
+Exact repeated thermostat configuration and comfort commands use a private observation on the original coordinated SQLite transaction. Its checkpoint precedes the graph read; a one-use zero-row reservation retains writer admission. The core records query attempts before mutable TypeORM dispatch and validates original query tickets at the scoped native `run`/`all` facade. The actual COMMIT guard retains attempted writes even when a callback catches their errors or temporarily replaces and restores an observer. Ordinary operations that do not opt in retain the existing coordinator path.
+
+A closed SELECT grammar admits ordinary ORM tables and reviewed `COUNT` expressions. Unknown statements and functions cannot establish an unchanged operation. This is not a sandbox for raw native handles, private/prototype rewrites, independent handles, or side-effecting native extensions. Native ACK ends the observation interval; required original post-ACK callbacks remain outside it. An unchanged command still performs required entry maintenance and its final diagnostic read. First manual takeover, changed configuration, override lifetimes, and installed-evidence refresh remain actual mutations.

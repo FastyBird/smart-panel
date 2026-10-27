@@ -1,9 +1,13 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { EntityManager } from 'typeorm';
+
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { snapshotCreation } from '../../../modules/devices/services/creation-capture';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
@@ -32,6 +36,15 @@ import { SpaceUndoHistoryService } from './space-undo-history.service';
 // Re-export types for backwards compatibility
 export { ClimateState, PrimaryClimateDevice } from './space-climate-state.service';
 
+/** Internal activity dispatch context; no HTTP or Swagger authority fields. */
+export interface ClimateAutomationIntentContext {
+	readonly targets: readonly PrimaryClimateDevice[];
+	readonly isCurrent: () => boolean;
+	readonly virtualTargetIds?: readonly string[];
+	readonly installVirtual?: () => Promise<number>;
+	readonly numericDelta?: number;
+}
+
 /**
  * Result of a climate intent execution.
  */
@@ -53,6 +66,11 @@ interface DeviceSetpointCommandResult {
  */
 @Injectable()
 export class ClimateIntentService extends SpaceIntentBaseService {
+	private readonly automationContext = new AsyncLocalStorage<ClimateAutomationIntentContext>();
+
+	planAutomationTargets(spaceId: string, manager?: EntityManager): Promise<PrimaryClimateDevice[]> {
+		return this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId, manager);
+	}
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'ClimateIntentService');
 
 	constructor(
@@ -83,7 +101,47 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	 * Supports multi-device control based on mode and roles.
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult | null> {
+	async executeClimateIntent(
+		spaceId: string,
+		intent: ClimateIntentDto,
+		automation?: ClimateAutomationIntentContext,
+	): Promise<ClimateIntentResult | null> {
+		if (automation) {
+			const ownedIntent = snapshotCreation(intent);
+			const allTargets = snapshotCreation(automation.targets);
+			const virtualIds = new Set(automation.virtualTargetIds ?? []);
+			const install = automation.installVirtual;
+			const current = automation.isCurrent;
+			const context = Object.freeze({
+				targets: allTargets.filter((target) => !virtualIds.has(target.device.id)),
+				isCurrent: current,
+				numericDelta: automation.numericDelta,
+			});
+			if (!current())
+				return {
+					success: false,
+					affectedDevices: 0,
+					failedDevices: allTargets.length,
+					skippedOfflineDevices: 0,
+					mode: ClimateMode.OFF,
+					heatingSetpoint: null,
+					coolingSetpoint: null,
+				};
+			const installed = install ? await install() : 0;
+			const result = context.targets.length
+				? await this.automationContext.run(context, () => this.executeClimateIntent(spaceId, ownedIntent))
+				: {
+						success: true,
+						affectedDevices: 0,
+						failedDevices: 0,
+						skippedOfflineDevices: 0,
+						mode: ClimateMode.OFF,
+						heatingSetpoint: null,
+						coolingSetpoint: null,
+					};
+			return result ? { ...result, affectedDevices: result.affectedDevices + installed } : result;
+		}
+		const privateContext = this.automationContext.getStore();
 		const defaultResult: ClimateIntentResult = {
 			success: false,
 			affectedDevices: 0,
@@ -93,6 +151,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			heatingSetpoint: null,
 			coolingSetpoint: null,
 		};
+
+		if (privateContext && !privateContext.isCurrent()) return defaultResult;
 
 		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
@@ -113,7 +173,9 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get primary devices
-		const allPrimaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
+		const allPrimaryDevices = privateContext
+			? [...privateContext.targets]
+			: await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
 
 		if (allPrimaryDevices.length === 0) {
 			this.logger.debug(`No controllable climate devices in space id=${spaceId}`);
@@ -488,7 +550,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const automation = this.automationContext.getStore();
+			const { success } = automation
+				? await this.propertyCommandDispatchService.dispatchBatch(commands, { isRequestCurrent: automation.isCurrent })
+				: await this.propertyCommandDispatchService.dispatchBatch(commands);
 			if (!success) {
 				this.logger.error(`Mode command execution failed for device id=${device.device.id}`);
 				return false;
@@ -545,7 +610,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			});
 		}
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const automation = this.automationContext.getStore();
+			const { success } = automation
+				? await this.propertyCommandDispatchService.dispatchBatch(commands, { isRequestCurrent: automation.isCurrent })
+				: await this.propertyCommandDispatchService.dispatchBatch(commands);
 			return {
 				success,
 				heatingSetpoint: success ? appliedHeatingSetpoint : null,
@@ -692,7 +760,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		// Get delta value from YAML spec first, fall back to hardcoded constants
 		const yamlDeltaValue = this.intentSpecLoaderService.getSetpointDeltaStep(intent.delta);
-		const deltaValue = yamlDeltaValue ?? SETPOINT_DELTA_STEPS[intent.delta];
+		const deltaValue =
+			this.automationContext.getStore()?.numericDelta ?? yamlDeltaValue ?? SETPOINT_DELTA_STEPS[intent.delta];
 
 		// Validate delta lookup to prevent NaN from propagating
 		if (deltaValue === undefined || deltaValue === null) {
@@ -810,7 +879,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 			}
 
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(preparedCommands, { prepared: true });
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(preparedCommands, {
+				prepared: true,
+				...(this.automationContext.getStore() ? { isRequestCurrent: this.automationContext.getStore().isCurrent } : {}),
+			});
 			if (!success) {
 				this.logger.error(`Setpoint command execution failed for device id=${device.device.id}`);
 				return { success: false, heatingSetpoint: null, coolingSetpoint: null };

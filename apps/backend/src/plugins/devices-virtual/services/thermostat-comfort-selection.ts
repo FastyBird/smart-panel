@@ -10,6 +10,7 @@ import {
 	observeSqliteOuterOutcome,
 	registerSqliteCommitGuard,
 } from '../../../common/database/sqlite-data-source';
+import { ClimateAutomationSlotSnapshot } from '../../../modules/devices/contracts/climate-automation.contract';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
@@ -36,6 +37,7 @@ import {
 	ThermostatSetpoints,
 	effectiveThermostatComfort,
 	validateThermostatComfort,
+	validateThermostatSetpoints,
 } from './virtual-thermostat-comfort.utils';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
@@ -208,6 +210,7 @@ function pin(
 	const serialize = canonical;
 	const detach = ownedJson;
 	const validate = validateThermostatComfort;
+	const validateSetpoints = validateThermostatSetpoints;
 	const effective = effectiveThermostatComfort;
 	const contract = thermostatPropertyContract;
 	const validatePolicy = validateVirtualThermostatPolicy;
@@ -549,6 +552,7 @@ function pin(
 			input: ComfortInput | RegisteredInput | ReleaseInput,
 			ownerCurrent: () => boolean,
 			dispatchCurrent: () => boolean,
+			deferReady = false,
 		) {
 			if (
 				!['selection', 'definition', 'override', 'cancel', 'registered-settings', 'release-request'].includes(
@@ -561,6 +565,14 @@ function pin(
 				refuse('Invalid thermostat comfort intent kind.');
 			const settlement = new ThermostatSelectionSettlement();
 			let ready = false;
+			let imageComplete = false;
+			let manualTakeover: boolean | undefined;
+			let changed = true;
+			let resultPolicy: Parameters<typeof effectiveThermostatComfort>[0] | undefined;
+			const completeImage = () => {
+				imageComplete = true;
+				if (!deferReady) ready = true;
+			};
 			let slot:
 				| Readonly<{ reference: Lease | undefined; id: string | undefined; revision: number | undefined }>
 				| undefined;
@@ -573,7 +585,38 @@ function pin(
 			const assert = () => {
 				if (!valid()) refuse();
 			};
-			const writeRelease = async (manager: EntityManager, input: ReleaseInput): Promise<ReleaseResult> => {
+			const validateOwned = (
+				row: VirtualThermostatConfigEntity,
+				id: string,
+				owned?: ClimateAutomationSlotSnapshot,
+				graphDelta = 1,
+			) => {
+				if (!owned) return;
+				const slot = owned.facts;
+				const controller = owned.controller;
+				if (
+					!slot ||
+					!controller ||
+					slot.state !== 'LIVE' ||
+					slot.manualHold ||
+					slot.controllerId !== id ||
+					!slot.installEvidence
+				)
+					refuse('Missing original installed thermostat selection.');
+				const installed = JSON.parse(slot.installEvidence) as typeof controller;
+				if (
+					controller.controllerRevision !== row.revision ||
+					controller.graphRevision !== installed.graphRevision + graphDelta ||
+					serialize({ ...controller, graphRevision: installed.graphRevision }) !== slot.installEvidence ||
+					serialize(controller.legacyBaseline) !== serialize(row.comfort?.automation_baseline ?? null)
+				)
+					refuse('Installed thermostat mirror no longer matches its native controller.');
+			};
+			const writeRelease = async (
+				manager: EntityManager,
+				input: ReleaseInput,
+				owned?: ClimateAutomationSlotSnapshot,
+			): Promise<ReleaseResult> => {
 				const readConfig = () =>
 					manager
 						.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
@@ -624,12 +667,14 @@ function pin(
 				assert();
 				if (row.revision !== input.expectedRevision || !revision(row.revision, 1, true))
 					refuse('Thermostat revision changed or overflowed.');
+				validateOwned(row, input.id, owned);
 				// One original system-Date observation at the old reserved phase, never at ACK.
 				const DateConstructor = releaseDateGlobal.values.Date as unknown as DateConstructor;
 				const instant = new DateConstructor();
 				const timestamp = releaseScalar.values.getTime.call(instant);
 				const intended = Object.freeze({
 					...configuration(row),
+					...(owned && row.comfort ? { comfort: { ...configuration(row).comfort, automation_baseline: null } } : {}),
 					requestedMode: 'off' as const,
 					revision: row.revision + 1,
 					releaseRequestedAt: timestamp,
@@ -655,7 +700,12 @@ function pin(
 				const updated = await manager
 					.createQueryBuilder()
 					.update(VirtualThermostatConfigEntity)
-					.set({ requestedMode: 'off', releaseRequestedAt: instant, revision: intended.revision })
+					.set({
+						requestedMode: 'off',
+						releaseRequestedAt: instant,
+						revision: intended.revision,
+						...(owned ? { comfort: intended.comfort } : {}),
+					})
 					.where({
 						controllerId: input.id,
 						revision: row.revision,
@@ -715,10 +765,19 @@ function pin(
 					timestamp,
 				});
 				settlement.releaseResult = Object.freeze({ value });
-				ready = true;
+				completeImage();
 				return value;
 			};
-			const writeRegistered = async (manager: EntityManager, input: RegisteredInput): Promise<ManualResult> => {
+			const writeRegistered = async (
+				manager: EntityManager,
+				input: RegisteredInput,
+				owned?: ClimateAutomationSlotSnapshot,
+				semantic?: {
+					advanceGraph: () => Promise<number>;
+					canRemainUnchanged: (takeover: boolean) => boolean;
+					verifyUnchanged: () => Promise<void>;
+				},
+			): Promise<ManualResult> => {
 				const readGraph = () =>
 					manager
 						.createQueryBuilder(VirtualGraphRevisionEntity, 'graph')
@@ -740,8 +799,8 @@ function pin(
 						.getOne();
 				const graph = await readGraph();
 				assert();
-				if (!revision(graph.revision, 1)) refuse('Invalid virtual dependency graph revision.');
-				const graphRevision = graph.revision;
+				if (!revision(graph.revision, semantic ? 0 : 1)) refuse('Invalid virtual dependency graph revision.');
+				let graphRevision = graph.revision;
 				const rows: ThermostatSetting[] = [];
 				for (const command of input.commands) {
 					const setting = await manager
@@ -791,7 +850,8 @@ function pin(
 					(row.locked && rows.some((role) => role !== 'locked'))
 				)
 					refuse('Thermostat is disabled or locked.');
-				if (!revision(row.revision, 1, true)) refuse('Thermostat revision overflow.');
+				if (!revision(row.revision, 1)) refuse('Invalid thermostat revision.');
+				validateOwned(row, input.id, owned, semantic ? 0 : 1);
 				const starting = detach(configImage(row)) as unknown as ReturnType<typeof configImage>;
 				const intended = JSON.parse(serialize(starting)) as typeof starting;
 				let heat = ['heat', 'auto'].includes(starting.requestedMode),
@@ -810,6 +870,7 @@ function pin(
 					}
 				}
 				if (intended.comfort) {
+					if (owned) intended.comfort.automation_baseline = null;
 					if (rows.some((role) => role.endsWith('setpoint'))) intended.comfort.selected_preset = null;
 					if (rows.some((role) => role.endsWith('enabled'))) intended.comfort.user_off = !heat && !cool;
 					const errors = validate(intended.comfort, intended.policy);
@@ -825,27 +886,40 @@ function pin(
 					((mode === 'cool' || mode === 'auto') && intended.policy.coolingSetpoint === null)
 				)
 					refuse(`Invalid thermostat mode/policy: ${errors.join(', ')}.`);
-				intended.revision = starting.revision + 1;
+				manualTakeover = rows.some((role) => role !== 'locked');
+				changed = !(
+					semantic &&
+					serialize(intended) === serialize(starting) &&
+					semantic.canRemainUnchanged(manualTakeover)
+				);
+				if (changed) {
+					if (!revision(row.revision, 1, true))
+						refuse('Thermostat is missing, detached, locked or its revision changed/overflowed.');
+					if (semantic) graphRevision = await semantic.advanceGraph();
+					intended.revision = starting.revision + 1;
+				}
 				const intendedJson = serialize(intended);
-				const updated = await manager
-					.createQueryBuilder()
-					.update(VirtualThermostatConfigEntity)
-					.set({
-						policy: intended.policy,
-						comfort: intended.comfort,
-						requestedMode: intended.requestedMode,
-						locked: intended.locked,
-						revision: intended.revision,
-					})
-					.where({
-						controllerId: input.id,
-						ownerDeviceId: owner.id,
-						revision: starting.revision,
-						locked: starting.locked,
-					})
-					.execute();
-				assert();
-				if (updated.affected !== 1) refuse('Thermostat settings lost their conditional update.');
+				if (changed) {
+					const updated = await manager
+						.createQueryBuilder()
+						.update(VirtualThermostatConfigEntity)
+						.set({
+							policy: intended.policy,
+							comfort: intended.comfort,
+							requestedMode: intended.requestedMode,
+							locked: intended.locked,
+							revision: intended.revision,
+						})
+						.where({
+							controllerId: input.id,
+							ownerDeviceId: owner.id,
+							revision: starting.revision,
+							locked: starting.locked,
+						})
+						.execute();
+					assert();
+					if (updated.affected !== 1) refuse('Thermostat settings lost their conditional update.');
+				} else await semantic.verifyUnchanged();
 				const postimage = await readConfig(),
 					postOwner = await readOwner(),
 					postGraph = await readGraph();
@@ -859,6 +933,7 @@ function pin(
 					postGraph.revision !== graphRevision
 				)
 					refuse('Thermostat settings persisted an unexpected postimage.');
+				manualTakeover = rows.some((role) => role !== 'locked');
 				const value = detach({
 					configuration: intended,
 					owner: { id: owner.id, enabled: owner.enabled, type: owner.type },
@@ -866,11 +941,45 @@ function pin(
 					commands: input.commands,
 				}) as unknown as ManualResult;
 				settlement.manualResult = Object.freeze({ value });
-				ready = true;
+				completeImage();
 				return value;
 			};
 			return Object.freeze({
 				settlement,
+				changed(): boolean {
+					if (!imageComplete) refuse();
+					return changed;
+				},
+				takesManualHold(): boolean {
+					assert();
+					if (input.kind !== 'registered-settings' || !imageComplete || manualTakeover === undefined) refuse();
+					return manualTakeover;
+				},
+				qualifyAutomation(intent: Parameters<typeof effectiveThermostatComfort>[2]): void {
+					assert();
+					if (
+						!deferReady ||
+						ready ||
+						!imageComplete ||
+						!resultPolicy ||
+						!settlement.result ||
+						settlement.receipt?.outcome !== 'pending' ||
+						!intent?.isCurrent()
+					)
+						refuse();
+					const value = settlement.result.value;
+					settlement.result = Object.freeze({
+						value: detach({
+							...value,
+							effective: effective(resultPolicy, value.configuration, intent),
+						}) as unknown as SelectionResult,
+					});
+				},
+				markReady(): void {
+					assert();
+					if (!deferReady || !imageComplete || settlement.receipt?.outcome !== 'pending') refuse();
+					ready = true;
+				},
 				captureSlot(): void {
 					if (input.kind !== 'override' && input.kind !== 'cancel') return;
 					const reference = local.values.get.call(local.receiver, input.id);
@@ -951,11 +1060,19 @@ function pin(
 					);
 					assert();
 				},
-				async write(manager: EntityManager): Promise<SelectionResult | ManualResult | ReleaseResult> {
+				async write(
+					manager: EntityManager,
+					owned?: ClimateAutomationSlotSnapshot,
+					semantic?: {
+						advanceGraph: () => Promise<number>;
+						canRemainUnchanged: (takeover: boolean) => boolean;
+						verifyUnchanged: () => Promise<void>;
+					},
+				): Promise<SelectionResult | ManualResult | ReleaseResult> {
 					assert();
 					if (manager !== original) refuse();
-					if (input.kind === 'registered-settings') return writeRegistered(manager, input);
-					if (input.kind === 'release-request') return writeRelease(manager, input);
+					if (input.kind === 'registered-settings') return writeRegistered(manager, input, owned, semantic);
+					if (input.kind === 'release-request') return writeRelease(manager, input, owned);
 					const row = await manager
 						.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
 						.where('config.controllerId = :id', { id: input.id })
@@ -976,9 +1093,10 @@ function pin(
 						row.ownerDeviceId !== owner.id ||
 						row.locked ||
 						row.revision !== input.expected_revision ||
-						!revision(row.revision, 1, true)
+						!revision(row.revision, 1, !semantic)
 					)
 						refuse('Thermostat is missing, detached, locked or its revision changed/overflowed.');
+					validateOwned(row, input.id, owned, semantic ? 0 : 1);
 					let intended: ThermostatComfortConfiguration;
 					let birth:
 						| Readonly<{ controller: string; id: string; revision: number; deadline: number; watermark: number }>
@@ -987,6 +1105,7 @@ function pin(
 						if (!row.comfort) refuse('Configure explicit comfort ranges and presets first.');
 						intended = JSON.parse(serialize(row.comfort)) as ThermostatComfortConfiguration;
 						intended.selected_preset = input.preset;
+						if (owned) intended.automation_baseline = null;
 						if (input.clearUserOff) intended.user_off = false;
 					} else if (input.kind === 'definition') {
 						const definition = input.definition;
@@ -1005,6 +1124,14 @@ function pin(
 							automation_baseline: definition.automation === 'disable' ? null : (old?.automation_baseline ?? null),
 							temporary_override: old?.temporary_override ?? null,
 						};
+						if (owned && intended.automation_baseline) {
+							const baseline = intended.automation_baseline;
+							const target = baseline.preset
+								? intended.presets.find((entry) => entry.preset === baseline.preset)?.setpoints
+								: baseline.setpoints;
+							if (!target || validateSetpoints(target, intended, row.policy).length)
+								intended.automation_baseline = null;
+						}
 					} else {
 						if (!row.comfort)
 							refuse(
@@ -1068,15 +1195,26 @@ function pin(
 					const errors = validate(intended, row.policy);
 					if (errors.length) refuse(errors.join(', '));
 					const intendedJson = serialize(intended);
-					const updated = await manager
-						.createQueryBuilder()
-						.update(VirtualThermostatConfigEntity)
-						.set({ comfort: intended, revision: row.revision + 1 })
-						.where({ controllerId: input.id, ownerDeviceId: owner.id, revision: row.revision, locked: false })
-						// Keep mutation listeners and actual ownership beforeQuery/outer hooks enabled.
-						.execute();
-					assert();
-					if (updated.affected !== 1) refuse('Thermostat selection lost its conditional update.');
+					changed = !(
+						semantic &&
+						(input.kind === 'selection' || input.kind === 'definition') &&
+						serialize(row.comfort) === intendedJson &&
+						semantic.canRemainUnchanged(true)
+					);
+					if (changed) {
+						if (!revision(row.revision, 1, true))
+							refuse('Thermostat is missing, detached, locked or its revision changed/overflowed.');
+						if (semantic) await semantic.advanceGraph();
+						const updated = await manager
+							.createQueryBuilder()
+							.update(VirtualThermostatConfigEntity)
+							.set({ comfort: intended, revision: row.revision + 1 })
+							.where({ controllerId: input.id, ownerDeviceId: owner.id, revision: row.revision, locked: false })
+							// Keep mutation listeners and actual ownership beforeQuery/outer hooks enabled.
+							.execute();
+						assert();
+						if (updated.affected !== 1) refuse('Thermostat selection lost its conditional update.');
+					} else await semantic.verifyUnchanged();
 					const postimage = await manager
 						.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
 						.where('config.controllerId = :id', { id: input.id })
@@ -1091,12 +1229,13 @@ function pin(
 					if (
 						postimage.controllerId !== input.id ||
 						postimage.ownerDeviceId !== owner.id ||
-						postimage.revision !== row.revision + 1 ||
+						postimage.revision !== row.revision + (changed ? 1 : 0) ||
 						serialize(postimage.comfort) !== intendedJson ||
-						!revision(graph.revision, 1) ||
-						graph.revision !== input.expected_graph_revision + 1
+						!revision(graph.revision, changed ? 1 : 0) ||
+						graph.revision !== input.expected_graph_revision + (changed ? 1 : 0)
 					)
 						refuse('Thermostat selection persisted an unexpected postimage.');
+					resultPolicy = detach(postimage.policy) as unknown as typeof postimage.policy;
 					const value = detach({
 						controller: postimage.controllerId,
 						revision: postimage.revision,
@@ -1108,7 +1247,7 @@ function pin(
 					// The provisional scalar plan is qualified only by the exact persisted postimage above.
 					plan = birth;
 					settlement.result = Object.freeze({ value });
-					ready = true;
+					completeImage();
 					return value;
 				},
 				accepted(): void {

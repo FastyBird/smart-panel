@@ -67,6 +67,7 @@ describe('light group atomic authoring with real SQLite and core creation servic
 	let producers: PropertyProducerRegistryService;
 	let events: EventEmitter2;
 	let memberIds: string[];
+	let state: VirtualProducerStateService;
 	let phase: string | undefined;
 	let previewing = false;
 	let admittedRunner: QueryRunner | undefined;
@@ -97,7 +98,8 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		producers = new PropertyProducerRegistryService(events);
 		graph = new VirtualDependencyGraphService(database);
 		const lock = new DeviceStructureLockService();
-		const state = new VirtualProducerStateService(database, producers, graph, events);
+		state = new VirtualProducerStateService(database, producers, graph, events);
+		await state.onModuleInit();
 		const aggregates = new VirtualProducerConfigService(database, lock, graph, events, state);
 		configs = aggregates;
 		const devicesMapper = new DevicesTypeMapperService();
@@ -229,6 +231,7 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		});
 	});
 	afterEach(async () => {
+		state?.onModuleDestroy();
 		producers?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 		useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });

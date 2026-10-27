@@ -118,6 +118,7 @@ import { VirtualProducerConfigService } from './services/virtual-producer-config
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualThermostatAuthoringService } from './services/virtual-thermostat-authoring.service';
+import { VirtualThermostatAutomationService } from './services/virtual-thermostat-automation.service';
 import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './services/virtual-thermostat-comfort.service';
 import { VirtualThermostatConfigService } from './services/virtual-thermostat-config.service';
@@ -183,6 +184,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		ThermostatInstallationService,
 		ThermostatInstallationBindingsService,
 		ThermostatInstallationLoaderService,
+		VirtualThermostatAutomationService,
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
 		VirtualThermostatComfortService,

@@ -52,7 +52,9 @@ jest.setTimeout(60_000);
 describe('light group actual feedback with real SQLite bindings', () => {
 	let database: SqliteDataSource;
 	let runtime: VirtualLightGroupStateService;
+	const states: VirtualProducerStateService[] = [];
 	afterEach(async () => {
+		for (const state of states.splice(0)) state.onModuleDestroy();
 		runtime?.onModuleDestroy();
 		jest.useRealTimers();
 		if (database?.isInitialized) await database.destroy();
@@ -171,6 +173,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			} as never);
 		}
 		const producerState = new VirtualProducerStateService(database, producers, graph, events);
+		states.push(producerState);
 		await producerState.onModuleInit();
 		await graph.onApplicationBootstrap();
 		runtime = new VirtualLightGroupStateService(
@@ -601,6 +604,8 @@ describe('light group actual feedback with real SQLite bindings', () => {
 				}
 			}
 			const producerState = new VirtualProducerStateService(database, producers, graph, events);
+			states.push(producerState);
+			await producerState.onModuleInit();
 			await graph.onApplicationBootstrap();
 			const configs = new VirtualProducerConfigService(database, structure, graph, events, producerState);
 			const configuration = Object.assign(new ConfigureVirtualLightGroupDto(), {

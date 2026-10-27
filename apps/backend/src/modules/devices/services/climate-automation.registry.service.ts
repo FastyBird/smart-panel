@@ -36,6 +36,16 @@ export class ClimateAutomationRegistryService implements OnModuleDestroy {
 	captureProvider(key: string): ClimateAutomationCapturedRegistration<ClimateAutomationProvider> | null {
 		return this.capture(this.providers, key);
 	}
+	/** Entry snapshot for generic native callers that learn the provider key only after a read. */
+	captureProviders(): ReadonlyMap<string, ClimateAutomationCapturedRegistration<ClimateAutomationProvider>> {
+		const captured = new Map<string, ClimateAutomationCapturedRegistration<ClimateAutomationProvider>>();
+		for (const key of this.providers.keys()) {
+			const original = this.capture(this.providers, key);
+			if (original) captured.set(key, original);
+		}
+		return captured;
+	}
+
 	onModuleDestroy(): void {
 		this.destroyed = true;
 		this.producers.clear();

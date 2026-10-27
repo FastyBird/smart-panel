@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
@@ -130,16 +131,35 @@ export class VirtualProducerConfigService {
 		outputPropertyId: string,
 		dto: ConfigureVirtualAggregateDto,
 	): Promise<VirtualAggregateConfigurationModel> {
+		const state = captureCreation(this.producerState, [
+			'captureConfigurationHandoff',
+			'withConfigurationWrite',
+			'recordConfiguration',
+			'installUnavailable',
+		]);
+		const handoff = state.values.captureConfigurationHandoff.call(state.receiver);
 		return this.structureLock.runExclusive(async () => {
 			let committedOutput: VirtualChannelPropertyEntity;
 			let committedRevision: number;
-			await this.graph.withStructuralWrite(async (manager) => {
-				const { config, inputs, output } = await this.prepareAggregate(manager, outputPropertyId, dto);
-				await this.persistAggregate(manager, { config, inputs });
-				committedOutput = output;
-				committedRevision = config.revision;
-			}, dto.expectedGraphRevision);
-			this.producerState.installUnavailable(committedOutput, committedRevision);
+			await state.values.withConfigurationWrite.call(
+				state.receiver,
+				handoff,
+				async (manager) => {
+					const { config, inputs, output } = await this.prepareAggregate(manager, outputPropertyId, dto);
+					await state.values.recordConfiguration.call(state.receiver, manager, handoff, {
+						kind: 'aggregate',
+						config,
+						inputs,
+						outputs: [output],
+					});
+					await this.persistAggregate(manager, { config, inputs });
+					committedOutput = output;
+					committedRevision = config.revision;
+				},
+				dto.expectedGraphRevision,
+				this.structureLock.captureExclusiveOwner(),
+			);
+			state.values.installUnavailable.call(state.receiver, committedOutput, committedRevision);
 			await this.announceOutputs([outputPropertyId]);
 			return this.getAggregate(outputPropertyId);
 		});
@@ -379,18 +399,39 @@ export class VirtualProducerConfigService {
 		groupChannelId: string,
 		dto: ConfigureVirtualLightGroupDto,
 	): Promise<VirtualLightGroupConfigurationModel> {
+		const state = captureCreation(this.producerState, [
+			'captureConfigurationHandoff',
+			'withConfigurationWrite',
+			'recordConfiguration',
+			'installUnavailable',
+		]);
+		const handoff = state.values.captureConfigurationHandoff.call(state.receiver);
 		return this.structureLock.runExclusive(async () => {
 			let outputs: string[] = [];
 			let committedProperties: VirtualChannelPropertyEntity[] = [];
 			let committedRevision = 0;
-			await this.graph.withStructuralWrite(async (manager) => {
-				const prepared = await this.prepareLightGroup(manager, groupChannelId, dto);
-				await this.persistLightGroup(manager, prepared);
-				outputs = [...new Set(prepared.bindings.map((binding) => binding.outputPropertyId))];
-				committedProperties = prepared.outputs;
-				committedRevision = prepared.config.revision;
-			}, dto.expectedGraphRevision);
-			for (const property of committedProperties) this.producerState.installUnavailable(property, committedRevision);
+			await state.values.withConfigurationWrite.call(
+				state.receiver,
+				handoff,
+				async (manager) => {
+					const prepared = await this.prepareLightGroup(manager, groupChannelId, dto);
+					await state.values.recordConfiguration.call(state.receiver, manager, handoff, {
+						kind: 'light-group',
+						config: prepared.config,
+						members: prepared.members,
+						bindings: prepared.bindings,
+						outputs: prepared.outputs,
+					});
+					await this.persistLightGroup(manager, prepared);
+					outputs = [...new Set(prepared.bindings.map((binding) => binding.outputPropertyId))];
+					committedProperties = prepared.outputs;
+					committedRevision = prepared.config.revision;
+				},
+				dto.expectedGraphRevision,
+				this.structureLock.captureExclusiveOwner(),
+			);
+			for (const property of committedProperties)
+				state.values.installUnavailable.call(state.receiver, property, committedRevision);
 			await this.announceOutputs(outputs);
 			return this.getLightGroup(groupChannelId);
 		});

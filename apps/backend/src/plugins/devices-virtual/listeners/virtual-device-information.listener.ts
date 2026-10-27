@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
@@ -13,6 +15,11 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import {
+	ControllerPublicationContext,
+	ownControllerEffectValue,
+} from '../../../modules/devices/services/controller-publication-context';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import {
 	VirtualChannelPropertyEntity,
@@ -21,6 +28,12 @@ import {
 } from '../entities/devices-virtual.entity';
 
 import { VirtualStatusListener } from './virtual-status.listener';
+
+interface SynthesisDestinations {
+	readonly channels: Pick<ChannelsService, 'findOneBy' | 'findOne' | 'create'>;
+	readonly properties: Pick<ChannelsPropertiesService, 'findOneBy' | 'create' | 'update' | 'remove'>;
+	readonly status: Pick<VirtualStatusListener, 'recompute'>;
+}
 
 interface OwnedPropertyDefinition {
 	identifier: string;
@@ -103,6 +116,7 @@ interface OwnedPropertyDefinition {
  */
 @Injectable()
 export class VirtualDeviceInformationListener {
+	private readonly synthesis = new AsyncLocalStorage<SynthesisDestinations>();
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualDeviceInformationListener');
 
 	/**
@@ -127,6 +141,35 @@ export class VirtualDeviceInformationListener {
 		private readonly statusListener: VirtualStatusListener,
 	) {}
 
+	private channelDestination(): SynthesisDestinations['channels'] {
+		return this.synthesis.getStore()?.channels ?? this.channelsService;
+	}
+	private propertyDestination(): SynthesisDestinations['properties'] {
+		return this.synthesis.getStore()?.properties ?? this.channelsPropertiesService;
+	}
+	private statusDestination(): SynthesisDestinations['status'] {
+		return this.synthesis.getStore()?.status ?? this.statusListener;
+	}
+	private captureDestinations(): SynthesisDestinations {
+		const channels = captureCreation(this.channelsService, ['findOneBy', 'findOne', 'create']);
+		const properties = captureCreation(this.channelsPropertiesService, ['findOneBy', 'create', 'update', 'remove']);
+		const status = captureCreation(this.statusListener, ['recompute']);
+		return {
+			channels: {
+				findOneBy: channels.values.findOneBy.bind(channels.receiver) as ChannelsService['findOneBy'],
+				findOne: channels.values.findOne.bind(channels.receiver) as ChannelsService['findOne'],
+				create: channels.values.create.bind(channels.receiver) as ChannelsService['create'],
+			},
+			properties: {
+				findOneBy: properties.values.findOneBy.bind(properties.receiver) as ChannelsPropertiesService['findOneBy'],
+				create: properties.values.create.bind(properties.receiver) as ChannelsPropertiesService['create'],
+				update: properties.values.update.bind(properties.receiver) as ChannelsPropertiesService['update'],
+				remove: properties.values.remove.bind(properties.receiver) as ChannelsPropertiesService['remove'],
+			},
+			status: { recompute: (id, reason) => status.values.recompute.call(status.receiver, id, reason) },
+		};
+	}
+
 	@OnEvent(EventType.DEVICE_CREATED)
 	async handleDeviceCreated(device: DeviceEntity): Promise<void> {
 		if (device.type !== DEVICES_VIRTUAL_TYPE) {
@@ -134,31 +177,39 @@ export class VirtualDeviceInformationListener {
 		}
 
 		try {
-			const channel = await this.ensureDeviceInformationChannel(device);
+			const destinations = ControllerPublicationContext.current() ? this.captureDestinations() : undefined;
+			if (destinations) device = ownControllerEffectValue(device);
+			const synthesize = async () => {
+				let channel = await this.ensureDeviceInformationChannel(device);
+				if (destinations && channel) channel = ownControllerEffectValue(channel);
 
-			if (!channel) {
-				this.logger.warn(
-					`Device information channel missing for virtual device id=${device.id}, cannot synthesize its properties`,
-				);
+				if (!channel) {
+					this.logger.warn(
+						`Device information channel missing for virtual device id=${device.id}, cannot synthesize its properties`,
+					);
 
-				return;
-			}
+					return;
+				}
 
-			// Strictly before the connectivity write below, so that call never has to create it — see
-			// the class docstring for why creating it afterwards is not equivalent.
-			await this.ensureConnectionStateProperty(channel);
+				// Strictly before the connectivity write below, so that call never has to create it — see
+				// the class docstring for why creating it afterwards is not equivalent.
+				await this.ensureConnectionStateProperty(channel);
 
-			// Aggregated from whatever sources the device actually has, never hard-coded — see the
-			// "Why the initial state is aggregated" section of the class docstring. A device with no
-			// linked properties yet still comes out CONNECTED, vacuously, which is the case this used
-			// to state directly.
-			await this.statusListener.recompute(device.id, 'virtual device created');
+				// Aggregated from whatever sources the device actually has, never hard-coded — see the
+				// "Why the initial state is aggregated" section of the class docstring. A device with no
+				// linked properties yet still comes out CONNECTED, vacuously, which is the case this used
+				// to state directly.
+				await this.statusDestination().recompute(device.id, 'virtual device created');
 
-			for (const definition of this.ownedPropertyDefinitions(device)) {
-				await this.ensureOwnedProperty(channel, definition);
-			}
+				for (const definition of this.ownedPropertyDefinitions(device)) {
+					await this.ensureOwnedProperty(channel, definition);
+				}
 
-			this.logger.debug(`Synthesized device information properties for virtual device id=${device.id}`);
+				this.logger.debug(`Synthesized device information properties for virtual device id=${device.id}`);
+			};
+			await ControllerPublicationContext.effect('virtual-device-information.synthesis', () =>
+				destinations ? this.synthesis.run(destinations, synthesize) : synthesize(),
+			);
 		} catch (error) {
 			// Fire-and-forget from an event handler: EventEmitter2's .emit() does not await listeners,
 			// so an uncaught rejection here would become an unhandled promise rejection rather than
@@ -269,14 +320,18 @@ export class VirtualDeviceInformationListener {
 			attempt <= VirtualDeviceInformationListener.MAX_DEVICE_INFORMATION_CHANNEL_ATTEMPTS;
 			attempt++
 		) {
-			const existing = await this.channelsService.findOneBy('category', ChannelCategory.DEVICE_INFORMATION, device.id);
+			const existing = await this.channelDestination().findOneBy(
+				'category',
+				ChannelCategory.DEVICE_INFORMATION,
+				device.id,
+			);
 
 			if (existing) {
 				return existing;
 			}
 
 			try {
-				return await this.channelsService.create({
+				return await this.channelDestination().create({
 					device: device.id,
 					type: device.type,
 					identifier: 'device_information',
@@ -336,7 +391,7 @@ export class VirtualDeviceInformationListener {
 	 */
 	private async ensureConnectionStateProperty(channel: ChannelEntity): Promise<void> {
 		for (let attempt = 1; ; attempt++) {
-			const existing = await this.channelsPropertiesService.findOneBy<VirtualChannelPropertyEntity>(
+			const existing = await this.propertyDestination().findOneBy<VirtualChannelPropertyEntity>(
 				'category',
 				PropertyCategory.STATUS,
 				channel.id,
@@ -349,7 +404,7 @@ export class VirtualDeviceInformationListener {
 			}
 
 			try {
-				await this.channelsPropertiesService.create(channel.id, {
+				await this.propertyDestination().create(channel.id, {
 					type: channel.type,
 					identifier: 'connection_state',
 					name: 'Connection State',
@@ -408,7 +463,7 @@ export class VirtualDeviceInformationListener {
 			return;
 		}
 
-		await this.channelsPropertiesService.update(property.id, {
+		await this.propertyDestination().update(property.id, {
 			type: property.type,
 			value_origin: VirtualValueOrigin.LOCAL,
 			source_property: null,
@@ -455,13 +510,13 @@ export class VirtualDeviceInformationListener {
 			return;
 		}
 
-		const existing = await this.channelsPropertiesService.findOneBy('category', definition.category, channel.id);
+		const existing = await this.propertyDestination().findOneBy('category', definition.category, channel.id);
 
 		if (existing) {
 			return;
 		}
 
-		const created = await this.channelsPropertiesService.create(channel.id, {
+		const created = await this.propertyDestination().create(channel.id, {
 			type: channel.type,
 			identifier: definition.identifier,
 			name: definition.name,
@@ -482,21 +537,24 @@ export class VirtualDeviceInformationListener {
 		// check and the insert cannot be one statement, so the honest move is to confirm afterwards and
 		// clean up what should not have landed. Removed through the service, so its own removal lifecycle
 		// runs — the row is being unmade, not hidden.
-		const stillOwned = await this.channelsService.findOne(channel.id);
+		const createdId = ControllerPublicationContext.current() ? { value: created?.id } : undefined;
+		const stillOwned = await this.channelDestination().findOne(channel.id);
 
 		if (stillOwned) {
 			return;
 		}
 
 		this.logger.warn(
-			`Channel id=${channel.id} was deleted while property id=${created.id} was being synthesized for it; removing the property rather than leaving it with no channel`,
+			`Channel id=${channel.id} was deleted while property id=${createdId && created ? createdId.value : created.id} was being synthesized for it; removing the property rather than leaving it with no channel`,
 		);
 
-		await this.channelsPropertiesService.remove(created.id).catch((error: unknown): void => {
-			this.logger.error(
-				`Failed to remove property id=${created.id} left behind by a deleted channel`,
-				error instanceof Error ? error : undefined,
-			);
-		});
+		await this.propertyDestination()
+			.remove(createdId && created ? createdId.value : created.id)
+			.catch((error: unknown): void => {
+				this.logger.error(
+					`Failed to remove property id=${createdId && created ? createdId.value : created.id} left behind by a deleted channel`,
+					error instanceof Error ? error : undefined,
+				);
+			});
 	}
 }

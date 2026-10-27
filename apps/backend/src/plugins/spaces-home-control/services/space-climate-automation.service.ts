@@ -1,0 +1,570 @@
+import { randomUUID } from 'node:crypto';
+import { DataSource, EntityManager } from 'typeorm';
+
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+
+import { observeSqliteOuterOutcome, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
+import {
+	ClimateAutomationCapturedRegistration,
+	ClimateAutomationJson,
+	ClimateAutomationOwnedRegistration,
+	ClimateAutomationProducer,
+	ClimateAutomationProvider,
+	ClimateAutomationSlotFacts,
+	ClimateAutomationSourceFacts,
+} from '../../../modules/devices/contracts/climate-automation.contract';
+import {
+	ClimateAutomationSlotEntity,
+	ClimateAutomationSourceEntity,
+} from '../../../modules/devices/entities/climate-automation.entity';
+import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
+import { canonical } from '../../../modules/devices/services/climate-automation-ledger.utils';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
+import { CreationCapture, captureCreation } from '../../../modules/devices/services/creation-capture';
+import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
+import { SpaceLifecycleRegistryService } from '../../../modules/spaces/services/space-lifecycle-registry.service';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { domainResult, intentDomainResult } from '../activity/activity-result.utils';
+import { ActivityActivationStatus, ActivityDomain, ActivityDomainStatus } from '../activity/space-activity.constants';
+import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { SpaceActivityConfigEntity } from '../entities/space-activity-config.entity';
+import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
+import { ActivityClimateModel } from '../models/activity-configuration.model';
+import { ActivityDomainResultModel } from '../models/activity-result.model';
+import { ClimateIntentType, ClimateMode, SetpointDelta } from '../spaces-home-control.constants';
+
+import { ClimateIntentService } from './climate-intent.service';
+import { SpaceActivationIdentity, SpaceClimateAutomationPort } from './space-climate-automation.port';
+import { PrimaryClimateDevice } from './space-climate-state.service';
+
+interface ProviderParticipant extends ClimateAutomationCapturedRegistration<ClimateAutomationProvider> {
+	readonly methods: CreationCapture<ClimateAutomationProvider>['values'];
+}
+
+/** Expected selection refusal; the original native bundle still rolls back before it is reported. */
+class UnsupportedThermostatSelection extends Error {}
+
+export const SPACE_ACTIVITY_CLIMATE_PRODUCER = 'space-activity:v1';
+interface ActivityEvidence {
+	readonly spaceId: string;
+	readonly spaceType: SpaceType;
+	readonly activationId: string;
+	readonly configId: string;
+	readonly configurationRevision: number;
+	readonly mode: string;
+	/** Exact stored authoring bytes, not a normalized copy or activity-name inference. */
+	readonly configuration: string;
+	readonly targets: readonly { id: string; role: string | null }[];
+}
+
+/** Private activity participant. Registration occurs only in the application lifecycle, never in a constructor. */
+@Injectable()
+export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDestroy, SpaceClimateAutomationPort {
+	private readonly participants = new Map<ClimateAutomationProvider, ProviderParticipant>();
+	private registration?: ClimateAutomationOwnedRegistration;
+	private removeLifecycle?: () => void;
+	private destroyed = false;
+	private readonly epochs = new Map<string, object>();
+	private readonly mutations = new Map<string, Set<object>>();
+	private readonly producer: ClimateAutomationProducer = {
+		captureCurrent: (source) => {
+			const evidence = JSON.parse(source.evidence) as ActivityEvidence;
+			const key = `${source.subjectId}/${evidence.configId}`;
+			const epoch = this.epochs.get(source.subjectId);
+			const configurationEpoch = this.epochs.get(key);
+			const activationKey = `${source.subjectId}/activation/${evidence.activationId}`;
+			const activationEpoch = this.epochs.get(activationKey);
+			return () =>
+				!this.destroyed &&
+				!this.mutations.has(source.subjectId) &&
+				!this.mutations.has(key) &&
+				!this.mutations.has(activationKey) &&
+				this.epochs.get(activationKey) === activationEpoch &&
+				this.epochs.get(source.subjectId) === epoch &&
+				this.epochs.get(key) === configurationEpoch;
+		},
+		validateInManager: (manager, source, purpose, provider) => this.validateSource(manager, source, purpose, provider),
+	};
+	constructor(
+		private readonly database: DataSource,
+		private readonly registry: ClimateAutomationRegistryService,
+		private readonly ledger: ClimateAutomationLedgerService,
+		private readonly structure: DeviceStructureLockService,
+		private readonly lifecycle: SpaceLifecycleRegistryService,
+		@Optional() private readonly intents?: ClimateIntentService,
+	) {}
+	onModuleInit(): void {
+		if (process.env.FB_CLI === 'on') return;
+		if (this.destroyed || this.registration) throw new Error('Activity climate participant unavailable');
+		this.registration =
+			this.registry.registerProducerOwned(SPACE_ACTIVITY_CLIMATE_PRODUCER, this.producer) ?? undefined;
+		if (!this.registration) throw new Error('Activity climate producer already registered');
+		this.removeLifecycle = this.lifecycle.register({
+			reconcile: async () => {},
+			beforeAdmission: async (id) => {
+				const release = this.blockAdmission(id);
+				try {
+					await this.capturePredecessors(id);
+					return release;
+				} catch (cause) {
+					release();
+					throw cause;
+				}
+			},
+			beforeMutation: (id, kind, manager) => this.retireInManager(manager, id, undefined, kind === 'delete'),
+		});
+	}
+	onModuleDestroy(): void {
+		this.destroyed = true;
+		this.removeLifecycle?.();
+		this.removeLifecycle = undefined;
+		this.registration?.dispose();
+		this.registration = undefined;
+	}
+
+	/** Admission and installed currentness share immutable evidence, but deliberately differ in status policy. */
+	async readEvidence(
+		manager: EntityManager,
+		spaceId: string,
+		activationId: string,
+		installed: boolean,
+		restoring = false,
+	): Promise<ActivityEvidence | null> {
+		if (manager === this.database.manager)
+			return this.database.transaction((original) =>
+				this.readEvidence(original, spaceId, activationId, installed, restoring),
+			);
+		if (!manager.queryRunner?.isTransactionActive || manager.connection !== this.database)
+			throw new Error('Original activity read manager unavailable');
+		const space = await manager.findOneBy(SpaceEntity, { id: spaceId });
+		if (!space || ![SpaceType.ROOM, SpaceType.ZONE].includes(space.type)) return null;
+		const state = await manager.findOneBy(SpaceActivityStateEntity, { spaceId, activationId });
+		if (!state?.selectedActivityMode) return null;
+		const activating = !restoring && state.activityStatus === ActivityActivationStatus.ACTIVATING;
+		const completed =
+			installed &&
+			[ActivityActivationStatus.ACTIVE, ActivityActivationStatus.PARTIAL].includes(state.activityStatus) &&
+			state.activityResults?.some(
+				(result) => result.domain === ActivityDomain.CLIMATE && result.status === ActivityDomainStatus.SUCCEEDED,
+			);
+		if (!activating && !completed) return null;
+		const config = await manager.findOneBy(SpaceActivityConfigEntity, {
+			spaceId,
+			activityMode: state.selectedActivityMode,
+			activityRevision: state.selectedActivityRevision,
+			activityEnabled: true,
+		});
+		if (!config?.activityConfiguration.climate.enabled) return null;
+		const rows = await manager.query<{ activityConfiguration: string }[]>(
+			'SELECT "activityConfiguration" FROM "spaces_module_space_roles" WHERE "id"=? AND "type"=\'activity_config\'',
+			[config.id],
+		);
+		if (rows.length !== 1 || typeof rows[0].activityConfiguration !== 'string') return null;
+		return {
+			spaceId,
+			spaceType: space.type,
+			activationId,
+			configId: config.id,
+			configurationRevision: config.activityRevision,
+			mode: config.activityMode,
+			configuration: rows[0].activityConfiguration,
+			targets: this.intents
+				? (await this.intents.planAutomationTargets(spaceId, manager))
+						.map(({ device, role }) => ({ id: device.id, role }))
+						.sort((a, b) => a.id.localeCompare(b.id))
+				: [],
+		};
+	}
+	private async validateSource(
+		manager: EntityManager,
+		source: Readonly<ClimateAutomationSourceFacts>,
+		purpose: 'prepare' | 'retire' | 'restore',
+		restoredProvider?: ClimateAutomationCapturedRegistration<ClimateAutomationProvider>,
+	): Promise<ClimateAutomationJson | null> {
+		if (
+			this.destroyed ||
+			source.producerKey !== SPACE_ACTIVITY_CLIMATE_PRODUCER ||
+			purpose === 'retire' ||
+			(purpose === 'restore' && source.state !== 'FINALIZED_LIVE')
+		)
+			return null;
+		// Fresh startup explicitly binds the original restoring participant. Cleanup never discovers a successor after await.
+		if (purpose === 'restore' && (!restoredProvider || !restoredProvider.isCurrent())) return null;
+		const originalProvider = purpose === 'restore' ? this.provider(restoredProvider) : undefined;
+		let expected: ActivityEvidence;
+		try {
+			expected = JSON.parse(source.evidence) as ActivityEvidence;
+		} catch {
+			return null;
+		}
+		if (!expected || expected.spaceId !== source.subjectId || typeof expected.activationId !== 'string') return null;
+		const actual = await this.readEvidence(
+			manager,
+			source.subjectId,
+			expected.activationId,
+			source.state === 'FINALIZED_LIVE',
+			purpose === 'restore',
+		);
+		return actual && canonical(actual) === source.evidence && (!originalProvider || originalProvider.isCurrent())
+			? (actual as unknown as ClimateAutomationJson)
+			: null;
+	}
+
+	private blockAdmission(key: string): () => void {
+		this.epochs.set(key, {});
+		const token = {};
+		const owners = this.mutations.get(key) ?? new Set<object>();
+		owners.add(token);
+		this.mutations.set(key, owners);
+		return () => {
+			owners.delete(token);
+			if (!owners.size && this.mutations.get(key) === owners) this.mutations.delete(key);
+		};
+	}
+	private async capturePredecessors(spaceId: string, activationId?: string, configId?: string): Promise<void> {
+		// This preliminary read is only a finite cleanup selector. Native mutation rechecks the exact current generation.
+		const source = await this.database.manager.findOneBy(ClimateAutomationSourceEntity, {
+			producerKey: SPACE_ACTIVITY_CLIMATE_PRODUCER,
+			subjectId: spaceId,
+			isCurrent: true,
+		});
+		if (!source) return;
+		const evidence = JSON.parse(source.evidence) as ActivityEvidence;
+		if (
+			(activationId !== undefined && evidence.activationId !== activationId) ||
+			(configId !== undefined && evidence.configId !== configId)
+		)
+			return;
+		const jobs = [...this.participants.values()].map(({ implementation, methods }) =>
+			methods.beginSourceMutation?.call(implementation, SPACE_ACTIVITY_CLIMATE_PRODUCER, spaceId, source.generationId),
+		);
+		await Promise.all(jobs);
+	}
+	private virtual(target: PrimaryClimateDevice): boolean {
+		return target.device.type === 'virtual' && Reflect.get(target.device, 'mode') === 'climate_controller';
+	}
+	private provider(original?: ClimateAutomationCapturedRegistration<ClimateAutomationProvider>): ProviderParticipant {
+		const provider = original ?? this.registry.captureProvider('virtual-thermostat:v1');
+		if (
+			!provider?.isCurrent() ||
+			!provider.implementation.withAutomationWrite ||
+			!provider.implementation.resolveActionInManager ||
+			!provider.implementation.settleInstalled
+		)
+			throw new Error('Trusted thermostat provider unavailable');
+		let participant = this.participants.get(provider.implementation);
+		if (!participant) {
+			const capture = captureCreation(provider.implementation, [
+				'withAutomationWrite',
+				'resolveActionInManager',
+				'settleInstalled',
+				'beginSourceMutation',
+				'retireControllerInManager',
+			]);
+			participant = {
+				implementation: provider.implementation,
+				methods: capture.values,
+				isCurrent: () => provider.isCurrent() && capture.current(),
+			};
+			this.participants.set(provider.implementation, participant);
+		}
+		if (!participant.isCurrent()) throw new Error('Original thermostat participant changed');
+		return participant;
+	}
+	async preview(spaceId: string, selection: ActivityClimateModel): Promise<ActivityDomainResultModel> {
+		if (!this.intents)
+			return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.UNSUPPORTED, 'climate_intent_unavailable');
+		const targets = await this.database.transaction((manager) => this.intents.planAutomationTargets(spaceId, manager));
+		if (!targets.length)
+			return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.NO_TARGETS, 'no_compatible_climate_targets');
+		const virtual = targets.filter((target) => this.virtual(target));
+		const provider = virtual.length ? this.provider() : null;
+		for (const target of virtual)
+			if (
+				!(await provider.methods.resolveActionInManager.call(
+					provider.implementation,
+					this.database.manager,
+					target.device.id,
+					selection as unknown as ClimateAutomationJson,
+				))
+			)
+				return domainResult(
+					ActivityDomain.CLIMATE,
+					ActivityDomainStatus.UNSUPPORTED,
+					'thermostat_selection_or_opt_in_unavailable',
+				);
+		if (selection.thermostat_preset && virtual.length !== targets.length)
+			return domainResult(
+				ActivityDomain.CLIMATE,
+				ActivityDomainStatus.UNSUPPORTED,
+				'physical_target_preset_unsupported',
+			);
+		if (provider && !provider.isCurrent())
+			return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.UNSUPPORTED, 'thermostat_provider_expired');
+		return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.READY, 'explicit_operator_climate_selection');
+	}
+	async apply(identity: SpaceActivationIdentity, selection: ActivityClimateModel): Promise<ActivityDomainResultModel> {
+		if (!this.intents) throw new Error('Climate intent unavailable');
+		const initial = await this.database.transaction(async (manager) => ({
+			evidence: await this.readEvidence(manager, identity.spaceId, identity.activationId, false),
+			targets: await this.intents.planAutomationTargets(identity.spaceId, manager),
+		}));
+		if (
+			!initial.evidence ||
+			initial.evidence.configurationRevision !== identity.configurationRevision ||
+			canonical((JSON.parse(initial.evidence.configuration) as { climate: ActivityClimateModel }).climate) !==
+				canonical(selection)
+		)
+			throw new Error('Activity source changed');
+		const configurationKey = `${identity.spaceId}/${initial.evidence.configId}`;
+		const configurationEpoch = this.epochs.get(configurationKey);
+		const activationKey = `${identity.spaceId}/activation/${identity.activationId}`;
+		const activationEpoch = this.epochs.get(activationKey);
+		const targets = initial.targets;
+		const physicalIds = new Set(targets.filter((target) => !this.virtual(target)).map((target) => target.device.id));
+		// A climate UNSUPPORTED result cannot authorize a finalized virtual source. Refuse before installing any bundle.
+		if (selection.thermostat_preset && physicalIds.size)
+			return domainResult(
+				ActivityDomain.CLIMATE,
+				ActivityDomainStatus.UNSUPPORTED,
+				'physical_target_preset_unsupported',
+			);
+		if (physicalIds.size) {
+			const physical = (await this.intents.planAutomationTargets(identity.spaceId)).filter((target) =>
+				physicalIds.has(target.device.id),
+			);
+			if (physical.length !== physicalIds.size) throw new Error('Activity physical target plan changed');
+			for (const target of physical)
+				targets[targets.findIndex((candidate) => candidate.device.id === target.device.id)] = target;
+		}
+		const virtual = targets.filter((target) => this.virtual(target));
+		if (!targets.length)
+			return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.NO_TARGETS, 'no_compatible_climate_targets');
+		const provider = virtual.length ? this.provider() : null;
+		const originalProducer = this.registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER);
+		if (originalProducer?.implementation !== this.producer) throw new Error('Original activity producer unavailable');
+		const epoch = this.epochs.get(identity.spaceId);
+		let admitted = true;
+		const current = () =>
+			admitted &&
+			originalProducer.isCurrent() &&
+			!this.mutations.has(identity.spaceId) &&
+			!this.mutations.has(configurationKey) &&
+			!this.mutations.has(activationKey) &&
+			this.epochs.get(activationKey) === activationEpoch &&
+			!this.destroyed &&
+			this.epochs.get(identity.spaceId) === epoch &&
+			this.epochs.get(configurationKey) === configurationEpoch &&
+			(!provider || provider.isCurrent());
+		const install = async () => {
+			if (!current() || !(await identity.isCurrent())) throw new Error('Activity superseded');
+			const repeated = await this.database.transaction(async (manager) => {
+				const source = await manager.findOneBy(ClimateAutomationSourceEntity, {
+					producerKey: SPACE_ACTIVITY_CLIMATE_PRODUCER,
+					subjectId: identity.spaceId,
+					isCurrent: true,
+				});
+				if (!source || (JSON.parse(source.evidence) as ActivityEvidence).activationId !== identity.activationId)
+					return null;
+				const evidence = await this.readEvidence(manager, identity.spaceId, identity.activationId, true);
+				if (source.state !== 'FINALIZED_LIVE' || canonical(evidence) !== source.evidence)
+					throw new Error('Original activity installation cannot be replayed');
+				const slots = await manager.findBy(ClimateAutomationSlotEntity, {
+					generationId: source.generationId,
+					ownerId: source.ownerId,
+				});
+				if (
+					slots.some((slot) => slot.state !== 'LIVE' || slot.manualHold) ||
+					canonical(slots.map((slot) => slot.controllerId).sort()) !==
+						canonical(virtual.map((target) => target.device.id).sort())
+				)
+					throw new Error('Original activity candidate retired or changed');
+				return slots.map((slot) => ({ ...slot }));
+			});
+			if (repeated) {
+				if (
+					!current() ||
+					!(await provider.methods.settleInstalled.call(provider.implementation, repeated, originalProducer))
+				)
+					throw new Error('Original installation is no longer eligible');
+				return repeated.length;
+			}
+			let installed: readonly ClimateAutomationSlotFacts[] = [];
+			await provider.methods.withAutomationWrite.call(provider.implementation, async (manager) => {
+				const evidence = await this.readEvidence(manager, identity.spaceId, identity.activationId, false);
+				if (
+					!current() ||
+					!evidence ||
+					evidence.configurationRevision !== identity.configurationRevision ||
+					canonical((JSON.parse(evidence.configuration) as { climate: ActivityClimateModel }).climate) !==
+						canonical(selection)
+				)
+					throw new Error('Activity source changed');
+				const actualTargets = await this.intents.planAutomationTargets(identity.spaceId, manager);
+				if (
+					canonical(actualTargets.map((target) => target.device.id).sort()) !==
+					canonical(targets.map((target) => target.device.id).sort())
+				)
+					throw new Error('Activity target plan changed');
+				const scope = this.ledger.currentScope(manager);
+				const prior = await this.ledger.readSource(manager, scope, SPACE_ACTIVITY_CLIMATE_PRODUCER, identity.spaceId);
+				if (prior.facts && ['PENDING', 'FINALIZED_LIVE'].includes(prior.facts.state))
+					await this.retireInManager(manager, identity.spaceId);
+				const expected = await this.ledger.readSource(
+					manager,
+					scope,
+					SPACE_ACTIVITY_CLIMATE_PRODUCER,
+					identity.spaceId,
+				);
+				const source = await this.ledger.stageSource(manager, scope, {
+					producerKey: SPACE_ACTIVITY_CLIMATE_PRODUCER,
+					subjectId: identity.spaceId,
+					expected,
+					evidence: evidence as unknown as ClimateAutomationJson,
+				});
+				const candidates = [];
+				const bundleId = randomUUID();
+				for (const target of virtual.sort((a, b) => a.device.id.localeCompare(b.device.id))) {
+					const action = await provider.methods.resolveActionInManager.call(
+						provider.implementation,
+						manager,
+						target.device.id,
+						selection as unknown as ClimateAutomationJson,
+					);
+					if (action === null) throw new UnsupportedThermostatSelection('Unsupported thermostat selection');
+					let slot = await this.ledger.readSlot(manager, scope, target.device.id, true, 'virtual-thermostat:v1');
+					if (!slot.facts)
+						slot = await this.ledger.initializeSlot(manager, scope, { expected: slot, releaseManualHold: true });
+					candidates.push(
+						await this.ledger.stageSlot(manager, scope, {
+							expectedSlot: slot,
+							expectedSource: source,
+							selection: action,
+							bundleId,
+						}),
+					);
+				}
+				installed = (await this.ledger.installBundle(manager, scope, source, candidates)).map((slot) => slot.facts);
+				registerSqliteCommitGuard(manager, current);
+			});
+			if (
+				!current() ||
+				!(await provider.methods.settleInstalled.call(provider.implementation, installed, originalProducer))
+			)
+				throw new Error('Committed climate installation remains inhibited');
+			return installed.length;
+		};
+		const intent: ClimateIntentDto =
+			selection.setpoint_delta !== undefined
+				? {
+						type: ClimateIntentType.SETPOINT_DELTA,
+						delta: SetpointDelta.SMALL,
+						increase: selection.setpoint_delta >= 0,
+					}
+				: selection.setpoint !== undefined
+					? {
+							type: ClimateIntentType.CLIMATE_SET,
+							mode: selection.mode,
+							...(selection.mode === ClimateMode.COOL
+								? { coolingSetpoint: selection.setpoint }
+								: { heatingSetpoint: selection.setpoint }),
+						}
+					: { type: ClimateIntentType.SET_MODE, mode: selection.mode };
+		try {
+			if (!(await identity.isCurrent())) throw new Error('Activity superseded');
+			const result = await this.intents.executeClimateIntent(identity.spaceId, intent, {
+				targets,
+				virtualTargetIds: virtual.map((target) => target.device.id),
+				installVirtual: provider ? install : undefined,
+				isCurrent: current,
+				numericDelta: selection.setpoint_delta === undefined ? undefined : Math.abs(selection.setpoint_delta),
+			});
+			return intentDomainResult(ActivityDomain.CLIMATE, result);
+		} catch (cause: unknown) {
+			if (cause instanceof UnsupportedThermostatSelection && current())
+				return domainResult(
+					ActivityDomain.CLIMATE,
+					ActivityDomainStatus.UNSUPPORTED,
+					'thermostat_selection_or_opt_in_unavailable',
+				);
+			throw cause;
+		} finally {
+			admitted = false;
+		}
+	}
+	withdraw(identity: SpaceActivationIdentity): Promise<void> {
+		return this.mutate(identity.spaceId, identity.activationId, async () => {});
+	}
+
+	/** Exact original generation cleanup needs neither a live provider nor adoption of its replacement. */
+	async retireInManager(
+		manager: EntityManager,
+		spaceId: string,
+		activationId?: string,
+		deleted = false,
+		configId?: string,
+	): Promise<void> {
+		const scope = this.ledger.currentScope(manager);
+		const source = await this.ledger.readSource(manager, scope, SPACE_ACTIVITY_CLIMATE_PRODUCER, spaceId);
+		if (!source.facts) return;
+		if (activationId !== undefined || configId !== undefined) {
+			const evidence = JSON.parse(source.facts.evidence) as ActivityEvidence;
+			if (activationId !== undefined && evidence.activationId !== activationId) return;
+			if (configId !== undefined && evidence.configId !== configId) return;
+		}
+		const rows = await manager.findBy(ClimateAutomationSlotEntity, {
+			generationId: source.facts.generationId,
+			ownerId: source.facts.ownerId,
+		});
+		const slots = [];
+
+		for (const row of rows.sort((a, b) => a.controllerId.localeCompare(b.controllerId)))
+			if (row.state === 'LIVE' || row.state === 'PROVISIONAL') {
+				const slot = await this.ledger.readSlot(manager, scope, row.controllerId, false);
+				// Only a participant captured by this process may clear its exact owned mirror. Otherwise retire metadata only.
+				const captured = this.registry.captureProvider(row.providerKey);
+				const original = captured ? this.participants.get(captured.implementation) : undefined;
+				if (original?.isCurrent())
+					await original.methods.retireControllerInManager?.call(original.implementation, manager, slot.facts);
+				slots.push(slot);
+			}
+		await this.ledger.revokeSource(manager, scope, source, slots, deleted);
+	}
+
+	/** Caller supplies its original state/config DML; retirement and that DML share one native receipt. */
+	async mutate<T>(
+		spaceId: string,
+		activationId: string | undefined,
+		work: (manager: EntityManager) => Promise<T>,
+		configId?: string,
+	): Promise<T> {
+		const release = this.blockAdmission(
+			configId !== undefined
+				? `${spaceId}/${configId}`
+				: activationId !== undefined
+					? `${spaceId}/activation/${activationId}`
+					: spaceId,
+		);
+		try {
+			const producer = this.registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER);
+			if (this.destroyed || producer?.implementation !== this.producer)
+				throw new Error('Activity climate producer unavailable');
+			await this.capturePredecessors(spaceId, activationId, configId);
+			return await this.structure.runExclusive(async () => {
+				const owner = this.structure.captureExclusiveOwner();
+				return this.database.transaction(async (manager) => {
+					const receipt = observeSqliteOuterOutcome(manager);
+					registerSqliteCommitGuard(manager, () => owner() && producer.isCurrent());
+					await manager.query('UPDATE "spaces_module_space_roles" SET "id"="id" WHERE 0');
+					return this.ledger.inAdmittedManager(manager, receipt, async () => {
+						await this.retireInManager(manager, spaceId, activationId, false, configId);
+						return work(manager);
+					});
+				});
+			});
+		} finally {
+			release();
+		}
+	}
+}

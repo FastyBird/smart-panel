@@ -1,6 +1,7 @@
+import { Exclude } from 'class-transformer';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
-import { DataSource, EntityManager, QueryRunner } from 'typeorm';
+import { DataSource, EntityManager, IsNull, QueryRunner } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -26,6 +27,7 @@ import {
 import {
 	CLIMATE_SLOT_TABLE,
 	CLIMATE_SOURCE_TABLE,
+	ClimateAutomationDeletionEntity,
 	ClimateAutomationSlotEntity,
 	ClimateAutomationSourceEntity,
 } from '../entities/climate-automation.entity';
@@ -40,6 +42,19 @@ export { ClimateAutomationLedgerConflict } from './climate-automation-ledger.uti
 // Pin the original implementation and invoke it with the structural lock receiver below.
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const originalLeaseRead = DeviceStructureLockService.prototype.hasCurrentStructuralLease;
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const originalOwnerCapture = DeviceStructureLockService.prototype.captureExclusiveOwner;
+
+/** Operation-local handles keep direct private access without becoming serializable projections. */
+@Exclude()
+class PrivateLedgerSnapshot {
+	toJSON(): Readonly<{ [key: string]: never }> {
+		return {};
+	}
+}
+function privateSnapshot<T extends object>(fields: T): Readonly<T> {
+	return Object.freeze(Object.assign(new PrivateLedgerSnapshot(), fields));
+}
 
 type Phase = 'OPENING' | 'OPEN' | 'DRAINING' | 'VALIDATING' | 'READY' | 'SETTLED';
 type Outcome = Exclude<SqliteCommitGuardReceipt['outcome'], 'pending'> | 'not_started';
@@ -74,6 +89,7 @@ interface SlotRecord {
 }
 type Record = (SourceRecord | SlotRecord) & { readonly written?: boolean };
 interface Operation {
+	readonly borrowed?: boolean;
 	phase: Phase;
 	readonly scope: ClimateAutomationLedgerScope;
 	manager?: EntityManager;
@@ -106,6 +122,110 @@ export class ClimateAutomationLedgerService {
 		private readonly structure: DeviceStructureLockService,
 		private readonly registry: ClimateAutomationRegistryService,
 	) {}
+
+	/**
+	 * Borrow the caller's already observed, reserved outer transaction. This does not start a
+	 * transaction, acquire a lock, commit, or turn the caller's native receipt into a new receipt.
+	 * The caller must await this body before making its own native image READY.
+	 */
+	async inAdmittedManager<T>(
+		manager: EntityManager,
+		receipt: SqliteCommitGuardReceipt,
+		work: (scope: ClimateAutomationLedgerScope) => Promise<T>,
+	): Promise<T> {
+		const ambient = this.context.getStore();
+		if (ambient) throw this.refuse(ambient.operation);
+		if (
+			!(this.database instanceof SqliteDataSource) ||
+			manager.connection !== this.database ||
+			!manager.queryRunner ||
+			receipt.outcome !== 'pending' ||
+			!hasCurrentSqliteConnectionLease(this.database)
+		)
+			throw new Error('Borrowed climate ledger requires the original pending native owner');
+		const ownerCurrent = Reflect.apply(originalOwnerCapture, this.structure, []) as () => boolean;
+		const operation: Operation = {
+			borrowed: true,
+			phase: 'OPEN',
+			scope: Object.freeze({}) as ClimateAutomationLedgerScope,
+			manager,
+			runner: manager.queryRunner,
+			receipt,
+			tail: Promise.resolve(),
+			children: new Set(),
+			guards: [{ current: ownerCurrent }],
+			latest: new Map(),
+			issued: new Set(),
+		};
+		registerSqliteCommitGuard(
+			manager,
+			() =>
+				operation.phase === 'READY' &&
+				operation.manager === manager &&
+				manager.queryRunner === operation.runner &&
+				!operation.failure &&
+				operation.children.size === 0 &&
+				hasCurrentSqliteConnectionLease(this.database) &&
+				operation.guards.every((pin) => pin.current()),
+		);
+		this.scopes.set(operation.scope, operation);
+		return this.context.run({ operation, internal: false }, async () => {
+			try {
+				let result: T;
+				try {
+					result = await work(operation.scope);
+				} catch (cause) {
+					this.fail(operation, cause);
+				}
+				await this.drainAndValidate(operation, manager);
+				return result;
+			} catch (cause) {
+				operation.phase = 'SETTLED';
+				throw cause;
+			} finally {
+				// Remove callable capabilities now. The pure READY guard retains its pins until
+				// the ORIGINAL outer transaction settles; clearing them here would weaken it.
+				this.scopes.delete(operation.scope);
+				for (const snapshot of operation.issued) this.records.delete(snapshot);
+				operation.issued.clear();
+				operation.latest.clear();
+			}
+		});
+	}
+
+	/** Internal participants may join only the currently open borrowed/standalone owner. */
+	currentScope(manager: EntityManager): ClimateAutomationLedgerScope {
+		const operation = this.context.getStore()?.operation;
+		if (!operation) throw new Error('No climate ledger owner');
+		this.admit(manager, operation.scope);
+		return operation.scope;
+	}
+
+	/** Close borrowed ledger admission before its parent marks the native image READY. */
+	async sealAdmittedManager(manager: EntityManager): Promise<void> {
+		const operation = this.context.getStore()?.operation;
+		if (!operation?.borrowed) throw new Error('Original borrowed climate owner required');
+		this.admit(manager, operation.scope);
+		await this.drainAndValidate(operation, manager);
+	}
+
+	private async drainAndValidate(operation: Operation, manager: EntityManager): Promise<void> {
+		if (operation.phase === 'READY') {
+			this.healthy(operation);
+			return;
+		}
+		operation.phase = 'DRAINING';
+		await Promise.all(operation.children);
+		await operation.tail;
+		this.healthy(operation);
+		operation.phase = 'VALIDATING';
+		await this.context.run({ operation, internal: true }, async () => {
+			for (const record of operation.latest.values()) await record.validate?.();
+			for (const record of operation.latest.values()) await this.validateRow(manager, record);
+		});
+		this.healthy(operation);
+		operation.phase = 'READY';
+	}
 
 	async runReserved(
 		work: (manager: EntityManager, scope: ClimateAutomationLedgerScope) => Promise<void>,
@@ -154,18 +274,7 @@ export class ClimateAutomationLedgerService {
 							}
 							// Close admission before the first drain await. Admitted commands may finish; no new
 							// callback/command can extend this owner after the body's settlement.
-							operation.phase = 'DRAINING';
-							await Promise.all(operation.children);
-							await operation.tail;
-							this.healthy(operation);
-							operation.phase = 'VALIDATING';
-							await this.context.run({ operation, internal: true }, async () => {
-								for (const record of operation.latest.values()) await record.validate?.();
-								// Validators are awaited first; then check every exact ledger row again.
-								for (const record of operation.latest.values()) await this.validateRow(manager, record);
-							});
-							this.healthy(operation);
-							operation.phase = 'READY';
+							await this.drainAndValidate(operation, manager);
 						});
 						if (operation.receipt?.outcome !== 'committed') throw new Error('Missing native ledger COMMIT receipt');
 						return Object.freeze({ outcome: 'committed' as const });
@@ -265,7 +374,7 @@ export class ClimateAutomationLedgerService {
 					if (canonical(await read()) !== expected) throw new ClimateAutomationLedgerConflict('stale');
 				};
 			}
-			const snapshot = Object.freeze({ facts, controller }) as ClimateAutomationSlotSnapshot;
+			const snapshot = privateSnapshot({ facts, controller }) as ClimateAutomationSlotSnapshot;
 			this.issue(operation, snapshot, {
 				kind: 'slot',
 				operation,
@@ -291,13 +400,17 @@ export class ClimateAutomationLedgerService {
 		const operation = this.admit(manager, scope);
 		// Snapshot request/getters and pin registration/functions synchronously, before queueing or await.
 		try {
-			const producerKey = request.producerKey;
-			const pin = this.pin(this.registry.captureProducer(producerKey), 'validateInManager');
-			operation.guards.push(pin);
-			const { subjectId, expected, evidence } = request;
-			if (typeof producerKey !== 'string' || typeof subjectId !== 'string' || !subjectId)
-				throw new ClimateAutomationLedgerConflict('invalid');
-			const bytes = canonical(evidence);
+			const { producerKey, pin, subjectId, expected, bytes } = this.context.run({ operation, internal: true }, () => {
+				const producerKey = request.producerKey;
+				const pin = this.pin(this.registry.captureProducer(producerKey), 'validateInManager');
+				operation.guards.push(pin);
+				const { subjectId, expected, evidence } = request;
+				if (typeof producerKey !== 'string' || typeof subjectId !== 'string' || !subjectId)
+					throw new ClimateAutomationLedgerConflict('invalid');
+				const bytes = canonical(evidence);
+				this.healthy(operation);
+				return { producerKey, pin, subjectId, expected, bytes };
+			});
 			return this.enqueue(operation, async () => {
 				const record = this.records.get(expected);
 				if (
@@ -364,13 +477,270 @@ export class ClimateAutomationLedgerService {
 		}
 	}
 
+	/** Capture an original predecessor before the caller acquires structure or a native lease. */
+	async captureControllerDeletion(
+		id: string,
+	): Promise<
+		((manager: EntityManager, scope: ClimateAutomationLedgerScope, remove: () => Promise<void>) => Promise<void>) | null
+	> {
+		const providers = this.registry.captureProviders();
+		const row = await this.database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: id });
+		if (!row) return null;
+		if (hasCurrentSqliteConnectionLease(this.database))
+			throw new Error('Controller deletion requires entry before native ownership');
+		const expected = Object.freeze({ ...row });
+		const capture = providers.get(expected.providerKey) ?? null;
+		const predecessor = this.pin(capture, 'beginControllerDeletion');
+		const deletion = this.pin(capture, 'readDeletedControllerInManager');
+		const absence = this.pin(capture, 'validateDeletedControllerInManager');
+		const controller = this.pin(capture, 'readControllerInManager');
+		const configuration = this.pin(capture, 'readDeletionConfigurationInManager');
+		const retirement = ['LIVE', 'PROVISIONAL'].includes(expected.state)
+			? this.pin(capture, 'retireControllerInManager')
+			: null;
+		await Reflect.apply(predecessor.method, predecessor.receiver, [expected]);
+		this.requirePin(predecessor);
+		return async (manager, scope, remove) => {
+			const operation = this.admit(manager, scope);
+			operation.guards.push(predecessor, absence, controller, configuration, deletion);
+			if (retirement) operation.guards.push(retirement);
+			const slot = await this.readSlot(manager, scope, id, false);
+			if (canonical(slot.facts) !== canonical(expected)) throw new ClimateAutomationLedgerConflict('stale');
+			this.requirePin(controller);
+			const original = this.controllerFacts(await Reflect.apply(controller.method, controller.receiver, [manager, id]));
+			if (!original) throw new ClimateAutomationLedgerConflict('unavailable');
+			const devices = await manager.query<object[]>('SELECT * FROM "devices_module_devices" WHERE "id" = ?', [id]);
+			if (devices.length !== 1) throw new ClimateAutomationLedgerConflict('stale');
+			const deviceEvidence = canonical({ ...devices[0] });
+			// Retire the exact original installed mirror before fencing its slot and before
+			// the first child/catalog deletion. Actor-tagged JSON alone is never adopted.
+			if (retirement) {
+				this.requirePin(retirement);
+				await Reflect.apply(retirement.method, retirement.receiver, [manager, expected]);
+				this.requirePin(retirement);
+			}
+			const fenced = await this.fenceManual(manager, scope, slot, true);
+			// Retirement may clear an owned baseline and advance its configuration revision.
+			// Native DELETE must attest that exact post-retirement preimage, not the earlier LIVE one.
+			const before = this.controllerFacts(await Reflect.apply(controller.method, controller.receiver, [manager, id]));
+			this.requirePin(controller);
+			if (!before) throw new ClimateAutomationLedgerConflict('stale');
+			const configurationEvidence = canonical(
+				await Reflect.apply(configuration.method, configuration.receiver, [manager, id]),
+			);
+			this.requirePin(configuration);
+			const tombstone = {
+				deletionId: randomUUID(),
+				controllerId: id,
+				controllerIncarnation: fenced.facts.controllerIncarnation,
+				providerKey: fenced.facts.providerKey,
+				slotRevision: fenced.facts.slotRevision,
+				manualCounter: fenced.facts.manualCounter,
+				slotEvidence: canonical(fenced.facts),
+				controllerEvidence: canonical(before),
+				deviceEvidence,
+				configurationEvidence,
+				nativeDeviceEvidence: null as string | null,
+				nativeConfigurationEvidence: null as string | null,
+				consumedByIncarnation: null as string | null,
+				consumedSlotRevision: null as number | null,
+			};
+			await manager.insert(ClimateAutomationDeletionEntity, tombstone);
+			await this.inReservedManager(manager, scope, remove);
+			await this.enqueue(operation, async () => {
+				this.requirePin(deletion);
+				const retained = ownedJson(await Reflect.apply(deletion.method, deletion.receiver, [manager, id, before]));
+				this.requirePin(deletion);
+				const deleted = async () => {
+					this.requirePin(absence);
+					await Reflect.apply(absence.method, absence.receiver, [manager, id, retained]);
+					this.requirePin(absence);
+				};
+				await deleted();
+				const record = this.records.get(fenced);
+				await this.validateRow(manager, record);
+				const proof = await manager.findOneByOrFail(ClimateAutomationDeletionEntity, {
+					deletionId: tombstone.deletionId,
+				});
+				if (
+					!proof.nativeDeviceEvidence ||
+					!proof.nativeConfigurationEvidence ||
+					canonical(JSON.parse(proof.nativeDeviceEvidence)) !== deviceEvidence ||
+					canonical(JSON.parse(proof.nativeConfigurationEvidence)) !== configurationEvidence
+				)
+					throw new ClimateAutomationLedgerConflict('stale');
+				const captured = {
+					...tombstone,
+					nativeDeviceEvidence: proof.nativeDeviceEvidence,
+					nativeConfigurationEvidence: proof.nativeConfigurationEvidence,
+				};
+				if (canonical({ ...proof }) !== canonical(captured)) throw new ClimateAutomationLedgerConflict('stale');
+				const intended = { ...captured, controllerEvidence: canonical({ original, atDeletion: before, retained }) };
+				const finish = manager
+					.createQueryBuilder()
+					.update(ClimateAutomationDeletionEntity)
+					.set({ controllerEvidence: intended.controllerEvidence });
+				for (const [column, value] of Object.entries(captured))
+					finish.andWhere(`"${column}" IS :old_${column}`, { [`old_${column}`]: value });
+				if ((await finish.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+				const validate = async () => {
+					await deleted();
+					const actual = await manager.findOneBy(ClimateAutomationDeletionEntity, { deletionId: tombstone.deletionId });
+					if (!actual || canonical({ ...actual }) !== canonical(intended))
+						throw new ClimateAutomationLedgerConflict('stale');
+				};
+				await validate();
+				this.issue(operation, fenced, { ...record, validate }, true);
+			});
+		};
+	}
+
+	/** Original creation consumes this operation-local closure only after its own catalog birth. */
+	async captureControllerRecreation(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		id: string,
+	): Promise<Readonly<{
+		preparation: ClimateAutomationJson;
+		consume: (current: ClimateAutomationSlotSnapshot) => Promise<ClimateAutomationSlotSnapshot>;
+	}> | null> {
+		const operation = this.admit(manager, scope);
+		const previous = await this.readSlot(manager, scope, id, false);
+		if (!previous.facts) return null;
+		const provider = this.registry.captureProvider(previous.facts.providerKey);
+		const prepare = this.pin(provider, 'prepareControllerRecreationInManager');
+		const archivePin = this.pin(provider, 'captureControllerRecreationArchiveInManager');
+		const validation = this.pin(provider, 'validateControllerRecreationInManager');
+		operation.guards.push(prepare, archivePin, validation);
+		this.requirePin(prepare);
+		const found = await manager.findOneBy(ClimateAutomationDeletionEntity, {
+			controllerId: id,
+			controllerIncarnation: previous.facts.controllerIncarnation,
+			consumedByIncarnation: IsNull(),
+		});
+		if (
+			!found ||
+			!found.nativeDeviceEvidence ||
+			!found.nativeConfigurationEvidence ||
+			canonical(JSON.parse(found.nativeDeviceEvidence)) !== found.deviceEvidence ||
+			canonical(JSON.parse(found.nativeConfigurationEvidence)) !== found.configurationEvidence ||
+			found.slotEvidence !== canonical(previous.facts) ||
+			found.providerKey !== previous.facts.providerKey ||
+			found.slotRevision !== previous.facts.slotRevision ||
+			found.manualCounter !== previous.facts.manualCounter
+		)
+			throw new ClimateAutomationLedgerConflict('stale');
+		const originalTombstone = Object.freeze({ ...found });
+		const evidence = JSON.parse(originalTombstone.controllerEvidence) as { [key: string]: ClimateAutomationJson };
+		this.requirePin(archivePin);
+		const archive = ownedJson(
+			await Reflect.apply(archivePin.method, archivePin.receiver, [manager, id, ownedJson(evidence.retained)]),
+		);
+		this.requirePin(archivePin);
+		const tombstone = Object.freeze({
+			...originalTombstone,
+			controllerEvidence: canonical({
+				...evidence,
+				priorControllerEvidence: originalTombstone.controllerEvidence,
+				recreationArchive: archive,
+			}),
+		});
+		// Archive the entire prior configuration/runtime image BEFORE any reset. It is rolled back
+		// with creation and only consumed by this same original admitted native unit.
+		const archiveWrite = manager
+			.createQueryBuilder()
+			.update(ClimateAutomationDeletionEntity)
+			.set({ controllerEvidence: tombstone.controllerEvidence });
+		for (const [column, value] of Object.entries(originalTombstone))
+			archiveWrite.andWhere(`"${column}" IS :old_${column}`, { [`old_${column}`]: value });
+		if ((await archiveWrite.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+		const preparation = ownedJson(
+			await Reflect.apply(prepare.method, prepare.receiver, [manager, id, ownedJson(evidence.retained), archive]),
+		);
+		this.requirePin(prepare);
+		const validatePreparation = async () => {
+			this.requirePin(validation);
+			await Reflect.apply(validation.method, validation.receiver, [manager, id, preparation]);
+			this.requirePin(validation);
+		};
+		let consumed = false;
+		const consume = async (current: ClimateAutomationSlotSnapshot): Promise<ClimateAutomationSlotSnapshot> => {
+			if (
+				consumed ||
+				this.admit(manager, scope) !== operation ||
+				canonical(current.facts) !== canonical(previous.facts)
+			)
+				throw new ClimateAutomationLedgerConflict('stale');
+			consumed = true;
+			const record = this.records.get(current);
+			if (!record || record.operation !== operation || record.kind !== 'slot' || !current.controller)
+				throw new ClimateAutomationLedgerConflict('invalid');
+			const devices = await manager.query<{ catalogBirth: number }[]>(
+				'SELECT * FROM "devices_module_devices" WHERE "id" = ?',
+				[id],
+			);
+			const priorDevice = JSON.parse(tombstone.deviceEvidence) as { catalogBirth: number };
+			if (
+				devices.length !== 1 ||
+				!Number.isSafeInteger(devices[0].catalogBirth) ||
+				devices[0].catalogBirth < 1 ||
+				devices[0].catalogBirth === priorDevice.catalogBirth
+			)
+				throw new ClimateAutomationLedgerConflict('stale');
+			const deviceEvidence = canonical({ ...devices[0] });
+			const next = await this.lifecycleCommand(manager, scope, (lifecycle) =>
+				lifecycle.initializeSlot({
+					expected: current,
+					releaseManualHold: true,
+					explicitOptIn: true,
+					freshIncarnation: true,
+				}),
+			);
+			await this.enqueue(operation, async () => {
+				const intended = {
+					...tombstone,
+					consumedByIncarnation: next.facts.controllerIncarnation,
+					consumedSlotRevision: next.facts.slotRevision,
+				};
+				const query = manager.createQueryBuilder().update(ClimateAutomationDeletionEntity).set({
+					consumedByIncarnation: intended.consumedByIncarnation,
+					consumedSlotRevision: intended.consumedSlotRevision,
+				});
+				for (const [column, value] of Object.entries(tombstone))
+					query.andWhere(`"${column}" IS :old_${column}`, { [`old_${column}`]: value });
+				if ((await query.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+				const nextRecord = this.records.get(next);
+				const validate = async () => {
+					await nextRecord.validate?.();
+					await validatePreparation();
+					const actual = await manager.findOneBy(ClimateAutomationDeletionEntity, { deletionId: tombstone.deletionId });
+					const owner = await manager.query<object[]>('SELECT * FROM "devices_module_devices" WHERE "id" = ?', [id]);
+					if (
+						!actual ||
+						canonical({ ...actual }) !== canonical(intended) ||
+						owner.length !== 1 ||
+						canonical({ ...owner[0] }) !== deviceEvidence
+					)
+						throw new ClimateAutomationLedgerConflict('stale');
+				};
+				await validate();
+				this.issue(operation, next, { ...nextRecord, validate }, true);
+			});
+			return next;
+		};
+		return Object.freeze({ preparation, consume });
+	}
+
 	/** Explicit sidecar initialization for an existing controller; never controller creation/adoption. */
 	initializeSlot(
 		manager: EntityManager,
 		scope: ClimateAutomationLedgerScope,
-		request: Parameters<ClimateAutomationLedgerLifecycle['initializeSlot']>[0],
+		request: Omit<Parameters<ClimateAutomationLedgerLifecycle['initializeSlot']>[0], 'freshIncarnation'>,
 	): Promise<ClimateAutomationSlotSnapshot> {
-		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.initializeSlot(request));
+		return this.lifecycleCommand(manager, scope, (lifecycle) => {
+			const { expected, releaseManualHold, explicitOptIn } = request;
+			return lifecycle.initializeSlot({ expected, releaseManualHold, explicitOptIn });
+		});
 	}
 
 	stageSlot(
@@ -388,6 +758,252 @@ export class ClimateAutomationLedgerService {
 		expectedSource: ClimateAutomationSourceSnapshot,
 	): Promise<ClimateAutomationSlotSnapshot> {
 		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.retireSlot(expectedSlot, expectedSource));
+	}
+
+	fenceManual(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		expected: ClimateAutomationSlotSnapshot,
+		manualHold: boolean,
+		takeover = true,
+	): Promise<ClimateAutomationSlotSnapshot> {
+		return this.lifecycleCommand(manager, scope, (lifecycle) => lifecycle.fenceManual(expected, manualHold, takeover));
+	}
+
+	/** Install every staged controller and finalize the bundle under this one reserved native owner. */
+	installBundle(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		expectedSource: ClimateAutomationSourceSnapshot,
+		expectedSlots: readonly ClimateAutomationSlotSnapshot[],
+	): Promise<readonly ClimateAutomationSlotSnapshot[]> {
+		const operation = this.admit(manager, scope);
+		try {
+			const { sourceRecord, source, producer, candidates } = this.context.run({ operation, internal: true }, () => {
+				const sourceRecord = this.records.get(expectedSource);
+				if (sourceRecord?.operation !== operation || sourceRecord.kind !== 'source')
+					throw new ClimateAutomationLedgerConflict('invalid');
+				const source = sourceRecord.snapshot.facts;
+				if (
+					sourceRecord?.operation !== operation ||
+					sourceRecord.kind !== 'source' ||
+					!source?.isCurrent ||
+					source.state !== 'PENDING' ||
+					!expectedSlots.length
+				)
+					throw new ClimateAutomationLedgerConflict('invalid');
+				const producer = this.pin(this.registry.captureProducer(source.producerKey), 'validateInManager');
+				operation.guards.push(producer);
+				const candidates = expectedSlots.map((snapshot) => {
+					const record = this.records.get(snapshot);
+					if (record?.operation !== operation || record.kind !== 'slot')
+						throw new ClimateAutomationLedgerConflict('invalid');
+					const facts = record.snapshot.facts;
+					if (
+						record?.operation !== operation ||
+						record.kind !== 'slot' ||
+						!record.validate ||
+						!facts ||
+						facts.state !== 'PROVISIONAL' ||
+						facts.manualHold ||
+						facts.ownerId !== source.ownerId ||
+						facts.generationId !== source.generationId
+					)
+						throw new ClimateAutomationLedgerConflict('invalid');
+					const registration = this.registry.captureProvider(facts.providerKey);
+					const install = this.pin(registration, 'installControllerInManager');
+					const read = this.pin(registration, 'readControllerInManager');
+					operation.guards.push(install, read);
+					return { snapshot, record, facts, install, read };
+				});
+				if (
+					new Set(candidates.map(({ facts }) => facts.controllerId)).size !== candidates.length ||
+					new Set(candidates.map(({ facts }) => facts.bundleId)).size !== 1
+				)
+					throw new ClimateAutomationLedgerConflict('invalid');
+				candidates.sort((a, b) => a.facts.controllerId.localeCompare(b.facts.controllerId));
+				this.healthy(operation);
+				return { sourceRecord, source, producer, candidates };
+			});
+			return this.enqueue(operation, async () => {
+				await this.validateRow(manager, sourceRecord);
+				for (const candidate of candidates) {
+					await candidate.record.validate();
+					await this.validateRow(manager, candidate.record);
+				}
+				const active = await manager.findBy(ClimateAutomationSlotEntity, { generationId: source.generationId });
+				if (
+					active.length !== candidates.length ||
+					active.some((row) => !candidates.some(({ facts }) => canonical(facts) === canonical({ ...row })))
+				)
+					throw new ClimateAutomationLedgerConflict('stale');
+				const installed: ClimateAutomationSlotSnapshot[] = [];
+				for (const { record, facts, install, read } of candidates) {
+					this.requirePin(install);
+					const result = this.controllerFacts(await Reflect.apply(install.method, install.receiver, [manager, facts]));
+					this.requirePin(install);
+					this.requirePin(read);
+					const post = this.controllerFacts(
+						await Reflect.apply(read.method, read.receiver, [manager, facts.controllerId]),
+					);
+					if (!result || canonical(result) !== canonical(post)) throw new ClimateAutomationLedgerConflict('stale');
+					await this.validateRow(manager, record);
+					const next: ClimateAutomationSlotFacts = Object.freeze({
+						...facts,
+						state: 'LIVE',
+						slotRevision: increment(facts.slotRevision),
+						installEvidence: canonical(result),
+					});
+					const query = manager.createQueryBuilder().update(ClimateAutomationSlotEntity).set(next);
+					for (const key of Object.keys(facts) as (keyof ClimateAutomationSlotFacts)[])
+						query.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: facts[key] });
+					if ((await query.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+					const snapshot = privateSnapshot({ facts: next, controller: result }) as ClimateAutomationSlotSnapshot;
+					this.issue(
+						operation,
+						snapshot,
+						{
+							kind: 'slot',
+							operation,
+							controllerId: next.controllerId,
+							providerKey: next.providerKey,
+							snapshot,
+							validate: async () => {
+								this.requirePin(read);
+								const actual = await Reflect.apply(read.method, read.receiver, [manager, facts.controllerId]);
+								this.requirePin(read);
+								if (canonical(this.controllerFacts(actual)) !== canonical(result))
+									throw new ClimateAutomationLedgerConflict('stale');
+							},
+						},
+						true,
+					);
+					installed.push(snapshot);
+				}
+				await this.validateRow(manager, sourceRecord);
+				const nextSource = Object.freeze({
+					...source,
+					state: 'FINALIZED_LIVE' as const,
+					revision: increment(source.revision),
+				});
+				const query = manager.createQueryBuilder().update(ClimateAutomationSourceEntity).set(nextSource);
+				for (const key of Object.keys(source) as (keyof ClimateAutomationSourceFacts)[])
+					query.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: source[key] });
+				if ((await query.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+				this.sourceSnapshot(operation, source.producerKey, source.subjectId, nextSource, async () => {
+					this.requirePin(producer);
+					const evidence = await Reflect.apply(producer.method, producer.receiver, [manager, nextSource, 'prepare']);
+					this.requirePin(producer);
+					if (evidence === null || canonical(evidence) !== source.evidence)
+						throw new ClimateAutomationLedgerConflict('stale');
+					const membership = await manager.findBy(ClimateAutomationSlotEntity, { generationId: source.generationId });
+					if (
+						membership.length !== installed.length ||
+						membership.some((row) => !installed.some(({ facts }) => canonical(facts) === canonical({ ...row })))
+					)
+						throw new ClimateAutomationLedgerConflict('stale');
+				});
+				return Object.freeze(installed);
+			});
+		} catch (cause) {
+			this.fail(operation, cause);
+			throw cause;
+		}
+	}
+
+	/** Preserve only the same installed source/candidate; this never stages or adopts a baseline. */
+	refreshInstalledSlot(
+		manager: EntityManager,
+		scope: ClimateAutomationLedgerScope,
+		expected: ClimateAutomationSlotSnapshot,
+		kind: 'intent' | 'watermark' = 'intent',
+	): Promise<ClimateAutomationSlotSnapshot> {
+		const operation = this.admit(manager, scope);
+		try {
+			const record = this.records.get(expected);
+			if (record?.operation !== operation || record.kind !== 'slot')
+				throw new ClimateAutomationLedgerConflict('invalid');
+			const previous = record.snapshot.facts;
+			if (
+				record?.operation !== operation ||
+				record.kind !== 'slot' ||
+				!record.snapshot.controller ||
+				previous?.state !== 'LIVE' ||
+				previous.manualHold
+			)
+				throw new ClimateAutomationLedgerConflict('invalid');
+			const provider = this.registry.captureProvider(previous.providerKey);
+			const refresh = this.pin(provider, 'refreshControllerInManager');
+			const read = this.pin(provider, 'readControllerInManager');
+			operation.guards.push(refresh, read);
+			return this.enqueue(operation, async () => {
+				await this.validateRow(manager, record);
+				const source = await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: previous.generationId });
+				if (!source?.isCurrent || source.state !== 'FINALIZED_LIVE' || source.ownerId !== previous.ownerId)
+					throw new ClimateAutomationLedgerConflict('stale');
+				const sourceBytes = canonical({ ...source });
+				const producer = this.pin(this.registry.captureProducer(source.producerKey), 'validateInManager');
+				operation.guards.push(producer);
+				const validateSource = async () => {
+					this.requirePin(producer);
+					const evidence = await Reflect.apply(producer.method, producer.receiver, [manager, source, 'prepare']);
+					this.requirePin(producer);
+					const current = await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: source.generationId });
+					if (
+						evidence === null ||
+						canonical(evidence) !== source.evidence ||
+						!current ||
+						canonical({ ...current }) !== sourceBytes
+					)
+						throw new ClimateAutomationLedgerConflict('stale');
+				};
+				await validateSource();
+				this.requirePin(refresh);
+				const controller = this.controllerFacts(
+					await Reflect.apply(refresh.method, refresh.receiver, [manager, previous, expected.controller, kind]),
+				);
+				this.requirePin(refresh);
+				if (!controller) throw new ClimateAutomationLedgerConflict('unavailable');
+				const validate = async () => {
+					await validateSource();
+					this.requirePin(read);
+					const actual = this.controllerFacts(
+						await Reflect.apply(read.method, read.receiver, [manager, previous.controllerId]),
+					);
+					this.requirePin(read);
+					if (canonical(actual) !== canonical(controller)) throw new ClimateAutomationLedgerConflict('stale');
+				};
+				await validate();
+				await this.validateRow(manager, record);
+				const next = Object.freeze({
+					...previous,
+					slotRevision: increment(previous.slotRevision),
+					installEvidence: canonical(controller),
+				});
+				const query = manager.createQueryBuilder().update(ClimateAutomationSlotEntity).set(next);
+				for (const key of Object.keys(previous) as (keyof ClimateAutomationSlotFacts)[])
+					query.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: previous[key] });
+				if ((await query.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+				const snapshot = privateSnapshot({ facts: next, controller }) as ClimateAutomationSlotSnapshot;
+				this.issue(
+					operation,
+					snapshot,
+					{
+						kind: 'slot',
+						operation,
+						controllerId: next.controllerId,
+						providerKey: next.providerKey,
+						snapshot,
+						validate,
+					},
+					true,
+				);
+				return snapshot;
+			});
+		} catch (cause: unknown) {
+			this.fail(operation, cause);
+			throw cause;
+		}
 	}
 
 	revokeSource(
@@ -464,7 +1080,7 @@ export class ClimateAutomationLedgerService {
 				issueSource: (facts, validate) =>
 					this.sourceSnapshot(operation, facts.producerKey, facts.subjectId, facts, validate),
 				issueSlot: (facts: ClimateAutomationSlotFacts, controller, validate) => {
-					const snapshot = Object.freeze({ facts, controller }) as ClimateAutomationSlotSnapshot;
+					const snapshot = privateSnapshot({ facts, controller }) as ClimateAutomationSlotSnapshot;
 					this.issue(
 						operation,
 						snapshot,
@@ -481,7 +1097,11 @@ export class ClimateAutomationLedgerService {
 					return snapshot;
 				},
 			};
-			const work = capture(new ClimateAutomationLedgerLifecycle(access));
+			const work = this.context.run({ operation, internal: true }, () => {
+				const captured = capture(new ClimateAutomationLedgerLifecycle(access));
+				this.healthy(operation);
+				return captured;
+			});
 			return this.enqueue(operation, work);
 		} catch (cause) {
 			this.fail(operation, cause);
@@ -544,7 +1164,7 @@ export class ClimateAutomationLedgerService {
 		facts: ClimateAutomationSourceFacts | null,
 		validate?: () => Promise<void>,
 	): ClimateAutomationSourceSnapshot {
-		const snapshot = Object.freeze({ facts }) as ClimateAutomationSourceSnapshot;
+		const snapshot = privateSnapshot({ facts }) as ClimateAutomationSourceSnapshot;
 		this.issue(
 			operation,
 			snapshot,

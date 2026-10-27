@@ -93,9 +93,38 @@ export interface ThermostatReleaseOrderingEvidence<Qualification> {
 	/** Metadata retirement only after the caller has committed these exact journal identities as confirmed. */
 	readonly retireConfirmedCommandIds?: (ids: readonly string[]) => void;
 }
+/** Pure continuity metadata; never a command, native receipt or protective qualification. */
+export interface CapturedThermostatReconcileReadinessV1 {
+	readonly capabilityVersion: 1;
+	readonly providerProfile: ThermostatProviderProfile;
+	readonly physicalIdentity: string;
+	readonly qualificationGeneration: string;
+	readonly isCurrent: () => boolean;
+}
+
+/** Built-in legacy continuity only; never offered by custom providers or used as ON authority. */
+export interface CapturedThermostatLegacyReadiness {
+	readonly capabilityVersion: 2;
+	readonly qualificationBinding: 'legacy-null-managed-shelly';
+	readonly providerProfile: {
+		readonly id: typeof SHELLY_GUARDED_PROFILE;
+		readonly version: typeof SHELLY_GUARDED_PROFILE_VERSION;
+	};
+	readonly physicalIdentity: string;
+	readonly qualificationGeneration?: never;
+	readonly isCurrent: () => boolean;
+}
+export type CapturedThermostatReconcileReadiness =
+	| CapturedThermostatReconcileReadinessV1
+	| CapturedThermostatLegacyReadiness;
+
 export interface ThermostatActuationAdapter<Qualification> {
 	readonly contractVersion: 1;
 	readonly providerProfile: ThermostatProviderProfile;
+	captureReconcileReadiness?(
+		target: IDevicePropertyData,
+		qualification: Qualification,
+	): CapturedThermostatReconcileReadinessV1 | null;
 	canReconcile(target: IDevicePropertyData, qualification: Qualification): boolean;
 	send(
 		target: IDevicePropertyData,

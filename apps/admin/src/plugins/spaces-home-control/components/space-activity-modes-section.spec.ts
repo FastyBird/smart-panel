@@ -213,6 +213,8 @@ describe('actual activity mode section and saved API editor', () => {
 		await click(wrapper, 'edit-work');
 		wrapper.findComponent(ElDialog).findAllComponents(ElSwitch)[2].vm.$emit('update:modelValue', true);
 		await nextTick();
+		expect(wrapper.text()).toContain('climateAutomation');
+		expect(wrapper.text()).not.toContain('climateUnsupported');
 		expect(wrapper.get('[data-testid="save"]').attributes('disabled')).toBeDefined();
 		wrapper.findAllComponents(ElSelect)[1].vm.$emit('update:modelValue', 'preset');
 		await nextTick();

@@ -4,7 +4,9 @@ import {
 	ConflictException,
 	Injectable,
 	NotFoundException,
+	OnModuleDestroy,
 	OnModuleInit,
+	Optional,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -24,15 +26,23 @@ import { UpdateActivityModeDto } from '../dto/activity-mode.dto';
 import { SpaceActivityConfigEntity } from '../entities/space-activity-config.entity';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 
+import { SpaceClimateAutomationService } from './space-climate-automation.service';
+
 @Injectable()
-export class SpaceActivityConfigService implements OnModuleInit {
+export class SpaceActivityConfigService implements OnModuleInit, OnModuleDestroy {
+	private removeLifecycle?: () => void;
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly lifecycle: SpaceLifecycleRegistryService,
 		private readonly events: EventEmitter2,
+		@Optional() private readonly climateAutomation?: SpaceClimateAutomationService,
 	) {}
 	onModuleInit(): void {
-		this.lifecycle.register(this);
+		this.removeLifecycle = this.lifecycle.register(this);
+	}
+	onModuleDestroy(): void {
+		this.removeLifecycle?.();
+		this.removeLifecycle = undefined;
 	}
 	async assertSupported(spaceId: string): Promise<SpaceEntity> {
 		const space = await this.dataSource.getRepository(SpaceEntity).findOneBy({ id: spaceId });
@@ -79,32 +89,36 @@ export class SpaceActivityConfigService implements OnModuleInit {
 	async update(spaceId: string, mode: ActivityMode, dto: UpdateActivityModeDto): Promise<SpaceActivityConfigEntity> {
 		const config = await this.get(spaceId, mode);
 		const configuration = await validateActivityConfiguration(dto.configuration);
-		const result = await this.dataSource.getRepository(SpaceActivityConfigEntity).update(
-			{ id: config.id, spaceId, activityRevision: dto.expected_revision },
-			{
-				activityEnabled: dto.enabled,
-				activityOrder: dto.display_order,
-				activityConfiguration: configuration,
-				activityRevision: dto.expected_revision + 1,
-			},
-		);
-		if (result.affected !== 1) throw new ConflictException('Activity configuration revision changed');
-		// Completion independently checks the configuration revision in its SQL fence. No I/O transaction is held.
-		await this.dataSource
-			.getRepository(SpaceActivityStateEntity)
-			.createQueryBuilder()
-			.update()
-			.set({ activityStatus: ActivityActivationStatus.INTERRUPTED })
-			.where(
-				'spaceId = :spaceId AND selectedActivityMode = :mode AND selectedActivityRevision <= :revision AND activityStatus = :activating',
+		const write = async (manager: EntityManager) => {
+			const result = await manager.getRepository(SpaceActivityConfigEntity).update(
+				{ id: config.id, spaceId, activityRevision: dto.expected_revision },
 				{
-					spaceId,
-					mode,
-					revision: dto.expected_revision,
-					activating: ActivityActivationStatus.ACTIVATING,
+					activityEnabled: dto.enabled,
+					activityOrder: dto.display_order,
+					activityConfiguration: configuration,
+					activityRevision: dto.expected_revision + 1,
 				},
-			)
-			.execute();
+			);
+			if (result.affected !== 1) throw new ConflictException('Activity configuration revision changed');
+			// Completion independently checks the configuration revision in its SQL fence. No I/O transaction is held.
+			await manager
+				.getRepository(SpaceActivityStateEntity)
+				.createQueryBuilder()
+				.update()
+				.set({ activityStatus: ActivityActivationStatus.INTERRUPTED })
+				.where(
+					'spaceId = :spaceId AND selectedActivityMode = :mode AND selectedActivityRevision <= :revision AND activityStatus = :activating',
+					{
+						spaceId,
+						mode,
+						revision: dto.expected_revision,
+						activating: ActivityActivationStatus.ACTIVATING,
+					},
+				)
+				.execute();
+		};
+		if (this.climateAutomation) await this.climateAutomation.mutate(spaceId, undefined, write, config.id);
+		else await write(this.dataSource.manager);
 		const fresh = await this.get(spaceId, mode);
 		this.events.emit(ACTIVITY_CONFIG_CHANGED, { space_id: spaceId, mode, revision: fresh.activityRevision });
 		const state = await this.dataSource.getRepository(SpaceActivityStateEntity).findOneBy({ spaceId });

@@ -4,10 +4,11 @@ import omitBy from 'lodash.omitby';
 import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
@@ -36,6 +37,8 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { ClimateAutomationLedgerService } from './climate-automation-ledger.service';
+import { ControllerPublicationContext } from './controller-publication-context';
 import { captureCreation, creationMapping } from './creation-capture';
 import { CreationCatalog, DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
@@ -114,6 +117,7 @@ export class DevicesService {
 		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		@Optional() private readonly climateLedger?: ClimateAutomationLedgerService,
 	) {}
 
 	async getCount<TDevice extends DeviceEntity>(type?: string): Promise<number> {
@@ -847,15 +851,19 @@ export class DevicesService {
 			// left channel properties behind with no channel at all, which the containment e2e caught. A
 			// freshly loaded row has no relations loaded, so the removal is exactly one DELETE on the device
 			// — subscribers and all — and the cascade below it is the schema's.
-			const rollbackTarget = await DeviceCreationContext.check(creation, () =>
-				repository.findOne({
-					where: { id: raw.id } as FindOptionsWhere<TDevice>,
-				}),
-			);
+			// Entity removal opens a native transaction whose awaited post-commit ownership
+			// reconciliation needs this structural owner. Acquire it before that database lease.
+			await this.structureLock.runExclusive(async () => {
+				const rollbackTarget = await DeviceCreationContext.check(creation, () =>
+					repository.findOne({
+						where: { id: raw.id } as FindOptionsWhere<TDevice>,
+					}),
+				);
 
-			if (rollbackTarget) {
-				await DeviceCreationContext.check(creation, () => repository.remove(rollbackTarget));
-			}
+				if (rollbackTarget) {
+					await DeviceCreationContext.check(creation, () => repository.remove(rollbackTarget));
+				}
+			});
 
 			for (const channel of orphanedChannels) {
 				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
@@ -1219,35 +1227,57 @@ export class DevicesService {
 	}
 
 	async remove(id: string): Promise<void> {
-		return this.structureLock.runExclusive(async (): Promise<void> => {
-			this.logger.debug(`Removing device with id=${id}`);
+		const climateDeletion = await this.climateLedger?.captureControllerDeletion(id);
+		const removeOriginal = () =>
+			this.structureLock.runExclusive(async (): Promise<void> => {
+				this.logger.debug(`Removing device with id=${id}`);
 
-			// Get the full device entity before removal to preserve ID for event emission
-			const fullDevice = await this.getOneOrThrow(id);
+				// Get the full device entity before removal to preserve ID for event emission
+				const fullDevice = await this.getOneOrThrow(id);
 
-			await this.dataSource.transaction(async (manager) => {
-				const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
+				await this.dataSource.transaction(async (manager) => {
+					const receipt = climateDeletion ? observeSqliteOuterOutcome(manager) : undefined;
+					const remove = async () => {
+						const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
-				const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
+						const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
 
-				for (const channel of channels) {
-					await this.channelsService.remove(channel.id, manager);
-				}
+						for (const channel of channels) {
+							await this.channelsService.remove(channel.id, manager);
+						}
 
-				const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, { where: { device: { id } } });
+						const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, {
+							where: { device: { id } },
+						});
 
-				for (const control of controls) {
-					await this.devicesControlsService.remove(control.id, device.id, manager);
-				}
+						for (const control of controls) {
+							await this.devicesControlsService.remove(control.id, device.id, manager);
+						}
 
-				await manager.remove(device);
+						await manager.remove(device);
 
-				this.logger.log(`Successfully removed device with id=${id}`);
+						this.logger.log(`Successfully removed device with id=${id}`);
 
-				// Emit event with the full device entity captured before removal to preserve ID
-				this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+						// Emit event with the full device entity captured before removal to preserve ID
+						this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+					};
+					if (receipt) {
+						await manager.query(
+							'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0',
+						);
+						await this.climateLedger.inAdmittedManager(manager, receipt, (scope) =>
+							climateDeletion(manager, scope, remove),
+						);
+					} else await remove();
+				});
 			});
-		});
+		// Deletion retires observation eligibility. Original callbacks still execute and
+		// their finite completion is joined after the original structural/native owners.
+		if (climateDeletion)
+			return ControllerPublicationContext.complete(() =>
+				new ControllerPublicationContext(() => false).run(removeOriginal),
+			);
+		return removeOriginal();
 	}
 
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {

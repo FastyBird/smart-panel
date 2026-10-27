@@ -211,9 +211,16 @@ describe('manual thermostat selection: reserved native intent', () => {
 			| 'complete';
 		completed: boolean;
 		initialize: ReturnType<typeof initializeWitness>;
+		readonly started: bigint;
+		readonly phases: { stage: string; elapsedMs: number }[];
 	};
 	let setupAttempt = 0;
 	let newestSetup: SetupWitness | undefined;
+	let setupCompletion: Promise<void> | undefined;
+	function setupStage(setup: SetupWitness, stage: SetupWitness['stage']): void {
+		setup.stage = stage;
+		setup.phases.push({ stage, elapsedMs: Number(process.hrtime.bigint() - setup.started) / 1e6 });
+	}
 	const sources: SqliteDataSource[] = [];
 	const services: VirtualThermostatClaimsService[] = [];
 	const row = () => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
@@ -245,9 +252,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			emitter,
 		);
 		services.push(ownership);
-		if (setup) setup.stage = 'ownership-bootstrap';
+		if (setup) setupStage(setup, 'ownership-bootstrap');
 		await new VirtualThermostatOwnershipSubscriber(source, ownership).onApplicationBootstrap();
-		if (setup) setup.stage = 'claims-bootstrap';
+		if (setup) setupStage(setup, 'claims-bootstrap');
 		await ownership.onApplicationBootstrap();
 		return {
 			lock: structure,
@@ -257,13 +264,19 @@ describe('manual thermostat selection: reserved native intent', () => {
 			comfort: new VirtualThermostatComfortService(source, structure, dependency, ownership, emitter),
 		};
 	}
-	beforeEach(async () => {
+	beforeEach(() => {
 		const started = process.hrtime.bigint();
+		setupCompletion = initializeFixture(started);
+		return setupCompletion;
+	});
+	async function initializeFixture(started: bigint): Promise<void> {
 		const setup: SetupWitness = {
 			attempt: setupAttempt < 255 ? ++setupAttempt : null,
 			stage: 'sync-setup',
 			completed: false,
 			initialize: initializeWitness(started),
+			started,
+			phases: [],
 		};
 		newestSetup = setup;
 		wall = Date.UTC(2026, 9, 25);
@@ -271,12 +284,12 @@ describe('manual thermostat selection: reserved native intent', () => {
 		jest.spyOn(Date, 'now').mockImplementation(() => wall);
 		jest.spyOn(performance, 'now').mockImplementation(() => monotonic);
 		directory = mkdtempSync(path.join(tmpdir(), 'selection-native-'));
-		setup.stage = 'open-source';
+		setupStage(setup, 'open-source');
 		database = await open(true, setup.initialize);
-		setup.stage = 'attach-construction';
+		setupStage(setup, 'attach-construction');
 		({ lock, graph, claims, comfort, events } = await attach(database, setup));
 		id = randomUUID();
-		setup.stage = 'seed-device';
+		setupStage(setup, 'seed-device');
 		await database.manager.insert(VirtualDeviceEntity, {
 			id,
 			name: 'Manual intent',
@@ -284,7 +297,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			category: DeviceCategory.THERMOSTAT,
 			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
 		});
-		setup.stage = 'seed-config';
+		setupStage(setup, 'seed-config');
 		await database.manager.insert(VirtualThermostatConfigEntity, {
 			controllerId: id,
 			ownerDeviceId: id,
@@ -307,20 +320,29 @@ describe('manual thermostat selection: reserved native intent', () => {
 			contactClosingMs: 0,
 			configuredAt: new Date(wall),
 		});
-		setup.stage = 'complete';
+		setupStage(setup, 'complete');
 		setup.completed = true;
-	});
+	}
 	afterEach(async () => {
 		const setup = newestSetup;
 		setup?.initialize.teardown();
 		if (setup && !setup.completed) {
-			const view = { attempt: setup.attempt, stage: setup.stage, completed: setup.completed, finished: 'UNKNOWN' };
+			const view = {
+				attempt: setup.attempt,
+				stage: setup.stage,
+				completed: setup.completed,
+				finished: 'UNKNOWN',
+				elapsedMs: Number(process.hrtime.bigint() - setup.started) / 1e6,
+				phases: setup.phases,
+			};
 			try {
 				console.error('native-setup-phase', { ...view, initialize: setup.initialize.snapshot() });
 			} catch {
 				// Missing observation stays UNKNOWN; original cleanup retains its own failure policy.
 			}
 		}
+		// A timed-out hook can still be initializing its original source. Join it before disposing its resources.
+		await setupCompletion?.catch(() => undefined);
 		jest.restoreAllMocks();
 		for (const service of services.splice(0)) service.onModuleDestroy();
 		for (const source of sources.splice(0)) if (source.isInitialized) await source.destroy();
@@ -413,7 +435,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 		let bDone = false;
 		database.subscribers.push({
 			afterQuery: async (event) => {
-				if (!holding && event.query.startsWith('INSERT OR IGNORE INTO "devices_virtual_graph_revision"')) {
+				if (!holding && event.query === 'UPDATE "devices_virtual_graph_revision" SET "revision"="revision" WHERE 0') {
 					holding = true;
 					order.push('A-reserved');
 					reserved.resolve();
@@ -626,7 +648,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			events.on(THERMOSTAT_CONFIG_CHANGED, notified);
 			await expect(
 				phase === 'definition-subscriber'
-					? comfort.configure(id, await fence(), definition())
+					? comfort.configure(id, await fence(), { ...definition(), heating_range: { minimum: 10, maximum: 31 } })
 					: comfort.select(id, await fence(), 'away', false),
 			).rejects.toBe(false);
 			expect(get).not.toHaveBeenCalled();
@@ -1174,7 +1196,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 	);
 
 	it.each(['omitted', 'undefined', 'null', 'true', 'false'] as const)(
-		'preserves exact baseline/nullish semantics for %s',
+		'preserves exact baseline/nullish diagnostics without granting JSON authority for %s',
 		async (flag) => {
 			const baseline = { preset: 'away' as const, setpoints: null, actor_id: 'retained-actor', revision: 7 };
 			await database.manager.update(
@@ -1212,9 +1234,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			expect(result.configuration).toEqual(expected);
 			expect((await row()).comfort).toEqual(expected);
 			expect(result.effective).toEqual({
-				source: flag === 'false' ? 'manual' : 'automation',
-				preset: flag === 'false' ? null : 'away',
-				heating_setpoint: flag === 'false' ? 20 : 13,
+				source: 'manual',
+				preset: null,
+				heating_setpoint: 20,
 				cooling_setpoint: null,
 				override_id: null,
 				expires_at: null,
@@ -1362,7 +1384,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 		const failure = false,
 			final = jest.spyOn(comfort, 'get').mockRejectedValueOnce(failure),
 			next = await fence();
-		await expect(comfort.configure(id, next, definition())).rejects.toBe(failure);
+		await expect(
+			comfort.configure(id, next, { ...definition(), heating_range: { minimum: 10, maximum: 31 } }),
+		).rejects.toBe(failure);
 		expect(final).toHaveBeenCalledTimes(1);
 		expect((await row()).revision).toBe(next.expected_revision + 1);
 	});
@@ -1790,7 +1814,12 @@ describe('manual thermostat selection: reserved native intent', () => {
 		async (status) => {
 			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
 			await comfort.override(id, await fence(), requestOverride(), 'operator');
-			await comfort.select(id, await fence(), null, false);
+			// Repeated null selection is now a genuine no-op. Exercise an actual OFF-latch clear
+			// to retain the original assertion that controller and override creation revisions differ.
+			const latched = await row();
+			latched.comfort.user_off = true;
+			await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: latched.comfort });
+			await comfort.select(id, await fence(), null, true);
 			const before = await row(),
 				old = before.comfort.temporary_override;
 			expect(old.revision).toBe(2);

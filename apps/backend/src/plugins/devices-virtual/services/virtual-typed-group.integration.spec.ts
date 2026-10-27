@@ -43,6 +43,12 @@ import { VirtualValueSourceService } from './virtual-value-source.service';
 
 jest.setTimeout(30000);
 describe('typed fan/cover SQLite and core composite lifecycle', () => {
+	const states: VirtualProducerStateService[] = [];
+	const databases: SqliteDataSource[] = [];
+	afterEach(async () => {
+		for (const state of states.splice(0)) state.onModuleDestroy();
+		for (const database of databases.splice(0)) if (database.isInitialized) await database.destroy();
+	});
 	it.each([VirtualLightGroupProfile.FAN, VirtualLightGroupProfile.COVER])(
 		'%s keeps physical feedback separate from commands',
 		async (profile) => {
@@ -52,6 +58,7 @@ describe('typed fan/cover SQLite and core composite lifecycle', () => {
 				synchronize: true,
 				entities: [__dirname + '/../../../**/*.entity.ts'],
 			}).initialize();
+			databases.push(database);
 			const events = new EventEmitter2();
 			const graph = new VirtualDependencyGraphService(database);
 			const structure = new DeviceStructureLockService();
@@ -187,13 +194,10 @@ describe('typed fan/cover SQLite and core composite lifecycle', () => {
 				members.push({ device, channel, properties });
 			}
 			await graph.onApplicationBootstrap();
-			const configs = new VirtualProducerConfigService(
-				database,
-				structure,
-				graph,
-				events,
-				new VirtualProducerStateService(database, producers, graph, events),
-			);
+			const producerState = new VirtualProducerStateService(database, producers, graph, events);
+			states.push(producerState);
+			await producerState.onModuleInit();
+			const configs = new VirtualProducerConfigService(database, structure, graph, events, producerState);
 			const configuration = Object.assign(new ConfigureVirtualLightGroupDto(), {
 				profile,
 				expectedRevision: 0,

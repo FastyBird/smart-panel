@@ -128,7 +128,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		this.epoch++;
 		for (const entry of this.active.values()) {
 			this.claims.revokeQualification(entry.identity);
-			this.runtime.request(entry.controllerId);
+			void this.runtime.request(entry.controllerId);
 		}
 		this.active.clear();
 	}
@@ -183,7 +183,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		if (!entry) return;
 		this.active.delete(claimId);
 		this.claims.revokeQualification(entry.identity);
-		this.runtime.request(entry.controllerId);
+		void this.runtime.request(entry.controllerId);
 	}
 	private async verifyProfile(
 		claimId: string,
@@ -302,7 +302,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 			if (reasons.length || !lease?.isCurrent()) {
 				this.claims.revokeQualification(row.physicalIdentity);
 				this.active.delete(claimId);
-				if (existing) this.runtime.request(row.controllerId);
+				if (existing) void this.runtime.request(row.controllerId);
 				return;
 			}
 			if (actorId) this.pausedClaims.delete(claimId);
@@ -335,7 +335,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 						this.active.get(claimId) === entry &&
 						entry.isCurrent(),
 				});
-				this.runtime.request(row.controllerId);
+				void this.runtime.request(row.controllerId);
 			}
 		});
 	}

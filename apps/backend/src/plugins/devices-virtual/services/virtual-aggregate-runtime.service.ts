@@ -8,6 +8,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { ConnectionState, EventType, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import {
 	PropertyProducerEvaluation,
@@ -250,6 +251,12 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		for (const config of configs) {
 			if (!this.current(generation)) return;
 			if (!this.dirty.delete(config.outputPropertyId)) continue;
+			const registry = captureCreation(this.producers, ['captureRuntimeSlot', 'registerRuntime', 'isAvailable']);
+			const originalSlot = registry.values.captureRuntimeSlot.call(
+				registry.receiver,
+				config.outputPropertyId,
+				this.outputs.get(config.outputPropertyId)?.lease,
+			);
 			const property = await this.dataSource.manager.findOne(VirtualChannelPropertyEntity, {
 				where: { id: config.outputPropertyId },
 				relations: ['channel', 'channel.device'],
@@ -257,14 +264,21 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!property) continue;
 			let output = this.outputs.get(property.id);
-			if (!output || output.revision !== config.revision || !this.producers.isAvailable(output.lease)) {
+			if (
+				!output ||
+				output.revision !== config.revision ||
+				!registry.values.isAvailable.call(registry.receiver, output.lease)
+			) {
+				if (!registry.current()) continue;
+				const lease = registry.values.registerRuntime.call(registry.receiver, property, config.revision, originalSlot, {
+					isCurrent: this.graph.capturePublishGuard(),
+					reason: 'graph_validation_pending',
+				});
+				if (!lease) continue;
 				output = {
 					property,
 					revision: config.revision,
-					lease: this.producers.register(property, config.revision, {
-						isCurrent: this.graph.capturePublishGuard(),
-						reason: 'graph_validation_pending',
-					}),
+					lease,
 				};
 				this.outputs.set(property.id, output);
 			}

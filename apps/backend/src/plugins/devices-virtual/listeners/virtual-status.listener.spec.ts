@@ -1,5 +1,6 @@
 import { ConnectionState, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
@@ -92,6 +93,47 @@ describe('VirtualStatusListener', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+	});
+
+	it('retains the original finite recompute destination while its source read is pending', async () => {
+		let entered: () => void;
+		let release: () => void;
+		const entry = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		index.findLinksByVirtualDevice.mockReturnValue([link('property', 'source')]);
+		connectionState.readLatest.mockImplementation(async () => {
+			entered();
+			await gate;
+			return readingOf(ConnectionState.CONNECTED);
+		});
+		const original = connectivity.setConnectionState;
+		const successor = jest.fn();
+		let eligible = true;
+		const publication = new ControllerPublicationContext(() => eligible);
+		const completion = publication.run(() => {
+			void listener.recompute('virtual-device', 'original');
+			return Promise.resolve();
+		});
+		try {
+			await entry;
+			eligible = false;
+			connectivity.setConnectionState = successor;
+			release();
+			await completion;
+			expect(original).toHaveBeenCalledWith('virtual-device', { state: ConnectionState.CONNECTED, reason: 'original' });
+			expect(successor).not.toHaveBeenCalled();
+			expect(publication.facts()).toContainEqual(
+				expect.objectContaining({ name: 'virtual-status.recompute', settled: true, failed: false, retired: true }),
+			);
+		} finally {
+			release();
+			await completion;
+			connectivity.setConnectionState = original;
+		}
 	});
 
 	// -- pinned brief cases ---------------------------------------------------------------------

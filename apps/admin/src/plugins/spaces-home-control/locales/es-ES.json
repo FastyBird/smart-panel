@@ -444,7 +444,7 @@
 		"setpoint": "Temperatura objetivo (°C)",
 		"delta": "Cambio de temperatura (°C)",
 		"climateMode": "Modo de climatización",
-		"climateUnsupported": "Puedes guardar los ajustes de climatización, pero los modos de actividad aún no pueden aplicarlos.",
+		"climateAutomation": "Activa la automatización del termostato y elige un preajuste o una acción de temperatura. La vista previa comprueba los destinos sin aplicar cambios. La pausa manual, el apagado y los límites de protección siguen vigentes.",
 		"securityUnsupported": "Puedes guardar los ajustes de seguridad, pero los modos de actividad aún no pueden aplicarlos.",
 		"invalid": "Revisa los ajustes antes de guardar.",
 		"readOnly": "No tienes permiso para editar los modos de actividad.",

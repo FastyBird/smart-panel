@@ -2,6 +2,11 @@ import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
+import {
+	ControllerPublicationContext,
+	ownControllerEffectValue,
+} from '../../devices/services/controller-publication-context';
+import { captureCreation, invokeCreation } from '../../devices/services/creation-capture';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
@@ -38,6 +43,7 @@ export class StorageService implements OnApplicationShutdown {
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
+	private readHealthGeneration = 0;
 	private readonly pendingAdmissions = new Set<Promise<void>>();
 	private readonly backendBindings = new WeakMap<StorageBackendBinding, StorageBackendBindingState>();
 	private readonly writes = new StorageWriteBuffer<BufferedStoragePoint>(
@@ -72,6 +78,7 @@ export class StorageService implements OnApplicationShutdown {
 	 * registerPlugin() can be called AFTER initialize().
 	 */
 	registerPlugin(name: string, plugin: StoragePlugin): void {
+		this.readHealthGeneration++;
 		const config = this.getConfig();
 
 		if (name === config.primaryStorage) {
@@ -100,6 +107,7 @@ export class StorageService implements OnApplicationShutdown {
 	 * stale references when config changes race with service stop.
 	 */
 	async unregisterPlugin(name: string): Promise<void> {
+		this.readHealthGeneration++;
 		if (this.primary?.name === name) {
 			this.primary = null;
 
@@ -214,6 +222,35 @@ export class StorageService implements OnApplicationShutdown {
 	// ─── Core Read/Write ──────────────────────────────────────────────
 
 	async writePoints(points: StoragePoint[]): Promise<void> {
+		if (ControllerPublicationContext.current()) {
+			// Capture BOTH original receivers, methods, availability and independent full point bytes
+			// before the first await. Old fallback completion cannot select a successor primary.
+			const destinations = (['fallback', 'primary'] as const).map((role) => {
+				const plugin = this[role];
+				if (!plugin) return null;
+				const methods = captureCreation(plugin, ['writePoints', 'isAvailable']);
+				return {
+					role,
+					plugin,
+					methods,
+					available: methods.values.isAvailable.call(plugin),
+					points: ownControllerEffectValue(points),
+				};
+			});
+			for (const destination of destinations) {
+				if (!destination?.available) continue;
+				try {
+					await ControllerPublicationContext.effect(`storage.${destination.role}`, () =>
+						destination.methods.values.writePoints.call(destination.plugin, destination.points),
+					);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					if (destination.role === 'fallback') this.logger.warn(`Fallback write failed: ${message}`);
+					else this.logger.error(`Primary write failed: ${message}`);
+				}
+			}
+			return;
+		}
 		// Write to both storages — best effort for each.
 		// Data lands in at least one if either is reachable.
 		if (this.fallback?.isAvailable()) {
@@ -243,6 +280,40 @@ export class StorageService implements OnApplicationShutdown {
 	 * write cannot be mistaken for a persisted measurement.
 	 */
 	async writePointsStrict(points: StoragePoint[], binding?: StorageBackendBinding): Promise<void> {
+		if (ControllerPublicationContext.current()) {
+			const capture = (plugin: StoragePlugin | null | undefined) => {
+				if (!plugin) return null;
+				const methods = captureCreation(plugin, ['writePoints', 'isAvailable']);
+				return {
+					plugin,
+					methods,
+					available: methods.values.isAvailable.call(plugin) === true,
+					points: ownControllerEffectValue(points),
+				};
+			};
+			const bound = binding ? this.backendBindings.get(binding) : undefined;
+			if (binding && (!bound || this[bound.role] !== bound.plugin))
+				throw new Error('Bound storage backend is no longer available');
+			const primary = capture(bound ? bound.plugin : this.primary);
+			const fallback = capture(bound ? bound.mirror?.plugin : this.fallback);
+			if (bound && !primary?.available) throw new Error('Bound storage backend is no longer available');
+			const required = primary?.available ? primary : fallback?.available ? fallback : null;
+			if (!required) throw new Error('No storage backend is available');
+			await ControllerPublicationContext.effect('storage.strict.required', () =>
+				required.methods.values.writePoints.call(required.plugin, required.points),
+			);
+			if (required === primary && fallback?.available) {
+				try {
+					await ControllerPublicationContext.effect('storage.strict.mirror', () =>
+						fallback.methods.values.writePoints.call(fallback.plugin, fallback.points),
+					);
+				} catch (error) {
+					const err = error as Error;
+					this.logger.warn(`Strict write mirror failed after required persistence: ${err.message}`);
+				}
+			}
+			return;
+		}
 		if (binding) {
 			const state = this.backendBindings.get(binding);
 
@@ -301,6 +372,7 @@ export class StorageService implements OnApplicationShutdown {
 	}
 
 	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		if (ControllerPublicationContext.current()) return this.queryController<T>(query, options, false);
 		this.throwIfQueryAborted(options?.signal);
 
 		// Try primary first, fall back on transient failure
@@ -328,6 +400,7 @@ export class StorageService implements OnApplicationShutdown {
 	 * but propagate the final failure instead of returning an empty result.
 	 */
 	async queryStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		if (ControllerPublicationContext.current()) return this.queryController<T>(query, options, true);
 		this.throwIfQueryAborted(options?.signal);
 		let primaryError: unknown;
 
@@ -355,6 +428,51 @@ export class StorageService implements OnApplicationShutdown {
 		throw new Error('No storage backend is available');
 	}
 
+	/** Owned reads retain both original roles before primary I/O; health is qualified by the consuming cache. */
+	private async queryController<T>(
+		query: string,
+		options: StorageQueryOptions | undefined,
+		strict: boolean,
+	): Promise<T[]> {
+		const input = options ? { ...options } : undefined;
+		this.throwIfQueryAborted(input?.signal);
+		const destinations = (['primary', 'fallback'] as const).map((role) => {
+			const plugin = this[role];
+			if (!plugin) return null;
+			const methods = captureCreation(plugin, ['query', 'queryStrict', 'isAvailable']);
+			const method = (strict ? (methods.values.queryStrict ?? methods.values.query) : methods.values.query) as (
+				query: string,
+				options?: StorageQueryOptions,
+			) => Promise<T[]>;
+			return {
+				role,
+				plugin,
+				method,
+				available: methods.values.isAvailable.call(plugin),
+				options: input ? { ...input } : undefined,
+			};
+		});
+		let primaryError: unknown;
+		for (const destination of destinations) {
+			if (!destination?.available) continue;
+			this.throwIfQueryAborted(input?.signal);
+			try {
+				return await ControllerPublicationContext.effect(`storage.read.${destination.role}`, () =>
+					invokeCreation(destination.method, destination.plugin, query, destination.options),
+				);
+			} catch (error) {
+				if (destination.role === 'fallback') throw error;
+				this.throwIfQueryAborted(input?.signal);
+				primaryError = error;
+				const err = error as Error;
+				this.logger.error(`Primary ${strict ? 'strict ' : ''}query failed, trying fallback: ${err.message}`);
+			}
+		}
+		if (!strict) return [];
+		if (primaryError) throw primaryError;
+		throw new Error('No storage backend is available');
+	}
+
 	/**
 	 * Query the backend that strict reconciliation writes currently require.
 	 * Unlike queryStrict(), an available primary is authoritative: its read
@@ -370,6 +488,31 @@ export class StorageService implements OnApplicationShutdown {
 	 * strict write target the exact same plugin. Reconciliation must not compare
 	 * fallback state and then write to a primary that recovered in between.
 	 */
+	captureControllerReadHealth(): () => boolean {
+		const generation = this.readHealthGeneration;
+		const roles = (['primary', 'fallback'] as const).map((role) => {
+			const plugin = this[role];
+			const capture = plugin ? captureCreation(plugin, ['query', 'queryStrict', 'isAvailable']) : null;
+			const available = capture ? capture.values.isAvailable.call(plugin) === true : false;
+			return { role, plugin, capture, available };
+		});
+		return () => {
+			try {
+				return (
+					generation === this.readHealthGeneration &&
+					roles.some(({ available }) => available) &&
+					roles.every(
+						({ role, plugin, capture, available }) =>
+							this[role] === plugin &&
+							(!capture || (capture.current() && (capture.values.isAvailable.call(plugin) === true) === available)),
+					)
+				);
+			} catch {
+				return false;
+			}
+		};
+	}
+
 	async queryActiveStrictBound<T>(query: string, options?: StorageQueryOptions): Promise<BoundStorageQueryResult<T>> {
 		this.throwIfQueryAborted(options?.signal);
 		let state: StorageBackendBindingState;

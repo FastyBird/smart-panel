@@ -10,6 +10,7 @@ import { instanceToPlain } from 'class-transformer';
 import { useContainer } from 'class-validator';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { IncomingMessage, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
@@ -22,6 +23,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
 import { createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { AuthController } from '../src/modules/auth/controllers/auth.controller';
+import { IS_PUBLIC_KEY } from '../src/modules/auth/guards/auth.guard';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import {
 	ChannelCategory,
@@ -78,6 +81,8 @@ import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/se
 import { VirtualDewPointConfigService } from '../src/plugins/devices-virtual/services/virtual-dew-point-config.service';
 import { DEW_POINT_FORMULA } from '../src/plugins/devices-virtual/services/virtual-dew-point.utils';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
+import { VirtualThermostatAutomationService } from '../src/plugins/devices-virtual/services/virtual-thermostat-automation.service';
+import { VirtualThermostatClaimsService } from '../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
 import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { InfluxV1ConfigModel } from '../src/plugins/influx-v1/models/config.model';
@@ -85,6 +90,7 @@ import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simu
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 import { RoomSpaceEntity } from '../src/plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../src/plugins/spaces-home-control/entities/zone-space.entity';
+import { SpaceClimateAutomationService } from '../src/plugins/spaces-home-control/services/space-climate-automation.service';
 
 import { createProtectionProbe } from './support/thermostat-protection-fixture';
 
@@ -321,16 +327,11 @@ function observeAmbientPointData(rows: unknown, memory: boolean) {
 				)
 					throw new Error('Non-scalar persisted point field');
 				observed[key] = { kind: typeof value, value };
-				result[key] =
-					value === undefined && ['numberValue', 'stringValue'].includes(key)
-						? null
-						: (value as string | number | boolean | null | undefined);
+				result[key] = value as string | number | boolean | null | undefined;
 			}
 		}
 		if (!Object.hasOwn(result, 'time') || typeof result.propertyId !== 'string')
 			throw new Error('Incomplete physical point');
-		// Only the two optional storage-protocol value fields have absence/null equivalence.
-		for (const key of ['numberValue', 'stringValue']) if (!Object.hasOwn(result, key)) result[key] = null;
 		raw.push(Object.freeze(observed));
 		return Object.freeze(result);
 	});
@@ -889,13 +890,14 @@ async function verifyThermostatWire(
 						before: physicalAmbientHistory,
 						after: physicalAmbientAfter,
 						qualification:
-							'Only optional numberValue/stringValue absence-null and known native query timestamp function handles differ in representation. All tag/scalar fields, order, actual18 and exact native timestamp remain in point DATA.',
+							'All scalar field presence, undefined/null distinctions, tags, row order and exact native timestamp DATA are retained; only known query-wrapper function identities are represented by their method names.',
 					}),
 				);
 				expect(physicalAmbientAfter.data).toHaveLength(1);
 				expect(physicalAmbientAfter.data[0].propertyId).toBe(ambient);
 				expect(physicalAmbientAfter.data[0].numberValue).toBe(18);
 				expect(physicalAmbientAfter.data).toStrictEqual(physicalAmbientHistory.data);
+				expect(physicalAmbientAfter.raw).toStrictEqual(physicalAmbientHistory.raw);
 				const settingHistory: Record<string, unknown> = {};
 				for (const setting of settings) {
 					const rows = await storage.queryStrict(
@@ -929,10 +931,21 @@ async function verifyThermostatWire(
 				const setpoint = settings.find(
 					(entry) => entry.setting === (hasHeating ? 'heating_setpoint' : 'cooling_setpoint'),
 				);
-				expect(
-					result.device.channels.flatMap((entry) => entry.properties).find((entry) => entry.id === setpoint.property)
-						.value.value,
-				).toBe(hasHeating ? 20 : 25);
+				const settingValue = result.device.channels
+					.flatMap((entry) => entry.properties)
+					.find((entry) => entry.id === setpoint.property).value;
+				if (settingValue.value !== (hasHeating ? 20 : 25))
+					console.info(
+						'healthy-setting-unavailable',
+						JSON.stringify({
+							variant,
+							settingValue,
+							graphValidated: moduleRef.get(VirtualDependencyGraphService).isValidated(),
+							primaryAvailable: storage.isPrimaryAvailable(),
+							fallback: storage.isUsingFallback(),
+						}),
+					);
+				expect(settingValue.value).toBe(hasHeating ? 20 : 25);
 				const information = result.device.channels.find(
 					(entry) => entry.category === (ChannelCategory.DEVICE_INFORMATION as string),
 				);
@@ -1011,7 +1024,22 @@ async function verifyThermostatWire(
 					(interleave?.foreignGraphWrites?.() ?? 0) -
 					foreignGraphBaseline,
 			);
-			expect(moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1')).toBeNull();
+			const provider = moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1');
+			expect(provider?.isCurrent()).toBe(true);
+			expect(provider.implementation).toBe(Reflect.get(moduleRef.get(VirtualThermostatAutomationService), 'provider'));
+			expect(
+				await dataSource.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: device.id }),
+			).toMatchObject({
+				state: 'EMPTY',
+				manualHold: false,
+				ownerId: null,
+				baselineId: null,
+				generationId: null,
+				candidateId: null,
+				installEvidence: null,
+			});
+			expect(await dataSource.manager.countBy(ClimateAutomationSlotEntity, { state: 'LIVE' })).toBe(0);
+			expect(await dataSource.manager.count(ClimateAutomationSourceEntity)).toBe(0);
 		}
 	} catch (cause: unknown) {
 		rejection = { cause };
@@ -1035,7 +1063,7 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 	const pending = new Set<Receipt>();
 	const restore: (() => void)[] = [];
 	let owned: Receipt[] | undefined;
-	let finished = false;
+	let disposed = false;
 	const repairs = new Map<NodeJS.Timeout, () => void>();
 	function retain(work: Promise<void>): Receipt {
 		const receipt: Receipt = { done: Promise.resolve() };
@@ -1111,22 +1139,34 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 	}
 	return {
 		begin(): void {
+			if (disposed) throw new Error('Original setup completion capture is disposed');
 			if (owned) throw new Error('Link setup completion already owns a request');
 			owned = [...pending];
 		},
 		async finish(): Promise<void> {
-			if (finished) return;
+			if (disposed) return;
 			owned ??= [...pending];
 			let failure: { cause: unknown } | undefined;
 			try {
-				// These are retained original promises, including callbacks admitted by awaited callbacks.
-				// The original loop owns coalesced passes; original repair timers retain their own receipts.
+				// Captured at original creation, including finite descendants of these callbacks.
 				for (const receipt of owned) {
 					await receipt.done;
 					failure ??= receipt.failure;
 				}
 			} finally {
-				finished = true;
+				owned = undefined;
+			}
+			if (failure) throw failure.cause;
+		},
+		async close(this: { finish: () => Promise<void> }): Promise<void> {
+			if (disposed) return;
+			let failure: { cause: unknown } | undefined;
+			try {
+				await this.finish();
+			} catch (cause: unknown) {
+				failure = { cause };
+			} finally {
+				disposed = true;
 				for (const cleanup of restore.splice(0).reverse()) {
 					try {
 						cleanup();
@@ -1175,7 +1215,7 @@ describe('devices-virtual plugin (e2e)', () => {
 
 		useContainer(moduleFixture, { fallbackOnErrors: true });
 
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 
 		// Wait for all modules to initialize
 		await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1218,13 +1258,18 @@ describe('devices-virtual plugin (e2e)', () => {
 
 	afterAll(async () => {
 		try {
-			await linkSetupCompletion?.finish();
+			await linkSetupCompletion?.close();
 		} finally {
+			const originalServer = app?.getHttpServer() as { listening: boolean; address(): unknown } | undefined;
 			await app?.close();
+			if (originalServer) {
+				expect(originalServer.listening).toBe(false);
+				expect(originalServer.address()).toBeNull();
+			}
 		}
 	});
 
-	it('boots the dormant ownership core through the real module and entity discovery without registering climate authority', async () => {
+	it('boots the actual activity/provider registrations without installing any climate authority by default', async () => {
 		const registry = moduleRef.get(ClimateAutomationRegistryService);
 		const ledger = moduleRef.get(ClimateAutomationLedgerService);
 		await expect(
@@ -1232,7 +1277,14 @@ describe('devices-virtual plugin (e2e)', () => {
 				expect((await ledger.readSource(manager, scope, 'activity:v1', 'boot-probe')).facts).toBeNull();
 			}),
 		).resolves.toEqual({ outcome: 'committed' });
-		expect(registry.captureProvider('virtual-thermostat:v1')).toBeNull();
+		expect(registry.captureProvider('virtual-thermostat:v1')?.isCurrent()).toBe(true);
+		expect(registry.captureProvider('virtual-thermostat:v1')?.implementation).toBe(
+			Reflect.get(moduleRef.get(VirtualThermostatAutomationService), 'provider'),
+		);
+		expect(registry.captureProducer('space-activity:v1')?.isCurrent()).toBe(true);
+		expect(registry.captureProducer('space-activity:v1')?.implementation).toBe(
+			Reflect.get(moduleRef.get(SpaceClimateAutomationService), 'producer'),
+		);
 		for (const key of ['activity:v1', 'schedule:v1', 'presence:v1']) {
 			expect(registry.captureProducer(key)).toBeNull();
 		}
@@ -2492,6 +2544,7 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 
 		it('returns committed nested wiring as unavailable when post-commit graph validation fails', async () => {
+			linkSetupCompletion.begin();
 			const graph = moduleRef.get(VirtualDependencyGraphService);
 			const propertyId = uuid();
 			const failure = new Error('injected nested post-commit validation failure');
@@ -2548,6 +2601,7 @@ describe('devices-virtual plugin (e2e)', () => {
 				).toBe(atomicSourcePropertyId);
 			} finally {
 				stop();
+				await linkSetupCompletion.finish();
 				await graph.refreshQuarantine();
 				if (deviceId) await ensureDeviceDeleted(authGet, authDelete, deviceId);
 			}
@@ -3028,6 +3082,10 @@ describe('devices-virtual plugin (e2e)', () => {
 			// the real schema.
 			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
 				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false, hidden_by: DeviceHiddenBy.SYSTEM } })
+				.expect((response) => {
+					if (response.status !== 200)
+						throw new Error(`Source-unhide HTTP ${response.status}: ${JSON.stringify(response.body)}`);
+				})
 				.expect(200);
 
 			// Read immediately, with no polling — the same read-after-write assertion as in the
@@ -3086,7 +3144,12 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(typeof unhidden === 'string' ? unhidden : unhidden.hidden_by).toBeNull();
 
 			// Unhidden means genuinely back in the pickers, not merely a flipped column.
-			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
+			const visibleList = await authGet('/modules/devices/devices?hidden=false')
+				.expect((response) => {
+					if (response.status !== 200)
+						throw new Error(`Source-unhide HTTP ${response.status}: ${JSON.stringify(response.body)}`);
+				})
+				.expect(200);
 
 			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(ownSourceDeviceId);
 		});
@@ -3701,11 +3764,28 @@ describe('devices-virtual plugin (e2e)', () => {
 		// reason has to reach the user somewhere, and the case below is where: the wizard asks before it
 		// writes.
 		it('refuses a second one', async () => {
-			const rejected = await authPost('/modules/devices/devices').send(
-				virtualOutlet('E2E Office Meter', meterPropertyId),
-			);
-
-			expect(rejected.status).toBe(422);
+			const claims = moduleRef.get<VirtualThermostatClaimsService>(VirtualThermostatClaimsService);
+			const refresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+			const completions: Promise<void>[] = [];
+			const refreshProbe = jest.spyOn(claims, 'refresh').mockImplementation(() => {
+				const original = refresh();
+				completions.push(original);
+				return original;
+			});
+			try {
+				const rejected = await authPost('/modules/devices/devices').send(
+					virtualOutlet('E2E Office Meter', meterPropertyId),
+				);
+				expect(rejected.status).toBe(422);
+				// Join only original refreshes observed during this rejection, outside its structural/DB owner.
+				// A swallowed post-commit ownership timeout must not masquerade as compatible cleanup.
+				expect(completions.length).toBeGreaterThan(0);
+				expect(await Promise.allSettled(completions)).toEqual(
+					completions.map(() => ({ status: 'fulfilled', value: undefined })),
+				);
+			} finally {
+				refreshProbe.mockRestore();
+			}
 		});
 
 		// A false green is the one answer a user acts on. `reportCompatibility` compares a candidate
@@ -3798,7 +3878,7 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 
 		useContainer(moduleFixture, { fallbackOnErrors: true });
 
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 
 		// Wait for all modules to initialize
 		await new Promise((resolve) => setTimeout(resolve, 100));
@@ -3837,7 +3917,12 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 		accessToken = loginBody.data.access_token;
 	});
 	afterEach(async () => {
+		const originalServer = app?.getHttpServer() as { listening: boolean; address(): unknown } | undefined;
 		await app?.close();
+		if (originalServer) {
+			expect(originalServer.listening).toBe(false);
+			expect(originalServer.address()).toBeNull();
+		}
 		useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
 	});
 	it.each([
@@ -4590,6 +4675,12 @@ function createHttpAnchor(
 					route,
 					expectedStatus,
 					actualStatus: typeof status === 'number' ? status : undefined,
+					responseHeaders: Object.fromEntries(
+						['x-group-a-fixture', 'server', 'content-type', 'www-authenticate'].map((key) => [
+							key,
+							own(own(response, 'headers') ?? own(response, 'header'), key),
+						]),
+					),
 					strings,
 					causePresent: failure !== undefined,
 					causeKind: failure === undefined ? undefined : cause === null ? 'null' : typeof cause,
@@ -4651,7 +4742,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			migrationsTransactionMode: 'each',
 		});
 		try {
-			expect(await prepared.runMigrations({ transaction: 'each' })).toHaveLength(49);
+			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
+			expect(expectedNames).toHaveLength(50);
+			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
+			const applied = await prepared.runMigrations({ transaction: 'each' });
+			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {
 			await prepared.destroy();
 		}
@@ -4670,9 +4765,31 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		};
 		dataSource.subscribers.push(observer);
 		app = moduleRef.createNestApplication();
+		const fixtureIdentity = path.basename(directory);
+		const authController = moduleRef.get(AuthController);
+		app.use((incoming: IncomingMessage, outgoing: ServerResponse, next: () => void) => {
+			outgoing.setHeader('x-group-a-fixture', fixtureIdentity);
+			const localPort = incoming.socket.localPort;
+			outgoing.on('finish', () => {
+				if (outgoing.statusCode !== 401) return;
+				console.info(
+					'owned-http-auth-failure',
+					JSON.stringify({
+						fixtureIdentity,
+						method: incoming.method,
+						url: incoming.url,
+						localPort,
+						registerPublic:
+							Reflect.getMetadata(IS_PUBLIC_KEY, Reflect.get(authController, 'register') as object) === true,
+						loginPublic: Reflect.getMetadata(IS_PUBLIC_KEY, Reflect.get(authController, 'login') as object) === true,
+					}),
+				);
+			});
+			next();
+		});
 		app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 		useContainer(moduleRef, { fallbackOnErrors: true });
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 		expect(moduleRef.get(ConfigService).getPluginConfig<InfluxV1ConfigModel>('influx-v1-plugin').database).toBe(
 			testInfluxDatabase,
 		);
@@ -4723,7 +4840,12 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		try {
 			await observe(pendingProgress);
 			pendingProgress = undefined;
+			const originalServer = app?.getHttpServer() as { listening: boolean; address(): unknown } | undefined;
 			await app?.close();
+			if (originalServer) {
+				expect(originalServer.listening).toBe(false);
+				expect(originalServer.address()).toBeNull();
+			}
 			console.info('channel-admission-A-closed', { initialized: dataSource?.isInitialized });
 		} finally {
 			app = undefined;
@@ -4872,7 +4994,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		};
 		try {
 			useContainer(otherModule, { fallbackOnErrors: true });
-			await otherApp.init();
+			await otherApp.listen(0, '127.0.0.1');
 			expect(otherSource).not.toBe(dataSource);
 			expect(otherSource.manager).not.toBe(dataSource.manager);
 			expect(otherSource.options.database).toBe(dataSource.options.database);
@@ -5520,6 +5642,14 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 					'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
 				);
 				expect(observations[index][read - 2]).toBe('BEGIN TRANSACTION');
+			}
+			for (const queries of observations) {
+				const schemaRead = queries.indexOf('PRAGMA table_info("devices_module_devices")');
+				expect(schemaRead).toBeGreaterThan(1);
+				expect(queries[schemaRead - 1]).toBe(
+					'UPDATE "devices_virtual_graph_revision" SET "revision"="revision" WHERE 0',
+				);
+				expect(queries[schemaRead - 2]).toBe('BEGIN TRANSACTION');
 			}
 			for (const item of [first, second]) {
 				expect(item.module.get(StorageService).isPrimaryAvailable()).toBe(false);

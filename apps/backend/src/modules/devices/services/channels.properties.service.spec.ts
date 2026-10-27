@@ -32,6 +32,7 @@ import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { ControllerPublicationContext } from './controller-publication-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
@@ -2369,6 +2370,116 @@ describe('ChannelsPropertiesService', () => {
 	});
 
 	describe('remove', () => {
+		it('retains the deletion completion owner when queued behind an unrelated structural operation', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			Object.defineProperty(property, 'type', { value: 'virtual' });
+			mockManager.findOne = jest.fn().mockResolvedValue(property);
+			let unblockPrior: () => void, enteredPrior: () => void, settleEffect: () => void, emitted: () => void;
+			const priorEntered = new Promise<void>((resolve) => (enteredPrior = resolve));
+			const priorGate = new Promise<void>((resolve) => (unblockPrior = resolve));
+			const effect = new Promise<void>((resolve) => (settleEffect = resolve));
+			const deletionEmitted = new Promise<void>((resolve) => (emitted = resolve));
+			const prior = structureLock.runExclusive(async () => {
+				enteredPrior();
+				await priorGate;
+			});
+			await priorEntered;
+			const event = jest.spyOn(eventEmitter, 'emit').mockImplementation((name) => {
+				if (name === EventType.CHANNEL_PROPERTY_DELETED) {
+					void ControllerPublicationContext.effect('original-queued-delete-pass', () => effect);
+					emitted();
+				}
+				return true;
+			});
+			let deletionSettled = false,
+				nextEntered = false;
+			const deletion = channelsPropertiesService.remove(property.id).then(() => {
+				deletionSettled = true;
+			});
+			unblockPrior();
+			await prior;
+			await deletionEmitted;
+			const next = structureLock.runExclusive(() => {
+				nextEntered = true;
+				return Promise.resolve();
+			});
+			try {
+				for (let turn = 0; turn < 10 && !nextEntered; turn++)
+					await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(nextEntered).toBe(true);
+				expect(deletionSettled).toBe(false);
+			} finally {
+				settleEffect();
+				await Promise.all([deletion, next]);
+				event.mockRestore();
+			}
+			expect(deletionSettled).toBe(true);
+		});
+		it.each(['virtual', 'physical', 'nested-virtual', 'inherited-completion'] as const)(
+			'joins only the original standalone virtual deletion callback after releasing its owner: %s',
+			async (kind) => {
+				const property = toInstance(MockChannelProperty, mockChannelProperty);
+				if (kind !== 'physical') Object.defineProperty(property, 'type', { value: 'virtual' });
+				mockManager.findOne = jest.fn().mockResolvedValue(property);
+				let start: () => void, release: () => void, entered: () => void;
+				const started = new Promise<void>((resolve) => {
+					start = resolve;
+				});
+				const held = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				const acquired = new Promise<void>((resolve) => {
+					entered = resolve;
+				});
+				// This original continuation is created outside the deletion's structural ALS owner.
+				const original = started.then(() =>
+					structureLock.runExclusive(async () => {
+						entered();
+						await held;
+					}),
+				);
+				let scope: ControllerPublicationContext | undefined,
+					settled = false;
+				const event = jest.spyOn(eventEmitter, 'emit').mockImplementation((name) => {
+					if (name === EventType.CHANNEL_PROPERTY_DELETED) {
+						scope = ControllerPublicationContext.current();
+						void ControllerPublicationContext.effect('original-delete-pass', () => original);
+						start();
+					}
+					return true;
+				});
+				const work = () =>
+					channelsPropertiesService.remove(property.id).then(() => {
+						settled = true;
+					});
+				const operation =
+					kind === 'nested-virtual'
+						? structureLock.runExclusive(work)
+						: kind === 'inherited-completion'
+							? ControllerPublicationContext.complete(work)
+							: work();
+				try {
+					await acquired;
+					await new Promise<void>((resolve) => setImmediate(resolve));
+					if (kind === 'virtual' || kind === 'inherited-completion') {
+						expect(scope).toBeInstanceOf(ControllerPublicationContext);
+						expect(scope.isEligible()).toBe(false);
+						expect(settled).toBe(false);
+					} else {
+						await operation;
+						expect(scope).toBeUndefined();
+						expect(settled).toBe(true);
+					}
+					expect(event.mock.calls.filter(([name]) => name === EventType.CHANNEL_PROPERTY_DELETED)).toHaveLength(1);
+				} finally {
+					start();
+					release();
+					await Promise.all([operation, original]);
+					event.mockRestore();
+				}
+				expect(settled).toBe(true);
+			},
+		);
 		it('should remove a channel property', async () => {
 			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 			mockManager.findOne = jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
