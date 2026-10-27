@@ -97,6 +97,17 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 			await this.delegatesManagerService.admitGuardFenceSample(target.property, readback);
 	}
 
+	/** Bind one owned fence operation before awaiting its readback. This capture grants no sample or command authority. */
+	captureOwnedGuardFenceSample(target: IDevicePropertyData): (readback: ShellyGuardFenceReadback) => Promise<void> {
+		const property = target.property;
+		if (!(property instanceof ShellyNgChannelPropertyEntity)) return () => Promise.resolve();
+		const receiver = this.delegatesManagerService;
+		const admit = receiver.admitGuardFenceSample.bind(receiver) as DelegatesManagerService['admitGuardFenceSample'];
+		return Object.freeze(async (readback: ShellyGuardFenceReadback) => {
+			await admit(property, readback);
+		});
+	}
+
 	/** Internal claim-authorized entrypoint; public generic setters never construct this command. */
 	async processProtectiveCommand(
 		target: Pick<IShellyNgDevicePropertyData, 'device' | 'channel' | 'property'>,
