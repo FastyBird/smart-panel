@@ -294,6 +294,84 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(1);
 		});
 
+		it.each(['detached owner', 'manual runner'].flatMap((mode) => [false, true].map((guard) => ({ mode, guard }))))(
+			'keeps failed guard registration nonremovable: $mode, preexisting guard=$guard',
+			async ({ mode, guard }) => {
+				await database.manager.save(TransactionRecord, [{ name: 'original-one' }, { name: 'original-two' }]);
+				const before = await database.manager.find(TransactionRecord, { order: { id: 'ASC' } });
+				const commits = nativeCommitProbe();
+				let captured: unknown, returned: SqliteNoMutationWindow | undefined;
+				let receipt: SqliteCommitGuardReceipt, failure: { driverError: SqliteCommitGuardRefusedError };
+				let ownerCalls = 0;
+				const exercise = async (manager: QueryRunner['manager']) => {
+					receipt = observeSqliteOuterOutcome(manager);
+					if (guard && mode === 'detached owner') registerSqliteCommitGuard(manager, () => true);
+					const capture = () =>
+						captureSqliteNoMutationWindow(manager, () => {
+							ownerCalls++;
+							return true;
+						});
+					try {
+						returned = mode === 'detached owner' ? outsideSqliteTransaction(database, capture) : capture();
+					} catch (cause: unknown) {
+						captured = cause;
+					}
+					expect(captured).toBeInstanceOf(Error);
+					expect(returned).toBeUndefined();
+					expect(() => captureSqliteNoMutationWindow(manager, () => true)).toThrow('already exists');
+					await manager.query('UPDATE "transaction_record" SET "name"=?', ['changed']);
+					await manager.insert(TransactionRecord, { name: 'must-rollback' });
+				};
+				if (mode === 'manual runner') {
+					const runner = database.createQueryRunner();
+					try {
+						await runner.startTransaction();
+						if (guard) {
+							const observer: EntitySubscriberInterface = {
+								beforeQuery(event) {
+									if (event.query === 'SELECT 17') registerSqliteCommitGuard(event.manager, () => true);
+								},
+							};
+							database.subscribers.push(observer);
+							try {
+								await runner.manager.query('SELECT 17');
+							} finally {
+								database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+							}
+						}
+						await exercise(runner.manager);
+						try {
+							await runner.commitTransaction();
+						} catch (cause: unknown) {
+							failure = cause as typeof failure;
+						}
+					} finally {
+						if (runner.isTransactionActive) await runner.rollbackTransaction();
+						await runner.release();
+					}
+				} else {
+					try {
+						await database.transaction(exercise);
+					} catch (cause: unknown) {
+						failure = cause as typeof failure;
+					}
+				}
+				expect(ownerCalls).toBe(0);
+				expect(failure?.driverError).toBeInstanceOf(SqliteCommitGuardRefusedError);
+				expect(Object.hasOwn(failure.driverError, 'cause')).toBe(true);
+				expect(failure.driverError.cause).toBe(captured);
+				expect(receipt.outcome).toBe('refused');
+				expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
+				expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+				await database.transaction((manager) => {
+					const window = captureSqliteNoMutationWindow(manager, () => true);
+					window.armUnchanged(window.beginReads());
+					return Promise.resolve();
+				});
+				expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(1);
+			},
+		);
+
 		it('keeps a caught dispatch-pin capture error guarded without invoking its accessor', async () => {
 			const commits = nativeCommitProbe();
 			let getterCalls = 0,

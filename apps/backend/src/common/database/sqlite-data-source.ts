@@ -723,7 +723,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			}
 
 			const scope = this.guardedCommit;
-			if (scope?.guards.length && (scope.phase === 'sealed' || scope.phase === 'submitted')) {
+			if ((scope?.guards.length || scope?.noMutation) && (scope.phase === 'sealed' || scope.phase === 'submitted')) {
 				const cause = new Error('SQLite guarded COMMIT is sealed against new candidate queries');
 				if (scope.noMutation) scope.noMutation.anomaly ??= { cause };
 				throw cause;
@@ -776,12 +776,12 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			read: () => false,
 		};
 		scope.noMutation = evidence;
-		this.registerCommitGuard(manager, () => {
-			if (evidence.decision !== 'applied' && evidence.decision !== 'unchanged')
-				throw new SqliteCommitGuardRefusedError(evidence.anomaly?.cause);
-			return true;
-		});
 		try {
+			this.registerCommitGuard(manager, () => {
+				if (evidence.decision !== 'applied' && evidence.decision !== 'unchanged')
+					throw new SqliteCommitGuardRefusedError(evidence.anomaly?.cause);
+				return true;
+			});
 			const context = this.coordinator.captureCommitContext(scope.lease);
 			const source = this.connection,
 				driver = this.driver,
@@ -1264,12 +1264,12 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 							property !== 'all' ||
 							query !== 'COMMIT' ||
 							!commitScope ||
-							(scope.guards.length === 0 && !scope.observed)
+							(scope.guards.length === 0 && !scope.observed && !scope.noMutation)
 						) {
 							const original = window ? (window.noMutation[property] ?? target[property]) : target.all;
 							return original.call(window?.noMutation.native ?? target, query, parameters, callback) as unknown;
 						}
-						if (scope.guards.length === 0) {
+						if (scope.guards.length === 0 && !scope.noMutation) {
 							// Observe the ORIGINAL guardless path. Do not seal or drain it as a guarded commit.
 							scope.outcome = 'unknown';
 							return target.all(query, parameters, function (error, rows) {
