@@ -788,17 +788,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				}),
 			);
 		} catch (cause: unknown) {
-			if (
-				entryScope?.noMutation &&
-				entryScope === this.guardedCommit &&
-				entryScope.phase !== 'committed' &&
-				entryScope.phase !== 'settled' &&
-				!entryScope.noMutation.terminal
-			) {
-				// Entry refusals precede coordinator tracking. Retain their exact first cause even
-				// during pure guards; APPLIED exempts mutation history, never actual query failures.
-				entryScope.childFailure ??= { cause };
-			}
+			this.retainQueryRefusal(entryScope, cause);
 			throw cause;
 		} finally {
 			if (ticket) {
@@ -1078,12 +1068,37 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		return ticket;
 	}
 
-	private validateNoMutationDispatch(scope: GuardedCommit, ticket: NoMutationTicket | undefined, sql: string): void {
+	private retainQueryRefusal(scope: GuardedCommit | undefined, cause: unknown): void {
+		if (
+			scope?.noMutation &&
+			scope === this.guardedCommit &&
+			scope.phase !== 'committed' &&
+			scope.phase !== 'settled' &&
+			!scope.noMutation.terminal
+		) {
+			// Refusals precede tracking or the base driver's error wrapper. Preserve the first
+			// actual failure even during pure guards, without replacing a native origin reservation.
+			scope.childFailure ??= { cause };
+		}
+	}
+
+	private nativeDispatchRefusal(scope: GuardedCommit, cause: unknown): SqliteCommitGuardRefusedError {
+		scope.noMutation.anomaly ??= { cause };
+		const refusal = new SqliteCommitGuardRefusedError(cause);
+		this.retainQueryRefusal(scope, refusal);
+		return refusal;
+	}
+
+	private validateNoMutationDispatch(
+		scope: GuardedCommit,
+		ticket: NoMutationTicket | undefined,
+		sql: string,
+	): SqliteCommitGuardRefusedError | undefined {
 		const evidence = scope.noMutation;
 		if (!evidence || scope.phase === 'committed' || scope.phase === 'settled') return;
 		this.checkNoMutationPins(evidence);
 		if (!ticket || !ticket.active || ticket.scope !== scope || ticket.sql !== sql || !evidence.pending.has(ticket))
-			evidence.anomaly ??= { cause: new Error('SQLite native dispatch lacks its original query ticket') };
+			return this.nativeDispatchRefusal(scope, new Error('SQLite native dispatch lacks its original query ticket'));
 	}
 
 	private blockedQuery(ticket: NoMutationTicket): Promise<never> {
@@ -1448,6 +1463,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async connect(): Promise<NativeSqliteConnection> {
 		const entryScope = this.guardedCommit;
+		const entryWindow =
+			entryScope?.noMutation && entryScope.phase !== 'committed' && entryScope.phase !== 'settled'
+				? entryScope
+				: undefined;
 		const startup = this.startupQuery.getStore();
 		if (entryScope && !entryScope.noMutation) {
 			if (!startup || startup.connected) entryScope.issuedBeforeCapture = true;
@@ -1455,23 +1474,28 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		}
 		const entryTicket = this.noMutationQuery.getStore();
 		const originalConnect = entryTicket !== undefined && !entryTicket.connected;
-		if (entryScope?.noMutation && entryScope.phase !== 'committed' && entryScope.phase !== 'settled') {
-			this.validateNoMutationDispatch(entryScope, entryTicket, entryTicket?.sql ?? '');
+		let entryRefusal: SqliteCommitGuardRefusedError | undefined;
+		if (entryWindow) {
+			entryRefusal = this.validateNoMutationDispatch(entryWindow, entryTicket, entryTicket?.sql ?? '');
 			if (entryTicket) entryTicket.connected = true;
 			if (!originalConnect)
-				entryScope.noMutation.anomaly ??= { cause: new Error('SQLite query ticket cannot lend its native connection') };
+				entryRefusal ??= this.nativeDispatchRefusal(
+					entryWindow,
+					new Error('SQLite query ticket cannot lend its native connection'),
+				);
 		}
 		const connection = (await super.connect()) as NativeSqliteConnection;
 		const commitScope = this.nativeCommitContext.getStore();
 		const activeScope = this.guardedCommit;
 		const window =
-			activeScope?.noMutation && activeScope.phase !== 'committed' && activeScope.phase !== 'settled'
+			entryWindow ??
+			(activeScope?.noMutation && activeScope.phase !== 'committed' && activeScope.phase !== 'settled'
 				? activeScope
-				: undefined;
+				: undefined);
 		const scope = commitScope ?? window;
 		if (!scope) return connection;
 		const ticket = this.noMutationQuery.getStore();
-		if (window) this.validateNoMutationDispatch(window, ticket, ticket?.sql ?? '');
+		if (window) entryRefusal ??= this.validateNoMutationDispatch(window, ticket, ticket?.sql ?? '');
 		const context = this.coordinator.captureCommitContext(scope.lease);
 		const callbackContext = window ? AsyncLocalStorage.snapshot() : undefined;
 		// The facade belongs to this original query ticket. Never modify the shared native object.
@@ -1480,8 +1504,9 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				if (property === 'all' || (window && property === 'run')) {
 					return (query: string, parameters: unknown[], callback: NativeQueryCallback) => {
 						if (window) {
-							this.validateNoMutationDispatch(window, ticket, query);
+							const refusal = entryRefusal ?? this.validateNoMutationDispatch(window, ticket, query);
 							if (
+								refusal ||
 								!originalConnect ||
 								entryScope !== window ||
 								entryTicket !== ticket ||
@@ -1492,9 +1517,14 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 								(ticket.dispatched && !ticket.retry) ||
 								(isSqliteTransactionControl(query) && !ticket.control)
 							) {
-								const cause = new Error('SQLite native dispatch lacks its original single-use ticket');
-								window.noMutation.anomaly ??= { cause };
-								callback.call(target, new SqliteCommitGuardRefusedError(cause));
+								callback.call(
+									target,
+									refusal ??
+										this.nativeDispatchRefusal(
+											window,
+											new Error('SQLite native dispatch lacks its original single-use ticket'),
+										),
+								);
 								return target;
 							}
 							ticket.dispatched = true;

@@ -1440,6 +1440,88 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
 		});
 
+		it.each(
+			['body', 'before-commit', 'guard'].flatMap((boundary) =>
+				['base-query', 'manager-forward'].flatMap((route) =>
+					['END', 'SELECT 1'].map((sql) => ({ boundary, route, sql })),
+				),
+			),
+		)('vetoes APPLIED base refusal: $boundary / $route / $sql', async ({ boundary, route, sql }) => {
+			await database.manager.insert(TransactionRecord, { name: 'original' });
+			const before = await database.manager.find(TransactionRecord, { order: { id: 'ASC' } });
+			const commits = nativeCommitProbe();
+			const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+				run: NativeConnection['all'];
+			};
+			const runs = jest.spyOn(native, 'run');
+			let window: SqliteNoMutationWindow;
+			let issued: Promise<unknown> | undefined;
+			let rejected: { driverError: SqliteCommitGuardRefusedError } | undefined;
+			let failure: { query: string; driverError: SqliteCommitGuardRefusedError } | undefined;
+			let restored = route === 'base-query';
+			const attempt = async (manager: QueryRunner['manager']) => {
+				const runner = manager.queryRunner;
+				const descriptor = Object.getOwnPropertyDescriptor(runner, 'query');
+				if (route === 'manager-forward')
+					Reflect.set(runner, 'query', Reflect.get(SqliteQueryRunner.prototype, 'query'));
+				try {
+					if (route === 'base-query') await SqliteQueryRunner.prototype.query.call(runner, sql);
+					else await manager.query(sql);
+				} catch (cause: unknown) {
+					rejected = cause as typeof rejected;
+				} finally {
+					if (route === 'manager-forward') {
+						if (descriptor) Object.defineProperty(runner, 'query', descriptor);
+						else Reflect.deleteProperty(runner, 'query');
+						restored = true;
+						expect(Object.getOwnPropertyDescriptor(runner, 'query')).toEqual(descriptor);
+					}
+				}
+			};
+			const subscriber: EntitySubscriberInterface = {
+				async beforeTransactionCommit(event) {
+					await attempt(event.manager);
+				},
+			};
+			if (boundary === 'before-commit') database.subscribers.push(subscriber);
+			try {
+				await database.transaction(async (manager) => {
+					window = captureSqliteNoMutationWindow(manager, () => true);
+					await manager.insert(TransactionRecord, { name: 'candidate' });
+					window.applied();
+					if (boundary === 'guard') {
+						registerSqliteCommitGuard(manager, () => {
+							issued = attempt(manager);
+							return true;
+						});
+					} else if (boundary === 'body') await attempt(manager);
+				});
+			} catch (cause: unknown) {
+				failure = cause as typeof failure;
+			} finally {
+				await issued;
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+			}
+			expect(restored).toBe(true);
+			expect(rejected?.driverError).toBeInstanceOf(SqliteCommitGuardRefusedError);
+			expect(failure?.driverError).toBeInstanceOf(SqliteCommitGuardRefusedError);
+			expect(failure.query).toBe('COMMIT');
+			expect(Object.hasOwn(failure.driverError, 'cause')).toBe(true);
+			expect(failure.driverError.cause).toBe(rejected.driverError);
+			expect(window.outcome).toBe('refused');
+			expect(commits.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+			expect([...commits.mock.calls, ...runs.mock.calls].filter(([query]) => query === sql)).toHaveLength(0);
+			expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+			await database.transaction((manager) => {
+				const next = captureSqliteNoMutationWindow(manager, () => true);
+				next.armUnchanged(next.beginReads());
+				return Promise.resolve();
+			});
+			expect(commits.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(1);
+			expect(await database.manager.find(TransactionRecord, { order: { id: 'ASC' } })).toEqual(before);
+		});
+
 		it('refuses foreign checkpoint and expired scope while a new healthy scope remains independent', async () => {
 			let old: SqliteNoMutationWindow, foreign: ReturnType<SqliteNoMutationWindow['beginReads']>;
 			await database.transaction((manager) => {
