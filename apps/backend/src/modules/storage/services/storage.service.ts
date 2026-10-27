@@ -319,7 +319,7 @@ export class StorageService implements OnApplicationShutdown {
 					role,
 					plugin,
 					methods,
-					available: methods.values.isAvailable.call(plugin),
+					available: invokeCreation(methods.values.isAvailable, plugin),
 					points: ownControllerEffectValue(points),
 				};
 			});
@@ -327,12 +327,16 @@ export class StorageService implements OnApplicationShutdown {
 				if (!destination?.available) continue;
 				try {
 					await ControllerPublicationContext.effect(`storage.${destination.role}`, () =>
-						destination.methods.values.writePoints.call(destination.plugin, destination.points),
+						invokeCreation(destination.methods.values.writePoints, destination.plugin, destination.points),
 					);
 				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					if (destination.role === 'fallback') this.logger.warn(`Fallback write failed: ${message}`);
-					else this.logger.error(`Primary write failed: ${message}`);
+					try {
+						const message = error instanceof Error ? error.message : String(error);
+						if (destination.role === 'fallback') this.logger.warn(`Fallback write failed: ${message}`);
+						else this.logger.error(`Primary write failed: ${message}`);
+					} catch {
+						// Optional diagnostics cannot suppress the next original destination.
+					}
 				}
 			}
 			return;
@@ -373,7 +377,7 @@ export class StorageService implements OnApplicationShutdown {
 				return {
 					plugin,
 					methods,
-					available: methods.values.isAvailable.call(plugin) === true,
+					available: invokeCreation(methods.values.isAvailable, plugin) === true,
 					points: ownControllerEffectValue(points),
 				};
 			};
@@ -386,12 +390,12 @@ export class StorageService implements OnApplicationShutdown {
 			const required = primary?.available ? primary : fallback?.available ? fallback : null;
 			if (!required) throw new Error('No storage backend is available');
 			await ControllerPublicationContext.effect('storage.strict.required', () =>
-				required.methods.values.writePoints.call(required.plugin, required.points),
+				invokeCreation(required.methods.values.writePoints, required.plugin, required.points),
 			);
 			if (required === primary && fallback?.available) {
 				try {
 					await ControllerPublicationContext.effect('storage.strict.mirror', () =>
-						fallback.methods.values.writePoints.call(fallback.plugin, fallback.points),
+						invokeCreation(fallback.methods.values.writePoints, fallback.plugin, fallback.points),
 					);
 				} catch (error) {
 					try {

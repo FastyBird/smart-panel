@@ -744,6 +744,125 @@ describe('StorageService', () => {
 		},
 	);
 
+	it.each([
+		['best effort', 'replacement'],
+		['best effort', 'getter'],
+		['strict', 'replacement'],
+		['strict', 'getter'],
+	])('retains direct owned %s callbacks across held-role call metadata %s', async (mode, metadata) => {
+		const storage = propertyFixture().storage;
+		const primary = createPlugin('primary'),
+			fallback = createPlugin('memory'),
+			successor = createPlugin('successor');
+		storage.registerPlugin('primary', primary);
+		storage.registerPlugin('memory', fallback);
+		const first = mode === 'strict' ? primary : fallback;
+		const target = mode === 'strict' ? fallback : primary;
+		const entered = gate(),
+			release = gate();
+		const receivers: StoragePlugin[] = [];
+		first.writePoints.mockImplementation(async (points) => {
+			points[0].fields.numberValue = 99;
+			entered.release();
+			await release.promise;
+		});
+		target.writePoints.mockImplementation(function (this: StoragePlugin) {
+			receivers.push(this);
+			return Promise.resolve();
+		});
+		let eligible = true;
+		const publication = new ControllerPublicationContext(() => eligible);
+		const point = {
+			measurement: 'property_value',
+			fields: { numberValue: 20 },
+			timestamp: new Date('2026-01-01T00:00:00Z'),
+		};
+		const work = publication.run(() =>
+			mode === 'strict' ? storage.writePointsStrict([point]) : storage.writePoints([point]),
+		);
+		const descriptor = Object.getOwnPropertyDescriptor(target.writePoints, 'call');
+		try {
+			await entered.promise;
+			Object.defineProperty(
+				target.writePoints,
+				'call',
+				metadata === 'getter'
+					? {
+							configurable: true,
+							get: () => {
+								throw new Error('late call getter');
+							},
+						}
+					: {
+							configurable: true,
+							value: (_receiver: unknown, points: StoragePoint[]) => successor.writePoints(points),
+						},
+			);
+			point.fields.numberValue = 30;
+			eligible = false;
+			release.release();
+			await expect(work).resolves.toBeUndefined();
+			expect(first.writePoints).toHaveBeenCalledTimes(1);
+			expect(target.writePoints).toHaveBeenCalledTimes(1);
+			expect(receivers).toEqual([target]);
+			expect(target.writePoints).toHaveBeenCalledWith([
+				{ measurement: 'property_value', fields: { numberValue: 20 }, timestamp: new Date('2026-01-01T00:00:00Z') },
+			]);
+			expect(successor.writePoints).not.toHaveBeenCalled();
+			expect(publication.facts()).toEqual([
+				expect.objectContaining({ submitted: true, settled: true, failed: false, retired: true }),
+				expect.objectContaining({ submitted: true, settled: true, failed: false, retired: true }),
+			]);
+		} finally {
+			release.release();
+			await Promise.allSettled([work]);
+			if (descriptor) Object.defineProperty(target.writePoints, 'call', descriptor);
+			else Reflect.deleteProperty(target.writePoints, 'call');
+			await storage.onApplicationShutdown();
+		}
+	});
+
+	it.each(['message getter', 'string conversion', 'logger'])(
+		'keeps the direct owned primary owed despite fallback diagnostic %s failure',
+		async (fault) => {
+			const storage = propertyFixture().storage;
+			const primary = createPlugin('primary'),
+				fallback = createPlugin('memory');
+			storage.registerPlugin('primary', primary);
+			storage.registerPlugin('memory', fallback);
+			const failure = fault === 'string conversion' ? {} : new Error('original fallback error');
+			const formattingFailure = new Error('optional diagnostic failure');
+			if (fault === 'message getter') {
+				Object.defineProperty(failure, 'message', { get: () => failOriginal(formattingFailure) });
+			} else if (fault === 'string conversion') {
+				Object.defineProperty(failure, Symbol.toPrimitive, { value: () => failOriginal(formattingFailure) });
+			}
+			fallback.writePoints.mockRejectedValue(failure);
+			primary.writePoints.mockResolvedValue();
+			const logger = Reflect.get(storage, 'logger') as { warn: (message: string) => void };
+			const observer =
+				fault === 'logger'
+					? jest.spyOn(logger, 'warn').mockImplementation(() => failOriginal(formattingFailure))
+					: undefined;
+			const publication = new ControllerPublicationContext(() => true);
+			const point = { measurement: 'property_value', fields: { numberValue: 20 } };
+			try {
+				await expect(publication.run(() => storage.writePoints([point]))).resolves.toBeUndefined();
+				expect(fallback.writePoints).toHaveBeenCalledTimes(1);
+				expect(primary.writePoints).toHaveBeenCalledTimes(1);
+				expect(primary.writePoints).toHaveBeenCalledWith([point]);
+				const facts = publication.facts();
+				expect(facts[0]).toMatchObject({ name: 'storage.fallback', settled: true, failed: true });
+				expect(Object.hasOwn(facts[0].failure, 'cause')).toBe(true);
+				expect(facts[0].failure.cause).toBe(failure);
+				expect(facts[1]).toMatchObject({ name: 'storage.primary', settled: true, failed: false });
+			} finally {
+				observer?.mockRestore();
+				await storage.onApplicationShutdown();
+			}
+		},
+	);
+
 	it('preserves the original strict mirror callback and immutable bytes after required persistence loses eligibility', async () => {
 		const storage = new StorageService({
 			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
