@@ -384,7 +384,13 @@ export class VirtualThermostatComfortService {
 					checkpoint = nativeWindow.beginReads();
 				},
 			});
-			const predecessors = this.automation?.beginMutation(id);
+			let predecessors: Promise<void> | undefined;
+			let entryFailure: { cause: unknown } | undefined;
+			try {
+				predecessors = this.automation?.beginMutation(id);
+			} catch (cause: unknown) {
+				entryFailure = { cause };
+			}
 			void predecessors?.catch(() => undefined);
 			try {
 				// Independent maintenance may commit and make the comfort intent fence stale.
@@ -395,6 +401,7 @@ export class VirtualThermostatComfortService {
 				throw cause;
 			}
 			try {
+				if (entryFailure) throw entryFailure.cause;
 				if (predecessors !== undefined) await predecessors;
 				await lock.values.runExclusive.call(
 					lock.receiver,

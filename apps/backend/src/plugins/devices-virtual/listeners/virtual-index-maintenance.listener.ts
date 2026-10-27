@@ -117,6 +117,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 	private running = false;
 	private pending = false;
+	private pendingStatusRecompute?: VirtualStatusListener['recompute'];
 	private readonly pendingCompletions: IndexPassCompletion[] = [];
 	private graphRefreshPending = false;
 	private repairTimer: NodeJS.Timeout | null = null;
@@ -270,9 +271,14 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 */
 	async onApplicationBootstrap(): Promise<void> {
 		try {
+			const recompute = this.status.recompute.bind(this.status) as VirtualStatusListener['recompute'];
 			const hydrated = await this.index.rebuild();
 
-			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
+			await this.recomputeStatuses(
+				hydrated.rewiredVirtualDeviceIds,
+				'aggregated from source devices at startup',
+				recompute,
+			);
 
 			await this.reconcileSystemHiddenSources();
 
@@ -300,6 +306,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			const original = new Promise<void>((resolve, reject) => this.pendingCompletions.push({ resolve, reject }));
 			void ControllerPublicationContext.effect('virtual-index.pass', () => original);
 		}
+		if (!this.pending)
+			this.pendingStatusRecompute = this.status.recompute.bind(this.status) as VirtualStatusListener['recompute'];
 		this.pending = true;
 
 		if (this.running) {
@@ -390,9 +398,13 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			do {
 				const settled = await this.deferPastOpenTransaction();
 
+				const recompute =
+					this.pendingStatusRecompute ??
+					(this.status.recompute.bind(this.status) as VirtualStatusListener['recompute']);
+				this.pendingStatusRecompute = undefined;
 				this.pending = false;
 				const completions = this.pendingCompletions.splice(0);
-				if (!completions.length) await this.rebuildPass(settled);
+				if (!completions.length) await this.rebuildPass(settled, recompute);
 				else {
 					let bodyResolve: () => void;
 					let bodyReject: (cause: unknown) => void;
@@ -410,7 +422,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 						ControllerPublicationContext.complete(() =>
 							new ControllerPublicationContext(guard).run(async () => {
 								try {
-									await this.rebuildPass(settled);
+									await this.rebuildPass(settled, recompute);
 									bodyResolve();
 								} catch (cause: unknown) {
 									bodyReject(cause);
@@ -440,7 +452,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		}
 	}
 
-	private async rebuildPass(settled: boolean): Promise<void> {
+	private async rebuildPass(settled: boolean, recompute: VirtualStatusListener['recompute']): Promise<void> {
 		if (settled && this.graphRefreshPending) {
 			// Clear before awaiting: another deletion must retain its own pending refresh and
 			// invalidate this evaluation's generation rather than be acknowledged by this pass.
@@ -472,7 +484,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		// there were none, but because it never looked. Left for the next pass / next structural
 		// event, which is exactly how a failed rebuild already behaved.
 		if (rebuilt) {
-			await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
+			await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds, undefined, recompute);
 
 			for (const virtualDeviceId of rebuilt.rewiredVirtualDeviceIds) {
 				this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
@@ -685,10 +697,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private async recomputeStatuses(
 		virtualDeviceIds: string[],
 		reason = 'aggregated after a source wiring change',
+		recompute = this.status.recompute.bind(this.status) as VirtualStatusListener['recompute'],
 	): Promise<void> {
 		for (const virtualDeviceId of virtualDeviceIds) {
 			try {
-				await this.status.recompute(virtualDeviceId, reason);
+				await recompute(virtualDeviceId, reason);
 			} catch (error) {
 				this.logger.warn(`Failed to recompute connection state for virtual device id=${virtualDeviceId}: ${error}`);
 			}

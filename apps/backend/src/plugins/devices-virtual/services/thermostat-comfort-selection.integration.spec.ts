@@ -438,6 +438,46 @@ describe('manual thermostat selection: reserved native intent', () => {
 		});
 	}, NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS);
 
+	it.each(['definition', 'selection', 'override', 'cancel'] as const)(
+		'preserves original entry settlement after synchronous mutation admission refusal: %s',
+		async (kind) => {
+			await comfort.override(id, await fence(), requestOverride(), 'original');
+			const original = await row();
+			const input = await fence();
+			wall += 1000;
+			monotonic += 1000;
+			const order: string[] = [];
+			const settle = comfort.settle.bind(comfort) as VirtualThermostatComfortService['settle'];
+			jest.spyOn(comfort, 'settle').mockImplementation(async (controller) => {
+				order.push('settle');
+				await settle(controller);
+			});
+			Object.assign(comfort, {
+				automation: {
+					revoke: () => undefined,
+					captureInstalledIntent: () => Promise.resolve(null),
+					beginMutation: () => {
+						order.push('admission');
+						throw JSON.parse('0') as unknown;
+					},
+				},
+			});
+			const request =
+				kind === 'definition'
+					? comfort.configure(id, input, definition())
+					: kind === 'selection'
+						? comfort.select(id, input, 'eco', false)
+						: kind === 'override'
+							? comfort.override(id, input, requestOverride(), 'operator')
+							: comfort.cancel(id, input, original.comfort.temporary_override.id);
+			await expect(request).rejects.toBe(0);
+			expect(order).toEqual(['admission', 'settle']);
+			expect((await row()).comfort.temporary_override).toMatchObject({
+				id: original.comfort.temporary_override.id,
+				status: 'expired',
+			});
+		},
+	);
 	it('rejects a genuinely deleted/recreated UUID with a retained FK-null configuration', async () => {
 		const input = await fence();
 		await database.manager.delete(VirtualDeviceEntity, { id });

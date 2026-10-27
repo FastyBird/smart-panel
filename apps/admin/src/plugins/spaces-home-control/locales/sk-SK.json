@@ -444,6 +444,7 @@
 		"setpoint": "Cieľová teplota (°C)",
 		"delta": "Zmena teploty (°C)",
 		"climateMode": "Režim klímy",
+		"climateUnsupported": "Táto klimatická akcia nie je pre vybrané zariadenia dostupná. Overte predvoľbu, povolenie automatizácie a kompatibilitu zariadení.",
 		"climateAutomation": "Povoľte automatizáciu termostatu a vyberte predvoľbu alebo teplotnú akciu. Náhľad overí ciele bez vykonania zmien. Ručné pozastavenie, vypnutie a ochranné limity zostávajú platné.",
 		"securityUnsupported": "Nastavenia zabezpečenia možno uložiť, ale režimy aktivít ich zatiaľ nedokážu použiť.",
 		"invalid": "Pred uložením skontrolujte nastavenia.",

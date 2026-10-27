@@ -10,6 +10,7 @@ import {
 	ClimateAutomationOwnedRegistration,
 	ClimateAutomationProducer,
 	ClimateAutomationProvider,
+	ClimateAutomationSettlementReceipt,
 	ClimateAutomationSlotFacts,
 	ClimateAutomationSourceFacts,
 } from '../../../modules/devices/contracts/climate-automation.contract';
@@ -35,7 +36,11 @@ import { ActivityDomainResultModel } from '../models/activity-result.model';
 import { ClimateIntentType, ClimateMode, SetpointDelta } from '../spaces-home-control.constants';
 
 import { ClimateIntentService } from './climate-intent.service';
-import { SpaceActivationIdentity, SpaceClimateAutomationPort } from './space-climate-automation.port';
+import {
+	SpaceActivationIdentity,
+	SpaceClimateAutomationPort,
+	SpaceClimateCompletion,
+} from './space-climate-automation.port';
 import { PrimaryClimateDevice } from './space-climate-state.service';
 
 interface ProviderParticipant extends ClimateAutomationCapturedRegistration<ClimateAutomationProvider> {
@@ -44,6 +49,15 @@ interface ProviderParticipant extends ClimateAutomationCapturedRegistration<Clim
 
 /** Expected selection refusal; the original native bundle still rolls back before it is reported. */
 class UnsupportedThermostatSelection extends Error {}
+class SupersededCompletion extends Error {}
+interface ActivityAttempt {
+	receipt?: ClimateAutomationSettlementReceipt;
+	source?: ClimateAutomationSourceFacts;
+	slots?: readonly ClimateAutomationSlotFacts[];
+	provider?: ProviderParticipant;
+	failure?: { cause: unknown };
+	cleanupFailure?: { cause: unknown };
+}
 
 export const SPACE_ACTIVITY_CLIMATE_PRODUCER = 'space-activity:v1';
 interface ActivityEvidence {
@@ -61,6 +75,7 @@ interface ActivityEvidence {
 /** Private activity participant. Registration occurs only in the application lifecycle, never in a constructor. */
 @Injectable()
 export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDestroy, SpaceClimateAutomationPort {
+	private readonly completions = new WeakMap<SpaceActivationIdentity, { attempt?: ActivityAttempt }>();
 	private readonly participants = new Map<ClimateAutomationProvider, ProviderParticipant>();
 	private registration?: ClimateAutomationOwnedRegistration;
 	private removeLifecycle?: () => void;
@@ -259,6 +274,7 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 				'withAutomationWrite',
 				'resolveActionInManager',
 				'settleInstalled',
+				'ownedSettlementVersion',
 				'beginSourceMutation',
 				'retireControllerInManager',
 			]);
@@ -305,6 +321,9 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.READY, 'explicit_operator_climate_selection');
 	}
 	async apply(identity: SpaceActivationIdentity, selection: ActivityClimateModel): Promise<ActivityDomainResultModel> {
+		const attempt: ActivityAttempt = {};
+		const completion = this.completions.get(identity);
+		if (completion && !completion.attempt) completion.attempt = attempt;
 		if (!this.intents) throw new Error('Climate intent unavailable');
 		const initial = await this.database.transaction(async (manager) => ({
 			evidence: await this.readEvidence(manager, identity.spaceId, identity.activationId, false),
@@ -342,12 +361,14 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		if (!targets.length)
 			return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.NO_TARGETS, 'no_compatible_climate_targets');
 		const provider = virtual.length ? this.provider() : null;
+		if (provider && provider.methods.ownedSettlementVersion !== 1)
+			throw new Error('Owned thermostat settlement unavailable');
+		attempt.provider = provider;
 		const originalProducer = this.registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER);
 		if (originalProducer?.implementation !== this.producer) throw new Error('Original activity producer unavailable');
 		const epoch = this.epochs.get(identity.spaceId);
 		let admitted = true;
-		const current = () =>
-			admitted &&
+		const authorityCurrent = () =>
 			originalProducer.isCurrent() &&
 			!this.mutations.has(identity.spaceId) &&
 			!this.mutations.has(configurationKey) &&
@@ -357,6 +378,14 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 			this.epochs.get(identity.spaceId) === epoch &&
 			this.epochs.get(configurationKey) === configurationEpoch &&
 			(!provider || provider.isCurrent());
+		const current = () => admitted && authorityCurrent();
+		const owned = {
+			isCurrent: authorityCurrent,
+			accept: (receipt: ClimateAutomationSettlementReceipt) => {
+				if (attempt.receipt) throw new Error('Original settlement already captured');
+				attempt.receipt = receipt;
+			},
+		};
 		const install = async () => {
 			if (!current() || !(await identity.isCurrent())) throw new Error('Activity superseded');
 			const repeated = await this.database.transaction(async (manager) => {
@@ -380,12 +409,15 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 						canonical(virtual.map((target) => target.device.id).sort())
 				)
 					throw new Error('Original activity candidate retired or changed');
+				attempt.source = { ...source };
 				return slots.map((slot) => ({ ...slot }));
 			});
 			if (repeated) {
+				attempt.slots = repeated;
 				if (
+					!(await provider.methods.settleInstalled.call(provider.implementation, repeated, originalProducer, owned)) ||
 					!current() ||
-					!(await provider.methods.settleInstalled.call(provider.implementation, repeated, originalProducer))
+					!attempt.receipt
 				)
 					throw new Error('Original installation is no longer eligible');
 				return repeated.length;
@@ -446,11 +478,16 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 					);
 				}
 				installed = (await this.ledger.installBundle(manager, scope, source, candidates)).map((slot) => slot.facts);
+				attempt.source = (
+					await this.ledger.readSource(manager, scope, SPACE_ACTIVITY_CLIMATE_PRODUCER, identity.spaceId)
+				).facts;
 				registerSqliteCommitGuard(manager, current);
 			});
+			attempt.slots = installed;
 			if (
+				!(await provider.methods.settleInstalled.call(provider.implementation, installed, originalProducer, owned)) ||
 				!current() ||
-				!(await provider.methods.settleInstalled.call(provider.implementation, installed, originalProducer))
+				!attempt.receipt
 			)
 				throw new Error('Committed climate installation remains inhibited');
 			return installed.length;
@@ -479,9 +516,21 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 				installVirtual: provider ? install : undefined,
 				isCurrent: current,
 				numericDelta: selection.setpoint_delta === undefined ? undefined : Math.abs(selection.setpoint_delta),
+				numericDeltaMode:
+					selection.setpoint_delta === undefined
+						? undefined
+						: selection.mode === ClimateMode.HEAT
+							? ClimateMode.HEAT
+							: selection.mode === ClimateMode.COOL
+								? ClimateMode.COOL
+								: undefined,
 			});
-			return intentDomainResult(ActivityDomain.CLIMATE, result);
+			const outcome = intentDomainResult(ActivityDomain.CLIMATE, result);
+			if (outcome.status !== ActivityDomainStatus.SUCCEEDED) attempt.receipt?.invalidateOriginal();
+			return outcome;
 		} catch (cause: unknown) {
+			attempt.failure = { cause };
+			attempt.receipt?.invalidateOriginal();
 			if (cause instanceof UnsupportedThermostatSelection && current())
 				return domainResult(
 					ActivityDomain.CLIMATE,
@@ -492,6 +541,68 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		} finally {
 			admitted = false;
 		}
+	}
+	/** Bind once before domain dispatch; a repeated apply cannot replace this original completion. */
+	captureCompletion(identity: SpaceActivationIdentity): SpaceClimateCompletion {
+		if (this.completions.has(identity)) throw new Error('Activity completion already captured');
+		const original: { attempt?: ActivityAttempt } = {};
+		this.completions.set(identity, original);
+		return async (results, write) => {
+			const attempt = original.attempt;
+			if (!attempt?.source) return write(this.database.manager);
+			const receipt = attempt.receipt,
+				provider = attempt.provider;
+			if (!receipt || !provider) throw new Error('Original installed completion unavailable');
+			const failed =
+				results.find((result) => result.domain === ActivityDomain.CLIMATE)?.status !== ActivityDomainStatus.SUCCEEDED;
+			const permit = failed ? receipt.beginRetirement() : undefined;
+			if (failed ? !permit : !receipt.isCurrent()) return false;
+			const current = () =>
+				!this.destroyed && provider.isCurrent() && (permit ? permit.isCurrent() : receipt.isCurrent());
+			try {
+				await permit?.predecessors;
+				return await this.structure.runExclusive(async () => {
+					const owner = this.structure.captureExclusiveOwner();
+					let native: ReturnType<typeof observeSqliteOuterOutcome>;
+					const result = await this.database.transaction(async (manager) => {
+						native = observeSqliteOuterOutcome(manager);
+						registerSqliteCommitGuard(manager, () => owner() && current());
+						await manager.query('UPDATE "spaces_module_space_roles" SET "id"="id" WHERE 0');
+						return this.ledger.inAdmittedManager(manager, native, async (scope) => {
+							if (!current()) throw new SupersededCompletion();
+							const source = await this.ledger.readSource(
+								manager,
+								scope,
+								SPACE_ACTIVITY_CLIMATE_PRODUCER,
+								identity.spaceId,
+							);
+							if (canonical(source.facts) !== canonical(attempt.source)) throw new SupersededCompletion();
+							const slots = [];
+							for (const expected of attempt.slots) {
+								const slot = await this.ledger.readSlot(manager, scope, expected.controllerId, false);
+								if (canonical(slot.facts) !== canonical(expected)) throw new SupersededCompletion();
+								slots.push(slot);
+							}
+							if (failed) {
+								await receipt.retireInManager(manager);
+								await this.ledger.revokeSource(manager, scope, source, slots);
+							}
+							if (!(await write(manager))) throw new SupersededCompletion();
+							return true;
+						});
+					});
+					if (native?.outcome !== 'committed') throw new Error('Activity completion acknowledgement unavailable');
+					return result;
+				});
+			} catch (cause: unknown) {
+				if (cause instanceof SupersededCompletion) return false;
+				attempt.cleanupFailure = { cause };
+				if (attempt.failure) throw attempt.failure.cause;
+				throw cause;
+			} finally {
+				permit?.finish();
+			}
+		};
 	}
 	withdraw(identity: SpaceActivationIdentity): Promise<void> {
 		return this.mutate(identity.spaceId, identity.activationId, async () => {});

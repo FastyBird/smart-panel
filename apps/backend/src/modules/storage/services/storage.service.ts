@@ -308,8 +308,13 @@ export class StorageService implements OnApplicationShutdown {
 						fallback.methods.values.writePoints.call(fallback.plugin, fallback.points),
 					);
 				} catch (error) {
-					const err = error as Error;
-					this.logger.warn(`Strict write mirror failed after required persistence: ${err.message}`);
+					try {
+						this.logger.warn(
+							`Strict write mirror failed after required persistence: ${error instanceof Error ? error.message : String(error)}`,
+						);
+					} catch {
+						// Optional diagnostics cannot change required persistence.
+					}
 				}
 			}
 			return;
@@ -452,7 +457,7 @@ export class StorageService implements OnApplicationShutdown {
 				options: input ? { ...input } : undefined,
 			};
 		});
-		let primaryError: unknown;
+		let primaryError: { cause: unknown } | undefined;
 		for (const destination of destinations) {
 			if (!destination?.available) continue;
 			this.throwIfQueryAborted(input?.signal);
@@ -463,13 +468,18 @@ export class StorageService implements OnApplicationShutdown {
 			} catch (error) {
 				if (destination.role === 'fallback') throw error;
 				this.throwIfQueryAborted(input?.signal);
-				primaryError = error;
-				const err = error as Error;
-				this.logger.error(`Primary ${strict ? 'strict ' : ''}query failed, trying fallback: ${err.message}`);
+				primaryError = { cause: error };
+				try {
+					this.logger.error(
+						`Primary ${strict ? 'strict ' : ''}query failed, trying fallback: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				} catch {
+					// Keep the original rejection and available fallback even if logging fails.
+				}
 			}
 		}
 		if (!strict) return [];
-		if (primaryError) throw primaryError;
+		if (primaryError) throw primaryError.cause;
 		throw new Error('No storage backend is available');
 	}
 

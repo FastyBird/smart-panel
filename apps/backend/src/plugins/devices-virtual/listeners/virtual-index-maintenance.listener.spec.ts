@@ -415,6 +415,42 @@ describe('VirtualIndexMaintenanceListener', () => {
 		}
 	});
 
+	it('keeps the admitted status callback through a held rebuild and captures a successor only for the next pass', async () => {
+		const first = createDeferred({ ...NO_CHANGES, rewiredVirtualDeviceIds: ['original-device'] });
+		index.rebuild.mockReturnValueOnce(first.promise).mockResolvedValueOnce({
+			...NO_CHANGES,
+			rewiredVirtualDeviceIds: ['successor-device'],
+		});
+		const original = status.recompute;
+		const successor = jest.fn().mockResolvedValue(undefined);
+		let current = true;
+		const completion = new ControllerPublicationContext(() => current).run(() => {
+			listener.handleStructuralChange();
+			return Promise.resolve();
+		});
+		try {
+			await flushUntil(() => index.rebuild.mock.calls.length === 1);
+			expect(index.rebuild).toHaveBeenCalledTimes(1);
+			status.recompute = successor;
+			current = false;
+			first.resolve();
+			await completion;
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(original).toHaveBeenCalledWith('original-device', 'aggregated after a source wiring change');
+			expect(original.mock.contexts[0]).toBe(status);
+			expect(successor).not.toHaveBeenCalled();
+			await new ControllerPublicationContext(() => true).run(() => {
+				listener.handleStructuralChange();
+				return Promise.resolve();
+			});
+			expect(successor).toHaveBeenCalledTimes(1);
+			expect(successor).toHaveBeenCalledWith('successor-device', 'aggregated after a source wiring change');
+		} finally {
+			first.resolve();
+			await completion;
+			status.recompute = original;
+		}
+	});
 	it('coalesces events that arrive while a rebuild is in flight into exactly one subsequent rebuild', async () => {
 		const first = createDeferred();
 		const second = createDeferred();

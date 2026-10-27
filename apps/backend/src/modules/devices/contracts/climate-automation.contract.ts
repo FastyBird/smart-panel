@@ -63,6 +63,23 @@ export interface ClimateAutomationProducer {
 	) => Promise<ClimateAutomationJson | null>;
 }
 
+/** Private original-attempt custody; no JSON, command or physical authority. */
+export interface ClimateAutomationRetirementPermit {
+	readonly predecessors: Promise<void>;
+	readonly isCurrent: () => boolean;
+	readonly finish: () => void;
+}
+export interface ClimateAutomationSettlementReceipt {
+	readonly isCurrent: () => boolean;
+	readonly invalidateOriginal: () => void;
+	readonly beginRetirement: () => ClimateAutomationRetirementPermit | null;
+	readonly retireInManager: (manager: EntityManager) => Promise<void>;
+}
+export interface ClimateAutomationOwnedSettlement {
+	readonly isCurrent: () => boolean;
+	readonly accept: (receipt: ClimateAutomationSettlementReceipt) => void;
+}
+
 /** Read/validation only. Registration does not establish a controller or grant mutation authority. */
 export interface ClimateAutomationProvider {
 	/** Finite original work, joined before structural/native deletion admission. */
@@ -111,9 +128,11 @@ export interface ClimateAutomationProvider {
 	) => Promise<void>;
 	/** Synchronous revocation and finite original predecessor capture; join outside structural/native ownership. */
 	readonly beginSourceMutation?: (producerKey: string, subjectId: string, generationId: string) => Promise<void>;
+	readonly ownedSettlementVersion?: 1;
 	readonly settleInstalled?: (
 		slots: readonly ClimateAutomationSlotFacts[],
 		producer: ClimateAutomationCapturedRegistration<ClimateAutomationProducer>,
+		owned?: ClimateAutomationOwnedSettlement,
 	) => Promise<boolean>;
 
 	readonly readControllerInManager: (

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { BeforeQueryEvent } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -9,6 +10,7 @@ import {
 	SqliteDataSource,
 	observeSqliteOuterOutcome,
 } from '../../../common/database/sqlite-data-source';
+import { ConfigService as ModuleConfigService } from '../../../modules/config/services/config.service';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -26,6 +28,7 @@ import { ClimateAutomationLedgerService } from '../../../modules/devices/service
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceContributionRegistryService } from '../../../modules/devices/services/device-contribution.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
@@ -36,6 +39,7 @@ import { PropertyValueLockService } from '../../../modules/devices/services/prop
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { DisplayEntity } from '../../../modules/displays/entities/displays.entity';
+import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceLifecycleRegistryService } from '../../../modules/spaces/services/space-lifecycle-registry.service';
 import { SpacesTypeMapperService } from '../../../modules/spaces/services/spaces-type-mapper.service';
@@ -48,6 +52,7 @@ import {
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import {
+	ACTIVITY_STATE_CHANGED,
 	ActivityActivationStatus,
 	ActivityDomain,
 	ActivityDomainStatus,
@@ -62,6 +67,7 @@ import { ClimateContributionPlannerService } from '../../spaces-home-control/ser
 import { ClimateIntentService } from '../../spaces-home-control/services/climate-intent.service';
 import { SpaceActivityConfigService } from '../../spaces-home-control/services/space-activity-config.service';
 import { SpaceActivityDomainsService } from '../../spaces-home-control/services/space-activity-domains.service';
+import { SpaceActivationIdentity } from '../../spaces-home-control/services/space-climate-automation.port';
 import { SpaceClimateAutomationService } from '../../spaces-home-control/services/space-climate-automation.service';
 import { SpaceClimateStateService } from '../../spaces-home-control/services/space-climate-state.service';
 import { SpaceModeService } from '../../spaces-home-control/services/space-mode.service';
@@ -115,6 +121,8 @@ describe('configured activity through the native thermostat participant', () => 
 	let graph: VirtualDependencyGraphService;
 	let events: EventEmitter2;
 	let lifecycle: SpaceLifecycleRegistryService;
+	let intentSpaces: SpacesService;
+	let ordinaryStorage: StorageService;
 	let roomId: string;
 	let controllerId: string;
 	beforeEach(async () => {
@@ -154,15 +162,35 @@ describe('configured activity through the native thermostat participant', () => 
 		configuration.onModuleInit();
 		comfort = new VirtualThermostatComfortService(database, structure, graph, claims, events, provider);
 		metadata = new PropertyMetadataService(database);
-		const deviceGraphs = new DeviceCommandGraphService(metadata, {} as never, {} as never);
+		ordinaryStorage = new StorageService({ getModuleConfig: () => ({}) } as unknown as ModuleConfigService);
+		const connectivity = new DeviceConnectionStateService(ordinaryStorage);
+		const values = new PropertyValueService(
+			ordinaryStorage,
+			new PropertyValueSourceRegistryService(),
+			new PropertyValueLockService(database),
+		);
+		const deviceGraphs = new DeviceCommandGraphService(metadata, values, connectivity);
+		intentSpaces = new SpacesService(
+			database.getRepository(SpaceEntity),
+			database.getRepository(DeviceEntity),
+			database.getRepository(DisplayEntity),
+			{} as never,
+			{} as never,
+			new PlatformRegistryService(),
+			connectivity,
+			database,
+			events,
+			new SpacesTypeMapperService(),
+		);
+		const timeseries = new IntentTimeseriesService(ordinaryStorage);
 		reads = new SpaceStateReadService(database, metadata, deviceGraphs, new ConfigService());
 		const climate = new SpaceClimateStateService(
 			reads,
-			{} as never,
+			timeseries,
 			new ClimateContributionPlannerService(new DeviceContributionRegistryService()),
 		);
 		const intents = new ClimateIntentService(
-			{} as never,
+			intentSpaces,
 			{} as never,
 			{} as never,
 			climate,
@@ -251,6 +279,7 @@ describe('configured activity through the native thermostat participant', () => 
 		registry?.onModuleDestroy();
 		reads?.onModuleDestroy();
 		metadata?.onModuleDestroy();
+		await ordinaryStorage?.onApplicationShutdown();
 		if (database?.isInitialized) await database.destroy();
 	});
 	it('reserves native schema installation before reads and rolls back a failed commit callback before fresh bootstrap', async () => {
@@ -884,6 +913,542 @@ describe('configured activity through the native thermostat participant', () => 
 			}
 		},
 	);
+	it('atomically retires the original native installation after actual mixed-target offline climate failure', async () => {
+		const physical = randomUUID();
+		await database.manager.insert(DeviceEntity, {
+			id: physical,
+			name: 'Offline physical thermostat',
+			roomId,
+			category: DeviceCategory.THERMOSTAT,
+			enabled: true,
+			hidden: false,
+		});
+		await database.manager.insert(ChannelEntity, {
+			id: randomUUID(),
+			device: physical,
+			name: 'Heater',
+			identifier: 'heater',
+			category: ChannelCategory.HEATER,
+		} as never);
+		const authored = await author({ setpoint: 19 });
+		const find = intentSpaces.findOne.bind(intentSpaces) as SpacesService['findOne'];
+		let installedBeforePhysical = false;
+		jest.spyOn(intentSpaces, 'findOne').mockImplementation(async (...args) => {
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			expect(slot.state).toBe('LIVE');
+			expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'automation', heating_setpoint: 19 });
+			installedBeforePhysical = true;
+			return find(...args);
+		});
+		const state = await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		expect(installedBeforePhysical).toBe(true);
+		expect(state.activityStatus).toBe(ActivityActivationStatus.FAILED);
+		expect(state.activityResults).toContainEqual(
+			expect.objectContaining({
+				domain: ActivityDomain.CLIMATE,
+				status: ActivityDomainStatus.FAILED,
+				reason: 'affected=1; failed=0; offline=1',
+			}),
+		);
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		expect(slot.state).toBe('RETIRED');
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: slot.generationId }),
+		).toMatchObject({ state: 'REVOKED', isCurrent: true });
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		expect(config.comfort.automation_baseline).toBeNull();
+		expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+		provider.onModuleDestroy();
+		provider = new VirtualThermostatAutomationService(database, registry, ledger, graph, structure);
+		provider.onModuleInit();
+		const dispose = provider.registerRuntime(async () => {});
+		try {
+			await provider.restoreCurrentInstallations();
+			expect((await provider.resolve(database.manager, config)).baseline).toBeNull();
+		} finally {
+			dispose();
+		}
+	});
+
+	it.each(['pending', 'installed', 'pending-manual', 'pending-replaced'] as const)(
+		'original completion preserves same-generation %s admission authority',
+		async (phase) => {
+			const authored = await author({ thermostat_preset: 'eco' });
+			const activationId = randomUUID();
+			await database.manager.insert(SpaceActivityStateEntity, {
+				spaceId: roomId,
+				activationId,
+				selectedActivityMode: ActivityMode.WORK,
+				selectedActivityRevision: authored.activityRevision,
+				activityStatus: ActivityActivationStatus.ACTIVATING,
+				activityActor: 'operator',
+				activityResults: [],
+			});
+			const identity = {
+				spaceId: roomId,
+				activationId,
+				configurationRevision: authored.activityRevision,
+				isCurrent: () => Promise.resolve(true),
+			};
+			const complete = producer.captureCompletion(identity);
+			let rejectOriginal!: (cause: Error) => void, entered!: () => void, releaseRead!: () => void, reading!: () => void;
+			const held = new Promise<void>((_resolve, reject) => {
+				rejectOriginal = reject;
+			});
+			const requested = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			const readGate = new Promise<void>((resolve) => {
+				releaseRead = resolve;
+			});
+			const readEntered = new Promise<void>((resolve) => {
+				reading = resolve;
+			});
+			let requests = 0,
+				holdRead = false;
+			const stop = provider.registerRuntime(
+				async () => {},
+				() => {
+					if (++requests === 1) {
+						entered();
+						return held;
+					}
+					return Promise.resolve();
+				},
+			);
+			const originalRead = provider.readController.bind(
+				provider,
+			) as VirtualThermostatAutomationService['readController'];
+			jest.spyOn(provider, 'readController').mockImplementation(async (...args) => {
+				if (holdRead) {
+					holdRead = false;
+					reading();
+					await readGate;
+				}
+				return originalRead(...args);
+			});
+			const original = producer.apply(identity, authored.activityConfiguration.climate);
+			const rejection = expect(original).rejects.toThrow('Committed climate installation remains inhibited');
+			let successor: ReturnType<SpaceClimateAutomationService['apply']> | undefined;
+			let replacement: ReturnType<SpaceClimateAutomationService['apply']> | undefined;
+			let successorRejection: Promise<void> | undefined;
+			try {
+				await requested;
+				const before = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+				holdRead = phase !== 'installed';
+				successor = producer.apply({ ...identity }, authored.activityConfiguration.climate);
+				if (phase !== 'installed') await readEntered;
+				else expect((await successor).status).toBe(ActivityDomainStatus.SUCCEEDED);
+				rejectOriginal(new Error('Original request failed after B admission'));
+				await rejection;
+				const write = jest.fn(() => Promise.resolve(true));
+				expect(
+					await complete(
+						[
+							{
+								domain: ActivityDomain.CLIMATE,
+								status: ActivityDomainStatus.FAILED,
+								reason: 'original attempt failed',
+							},
+						],
+						write,
+					),
+				).toBe(false);
+				expect(write).not.toHaveBeenCalled();
+				expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(before);
+				expect(
+					await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: before.generationId }),
+				).toMatchObject({ state: 'FINALIZED_LIVE' });
+				if (phase === 'pending-manual') await provider.beginMutation(controllerId);
+				if (phase === 'pending-replaced') {
+					replacement = producer.apply({ ...identity }, authored.activityConfiguration.climate);
+					expect((await replacement).status).toBe(ActivityDomainStatus.SUCCEEDED);
+				}
+				if (phase === 'pending-manual' || phase === 'pending-replaced')
+					successorRejection = expect(successor).rejects.toThrow('Original installation is no longer eligible');
+				releaseRead();
+				if (successorRejection !== undefined) {
+					await successorRejection;
+					if (phase === 'pending-manual') {
+						const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+						expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+						expect(requests).toBe(1);
+					} else {
+						expect((await comfort.get(controllerId)).effective).toMatchObject({
+							source: 'automation',
+							heating_setpoint: 17,
+						});
+						expect(requests).toBe(2);
+					}
+				} else {
+					expect((await successor).status).toBe(ActivityDomainStatus.SUCCEEDED);
+					expect((await comfort.get(controllerId)).effective).toMatchObject({
+						source: 'automation',
+						heating_setpoint: 17,
+					});
+					expect(requests).toBe(2);
+				}
+			} finally {
+				releaseRead();
+				rejectOriginal(new Error('Owned fixture cleanup'));
+				await Promise.allSettled([
+					original,
+					rejection,
+					...(successor !== undefined ? [successor] : []),
+					...(replacement !== undefined ? [replacement] : []),
+					...(successorRejection !== undefined ? [successorRejection] : []),
+				]);
+				stop();
+			}
+		},
+	);
+	it('original completion reserves retirement before joining predecessors and refuses later same-generation admission', async () => {
+		const authored = await author({ thermostat_preset: 'eco' });
+		const activationId = randomUUID();
+		await database.manager.insert(SpaceActivityStateEntity, {
+			spaceId: roomId,
+			activationId,
+			selectedActivityMode: ActivityMode.WORK,
+			selectedActivityRevision: authored.activityRevision,
+			activityStatus: ActivityActivationStatus.ACTIVATING,
+			activityActor: 'operator',
+			activityResults: [],
+		});
+		const identity = {
+			spaceId: roomId,
+			activationId,
+			configurationRevision: authored.activityRevision,
+			isCurrent: () => Promise.resolve(true),
+		};
+		let release!: () => void, captured!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const entered = new Promise<void>((resolve) => {
+			captured = resolve;
+		});
+		const stop = provider.registerRuntime(() => {
+			captured();
+			return gate;
+		});
+		const complete = producer.captureCompletion(identity);
+		expect((await producer.apply(identity, authored.activityConfiguration.climate)).status).toBe(
+			ActivityDomainStatus.SUCCEEDED,
+		);
+		let writes = 0;
+		const completion = complete(
+			[{ domain: ActivityDomain.CLIMATE, status: ActivityDomainStatus.FAILED, reason: 'original attempt failed' }],
+			async (manager) => {
+				writes++;
+				const result = await manager.update(
+					SpaceActivityStateEntity,
+					{ spaceId: roomId, activationId, activityStatus: ActivityActivationStatus.ACTIVATING },
+					{ activityStatus: ActivityActivationStatus.FAILED },
+				);
+				return result.affected === 1;
+			},
+		);
+		try {
+			await entered;
+			expect(writes).toBe(0);
+			await expect(producer.apply({ ...identity }, authored.activityConfiguration.climate)).rejects.toThrow(
+				'Original installation is no longer eligible',
+			);
+			expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+			release();
+			expect(await completion).toBe(true);
+			expect(writes).toBe(1);
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+				state: 'RETIRED',
+			});
+			expect(await database.manager.findOneByOrFail(SpaceActivityStateEntity, { spaceId: roomId })).toMatchObject({
+				activityStatus: ActivityActivationStatus.FAILED,
+			});
+		} finally {
+			release();
+			await Promise.allSettled([completion]);
+			stop();
+		}
+	});
+	it.each([0, undefined])(
+		'original mixed-target completion rolls back all native rows on commit refusal %s',
+		async (cause) => {
+			const physical = randomUUID();
+			await database.manager.insert(DeviceEntity, {
+				id: physical,
+				name: 'Offline physical thermostat',
+				roomId,
+				category: DeviceCategory.THERMOSTAT,
+				enabled: true,
+				hidden: false,
+			});
+			await database.manager.insert(ChannelEntity, {
+				id: randomUUID(),
+				device: physical,
+				name: 'Heater',
+				identifier: 'heater',
+				category: ChannelCategory.HEATER,
+			} as never);
+			const authored = await author({ setpoint: 19 });
+			const rows = () =>
+				Promise.all([
+					database.manager.query<unknown[]>(
+						'SELECT * FROM devices_module_climate_automation_slots ORDER BY controllerId',
+					),
+					database.manager.query<unknown[]>(
+						'SELECT * FROM devices_module_climate_automation_sources ORDER BY generationId',
+					),
+					database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_configs ORDER BY controllerId'),
+					database.manager.query<unknown[]>('SELECT * FROM spaces_module_space_roles ORDER BY id'),
+				]);
+			let before: Awaited<ReturnType<typeof rows>> | undefined,
+				armed = false,
+				refusals = 0;
+			const find = intentSpaces.findOne.bind(intentSpaces) as SpacesService['findOne'];
+			jest.spyOn(intentSpaces, 'findOne').mockImplementation(async (...args) => {
+				before = await rows();
+				armed = true;
+				return find(...args);
+			});
+			const observer = {
+				beforeTransactionCommit() {
+					if (armed) {
+						refusals++;
+						throw cause as unknown;
+					}
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				await expect(modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator')).rejects.toBe(
+					cause,
+				);
+				expect(refusals).toBe(1);
+				armed = false;
+				expect(before).toBeDefined();
+				expect(await rows()).toEqual(before);
+				expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+			} finally {
+				armed = false;
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
+			expect(await database.manager.findOneByOrFail(SpaceActivityStateEntity, { spaceId: roomId })).toMatchObject({
+				activityStatus: ActivityActivationStatus.ACTIVATING,
+			});
+			await modes.onApplicationBootstrap();
+			expect(await database.manager.findOneByOrFail(SpaceActivityStateEntity, { spaceId: roomId })).toMatchObject({
+				activityStatus: ActivityActivationStatus.INTERRUPTED,
+			});
+		},
+	);
+
+	const mixedOffline = async () => {
+		const physical = randomUUID();
+		await database.manager.insert(DeviceEntity, {
+			id: physical,
+			name: 'Completion physical target',
+			roomId,
+			category: DeviceCategory.THERMOSTAT,
+			enabled: true,
+			hidden: false,
+		});
+		await database.manager.insert(ChannelEntity, {
+			id: randomUUID(),
+			device: physical,
+			name: 'Heater',
+			identifier: 'heater',
+			category: ChannelCategory.HEATER,
+		} as never);
+		return author({ setpoint: 19 });
+	};
+	const completionRows = () =>
+		Promise.all([
+			database.manager.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots ORDER BY controllerId'),
+			database.manager.query<unknown[]>(
+				'SELECT * FROM devices_module_climate_automation_sources ORDER BY generationId',
+			),
+			database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_configs ORDER BY controllerId'),
+			database.manager.query<unknown[]>('SELECT * FROM spaces_module_space_roles ORDER BY id'),
+		]);
+
+	it('actual SpaceMode failed physical result reserves retirement before later repeated admission', async () => {
+		const authored = await mixedOffline();
+		let release!: () => void, captured!: () => void, identityA: SpaceActivationIdentity | undefined;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const entered = new Promise<void>((resolve) => {
+			captured = resolve;
+		});
+		const originalCapture = producer.captureCompletion.bind(
+			producer,
+		) as SpaceClimateAutomationService['captureCompletion'];
+		jest.spyOn(producer, 'captureCompletion').mockImplementation((identity) => {
+			identityA = identity;
+			return originalCapture(identity);
+		});
+		const predecessor = jest.fn(() => {
+			captured();
+			return gate;
+		});
+		const dispose = provider.registerRuntime(predecessor);
+		const published = jest.fn();
+		events.on(ACTIVITY_STATE_CHANGED, published);
+		const original = modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		try {
+			await Promise.race([
+				entered,
+				original.then(() => {
+					throw new Error('Retirement did not capture original predecessor');
+				}),
+			]);
+			expect(identityA).toBeDefined();
+			expect(predecessor).toHaveBeenCalledTimes(1);
+			await expect(producer.apply({ ...identityA }, authored.activityConfiguration.climate)).rejects.toThrow(
+				'Original installation is no longer eligible',
+			);
+			expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+			expect(published).toHaveBeenCalledTimes(1);
+			release();
+			const result = await original;
+			expect(result.activityStatus).toBe(ActivityActivationStatus.FAILED);
+			expect(result.activityResults).toContainEqual(
+				expect.objectContaining({
+					domain: ActivityDomain.CLIMATE,
+					status: ActivityDomainStatus.FAILED,
+					reason: 'affected=1; failed=0; offline=1',
+				}),
+			);
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+				state: 'RETIRED',
+			});
+			expect(published).toHaveBeenCalledTimes(2);
+		} finally {
+			release();
+			await Promise.allSettled([original]);
+			events.off(ACTIVITY_STATE_CHANGED, published);
+			dispose();
+		}
+	});
+	it('actual SpaceMode zero-row completion rolls back original retirement without publishing failure', async () => {
+		const authored = await mixedOffline();
+		await database.query(`CREATE TRIGGER completion_zero BEFORE UPDATE ON spaces_module_space_roles
+			WHEN OLD.type='activity_state' AND OLD.activityStatus='activating' AND NEW.activityStatus='failed'
+			BEGIN SELECT RAISE(IGNORE); END`);
+		const find = intentSpaces.findOne.bind(intentSpaces) as SpacesService['findOne'];
+		let before: Awaited<ReturnType<typeof completionRows>> | undefined;
+		jest.spyOn(intentSpaces, 'findOne').mockImplementation(async (...args) => {
+			before = await completionRows();
+			return find(...args);
+		});
+		const published = jest.fn();
+		events.on(ACTIVITY_STATE_CHANGED, published);
+		try {
+			const state = await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			expect(before).toBeDefined();
+			expect(await completionRows()).toEqual(before);
+			expect(state.activityStatus).toBe(ActivityActivationStatus.ACTIVATING);
+			expect(state.activityResults).toEqual([]);
+			expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+			expect(published).toHaveBeenCalledTimes(1);
+		} finally {
+			events.off(ACTIVITY_STATE_CHANGED, published);
+			await database.query('DROP TRIGGER completion_zero');
+		}
+	});
+	it.each([0, undefined])(
+		'original physical-leg failure %s remains primary over rejected predecessor cleanup',
+		async (primary) => {
+			const authored = await mixedOffline();
+			const secondary = new Error('original predecessor cleanup failed');
+			const capture = jest.fn(() => Promise.reject(secondary));
+			const dispose = provider.registerRuntime(capture);
+			let before: Awaited<ReturnType<typeof completionRows>> | undefined;
+			jest.spyOn(intentSpaces, 'findOne').mockImplementation(async () => {
+				before = await completionRows();
+				expect((await comfort.get(controllerId)).effective.source).toBe('automation');
+				throw primary as unknown;
+			});
+			const published = jest.fn();
+			events.on(ACTIVITY_STATE_CHANGED, published);
+			try {
+				await expect(modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator')).rejects.toBe(
+					primary,
+				);
+				expect(capture).toHaveBeenCalledTimes(1);
+				expect(before).toBeDefined();
+				expect(await completionRows()).toEqual(before);
+				expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+				expect(published).toHaveBeenCalledTimes(1);
+			} finally {
+				events.off(ACTIVITY_STATE_CHANGED, published);
+				dispose();
+			}
+		},
+	);
+	it('actual SpaceMode completion retains UNKNOWN after native commit with missing acknowledgement', async () => {
+		const authored = await mixedOffline(),
+			primary = new Error('completion native ACK unavailable');
+		let armed = false,
+			commits = 0,
+			acknowledgements = 0,
+			receipt: SqliteCommitGuardReceipt | undefined;
+		const observer = {
+			beforeQuery(event: BeforeQueryEvent<unknown>) {
+				if (
+					event.query.startsWith('UPDATE "spaces_module_space_roles"') &&
+					event.parameters?.includes(ActivityActivationStatus.FAILED)
+				) {
+					receipt = observeSqliteOuterOutcome(event.manager);
+					armed = true;
+				}
+			},
+		};
+		const native = (database.driver as unknown as { databaseConnection: { all: (...args: unknown[]) => unknown } })
+			.databaseConnection;
+		const all = native.all;
+		const originalCallbackErrors: unknown[] = [];
+		const forwarding = jest.spyOn(native, 'all').mockImplementation(function (this: unknown, ...args: unknown[]) {
+			if (!armed || args[0] !== 'COMMIT') return Reflect.apply(all, this, args);
+			commits++;
+			armed = false;
+			const original = args[args.length - 1] as (...values: unknown[]) => unknown;
+			args[args.length - 1] = function (this: unknown, ...values: unknown[]) {
+				acknowledgements++;
+				originalCallbackErrors.push(values[0]);
+				values[0] = primary;
+				return Reflect.apply(original, this, values);
+			};
+			return Reflect.apply(all, this, args);
+		});
+		database.subscribers.push(observer);
+		const published = jest.fn();
+		events.on(ACTIVITY_STATE_CHANGED, published);
+		try {
+			await expect(
+				modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator'),
+			).rejects.toMatchObject({ driverError: primary });
+			expect(commits).toBe(1);
+			expect(acknowledgements).toBe(1);
+			expect(originalCallbackErrors).toEqual([null]);
+			expect(receipt?.outcome).toBe('unknown');
+			expect(await database.manager.findOneByOrFail(SpaceActivityStateEntity, { spaceId: roomId })).toMatchObject({
+				activityStatus: ActivityActivationStatus.FAILED,
+			});
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			expect(slot.state).toBe('RETIRED');
+			expect(
+				await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: slot.generationId }),
+			).toMatchObject({ state: 'REVOKED' });
+			expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+			expect(receipt?.outcome).toBe('unknown');
+			expect(published).toHaveBeenCalledTimes(1);
+		} finally {
+			forwarding.mockRestore();
+			events.off(ACTIVITY_STATE_CHANGED, published);
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+	});
 	it('refuses a mixed physical preset target without leaving an ineligible LIVE virtual source', async () => {
 		const physical = randomUUID();
 		await database.manager.insert(DeviceEntity, {
@@ -937,6 +1502,73 @@ describe('configured activity through the native thermostat participant', () => 
 		expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'automation', heating_setpoint: 17 });
 		await configs.reset(roomId, ActivityMode.RELAX, 1);
 		expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'automation', heating_setpoint: 17 });
+	});
+	it.each([0, undefined])('withdraws earlier bundle admissions after a later activation throws %s', async (cause) => {
+		const second = randomUUID();
+		await database.manager.insert(VirtualDeviceEntity, {
+			id: second,
+			name: 'Second thermostat',
+			roomId,
+			category: DeviceCategory.THERMOSTAT,
+			enabled: true,
+			hidden: false,
+			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
+		});
+		await database.manager.insert(VirtualChannelEntity, {
+			id: randomUUID(),
+			device: second,
+			name: 'Heater',
+			identifier: 'heater',
+			category: ChannelCategory.HEATER,
+		});
+		const firstConfig = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		await database.manager.insert(VirtualThermostatConfigEntity, {
+			...firstConfig,
+			controllerId: second,
+			ownerDeviceId: second,
+		});
+		const authored = await author({ thermostat_preset: 'eco' });
+		const activationId = randomUUID();
+		await database.manager.insert(SpaceActivityStateEntity, {
+			spaceId: roomId,
+			activationId,
+			selectedActivityMode: ActivityMode.WORK,
+			selectedActivityRevision: authored.activityRevision,
+			activityStatus: ActivityActivationStatus.ACTIVATING,
+			activityActor: 'operator',
+			activityResults: [],
+		});
+		const original = provider.activateLocal.bind(provider) as VirtualThermostatAutomationService['activateLocal'];
+		const admitted: string[] = [];
+		jest.spyOn(provider, 'activateLocal').mockImplementation(async (...args) => {
+			if (admitted.length) throw cause as unknown;
+			const result = await original(...args);
+			if (result) admitted.push(args[1].controllerId);
+			return result;
+		});
+		await expect(
+			producer.apply(
+				{
+					spaceId: roomId,
+					activationId,
+					configurationRevision: authored.activityRevision,
+					isCurrent: () => Promise.resolve(true),
+				},
+				authored.activityConfiguration.climate,
+			),
+		).rejects.toBe(cause);
+		expect(admitted).toHaveLength(1);
+		for (const id of [controllerId, second]) {
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id });
+			expect(slot.state).toBe('LIVE');
+			expect(
+				await provider.resolve(
+					database.manager,
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }),
+				),
+			).toMatchObject({ baseline: null, manualHold: false });
+			expect((await comfort.get(id)).effective.source).not.toBe('automation');
+		}
 	});
 	it('late failure of an original runtime request cannot retire a newer exact local admission', async () => {
 		const authored = await author({ thermostat_preset: 'eco' });
@@ -1662,24 +2294,50 @@ describe('configured activity through the native thermostat participant', () => 
 		const authored = await author({ thermostat_preset: 'eco' });
 		configuration.onModuleDestroy();
 		const afterCommit = configuration.afterCommit.bind(configuration) as VirtualThermostatConfigService['afterCommit'];
-		const dispose = provider.registerPublication(async (id) => {
+		let foreign: ReturnType<ClimateAutomationRegistryService['registerProducerOwned']> | undefined;
+		const published = jest.fn();
+		const publication = jest.fn(async (id: string) => {
 			await afterCommit(id);
 			producer.onModuleDestroy();
-			registry.registerProducerOwned('space-activity:v1', {
+			foreign = registry.registerProducerOwned('space-activity:v1', {
 				validateInManager: (_manager, source) => Promise.resolve(JSON.parse(source.evidence) as never),
 			});
 		});
+		const dispose = provider.registerPublication(publication);
+		events.on(ACTIVITY_STATE_CHANGED, published);
 		try {
 			const state = await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
-			expect(state.activityResults).toContainEqual(
-				expect.objectContaining({ domain: 'climate', status: ActivityDomainStatus.FAILED }),
-			);
-			expect(await database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
-				state: 'LIVE',
+			expect(state).toMatchObject({
+				activityStatus: ActivityActivationStatus.ACTIVATING,
+				activityResults: [],
 			});
+			expect(await database.manager.findOneByOrFail(SpaceActivityStateEntity, { spaceId: roomId })).toEqual(state);
+			const retainedSlot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			expect(retainedSlot).toMatchObject({ state: 'LIVE' });
 			expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'manual', heating_setpoint: 20 });
+			expect(publication).toHaveBeenCalledTimes(1);
+			expect(published).toHaveBeenCalledTimes(1);
+			expect(published).toHaveBeenLastCalledWith({
+				space_id: roomId,
+				activation_id: state.activationId,
+				configuration_revision: authored.activityRevision,
+			});
+			await modes.onApplicationBootstrap();
+			expect(await database.manager.findOneByOrFail(SpaceActivityStateEntity, { spaceId: roomId })).toMatchObject({
+				activationId: state.activationId,
+				activityStatus: ActivityActivationStatus.INTERRUPTED,
+				activityResults: [],
+			});
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(
+				retainedSlot,
+			);
+			expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'manual', heating_setpoint: 20 });
+			expect(publication).toHaveBeenCalledTimes(1);
+			expect(published).toHaveBeenCalledTimes(1);
 		} finally {
+			events.off(ACTIVITY_STATE_CHANGED, published);
 			dispose();
+			foreign?.dispose();
 		}
 	});
 

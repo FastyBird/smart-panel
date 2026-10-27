@@ -4522,7 +4522,7 @@ describe('virtual thermostat durable runtime', () => {
 		expect(sentTargets.some((entry) => entry.on)).toBe(false);
 	});
 
-	it.each(['held acknowledgement', 'unknown acknowledgement'] as const)(
+	it.each(['held acknowledgement', 'unknown acknowledgement', 'callback replacement', 'callback deletion'] as const)(
 		'waits for a known SQLite commit acknowledgement before retirement: %s',
 		async (mode) => {
 			await settle();
@@ -4545,7 +4545,12 @@ describe('virtual thermostat durable runtime', () => {
 			});
 			await database.manager.insert(VirtualThermostatCommandEntity, command);
 			const retire = jest.fn<void, [readonly string[]]>();
-			proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+			let originalProof: { retireConfirmedCommandIds?: (ids: readonly string[]) => void };
+			const successor = jest.fn();
+			proofMutation = (proof) => {
+				originalProof = { ...proof, retireConfirmedCommandIds: retire };
+				return originalProof as typeof proof;
+			};
 			let enter: () => void = () => undefined;
 			let rejectObservation: (error: unknown) => void = () => undefined;
 			let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
@@ -4580,27 +4585,34 @@ describe('virtual thermostat durable runtime', () => {
 				load(id: string): Promise<unknown>;
 				reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
 			};
+			let outcome: Promise<unknown> | undefined;
 			try {
 				const pending = internal.reconcile(await internal.load(controllerId), claim);
 				// Attach both outcomes before releasing the controlled commit gate.
-				const outcome: Promise<unknown> = pending.then<unknown, unknown>(
+				outcome = pending.then<unknown, unknown>(
 					() => null,
 					(error: unknown) => error,
 				);
 				await entered;
 				expect(retire).not.toHaveBeenCalled();
 				expect(committedStatus).toBe('confirmed');
+				if (mode === 'callback replacement') originalProof.retireConfirmedCommandIds = successor;
+				if (mode === 'callback deletion') delete originalProof.retireConfirmedCommandIds;
 				release();
 				const error = await outcome;
-				if (mode === 'held acknowledgement') {
+				if (mode !== 'unknown acknowledgement') {
 					expect(error).toBeNull();
 					expect(retire).toHaveBeenCalledWith([command.id]);
+					expect(retire).toHaveBeenCalledTimes(1);
+					expect(retire.mock.contexts[0]).toBe(originalProof);
 				} else {
 					expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
 					expect(retire).not.toHaveBeenCalled();
 				}
+				expect(successor).not.toHaveBeenCalled();
 			} finally {
 				release();
+				await outcome;
 				database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
 			}
 		},

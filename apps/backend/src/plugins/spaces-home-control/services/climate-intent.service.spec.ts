@@ -20,6 +20,7 @@ import {
 	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
+	SetpointDelta,
 } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
@@ -214,6 +215,58 @@ describe('ClimateIntentService', () => {
 		expect(climateStateService.getPrimaryClimateDevicesInSpace).not.toHaveBeenCalled();
 	});
 
+	it.each([ClimateMode.HEAT, ClimateMode.COOL, undefined] as const)(
+		'keeps activity delta branch %s separate from ordinary dual-branch manual delta',
+		async (mode) => {
+			const device = createMockPrimaryClimateDevice({
+				coolerChannel: { id: uuid() } as ChannelEntity,
+				coolerOnProperty: { id: uuid() } as ChannelPropertyEntity,
+				coolerSetpointProperty: { id: uuid() } as ChannelPropertyEntity,
+				supportsCooling: true,
+			});
+			climateStateService.getClimateState.mockResolvedValue(
+				createMockClimateState({
+					mode: ClimateMode.AUTO,
+					heatingSetpoint: 20,
+					coolingSetpoint: 24,
+					supportsCooling: true,
+				}),
+			);
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
+			for (const delta of [-1, 0, 1]) {
+				mockPlatform.prepareBatch.mockClear();
+				await service.executeClimateIntent(
+					mockSpaceId,
+					{ type: ClimateIntentType.SETPOINT_DELTA, delta: SetpointDelta.SMALL, increase: delta >= 0 },
+					mode === undefined
+						? undefined
+						: {
+								targets: [device],
+								isCurrent: () => true,
+								numericDelta: Math.abs(delta),
+								numericDeltaMode: mode,
+							},
+				);
+				const setpoints = mockPlatform.prepareBatch.mock.calls
+					.flatMap(([updates]: [IDevicePropertyData[]]) => updates)
+					.filter((update) =>
+						[device.heaterSetpointProperty.id, device.coolerSetpointProperty.id].includes(update.property.id),
+					);
+				if (mode !== undefined) {
+					const selected = mode === ClimateMode.HEAT ? device.heaterSetpointProperty : device.coolerSetpointProperty;
+					expect(setpoints).toHaveLength(1);
+					expect(setpoints[0]).toMatchObject({
+						property: { id: selected.id },
+						value: (mode === ClimateMode.HEAT ? 20 : 24) + delta,
+					});
+				} else {
+					expect(setpoints.map((update) => update.property.id).sort()).toEqual(
+						[device.heaterSetpointProperty.id, device.coolerSetpointProperty.id].sort(),
+					);
+				}
+			}
+		},
+	);
 	it('refuses an already retired activity context before intent creation or physical dispatch', async () => {
 		const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
 		const result = await service.executeClimateIntent(

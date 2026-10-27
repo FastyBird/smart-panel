@@ -128,6 +128,9 @@ commands retain their existing public manual dispatch and currentness checks.
 ACTIVATING operation admission is distinct from installed-current source authority. The same successful climate result
 may remain installed when another activity domain makes the overall activation partial. Deactivation, configuration
 replacement/reset, space deletion and type changes fence and retire the exact source in their original native unit.
+If the original producer disappears after intent commits, its installation remains inhibited and no separate failed
+completion is written using replacement authority. The retained ACTIVATING state becomes INTERRUPTED at startup,
+without replaying publication or activation work.
 Space lifecycle admission takes the structural owner before the database lease; postcommit space events retain their
 original payload, order and cardinality. Nest lifecycle hooks own registration and disposal. CLI execution does not
 register live installation or runtime actuation.

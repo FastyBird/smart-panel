@@ -19,6 +19,49 @@ describe('StorageService', () => {
 			registerSchema: jest.fn(),
 		}) as unknown as jest.Mocked<StoragePlugin>;
 
+	it.each([undefined, null, false, 0, ''])(
+		'preserves owned strict rejection %s and still permits an available fallback',
+		async (cause) => {
+			for (const available of [false, true]) {
+				const storage = new StorageService({
+					getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'memory' }),
+				} as unknown as ConfigService);
+				const primary = createPlugin('primary'),
+					fallback = createPlugin('memory');
+				primary.query.mockRejectedValue(cause);
+				fallback.isAvailable.mockReturnValue(available);
+				fallback.query.mockResolvedValue([{ original: true }]);
+				storage.registerPlugin('primary', primary);
+				storage.registerPlugin('memory', fallback);
+				const read = new ControllerPublicationContext(() => true).run(() => storage.queryStrict('SELECT original'));
+				if (available) await expect(read).resolves.toEqual([{ original: true }]);
+				else await expect(read).rejects.toBe(cause);
+				expect(primary.query).toHaveBeenCalledTimes(1);
+				expect(fallback.query).toHaveBeenCalledTimes(available ? 1 : 0);
+			}
+		},
+	);
+	it.each([undefined, null, false, 0, ''])(
+		'keeps required owned persistence successful after optional mirror rejects %s',
+		async (cause) => {
+			const storage = new StorageService({
+				getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'memory' }),
+			} as unknown as ConfigService);
+			const primary = createPlugin('primary'),
+				fallback = createPlugin('memory');
+			primary.writePoints.mockResolvedValue(undefined);
+			fallback.writePoints.mockRejectedValue(cause);
+			storage.registerPlugin('primary', primary);
+			storage.registerPlugin('memory', fallback);
+			const publication = new ControllerPublicationContext(() => true);
+			await expect(publication.run(() => storage.writePointsStrict([]))).resolves.toBeUndefined();
+			expect(primary.writePoints).toHaveBeenCalledTimes(1);
+			expect(fallback.writePoints).toHaveBeenCalledTimes(1);
+			expect(publication.facts()).toContainEqual(
+				expect.objectContaining({ name: 'storage.strict.mirror', failed: true }),
+			);
+		},
+	);
 	it.each([false, true])(
 		'owned strict=%s fallback reads retain original methods, receiver and options',
 		async (strict) => {

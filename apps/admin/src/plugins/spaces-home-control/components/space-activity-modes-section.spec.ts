@@ -8,6 +8,12 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import type { paths } from '../../../openapi';
 import { ActivityDraftSchema, ClimateMode } from '../composables/activityModes.schemas';
+import cs from '../locales/cs-CZ.json';
+import de from '../locales/de-DE.json';
+import en from '../locales/en-US.json';
+import es from '../locales/es-ES.json';
+import pl from '../locales/pl-PL.json';
+import sk from '../locales/sk-SK.json';
 
 import SpaceActivityModesSection from './space-activity-modes-section.vue';
 
@@ -81,6 +87,18 @@ afterEach(() => {
 });
 
 describe('actual activity mode section and saved API editor', () => {
+	it.each([cs, de, en, es, pl, sk])('keeps a localized refusal for unsupported climate previews', async (locale) => {
+		expect(locale.activityModes.climateUnsupported).toBeTruthy();
+		const wrapper = render();
+		try {
+			await flushPromises();
+			await click(wrapper, 'edit-work');
+			await click(wrapper, 'preview');
+			expect(wrapper.get('[data-testid="domain-result"]').text()).toContain('climateUnsupported');
+		} finally {
+			wrapper.unmount();
+		}
+	});
 	it('reads all five config endpoints including disabled modes, with no initialization writes', async () => {
 		const wrapper = render();
 		await flushPromises();

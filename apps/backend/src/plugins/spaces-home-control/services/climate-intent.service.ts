@@ -43,6 +43,7 @@ export interface ClimateAutomationIntentContext {
 	readonly virtualTargetIds?: readonly string[];
 	readonly installVirtual?: () => Promise<number>;
 	readonly numericDelta?: number;
+	readonly numericDeltaMode?: ClimateMode.HEAT | ClimateMode.COOL;
 }
 
 /**
@@ -116,6 +117,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				targets: allTargets.filter((target) => !virtualIds.has(target.device.id)),
 				isCurrent: current,
 				numericDelta: automation.numericDelta,
+				numericDeltaMode: automation.numericDeltaMode,
 			});
 			if (!current())
 				return {
@@ -780,14 +782,20 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
-		if (climateState.heatingSetpoint !== null) {
+		if (
+			climateState.heatingSetpoint !== null &&
+			this.automationContext.getStore()?.numericDeltaMode !== ClimateMode.COOL
+		) {
 			const newValue = intent.increase
 				? climateState.heatingSetpoint + deltaValue
 				: climateState.heatingSetpoint - deltaValue;
 			heatingSetpoint = this.clampSetpoint(newValue, climateState.minSetpoint, climateState.maxSetpoint);
 		}
 
-		if (climateState.coolingSetpoint !== null) {
+		if (
+			climateState.coolingSetpoint !== null &&
+			this.automationContext.getStore()?.numericDeltaMode !== ClimateMode.HEAT
+		) {
 			const newValue = intent.increase
 				? climateState.coolingSetpoint + deltaValue
 				: climateState.coolingSetpoint - deltaValue;

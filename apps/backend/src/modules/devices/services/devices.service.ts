@@ -1229,48 +1229,50 @@ export class DevicesService {
 	async remove(id: string): Promise<void> {
 		const climateDeletion = await this.climateLedger?.captureControllerDeletion(id);
 		const removeOriginal = () =>
-			this.structureLock.runExclusive(async (): Promise<void> => {
-				this.logger.debug(`Removing device with id=${id}`);
+			this.structureLock.runExclusive(
+				ControllerPublicationContext.captureCallback(async (): Promise<void> => {
+					this.logger.debug(`Removing device with id=${id}`);
 
-				// Get the full device entity before removal to preserve ID for event emission
-				const fullDevice = await this.getOneOrThrow(id);
+					// Get the full device entity before removal to preserve ID for event emission
+					const fullDevice = await this.getOneOrThrow(id);
 
-				await this.dataSource.transaction(async (manager) => {
-					const receipt = climateDeletion ? observeSqliteOuterOutcome(manager) : undefined;
-					const remove = async () => {
-						const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
+					await this.dataSource.transaction(async (manager) => {
+						const receipt = climateDeletion ? observeSqliteOuterOutcome(manager) : undefined;
+						const remove = async () => {
+							const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
-						const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
+							const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
 
-						for (const channel of channels) {
-							await this.channelsService.remove(channel.id, manager);
-						}
+							for (const channel of channels) {
+								await this.channelsService.remove(channel.id, manager);
+							}
 
-						const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, {
-							where: { device: { id } },
-						});
+							const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, {
+								where: { device: { id } },
+							});
 
-						for (const control of controls) {
-							await this.devicesControlsService.remove(control.id, device.id, manager);
-						}
+							for (const control of controls) {
+								await this.devicesControlsService.remove(control.id, device.id, manager);
+							}
 
-						await manager.remove(device);
+							await manager.remove(device);
 
-						this.logger.log(`Successfully removed device with id=${id}`);
+							this.logger.log(`Successfully removed device with id=${id}`);
 
-						// Emit event with the full device entity captured before removal to preserve ID
-						this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
-					};
-					if (receipt) {
-						await manager.query(
-							'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0',
-						);
-						await this.climateLedger.inAdmittedManager(manager, receipt, (scope) =>
-							climateDeletion(manager, scope, remove),
-						);
-					} else await remove();
-				});
-			});
+							// Emit event with the full device entity captured before removal to preserve ID
+							this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+						};
+						if (receipt) {
+							await manager.query(
+								'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0',
+							);
+							await this.climateLedger.inAdmittedManager(manager, receipt, (scope) =>
+								climateDeletion(manager, scope, remove),
+							);
+						} else await remove();
+					});
+				}),
+			);
 		// Deletion retires observation eligibility. Original callbacks still execute and
 		// their finite completion is joined after the original structural/native owners.
 		if (climateDeletion)

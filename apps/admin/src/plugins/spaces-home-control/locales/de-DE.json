@@ -444,6 +444,7 @@
 		"setpoint": "Zieltemperatur (°C)",
 		"delta": "Temperaturänderung (°C)",
 		"climateMode": "Klimamodus",
+		"climateUnsupported": "Diese Klimaaktion ist für die ausgewählten Geräte nicht verfügbar. Prüfen Sie Voreinstellung, Automatisierungsfreigabe und Gerätekompatibilität.",
 		"climateAutomation": "Aktivieren Sie die Automatisierung am Thermostat und wählen Sie eine Voreinstellung oder Temperaturaktion. Die Vorschau prüft Ziele ohne Änderungen. Manuelle Sperren, AUS und Schutzgrenzen gelten weiterhin.",
 		"securityUnsupported": "Sie können Sicherheitseinstellungen speichern, aber Aktivitätsmodi können sie noch nicht anwenden.",
 		"invalid": "Prüfen Sie die Einstellungen vor dem Speichern.",

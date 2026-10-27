@@ -123,27 +123,33 @@ export class SpaceModeService implements OnApplicationBootstrap {
 				await repository.update({ spaceId, activationId }, { activityStatus: ActivityActivationStatus.INTERRUPTED });
 				throw new ConflictException('Activity configuration changed before execution');
 			}
+			const completion = this.climateAutomation?.captureCompletion(identity);
 			this.emit(spaceId, activationId, revision);
 			const results = await Promise.all(
 				Object.values(ActivityDomain).map((domain) =>
 					this.domains.run(domain, config.activityConfiguration, identity, spaceId),
 				),
 			);
-			const completed = await repository
-				.createQueryBuilder()
-				.update()
-				.set({ activityStatus: activationStatus(results), activityResults: results })
-				.where('spaceId = :spaceId AND activationId = :activationId AND activityStatus = :status', {
-					spaceId,
-					activationId,
-					status: ActivityActivationStatus.ACTIVATING,
-				})
-				.andWhere(
-					'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
-					{ configId: config.id, revision },
-				)
-				.execute();
-			if (completed.affected === 1) this.emit(spaceId, activationId, revision);
+			const write = async (manager: EntityManager) => {
+				const completed = await manager
+					.getRepository(SpaceActivityStateEntity)
+					.createQueryBuilder()
+					.update()
+					.set({ activityStatus: activationStatus(results), activityResults: results })
+					.where('spaceId = :spaceId AND activationId = :activationId AND activityStatus = :status', {
+						spaceId,
+						activationId,
+						status: ActivityActivationStatus.ACTIVATING,
+					})
+					.andWhere(
+						'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
+						{ configId: config.id, revision },
+					)
+					.execute();
+				return completed.affected === 1;
+			};
+			const completed = completion ? await completion(results, write) : await write(this.dataSource.manager);
+			if (completed) this.emit(spaceId, activationId, revision);
 			// Return current state, even if deactivation/config changes won the race. Never save the stale entity again.
 			return repository.findOneBy({ spaceId });
 		} finally {

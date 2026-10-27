@@ -1364,6 +1364,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				qualification,
 			},
 		);
+		let retireConfirmedCommandIds: NonNullable<typeof proof>['retireConfirmedCommandIds'];
+		try {
+			retireConfirmedCommandIds = proof?.retireConfirmedCommandIds;
+		} catch {
+			// Optional provider bookkeeping cannot refuse the primary native settlement.
+		}
 		const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
 		const endedAt = new Date();
 		const covered = new Set(proof?.coveredCommandIds ?? []);
@@ -1508,7 +1514,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		// The transaction has acknowledged these exact IDs as confirmed. Later authority or
 		// reservation-release failure must not retain already committed provider metadata.
 		try {
-			proof.retireConfirmedCommandIds?.([...settled.currentIds]);
+			retireConfirmedCommandIds?.call(proof, [...settled.currentIds]);
 		} catch {
 			// Optional provider bookkeeping cannot change the committed primary outcome.
 		}
