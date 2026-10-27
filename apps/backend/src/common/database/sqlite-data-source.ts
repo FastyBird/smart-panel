@@ -1,5 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { DataSource, DataSourceOptions, EntityManager, QueryRunner } from 'typeorm';
+import {
+	DataSource,
+	DataSourceOptions,
+	EntityManager,
+	QueryRunner,
+	TransactionAlreadyStartedError,
+	TransactionNotStartedError,
+	TypeORMError,
+} from 'typeorm';
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { SqliteQueryRunner } from 'typeorm/driver/sqlite/SqliteQueryRunner';
 import { IsolationLevel } from 'typeorm/driver/types/IsolationLevel';
@@ -69,6 +77,7 @@ interface NoMutationTicket {
 	sql: string | undefined;
 	readonly control: boolean;
 	active: boolean;
+	connected: boolean;
 	dispatched: boolean;
 	retry: boolean;
 }
@@ -81,11 +90,16 @@ interface NoMutationEvidence {
 	reservation?: string;
 	current: () => boolean;
 	read: (sql: string) => boolean;
-	native: NativeSqliteConnection;
-	all: NativeSqliteConnection['all'];
-	run: NativeSqliteConnection['run'];
+	native?: NativeSqliteConnection;
+	all?: NativeSqliteConnection['all'];
+	run?: NativeSqliteConnection['run'];
 }
 const noMutationCounterLimit = (1n << 64n) - 1n;
+
+function isSqliteTransactionControl(sql: string): boolean {
+	const command = sql.replace(/^(?:\s|;|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*/, '');
+	return /^(BEGIN|COMMIT|END|ROLLBACK|SAVEPOINT|RELEASE)\b/i.test(command);
+}
 
 /** Closed SELECT grammar for ordinary ORM tables. Unknown SQL is a mutation attempt, not a read hint.
  * No comments, functions except COUNT, virtual tables, views, PRAGMA or compound statements.
@@ -103,6 +117,7 @@ function isNoMutationRead(sql: string, tables: ReadonlySet<string>): boolean {
 		if (!match || sql.includes('\0')) return false;
 		offset = pattern.lastIndex;
 		const text = match[0];
+		if ((text === '-' && sql[offset] === '-') || (text === '/' && sql[offset] === '*')) return false;
 		if (/^\s+$/.test(text)) continue;
 		const kind = /^["`[]/.test(text)
 			? 'identifier'
@@ -666,7 +681,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	private writeAdmission?: 'pending' | 'armed';
 	private readonly nativeCommitContext = new AsyncLocalStorage<GuardedCommit | undefined>();
 	private readonly noMutationQuery = new AsyncLocalStorage<NoMutationTicket>();
-	private noMutationControl?: { scope: GuardedCommit; sql: string };
+	private noMutationControl?: { scope: GuardedCommit; sql: string; outer: boolean };
 
 	constructor(
 		driver: SqliteDriver,
@@ -709,7 +724,9 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 			const scope = this.guardedCommit;
 			if (scope?.guards.length && (scope.phase === 'sealed' || scope.phase === 'submitted')) {
-				throw new Error('SQLite guarded COMMIT is sealed against new candidate queries');
+				const cause = new Error('SQLite guarded COMMIT is sealed against new candidate queries');
+				if (scope.noMutation) scope.noMutation.anomaly ??= { cause };
+				throw cause;
 			}
 			const outerCommit = command === 'COMMIT' && this.transactionDepth === 1 ? scope : undefined;
 			// Keep the original nonparticipating path, including its promise/child settlement topology.
@@ -749,158 +766,180 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		const receipt = this.observeOuterOutcome(manager); // FIRST, before any candidate state/read.
 		const scope = this.guardedCommit;
 		if (scope.noMutation) throw new Error('Original SQLite no-mutation window already exists');
-		const context = this.coordinator.captureCommitContext(scope.lease);
-		const source = this.connection,
-			driver = this.driver,
-			native = driver.databaseConnection as NativeSqliteConnection;
-		const pin = (target: object, keys: string[]) => {
-			const prototype = Object.getPrototypeOf(target) as object;
-			const descriptor = (key: string) => {
-				for (let owner: object | null = target; owner; owner = Object.getPrototypeOf(owner) as object | null) {
-					const value = Object.getOwnPropertyDescriptor(owner, key);
-					if (value) return { owner, value };
-				}
-				return undefined;
-			};
-			const fields = keys.map((key) => descriptor(key));
-			if (fields.some((field) => field && !('value' in field.value)))
-				throw new Error('SQLite original dispatch accessor is unsupported');
-			return () =>
-				Object.getPrototypeOf(target) === prototype &&
-				keys.every((key, index) => {
-					const before = fields[index],
-						after = descriptor(key);
-					return before === undefined
-						? after === undefined
-						: after !== undefined &&
-								before.owner === after.owner &&
-								'value' in after.value &&
-								(['value', 'writable', 'enumerable', 'configurable'] as const).every(
-									(field) => before.value[field] === after.value[field],
-								);
-				});
-		};
-		const sourcePin = pin(source, ['isInitialized', 'driver', 'manager', 'query', 'createQueryRunner']);
-		const driverPin = pin(driver, ['databaseConnection', 'connection']);
-		const runnerPin = pin(this, [
-			'query',
-			'connect',
-			'startTransaction',
-			'commitTransaction',
-			'rollbackTransaction',
-			'release',
-			'manager',
-			'connection',
-			'driver',
-			'broadcaster',
-		]);
-		const managerPin = pin(manager, ['queryRunner', 'connection', 'query']);
-		const broadcasterPin = pin(this.broadcaster, [
-			'broadcast',
-			'broadcastBeforeQueryEvent',
-			'broadcastBeforeTransactionCommitEvent',
-		]);
-		const all = native.all,
-			run = native.run;
-		const nativePin = pin(native, ['all', 'run']);
-		const tables = new Set(
-			source.entityMetadatas.filter((meta) => meta.tableType !== 'view').map((meta) => meta.tableName),
-		);
+		// Publish the nonremovable obligation BEFORE any pin capture or owner callback can throw.
 		const evidence: NoMutationEvidence = {
 			decision: 'undecided',
 			attempts: 0n,
 			mutations: 0n,
 			pending: new Set(),
-			native,
-			all,
-			run,
-			read: (sql) => isNoMutationRead(sql, tables),
-			current: () =>
-				runnerPin() &&
-				managerPin() &&
-				sourcePin() &&
-				driverPin() &&
-				nativePin() &&
-				broadcasterPin() &&
-				scope === this.guardedCommit &&
-				scope.lease === this.lease &&
-				scope.lease.active &&
-				context.active &&
-				this.coordinator.currentRunner === this &&
-				!this.coordinator.isClosed &&
-				source.isInitialized &&
-				this.connection === source &&
-				this.driver === driver &&
-				driver.databaseConnection === native &&
-				native.all === all &&
-				native.run === run &&
-				nativePin() &&
-				this.transactionDepth === 1 &&
-				this.isTransactionActive &&
-				manager === this.manager &&
-				manager.queryRunner === this &&
-				manager.connection === source &&
-				runnerPin() &&
-				managerPin() &&
-				broadcasterPin() &&
-				ownerCurrent(),
+			current: () => false,
+			read: () => false,
 		};
 		scope.noMutation = evidence;
-		const refuse = (): never => {
-			evidence.decision = 'refused';
-			throw new SqliteCommitGuardRefusedError(evidence.anomaly?.cause);
-		};
-		const clean = () => this.checkNoMutationPins(evidence) && !evidence.anomaly && evidence.mutations === 0n;
-		if (!clean()) refuse();
-		this.registerCommitGuard(manager, () => evidence.decision === 'applied' || evidence.decision === 'unchanged');
-		const thisRunnerCurrent = () => this.checkNoMutationPins(evidence);
-		let checkpoint: SqliteReadCheckpoint | undefined,
-			reserved = false;
-		return Object.freeze({
-			async reserveZeroRows(table: string, column: string) {
-				if (
-					reserved ||
-					checkpoint ||
-					evidence.decision !== 'undecided' ||
-					!/^[A-Za-z_][A-Za-z_0-9]*$/.test(table) ||
-					!/^[A-Za-z_][A-Za-z_0-9]*$/.test(column) ||
-					!clean()
-				)
-					refuse();
-				reserved = true;
-				const sql = `UPDATE "${table}" SET "${column}"="${column}" WHERE 0`;
-				evidence.reservation = sql;
-				try {
-					await manager.query(sql);
-				} finally {
-					evidence.reservation = undefined;
-				}
-			},
-			beginReads() {
-				if (checkpoint || evidence.decision !== 'undecided' || evidence.pending.size || !clean()) refuse();
-				checkpoint = Object.freeze({ kind: 'sqlite-read-checkpoint' });
-				return checkpoint;
-			},
-			armUnchanged(candidate: SqliteReadCheckpoint) {
-				if (
-					!checkpoint ||
-					candidate !== checkpoint ||
-					evidence.decision !== 'undecided' ||
-					evidence.pending.size ||
-					!clean()
-				)
-					refuse();
-				evidence.decision = 'unchanged';
-			},
-			applied() {
-				if (evidence.decision !== 'undecided' || scope.phase !== 'open' || !scope.lease.active || !thisRunnerCurrent())
-					refuse();
-				evidence.decision = 'applied';
-			},
-			get outcome() {
-				return receipt.outcome;
-			},
+		this.registerCommitGuard(manager, () => {
+			if (evidence.decision !== 'applied' && evidence.decision !== 'unchanged')
+				throw new SqliteCommitGuardRefusedError(evidence.anomaly?.cause);
+			return true;
 		});
+		try {
+			const context = this.coordinator.captureCommitContext(scope.lease);
+			const source = this.connection,
+				driver = this.driver,
+				native = driver.databaseConnection as NativeSqliteConnection;
+			const pin = (target: object, keys: string[]) => {
+				const prototype = Object.getPrototypeOf(target) as object;
+				const descriptor = (key: string) => {
+					for (let owner: object | null = target; owner; owner = Object.getPrototypeOf(owner) as object | null) {
+						const value = Object.getOwnPropertyDescriptor(owner, key);
+						if (value) return { owner, value };
+					}
+					return undefined;
+				};
+				const fields = keys.map((key) => descriptor(key));
+				if (fields.some((field) => field && !('value' in field.value)))
+					throw new Error('SQLite original dispatch accessor is unsupported');
+				return () =>
+					Object.getPrototypeOf(target) === prototype &&
+					keys.every((key, index) => {
+						const before = fields[index],
+							after = descriptor(key);
+						return before === undefined
+							? after === undefined
+							: after !== undefined &&
+									before.owner === after.owner &&
+									'value' in after.value &&
+									(['value', 'writable', 'enumerable', 'configurable'] as const).every(
+										(field) => before.value[field] === after.value[field],
+									);
+					});
+			};
+			const sourcePin = pin(source, ['isInitialized', 'driver', 'manager', 'query', 'createQueryRunner']);
+			const driverPin = pin(driver, ['databaseConnection', 'connection']);
+			const runnerPin = pin(this, [
+				'query',
+				'connect',
+				'startTransaction',
+				'commitTransaction',
+				'rollbackTransaction',
+				'release',
+				'manager',
+				'connection',
+				'driver',
+				'broadcaster',
+			]);
+			const managerPin = pin(manager, ['queryRunner', 'connection', 'query']);
+			const broadcasterPin = pin(this.broadcaster, [
+				'broadcast',
+				'broadcastBeforeQueryEvent',
+				'broadcastBeforeTransactionCommitEvent',
+			]);
+			const all = native.all,
+				run = native.run;
+			const nativePin = pin(native, ['all', 'run']);
+			const tables = new Set(
+				source.entityMetadatas.filter((meta) => meta.tableType !== 'view').map((meta) => meta.tableName),
+			);
+			Object.assign(evidence, {
+				native,
+				all,
+				run,
+				read: (sql: string) => isNoMutationRead(sql, tables),
+				current: () =>
+					runnerPin() &&
+					managerPin() &&
+					sourcePin() &&
+					driverPin() &&
+					nativePin() &&
+					broadcasterPin() &&
+					scope === this.guardedCommit &&
+					scope.lease === this.lease &&
+					scope.lease.active &&
+					context.active &&
+					this.coordinator.currentRunner === this &&
+					!this.coordinator.isClosed &&
+					source.isInitialized &&
+					this.connection === source &&
+					this.driver === driver &&
+					driver.databaseConnection === native &&
+					native.all === all &&
+					native.run === run &&
+					nativePin() &&
+					this.transactionDepth === 1 &&
+					this.isTransactionActive &&
+					manager === this.manager &&
+					manager.queryRunner === this &&
+					manager.connection === source &&
+					runnerPin() &&
+					managerPin() &&
+					broadcasterPin() &&
+					ownerCurrent(),
+			});
+			const refuse = (): never => {
+				evidence.decision = 'refused';
+				throw new SqliteCommitGuardRefusedError(evidence.anomaly?.cause);
+			};
+			const clean = () => this.checkNoMutationPins(evidence) && !evidence.anomaly && evidence.mutations === 0n;
+			if (!clean()) refuse();
+			const thisRunnerCurrent = () => this.checkNoMutationPins(evidence);
+			let checkpoint: SqliteReadCheckpoint | undefined,
+				reserved = false;
+			return Object.freeze({
+				async reserveZeroRows(table: string, column: string) {
+					if (
+						reserved ||
+						checkpoint ||
+						evidence.decision !== 'undecided' ||
+						!/^[A-Za-z_][A-Za-z_0-9]*$/.test(table) ||
+						!/^[A-Za-z_][A-Za-z_0-9]*$/.test(column) ||
+						!clean()
+					)
+						refuse();
+					reserved = true;
+					const sql = `UPDATE "${table}" SET "${column}"="${column}" WHERE 0`;
+					evidence.reservation = sql;
+					try {
+						await manager.query(sql);
+					} finally {
+						evidence.reservation = undefined;
+					}
+				},
+				beginReads() {
+					if (checkpoint || evidence.decision !== 'undecided' || evidence.pending.size || !clean()) refuse();
+					checkpoint = Object.freeze({ kind: 'sqlite-read-checkpoint' });
+					return checkpoint;
+				},
+				armUnchanged(candidate: SqliteReadCheckpoint) {
+					if (
+						!checkpoint ||
+						candidate !== checkpoint ||
+						evidence.decision !== 'undecided' ||
+						evidence.pending.size ||
+						!clean()
+					)
+						refuse();
+					evidence.decision = 'unchanged';
+				},
+				applied() {
+					if (
+						evidence.decision !== 'undecided' ||
+						scope.phase !== 'open' ||
+						!scope.lease.active ||
+						!thisRunnerCurrent()
+					)
+						refuse();
+					evidence.decision = 'applied';
+				},
+				get outcome() {
+					return receipt.outcome;
+				},
+			});
+		} catch (cause: unknown) {
+			evidence.decision = 'refused';
+			evidence.anomaly ??= {
+				cause: cause instanceof SqliteCommitGuardRefusedError ? cause.cause : cause,
+			};
+			throw cause;
+		}
 	}
 
 	private checkNoMutationPins(evidence: NoMutationEvidence): boolean {
@@ -926,10 +965,15 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			evidence.anomaly ??= { cause: new Error('SQLite query witness exhausted') };
 		else {
 			evidence.attempts++;
-			if (!control && !reservation && !evidence.read(sql)) evidence.mutations++;
+			if ((!control || !permit.outer) && !reservation && !evidence.read(sql)) evidence.mutations++;
 		}
 		this.checkNoMutationPins(evidence);
-		const ticket = { scope, sql, control, active: true, dispatched: false, retry: false };
+		if (isSqliteTransactionControl(sql) && !control) {
+			const cause = new Error('SQLite transaction control requires its original internal invocation');
+			evidence.anomaly ??= { cause };
+			throw new SqliteCommitGuardRefusedError(cause);
+		}
+		const ticket = { scope, sql, control, active: true, connected: false, dispatched: false, retry: false };
 		evidence.pending.add(ticket);
 		return ticket;
 	}
@@ -942,19 +986,55 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			evidence.anomaly ??= { cause: new Error('SQLite native dispatch lacks its original query ticket') };
 	}
 
-	/** Only original outer control dispatch can mint a one-use exemption, after its Before callback. */
-	private async noMutationOuterControl(commit: boolean): Promise<void> {
-		await this.broadcaster.broadcast(commit ? 'BeforeTransactionCommit' : 'BeforeTransactionRollback');
-		const sql = commit ? 'COMMIT' : 'ROLLBACK';
-		this.noMutationControl = { scope: this.guardedCommit, sql };
+	/** Only original transaction methods mint a consumed control ticket AFTER their Before callbacks. */
+	private async noMutationTransactionControl(
+		operation: 'start' | 'commit' | 'rollback',
+		isolation?: IsolationLevel,
+	): Promise<void> {
+		if (operation === 'start') {
+			if (this.driver.transactionSupport === 'none')
+				throw new TypeORMError(`Transactions aren't supported by ${this.connection.driver.options.type}.`);
+			if (this.isTransactionActive && this.driver.transactionSupport === 'simple')
+				throw new TransactionAlreadyStartedError();
+			if (isolation && isolation !== 'READ UNCOMMITTED' && isolation !== 'SERIALIZABLE')
+				throw new TypeORMError('SQLite only supports SERIALIZABLE and READ UNCOMMITTED isolation');
+			this.isTransactionActive = true;
+			try {
+				await this.broadcaster.broadcast('BeforeTransactionStart');
+			} catch (error) {
+				this.isTransactionActive = false;
+				throw error;
+			}
+		} else {
+			if (!this.isTransactionActive) throw new TransactionNotStartedError();
+			await this.broadcaster.broadcast(
+				operation === 'commit' ? 'BeforeTransactionCommit' : 'BeforeTransactionRollback',
+			);
+		}
+		const outer = operation !== 'start' && this.transactionDepth === 1;
+		const sql =
+			operation === 'start'
+				? `SAVEPOINT typeorm_${this.transactionDepth}`
+				: outer
+					? operation === 'commit'
+						? 'COMMIT'
+						: 'ROLLBACK'
+					: `${operation === 'commit' ? 'RELEASE' : 'ROLLBACK TO'} SAVEPOINT typeorm_${this.transactionDepth - 1}`;
+		this.noMutationControl = { scope: this.guardedCommit, sql, outer };
 		try {
 			await this.query(sql);
 		} finally {
 			this.noMutationControl = undefined;
 		}
-		this.isTransactionActive = false;
-		this.transactionDepth--;
-		await this.broadcaster.broadcast(commit ? 'AfterTransactionCommit' : 'AfterTransactionRollback');
+		if (outer) this.isTransactionActive = false;
+		this.transactionDepth += operation === 'start' ? 1 : -1;
+		await this.broadcaster.broadcast(
+			operation === 'start'
+				? 'AfterTransactionStart'
+				: operation === 'commit'
+					? 'AfterTransactionCommit'
+					: 'AfterTransactionRollback',
+		);
 	}
 
 	async startTransaction(isolationLevel?: IsolationLevel): Promise<void> {
@@ -978,7 +1058,11 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		if (outerScope) this.guardedCommit = outerScope;
 		try {
 			await this.withTransactionControl(() =>
-				writeIntent ? this.startWithWriteIntent() : super.startTransaction(isolationLevel),
+				writeIntent
+					? this.startWithWriteIntent()
+					: this.guardedCommit?.noMutation && previousDepth > 0
+						? this.noMutationTransactionControl('start', isolationLevel)
+						: super.startTransaction(isolationLevel),
 			);
 			if (outerScope) outerScope.phase = 'open';
 		} catch (error) {
@@ -1035,9 +1119,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		try {
 			await this.coordinator.drainCurrent();
 			await this.withTransactionControl(() =>
-				this.guardedCommit?.noMutation && this.isTransactionActive && this.transactionDepth === 1
-					? this.noMutationOuterControl(true)
-					: super.commitTransaction(),
+				this.guardedCommit?.noMutation ? this.noMutationTransactionControl('commit') : super.commitTransaction(),
 			);
 		} finally {
 			this.settleCommitScope();
@@ -1052,9 +1134,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		try {
 			await this.coordinator.drainCurrent(false);
 			await this.withTransactionControl(() =>
-				this.guardedCommit?.noMutation && this.isTransactionActive && this.transactionDepth === 1
-					? this.noMutationOuterControl(false)
-					: super.rollbackTransaction(),
+				this.guardedCommit?.noMutation ? this.noMutationTransactionControl('rollback') : super.rollbackTransaction(),
 			);
 		} catch (error) {
 			if (this.lease?.active && this.isTransactionActive) await this.recoverTransaction();
@@ -1119,9 +1199,13 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async connect(): Promise<NativeSqliteConnection> {
 		const entryScope = this.guardedCommit;
+		const entryTicket = this.noMutationQuery.getStore();
+		const originalConnect = entryTicket !== undefined && !entryTicket.connected;
 		if (entryScope?.noMutation && entryScope.phase !== 'committed' && entryScope.phase !== 'settled') {
-			const entryTicket = this.noMutationQuery.getStore();
 			this.validateNoMutationDispatch(entryScope, entryTicket, entryTicket?.sql ?? '');
+			if (entryTicket) entryTicket.connected = true;
+			if (!originalConnect)
+				entryScope.noMutation.anomaly ??= { cause: new Error('SQLite query ticket cannot lend its native connection') };
 		}
 		const connection = (await super.connect()) as NativeSqliteConnection;
 		const commitScope = this.nativeCommitContext.getStore();
@@ -1143,6 +1227,22 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					return (query: string, parameters: unknown[], callback: NativeQueryCallback) => {
 						if (window) {
 							this.validateNoMutationDispatch(window, ticket, query);
+							if (
+								isSqliteTransactionControl(query) &&
+								(!originalConnect ||
+									entryScope !== window ||
+									entryTicket !== ticket ||
+									!ticket?.active ||
+									!ticket.control ||
+									ticket.scope !== window ||
+									ticket.sql !== query ||
+									!window.noMutation.pending.has(ticket) ||
+									(ticket.dispatched && !ticket.retry))
+							) {
+								const cause = new Error('SQLite native transaction control lacks its original dispatch ticket');
+								window.noMutation.anomaly ??= { cause };
+								throw new SqliteCommitGuardRefusedError(cause);
+							}
 							if (ticket) {
 								if (ticket.dispatched && !ticket.retry)
 									window.noMutation.anomaly ??= { cause: new Error('SQLite query ticket was already dispatched') };
@@ -1166,7 +1266,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 							!commitScope ||
 							(scope.guards.length === 0 && !scope.observed)
 						) {
-							const original = window ? window.noMutation[property] : target.all;
+							const original = window ? (window.noMutation[property] ?? target[property]) : target.all;
 							return original.call(window?.noMutation.native ?? target, query, parameters, callback) as unknown;
 						}
 						if (scope.guards.length === 0) {
