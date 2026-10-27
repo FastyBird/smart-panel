@@ -725,8 +725,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		const startup = this.startupPermit === query;
 		this.startupPermit = undefined;
 		if (this.guardedCommit && !this.guardedCommit.noMutation && !startup) this.guardedCommit.issuedBeforeCapture = true;
-		const ticket = this.recordNoMutationAttempt(query);
+		const entryScope = this.guardedCommit;
+		let ticket: NoMutationTicket | undefined;
 		try {
+			ticket = this.recordNoMutationAttempt(query);
 			if (this.writeAdmission) {
 				// Consume the internal permit before any await or query observer can reenter.
 				const permitted = this.writeAdmission === 'armed' && query === 'BEGIN IMMEDIATE TRANSACTION';
@@ -785,6 +787,19 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					}
 				}),
 			);
+		} catch (cause: unknown) {
+			if (
+				entryScope?.noMutation &&
+				entryScope === this.guardedCommit &&
+				entryScope.phase !== 'committed' &&
+				entryScope.phase !== 'settled' &&
+				!entryScope.noMutation.terminal
+			) {
+				// Entry refusals precede coordinator tracking. Retain their exact first cause even
+				// during pure guards; APPLIED exempts mutation history, never actual query failures.
+				entryScope.childFailure ??= { cause };
+			}
+			throw cause;
 		} finally {
 			if (ticket) {
 				ticket.active = false;
@@ -1569,6 +1584,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					for (const guard of scope.guards) {
 						if (guard() !== true) throw new SqliteCommitGuardRefusedError();
 					}
+					if (scope.childFailure) throw new SqliteCommitGuardRefusedError(scope.childFailure.cause);
 					const witness = scope.noMutation;
 					if (witness && witness.decision !== 'applied') {
 						this.checkNoMutationPins(witness);
