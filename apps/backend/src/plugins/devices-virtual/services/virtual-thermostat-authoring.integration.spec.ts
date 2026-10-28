@@ -2,7 +2,7 @@
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { useContainer } from 'class-validator';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { EntitySubscriberInterface } from 'typeorm';
+import { EntitySubscriberInterface, QueryRunner } from 'typeorm';
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { v4 as uuid } from 'uuid';
 
@@ -132,6 +132,22 @@ function expectImmutableResponse(value: unknown): void {
 	expect([Object.prototype, Array.prototype, null]).toContain(Object.getPrototypeOf(value));
 	for (const entry of Object.values(value)) expectImmutableResponse(entry);
 }
+// Inject only AFTER the original owning finalizer actually releases this exact lease.
+// Intermediate finally calls retain their original behavior and do not receive the fault.
+function failAfterOwnedRelease(runner: QueryRunner, cause: unknown): void {
+	const coordinated = runner as QueryRunner & { releaseIfSettled: () => void };
+	const lease = Reflect.get(runner, 'lease') as { active: boolean };
+	const original = coordinated.releaseIfSettled;
+	const fault = jest.spyOn(coordinated, 'releaseIfSettled').mockImplementation(function (this: typeof coordinated) {
+		const active = lease.active;
+		original.call(this);
+		if (active && !lease.active) {
+			fault.mockRestore();
+			throw cause;
+		}
+	});
+}
+
 describe('atomic virtual thermostat authoring', () => {
 	let database: SqliteDataSource;
 	let authoring: VirtualThermostatAuthoringService;
@@ -2063,15 +2079,8 @@ describe('atomic virtual thermostat authoring', () => {
 				afterTransactionCommit: (event) => {
 					commits++;
 					if (phase === 'subscriber') throw cause;
-					// The coordinated transaction owns its runner; its real release is the connection
-					// lease in withConnection's finally, rather than TypeORM's borrowed-runner release.
-					const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void };
-					const release = lease.release;
-					lease.release = () => {
-						lease.release = release;
-						release();
-						throw cause;
-					};
+					// The coordinated transaction releases through its original owning finalizer.
+					failAfterOwnedRelease(event.queryRunner, cause);
 				},
 			});
 			const failed = await authoring.create(input).catch((error: unknown) => error);

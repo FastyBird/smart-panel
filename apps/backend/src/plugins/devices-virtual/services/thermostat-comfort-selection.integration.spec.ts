@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { EntityManager } from 'typeorm';
+import { EntityManager, QueryRunner } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -221,6 +221,22 @@ function nativeFixtureLifecycle() {
 			return original.cleanup;
 		},
 	};
+}
+
+// Inject only AFTER the original owning finalizer actually releases this exact lease.
+// Intermediate finally calls retain their original behavior and do not receive the fault.
+function failAfterOwnedRelease(runner: QueryRunner, cause: unknown): void {
+	const coordinated = runner as QueryRunner & { releaseIfSettled: () => void };
+	const lease = Reflect.get(runner, 'lease') as { active: boolean };
+	const original = coordinated.releaseIfSettled;
+	const fault = jest.spyOn(coordinated, 'releaseIfSettled').mockImplementation(function (this: typeof coordinated) {
+		const active = lease.active;
+		original.call(this);
+		if (active && !lease.active) {
+			fault.mockRestore();
+			throw cause;
+		}
+	});
 }
 
 describe('native fixture setup ownership (pure controls, no native qualification)', () => {
@@ -868,13 +884,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			database.subscribers.push({
 				afterTransactionCommit: (event) => {
 					if (phase !== 'release') throw JSON.parse('false') as unknown;
-					const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void };
-					const release = lease.release;
-					lease.release = () => {
-						lease.release = release;
-						release();
-						throw JSON.parse('false') as unknown;
-					};
+					failAfterOwnedRelease(event.queryRunner, JSON.parse('false') as unknown);
 				},
 			});
 			await expect(
@@ -2156,13 +2166,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 					afterTransactionCommit: (event) => {
 						if (phase === 'subscriber') throw JSON.parse('false') as unknown;
 						if (phase === 'release') {
-							const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void };
-							const release = lease.release;
-							lease.release = () => {
-								lease.release = release;
-								release();
-								throw JSON.parse('0') as unknown;
-							};
+							failAfterOwnedRelease(event.queryRunner, JSON.parse('0') as unknown);
 						}
 					},
 				});
@@ -3135,13 +3139,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 					afterTransactionCommit: (event) => {
 						if (fault === 'subscriber') throw JSON.parse('false') as unknown;
 						if (fault === 'release') {
-							const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void },
-								original = lease.release;
-							lease.release = () => {
-								lease.release = original;
-								original();
-								throw JSON.parse('false') as unknown;
-							};
+							failAfterOwnedRelease(event.queryRunner, JSON.parse('false') as unknown);
 						}
 					},
 				});
@@ -4112,13 +4110,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 					afterTransactionCommit: (event) => {
 						if (fault === 'subscriber') throw JSON.parse('false') as unknown;
 						if (fault === 'release') {
-							const lease = Reflect.get(event.queryRunner, 'lease') as { release: () => void },
-								release = lease.release;
-							lease.release = () => {
-								lease.release = release;
-								release();
-								throw JSON.parse('false') as unknown;
-							};
+							failAfterOwnedRelease(event.queryRunner, JSON.parse('false') as unknown);
 						}
 					},
 				});
