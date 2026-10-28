@@ -112,6 +112,190 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 
 	describe('original native no-mutation window', () => {
 		describe('genuine managed lifecycle settlement', () => {
+			it('does not lend a live SELECT ticket to a reflected native COMMIT entry', async () => {
+				const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection,
+					all = native.all;
+				let acknowledgements = 0;
+				const submissions = jest.spyOn(native, 'all').mockImplementation(function (
+					this: unknown,
+					sql,
+					parameters,
+					callback,
+				) {
+					return all.call(this, sql, parameters, function (this: unknown, error, rows) {
+						if (sql === 'COMMIT' && !error) acknowledgements++;
+						callback.call(this, error, rows);
+					});
+				});
+				const primary = new Error('original body still pending');
+				let entered = false,
+					window: SqliteNoMutationWindow;
+				const observer: EntitySubscriberInterface = {
+					beforeQuery(event) {
+						if (event.query !== 'SELECT 394') return;
+						entered = true;
+						const entry: unknown = Reflect.get(event.queryRunner, 'submitNative');
+						if (typeof entry !== 'function') return;
+						const scope = Reflect.get(event.queryRunner, 'guardedCommit') as {
+							noMutation: { pending: Set<{ sql: string }> };
+							managedOwner: unknown;
+						};
+						const ticket = [...scope.noMutation.pending].find((candidate) => candidate.sql === event.query);
+						return new Promise<void>((resolve, reject) => {
+							Reflect.apply(entry, event.queryRunner, [
+								scope,
+								ticket,
+								'all',
+								'COMMIT',
+								[],
+								(error: Error | null) => (error ? reject(error) : resolve()),
+								AsyncLocalStorage.snapshot(),
+								scope.managedOwner,
+							]);
+						});
+					},
+				};
+				database.subscribers.push(observer);
+				const result = (
+					await Promise.allSettled([
+						database.transaction(async (manager) => {
+							window = captureSqliteNoMutationWindow(manager, () => true);
+							await manager.insert(TransactionRecord, { name: 'intended' });
+							window.beginFinalValidation();
+							window.applied();
+							await manager.query('SELECT 394');
+							throw primary;
+						}),
+					])
+				)[0];
+				const rows = await names();
+				if (process.env.NFV_NATIVE_ACTION_WITNESS === '1')
+					console.log(
+						'NFV_NATIVE_ACTION_WITNESS',
+						JSON.stringify({
+							entered,
+							acknowledgements,
+							originalBodyError: result.status === 'rejected' && result.reason === primary,
+							receipt: window.outcome,
+							rows,
+						}),
+					);
+				expect(entered).toBe(true);
+				expect(result).toEqual({ status: 'rejected', reason: primary });
+				expect(acknowledgements).toBe(0);
+				expect(submissions.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
+				expect(window.outcome).toBe('rolled_back');
+				expect(rows).toEqual([]);
+				await database.transaction((manager) => manager.query('SELECT 1'));
+			});
+
+			it.each([false, true])('binds actual queued SQL and hides native completion actions, fault=%s', async (fault) => {
+				const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection,
+					all = native.all;
+				const entered = deferred(),
+					release = deferred(),
+					queued = deferred();
+				const deliveries: Promise<unknown>[] = [],
+					jobs: Promise<unknown>[] = [];
+				let rejectAdmission: (cause: unknown) => void;
+				const admissionFailure = new Promise<never>((_resolve, reject) => (rejectAdmission = reject));
+				void admissionFailure.catch(() => undefined);
+				let acknowledgements = 0,
+					runner: QueryRunner,
+					window: SqliteNoMutationWindow,
+					rollbackSeen = false;
+				let abortResolverExposed = true;
+				const primary = new Error('original queued body failure');
+				const submissions = jest.spyOn(native, 'all').mockImplementation(function (
+					this: unknown,
+					sql,
+					parameters,
+					callback,
+				) {
+					return all.call(this, sql, parameters, function (this: unknown, error, rows) {
+						if (!error && sql === 'SELECT 396') acknowledgements++;
+						if (sql !== 'SELECT 395') return void callback.call(this, error, rows);
+						entered.resolve();
+						deliveries.push(
+							release.promise.then(() => {
+								callback.call(this, error, rows);
+							}),
+						);
+					});
+				});
+				database.subscribers.push({
+					beforeTransactionRollback(event) {
+						if (event.queryRunner !== runner) return;
+						rollbackSeen = true;
+						const scope = Reflect.get(runner, 'guardedCommit') as { lease: { closing: object } };
+						abortResolverExposed = Reflect.has(scope.lease.closing, 'resolveReason');
+					},
+				});
+				const request = database.transaction(async (manager) => {
+					runner = manager.queryRunner;
+					const connect = runner.connect.bind(runner) as () => Promise<unknown>;
+					jest.spyOn(runner, 'connect').mockImplementation(async () => {
+						const facade = (await connect()) as NativeConnection;
+						return new Proxy(facade, {
+							get(target, property, receiver) {
+								if (property !== 'all') return Reflect.get(target, property, receiver) as unknown;
+								return (sql: string, parameters: unknown[], callback: NativeCallback) => {
+									const result: unknown = Reflect.apply(target.all, target, [sql, parameters, callback]);
+									if (sql === 'SELECT 396') queued.resolve();
+									return result;
+								};
+							},
+						});
+					});
+					window = captureSqliteNoMutationWindow(manager, () => true);
+					await manager.insert(TransactionRecord, { name: 'intended' });
+					window.beginFinalValidation();
+					window.applied();
+					const first = manager.query('SELECT 395');
+					jobs.push(first);
+					void first.catch(rejectAdmission);
+					await Promise.race([entered.promise, admissionFailure]);
+					const second = manager.query('SELECT 396');
+					jobs.push(second);
+					void second.catch(rejectAdmission);
+					queryResults = await Promise.allSettled(jobs);
+					throw primary;
+				});
+				let opaque: boolean[], queryResults: PromiseSettledResult<unknown>[];
+				try {
+					await Promise.race([queued.promise, admissionFailure]);
+					const scope = Reflect.get(runner, 'guardedCommit') as {
+						noMutation: { pending: Set<{ sql: string }>; inFlight: object };
+						lease: object;
+						managedOwner: { children: object };
+					};
+					const ticket = [...scope.noMutation.pending].find((candidate) => candidate.sql === 'SELECT 396');
+					expect(ticket).toBeDefined();
+					opaque = [
+						Reflect.has(scope.noMutation.inFlight, 'submit'),
+						Reflect.has(scope.noMutation.inFlight, 'refuse'),
+						Reflect.has(ticket, 'dispatchFailure'),
+						Reflect.has(scope.lease, 'release'),
+						Reflect.has(runner, 'coordinator'),
+						Reflect.has(scope.managedOwner.children, 'waiters'),
+					];
+					if (fault) ticket.sql = 'SELECT 397'; // Explicit fixture fault: two valid reads, actual queued SQL unchanged.
+				} finally {
+					release.resolve();
+					await Promise.allSettled([request, ...jobs, ...deliveries]);
+				}
+				expect((await Promise.allSettled([request]))[0]).toEqual({ status: 'rejected', reason: primary });
+				expect(queryResults.map((result) => result.status)).toEqual(['fulfilled', fault ? 'rejected' : 'fulfilled']);
+				expect(acknowledgements).toBe(fault ? 0 : 1);
+				expect(submissions.mock.calls.filter(([sql]) => sql === 'SELECT 396')).toHaveLength(fault ? 0 : 1);
+				expect(opaque).toEqual([false, false, false, false, false, false]);
+				expect(rollbackSeen).toBe(true);
+				expect(abortResolverExposed).toBe(false);
+				expect(window.outcome).toBe('rolled_back');
+				expect(await names()).toEqual([]);
+				await database.transaction((manager) => manager.query('SELECT 1'));
+			});
+
 			it.each(['managed-entry', 'permit-entry'])(
 				'keeps lifecycle authority inaccessible to a forged runtime record: %s',
 				async (route) => {
