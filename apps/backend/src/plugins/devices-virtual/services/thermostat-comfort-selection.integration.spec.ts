@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { EntityManager, QueryRunner } from 'typeorm';
+import { AfterQueryEvent, BeforeQueryEvent, EntityManager, QueryRunner, UpdateEvent } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -1019,6 +1019,317 @@ describe('manual thermostat selection: reserved native intent', () => {
 		}
 	});
 
+	const retainedSnapshot = async () => {
+		const tables = (
+			await database.query<{ name: string }[]>(
+				"SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'devices_virtual_thermostat_%' OR name LIKE 'devices_module_climate_automation_%') ORDER BY name",
+			)
+		)
+			.map(({ name }) => name)
+			.filter((name) => name !== 'devices_virtual_thermostat_configs');
+		return async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
+			const records: Record<string, unknown> = {};
+			for (const table of tables)
+				records[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+			return records;
+		};
+	};
+	// Independent fixed-column statement binding: no second QueryBuilder or SQL execution.
+	const fixtureComfortUpdate = (before: VirtualThermostatConfigEntity, intended: ThermostatComfortConfiguration) => {
+		const metadata = database.getMetadata(VirtualThermostatConfigEntity),
+			parameters: unknown[] = [];
+		const parameter = (value: unknown) => (typeof value === 'number' ? String(value) : (parameters.push(value), '?'));
+		const columns = [
+			'controllerId',
+			'displayFloorClaimId',
+			'ownerDeviceId',
+			'schemaVersion',
+			'revision',
+			'requestedMode',
+			'controlStrategy',
+			'locked',
+			'comfort',
+			'policy',
+			'heuristic',
+			'contactOpeningMs',
+			'contactClosingMs',
+			'configuredAt',
+			'releaseRequestedAt',
+		] as const;
+		const where = columns.map(
+			(key) =>
+				`"${key}" IS ${parameter(database.driver.preparePersistentValue(before[key], metadata.findColumnWithPropertyName(key)) as unknown)}`,
+		);
+		// SET parameters precede WHERE; revision and all original numeric preimages are inlined by SQLite's driver.
+		parameters.unshift(JSON.stringify(intended));
+		return {
+			metadata,
+			entity: { comfort: intended, revision: before.revision + 1 },
+			query: `UPDATE "devices_virtual_thermostat_configs" SET "comfort" = ?, "revision" = ${before.revision + 1} WHERE ${where.join(' AND ')}`,
+			parameters,
+		};
+	};
+	const withUpdateSnapshot = async <T>(
+		semantic: boolean,
+		before: VirtualThermostatConfigEntity,
+		intended: ThermostatComfortConfiguration,
+		snapshot: (manager: EntityManager) => Promise<Record<string, unknown>>,
+		write: () => Promise<T>,
+	) => {
+		const cohort = [...database.subscribers],
+			target = semantic ? fixtureComfortUpdate(before, intended) : undefined;
+		if (semantic) {
+			expect(cohort).toHaveLength(1);
+			expect(cohort[0]).toBeInstanceOf(VirtualThermostatOwnershipSubscriber);
+			expect(Reflect.get(cohort[0], 'afterUpdate')).toBeUndefined();
+			expect(target.metadata.beforeUpdateListeners).toEqual([]);
+			expect(target.metadata.afterUpdateListeners).toEqual([]);
+		}
+		let manager: EntityManager,
+			runner: QueryRunner,
+			values: object,
+			parameters: unknown[],
+			copied: unknown[],
+			receipt: SqliteCommitGuardReceipt,
+			seam: Record<string, unknown>;
+		let selected = 0,
+			submitted = 0,
+			acknowledged = 0,
+			completed = 0,
+			attempts = 0,
+			commits = 0,
+			afterCommit = 0,
+			rollbacks = 0;
+		let result: T, primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+		const same = (event: { manager: EntityManager; queryRunner: QueryRunner }) => {
+			expect(event.manager).toBe(manager);
+			expect(event.queryRunner).toBe(runner);
+		};
+		const configQuery = (query: string) => query.startsWith('UPDATE "devices_virtual_thermostat_configs" ');
+		const observer = semantic
+			? {
+					beforeUpdate: (event: UpdateEvent<object>) => {
+						if (event.metadata.target !== VirtualThermostatConfigEntity) return;
+						expect(++selected).toBe(1);
+						expect(event.connection).toBe(database);
+						expect(Object.keys(event.entity).sort()).toEqual(['comfort', 'revision']);
+						expect(event.entity).toEqual(target.entity);
+						manager = event.manager;
+						runner = event.queryRunner;
+						values = event.entity;
+						expect(runner.manager).toBe(manager);
+						expect(manager.queryRunner).toBe(runner);
+						expect(manager.connection).toBe(database);
+						expect(runner.isTransactionActive).toBe(true);
+						expect(Reflect.get(runner, 'transactionDepth')).toBe(1);
+						expect(lock.hasCurrentStructuralLease()).toBe(true);
+					},
+					beforeQuery: (event: BeforeQueryEvent<unknown>) => {
+						if (configQuery(event.query)) {
+							same(event);
+							expect(++submitted).toBe(1);
+							expect(event.query).toBe(target.query);
+							parameters = event.parameters;
+							copied = [...parameters];
+							expect(typeof parameters[0]).toBe('string');
+							expect(JSON.parse(parameters[0] as string)).toEqual(intended);
+							expect(parameters.slice(1)).toEqual(target.parameters.slice(1));
+						}
+						if (event.manager === manager && event.queryRunner === runner && event.query === 'COMMIT') {
+							expect(completed).toBe(1);
+							expect(seam).toBeDefined();
+							attempts++;
+						}
+					},
+					afterQuery: (event: AfterQueryEvent<unknown>) => {
+						if (configQuery(event.query) && event.success) {
+							same(event);
+							expect(event.query).toBe(target.query);
+							expect(event.parameters).toBe(parameters);
+							expect(event.parameters).toEqual(copied);
+							expect(++acknowledged).toBe(1);
+						}
+						if (event.manager === manager && event.queryRunner === runner && event.query === 'COMMIT' && event.success)
+							commits++;
+					},
+					afterUpdate: async (event: UpdateEvent<object>) => {
+						if (event.metadata.target !== VirtualThermostatConfigEntity) return;
+						same(event);
+						expect(event.entity).toBe(values);
+						expect([selected, submitted, acknowledged]).toEqual([1, 1, 1]);
+						expect(++completed).toBe(1);
+						expect(database.subscribers).toHaveLength(cohort.length + 1);
+						expect(cohort.every((member, index) => database.subscribers[index] === member)).toBe(true);
+						expect(database.subscribers[cohort.length] === observer).toBe(true);
+						expect(runner.isTransactionActive).toBe(true);
+						expect(lock.hasCurrentStructuralLease()).toBe(true);
+						receipt = observeSqliteOuterOutcome(manager);
+						expect(receipt.outcome).toBe('pending');
+						seam = await snapshot(manager);
+					},
+					afterTransactionCommit: (event: { manager: EntityManager; queryRunner: QueryRunner }) => {
+						if (event.manager === manager && event.queryRunner === runner) afterCommit++;
+					},
+					afterTransactionRollback: (event: { manager: EntityManager; queryRunner: QueryRunner }) => {
+						if (event.manager === manager && event.queryRunner === runner) rollbacks++;
+					},
+				}
+			: {
+					beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
+						if (event.query === 'COMMIT') seam = await snapshot(event.manager);
+					},
+				};
+		database.subscribers.push(observer);
+		try {
+			result = await write();
+			if (semantic) {
+				expect([selected, submitted, acknowledged, completed, attempts, commits, afterCommit, rollbacks]).toEqual([
+					1, 1, 1, 1, 1, 1, 1, 0,
+				]);
+				expect(receipt.outcome).toBe('committed');
+			}
+		} catch (cause: unknown) {
+			primary = { cause };
+		} finally {
+			try {
+				const index = database.subscribers.indexOf(observer);
+				if (index < 0) cleanup = { cause: new Error('Owned UPDATE observer missing') };
+				else database.subscribers.splice(index, 1);
+			} catch (cause: unknown) {
+				cleanup = { cause };
+			}
+		}
+		if (primary) throw primary.cause;
+		if (cleanup) throw cleanup.cause;
+		return { result, seam };
+	};
+
+	it.each(['entity', 'revision', 'payload', 'runner', 'duplicate'] as const)(
+		'refuses invalid UPDATE snapshot selector %s (no native credit)',
+		async (kind) => {
+			const before = await row(),
+				intended = { ...before.comfort, selected_preset: 'eco' as const },
+				target = fixtureComfortUpdate(before, intended),
+				sentinel = new Error('selector model finished');
+			await expect(
+				lock.runExclusive(() =>
+					database.transaction((manager) =>
+						withUpdateSnapshot(
+							true,
+							before,
+							intended,
+							() => Promise.resolve({}),
+							() => {
+								const observer = database.subscribers[database.subscribers.length - 1];
+								const select = (value: UpdateEvent<object>) => {
+									expect(Reflect.apply(Reflect.get(observer, 'beforeUpdate'), observer, [value])).toBeUndefined();
+								};
+								const event: UpdateEvent<object> = {
+									connection: database,
+									manager,
+									queryRunner: manager.queryRunner,
+									metadata: target.metadata,
+									entity: target.entity,
+									databaseEntity: undefined,
+									updatedColumns: [],
+									updatedRelations: [],
+								};
+								if (kind === 'entity') {
+									select({ ...event, metadata: database.getMetadata(VirtualDeviceEntity) });
+									select(event);
+								} else if (kind === 'revision' || kind === 'payload')
+									expect(() =>
+										select({
+											...event,
+											entity:
+												kind === 'revision'
+													? { ...target.entity, revision: before.revision + 2 }
+													: { ...target.entity, comfort: { ...intended, selected_preset: 'away' } },
+										}),
+									).toThrow();
+								else {
+									select(event);
+									if (kind === 'duplicate') expect(() => select(event)).toThrow();
+									else
+										expect(() =>
+											observer.beforeQuery({
+												connection: database,
+												manager,
+												queryRunner: {} as QueryRunner,
+												query: target.query,
+												parameters: target.parameters,
+											}),
+										).toThrow();
+								}
+								throw sentinel;
+							},
+						),
+					),
+				),
+			).rejects.toBe(sentinel);
+		},
+	);
+
+	it.each([false, undefined])('preserves original UPDATE snapshot rejection %s through cleanup', async (cause) => {
+		const before = await row(),
+			input = await fence(),
+			intended = { ...before.comfort, selected_preset: 'eco' as const };
+		const descriptor = Object.getOwnPropertyDescriptor(graph, 'sealControllerLedger'),
+			count = database.subscribers.length,
+			splice = database.subscribers.splice;
+		let receipt: SqliteCommitGuardReceipt, original: Promise<Record<string, unknown>>;
+		const snapshot = jest.fn(function (this: unknown, manager: EntityManager) {
+			expect(this).toBeUndefined();
+			receipt = observeSqliteOuterOutcome(manager);
+			// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Exact falsy rejection is the original callback's oracle.
+			original = Promise.reject(cause);
+			return original;
+		});
+		const removal = jest.spyOn(database.subscribers, 'splice').mockImplementation(function (...args) {
+			Reflect.apply(splice, this, args);
+			throw new Error('cleanup after removal');
+		});
+		try {
+			await expect(
+				withUpdateSnapshot(true, before, intended, snapshot, () => comfort.select(id, input, 'eco', false)),
+			).rejects.toBe(cause);
+			expect(snapshot).toHaveBeenCalledTimes(1);
+			expect(original).toBeInstanceOf(Promise);
+			expect(receipt.outcome).toBe('rolled_back');
+			expect(database.subscribers).toHaveLength(count);
+			expect(Object.getOwnPropertyDescriptor(graph, 'sealControllerLedger')).toEqual(descriptor);
+		} finally {
+			removal.mockRestore();
+		}
+	});
+
+	it('detects a real retained-row change in the UPDATE snapshot oracle', async () => {
+		const key = randomUUID();
+		await database.query(
+			`INSERT INTO devices_virtual_thermostat_sources (id,controllerId,role,sourcePropertyIdentity,contractFingerprint,maximumAgeSeconds) VALUES (?,?,'ambient','retained-source','retained-contract',60)`,
+			[key, id],
+		);
+		const snapshot = await retainedSnapshot(),
+			before = await snapshot(database.manager),
+			input = await fence(),
+			config = await row();
+		await database.query('UPDATE devices_virtual_thermostat_sources SET maximumAgeSeconds=61 WHERE id=?', [key]);
+		const { seam } = await withUpdateSnapshot(
+			true,
+			config,
+			{ ...config.comfort, selected_preset: 'eco' },
+			snapshot,
+			() => comfort.select(id, input, 'eco', false),
+		);
+		expect(() => expect(seam).toEqual(before)).toThrow();
+		expect(await snapshot(database.manager)).toEqual(seam);
+		expect(
+			(seam.devices_virtual_thermostat_sources as Array<{ id: string; maximumAgeSeconds: number }>).find(
+				(entry) => entry.id === key,
+			)?.maximumAgeSeconds,
+		).toBe(61);
+	});
+
 	it.each(['selection', 'definition', 'override', 'cancel'] as const)(
 		'runs real ownership reconciliation and direct durable invariance for %s with notification retry',
 		async (kind) => {
@@ -1101,45 +1412,34 @@ describe('manual thermostat selection: reserved native intent', () => {
 				},
 			});
 			expect(claims.qualification(claim, false)).not.toBeNull();
-			const tables = (
-				await database.query<{ name: string }[]>(
-					"SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'devices_virtual_thermostat_%' OR name LIKE 'devices_module_climate_automation_%') ORDER BY name",
-				)
-			)
-				.map(({ name }) => name)
-				.filter((name) => name !== 'devices_virtual_thermostat_configs');
-			const snapshot = async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
-				const records: Record<string, unknown> = {};
-				for (const table of tables)
-					records[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
-				return records;
-			};
+			const snapshot = await retainedSnapshot();
 			const before = await snapshot(database.manager);
 			const beforeConfig = await row();
 			const invalidated = jest.spyOn(claims, 'invalidate'),
 				revoked = jest.spyOn(claims, 'revokeAllQualifications');
 			const realRefresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
 			const refresh = jest.spyOn(claims, 'refresh').mockImplementation(realRefresh);
-			let seam: Record<string, unknown> | undefined;
-			database.subscribers.push({
-				beforeQuery: async (event) => {
-					if (event.query === 'COMMIT') seam = await snapshot(event.manager);
-				},
-			});
 			const failure = () => {
 				throw new Error('listener pending');
 			};
 			events.on(THERMOSTAT_CONFIG_CHANGED, failure);
 			const input = await fence();
-			const result =
-				kind === 'selection'
-					? await comfort.select(id, input, 'eco', false)
-					: kind === 'definition'
-						? await comfort.configure(id, input, definition())
-						: kind === 'override'
-							? await comfort.override(id, input, requestOverride(), 'operator')
-							: await comfort.cancel(id, input, beforeConfig.comfort.temporary_override.id);
+			const { result, seam } = await withUpdateSnapshot(
+				kind === 'selection' || kind === 'definition',
+				beforeConfig,
+				kind === 'selection' ? { ...beforeConfig.comfort, selected_preset: 'eco' } : definedConfiguration(),
+				snapshot,
+				async () =>
+					kind === 'selection'
+						? await comfort.select(id, input, 'eco', false)
+						: kind === 'definition'
+							? await comfort.configure(id, input, definition())
+							: kind === 'override'
+								? await comfort.override(id, input, requestOverride(), 'operator')
+								: await comfort.cancel(id, input, beforeConfig.comfort.temporary_override.id),
+			);
 			expect(seam).toEqual(before);
+			expect(await snapshot(database.manager)).toEqual(before);
 			expect(invalidated).toHaveBeenCalled();
 			expect(revoked).toHaveBeenCalled();
 			expect(claims.qualification(claim, false)).toBeNull();

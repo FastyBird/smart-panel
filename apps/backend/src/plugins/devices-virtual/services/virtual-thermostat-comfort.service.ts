@@ -520,6 +520,7 @@ export class VirtualThermostatComfortService {
 								);
 							if (semantic && operation.changed()) {
 								if (!appliedImage) throw new DevicesValidationException('Original applied comfort image required.');
+								nativeWindow.beginFinalValidation();
 								if (appliedAuthority)
 									await invokeCreation(
 										appliedAuthority.values.captureAppliedAuthority,

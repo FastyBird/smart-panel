@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BeforeQueryEvent, UpdateEvent } from 'typeorm';
+import { BeforeQueryEvent, EntityManager, QueryRunner, UpdateEvent } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { realThermostatGuardFixture } from '../../../../test/support/thermostat-real-guard-fixture';
 import {
 	SqliteCommitGuardReceipt,
+	SqliteCommitGuardRefusedError,
 	SqliteDataSource,
 	observeSqliteOuterOutcome,
 } from '../../../common/database/sqlite-data-source';
@@ -483,6 +484,138 @@ describe('configured activity through the native thermostat participant', () => 
 		}
 	});
 
+	// Observe only the manager that performs this request's original comfort UPDATE.
+	const committedComfortWrite = async <T>(write: () => Promise<T>) => {
+		let receipt: SqliteCommitGuardReceipt | undefined;
+		const observer = {
+			beforeUpdate: (event: UpdateEvent<object>) => {
+				if (event.metadata.target === VirtualThermostatConfigEntity && Object.hasOwn(event.entity ?? {}, 'comfort'))
+					receipt ??= observeSqliteOuterOutcome(event.manager);
+			},
+		};
+		database.subscribers.push(observer);
+		try {
+			const result = await write();
+			expect(receipt?.outcome).toBe('committed');
+			return result;
+		} finally {
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+	};
+
+	it.each([
+		['selection', false],
+		['definition', false],
+		['selection', true],
+	] as const)('refuses final-slot mutation for applied comfort %s caught=%s', async (kind, caught) => {
+		const f = await appliedComfortFixture(kind, 'EMPTY'),
+			before = await f.snapshot();
+		let manager: EntityManager | undefined, runner: QueryRunner | undefined;
+		let receipt: SqliteCommitGuardReceipt | undefined, attemptFailure: { cause: unknown } | undefined;
+		let reads = 0,
+			attempts = 0,
+			dispatchedWrites = 0,
+			commits = 0,
+			rollbacks = 0;
+		let acknowledged = false,
+			owner = false,
+			active = false;
+		const observer = {
+			afterUpdate: (event: UpdateEvent<object>) => {
+				if (event.metadata.target === ClimateAutomationSlotEntity && !runner) {
+					manager = event.manager;
+					runner = event.queryRunner;
+					receipt = observeSqliteOuterOutcome(manager);
+				}
+			},
+			beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
+				if (event.queryRunner !== runner) return;
+				if (/^\s*COMMIT\b/i.test(event.query)) commits++;
+				if (
+					/^\s*UPDATE\b/i.test(event.query) &&
+					event.query.includes('devices_virtual_thermostat_configs') &&
+					(event.parameters?.includes(987) || /\b987\b/.test(event.query))
+				)
+					dispatchedWrites++;
+				if (
+					attempts ||
+					!/^\s*SELECT\b/i.test(event.query) ||
+					!event.query.includes('FROM "devices_module_climate_automation_slots"') ||
+					++reads !== 2
+				)
+					return;
+				attempts++;
+				expect(event.manager).toBe(manager);
+				owner = structure.captureExclusiveOwner()();
+				active = event.queryRunner.isTransactionActive;
+				try {
+					await event.manager.update(VirtualThermostatConfigEntity, { controllerId }, { contactClosingMs: 987 });
+					expect(
+						(await event.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).contactClosingMs,
+					).toBe(987);
+					acknowledged = true;
+				} catch (cause: unknown) {
+					attemptFailure = { cause };
+					if (!caught) throw cause;
+				}
+			},
+			afterTransactionRollback: (event: { queryRunner: QueryRunner }) => {
+				if (event.queryRunner === runner) rollbacks++;
+			},
+		};
+		database.subscribers.push(observer);
+		const emitted = jest.spyOn(events, 'emit'),
+			activated = jest.spyOn(provider, 'activateLocal');
+		try {
+			const [outcome] = await Promise.allSettled([f.write()]);
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			if (process.env.GROUPA_TC02_OLD_WITNESS === '1')
+				console.error(
+					'TC02-composed-omission',
+					JSON.stringify({
+						kind,
+						caught,
+						attempts,
+						owner,
+						active,
+						acknowledged,
+						dispatchedWrites,
+						commits,
+						rollbacks,
+						outcome: outcome.status,
+						receipt: receipt?.outcome,
+						contactClosingMs: row.contactClosingMs,
+						revision: row.revision,
+					}),
+				);
+			expect(attempts).toBe(1);
+			expect(owner).toBe(true);
+			expect(active).toBe(true);
+			expect(outcome.status).toBe('rejected');
+			expect(attemptFailure).toBeDefined();
+			expect(attemptFailure?.cause).toBeInstanceOf(SqliteCommitGuardRefusedError);
+			if (outcome.status === 'rejected') {
+				const failure = outcome.reason as Error & { driverError?: Error & { cause?: unknown }; cause?: unknown };
+				expect([failure, failure?.cause, failure?.driverError, failure?.driverError?.cause]).toContain(
+					attemptFailure?.cause,
+				);
+			}
+			expect(acknowledged).toBe(false);
+			expect(dispatchedWrites).toBe(0);
+			expect(commits).toBe(0);
+			expect(rollbacks).toBe(1);
+			expect(receipt?.outcome).toBe('rolled_back');
+			expect(await f.snapshot()).toEqual(before);
+			expect(await readControllerMutationImage(database.manager, controllerId)).toEqual(f.before);
+			expect(emitted.mock.calls.filter(([event]) => event === THERMOSTAT_CONFIG_CHANGED)).toEqual([]);
+			expect(activated).not.toHaveBeenCalled();
+		} finally {
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			emitted.mockRestore();
+			activated.mockRestore();
+		}
+	});
+
 	it.each([
 		['selection', 'EMPTY'],
 		['selection', 'RETIRED'],
@@ -490,7 +623,7 @@ describe('configured activity through the native thermostat participant', () => 
 		['definition', 'RETIRED'],
 	] as const)('retains the complete intended applied comfort %s image in %s', async (kind, state) => {
 		const f = await appliedComfortFixture(kind, state);
-		const result = await f.write();
+		const result = await committedComfortWrite(f.write);
 		const after = await readControllerMutationImage(database.manager, controllerId);
 		expect(result.configuration).toEqual(f.expected);
 		expect(result.revision).toBe(f.row.revision + 1);
@@ -515,6 +648,124 @@ describe('configured activity through the native thermostat participant', () => 
 		expect(slot.manualCounter).toBe(f.slot.manualCounter + 1);
 		expect(slot.manualGeneration).not.toBe(f.slot.manualGeneration);
 		expect(slot.manualHold).toBe(f.slot.manualHold);
+	});
+
+	it('commits the full installed comfort refresh before final validation', async () => {
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		const source = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, {
+			generationId: slot.generationId,
+		});
+		expect(slot).toMatchObject({ state: 'LIVE', manualHold: false });
+		expect(source.state).toBe('FINALIZED_LIVE');
+		const current = await comfort.get(controllerId);
+		const before = await readControllerMutationImage(database.manager, controllerId);
+		const presets = current.configuration.presets.map((entry) => ({
+			...entry,
+			setpoints: { ...entry.setpoints, heating_setpoint: 18 },
+		}));
+		const expected = { ...current.configuration, presets };
+		const result = await committedComfortWrite(() =>
+			comfort.configure(
+				controllerId,
+				{
+					expected_revision: current.revision,
+					expected_graph_revision: current.graph_revision,
+				},
+				{
+					heating_range: expected.heating_range,
+					cooling_range: expected.cooling_range,
+					presets,
+					automation_enabled: true,
+				},
+			),
+		);
+		expect(result.configuration).toEqual(expected);
+		expect(result.revision).toBe(current.revision + 1);
+		expect(result.graph_revision).toBe(current.graph_revision + 1);
+		const after = await readControllerMutationImage(database.manager, controllerId);
+		expect(JSON.parse(after.configuration[0].comfort as string)).toEqual(expected);
+		expect(after).toEqual({
+			...before,
+			configuration: [
+				{ ...before.configuration[0], comfort: after.configuration[0].comfort, revision: current.revision + 1 },
+			],
+		});
+		const refreshed = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		expect(refreshed).toEqual({
+			...slot,
+			slotRevision: slot.slotRevision + 1,
+			installEvidence: refreshed.installEvidence,
+		});
+		expect(JSON.parse(refreshed.installEvidence)).toEqual({
+			controllerRevision: current.revision + 1,
+			graphRevision: current.graph_revision + 1,
+			evidence: {
+				owner: { id: controllerId, type: 'virtual', enabled: true, mode: VirtualDeviceMode.CLIMATE_CONTROLLER },
+				image: after,
+			},
+			legacyBaseline: expected.automation_baseline ?? null,
+		});
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: slot.generationId }),
+		).toEqual(source);
+		expect(result.effective).toMatchObject({ source: 'automation', heating_setpoint: 18 });
+	});
+
+	it('commits explicit automation opt-in before final validation', async () => {
+		const initial = await comfort.get(controllerId);
+		const selected = await comfort.select(
+			controllerId,
+			{ expected_revision: initial.revision, expected_graph_revision: initial.graph_revision },
+			'eco',
+			false,
+		);
+		const manual = await comfort.select(
+			controllerId,
+			{ expected_revision: selected.revision, expected_graph_revision: selected.graph_revision },
+			null,
+			false,
+		);
+		const definition = {
+			heating_range: initial.configuration.heating_range,
+			cooling_range: initial.configuration.cooling_range,
+			presets: initial.configuration.presets,
+		};
+		const disabled = await comfort.configure(
+			controllerId,
+			{ expected_revision: manual.revision, expected_graph_revision: manual.graph_revision },
+			{ ...definition, automation_enabled: false },
+		);
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		expect(slot.manualHold).toBe(true);
+		const before = await readControllerMutationImage(database.manager, controllerId);
+		const expected = { ...disabled.configuration, automation_enabled: true };
+		const result = await committedComfortWrite(() =>
+			comfort.configure(
+				controllerId,
+				{ expected_revision: disabled.revision, expected_graph_revision: disabled.graph_revision },
+				{ ...definition, automation_enabled: true },
+			),
+		);
+		expect(result.configuration).toEqual(expected);
+		expect(result.revision).toBe(disabled.revision + 1);
+		expect(result.graph_revision).toBe(disabled.graph_revision + 1);
+		const after = await readControllerMutationImage(database.manager, controllerId);
+		expect(JSON.parse(after.configuration[0].comfort as string)).toEqual(expected);
+		expect(after).toEqual({
+			...before,
+			configuration: [
+				{ ...before.configuration[0], comfort: after.configuration[0].comfort, revision: disabled.revision + 1 },
+			],
+		});
+		const optedIn = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		expect(optedIn).toMatchObject({
+			state: 'EMPTY',
+			manualHold: false,
+			controllerIncarnation: slot.controllerIncarnation,
+		});
+		expect(optedIn.slotRevision).toBeGreaterThan(slot.slotRevision);
 	});
 
 	const configurePhysical = async () => {
