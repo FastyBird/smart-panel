@@ -1060,6 +1060,69 @@ describe('virtual thermostat durable runtime', () => {
 		},
 	);
 
+	it.each(['data', 'getter'] as const)(
+		'invokes original public send after native journal hold despite call %s',
+		async (mutation) => {
+			await settle();
+			const dispatch = jest.spyOn(transport, 'get');
+			let entered: () => void;
+			const admitted = new Promise<void>((resolve) => (entered = resolve));
+			let release: () => void;
+			const held = ownedGate((resolve) => (release = resolve));
+			let commandId: string | undefined;
+			let original: ThermostatActuationAdapter | undefined;
+			let descriptor: PropertyDescriptor | undefined;
+			let originalSend: ThermostatActuationAdapter['send'] | undefined;
+			let operation: Promise<void> | undefined;
+			const replacement = jest.fn().mockResolvedValue({ outcome: 'refused', reasons: ['replacement'] });
+			const getter = jest.fn(() => replacement);
+			const subscriber = {
+				afterInsert: async (event: InsertEvent<VirtualThermostatCommandEntity>) => {
+					if (!(event.entity instanceof VirtualThermostatCommandEntity) || event.entity.action !== 'on' || commandId)
+						return;
+					commandId = event.entity.id;
+					original = dispatch.mock.results.at(-1)?.value as ThermostatActuationAdapter;
+					entered();
+					await held;
+				},
+			};
+			database.subscribers.push(subscriber);
+			try {
+				sample(sensorId, 18);
+				operation = runtime.request(controllerId);
+				await admitted;
+				expect(original).toBeDefined();
+				originalSend = Object.getOwnPropertyDescriptor(original, 'send').value as ThermostatActuationAdapter['send'];
+				descriptor = Object.getOwnPropertyDescriptor(originalSend, 'call');
+				Object.defineProperty(originalSend, 'call', {
+					configurable: true,
+					...(mutation === 'data' ? { value: replacement } : { get: getter }),
+				});
+				expect(Object.getOwnPropertyDescriptor(original, 'send').value).toBe(originalSend);
+				release();
+				await operation;
+				await settle();
+				expect(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: commandId })).toMatchObject(
+					{
+						action: 'on',
+						status: 'accepted',
+					},
+				);
+				expect(sends).toContain(true);
+				expect(replacement).not.toHaveBeenCalled();
+				expect(getter).not.toHaveBeenCalled();
+			} finally {
+				release();
+				await operation?.catch(() => undefined);
+				if (originalSend) {
+					if (descriptor) Object.defineProperty(originalSend, 'call', descriptor);
+					else Reflect.deleteProperty(originalSend, 'call');
+				}
+				database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+			}
+		},
+	);
+
 	it.each(['adapter', 'qualification'] as const)(
 		'cancels the original ON when its %s changes during native journal insertion',
 		async (replacement) => {

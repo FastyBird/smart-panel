@@ -324,8 +324,8 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					suppliedProfile.current() &&
 					evidence.current() &&
 					evidenceProfile.current() &&
-					evidence.values.isCurrent.call(original) === true &&
-					methods.values.canReconcile.call(adapter, target, qualification) === true;
+					invokeCreation(evidence.values.isCurrent, original) === true &&
+					invokeCreation(methods.values.canReconcile, adapter, target, qualification) === true;
 			} else {
 				if (
 					profile.id !== SHELLY_GUARDED_PROFILE ||
@@ -419,11 +419,11 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 		return Object.freeze({
 			isCurrent,
 			send: (...args: Parameters<ThermostatActuationAdapter['send']>) =>
-				methods.values.send.call(methods.receiver, ...args),
+				invokeCreation(methods.values.send, methods.receiver, ...args),
 			reconcile: (...args: Parameters<ThermostatActuationAdapter['reconcile']>) =>
-				methods.values.reconcile.call(methods.receiver, ...args),
+				invokeCreation(methods.values.reconcile, methods.receiver, ...args),
 			canReconcile: (...args: Parameters<ThermostatActuationAdapter['canReconcile']>) =>
-				methods.values.canReconcile.call(methods.receiver, ...args),
+				invokeCreation(methods.values.canReconcile, methods.receiver, ...args),
 		});
 	}
 	get(

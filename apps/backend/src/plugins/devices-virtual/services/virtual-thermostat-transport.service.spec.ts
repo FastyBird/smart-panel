@@ -542,6 +542,118 @@ describe('captured thermostat transport readiness continuity', () => {
 		}
 	});
 
+	it.each([
+		['readiness', 'data'],
+		['readiness', 'getter'],
+		['canReconcile', 'data'],
+		['canReconcile', 'getter'],
+	] as const)('invokes original public %s despite retained function call %s', async (method, mutation) => {
+		const f = await fixture();
+		const p = f.custom();
+		const current = jest.fn(() => p.ready.current);
+		const evidence = Object.freeze({ ...p.original, isCurrent: current });
+		p.captureReadiness.mockReturnValue(evidence);
+		f.transport.register(f.target.device.type, p.adapter);
+		const fn = method === 'readiness' ? current : p.canReconcile;
+		const originalCall = Object.getOwnPropertyDescriptor(fn, 'call');
+		const replacement = jest.fn(() => true);
+		const getter = jest.fn(() => replacement);
+		try {
+			const captured = f.requiredCapture();
+			current.mockClear();
+			p.canReconcile.mockClear();
+			if (method === 'readiness') p.ready.current = false;
+			else p.ready.allowed = false;
+			Object.defineProperty(fn, 'call', {
+				configurable: true,
+				...(mutation === 'data' ? { value: replacement } : { get: getter }),
+			});
+			expect(captured.isCurrent()).toBe(false);
+			expect(current).toHaveBeenCalledTimes(1);
+			expect(current.mock.contexts[0]).toBe(evidence);
+			expect(current.mock.calls[0]).toEqual([]);
+			if (method === 'canReconcile') {
+				expect(p.canReconcile).toHaveBeenCalledTimes(1);
+				expect(p.canReconcile.mock.contexts[0]).toBe(p.adapter);
+				expect(p.canReconcile.mock.calls[0][0]).toBe(f.target);
+				expect(p.canReconcile.mock.calls[0][1]).toBe(f.qualification);
+			} else expect(p.canReconcile).not.toHaveBeenCalled();
+			expect(replacement).not.toHaveBeenCalled();
+			expect(getter).not.toHaveBeenCalled();
+		} finally {
+			if (originalCall) Object.defineProperty(fn, 'call', originalCall);
+			else Reflect.deleteProperty(fn, 'call');
+			await f.module.close();
+		}
+	});
+
+	it.each([
+		['send', 'data'],
+		['send', 'getter'],
+		['reconcile', 'data'],
+		['reconcile', 'getter'],
+		['canReconcile', 'data'],
+		['canReconcile', 'getter'],
+	] as const)('retains original public %s dispatch and result after call %s', async (method, mutation) => {
+		const f = await fixture();
+		const p = f.custom();
+		f.transport.register(f.target.device.type, p.adapter);
+		const fn = p.adapter[method];
+		const originalCall = Object.getOwnPropertyDescriptor(fn, 'call');
+		const replacement = jest.fn(() => undefined);
+		const getter = jest.fn(() => replacement);
+		try {
+			const captured = f.transport.capture(f.target, f.claim, f.qualification);
+			expect(captured.isCurrent()).toBe(true);
+			Object.defineProperty(fn, 'call', {
+				configurable: true,
+				...(mutation === 'data' ? { value: replacement } : { get: getter }),
+			});
+			expect(p.adapter[method]).toBe(fn);
+			expect(captured.isCurrent()).toBe(true);
+			const guard = () => true;
+			let args: unknown[];
+			if (method === 'send') {
+				const command = { commandId: 'original-captured-command' };
+				const result = Promise.resolve({ outcome: 'refused' as const, reasons: ['original'] });
+				p.send.mockReturnValueOnce(result);
+				expect(captured.send(f.target, f.claim, f.qualification, guard, command)).toBe(result);
+				await result;
+				args = [f.target, f.claim, f.qualification, guard, command];
+			} else if (method === 'reconcile') {
+				const ids = ['original-command'];
+				const scope = {
+					controllerId: f.claim.controllerId,
+					controllerRevision: 1,
+					claimId: f.claim.id,
+					claimRevision: f.claim.revision,
+					contractFingerprint: f.claim.contractFingerprint,
+					qualification: f.qualification,
+				};
+				const result = Promise.resolve<Awaited<ReturnType<ThermostatActuationAdapter['reconcile']>>>(null);
+				p.reconcile.mockReturnValueOnce(result);
+				expect(captured.reconcile(f.target, ids, null, guard, scope)).toBe(result);
+				await result;
+				args = [f.target, ids, null, guard, scope];
+			} else {
+				p.ready.allowed = false;
+				expect(captured.canReconcile(f.target, f.qualification)).toBe(false);
+				args = [f.target, f.qualification];
+			}
+			const original = method === 'send' ? p.send : method === 'reconcile' ? p.reconcile : p.canReconcile;
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(original.mock.contexts[0]).toBe(p.adapter);
+			expect(original.mock.calls[0]).toHaveLength(args.length);
+			args.forEach((arg, index) => expect(original.mock.calls[0][index]).toBe(arg));
+			expect(replacement).not.toHaveBeenCalled();
+			expect(getter).not.toHaveBeenCalled();
+		} finally {
+			if (originalCall) Object.defineProperty(fn, 'call', originalCall);
+			else Reflect.deleteProperty(fn, 'call');
+			await f.module.close();
+		}
+	});
+
 	it('keeps legacy adapters ordinary-compatible but bridge-closed without the optional pure capability', async () => {
 		const f = await fixture();
 		try {
