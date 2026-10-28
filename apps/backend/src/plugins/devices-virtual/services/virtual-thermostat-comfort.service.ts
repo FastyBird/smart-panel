@@ -11,6 +11,7 @@ import {
 	SqliteReadCheckpoint,
 	captureSqliteNoMutationWindow,
 	observeSqliteOuterOutcome,
+	registerSqliteCommitGuard,
 } from '../../../common/database/sqlite-data-source';
 import { ClimateAutomationSlotFacts } from '../../../modules/devices/contracts/climate-automation.contract';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -22,6 +23,7 @@ import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.en
 
 import { thermostatComfortSelection } from './thermostat-comfort-selection';
 import {
+	ControllerMutationImage,
 	assertControllerMutationImage,
 	captureControllerBindings,
 	readControllerMutationImage,
@@ -411,6 +413,10 @@ export class VirtualThermostatComfortService {
 						ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
 						operation.captureSlot();
 						const write = async (manager: EntityManager, advanceGraph?: () => Promise<number>) => {
+							// This capture follows mandatory original entry settlement, on the admitted native manager.
+							const appliedAuthority =
+								semantic && this.automation ? captureCreation(this.automation, ['captureAppliedAuthority']) : undefined;
+							if (appliedAuthority) registerSqliteCommitGuard(manager, () => appliedAuthority.current());
 							const manualSlot = await this.automation?.captureManualSlot(manager, id);
 							const installed = this.automation ? await this.automation.captureInstalledIntent(manager, id) : null;
 							const previous = this.automation
@@ -422,6 +428,7 @@ export class VirtualThermostatComfortService {
 										graph.values.edges.call(graph.receiver, manager),
 									)
 								: undefined;
+							let appliedImage: ControllerMutationImage | undefined;
 							const result = await operation.write(
 								manager,
 								installed ?? undefined,
@@ -440,6 +447,41 @@ export class VirtualThermostatComfortService {
 													input.definition.automation === 'enable' &&
 													!manualSlot?.facts
 												),
+											writeAppliedConfiguration: async (row, configuration) => {
+												if (before.configuration.length !== 1)
+													throw new DevicesValidationException(
+														'Original complete comfort configuration image required.',
+													);
+												const column = manager.connection
+													.getMetadata(VirtualThermostatConfigEntity)
+													.findColumnWithPropertyName('comfort');
+												if (!column) throw new DevicesValidationException('Original comfort column required.');
+												const intendedConfiguration = Object.freeze({
+													...before.configuration[0],
+													comfort: manager.connection.driver.preparePersistentValue(configuration, column) as unknown,
+													revision: row.revision + 1,
+												});
+												const update = manager
+													.createQueryBuilder()
+													.update(VirtualThermostatConfigEntity)
+													.set({ comfort: configuration, revision: row.revision + 1 });
+												// Fixed-column raw preimage, like writeControllerPartition; preserve the original refusal.
+												for (const [key, value] of Object.entries(before.configuration[0]))
+													update.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: value });
+												if ((await update.execute()).affected !== 1)
+													throw new DevicesValidationException('Thermostat selection lost its conditional update.');
+												appliedImage = Object.freeze({
+													...before,
+													configuration: Object.freeze([intendedConfiguration]),
+												});
+												if (
+													JSON.stringify(await readControllerMutationImage(manager, id)) !==
+													JSON.stringify(appliedImage)
+												)
+													throw new DevicesValidationException(
+														'Thermostat selection persisted an unexpected postimage.',
+													);
+											},
 											verifyUnchanged: async () => {
 												await assertControllerMutationImage(manager, id, before);
 												await bindings();
@@ -476,7 +518,19 @@ export class VirtualThermostatComfortService {
 								refreshedIntent = await this.automation.refreshIntent(manager, installed, 'intent', (intent) =>
 									operation.qualifyAutomation(intent),
 								);
-							if (semantic && operation.changed()) await bindings(before.properties, manager, result.graph_revision);
+							if (semantic && operation.changed()) {
+								if (!appliedImage) throw new DevicesValidationException('Original applied comfort image required.');
+								if (appliedAuthority)
+									await invokeCreation(
+										appliedAuthority.values.captureAppliedAuthority,
+										appliedAuthority.receiver,
+										manager,
+										id,
+										appliedImage,
+									);
+								else await assertControllerMutationImage(manager, id, appliedImage);
+								await bindings(before.properties, manager, result.graph_revision);
+							}
 							await graph.values.sealControllerLedger.call(graph.receiver, manager);
 							if (semantic) {
 								if (operation.changed()) nativeWindow.applied();

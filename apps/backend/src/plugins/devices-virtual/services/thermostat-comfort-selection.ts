@@ -1067,6 +1067,10 @@ function pin(
 						advanceGraph: () => Promise<number>;
 						canRemainUnchanged: (takeover: boolean) => boolean;
 						verifyUnchanged: () => Promise<void>;
+						writeAppliedConfiguration?: (
+							row: VirtualThermostatConfigEntity,
+							comfort: ThermostatComfortConfiguration,
+						) => Promise<void>;
 					},
 				): Promise<SelectionResult | ManualResult | ReleaseResult> {
 					assert();
@@ -1205,15 +1209,21 @@ function pin(
 						if (!revision(row.revision, 1, true))
 							refuse('Thermostat is missing, detached, locked or its revision changed/overflowed.');
 						if (semantic) await semantic.advanceGraph();
-						const updated = await manager
-							.createQueryBuilder()
-							.update(VirtualThermostatConfigEntity)
-							.set({ comfort: intended, revision: row.revision + 1 })
-							.where({ controllerId: input.id, ownerDeviceId: owner.id, revision: row.revision, locked: false })
-							// Keep mutation listeners and actual ownership beforeQuery/outer hooks enabled.
-							.execute();
-						assert();
-						if (updated.affected !== 1) refuse('Thermostat selection lost its conditional update.');
+						if (semantic) {
+							if (!semantic.writeAppliedConfiguration) refuse('Original complete comfort image writer required.');
+							await semantic.writeAppliedConfiguration(row, intended);
+							assert();
+						} else {
+							const updated = await manager
+								.createQueryBuilder()
+								.update(VirtualThermostatConfigEntity)
+								.set({ comfort: intended, revision: row.revision + 1 })
+								.where({ controllerId: input.id, ownerDeviceId: owner.id, revision: row.revision, locked: false })
+								// Keep mutation listeners and actual ownership beforeQuery/outer hooks enabled.
+								.execute();
+							assert();
+							if (updated.affected !== 1) refuse('Thermostat selection lost its conditional update.');
+						}
 					} else await semantic.verifyUnchanged();
 					const postimage = await manager
 						.createQueryBuilder(VirtualThermostatConfigEntity, 'config')

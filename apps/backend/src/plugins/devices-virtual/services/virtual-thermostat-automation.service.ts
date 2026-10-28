@@ -785,6 +785,13 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		return this.ledger.readSlot(manager, this.ledger.currentScope(manager), id, false);
 	}
 
+	/** Enroll the applied image after sidecar writes; its exact controller remains a final ledger validator. */
+	async captureAppliedAuthority(manager: EntityManager, id: string, expected: ControllerMutationImage): Promise<void> {
+		const scope = this.ledger.currentScope(manager);
+		await this.ledger.readSlot(manager, scope, id, true, THERMOSTAT_AUTOMATION_PROVIDER);
+		await assertControllerMutationImage(manager, id, expected);
+	}
+
 	/** Enroll the complete unchanged controller image in the original ledger's final validation. */
 	async captureUnchangedAuthority(manager: EntityManager, id: string): Promise<void> {
 		const scope = this.ledger.currentScope(manager);
