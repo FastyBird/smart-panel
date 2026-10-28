@@ -103,6 +103,7 @@ export interface SqliteReadCheckpoint {
 export interface SqliteNoMutationWindow {
 	reserveZeroRows(table: string, column: string): Promise<void>;
 	beginReads(): SqliteReadCheckpoint;
+	beginFinalValidation(): void;
 	armUnchanged(checkpoint: SqliteReadCheckpoint): void;
 	applied(): void;
 	readonly outcome: SqliteGuardedCommitOutcome;
@@ -111,6 +112,7 @@ interface NoMutationTicket {
 	readonly scope: GuardedCommit;
 	sql: string | undefined;
 	readonly control: boolean;
+	readonly outer: boolean;
 	active: boolean;
 	connected: boolean;
 	dispatched: boolean;
@@ -125,6 +127,8 @@ interface NativeEnvelope {
 	refuse: (cause: unknown) => void;
 }
 interface NoMutationEvidence {
+	finalValidation?: true;
+	owner?: OperationContext;
 	queue: NativeEnvelope[];
 	inFlight?: NativeEnvelope;
 	terminal?: { nativeCause: unknown; origin: NoMutationTicket; logical?: { cause: unknown } };
@@ -137,6 +141,7 @@ interface NoMutationEvidence {
 	pending: Set<NoMutationTicket>;
 	reservation?: string;
 	current: () => boolean;
+	pinned: () => boolean;
 	read: (sql: string) => boolean;
 	native?: NativeSqliteConnection;
 	all?: NativeSqliteConnection['all'];
@@ -529,6 +534,22 @@ class SqliteConnectionCoordinator {
 			throw new Error('SQLite COMMIT guard requires its current owning connection lease');
 		}
 		return context;
+	}
+
+	/** Synchronous admission only: ancestors are the original promises awaiting this operation. */
+	hasOutstanding(context: OperationContext): boolean {
+		const ancestors = new Set<OperationContext>();
+		for (let current = context; current; current = current.parent) ancestors.add(current);
+		for (const candidate of this.contexts) {
+			if (candidate.lease !== context.lease) continue;
+			if (!ancestors.has(candidate)) return true;
+			for (const child of candidate.operations.values()) if (!ancestors.has(child)) return true;
+		}
+		return false;
+	}
+
+	isCurrent(context: OperationContext): boolean {
+		return context?.active && this.context.getStore() === context;
 	}
 
 	/** Drain every same-lease child except promises whose operation is awaiting this exact COMMIT. */
@@ -977,6 +998,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			mutations: 0n,
 			pending: new Set(),
 			current: () => false,
+			pinned: () => false,
 			read: () => false,
 		};
 		scope.noMutation = evidence;
@@ -1016,6 +1038,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				return true;
 			});
 			const context = this.coordinator.captureCommitContext(scope.lease);
+			evidence.owner = context;
 
 			const pin = (target: object, keys: string[]) => {
 				const prototype = Object.getPrototypeOf(target) as object;
@@ -1087,7 +1110,8 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					manager === this.manager &&
 					manager.queryRunner === this &&
 					manager.connection === source,
-				current: () =>
+				current: () => evidence.pinned() && ownerCurrent() && (!evidence.finalValidation || evidence.pinned()),
+				pinned: () =>
 					runnerPin() &&
 					managerPin() &&
 					sourcePin() &&
@@ -1107,15 +1131,15 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					native.all === all &&
 					native.run === run &&
 					nativePin() &&
-					this.transactionDepth === 1 &&
+					this.transactionDepth >= 1 &&
+					(!evidence.finalValidation || this.transactionDepth === 1) &&
 					this.isTransactionActive &&
 					manager === this.manager &&
 					manager.queryRunner === this &&
 					manager.connection === source &&
 					runnerPin() &&
 					managerPin() &&
-					broadcasterPin() &&
-					ownerCurrent(),
+					broadcasterPin(),
 			});
 			const refuse = (): never => {
 				evidence.decision = 'refused';
@@ -1124,11 +1148,66 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			const clean = () => this.checkNoMutationPins(evidence) && !evidence.anomaly && evidence.mutations === 0n;
 			if (!clean()) refuse();
 			const thisRunnerCurrent = () => this.checkNoMutationPins(evidence);
+			const finalReady = () => {
+				try {
+					return (
+						scope.phase === 'open' &&
+						this.transactionDepth === 1 &&
+						this.isTransactionActive &&
+						evidence.pinned() &&
+						!scope.lease.closing &&
+						!scope.lease.aborted &&
+						this.coordinator.captureCommitContext(scope.lease) === context &&
+						!this.coordinator.hasOutstanding(context) &&
+						!this.coordinator.managedPrimary() &&
+						!scope.childFailure &&
+						!evidence.anomaly &&
+						!evidence.terminal &&
+						!evidence.pending.size &&
+						!evidence.inFlight &&
+						!evidence.queue.length &&
+						!evidence.reservation &&
+						evidence.attempts < noMutationCounterLimit &&
+						evidence.mutations < noMutationCounterLimit
+					);
+				} catch {
+					return false;
+				}
+			};
+			const activate = () => {
+				// Expired capabilities never latch failure into the runner's successor scope.
+				if (
+					scope !== this.guardedCommit ||
+					!scope.lease.active ||
+					scope.phase === 'committed' ||
+					scope.phase === 'settled'
+				)
+					throw new SqliteCommitGuardRefusedError();
+				const repeated = evidence.finalValidation;
+				evidence.finalValidation = true;
+				if (
+					repeated ||
+					evidence.decision !== 'undecided' ||
+					!finalReady() ||
+					!thisRunnerCurrent() ||
+					!finalReady() ||
+					evidence.decision !== 'undecided'
+				) {
+					const cause = this.nativeDispatchRefusal(
+						scope,
+						new Error('SQLite final validation requires its settled original outer scope'),
+					);
+					evidence.decision = 'refused';
+					throw cause;
+				}
+			};
 			let checkpoint: SqliteReadCheckpoint | undefined,
 				reserved = false;
 			return Object.freeze({
+				beginFinalValidation: activate,
 				async reserveZeroRows(table: string, column: string) {
 					if (
+						evidence.finalValidation ||
 						reserved ||
 						checkpoint ||
 						evidence.decision !== 'undecided' ||
@@ -1147,12 +1226,20 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					}
 				},
 				beginReads() {
-					if (checkpoint || evidence.decision !== 'undecided' || evidence.pending.size || !clean()) refuse();
+					if (
+						evidence.finalValidation ||
+						checkpoint ||
+						evidence.decision !== 'undecided' ||
+						evidence.pending.size ||
+						!clean()
+					)
+						refuse();
 					checkpoint = Object.freeze({ kind: 'sqlite-read-checkpoint' });
 					return checkpoint;
 				},
 				armUnchanged(candidate: SqliteReadCheckpoint) {
 					if (
+						evidence.finalValidation ||
 						!checkpoint ||
 						candidate !== checkpoint ||
 						evidence.decision !== 'undecided' ||
@@ -1168,7 +1255,8 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 						scope.phase !== 'open' ||
 						!scope.lease.active ||
 						evidence.terminal !== undefined ||
-						!thisRunnerCurrent()
+						!thisRunnerCurrent() ||
+						(evidence.finalValidation && (!finalReady() || evidence.decision !== 'undecided'))
 					)
 						refuse();
 					evidence.decision = 'applied';
@@ -1211,7 +1299,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			evidence.attempts++;
 			if ((!control || !permit.outer) && !reservation && !evidence.read(sql)) evidence.mutations++;
 		}
-		this.checkNoMutationPins(evidence);
+		// Refuse forbidden SQL BEFORE any owner callback can reenter admission.
+		const refusal = this.finalValidationRefusal(scope, sql, control && permit.outer);
+		if (refusal) throw refusal;
+		if (!this.finalValidationActive(scope)) this.checkNoMutationPins(evidence);
 		if (isSqliteTransactionControl(sql) && !control) {
 			const cause = new Error('SQLite transaction control requires its original internal invocation');
 			evidence.anomaly ??= { cause };
@@ -1221,6 +1312,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			scope,
 			sql,
 			control,
+			outer: control && permit.outer,
 			cleanup: control && permit.outer && sql === 'ROLLBACK',
 			active: true,
 			connected: false,
@@ -1252,6 +1344,59 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		return refusal;
 	}
 
+	private finalValidationActive(scope: GuardedCommit): boolean {
+		return scope?.noMutation?.finalValidation && scope.phase !== 'committed' && scope.phase !== 'settled';
+	}
+
+	private finalValidationRefusal(
+		scope: GuardedCommit,
+		sql: string,
+		outer = false,
+	): SqliteCommitGuardRefusedError | undefined {
+		if (!this.finalValidationActive(scope)) return;
+		// Only an already consumed ORIGINAL outer permit may reach terminal admission/cleanup.
+		if (outer && (sql === 'ROLLBACK' || sql === 'COMMIT')) return;
+		const evidence = scope.noMutation;
+		if (
+			!evidence.read(sql) ||
+			!this.checkNoMutationPins(evidence) ||
+			evidence.anomaly ||
+			scope.childFailure ||
+			this.coordinator.managedPrimary() ||
+			evidence.decision === 'refused' ||
+			evidence.terminal ||
+			scope.lease.closing ||
+			scope.phase !== 'open'
+		)
+			return this.nativeDispatchRefusal(
+				scope,
+				scope.childFailure
+					? scope.childFailure.cause
+					: new Error('SQLite final validation admits only original closed-grammar reads'),
+			);
+	}
+
+	private assertFinalControlOrigin(operation: 'start' | 'commit' | 'rollback'): void {
+		const scope = this.guardedCommit;
+		if (!this.finalValidationActive(scope)) return;
+		let original = false;
+		try {
+			original =
+				operation !== 'start' &&
+				(this.transactionDepth === 1 || operation === 'rollback') &&
+				this.coordinator.captureCommitContext(scope.lease) === scope.noMutation.owner;
+		} catch {
+			/* missing original context is a refusal */
+		}
+		if (!original) {
+			if (operation === 'start') this.coordinator.markFailedStart();
+			throw this.nativeDispatchRefusal(
+				scope,
+				new Error('SQLite final validation control requires its original outer origin'),
+			);
+		}
+	}
+
 	private validateNoMutationDispatch(
 		scope: GuardedCommit,
 		ticket: NoMutationTicket | undefined,
@@ -1259,9 +1404,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	): SqliteCommitGuardRefusedError | undefined {
 		const evidence = scope.noMutation;
 		if (!evidence || scope.phase === 'committed' || scope.phase === 'settled') return;
-		this.checkNoMutationPins(evidence);
+		if (!this.finalValidationActive(scope)) this.checkNoMutationPins(evidence);
 		if (!ticket || !ticket.active || ticket.scope !== scope || ticket.sql !== sql || !evidence.pending.has(ticket))
 			return this.nativeDispatchRefusal(scope, new Error('SQLite native dispatch lacks its original query ticket'));
+		return this.finalValidationRefusal(scope, sql, ticket.outer);
 	}
 
 	private blockedQuery(ticket: NoMutationTicket): Promise<never> {
@@ -1377,6 +1523,16 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			queueMicrotask(() => this.pumpNative(scope));
 			return;
 		}
+		const refusal = this.finalValidationActive(scope)
+			? this.validateNoMutationDispatch(scope, ticket, ticket.sql)
+			: undefined;
+		if (refusal || (this.finalValidationActive(scope) && !evidence.physical())) {
+			envelope.refuse(
+				refusal ?? this.nativeDispatchRefusal(scope, new Error('SQLite final physical identity expired')),
+			);
+			queueMicrotask(() => this.pumpNative(scope));
+			return;
+		}
 		evidence.inFlight = envelope;
 		envelope.submit();
 	}
@@ -1436,6 +1592,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		operation: 'start' | 'commit' | 'rollback',
 		isolation?: IsolationLevel,
 	): Promise<void> {
+		const originalOuter = operation !== 'start' && this.transactionDepth === 1;
 		if (operation === 'start') {
 			if (this.driver.transactionSupport === 'none')
 				throw new TypeORMError(`Transactions aren't supported by ${this.connection.driver.options.type}.`);
@@ -1456,9 +1613,11 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				operation === 'commit' ? 'BeforeTransactionCommit' : 'BeforeTransactionRollback',
 			);
 		}
-		const terminalRollback = operation === 'rollback' && this.guardedCommit.noMutation?.terminal !== undefined;
+		const terminalRollback =
+			operation === 'rollback' &&
+			(this.guardedCommit.noMutation?.terminal !== undefined || this.finalValidationActive(this.guardedCommit));
 		const abortNested = terminalRollback && this.transactionDepth > 1;
-		const outer = operation !== 'start' && (this.transactionDepth === 1 || terminalRollback);
+		const outer = operation !== 'start' && (originalOuter || terminalRollback);
 		const sql =
 			operation === 'start'
 				? `SAVEPOINT typeorm_${this.transactionDepth}`
@@ -1499,6 +1658,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	}
 
 	async startTransaction(isolationLevel?: IsolationLevel): Promise<void> {
+		this.assertFinalControlOrigin('start');
 		if (this.lease?.active && this.lease.closing) {
 			await this.lease.closing.ready;
 			throw this.lease.closing.reason.cause;
@@ -1608,6 +1768,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	}
 
 	async commitTransaction(): Promise<void> {
+		this.assertFinalControlOrigin('commit');
 		try {
 			await this.coordinator.drainCurrent();
 			await this.withTransactionControl(() =>
@@ -1626,10 +1787,12 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async rollbackTransaction(): Promise<void> {
 		if (this.coordinator.consumeFailedStart()) return;
+		this.assertFinalControlOrigin('rollback');
 		const scope = this.guardedCommit;
-		const full = this.transactionDepth === 1 || scope?.noMutation?.terminal !== undefined;
+		const full =
+			this.transactionDepth === 1 || scope?.noMutation?.terminal !== undefined || this.finalValidationActive(scope);
 		if (full) this.beginFullAbort(scope);
-		if (scope && this.transactionDepth === 1) scope.phase = 'rolling_back';
+		if (scope && full) scope.phase = 'rolling_back';
 		try {
 			await this.coordinator.drainCurrent(false);
 			await this.withTransactionControl(async () => {
@@ -1767,6 +1930,15 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 						const [query, parameters] = args;
 						const last = args[args.length - 1];
 						const callback: NativeQueryCallback | undefined = typeof last === 'function' ? last : undefined;
+						if (!window && this.finalValidationActive(scope)) {
+							const refusal = this.nativeDispatchRefusal(
+								scope,
+								new Error('SQLite saved facade lacks its original final-validation ticket'),
+							);
+							if (!callback) throw refusal;
+							callback.call(target, refusal);
+							return target;
+						}
 						const closing = scope.lease.closing;
 						if (!window && closing) {
 							if (
@@ -1795,6 +1967,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 							if (
 								refusal ||
 								!originalConnect ||
+								(this.finalValidationActive(window) && !this.coordinator.isCurrent(context)) ||
 								entryScope !== window ||
 								entryTicket !== ticket ||
 								!ticket?.active ||
@@ -1858,7 +2031,11 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				}
 				const value: unknown = Reflect.get(target, property);
 				return typeof value === 'function'
-					? (...args: unknown[]) => Reflect.apply(value, target, args) as unknown
+					? (...args: unknown[]) => {
+							if (this.finalValidationActive(scope))
+								throw this.nativeDispatchRefusal(scope, new Error('Unsupported SQLite final-validation facade call'));
+							return Reflect.apply(value, target, args) as unknown;
+						}
 					: value;
 			},
 		});
@@ -1915,6 +2092,23 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					}
 					if (scope.childFailure) throw new SqliteCommitGuardRefusedError(scope.childFailure.cause);
 					const witness = scope.noMutation;
+					if (witness?.finalValidation) {
+						this.checkNoMutationPins(witness);
+						if (
+							witness.decision !== 'applied' ||
+							witness.anomaly ||
+							scope.childFailure ||
+							this.coordinator.managedPrimary() ||
+							witness.inFlight ||
+							witness.queue.length ||
+							witness.terminal ||
+							this.coordinator.hasOutstanding(context) ||
+							[...witness.pending].some((pending) => pending !== ticket)
+						)
+							throw new SqliteCommitGuardRefusedError(
+								scope.childFailure ? scope.childFailure.cause : witness.anomaly?.cause,
+							);
+					}
 					if (witness && witness.decision !== 'applied') {
 						this.checkNoMutationPins(witness);
 						if (

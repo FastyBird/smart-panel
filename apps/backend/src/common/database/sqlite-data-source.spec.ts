@@ -108,6 +108,674 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 	};
 
 	describe('original native no-mutation window', () => {
+		describe('one-shot native final validation', () => {
+			it('keeps intended native DML results, settled savepoints and final callback reads through COMMIT', async () => {
+				const commits = nativeCommitProbe();
+				let window: SqliteNoMutationWindow,
+					reads = 0;
+				const children: Promise<unknown>[] = [];
+				database.subscribers.push({
+					beforeTransactionCommit: (event) => event.manager.query('SELECT 308').then(() => undefined),
+					beforeQuery(event) {
+						if (event.query === 'SELECT 301' || event.query === 'COMMIT') {
+							reads++;
+							return event.manager.query('SELECT 302').then(() => undefined);
+						}
+					},
+					afterQuery(event) {
+						if (event.query === 'SELECT 301') children.push(event.manager.query('SELECT 303'));
+					},
+				});
+				await database.transaction(async (manager) => {
+					window = captureSqliteNoMutationWindow(manager, () => true);
+					const inserted = await manager.queryRunner.query(
+						"INSERT INTO transaction_record(name) VALUES ('intended')",
+						[],
+						true,
+					);
+					expect(inserted).toMatchObject({ raw: 1, affected: 1 });
+					await manager.transaction(async (nested) => {
+						await nested.query("UPDATE transaction_record SET name='final' WHERE id=1");
+					});
+					window.beginFinalValidation();
+					await manager.query('SELECT 301');
+					await Promise.all(children);
+					expect(await manager.find(TransactionRecord)).toEqual([{ id: 1, name: 'final' }]);
+					window.applied();
+				});
+				expect(reads).toBe(2);
+				expect(window.outcome).toBe('committed');
+				expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(1);
+				expect(await database.manager.find(TransactionRecord)).toEqual([{ id: 1, name: 'final' }]);
+			});
+
+			it.each(
+				['before-read', 'after-read', 'before-commit', 'commit-query'].flatMap((boundary) =>
+					[false, true].flatMap((caught) =>
+						[
+							"UPDATE transaction_record SET name='forbidden'",
+							"UPDATE transaction_record SET name='forbidden' WHERE 0",
+							'CREATE TABLE forbidden_tail(id INTEGER)',
+							'PRAGMA user_version=99',
+							'SELECT abs(1)',
+						].map((sql) => ({ boundary, caught, sql })),
+					),
+				),
+			)('refuses native final callback $boundary / caught=$caught / $sql', async ({ boundary, caught, sql }) => {
+				await database.manager.insert(TransactionRecord, { name: 'original' });
+				const before = await database.manager.find(TransactionRecord);
+				const commits = nativeCommitProbe();
+				const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+					run: NativeConnection['all'];
+				};
+				const runs = jest.spyOn(native, 'run');
+				let window: SqliteNoMutationWindow,
+					entered = false,
+					first: unknown;
+				const children: Promise<unknown>[] = [];
+				const attack = (manager: QueryRunner['manager']) => {
+					if (entered) return Promise.resolve();
+					entered = true;
+					const issued = manager.query(sql).catch((cause: unknown) => {
+						first = cause;
+						if (!caught) throw cause;
+					});
+					void issued.catch(() => undefined);
+					children.push(issued);
+					return issued;
+				};
+				const observer: EntitySubscriberInterface = {
+					async beforeTransactionRollback(event) {
+						for (const sql of ['SELECT 307', "UPDATE transaction_record SET name='rollback-escape'"]) {
+							const result = (await Promise.allSettled([event.manager.query(sql)]))[0];
+							expect(result.status).toBe('rejected');
+						}
+					},
+					beforeQuery: (event) =>
+						(boundary === 'before-read' && event.query === 'SELECT 304') ||
+						(boundary === 'commit-query' && event.query === 'COMMIT')
+							? attack(event.manager)
+							: undefined,
+					afterQuery: (event) =>
+						boundary === 'after-read' && event.query === 'SELECT 304' ? attack(event.manager) : undefined,
+					beforeTransactionCommit: (event) => (boundary === 'before-commit' ? attack(event.manager) : undefined),
+				};
+				database.subscribers.push(observer);
+				let failure: unknown;
+				try {
+					await database.transaction(async (manager) => {
+						window = captureSqliteNoMutationWindow(manager, () => true);
+						await manager.update(TransactionRecord, { id: 1 }, { name: 'intended' });
+						window.beginFinalValidation();
+						await manager.query('SELECT 304');
+						await Promise.all(children);
+						window.applied();
+					});
+				} catch (cause) {
+					failure = cause;
+				} finally {
+					await Promise.allSettled(children);
+					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				}
+				expect(entered).toBe(true);
+				expect(first).toBeInstanceOf(SqliteCommitGuardRefusedError);
+				expect(failure).toBeDefined();
+				if (!caught) expect(failure).toBe(first);
+				else if (['before-read', 'before-commit', 'commit-query'].includes(boundary))
+					expect((failure as QueryFailedError).driverError.cause).toBe(first);
+				else expect((failure as Error).cause).toBe((first as Error).cause);
+				expect([...commits.mock.calls, ...runs.mock.calls].filter(([query]) => query === sql)).toHaveLength(0);
+				expect(commits.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+				expect(window.outcome).toBe(
+					caught && ['before-commit', 'commit-query'].includes(boundary) ? 'refused' : 'rolled_back',
+				);
+				expect(await database.manager.find(TransactionRecord)).toEqual(before);
+				await database.transaction((manager) => manager.query('SELECT 1'));
+			});
+
+			it.each(['all', 'run', 'exec', 'prepare', 'each', 'get', 'base-query', 'connect', 'same-sql', 'control'])(
+				'refuses saved facade and base routes at invocation: %s',
+				async (route) => {
+					const commits = nativeCommitProbe();
+					const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+						run: NativeConnection['all'];
+					};
+					const runs = jest.spyOn(native, 'run');
+					const unsupported = ['exec', 'prepare', 'each', 'get'].includes(route)
+						? jest.spyOn(native as unknown as Record<string, (...args: unknown[]) => unknown>, route)
+						: undefined;
+					const sql =
+						route === 'same-sql'
+							? 'SELECT 309'
+							: route === 'control'
+								? 'COMMIT'
+								: "UPDATE transaction_record SET name='escaped'";
+					let alias: (...args: unknown[]) => unknown,
+						first: unknown,
+						restored = false;
+					let window: SqliteNoMutationWindow;
+					await expect(
+						database.transaction(async (manager) => {
+							const runner = manager.queryRunner,
+								connect = runner.connect.bind(runner) as () => Promise<unknown>;
+							const capture = jest.spyOn(runner, 'connect').mockImplementation(async () => {
+								const facade = (await connect()) as Record<string, (...args: unknown[]) => unknown>;
+								if (!alias && !['base-query', 'connect'].includes(route))
+									alias = facade[['same-sql', 'control'].includes(route) ? 'all' : route];
+								return facade;
+							});
+							window = captureSqliteNoMutationWindow(manager, () => true);
+							await manager.query('SELECT 309');
+							await manager.insert(TransactionRecord, { name: 'intended' });
+							window.beginFinalValidation();
+							try {
+								if (route === 'base-query') await SqliteQueryRunner.prototype.query.call(runner, sql);
+								else if (route === 'connect') {
+									const facade = (await connect()) as NativeConnection;
+									await new Promise((resolve, reject) =>
+										facade.all(sql, [], (error) => (error ? reject(error) : resolve(undefined))),
+									);
+								} else if (['all', 'run', 'same-sql', 'control'].includes(route))
+									await new Promise((resolve, reject) => {
+										alias(sql, [], (error: Error | null) => (error ? reject(error) : resolve(undefined)));
+									});
+								else {
+									expect(typeof alias).toBe('function');
+									alias(sql);
+								}
+							} catch (cause) {
+								first = cause;
+							} finally {
+								// Restoring the original observer must not erase the retained attempt.
+								capture.mockRestore();
+								restored = true;
+							}
+							window.applied();
+						}),
+					).rejects.toBeInstanceOf(Error);
+					expect(first).not.toBeInstanceOf(TypeError);
+					expect(first instanceof QueryFailedError ? first.driverError : first).toBeInstanceOf(
+						SqliteCommitGuardRefusedError,
+					);
+					expect(restored).toBe(true);
+					if (unsupported) expect(unsupported).not.toHaveBeenCalled();
+					expect(window.outcome).toBe('rolled_back');
+					expect(
+						[...commits.mock.calls, ...runs.mock.calls].filter(([query]) => query === sql || query === 'COMMIT'),
+					).toHaveLength(route === 'same-sql' ? 1 : 0);
+					expect(await names()).toEqual([]);
+				},
+			);
+
+			it.each(
+				['commitTransaction', 'rollbackTransaction', 'startTransaction'].flatMap((method) =>
+					['public', 'base', 'saved'].map((route) => ({ method, route })),
+				),
+			)('rejects actual callback control origin $method / $route', async ({ method, route }) => {
+				const commits = nativeCommitProbe();
+				let entered = false,
+					first: unknown,
+					saved: () => Promise<void>;
+				const observer: EntitySubscriberInterface = {
+					async beforeTransactionCommit(event) {
+						if (entered) return;
+						entered = true;
+						const runner = event.queryRunner;
+						try {
+							const invoke =
+								route === 'saved'
+									? saved
+									: (Reflect.get(
+											route === 'base' ? SqliteQueryRunner.prototype : runner,
+											method,
+										) as () => Promise<void>);
+							await invoke.call(runner);
+						} catch (cause) {
+							first = cause;
+						}
+					},
+				};
+				database.subscribers.push(observer);
+				await expect(
+					database.transaction(async (manager) => {
+						saved = (Reflect.get(manager.queryRunner, method) as () => Promise<void>).bind(
+							manager.queryRunner,
+						) as () => Promise<void>;
+						const window = captureSqliteNoMutationWindow(manager, () => true);
+						await manager.insert(TransactionRecord, { name: 'intended' });
+						window.beginFinalValidation();
+						window.applied();
+					}),
+				).rejects.toBeInstanceOf(Error);
+				expect(entered).toBe(true);
+				expect(first).toBeInstanceOf(Error);
+				expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT' || sql.startsWith('SAVEPOINT'))).toHaveLength(0);
+				expect(await names()).toEqual([]);
+			});
+
+			it.each([
+				'duplicate',
+				'applied',
+				'unchanged',
+				'detached',
+				'reentrant',
+				'beginReads',
+				'reserve',
+				'arm',
+				'refused',
+			])('keeps invalid activation irreversible: %s', async (mode) => {
+				let window: SqliteNoMutationWindow,
+					reenter = false;
+				await expect(
+					database.transaction(async (manager) => {
+						window = captureSqliteNoMutationWindow(manager, () => {
+							if (reenter) {
+								reenter = false;
+								expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+							}
+							return true;
+						});
+						const checkpoint = window.beginReads();
+						if (mode === 'refused') expect(() => window.beginReads()).toThrow(SqliteCommitGuardRefusedError);
+						if (mode === 'applied') window.applied();
+						if (mode === 'unchanged') window.armUnchanged(checkpoint);
+						if (mode === 'reentrant') reenter = true;
+						if (mode === 'detached')
+							expect(() => outsideSqliteTransaction(database, () => window.beginFinalValidation())).toThrow(
+								SqliteCommitGuardRefusedError,
+							);
+						else if (['applied', 'unchanged', 'reentrant', 'refused'].includes(mode))
+							expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+						else {
+							window.beginFinalValidation();
+							if (mode === 'duplicate')
+								expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+							if (mode === 'beginReads') expect(() => window.beginReads()).toThrow(SqliteCommitGuardRefusedError);
+							if (mode === 'arm') expect(() => window.armUnchanged(checkpoint)).toThrow(SqliteCommitGuardRefusedError);
+							if (mode === 'reserve')
+								await expect(window.reserveZeroRows('transaction_record', 'id')).rejects.toBeInstanceOf(
+									SqliteCommitGuardRefusedError,
+								);
+						}
+						expect(() => window.applied()).toThrow(SqliteCommitGuardRefusedError);
+					}),
+				).rejects.toBeInstanceOf(Error);
+				await database.transaction((manager) => {
+					const next = captureSqliteNoMutationWindow(manager, () => true);
+					expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+					next.beginFinalValidation();
+					next.applied();
+					return Promise.resolve();
+				});
+			});
+
+			it.each(['native', 'before-query', 'queued', 'before-start', 'body-child', 'reservation', 'wrong-context'])(
+				'refuses pending original work synchronously and joins its real completion: %s',
+				async (mode) => {
+					const entered = deferred(),
+						release = deferred();
+					const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection;
+					const all = native.all;
+					let delivered = false,
+						settled = false,
+						bodies = 0;
+					let child: Promise<unknown>, sibling: Promise<unknown>, window: SqliteNoMutationWindow;
+					const commits = jest.spyOn(native, 'all').mockImplementation(function (
+						this: unknown,
+						sql,
+						parameters,
+						callback,
+					) {
+						return all.call(this, sql, parameters, function (this: unknown, error, rows) {
+							if (mode !== 'native' || sql !== 'SELECT 305') return void callback.call(this, error, rows);
+							entered.resolve();
+							void release.promise.then(() => {
+								delivered = true;
+								callback.call(this, error, rows);
+							});
+						});
+					});
+					database.subscribers.push({
+						async beforeQuery(event) {
+							if (
+								(['before-query', 'wrong-context'].includes(mode) && event.query === 'SELECT 305') ||
+								(mode === 'reservation' && event.query.endsWith('WHERE 0'))
+							) {
+								if (mode === 'wrong-context')
+									expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+								entered.resolve();
+								await release.promise;
+							}
+						},
+						async beforeTransactionStart(event) {
+							if (mode === 'before-start' && (Reflect.get(event.queryRunner, 'transactionDepth') as number) > 0) {
+								entered.resolve();
+								await release.promise;
+							}
+						},
+					});
+					await expect(
+						database.transaction(async (manager) => {
+							window = captureSqliteNoMutationWindow(manager, () => true);
+							child = (
+								['queued', 'before-start', 'body-child'].includes(mode)
+									? manager.transaction(async () => {
+											if (mode === 'body-child') {
+												entered.resolve();
+												await release.promise;
+												return;
+											}
+											bodies++;
+											return Promise.resolve();
+										})
+									: mode === 'reservation'
+										? window.reserveZeroRows('transaction_record', 'id')
+										: manager.query('SELECT 305')
+							).finally(() => {
+								settled = true;
+							});
+							void child.catch(() => undefined);
+							try {
+								if (mode !== 'queued') await entered.promise;
+								if (['queued', 'before-start', 'body-child'].includes(mode)) {
+									sibling = manager.transaction(() => {
+										bodies++;
+										return Promise.resolve();
+									});
+									void sibling.catch(() => undefined);
+								}
+								expect(settled).toBe(false);
+								expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+								expect(settled).toBe(false);
+								expect(delivered).toBe(false);
+							} finally {
+								release.resolve();
+								await Promise.allSettled([child, sibling]);
+							}
+						}),
+					).rejects.toBeInstanceOf(Error);
+					expect(settled).toBe(true);
+					expect(delivered).toBe(mode === 'native');
+					expect(bodies).toBe(0);
+					expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
+					expect(await names()).toEqual([]);
+				},
+			);
+			it.each(['owner', 'pin', 'counter', 'write-reentry', 'guard-write', 'guard-pin'])(
+				'latches final activation and pure-guard failure before restoration: %s',
+				async (mode) => {
+					const commits = nativeCommitProbe();
+					const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection & {
+						run: NativeConnection['all'];
+					};
+					const runs = jest.spyOn(native, 'run');
+					const sql = "UPDATE transaction_record SET name='forbidden' WHERE 0";
+					let issued: Promise<unknown>,
+						window: SqliteNoMutationWindow,
+						current = true,
+						reenter = false;
+					await expect(
+						database.transaction(async (manager) => {
+							window = captureSqliteNoMutationWindow(manager, () => {
+								if (reenter) {
+									reenter = false;
+									issued = manager.query(sql).catch((cause: unknown) => cause);
+								}
+								return current;
+							});
+							const original = manager.connection;
+							if (mode === 'owner') current = false;
+							if (mode === 'pin') Reflect.set(manager, 'connection', {});
+							if (mode === 'counter')
+								(
+									Reflect.get(manager.queryRunner, 'guardedCommit') as { noMutation: { attempts: bigint } }
+								).noMutation.attempts = (1n << 64n) - 1n;
+							if (mode === 'write-reentry') reenter = true;
+							try {
+								if (mode.startsWith('guard')) {
+									window.beginFinalValidation();
+									window.applied();
+									registerSqliteCommitGuard(manager, () => {
+										if (mode === 'guard-write') issued = manager.query(sql).catch((cause: unknown) => cause);
+										else current = false;
+										return true;
+									});
+								} else {
+									expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+									expect(() => window.applied()).toThrow(SqliteCommitGuardRefusedError);
+								}
+							} finally {
+								Reflect.set(manager, 'connection', original);
+								current = true;
+								await issued;
+							}
+						}),
+					).rejects.toBeInstanceOf(Error);
+					await issued;
+					expect(commits.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+					expect(runs.mock.calls.filter(([query]) => query === sql)).toHaveLength(0);
+					expect(await names()).toEqual([]);
+				},
+			);
+
+			it.each([undefined, null, false, 0, ''])(
+				'preserves exact earlier falsy failure through activation: %p',
+				async (primary) => {
+					let first: unknown, failure: QueryFailedError;
+					database.subscribers.push({
+						beforeQuery(event) {
+							if (event.query === 'SELECT 306') throw primary as unknown as Error;
+						},
+					});
+					try {
+						await database.transaction(async (manager) => {
+							const window = captureSqliteNoMutationWindow(manager, () => true);
+							await manager.query('SELECT 306').catch((cause: unknown) => {
+								first = cause;
+							});
+							expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+						});
+					} catch (cause) {
+						failure = cause as QueryFailedError;
+					}
+					expect(first).toBe(primary);
+					expect(failure).toBeInstanceOf(QueryFailedError);
+					expect(Object.hasOwn(failure.driverError, 'cause')).toBe(true);
+					expect(failure.driverError.cause).toBe(primary);
+					await database.transaction((manager) => manager.query('SELECT 1'));
+				},
+			);
+
+			it.each(['remove', 'restore-method'])(
+				'keeps final write refusal despite observer restoration: %s',
+				async (mode) => {
+					const commits = nativeCommitProbe();
+					const observer: EntitySubscriberInterface = { beforeQuery: () => undefined };
+					database.subscribers.push(observer);
+					const index = database.subscribers.indexOf(observer),
+						descriptor = Object.getOwnPropertyDescriptor(observer, 'beforeQuery');
+					let first: unknown;
+					await expect(
+						database.transaction(async (manager) => {
+							const window = captureSqliteNoMutationWindow(manager, () => true);
+							await manager.insert(TransactionRecord, { name: 'intended' });
+							window.beginFinalValidation();
+							if (mode === 'remove') database.subscribers.splice(index, 1);
+							else observer.beforeQuery = () => undefined;
+							try {
+								await manager.update(TransactionRecord, { id: 1 }, { name: 'escaped' });
+							} catch (cause) {
+								first = cause;
+							} finally {
+								if (mode === 'remove') database.subscribers.splice(index, 0, observer);
+								else Object.defineProperty(observer, 'beforeQuery', descriptor);
+							}
+							window.applied();
+						}),
+					).rejects.toBeInstanceOf(SqliteCommitGuardRefusedError);
+					expect(first).toBeInstanceOf(SqliteCommitGuardRefusedError);
+					expect(database.subscribers[index]).toBe(observer);
+					expect(Object.getOwnPropertyDescriptor(observer, 'beforeQuery')).toEqual(descriptor);
+					expect(commits.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+					expect(await names()).toEqual([]);
+				},
+			);
+
+			it('retains actual implicit-rollback error and refuses queued sibling bodies before recovery', async () => {
+				await database.manager.query("INSERT INTO transaction_record(id,name) VALUES (1,'original')");
+				const before = await database.manager.find(TransactionRecord);
+				const commits = nativeCommitProbe();
+				let original: QueryFailedError,
+					nativeError: unknown,
+					bodies = 0;
+				const children: Promise<unknown>[] = [];
+				database.subscribers.push({
+					afterQuery(event) {
+						if (event.query.includes('OR ROLLBACK')) nativeError = event.error;
+					},
+				});
+				const request = database.transaction(async (manager) => {
+					const window = captureSqliteNoMutationWindow(manager, () => true);
+					try {
+						await manager.query("INSERT OR ROLLBACK INTO transaction_record(id,name) VALUES (1,'duplicate')");
+					} catch (cause) {
+						original = cause as QueryFailedError;
+					}
+					try {
+						for (let i = 0; i < 2; i++) {
+							const child = manager.transaction(() => {
+								bodies++;
+								return Promise.resolve();
+							});
+							void child.catch(() => undefined);
+							children.push(child);
+						}
+						expect(() => window.beginFinalValidation()).toThrow(SqliteCommitGuardRefusedError);
+						await expect(manager.query("UPDATE transaction_record SET name='escaped'")).rejects.toBe(original);
+					} finally {
+						for (const result of await Promise.allSettled(children))
+							expect(result).toEqual({ status: 'rejected', reason: original });
+					}
+					throw original;
+				});
+				const result = (await Promise.allSettled([request]))[0];
+				expect(result).toEqual({ status: 'rejected', reason: original });
+				expect(original).toBeInstanceOf(QueryFailedError);
+				expect(original.driverError).toBe(nativeError);
+				expect(nodeTypes.isNativeError(nativeError)).toBe(true);
+				expect(bodies).toBe(0);
+				expect(commits.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+				expect(await database.manager.find(TransactionRecord)).toEqual(before);
+				await database.transaction((manager) => manager.query('SELECT 1'));
+			});
+
+			it.each([undefined, null, false, 0, '', 'healthy'])(
+				'keeps actual held ACK and exact post-ACK callback history: %p',
+				async (primary) => {
+					const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection,
+						all = native.all;
+					const entered = deferred(),
+						release = deferred();
+					let window: SqliteNoMutationWindow,
+						settled = false;
+					let manager: QueryRunner['manager'];
+					const runs = jest.spyOn(
+						(database.driver as SqliteDriver).databaseConnection as NativeConnection & { run: NativeConnection['all'] },
+						'run',
+					);
+					jest.spyOn(native, 'all').mockImplementation(function (this: unknown, sql, parameters, callback) {
+						return all.call(this, sql, parameters, function (this: unknown, error, rows) {
+							if (sql !== 'COMMIT') return void callback.call(this, error, rows);
+							entered.resolve();
+							void release.promise.then(() => {
+								callback.call(this, error, rows);
+							});
+						});
+					});
+					database.subscribers.push({
+						afterQuery: (event) =>
+							event.query === 'COMMIT'
+								? event.manager.query("INSERT INTO transaction_record(name) VALUES ('after-query-ack')")
+								: undefined,
+						async afterTransactionCommit(event) {
+							await event.manager.query("INSERT INTO transaction_record(name) VALUES ('post-ack')");
+							if (primary !== 'healthy') throw primary as unknown as Error;
+						},
+					});
+					const request = database.transaction(async (candidate) => {
+						manager = candidate;
+						window = captureSqliteNoMutationWindow(manager, () => true);
+						await manager.insert(TransactionRecord, { name: 'intended' });
+						window.beginFinalValidation();
+						window.applied();
+					});
+					const observed = request
+						.then(
+							(value) => ({ status: 'fulfilled', value }),
+							(reason: unknown) => ({ status: 'rejected', reason }),
+						)
+						.finally(() => {
+							settled = true;
+						});
+					try {
+						await entered.promise;
+						expect(settled).toBe(false);
+						expect(window.outcome).toBe('unknown');
+						await expect(manager.query("UPDATE transaction_record SET name='held-ack-escape'")).rejects.toBeInstanceOf(
+							SqliteCommitGuardRefusedError,
+						);
+						expect(runs.mock.calls.filter(([sql]) => sql.includes('held-ack-escape'))).toHaveLength(0);
+					} finally {
+						release.resolve();
+					}
+					const result = await observed;
+					expect(result).toEqual(
+						primary === 'healthy' ? { status: 'fulfilled', value: undefined } : { status: 'rejected', reason: primary },
+					);
+					expect(window.outcome).toBe('committed');
+					expect(await names()).toEqual(['after-query-ack', 'intended', 'post-ack']);
+				},
+			);
+			it.each([false, true])('rechecks opted-in original BUSY permit after a caught late write: %s', async (attack) => {
+				Object.assign(database.options, { busyErrorRetry: 1 });
+				const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection,
+					all = native.all;
+				let attempts = 0,
+					manager: QueryRunner['manager'],
+					window: SqliteNoMutationWindow,
+					issued: Promise<unknown>;
+				jest.spyOn(native, 'all').mockImplementation(function (this: unknown, sql, parameters, callback) {
+					if (sql === 'COMMIT' && ++attempts === 1) {
+						// Policy injection only; successful retry below uses the actual native COMMIT.
+						issued = (
+							attack ? manager.query("UPDATE transaction_record SET name='busy-escape'") : Promise.resolve()
+						).catch((cause: unknown) => cause);
+						void issued.then(() => {
+							callback.call(this, new Error('SQLITE_BUSY: final validation policy probe'));
+						});
+						return native;
+					}
+					return all.call(this, sql, parameters, callback);
+				});
+				const request = database.transaction(async (candidate) => {
+					manager = candidate;
+					window = captureSqliteNoMutationWindow(manager, () => true);
+					await manager.insert(TransactionRecord, { name: 'intended' });
+					window.beginFinalValidation();
+					window.applied();
+				});
+				try {
+					if (attack) await expect(request).rejects.toBeInstanceOf(QueryFailedError);
+					else await request;
+				} finally {
+					await Promise.allSettled([request, issued]);
+				}
+				expect(attempts).toBe(attack ? 1 : 2);
+				expect(window.outcome).toBe(attack ? 'refused' : 'committed');
+				expect(await names()).toEqual(attack ? [] : ['intended']);
+			});
+		});
+
 		it('contains original-manager writes after actual implicit rollback', async () => {
 			await database.manager.query(
 				'INSERT INTO "transaction_record" ("id", "name") VALUES (1, \'original\'), (2, \'retained\')',
