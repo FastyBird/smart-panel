@@ -16,7 +16,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
-import { captureCreation } from '../../../modules/devices/services/creation-capture';
+import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import {
 	PropertyProducerLease,
@@ -1514,7 +1514,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		// The transaction has acknowledged these exact IDs as confirmed. Later authority or
 		// reservation-release failure must not retain already committed provider metadata.
 		try {
-			retireConfirmedCommandIds?.call(proof, [...settled.currentIds]);
+			if (retireConfirmedCommandIds != null) invokeCreation(retireConfirmedCommandIds, proof, [...settled.currentIds]);
 		} catch {
 			// Optional provider bookkeeping cannot change the committed primary outcome.
 		}

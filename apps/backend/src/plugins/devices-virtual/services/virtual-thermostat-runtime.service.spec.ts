@@ -4522,99 +4522,122 @@ describe('virtual thermostat durable runtime', () => {
 		expect(sentTargets.some((entry) => entry.on)).toBe(false);
 	});
 
-	it.each(['held acknowledgement', 'unknown acknowledgement', 'callback replacement', 'callback deletion'] as const)(
-		'waits for a known SQLite commit acknowledgement before retirement: %s',
-		async (mode) => {
-			await settle();
-			jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-			const command = database.manager.create(VirtualThermostatCommandEntity, {
-				id: uuid(),
-				controllerId,
-				claimId: claim.id,
-				claimRevision: claim.revision,
-				configurationRevision: 1,
-				decisionRevision: 1,
-				action: 'on',
-				status: 'accepted',
-				preparedAt: new Date(),
-				dispatchedAt: null,
-				settledAt: null,
-				proofId: null,
-				fault: null,
-			});
-			await database.manager.insert(VirtualThermostatCommandEntity, command);
-			const retire = jest.fn<void, [readonly string[]]>();
-			let originalProof: { retireConfirmedCommandIds?: (ids: readonly string[]) => void };
-			const successor = jest.fn();
-			proofMutation = (proof) => {
-				originalProof = { ...proof, retireConfirmedCommandIds: retire };
-				return originalProof as typeof proof;
-			};
-			let enter: () => void = () => undefined;
-			let rejectObservation: (error: unknown) => void = () => undefined;
-			let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
-			let release: () => void = () => undefined;
-			const entered = new Promise<void>((resolve, reject) => {
-				enter = resolve;
-				rejectObservation = reject;
-			});
-			const held = new Promise<void>((resolve) => {
-				release = resolve;
-			});
-			let once = true;
-			const subscriber = {
-				afterTransactionCommit: async (event: TransactionCommitEvent) => {
-					if (!once) return;
-					once = false;
-					try {
-						committedStatus = (
-							await event.queryRunner.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })
-						).status;
-					} catch (error: unknown) {
-						rejectObservation(error);
-						throw error;
-					}
-					enter();
-					await held;
-					if (mode === 'unknown acknowledgement') throw new Error('fixture lost commit acknowledgement');
-				},
-			};
-			database.subscribers.push(subscriber);
-			const internal = runtime as unknown as {
-				load(id: string): Promise<unknown>;
-				reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-			};
-			let outcome: Promise<unknown> | undefined;
-			try {
-				const pending = internal.reconcile(await internal.load(controllerId), claim);
-				// Attach both outcomes before releasing the controlled commit gate.
-				outcome = pending.then<unknown, unknown>(
-					() => null,
-					(error: unknown) => error,
-				);
-				await entered;
-				expect(retire).not.toHaveBeenCalled();
-				expect(committedStatus).toBe('confirmed');
-				if (mode === 'callback replacement') originalProof.retireConfirmedCommandIds = successor;
-				if (mode === 'callback deletion') delete originalProof.retireConfirmedCommandIds;
-				release();
-				const error = await outcome;
-				if (mode !== 'unknown acknowledgement') {
-					expect(error).toBeNull();
-					expect(retire).toHaveBeenCalledWith([command.id]);
-					expect(retire).toHaveBeenCalledTimes(1);
-					expect(retire.mock.contexts[0]).toBe(originalProof);
-				} else {
-					expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
-					expect(retire).not.toHaveBeenCalled();
+	it.each([
+		'held acknowledgement',
+		'unknown acknowledgement',
+		'callback replacement',
+		'callback deletion',
+		'callback call replacement',
+		'callback call getter',
+	] as const)('waits for a known SQLite commit acknowledgement before retirement: %s', async (mode) => {
+		await settle();
+		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		const command = database.manager.create(VirtualThermostatCommandEntity, {
+			id: uuid(),
+			controllerId,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: 1,
+			decisionRevision: 1,
+			action: 'on',
+			status: 'accepted',
+			preparedAt: new Date(),
+			dispatchedAt: null,
+			settledAt: null,
+			proofId: null,
+			fault: null,
+		});
+		await database.manager.insert(VirtualThermostatCommandEntity, command);
+		const retire = jest.fn<void, [readonly string[]]>();
+		const originalCallDescriptor = Object.getOwnPropertyDescriptor(retire, 'call');
+		let callAccesses = 0;
+		let originalProof: { retireConfirmedCommandIds?: (ids: readonly string[]) => void };
+		const successor = jest.fn();
+		proofMutation = (proof) => {
+			originalProof = { ...proof, retireConfirmedCommandIds: retire };
+			return originalProof as typeof proof;
+		};
+		let enter: () => void = () => undefined;
+		let rejectObservation: (error: unknown) => void = () => undefined;
+		let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
+		let release: () => void = () => undefined;
+		const entered = new Promise<void>((resolve, reject) => {
+			enter = resolve;
+			rejectObservation = reject;
+		});
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let once = true;
+		const subscriber = {
+			afterTransactionCommit: async (event: TransactionCommitEvent) => {
+				if (!once) return;
+				once = false;
+				try {
+					committedStatus = (
+						await event.queryRunner.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })
+					).status;
+				} catch (error: unknown) {
+					rejectObservation(error);
+					throw error;
 				}
-				expect(successor).not.toHaveBeenCalled();
-			} finally {
-				release();
-				await outcome;
-				database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+				enter();
+				await held;
+				if (mode === 'unknown acknowledgement') throw new Error('fixture lost commit acknowledgement');
+			},
+		};
+		database.subscribers.push(subscriber);
+		const internal = runtime as unknown as {
+			load(id: string): Promise<unknown>;
+			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
+		};
+		let outcome: Promise<unknown> | undefined;
+		try {
+			const pending = internal.reconcile(await internal.load(controllerId), claim);
+			// Attach both outcomes before releasing the controlled commit gate.
+			outcome = pending.then<unknown, unknown>(
+				() => null,
+				(error: unknown) => error,
+			);
+			await entered;
+			expect(retire).not.toHaveBeenCalled();
+			expect(committedStatus).toBe('confirmed');
+			if (mode === 'callback replacement') originalProof.retireConfirmedCommandIds = successor;
+			if (mode === 'callback deletion') delete originalProof.retireConfirmedCommandIds;
+			if (mode === 'callback call replacement') {
+				expect(originalProof.retireConfirmedCommandIds).toBe(retire);
+				Object.defineProperty(retire, 'call', { configurable: true, value: successor });
 			}
-		},
-	);
+			if (mode === 'callback call getter') {
+				expect(originalProof.retireConfirmedCommandIds).toBe(retire);
+				Object.defineProperty(retire, 'call', {
+					configurable: true,
+					get: () => {
+						callAccesses++;
+						throw new Error('replacement retirement call getter');
+					},
+				});
+			}
+			release();
+			const error = await outcome;
+			if (mode !== 'unknown acknowledgement') {
+				expect(error).toBeNull();
+				expect(retire).toHaveBeenCalledWith([command.id]);
+				expect(retire).toHaveBeenCalledTimes(1);
+				expect(retire.mock.contexts[0]).toBe(originalProof);
+			} else {
+				expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
+				expect(retire).not.toHaveBeenCalled();
+			}
+			expect(successor).not.toHaveBeenCalled();
+			expect(callAccesses).toBe(0);
+		} finally {
+			release();
+			await outcome;
+			if (originalCallDescriptor) Object.defineProperty(retire, 'call', originalCallDescriptor);
+			else Reflect.deleteProperty(retire, 'call');
+			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+		}
+	});
 });
