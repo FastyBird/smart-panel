@@ -128,6 +128,7 @@ interface NativeEnvelope {
 }
 interface NoMutationEvidence {
 	finalValidation?: true;
+	ownerControlAttempted?: true;
 	owner?: OperationContext;
 	queue: NativeEnvelope[];
 	inFlight?: NativeEnvelope;
@@ -864,6 +865,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	private writeAdmission?: 'pending' | 'armed';
 	private readonly nativeCommitContext = new AsyncLocalStorage<GuardedCommit | undefined>();
 	private readonly noMutationQuery = new AsyncLocalStorage<NoMutationTicket>();
+	private readonly noMutationOwnerCheck = new AsyncLocalStorage<GuardedCommit>();
 	private noMutationControl?: { scope: GuardedCommit; sql: string; outer: boolean };
 
 	constructor(
@@ -1110,7 +1112,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					manager === this.manager &&
 					manager.queryRunner === this &&
 					manager.connection === source,
-				current: () => evidence.pinned() && ownerCurrent() && (!evidence.finalValidation || evidence.pinned()),
+				current: () =>
+					evidence.pinned() &&
+					this.noMutationOwnerCheck.run(scope, ownerCurrent) &&
+					(!evidence.finalValidation || evidence.pinned()),
 				pinned: () =>
 					runnerPin() &&
 					managerPin() &&
@@ -1152,6 +1157,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				try {
 					return (
 						scope.phase === 'open' &&
+						!evidence.ownerControlAttempted &&
 						this.transactionDepth === 1 &&
 						this.isTransactionActive &&
 						evidence.pinned() &&
@@ -1195,7 +1201,11 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				) {
 					const cause = this.nativeDispatchRefusal(
 						scope,
-						new Error('SQLite final validation requires its settled original outer scope'),
+						scope.childFailure
+							? scope.childFailure.cause
+							: evidence.anomaly
+								? evidence.anomaly.cause
+								: new Error('SQLite final validation requires its settled original outer scope'),
 					);
 					evidence.decision = 'refused';
 					throw cause;
@@ -1372,16 +1382,21 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				scope,
 				scope.childFailure
 					? scope.childFailure.cause
-					: new Error('SQLite final validation admits only original closed-grammar reads'),
+					: evidence.anomaly
+						? evidence.anomaly.cause
+						: new Error('SQLite final validation admits only original closed-grammar reads'),
 			);
 	}
 
 	private assertFinalControlOrigin(operation: 'start' | 'commit' | 'rollback'): void {
 		const scope = this.guardedCommit;
+		const ownerCheck = scope !== undefined && this.noMutationOwnerCheck.getStore() === scope;
+		if (ownerCheck) scope.noMutation.ownerControlAttempted = true;
 		if (!this.finalValidationActive(scope)) return;
 		let original = false;
 		try {
 			original =
+				!ownerCheck &&
 				operation !== 'start' &&
 				(this.transactionDepth === 1 || operation === 'rollback') &&
 				this.coordinator.captureCommitContext(scope.lease) === scope.noMutation.owner;
@@ -1771,6 +1786,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		this.assertFinalControlOrigin('commit');
 		try {
 			await this.coordinator.drainCurrent();
+			this.assertFinalControlOrigin('commit');
 			await this.withTransactionControl(() =>
 				this.guardedCommit?.noMutation || (this.lease?.active && this.lease.closing)
 					? this.noMutationTransactionControl('commit')

@@ -109,6 +109,112 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 
 	describe('original native no-mutation window', () => {
 		describe('one-shot native final validation', () => {
+			it.each(
+				['capture', 'activation', 'applied', 'final-read'].flatMap((boundary) =>
+					[false, true].flatMap((descendant) => [false, true].map((saved) => ({ boundary, descendant, saved }))),
+				),
+			)(
+				'refuses owner-check COMMIT reentry at $boundary / descendant=$descendant / saved=$saved',
+				async ({ boundary, descendant, saved }) => {
+					const commits = nativeCommitProbe();
+					const primary = new Error('original managed body failed before settlement');
+					let armed = boundary === 'capture',
+						entered = false,
+						first: unknown,
+						issued: Promise<void>,
+						window: SqliteNoMutationWindow;
+					const request = database.transaction(async (manager) => {
+						const runner = manager.queryRunner;
+						const commit: () => Promise<void> = saved
+							? (runner.commitTransaction.bind(runner) as () => Promise<void>)
+							: () => runner.commitTransaction();
+						window = captureSqliteNoMutationWindow(manager, () => {
+							if (armed) {
+								armed = false;
+								entered = true;
+								issued = (descendant ? Promise.resolve().then(commit) : commit()).catch((cause: unknown) => {
+									first = cause;
+								});
+							}
+							return true;
+						});
+						if (boundary !== 'capture') await manager.insert(TransactionRecord, { name: 'intended' });
+						try {
+							armed = boundary === 'activation';
+							window.beginFinalValidation();
+							armed = boundary === 'applied';
+							window.applied();
+							if (boundary === 'final-read') {
+								armed = true;
+								await manager.query('SELECT 399');
+							}
+						} catch {
+							// The original body error remains primary after joining the attempted control.
+						} finally {
+							armed = false;
+							await Promise.allSettled([issued]);
+						}
+						throw primary;
+					});
+					const result = (await Promise.allSettled([request]))[0];
+					const rows = await names();
+					expect(result).toEqual({ status: 'rejected', reason: primary });
+					expect(entered).toBe(true);
+					expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
+					expect(first).toBeInstanceOf(SqliteCommitGuardRefusedError);
+					expect(Object.hasOwn(first as Error, 'cause')).toBe(true);
+					expect(window.outcome).toBe('rolled_back');
+					expect(rows).toEqual([]);
+					await database.transaction((manager) => manager.query('SELECT 1'));
+				},
+			);
+
+			it.each(
+				['activation', 'final-read'].flatMap((boundary) =>
+					[undefined, null, false, 0, '', new Error('original owner failure')].map((primary) => ({
+						boundary,
+						primary,
+					})),
+				),
+			)('retains first owner throw at $boundary / $primary', async ({ boundary, primary }) => {
+				const commits = nativeCommitProbe();
+				let armed = false,
+					first: unknown,
+					failure: QueryFailedError,
+					window: SqliteNoMutationWindow;
+				try {
+					await database.transaction(async (manager) => {
+						window = captureSqliteNoMutationWindow(manager, () => {
+							if (armed) throw primary as unknown as Error;
+							return true;
+						});
+						await manager.insert(TransactionRecord, { name: 'intended' });
+						if (boundary === 'final-read') window.beginFinalValidation();
+						armed = true;
+						try {
+							if (boundary === 'activation') window.beginFinalValidation();
+							else await manager.query('SELECT 398');
+						} catch (cause) {
+							first = cause;
+						} finally {
+							armed = false;
+						}
+					});
+				} catch (cause) {
+					failure = cause as QueryFailedError;
+				}
+				expect(first).toBeInstanceOf(SqliteCommitGuardRefusedError);
+				expect(Object.hasOwn(first as Error, 'cause')).toBe(true);
+				expect((first as Error).cause).toBe(primary);
+				expect(failure).toBeInstanceOf(QueryFailedError);
+				expect(Object.hasOwn(failure.driverError, 'cause')).toBe(true);
+				expect(failure.driverError.cause).toBe(first);
+				expect(commits.mock.calls.filter(([sql]) => sql === 'COMMIT' || sql === 'SELECT 398')).toHaveLength(0);
+				expect(window.outcome).toBe('refused');
+				expect(await names()).toEqual([]);
+				await database.transaction((manager) => manager.query('SELECT 1'));
+			});
+
 			it('keeps intended native DML results, settled savepoints and final callback reads through COMMIT', async () => {
 				const commits = nativeCommitProbe();
 				let window: SqliteNoMutationWindow,
