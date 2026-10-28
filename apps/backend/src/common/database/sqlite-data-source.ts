@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { types as nodeTypes } from 'node:util';
 import {
 	DataSource,
 	DataSourceOptions,
@@ -78,7 +79,22 @@ export class SqliteCommitGuardRefusedError extends Error {
 	}
 }
 
+interface ManagedLifecycle {
+	context: OperationContext;
+	scope?: GuardedCommit;
+	state:
+		| 'new'
+		| 'start-failed'
+		| 'body'
+		| 'committing'
+		| 'commit-returned'
+		| 'commit-failed'
+		| 'rolling-back'
+		| 'terminal';
+}
+
 interface GuardedCommit {
+	managedOwner?: OperationContext;
 	lease: ConnectionLease;
 	guards: Array<() => boolean>;
 	phase: 'starting' | 'open' | 'sealed' | 'submitted' | 'committed' | 'rolling_back' | 'settled';
@@ -608,11 +624,23 @@ class SqliteConnectionCoordinator {
 				context.failedStart = false;
 				try {
 					const result: unknown = Reflect.apply(callback, this, callbackArgs);
-					if (result instanceof Promise)
-						void Promise.prototype.then.call(result, undefined, (cause: unknown) => {
+					// Brand/prototype/descriptors do not invoke user then/constructor getters. Only
+					// ordinary same-realm promises keep identity; other objects are assimilated ONCE.
+					const ordinary =
+						nodeTypes.isPromise(result) &&
+						Object.getPrototypeOf(result) === Promise.prototype &&
+						!Object.hasOwn(result, 'constructor') &&
+						!Object.hasOwn(result, 'then');
+					const observed = ordinary
+						? result
+						: result !== null && (typeof result === 'object' || typeof result === 'function')
+							? new Promise<unknown>((resolve) => resolve(result))
+							: undefined;
+					if (observed !== undefined)
+						void Promise.prototype.then.call(observed, undefined, (cause: unknown) => {
 							context.primary ??= { cause };
 						});
-					return result;
+					return observed ?? result;
 				} catch (cause) {
 					context.primary ??= { cause };
 					throw cause;
@@ -737,6 +765,11 @@ class SqliteConnectionCoordinator {
 	}
 }
 
+const managedLifecycles = new WeakMap<
+	CoordinatedSqliteQueryRunner,
+	(args: unknown[], original: EntityManager['transaction']) => Promise<unknown>
+>();
+
 const coordinators = new WeakMap<DataSource, SqliteConnectionCoordinator>();
 
 /** Keep connection ownership shared by every runner of the same data source. */
@@ -832,7 +865,11 @@ export class SqliteDataSource extends DataSource {
 						return runner.withConnection(() => {
 							const invoke = (parameters: unknown[]) =>
 								Reflect.apply(original, runner.manager, parameters) as Promise<unknown>;
-							return method === 'transaction' ? coordinator.managedTransaction(args, invoke) : invoke(args);
+							return method === 'transaction'
+								? coordinator.managedTransaction(args, (parameters) =>
+										managedLifecycles.get(runner)(parameters, original as EntityManager['transaction']),
+									)
+								: invoke(args);
 						});
 					};
 
@@ -873,6 +910,61 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		private readonly coordinator: SqliteConnectionCoordinator,
 	) {
 		super(driver);
+		managedLifecycles.set(this, (args, original) => this.managedLifecycle(args, original));
+	}
+
+	/** TypeORM 0.3.31 EntityManager.transaction reads only queryRunner/connection on this
+	 * receiver, and isReleased/manager/start/commit/rollback on its borrowed runner.
+	 * Never publish these views: events and the body still receive the REAL manager/runner.
+	 * Re-review these bounded accesses when upgrading TypeORM; no general forwarding Proxy.
+	 */
+	private managedLifecycle(args: unknown[], original: EntityManager['transaction']): Promise<unknown> {
+		const lifecycle: ManagedLifecycle = {
+			context: this.coordinator.captureCommitContext(this.lease),
+			state: 'new',
+		};
+		const claim = async (operation: 'start' | 'commit' | 'rollback', isolation?: IsolationLevel) => {
+			const before = lifecycle.state;
+			if (
+				operation === 'start'
+					? before !== 'new'
+					: operation === 'commit'
+						? before !== 'body'
+						: !['start-failed', 'body', 'commit-failed'].includes(before)
+			)
+				throw new Error('SQLite managed lifecycle was already claimed');
+			// Claim before yielding or calling anything user-controlled. A recovery rollback
+			// after failed commit is a distinct entry; public callbacks cannot obtain this record.
+			lifecycle.state = operation === 'start' ? 'body' : operation === 'commit' ? 'committing' : 'rolling-back';
+			try {
+				if (operation === 'start') await this.startManagedTransaction(isolation, lifecycle);
+				else if (operation === 'commit') await this.commitManagedTransaction(lifecycle);
+				else await this.rollbackManagedTransaction(lifecycle);
+				if (operation !== 'start') lifecycle.state = operation === 'commit' ? 'commit-returned' : 'terminal';
+			} catch (cause) {
+				lifecycle.state =
+					operation === 'rollback' ? 'terminal' : operation === 'commit' ? 'commit-failed' : 'start-failed';
+				throw cause;
+			}
+		};
+		const released = () => this.isReleased,
+			manager = () => this.manager;
+		const view = Object.freeze({
+			get isReleased() {
+				return released();
+			},
+			get manager() {
+				return manager();
+			},
+			startTransaction: (isolation?: IsolationLevel) => claim('start', isolation),
+			commitTransaction: () => claim('commit'),
+			rollbackTransaction: () => claim('rollback'),
+		});
+		return Reflect.apply(
+			original,
+			Object.freeze({ queryRunner: view, connection: this.connection }),
+			args,
+		) as Promise<unknown>;
 	}
 
 	async withConnection<T>(operation: () => Promise<T>): Promise<T> {
@@ -1157,6 +1249,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				try {
 					return (
 						scope.phase === 'open' &&
+						scope.managedOwner === context &&
 						!evidence.ownerControlAttempted &&
 						this.transactionDepth === 1 &&
 						this.isTransactionActive &&
@@ -1388,18 +1481,25 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			);
 	}
 
-	private assertFinalControlOrigin(operation: 'start' | 'commit' | 'rollback'): void {
+	private assertFinalControlOrigin(operation: 'start' | 'commit' | 'rollback', lifecycle?: ManagedLifecycle): void {
 		const scope = this.guardedCommit;
 		const ownerCheck = scope !== undefined && this.noMutationOwnerCheck.getStore() === scope;
-		if (ownerCheck) scope.noMutation.ownerControlAttempted = true;
+		if (scope?.noMutation && !lifecycle && scope.phase !== 'committed' && scope.phase !== 'settled')
+			scope.noMutation.ownerControlAttempted = true;
 		if (!this.finalValidationActive(scope)) return;
 		let original = false;
 		try {
 			original =
 				!ownerCheck &&
 				operation !== 'start' &&
+				((lifecycle?.scope === scope &&
+					lifecycle.context === scope.managedOwner &&
+					lifecycle.state === (operation === 'commit' ? 'committing' : 'rolling-back')) ||
+					(operation === 'rollback' && !scope.managedOwner)) &&
 				(this.transactionDepth === 1 || operation === 'rollback') &&
-				this.coordinator.captureCommitContext(scope.lease) === scope.noMutation.owner;
+				scope.lease === this.lease &&
+				scope.lease.active &&
+				(!scope.managedOwner || (lifecycle?.context === scope.noMutation.owner && lifecycle.context.active));
 		} catch {
 			/* missing original context is a refusal */
 		}
@@ -1606,6 +1706,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	private async noMutationTransactionControl(
 		operation: 'start' | 'commit' | 'rollback',
 		isolation?: IsolationLevel,
+		lifecycle?: ManagedLifecycle,
 	): Promise<void> {
 		const originalOuter = operation !== 'start' && this.transactionDepth === 1;
 		if (operation === 'start') {
@@ -1628,6 +1729,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				operation === 'commit' ? 'BeforeTransactionCommit' : 'BeforeTransactionRollback',
 			);
 		}
+		this.assertFinalControlOrigin(operation, lifecycle);
 		const terminalRollback =
 			operation === 'rollback' &&
 			(this.guardedCommit.noMutation?.terminal !== undefined || this.finalValidationActive(this.guardedCommit));
@@ -1674,6 +1776,11 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async startTransaction(isolationLevel?: IsolationLevel): Promise<void> {
 		this.assertFinalControlOrigin('start');
+		return this.startManagedTransaction(isolationLevel);
+	}
+
+	private async startManagedTransaction(isolationLevel?: IsolationLevel, lifecycle?: ManagedLifecycle): Promise<void> {
+		this.assertFinalControlOrigin('start', lifecycle);
 		if (this.lease?.active && this.lease.closing) {
 			await this.lease.closing.ready;
 			throw this.lease.closing.reason.cause;
@@ -1695,13 +1802,19 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		// Start subscribers already run on this lease: retain their failures before the body can attach guards.
 		const outerScope: GuardedCommit | undefined =
 			previousDepth === 0 ? { lease: this.lease, guards: [], phase: 'starting', outcome: 'pending' } : undefined;
-		if (outerScope) this.guardedCommit = outerScope;
+		if (outerScope) {
+			this.guardedCommit = outerScope;
+			if (lifecycle) {
+				lifecycle.scope = outerScope;
+				outerScope.managedOwner = lifecycle.context;
+			}
+		}
 		try {
 			await this.withTransactionControl(() =>
 				writeIntent
 					? this.startWithWriteIntent()
 					: this.guardedCommit?.noMutation && previousDepth > 0
-						? this.noMutationTransactionControl('start', isolationLevel)
+						? this.noMutationTransactionControl('start', isolationLevel, lifecycle)
 						: this.startOriginalTransaction(isolationLevel),
 			);
 			if (outerScope) outerScope.phase = 'open';
@@ -1784,12 +1897,17 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async commitTransaction(): Promise<void> {
 		this.assertFinalControlOrigin('commit');
+		return this.commitManagedTransaction();
+	}
+
+	private async commitManagedTransaction(lifecycle?: ManagedLifecycle): Promise<void> {
+		this.assertFinalControlOrigin('commit', lifecycle);
 		try {
 			await this.coordinator.drainCurrent();
-			this.assertFinalControlOrigin('commit');
+			this.assertFinalControlOrigin('commit', lifecycle);
 			await this.withTransactionControl(() =>
 				this.guardedCommit?.noMutation || (this.lease?.active && this.lease.closing)
-					? this.noMutationTransactionControl('commit')
+					? this.noMutationTransactionControl('commit', undefined, lifecycle)
 					: super.commitTransaction(),
 			);
 		} catch (cause) {
@@ -1802,9 +1920,37 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	}
 
 	async rollbackTransaction(): Promise<void> {
-		if (this.coordinator.consumeFailedStart()) return;
 		this.assertFinalControlOrigin('rollback');
+		return this.rollbackManagedTransaction();
+	}
+
+	private async rollbackManagedTransaction(lifecycle?: ManagedLifecycle): Promise<void> {
+		if (lifecycle && this.coordinator.consumeFailedStart()) return;
+		this.assertFinalControlOrigin('rollback', lifecycle);
 		const scope = this.guardedCommit;
+		// A direct TypeORM base start can clear its flag after a failing BeforeStart,
+		// without rolling back the original native BEGIN. Restore only this private owner's
+		// still-open physical scope; a changed handle is never adopted for cleanup.
+		if (
+			lifecycle?.scope === scope &&
+			this.finalValidationActive(scope) &&
+			!this.isTransactionActive &&
+			this.transactionDepth > 0
+		) {
+			let physical = false;
+			try {
+				physical = scope.noMutation.physical();
+			} catch {
+				/* uncertain ownership */
+			}
+			if (!physical) {
+				scope.outcome = 'unknown';
+				const cause = new Error('SQLite original managed rollback physical identity expired');
+				this.coordinator.poison(cause);
+				throw cause;
+			}
+			this.isTransactionActive = true;
+		}
 		const full =
 			this.transactionDepth === 1 || scope?.noMutation?.terminal !== undefined || this.finalValidationActive(scope);
 		if (full) this.beginFullAbort(scope);
@@ -1814,7 +1960,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			await this.withTransactionControl(async () => {
 				if (this.lease?.active && this.lease.closing) await this.coordinator.drainOwned(this.lease);
 				await (scope?.noMutation || (this.lease?.active && this.lease.closing)
-					? this.noMutationTransactionControl('rollback')
+					? this.noMutationTransactionControl('rollback', undefined, lifecycle)
 					: super.rollbackTransaction());
 				if (this.lease?.active && this.lease.closing) await this.coordinator.drainOwned(this.lease);
 			});
