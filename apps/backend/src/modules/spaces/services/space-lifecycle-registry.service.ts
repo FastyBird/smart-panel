@@ -4,7 +4,7 @@ import { Injectable, Optional } from '@nestjs/common';
 
 import { observeSqliteOuterOutcome, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
 import { ClimateAutomationLedgerService } from '../../devices/services/climate-automation-ledger.service';
-import { captureCreation } from '../../devices/services/creation-capture';
+import { captureCreation, invokeCreation } from '../../devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../devices/services/device-structure-lock.service';
 import { SpaceEntity } from '../entities/space.entity';
 
@@ -56,7 +56,9 @@ export class SpaceLifecycleRegistryService {
 		const releases: (() => void)[] = [];
 		const admit = async () => {
 			for (const { hook, capture } of participants) {
-				const release = await capture.values.beforeAdmission?.call(hook, id, kind);
+				const release = await (capture.values.beforeAdmission == null
+					? undefined
+					: invokeCreation(capture.values.beforeAdmission, hook, id, kind));
 				if (release) releases.push(release);
 			}
 			if (!current()) throw new Error('Original space lifecycle participant expired');
@@ -72,7 +74,7 @@ export class SpaceLifecycleRegistryService {
 						return this.ledger.inAdmittedManager(manager, receipt, async () => {
 							if (!current()) throw new Error('Original space lifecycle participant expired');
 							for (const { hook, capture } of participants)
-								await capture.values.beforeMutation.call(hook, id, kind, manager);
+								await invokeCreation(capture.values.beforeMutation, hook, id, kind, manager);
 							return work(manager, true);
 						});
 					});

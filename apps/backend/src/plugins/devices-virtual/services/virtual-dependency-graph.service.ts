@@ -13,7 +13,12 @@ import {
 	observePropertyReadPolicy,
 } from '../../../modules/devices/models/property-read-policy.model';
 import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
-import { CreationCapture, captureCreation, snapshotCreation } from '../../../modules/devices/services/creation-capture';
+import {
+	CreationCapture,
+	captureCreation,
+	invokeCreation,
+	snapshotCreation,
+} from '../../../modules/devices/services/creation-capture';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -183,7 +188,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		for (const result of results)
 			if (result.status === 'fulfilled') {
 				try {
-					result.value.values.close.call(result.value.receiver);
+					invokeCreation(result.value.values.close, result.value.receiver);
 				} catch {
 					/* Preserve the original mutation/validation failure. */
 				}
@@ -762,7 +767,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			const stages = prepared.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
 			try {
 				await verify();
-				if (!stages.every((stage) => stage.current() && stage.values.validate.call(stage.receiver)))
+				if (!stages.every((stage) => stage.current() && invokeCreation(stage.values.validate, stage.receiver)))
 					throw new Error('Original producer state slot changed');
 			} catch (cause: unknown) {
 				eligibilityFailure ??= { cause };
@@ -783,31 +788,33 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			// Original ordinary callbacks retain their order and receiver even if observation expires.
 			for (const record of admission.listeners)
 				if (invokeOrdinary && !record.requiresActivation)
-					await record.listener.call(undefined, snapshot.revision, new Set(quarantined));
+					await Reflect.apply(record.listener, undefined, [snapshot.revision, new Set(quarantined)]);
 			if (eligibilityFailure) throw eligibilityFailure.cause;
 			await verify();
 			for (const stage of stages)
-				if (!stage.current() || !stage.values.validate.call(stage.receiver))
+				if (!stage.current() || !invokeCreation(stage.values.validate, stage.receiver))
 					throw new Error('Producer state preparation expired');
 			for (const stage of stages)
-				if (!stage.values.install.call(stage.receiver)) throw new Error('Producer state installation refused');
+				if (!invokeCreation(stage.values.install, stage.receiver))
+					throw new Error('Producer state installation refused');
 			let publicationFailure: { cause: unknown } | undefined;
 			for (const stage of stages) {
 				try {
-					await stage.values.publish.call(stage.receiver);
+					await invokeCreation(stage.values.publish, stage.receiver);
 				} catch (cause: unknown) {
 					publicationFailure ??= { cause };
 				}
 			}
 			if (publicationFailure) throw publicationFailure.cause;
 			await verify();
-			if (!stages.every((stage) => stage.current() && stage.values.validate.call(stage.receiver)))
+			if (!stages.every((stage) => stage.current() && invokeCreation(stage.values.validate, stage.receiver)))
 				throw new Error('Original producer state publication expired');
 			this.quarantineRevision = snapshot.revision;
 			this.validationPending = false;
 			if (activated) {
 				for (const record of admission.listeners)
-					if (record.requiresActivation) await record.listener.call(undefined, snapshot.revision, new Set(quarantined));
+					if (record.requiresActivation)
+						await Reflect.apply(record.listener, undefined, [snapshot.revision, new Set(quarantined)]);
 				await verify();
 			}
 		} catch (error) {

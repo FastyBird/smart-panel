@@ -411,6 +411,218 @@ describe('actual native graph and owned producer-state publication', () => {
 			}
 		},
 	);
+	it.each([
+		['validate', 'data'],
+		['validate', 'getter'],
+		['install', 'data'],
+		['install', 'getter'],
+		['publish', 'data'],
+		['publish', 'getter'],
+		['close', 'data'],
+		['close', 'getter'],
+	] as const)('retains original graph stage %s after call %s changes', async (method, mutation) => {
+		await seed();
+		await state.onModuleInit();
+		await graph.onApplicationBootstrap();
+		const entered = gate(),
+			release = gate();
+		const first = {
+			validate: jest.fn(() => true),
+			install: jest.fn(() => method !== 'close'),
+			publish: jest.fn(() => Promise.resolve()),
+			close: jest.fn(() => undefined),
+		};
+		if (method === 'publish') first.publish.mockRejectedValue(false);
+		const second = {
+			validate: () => true,
+			install: () => true,
+			publish: jest.fn(() => Promise.resolve()),
+			close: () => undefined,
+		};
+		const stopFirst = graph.observeStatePublication({ prepare: () => Promise.resolve(first) });
+		const stopSecond = graph.observeStatePublication({
+			prepare: async (input) => {
+				await input;
+				entered.resolve();
+				await release.promise;
+				return second;
+			},
+		});
+		const fn = first[method],
+			descriptor = Object.getOwnPropertyDescriptor(fn, 'call');
+		const replacement = jest.fn(() => true),
+			getter = jest.fn(() => replacement);
+		const observed = graph.refreshQuarantine().then(
+			() => ({ fulfilled: true }),
+			(cause: unknown) => ({ cause }),
+		);
+		try {
+			await entered.promise;
+			Object.defineProperty(fn, 'call', {
+				configurable: true,
+				...(mutation === 'data' ? { value: replacement } : { get: getter }),
+			});
+			expect(first[method]).toBe(fn);
+			release.resolve();
+			const outcome = await observed;
+			if (method === 'publish') {
+				expect(outcome).toEqual({ cause: false });
+				expect(second.publish).toHaveBeenCalledTimes(1);
+			} else if (method === 'close')
+				expect(outcome).toEqual({ cause: new Error('Producer state installation refused') });
+			else expect(outcome).toEqual({ fulfilled: true });
+			expect(fn).toHaveBeenCalledTimes(method === 'validate' ? 3 : 1);
+			for (const receiver of fn.mock.contexts) expect(receiver).toBe(first);
+			for (const args of fn.mock.calls) expect(args).toEqual([]);
+			expect(replacement).not.toHaveBeenCalled();
+			expect(getter).not.toHaveBeenCalled();
+			expect(graph.isValidated()).toBe(method === 'validate' || method === 'install');
+		} finally {
+			release.resolve();
+			await observed;
+			if (descriptor) Object.defineProperty(fn, 'call', descriptor);
+			else Reflect.deleteProperty(fn, 'call');
+			stopFirst();
+			stopSecond();
+		}
+	});
+
+	it.each(['validate', 'install'] as const)(
+		'refuses original false graph %s despite call returning true',
+		async (method) => {
+			await seed();
+			await state.onModuleInit();
+			await graph.onApplicationBootstrap();
+			const entered = gate(),
+				release = gate();
+			const stage = {
+				validate: jest.fn(() => method !== 'validate'),
+				install: jest.fn(() => method !== 'install'),
+				publish: jest.fn(() => Promise.resolve()),
+				close: jest.fn(),
+			};
+			const stop = graph.observeStatePublication({
+				prepare: async (input) => {
+					await input;
+					return stage;
+				},
+			});
+			const stopHeld = graph.observeStatePublication({
+				prepare: async (input) => {
+					await input;
+					entered.resolve();
+					await release.promise;
+					return {
+						validate: () => true,
+						install: () => true,
+						publish: () => Promise.resolve(),
+						close: () => undefined,
+					};
+				},
+			});
+			const fn = stage[method],
+				descriptor = Object.getOwnPropertyDescriptor(fn, 'call'),
+				replacement = jest.fn(() => true);
+			const observed = graph.refreshQuarantine().then(
+				() => undefined,
+				(cause: unknown) => cause,
+			);
+			try {
+				await entered.promise;
+				Object.defineProperty(fn, 'call', { configurable: true, value: replacement });
+				release.resolve();
+				expect(await observed).toBeInstanceOf(Error);
+				expect(fn).toHaveBeenCalled();
+				expect(stage.publish).not.toHaveBeenCalled();
+				expect(stage.close).toHaveBeenCalledTimes(1);
+				expect(graph.isValidated()).toBe(false);
+				expect(replacement).not.toHaveBeenCalled();
+			} finally {
+				release.resolve();
+				await observed;
+				if (descriptor) Object.defineProperty(fn, 'call', descriptor);
+				else Reflect.deleteProperty(fn, 'call');
+				stop();
+				stopHeld();
+			}
+		},
+	);
+
+	it.each([
+		[false, 'data'],
+		[false, 'getter'],
+		[true, 'data'],
+		[true, 'getter'],
+	] as const)(
+		'retains original graph listener activation=%s after call %s changes',
+		async (requiresActivation, mutation) => {
+			await seed();
+			await state.onModuleInit();
+			await graph.onApplicationBootstrap();
+			const entered = gate(),
+				release = gate();
+			const stop = graph.observeStatePublication({
+				prepare: async (input) => {
+					await input;
+					entered.resolve();
+					await release.promise;
+					return {
+						validate: () => true,
+						install: () => true,
+						publish: () => Promise.resolve(),
+						close: () => undefined,
+					};
+				},
+			});
+			let firstSet: ReadonlySet<string>;
+			const calls: string[] = [];
+			const stopFirst = graph.observeValidation((_revision, quarantined) => {
+				calls.push('first');
+				firstSet = quarantined;
+				(quarantined as Set<string>).add('listener-local');
+				return Promise.resolve();
+			});
+			const listener = jest.fn(function (this: void, revision: number, quarantined: ReadonlySet<string>) {
+				expect(this).toBeUndefined();
+				expect(revision).toBe(0);
+				expect(quarantined).not.toBe(firstSet);
+				expect(quarantined.has('listener-local')).toBe(false);
+				calls.push('original');
+				return Promise.resolve();
+			});
+			const stopListener = graph.observeValidation(listener, { requiresActivation });
+			const descriptor = Object.getOwnPropertyDescriptor(listener, 'call');
+			const replacement = jest.fn(() => Promise.resolve()),
+				getter = jest.fn(() => replacement);
+			const observed = graph.refreshQuarantine().then(
+				() => ({ fulfilled: true }),
+				(cause: unknown) => ({ cause }),
+			);
+			try {
+				await entered.promise;
+				Object.defineProperty(listener, 'call', {
+					configurable: true,
+					...(mutation === 'data' ? { value: replacement } : { get: getter }),
+				});
+				release.resolve();
+				expect(await observed).toEqual({ fulfilled: true });
+				expect(calls).toEqual(['first', 'original']);
+				expect(listener).toHaveBeenCalledTimes(1);
+				expect(listener.mock.contexts[0]).toBeUndefined();
+				expect(replacement).not.toHaveBeenCalled();
+				expect(getter).not.toHaveBeenCalled();
+			} finally {
+				release.resolve();
+				await observed;
+				if (descriptor) Object.defineProperty(listener, 'call', descriptor);
+				else Reflect.deleteProperty(listener, 'call');
+				stop();
+				stopFirst();
+				stopListener();
+			}
+		},
+	);
+
 	it('CLI lifecycle issues no query, registry owner, timer or stage', async () => {
 		const dormant = new VirtualProducerStateService(
 			database,
