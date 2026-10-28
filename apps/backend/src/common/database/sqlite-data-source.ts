@@ -910,7 +910,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		private readonly coordinator: SqliteConnectionCoordinator,
 	) {
 		super(driver);
-		managedLifecycles.set(this, (args, original) => this.managedLifecycle(args, original));
+		managedLifecycles.set(this, (args, original) => this.#managedLifecycle(args, original));
 	}
 
 	/** TypeORM 0.3.31 EntityManager.transaction reads only queryRunner/connection on this
@@ -918,7 +918,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	 * Never publish these views: events and the body still receive the REAL manager/runner.
 	 * Re-review these bounded accesses when upgrading TypeORM; no general forwarding Proxy.
 	 */
-	private managedLifecycle(args: unknown[], original: EntityManager['transaction']): Promise<unknown> {
+	#managedLifecycle(args: unknown[], original: EntityManager['transaction']): Promise<unknown> {
 		const lifecycle: ManagedLifecycle = {
 			context: this.coordinator.captureCommitContext(this.lease),
 			state: 'new',
@@ -937,9 +937,9 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			// after failed commit is a distinct entry; public callbacks cannot obtain this record.
 			lifecycle.state = operation === 'start' ? 'body' : operation === 'commit' ? 'committing' : 'rolling-back';
 			try {
-				if (operation === 'start') await this.startManagedTransaction(isolation, lifecycle);
-				else if (operation === 'commit') await this.commitManagedTransaction(lifecycle);
-				else await this.rollbackManagedTransaction(lifecycle);
+				if (operation === 'start') await this.#startManagedTransaction(isolation, lifecycle);
+				else if (operation === 'commit') await this.#commitManagedTransaction(lifecycle);
+				else await this.#rollbackManagedTransaction(lifecycle);
 				if (operation !== 'start') lifecycle.state = operation === 'commit' ? 'commit-returned' : 'terminal';
 			} catch (cause) {
 				lifecycle.state =
@@ -1703,7 +1703,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	}
 
 	/** Only original transaction methods mint a consumed control ticket AFTER their Before callbacks. */
-	private async noMutationTransactionControl(
+	async #noMutationTransactionControl(
 		operation: 'start' | 'commit' | 'rollback',
 		isolation?: IsolationLevel,
 		lifecycle?: ManagedLifecycle,
@@ -1776,10 +1776,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async startTransaction(isolationLevel?: IsolationLevel): Promise<void> {
 		this.assertFinalControlOrigin('start');
-		return this.startManagedTransaction(isolationLevel);
+		return this.#startManagedTransaction(isolationLevel);
 	}
 
-	private async startManagedTransaction(isolationLevel?: IsolationLevel, lifecycle?: ManagedLifecycle): Promise<void> {
+	async #startManagedTransaction(isolationLevel?: IsolationLevel, lifecycle?: ManagedLifecycle): Promise<void> {
 		this.assertFinalControlOrigin('start', lifecycle);
 		if (this.lease?.active && this.lease.closing) {
 			await this.lease.closing.ready;
@@ -1814,7 +1814,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 				writeIntent
 					? this.startWithWriteIntent()
 					: this.guardedCommit?.noMutation && previousDepth > 0
-						? this.noMutationTransactionControl('start', isolationLevel, lifecycle)
+						? this.#noMutationTransactionControl('start', isolationLevel, lifecycle)
 						: this.startOriginalTransaction(isolationLevel),
 			);
 			if (outerScope) outerScope.phase = 'open';
@@ -1897,18 +1897,24 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async commitTransaction(): Promise<void> {
 		this.assertFinalControlOrigin('commit');
-		return this.commitManagedTransaction();
+		return this.#commitManagedTransaction();
 	}
 
-	private async commitManagedTransaction(lifecycle?: ManagedLifecycle): Promise<void> {
+	async #commitManagedTransaction(lifecycle?: ManagedLifecycle): Promise<void> {
 		this.assertFinalControlOrigin('commit', lifecycle);
 		try {
 			await this.coordinator.drainCurrent();
 			this.assertFinalControlOrigin('commit', lifecycle);
 			await this.withTransactionControl(() =>
 				this.guardedCommit?.noMutation || (this.lease?.active && this.lease.closing)
-					? this.noMutationTransactionControl('commit', undefined, lifecycle)
-					: super.commitTransaction(),
+					? this.#noMutationTransactionControl('commit', undefined, lifecycle)
+					: Reflect.apply(
+							Reflect.get(SqliteQueryRunner.prototype, 'commitTransaction') as (
+								this: SqliteQueryRunner,
+							) => Promise<void>,
+							this,
+							[],
+						),
 			);
 		} catch (cause) {
 			this.coordinator.recordManagedFailure(cause);
@@ -1921,10 +1927,10 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 
 	async rollbackTransaction(): Promise<void> {
 		this.assertFinalControlOrigin('rollback');
-		return this.rollbackManagedTransaction();
+		return this.#rollbackManagedTransaction();
 	}
 
-	private async rollbackManagedTransaction(lifecycle?: ManagedLifecycle): Promise<void> {
+	async #rollbackManagedTransaction(lifecycle?: ManagedLifecycle): Promise<void> {
 		if (lifecycle && this.coordinator.consumeFailedStart()) return;
 		this.assertFinalControlOrigin('rollback', lifecycle);
 		const scope = this.guardedCommit;
@@ -1960,8 +1966,14 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			await this.withTransactionControl(async () => {
 				if (this.lease?.active && this.lease.closing) await this.coordinator.drainOwned(this.lease);
 				await (scope?.noMutation || (this.lease?.active && this.lease.closing)
-					? this.noMutationTransactionControl('rollback', undefined, lifecycle)
-					: super.rollbackTransaction());
+					? this.#noMutationTransactionControl('rollback', undefined, lifecycle)
+					: Reflect.apply(
+							Reflect.get(SqliteQueryRunner.prototype, 'rollbackTransaction') as (
+								this: SqliteQueryRunner,
+							) => Promise<void>,
+							this,
+							[],
+						));
 				if (this.lease?.active && this.lease.closing) await this.coordinator.drainOwned(this.lease);
 			});
 		} catch (error) {

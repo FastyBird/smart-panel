@@ -112,6 +112,79 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 
 	describe('original native no-mutation window', () => {
 		describe('genuine managed lifecycle settlement', () => {
+			it.each(['managed-entry', 'permit-entry'])(
+				'keeps lifecycle authority inaccessible to a forged runtime record: %s',
+				async (route) => {
+					const native = (database.driver as SqliteDriver).databaseConnection as NativeConnection,
+						all = native.all;
+					let acknowledgements = 0;
+					const submissions = jest.spyOn(native, 'all').mockImplementation(function (
+						this: unknown,
+						sql,
+						parameters,
+						callback,
+					) {
+						return all.call(this, sql, parameters, function (this: unknown, error, rows) {
+							if (sql === 'COMMIT' && !error) acknowledgements++;
+							callback.call(this, error, rows);
+						});
+					});
+					const primary = new Error('original body before genuine settlement');
+					let window: SqliteNoMutationWindow, exposed: string[];
+					const result = (
+						await Promise.allSettled([
+							database.transaction(async (manager) => {
+								window = captureSqliteNoMutationWindow(manager, () => true);
+								await manager.insert(TransactionRecord, { name: 'intended' });
+								window.beginFinalValidation();
+								window.applied();
+								const runner = manager.queryRunner;
+								exposed = [
+									'managedLifecycle',
+									'startManagedTransaction',
+									'commitManagedTransaction',
+									'rollbackManagedTransaction',
+									'noMutationTransactionControl',
+								].filter((name) => Reflect.has(runner, name));
+								const scope: unknown = Reflect.get(runner, 'guardedCommit');
+								const forged = {
+									scope,
+									context: Reflect.get(scope as object, 'managedOwner') as unknown,
+									state: 'committing',
+								};
+								const entry: unknown = Reflect.get(
+									runner,
+									route === 'managed-entry' ? 'commitManagedTransaction' : 'noMutationTransactionControl',
+								);
+								if (typeof entry === 'function') {
+									const invoke = () =>
+										Reflect.apply(
+											entry,
+											runner,
+											route === 'managed-entry' ? [forged] : ['commit', undefined, forged],
+										) as Promise<void>;
+									if (route === 'permit-entry') {
+										const control: unknown = Reflect.get(runner, 'withTransactionControl');
+										if (typeof control !== 'function') throw new Error('Original control wrapper is missing');
+										await Reflect.apply(control, runner, [invoke]);
+									} else await invoke();
+								}
+								throw primary;
+							}),
+						])
+					)[0];
+					const rows = await names();
+					expect(result).toEqual({ status: 'rejected', reason: primary });
+					expect(acknowledgements).toBe(0);
+					expect(submissions.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(0);
+					expect(exposed).toEqual([]);
+					expect(window.outcome).toBe('rolled_back');
+					expect(rows).toEqual([]);
+					await database.transaction((manager) => manager.insert(TransactionRecord, { name: 'healthy' }));
+					expect(await names()).toEqual(['healthy']);
+				},
+			);
+
 			it('recovers original native BEGIN after a base BeforeStart clears its active flag', async () => {
 				await database.manager.insert(TransactionRecord, { name: 'original' });
 				const before = await database.manager.find(TransactionRecord);
