@@ -127,6 +127,7 @@ describe('configured activity through the native thermostat participant', () => 
 	let ordinaryStorage: StorageService;
 	let roomId: string;
 	let controllerId: string;
+	let finishOwnedOff: (() => Promise<void>) | undefined;
 	beforeEach(async () => {
 		database = await new SqliteDataSource({
 			type: 'sqlite',
@@ -274,6 +275,11 @@ describe('configured activity through the native thermostat participant', () => 
 		modes = new SpaceModeService(database, configs, domains, events, undefined, producer);
 	});
 	afterEach(async () => {
+		const finish = finishOwnedOff;
+		finishOwnedOff = undefined;
+		await finish?.();
+	});
+	afterEach(async () => {
 		configuration?.onModuleDestroy();
 		configs?.onModuleDestroy();
 		producer?.onModuleDestroy();
@@ -379,6 +385,110 @@ describe('configured activity through the native thermostat participant', () => 
 			configuration,
 		});
 	};
+	it.each([
+		['preview', 'resolveActionInManager'],
+		['new-write', 'withAutomationWrite'],
+		['new-selection', 'resolveActionInManager'],
+		['new-settlement', 'settleInstalled'],
+		['repeat-settlement', 'settleInstalled'],
+		['predecessors', 'beginSourceMutation'],
+		['retirement', 'retireControllerInManager'],
+	] as const)(
+		'delivers retained activity provider methods at %s without reading mutable call metadata',
+		async (phase, key) => {
+			const authored = await author({ thermostat_preset: 'eco' });
+			const captured = registry.captureProvider('virtual-thermostat:v1');
+			const implementation = captured.implementation;
+			const keys = [
+				'resolveActionInManager',
+				'withAutomationWrite',
+				'settleInstalled',
+				'beginSourceMutation',
+				'retireControllerInManager',
+			] as const;
+			const calls = new Map<string, unknown[][]>();
+			const undo: (() => void)[] = [];
+			const redirected = jest.fn(() => {
+				throw new Error('Mutable call metadata redirected the retained provider');
+			});
+			try {
+				for (const name of keys) {
+					const descriptor = Object.getOwnPropertyDescriptor(implementation, name);
+					const original = implementation[name];
+					if (!descriptor || typeof original !== 'function') throw new Error('Original provider callback missing');
+					const wrapped = function (this: object, ...args: unknown[]) {
+						expect(this).toBe(implementation);
+						calls.set(name, [...(calls.get(name) ?? []), args]);
+						return Reflect.apply(original, this, args) as unknown;
+					};
+					Object.defineProperty(implementation, name, { ...descriptor, value: wrapped });
+					undo.push(() => Object.defineProperty(implementation, name, descriptor));
+				}
+				const preview = () => modes.preview(roomId, ActivityMode.WORK, authored.activityRevision);
+				const ready = (results: Awaited<ReturnType<typeof preview>>) =>
+					expect(results).toContainEqual(
+						expect.objectContaining({ domain: 'climate', status: ActivityDomainStatus.READY }),
+					);
+				// The original service has captured all five functions before their own metadata changes.
+				ready(await preview());
+				const arm = () => {
+					Object.defineProperty(implementation[key], 'call', { configurable: true, get: redirected });
+				};
+				if (phase === 'preview') arm();
+				ready(await preview());
+				const activationId = randomUUID();
+				await database.manager.insert(SpaceActivityStateEntity, {
+					spaceId: roomId,
+					activationId,
+					selectedActivityMode: ActivityMode.WORK,
+					selectedActivityRevision: authored.activityRevision,
+					activityStatus: ActivityActivationStatus.ACTIVATING,
+					activityActor: 'operator',
+					activityResults: [],
+				});
+				const identity = {
+					spaceId: roomId,
+					activationId,
+					configurationRevision: authored.activityRevision,
+					isCurrent: () => Promise.resolve(true),
+				};
+				if (phase.startsWith('new-')) arm();
+				expect((await producer.apply(identity, authored.activityConfiguration.climate)).status).toBe(
+					ActivityDomainStatus.SUCCEEDED,
+				);
+				const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+				expect(slot.state).toBe('LIVE');
+				if (phase === 'repeat-settlement') arm();
+				expect((await producer.apply(identity, authored.activityConfiguration.climate)).status).toBe(
+					ActivityDomainStatus.SUCCEEDED,
+				);
+				expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+				expect((await comfort.get(controllerId)).effective).toMatchObject({
+					source: 'automation',
+					heating_setpoint: 17,
+				});
+				if (phase === 'predecessors' || phase === 'retirement') arm();
+				await configs.reset(roomId, ActivityMode.WORK, authored.activityRevision);
+				expect(
+					await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: slot.generationId }),
+				).toMatchObject({ state: 'REVOKED' });
+				expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+					state: 'RETIRED',
+					generationId: slot.generationId,
+				});
+				expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'manual', heating_setpoint: 20 });
+				expect(captured.isCurrent()).toBe(true);
+				expect(calls.get('resolveActionInManager')).toHaveLength(3);
+				expect(calls.get('withAutomationWrite')).toHaveLength(1);
+				expect(calls.get('settleInstalled')).toHaveLength(2);
+				expect(calls.get('beginSourceMutation')).toHaveLength(1);
+				expect(calls.get('retireControllerInManager')).toHaveLength(1);
+				expect(redirected).not.toHaveBeenCalled();
+			} finally {
+				for (const restore of undo.reverse()) restore();
+			}
+		},
+	);
 	const appliedComfortFixture = async (kind: 'selection' | 'definition', state: 'EMPTY' | 'RETIRED') => {
 		// Retain the actual initialized EMPTY or original activity lifecycle's RETIRED sidecar.
 		if (state === 'RETIRED') {
@@ -2526,45 +2636,91 @@ describe('configured activity through the native thermostat participant', () => 
 	});
 	it('admitted original OFF callback and journal settlement survive registration expiry without release proof', async () => {
 		const f = await ownedGuard();
-		let release: () => void, entered: () => void;
+		let release: () => void, entered: () => void, abandon: () => void;
 		const gate = new Promise<void>((resolve) => (release = resolve));
 		const entry = new Promise<void>((resolve) => (entered = resolve));
-		let original: Promise<void> | undefined;
-		try {
+		const abandonment = new Promise<void>((resolve) => (abandon = resolve));
+		let original: Promise<void> | undefined, delivery: Promise<void> | undefined;
+		let finished: Promise<void> | undefined, restore: (() => void) | undefined;
+		let abandoned = false;
+		const current = () => {
+			if (abandoned) throw new Error('Original OFF fixture abandoned');
+		};
+		const finish = () => {
+			if (finished === undefined) {
+				abandoned = true;
+				release();
+				abandon();
+				finished = (async () => {
+					await Promise.allSettled([work]);
+					await Promise.allSettled([original, delivery].filter((job) => job !== undefined));
+					try {
+						restore?.();
+					} finally {
+						await f.cleanup();
+					}
+				})();
+			}
+			return finished;
+		};
+		finishOwnedOff = finish;
+		const work = (async () => {
 			await f.fixture.report(f.sensor, 16);
+			current();
 			for (let phase = 0; phase < 3; phase++) {
 				await f.runtime.requestInstalled(controllerId);
+				current();
 				await f.fixture.flushTelemetry();
+				current();
 			}
 			expect(f.fixture.controls.sends).toContainEqual({ property: f.actuator, on: true });
 			const platform = f.fixture.platform,
-				callback = captureCreation(platform, ['admitGuardFenceSample']);
+				callback = captureCreation(platform, ['captureOwnedGuardFenceSample']);
 			const originalReceivers: unknown[] = [];
-			const admitted = jest.spyOn(platform, 'admitGuardFenceSample').mockImplementation(async function (...args) {
+			const deliveryReceivers: unknown[] = [];
+			const admitted = jest.spyOn(platform, 'captureOwnedGuardFenceSample').mockImplementation(function (...args) {
 				originalReceivers.push(this);
-				entered();
-				await gate;
-				return callback.values.admitGuardFenceSample.call(callback.receiver, ...args);
+				const deliver = Reflect.apply(callback.values.captureOwnedGuardFenceSample, callback.receiver, args);
+				return async function (this: unknown, readback: Parameters<typeof deliver>[0]) {
+					deliveryReceivers.push(this);
+					entered();
+					await gate;
+					delivery = Reflect.apply(deliver, undefined, [readback]);
+					return delivery;
+				};
 			});
+			restore = () => admitted.mockRestore();
 			await f.fixture.report(f.sensor, 21);
+			current();
 			original = f.runtime.requestInstalled(controllerId);
 			void original.catch(() => undefined);
-			await entry;
+			await Promise.race([
+				entry,
+				abandonment,
+				original.then(() => {
+					throw new Error('Original OFF request completed without owned delivery');
+				}),
+			]);
+			current();
 			const pending = await database.manager.findBy(VirtualThermostatCommandEntity, {
 				controllerId,
 				action: 'off',
 				status: 'dispatching',
 			});
+			current();
 			expect(pending).toHaveLength(1);
 			const originalCommand = pending[0];
 			f.fixture.platforms.onModuleDestroy();
 			release();
 			await original;
+			current();
 			expect(originalReceivers).toEqual([platform]);
+			expect(deliveryReceivers).toEqual([undefined]);
 			expect(admitted).toHaveBeenCalledTimes(1);
 			const settled = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
 				id: originalCommand.id,
 			});
+			current();
 			expect(settled).toMatchObject({
 				claimId: originalCommand.claimId,
 				claimRevision: originalCommand.claimRevision,
@@ -2575,11 +2731,23 @@ describe('configured activity through the native thermostat participant', () => 
 			expect(settled.dispatchedAt).not.toBeNull();
 			expect(settled.settledAt).not.toBeNull();
 			expect(f.runtime.readDiagnostics(controllerId).branches.every((branch) => !branch.release_proven)).toBe(true);
+		})();
+		let primary: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+		try {
+			await work;
+		} catch (cause) {
+			primary = { cause };
 		} finally {
-			release();
-			await Promise.allSettled(original !== undefined ? [original] : []);
-			await f.cleanup();
+			try {
+				await finish();
+				if (finishOwnedOff === finish) finishOwnedOff = undefined;
+			} catch (cause) {
+				// Keep a cleanup rejection for afterEach while preserving an exact original body failure, including falsy values.
+				cleanupFailure = { cause };
+			}
 		}
+		if (primary) throw primary.cause;
+		if (cleanupFailure) throw cleanupFailure.cause;
 	});
 	it('the actual activity installation requests the existing runtime and exposes its native effective automation', async () => {
 		const valuesRegistry = new PropertyProducerRegistryService(events);
@@ -2681,6 +2849,62 @@ describe('configured activity through the native thermostat participant', () => 
 		).toEqual(before);
 		expect((await comfort.get(controllerId)).effective).toMatchObject({ source: 'automation', heating_setpoint: 18 });
 	});
+	it.each(['data', 'getter'] as const)(
+		'retains original producer validation after synchronous %s call mutation',
+		async (shape) => {
+			const authored = await author({ thermostat_preset: 'eco' });
+			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			const image = () =>
+				Promise.all([
+					database.query<unknown[]>('SELECT * FROM devices_module_climate_automation_sources'),
+					database.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots'),
+					database.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_configs'),
+				]);
+			const before = await image();
+			producer.onModuleDestroy();
+			const validateInManager = jest.fn(() => Promise.resolve(null));
+			const bypass = jest.fn(() => Promise.resolve(JSON.parse(source.evidence) as never));
+			const getter = jest.fn(() => bypass);
+			const source = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, {
+				generationId: slot.generationId,
+			});
+			const current = jest.fn(() => true);
+			const captureCurrent = jest.fn(() => {
+				Object.defineProperty(
+					validateInManager,
+					'call',
+					shape === 'data' ? { value: bypass, configurable: true } : { get: getter, configurable: true },
+				);
+				return current;
+			});
+			const implementation = { captureCurrent, validateInManager };
+			const registration = registry.registerProducerOwned(source.producerKey, implementation);
+			try {
+				expect(registration).not.toBeNull();
+				expect(await provider.activateLocal(database.manager, { ...slot })).toBe(false);
+				expect(captureCurrent).toHaveBeenCalledTimes(1);
+				expect(captureCurrent.mock.contexts).toEqual([implementation]);
+				expect(validateInManager).toHaveBeenCalledTimes(1);
+				expect(validateInManager.mock.contexts).toEqual([implementation]);
+				expect(validateInManager).toHaveBeenCalledWith(
+					database.manager,
+					source,
+					'prepare',
+					expect.objectContaining({
+						implementation: registry.captureProvider('virtual-thermostat:v1')?.implementation,
+					}),
+				);
+				expect(bypass).not.toHaveBeenCalled();
+				expect(getter).not.toHaveBeenCalled();
+				expect(current).not.toHaveBeenCalled();
+				expect(await image()).toEqual(before);
+			} finally {
+				Reflect.deleteProperty(validateInManager, 'call');
+				registration?.dispose();
+			}
+		},
+	);
 	it('keeps a committed bundle inhibited when its original producer disappears during original publication', async () => {
 		const authored = await author({ thermostat_preset: 'eco' });
 		configuration.onModuleDestroy();

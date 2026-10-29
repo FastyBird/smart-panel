@@ -31,7 +31,7 @@ import { ClimateAutomationLedgerService } from '../../../modules/devices/service
 import { canonical, increment } from '../../../modules/devices/services/climate-automation-ledger.utils';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
-import { captureCreation } from '../../../modules/devices/services/creation-capture';
+import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
@@ -994,10 +994,14 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 			)
 				return false;
 			const methods = captureCreation(producer.implementation, ['validateInManager', 'captureCurrent']);
-			const sourceCurrent = methods.values.captureCurrent?.call(producer.implementation, source) ?? (() => true);
+			const sourceCurrent =
+				(methods.values.captureCurrent == null
+					? undefined
+					: invokeCreation(methods.values.captureCurrent, producer.implementation, source)) ?? (() => true);
 			if (
 				canonical(
-					await methods.values.validateInManager.call(
+					await invokeCreation(
+						methods.values.validateInManager,
 						producer.implementation,
 						manager,
 						source,

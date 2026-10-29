@@ -296,11 +296,11 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					methods.values.contractVersion !== 1 ||
 					suppliedProfile.values.id !== profile.id ||
 					suppliedProfile.values.version !== profile.version ||
-					machine.call(qualification) !== true ||
-					methods.values.canReconcile.call(adapter, target, qualification) !== true
+					invokeCreation(machine, qualification) !== true ||
+					invokeCreation(methods.values.canReconcile, adapter, target, qualification) !== true
 				)
 					return null;
-				const original = methods.values.captureReconcileReadiness.call(adapter, target, qualification);
+				const original = invokeCreation(methods.values.captureReconcileReadiness, adapter, target, qualification);
 				if (!original) return null;
 				const evidence = captureCreation(original, [
 					'capabilityVersion',
@@ -333,7 +333,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					qualification.upstreamWritersExcluded !== true ||
 					local.releaseOrderingQualified !== true ||
 					local.independentProtectionQualified !== true ||
-					machine.call(qualification) !== true
+					invokeCreation(machine, qualification) !== true
 				)
 					return null;
 				const registry = captureCreation(this.platforms, ['captureRegistration', 'get']);
@@ -359,7 +359,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 						metadata.isCurrent() &&
 						this.registrationEpochs.get(type) === epoch &&
 						this.adapters.get(type) === registration &&
-						machine.call(qualification) === true &&
+						invokeCreation(machine, qualification) === true &&
 						providerCurrent()
 					);
 				} catch {
@@ -507,6 +507,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 		const original = captureCreation(platform, [
 			'prepareGuardRpcSession',
 			'admitGuardFenceSample',
+			'captureOwnedGuardFenceSample',
 			'processProtectiveCommand',
 		]);
 		const valueReader = captureCreation(this.values, ['readQualifiedSample']);
@@ -550,9 +551,10 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					return session.on(claim.leaseSeconds, 1000, isAdmitted);
 				}
 				if (session) {
+					const deliver = invokeCreation(original.values.captureOwnedGuardFenceSample, platform, target);
 					const readback = await session.fence(1000, isAdmitted);
 					if (readback) {
-						await original.values.admitGuardFenceSample.call(platform, target, readback);
+						await invokeCreation(deliver, undefined, readback);
 						return { outcome: 'accepted', wasOn: readback.wasOn, outputConfirmed: false, pendingOnDrained: false };
 					}
 				}
@@ -577,9 +579,11 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					return null;
 				const session = sessionFor(qualification);
 				if (!session) return null;
+				const deliver = invokeCreation(original.values.captureOwnedGuardFenceSample, platform, target);
 				const readback = await session.fence(1000, isCurrent);
-				if (!readback || !readback.isCurrent() || typeof readback.evidence.sourceIsCurrent !== 'function') return null;
-				await original.values.admitGuardFenceSample.call(platform, target, readback);
+				if (!readback || typeof readback.evidence.sourceIsCurrent !== 'function') return null;
+				await invokeCreation(deliver, undefined, readback);
+				if (!readback.isCurrent()) return null;
 				const sample = valueReader.values.readQualifiedSample.call(valueReader.receiver, target.property, 30_000);
 				if (
 					!sample ||

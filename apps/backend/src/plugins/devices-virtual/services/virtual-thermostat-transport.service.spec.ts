@@ -223,7 +223,7 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 				providerProfileVersion: 1,
 			});
 			const prepare = jest.spyOn(platform, 'prepareGuardRpcSession');
-			const originalAdmit = jest.spyOn(platform, 'admitGuardFenceSample');
+			const originalCapture = jest.spyOn(platform, 'captureOwnedGuardFenceSample');
 			const protective = jest.spyOn(platform, 'processProtectiveCommand');
 			let release: (value: ShellyGuardFenceReadback) => void;
 			const held = new Promise<ShellyGuardFenceReadback>((resolve) => (release = resolve));
@@ -248,8 +248,9 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 					outputConfirmed: false,
 					pendingOnDrained: false,
 				});
-				expect(originalAdmit).toHaveBeenCalledTimes(1);
-				expect(originalAdmit).toHaveBeenCalledWith(target, readback);
+				expect(originalCapture).toHaveBeenCalledTimes(1);
+				expect(originalCapture).toHaveBeenCalledWith(target);
+				expect(admittedSample).toHaveBeenCalledWith(target.property, readback);
 				expect(admittedSample).toHaveBeenCalledTimes(1);
 				expect(replacementPrepare).not.toHaveBeenCalled();
 				expect(replacementAdmit).not.toHaveBeenCalled();
@@ -259,11 +260,98 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 				release(readback);
 				await operation;
 				prepare.mockRestore();
-				originalAdmit.mockRestore();
+				originalCapture.mockRestore();
 				protective.mockRestore();
 			}
 		},
 	);
+
+	// Real platform and manager admission; only the fence and final sample publisher are controlled.
+	// This proves forwarding custody, not a network fence, installed qualification or physical release.
+	it.each([
+		['send', false],
+		['reconcile', false],
+		['send', true],
+		['reconcile', true],
+	] as const)('retains actual manager delivery for %s with expired=%s', async (operation, expired) => {
+		const reportSample = jest
+			.fn<Promise<void>, [string, unknown, ShellyGuardFenceReadback['evidence']]>()
+			.mockImplementation((_id, _value, evidence) => {
+				accepted = { ...accepted, sampledAt: evidence.sampledAt, receivedAt: evidence.receivedAt };
+				return Promise.resolve();
+			});
+		const manager = new DelegatesManagerService(
+			{} as never,
+			{} as never,
+			{ reportSample } as unknown as ConstructorParameters<typeof DelegatesManagerService>[2],
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+		);
+		const prepare = jest
+			.spyOn(manager, 'prepareGuardRpcSession')
+			.mockReturnValue(session as unknown as ShellyGuardRpcSession);
+		const original = jest.spyOn(manager, 'admitGuardFenceSample');
+		const successor = jest.fn().mockResolvedValue(undefined);
+		const ownedPlatform = new ShellyNgDevicePlatform(manager);
+		const capture = jest.spyOn(ownedPlatform, 'captureOwnedGuardFenceSample');
+		const registry = new PlatformRegistryService();
+		registry.register(ownedPlatform);
+		const ownedTransport = new VirtualThermostatTransportService(registry, {
+			readQualifiedSample: () => accepted,
+		} as unknown as PropertyValueService);
+		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+			physicalIdentity: qualification.physicalIdentity,
+			providerProfile: 'shelly-ng.guarded-switch',
+			providerProfileVersion: 1,
+		});
+		let release!: (value: ShellyGuardFenceReadback) => void;
+		const held = new Promise<ShellyGuardFenceReadback>((resolve) => (release = resolve));
+		session.fence.mockReturnValueOnce(held);
+		const captured = ownedTransport.capture(target, claim, qualification);
+		const scope = {
+			controllerId: 'controller',
+			controllerRevision: 4,
+			claimId: 'claim',
+			claimRevision: 2,
+			contractFingerprint: 'contract',
+			qualification,
+		};
+		const pending =
+			operation === 'send'
+				? captured.send(target, claim, qualification, () => admission, { commandId: 'original-off' })
+				: captured.reconcile(target, ['original-on'], accepted, () => admission, scope);
+		try {
+			expect(session.fence).toHaveBeenCalledTimes(1);
+			expect(original).not.toHaveBeenCalled();
+			manager.admitGuardFenceSample = successor;
+			if (expired) sourceCurrent = false;
+			release(readback);
+			const result = await pending;
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(original.mock.contexts[0]).toBe(manager);
+			expect(original.mock.calls[0][0]).toBe(target.property);
+			expect(original.mock.calls[0][1]).toBe(readback);
+			expect(successor).not.toHaveBeenCalled();
+			expect(capture).toHaveBeenCalledTimes(1);
+			expect(capture.mock.contexts[0]).toBe(ownedPlatform);
+			expect(reportSample).toHaveBeenCalledTimes(expired ? 0 : 1);
+			if (!expired) expect(reportSample.mock.calls[0][2]).toBe(readback.evidence);
+			if (operation === 'send')
+				expect(result).toMatchObject({ outcome: 'accepted', outputConfirmed: false, pendingOnDrained: false });
+			else if (expired) expect(result).toBeNull();
+			else expect(result).toMatchObject({ coveredCommandIds: ['original-on'], externalWriterBarrier: true });
+		} finally {
+			release(readback);
+			await pending;
+			prepare.mockRestore();
+			original.mockRestore();
+			capture.mockRestore();
+			ownedTransport.onModuleDestroy();
+		}
+	});
 
 	it('requires an ordered script qualification before permitting any ON', async () => {
 		delete (qualification.profile as unknown as Record<string, unknown>).guardScript;
@@ -542,6 +630,75 @@ describe('captured thermostat transport readiness continuity', () => {
 		}
 	});
 
+	it.each(['data', 'getter'] as const)(
+		'retains original readiness capture after synchronous %s call mutation',
+		async (shape) => {
+			const f = await fixture(),
+				p = f.custom();
+			const bypass = jest.fn(() => p.original),
+				getter = jest.fn(() => bypass);
+			p.captureReadiness.mockReturnValue(null);
+			p.canReconcile.mockImplementation(() => {
+				Object.defineProperty(
+					p.captureReadiness,
+					'call',
+					shape === 'data' ? { value: bypass, configurable: true } : { get: getter, configurable: true },
+				);
+				return true;
+			});
+			try {
+				f.transport.register(f.target.device.type, p.adapter);
+				expect(f.capture()).toBeNull();
+				expect(p.captureReadiness).toHaveBeenCalledTimes(1);
+				expect(p.captureReadiness.mock.contexts).toEqual([p.adapter]);
+				expect(p.captureReadiness).toHaveBeenCalledWith(f.target, f.qualification);
+				expect(bypass).not.toHaveBeenCalled();
+				expect(getter).not.toHaveBeenCalled();
+				expect(p.send).not.toHaveBeenCalled();
+				expect(p.reconcile).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+			} finally {
+				Reflect.deleteProperty(p.captureReadiness, 'call');
+				await f.module.close();
+			}
+		},
+	);
+	it.each(['data', 'getter'] as const)(
+		'retains the original escaped machine predicate after %s call mutation',
+		async (shape) => {
+			const f = await fixture(),
+				p = f.custom();
+			const machine = jest.fn(() => f.machine.current);
+			Object.assign(f.qualification, { machineLeaseIsCurrent: machine });
+			const bypass = jest.fn(() => true),
+				getter = jest.fn(() => bypass);
+			p.canReconcile.mockImplementation(() => {
+				Object.defineProperty(
+					machine,
+					'call',
+					shape === 'data' ? { value: bypass, configurable: true } : { get: getter, configurable: true },
+				);
+				return true;
+			});
+			try {
+				f.transport.register(f.target.device.type, p.adapter);
+				const readiness = f.requiredCapture();
+				expect(readiness.isCurrent()).toBe(true);
+				f.machine.current = false;
+				expect(readiness.isCurrent()).toBe(false);
+				expect(machine.mock.calls.length).toBeGreaterThan(1);
+				expect(machine.mock.contexts.every((receiver) => receiver === f.qualification)).toBe(true);
+				expect(bypass).not.toHaveBeenCalled();
+				expect(getter).not.toHaveBeenCalled();
+				expect(p.send).not.toHaveBeenCalled();
+				expect(p.reconcile).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+			} finally {
+				Reflect.deleteProperty(machine, 'call');
+				await f.module.close();
+			}
+		},
+	);
 	it.each([
 		['readiness', 'data'],
 		['readiness', 'getter'],

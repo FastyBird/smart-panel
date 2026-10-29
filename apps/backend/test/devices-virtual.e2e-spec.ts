@@ -22,7 +22,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
-import { createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { SqliteDataSource, createSqliteDataSource } from '../src/common/database/sqlite-data-source';
 import { AuthController } from '../src/modules/auth/controllers/auth.controller';
 import { IS_PUBLIC_KEY } from '../src/modules/auth/guards/auth.guard';
 import { ConfigService } from '../src/modules/config/services/config.service';
@@ -50,6 +50,8 @@ import { DevicesService } from '../src/modules/devices/services/devices.service'
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../src/modules/devices/utils/schema.utils';
+import { NotificationKind, NotificationSeverity } from '../src/modules/notifications/notifications.constants';
+import { NotificationsService } from '../src/modules/notifications/services/notifications.service';
 import { StorageService } from '../src/modules/storage/services/storage.service';
 import { SwaggerDocumentService } from '../src/modules/swagger/services/swagger-document.service';
 import {
@@ -5538,8 +5540,52 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 	});
 });
 
+type SchemaCompositionFailure = { cause: unknown };
+
+/** Finite original receipts only; no cancellation or claim about detached Nest descendants. */
+function schemaCompositionOwner(clean: () => Promise<SchemaCompositionFailure | undefined>) {
+	const pending = new Set<Promise<unknown>>();
+	let stopped = false;
+	let uncertain = false;
+	let completion: Promise<SchemaCompositionFailure | undefined> | undefined;
+	return {
+		open(): void {
+			if (stopped) throw new Error('Schema composition case already entered cleanup');
+		},
+		uncertain: () => uncertain,
+		own<T>(original: Promise<T>): Promise<T> {
+			pending.add(original);
+			void original.then(
+				() => pending.delete(original),
+				() => {
+					uncertain = true;
+					pending.delete(original);
+				},
+			);
+			return original;
+		},
+		finish(): Promise<SchemaCompositionFailure | undefined> {
+			return (completion ??= (async () => {
+				stopped = true;
+				while (pending.size) await Promise.allSettled([...pending]);
+				try {
+					return await clean();
+				} catch (cause: unknown) {
+					return { cause };
+				}
+			})());
+		},
+	};
+}
+
 describe('P05b1b fresh full AppModule schema composition', () => {
-	it('reserves two real startup owners and preserves a no-change full sync/restart with normal memory fallback', async () => {
+	let finishCase: (() => Promise<SchemaCompositionFailure | undefined>) | undefined;
+	afterEach(async () => {
+		const result = await finishCase?.();
+		finishCase = undefined;
+		if (result) throw result.cause;
+	});
+	it('reserves two real startup owners, preserves an offline image, and serves after restart with memory fallback', async () => {
 		let phase = 'setup';
 		const report = (stage: string, cause: unknown): void => {
 			try {
@@ -5572,7 +5618,60 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 		const environment = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 		const directory = mkdtempSync(path.join(tmpdir(), 'p05b1b-fresh-nest-'));
 		const applications: INestApplication[] = [];
-		let failure: { cause: unknown } | undefined;
+		const modules: Array<{ module: TestingModule; app?: INestApplication; source: DataSource }> = [];
+		const offlineSources: DataSource[] = [];
+		const restores: Array<() => void> = [];
+		const appCloses = new Map<INestApplication, () => Promise<void>>();
+		const sourceCloses = new Map<DataSource, Promise<void>>();
+		let failure: SchemaCompositionFailure | undefined;
+		const owner = schemaCompositionOwner(async () => {
+			let problem: SchemaCompositionFailure | undefined;
+			const attempt = async (work: () => unknown) => {
+				try {
+					await work();
+				} catch (cause: unknown) {
+					problem ??= { cause };
+				}
+			};
+			for (const source of [...offlineSources].reverse()) await attempt(() => closeSource(source));
+			for (const item of [...modules].reverse()) {
+				await attempt(() => (item.app ? closeApp(item.app) : item.module.close()));
+				if (item.source.isInitialized) await attempt(() => closeSource(item.source));
+			}
+			for (const restore of [...restores].reverse()) await attempt(restore);
+			await attempt(() => useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true }));
+			for (const key of keys)
+				await attempt(() => {
+					if (environment[key] === undefined) delete process.env[key];
+					else process.env[key] = environment[key];
+				});
+			// A rejected initialization can leave private Nest descendants unknown. Never delete their database.
+			if (!problem && !owner.uncertain()) await attempt(() => rmSync(directory, { recursive: true, force: true }));
+			else report('cleanup:directory-retained', problem?.cause);
+			return problem;
+		});
+		finishCase = () => owner.finish();
+		const enter = (next: string): void => {
+			owner.open();
+			phase = next;
+		};
+		const closeSource = (source: DataSource): Promise<void> => {
+			let result = sourceCloses.get(source);
+			if (result === undefined) {
+				result = owner.own(
+					(async () => {
+						if (source.isInitialized) await source.destroy();
+					})(),
+				);
+				sourceCloses.set(source, result);
+			}
+			return result;
+		};
+		const closeApp = (app: INestApplication): Promise<void> => {
+			const close = appCloses.get(app);
+			if (!close) throw new Error('Missing original app close');
+			return close();
+		};
 		const state = async (source: DataSource) => {
 			const schema = await source.query<{ name: string; type: string; sql: string }[]>(
 				"SELECT name,type,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
@@ -5583,10 +5682,28 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 			return { schema, rows };
 		};
 		const construct = async () => {
-			const module = await Test.createTestingModule({
-				imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
-			}).compile();
+			const module = await owner.own(
+				Test.createTestingModule({
+					imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
+				}).compile(),
+			);
+			const item: (typeof modules)[number] = { module, source: module.get(DataSource) };
+			modules.push(item);
 			const app = module.createNestApplication();
+			item.app = app;
+			const init = app.init.bind(app) as INestApplication['init'];
+			const descriptor = Object.getOwnPropertyDescriptor(app, 'init');
+			app.init = () => {
+				owner.open();
+				return owner.own(init());
+			};
+			restores.push(() => {
+				if (descriptor) Object.defineProperty(app, 'init', descriptor);
+				else Reflect.deleteProperty(app, 'init');
+			});
+			const close = app.close.bind(app) as () => Promise<void>;
+			let closed: Promise<void> | undefined;
+			appCloses.set(app, () => (closed ??= owner.own(close())));
 			app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 			applications.push(app);
 			return { app, module, source: module.get(DataSource) };
@@ -5602,10 +5719,10 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				JSON.stringify({ plugins: { 'influx-v1-plugin': { enabled: false } }, modules: {} }),
 			);
 			// Finish the requested offline ORM DDL before racing the two actual serving readiness hooks.
-			phase = 'construct:first';
-			const first = await construct();
-			phase = 'construct:second';
-			const second = await construct();
+			enter('construct:first');
+			const first = await owner.own(construct());
+			enter('construct:second');
+			const second = await owner.own(construct());
 			expect(first.source).not.toBe(second.source);
 			expect(first.source.manager).not.toBe(second.source.manager);
 			expect(first.source.options.database).toBe(second.source.options.database);
@@ -5626,8 +5743,8 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 							catalogReads[index].push(observations[index].length - 1);
 					},
 				});
-			phase = 'init:concurrent';
-			await Promise.all([first.app.init(), second.app.init()]);
+			enter('init:concurrent');
+			await owner.own(Promise.all([first.app.init(), second.app.init()]));
 			for (const queries of observations) {
 				const index = queries.indexOf(
 					'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
@@ -5655,92 +5772,178 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				expect(item.module.get(StorageService).isPrimaryAvailable()).toBe(false);
 				expect(item.module.get(StorageService).isUsingFallback()).toBe(true);
 			}
-			phase = 'row:device';
-			await first.source.manager.insert(DeviceEntity, {
-				id: 'fresh-device',
-				name: 'Fresh preserved row',
-				category: DeviceCategory.GENERIC,
-			});
-			phase = 'row:channel';
-			await first.source.manager.insert(ChannelEntity, {
-				id: 'fresh-channel',
-				name: 'Fresh channel',
-				category: ChannelCategory.GENERIC,
-				device: 'fresh-device',
-			});
-			phase = 'row:property';
-			await first.source.manager.insert(ChannelPropertyEntity, {
-				id: 'fresh-property',
-				category: PropertyCategory.GENERIC,
-				identifier: 'fresh',
-				dataType: DataTypeType.FLOAT,
-				permissions: [PermissionType.READ_ONLY],
-				channel: 'fresh-channel',
-			});
-			phase = 'state:before-sync';
-			const before = await state(first.source);
+			enter('row:device');
+			await owner.own(
+				first.source.manager.insert(DeviceEntity, {
+					id: 'fresh-device',
+					name: 'Fresh preserved row',
+					category: DeviceCategory.GENERIC,
+				}),
+			);
+			enter('row:channel');
+			await owner.own(
+				first.source.manager.insert(ChannelEntity, {
+					id: 'fresh-channel',
+					name: 'Fresh channel',
+					category: ChannelCategory.GENERIC,
+					device: 'fresh-device',
+				}),
+			);
+			enter('row:property');
+			await owner.own(
+				first.source.manager.insert(ChannelPropertyEntity, {
+					id: 'fresh-property',
+					category: PropertyCategory.GENERIC,
+					identifier: 'fresh',
+					dataType: DataTypeType.FLOAT,
+					permissions: [PermissionType.READ_ONLY],
+					channel: 'fresh-channel',
+				}),
+			);
+			// The image is a distinct SQLite-consistent epoch; serving monitors continue on their original file.
+			enter('offline:export');
+			if (first.source.options.type !== 'sqlite') throw new Error('Expected SQLite serving source');
+			expect(first.source.manager.queryRunner?.isTransactionActive ?? false).toBe(false);
+			const [{ version }] = await owner.own(
+				first.source.query<{ version: string }[]>('SELECT sqlite_version() AS version'),
+			);
+			const [major, minor] = version.split('.').map(Number);
+			expect(major > 3 || (major === 3 && minor >= 27)).toBe(true);
+			const image = path.join(directory, 'offline-schema.sqlite');
+			await owner.own(first.source.query('VACUUM INTO ?', [image]));
+			const options = { ...first.source.options, database: image, synchronize: false, migrationsRun: false };
+			const openOffline = () => {
+				owner.open();
+				const source = new SqliteDataSource(options);
+				offlineSources.push(source);
+				return owner.own(source.initialize());
+			};
+			const offline = await openOffline();
+			expect(offline).not.toBe(first.source);
+			expect(offline.options.database).not.toBe(first.source.options.database);
+			expect(offline.entityMetadatas.map((item) => item.tablePath).sort()).toEqual(
+				first.source.entityMetadatas.map((item) => item.tablePath).sort(),
+			);
+			expect(offline.subscribers.map((item) => item.constructor.name).sort()).toEqual([
+				'DataSourceEntitySubscriber',
+				'PageEntitySubscriber',
+				'TileEntitySubscriber',
+			]);
+			enter('offline:baseline');
+			const before = await owner.own(state(offline));
 			expect(
 				before.schema.filter(({ name, type }) => type === 'trigger' && name.includes('_thermostat_catalog_birth_')),
 			).toHaveLength(6);
-			phase = 'schema:log-first';
-			expect((await first.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
-			phase = 'schema:synchronize';
-			await first.source.synchronize();
-			phase = 'state:after-sync';
-			expect(await state(first.source)).toEqual(before);
-			phase = 'close:second';
-			await second.app.close();
+			const seedRows = async (source: DataSource) =>
+				Promise.all([
+					owner.own(
+						source.query<Record<string, unknown>[]>('SELECT * FROM "devices_module_devices" WHERE id = ?', [
+							'fresh-device',
+						]),
+					),
+					owner.own(
+						source.query<Record<string, unknown>[]>('SELECT * FROM "devices_module_channels" WHERE id = ?', [
+							'fresh-channel',
+						]),
+					),
+					owner.own(
+						source.query<Record<string, unknown>[]>('SELECT * FROM "devices_module_channels_properties" WHERE id = ?', [
+							'fresh-property',
+						]),
+					),
+				]);
+			const seeds = await owner.own(seedRows(offline));
+			for (const rows of seeds) expect(rows).toHaveLength(1);
+			enter('serving:notification-control');
+			const liveBefore = await owner.own(state(first.source));
+			// Deliberately new writer, not a monitor poll or attribution of any historical failure.
+			const notification = await owner.own(
+				first.module.get(NotificationsService).notify({
+					source: 'storage-module',
+					key: 'schema-composition-control',
+					kind: NotificationKind.ISSUE,
+					severity: NotificationSeverity.WARNING,
+					title: 'Schema fixture owned notification',
+				}),
+			);
+			expect(notification).not.toBeNull();
+			if (!notification) throw new Error('Original fixture notification was not stored');
+			expect(
+				await owner.own(
+					first.source.query<Array<{ id: string; source: string; key: string; title: string }>>(
+						'SELECT id,source,"key",title FROM "notifications_module_notifications" WHERE id = ?',
+						[notification.id],
+					),
+				),
+			).toEqual([
+				{
+					id: notification.id,
+					source: 'storage-module',
+					key: 'schema-composition-control',
+					title: 'Schema fixture owned notification',
+				},
+			]);
+			expect(await owner.own(state(first.source))).not.toEqual(liveBefore);
+			enter('offline:synchronize');
+			expect((await owner.own(offline.driver.createSchemaBuilder().log())).upQueries).toEqual([]);
+			await owner.own(offline.synchronize());
+			expect(await owner.own(state(offline))).toEqual(before);
+			await closeSource(offline);
+			enter('offline:reopen');
+			const reopened = await openOffline();
+			expect(await owner.own(state(reopened))).toEqual(before);
+			expect((await owner.own(reopened.driver.createSchemaBuilder().log())).upQueries).toEqual([]);
+			await closeSource(reopened);
+			enter('close:second');
+			await closeApp(second.app);
 			applications.splice(applications.indexOf(second.app), 1);
-			phase = 'close:first';
-			await first.app.close();
+			enter('close:first');
+			await closeApp(first.app);
 			applications.splice(applications.indexOf(first.app), 1);
-			phase = 'construct:third';
-			const third = await construct();
-			phase = 'init:third';
+			enter('construct:third');
+			const third = await owner.own(construct());
+			enter('init:third');
 			await third.app.init();
-			phase = 'state:restart';
-			expect(await state(third.source)).toEqual(before);
-			phase = 'schema:log-third';
-			expect((await third.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
+			// A real serving restart may legitimately resolve/re-raise notifications; compare the seeded rows, not live epochs.
+			enter('serving:restart-seeds');
+			expect(await owner.own(seedRows(third.source))).toEqual(seeds);
+			enter('schema:log-third');
+			expect((await owner.own(third.source.driver.createSchemaBuilder().log())).upQueries).toEqual([]);
 			useContainer(third.module, { fallbackOnErrors: true });
 			expect(third.module.get(StorageService).isPrimaryAvailable()).toBe(false);
 			expect(third.module.get(StorageService).isUsingFallback()).toBe(true);
-			phase = 'auth:register';
-			await request(third.app.getHttpServer())
-				.post('/modules/auth/auth/register')
-				.send({
-					data: { username: 'memorycatalog', password: 'securePassword123!', email: 'memorycatalog@example.com' },
-				})
-				.expect(204);
-			phase = 'auth:login';
-			const login = await request(third.app.getHttpServer())
-				.post('/modules/auth/auth/login')
-				.send({ data: { username: 'memorycatalog', password: 'securePassword123!' } })
-				.expect(201);
+			enter('auth:register');
+			await owner.own(
+				request(third.app.getHttpServer())
+					.post('/modules/auth/auth/register')
+					.send({
+						data: { username: 'memorycatalog', password: 'securePassword123!', email: 'memorycatalog@example.com' },
+					})
+					.expect(204)
+					.then((response) => response),
+			);
+			enter('auth:login');
+			const login = await owner.own(
+				request(third.app.getHttpServer())
+					.post('/modules/auth/auth/login')
+					.send({ data: { username: 'memorycatalog', password: 'securePassword123!' } })
+					.expect(201)
+					.then((response) => response),
+			);
 			const accessToken = (login.body as { data: { access_token: string } }).data.access_token;
-			phase = 'verify:wire';
-			await verifyThermostatWire(
-				{ app: third.app, moduleRef: third.module, dataSource: third.source, accessToken },
-				{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
+			enter('verify:wire');
+			await owner.own(
+				verifyThermostatWire(
+					{ app: third.app, moduleRef: third.module, dataSource: third.source, accessToken },
+					{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
+				),
 			);
 		} catch (cause: unknown) {
 			report(phase, cause);
 			failure = { cause };
 		} finally {
-			for (const app of applications.reverse()) {
-				try {
-					await app.close();
-				} catch (cause: unknown) {
-					report('cleanup:close', cause);
-					failure ??= { cause };
-				}
-			}
-			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
-			for (const key of keys) {
-				if (environment[key] === undefined) delete process.env[key];
-				else process.env[key] = environment[key];
-			}
-			rmSync(directory, { recursive: true, force: true });
+			const cleanupFailure = await owner.finish();
+			failure ??= cleanupFailure;
 		}
 		if (failure) throw failure.cause;
 	});

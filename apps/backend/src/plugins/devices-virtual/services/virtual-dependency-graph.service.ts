@@ -161,7 +161,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 				try {
 					const input = view.then((value) => ownGraphView(value));
 					void input.catch(() => undefined);
-					const task = pin.values.prepare.call(pin.receiver, input, {
+					const task = invokeCreation(pin.values.prepare, pin.receiver, input, {
 						configuration,
 						current: () => admission.current(),
 						ready: () => admission.current() && admission.generation !== undefined && !this.validationPending,

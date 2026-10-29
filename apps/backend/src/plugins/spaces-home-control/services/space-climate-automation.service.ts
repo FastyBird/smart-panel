@@ -21,7 +21,7 @@ import {
 import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
 import { canonical } from '../../../modules/devices/services/climate-automation-ledger.utils';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
-import { CreationCapture, captureCreation } from '../../../modules/devices/services/creation-capture';
+import { CreationCapture, captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceLifecycleRegistryService } from '../../../modules/spaces/services/space-lifecycle-registry.service';
@@ -252,7 +252,15 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		)
 			return;
 		const jobs = [...this.participants.values()].map(({ implementation, methods }) =>
-			methods.beginSourceMutation?.call(implementation, SPACE_ACTIVITY_CLIMATE_PRODUCER, spaceId, source.generationId),
+			methods.beginSourceMutation === undefined || methods.beginSourceMutation === null
+				? undefined
+				: invokeCreation(
+						methods.beginSourceMutation,
+						implementation,
+						SPACE_ACTIVITY_CLIMATE_PRODUCER,
+						spaceId,
+						source.generationId,
+					),
 		);
 		await Promise.all(jobs);
 	}
@@ -298,7 +306,8 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		const provider = virtual.length ? this.provider() : null;
 		for (const target of virtual)
 			if (
-				!(await provider.methods.resolveActionInManager.call(
+				!(await invokeCreation(
+					provider.methods.resolveActionInManager,
 					provider.implementation,
 					this.database.manager,
 					target.device.id,
@@ -415,7 +424,13 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 			if (repeated) {
 				attempt.slots = repeated;
 				if (
-					!(await provider.methods.settleInstalled.call(provider.implementation, repeated, originalProducer, owned)) ||
+					!(await invokeCreation(
+						provider.methods.settleInstalled,
+						provider.implementation,
+						repeated,
+						originalProducer,
+						owned,
+					)) ||
 					!current() ||
 					!attempt.receipt
 				)
@@ -423,7 +438,7 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 				return repeated.length;
 			}
 			let installed: readonly ClimateAutomationSlotFacts[] = [];
-			await provider.methods.withAutomationWrite.call(provider.implementation, async (manager) => {
+			await invokeCreation(provider.methods.withAutomationWrite, provider.implementation, async (manager) => {
 				const evidence = await this.readEvidence(manager, identity.spaceId, identity.activationId, false);
 				if (
 					!current() ||
@@ -458,7 +473,8 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 				const candidates = [];
 				const bundleId = randomUUID();
 				for (const target of virtual.sort((a, b) => a.device.id.localeCompare(b.device.id))) {
-					const action = await provider.methods.resolveActionInManager.call(
+					const action = await invokeCreation(
+						provider.methods.resolveActionInManager,
 						provider.implementation,
 						manager,
 						target.device.id,
@@ -485,7 +501,13 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 			});
 			attempt.slots = installed;
 			if (
-				!(await provider.methods.settleInstalled.call(provider.implementation, installed, originalProducer, owned)) ||
+				!(await invokeCreation(
+					provider.methods.settleInstalled,
+					provider.implementation,
+					installed,
+					originalProducer,
+					owned,
+				)) ||
 				!current() ||
 				!attempt.receipt
 			)
@@ -636,8 +658,17 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 				// Only a participant captured by this process may clear its exact owned mirror. Otherwise retire metadata only.
 				const captured = this.registry.captureProvider(row.providerKey);
 				const original = captured ? this.participants.get(captured.implementation) : undefined;
-				if (original?.isCurrent())
-					await original.methods.retireControllerInManager?.call(original.implementation, manager, slot.facts);
+				if (
+					original?.isCurrent() &&
+					original.methods.retireControllerInManager !== undefined &&
+					original.methods.retireControllerInManager !== null
+				)
+					await invokeCreation(
+						original.methods.retireControllerInManager,
+						original.implementation,
+						manager,
+						slot.facts,
+					);
 				slots.push(slot);
 			}
 		await this.ledger.revokeSource(manager, scope, source, slots, deleted);

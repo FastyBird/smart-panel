@@ -2,7 +2,7 @@
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { useContainer } from 'class-validator';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { EntitySubscriberInterface, QueryRunner } from 'typeorm';
+import { EntityManager, EntitySubscriberInterface, QueryRunner, RemoveEvent } from 'typeorm';
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { v4 as uuid } from 'uuid';
 
@@ -11,7 +11,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
 import { realThermostatGuardFixture } from '../../../../test/support/thermostat-real-guard-fixture';
-import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardReceipt,
+	SqliteDataSource,
+	isSqliteTransactionActive,
+} from '../../../common/database/sqlite-data-source';
+import { ClimateAutomationLedgerScope } from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -25,13 +30,19 @@ import {
 	ClimateAutomationSlotEntity,
 } from '../../../modules/devices/entities/climate-automation.entity';
 import { DeviceZoneEntity } from '../../../modules/devices/entities/device-zone.entity';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	ChannelEntity,
+	ChannelPropertyEntity,
+	DeviceControlEntity,
+	DeviceEntity,
+} from '../../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import {
 	CreationSettlement,
 	DeviceCreationContext,
@@ -41,6 +52,7 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
+import { DevicesControlsService } from '../../../modules/devices/services/devices.controls.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
@@ -83,6 +95,7 @@ import {
 	VirtualThermostatConfigEntity,
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
+import { VirtualIndexMaintenanceListener } from '../listeners/virtual-index-maintenance.listener';
 import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
@@ -95,6 +108,7 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualDewPointConfigService } from './virtual-dew-point-config.service';
 import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
+import { VirtualPropertyIndexService } from './virtual-property-index.service';
 import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import {
 	THERMOSTAT_AUTOMATION_PROVIDER,
@@ -168,7 +182,566 @@ describe('atomic virtual thermostat authoring', () => {
 	let relayDeviceId: string;
 	const publications: EventType[] = [];
 	let values: PropertyValueService;
+
+	// EF02 candidate ownership: gates release before dynamic joins; no cancellation claim.
+	let queuedOwner: ReturnType<typeof queuedCustody> | undefined;
+	function queuedCustody() {
+		const jobs = new Set<Promise<unknown>>(),
+			releases: Array<() => void> = [],
+			undo: Array<() => void> = [];
+		const quiet: Array<() => boolean> = [],
+			failures: Array<{ cause: unknown }> = [];
+		let loops = 0,
+			abandoned = false,
+			joined = false,
+			quarantined = false,
+			refused = false,
+			nativeClosed = false,
+			cleanup: Promise<void> | undefined;
+		let abandon!: () => void, fail!: (box: { cause: unknown }) => void;
+		const stopped = new Promise<void>((resolve) => {
+			abandon = resolve;
+		});
+		const failed = new Promise<{ cause: unknown }>((resolve) => {
+			fail = resolve;
+		});
+		function gate() {
+			let release!: () => void;
+			const promise = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			releases.push(release);
+			return { promise, release };
+		}
+		function retain<T>(job: Promise<T>, loop = false): Promise<T> {
+			jobs.add(job);
+			void job.catch((cause: unknown) => {
+				if (loop) {
+					failures.push({ cause });
+					fail({ cause });
+				}
+			});
+			if (loop && ++loops > 16) {
+				const box = { cause: new Error('STOP: original loop cap exceeded') };
+				failures.push(box);
+				fail(box);
+			}
+			return job;
+		}
+		function check() {
+			if (abandoned) throw new Error('STOP: abandoned fixture');
+		}
+		function own(receiver: object, key: PropertyKey, expected: unknown, restore: () => void) {
+			undo.push(() => {
+				if (Reflect.get(receiver, key) !== expected) throw new Error('STOP: original observer replaced');
+				restore();
+			});
+		}
+		async function step<T>(issue: () => Promise<T>): Promise<T> {
+			check();
+			const value = await retain(issue());
+			check();
+			return value;
+		}
+		async function wait(signal: Promise<void>, request: Promise<unknown>) {
+			check();
+			await Promise.race([
+				signal,
+				request.then(() => {
+					throw new Error('STOP: request settled before signal');
+				}),
+				failed.then((box) => {
+					throw box.cause;
+				}),
+				stopped.then(() => {
+					throw new Error('STOP: abandoned wait');
+				}),
+			]);
+			check();
+		}
+		function finish() {
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises -- Inspect cached promise identity without awaiting.
+			if (cleanup) return cleanup;
+			abandoned = true;
+			abandon();
+			for (const release of releases) release();
+			return (cleanup = (async () => {
+				let size = -1;
+				while (size !== jobs.size) {
+					size = jobs.size;
+					await Promise.allSettled([...jobs]);
+				}
+				try {
+					if (quiet.some((probe) => !probe())) failures.push({ cause: new Error('STOP: unsafe listener work') });
+				} catch (cause) {
+					failures.push({ cause });
+				}
+				if (failures.length) return; // Quarantine: no restoration, disposal or native close.
+				for (const restore of [...undo].reverse()) {
+					try {
+						restore();
+					} catch (cause) {
+						failures.push({ cause });
+					}
+				}
+				joined = failures.length === 0;
+			})());
+		}
+		return {
+			gate,
+			step,
+			wait,
+			check,
+			quiet,
+			retain,
+			finish,
+			own,
+			undo,
+			failures,
+			quarantine() {
+				quarantined = true;
+			},
+			refuse() {
+				refused = true;
+				quarantined = true;
+			},
+			get quarantined() {
+				return quarantined;
+			},
+			finishTeardown() {
+				nativeClosed = true;
+				if (refused) throw new Error('STOP: late teardown after fixture refusal');
+				quarantined = false;
+			},
+			get nativeClosed() {
+				return nativeClosed;
+			},
+			get abandoned() {
+				return abandoned;
+			},
+			get joined() {
+				return joined;
+			},
+		};
+	}
+
+	it.each(['prior', 'publication-b', 'control-falsy', 'ordinary'] as const)(
+		'EF02 candidate queued controller: %s',
+		async (scenario) => {
+			const owner = queuedCustody();
+			queuedOwner = owner;
+			let primary: { cause: unknown } | undefined;
+			try {
+				const automationRegistry = new ClimateAutomationRegistryService();
+				owner.undo.push(() => automationRegistry.onModuleDestroy());
+				const ledger = new ClimateAutomationLedgerService(database, lock, automationRegistry);
+				graph = new VirtualDependencyGraphService(database, undefined, ledger);
+				const automation = new VirtualThermostatAutomationService(database, automationRegistry, ledger, graph, lock);
+				claims.onModuleDestroy();
+				claims = new VirtualThermostatClaimsService(database, lock, graph, registry, events);
+				await owner.step(() => claims.onApplicationBootstrap());
+				configs = new VirtualThermostatConfigService(
+					database,
+					lock,
+					graph,
+					claims,
+					events,
+					values,
+					undefined,
+					automation,
+				);
+				devices = new DevicesService(
+					database.getRepository(DeviceEntity),
+					database.getRepository(SpaceEntity),
+					deviceMapper,
+					channels,
+					properties,
+					new DevicesControlsService(database.getRepository(DeviceControlEntity), database, events),
+					zones,
+					lock,
+					database,
+					events,
+					ledger,
+				);
+				authoring = new VirtualThermostatAuthoringService(
+					database,
+					lock,
+					graph,
+					devices,
+					new DeviceValidationService(devices),
+					configs,
+				);
+				const ownership = new VirtualThermostatOwnershipSubscriber(database, claims);
+				owner.undo.push(() => {
+					const position = database.subscribers.indexOf(ownership);
+					if (position < 0) throw new Error('Original ownership subscriber missing');
+					database.subscribers.splice(position, 1);
+				});
+				await owner.step(() => ownership.onApplicationBootstrap());
+				owner.undo.push(() => automation.onModuleDestroy());
+				automation.onModuleInit();
+				await owner.step(() => automation.onApplicationBootstrap());
+				const input = request(relayId),
+					id = input.device.id;
+				const ordinary = scenario === 'ordinary',
+					fault = scenario === 'control-falsy';
+				if (ordinary)
+					await owner.step(() =>
+						database.manager.insert(ShellyNgDeviceEntity, {
+							id,
+							name: 'Ordinary',
+							identifier: 'ordinary-' + id,
+							category: DeviceCategory.SWITCHER,
+							enabled: true,
+							canonicalMac: '000000000099',
+						}),
+					);
+				else await owner.step(() => authoring.create(input));
+				await owner.step(() =>
+					lock.runExclusive(() =>
+						database.manager.update(
+							VirtualThermostatActuatorClaimEntity,
+							{ controllerId: id },
+							{ state: 'released', releasedAt: new Date() },
+						),
+					),
+				);
+				// EMPTY/terminal claim seed supplies no physical OFF evidence.
+				const controlId = uuid();
+				await owner.step(() =>
+					database.manager.insert(DeviceControlEntity, { id: controlId, name: 'candidate', device: { id } }),
+				);
+				const captures: Array<Awaited<ReturnType<typeof ledger.captureControllerDeletion>>> = [];
+				const capture = ledger.captureControllerDeletion.bind(ledger) as typeof ledger.captureControllerDeletion;
+				const captureSpy = jest.spyOn(ledger, 'captureControllerDeletion').mockImplementation(async (...args) => {
+					const original = await owner.retain(capture(...args));
+					captures.push(original);
+					return original;
+				});
+				owner.own(ledger, 'captureControllerDeletion', captureSpy, captureSpy.mockRestore);
+				if (ordinary) {
+					const seen: unknown[] = [],
+						observe = () => {
+							seen.push(ControllerPublicationContext.current());
+						};
+					events.on(EventType.DEVICE_DELETED, observe);
+					owner.undo.push(() => {
+						events.off(EventType.DEVICE_DELETED, observe);
+					});
+					await owner.step(() => devices.remove(id));
+					expect(captures).toEqual([null]);
+					expect(seen).toEqual([undefined]);
+					expect(await owner.step(() => database.manager.findOneBy(DeviceEntity, { id }))).toBeNull();
+					expect(await owner.step(() => database.manager.findOneBy(DeviceControlEntity, { id: controlId }))).toBeNull();
+					return;
+				}
+				const initial = await owner.step(() =>
+					database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id }),
+				);
+				const childProperties = await owner.step(() =>
+					database.manager.find(ChannelPropertyEntity, {
+						where: { channel: { device: { id } } },
+						relations: ['channel'],
+					}),
+				);
+				const childChannels = await owner.step(() =>
+					database.manager.find(ChannelEntity, { where: { device: { id } } }),
+				);
+				const imageTypes = [
+					DeviceEntity,
+					ChannelEntity,
+					ChannelPropertyEntity,
+					DeviceControlEntity,
+					VirtualThermostatConfigEntity,
+					VirtualThermostatActuatorClaimEntity,
+					ClimateAutomationSlotEntity,
+					ClimateAutomationDeletionEntity,
+				];
+				const image = () =>
+					owner.step(() =>
+						Promise.all(
+							imageTypes.map(async (type) => {
+								const rows = await owner.retain(
+									database.query<unknown[]>('SELECT * FROM "' + database.getMetadata(type).tableName + '"'),
+								);
+								return rows.map((row) => JSON.stringify(row)).sort();
+							}),
+						),
+					);
+				const before = await image();
+				let borrowed:
+					| {
+							manager: EntityManager;
+							receipt: SqliteCommitGuardReceipt;
+							current: () => boolean;
+							scope?: ClimateAutomationLedgerScope;
+					  }
+					| undefined;
+				const admit = ledger.inAdmittedManager.bind(ledger) as typeof ledger.inAdmittedManager;
+				const admitSpy = jest
+					.spyOn(ledger, 'inAdmittedManager')
+					.mockImplementation(
+						<T>(
+							manager: EntityManager,
+							receipt: SqliteCommitGuardReceipt,
+							work: (scope: ClimateAutomationLedgerScope) => Promise<T>,
+						): Promise<T> => {
+							expect(borrowed).toBeUndefined();
+							borrowed = { manager, receipt, current: lock.captureExclusiveOwner() };
+							expect(receipt.outcome).toBe('pending');
+							return owner.retain(admit(manager, receipt, work));
+						},
+					);
+				owner.own(ledger, 'inAdmittedManager', admitSpy, admitSpy.mockRestore);
+				const native: string[] = [],
+					removedTables = imageTypes.slice(0, 4).map((type) => database.getMetadata(type).tableName);
+				const subscriber = {
+					afterRemove(event: RemoveEvent<unknown>) {
+						if (!removedTables.includes(event.metadata.tableName)) return;
+						if (!borrowed) throw new Error('Missing original borrowed manager');
+						expect(event.manager).toBe(borrowed.manager);
+						expect(event.queryRunner).toBe(borrowed.manager.queryRunner);
+						expect(event.queryRunner.isTransactionActive).toBe(true);
+						expect((event.queryRunner as QueryRunner & { transactionDepth: number }).transactionDepth).toBe(1);
+						expect(borrowed.receipt.outcome).toBe('pending');
+						expect(borrowed.current()).toBe(true);
+						const scope = ledger.currentScope(event.manager);
+						borrowed.scope ??= scope;
+						expect(scope).toBe(borrowed.scope);
+						native.push(event.metadata.tableName);
+					},
+				};
+				database.subscribers.push(subscriber);
+				owner.undo.push(() => {
+					const position = database.subscribers.indexOf(subscriber);
+					if (position < 0) throw new Error('Original subscriber missing');
+					database.subscribers.splice(position, 1);
+				});
+				const index = new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity), graph);
+				const virtual = new VirtualDevicesService(
+					properties,
+					channels,
+					devices,
+					{} as never,
+					{} as never,
+					graph,
+					database,
+				);
+				const listener = new VirtualIndexMaintenanceListener(
+					index,
+					// eslint-disable-next-line @typescript-eslint/require-await -- Preserve the no-op status promise contract.
+					{ recompute: async () => undefined } as never,
+					devices,
+					virtual,
+					properties,
+					lock,
+					events,
+					database,
+					database.getRepository(DeviceEntity),
+					graph,
+				);
+				const held = owner.gate(),
+					read = owner.gate(),
+					entered = owner.gate(),
+					priorGate = owner.gate();
+				const bGate = owner.gate(),
+					enqueued = owner.gate(),
+					following = owner.gate();
+				const rebuild = index.rebuild.bind(index) as typeof index.rebuild;
+				let first = true;
+				const indexSpy = jest.spyOn(index, 'rebuild').mockImplementation(async () => {
+					const result = await owner.retain(rebuild());
+					if (first) {
+						first = false;
+						read.release();
+						await held.promise;
+					}
+					return result;
+				});
+				owner.own(index, 'rebuild', indexSpy, indexSpy.mockRestore);
+				const loops = listener as unknown as { runRebuildLoop(): Promise<void> };
+				const loop = loops.runRebuildLoop.bind(listener) as typeof loops.runRebuildLoop;
+				const loopSpy = jest.spyOn(loops, 'runRebuildLoop').mockImplementation(() => owner.retain(loop(), true));
+				owner.own(loops, 'runRebuildLoop', loopSpy, loopSpy.mockRestore);
+				const state = listener as unknown as {
+					running: boolean;
+					pending: boolean;
+					repairTimer: unknown;
+					pendingCompletions: unknown[];
+				};
+				owner.quiet.push(
+					() =>
+						!state.running &&
+						!state.pending &&
+						!state.repairTimer &&
+						!state.pendingCompletions.length &&
+						!isSqliteTransactionActive(database),
+				);
+				const observed: Array<ControllerPublicationContext | undefined> = [],
+					order: Array<{ kind: EventType; id: string }> = [];
+				for (const kind of [
+					EventType.CHANNEL_PROPERTY_DELETED,
+					EventType.CHANNEL_DELETED,
+					EventType.DEVICE_CONTROL_DELETED,
+					EventType.DEVICE_DELETED,
+				]) {
+					const handler = (entity: { id: string }) => {
+						expect(a).toBeDefined();
+						expect(ControllerPublicationContext.current()).toBe(a);
+						expect(a?.isEligible()).toBe(false);
+						observed.push(ControllerPublicationContext.current());
+						order.push({ kind, id: entity.id });
+						if (kind === EventType.DEVICE_CONTROL_DELETED) {
+							if (fault) {
+								// eslint-disable-next-line @typescript-eslint/only-throw-error -- Preserve the original emit-time falsy cause.
+								throw undefined;
+							}
+							return;
+						}
+						listener.handleSourceDeleted();
+					};
+					events.on(kind, handler);
+					owner.undo.push(() => {
+						events.off(kind, handler);
+					});
+				}
+				const b = new ControllerPublicationContext(() => true),
+					bReady = owner.gate();
+				const priorBody = async () => {
+					await owner.retain(
+						lock.runExclusive(async () => {
+							entered.release();
+							await priorGate.promise;
+						}),
+					);
+					if (scenario === 'publication-b') {
+						expect(ControllerPublicationContext.current()).toBe(b);
+						expect(lock.hasCurrentStructuralLease()).toBe(false);
+						bReady.release();
+						await bGate.promise;
+					}
+				};
+				const prior = owner.retain(
+					scenario === 'publication-b' ? ControllerPublicationContext.complete(() => b.run(priorBody)) : priorBody(),
+				);
+				await owner.wait(entered.promise, prior);
+				const originalLock = lock.runExclusive.bind(lock) as typeof lock.runExclusive;
+				let a: ControllerPublicationContext | undefined;
+				const enqueueSpy = jest.spyOn(lock, 'runExclusive').mockImplementation((work) => {
+					const result = originalLock(work);
+					if (!a) {
+						a = ControllerPublicationContext.current();
+						enqueued.release();
+					}
+					return result;
+				});
+				owner.own(lock, 'runExclusive', enqueueSpy, enqueueSpy.mockRestore);
+				let settlement = 0;
+				const removal = owner.retain(devices.remove(id));
+				void removal.then(
+					() => {
+						settlement++;
+					},
+					() => {
+						settlement++;
+					},
+				);
+				await owner.wait(enqueued.promise, removal);
+				expect(observed).toEqual([]);
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises -- Exact promise is retained and observed by the fixture owner.
+				owner.retain(
+					// eslint-disable-next-line @typescript-eslint/require-await -- Keep the original Promise-shaped structural probe.
+					lock.runExclusive(async () => {
+						following.release();
+					}),
+				);
+				priorGate.release();
+				await owner.wait(read.promise, removal);
+				if (scenario === 'publication-b') await owner.wait(bReady.promise, prior);
+				await owner.wait(following.promise, removal);
+				expect(a).toBeDefined();
+				expect(a).not.toBe(b);
+				expect(observed.length).toBeGreaterThan(0);
+				expect(observed.every((publication) => publication === a)).toBe(true);
+				expect(a?.facts().some((fact) => fact.name === 'virtual-index.pass' && !fact.settled)).toBe(true);
+				expect(b.facts()).toEqual([]);
+				expect(settlement).toBe(0);
+				held.release();
+				bGate.release();
+				let failure: { cause: unknown } | undefined;
+				try {
+					await owner.step(() => removal);
+				} catch (cause) {
+					failure = { cause };
+				}
+				if (!borrowed) throw new Error('Missing original borrowed receipt');
+				expect(settlement).toBe(1);
+				expect(captures).toHaveLength(1);
+				expect(captures[0]).not.toBeNull();
+				expect(borrowed.receipt.outcome).toBe(fault ? 'rolled_back' : 'committed');
+				const at = (kind: EventType, key: string) =>
+					order.findIndex((event) => event.kind === kind && event.id === key);
+				const controlAt = at(EventType.DEVICE_CONTROL_DELETED, controlId);
+				expect(controlAt).toBeGreaterThan(-1);
+				for (const property of childProperties) {
+					const channelId = typeof property.channel === 'string' ? property.channel : property.channel.id;
+					expect(at(EventType.CHANNEL_PROPERTY_DELETED, property.id)).toBeGreaterThan(-1);
+					expect(at(EventType.CHANNEL_PROPERTY_DELETED, property.id)).toBeLessThan(
+						at(EventType.CHANNEL_DELETED, channelId),
+					);
+				}
+				for (const channel of childChannels) expect(at(EventType.CHANNEL_DELETED, channel.id)).toBeLessThan(controlAt);
+				expect(native.filter((table) => table === removedTables[2])).toHaveLength(childProperties.length);
+				expect(native.filter((table) => table === removedTables[1])).toHaveLength(childChannels.length);
+				expect(native.filter((table) => table === removedTables[3])).toHaveLength(1);
+				expect(native.filter((table) => table === removedTables[0])).toHaveLength(fault ? 0 : 1);
+				expect(order).toHaveLength(childProperties.length + childChannels.length + (fault ? 1 : 2));
+				if (fault) {
+					expect(failure).toEqual({ cause: undefined });
+					expect(await image()).toEqual(before);
+				} else {
+					expect(failure).toBeUndefined();
+					expect(order[order.length - 1]).toEqual({ kind: EventType.DEVICE_DELETED, id });
+					expect(await owner.step(() => database.manager.findOneBy(DeviceEntity, { id }))).toBeNull();
+					expect(
+						(
+							await owner.step(() =>
+								database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }),
+							)
+						).ownerDeviceId,
+					).toBeNull();
+					const slot = await owner.step(() =>
+						database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id }),
+					);
+					const proof = await owner.step(() =>
+						database.manager.findOneByOrFail(ClimateAutomationDeletionEntity, { controllerId: id }),
+					);
+					expect(slot.manualHold).toBe(true);
+					expect(slot.slotRevision).toBeGreaterThan(initial.slotRevision);
+					expect(proof).toMatchObject({
+						controllerIncarnation: initial.controllerIncarnation,
+						slotRevision: slot.slotRevision,
+						consumedByIncarnation: null,
+						consumedSlotRevision: null,
+					});
+					expect(JSON.parse(proof.nativeDeviceEvidence)).toEqual(JSON.parse(proof.deviceEvidence));
+					expect(JSON.parse(proof.nativeConfigurationEvidence)).toEqual(JSON.parse(proof.configurationEvidence));
+				}
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				await owner.finish();
+			}
+			if (primary) throw primary.cause;
+			expect(owner.failures).toEqual([]);
+		},
+	);
 	beforeEach(async () => {
+		if (queuedOwner && (!queuedOwner.joined || !queuedOwner.nativeClosed || queuedOwner.quarantined)) {
+			queuedOwner.refuse();
+			throw new Error('STOP: prior fixture quarantined');
+		}
+		queuedOwner = undefined;
 		publications.length = 0;
 		jest.clearAllMocks();
 		database = await new SqliteDataSource({
@@ -314,11 +887,24 @@ describe('atomic virtual thermostat authoring', () => {
 		publications.length = 0;
 	});
 	afterEach(async () => {
+		if (queuedOwner && (!queuedOwner.joined || queuedOwner.quarantined)) {
+			queuedOwner.refuse();
+			void queuedOwner.finish();
+			throw new Error('STOP: fixture quarantined; ROOT disposition required');
+		}
+		const queuedTeardown = { owner: queuedOwner, database };
+		queuedTeardown.owner?.quarantine();
 		jest.restoreAllMocks();
 		claims?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 		jest.useRealTimers();
 		useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });
+		if (queuedTeardown.owner) {
+			expect(queuedOwner).toBe(queuedTeardown.owner);
+			expect(database).toBe(queuedTeardown.database);
+			expect(queuedTeardown.database.isInitialized).toBe(false);
+			queuedTeardown.owner.finishTeardown();
+		}
 	});
 	async function actuator(existingDevice?: string, mac = 'A8032ABE5084') {
 		const device = existingDevice ?? uuid(),

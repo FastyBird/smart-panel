@@ -361,6 +361,112 @@ describe('actual native graph and owned producer-state publication', () => {
 			stopSecond();
 		}
 	});
+	it.each([
+		['success', 'data'],
+		['success', 'getter'],
+		['install-false', 'data'],
+		['install-false', 'getter'],
+		['sync-false', 'data'],
+		['sync-false', 'getter'],
+		['reject-false', 'data'],
+		['reject-false', 'getter'],
+	] as const)('retains original participant prepare across synchronous reentry: %s / %s', async (outcome, mutation) => {
+		await seed();
+		await state.onModuleInit();
+		await graph.onApplicationBootstrap();
+		type Participant = Parameters<VirtualDependencyGraphService['observeStatePublication']>[0];
+		type Input = Parameters<Participant['prepare']>[0];
+		type Lifecycle = Parameters<Participant['prepare']>[1];
+		let originalInput: Input, originalLifecycle: Lifecycle;
+		const order: string[] = [];
+		const firstStage = {
+			validate: jest.fn(() => true),
+			install: jest.fn(() => true),
+			publish: jest.fn(() => Promise.resolve()),
+			close: jest.fn(),
+		};
+		const originalStage = {
+			validate: jest.fn(() => {
+				expect(originalInput).toBe(prepare.mock.calls[0][0]);
+				expect(originalLifecycle).toBe(prepare.mock.calls[0][1]);
+				return true;
+			}),
+			install: jest.fn(() => outcome !== 'install-false'),
+			publish: jest.fn(() => Promise.resolve()),
+			close: jest.fn(),
+		};
+		const prepare = jest.fn(function (this: Participant, input: Input, lifecycle: Lifecycle) {
+			order.push('original-second');
+			expect(this).toBe(second);
+			expect(typeof input.then).toBe('function');
+			expect(typeof lifecycle.current).toBe('function');
+			expect(typeof lifecycle.ready).toBe('function');
+			expect(lifecycle.configuration).toBeUndefined();
+			expect(lifecycle.current()).toBe(true);
+			originalInput = input;
+			originalLifecycle = lifecycle;
+			const cause: unknown = false;
+			if (outcome === 'sync-false') throw cause;
+			return input.then((view) => {
+				expect(view.revision).toBe(0);
+				// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+				return outcome === 'reject-false' ? Promise.reject(cause) : originalStage;
+			});
+		});
+		const second: Participant = { prepare };
+		const descriptor = Object.getOwnPropertyDescriptor(prepare, 'call');
+		const participantDescriptor = Object.getOwnPropertyDescriptor(second, 'prepare');
+		const substitute = jest.fn(() => Promise.resolve(firstStage));
+		const getter = jest.fn(() => substitute);
+		const stopFirst = graph.observeStatePublication({
+			prepare: () => {
+				order.push('first');
+				// All participant descriptors are already captured before this original callback runs.
+				Object.defineProperty(prepare, 'call', {
+					configurable: true,
+					...(mutation === 'data' ? { value: substitute } : { get: getter }),
+				});
+				return Promise.resolve(firstStage);
+			},
+		});
+		const stopSecond = graph.observeStatePublication(second);
+		const observed = graph.refreshQuarantine().then(
+			() => ({ fulfilled: true }),
+			(cause: unknown) => ({ failure: { cause } }),
+		);
+		try {
+			const result = await observed;
+			expect(prepare).toHaveBeenCalledTimes(1);
+			expect(prepare.mock.calls[0]).toHaveLength(2);
+			expect(order).toEqual(['first', 'original-second']);
+			expect(Object.getOwnPropertyDescriptor(second, 'prepare')).toEqual(participantDescriptor);
+			expect(substitute).not.toHaveBeenCalled();
+			expect(getter).not.toHaveBeenCalled();
+			if (outcome === 'success') {
+				expect(result).toEqual({ fulfilled: true });
+				expect(originalStage.publish).toHaveBeenCalledTimes(1);
+				expect(firstStage.publish).toHaveBeenCalledTimes(1);
+				expect(originalStage.close).not.toHaveBeenCalled();
+			} else {
+				expect(result).toEqual({
+					failure: { cause: outcome === 'install-false' ? new Error('Producer state installation refused') : false },
+				});
+				expect(firstStage.close).toHaveBeenCalledTimes(1);
+				expect(originalStage.close).toHaveBeenCalledTimes(outcome === 'install-false' ? 1 : 0);
+				expect(originalStage.publish).not.toHaveBeenCalled();
+				expect(firstStage.publish).not.toHaveBeenCalled();
+			}
+			for (const method of [originalStage.validate, originalStage.install, originalStage.publish, originalStage.close])
+				for (const receiver of method.mock.contexts) expect(receiver).toBe(originalStage);
+			expect(graph.isValidated()).toBe(outcome === 'success');
+		} finally {
+			await observed;
+			if (descriptor) Object.defineProperty(prepare, 'call', descriptor);
+			else Reflect.deleteProperty(prepare, 'call');
+			stopSecond();
+			stopFirst();
+		}
+	});
 	it.each(['before-snapshot', 'after-snapshot'] as const)(
 		'keeps original ordinary callback order and undefined receiver after %s eligibility expires',
 		async (boundary) => {
