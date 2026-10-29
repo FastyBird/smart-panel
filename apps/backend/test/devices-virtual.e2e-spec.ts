@@ -3983,6 +3983,8 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 		held = false,
 		window = false,
 		unknown = false;
+	let unknownBits = 0;
+	let writerWitness: { held: boolean; matched: boolean; ambiguous: boolean } | undefined;
 	let aRunner: Runner, bRunner: Runner;
 	const depth = (runner: Runner) => Reflect.get(runner, 'transactionDepth') as number;
 	try {
@@ -3996,6 +3998,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 				beforeQuery(event) {
 					if (admissions.length === 512) {
 						unknown = true;
+						unknownBits |= label === 'A' ? 1 : 2;
 						return;
 					}
 					admissions.push({
@@ -4025,6 +4028,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 						if (!relevant) return;
 						if (facts.length === 256) {
 							unknown = true;
+							unknownBits |= label === 'A' ? 4 : 8;
 							return;
 						}
 						facts.push({
@@ -4055,7 +4059,11 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 					try {
 						const result: unknown = original.apply(this, forwarded);
 						if (label === 'B' && window && query === 'BEGIN IMMEDIATE TRANSACTION') {
-							if (!held || !admission || depth(admission.runner) !== 0) unknown = true;
+							if (!held || !admission || depth(admission.runner) !== 0) {
+								unknown = true;
+								unknownBits |= 16;
+								writerWitness = { held, matched: admission !== undefined, ambiguous: matches.length > 1 };
+							}
 							bRunner = admission?.runner;
 							writer.release();
 						}
@@ -4161,6 +4169,13 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 			jobs.push(promise);
 		},
 		verify() {
+			if (unknown) {
+				try {
+					console.info('channel-progress-unknown', JSON.stringify({ unknownBits, writerWitness }));
+				} catch {
+					// Fixed scalar observation cannot replace the original verification failure.
+				}
+			}
 			expect(unknown).toBe(false);
 			expect(aRunner).toBeDefined();
 			expect(bRunner).toBeDefined();
