@@ -249,10 +249,14 @@ export class DeviceConnectionStateService {
 
 			return statuses;
 		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, {
-				stack: err.stack,
-			});
+			try {
+				const err = error as Error;
+				this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, {
+					stack: err.stack,
+				});
+			} catch {
+				// Diagnostics must not replace the original query failure or skip the ordinary fallback.
+			}
 
 			if (strict) {
 				throw error;
@@ -339,12 +343,16 @@ export class DeviceConnectionStateService {
 
 			return connectionState;
 		} catch (error) {
-			const err = error as Error;
+			try {
+				const err = error as Error;
 
-			this.logger.error(`Failed to read latest status from storage id=${device.id} error=${err.message}`, {
-				resource: device.id,
-				stack: err.stack,
-			});
+				this.logger.error(`Failed to read latest status from storage id=${device.id} error=${err.message}`, {
+					resource: device.id,
+					stack: err.stack,
+				});
+			} catch {
+				// Diagnostics must not replace the original query failure or skip the ordinary fallback.
+			}
 
 			if (strict) {
 				throw error;

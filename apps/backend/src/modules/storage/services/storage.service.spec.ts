@@ -686,6 +686,55 @@ describe('StorageService', () => {
 		]);
 	});
 
+	it.each([
+		['single', false],
+		['single', true],
+		['batch', false],
+		['batch', true],
+	] as const)('preserves original owned %s status query outcomes with strict=%s', async (kind, strict) => {
+		const diagnosticFailure = new Error('optional status diagnostic failed');
+		const unreadableFailure = new Error('original unreadable status query failure');
+		Object.defineProperty(unreadableFailure, 'message', { get: () => failOriginal(diagnosticFailure) });
+		const loggerFailure = new Error('original query failure with a broken logger');
+		for (const cause of [...originalFailures, unreadableFailure, loggerFailure]) {
+			const storage = propertyFixture().storage;
+			const primary = createPlugin('primary'),
+				fallback = createPlugin('memory');
+			primary.query.mockRejectedValue(cause);
+			fallback.query.mockRejectedValue(cause);
+			storage.registerPlugin('primary', primary);
+			storage.registerPlugin('memory', fallback);
+			const statuses = new DeviceConnectionStateService(storage);
+			const diagnostic = jest.fn();
+			if (cause === loggerFailure) diagnostic.mockImplementation(() => failOriginal(diagnosticFailure));
+			Object.defineProperty(statuses, 'logger', { value: { debug: jest.fn(), error: diagnostic } });
+			const publication = new ControllerPublicationContext(() => true);
+			const device = { id: 'original-device' };
+			const read = publication.run(async () => {
+				if (kind === 'single') return strict ? statuses.readLatestStrict(device) : statuses.readLatest(device);
+				const results = strict
+					? await statuses.readLatestManyStrict([device])
+					: await statuses.readLatestMany([device]);
+				return results.get(device.id);
+			});
+			if (strict) await expect(read).rejects.toBe(cause);
+			else
+				await expect(read).resolves.toEqual({
+					online: false,
+					status: ConnectionState.UNKNOWN,
+					lastChanged: null,
+				});
+			expect(primary.query).toHaveBeenCalledTimes(1);
+			expect(fallback.query).toHaveBeenCalledTimes(1);
+			if (cause === loggerFailure) expect(diagnostic).toHaveBeenCalledTimes(1);
+			for (const fact of publication.facts()) {
+				expect(fact).toMatchObject({ submitted: true, settled: true, failed: true });
+				expect(fact.failure?.cause).toBe(cause);
+			}
+			expect(publication.facts()).toHaveLength(2);
+		}
+	});
+
 	it.each(['single', 'batch'] as const)(
 		'qualifies original %s device-status read health before cache promotion',
 		async (kind) => {
