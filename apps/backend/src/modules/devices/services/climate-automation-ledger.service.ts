@@ -15,8 +15,10 @@ import {
 import {
 	ClimateAutomationCapturedRegistration,
 	ClimateAutomationControllerFacts,
+	ClimateAutomationDeletionCapture,
 	ClimateAutomationJson,
 	ClimateAutomationLedgerScope,
+	ClimateAutomationMutationOutcome,
 	ClimateAutomationProducer,
 	ClimateAutomationProvider,
 	ClimateAutomationSlotFacts,
@@ -35,7 +37,7 @@ import {
 import { ClimateAutomationLedgerLifecycle, LedgerLifecycleAccess } from './climate-automation-ledger-lifecycle';
 import { ClimateAutomationLedgerConflict, canonical, increment, ownedJson } from './climate-automation-ledger.utils';
 import { ClimateAutomationRegistryService } from './climate-automation.registry.service';
-import { captureCreation } from './creation-capture';
+import { captureCreation, invokeCreation } from './creation-capture';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
 export { ClimateAutomationLedgerConflict } from './climate-automation-ledger.utils';
@@ -479,11 +481,7 @@ export class ClimateAutomationLedgerService {
 	}
 
 	/** Capture an original predecessor before the caller acquires structure or a native lease. */
-	async captureControllerDeletion(
-		id: string,
-	): Promise<
-		((manager: EntityManager, scope: ClimateAutomationLedgerScope, remove: () => Promise<void>) => Promise<void>) | null
-	> {
+	async captureControllerDeletion(id: string): Promise<ClimateAutomationDeletionCapture | null> {
 		const providers = this.registry.captureProviders();
 		const row = await this.database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: id });
 		if (!row) return null;
@@ -499,9 +497,30 @@ export class ClimateAutomationLedgerService {
 		const retirement = ['LIVE', 'PROVISIONAL'].includes(expected.state)
 			? this.pin(capture, 'retireControllerInManager')
 			: null;
-		await Reflect.apply(predecessor.method, predecessor.receiver, [expected]);
-		this.requirePin(predecessor);
-		return async (manager, scope, remove) => {
+		const completion = await Reflect.apply(predecessor.method, predecessor.receiver, [expected]);
+		const captured = completion ? captureCreation(completion, ['finish']) : undefined;
+		let finished = false;
+		const finish = async (outcome: ClimateAutomationMutationOutcome = 'unknown') => {
+			if (finished) return;
+			finished = true;
+			if (captured && completion) await invokeCreation(captured.values.finish, completion, outcome);
+		};
+		try {
+			this.requirePin(predecessor);
+		} catch (cause: unknown) {
+			try {
+				await finish('unknown');
+			} catch {
+				/* Preserve the original capture failure. */
+			}
+			throw cause;
+		}
+		const execute = async (
+			manager: EntityManager,
+			scope: ClimateAutomationLedgerScope,
+			remove: () => Promise<void>,
+		) => {
+			if (finished) throw new ClimateAutomationLedgerConflict('stale');
 			const operation = this.admit(manager, scope);
 			operation.guards.push(predecessor, absence, controller, configuration, deletion);
 			if (retirement) operation.guards.push(retirement);
@@ -594,6 +613,7 @@ export class ClimateAutomationLedgerService {
 				this.issue(operation, fenced, { ...record, validate }, true);
 			});
 		};
+		return Object.freeze(Object.assign(execute, { finish }));
 	}
 
 	/** Original creation consumes this operation-local closure only after its own catalog birth. */

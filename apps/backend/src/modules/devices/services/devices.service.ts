@@ -8,7 +8,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
+import { SqliteCommitGuardReceipt, observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
@@ -1228,6 +1228,8 @@ export class DevicesService {
 
 	async remove(id: string): Promise<void> {
 		const climateDeletion = await this.climateLedger?.captureControllerDeletion(id);
+		let native: SqliteCommitGuardReceipt;
+		let callbackEntered = false;
 		const removeOriginal = () =>
 			this.structureLock.runExclusive(
 				ControllerPublicationContext.captureCallback(async (): Promise<void> => {
@@ -1237,7 +1239,8 @@ export class DevicesService {
 					const fullDevice = await this.getOneOrThrow(id);
 
 					await this.dataSource.transaction(async (manager) => {
-						const receipt = climateDeletion ? observeSqliteOuterOutcome(manager) : undefined;
+						callbackEntered = true;
+						const receipt = climateDeletion ? (native = observeSqliteOuterOutcome(manager)) : undefined;
 						const remove = async () => {
 							const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
@@ -1275,11 +1278,28 @@ export class DevicesService {
 			);
 		// Deletion retires observation eligibility. Original callbacks still execute and
 		// their finite completion is joined after the original structural/native owners.
-		if (climateDeletion)
-			return ControllerPublicationContext.complete(() =>
-				new ControllerPublicationContext(() => false).run(removeOriginal),
+		if (!climateDeletion) return removeOriginal();
+		let failure: { cause: unknown } | undefined;
+		try {
+			await ControllerPublicationContext.complete(
+				() => new ControllerPublicationContext(() => false).run(removeOriginal),
+				true,
 			);
-		return removeOriginal();
+		} catch (cause: unknown) {
+			failure = { cause };
+		}
+		try {
+			await climateDeletion.finish(
+				native?.outcome === 'rolled_back' || native?.outcome === 'committed'
+					? native.outcome
+					: callbackEntered
+						? 'unknown'
+						: 'not_started',
+			);
+		} catch (cause: unknown) {
+			failure ??= { cause };
+		}
+		if (failure) throw failure.cause;
 	}
 
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {

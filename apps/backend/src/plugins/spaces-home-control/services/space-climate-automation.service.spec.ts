@@ -171,12 +171,12 @@ describe('activity climate producer and atomic lifecycle', () => {
 			expect(blocked()).toBe(false);
 		}
 		const epochs = Reflect.get(service, 'epochs') as Map<string, object>;
-		expect(epochs.size).toBe(2);
+		expect(epochs.size).toBe(0);
 		const next = producer.captureCurrent(source);
 		expect(next()).toBe(true);
 		expect(current()).toBe(false);
 		expect(blocked()).toBe(false);
-		expect(epochs.size).toBe(3);
+		expect(epochs.size).toBe(0);
 	});
 	it('uses the actual space-activity lifecycle participant when deleting a space', async () => {
 		const { database, room, events } = harness;
@@ -265,7 +265,9 @@ describe('activity climate producer and atomic lifecycle', () => {
 	});
 	it('leaves another activity configuration and its installed-current token untouched', async () => {
 		const { database, room } = harness;
-		const current = registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER).implementation.captureCurrent(source);
+		const participant = registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER).implementation;
+		expect(await participant.validateInManager(database.manager, source, 'prepare')).not.toBeNull();
+		const current = participant.captureCurrent(source);
 		await configs.reset(room.id, ActivityMode.RELAX, 1);
 		expect(current()).toBe(true);
 		expect(

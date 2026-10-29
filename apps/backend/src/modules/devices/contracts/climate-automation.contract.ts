@@ -82,10 +82,21 @@ export interface ClimateAutomationOwnedSettlement {
 	readonly accept: (receipt: ClimateAutomationSettlementReceipt) => void;
 }
 
+/** Private original-operation result. No callback entry is distinct from a proved native rollback. */
+export type ClimateAutomationMutationOutcome = 'rolled_back' | 'not_started' | 'committed' | 'unknown';
+export interface ClimateAutomationMutationCompletion {
+	readonly finish: (outcome?: ClimateAutomationMutationOutcome) => Promise<void>;
+}
+export interface ClimateAutomationDeletionCapture extends ClimateAutomationMutationCompletion {
+	(manager: EntityManager, scope: ClimateAutomationLedgerScope, remove: () => Promise<void>): Promise<void>;
+}
+
 /** Read/validation only. Registration does not establish a controller or grant mutation authority. */
 export interface ClimateAutomationProvider {
 	/** Finite original work, joined before structural/native deletion admission. */
-	readonly beginControllerDeletion?: (expected: Readonly<ClimateAutomationSlotFacts>) => Promise<void>;
+	readonly beginControllerDeletion?: (
+		expected: Readonly<ClimateAutomationSlotFacts>,
+	) => Promise<void | ClimateAutomationMutationCompletion>;
 	readonly readDeletionConfigurationInManager?: (
 		manager: EntityManager,
 		controllerId: string,
@@ -133,7 +144,7 @@ export interface ClimateAutomationProvider {
 		producerKey: string,
 		subjectId: string,
 		generationId: string,
-	) => Promise<void | { finish: (rolledBack: boolean) => Promise<void> }>;
+	) => Promise<void | ClimateAutomationMutationCompletion>;
 	readonly graphRefreshVersion?: 1;
 	readonly ownedSettlementVersion?: 1;
 	readonly settleInstalled?: (

@@ -14,6 +14,8 @@ import {
 	ClimateAutomationCapturedRegistration,
 	ClimateAutomationControllerFacts,
 	ClimateAutomationJson,
+	ClimateAutomationMutationCompletion,
+	ClimateAutomationMutationOutcome,
 	ClimateAutomationOwnedRegistration,
 	ClimateAutomationOwnedSettlement,
 	ClimateAutomationProducer,
@@ -102,6 +104,17 @@ interface Installation {
 	readonly graphCurrent: () => boolean;
 	readonly providerCurrent: () => boolean;
 }
+interface MutationCohort {
+	readonly producerKey: string;
+	readonly subjectId: string;
+	readonly generationId: string;
+	readonly admission?: object;
+	readonly group: ReadonlyMap<string, Installation>;
+	readonly owners: Set<object>;
+	readonly token: object;
+	valid: boolean;
+	closing: boolean;
+}
 interface LocalAdmission {
 	readonly generationId: string;
 	readonly runtime?: RuntimeRegistration;
@@ -125,6 +138,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		}
 	>();
 	private readonly mutationVacancies = new Map<string, { original: Installation; token: object }>();
+	private readonly mutationCohorts = new Map<string, MutationCohort>();
 	private removeCompletion?: () => void;
 	private registration?: ClimateAutomationOwnedRegistration;
 	private deletionSchema?: string;
@@ -149,7 +163,11 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 			beginControllerDeletion: (expected) => {
 				const installed = this.installations.get(expected.controllerId);
 				if (installed && installed.slot !== canonical(expected)) fail();
-				return this.beginMutation(expected.controllerId);
+				const original = installed ?? this.mutationCohorts.get(expected.generationId)?.group.get(expected.controllerId);
+				if (!original) return this.beginMutation(expected.controllerId);
+				if (original.slot !== canonical(expected)) fail();
+				const source = JSON.parse(original.source) as { producerKey: string; subjectId: string; generationId: string };
+				return this.beginSourceMutation(source.producerKey, source.subjectId, source.generationId);
 			},
 			readDeletionConfigurationInManager: async (manager, id) => {
 				await this.assertDeletionSchema(manager);
@@ -370,6 +388,8 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		// Retain original installation records only as finite cleanup selectors after disposal; resolve refuses destroyed providers.
 		this.localAdmissions.clear();
 		this.mutationVacancies.clear();
+		for (const cohort of this.mutationCohorts.values()) cohort.valid = false;
+		this.mutationCohorts.clear();
 		this.registration?.dispose();
 		this.registration = undefined;
 	}
@@ -449,6 +469,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 						);
 					}),
 				);
+				complete = complete && [...admitted].every(([id, original]) => this.installations.get(id) === original);
 				if (complete) {
 					const admission = {};
 					this.generationAdmissions.set(slots[0].generationId, admission);
@@ -478,78 +499,106 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		producerKey: string,
 		subjectId: string,
 		generationId: string,
-	): Promise<{ finish: (rolledBack: boolean) => Promise<void> }> {
-		const group = new Map<string, Installation>();
-		const token = {};
-		const admission = this.generationAdmissions.get(generationId);
-		const ids = new Set(
-			[...this.localAdmissions].filter(([, admission]) => admission.generationId === generationId).map(([id]) => id),
-		);
-		for (const [id, installation] of this.installations) {
-			const source = JSON.parse(installation.source) as {
-				producerKey: string;
-				subjectId: string;
-				generationId: string;
+	): Promise<ClimateAutomationMutationCompletion> {
+		let cohort = this.mutationCohorts.get(generationId);
+		if (cohort?.closing) {
+			cohort.valid = false;
+			cohort = undefined;
+		}
+		if (!cohort) {
+			const group = new Map<string, Installation>();
+			for (const [id, original] of this.installations) {
+				const source = JSON.parse(original.source) as { producerKey: string; subjectId: string; generationId: string };
+				if (
+					source.producerKey === producerKey &&
+					source.subjectId === subjectId &&
+					source.generationId === generationId
+				)
+					group.set(id, original);
+			}
+			cohort = {
+				producerKey,
+				subjectId,
+				generationId,
+				group,
+				admission: this.generationAdmissions.get(generationId),
+				owners: new Set(),
+				token: {},
+				valid: true,
+				closing: false,
 			};
-			if (
-				source.producerKey === producerKey &&
-				source.subjectId === subjectId &&
-				source.generationId === generationId
-			) {
-				ids.add(id);
-				group.set(id, installation);
-			}
+			this.mutationCohorts.set(generationId, cohort);
 		}
-		let failure: { cause: unknown } | undefined;
-		const jobs = [...ids].map((id) => {
-			try {
-				const job = this.beginMutation(id);
-				const original = group.get(id);
-				if (original) this.mutationVacancies.set(id, { original, token });
-				void job.then(
-					() => undefined,
-					(cause: unknown) => {
-						failure ??= { cause };
-					},
-				);
-				return job;
-			} catch (cause: unknown) {
-				failure ??= { cause };
-				return Promise.resolve();
-			}
+		if (cohort.producerKey !== producerKey || cohort.subjectId !== subjectId) fail();
+		const originalCohort = cohort;
+		const token = {};
+		cohort.owners.add(token);
+		const ids = new Set([
+			...cohort.group.keys(),
+			...[...this.localAdmissions].filter(([, pending]) => pending.generationId === generationId).map(([id]) => id),
+		]);
+		const jobs = [...ids].map(async (id) => {
+			const original = originalCohort.group.get(id);
+			const runtime = original?.runtime ?? this.localAdmissions.get(id)?.runtime ?? this.runtime;
+			if (original) {
+				if (this.installations.get(id) === original) {
+					this.revoke(id);
+					this.mutationVacancies.set(id, { original, token: originalCohort.token });
+				} else if (
+					this.installations.has(id) ||
+					this.localAdmissions.has(id) ||
+					this.mutationVacancies.get(id)?.token !== originalCohort.token
+				) {
+					originalCohort.valid = false;
+					return;
+				}
+			} else this.revoke(id);
+			await runtime?.capture(id);
 		});
-		await Promise.allSettled(jobs);
-		if (failure) {
-			for (const id of group.keys())
-				if (this.mutationVacancies.get(id)?.token === token) this.mutationVacancies.delete(id);
-			throw failure.cause;
-		}
+		const results = await Promise.allSettled(jobs);
+		const failure = results.find((result) => result.status === 'rejected');
 		let consumed = false;
-		return Object.freeze({
-			finish: async (rolledBack: boolean) => {
+		const completion = Object.freeze({
+			finish: async (outcome: ClimateAutomationMutationOutcome = 'unknown') => {
 				if (consumed) return;
 				consumed = true;
+				if (outcome !== 'rolled_back' && outcome !== 'not_started') originalCohort.valid = false;
+				originalCohort.owners.delete(token);
+				if (originalCohort.owners.size) return;
+				originalCohort.closing = true;
 				const current = () =>
-					this.generationAdmissions.get(generationId) === admission &&
-					[...group].every(
+					!this.destroyed &&
+					originalCohort.valid &&
+					this.mutationCohorts.get(generationId) === originalCohort &&
+					this.generationAdmissions.get(generationId) === originalCohort.admission &&
+					[...originalCohort.group].every(
 						([id, original]) =>
-							this.mutationVacancies.get(id)?.token === token &&
+							this.mutationVacancies.get(id)?.token === originalCohort.token &&
 							this.mutationVacancies.get(id)?.original === original &&
 							original.custodyCurrent(),
 					);
 				try {
-					if (!rolledBack || !current()) return;
+					if (!current()) return;
 					const graphCurrent = this.graph.capturePublishGuard();
-					const sourceGuards = new Map([...group].map(([id, original]) => [id, original.captureSourceCurrent()]));
+					const sourceGuards = new Map(
+						[...originalCohort.group].map(([id, original]) => [id, original.captureSourceCurrent()]),
+					);
 					const revision = await this.graph.revision();
-					if (current()) await this.renewGroup(group, revision, graphCurrent, { current, sourceGuards });
+					if (current()) await this.renewGroup(originalCohort.group, revision, graphCurrent, { current, sourceGuards });
 				} finally {
-					for (const id of group.keys())
-						if (this.mutationVacancies.get(id)?.token === token) this.mutationVacancies.delete(id);
+					for (const id of originalCohort.group.keys())
+						if (this.mutationVacancies.get(id)?.token === originalCohort.token) this.mutationVacancies.delete(id);
+					if (this.mutationCohorts.get(generationId) === originalCohort) this.mutationCohorts.delete(generationId);
 				}
 			},
 		});
+		if (failure?.status === 'rejected') {
+			await completion.finish('unknown');
+			throw failure.reason;
+		}
+		return completion;
 	}
+
 	private async withAutomationWrite<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
 		const provider = this.registry.captureProvider(THERMOSTAT_AUTOMATION_PROVIDER);
 		if (!this.structure || this.destroyed || provider?.implementation !== this.provider) fail();
@@ -870,6 +919,26 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		});
 	}
 
+	/** A skipped renewal proves zero managed mutations across membership reads and ledger completion. */
+	private async withRenewalWrite(work: (manager: EntityManager) => Promise<boolean>): Promise<boolean> {
+		const owner = this.structure.captureExclusiveOwner();
+		return this.database.transaction(async (manager) => {
+			const receipt = observeSqliteOuterOutcome(manager);
+			const window = captureSqliteNoMutationWindow(manager, owner);
+			await window.reserveZeroRows('devices_module_climate_automation_slots', 'slotRevision');
+			const checkpoint = window.beginReads();
+			const renewed = await this.ledger.inAdmittedManager(manager, receipt, async () => {
+				const result = await work(manager);
+				if (result === true) window.beginFinalValidation();
+				else if (result !== false) fail();
+				return result;
+			});
+			if (renewed) window.applied();
+			else window.armUnchanged(checkpoint);
+			return renewed;
+		});
+	}
+
 	/** Completion owns no runtime work: only fully settled original groups renew their sidecar evidence. */
 	private async renewCompletedGraph(revision: number, current: () => boolean): Promise<void> {
 		const groups = new Map<string, Map<string, Installation>>();
@@ -921,13 +990,13 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 			if (!current()) return;
 			let receipt: SqliteCommitGuardReceipt;
 			const next = new Map<string, ClimateAutomationSlotFacts>();
-			await this.withEvidenceWrite(async (manager) => {
+			const renewed = await this.withRenewalWrite(async (manager) => {
 				receipt = observeSqliteOuterOutcome(manager);
-				registerSqliteCommitGuard(manager, current);
 				const scope = this.ledger.currentScope(manager);
 				const members = await manager.findBy(ClimateAutomationSlotEntity, { generationId: generation, state: 'LIVE' });
 				if (!current() || members.length !== group.size || members.some((slot) => !group.has(slot.controllerId)))
-					fail();
+					return false;
+				registerSqliteCommitGuard(manager, current);
 				this.graphRenewals.set(manager, {
 					revision,
 					current,
@@ -956,8 +1025,13 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 				} finally {
 					this.graphRenewals.delete(manager);
 				}
+				return true;
 			});
-			if (receipt?.outcome !== 'committed' || !current()) fail();
+			if (!renewed) return;
+			if (receipt?.outcome !== 'committed' || next.size !== group.size) fail();
+			if (!owner() || !graphCurrent() || !this.graph.isRevisionCurrent(revision)) fail();
+			// A local revocation after ACK cannot revive originals or poison unrelated published groups.
+			if (!eligible()) return;
 			const admission = {};
 			this.generationAdmissions.set(generation, admission);
 			for (const [id, original] of group) {

@@ -102,11 +102,21 @@ a newer installation of the same source generation. Pending or failed graph vali
 successful, independently validated admission; persisted LIVE rows or actor metadata alone never grant it.
 
 An activity mutation first withdraws its local authority and joins already-issued predecessors. If that original native
-transaction is proven rolled back, unchanged source/slot/controller evidence can qualify a fresh local installation after
-the mutation admission closes. When graph evidence is also unchanged, this recovery preserves every durable row and
+transaction is proven rolled back, or its own transaction callback demonstrably never started, unchanged
+source/slot/controller evidence can qualify a fresh local installation after every overlapping mutation admission closes.
+The no-body result does not attest native BEGIN or its cleanup: a fresh native reservation and full validation are still
+required. A callback entered without a terminal receipt remains unknown. Overlapping operations retain one finite original
+group and complete all captured predecessor owners before attempting readmission; neither release order can revive an
+old guard or overwrite a successor. When graph evidence is also unchanged, this recovery preserves every durable row and
 revision. It never revives the old local guard. Unknown or committed outcomes, changed registrations or evidence, and a
 competing successor cannot use that rollback recovery. A recovery refusal keeps automation inhibited and preserves the
 original failure, including falsy causes. These are software intent guarantees, not proof of physical output completion.
+Controller deletion joins that same original group and completes its own enrolled callbacks after releasing structure
+and SQLite ownership, even inside an ambient publication scope. Only then can its actual outcome qualify rollback
+recovery; a committed deletion, missing receipt after callback entry, or successor never restores the withdrawn group.
+Process-local source guards allocate no historical activation entries. Native source validation retains at most one
+qualified activation lifetime per subject; replacing it permanently expires earlier captured guards. A provisional
+invalidation guard still grants no source, slot, runtime or physical authority.
 Operator configuration defaults automation disabled. An explicit opt-in can initialize an EMPTY slot only for the
 validated same controller with no legacy baseline; a non-null legacy baseline must first be explicitly disabled.
 

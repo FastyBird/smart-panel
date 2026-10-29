@@ -4,10 +4,10 @@ import { Injectable, Optional } from '@nestjs/common';
 
 import {
 	SqliteCommitGuardReceipt,
-	SqliteGuardedCommitOutcome,
 	observeSqliteOuterOutcome,
 	registerSqliteCommitGuard,
 } from '../../../common/database/sqlite-data-source';
+import { ClimateAutomationMutationOutcome } from '../../devices/contracts/climate-automation.contract';
 import { ClimateAutomationLedgerService } from '../../devices/services/climate-automation-ledger.service';
 import { captureCreation, invokeCreation } from '../../devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../devices/services/device-structure-lock.service';
@@ -18,7 +18,7 @@ export interface SpaceLifecycleHook {
 	beforeAdmission?(
 		id: string,
 		kind: 'delete' | 'type-change',
-	): Promise<void | ((outcome?: SqliteGuardedCommitOutcome) => void | Promise<void>)>;
+	): Promise<void | ((outcome?: ClimateAutomationMutationOutcome) => void | Promise<void>)>;
 	beforeMutation?(id: string, kind: 'delete' | 'type-change', manager: EntityManager): Promise<void>;
 }
 /** Plugins initialize or remove owned rows atomically with generic space create/type changes. */
@@ -42,7 +42,7 @@ export class SpaceLifecycleRegistryService {
 	}
 
 	/** Own structure BEFORE SQLite, and retire exact plugin state before the first space mutation. */
-	mutate<T>(
+	async mutate<T>(
 		database: DataSource,
 		id: string,
 		kind: 'delete' | 'type-change',
@@ -61,8 +61,11 @@ export class SpaceLifecycleRegistryService {
 			participants.every(
 				({ hook, registration, capture }) => this.hooks.get(hook) === registration && capture.current(),
 			);
-		const releases: ((outcome?: SqliteGuardedCommitOutcome) => void | Promise<void>)[] = [];
+		const releases: ((outcome?: ClimateAutomationMutationOutcome) => void | Promise<void>)[] = [];
 		let native: SqliteCommitGuardReceipt;
+		let callbackEntered = false;
+		let result: T;
+		let failure: { cause: unknown } | undefined;
 		const admit = async () => {
 			for (const { hook, capture } of participants) {
 				const release = await (capture.values.beforeAdmission == null
@@ -72,25 +75,42 @@ export class SpaceLifecycleRegistryService {
 			}
 			if (!current()) throw new Error('Original space lifecycle participant expired');
 		};
-		return admit()
-			.then(() =>
-				this.structure.runExclusive(async () => {
-					const ownerCurrent = this.structure.captureExclusiveOwner();
-					return database.transaction(async (manager) => {
-						const receipt = (native = observeSqliteOuterOutcome(manager));
-						registerSqliteCommitGuard(manager, () => ownerCurrent() && current());
-						await manager.query('UPDATE "spaces_module_spaces" SET "id"="id" WHERE 0');
-						return this.ledger.inAdmittedManager(manager, receipt, async () => {
-							if (!current()) throw new Error('Original space lifecycle participant expired');
-							for (const { hook, capture } of participants)
-								await invokeCreation(capture.values.beforeMutation, hook, id, kind, manager);
-							return work(manager, true);
-						});
+		try {
+			await admit();
+			result = await this.structure.runExclusive(async () => {
+				const ownerCurrent = this.structure.captureExclusiveOwner();
+				return database.transaction(async (manager) => {
+					callbackEntered = true;
+					const receipt = (native = observeSqliteOuterOutcome(manager));
+					registerSqliteCommitGuard(manager, () => ownerCurrent() && current());
+					await manager.query('UPDATE "spaces_module_spaces" SET "id"="id" WHERE 0');
+					return this.ledger.inAdmittedManager(manager, receipt, async () => {
+						if (!current()) throw new Error('Original space lifecycle participant expired');
+						for (const { hook, capture } of participants)
+							await invokeCreation(capture.values.beforeMutation, hook, id, kind, manager);
+						return work(manager, true);
 					});
-				}),
-			)
-			.finally(async () => {
-				for (const release of releases.reverse()) await release(native?.outcome);
+				});
 			});
+		} catch (cause: unknown) {
+			failure = { cause };
+		}
+		const outcome =
+			native?.outcome === 'rolled_back' || native?.outcome === 'committed'
+				? native.outcome
+				: callbackEntered
+					? 'unknown'
+					: 'not_started';
+		let releaseFailure: { cause: unknown } | undefined;
+		for (const release of releases.reverse()) {
+			try {
+				await release(releaseFailure ? 'unknown' : outcome);
+			} catch (cause: unknown) {
+				releaseFailure ??= { cause };
+			}
+		}
+		if (failure) throw failure.cause;
+		if (releaseFailure) throw releaseFailure.cause;
+		return result;
 	}
 }
