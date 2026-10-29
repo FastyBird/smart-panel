@@ -539,7 +539,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		return commands;
 	}
 
-	private async setDeviceMode(device: PrimaryClimateDevice, mode: ClimateMode): Promise<boolean> {
+	private async setDeviceMode(
+		device: PrimaryClimateDevice,
+		mode: ClimateMode,
+		requireCommand = false,
+	): Promise<boolean> {
 		if (!this.platformRegistryService.get(device.device)) {
 			this.logger.warn(`No platform registered for device id=${device.device.id}`);
 			return false;
@@ -548,7 +552,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		if (commands.length === 0) {
 			this.logger.debug(`No mode commands for device id=${device.device.id}`);
-			return true;
+			return !requireCommand;
 		}
 
 		try {
@@ -802,6 +806,20 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			coolingSetpoint = this.clampSetpoint(newValue, climateState.minSetpoint, climateState.maxSetpoint);
 		}
 
+		// A branch-specific activity cannot succeed without a current setpoint for that branch.
+		if (this.automationContext.getStore()?.numericDeltaMode && heatingSetpoint === null && coolingSetpoint === null) {
+			for (const device of devices)
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: devices.length,
+				mode: climateState.mode,
+				heatingSetpoint: null,
+				coolingSetpoint: null,
+			};
+		}
+
 		// Delegate to SETPOINT_SET logic
 		const setIntent: ClimateIntentDto = {
 			type: ClimateIntentType.SETPOINT_SET,
@@ -997,7 +1015,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					if (command.coolingSetpoint !== null) appliedCoolingSetpoints.push(command.coolingSetpoint);
 					continue;
 				}
-				const success = await this.setDeviceMode(device, intent.mode);
+				const success = await this.setDeviceMode(device, intent.mode, true);
 
 				// Track mode result for this device
 				deviceResults.set(device.device.id, success);

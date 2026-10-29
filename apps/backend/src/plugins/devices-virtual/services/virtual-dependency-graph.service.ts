@@ -75,7 +75,11 @@ interface GraphLegacyRegistration {
 	readonly requiresActivation: boolean;
 	active: boolean;
 }
+interface GraphCompletion {
+	complete(revision: number, current: () => boolean): Promise<void>;
+}
 interface GraphPublicationAdmission {
+	readonly completions: readonly { record: GraphCompletion; pin: CreationCapture<GraphCompletion> }[];
 	active: boolean;
 	generation?: number;
 	expectedRevision?: number;
@@ -110,6 +114,14 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
 		GraphLegacyRegistration
 	>();
+	private readonly completionObservers = new Set<GraphCompletion>();
+	observeCompletion(complete: GraphCompletion['complete']): () => void {
+		const record = Object.freeze({ complete });
+		this.completionObservers.add(record);
+		return () => {
+			this.completionObservers.delete(record);
+		};
+	}
 	private readonly stateParticipants = new Set<GraphStateRegistration>();
 	observeStatePublication(participant: GraphStatePublicationParticipant): () => void {
 		const registration = { participant, active: true };
@@ -121,6 +133,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	}
 	private capturePublication(configuration?: object): GraphPublicationAdmission {
 		const listeners = [...this.validationListeners.values()];
+		const completions = [...this.completionObservers].map((record) => ({
+			record,
+			pin: captureCreation(record, ['complete']),
+		}));
 		const participants = [...this.stateParticipants].map((record) => ({
 			record,
 			pin: captureCreation(record.participant, ['prepare']),
@@ -128,6 +144,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		const own = captureCreation(this, [
 			'observeStatePublication',
 			'observeValidation',
+			'observeCompletion',
 			'readPublicationSnapshot',
 			'capturePublishGuard',
 			'isValidated',
@@ -143,9 +160,11 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			active: true,
 			resolved: false,
 			listeners,
+			completions,
 			current: () =>
 				admission.active &&
 				own.current() &&
+				completions.every(({ record, pin }) => this.completionObservers.has(record) && pin.current()) &&
 				participants.every(({ record, pin }) => record.active && this.stateParticipants.has(record) && pin.current()) &&
 				listeners.every(
 					(record) =>
@@ -817,6 +836,13 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 						await Reflect.apply(record.listener, undefined, [snapshot.revision, new Set(quarantined)]);
 				await verify();
 			}
+			const published = this.capturePublishGuard();
+			const current = () => admission.current() && published() && this.isRevisionCurrent(snapshot.revision);
+			for (const { pin } of invokeOrdinary ? admission.completions : []) {
+				if (!current()) throw new DevicesValidationException('Original completed graph expired.');
+				await invokeCreation(pin.values.complete, pin.receiver, snapshot.revision, current);
+			}
+			if (invokeOrdinary && admission.completions.length) await verify();
 		} catch (error) {
 			if (generation === this.validationGeneration) this.validationPending = true;
 			await this.closePublication(admission);

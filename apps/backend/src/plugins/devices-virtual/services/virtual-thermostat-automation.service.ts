@@ -5,6 +5,8 @@ import { Injectable, OnApplicationBootstrap, OnModuleDestroy, OnModuleInit, Opti
 
 import {
 	SqliteCommitGuardReceipt,
+	captureSqliteNoMutationWindow,
+	hasCurrentSqliteConnectionLease,
 	observeSqliteOuterOutcome,
 	registerSqliteCommitGuard,
 } from '../../../common/database/sqlite-data-source';
@@ -83,10 +85,16 @@ interface RuntimeRegistration {
 	readonly request?: (id: string) => Promise<void>;
 }
 interface OwnedSettlement {
+	readonly settled: () => boolean;
 	readonly generation: string;
 	readonly current: () => boolean;
 }
 interface Installation {
+	readonly admission: object;
+	settled: boolean;
+	readonly custodyCurrent: () => boolean;
+	readonly sourceCurrent: () => boolean;
+	readonly captureSourceCurrent: () => () => boolean;
 	readonly attempt?: OwnedSettlement;
 	readonly runtime?: RuntimeRegistration;
 	readonly slot: string;
@@ -108,6 +116,16 @@ const fail = (): never => {
 /** Plugin-owned participant. Durable LIVE rows alone never supply a process-local installation. */
 @Injectable()
 export class VirtualThermostatAutomationService implements OnModuleInit, OnApplicationBootstrap, OnModuleDestroy {
+	private readonly graphRenewals = new WeakMap<
+		EntityManager,
+		{
+			revision: number;
+			current: () => boolean;
+			slots: ReadonlyMap<string, string>;
+		}
+	>();
+	private readonly mutationVacancies = new Map<string, { original: Installation; token: object }>();
+	private removeCompletion?: () => void;
 	private registration?: ClimateAutomationOwnedRegistration;
 	private deletionSchema?: string;
 	private readonly installations = new Map<string, Installation>();
@@ -196,6 +214,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 			retireControllerInManager: (manager, slot) => this.retireController(manager, slot),
 			beginSourceMutation: (producerKey, subjectId, generationId) =>
 				this.beginSourceMutation(producerKey, subjectId, generationId),
+			graphRefreshVersion: 1,
 			ownedSettlementVersion: 1,
 			settleInstalled: (slots, producer, owned) => this.settleInstalled(slots, producer, owned),
 			readControllerInManager: (manager, id) => this.readController(manager, id),
@@ -213,6 +232,9 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		if (this.destroyed || this.registration) fail();
 		this.registration = this.registry.registerProviderOwned(THERMOSTAT_AUTOMATION_PROVIDER, this.provider) ?? undefined;
 		if (!this.registration) fail();
+		this.removeCompletion = this.graph.observeCompletion((revision, current) =>
+			this.renewCompletedGraph(revision, current),
+		);
 	}
 	async onApplicationBootstrap(): Promise<void> {
 		if (process.env.FB_CLI === 'on') return;
@@ -341,14 +363,18 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 
 	onModuleDestroy(): void {
 		this.destroyed = true;
+		this.removeCompletion?.();
+		this.removeCompletion = undefined;
 		this.runtime = undefined;
 		this.publication = undefined;
 		// Retain original installation records only as finite cleanup selectors after disposal; resolve refuses destroyed providers.
 		this.localAdmissions.clear();
+		this.mutationVacancies.clear();
 		this.registration?.dispose();
 		this.registration = undefined;
 	}
 	revoke(id: string): void {
+		this.mutationVacancies.delete(id);
 		this.localAdmissions.delete(id);
 		this.installations.delete(id);
 	}
@@ -423,6 +449,11 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 						);
 					}),
 				);
+				if (complete) {
+					const admission = {};
+					this.generationAdmissions.set(slots[0].generationId, admission);
+					for (const [id, original] of admitted) this.installations.set(id, { ...original, settled: true, admission });
+				}
 			} finally {
 				if (!complete)
 					for (const [id, original] of admitted) if (this.installations.get(id) === original) this.revoke(id);
@@ -443,7 +474,14 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 			if (this.publication === publication) this.publication = undefined;
 		};
 	}
-	private beginSourceMutation(producerKey: string, subjectId: string, generationId: string): Promise<void> {
+	private async beginSourceMutation(
+		producerKey: string,
+		subjectId: string,
+		generationId: string,
+	): Promise<{ finish: (rolledBack: boolean) => Promise<void> }> {
+		const group = new Map<string, Installation>();
+		const token = {};
+		const admission = this.generationAdmissions.get(generationId);
 		const ids = new Set(
 			[...this.localAdmissions].filter(([, admission]) => admission.generationId === generationId).map(([id]) => id),
 		);
@@ -453,10 +491,64 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 				subjectId: string;
 				generationId: string;
 			};
-			if (source.producerKey === producerKey && source.subjectId === subjectId && source.generationId === generationId)
+			if (
+				source.producerKey === producerKey &&
+				source.subjectId === subjectId &&
+				source.generationId === generationId
+			) {
 				ids.add(id);
+				group.set(id, installation);
+			}
 		}
-		return Promise.all([...ids].map((id) => this.beginMutation(id))).then(() => undefined);
+		let failure: { cause: unknown } | undefined;
+		const jobs = [...ids].map((id) => {
+			try {
+				const job = this.beginMutation(id);
+				const original = group.get(id);
+				if (original) this.mutationVacancies.set(id, { original, token });
+				void job.then(
+					() => undefined,
+					(cause: unknown) => {
+						failure ??= { cause };
+					},
+				);
+				return job;
+			} catch (cause: unknown) {
+				failure ??= { cause };
+				return Promise.resolve();
+			}
+		});
+		await Promise.allSettled(jobs);
+		if (failure) {
+			for (const id of group.keys())
+				if (this.mutationVacancies.get(id)?.token === token) this.mutationVacancies.delete(id);
+			throw failure.cause;
+		}
+		let consumed = false;
+		return Object.freeze({
+			finish: async (rolledBack: boolean) => {
+				if (consumed) return;
+				consumed = true;
+				const current = () =>
+					this.generationAdmissions.get(generationId) === admission &&
+					[...group].every(
+						([id, original]) =>
+							this.mutationVacancies.get(id)?.token === token &&
+							this.mutationVacancies.get(id)?.original === original &&
+							original.custodyCurrent(),
+					);
+				try {
+					if (!rolledBack || !current()) return;
+					const graphCurrent = this.graph.capturePublishGuard();
+					const sourceGuards = new Map([...group].map(([id, original]) => [id, original.captureSourceCurrent()]));
+					const revision = await this.graph.revision();
+					if (current()) await this.renewGroup(group, revision, graphCurrent, { current, sourceGuards });
+				} finally {
+					for (const id of group.keys())
+						if (this.mutationVacancies.get(id)?.token === token) this.mutationVacancies.delete(id);
+				}
+			},
+		});
 	}
 	private async withAutomationWrite<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
 		const provider = this.registry.captureProvider(THERMOSTAT_AUTOMATION_PROVIDER);
@@ -532,7 +624,16 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 				this.generationAdmissions.get(attempt.generation) !== attempt
 			)
 				fail();
-		} else this.revoke(slot.controllerId);
+		} else {
+			const vacancy = this.mutationVacancies.get(slot.controllerId);
+			if (
+				!vacancy ||
+				vacancy.original.slot !== canonical(slot) ||
+				this.installations.has(slot.controllerId) ||
+				this.localAdmissions.has(slot.controllerId)
+			)
+				this.revoke(slot.controllerId);
+		}
 		if (!['LIVE', 'PROVISIONAL'].includes(slot.state) || !slot.baselineId || !slot.selection) fail();
 		const actual = await manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: slot.controllerId });
 		const source = await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: slot.generationId });
@@ -574,7 +675,12 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		let active = true,
 			finished = false;
 		let permit: ClimateAutomationRetirementPermit | undefined;
-		const attempt: OwnedSettlement = Object.freeze({ generation, current: () => active && owned.isCurrent() });
+		const isSettled = owned.isSettled;
+		const attempt: OwnedSettlement = Object.freeze({
+			generation,
+			current: () => active && owned.isCurrent(),
+			settled: () => isSettled?.call(owned) === true,
+		});
 		const eligible = !this.retiringGenerations.has(generation);
 		if (eligible) this.generationAdmissions.set(generation, attempt);
 		const same = () =>
@@ -684,6 +790,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 			)
 		)
 			return retireOriginals();
+		for (const original of admitted.values()) original.settled = true;
 		return true;
 	}
 
@@ -747,11 +854,128 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 
 	/** The caller already owns structure; observe and reserve the original clock-maintenance unit. */
 	async withEvidenceWrite<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+		const owner = this.structure.captureExclusiveOwner();
 		return this.database.transaction(async (manager) => {
 			const receipt = observeSqliteOuterOutcome(manager);
-			await manager.query('UPDATE "devices_module_climate_automation_slots" SET "slotRevision"="slotRevision" WHERE 0');
-			return this.ledger.inAdmittedManager(manager, receipt, () => work(manager));
+			const window = captureSqliteNoMutationWindow(manager, owner);
+			await window.reserveZeroRows('devices_module_climate_automation_slots', 'slotRevision');
+			const result = await this.ledger.inAdmittedManager(manager, receipt, async () => {
+				const value = await work(manager);
+				// Close writes before the borrowed ledger rereads its final source/controller/slot images.
+				window.beginFinalValidation();
+				return value;
+			});
+			window.applied();
+			return result;
 		});
+	}
+
+	/** Completion owns no runtime work: only fully settled original groups renew their sidecar evidence. */
+	private async renewCompletedGraph(revision: number, current: () => boolean): Promise<void> {
+		const groups = new Map<string, Map<string, Installation>>();
+		for (const [id, original] of this.installations) {
+			const slot = JSON.parse(original.slot) as ClimateAutomationSlotFacts;
+			const group = groups.get(slot.generationId) ?? new Map<string, Installation>();
+			group.set(id, original);
+			groups.set(slot.generationId, group);
+		}
+		for (const group of groups.values()) await this.renewGroup(group, revision, current);
+	}
+
+	private async renewGroup(
+		group: ReadonlyMap<string, Installation>,
+		revision: number,
+		graphCurrent: () => boolean,
+		recovery?: { current: () => boolean; sourceGuards: ReadonlyMap<string, () => boolean> },
+	): Promise<void> {
+		const first = group.values().next().value as Installation | undefined;
+		if (!first || !this.structure) return;
+		const generation = (JSON.parse(first.slot) as ClimateAutomationSlotFacts).generationId;
+		const originalAdmission = this.generationAdmissions.get(generation);
+		const sourceGuard = (id: string, original: Installation) =>
+			recovery?.sourceGuards.get(id) ?? original.sourceCurrent;
+		const eligible = () =>
+			!this.destroyed &&
+			graphCurrent() &&
+			this.graph.isRevisionCurrent(revision) &&
+			this.generationAdmissions.get(generation) === originalAdmission &&
+			!this.retiringGenerations.has(generation) &&
+			(!recovery || recovery.current()) &&
+			[...group].every(
+				([id, original]) =>
+					original.settled &&
+					original.admission === originalAdmission &&
+					(!original.attempt || original.attempt.settled()) &&
+					original.custodyCurrent() &&
+					sourceGuard(id, original)() &&
+					(recovery ? !this.installations.has(id) : this.installations.get(id) === original) &&
+					!this.localAdmissions.has(id),
+			);
+		if (!eligible()) return;
+		// Startup/deletion refresh has no structural owner; structural writers already hold the exclusive owner.
+		// Never upgrade an existing native lease into this independent maintenance writer.
+		if (hasCurrentSqliteConnectionLease(this.database)) fail();
+		const renew = async () => {
+			const owner = this.structure.captureExclusiveOwner();
+			const current = () => owner() && eligible();
+			if (!current()) return;
+			let receipt: SqliteCommitGuardReceipt;
+			const next = new Map<string, ClimateAutomationSlotFacts>();
+			await this.withEvidenceWrite(async (manager) => {
+				receipt = observeSqliteOuterOutcome(manager);
+				registerSqliteCommitGuard(manager, current);
+				const scope = this.ledger.currentScope(manager);
+				const members = await manager.findBy(ClimateAutomationSlotEntity, { generationId: generation, state: 'LIVE' });
+				if (!current() || members.length !== group.size || members.some((slot) => !group.has(slot.controllerId)))
+					fail();
+				this.graphRenewals.set(manager, {
+					revision,
+					current,
+					slots: new Map([...group].map(([id, original]) => [id, original.slot])),
+				});
+				try {
+					for (const [id, original] of group) {
+						if (!current()) fail();
+						const slot = await this.ledger.readSlot(manager, scope, id, true, THERMOSTAT_AUTOMATION_PROVIDER);
+						const source =
+							slot.facts && (await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: generation }));
+						if (
+							!current() ||
+							!slot.facts ||
+							canonical(slot.facts) !== original.slot ||
+							!source?.isCurrent ||
+							source.state !== 'FINALIZED_LIVE' ||
+							canonical({ ...source }) !== original.source ||
+							slot.controller?.graphRevision !== revision
+						)
+							fail();
+						const refreshed = await this.ledger.refreshInstalledSlot(manager, scope, slot, 'graph', !!recovery);
+						if (!current()) fail();
+						next.set(id, refreshed.facts);
+					}
+				} finally {
+					this.graphRenewals.delete(manager);
+				}
+			});
+			if (receipt?.outcome !== 'committed' || !current()) fail();
+			const admission = {};
+			this.generationAdmissions.set(generation, admission);
+			for (const [id, original] of group) {
+				const sourceCurrent = sourceGuard(id, original);
+				this.installations.set(id, {
+					...original,
+					admission,
+					attempt: undefined,
+					slot: canonical(next.get(id)),
+					graphCurrent,
+					sourceCurrent,
+					providerCurrent: () =>
+						original.custodyCurrent() && sourceCurrent() && this.generationAdmissions.get(generation) === admission,
+				});
+			}
+		};
+		if (this.structure.hasCurrentStructuralLease()) await renew();
+		else await this.structure.runExclusive(renew);
 	}
 
 	async captureInstalledIntent(manager: EntityManager, id: string): Promise<ClimateAutomationSlotSnapshot | null> {
@@ -856,9 +1080,30 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 		manager: EntityManager,
 		slot: ClimateAutomationSlotFacts,
 		before: ClimateAutomationControllerFacts,
-		kind: 'intent' | 'watermark',
+		kind: 'intent' | 'watermark' | 'graph',
 	): Promise<ClimateAutomationControllerFacts> {
 		const installed = JSON.parse(slot.installEvidence) as ClimateAutomationControllerFacts;
+		if (kind === 'graph') {
+			const original = this.graphRenewals.get(manager);
+			if (
+				!original?.current() ||
+				original.slots.get(slot.controllerId) !== canonical(slot) ||
+				before.graphRevision !== original.revision
+			)
+				fail();
+			const after = await this.readController(manager, slot.controllerId);
+			if (
+				!after ||
+				!Number.isSafeInteger(after.graphRevision) ||
+				after.graphRevision < installed.graphRevision ||
+				!original.current() ||
+				canonical(after) !== canonical(before) ||
+				canonical({ ...after, graphRevision: installed.graphRevision }) !== slot.installEvidence
+			)
+				fail();
+			return after;
+		}
+		if (kind !== 'intent' && kind !== 'watermark') fail();
 		// Ordinary intents capture after the single graph advance; deferred comfort intents capture
 		// the exact installed preimage first. Both must end at exactly installed G + one intent delta.
 		if (
@@ -1033,8 +1278,23 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 				!this.graph.isRevisionCurrent(controller.graphRevision)
 			)
 				return false;
+			const custodyCurrent = () =>
+				!this.destroyed &&
+				this.runtime === runtime &&
+				provider.isCurrent() &&
+				producer.isCurrent() &&
+				methods.current() &&
+				(!expectedProducer || expectedProducer.isCurrent());
 			// A repeated durable installation still owns a fresh local admission. Sharing A's object would let late A failure revoke B.
 			this.installations.set(slot.controllerId, {
+				settled: !attempt && !restoring,
+				admission: attempt ?? admission,
+				custodyCurrent,
+				sourceCurrent,
+				captureSourceCurrent: () =>
+					(methods.values.captureCurrent == null
+						? undefined
+						: invokeCreation(methods.values.captureCurrent, producer.implementation, source)) ?? (() => true),
 				attempt,
 				runtime,
 				slot: canonical({ ...slot }),

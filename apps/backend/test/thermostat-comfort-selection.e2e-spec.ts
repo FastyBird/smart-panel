@@ -534,6 +534,11 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			return original;
 		});
 		try {
+			// Whole-database snapshots measure this HTTP command in isolation from its own periodic sampler.
+			// Stop the case-owned sampler before creating the controller; normal runtime teardown retains its handle.
+			const sampler = Reflect.get(runtime, 'timer') as ReturnType<typeof setInterval> | undefined;
+			expect(sampler).toBeDefined();
+			clearInterval(sampler);
 			const id = await seed();
 			const first = await post(id, { ...(await fences(id)), preset: 'eco', clear_user_off: false }).expect(201);
 			// Finish only the original requests issued by the applied command before measuring its repeat.

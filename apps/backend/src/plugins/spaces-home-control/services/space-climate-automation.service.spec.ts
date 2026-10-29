@@ -5,11 +5,16 @@ import {
 	ClimateAutomationSlotEntity,
 	ClimateAutomationSourceEntity,
 } from '../../../modules/devices/entities/climate-automation.entity';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
 import { canonical } from '../../../modules/devices/services/climate-automation-ledger.utils';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { DisplayEntity } from '../../../modules/displays/entities/displays.entity';
+import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceLifecycleRegistryService } from '../../../modules/spaces/services/space-lifecycle-registry.service';
+import { SpacesTypeMapperService } from '../../../modules/spaces/services/spaces-type-mapper.service';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import {
 	ACTIVITY_STATE_CHANGED,
 	ActivityActivationStatus,
@@ -21,6 +26,7 @@ import { SpaceActivityConfigEntity } from '../entities/space-activity-config.ent
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 
 import { activityTestDatabase } from './activity-test-support';
+import { ClimateIntentService } from './climate-intent.service';
 import { SpaceActivityConfigService } from './space-activity-config.service';
 import { SPACE_ACTIVITY_CLIMATE_PRODUCER, SpaceClimateAutomationService } from './space-climate-automation.service';
 import { SpaceModeService } from './space-mode.service';
@@ -33,15 +39,17 @@ describe('activity climate producer and atomic lifecycle', () => {
 	let service: SpaceClimateAutomationService;
 	let configs: SpaceActivityConfigService;
 	let state: SpaceActivityStateEntity;
+	let structure: DeviceStructureLockService;
+	let lifecycle: SpaceLifecycleRegistryService;
 	let source: ClimateAutomationSourceFacts;
 	let controllerId: string;
 	beforeEach(async () => {
 		harness = await activityTestDatabase();
 		const { database, room, events } = harness;
 		registry = new ClimateAutomationRegistryService();
-		const structure = new DeviceStructureLockService();
+		structure = new DeviceStructureLockService();
 		ledger = new ClimateAutomationLedgerService(database, structure, registry);
-		const lifecycle = new SpaceLifecycleRegistryService(structure, ledger);
+		lifecycle = new SpaceLifecycleRegistryService(structure, ledger);
 		service = new SpaceClimateAutomationService(database, registry, ledger, structure, lifecycle);
 		service.onModuleInit();
 		configs = new SpaceActivityConfigService(database, lifecycle, events, service);
@@ -127,6 +135,83 @@ describe('activity climate producer and atomic lifecycle', () => {
 			);
 		},
 	);
+	it('maps an unavailable virtual thermostat provider to unsupported preview guidance', async () => {
+		const intents = {
+			planAutomationTargets: jest
+				.fn()
+				.mockResolvedValue([{ device: { id: controllerId, type: 'virtual', mode: 'climate_controller' } }]),
+		};
+		const preview = new SpaceClimateAutomationService(
+			harness.database,
+			registry,
+			ledger,
+			structure,
+			lifecycle,
+			intents as unknown as ClimateIntentService,
+		);
+		expect(await preview.preview(harness.room.id, { enabled: true, thermostat_preset: 'eco' })).toMatchObject({
+			status: ActivityDomainStatus.UNSUPPORTED,
+			reason: 'thermostat_provider_unavailable',
+		});
+	});
+	it('reclaims activation epochs without reviving captured original guards', async () => {
+		const producer = registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER).implementation;
+		const current = producer.captureCurrent(source);
+		let blocked: () => boolean;
+		await service.mutate(harness.room.id, state.activationId, () => {
+			blocked = producer.captureCurrent(source);
+			expect(blocked()).toBe(false);
+			return Promise.resolve();
+		});
+		expect(current()).toBe(false);
+		expect(blocked()).toBe(false);
+		for (let index = 0; index < 32; index++) {
+			await service.mutate(harness.room.id, randomUUID(), () => Promise.resolve());
+			expect(current()).toBe(false);
+			expect(blocked()).toBe(false);
+		}
+		const epochs = Reflect.get(service, 'epochs') as Map<string, object>;
+		expect(epochs.size).toBe(2);
+		const next = producer.captureCurrent(source);
+		expect(next()).toBe(true);
+		expect(current()).toBe(false);
+		expect(blocked()).toBe(false);
+		expect(epochs.size).toBe(3);
+	});
+	it('uses the actual space-activity lifecycle participant when deleting a space', async () => {
+		const { database, room, events } = harness;
+		const spaces = new SpacesService(
+			database.getRepository(SpaceEntity),
+			database.getRepository(DeviceEntity),
+			database.getRepository(DisplayEntity),
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			database,
+			events,
+			new SpacesTypeMapperService(),
+			lifecycle,
+		);
+		await spaces.remove(room.id);
+		expect(await database.manager.findOneBy(SpaceEntity, { id: room.id })).toBeNull();
+		const tombstone = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, {
+			generationId: source.generationId,
+		});
+		expect(tombstone).toMatchObject({
+			producerKey: SPACE_ACTIVITY_CLIMATE_PRODUCER,
+			state: 'DELETED',
+			isCurrent: true,
+		});
+		expect(
+			await registry
+				.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER)
+				.implementation.validateInManager(database.manager, tombstone, 'prepare'),
+		).toBeNull();
+		expect(await database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+			state: 'RETIRED',
+		});
+	});
 	it('keeps exact authoring bytes and refuses changed configuration even with the same actor and revision', async () => {
 		const { database, room } = harness;
 		const producer = registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER);

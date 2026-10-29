@@ -263,8 +263,69 @@ describe('ClimateIntentService', () => {
 					expect(setpoints.map((update) => update.property.id).sort()).toEqual(
 						[device.heaterSetpointProperty.id, device.coolerSetpointProperty.id].sort(),
 					);
+					const step = delta >= 0 ? 0.5 : -0.5;
+					expect(setpoints.find((update) => update.property.id === device.heaterSetpointProperty.id)?.value).toBe(
+						20 + step,
+					);
+					expect(setpoints.find((update) => update.property.id === device.coolerSetpointProperty.id)?.value).toBe(
+						24 + step,
+					);
 				}
 			}
+		},
+	);
+	it.each([ClimateMode.HEAT, ClimateMode.COOL] as const)(
+		'refuses a %s activity delta with no current branch setpoint',
+		async (mode) => {
+			const device = createMockPrimaryClimateDevice();
+			climateStateService.getClimateState.mockResolvedValue(
+				createMockClimateState({
+					heatingSetpoint: mode === ClimateMode.HEAT ? null : 20,
+					coolingSetpoint: mode === ClimateMode.COOL ? null : 24,
+				}),
+			);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			const result = await service.executeClimateIntent(
+				mockSpaceId,
+				{ type: ClimateIntentType.SETPOINT_DELTA, delta: SetpointDelta.SMALL, increase: true },
+				{ targets: [device], isCurrent: () => true, numericDelta: 1, numericDeltaMode: mode },
+			);
+			expect(result).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+			expect(dispatch).not.toHaveBeenCalled();
+			expect(mockPlatform.prepareBatch).not.toHaveBeenCalled();
+		},
+	);
+	it.each([ClimateMode.HEAT, ClimateMode.COOL] as const)(
+		'does not count an empty combined %s command as affected while preserving standalone mode',
+		async (mode) => {
+			const device = createMockPrimaryClimateDevice({
+				heaterChannel: null,
+				heaterOnProperty: null,
+				heaterSetpointProperty: null,
+				supportsHeating: false,
+				supportsCooling: false,
+			});
+			device.device.category = DeviceCategory.THERMOSTAT;
+			climateStateService.getClimateState.mockResolvedValue(createMockClimateState());
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			expect(await service.executeClimateIntent(mockSpaceId, { type: ClimateIntentType.SET_MODE, mode })).toMatchObject(
+				{ success: true, affectedDevices: 1 },
+			);
+			expect(
+				await service.executeClimateIntent(
+					mockSpaceId,
+					{
+						type: ClimateIntentType.CLIMATE_SET,
+						mode,
+						heatingSetpoint: mode === ClimateMode.HEAT ? 20 : undefined,
+						coolingSetpoint: mode === ClimateMode.COOL ? 24 : undefined,
+					},
+					{ targets: [device], isCurrent: () => true },
+				),
+			).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+			expect(dispatch).not.toHaveBeenCalled();
+			expect(mockPlatform.prepareBatch).not.toHaveBeenCalled();
 		},
 	);
 	it('refuses an already retired activity context before intent creation or physical dispatch', async () => {

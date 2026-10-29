@@ -225,6 +225,29 @@ describe('thermostat durable comfort lifecycle', () => {
 		},
 	);
 
+	it.each([Number.MAX_SAFE_INTEGER - 1, Number.MAX_SAFE_INTEGER])(
+		'settles expiry without overflowing revision %s',
+		async (revision) => {
+			await configured();
+			await overridden();
+			await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { revision });
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			wall += 1001;
+			elapsed += 1001;
+			if (revision === Number.MAX_SAFE_INTEGER) {
+				await expect(comfort.settle(id)).rejects.toThrow('overflow');
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(
+					before,
+				);
+				expect(comfort.isCurrent(before)).toBe(false);
+			} else {
+				await comfort.settle(id);
+				const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				expect(after.revision).toBe(Number.MAX_SAFE_INTEGER);
+				expect(after.comfort.temporary_override.status).toBe('expired');
+			}
+		},
+	);
 	it('preserves installed settings and leaves presets and automation unset until configured', async () => {
 		expect(await comfort.get(id)).toMatchObject({
 			configuration: null,
@@ -692,7 +715,7 @@ describe('thermostat durable comfort lifecycle', () => {
 			const registry = new ClimateAutomationRegistryService();
 			const ledger = new ClimateAutomationLedgerService(database, structure, registry);
 			const graph = new VirtualDependencyGraphService(database, undefined, ledger);
-			const automation = new VirtualThermostatAutomationService(database, registry, ledger, graph);
+			const automation = new VirtualThermostatAutomationService(database, registry, ledger, graph, structure);
 			const claims = {
 				invalidate: jest.fn(),
 				refresh: jest.fn().mockResolvedValue(undefined),
@@ -776,6 +799,12 @@ describe('thermostat durable comfort lifecycle', () => {
 					readSpy.mockRestore();
 				}
 				expect(await automation.activateLocal(database.manager, installed)).toBe(true);
+				const originalView = await automation.resolve(
+					database.manager,
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }),
+				);
+				await structure.runExclusive(() => graph.withStructuralWrite(() => Promise.resolve(undefined)));
+				expect(originalView.isCurrent()).toBe(false);
 
 				expect((await service.get(id)).effective).toMatchObject({
 					source: userOff ? 'user_off' : 'automation',

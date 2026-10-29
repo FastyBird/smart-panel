@@ -153,6 +153,12 @@ export class VirtualThermostatComfortService {
 								const current = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 								if (current.revision !== row.revision || current.comfort?.temporary_override?.id !== override.id)
 									throw new DevicesValidationException('Thermostat revision changed during expiry settlement.');
+								if (
+									!Number.isSafeInteger(current.revision) ||
+									current.revision < 1 ||
+									current.revision >= Number.MAX_SAFE_INTEGER
+								)
+									throw new DevicesValidationException('Thermostat revision overflowed during expiry settlement.');
 								current.comfort.temporary_override.status = lease.status;
 								current.comfort.temporary_override.terminated_at = Number.isFinite(now)
 									? new Date(now).toISOString()

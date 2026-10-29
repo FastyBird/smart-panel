@@ -3,7 +3,11 @@ import { DataSource, EntityManager } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 
-import { observeSqliteOuterOutcome, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardReceipt,
+	observeSqliteOuterOutcome,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import {
 	ClimateAutomationCapturedRegistration,
 	ClimateAutomationJson,
@@ -51,6 +55,7 @@ interface ProviderParticipant extends ClimateAutomationCapturedRegistration<Clim
 class UnsupportedThermostatSelection extends Error {}
 class SupersededCompletion extends Error {}
 interface ActivityAttempt {
+	completed?: boolean;
 	receipt?: ClimateAutomationSettlementReceipt;
 	source?: ClimateAutomationSourceFacts;
 	slots?: readonly ClimateAutomationSlotFacts[];
@@ -86,10 +91,10 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		captureCurrent: (source) => {
 			const evidence = JSON.parse(source.evidence) as ActivityEvidence;
 			const key = `${source.subjectId}/${evidence.configId}`;
-			const epoch = this.epochs.get(source.subjectId);
-			const configurationEpoch = this.epochs.get(key);
+			const epoch = this.captureEpoch(source.subjectId);
+			const configurationEpoch = this.captureEpoch(key);
 			const activationKey = `${source.subjectId}/activation/${evidence.activationId}`;
-			const activationEpoch = this.epochs.get(activationKey);
+			const activationEpoch = this.captureEpoch(activationKey);
 			return () =>
 				!this.destroyed &&
 				!this.mutations.has(source.subjectId) &&
@@ -120,8 +125,11 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 			beforeAdmission: async (id) => {
 				const release = this.blockAdmission(id);
 				try {
-					await this.capturePredecessors(id);
-					return release;
+					const finish = await this.capturePredecessors(id);
+					return async (outcome) => {
+						const eligible = release();
+						await finish(eligible && outcome === 'rolled_back');
+					};
 				} catch (cause) {
 					release();
 					throw cause;
@@ -136,6 +144,8 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		this.removeLifecycle = undefined;
 		this.registration?.dispose();
 		this.registration = undefined;
+		this.epochs.clear();
+		this.mutations.clear();
 	}
 
 	/** Admission and installed currentness share immutable evidence, but deliberately differ in status policy. */
@@ -226,31 +236,50 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 			: null;
 	}
 
-	private blockAdmission(key: string): () => void {
-		this.epochs.set(key, {});
+	private captureEpoch(key: string): object {
+		let epoch = this.epochs.get(key);
+		if (!epoch) {
+			epoch = {};
+			this.epochs.set(key, epoch);
+		}
+		return epoch;
+	}
+	private blockAdmission(key: string): () => boolean {
+		const epoch = {};
+		this.epochs.set(key, epoch);
 		const token = {};
 		const owners = this.mutations.get(key) ?? new Set<object>();
 		owners.add(token);
 		this.mutations.set(key, owners);
 		return () => {
+			const eligible = owners.has(token) && owners.size === 1 && this.epochs.get(key) === epoch;
 			owners.delete(token);
-			if (!owners.size && this.mutations.get(key) === owners) this.mutations.delete(key);
+			if (!owners.size && this.mutations.get(key) === owners) {
+				this.mutations.delete(key);
+				// Every capture owns a concrete epoch, so absence can never revive an older guard.
+				this.epochs.delete(key);
+			}
+			return eligible;
 		};
 	}
-	private async capturePredecessors(spaceId: string, activationId?: string, configId?: string): Promise<void> {
+	private async capturePredecessors(
+		spaceId: string,
+		activationId?: string,
+		configId?: string,
+	): Promise<(rolledBack: boolean) => Promise<void>> {
 		// This preliminary read is only a finite cleanup selector. Native mutation rechecks the exact current generation.
 		const source = await this.database.manager.findOneBy(ClimateAutomationSourceEntity, {
 			producerKey: SPACE_ACTIVITY_CLIMATE_PRODUCER,
 			subjectId: spaceId,
 			isCurrent: true,
 		});
-		if (!source) return;
+		if (!source) return () => Promise.resolve();
 		const evidence = JSON.parse(source.evidence) as ActivityEvidence;
 		if (
 			(activationId !== undefined && evidence.activationId !== activationId) ||
 			(configId !== undefined && evidence.configId !== configId)
 		)
-			return;
+			return () => Promise.resolve();
 		const jobs = [...this.participants.values()].map(({ implementation, methods }) =>
 			methods.beginSourceMutation === undefined || methods.beginSourceMutation === null
 				? undefined
@@ -262,7 +291,26 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 						source.generationId,
 					),
 		);
-		await Promise.all(jobs);
+		const results = await Promise.allSettled(jobs);
+		const failure = results.find((result) => result.status === 'rejected');
+		let completed = false;
+		const finish = async (rolledBack: boolean) => {
+			if (completed) return;
+			completed = true;
+			for (const result of results)
+				if (result.status === 'fulfilled' && result.value) {
+					try {
+						await result.value.finish(rolledBack);
+					} catch {
+						/* Recovery never replaces the original native result. */
+					}
+				}
+		};
+		if (failure?.status === 'rejected') {
+			await finish(false);
+			throw failure.reason;
+		}
+		return finish;
 	}
 	private virtual(target: PrimaryClimateDevice): boolean {
 		return target.device.type === 'virtual' && Reflect.get(target.device, 'mode') === 'climate_controller';
@@ -303,7 +351,18 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		if (!targets.length)
 			return domainResult(ActivityDomain.CLIMATE, ActivityDomainStatus.NO_TARGETS, 'no_compatible_climate_targets');
 		const virtual = targets.filter((target) => this.virtual(target));
-		const provider = virtual.length ? this.provider() : null;
+		let provider: ProviderParticipant | null = null;
+		if (virtual.length) {
+			try {
+				provider = this.provider();
+			} catch {
+				return domainResult(
+					ActivityDomain.CLIMATE,
+					ActivityDomainStatus.UNSUPPORTED,
+					'thermostat_provider_unavailable',
+				);
+			}
+		}
 		for (const target of virtual)
 			if (
 				!(await invokeCreation(
@@ -346,9 +405,9 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		)
 			throw new Error('Activity source changed');
 		const configurationKey = `${identity.spaceId}/${initial.evidence.configId}`;
-		const configurationEpoch = this.epochs.get(configurationKey);
+		const configurationEpoch = this.captureEpoch(configurationKey);
 		const activationKey = `${identity.spaceId}/activation/${identity.activationId}`;
-		const activationEpoch = this.epochs.get(activationKey);
+		const activationEpoch = this.captureEpoch(activationKey);
 		const targets = initial.targets;
 		const physicalIds = new Set(targets.filter((target) => !this.virtual(target)).map((target) => target.device.id));
 		// A climate UNSUPPORTED result cannot authorize a finalized virtual source. Refuse before installing any bundle.
@@ -375,7 +434,7 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		attempt.provider = provider;
 		const originalProducer = this.registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER);
 		if (originalProducer?.implementation !== this.producer) throw new Error('Original activity producer unavailable');
-		const epoch = this.epochs.get(identity.spaceId);
+		const epoch = this.captureEpoch(identity.spaceId);
 		let admitted = true;
 		const authorityCurrent = () =>
 			originalProducer.isCurrent() &&
@@ -389,6 +448,7 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 			(!provider || provider.isCurrent());
 		const current = () => admitted && authorityCurrent();
 		const owned = {
+			isSettled: () => attempt.completed === true,
 			isCurrent: authorityCurrent,
 			accept: (receipt: ClimateAutomationSettlementReceipt) => {
 				if (attempt.receipt) throw new Error('Original settlement already captured');
@@ -614,6 +674,7 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 						});
 					});
 					if (native?.outcome !== 'committed') throw new Error('Activity completion acknowledgement unavailable');
+					if (!failed && current() && result) attempt.completed = true;
 					return result;
 				});
 			} catch (cause: unknown) {
@@ -688,15 +749,17 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 					? `${spaceId}/activation/${activationId}`
 					: spaceId,
 		);
+		let native: SqliteCommitGuardReceipt;
+		let finish: ((rolledBack: boolean) => Promise<void>) | undefined;
 		try {
 			const producer = this.registry.captureProducer(SPACE_ACTIVITY_CLIMATE_PRODUCER);
 			if (this.destroyed || producer?.implementation !== this.producer)
 				throw new Error('Activity climate producer unavailable');
-			await this.capturePredecessors(spaceId, activationId, configId);
+			finish = await this.capturePredecessors(spaceId, activationId, configId);
 			return await this.structure.runExclusive(async () => {
 				const owner = this.structure.captureExclusiveOwner();
 				return this.database.transaction(async (manager) => {
-					const receipt = observeSqliteOuterOutcome(manager);
+					const receipt = (native = observeSqliteOuterOutcome(manager));
 					registerSqliteCommitGuard(manager, () => owner() && producer.isCurrent());
 					await manager.query('UPDATE "spaces_module_space_roles" SET "id"="id" WHERE 0');
 					return this.ledger.inAdmittedManager(manager, receipt, async () => {
@@ -706,7 +769,8 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 				});
 			});
 		} finally {
-			release();
+			const eligible = release();
+			await finish?.(eligible && native?.outcome === 'rolled_back');
 		}
 	}
 }

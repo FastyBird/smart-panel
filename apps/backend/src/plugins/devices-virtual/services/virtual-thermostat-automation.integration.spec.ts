@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BeforeQueryEvent, EntityManager, QueryRunner, UpdateEvent } from 'typeorm';
+import { BeforeQueryEvent, EntityManager, LoadEvent, QueryRunner, UpdateEvent } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -16,6 +16,7 @@ import {
 	ChannelCategory,
 	DataTypeType,
 	DeviceCategory,
+	EventType,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -128,13 +129,34 @@ describe('configured activity through the native thermostat participant', () => 
 	let roomId: string;
 	let controllerId: string;
 	let finishOwnedOff: (() => Promise<void>) | undefined;
+	let setupAttempt = 0;
+	let setupPhase: {
+		attempt: number;
+		stage: string;
+		initialize: 'pending' | 'fulfilled' | 'rejected';
+		complete: boolean;
+	};
 	beforeEach(async () => {
-		database = await new SqliteDataSource({
-			type: 'sqlite',
-			database: ':memory:',
-			synchronize: true,
-			entities: [__dirname + '/../../../**/*.entity.ts'],
-		}).initialize();
+		const phase = {
+			attempt: ++setupAttempt,
+			stage: 'sqlite.initialize',
+			initialize: 'pending' as 'pending' | 'fulfilled' | 'rejected',
+			complete: false,
+		};
+		setupPhase = phase;
+		try {
+			database = await new SqliteDataSource({
+				type: 'sqlite',
+				database: ':memory:',
+				synchronize: true,
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+			}).initialize();
+			phase.initialize = 'fulfilled';
+		} catch (cause: unknown) {
+			phase.initialize = 'rejected';
+			throw cause;
+		}
+		phase.stage = 'participant-construction';
 		structure = new DeviceStructureLockService();
 		registry = new ClimateAutomationRegistryService();
 		ledger = new ClimateAutomationLedgerService(database, structure, registry);
@@ -209,6 +231,7 @@ describe('configured activity through the native thermostat participant', () => 
 		producer.onModuleInit();
 		configs = new SpaceActivityConfigService(database, lifecycle, events, producer);
 		configs.onModuleInit();
+		phase.stage = 'room-and-controller-seeding';
 		const room = await database
 			.getRepository(RoomSpaceEntity)
 			.save(database.getRepository(RoomSpaceEntity).create({ name: 'Activity room' }));
@@ -252,7 +275,9 @@ describe('configured activity through the native thermostat participant', () => 
 			contactClosingMs: 0,
 			configuredAt: new Date(),
 		});
+		phase.stage = 'initial-comfort-get';
 		const current = await comfort.get(controllerId);
+		phase.stage = 'initial-comfort-configure';
 		await comfort.configure(
 			controllerId,
 			{ expected_revision: current.revision, expected_graph_revision: current.graph_revision },
@@ -273,8 +298,18 @@ describe('configured activity through the native thermostat participant', () => 
 			producer,
 		);
 		modes = new SpaceModeService(database, configs, domains, events, undefined, producer);
+		phase.stage = 'complete';
+		phase.complete = true;
 	});
 	afterEach(async () => {
+		// A hook timeout does not cancel its pending initialization. This records only the original attempt's phase.
+		if (setupPhase && !setupPhase.complete) {
+			try {
+				console.error('GroupA-original-setup-phase', { ...setupPhase });
+			} catch {
+				// Scalar diagnostics must not interrupt the original teardown.
+			}
+		}
 		const finish = finishOwnedOff;
 		finishOwnedOff = undefined;
 		await finish?.();
@@ -963,12 +998,17 @@ describe('configured activity through the native thermostat participant', () => 
 		{ route: 'configure', corrupt: true },
 		{ route: 'restore', corrupt: false },
 		{ route: 'restore', corrupt: true },
+		{ route: 'configure', corrupt: false, renewed: true },
+		{ route: 'restore', corrupt: false, renewed: true },
 	] as const)(
 		'actual $route consumes installed baseline with full native postimage (corrupt=$corrupt)',
-		async ({ route, corrupt }) => {
+		async (scenario) => {
+			const { route, corrupt } = scenario;
 			const { input, actuator } = await configurePhysical();
 			const authored = await author({ thermostat_preset: 'eco' });
 			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			if ('renewed' in scenario)
+				await structure.runExclusive(() => graph.withStructuralWrite(() => Promise.resolve(undefined)));
 			expect((await comfort.get(controllerId)).effective.source).toBe('automation');
 			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
@@ -1034,11 +1074,13 @@ describe('configured activity through the native thermostat participant', () => 
 			}
 		},
 	);
-	it.each(['success', 'stale-revision'] as const)(
+	it.each(['success', 'stale-revision', 'after-renewal'] as const)(
 		'actual release clears only the owned installed baseline in the original native unit: %s',
 		async (outcome) => {
 			const authored = await author({ thermostat_preset: 'eco' });
 			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			if (outcome === 'after-renewal')
+				await structure.runExclusive(() => graph.withStructuralWrite(() => Promise.resolve(undefined)));
 			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
 			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 			expect((await comfort.get(controllerId)).effective.source).toBe('automation');
@@ -1194,9 +1236,28 @@ describe('configured activity through the native thermostat participant', () => 
 				expect(
 					statements.filter((query) => /^\s*(INSERT|UPDATE|DELETE)/i.test(query) && !query.includes('WHERE 0')),
 				).toEqual([]);
-				expect(calls.write).not.toHaveBeenCalled();
-				expect(calls.readLatest).not.toHaveBeenCalled();
-				expect(notifications).not.toHaveBeenCalled();
+				expect(calls.write.mock.calls).toEqual([
+					[property, value],
+					[property, value],
+				]);
+				expect(calls.readLatest.mock.calls).toEqual([[property], [property]]);
+				expect(calls.write.mock.contexts).toEqual([calls, calls]);
+				expect(calls.readLatest.mock.contexts).toEqual([calls, calls]);
+				expect(notifications.mock.calls).toEqual([
+					[EventType.CHANNEL_PROPERTY_VALUE_SET, property],
+					[EventType.CHANNEL_PROPERTY_VALUE_SET, property],
+					[THERMOSTAT_CONFIG_CHANGED, controllerId],
+				]);
+				const order = [
+					calls.write.mock.invocationCallOrder[0],
+					calls.readLatest.mock.invocationCallOrder[0],
+					notifications.mock.invocationCallOrder[0],
+					calls.write.mock.invocationCallOrder[1],
+					calls.readLatest.mock.invocationCallOrder[1],
+					notifications.mock.invocationCallOrder[1],
+					notifications.mock.invocationCallOrder[2],
+				];
+				expect(order).toEqual([...order].sort((a, b) => a - b));
 			} finally {
 				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
 				notifications.mockRestore();
@@ -1214,13 +1275,20 @@ describe('configured activity through the native thermostat participant', () => 
 				Number.MAX_SAFE_INTEGER,
 			]);
 			const maximum = await nativeImage();
+			calls.write.mockClear();
+			calls.readLatest.mockClear();
 			expect(await configuration.command([command, command])).toBe(true);
 			expect(await nativeImage()).toEqual(maximum);
-			expect(calls.write).not.toHaveBeenCalled();
+			expect(calls.write.mock.calls).toEqual([
+				[property, value],
+				[property, value],
+			]);
+			expect(calls.readLatest.mock.calls).toEqual([[property], [property]]);
 			const next = { ...command, value: typeof value === 'boolean' ? !value : value + 0.1 };
 			await expect(configuration.command([next])).rejects.toThrow();
 			expect(await nativeImage()).toEqual(maximum);
-			expect(calls.write).not.toHaveBeenCalled();
+			expect(calls.write).toHaveBeenCalledTimes(2);
+			expect(calls.readLatest).toHaveBeenCalledTimes(2);
 
 			expect(await provider.activateLocal(database.manager, { ...before })).toBe(false);
 		},
@@ -1772,6 +1840,26 @@ describe('configured activity through the native thermostat participant', () => 
 			database.manager.query<unknown[]>('SELECT * FROM spaces_module_space_roles ORDER BY id'),
 		]);
 
+	it('same-revision graph completion cannot take custody of pending physical activity completion', async () => {
+		const authored = await mixedOffline();
+		const find = intentSpaces.findOne.bind(intentSpaces) as SpacesService['findOne'];
+		let observed = false;
+		jest.spyOn(intentSpaces, 'findOne').mockImplementation(async (...args) => {
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			expect(slot.state).toBe('LIVE');
+			await graph.refreshQuarantine();
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+			observed = true;
+			return find(...args);
+		});
+		const state = await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		expect(observed).toBe(true);
+		expect(state.activityStatus).toBe(ActivityActivationStatus.FAILED);
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+			state: 'RETIRED',
+		});
+		expect((await comfort.get(controllerId)).effective.source).toBe('manual');
+	});
 	it('actual SpaceMode failed physical result reserves retirement before later repeated admission', async () => {
 		const authored = await mixedOffline();
 		let release!: () => void, captured!: () => void, identityA: SpaceActivationIdentity | undefined;
@@ -2811,6 +2899,415 @@ describe('configured activity through the native thermostat participant', () => 
 		}
 	});
 
+	it.each([
+		['graph', false],
+		['graph', true],
+		['unsupported', false],
+		['intent', true],
+	] as const)(
+		'refuses refresh kind %s preserve=%s outside its original graph operation window',
+		async (kind, preserve) => {
+			const authored = await author({ thermostat_preset: 'eco' });
+			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const original = await provider.resolve(database.manager, row);
+			const slots = await database.manager.find(ClimateAutomationSlotEntity);
+			const sources = await database.manager.find(ClimateAutomationSourceEntity);
+			let receipt: SqliteCommitGuardReceipt;
+			await expect(
+				structure.runExclusive(() =>
+					provider.withEvidenceWrite(async (manager) => {
+						receipt = observeSqliteOuterOutcome(manager);
+						const scope = ledger.currentScope(manager);
+						const slot = await ledger.readSlot(manager, scope, controllerId, true);
+						await ledger.refreshInstalledSlot(
+							manager,
+							scope,
+							slot,
+							kind as Parameters<ClimateAutomationLedgerService['refreshInstalledSlot']>[3],
+							preserve,
+						);
+					}),
+				),
+			).rejects.toBeInstanceOf(Error);
+			expect(receipt.outcome).toBe('rolled_back');
+			expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(slots);
+			expect(await database.manager.find(ClimateAutomationSourceEntity)).toEqual(sources);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+			expect(original.isCurrent()).toBe(true);
+		},
+	);
+
+	it.each([false, true])(
+		'rolls back graph renewal when final-slot AfterLoad attempts a write caught=%s',
+		async (caught) => {
+			const authored = await author({ thermostat_preset: 'eco' });
+			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const original = await provider.resolve(database.manager, row);
+			expect(original.isCurrent()).toBe(true);
+			const slots = await database.manager.find(ClimateAutomationSlotEntity);
+			const sources = await database.manager.find(ClimateAutomationSourceEntity);
+			let manager: EntityManager | undefined;
+			let receipt: SqliteCommitGuardReceipt | undefined;
+			let attemptFailure: { cause: unknown } | undefined;
+			let attempts = 0;
+			let acknowledged = false;
+			const observer = {
+				afterUpdate: (event: UpdateEvent<object>) => {
+					if (event.metadata.target === ClimateAutomationSlotEntity && !manager) {
+						manager = event.manager;
+						receipt = observeSqliteOuterOutcome(manager);
+					}
+				},
+				afterLoad: async (entity: ClimateAutomationSlotEntity, event: LoadEvent<ClimateAutomationSlotEntity>) => {
+					if (
+						!manager ||
+						event.manager !== manager ||
+						event.metadata.target !== ClimateAutomationSlotEntity ||
+						entity.controllerId !== controllerId ||
+						attempts
+					)
+						return;
+					attempts++;
+					expect(structure.captureExclusiveOwner()()).toBe(true);
+					expect(event.queryRunner.isTransactionActive).toBe(true);
+					try {
+						await event.manager.update(ClimateAutomationSlotEntity, { controllerId }, { manualHold: true });
+						acknowledged = true;
+					} catch (cause: unknown) {
+						attemptFailure = { cause };
+						if (!caught) throw cause;
+					}
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				let failure: { cause: unknown } | undefined;
+				try {
+					await graph.refreshQuarantine();
+				} catch (cause: unknown) {
+					failure = { cause };
+				}
+				expect({ attempts, acknowledged, outcome: receipt?.outcome }).toEqual({
+					attempts: 1,
+					acknowledged: false,
+					outcome: 'rolled_back',
+				});
+				expect(failure?.cause).toBeInstanceOf(Error);
+				expect(attemptFailure?.cause).toBeInstanceOf(SqliteCommitGuardRefusedError);
+				expect(receipt?.outcome).toBe('rolled_back');
+				expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(slots);
+				expect(await database.manager.find(ClimateAutomationSourceEntity)).toEqual(sources);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+				expect(original.isCurrent()).toBe(false);
+				expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
+		},
+	);
+
+	it.each(['controller', 'source', 'lifecycle'] as const)(
+		'refuses graph renewal after original %s evidence drifts during validation',
+		async (change) => {
+			const implementation = registry.captureProducer('space-activity:v1').implementation;
+			const validate = implementation.validateInManager.bind(implementation) as typeof implementation.validateInManager;
+			let armed = false,
+				acknowledged = false;
+			const spy = jest.spyOn(implementation, 'validateInManager').mockImplementation(async (...args) => {
+				const evidence = await validate(...args);
+				if (armed) {
+					armed = false;
+					if (change === 'controller')
+						await args[0].update(VirtualThermostatConfigEntity, { controllerId }, { contactClosingMs: 987 });
+					else if (change === 'source')
+						await args[0].update(
+							ClimateAutomationSourceEntity,
+							{ generationId: args[1].generationId },
+							{ isCurrent: false },
+						);
+					else graph.invalidateValidation();
+					acknowledged = true;
+				}
+				return evidence;
+			});
+			try {
+				const authored = await author({ thermostat_preset: 'eco' });
+				await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const old = await provider.resolve(database.manager, row);
+				const slots = await database.manager.find(ClimateAutomationSlotEntity),
+					sources = await database.manager.find(ClimateAutomationSourceEntity);
+				armed = true;
+				await expect(graph.refreshQuarantine()).rejects.toBeInstanceOf(Error);
+				expect(acknowledged).toBe(true);
+				expect(old.isCurrent()).toBe(false);
+				expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+				expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(slots);
+				expect(await database.manager.find(ClimateAutomationSourceEntity)).toEqual(sources);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+			} finally {
+				spy.mockRestore();
+			}
+		},
+	);
+	it('keeps the newer same-generation admission when original rollback recovery loses custody', async () => {
+		const implementation = registry.captureProducer('space-activity:v1').implementation;
+		const validate = implementation.validateInManager.bind(implementation) as typeof implementation.validateInManager;
+		let armed = false;
+		let successor: Awaited<ReturnType<VirtualThermostatAutomationService['resolve']>>;
+		let slot: ClimateAutomationSlotEntity, row: VirtualThermostatConfigEntity;
+		const spy = jest.spyOn(implementation, 'validateInManager').mockImplementation(async (...args) => {
+			const evidence = await validate(...args);
+			if (armed) {
+				armed = false;
+				expect(await provider.activateLocal(args[0], { ...slot })).toBe(true);
+				successor = await provider.resolve(args[0], row);
+				expect(successor.isCurrent()).toBe(true);
+			}
+			return evidence;
+		});
+		try {
+			const authored = await author({ thermostat_preset: 'eco' });
+			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const old = await provider.resolve(database.manager, row);
+			const originalFailure = new Error('original mutation rollback');
+			let receipt: SqliteCommitGuardReceipt;
+			await expect(
+				producer.mutate(roomId, undefined, (manager) => {
+					receipt = observeSqliteOuterOutcome(manager);
+					armed = true;
+					throw originalFailure;
+				}),
+			).rejects.toBe(originalFailure);
+			expect(receipt.outcome).toBe('rolled_back');
+			expect(armed).toBe(false);
+			expect(old.isCurrent()).toBe(false);
+			expect(successor.isCurrent()).toBe(true);
+			expect((await provider.resolve(database.manager, row)).baseline).toEqual(successor.baseline);
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+	it('consumes a non-rollback mutation completion without readmission or later reuse', async () => {
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const old = await provider.resolve(database.manager, row);
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		const participant = registry.captureProvider('virtual-thermostat:v1').implementation;
+		const original = await participant.beginSourceMutation('space-activity:v1', roomId, slot.generationId);
+		if (!original) throw new Error('Expected the original mutation completion');
+		await original.finish(false);
+		await original.finish(true);
+		expect(old.isCurrent()).toBe(false);
+		expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+	});
+	it('refuses graph renewal at slot revision capacity without changing the accepted installation rows', async () => {
+		await database.manager.update(
+			ClimateAutomationSlotEntity,
+			{ controllerId },
+			{ slotRevision: Number.MAX_SAFE_INTEGER - 2 },
+		);
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		expect(slot.slotRevision).toBe(Number.MAX_SAFE_INTEGER);
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const old = await provider.resolve(database.manager, row);
+		expect(old.isCurrent()).toBe(true);
+		await expect(graph.refreshQuarantine()).rejects.toBeInstanceOf(Error);
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+		expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+		expect(old.isCurrent()).toBe(false);
+		expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+	});
+	it('renews the complete same-generation group atomically and retries only after a real group rollback', async () => {
+		const second = randomUUID();
+		await database.manager.insert(VirtualDeviceEntity, {
+			id: second,
+			name: 'Group member',
+			roomId,
+			category: DeviceCategory.THERMOSTAT,
+			enabled: true,
+			hidden: false,
+			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
+		});
+		await database.manager.insert(VirtualChannelEntity, {
+			id: randomUUID(),
+			device: second,
+			name: 'Heater',
+			identifier: 'heater',
+			category: ChannelCategory.HEATER,
+		});
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		await database.manager.insert(VirtualThermostatConfigEntity, {
+			...config,
+			controllerId: second,
+			ownerDeviceId: second,
+		});
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		const slots = await database.manager.find(ClimateAutomationSlotEntity, { order: { controllerId: 'ASC' } });
+		expect(slots).toHaveLength(2);
+		expect(slots[0].generationId).toBe(slots[1].generationId);
+		let writes = 0;
+		let native: SqliteCommitGuardReceipt;
+		const cause = new Error('second original group CAS');
+		const observer = {
+			beforeUpdate(event: UpdateEvent<ClimateAutomationSlotEntity>) {
+				if (event.metadata.target === ClimateAutomationSlotEntity && event.entity?.state === 'LIVE') {
+					native = observeSqliteOuterOutcome(event.manager);
+					if (++writes === 2) throw cause;
+				}
+			},
+		};
+		database.subscribers.push(observer);
+		try {
+			await expect(graph.refreshQuarantine()).rejects.toThrow();
+			expect(writes).toBe(2);
+			expect(native.outcome).toBe('rolled_back');
+			expect(await database.manager.find(ClimateAutomationSlotEntity, { order: { controllerId: 'ASC' } })).toEqual(
+				slots,
+			);
+		} finally {
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+		await graph.refreshQuarantine();
+		const after = await database.manager.find(ClimateAutomationSlotEntity, { order: { controllerId: 'ASC' } });
+		expect(after).toEqual(slots.map((slot) => ({ ...slot, slotRevision: slot.slotRevision + 1 })));
+		for (const id of [controllerId, second]) {
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			expect((await provider.resolve(database.manager, row)).isCurrent()).toBe(true);
+		}
+	});
+	it.each(['provider', 'runtime', 'manual-revocation'] as const)(
+		'rollback readmission refuses original %s custody loss',
+		async (change) => {
+			let dispose = provider.registerRuntime(() => Promise.resolve());
+			const authored = await author({ thermostat_preset: 'eco' });
+			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			const cause = new Error('original mutation failed');
+			let native: SqliteCommitGuardReceipt;
+			try {
+				await expect(
+					producer.mutate(roomId, undefined, (manager) => {
+						native = observeSqliteOuterOutcome(manager);
+						if (change === 'provider') provider.onModuleDestroy();
+						else if (change === 'runtime') {
+							dispose();
+							dispose = provider.registerRuntime(() => Promise.resolve());
+						} else provider.revoke(controllerId);
+						throw cause;
+					}),
+				).rejects.toBe(cause);
+				expect(native.outcome).toBe('rolled_back');
+				expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+			} finally {
+				dispose();
+			}
+		},
+	);
+	it('committed activity retirement never invokes rollback readmission', async () => {
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		let native: SqliteCommitGuardReceipt;
+		await producer.mutate(roomId, undefined, (manager) => {
+			native = observeSqliteOuterOutcome(manager);
+			return Promise.resolve();
+		});
+		expect(native.outcome).toBe('committed');
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+			state: 'RETIRED',
+		});
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+	});
+	it('renews same-revision completed validation with a new identity after failed validation', async () => {
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const old = await provider.resolve(database.manager, row);
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		const original = new Error('original activation callback');
+		const remove = graph.observeValidation(() => Promise.reject(original), { requiresActivation: true });
+		await expect(graph.refreshQuarantine()).rejects.toBe(original);
+		expect(old.isCurrent()).toBe(false);
+		expect((await provider.resolve(database.manager, row)).baseline).toBeNull();
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+		remove();
+		await graph.refreshQuarantine();
+		const current = await provider.resolve(database.manager, row);
+		expect(current.baseline).toEqual(old.baseline);
+		expect(current.isCurrent()).toBe(true);
+		expect(old.isCurrent()).toBe(false);
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual({
+			...slot,
+			slotRevision: slot.slotRevision + 1,
+		});
+	});
+	it.each([false, null, undefined, 0, ''])(
+		'requalifies a proven native rollback into fresh authority without masking primary %p',
+		async (cause) => {
+			const authored = await author({ thermostat_preset: 'eco' });
+			await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const old = await provider.resolve(database.manager, row);
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			const sources = await database.manager.find(ClimateAutomationSourceEntity);
+			let native: SqliteCommitGuardReceipt;
+			let failure: { cause: unknown } | undefined;
+			try {
+				await producer.mutate(roomId, undefined, (manager) => {
+					native = observeSqliteOuterOutcome(manager);
+					// eslint-disable-next-line @typescript-eslint/only-throw-error -- Native rollback must preserve each original falsy cause.
+					throw cause;
+				});
+			} catch (actual: unknown) {
+				failure = { cause: actual };
+			}
+			expect(failure).toEqual({ cause });
+			expect(native.outcome).toBe('rolled_back');
+			const current = await provider.resolve(database.manager, row);
+			expect(current.baseline).toEqual(old.baseline);
+			expect(current.isCurrent()).toBe(true);
+			expect(old.isCurrent()).toBe(false);
+			expect(await database.manager.find(ClimateAutomationSourceEntity)).toEqual(sources);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toEqual(slot);
+		},
+	);
+	it('renews a settled original installation after an unrelated structural graph completion', async () => {
+		const authored = await author({ thermostat_preset: 'eco' });
+		await modes.activateMode(roomId, ActivityMode.WORK, authored.activityRevision, 'operator');
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const old = await provider.resolve(database.manager, row);
+		expect(old.isCurrent()).toBe(true);
+		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		const sources = await database.manager.find(ClimateAutomationSourceEntity);
+		await structure.runExclusive(() => graph.withStructuralWrite(() => Promise.resolve(undefined)));
+		const current = await provider.resolve(database.manager, row);
+		expect(current.baseline).toEqual(old.baseline);
+		expect(current.isCurrent()).toBe(true);
+		expect(old.isCurrent()).toBe(false);
+		const after = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+		expect(after).toEqual({ ...slot, slotRevision: slot.slotRevision + 1, installEvidence: after.installEvidence });
+		const installed = JSON.parse(slot.installEvidence) as { graphRevision: number };
+		expect(JSON.parse(after.installEvidence)).toEqual({
+			...installed,
+			graphRevision: installed.graphRevision + 1,
+		});
+		expect(await database.manager.find(ClimateAutomationSourceEntity)).toEqual(sources);
+		expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+	});
 	it('does not re-add a numeric delta or mint a new generation when the exact running installation repeats', async () => {
 		const authored = await author({ setpoint_delta: -2 });
 		const activationId = randomUUID();

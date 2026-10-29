@@ -35,6 +35,7 @@ import {
 import { ClimateAutomationLedgerLifecycle, LedgerLifecycleAccess } from './climate-automation-ledger-lifecycle';
 import { ClimateAutomationLedgerConflict, canonical, increment, ownedJson } from './climate-automation-ledger.utils';
 import { ClimateAutomationRegistryService } from './climate-automation.registry.service';
+import { captureCreation } from './creation-capture';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
 export { ClimateAutomationLedgerConflict } from './climate-automation-ledger.utils';
@@ -916,10 +917,12 @@ export class ClimateAutomationLedgerService {
 		manager: EntityManager,
 		scope: ClimateAutomationLedgerScope,
 		expected: ClimateAutomationSlotSnapshot,
-		kind: 'intent' | 'watermark' = 'intent',
+		kind: 'intent' | 'watermark' | 'graph' = 'intent',
+		preserveUnchangedGraph = false,
 	): Promise<ClimateAutomationSlotSnapshot> {
 		const operation = this.admit(manager, scope);
 		try {
+			if (preserveUnchangedGraph && kind !== 'graph') throw new ClimateAutomationLedgerConflict('invalid');
 			const record = this.records.get(expected);
 			if (record?.operation !== operation || record.kind !== 'slot')
 				throw new ClimateAutomationLedgerConflict('invalid');
@@ -933,6 +936,11 @@ export class ClimateAutomationLedgerService {
 			)
 				throw new ClimateAutomationLedgerConflict('invalid');
 			const provider = this.registry.captureProvider(previous.providerKey);
+			if (kind === 'graph') {
+				const capability = provider && captureCreation(provider.implementation, ['graphRefreshVersion']);
+				if (capability?.values.graphRefreshVersion !== 1) throw new ClimateAutomationLedgerConflict('unavailable');
+				registerSqliteCommitGuard(manager, () => provider.isCurrent() && capability.current());
+			}
 			const refresh = this.pin(provider, 'refreshControllerInManager');
 			const read = this.pin(provider, 'readControllerInManager');
 			operation.guards.push(refresh, read);
@@ -975,15 +983,22 @@ export class ClimateAutomationLedgerService {
 				};
 				await validate();
 				await this.validateRow(manager, record);
-				const next = Object.freeze({
-					...previous,
-					slotRevision: increment(previous.slotRevision),
-					installEvidence: canonical(controller),
-				});
-				const query = manager.createQueryBuilder().update(ClimateAutomationSlotEntity).set(next);
-				for (const key of Object.keys(previous) as (keyof ClimateAutomationSlotFacts)[])
-					query.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: previous[key] });
-				if ((await query.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+				// Proven rollback may restore local custody without changing its exact durable preimage.
+				// The same reserved writer and complete source/controller/slot validators still qualify this result.
+				const next =
+					preserveUnchangedGraph && canonical(controller) === previous.installEvidence
+						? previous
+						: Object.freeze({
+								...previous,
+								slotRevision: increment(previous.slotRevision),
+								installEvidence: canonical(controller),
+							});
+				if (next !== previous) {
+					const query = manager.createQueryBuilder().update(ClimateAutomationSlotEntity).set(next);
+					for (const key of Object.keys(previous) as (keyof ClimateAutomationSlotFacts)[])
+						query.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: previous[key] });
+					if ((await query.execute()).affected !== 1) throw new ClimateAutomationLedgerConflict('stale');
+				}
 				const snapshot = privateSnapshot({ facts: next, controller }) as ClimateAutomationSlotSnapshot;
 				this.issue(
 					operation,

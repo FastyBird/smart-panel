@@ -591,6 +591,12 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 									claim.revision !== dto.expectedClaimRevision
 								)
 									fail('Thermostat or claim revision changed; reload the retained reservation.');
+								if (
+									![config.revision, claim.revision].every(
+										(value) => Number.isSafeInteger(value) && value >= 1 && value < Number.MAX_SAFE_INTEGER,
+									)
+								)
+									fail('Thermostat or claim revision overflowed; the retained reservation cannot be restored.');
 								if (claim.state === 'released' || claim.physicalIdentity !== dto.physicalIdentity)
 									fail('Only this exact retained canonical claim can be restored.');
 								if (claim.sourcePropertyId) {
@@ -806,7 +812,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 								claims.values.invalidate.call(claims.receiver);
 								stage = 'claims.refresh';
 								await claims.values.refresh.call(claims.receiver);
-								if (!operation.changed()) return true;
+								// Even a native no-op must retry the original mirrors after an earlier publication failure.
 								for (index = 0; index < destinations.length; index++) {
 									const property = destinations[index],
 										value = input.commands[index].value;

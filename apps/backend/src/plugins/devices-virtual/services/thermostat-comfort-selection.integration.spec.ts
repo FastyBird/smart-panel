@@ -3107,6 +3107,21 @@ describe('manual thermostat selection: reserved native intent', () => {
 			});
 			return images;
 		}
+		it('retries original property mirrors for equal native settings after an earlier mirror failure', async () => {
+			const updates = (await settings()).slice(0, 2),
+				{ configs, values } = service();
+			values.write.mockRejectedValueOnce(false);
+			await expect(configs.command(updates)).rejects.toBe(false);
+			const committed = await observed(),
+				revision = await graph.revision();
+			expect(committed.revision).toBe(2);
+			values.write.mockClear();
+			await expect(configs.command(updates)).resolves.toBe(true);
+			expect(values.write.mock.calls.map(([, value]) => value)).toEqual([24, 28]);
+			expect(values.readLatest).toHaveBeenCalledTimes(2);
+			expect(await observed()).toEqual(committed);
+			expect(await graph.revision()).toBe(revision);
+		});
 		it('atomically validates whole policy, retains all five roles, and repeats ordered duplicate mirrors', async () => {
 			const updates = await settings(),
 				{ configs, values } = service(),

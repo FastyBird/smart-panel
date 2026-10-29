@@ -66,6 +66,7 @@ interface StateBatchRecord {
 	readonly owner: StateOwnerRecord;
 	readonly entries: Map<string, ProducerEntry>;
 	readonly versions: Map<string, number>;
+	readonly removalEpoch: object;
 	readonly current: () => boolean;
 	readonly ready: () => boolean;
 	readonly emit: (property: ChannelPropertyEntity, state: PropertyValueState) => void;
@@ -77,6 +78,7 @@ interface StatePlanRecord {
 	readonly restore?: (id: string) => Promise<void>;
 	readonly report: { -readonly [K in keyof ProducerStatePublicationReport]: ProducerStatePublicationReport[K] };
 	published: boolean;
+	removalEpoch?: object;
 }
 function privateStateToken() {
 	return Object.freeze({ toJSON: () => ({}) });
@@ -119,12 +121,14 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	private readonly stateBatches = new WeakMap<ProducerStateBatch, StateBatchRecord>();
 	private readonly statePlans = new WeakMap<ProducerStatePlan, StatePlanRecord>();
 	private readonly slotVersions = new Map<string, number>();
+	private removalEpoch: object = {};
 	private readonly runtimeSlots = new WeakMap<
 		ProducerRuntimeSlot,
 		{
 			id: string;
 			previous?: ProducerEntry;
 			version: number;
+			removalEpoch: object;
 			eligible: boolean;
 			used: boolean;
 			current: () => boolean;
@@ -133,6 +137,11 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	>();
 	private advanceSlot(id: string): void {
 		this.slotVersions.set(id, (this.slotVersions.get(id) ?? 0) + 1);
+	}
+	private forgetSlot(id: string): void {
+		// Conservatively expire pending absence captures on any removal. Concrete live slots retain per-ID fences.
+		this.removalEpoch = {};
+		this.slotVersions.delete(id);
 	}
 
 	/** Private fallback ownership; ordinary runtime registration deliberately remains independent. */
@@ -173,6 +182,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			owner: record,
 			entries: new Map(this.entries),
 			versions: new Map(this.slotVersions),
+			removalEpoch: this.removalEpoch,
 			current: () =>
 				lifecycle === this.stateLifecycle &&
 				record.active &&
@@ -266,6 +276,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 				plan.operations.every(
 					({ id, previous }) =>
 						this.entries.get(id) === previous &&
+						(previous !== undefined || plan.batch.removalEpoch === this.removalEpoch) &&
 						(this.slotVersions.get(id) ?? 0) === (plan.batch.versions.get(id) ?? 0),
 				)
 			);
@@ -274,7 +285,10 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			plan.report.failed === 0 &&
 			plan.operations.every(
 				({ id, next }) =>
-					this.entries.get(id) === next && (this.slotVersions.get(id) ?? 0) === (plan.batch.versions.get(id) ?? 0) + 1,
+					this.entries.get(id) === next &&
+					(next === undefined
+						? plan.removalEpoch === this.removalEpoch
+						: (this.slotVersions.get(id) ?? 0) === (plan.batch.versions.get(id) ?? 0) + 1),
 			)
 		);
 	}
@@ -292,13 +306,15 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			if (next) {
 				this.entries.set(id, next);
 				plan.batch.owner.slots.set(id, next);
+				this.advanceSlot(id);
 			} else {
 				this.entries.delete(id);
 				plan.batch.owner.slots.delete(id);
+				this.forgetSlot(id);
 			}
-			this.advanceSlot(id);
 			plan.report.installed++;
 		}
+		plan.removalEpoch = this.removalEpoch;
 		plan.report.terminal = 'installed';
 		return true;
 	}
@@ -367,7 +383,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		if (!record?.active || !entry || entry.ownedState !== record || record.slots.get(id) !== entry) return false;
 		this.entries.delete(id);
 		record.slots.delete(id);
-		this.advanceSlot(id);
+		this.forgetSlot(id);
 		return true;
 	}
 	disposeStateOwner(owner: ProducerStateOwner): void {
@@ -454,6 +470,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		this.events?.off(EventType.CHANNEL_PROPERTY_UPDATED, this.refreshPropertyMetadata);
 		this.timer = null;
 		this.entries.clear();
+		this.slotVersions.clear();
+		this.removalEpoch = {};
 	}
 
 	/** Capture an actual runtime's original slot before property/configuration awaits. */
@@ -479,6 +497,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			id: propertyId,
 			previous,
 			version: this.slotVersions.get(propertyId) ?? 0,
+			removalEpoch: this.removalEpoch,
 			eligible:
 				!previous ||
 				previous.lease === originalLease ||
@@ -504,6 +523,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			!slot.current() ||
 			slot.id !== property.id ||
 			this.entries.get(slot.id) !== slot.previous ||
+			(slot.previous === undefined && slot.removalEpoch !== this.removalEpoch) ||
 			(this.slotVersions.get(slot.id) ?? 0) !== slot.version
 		)
 			return null;
@@ -511,7 +531,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const lease = Object.freeze({ propertyId: property.id, revision });
 		const state = this.unavailable(revision, ['initializing'], new Date());
 		this.advanceSlot(property.id);
-		this.entries.set(property.id, {
+		const entry: ProducerEntry = {
 			property,
 			lease,
 			state,
@@ -519,8 +539,23 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			generation: 0,
 			publication: 0,
 			guard: guard ? Object.freeze({ ...guard }) : undefined,
-		});
-		slot.emit(property, state);
+		};
+		this.entries.set(property.id, entry);
+		try {
+			slot.emit(property, state);
+		} catch (cause: unknown) {
+			// A reentrant listener may already have installed a successor. Only undo this exact entry.
+			if (this.entries.get(property.id) === entry) {
+				if (slot.previous) {
+					this.entries.set(property.id, slot.previous);
+					this.advanceSlot(property.id);
+				} else {
+					this.entries.delete(property.id);
+					this.forgetSlot(property.id);
+				}
+			}
+			throw cause;
+		}
 		return lease;
 	}
 
@@ -683,8 +718,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 
 	remove(propertyId: string): void {
-		this.advanceSlot(propertyId);
 		this.entries.delete(propertyId);
+		this.forgetSlot(propertyId);
 	}
 
 	/** Detached diagnostic snapshot; does not expire publications or emit events. Never admission authority. */

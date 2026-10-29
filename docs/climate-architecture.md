@@ -93,6 +93,20 @@ automation baseline, then the current selected preset/manual baseline. Effective
 source and slot, the same controller incarnation, and matching native installation evidence. Actor-tagged JSON alone
 is diagnostic data and cannot supply authority. Comfort GET and both runtime evaluations use the same private view.
 The legacy internal `applyAutomationBaseline` method has no public HTTP route and does not install an effective source.
+
+Completed graph validation can renew a fully settled, process-local installation group when its original registrations,
+source, slot and complete controller image still match. The original reserved SQLite unit updates only the installation's
+graph evidence and slot revision; it does not replay the selection, a numeric delta, publication or an ON command.
+Each renewal gets a new local identity. Previously expired callbacks stay expired, and an old completion cannot retire
+a newer installation of the same source generation. Pending or failed graph validation withholds authority until a
+successful, independently validated admission; persisted LIVE rows or actor metadata alone never grant it.
+
+An activity mutation first withdraws its local authority and joins already-issued predecessors. If that original native
+transaction is proven rolled back, unchanged source/slot/controller evidence can qualify a fresh local installation after
+the mutation admission closes. When graph evidence is also unchanged, this recovery preserves every durable row and
+revision. It never revives the old local guard. Unknown or committed outcomes, changed registrations or evidence, and a
+competing successor cannot use that rollback recovery. A recovery refusal keeps automation inhibited and preserves the
+original failure, including falsy causes. These are software intent guarantees, not proof of physical output completion.
 Operator configuration defaults automation disabled. An explicit opt-in can initialize an EMPTY slot only for the
 validated same controller with no legacy baseline; a non-null legacy baseline must first be explicitly disabled.
 

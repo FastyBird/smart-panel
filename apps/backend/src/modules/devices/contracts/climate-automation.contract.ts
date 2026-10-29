@@ -76,6 +76,8 @@ export interface ClimateAutomationSettlementReceipt {
 	readonly retireInManager: (manager: EntityManager) => Promise<void>;
 }
 export interface ClimateAutomationOwnedSettlement {
+	/** Original domain completion has acknowledged its final native state; absent means not renewable. */
+	readonly isSettled?: () => boolean;
 	readonly isCurrent: () => boolean;
 	readonly accept: (receipt: ClimateAutomationSettlementReceipt) => void;
 }
@@ -127,7 +129,12 @@ export interface ClimateAutomationProvider {
 		slot: Readonly<ClimateAutomationSlotFacts>,
 	) => Promise<void>;
 	/** Synchronous revocation and finite original predecessor capture; join outside structural/native ownership. */
-	readonly beginSourceMutation?: (producerKey: string, subjectId: string, generationId: string) => Promise<void>;
+	readonly beginSourceMutation?: (
+		producerKey: string,
+		subjectId: string,
+		generationId: string,
+	) => Promise<void | { finish: (rolledBack: boolean) => Promise<void> }>;
+	readonly graphRefreshVersion?: 1;
 	readonly ownedSettlementVersion?: 1;
 	readonly settleInstalled?: (
 		slots: readonly ClimateAutomationSlotFacts[],
@@ -150,7 +157,7 @@ export interface ClimateAutomationProvider {
 		manager: EntityManager,
 		slot: Readonly<ClimateAutomationSlotFacts>,
 		before: Readonly<ClimateAutomationControllerFacts>,
-		kind: 'intent' | 'watermark',
+		kind: 'intent' | 'watermark' | 'graph',
 	) => Promise<ClimateAutomationControllerFacts>;
 	/** Optional closed mutation capability. Read-only providers can never finalize LIVE. */
 	readonly installControllerInManager?: (

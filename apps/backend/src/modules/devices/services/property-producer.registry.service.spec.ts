@@ -14,6 +14,111 @@ const property = (id = 'property') =>
 	});
 
 describe('exact producer-state slot ownership', () => {
+	it('reclaims removed-ID versions while fencing captured absence and preserving unrelated live slots', () => {
+		const registry = new PropertyProducerRegistryService(),
+			input = property('pending');
+		const runtime = registry.captureRuntimeSlot(input.id);
+		const owner = registry.createStateOwner('state');
+		const batch = registry.beginStateBatch(
+			owner,
+			() => true,
+			() => true,
+		);
+		const plan = registry.prepareStateBatch(batch, [{ property: input, revision: 1, reason: 'runtime_unavailable' }]);
+		const active = property('active'),
+			lease = registry.register(active, 1);
+		const capturedActive = registry.captureRuntimeSlot(active.id, lease);
+		for (let index = 0; index < 64; index++) {
+			const removed = property('removed-' + index);
+			registry.register(removed, 1);
+			registry.remove(removed.id);
+		}
+		expect(registry.validateStatePlan(plan)).toBe(false);
+		expect(registry.registerRuntime(input, 1, runtime)).toBeNull();
+		expect(registry.registerRuntime(active, 2, capturedActive)).not.toBeNull();
+		const versions = Reflect.get(registry, 'slotVersions') as Map<string, number>;
+		expect([...versions.keys()]).toEqual(['active']);
+		expect(registry.registerRuntime(input, 2, registry.captureRuntimeSlot(input.id))).not.toBeNull();
+		registry.disposeStateOwner(owner);
+		registry.onModuleDestroy();
+		expect(versions.size).toBe(0);
+	});
+	it('does not revive absent runtime or batch captures after same-ID creation and removal', () => {
+		const registry = new PropertyProducerRegistryService(),
+			input = property();
+		const runtime = registry.captureRuntimeSlot(input.id),
+			owner = registry.createStateOwner('state');
+		const batch = registry.beginStateBatch(
+			owner,
+			() => true,
+			() => true,
+		);
+		const stale = registry.prepareStateBatch(batch, [{ property: input, revision: 1, reason: 'runtime_unavailable' }]);
+		registry.register(input, 1);
+		registry.remove(input.id);
+		expect(registry.registerRuntime(input, 2, runtime)).toBeNull();
+		expect(registry.installStatePlan(stale)).toBe(false);
+		const fresh = registry.prepareStateBatch(
+			registry.beginStateBatch(
+				owner,
+				() => true,
+				() => true,
+			),
+			[{ property: input, revision: 2, reason: 'runtime_unavailable' }],
+		);
+		expect(registry.installStatePlan(fresh)).toBe(true);
+		const remove = registry.prepareStateBatch(
+			registry.beginStateBatch(
+				owner,
+				() => true,
+				() => true,
+			),
+			[],
+		);
+		expect(registry.installStatePlan(remove)).toBe(true);
+		expect(registry.validateStatePlan(remove)).toBe(true);
+		expect((Reflect.get(registry, 'slotVersions') as Map<string, number>).size).toBe(0);
+		registry.remove('unrelated');
+		expect(registry.validateStatePlan(remove)).toBe(false);
+		registry.disposeStateOwner(owner);
+		registry.onModuleDestroy();
+	});
+
+	it.each(['absent', 'previous', 'successor'] as const)(
+		'undoes only the failed original runtime entry after a throwing listener: %s',
+		(kind) => {
+			const events = new EventEmitter2(),
+				registry = new PropertyProducerRegistryService(events),
+				input = property();
+			const previous = kind === 'previous' ? registry.register(input, 1) : undefined;
+			const slot = registry.captureRuntimeSlot(input.id, previous);
+			let successor: ReturnType<PropertyProducerRegistryService['register']> | undefined;
+			events.once(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => {
+				if (kind === 'successor') successor = registry.register(input, 3);
+				throw JSON.parse('false') as unknown;
+			});
+			try {
+				let failure: { cause: unknown } | undefined;
+				try {
+					registry.registerRuntime(input, 2, slot);
+				} catch (cause: unknown) {
+					failure = { cause };
+				}
+				expect(failure).toEqual({ cause: false });
+				if (successor) expect(registry.isCurrent(successor)).toBe(true);
+				else {
+					if (previous) expect(registry.isCurrent(previous)).toBe(true);
+					else expect(registry.owns(input.id)).toBe(false);
+					const retry = registry.registerRuntime(input, 4, registry.captureRuntimeSlot(input.id, previous));
+					expect(retry).not.toBeNull();
+					expect(registry.isCurrent(retry)).toBe(true);
+				}
+			} finally {
+				registry.onModuleDestroy();
+			}
+		},
+	);
+
 	it.each(['runtime', 'remove-recreate'] as const)(
 		'refuses prepared absence after independent %s and leaves the exact successor unchanged',
 		(kind) => {

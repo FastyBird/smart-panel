@@ -260,6 +260,7 @@ describe('Group A default-migrated authenticated activity climate automation', (
 			const physicalId = randomUUID(),
 				heaterId = randomUUID(),
 				setpointId = randomUUID(),
+				modeId = randomUUID(),
 				statusId = randomUUID();
 			await database.manager.insert(DeviceEntity, {
 				id: physicalId,
@@ -284,6 +285,14 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				dataType: DataTypeType.FLOAT,
 				unit: '°C',
 				format: [10, 30],
+				permissions: [PermissionType.READ_WRITE],
+			} as never);
+			await database.manager.insert(ChannelPropertyEntity, {
+				id: modeId,
+				channel: heaterId,
+				identifier: 'on',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_WRITE],
 			} as never);
 			await database.manager.insert(ChannelPropertyEntity, {
@@ -330,7 +339,9 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				holdRead = false,
 				identityA: SpaceActivationIdentity | undefined;
 			const values: unknown[] = [],
-				admissions: boolean[] = [];
+				admissions: boolean[] = [],
+				modeValues: unknown[] = [],
+				modeAdmissions: boolean[] = [];
 			const endpoint: IDevicePlatform = {
 				getType: () => physical.type,
 				process: () => Promise.reject(new Error('Expected original guarded batch')),
@@ -340,6 +351,12 @@ describe('Group A default-migrated authenticated activity climate automation', (
 						updates,
 						isCurrent: () => true,
 						dispatch: async (guard) => {
+							if (updates.every((update) => update.property.id === modeId)) {
+								const current = guard();
+								modeValues.push(updates.map((update) => ({ id: update.property.id, value: update.value })));
+								modeAdmissions.push(current);
+								return current;
+							}
 							const original = ++sends;
 							values.push(updates.map((update) => ({ id: update.property.id, value: update.value })));
 							admissions.push(guard());
@@ -482,6 +499,8 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				});
 				expect(sends).toBe(2);
 				expect(admissions).toEqual([true, true]);
+				expect(modeAdmissions).toEqual([true, true]);
+				expect(modeValues).toEqual([[{ id: modeId, value: true }], [{ id: modeId, value: true }]]);
 				expect(values).toEqual([[{ id: setpointId, value: 19 }], [{ id: setpointId, value: 19 }]]);
 				expect((await comfort.get(controllerId)).effective).toMatchObject({
 					source: 'automation',

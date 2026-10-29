@@ -225,9 +225,11 @@ describe('Runtime space state configuration with SQLite and real aggregate calcu
 	const ids = async (spaceId = room.id) => (await reads.findDevicesBySpace(spaceId)).map((device) => device.id);
 
 	it('uses the original manager for climate target membership and roles without hydrating cached history', async () => {
+		await database.manager.update(SpaceClimateRoleEntity, { id: climateRole.id }, { role: ClimateRole.HEATING_ONLY });
 		const original = await climate.getPrimaryClimateDevicesInSpace(room.id);
 		expect(original.length).toBeGreaterThan(0);
 		const selected = original[0].device.id;
+		expect(original.find(({ device }) => device.id === heater.id)?.role).toBe(ClimateRole.HEATING_ONLY);
 		const hydrate = jest.spyOn(graphs, 'findOne');
 		hydrate.mockClear();
 		const aborted = new Error('rollback target mutation');
@@ -235,6 +237,13 @@ describe('Runtime space state configuration with SQLite and real aggregate calcu
 			database.transaction(async (manager) => {
 				const before = await climate.getPrimaryClimateDevicesInSpace(room.id, manager);
 				expect(before.map(({ device }) => device.id)).toEqual(original.map(({ device }) => device.id));
+				expect(before.find(({ device }) => device.id === heater.id)?.role).toBe(ClimateRole.HEATING_ONLY);
+				await manager.update(SpaceClimateRoleEntity, { id: climateRole.id }, { role: ClimateRole.COOLING_ONLY });
+				expect(
+					(await climate.getPrimaryClimateDevicesInSpace(room.id, manager)).find(
+						({ device }) => device.id === heater.id,
+					)?.role,
+				).toBe(ClimateRole.COOLING_ONLY);
 				await manager.update(DeviceEntity, { id: selected }, { roomId: null });
 				expect(
 					(await climate.getPrimaryClimateDevicesInSpace(room.id, manager)).some(
@@ -245,6 +254,9 @@ describe('Runtime space state configuration with SQLite and real aggregate calcu
 			}),
 		).rejects.toBe(aborted);
 		expect(hydrate).not.toHaveBeenCalled();
+		expect(
+			(await climate.getPrimaryClimateDevicesInSpace(room.id)).find(({ device }) => device.id === heater.id)?.role,
+		).toBe(ClimateRole.HEATING_ONLY);
 		expect((await climate.getPrimaryClimateDevicesInSpace(room.id)).map(({ device }) => device.id)).toEqual(
 			original.map(({ device }) => device.id),
 		);

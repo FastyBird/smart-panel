@@ -1808,6 +1808,43 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(
 			configs.restoreActuator(controller, old.id, { ...restore, sourcePropertyId: foreign }, 'operator'),
 		).rejects.toThrow('same canonical');
+		for (const counter of ['configuration', 'claim', 'both'] as const) {
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: controller },
+				{ revision: counter !== 'claim' ? Number.MAX_SAFE_INTEGER : configured.revision },
+			);
+			await database.manager.update(
+				VirtualThermostatActuatorClaimEntity,
+				{ id: old.id },
+				{ revision: counter !== 'configuration' ? Number.MAX_SAFE_INTEGER : old.revision },
+			);
+			const beforeConfig = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+				controllerId: controller,
+			});
+			const beforeClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: old.id });
+			await expect(
+				configs.restoreActuator(
+					controller,
+					old.id,
+					{ ...restore, expectedRevision: beforeConfig.revision, expectedClaimRevision: beforeClaim.revision },
+					'operator',
+				),
+			).rejects.toThrow('overflow');
+			expect(
+				await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }),
+			).toEqual(beforeConfig);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: old.id })).toEqual(
+				beforeClaim,
+			);
+			expect(await database.manager.count(VirtualThermostatRecoveryEntity)).toBe(0);
+		}
+		await database.manager.update(
+			VirtualThermostatConfigEntity,
+			{ controllerId: controller },
+			{ revision: configured.revision },
+		);
+		await database.manager.update(VirtualThermostatActuatorClaimEntity, { id: old.id }, { revision: old.revision });
 		const restored = await configs.restoreActuator(controller, old.id, restore, 'operator');
 		expect(restored.requested_mode).toBe('off');
 		expect(restored.actuators[0]).toMatchObject({

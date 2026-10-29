@@ -2,7 +2,12 @@ import { DataSource, EntityManager } from 'typeorm';
 
 import { Injectable, Optional } from '@nestjs/common';
 
-import { observeSqliteOuterOutcome, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardReceipt,
+	SqliteGuardedCommitOutcome,
+	observeSqliteOuterOutcome,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import { ClimateAutomationLedgerService } from '../../devices/services/climate-automation-ledger.service';
 import { captureCreation, invokeCreation } from '../../devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../devices/services/device-structure-lock.service';
@@ -10,7 +15,10 @@ import { SpaceEntity } from '../entities/space.entity';
 
 export interface SpaceLifecycleHook {
 	reconcile(space: SpaceEntity, manager: EntityManager): Promise<void>;
-	beforeAdmission?(id: string, kind: 'delete' | 'type-change'): Promise<void | (() => void)>;
+	beforeAdmission?(
+		id: string,
+		kind: 'delete' | 'type-change',
+	): Promise<void | ((outcome?: SqliteGuardedCommitOutcome) => void | Promise<void>)>;
 	beforeMutation?(id: string, kind: 'delete' | 'type-change', manager: EntityManager): Promise<void>;
 }
 /** Plugins initialize or remove owned rows atomically with generic space create/type changes. */
@@ -53,7 +61,8 @@ export class SpaceLifecycleRegistryService {
 			participants.every(
 				({ hook, registration, capture }) => this.hooks.get(hook) === registration && capture.current(),
 			);
-		const releases: (() => void)[] = [];
+		const releases: ((outcome?: SqliteGuardedCommitOutcome) => void | Promise<void>)[] = [];
+		let native: SqliteCommitGuardReceipt;
 		const admit = async () => {
 			for (const { hook, capture } of participants) {
 				const release = await (capture.values.beforeAdmission == null
@@ -68,7 +77,7 @@ export class SpaceLifecycleRegistryService {
 				this.structure.runExclusive(async () => {
 					const ownerCurrent = this.structure.captureExclusiveOwner();
 					return database.transaction(async (manager) => {
-						const receipt = observeSqliteOuterOutcome(manager);
+						const receipt = (native = observeSqliteOuterOutcome(manager));
 						registerSqliteCommitGuard(manager, () => ownerCurrent() && current());
 						await manager.query('UPDATE "spaces_module_spaces" SET "id"="id" WHERE 0');
 						return this.ledger.inAdmittedManager(manager, receipt, async () => {
@@ -80,8 +89,8 @@ export class SpaceLifecycleRegistryService {
 					});
 				}),
 			)
-			.finally(() => {
-				for (const release of releases.reverse()) release();
+			.finally(async () => {
+				for (const release of releases.reverse()) await release(native?.outcome);
 			});
 	}
 }
