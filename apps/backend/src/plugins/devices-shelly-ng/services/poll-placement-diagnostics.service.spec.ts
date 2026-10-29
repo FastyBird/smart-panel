@@ -79,35 +79,31 @@ describe('PollPlacementDiagnosticsService', () => {
 		});
 
 		const service = new PollPlacementDiagnosticsService();
-		service.observeDelegate({
-			delegateId: 'delegate-a',
-			sourceDeviceId: '22222222-2222-4222-8222-222222222222',
-			connected: true,
-			generation: 3,
-		});
-		const cycleSequence = service.observeCycle(7, 60_000, ['delegate-a', 'delegate-b']);
-		if (cycleSequence === null) throw new Error('cycle was not observed');
-		service.completeCycleRegistration(cycleSequence);
-		service.observeSlot('delegate-a', 7, cycleSequence, 'dispatch-attempt');
+		try {
+			service.observeDelegate({
+				delegateId: 'delegate-a',
+				sourceDeviceId: '22222222-2222-4222-8222-222222222222',
+				connected: true,
+				generation: 3,
+			});
+			const cycleSequence = service.observeCycle(7, 60_000, ['delegate-a', 'delegate-b']);
+			if (cycleSequence === null) throw new Error('cycle was not observed');
+			service.completeCycleRegistration(cycleSequence);
+			service.observeSlot('delegate-a', 7, cycleSequence, 'dispatch-attempt');
 
-		for (let attempt = 0; attempt < 20; attempt++) {
-			try {
-				const snapshot = JSON.parse(await readFile(exportPath, 'utf8')) as {
-					status: string;
-					observations: { connectedDelegateCount: number; target: { decision: string } }[];
-				};
-				expect(snapshot.status).toBe('ready');
-				expect(snapshot.observations[0].connectedDelegateCount).toBe(2);
-				expect(snapshot.observations[0].target.decision).toBe('dispatch-attempt');
-				await rm(directory, { recursive: true, force: true });
-				return;
-			} catch {
-				await new Promise((resolve) => setTimeout(resolve, 5));
-			}
+			// Join the original coalesced publication before reading its persisted result.
+			await (service as any).writePromise;
+			const snapshot = JSON.parse(await readFile(exportPath, 'utf8')) as {
+				status: string;
+				observations: { connectedDelegateCount: number; target: { decision: string } }[];
+			};
+			expect(snapshot.status).toBe('ready');
+			expect(snapshot.observations[0].connectedDelegateCount).toBe(2);
+			expect(snapshot.observations[0].target.decision).toBe('dispatch-attempt');
+		} finally {
+			await service.onModuleDestroy();
+			await rm(directory, { recursive: true, force: true });
 		}
-
-		await rm(directory, { recursive: true, force: true });
-		throw new Error('diagnostic snapshot was not published');
 	});
 
 	it('associates slot decisions with their cycle and records bounded registration timestamps', () => {
