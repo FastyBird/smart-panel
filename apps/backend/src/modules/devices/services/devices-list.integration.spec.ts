@@ -97,26 +97,29 @@ describe('Batched device catalog with SQLite and production afterLoad subscriber
 			database,
 			null as never,
 		);
-		const zone = await database.getRepository(SpaceEntity).save({ name: 'Zone', type: SpaceType.ZONE });
-		for (let i = 0; i < 17; i++) {
-			const device = await database
-				.getRepository(SimulatorDeviceEntity)
-				.save({ name: `Sensor ${i}`, hidden: i % 3 === 0, enabled: i !== 1 });
-			if (i === 0) sourceId = device.id;
-			const channel = await database
-				.getRepository(SimulatorChannelEntity)
-				.save({ device, name: 'Temperature', category: ChannelCategory.TEMPERATURE });
-			await database.getRepository(SimulatorChannelPropertyEntity).save({
-				channel,
-				category: PropertyCategory.TEMPERATURE,
-				dataType: DataTypeType.FLOAT,
-				permissions: [PermissionType.READ_ONLY],
-			});
-			await database.getRepository(DeviceControlEntity).save({ device, name: 'Device control' });
-			await database.getRepository(ChannelControlEntity).save({ channel, name: 'Channel control' });
-			await database.getRepository(DeviceZoneEntity).save({ deviceId: device.id, zoneId: zone.id });
-		}
-		await database.getRepository(DeviceEntity).save({ name: 'Other integration', hidden: false });
+		// Seed one fixture atomically instead of opening a transaction for every row.
+		await database.transaction(async (manager) => {
+			const zone = await manager.getRepository(SpaceEntity).save({ name: 'Zone', type: SpaceType.ZONE });
+			for (let i = 0; i < 17; i++) {
+				const device = await manager
+					.getRepository(SimulatorDeviceEntity)
+					.save({ name: `Sensor ${i}`, hidden: i % 3 === 0, enabled: i !== 1 });
+				if (i === 0) sourceId = device.id;
+				const channel = await manager
+					.getRepository(SimulatorChannelEntity)
+					.save({ device, name: 'Temperature', category: ChannelCategory.TEMPERATURE });
+				await manager.getRepository(SimulatorChannelPropertyEntity).save({
+					channel,
+					category: PropertyCategory.TEMPERATURE,
+					dataType: DataTypeType.FLOAT,
+					permissions: [PermissionType.READ_ONLY],
+				});
+				await manager.getRepository(DeviceControlEntity).save({ device, name: 'Device control' });
+				await manager.getRepository(ChannelControlEntity).save({ channel, name: 'Channel control' });
+				await manager.getRepository(DeviceZoneEntity).save({ deviceId: device.id, zoneId: zone.id });
+			}
+			await manager.getRepository(DeviceEntity).save({ name: 'Other integration', hidden: false });
+		});
 		readLatest.mockClear();
 	});
 
