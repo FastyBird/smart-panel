@@ -1,10 +1,11 @@
 # Task: Admin UI for configuring space modes
+
 ID: FEATURE-SPACE-MODE-ADMIN-UI
 Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in_progress (UI implemented; independent review and alpha acceptance pending)
+Status: done (merged software; alpha and installed qualification are separate)
 Tracking: #1287
 Issues: #1295
 
@@ -17,12 +18,14 @@ I want to configure mode settings per space including which domains are affected
 ## 2. Context
 
 ### Existing Code References
+
 - **Space configuration**: `apps/admin/src/plugins/spaces-home-control/`
 - **Lighting roles UI**: Similar role assignment patterns exist
 - **Climate roles UI**: Similar role assignment patterns exist
 - **House modes config**: `apps/admin/src/modules/system/`
 
 ### Dependencies
+
 - Requires `FEATURE-SPACE-ACTIVITY-MODES` backend implementation
 - Should follow existing admin UI patterns
 
@@ -40,6 +43,7 @@ I want to configure mode settings per space including which domains are affected
 - Localization for all mode-related strings
 
 **Out of scope**
+
 - Creating custom modes (use scenes for that)
 - Mode scheduling (separate task)
 - Mode history/analytics
@@ -91,6 +95,7 @@ And mode uses system defaults
 ## 7. Implementation hints
 
 ### Component Structure
+
 ```
 SpaceModeSection/
 ├── SpaceModeList.vue           # List of modes with toggles
@@ -100,8 +105,9 @@ SpaceModeSection/
 ```
 
 ### API Integration
-```typescript
-// Read every built-in configuration, including disabled modes
+
+```http
+// Read one built-in configuration, including a disabled mode
 GET /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config
 
 // Full configuration replacement with data.expected_revision
@@ -115,24 +121,25 @@ POST /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/preview
 ```
 
 ### Localization Keys
+
 ```json
 {
-  "spaces.modes.title": "Activity Modes",
-  "spaces.modes.description": "Configure how modes affect this space",
-  "spaces.modes.enabled": "Enabled",
-  "spaces.modes.disabled": "Disabled",
-  "spaces.modes.edit": "Edit Mode",
-  "spaces.modes.reset": "Reset to Defaults",
-  "spaces.modes.domain.lighting": "Lighting",
-  "spaces.modes.domain.climate": "Climate",
-  "spaces.modes.domain.covers": "Window Coverings",
-  "spaces.modes.domain.media": "Media",
-  "spaces.modes.domain.security": "Security",
-  "spaces.modes.work": "Work",
-  "spaces.modes.relax": "Relax",
-  "spaces.modes.sleep": "Sleep",
-  "spaces.modes.entertainment": "Entertainment",
-  "spaces.modes.away": "Away"
+	"spaces.modes.title": "Activity Modes",
+	"spaces.modes.description": "Configure how modes affect this space",
+	"spaces.modes.enabled": "Enabled",
+	"spaces.modes.disabled": "Disabled",
+	"spaces.modes.edit": "Edit Mode",
+	"spaces.modes.reset": "Reset to Defaults",
+	"spaces.modes.domain.lighting": "Lighting",
+	"spaces.modes.domain.climate": "Climate",
+	"spaces.modes.domain.covers": "Window Coverings",
+	"spaces.modes.domain.media": "Media",
+	"spaces.modes.domain.security": "Security",
+	"spaces.modes.work": "Work",
+	"spaces.modes.relax": "Relax",
+	"spaces.modes.sleep": "Sleep",
+	"spaces.modes.entertainment": "Entertainment",
+	"spaces.modes.away": "Away"
 }
 ```
 
@@ -152,12 +159,9 @@ endpoints so disabled modes remain editable. Each independent display-order save
 revision. Conflicts refresh saved truth, preserve the visible draft and require explicit discard/review before a new
 edit; no automatic overwrite or retry is performed. Preview accepts the saved revision only and is invalidated by
 any draft change. Climate defaults stay disabled/unset and explicit enabled intent requires a supported preset
-reference or a heat/cool target/delta. Climate/security actuation remains visibly unsupported.
+reference or a heat/cool target/delta. Configured climate preview/activation is supplied by merged #1498; unavailable providers and targets retain explicit guidance. Security actuation remains unsupported.
 
 All six Admin locales are translated. Mounted editor/API tests cover disabled-mode reads and toggles, order/revision
 saves, reset, saved-only preview invalidation, late-space preview fencing, climate validation, role permissions and
 409 draft preservation. Existing configure/detail tests verify the section's placement and preserve ordinary details.
-These checked criteria record local UI implementation; independent review, composed CI and alpha acceptance remain
-pending. VD1458 climate integration, security actuation, scheduler/presence and post-alpha hardware qualification are
-not completed by this task. The referenced `/.ai-rules/GUIDELINES.md` was unavailable; repository AGENTS.md and
-CONTRIBUTING.md were followed.
+These checked criteria are delivered software in merged #1472, with subsequent climate guidance/localized-render coverage in #1498. Exact-head CI and completed reviews are recorded in the [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md). Scheduler/presence editing, security actuation, alpha publication and installed qualification remain separate. The referenced `/.ai-rules/GUIDELINES.md` was unavailable; repository AGENTS.md and CONTRIBUTING.md were followed.

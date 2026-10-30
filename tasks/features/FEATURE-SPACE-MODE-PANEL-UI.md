@@ -1,10 +1,11 @@
 # Task: Panel UI for activating space modes
+
 ID: FEATURE-SPACE-MODE-PANEL-UI
 Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in_progress (UI implemented; independent review and alpha acceptance pending)
+Status: done (merged software; alpha and installed qualification are separate)
 Tracking: #1287
 Issues: #1296
 
@@ -17,6 +18,7 @@ I want to see available activity modes and activate them with a single tap.
 ## 2. Context
 
 ### Existing Code References
+
 - **Space plugin**: `apps/panel/lib/plugins/spaces-home-control/`
 - **Space page**: `apps/panel/lib/plugins/spaces-home-control/presentation/system_pages/room_overview.dart`
 - **Quick actions**: `apps/panel/lib/features/dashboard/presentation/widgets/`
@@ -24,6 +26,7 @@ I want to see available activity modes and activate them with a single tap.
 - **House modes page**: `apps/panel/lib/features/dashboard/presentation/pages/house_mode/`
 
 ### Dependencies
+
 - Requires `FEATURE-SPACE-ACTIVITY-MODES` backend implementation
 - Should integrate with existing SpacePage layout
 
@@ -40,6 +43,7 @@ I want to see available activity modes and activate them with a single tap.
 - Mode deactivation ("Manual" or none)
 
 **Out of scope**
+
 - Mode configuration (admin only)
 - Mode scheduling display
 - Mode history
@@ -99,6 +103,7 @@ And room returns to manual control
 ## 7. Implementation hints
 
 ### Widget Structure
+
 ```
 SpaceModesSection/
 ├── space_modes_section.dart    # Main section widget
@@ -107,6 +112,7 @@ SpaceModesSection/
 ```
 
 ### Mode Icon Mapping
+
 ```dart
 IconData getModeIcon(ActivityMode mode) {
   switch (mode) {
@@ -127,6 +133,7 @@ IconData getModeIcon(ActivityMode mode) {
 ```
 
 ### API Integration
+
 ```dart
 // Enabled configurations in saved display order
 GET /api/v1/modules/spaces/spaces/{id}/activity-modes
@@ -142,6 +149,7 @@ POST /api/v1/modules/spaces/spaces/{id}/activity-modes/deactivate
 ```
 
 ### Layout Suggestion
+
 ```
 ┌─────────────────────────────────────────┐
 │ Office                            [☰]   │
@@ -164,6 +172,7 @@ POST /api/v1/modules/spaces/spaces/{id}/activity-modes/deactivate
 ```
 
 ### Localization Keys
+
 ```json
 {
   "space_modes_section_title": "Modes",
@@ -205,7 +214,4 @@ no WebSocket actuation fallback or automatic conflict retry.
 All six Panel ARBs and the seven pinned-generated localization files are updated. Generated-HTTP repository and actual
 widget tests cover revision/identity inputs, single-send 401/500/timeout/missing/conflict responses, partial/null states,
 late space/request responses, reconnect, retained routes, pending duplicate-tap prevention and a narrow Czech layout.
-Ordinary room/cover transport and view regressions remain covered. These checked criteria record local UI implementation;
-independent review, composed CI and alpha acceptance remain pending. VD1458 climate integration, security actuation,
-scheduler/presence and post-alpha hardware qualification remain open. The referenced `/.ai-rules/GUIDELINES.md` was
-unavailable; repository AGENTS.md and CONTRIBUTING.md were followed.
+Ordinary room/cover transport and view regressions remain covered. These criteria are delivered software in merged #1472 and retained through #1470/#1498 composed CI. See the [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md). Configured climate activation is delivered by #1498. Schedule/occupancy indicators, security actuation, alpha publication and installed qualification remain separate. The referenced `/.ai-rules/GUIDELINES.md` was unavailable; repository AGENTS.md and CONTRIBUTING.md were followed.

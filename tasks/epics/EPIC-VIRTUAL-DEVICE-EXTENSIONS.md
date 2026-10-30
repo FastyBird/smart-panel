@@ -26,37 +26,38 @@ where dependency, compatibility or the actual reviewer file limit requires a sep
 Checkboxes mean merged, tested software, not candidate code or installed qualification. A child closes only after its
 entire acceptance is satisfied, even when its PR also closes other issues.
 
-### Merged progress
+### Reconciled software progress — 2026-10-30
 
-- [x] VD3-1 / #1448: shared numeric eligibility, weighted mean and explicit outlier filtering.
-- [x] VD3-2 / #1449: additional numeric and binary profiles (merged in #1465).
-- [x] VD3-3 / #1450: measurement authoring and quality presentation (merged in #1465).
-- [x] VD3-4 / #1451: typed group contracts and backend switch/outlet profiles.
+Current main is `b0bfd429ae9f015911d1baad37583652b62d3995`, the squash merge of
+[PR #1498](https://github.com/FastyBird/smart-panel/pull/1498). The
+[acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) maps completed child criteria
+and concrete remaining work to merged PRs and named tests. All 14 checks passed on the exact qualified #1498 head;
+CodeRabbit completed that review and confirmed the older follow-up corrections.
 
-VD3-1 and VD3-4 merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
-head `0e6fe2d0f22988158867b74bc74711b76647c719`, and CodeRabbit's completed main summary reported no merge blockers.
-Admin/Panel support for the new group profiles merged as the VD3-6 software slice in PR #1466.
+- [x] VD3-1 / #1448: weighted/filtering numeric policies, #1464.
+- [x] VD3-2 / #1449: additional numeric and binary profiles, #1465.
+- [x] VD3-3 / #1450: aggregate authoring and quality, #1465.
+- [x] VD3-4 / #1451: switch/outlet group foundation, #1464.
+- [ ] VD3-5 / #1452: fan and qualified cover COMMAND support is merged in #1467; POSITION/TILT completion remains.
+- [x] VD3-6 / #1453: group authoring/repair, Panel, scenes and supported room paths, #1466/#1467.
+- [x] VD3-7 / #1455: presets, durable overrides, effective arbitration and clients, #1469/#1470 and later native-intent fixes.
+- [ ] VD3-8 / #1458: configured activity climate bridge is merged in #1498; schedule/presence acceptance remains.
+- [x] VD3-9 / #1459: typed dew point and cooling cutoff software, #1471.
+- [x] VD3-10 / #1454: provider-neutral guarded parallel branches, #1469/#1470/#1471.
+- [ ] VD3-11 / #1456: Home Assistant native-unit adapter remains unimplemented.
+- [ ] VD3-12 / #1457: Zigbee2MQTT native-unit adapter remains unimplemented.
+- [x] VD3-13 / #1460: SDK numeric operators, #1468.
+- [ ] VD3-14 / #1461: standard mappings are merged; native/composed HomeKit acceptance remains.
+- [ ] VD3-15 / #1462: final composed/upgrade/reference-scenario acceptance, docs and actual alpha publication remain.
 
-### Group controls merged; remaining acceptance
+Reused definitions #1292 are already closed. Activity API #1294, Admin #1295 and Panel #1296 have complete scoped
+software evidence. #1293 remains open for the original combined all-domains-present orchestration acceptance;
+separate domain suites are not that single case. Optional unavailable domains keep their explicit result contract.
+Time scheduling #1297/#1298/#1362 and occupancy #1299/#1300 remain implementation work.
 
-- [ ] VD3-5 / #1452: fan/cover backend with qualified Shelly NG COMMAND feedback merged in PR #1466;
-  POSITION/TILT completion and unqualified cover providers remain unavailable, so the full issue remains partial.
-- [x] VD3-6 / #1453: five-profile Admin authoring/repair, native Panel controls, scenes and existing cover/light room paths
-  merged as the group UI software slice in PR #1466.
-
-[PR #1466](https://github.com/FastyBird/smart-panel/pull/1466) merged at
-`6414291237813856b9a4b7c05401b225820df677` after exact-head CI and CodeRabbit approval.
-Existing numeric/binary editor changes are preserved; cover migration remains 38. There is no standalone
-switch/outlet/fan room intent domain; their native device and scene controls do not imply such a domain.
-Software completion does not establish installed hardware qualification.
-
-VD3-2 and VD3-3 merged in [PR #1465](https://github.com/FastyBird/smart-panel/pull/1465) at
-`4f4dd1f346fa5e9508c729f5b0d11a23a416f465`. Thermostat comfort and mandatory branches are now composed locally
-onto the merged backend (PR #1469, main `2c90a80651b4fab1b6e2c1ffa44121c4595835db`). Client integration,
-composed local checks and pinned Flutter localization generation are recorded in
-`docs/work/virtual-thermostat/member-client-validation.md`; neither #1454 nor #1455 is marked fully delivered here.
-The review corrections pass focused local checks and the Spanish ARB correction has pinned localization generation.
-Fresh independent review and exact-head CI/CodeRabbit remain required before parent publication. Installed qualification, #1458 and the epic remain open.
+[PR #1473](https://github.com/FastyBird/smart-panel/pull/1473) remains a frozen draft reference. Its historical
+200/61/261 result is not a current-main failure count. #1462 still owns the exact original-scenario reconciliation
+before that draft is superseded. Installed qualification and #1447 remain open.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -92,16 +93,16 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
 ## Acceptance
 
 - [ ] Existing virtual devices migrate without identity/history changes, claim release/reacquisition or changed defaults.
-- [ ] Weighted/filtering/numeric/binary profiles have shared preview/persistence/runtime policies and truthful quality.
+- [x] Weighted/filtering/numeric/binary profiles have shared preview/persistence/runtime policies and truthful quality.
 - [ ] Every new group profile is authorable and has feedback-based mixed/unknown/member outcomes across ordinary controls.
-- [ ] Presets and overrides persist, expire/recover correctly, preserve explicit OFF and never bypass protective admission.
+- [x] Presets and overrides persist, expire/recover correctly, preserve explicit OFF and never bypass protective admission.
 - [ ] Existing space schedules/presence drive configured climate actions, with defined DST/restart/manual precedence.
-- [ ] Dew point preserves both input identities/age and cannot masquerade as ambient/floor temperature.
-- [ ] Cooling cutoff has exact trip/recovery/fault semantics and refuses unqualified protective activation.
-- [ ] Parallel actuator groups retain per-member ownership/journals and all-member release/opposed exclusion across restart.
+- [x] Dew point preserves both input identities/age and cannot masquerade as ambient/floor temperature.
+- [x] Cooling cutoff has exact trip/recovery/fault semantics and refuses unqualified protective activation.
+- [x] Parallel actuator groups retain per-member ownership/journals and all-member release/opposed exclusion across restart.
 - [ ] HA and Zigbee `native_unit` strategies bind one canonical physical unit, preserve requested/observed distinctions,
       fence request revisions and diagnose upstream drift without claiming ownership of external writers.
-- [ ] SDK operators have version/owner lifecycle, validation, failure containment and a working test extension.
+- [x] SDK operators have version/owner lifecycle, validation, failure containment and a working test extension.
 - [ ] Standard HomeKit exports, API/spec generation, admin/panel flows, repair and diagnostics cover the delivered profiles.
 - [ ] Named composed acceptance/upgrade tests pass; old documentation and closed-issue checklists reflect actual evidence.
 - [ ] Every PR met exact-head CI/review gates; the next alpha is published with recorded version/tag/source/artifacts
@@ -117,35 +118,11 @@ supported native HA/Zigbee devices and real HomeKit pairing. The existing
 [Shelly commissioning record](../../docs/work/virtual-thermostat/shelly-commissioning.md) stays unqualified until evidence
 is recorded; software checkmarks do not establish installed safety or imply relay/script writes occurred.
 
-## VD3-10 local backend delivery
+## Historical preparation evidence
 
-The provider-neutral mandatory-branch backend foundation is integrated locally on the merged PR #1465 base; see the
-[implementation and validation record](../../docs/work/virtual-thermostat/parallel-branches-validation.md).
-Migration 40 retains singleton claim/journal identities and unresolved ownership. The composed foundation/comfort
-head `5cabef74eb9f914d6970e3cfd526df5a8c4f4608` passed independent local review, without publication.
-Per-member floor protection (migration 41) is being integrated with Admin member arrays, read-only source/setup
-context, diagnostics and fenced staging/recovery; see the [client integration record](../../docs/work/virtual-thermostat/member-client-validation.md).
-The original-owner safety correction and read-only runtime diagnostics passed independent local review; composed
-backend validation passed 26 suites / 508 tests. Admin member authoring corrections are independently accepted; narrow
-activity/qualification freshness correction also passed independent local review. The independently accepted Panel field follow-up is
-integrated locally; composed client validation passed 6 Panel suites / 50 tests and 11 Admin files / 63 tests. Multi-Shelly groups require explicitly bound local guards, separately
-reviewed/staged member installations and actual qualification; no installed eligibility is supplied by these local changes.
-The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
-qualification is claimed by this backend slice.
-
-VD3-7 local implementation includes backend comfort configuration/API, arbitration, durable override recovery and
-dispatch fencing, plus Admin authoring and Panel selection/override diagnostics with all six locales and UI tests.
-Final composed publication review remains open; VD3-7 is not complete. Automation defaults disabled and the
-internal trusted baseline port is reserved for the separate VD3-8 bridge. Bounded restart recovery preserves the
-absolute expiry; observable clock uncertainty inhibits output until an explicit operator action. No hardware
-qualification or physical actuation is part of this local implementation stage.
-
-VD3-9 / #1459 has a locally committed dew-point/cooling software candidate on the composed climate+SDK base.
-Historical backend round-two and client round-one reviews accepted their source checkpoints. The candidate is now
-composed with current climate/main sources, including merged PR #1466 and final climate UI `8ce7a5a`. Own generation
-and fresh scoped checks passed after bounded aggregate cohort/expiry corrections; final independent composed review
-and parent publication gates remain separate. Historical backend (135), Admin (53) and Panel (76) results do not
-validate this merge. Fresh per-head results, retained failures and limits are recorded in its
-[contract and verification record](../../docs/work/virtual-thermostat/dew-point-cooling-validation.md), which keeps generated
-contracts, UI/protocol/persistence tests, independent review and installed qualification explicitly separate. The
-acceptance checkboxes remain open; no issue closure, publication, hardware deployment or certification is claimed.
+The [parallel branch backend record](../../docs/work/virtual-thermostat/parallel-branches-validation.md),
+[member/client record](../../docs/work/virtual-thermostat/member-client-validation.md) and
+[dew-point/cooling record](../../docs/work/virtual-thermostat/dew-point-cooling-validation.md) retain their exact
+historical local checkpoints, failures and limits. Their former publication-pending statements describe preparation
+at those checkpoints; current merged software status is the reconciliation above. They do not certify installed
+Shelly, native HA/Zigbee or Apple Home behavior.

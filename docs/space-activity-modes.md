@@ -1,9 +1,7 @@
 # Space activity modes
 
 The home-control plugin provides Work, Relax, Sleep, Entertainment and Away for rooms and zones.
-These modes are independent of last-interaction tracking and media activities. Climate and security are
-disabled in authored defaults. No startup action, custom mode authoring, scheduler, presence trigger or
-virtual thermostat adapter is included. The Admin and Panel interfaces use the same saved configuration and persisted selection contract.
+These modes are independent of last-interaction tracking and media activities. Climate and security are disabled in authored defaults. Explicitly configured climate actions use the governed activity bridge merged in #1498. Startup never replays an activation; custom mode authoring, scheduling, presence triggers and security actuation remain separate. Admin and Panel use the same saved configuration and persisted selection contract.
 
 ## API
 
@@ -62,15 +60,11 @@ actuator acknowledgements.
 
 Climate defaults have no preset, mode or numeric temperature. Explicit enabled climate configuration requires a
 preset reference or an explicit heat/cool numeric setpoint/delta. Presets cannot mix with mode/numeric settings;
-absolute setpoint and delta are mutually exclusive. Target-specific preset existence, ranges and deadband cannot
-be validated without the future trusted adapter: preview/activation explicitly report unsupported meanwhile.
-Configuration persistence does not claim target availability or send climate commands.
+absolute setpoint and delta are mutually exclusive. For virtual thermostat targets, the trusted climate adapter validates preset existence, ranges and deadband during write-free preview and activation. Numeric physical targets do not receive target-specific range or deadband validation during preview and can still report `READY`; activation clamps numeric setpoints to the current supported ranges. Missing providers and incompatible targets return explicit unavailable/unsupported outcomes. Configuration persistence alone does not claim target availability.
 
-`SpaceClimateAutomationPort` only prepares an internal trusted activation contract. There is no whole virtual-device
-plugin import or registered adapter. Future integration must implement owner/baseline compare-and-swap inside graph
-and controller fences, reject foreign/legacy-unowned baselines, withdraw only a matching baseline on an unmapped
-selection and retain source watermarks/tombstones so delayed Work cannot resurrect after Relax. A public owner token
-or the existing broad baseline-clear operation cannot satisfy that contract. VD1458 remains open.
+Virtual thermostat activation requires explicit automation opt-in and a valid current source/controller/slot group. Existing manual holds, explicit OFF, temporary overrides and protective qualification keep precedence. Deactivation or source changes withdraw only the original owned installation; they cannot adopt legacy actor-tagged JSON or retire a successor. The guarded runtime and physical intent paths retain their original command and observation contracts.
+
+Settled unchanged groups can renew after unrelated graph validation. An activation still waiting for original runtime completion can fail and retire if graph authority changes; it is not retried under newer authority. See [climate architecture](climate-architecture.md#activity-climate-automation) for the bounded source/slot/effect contracts. Scheduling and occupancy integration remain #1458 work.
 
 Enabled security reports unsupported because current security services expose status/acknowledgement, not arm/disarm.
 
@@ -81,7 +75,7 @@ Open Edit to enable or disable a mode, change its display order, and configure e
 numbers appear first; each mode is saved independently, so changing several orders is not an atomic reorder.
 Reset to defaults is an explicit revision-checked write. Climate defaults remain disabled and unset. Enabling climate
 requires an explicit Comfort/Eco/Away preset or a heat/cool temperature target or delta; Work never chooses a preset
-implicitly. Climate and security settings can be saved but their unsupported actuation remains visible.
+implicitly. Climate settings use target-specific readiness and explicit provider guidance; unsupported security actuation remains visible.
 
 Preview saved settings checks the saved revision only. Editing any field invalidates the preview and disables it until
 saved. It never saves the draft, creates a media binding or controls a device. Preview shows readiness per domain,
@@ -101,5 +95,4 @@ section. An unconfirmed response stays explicitly uncertain even when a read-onl
 Configuration/state events, device changes and reconnection refetch HTTP state only. Each mounted room page owns an independent read model. Space/request generations fence
 late responses, and stale or busy controls cannot submit. Manual activation/deactivation bypass automatic network and
 token-refresh replay, use no WebSocket actuation fallback, and never retry a conflict automatically. Scheduling,
-presence, custom activity authoring, the VD1458 climate bridge, security actuation and hardware qualification remain
-separate work. Independent review, composed CI and alpha acceptance remain pending.
+presence, custom activity authoring, security actuation and hardware qualification remain separate work. Merged #1472/#1498 carry exact-head CI and completed reviews; final epic acceptance and alpha publication remain open. See [software acceptance](virtual-device-extensions-acceptance.md).

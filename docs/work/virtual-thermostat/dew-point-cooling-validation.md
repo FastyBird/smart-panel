@@ -1,5 +1,11 @@
 # Dew point and cooling software candidate — issue #1459
 
+Current software status (2026-10-30): merged in #1471; the [acceptance reconciliation](../../virtual-device-extensions-acceptance.md) records scoped completion and remaining work. Installed qualification and the parent epic remain open.
+
+## Historical preparation record
+
+The checkpoint results and publication-pending statements below describe their original preparation time. They are preserved as historical evidence, not current delivery status.
+
 Status: locally generated and validated on current climate/main after bounded regression corrections.
 Final independent composed review and parent publication gates remain; this is not installed qualification.
 Base: `cf8a5b656bc1eab246389cd73412f03228a66d32` from `origin/feat/virtual-thermostat-comfort-branches`.
