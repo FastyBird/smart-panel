@@ -30,7 +30,8 @@ describe('virtual producer lifecycle startup', () => {
 
 	it('keeps an actual missing production migration fatal', async () => {
 		const missingMigration = new Error('no such table: devices_module_channels_properties');
-		const database = { manager: { find: jest.fn().mockRejectedValue(missingMigration) } } as unknown as DataSource;
+		const transaction = jest.fn().mockRejectedValue(missingMigration);
+		const database = { transaction } as unknown as DataSource;
 		const config = new NestConfigService({ FB_CLI: 'off' });
 		const graph = new VirtualDependencyGraphService(database, config);
 		const state = new VirtualProducerStateService(
@@ -41,6 +42,7 @@ describe('virtual producer lifecycle startup', () => {
 			config,
 		);
 		await expect(state.onModuleInit()).rejects.toBe(missingMigration);
+		expect(transaction).toHaveBeenCalledTimes(1);
 		state.onModuleDestroy();
 	});
 });

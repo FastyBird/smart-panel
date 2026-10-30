@@ -59,6 +59,8 @@ import { LightingIntentService } from './services/lighting-intent.service';
 import { MediaCapabilityService } from './services/media-capability.service';
 import { SpaceActivityConfigService } from './services/space-activity-config.service';
 import { SpaceActivityDomainsService } from './services/space-activity-domains.service';
+import { SPACE_CLIMATE_AUTOMATION_PORT } from './services/space-climate-automation.port';
+import { SpaceClimateAutomationService } from './services/space-climate-automation.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceClimateStateService } from './services/space-climate-state.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
@@ -144,6 +146,8 @@ import { IntentSpecLoaderService } from './spec';
 		WebsocketModule,
 	],
 	providers: [
+		SpaceClimateAutomationService,
+		{ provide: SPACE_CLIMATE_AUTOMATION_PORT, useExisting: SpaceClimateAutomationService },
 		SpaceActivityConfigService,
 		SpaceActivityDomainsService,
 		SpaceModeService,

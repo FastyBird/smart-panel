@@ -5,6 +5,8 @@ import { StorageService } from '../../storage/services/storage.service';
 import { ConnectionState, DEVICES_MODULE_NAME, OnlineDeviceState, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
+import { ControllerPublicationContext } from './controller-publication-context';
+
 export interface DeviceConnectionStateValue {
 	online: boolean;
 	status: ConnectionState;
@@ -98,6 +100,9 @@ export class DeviceConnectionStateService {
 	}
 
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
+		const publication = ControllerPublicationContext.current();
+		const deviceId = device.id;
+		const propertyId = property.id;
 		if (property.category !== PropertyCategory.STATUS) {
 			this.logger.error(`Failed to write device provided property if=${property.id} is not device status property`, {
 				resource: device.id,
@@ -115,26 +120,30 @@ export class DeviceConnectionStateService {
 		const lastChanged = new Date();
 
 		// Update local cache regardless of storage availability
-		this.statusMap.set(device.id, { online: isOnline, status, lastChanged });
-		this.statusPropertyMap.set(device.id, property.id);
+		if (!publication || publication.isEligible()) {
+			this.statusMap.set(deviceId, { online: isOnline, status, lastChanged });
+			this.statusPropertyMap.set(deviceId, propertyId);
+		}
 
 		if (!this.storageService.isConnected()) {
 			return;
 		}
 
 		try {
-			await this.storageService.writePoints([
-				{
-					measurement: 'device_status',
-					tags: { deviceId: device.id, propertyId: property.id },
-					fields: {
-						online: isOnline,
-						onlineI: isOnline ? 1 : 0,
-						status,
+			await ControllerPublicationContext.effect('device.status', () =>
+				this.storageService.writePoints([
+					{
+						measurement: 'device_status',
+						tags: { deviceId, propertyId },
+						fields: {
+							online: isOnline,
+							onlineI: isOnline ? 1 : 0,
+							status,
+						},
+						timestamp: new Date(),
 					},
-					timestamp: new Date(),
-				},
-			]);
+				]),
+			);
 		} catch (error) {
 			const err = error as Error;
 
@@ -176,6 +185,9 @@ export class DeviceConnectionStateService {
 		devices: Array<Pick<DeviceEntity, 'id'>>,
 		strict: boolean,
 	): Promise<Map<DeviceEntity['id'], DeviceConnectionStateValue>> {
+		const publication = ControllerPublicationContext.current();
+		const health = publication ? this.storageService.captureControllerReadHealth() : null;
+		const eligible = () => !publication || (publication.isEligible() && health());
 		const statuses = new Map<DeviceEntity['id'], DeviceConnectionStateValue>();
 		const missingIds: DeviceEntity['id'][] = [];
 
@@ -225,6 +237,10 @@ export class DeviceConnectionStateService {
 					continue;
 				}
 
+				if (!eligible()) {
+					statuses.set(id, this.unknownStatus());
+					continue;
+				}
 				const row = rowByDevice.get(id);
 				const status = row ? this.toStatus(row) : this.unknownStatus();
 				this.statusMap.set(id, status);
@@ -233,10 +249,14 @@ export class DeviceConnectionStateService {
 
 			return statuses;
 		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, {
-				stack: err.stack,
-			});
+			try {
+				const err = error as Error;
+				this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, {
+					stack: err.stack,
+				});
+			} catch {
+				// Diagnostics must not replace the original query failure or skip the ordinary fallback.
+			}
 
 			if (strict) {
 				throw error;
@@ -254,6 +274,10 @@ export class DeviceConnectionStateService {
 		device: Pick<DeviceEntity, 'id'>,
 		strict: boolean,
 	): Promise<DeviceConnectionStateValue> {
+		const publication = ControllerPublicationContext.current();
+		const health = publication ? this.storageService.captureControllerReadHealth() : null;
+		const eligible = () => !publication || (publication.isEligible() && health());
+		if (publication) device = { id: device.id };
 		// Check local cache first
 		if (this.statusMap.has(device.id)) {
 			this.logger.debug(
@@ -287,6 +311,8 @@ export class DeviceConnectionStateService {
 				? this.storageService.queryStrict<DeviceStatusRow>(query)
 				: this.storageService.query<DeviceStatusRow>(query));
 
+			if (!eligible()) return this.statusMap.get(device.id) ?? this.unknownStatus();
+
 			if (!result.length) {
 				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
 				const reportedWhileReading = this.statusMap.get(device.id);
@@ -317,12 +343,16 @@ export class DeviceConnectionStateService {
 
 			return connectionState;
 		} catch (error) {
-			const err = error as Error;
+			try {
+				const err = error as Error;
 
-			this.logger.error(`Failed to read latest status from storage id=${device.id} error=${err.message}`, {
-				resource: device.id,
-				stack: err.stack,
-			});
+				this.logger.error(`Failed to read latest status from storage id=${device.id} error=${err.message}`, {
+					resource: device.id,
+					stack: err.stack,
+				});
+			} catch {
+				// Diagnostics must not replace the original query failure or skip the ordinary fallback.
+			}
 
 			if (strict) {
 				throw error;

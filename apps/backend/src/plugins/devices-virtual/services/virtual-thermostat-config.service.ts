@@ -2,9 +2,14 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { DataSource, EntityManager, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import {
+	SqliteCommitGuardReceipt,
+	observeSqliteOuterOutcome,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -16,7 +21,8 @@ import {
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
-import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
+import { captureCreation, invokeCreation, snapshotCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
@@ -50,8 +56,18 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { thermostatComfortSelection } from './thermostat-comfort-selection';
+import {
+	ControllerMutationImage,
+	assertControllerMutationImage,
+	captureControllerBindings,
+	controllerConfigurationUnchanged,
+	readControllerMutationImage,
+	writeControllerPartition,
+	writeControllerSettingPermissions,
+} from './thermostat-controller-mutation';
 import { ThermostatCoolingDependencyService } from './thermostat-cooling-dependency.service';
 import {
 	resolveThermostatProtectionSource,
@@ -63,6 +79,10 @@ import {
 	isEligibleVirtualMeasurement,
 	isEligibleVirtualTransformedTemperature,
 } from './virtual-source-eligibility.utils';
+import {
+	ThermostatCreationAdmission,
+	VirtualThermostatAutomationService,
+} from './virtual-thermostat-automation.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import {
@@ -82,7 +102,8 @@ const fail = (message: string): never => {
 };
 
 @Injectable()
-export class VirtualThermostatConfigService {
+export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDestroy {
+	private stopAutomationPublication?: () => void;
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly structureLock: DeviceStructureLockService,
@@ -91,29 +112,139 @@ export class VirtualThermostatConfigService {
 		private readonly events: EventEmitter2,
 		private readonly values: PropertyValueService,
 		@Optional() private readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
+		@Optional() private readonly automation?: VirtualThermostatAutomationService,
 	) {}
+
+	onModuleInit(): void {
+		if (process.env.FB_CLI === 'on') return;
+		const publication = captureCreation(this, ['afterCommit']);
+		this.stopAutomationPublication = this.automation?.registerPublication((id) =>
+			publication.values.afterCommit.call(publication.receiver, id),
+		);
+	}
+	onModuleDestroy(): void {
+		this.stopAutomationPublication?.();
+		this.stopAutomationPublication = undefined;
+	}
 
 	private coolingDependencies(): ThermostatCoolingDependencyService {
 		return new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims);
 	}
 
 	async configure(controllerId: string, dto: ConfigureVirtualThermostatDto) {
-		// Revoke captured ON authority synchronously, before lock acquisition or any validation I/O.
-		const release = this.claims.holdRecoveryFence();
-		this.claims.revokeAllQualifications();
-		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
-		try {
-			return await this.structureLock.runExclusive(async () => {
-				await this.graph.withStructuralWrite(async (manager) => {
-					const prepared = await this.prepare(manager, controllerId, dto);
-					await this.persist(manager, controllerId, prepared);
-				}, dto.expectedGraphRevision);
-				return this.afterCommit(controllerId);
-			});
-		} finally {
-			release();
-			await this.claims.refresh().catch(() => undefined);
-		}
+		return ControllerPublicationContext.complete(async () => {
+			// Revoke captured ON authority synchronously, before lock acquisition or any validation I/O.
+			const release = this.claims.holdRecoveryFence();
+			this.claims.revokeAllQualifications();
+			this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+			let input: ConfigureVirtualThermostatDto;
+			let predecessors: Promise<void> | undefined;
+			let captureFailure: { cause: unknown } | undefined;
+			let ownerCurrent = () => false;
+			let noop: ReturnType<typeof VirtualThermostatOwnershipSubscriber.captureNoopFence> | undefined;
+			try {
+				noop = VirtualThermostatOwnershipSubscriber.captureNoopFence(this.dataSource, () => ownerCurrent());
+				predecessors = this.automation?.beginMutation(controllerId);
+				void predecessors?.catch(() => undefined);
+				input = snapshotCreation(dto);
+			} catch (cause) {
+				captureFailure = { cause };
+			}
+			try {
+				try {
+					if (predecessors !== undefined) await predecessors;
+				} catch (cause: unknown) {
+					captureFailure ??= { cause };
+				}
+				return await this.structureLock.runExclusive(
+					ControllerPublicationContext.captureCallback(async () => {
+						if (captureFailure) throw captureFailure.cause;
+						ownerCurrent = this.structureLock.captureExclusiveOwner();
+						let receipt: SqliteCommitGuardReceipt;
+						let ready = false;
+						let unchanged = false;
+						const write = async (manager: EntityManager, advanceGraph?: () => Promise<number>) => {
+							const slot = await this.automation?.captureManualSlot(manager, controllerId);
+							const owned = await this.automation?.captureManualBaseline(manager, controllerId, 0);
+							const before = await readControllerMutationImage(manager, controllerId);
+							const edges = captureCreation(this.graph, ['edges']);
+							registerSqliteCommitGuard(manager, () => edges.current());
+							const bindings = await captureControllerBindings(
+								manager,
+								controllerId,
+								before,
+								[
+									...(Array.isArray(input.sources) ? input.sources.map((source) => source?.sourcePropertyId) : []),
+									...(Array.isArray(input.settings) ? input.settings.map((setting) => setting?.propertyId) : []),
+									...(Array.isArray(input.actuators)
+										? input.actuators.flatMap((actuator) => [
+												actuator?.sourcePropertyId,
+												actuator?.protection?.sourcePropertyId,
+												actuator?.coolingProtection?.dewPointPropertyId,
+												actuator?.coolingProtection?.surfacePropertyId,
+											])
+										: []),
+								],
+								() => edges.values.edges.call(edges.receiver, manager),
+							);
+							const prepared = snapshotCreation(await this.prepare(manager, controllerId, input));
+							if (owned && prepared.config.comfort) prepared.config.comfort.automation_baseline = null;
+							await bindings();
+							await assertControllerMutationImage(manager, controllerId, before);
+							unchanged =
+								(!slot?.facts || (!['LIVE', 'PROVISIONAL'].includes(slot.facts.state) && slot.facts.manualHold)) &&
+								controllerConfigurationUnchanged(
+									manager,
+									before,
+									prepared,
+									input.sources.map((source) => source.id),
+								);
+							if (unchanged) {
+								await this.automation?.captureUnchangedAuthority(manager, controllerId);
+								await this.graph.sealControllerLedger(manager);
+								noop.arm();
+								ready = true;
+								return;
+							}
+							for (const row of [
+								prepared.config,
+								...prepared.actuators,
+								...prepared.protections,
+								...prepared.coolingDependencies,
+							])
+								if (!Number.isSafeInteger(row.revision) || row.revision < 1)
+									fail('Thermostat configuration counter overflow.');
+							const graphRevision = await advanceGraph();
+							const expected = await this.persist(manager, controllerId, prepared, before);
+							await bindings(expected.properties, manager, graphRevision);
+							await this.automation?.manualFence(manager, controllerId, true, slot);
+							await this.graph.sealControllerLedger(manager);
+							noop.applied();
+							ready = true;
+						};
+						await this.graph.withControllerMutationWrite(
+							write,
+							input.expectedGraphRevision,
+							(manager) => {
+								receipt = observeSqliteOuterOutcome(manager);
+								noop.admit(manager);
+								registerSqliteCommitGuard(manager, () => ready && ownerCurrent());
+							},
+							() => {
+								if (receipt.outcome !== 'committed') fail('Missing original native configuration acknowledgement.');
+							},
+							write,
+							noop,
+						);
+						return unchanged ? this.get(controllerId) : this.afterCommit(controllerId);
+					}),
+				);
+			} finally {
+				noop?.close();
+				release();
+				await this.claims.refresh().catch(() => undefined);
+			}
+		});
 	}
 	/** Shared by existing configuration and an admitted atomic creation transaction. */
 	prepare(
@@ -124,34 +255,87 @@ export class VirtualThermostatConfigService {
 	) {
 		return this.validate(manager, controllerId, dto, draft);
 	}
+	async captureCreationPredecessor(controllerId?: string): Promise<(manager: EntityManager) => Promise<void>> {
+		return this.automation ? this.automation.captureCreationPredecessor(controllerId) : () => Promise.resolve();
+	}
+	async captureCreation(
+		manager: EntityManager,
+		controllerId: string,
+		predecessor?: (manager: EntityManager) => Promise<void>,
+	): Promise<ThermostatCreationAdmission> {
+		return this.automation
+			? this.automation.captureCreation(manager, controllerId, predecessor)
+			: { finish: () => Promise.resolve() };
+	}
+
 	async persist(
 		manager: EntityManager,
 		controllerId: string,
 		prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>,
-	): Promise<void> {
-		await manager.save(prepared.config);
-		await manager.delete(VirtualThermostatSourceEntity, { controllerId });
-		await manager.save(prepared.sources);
-		const oldSettings = await manager.findBy(VirtualThermostatSettingEntity, { controllerId });
-		for (const setting of oldSettings)
-			if (!prepared.settings.some((row) => row.propertyId === setting.propertyId))
+		before?: ControllerMutationImage,
+		creation?: () => Promise<void>,
+	): Promise<ControllerMutationImage | undefined> {
+		// A reused history container is a new controller lifetime. Existing installed
+		// physical evidence must not qualify its fresh claims, even for the same leaf.
+		if (before && creation) for (const claim of prepared.actuators) claim.qualificationGeneration = uuid();
+		const expected = before ? { ...before } : undefined;
+		if (expected) {
+			expected.configuration = await writeControllerPartition(manager, 'configuration', before.configuration, [
+				prepared.config,
+			]);
+			expected.sources = await writeControllerPartition(manager, 'sources', before.sources, prepared.sources);
+		} else {
+			await manager.save(prepared.config);
+			await manager.delete(VirtualThermostatSourceEntity, { controllerId });
+			await manager.save(prepared.sources);
+		}
+		if (expected) {
+			expected.properties = await writeControllerSettingPermissions(manager, before, prepared.settings);
+		} else {
+			const oldSettings = await manager.findBy(VirtualThermostatSettingEntity, { controllerId });
+			for (const setting of oldSettings)
+				if (!prepared.settings.some((row) => row.propertyId === setting.propertyId))
+					await manager.update(
+						VirtualChannelPropertyEntity,
+						{ id: setting.propertyId },
+						{ permissions: [PermissionType.READ_ONLY] },
+					);
+			for (const setting of prepared.settings)
 				await manager.update(
 					VirtualChannelPropertyEntity,
 					{ id: setting.propertyId },
-					{ permissions: [PermissionType.READ_ONLY] },
+					{ permissions: [PermissionType.READ_WRITE] },
 				);
-		for (const setting of prepared.settings)
-			await manager.update(
-				VirtualChannelPropertyEntity,
-				{ id: setting.propertyId },
-				{ permissions: [PermissionType.READ_WRITE] },
+		}
+		if (expected) {
+			expected.settings = await writeControllerPartition(manager, 'settings', before.settings, prepared.settings);
+			expected.claims = await writeControllerPartition(manager, 'claims', before.claims, prepared.actuators, true);
+			expected.protections = await writeControllerPartition(
+				manager,
+				'protections',
+				before.protections,
+				prepared.protections,
+				true,
 			);
-		await manager.delete(VirtualThermostatSettingEntity, { controllerId });
-		await manager.save(prepared.settings);
-		await manager.save(prepared.actuators);
-		await manager.save(ThermostatMemberProtectionEntity, prepared.protections);
-		if (prepared.coolingDependencies.length)
-			await manager.save(ThermostatCoolingDependencyEntity, prepared.coolingDependencies);
+			expected.cooling = await writeControllerPartition(
+				manager,
+				'cooling',
+				before.cooling,
+				prepared.coolingDependencies,
+				true,
+			);
+			await assertControllerMutationImage(manager, controllerId, expected);
+		} else {
+			await manager.delete(VirtualThermostatSettingEntity, { controllerId });
+			await manager.save(prepared.settings);
+			await manager.save(prepared.actuators);
+			await manager.save(ThermostatMemberProtectionEntity, prepared.protections);
+			if (prepared.coolingDependencies.length)
+				await manager.save(ThermostatCoolingDependencyEntity, prepared.coolingDependencies);
+			if (!creation) await this.automation?.initializeCreated(manager, controllerId);
+		}
+		if (creation) await creation();
+		return expected;
 	}
 	async describe(prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>) {
 		return this.model(
@@ -176,28 +360,41 @@ export class VirtualThermostatConfigService {
 	}
 	/** Must run only after the owning writer commits; no preview or rollback may publish. */
 	async afterCommit(controllerId: string) {
-		this.claims.invalidate();
-		const current = await this.get(controllerId);
-		for (const setting of current.settings) {
-			const target = await this.property(this.dataSource.manager, setting.property);
-			const value =
-				setting.setting === 'heating_setpoint'
-					? current.policy.heatingSetpoint
-					: setting.setting === 'cooling_setpoint'
-						? current.policy.coolingSetpoint
-						: setting.setting === 'locked'
-							? current.locked
-							: setting.setting === 'heating_enabled'
-								? ['heat', 'auto'].includes(current.requested_mode)
-								: ['cool', 'auto'].includes(current.requested_mode);
-			await this.values.write(target.property, value);
-			target.property.value = await this.values.readLatest(target.property);
-			this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, target.property);
-		}
-		// The structural write has committed. Reload fails closed and schedules retry without changing that outcome.
-		await this.claims.refresh().catch(() => undefined);
-		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
-		return current;
+		const own = captureCreation(this, ['get', 'property'] as (keyof this)[]);
+		const get = Reflect.get(own.values, 'get') as typeof this.get;
+		const property = Reflect.get(own.values, 'property') as typeof this.property;
+		const manager = this.dataSource.manager;
+		const claims = captureCreation(this.claims, ['invalidate', 'refresh']);
+		const values = captureCreation(this.values, ['write', 'readLatest']);
+		const events = captureCreation(this.events, ['emit']);
+		const graphCurrent = this.graph.capturePublishGuard();
+		const publication = new ControllerPublicationContext(
+			() => graphCurrent() && own.current() && claims.current() && values.current() && events.current(),
+		);
+		return publication.run(async () => {
+			claims.values.invalidate.call(claims.receiver);
+			const current = await invokeCreation(get, this, controllerId);
+			for (const setting of current.settings) {
+				const target = await invokeCreation(property, this, manager, setting.property);
+				const value =
+					setting.setting === 'heating_setpoint'
+						? current.policy.heatingSetpoint
+						: setting.setting === 'cooling_setpoint'
+							? current.policy.coolingSetpoint
+							: setting.setting === 'locked'
+								? current.locked
+								: setting.setting === 'heating_enabled'
+									? ['heat', 'auto'].includes(current.requested_mode)
+									: ['cool', 'auto'].includes(current.requested_mode);
+				await values.values.write.call(values.receiver, target.property, value);
+				target.property.value = await values.values.readLatest.call(values.receiver, target.property);
+				events.values.emit.call(events.receiver, EventType.CHANNEL_PROPERTY_UPDATED, target.property);
+			}
+			// The structural write has committed. Reload fails closed and schedules retry without changing that outcome.
+			await claims.values.refresh.call(claims.receiver).catch(() => undefined);
+			events.values.emit.call(events.receiver, THERMOSTAT_CONFIG_CHANGED, controllerId);
+			return current;
+		});
 	}
 	async preview(controllerId: string, dto: ConfigureVirtualThermostatDto) {
 		return this.structureLock.runExclusive(async () => {
@@ -252,6 +449,7 @@ export class VirtualThermostatConfigService {
 				const claims = captureCreation(entryClaims.receiver, ['invalidate']);
 				const graph = captureCreation(this.graph, [
 					'withComfortSelectionWrite',
+					'sealControllerLedger',
 					'structuralWrite',
 					'refreshValidation',
 					'dataSource',
@@ -265,7 +463,7 @@ export class VirtualThermostatConfigService {
 				const check = () => {
 					if (!current()) fail('Original thermostat release dispatch expired.');
 				};
-				const operation = selection.operation(input, () => ownerCurrent(), current);
+				const operation = selection.operation(input, () => ownerCurrent(), current, true);
 				return { value: { lock, graph, claims, input, operation, check } };
 			} catch (cause: unknown) {
 				return { failure: Object.freeze({ cause }) };
@@ -276,6 +474,8 @@ export class VirtualThermostatConfigService {
 		entryClaims.values.revokeAllQualifications.call(entryClaims.receiver);
 		events.values.emit.call(events.receiver, configChanged, controllerId);
 		try {
+			const predecessors = !captured.failure ? this.automation?.beginMutation(controllerId) : undefined;
+			if (predecessors !== undefined) await predecessors;
 			return await invokeCreation(exclusive, exclusiveLock.receiver, async () => {
 				if (captured.failure) throw captured.failure.cause;
 				const { lock, graph, claims, input, operation, check } = captured.value;
@@ -284,7 +484,15 @@ export class VirtualThermostatConfigService {
 				try {
 					await graph.values.withComfortSelectionWrite.call(
 						graph.receiver,
-						operation.write,
+						async (manager) => {
+							const slot = await this.automation?.captureManualSlot(manager, controllerId);
+							const owned = await this.automation?.captureInstalledIntent(manager, controllerId);
+							const result = await operation.write(manager, owned ?? undefined);
+							await this.automation?.manualFence(manager, controllerId, true, slot);
+							await graph.values.sealControllerLedger.call(graph.receiver, manager);
+							operation.markReady();
+							return result;
+						},
 						undefined,
 						operation.admit,
 						operation.accepted,
@@ -325,95 +533,173 @@ export class VirtualThermostatConfigService {
 		dto: RestoreVirtualThermostatActuatorDto,
 		actorId: string,
 	) {
-		if (
-			!actorId ||
-			dto.disconnectionAcknowledged !== true ||
-			typeof dto.reason !== 'string' ||
-			dto.reason.trim().length < 10
-		)
-			fail('An identified operator, disconnection acknowledgement and meaningful reason are required.');
-		const releaseFence = this.claims.holdRecoveryFence();
-		try {
-			return await this.structureLock.runExclusive(async () => {
-				await this.graph.withStructuralWrite(async (manager) => {
-					const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
-					const claim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claimId, controllerId });
-					if (
-						!config ||
-						!claim ||
-						config.revision !== dto.expectedRevision ||
-						claim.revision !== dto.expectedClaimRevision
-					)
-						fail('Thermostat or claim revision changed; reload the retained reservation.');
-					if (claim.state === 'released' || claim.physicalIdentity !== dto.physicalIdentity)
-						fail('Only this exact retained canonical claim can be restored.');
-					if (claim.sourcePropertyId) {
-						if (claim.sourcePropertyId !== dto.sourcePropertyId)
-							fail('The old endpoint still exists; replacing its property requires a retained alias reservation.');
-						const previous = await this.property(manager, claim.sourcePropertyId);
-						if (
-							thermostatActuatorIdentity(previous.property, previous.channel, previous.device) !==
-							claim.physicalIdentity
-						)
-							fail('Existing endpoint no longer matches the reserved canonical hardware.');
-					}
-					const target = await this.property(manager, dto.sourcePropertyId);
-					const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
-					if (
-						identity !== claim.physicalIdentity ||
-						!(target.channel instanceof ShellyNgChannelEntity) ||
-						!(target.property instanceof ShellyNgChannelPropertyEntity) ||
-						target.property.identifier !== 'output'
-					)
-						fail('Restored property must be the same canonical readable and writable Shelly output.');
-					const conflict = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, {
-						physicalIdentity: identity,
-						state: Not('released'),
-					});
-					if (conflict?.id !== claim.id) fail('Canonical physical actuator is reserved by another claim.');
-					const priorProperty = claim.sourcePropertyIdentity;
-					const releaseRequestedAt = claim.releaseRequestedAt ?? config.releaseRequestedAt;
-					const releaseRequested = claim.state === 'releasing' || releaseRequestedAt !== null;
-					config.revision++;
-					config.requestedMode = 'off';
-					claim.revision++;
-					claim.qualificationGeneration = uuid();
-					claim.state = releaseRequested ? 'releasing' : 'reserved';
-					claim.sourcePropertyId = target.property.id;
-					claim.sourcePropertyIdentity = target.property.id;
-					claim.sourceDeviceId = target.device.id;
-					claim.sourceDeviceIdentity = target.device.id;
-					claim.contractFingerprint = thermostatPropertyContract(target.property, target.channel, target.device);
-					claim.reason = releaseRequested ? claim.reason : 'operator_restored_same_physical_actuator';
-					claim.releaseRequestedAt = releaseRequestedAt;
-					claim.releasedAt = null;
-					claim.releaseEvidence = null;
-					await manager.save(config);
-					await manager.save(claim);
-					await manager.save(
-						manager.create(VirtualThermostatRecoveryEntity, {
-							controllerId,
-							claimId: claim.id,
-							physicalIdentity: identity,
-							previousPropertyIdentity: priorProperty,
-							restoredPropertyId: target.property.id,
-							actorId,
-							reason: dto.reason.trim(),
-							disconnectionAcknowledged: true,
-							configurationRevision: config.revision,
-							claimRevision: claim.revision,
-							createdAt: new Date(),
-						}),
-					);
-				});
-				this.claims.revokeQualification(dto.physicalIdentity);
-				return this.afterCommit(controllerId);
-			});
-		} finally {
-			releaseFence();
-			// Reload schedules its own retry; preserve the committed result or original validation error.
-			await this.claims.refresh().catch(() => undefined);
-		}
+		return ControllerPublicationContext.complete(async () => {
+			if (
+				!actorId ||
+				dto.disconnectionAcknowledged !== true ||
+				typeof dto.reason !== 'string' ||
+				dto.reason.trim().length < 10
+			)
+				fail('An identified operator, disconnection acknowledgement and meaningful reason are required.');
+			const releaseFence = this.claims.holdRecoveryFence();
+			let ownedInput: RestoreVirtualThermostatActuatorDto;
+			let predecessors: Promise<void> | undefined;
+			let captureFailure: { cause: unknown } | undefined;
+			try {
+				predecessors = this.automation?.beginMutation(controllerId);
+				void predecessors?.catch(() => undefined);
+				ownedInput = snapshotCreation(dto);
+			} catch (cause) {
+				captureFailure = { cause };
+			}
+			try {
+				try {
+					if (predecessors !== undefined) await predecessors;
+				} catch (cause: unknown) {
+					captureFailure ??= { cause };
+				}
+				return await this.structureLock.runExclusive(
+					ControllerPublicationContext.captureCallback(async () => {
+						if (captureFailure) throw captureFailure.cause;
+						const dto = ownedInput;
+						const ownerCurrent = this.structureLock.captureExclusiveOwner();
+						let receipt: SqliteCommitGuardReceipt;
+						let ready = false;
+						await this.graph.withControllerMutationWrite(
+							async (manager) => {
+								const slot = await this.automation?.captureManualSlot(manager, controllerId);
+								const owned = await this.automation?.captureManualBaseline(manager, controllerId);
+								const before = await readControllerMutationImage(manager, controllerId);
+								const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+								const edges = captureCreation(this.graph, ['edges']);
+								registerSqliteCommitGuard(manager, () => edges.current());
+								const bindings = await captureControllerBindings(
+									manager,
+									controllerId,
+									before,
+									[dto.sourcePropertyId],
+									() => edges.values.edges.call(edges.receiver, manager),
+								);
+								const claim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, {
+									id: claimId,
+									controllerId,
+								});
+								if (
+									!config ||
+									!claim ||
+									config.revision !== dto.expectedRevision ||
+									claim.revision !== dto.expectedClaimRevision
+								)
+									fail('Thermostat or claim revision changed; reload the retained reservation.');
+								if (
+									![config.revision, claim.revision].every(
+										(value) => Number.isSafeInteger(value) && value >= 1 && value < Number.MAX_SAFE_INTEGER,
+									)
+								)
+									fail('Thermostat or claim revision overflowed; the retained reservation cannot be restored.');
+								if (claim.state === 'released' || claim.physicalIdentity !== dto.physicalIdentity)
+									fail('Only this exact retained canonical claim can be restored.');
+								if (claim.sourcePropertyId) {
+									if (claim.sourcePropertyId !== dto.sourcePropertyId)
+										fail(
+											'The old endpoint still exists; replacing its property requires a retained alias reservation.',
+										);
+									const previous = await this.property(manager, claim.sourcePropertyId);
+									if (
+										thermostatActuatorIdentity(previous.property, previous.channel, previous.device) !==
+										claim.physicalIdentity
+									)
+										fail('Existing endpoint no longer matches the reserved canonical hardware.');
+								}
+								const target = await this.property(manager, dto.sourcePropertyId);
+								const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
+								if (
+									identity !== claim.physicalIdentity ||
+									!(target.channel instanceof ShellyNgChannelEntity) ||
+									!(target.property instanceof ShellyNgChannelPropertyEntity) ||
+									target.property.identifier !== 'output'
+								)
+									fail('Restored property must be the same canonical readable and writable Shelly output.');
+								const conflict = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, {
+									physicalIdentity: identity,
+									state: Not('released'),
+								});
+								if (conflict?.id !== claim.id) fail('Canonical physical actuator is reserved by another claim.');
+								const priorProperty = claim.sourcePropertyIdentity;
+								const releaseRequestedAt = claim.releaseRequestedAt ?? config.releaseRequestedAt;
+								const releaseRequested = claim.state === 'releasing' || releaseRequestedAt !== null;
+								if (owned && config.comfort) config.comfort.automation_baseline = null;
+								config.revision++;
+								config.requestedMode = 'off';
+								claim.revision++;
+								claim.qualificationGeneration = uuid();
+								claim.state = releaseRequested ? 'releasing' : 'reserved';
+								claim.sourcePropertyId = target.property.id;
+								claim.sourcePropertyIdentity = target.property.id;
+								claim.sourceDeviceId = target.device.id;
+								claim.sourceDeviceIdentity = target.device.id;
+								claim.contractFingerprint = thermostatPropertyContract(target.property, target.channel, target.device);
+								claim.reason = releaseRequested ? claim.reason : 'operator_restored_same_physical_actuator';
+								claim.releaseRequestedAt = releaseRequestedAt;
+								claim.releasedAt = null;
+								claim.releaseEvidence = null;
+								await bindings();
+								await assertControllerMutationImage(manager, controllerId, before);
+								const configuration = await writeControllerPartition(manager, 'configuration', before.configuration, [
+									config,
+								]);
+								const claims = await writeControllerPartition(manager, 'claims', before.claims, [claim], true);
+								const audit = manager.create(VirtualThermostatRecoveryEntity, {
+									id: uuid(),
+									controllerId,
+									claimId: claim.id,
+									physicalIdentity: identity,
+									previousPropertyIdentity: priorProperty,
+									restoredPropertyId: target.property.id,
+									actorId,
+									reason: dto.reason.trim(),
+									disconnectionAcknowledged: true,
+									configurationRevision: config.revision,
+									claimRevision: claim.revision,
+									createdAt: new Date(),
+								});
+								const recoveries = await writeControllerPartition(
+									manager,
+									'recoveries',
+									before.recoveries,
+									[audit],
+									true,
+								);
+								await assertControllerMutationImage(manager, controllerId, {
+									...before,
+									configuration,
+									claims,
+									recoveries,
+								});
+								await bindings();
+								await this.automation?.manualFence(manager, controllerId, true, slot);
+								await this.graph.sealControllerLedger(manager);
+								ready = true;
+							},
+							undefined,
+							(manager) => {
+								receipt = observeSqliteOuterOutcome(manager);
+								registerSqliteCommitGuard(manager, () => ready && ownerCurrent());
+							},
+							() => {
+								if (receipt.outcome !== 'committed') fail('Missing original native restore acknowledgement.');
+							},
+						);
+						this.claims.revokeQualification(dto.physicalIdentity);
+						return this.afterCommit(controllerId);
+					}),
+				);
+			} finally {
+				releaseFence();
+				// Reload schedules its own retry; preserve the committed result or original validation error.
+				await this.claims.refresh().catch(() => undefined);
+			}
+		});
 	}
 	async recoveryEvents(controllerId: string) {
 		await this.get(controllerId);
@@ -424,96 +710,140 @@ export class VirtualThermostatConfigService {
 	}
 	/** Atomic merged settings validation: a single bound cannot create an overlapping persisted deadband. */
 	async command(updates: readonly IDevicePropertyData[]): Promise<boolean> {
-		const own = captureCreation(this, [
-			'command',
-			'dataSource',
-			'structureLock',
-			'graph',
-			'claims',
-			'events',
-			'values',
-		] as (keyof this)[]);
-		const lock = captureCreation(this.structureLock, [
-			'runExclusive',
-			'runShared',
-			'hasCurrentStructuralLease',
-			'context',
-		] as (keyof DeviceStructureLockService)[]);
-		const graph = captureCreation(this.graph, [
-			'withComfortSelectionWrite',
-			'structuralWrite',
-			'refreshValidation',
-			'dataSource',
-			'revision',
-		] as (keyof VirtualDependencyGraphService)[]);
-		const claims = captureCreation(this.claims, ['invalidate', 'refresh']);
-		const values = captureCreation(this.values, ['write', 'readLatest']);
-		const events = captureCreation(this.events, ['emit']);
-		const helper = captureCreation(thermostatComfortSelection, ['pin']);
-		const valueSet = EventType.CHANNEL_PROPERTY_VALUE_SET,
-			configChanged = THERMOSTAT_CONFIG_CHANGED;
-		const selection = helper.values.pin(this.dataSource, 'registered-settings');
-		const { input, destinations } = selection.registeredInput(updates);
-		if (input === null) return true;
-		const pins = [own, lock, graph, claims, values, events, helper, selection];
-		const current = () => pins.every((pin) => pin.current());
-		const check = () => {
-			if (!current()) fail('Original thermostat settings dispatch expired.');
-		};
-		check();
-		let ownerCurrent = () => false;
-		const operation = selection.operation(input, () => ownerCurrent(), current);
-		try {
-			await lock.values.runExclusive.call(lock.receiver, async () => {
-				check();
-				ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
-				try {
-					await graph.values.withComfortSelectionWrite.call(
-						graph.receiver,
-						operation.write,
-						undefined,
-						operation.admit,
-						operation.accepted,
-						'registered-settings',
-					);
-					operation.accepted();
-				} catch (cause: unknown) {
-					operation.settlement.transactionFailure = Object.freeze({ cause });
-					throw cause;
-				}
-				// Ordinary inherited maintenance has no new post-ACK currentness veto.
-				let stage = 'claims.invalidate';
-				let index: number | undefined;
-				try {
-					claims.values.invalidate.call(claims.receiver);
-					stage = 'claims.refresh';
-					await claims.values.refresh.call(claims.receiver);
-					for (index = 0; index < destinations.length; index++) {
-						const property = destinations[index],
-							value = input.commands[index].value;
-						stage = 'values.write';
-						await invokeCreation(values.values.write, values.receiver, property, value);
-						stage = 'values.readLatest';
-						const latest = await invokeCreation(values.values.readLatest, values.receiver, property);
-						stage = 'property.value';
-						property.value = latest;
-						stage = 'VALUE_SET';
-						events.values.emit.call(events.receiver, valueSet, property);
-					}
-					index = undefined;
-					stage = 'configChanged';
-					events.values.emit.call(events.receiver, configChanged, input.id);
-					return true;
-				} catch (cause: unknown) {
-					operation.settlement.maintenanceFailure = Object.freeze({ stage, index, cause });
-					throw cause;
-				}
-			});
-			return true;
-		} catch (cause: unknown) {
-			operation.settlement.structuralFailure = Object.freeze({ cause });
-			throw cause;
-		}
+		return ControllerPublicationContext.complete(async () => {
+			const own = captureCreation(this, [
+				'command',
+				'dataSource',
+				'structureLock',
+				'graph',
+				'claims',
+				'events',
+				'values',
+			] as (keyof this)[]);
+			const lock = captureCreation(this.structureLock, [
+				'runExclusive',
+				'runShared',
+				'hasCurrentStructuralLease',
+				'context',
+			] as (keyof DeviceStructureLockService)[]);
+			const graph = captureCreation(this.graph, [
+				'withComfortSelectionWrite',
+				'sealControllerLedger',
+				'structuralWrite',
+				'refreshValidation',
+				'dataSource',
+				'revision',
+			] as (keyof VirtualDependencyGraphService)[]);
+			const claims = captureCreation(this.claims, ['invalidate', 'refresh']);
+			const values = captureCreation(this.values, ['write', 'readLatest']);
+			const events = captureCreation(this.events, ['emit']);
+			const helper = captureCreation(thermostatComfortSelection, ['pin']);
+			const valueSet = EventType.CHANNEL_PROPERTY_VALUE_SET,
+				configChanged = THERMOSTAT_CONFIG_CHANGED;
+			const selection = helper.values.pin(this.dataSource, 'registered-settings');
+			const { input, destinations } = selection.registeredInput(updates);
+			if (input === null) return true;
+			const pins = [own, lock, graph, claims, values, events, helper, selection];
+			const current = () => pins.every((pin) => pin.current());
+			const check = () => {
+				if (!current()) fail('Original thermostat settings dispatch expired.');
+			};
+			check();
+			let ownerCurrent = () => false;
+			const operation = selection.operation(input, () => ownerCurrent(), current, true);
+			const noop = VirtualThermostatOwnershipSubscriber.captureNoopFence(this.dataSource, () => ownerCurrent());
+			try {
+				const predecessors = this.automation?.beginMutation(input.id);
+				if (predecessors !== undefined) await predecessors;
+				await lock.values.runExclusive.call(
+					lock.receiver,
+					ControllerPublicationContext.captureCallback(async () => {
+						check();
+						ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
+						try {
+							const write = async (manager: EntityManager, advanceGraph?: () => Promise<number>) => {
+								const slot = await this.automation?.captureManualSlot(manager, input.id);
+								const owned = await this.automation?.captureInstalledIntent(manager, input.id);
+								const before = await readControllerMutationImage(manager, input.id);
+								const result = await operation.write(manager, owned ?? undefined, {
+									advanceGraph,
+									canRemainUnchanged: (takeover) =>
+										!slot?.facts ||
+										(!['LIVE', 'PROVISIONAL'].includes(slot.facts.state) && (!takeover || slot.facts.manualHold)),
+									verifyUnchanged: async () => {
+										await assertControllerMutationImage(manager, input.id, before);
+										await this.automation?.captureUnchangedAuthority(manager, input.id);
+									},
+								});
+								if (this.automation && operation.changed()) {
+									const takeover = operation.takesManualHold();
+									await this.automation.manualFence(manager, input.id, takeover ? true : undefined, slot, takeover);
+								}
+								await graph.values.sealControllerLedger.call(graph.receiver, manager);
+								if (operation.changed()) noop.applied();
+								else noop.arm();
+								operation.markReady();
+								return result;
+							};
+							await graph.values.withComfortSelectionWrite.call(
+								graph.receiver,
+								write,
+								undefined,
+								(manager) => {
+									operation.admit(manager);
+									noop.admit(manager);
+								},
+								operation.accepted,
+								'registered-settings',
+								write,
+								noop,
+							);
+							operation.accepted();
+						} catch (cause: unknown) {
+							operation.settlement.transactionFailure = Object.freeze({ cause });
+							throw cause;
+						}
+						const publication = new ControllerPublicationContext(this.graph.capturePublishGuard());
+						return publication.run(async () => {
+							// Ordinary inherited maintenance has no new post-ACK currentness veto.
+							let stage = 'claims.invalidate';
+							let index: number | undefined;
+							try {
+								claims.values.invalidate.call(claims.receiver);
+								stage = 'claims.refresh';
+								await claims.values.refresh.call(claims.receiver);
+								// Even a native no-op must retry the original mirrors after an earlier publication failure.
+								for (index = 0; index < destinations.length; index++) {
+									const property = destinations[index],
+										value = input.commands[index].value;
+									stage = 'values.write';
+									await invokeCreation(values.values.write, values.receiver, property, value);
+									stage = 'values.readLatest';
+									const latest = await invokeCreation(values.values.readLatest, values.receiver, property);
+									stage = 'property.value';
+									property.value = latest;
+									stage = 'VALUE_SET';
+									events.values.emit.call(events.receiver, valueSet, property);
+								}
+								index = undefined;
+								stage = 'configChanged';
+								events.values.emit.call(events.receiver, configChanged, input.id);
+								return true;
+							} catch (cause: unknown) {
+								operation.settlement.maintenanceFailure = Object.freeze({ stage, index, cause });
+								throw cause;
+							}
+						});
+					}),
+				);
+				return true;
+			} catch (cause: unknown) {
+				operation.settlement.structuralFailure = Object.freeze({ cause });
+				throw cause;
+			} finally {
+				noop.close();
+			}
+		});
 	}
 
 	async isRegisteredSetting(
@@ -899,6 +1229,7 @@ export class VirtualThermostatConfigService {
 			);
 		}
 		const config = manager.create(VirtualThermostatConfigEntity, {
+			controlStrategy: 'guarded_branches',
 			displayFloorClaimId: dto.displayFloorClaimId ?? null,
 			controllerId,
 			ownerDeviceId: controllerId,

@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { EntityManager, QueryRunner } from 'typeorm';
+import { AfterQueryEvent, BeforeQueryEvent, EntityManager, QueryRunner, UpdateEvent } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -52,6 +52,7 @@ import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.se
 import { ThermostatComfortConfiguration } from './virtual-thermostat-comfort.utils';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+import { ThermostatRuntimeOwnership } from './virtual-thermostat-runtime-ownership';
 
 interface NativeConnection {
 	all(query: string, parameters: unknown[], callback: (error: Error | null, rows?: unknown[]) => void): unknown;
@@ -303,6 +304,8 @@ describe('manual thermostat selection: reserved native intent', () => {
 	let id: string;
 	let wall: number;
 	let monotonic: number;
+	const predecessorCases = nativeFixtureLifecycle();
+	let releasePredecessors: (() => void) | undefined;
 	type SetupWitness = {
 		attempt: number | null;
 		stage:
@@ -317,9 +320,15 @@ describe('manual thermostat selection: reserved native intent', () => {
 			| 'complete';
 		completed: boolean;
 		initialize: ReturnType<typeof initializeWitness>;
+		readonly started: bigint;
+		readonly phases: { stage: string; elapsedMs: number }[];
 	};
 	let setupAttempt = 0;
 	let newestSetup: SetupWitness | undefined;
+	function setupStage(setup: SetupWitness, stage: SetupWitness['stage']): void {
+		setup.stage = stage;
+		setup.phases.push({ stage, elapsedMs: Number(process.hrtime.bigint() - setup.started) / 1e6 });
+	}
 	const sources: SqliteDataSource[] = [];
 	const services: VirtualThermostatClaimsService[] = [];
 	const row = () => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
@@ -351,9 +360,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			emitter,
 		);
 		services.push(ownership);
-		if (setup) setup.stage = 'ownership-bootstrap';
+		if (setup) setupStage(setup, 'ownership-bootstrap');
 		await new VirtualThermostatOwnershipSubscriber(source, ownership).onApplicationBootstrap();
-		if (setup) setup.stage = 'claims-bootstrap';
+		if (setup) setupStage(setup, 'claims-bootstrap');
 		await ownership.onApplicationBootstrap();
 		return {
 			lock: structure,
@@ -364,14 +373,18 @@ describe('manual thermostat selection: reserved native intent', () => {
 		};
 	}
 	const lifecycle = nativeFixtureLifecycle();
-	beforeEach(() => lifecycle.start(initializeFixture), NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS);
-	async function initializeFixture(): Promise<void> {
+	beforeEach(() => {
 		const started = process.hrtime.bigint();
+		return lifecycle.start(() => initializeFixture(started));
+	}, NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS);
+	async function initializeFixture(started: bigint): Promise<void> {
 		const setup: SetupWitness = {
 			attempt: setupAttempt < 255 ? ++setupAttempt : null,
 			stage: 'sync-setup',
 			completed: false,
 			initialize: initializeWitness(started),
+			started,
+			phases: [],
 		};
 		newestSetup = setup;
 		wall = Date.UTC(2026, 9, 25);
@@ -379,12 +392,12 @@ describe('manual thermostat selection: reserved native intent', () => {
 		jest.spyOn(Date, 'now').mockImplementation(() => wall);
 		jest.spyOn(performance, 'now').mockImplementation(() => monotonic);
 		directory = mkdtempSync(path.join(tmpdir(), 'selection-native-'));
-		setup.stage = 'open-source';
+		setupStage(setup, 'open-source');
 		database = await open(true, setup.initialize);
-		setup.stage = 'attach-construction';
+		setupStage(setup, 'attach-construction');
 		({ lock, graph, claims, comfort, events } = await attach(database, setup));
 		id = randomUUID();
-		setup.stage = 'seed-device';
+		setupStage(setup, 'seed-device');
 		await database.manager.insert(VirtualDeviceEntity, {
 			id,
 			name: 'Manual intent',
@@ -392,7 +405,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			category: DeviceCategory.THERMOSTAT,
 			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
 		});
-		setup.stage = 'seed-config';
+		setupStage(setup, 'seed-config');
 		await database.manager.insert(VirtualThermostatConfigEntity, {
 			controllerId: id,
 			ownerDeviceId: id,
@@ -415,20 +428,30 @@ describe('manual thermostat selection: reserved native intent', () => {
 			contactClosingMs: 0,
 			configuredAt: new Date(wall),
 		});
-		setup.stage = 'complete';
+		setupStage(setup, 'complete');
 		setup.completed = true;
 	}
 	afterEach(async () => {
 		const setup = newestSetup;
 		setup?.initialize.teardown();
 		if (setup && !setup.completed) {
-			const view = { attempt: setup.attempt, stage: setup.stage, completed: setup.completed, finished: 'UNKNOWN' };
+			const view = {
+				attempt: setup.attempt,
+				stage: setup.stage,
+				completed: setup.completed,
+				finished: 'UNKNOWN',
+				elapsedMs: Number(process.hrtime.bigint() - setup.started) / 1e6,
+				phases: setup.phases,
+			};
 			try {
 				console.error('native-setup-phase', { ...view, initialize: setup.initialize.snapshot() });
 			} catch {
 				// Missing observation stays UNKNOWN; original cleanup retains its own failure policy.
 			}
 		}
+		releasePredecessors?.();
+		await predecessorCases.finish(() => Promise.resolve());
+		releasePredecessors = undefined;
 		await lifecycle.finish(async () => {
 			jest.restoreAllMocks();
 			for (const service of services.splice(0)) service.onModuleDestroy();
@@ -436,6 +459,165 @@ describe('manual thermostat selection: reserved native intent', () => {
 			if (directory) rmSync(directory, { recursive: true, force: true });
 		});
 	}, NATIVE_FIXTURE_LIFECYCLE_TIMEOUT_MS);
+
+	it.each(['definition', 'selection', 'override', 'cancel'] as const)(
+		'preserves original entry settlement after synchronous mutation admission refusal: %s',
+		async (kind) => {
+			await comfort.override(id, await fence(), requestOverride(), 'original');
+			const original = await row();
+			const input = await fence();
+			wall += 1000;
+			monotonic += 1000;
+			const order: string[] = [];
+			const settle = comfort.settle.bind(comfort) as VirtualThermostatComfortService['settle'];
+			jest.spyOn(comfort, 'settle').mockImplementation(async (controller) => {
+				order.push('settle');
+				await settle(controller);
+			});
+			Object.assign(comfort, {
+				automation: {
+					revoke: () => undefined,
+					captureInstalledIntent: () => Promise.resolve(null),
+					beginMutation: () => {
+						order.push('admission');
+						throw JSON.parse('0') as unknown;
+					},
+				},
+			});
+			const request =
+				kind === 'definition'
+					? comfort.configure(id, input, definition())
+					: kind === 'selection'
+						? comfort.select(id, input, 'eco', false)
+						: kind === 'override'
+							? comfort.override(id, input, requestOverride(), 'operator')
+							: comfort.cancel(id, input, original.comfort.temporary_override.id);
+			await expect(request).rejects.toBe(0);
+			expect(order).toEqual(['admission', 'settle']);
+			expect((await row()).comfort.temporary_override).toMatchObject({
+				id: original.comfort.temporary_override.id,
+				status: 'expired',
+			});
+		},
+	);
+	it.each([
+		[false, 0],
+		[false, undefined],
+		[true, 0],
+		[true, undefined],
+	] as const)(
+		'joins every original predecessor on rejection with settleFailure=%s and cause=%s',
+		(settleFails, cause) => {
+			const releaseB = gate(),
+				releaseLater = gate(),
+				captured = gate(),
+				settledEntry = gate();
+			let rejectA: ((cause: unknown) => void) | undefined;
+			releasePredecessors = () => {
+				rejectA?.(cause);
+				releaseB.resolve();
+				releaseLater.resolve();
+				captured.resolve();
+				settledEntry.resolve();
+			};
+			return predecessorCases.start(async () => {
+				await comfort.override(id, await fence(), requestOverride(), 'original');
+				const original = await row();
+				const input = await fence();
+				wall += 1000;
+				monotonic += 1000;
+				const ownership = new ThermostatRuntimeOwnership();
+				// B is earlier in the snapshot, but A rejects first. Preserve rejection order, not array order.
+				const b = ownership.admit(id),
+					a = ownership.admit(id);
+				const aCompletion = ownership.completion(a),
+					bCompletion = ownership.completion(b);
+				const lateFailure = new Error('later original B failure');
+				const fail = (failure: unknown): never => {
+					throw failure;
+				};
+				const aEvaluation = new Promise<void>((_resolve, reject) => {
+					rejectA = reject;
+				});
+				const runB = ownership.run(b, () => releaseB.promise.then(() => fail(lateFailure)));
+				const runA = ownership.run(a, () => aEvaluation);
+				void runA.catch(() => undefined);
+				void runB.catch(() => undefined);
+				const settle = comfort.settle.bind(comfort) as VirtualThermostatComfortService['settle'];
+				let originalSettlementFailure: { cause: unknown } | undefined;
+				jest.spyOn(comfort, 'settle').mockImplementation(async (controller) => {
+					try {
+						await settle(controller);
+					} catch (failure: unknown) {
+						originalSettlementFailure = { cause: failure };
+						throw failure;
+					} finally {
+						settledEntry.resolve();
+					}
+					if (settleFails) fail(false);
+				});
+				Object.assign(comfort, {
+					automation: {
+						revoke: () => undefined,
+						captureInstalledIntent: () => Promise.resolve(null),
+						beginMutation: () => {
+							const originals = ownership.capture(id);
+							captured.resolve();
+							return originals;
+						},
+					},
+				});
+				const request = comfort.cancel(id, input, original.comfort.temporary_override.id);
+				let requestFinished = false,
+					laterFinished = false;
+				const outcome = request.then(
+					() => ({ failed: false as const }),
+					(failure: unknown) => ({ failed: true as const, cause: failure }),
+				);
+				void outcome.then(() => {
+					requestFinished = true;
+				});
+				let later: Promise<void> | undefined;
+				try {
+					await captured.promise;
+					// This later decision must not enlarge the already captured finite set.
+					later = ownership.run(ownership.admit(id), () => releaseLater.promise);
+					void later.then(() => {
+						laterFinished = true;
+					});
+					await settledEntry.promise;
+					if (originalSettlementFailure) throw originalSettlementFailure.cause;
+					rejectA(cause);
+					await Promise.allSettled([runA, aCompletion]);
+					// Let the already-issued rejection continuations run; no wall-clock or production timer changes.
+					await new Promise<void>((resolve) => setImmediate(resolve));
+					expect(requestFinished).toBe(false);
+					expect(laterFinished).toBe(false);
+					releaseB.resolve();
+					const result = await outcome;
+					expect(result.failed).toBe(true);
+					if (result.failed === false) throw new Error('Original predecessor rejection required');
+					expect(result.cause).toBe(settleFails ? false : cause);
+					expect(laterFinished).toBe(false);
+					expect((await row()).comfort.temporary_override).toMatchObject({
+						id: original.comfort.temporary_override.id,
+						status: 'expired',
+					});
+				} finally {
+					releasePredecessors();
+					await Promise.allSettled([
+						runA,
+						runB,
+						aCompletion,
+						bCompletion,
+						request,
+						outcome,
+						...(later !== undefined ? [later] : []),
+					]);
+				}
+			});
+		},
+	);
 
 	it('rejects a genuinely deleted/recreated UUID with a retained FK-null configuration', async () => {
 		const input = await fence();
@@ -523,7 +705,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 		let bDone = false;
 		database.subscribers.push({
 			afterQuery: async (event) => {
-				if (!holding && event.query.startsWith('INSERT OR IGNORE INTO "devices_virtual_graph_revision"')) {
+				if (!holding && event.query === 'UPDATE "devices_virtual_graph_revision" SET "revision"="revision" WHERE 0') {
 					holding = true;
 					order.push('A-reserved');
 					reserved.resolve();
@@ -730,7 +912,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			events.on(THERMOSTAT_CONFIG_CHANGED, notified);
 			await expect(
 				phase === 'definition-subscriber'
-					? comfort.configure(id, await fence(), definition())
+					? comfort.configure(id, await fence(), { ...definition(), heating_range: { minimum: 10, maximum: 31 } })
 					: comfort.select(id, await fence(), 'away', false),
 			).rejects.toBe(false);
 			expect(get).not.toHaveBeenCalled();
@@ -837,6 +1019,317 @@ describe('manual thermostat selection: reserved native intent', () => {
 		}
 	});
 
+	const retainedSnapshot = async () => {
+		const tables = (
+			await database.query<{ name: string }[]>(
+				"SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'devices_virtual_thermostat_%' OR name LIKE 'devices_module_climate_automation_%') ORDER BY name",
+			)
+		)
+			.map(({ name }) => name)
+			.filter((name) => name !== 'devices_virtual_thermostat_configs');
+		return async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
+			const records: Record<string, unknown> = {};
+			for (const table of tables)
+				records[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+			return records;
+		};
+	};
+	// Independent fixed-column statement binding: no second QueryBuilder or SQL execution.
+	const fixtureComfortUpdate = (before: VirtualThermostatConfigEntity, intended: ThermostatComfortConfiguration) => {
+		const metadata = database.getMetadata(VirtualThermostatConfigEntity),
+			parameters: unknown[] = [];
+		const parameter = (value: unknown) => (typeof value === 'number' ? String(value) : (parameters.push(value), '?'));
+		const columns = [
+			'controllerId',
+			'displayFloorClaimId',
+			'ownerDeviceId',
+			'schemaVersion',
+			'revision',
+			'requestedMode',
+			'controlStrategy',
+			'locked',
+			'comfort',
+			'policy',
+			'heuristic',
+			'contactOpeningMs',
+			'contactClosingMs',
+			'configuredAt',
+			'releaseRequestedAt',
+		] as const;
+		const where = columns.map(
+			(key) =>
+				`"${key}" IS ${parameter(database.driver.preparePersistentValue(before[key], metadata.findColumnWithPropertyName(key)) as unknown)}`,
+		);
+		// SET parameters precede WHERE; revision and all original numeric preimages are inlined by SQLite's driver.
+		parameters.unshift(JSON.stringify(intended));
+		return {
+			metadata,
+			entity: { comfort: intended, revision: before.revision + 1 },
+			query: `UPDATE "devices_virtual_thermostat_configs" SET "comfort" = ?, "revision" = ${before.revision + 1} WHERE ${where.join(' AND ')}`,
+			parameters,
+		};
+	};
+	const withUpdateSnapshot = async <T>(
+		semantic: boolean,
+		before: VirtualThermostatConfigEntity,
+		intended: ThermostatComfortConfiguration,
+		snapshot: (manager: EntityManager) => Promise<Record<string, unknown>>,
+		write: () => Promise<T>,
+	) => {
+		const cohort = [...database.subscribers],
+			target = semantic ? fixtureComfortUpdate(before, intended) : undefined;
+		if (semantic) {
+			expect(cohort).toHaveLength(1);
+			expect(cohort[0]).toBeInstanceOf(VirtualThermostatOwnershipSubscriber);
+			expect(Reflect.get(cohort[0], 'afterUpdate')).toBeUndefined();
+			expect(target.metadata.beforeUpdateListeners).toEqual([]);
+			expect(target.metadata.afterUpdateListeners).toEqual([]);
+		}
+		let manager: EntityManager,
+			runner: QueryRunner,
+			values: object,
+			parameters: unknown[],
+			copied: unknown[],
+			receipt: SqliteCommitGuardReceipt,
+			seam: Record<string, unknown>;
+		let selected = 0,
+			submitted = 0,
+			acknowledged = 0,
+			completed = 0,
+			attempts = 0,
+			commits = 0,
+			afterCommit = 0,
+			rollbacks = 0;
+		let result: T, primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+		const same = (event: { manager: EntityManager; queryRunner: QueryRunner }) => {
+			expect(event.manager).toBe(manager);
+			expect(event.queryRunner).toBe(runner);
+		};
+		const configQuery = (query: string) => query.startsWith('UPDATE "devices_virtual_thermostat_configs" ');
+		const observer = semantic
+			? {
+					beforeUpdate: (event: UpdateEvent<object>) => {
+						if (event.metadata.target !== VirtualThermostatConfigEntity) return;
+						expect(++selected).toBe(1);
+						expect(event.connection).toBe(database);
+						expect(Object.keys(event.entity).sort()).toEqual(['comfort', 'revision']);
+						expect(event.entity).toEqual(target.entity);
+						manager = event.manager;
+						runner = event.queryRunner;
+						values = event.entity;
+						expect(runner.manager).toBe(manager);
+						expect(manager.queryRunner).toBe(runner);
+						expect(manager.connection).toBe(database);
+						expect(runner.isTransactionActive).toBe(true);
+						expect(Reflect.get(runner, 'transactionDepth')).toBe(1);
+						expect(lock.hasCurrentStructuralLease()).toBe(true);
+					},
+					beforeQuery: (event: BeforeQueryEvent<unknown>) => {
+						if (configQuery(event.query)) {
+							same(event);
+							expect(++submitted).toBe(1);
+							expect(event.query).toBe(target.query);
+							parameters = event.parameters;
+							copied = [...parameters];
+							expect(typeof parameters[0]).toBe('string');
+							expect(JSON.parse(parameters[0] as string)).toEqual(intended);
+							expect(parameters.slice(1)).toEqual(target.parameters.slice(1));
+						}
+						if (event.manager === manager && event.queryRunner === runner && event.query === 'COMMIT') {
+							expect(completed).toBe(1);
+							expect(seam).toBeDefined();
+							attempts++;
+						}
+					},
+					afterQuery: (event: AfterQueryEvent<unknown>) => {
+						if (configQuery(event.query) && event.success) {
+							same(event);
+							expect(event.query).toBe(target.query);
+							expect(event.parameters).toBe(parameters);
+							expect(event.parameters).toEqual(copied);
+							expect(++acknowledged).toBe(1);
+						}
+						if (event.manager === manager && event.queryRunner === runner && event.query === 'COMMIT' && event.success)
+							commits++;
+					},
+					afterUpdate: async (event: UpdateEvent<object>) => {
+						if (event.metadata.target !== VirtualThermostatConfigEntity) return;
+						same(event);
+						expect(event.entity).toBe(values);
+						expect([selected, submitted, acknowledged]).toEqual([1, 1, 1]);
+						expect(++completed).toBe(1);
+						expect(database.subscribers).toHaveLength(cohort.length + 1);
+						expect(cohort.every((member, index) => database.subscribers[index] === member)).toBe(true);
+						expect(database.subscribers[cohort.length] === observer).toBe(true);
+						expect(runner.isTransactionActive).toBe(true);
+						expect(lock.hasCurrentStructuralLease()).toBe(true);
+						receipt = observeSqliteOuterOutcome(manager);
+						expect(receipt.outcome).toBe('pending');
+						seam = await snapshot(manager);
+					},
+					afterTransactionCommit: (event: { manager: EntityManager; queryRunner: QueryRunner }) => {
+						if (event.manager === manager && event.queryRunner === runner) afterCommit++;
+					},
+					afterTransactionRollback: (event: { manager: EntityManager; queryRunner: QueryRunner }) => {
+						if (event.manager === manager && event.queryRunner === runner) rollbacks++;
+					},
+				}
+			: {
+					beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
+						if (event.query === 'COMMIT') seam = await snapshot(event.manager);
+					},
+				};
+		database.subscribers.push(observer);
+		try {
+			result = await write();
+			if (semantic) {
+				expect([selected, submitted, acknowledged, completed, attempts, commits, afterCommit, rollbacks]).toEqual([
+					1, 1, 1, 1, 1, 1, 1, 0,
+				]);
+				expect(receipt.outcome).toBe('committed');
+			}
+		} catch (cause: unknown) {
+			primary = { cause };
+		} finally {
+			try {
+				const index = database.subscribers.indexOf(observer);
+				if (index < 0) cleanup = { cause: new Error('Owned UPDATE observer missing') };
+				else database.subscribers.splice(index, 1);
+			} catch (cause: unknown) {
+				cleanup = { cause };
+			}
+		}
+		if (primary) throw primary.cause;
+		if (cleanup) throw cleanup.cause;
+		return { result, seam };
+	};
+
+	it.each(['entity', 'revision', 'payload', 'runner', 'duplicate'] as const)(
+		'refuses invalid UPDATE snapshot selector %s (no native credit)',
+		async (kind) => {
+			const before = await row(),
+				intended = { ...before.comfort, selected_preset: 'eco' as const },
+				target = fixtureComfortUpdate(before, intended),
+				sentinel = new Error('selector model finished');
+			await expect(
+				lock.runExclusive(() =>
+					database.transaction((manager) =>
+						withUpdateSnapshot(
+							true,
+							before,
+							intended,
+							() => Promise.resolve({}),
+							() => {
+								const observer = database.subscribers[database.subscribers.length - 1];
+								const select = (value: UpdateEvent<object>) => {
+									expect(Reflect.apply(Reflect.get(observer, 'beforeUpdate'), observer, [value])).toBeUndefined();
+								};
+								const event: UpdateEvent<object> = {
+									connection: database,
+									manager,
+									queryRunner: manager.queryRunner,
+									metadata: target.metadata,
+									entity: target.entity,
+									databaseEntity: undefined,
+									updatedColumns: [],
+									updatedRelations: [],
+								};
+								if (kind === 'entity') {
+									select({ ...event, metadata: database.getMetadata(VirtualDeviceEntity) });
+									select(event);
+								} else if (kind === 'revision' || kind === 'payload')
+									expect(() =>
+										select({
+											...event,
+											entity:
+												kind === 'revision'
+													? { ...target.entity, revision: before.revision + 2 }
+													: { ...target.entity, comfort: { ...intended, selected_preset: 'away' } },
+										}),
+									).toThrow();
+								else {
+									select(event);
+									if (kind === 'duplicate') expect(() => select(event)).toThrow();
+									else
+										expect(() =>
+											observer.beforeQuery({
+												connection: database,
+												manager,
+												queryRunner: {} as QueryRunner,
+												query: target.query,
+												parameters: target.parameters,
+											}),
+										).toThrow();
+								}
+								throw sentinel;
+							},
+						),
+					),
+				),
+			).rejects.toBe(sentinel);
+		},
+	);
+
+	it.each([false, undefined])('preserves original UPDATE snapshot rejection %s through cleanup', async (cause) => {
+		const before = await row(),
+			input = await fence(),
+			intended = { ...before.comfort, selected_preset: 'eco' as const };
+		const descriptor = Object.getOwnPropertyDescriptor(graph, 'sealControllerLedger'),
+			count = database.subscribers.length,
+			splice = database.subscribers.splice;
+		let receipt: SqliteCommitGuardReceipt, original: Promise<Record<string, unknown>>;
+		const snapshot = jest.fn(function (this: unknown, manager: EntityManager) {
+			expect(this).toBeUndefined();
+			receipt = observeSqliteOuterOutcome(manager);
+			// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Exact falsy rejection is the original callback's oracle.
+			original = Promise.reject(cause);
+			return original;
+		});
+		const removal = jest.spyOn(database.subscribers, 'splice').mockImplementation(function (...args) {
+			Reflect.apply(splice, this, args);
+			throw new Error('cleanup after removal');
+		});
+		try {
+			await expect(
+				withUpdateSnapshot(true, before, intended, snapshot, () => comfort.select(id, input, 'eco', false)),
+			).rejects.toBe(cause);
+			expect(snapshot).toHaveBeenCalledTimes(1);
+			expect(original).toBeInstanceOf(Promise);
+			expect(receipt.outcome).toBe('rolled_back');
+			expect(database.subscribers).toHaveLength(count);
+			expect(Object.getOwnPropertyDescriptor(graph, 'sealControllerLedger')).toEqual(descriptor);
+		} finally {
+			removal.mockRestore();
+		}
+	});
+
+	it('detects a real retained-row change in the UPDATE snapshot oracle', async () => {
+		const key = randomUUID();
+		await database.query(
+			`INSERT INTO devices_virtual_thermostat_sources (id,controllerId,role,sourcePropertyIdentity,contractFingerprint,maximumAgeSeconds) VALUES (?,?,'ambient','retained-source','retained-contract',60)`,
+			[key, id],
+		);
+		const snapshot = await retainedSnapshot(),
+			before = await snapshot(database.manager),
+			input = await fence(),
+			config = await row();
+		await database.query('UPDATE devices_virtual_thermostat_sources SET maximumAgeSeconds=61 WHERE id=?', [key]);
+		const { seam } = await withUpdateSnapshot(
+			true,
+			config,
+			{ ...config.comfort, selected_preset: 'eco' },
+			snapshot,
+			() => comfort.select(id, input, 'eco', false),
+		);
+		expect(() => expect(seam).toEqual(before)).toThrow();
+		expect(await snapshot(database.manager)).toEqual(seam);
+		expect(
+			(seam.devices_virtual_thermostat_sources as Array<{ id: string; maximumAgeSeconds: number }>).find(
+				(entry) => entry.id === key,
+			)?.maximumAgeSeconds,
+		).toBe(61);
+	});
+
 	it.each(['selection', 'definition', 'override', 'cancel'] as const)(
 		'runs real ownership reconciliation and direct durable invariance for %s with notification retry',
 		async (kind) => {
@@ -919,45 +1412,34 @@ describe('manual thermostat selection: reserved native intent', () => {
 				},
 			});
 			expect(claims.qualification(claim, false)).not.toBeNull();
-			const tables = (
-				await database.query<{ name: string }[]>(
-					"SELECT name FROM sqlite_master WHERE type='table' AND (name LIKE 'devices_virtual_thermostat_%' OR name LIKE 'devices_module_climate_automation_%') ORDER BY name",
-				)
-			)
-				.map(({ name }) => name)
-				.filter((name) => name !== 'devices_virtual_thermostat_configs');
-			const snapshot = async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
-				const records: Record<string, unknown> = {};
-				for (const table of tables)
-					records[table] = await manager.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
-				return records;
-			};
+			const snapshot = await retainedSnapshot();
 			const before = await snapshot(database.manager);
 			const beforeConfig = await row();
 			const invalidated = jest.spyOn(claims, 'invalidate'),
 				revoked = jest.spyOn(claims, 'revokeAllQualifications');
 			const realRefresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
 			const refresh = jest.spyOn(claims, 'refresh').mockImplementation(realRefresh);
-			let seam: Record<string, unknown> | undefined;
-			database.subscribers.push({
-				beforeQuery: async (event) => {
-					if (event.query === 'COMMIT') seam = await snapshot(event.manager);
-				},
-			});
 			const failure = () => {
 				throw new Error('listener pending');
 			};
 			events.on(THERMOSTAT_CONFIG_CHANGED, failure);
 			const input = await fence();
-			const result =
-				kind === 'selection'
-					? await comfort.select(id, input, 'eco', false)
-					: kind === 'definition'
-						? await comfort.configure(id, input, definition())
-						: kind === 'override'
-							? await comfort.override(id, input, requestOverride(), 'operator')
-							: await comfort.cancel(id, input, beforeConfig.comfort.temporary_override.id);
+			const { result, seam } = await withUpdateSnapshot(
+				kind === 'selection' || kind === 'definition',
+				beforeConfig,
+				kind === 'selection' ? { ...beforeConfig.comfort, selected_preset: 'eco' } : definedConfiguration(),
+				snapshot,
+				async () =>
+					kind === 'selection'
+						? await comfort.select(id, input, 'eco', false)
+						: kind === 'definition'
+							? await comfort.configure(id, input, definition())
+							: kind === 'override'
+								? await comfort.override(id, input, requestOverride(), 'operator')
+								: await comfort.cancel(id, input, beforeConfig.comfort.temporary_override.id),
+			);
 			expect(seam).toEqual(before);
+			expect(await snapshot(database.manager)).toEqual(before);
 			expect(invalidated).toHaveBeenCalled();
 			expect(revoked).toHaveBeenCalled();
 			expect(claims.qualification(claim, false)).toBeNull();
@@ -1278,7 +1760,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 	);
 
 	it.each(['omitted', 'undefined', 'null', 'true', 'false'] as const)(
-		'preserves exact baseline/nullish semantics for %s',
+		'preserves exact baseline/nullish diagnostics without granting JSON authority for %s',
 		async (flag) => {
 			const baseline = { preset: 'away' as const, setpoints: null, actor_id: 'retained-actor', revision: 7 };
 			await database.manager.update(
@@ -1316,9 +1798,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			expect(result.configuration).toEqual(expected);
 			expect((await row()).comfort).toEqual(expected);
 			expect(result.effective).toEqual({
-				source: flag === 'false' ? 'manual' : 'automation',
-				preset: flag === 'false' ? null : 'away',
-				heating_setpoint: flag === 'false' ? 20 : 13,
+				source: 'manual',
+				preset: null,
+				heating_setpoint: 20,
 				cooling_setpoint: null,
 				override_id: null,
 				expires_at: null,
@@ -1466,7 +1948,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 		const failure = false,
 			final = jest.spyOn(comfort, 'get').mockRejectedValueOnce(failure),
 			next = await fence();
-		await expect(comfort.configure(id, next, definition())).rejects.toBe(failure);
+		await expect(
+			comfort.configure(id, next, { ...definition(), heating_range: { minimum: 10, maximum: 31 } }),
+		).rejects.toBe(failure);
 		expect(final).toHaveBeenCalledTimes(1);
 		expect((await row()).revision).toBe(next.expected_revision + 1);
 	});
@@ -1894,7 +2378,12 @@ describe('manual thermostat selection: reserved native intent', () => {
 		async (status) => {
 			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
 			await comfort.override(id, await fence(), requestOverride(), 'operator');
-			await comfort.select(id, await fence(), null, false);
+			// Repeated null selection is now a genuine no-op. Exercise an actual OFF-latch clear
+			// to retain the original assertion that controller and override creation revisions differ.
+			const latched = await row();
+			latched.comfort.user_off = true;
+			await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { comfort: latched.comfort });
+			await comfort.select(id, await fence(), null, true);
 			const before = await row(),
 				old = before.comfort.temporary_override;
 			expect(old.revision).toBe(2);
@@ -2618,6 +3107,21 @@ describe('manual thermostat selection: reserved native intent', () => {
 			});
 			return images;
 		}
+		it('retries original property mirrors for equal native settings after an earlier mirror failure', async () => {
+			const updates = (await settings()).slice(0, 2),
+				{ configs, values } = service();
+			values.write.mockRejectedValueOnce(false);
+			await expect(configs.command(updates)).rejects.toBe(false);
+			const committed = await observed(),
+				revision = await graph.revision();
+			expect(committed.revision).toBe(2);
+			values.write.mockClear();
+			await expect(configs.command(updates)).resolves.toBe(true);
+			expect(values.write.mock.calls.map(([, value]) => value)).toEqual([24, 28]);
+			expect(values.readLatest).toHaveBeenCalledTimes(2);
+			expect(await observed()).toEqual(committed);
+			expect(await graph.revision()).toBe(revision);
+		});
 		it('atomically validates whole policy, retains all five roles, and repeats ordered duplicate mirrors', async () => {
 			const updates = await settings(),
 				{ configs, values } = service(),

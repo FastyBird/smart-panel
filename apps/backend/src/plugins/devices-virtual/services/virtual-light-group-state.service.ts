@@ -286,10 +286,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				active.add(output.id);
 				let lease = this.leases.get(output.id);
 				if (!lease || lease.revision !== config.revision || !this.producers.isAvailable(lease)) {
-					lease = this.producers.register(output, config.revision, {
+					const originalSlot = this.producers.captureRuntimeSlot(output.id, lease);
+					lease = this.producers.registerRuntime(output, config.revision, originalSlot, {
 						isCurrent: this.graph.capturePublishGuard(),
 						reason: 'graph_validation_pending',
 					});
+					if (!lease) continue;
 					this.leases.set(output.id, lease);
 				}
 				const reported = state.properties.get(output.category);

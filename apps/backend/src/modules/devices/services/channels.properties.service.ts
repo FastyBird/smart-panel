@@ -7,6 +7,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/com
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -39,6 +40,7 @@ import {
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import { ControllerPublicationContext } from './controller-publication-context';
 import { captureCreation, creationMapping } from './creation-capture';
 import { DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
@@ -1489,28 +1491,43 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		return this.structureLock.runExclusive(async (): Promise<void> => {
-			const property = await manager.findOne<ChannelPropertyEntity>(ChannelPropertyEntity, {
-				where: { id },
-			});
+		const standalone =
+			!this.structureLock.hasCurrentStructuralLease() &&
+			!hasCurrentSqliteConnectionLease(this.dataSource) &&
+			!manager.queryRunner?.isTransactionActive;
+		const removeOriginal = () =>
+			this.structureLock.runExclusive(
+				ControllerPublicationContext.captureCallback(async (): Promise<void> => {
+					const property = await manager.findOne<ChannelPropertyEntity>(ChannelPropertyEntity, {
+						where: { id },
+					});
 
-			if (!property) {
-				this.logger.warn(`Property with id=${id} not found during removal (skipping)`);
-				return;
-			}
-			this.propertyCommandWindowService.cancel(id);
-			this.propertyCommandWindowService.cancel(this.valueSourceRegistry.resolve(property));
+					if (!property) {
+						this.logger.warn(`Property with id=${id} not found during removal (skipping)`);
+						return;
+					}
+					const remove = async () => {
+						this.propertyCommandWindowService.cancel(id);
+						this.propertyCommandWindowService.cancel(this.valueSourceRegistry.resolve(property));
 
-			// Capture property entity before removal to preserve ID for event emission
-			const propertyForEvent = { ...property };
+						// Capture property entity before removal to preserve ID for event emission
+						const propertyForEvent = { ...property };
 
-			await manager.remove(property);
+						await manager.remove(property);
 
-			this.logger.log(`Successfully removed property with id=${id}`);
+						this.logger.log(`Successfully removed property with id=${id}`);
 
-			// Emit event with the property entity captured before removal to preserve ID
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, propertyForEvent);
-		});
+						// Emit event with the property entity captured before removal to preserve ID
+						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, propertyForEvent);
+					};
+					// Custody only: deletion grants no new read/publication authority. Nested removals
+					// keep their original outer manager and completion owner; never drain under that owner.
+					if (standalone && property.type === 'virtual')
+						return new ControllerPublicationContext(() => false).run(remove);
+					return remove();
+				}),
+			);
+		return standalone ? ControllerPublicationContext.complete(removeOriginal, true) : removeOriginal();
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelPropertyEntity> {

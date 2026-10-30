@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { ConflictException, Injectable, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -20,6 +20,7 @@ import { ActivityDomainResultModel } from '../models/activity-result.model';
 import { SpaceActivityConfigService } from './space-activity-config.service';
 import { SpaceActivityDomainsService } from './space-activity-domains.service';
 import { SpaceActivationIdentity } from './space-climate-automation.port';
+import { SpaceClimateAutomationService } from './space-climate-automation.service';
 
 @Injectable()
 export class SpaceModeService implements OnApplicationBootstrap {
@@ -31,6 +32,7 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		private readonly domains: SpaceActivityDomainsService,
 		private readonly events: EventEmitter2,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+		@Optional() private readonly climateAutomation?: SpaceClimateAutomationService,
 	) {}
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
@@ -90,22 +92,27 @@ export class SpaceModeService implements OnApplicationBootstrap {
 				activityActor: actor,
 				activityResults: [],
 			};
-			if (prior) {
-				const started = await repository
-					.createQueryBuilder()
-					.update()
-					.set(values)
-					.where('id = :id', { id: prior.id })
-					.andWhere(
-						'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
-						{ configId: config.id, revision },
-					)
-					.execute();
-				if (started.affected !== 1) throw new ConflictException('Activity configuration changed');
-			} else {
-				// Lifecycle FK + uniqueness prevents resurrecting removed spaces or creating multiple active rows.
-				await repository.save(repository.create({ spaceId, ...values }));
-			}
+			const start = async (manager: EntityManager) => {
+				const currentRepository = manager.getRepository(SpaceActivityStateEntity);
+				if (prior) {
+					const started = await currentRepository
+						.createQueryBuilder()
+						.update()
+						.set(values)
+						.where('id = :id', { id: prior.id })
+						.andWhere(
+							'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
+							{ configId: config.id, revision },
+						)
+						.execute();
+					if (started.affected !== 1) throw new ConflictException('Activity configuration changed');
+				} else {
+					// Lifecycle FK + uniqueness prevents resurrecting removed spaces or creating multiple active rows.
+					await currentRepository.save(currentRepository.create({ spaceId, ...values }));
+				}
+			};
+			if (this.climateAutomation) await this.climateAutomation.mutate(spaceId, undefined, start);
+			else await start(this.dataSource.manager);
 			const identity: SpaceActivationIdentity = {
 				spaceId,
 				activationId,
@@ -116,27 +123,33 @@ export class SpaceModeService implements OnApplicationBootstrap {
 				await repository.update({ spaceId, activationId }, { activityStatus: ActivityActivationStatus.INTERRUPTED });
 				throw new ConflictException('Activity configuration changed before execution');
 			}
+			const completion = this.climateAutomation?.captureCompletion(identity);
 			this.emit(spaceId, activationId, revision);
 			const results = await Promise.all(
 				Object.values(ActivityDomain).map((domain) =>
 					this.domains.run(domain, config.activityConfiguration, identity, spaceId),
 				),
 			);
-			const completed = await repository
-				.createQueryBuilder()
-				.update()
-				.set({ activityStatus: activationStatus(results), activityResults: results })
-				.where('spaceId = :spaceId AND activationId = :activationId AND activityStatus = :status', {
-					spaceId,
-					activationId,
-					status: ActivityActivationStatus.ACTIVATING,
-				})
-				.andWhere(
-					'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
-					{ configId: config.id, revision },
-				)
-				.execute();
-			if (completed.affected === 1) this.emit(spaceId, activationId, revision);
+			const write = async (manager: EntityManager) => {
+				const completed = await manager
+					.getRepository(SpaceActivityStateEntity)
+					.createQueryBuilder()
+					.update()
+					.set({ activityStatus: activationStatus(results), activityResults: results })
+					.where('spaceId = :spaceId AND activationId = :activationId AND activityStatus = :status', {
+						spaceId,
+						activationId,
+						status: ActivityActivationStatus.ACTIVATING,
+					})
+					.andWhere(
+						'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
+						{ configId: config.id, revision },
+					)
+					.execute();
+				return completed.affected === 1;
+			};
+			const completed = completion ? await completion(results, write) : await write(this.dataSource.manager);
+			if (completed) this.emit(spaceId, activationId, revision);
 			// Return current state, even if deactivation/config changes won the race. Never save the stale entity again.
 			return repository.findOneBy({ spaceId });
 		} finally {
@@ -153,17 +166,21 @@ export class SpaceModeService implements OnApplicationBootstrap {
 	async deactivateMode(spaceId: string, activationId: string, actor: string): Promise<SpaceActivityStateEntity | null> {
 		await this.configs.assertSupported(spaceId);
 		const repository = this.dataSource.getRepository(SpaceActivityStateEntity);
-		const result = await repository.update(
-			{ spaceId, activationId },
-			{
-				selectedActivityMode: null,
-				activationId: randomUUID(),
-				activityStatus: ActivityActivationStatus.DEACTIVATED,
-				activityActor: actor,
-				activityResults: [],
-			},
-		);
-		if (result.affected !== 1) throw new ConflictException('Activity activation identity changed');
+		const write = async (manager: EntityManager) => {
+			const result = await manager.getRepository(SpaceActivityStateEntity).update(
+				{ spaceId, activationId },
+				{
+					selectedActivityMode: null,
+					activationId: randomUUID(),
+					activityStatus: ActivityActivationStatus.DEACTIVATED,
+					activityActor: actor,
+					activityResults: [],
+				},
+			);
+			if (result.affected !== 1) throw new ConflictException('Activity activation identity changed');
+		};
+		if (this.climateAutomation) await this.climateAutomation.mutate(spaceId, activationId, write);
+		else await write(this.dataSource.manager);
 		const state = await repository.findOneBy({ spaceId });
 		this.emit(spaceId, state.activationId, state.selectedActivityRevision);
 		return state;

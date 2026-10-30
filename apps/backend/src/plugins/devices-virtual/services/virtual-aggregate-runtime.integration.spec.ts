@@ -104,6 +104,7 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		);
 		graph = new VirtualDependencyGraphService(database);
 		state = new VirtualProducerStateService(database, producers, graph, events);
+		await state.onModuleInit();
 		configs = new VirtualProducerConfigService(database, new DeviceStructureLockService(), graph, events, state);
 		statuses = new Map();
 		runtime = new VirtualAggregateRuntimeService(
@@ -201,7 +202,6 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		await sample(source, 20);
 		await sample(other, 20);
 		expect(values.readQualifiedSample(output, 10_000)?.value).toBe(20);
-		const register = jest.spyOn(producers, 'register');
 		const notifications: ChannelPropertyEntity[] = [];
 		const listener = (changed: ChannelPropertyEntity) => {
 			if (changed.id !== output.id || !changed.value?.producer.reasons.includes('producer_disposed')) return;
@@ -211,9 +211,16 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, listener);
 		try {
 			runtime.onModuleDestroy();
-			expect(register).toHaveBeenCalledTimes(1);
-			const successor = register.mock.results[0].value as ReturnType<PropertyProducerRegistryService['register']>;
-			expect(producers.isAvailable(successor)).toBe(true);
+			const successorReport = state.readPublicationReport();
+			const successor = producers.readDiagnosticState(output.id);
+			expect(successorReport).toMatchObject({
+				installed: 1,
+				submitted: 1,
+				settled: 1,
+				failed: 0,
+				retired: false,
+				terminal: 'complete',
+			});
 			expect(producers.read(output.id)).toMatchObject({
 				value: null,
 				producer: { revision: 1, reasons: ['runtime_unavailable'] },
@@ -224,14 +231,15 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 			await sample(source, 22);
 			await jest.advanceTimersByTimeAsync(1_000);
 			expect(storage.writePoints).toHaveBeenCalledTimes(writes);
-			expect(producers.isAvailable(successor)).toBe(true);
+			expect(state.readPublicationReport()).toBe(successorReport);
+			expect(producers.readDiagnosticState(output.id)).toEqual(successor);
 			expect(values.readQualifiedSample(output, 10_000)).toBeNull();
 			await expect(values.readLatestStrict(output)).resolves.toMatchObject({ value: null });
 			runtime.onModuleDestroy();
-			expect(producers.isAvailable(successor)).toBe(true);
+			expect(state.readPublicationReport()).toBe(successorReport);
+			expect(producers.readDiagnosticState(output.id)).toEqual(successor);
 		} finally {
 			events.off(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, listener);
-			register.mockRestore();
 		}
 	});
 
@@ -1107,6 +1115,74 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		expect(outputState(output)).toMatchObject({ value: 22, producer: { revision: 2, quality: 'good' } });
 	});
 
+	it.each(['before-commit', 'after-ack'] as const)(
+		'keeps independent runtime B through native config2 and original held history completion at %s',
+		async (boundary) => {
+			const a = await measurement(),
+				b = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configure(output, [a, b]);
+			await start();
+			await sample(a, 20);
+			let release: () => void, entered: () => void;
+			const blocked = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const started = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			storage.writePoints.mockImplementationOnce(() => {
+				entered();
+				return blocked;
+			});
+			await values.writeSampleWithState(b, 22, {
+				sampledAt: new Date(base),
+				receivedAt: new Date(base),
+				provenance: 'live',
+			});
+			await started;
+			let armed = true,
+				successor: ReturnType<PropertyProducerRegistryService['register']> | undefined;
+			let original: ReturnType<PropertyProducerRegistryService['readDiagnosticState']>, version: number | null;
+			const replace = () => {
+				if (!armed) return;
+				armed = false;
+				successor = producers.register(output, 91);
+				original = producers.readDiagnosticState(output.id);
+				version = producers.version(successor);
+			};
+			const subscriber =
+				boundary === 'before-commit' ? { beforeTransactionCommit: replace } : { afterTransactionCommit: replace };
+			database.subscribers.push(subscriber);
+			try {
+				await configs.configureAggregate(
+					output.id,
+					Object.assign(new ConfigureVirtualAggregateDto(), {
+						expectedRevision: 1,
+						operator: VirtualAggregateOperator.MAX,
+						minimumValidInputs: 2,
+						maximumAgeSeconds: 10,
+						inputs: [{ sourcePropertyId: a.id }, { sourcePropertyId: b.id }],
+					}),
+				);
+				expect((await configs.getAggregate(output.id)).revision).toBe(2);
+				expect(successor).toBeDefined();
+				expect(producers.isCurrent(successor)).toBe(true);
+				expect(producers.version(successor)).toBe(version);
+				expect(producers.readDiagnosticState(output.id)).toEqual(original);
+				release();
+				await runtime.flush();
+				expect(producers.isCurrent(successor)).toBe(true);
+				expect(producers.version(successor)).toBe(version);
+				expect(producers.readDiagnosticState(output.id)).toEqual(original);
+			} finally {
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				release();
+				await runtime.flush();
+			}
+		},
+	);
 	it('quarantines an unsupported imported graph without poisoning physical qualification or looping', async () => {
 		const a = await measurement(),
 			b = await measurement(),

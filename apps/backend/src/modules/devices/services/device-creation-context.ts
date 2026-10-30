@@ -10,6 +10,7 @@ import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 import type { ChannelTypeMapping } from './channels-type-mapper.service';
 import type { ChannelPropertyTypeMapping } from './channels.properties-type-mapper.service';
+import { ControllerPublicationContext } from './controller-publication-context';
 import { CreationCapture } from './creation-capture';
 import type { DeviceTypeMapping } from './devices-type-mapper.service';
 
@@ -42,6 +43,8 @@ export class DeviceCreationContext {
 		ownerCurrent: () => boolean,
 		operation: (context: DeviceCreationContext) => Promise<T>,
 		settlement: CreationSettlement<T>,
+		sealBorrowed?: (manager: EntityManager) => Promise<void>,
+		publicationGuard?: () => () => boolean,
 	): Promise<T> {
 		let context: DeviceCreationContext | undefined;
 		let record: PinnedCreation | undefined;
@@ -60,6 +63,7 @@ export class DeviceCreationContext {
 					while (record.children.size) await Promise.all(record.children);
 					context.checkPinned(record);
 					if (!settlement.result) throw new Error('Creation result is missing');
+					await sealBorrowed?.(manager);
 					record.phase = 'READY';
 					return settlement.result.value;
 				},
@@ -100,18 +104,27 @@ export class DeviceCreationContext {
 			if (settlement.outcome !== 'committed') throw new Error('Missing original native creation ACK');
 			// Thermostat catalog callbacks precede the caller's configurations.afterCommit,
 			// all INSIDE the caller's original structural lock.
-			for (const publication of context.publications) {
-				try {
-					if (!catalog.current()) throw new Error('Original creation publication registration expired');
-					await publication.publish();
-				} catch (cause: unknown) {
-					settlement.legacyPublicationFailure ??= Object.freeze({ cause });
-					logger.error(
-						'Device creation committed, but post-commit publication failed',
-						cause instanceof Error ? cause : new Error('Creation publication rejected', { cause }),
-					);
-				}
+			let eligible = () => catalog.current();
+			try {
+				if (publicationGuard) eligible = publicationGuard();
+			} catch {
+				eligible = () => false;
 			}
+			// Observation expiry changes effect eligibility, never the original callback policy.
+			await new ControllerPublicationContext(eligible).run(async () => {
+				for (const publication of context.publications) {
+					try {
+						if (!catalog.current()) throw new Error('Original creation publication registration expired');
+						await publication.publish();
+					} catch (cause: unknown) {
+						settlement.legacyPublicationFailure ??= Object.freeze({ cause });
+						logger.error(
+							'Device creation committed, but post-commit publication failed',
+							cause instanceof Error ? cause : new Error('Creation publication rejected', { cause }),
+						);
+					}
+				}
+			});
 			return result;
 		} catch (cause) {
 			throw new DeviceCreationSettlementError(settlement, record?.failure ? record.failure.cause : cause, cause);

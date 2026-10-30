@@ -1,4 +1,5 @@
 import { nextTick } from 'vue';
+import { createI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElInputNumber, ElSelect, ElSwitch } from 'element-plus';
 import createClient from 'openapi-fetch';
@@ -8,16 +9,29 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import type { paths } from '../../../openapi';
 import { ActivityDraftSchema, ClimateMode } from '../composables/activityModes.schemas';
+import cs from '../locales/cs-CZ.json';
+import de from '../locales/de-DE.json';
+import en from '../locales/en-US.json';
+import es from '../locales/es-ES.json';
+import pl from '../locales/pl-PL.json';
+import sk from '../locales/sk-SK.json';
 
 import SpaceActivityModesSection from './space-activity-modes-section.vue';
 
-const harness = vi.hoisted(() => ({ client: null as unknown, role: 'owner' }));
+const harness = vi.hoisted(() => ({ client: null as unknown, role: 'owner', localized: false }));
 vi.mock('../../../common', () => ({ useBackend: () => ({ client: harness.client }) }));
 vi.mock('../../../modules/auth/composables/useSession', async () => {
 	const { computed } = await import('vue');
 	return { useSession: () => ({ profile: computed(() => ({ role: harness.role })) }) };
 });
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key.split('activityModes.').pop() }) }));
+vi.mock('vue-i18n', async (importOriginal) => {
+	const original = await importOriginal<typeof import('vue-i18n')>();
+	return {
+		...original,
+		useI18n: (...args: Parameters<typeof original.useI18n>) =>
+			harness.localized ? original.useI18n(...args) : { t: (key: string) => key.split('activityModes.').pop() },
+	};
+});
 
 const configuration = () => ({
 	lighting: { enabled: true, mode: 'work' },
@@ -54,6 +68,7 @@ beforeEach(() => {
 	conflict = false;
 	previewGate = null;
 	harness.role = 'owner';
+	harness.localized = false;
 	fetchMock = vi.fn(async (request: Request) => {
 		const path = new URL(request.url).pathname;
 		const body = request.method === 'GET' ? undefined : await request.json();
@@ -77,10 +92,58 @@ beforeEach(() => {
 	harness.client = createClient<paths>({ baseUrl: 'http://localhost/api/v1', fetch: fetchMock });
 });
 afterEach(() => {
+	harness.localized = false;
 	document.body.innerHTML = '';
 });
 
 describe('actual activity mode section and saved API editor', () => {
+	it.each([
+		['cs-CZ', cs],
+		['de-DE', de],
+		['en-US', en],
+		['es-ES', es],
+		['pl-PL', pl],
+		['sk-SK', sk],
+	] as const)('renders actual %s locale refusal with the installed composer', async (language, messages) => {
+		harness.localized = true;
+		const i18n = createI18n({
+			legacy: false,
+			locale: language,
+			fallbackLocale: false,
+			messages: { [language]: { spacesHomeControlPlugin: messages } },
+		});
+		const wrapper = mount(SpaceActivityModesSection, {
+			props: { spaceId: 'space' },
+			global: { plugins: [i18n], stubs: { teleport: false } },
+			attachTo: document.body,
+		});
+		try {
+			await flushPromises();
+			await click(wrapper, 'edit-work');
+			await click(wrapper, 'preview');
+			const refusal = wrapper.get('[data-testid="domain-result"]').text();
+			expect(refusal).not.toContain('climateUnsupported');
+			expect(refusal).toContain(messages.activityModes.climateUnsupported);
+			expect(refusal).not.toContain('trusted adapter unavailable');
+			expect(i18n.global.locale.value).toBe(language);
+		} finally {
+			wrapper.unmount();
+			i18n.dispose();
+			harness.localized = false;
+		}
+	});
+	it.each([cs, de, en, es, pl, sk])('keeps a localized refusal for unsupported climate previews', async (locale) => {
+		expect(locale.activityModes.climateUnsupported).toBeTruthy();
+		const wrapper = render();
+		try {
+			await flushPromises();
+			await click(wrapper, 'edit-work');
+			await click(wrapper, 'preview');
+			expect(wrapper.get('[data-testid="domain-result"]').text()).toContain('climateUnsupported');
+		} finally {
+			wrapper.unmount();
+		}
+	});
 	it('reads all five config endpoints including disabled modes, with no initialization writes', async () => {
 		const wrapper = render();
 		await flushPromises();
@@ -213,6 +276,8 @@ describe('actual activity mode section and saved API editor', () => {
 		await click(wrapper, 'edit-work');
 		wrapper.findComponent(ElDialog).findAllComponents(ElSwitch)[2].vm.$emit('update:modelValue', true);
 		await nextTick();
+		expect(wrapper.text()).toContain('climateAutomation');
+		expect(wrapper.text()).not.toContain('climateUnsupported');
 		expect(wrapper.get('[data-testid="save"]').attributes('disabled')).toBeDefined();
 		wrapper.findAllComponents(ElSelect)[1].vm.$emit('update:modelValue', 'preset');
 		await nextTick();

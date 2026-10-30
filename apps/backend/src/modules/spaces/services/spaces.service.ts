@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 
 import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -553,6 +553,7 @@ export class SpacesService {
 		this.logger.debug(`Updating space with id=${id}`);
 
 		const space = await this.getOneOrThrow(id);
+		const originalIdentity = { type: space.type, createdAt: space.createdAt, updatedAt: space.updatedAt };
 
 		// Dispatch to the per-type update DTO so subtype-specific fields
 		// (category / suggestions_enabled / status_widgets on home-control
@@ -778,7 +779,8 @@ export class SpacesService {
 			// Wrap the raw discriminator UPDATE and the subsequent reload in a single
 			// transaction so a concurrent update or delete cannot wedge us into a state
 			// where the UPDATE committed but the reload observes stale / missing data.
-			const reloaded = await this.dataSource.transaction(async (transactionalManager) => {
+			const reloaded = await this.mutateLifecycle(id, 'type-change', async (transactionalManager, instrumented) => {
+				if (instrumented) await this.assertLifecycleIdentity(transactionalManager, id, originalIdentity);
 				await transactionalManager
 					.createQueryBuilder()
 					.update(SpaceEntity)
@@ -816,7 +818,8 @@ export class SpacesService {
 
 		const space = await this.getOneOrThrow(id);
 
-		await this.dataSource.transaction(async (manager) => {
+		await this.mutateLifecycle(id, 'delete', async (manager, instrumented) => {
+			const removed = instrumented ? await this.assertLifecycleIdentity(manager, id, space) : space;
 			// Set parentId to null for all child spaces (rooms that belong to this zone)
 			await manager
 				.createQueryBuilder()
@@ -843,12 +846,40 @@ export class SpacesService {
 				.where('spaceId = :id', { id })
 				.execute();
 
-			await manager.remove(space);
+			await manager.remove(removed);
 		});
 
 		this.logger.debug(`Successfully removed space with id=${id}`);
 
 		this.eventEmitter.emit(EventType.SPACE_DELETED, { id });
+	}
+
+	private mutateLifecycle<T>(
+		id: string,
+		kind: 'delete' | 'type-change',
+		work: (manager: EntityManager, instrumented: boolean) => Promise<T>,
+	): Promise<T> {
+		return this.lifecycle
+			? this.lifecycle.mutate(this.dataSource, id, kind, work)
+			: this.dataSource.transaction((manager) => work(manager, false));
+	}
+
+	/** A pre-lock lookup is descriptive; only the reserved manager may authorize lifecycle mutation. */
+	private async assertLifecycleIdentity(
+		manager: EntityManager,
+		id: string,
+		expected: Pick<SpaceEntity, 'type' | 'createdAt' | 'updatedAt'>,
+	): Promise<SpaceEntity> {
+		const current = await manager.findOneBy(SpaceEntity, { id });
+		if (!current) throw new SpacesNotFoundException('Requested space does not exist');
+		const timestamp = (value: Date | string | null) => (value instanceof Date ? value.getTime() : value);
+		if (
+			current.type !== expected.type ||
+			timestamp(current.createdAt) !== timestamp(expected.createdAt) ||
+			timestamp(current.updatedAt) !== timestamp(expected.updatedAt)
+		)
+			throw new SpacesValidationException('Space changed before lifecycle mutation; reload and retry.');
+		return current;
 	}
 
 	async findDevicesBySpace(spaceId: string): Promise<DeviceEntity[]> {

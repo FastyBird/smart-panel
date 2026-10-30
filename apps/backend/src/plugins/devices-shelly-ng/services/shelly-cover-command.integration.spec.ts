@@ -180,6 +180,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	let planner: VirtualLightGroupCommandService;
 	let runtime: VirtualLightGroupStateService;
 	let configs: VirtualProducerConfigService;
+	let producerState: VirtualProducerStateService;
 	let group: string;
 	let groupCommand: string;
 	let groupPosition: string;
@@ -421,12 +422,14 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		planner = new VirtualLightGroupCommandService(db, registry, devices as never, graph, metadata, values, windows);
 		planner.onModuleInit();
 		runtime = new VirtualLightGroupStateService(db, values, producers, devices as never, graph, events, structure);
+		producerState = new VirtualProducerStateService(db, producers, graph, events);
+		await producerState.onModuleInit();
 		configs = new VirtualProducerConfigService(
 			db,
 			structure,
 			graph,
 			events,
-			new VirtualProducerStateService(db, producers, graph, events),
+			producerState,
 			runtime,
 			undefined,
 			platforms,
@@ -943,6 +946,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		recoveryLane?.onModuleDestroy();
 		planner?.onModuleDestroy();
 		runtime?.onModuleDestroy();
+		producerState?.onModuleDestroy();
 		producers?.onModuleDestroy();
 		metadata?.onModuleDestroy();
 		for (const rpc of transports ?? []) await rpc.destroy();

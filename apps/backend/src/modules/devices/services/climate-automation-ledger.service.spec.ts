@@ -1,8 +1,18 @@
-import { randomUUID } from 'node:crypto';
-import { EntityManager, EntitySubscriberInterface, EventSubscriber } from 'typeorm';
+import { instanceToPlain } from 'class-transformer';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DataSource, EntityManager, EntitySubscriberInterface, EventSubscriber } from 'typeorm';
 import { SqliteQueryRunner } from 'typeorm/driver/sqlite/SqliteQueryRunner';
 
-import { SqliteDataSource, createSqliteDataSource } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardReceipt,
+	SqliteDataSource,
+	createSqliteDataSource,
+	observeSqliteOuterOutcome,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import { AddClimateAutomationOwnership1000000000047 } from '../../../migrations/1000000000047-AddClimateAutomationOwnership';
 import {
 	ClimateAutomationControllerFacts,
@@ -10,6 +20,7 @@ import {
 	ClimateAutomationProducer,
 	ClimateAutomationProvider,
 	ClimateAutomationSlotFacts,
+	ClimateAutomationSlotSnapshot,
 	ClimateAutomationSourceFacts,
 	ClimateAutomationSourceSnapshot,
 } from '../contracts/climate-automation.contract';
@@ -139,6 +150,234 @@ describe('private climate ledger reservation/source CAS on real SQLite', () => {
 		return database.manager.find(ClimateAutomationSourceEntity);
 	}
 
+	it('reserves the native writer before authority reads against an independent real SQLite connection', async () => {
+		const directory = await mkdtemp(join(tmpdir(), 'group-a-ledger-reservation-'));
+		let first: SqliteDataSource | undefined;
+		let second: DataSource | undefined;
+		const registrations = new ClimateAutomationRegistryService();
+		try {
+			const file = join(directory, 'actual.sqlite');
+			first = await createSqliteDataSource({
+				type: 'sqlite',
+				database: file,
+				entities: [ClimateAutomationSourceEntity, ClimateAutomationSlotEntity],
+				synchronize: true,
+			});
+			second = await new DataSource({ type: 'sqlite', database: file }).initialize();
+			await second.query('PRAGMA busy_timeout=0');
+			const local = new ClimateAutomationLedgerService(first, new DeviceStructureLockService(), registrations);
+			let checked = false;
+			await local.runReserved(async (manager, scope) => {
+				await expect(
+					second.query('UPDATE devices_module_climate_automation_slots SET slotRevision=slotRevision WHERE 0'),
+				).rejects.toThrow(/SQLITE_BUSY/);
+				checked = true;
+				expect((await local.readSlot(manager, scope, randomUUID())).facts).toBeNull();
+			});
+			expect(checked).toBe(true);
+			await second.query('UPDATE devices_module_climate_automation_slots SET slotRevision=slotRevision WHERE 0');
+		} finally {
+			registrations.onModuleDestroy();
+			if (second?.isInitialized) await second.destroy();
+			if (first?.isInitialized) await first.destroy();
+			await rm(directory, { recursive: true, force: true });
+		}
+	});
+
+	it('borrows the observed outer manager and preserves its actual native receipt without a nested transaction', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		let receipt: SqliteCommitGuardReceipt;
+		let retained: ClimateAutomationLedgerScope;
+		let original: EntityManager;
+		await structure.runExclusiveReleased(() =>
+			database.transaction(async (manager) => {
+				original = manager;
+				receipt = observeSqliteOuterOutcome(manager);
+				await manager.query('UPDATE devices_module_climate_automation_sources SET revision=revision WHERE 0');
+				await ledger.inAdmittedManager(manager, receipt, async (scope) => {
+					retained = scope;
+					expect(ledger.currentScope(manager)).toBe(scope);
+					await stage(manager, scope);
+					expect(receipt.outcome).toBe('pending');
+				});
+				expect(receipt.outcome).toBe('pending');
+			}),
+		);
+		expect(receipt.outcome).toBe('committed');
+		expect(await rows()).toHaveLength(1);
+		expect(() => ledger.readSource(original, retained, 'activity:v1', 'space')).toThrow('scope');
+	});
+
+	it('seals borrowed validations before the original parent becomes native READY', async () => {
+		let parentReady = false;
+		registry.registerProducerOwned('activity:v1', {
+			validateInManager: () => {
+				expect(parentReady).toBe(false);
+				return Promise.resolve(evidence);
+			},
+		});
+		let receipt: SqliteCommitGuardReceipt;
+		await structure.runExclusiveReleased(() =>
+			database.transaction(async (manager) => {
+				receipt = observeSqliteOuterOutcome(manager);
+				registerSqliteCommitGuard(manager, () => parentReady);
+				await manager.query('UPDATE devices_module_climate_automation_sources SET revision=revision WHERE 0');
+				await ledger.inAdmittedManager(manager, receipt, async (scope) => {
+					await stage(manager, scope);
+					await ledger.sealAdmittedManager(manager);
+					parentReady = true;
+				});
+			}),
+		);
+		expect(receipt.outcome).toBe('committed');
+		expect(await rows()).toHaveLength(1);
+	});
+
+	it.each(['success', 'postimage', 'membership', 'getter-reentry', 'getter-throw'] as const)(
+		'installs the full native bundle with %s final-image verification',
+		async (fault) => {
+			registry.registerProducerOwned('activity:v1', producer);
+			const ids = [randomUUID(), randomUUID()].sort();
+			for (const id of ids)
+				await database.query('INSERT INTO devices_virtual_thermostat_configs VALUES (?, ?)', [id, 'null']);
+			const read = async (manager: EntityManager, id: string): Promise<ClimateAutomationControllerFacts> => {
+				const [row] = await manager.query<{ comfort: string }[]>(
+					'SELECT comfort FROM devices_virtual_thermostat_configs WHERE controllerId=?',
+					[id],
+				);
+				return {
+					controllerRevision: row.comfort === 'null' ? 1 : 2,
+					graphRevision: 0,
+					evidence: { comfort: row.comfort },
+					legacyBaseline: JSON.parse(row.comfort) as string | null,
+				};
+			};
+			const installedOrder: string[] = [];
+			const captureFailure = new Error('original candidate getter failed');
+			const captureGetter = jest.fn();
+			registry.registerProviderOwned('native-test:v1', {
+				readControllerInManager: read,
+				validateSelectionInManager: () => Promise.resolve(true),
+				installControllerInManager: async (manager, candidate) => {
+					installedOrder.push(candidate.controllerId);
+					await manager.query('UPDATE devices_virtual_thermostat_configs SET comfort=? WHERE controllerId=?', [
+						JSON.stringify(candidate.baselineId),
+						candidate.controllerId,
+					]);
+					return read(manager, candidate.controllerId);
+				},
+			});
+			const operation = () =>
+				reserve(async (manager, scope) => {
+					const source = await stage(manager, scope);
+					const candidates: ClimateAutomationSlotSnapshot[] = [];
+					const bundleId = randomUUID();
+					for (const id of [...ids].reverse()) {
+						const absent = await ledger.readSlot(manager, scope, id, true, 'native-test:v1');
+						const empty = await ledger.initializeSlot(manager, scope, { expected: absent, releaseManualHold: true });
+						candidates.push(
+							await ledger.stageSlot(manager, scope, {
+								expectedSlot: empty,
+								expectedSource: source,
+								selection: { preset: 'comfort' },
+								bundleId,
+							}),
+						);
+					}
+					if (fault === 'getter-reentry' || fault === 'getter-throw') {
+						const original = candidates[0];
+						Object.defineProperty(candidates, '0', {
+							get() {
+								captureGetter();
+								if (fault === 'getter-throw') throw captureFailure;
+								try {
+									void ledger.readSource(manager, scope, 'activity:v1', 'other');
+								} catch {
+									/* A caught array getter must still poison its original owner. */
+								}
+								return original;
+							},
+						});
+					}
+					const installed = await ledger.installBundle(manager, scope, source, candidates);
+					expect(installed.map(({ facts }) => facts.controllerId)).toEqual(ids);
+					if (fault === 'postimage')
+						await manager.query('UPDATE devices_virtual_thermostat_configs SET comfort=? WHERE controllerId=?', [
+							'"foreign"',
+							ids[0],
+						]);
+					if (fault === 'membership')
+						await manager.insert(ClimateAutomationSlotEntity, { ...installed[0].facts, controllerId: randomUUID() });
+				});
+			if (fault === 'success') {
+				await expect(operation()).resolves.toEqual({ outcome: 'committed' });
+				expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(
+					expect.arrayContaining(
+						ids.map((controllerId): unknown => expect.objectContaining({ controllerId, state: 'LIVE' })),
+					),
+				);
+				expect(await rows()).toEqual([expect.objectContaining({ state: 'FINALIZED_LIVE' })]);
+			} else {
+				const error = await failure(operation);
+				expect(error.outcome).toBe('rolled_back');
+				if (fault === 'getter-throw') expect(error.cause).toBe(captureFailure);
+				expect(await rows()).toEqual([]);
+				expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual([]);
+				expect(await database.query('SELECT comfort FROM devices_virtual_thermostat_configs')).toEqual([
+					{ comfort: 'null' },
+					{ comfort: 'null' },
+				]);
+			}
+			const captureFault = fault === 'getter-reentry' || fault === 'getter-throw';
+			expect(installedOrder).toEqual(captureFault ? [] : ids);
+			expect(captureGetter).toHaveBeenCalledTimes(captureFault ? 1 : 0);
+			await expect(reserve(() => Promise.resolve())).resolves.toEqual({ outcome: 'committed' });
+		},
+	);
+
+	it('poisons the borrowed outer transaction on a caught child rejection, preserving a falsy cause', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		let receipt: SqliteCommitGuardReceipt;
+		await expect(
+			structure.runExclusiveReleased(() =>
+				database.transaction(async (manager) => {
+					receipt = observeSqliteOuterOutcome(manager);
+					await manager.query('UPDATE devices_module_climate_automation_sources SET revision=revision WHERE 0');
+					await ledger.inAdmittedManager(manager, receipt, async (scope) => {
+						await stage(manager, scope);
+						// Deliberately exercise JavaScript falsy rejection preservation at the native boundary.
+						// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+						await ledger.inReservedManager(manager, scope, () => Promise.reject(null)).catch(() => undefined);
+					});
+				}),
+			),
+		).rejects.toBeNull();
+		expect(receipt.outcome).toBe('rolled_back');
+		expect(await rows()).toEqual([]);
+	});
+
+	it('keeps borrowed registration pins through the original native guard after the scope closes', async () => {
+		const registration = registry.registerProducerOwned('activity:v1', producer);
+		let receipt: SqliteCommitGuardReceipt;
+		probe.before = () => {
+			registration.dispose();
+			return Promise.resolve();
+		};
+		await expect(
+			structure.runExclusiveReleased(() =>
+				database.transaction(async (manager) => {
+					receipt = observeSqliteOuterOutcome(manager);
+					await manager.query('UPDATE devices_module_climate_automation_sources SET revision=revision WHERE 0');
+					await ledger.inAdmittedManager(manager, receipt, async (scope) => {
+						await stage(manager, scope);
+					});
+				}),
+			),
+		).rejects.toThrow();
+		expect(receipt.outcome).toBe('refused');
+		expect(await rows()).toEqual([]);
+	});
+
 	it('reads missing source/slot and returns only acknowledged ledger success after releasing structural ownership', async () => {
 		await expect(
 			reserve(async (manager, scope) => {
@@ -151,6 +390,439 @@ describe('private climate ledger reservation/source CAS on real SQLite', () => {
 		expect(await rows()).toEqual([]);
 	});
 
+	it('keeps operation scopes and native source/slot handles private under both serializers', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		registry.registerProviderOwned('thermostat:v1', provider);
+		await reserve(async (manager, scope) => {
+			const source = await stage(manager, scope, 'PRIVATE_SOURCE_SENTINEL');
+			const missing = await ledger.readSlot(manager, scope, 'PRIVATE_CONTROLLER_SENTINEL', true, 'thermostat:v1');
+			expect(source.facts.subjectId).toBe('PRIVATE_SOURCE_SENTINEL');
+			expect(missing.controller).toEqual(controller);
+			for (const handle of [scope, source, missing]) {
+				expect(JSON.stringify(handle)).toBe('{}');
+				expect(instanceToPlain(handle)).toEqual({});
+			}
+		});
+	});
+
+	it('captures every queued source input getter once and hashes only its original owned evidence', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		const reads = { producerKey: 0, subjectId: 0, expected: 0, evidence: 0, value: 0 };
+		let value = 1,
+			producerKey = 'activity:v1',
+			subjectId = 'space';
+		const raw = {
+			get value() {
+				reads.value++;
+				return value;
+			},
+		};
+		await reserve(async (manager, scope) => {
+			let expected = await ledger.readSource(manager, scope, producerKey, subjectId);
+			const other = await ledger.readSource(manager, scope, producerKey, 'other');
+			const blocking = ledger.readSource(manager, scope, producerKey, 'queued-read');
+			const pending = ledger.stageSource(manager, scope, {
+				get producerKey() {
+					reads.producerKey++;
+					return producerKey;
+				},
+				get subjectId() {
+					reads.subjectId++;
+					return subjectId;
+				},
+				get expected() {
+					reads.expected++;
+					return expected;
+				},
+				get evidence() {
+					reads.evidence++;
+					return raw;
+				},
+			});
+			producerKey = 'foreign:v1';
+			subjectId = 'other';
+			expected = other;
+			value = 99;
+			await blocking;
+			expect((await pending).facts).toMatchObject({
+				producerKey: 'activity:v1',
+				subjectId: 'space',
+				evidence: '{"value":1}',
+			});
+		});
+		expect(reads).toEqual({ producerKey: 1, subjectId: 1, expected: 1, evidence: 1, value: 1 });
+		expect(Object.isFrozen(raw)).toBe(false);
+		const stored = await rows();
+		expect(stored).toHaveLength(1);
+		expect(stored[0].evidence).toBe('{"value":1}');
+		expect(stored[0].evidenceDigest).toBe(createHash('sha256').update(stored[0].evidence).digest('hex'));
+	});
+
+	it('retains every deleted-source byte and performs no business DML for repeated exact deletion', async () => {
+		const original = source({ state: 'DELETED', revision: 7 });
+		await database.manager.insert(ClimateAutomationSourceEntity, original);
+		const statements: string[] = [];
+		const observer: EntitySubscriberInterface = {
+			beforeQuery: (event) => {
+				statements.push(event.query);
+			},
+		};
+		database.subscribers.push(observer);
+		try {
+			await reserve(async (manager, scope) => {
+				const expected = await ledger.readSource(manager, scope, original.producerKey, original.subjectId);
+				expect((await ledger.revokeSource(manager, scope, expected, [], true)).facts).toEqual(original);
+			});
+			expect(await rows()).toEqual([original]);
+			expect(statements.filter((query) => /^(INSERT|UPDATE|DELETE)/.test(query))).toEqual([
+				'UPDATE "devices_module_climate_automation_sources" SET "revision"="revision" WHERE 0',
+			]);
+		} finally {
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+	});
+
+	it('refuses a deleted source downgrade without business writes and recreates with fresh authority retaining every tombstone byte', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		const [original] = await rows();
+		await reserve(async (manager, scope) => {
+			await ledger.revokeSource(
+				manager,
+				scope,
+				await ledger.readSource(manager, scope, 'activity:v1', 'space'),
+				[],
+				true,
+			);
+		});
+		const [deleted] = await rows();
+		expect(deleted).toEqual({ ...original, state: 'DELETED', revision: original.revision + 1 });
+		const statements: string[] = [];
+		const observer: EntitySubscriberInterface = {
+			beforeQuery: (event) => {
+				statements.push(event.query);
+			},
+		};
+		database.subscribers.push(observer);
+		try {
+			const error = await failure(() =>
+				reserve(async (manager, scope) => {
+					await ledger.revokeSource(
+						manager,
+						scope,
+						await ledger.readSource(manager, scope, 'activity:v1', 'space'),
+						[],
+						false,
+					);
+				}),
+			);
+			expect(error).toMatchObject({ outcome: 'rolled_back', cause: { reason: 'stale' } });
+			expect(await rows()).toEqual([deleted]);
+			expect(statements.filter((query) => /^(INSERT|UPDATE|DELETE)/.test(query))).toEqual([
+				'UPDATE "devices_module_climate_automation_sources" SET "revision"="revision" WHERE 0',
+			]);
+			expect(statements).toContain('ROLLBACK');
+			expect(statements).not.toContain('COMMIT');
+		} finally {
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		const retained = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, {
+			generationId: deleted.generationId,
+		});
+		const next = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { isCurrent: true });
+		expect(retained).toEqual({ ...deleted, isCurrent: false, revision: deleted.revision + 1 });
+		expect(next).toMatchObject({
+			state: 'PENDING',
+			generationIndex: 1,
+			revision: 1,
+			evidence: deleted.evidence,
+			evidenceDigest: deleted.evidenceDigest,
+		});
+		expect(next.ownerId).not.toBe(deleted.ownerId);
+		expect(next.generationId).not.toBe(deleted.generationId);
+		expect(await rows()).toHaveLength(2);
+	});
+	it('renews an actually revoked source under its original owner and later deletes that exact generation', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		await reserve(async (manager, scope) => {
+			await ledger.revokeSource(
+				manager,
+				scope,
+				await ledger.readSource(manager, scope, 'activity:v1', 'space'),
+				[],
+				false,
+			);
+		});
+		const [revoked] = await rows();
+		expect(revoked.state).toBe('REVOKED');
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		const renewed = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { isCurrent: true });
+		expect(renewed).toMatchObject({
+			state: 'PENDING',
+			ownerId: revoked.ownerId,
+			generationIndex: revoked.generationIndex + 1,
+		});
+		expect(renewed.generationId).not.toBe(revoked.generationId);
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: revoked.generationId }),
+		).toEqual({ ...revoked, isCurrent: false, revision: revoked.revision + 1 });
+		await reserve(async (manager, scope) => {
+			await ledger.revokeSource(
+				manager,
+				scope,
+				await ledger.readSource(manager, scope, 'activity:v1', 'space'),
+				[],
+				false,
+			);
+		});
+		const nextRevoked = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, {
+			generationId: renewed.generationId,
+		});
+		expect(nextRevoked).toEqual({ ...renewed, state: 'REVOKED', revision: renewed.revision + 1 });
+		await reserve(async (manager, scope) => {
+			await ledger.revokeSource(
+				manager,
+				scope,
+				await ledger.readSource(manager, scope, 'activity:v1', 'space'),
+				[],
+				true,
+			);
+		});
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: renewed.generationId }),
+		).toEqual({ ...nextRevoked, state: 'DELETED', revision: nextRevoked.revision + 1 });
+	});
+	it('rolls back an admitted renewal when the same operation then revokes its old generation fence', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		await reserve(async (manager, scope) => {
+			await ledger.revokeSource(
+				manager,
+				scope,
+				await ledger.readSource(manager, scope, 'activity:v1', 'space'),
+				[],
+				false,
+			);
+		});
+		const [before] = await rows();
+		let attempted = 0;
+		const error = await failure(() =>
+			reserve(async (manager, scope) => {
+				const original = await ledger.readSource(manager, scope, 'activity:v1', 'space');
+				await ledger.stageSource(manager, scope, {
+					producerKey: 'activity:v1',
+					subjectId: 'space',
+					expected: original,
+					evidence,
+				});
+				attempted++;
+				await ledger.revokeSource(manager, scope, original, [], true);
+			}),
+		);
+		expect(error).toMatchObject({ outcome: 'rolled_back', cause: { reason: 'stale' } });
+		expect(attempted).toBe(1);
+		expect(await rows()).toEqual([before]);
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		const next = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { isCurrent: true });
+		expect(next).toMatchObject({
+			state: 'PENDING',
+			ownerId: before.ownerId,
+			generationIndex: before.generationIndex + 1,
+		});
+		expect(next.generationId).not.toBe(before.generationId);
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: before.generationId }),
+		).toEqual({ ...before, isCurrent: false, revision: before.revision + 1 });
+		expect(await rows()).toHaveLength(2);
+	});
+	it('stores detached selection A and its original bundle and slot while validation holds and the caller replaces every request field', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		const a = slot({ manualHold: false }),
+			b = slot({ manualHold: false });
+		await database.manager.insert(ClimateAutomationSlotEntity, [a, b]);
+		const entered = deferred(),
+			release = deferred();
+		const raw = { mode: 'heat', setpoint: 20, nested: { level: 1 } };
+		const validate = jest.fn<
+			ReturnType<ClimateAutomationProvider['validateSelectionInManager']>,
+			Parameters<ClimateAutomationProvider['validateSelectionInManager']>
+		>(async () => {
+			entered.resolve();
+			await release.promise;
+			return true;
+		});
+		provider = { ...provider, validateSelectionInManager: validate };
+		registry.registerProviderOwned(a.providerKey, provider);
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+		});
+		const bundle = randomUUID();
+		await reserve(async (manager, scope) => {
+			const expectedSlot = await ledger.readSlot(manager, scope, a.controllerId);
+			const otherSlot = await ledger.readSlot(manager, scope, b.controllerId);
+			const expectedSource = await ledger.readSource(manager, scope, 'activity:v1', 'space');
+			const otherSource = await ledger.readSource(manager, scope, 'activity:v1', 'other');
+			const request = { expectedSlot, expectedSource, selection: raw, bundleId: bundle };
+			const pending = ledger.stageSlot(manager, scope, request);
+			try {
+				await entered.promise;
+				const checked = validate.mock.calls[0][3];
+				expect(checked).toEqual({ mode: 'heat', setpoint: 20, nested: { level: 1 } });
+				expect(checked).not.toBe(raw);
+				expect(Object.isFrozen(checked)).toBe(true);
+				expect(Object.isFrozen((checked as typeof raw).nested)).toBe(true);
+				raw.setpoint = 99;
+				raw.nested.level = 9;
+				request.selection = { mode: 'cool', setpoint: 10, nested: { level: 3 } };
+				request.expectedSlot = otherSlot;
+				request.expectedSource = otherSource;
+				request.bundleId = randomUUID();
+				release.resolve();
+				await pending;
+			} finally {
+				release.resolve();
+			}
+		});
+		const stored = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, {
+			controllerId: a.controllerId,
+		});
+		expect(stored).toMatchObject({
+			selection: '{"mode":"heat","nested":{"level":1},"setpoint":20}',
+			bundleId: bundle,
+			providerKey: a.providerKey,
+			state: 'PROVISIONAL',
+		});
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: b.controllerId }),
+		).toEqual(b);
+		expect(validate).toHaveBeenCalledTimes(2);
+		for (const call of validate.mock.calls)
+			expect(call[3]).toEqual({ mode: 'heat', setpoint: 20, nested: { level: 1 } });
+		expect(Object.isFrozen(raw)).toBe(false);
+		expect(Object.isFrozen(raw.nested)).toBe(false);
+	});
+	it('keeps the original queued revocation references when the caller substitutes an independent owner B', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		await reserve(async (manager, scope) => {
+			await stage(manager, scope);
+			await stage(manager, scope, 'other');
+		});
+		const aSource = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { subjectId: 'space' });
+		const bSource = await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { subjectId: 'other' });
+		const emptyA = slot({ manualHold: false }),
+			emptyB = slot({ manualHold: false });
+		await database.manager.insert(ClimateAutomationSlotEntity, [emptyA, emptyB]);
+		const entered = deferred(),
+			release = deferred();
+		let hold = false;
+		provider = {
+			...provider,
+			readControllerInManager: jest.fn(async () => {
+				if (hold) {
+					entered.resolve();
+					await release.promise;
+				}
+				return controller;
+			}),
+		};
+		registry.registerProviderOwned(emptyA.providerKey, provider);
+		await reserve(async (manager, scope) => {
+			for (const [target, source] of [
+				[emptyA, aSource],
+				[emptyB, bSource],
+			] as const) {
+				await ledger.stageSlot(manager, scope, {
+					expectedSlot: await ledger.readSlot(manager, scope, target.controllerId),
+					expectedSource: await ledger.readSource(manager, scope, source.producerKey, source.subjectId),
+					selection: { preset: 'comfort' },
+					bundleId: randomUUID(),
+				});
+			}
+		});
+		const a = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, {
+			controllerId: emptyA.controllerId,
+		});
+		const b = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, {
+			controllerId: emptyB.controllerId,
+		});
+		hold = true;
+		await reserve(async (manager, scope) => {
+			const expected = await ledger.readSource(manager, scope, aSource.producerKey, aSource.subjectId);
+			const aHandle = await ledger.readSlot(manager, scope, a.controllerId, false);
+			const bHandle = await ledger.readSlot(manager, scope, b.controllerId, false);
+			const blocking = ledger.readSlot(manager, scope, a.controllerId);
+			const references = [aHandle];
+			const pending = ledger.revokeSource(manager, scope, expected, references);
+			try {
+				await entered.promise;
+				expect(Object.isFrozen(references)).toBe(false);
+				references.push(bHandle);
+				references.splice(0, 1);
+				references[0] = bHandle;
+				release.resolve();
+				await blocking;
+				await pending;
+			} finally {
+				release.resolve();
+			}
+		});
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: a.controllerId }),
+		).toEqual({ ...a, state: 'RETIRED', slotRevision: a.slotRevision + 1 });
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: aSource.generationId }),
+		).toEqual({ ...aSource, state: 'REVOKED', revision: aSource.revision + 1 });
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: b.controllerId }),
+		).toEqual(b);
+		expect(
+			await database.manager.findOneByOrFail(ClimateAutomationSourceEntity, { generationId: bSource.generationId }),
+		).toEqual(bSource);
+	});
+	it('retains an admitted canonical capture failure after the caller catches it and leaves the next reservation usable', async () => {
+		registry.registerProducerOwned('activity:v1', producer);
+		let caught: unknown,
+			reads = 0;
+		const error = await failure(() =>
+			reserve(async (manager, scope) => {
+				await stage(manager, scope);
+				const expected = await ledger.readSource(manager, scope, 'activity:v1', 'other');
+				try {
+					void ledger.stageSource(manager, scope, {
+						producerKey: 'activity:v1',
+						subjectId: 'other',
+						expected,
+						get evidence() {
+							reads++;
+							return Number.NaN;
+						},
+					});
+				} catch (cause: unknown) {
+					caught = cause;
+				}
+			}),
+		);
+		expect(caught).toBeInstanceOf(Error);
+		expect(error.cause).toBe(caught);
+		expect(error.outcome).toBe('rolled_back');
+		expect(reads).toBe(1);
+		expect(await rows()).toEqual([]);
+		await expect(reserve(() => Promise.resolve())).resolves.toEqual({ outcome: 'committed' });
+	});
 	it('stages captured canonical evidence and validates the original receiver on the exact manager twice', async () => {
 		const calls: EntityManager[] = [];
 		producer = {
@@ -517,6 +1189,66 @@ describe('private climate ledger reservation/source CAS on real SQLite', () => {
 		expect(attempted).toBe(true);
 	});
 
+	it.each(['before-start', 'after-start', 'reservation'] as const)(
+		'refuses an actual %s subscriber reservation before caller getters and authority reads',
+		async (phase) => {
+			registry.registerProducerOwned('activity:v1', producer);
+			let enabled = true;
+			const getter = jest.fn(() => 'activity:v1');
+			const locks = jest.spyOn(structure, 'runExclusiveReleased');
+			const rejected: unknown[] = [];
+			const request = {
+				get producerKey() {
+					return getter();
+				},
+			};
+			const reenter = async () => {
+				try {
+					await reserve(async (manager, scope) => {
+						await ledger.readSource(manager, scope, request.producerKey, 'nested');
+					});
+				} catch (cause: unknown) {
+					rejected.push(cause);
+				}
+			};
+			const observer: EntitySubscriberInterface = {
+				beforeTransactionStart: async () => {
+					if (enabled && phase === 'before-start') await reenter();
+				},
+				afterTransactionStart: async () => {
+					if (enabled && phase === 'after-start') await reenter();
+				},
+				beforeQuery: async (event) => {
+					if (enabled && phase === 'reservation' && event.query.includes('WHERE 0')) await reenter();
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				const error = await failure(() =>
+					reserve(async (manager, scope) => {
+						await stage(manager, scope);
+					}),
+				);
+				expect(error.outcome).toBe('rolled_back');
+				expect(rejected).toHaveLength(1);
+				expect(rejected[0]).toBeInstanceOf(ClimateAutomationLedgerError);
+				expect(getter).not.toHaveBeenCalled();
+				expect(producer.validateInManager).not.toHaveBeenCalled();
+				expect(locks).toHaveBeenCalledTimes(1);
+				expect(await rows()).toEqual([]);
+				enabled = false;
+				await expect(
+					reserve(async (manager, scope) => {
+						await stage(manager, scope);
+					}),
+				).resolves.toEqual({ outcome: 'committed' });
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				locks.mockRestore();
+			}
+		},
+	);
+
 	it('refuses nested reservations/ambient connection leases and keeps the next owner usable', async () => {
 		const error = await failure(() =>
 			reserve(async () => {
@@ -833,6 +1565,174 @@ describe('private climate ledger reservation/source CAS on real SQLite', () => {
 		expect(error.outcome).toBe('rolled_back');
 		expect(await rows()).toEqual([]);
 	});
+
+	it.each(['producerKey', 'evidence'] as const)(
+		'rejects caught ledger reentry from an admitted source %s getter before producer validation',
+		async (field) => {
+			registry.registerProducerOwned('activity:v1', producer);
+			let nested: Promise<unknown> | undefined;
+			const getter = jest.fn();
+			const error = await failure(() =>
+				reserve(async (manager, scope) => {
+					const expected = await ledger.readSource(manager, scope, 'activity:v1', 'space');
+					const reenter = () => {
+						getter();
+						try {
+							nested = ledger.readSource(manager, scope, 'activity:v1', 'other');
+						} catch {
+							/* Catching a reentrant getter cannot renew the original native owner. */
+						}
+					};
+					try {
+						await ledger.stageSource(manager, scope, {
+							get producerKey() {
+								if (field === 'producerKey') reenter();
+								return 'activity:v1';
+							},
+							subjectId: 'space',
+							expected,
+							evidence: {
+								get value() {
+									if (field === 'evidence') reenter();
+									return 1;
+								},
+							},
+						});
+					} catch {
+						/* The body also cannot swallow the original poisoned admission. */
+					} finally {
+						await nested?.catch(() => undefined);
+					}
+				}),
+			);
+			expect(getter).toHaveBeenCalledTimes(1);
+			expect(error.outcome).toBe('rolled_back');
+			expect(producer.validateInManager).not.toHaveBeenCalled();
+			expect(await rows()).toEqual([]);
+			await expect(
+				reserve(async (manager, scope) => {
+					await stage(manager, scope);
+				}),
+			).resolves.toBeDefined();
+		},
+	);
+
+	it('rejects caught ledger reentry from a lifecycle request getter and rolls back its native slot', async () => {
+		await database.query("INSERT INTO devices_virtual_thermostat_configs VALUES ('controller', 'null')");
+		registry.registerProducerOwned('activity:v1', producer);
+		registry.registerProviderOwned('test-controller:v1', provider);
+		let nested: Promise<unknown> | undefined;
+		const error = await failure(() =>
+			reserve(async (manager, scope) => {
+				const expected = await ledger.readSlot(manager, scope, 'controller', true, 'test-controller:v1');
+				try {
+					await ledger.initializeSlot(manager, scope, {
+						expected,
+						get releaseManualHold() {
+							try {
+								nested = ledger.readSource(manager, scope, 'activity:v1', 'other');
+							} catch {
+								/* Owner remains poisoned. */
+							}
+							return true;
+						},
+					});
+				} catch {
+					/* Caller cannot swallow native refusal. */
+				} finally {
+					await nested?.catch(() => undefined);
+				}
+			}),
+		);
+		expect(error.outcome).toBe('rolled_back');
+		expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
+		expect(producer.validateInManager).not.toHaveBeenCalled();
+	});
+
+	it.each(['install', 'refresh'] as const)(
+		'rejects a forged %s handle without inspecting its public facts getter',
+		async (method) => {
+			const getter = jest.fn(() => {
+				throw new Error('Untrusted handle getter was traversed');
+			});
+			const error = await failure(() =>
+				reserve(async (manager, scope) => {
+					const forged = {
+						get facts() {
+							return getter();
+						},
+					};
+					if (method === 'install')
+						await ledger.installBundle(manager, scope, forged as unknown as ClimateAutomationSourceSnapshot, []);
+					else
+						await ledger.refreshInstalledSlot(
+							manager,
+							scope,
+							forged as unknown as Parameters<ClimateAutomationLedgerService['refreshInstalledSlot']>[2],
+						);
+				}),
+			);
+			expect(error.outcome).toBe('rolled_back');
+			expect(error.cause).toMatchObject({ reason: 'invalid' });
+			expect(getter).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['reservation', 'closed', 'foreign'] as const)(
+		'refuses %s helper entry before reading caller business getters at the actual native boundary',
+		async (boundary) => {
+			const getter = jest.fn();
+			const rejected: unknown[] = [];
+			let original: { manager: EntityManager; scope: ClimateAutomationLedgerScope } | undefined;
+			const request = {
+				get producerKey() {
+					getter();
+					return 'activity:v1';
+				},
+				get subjectId() {
+					getter();
+					return 'space';
+				},
+				expected: null,
+				get evidence() {
+					getter();
+					return evidence;
+				},
+			};
+			const attempt = (manager: EntityManager, scope: ClimateAutomationLedgerScope) => {
+				try {
+					void ledger.stageSource(manager, scope, request);
+				} catch (cause: unknown) {
+					rejected.push(cause);
+				}
+			};
+			const observer: EntitySubscriberInterface = {
+				beforeQuery: (event) => {
+					if (boundary === 'reservation' && event.query.includes('WHERE 0'))
+						attempt(event.queryRunner.manager, {} as ClimateAutomationLedgerScope);
+					if (boundary === 'closed' && event.query === 'COMMIT' && original)
+						attempt(event.queryRunner.manager, original.scope);
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				const error = await failure(() =>
+					reserve(async (manager, scope) => {
+						original = { manager, scope };
+						await ledger.readSlot(manager, scope, randomUUID());
+						if (boundary === 'foreign') attempt(database.manager, scope);
+					}),
+				);
+				expect(error.outcome).toBe(boundary === 'closed' ? 'refused' : 'rolled_back');
+				expect(rejected).toHaveLength(1);
+				expect(rejected[0]).toBeInstanceOf(Error);
+				expect(getter).not.toHaveBeenCalled();
+				expect(await rows()).toEqual([]);
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
+		},
+	);
 
 	it('rejects closed-scope requests before traversing caller getters', async () => {
 		let manager: EntityManager, scope: ClimateAutomationLedgerScope;

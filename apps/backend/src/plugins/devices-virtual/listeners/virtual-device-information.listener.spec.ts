@@ -10,6 +10,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
@@ -113,6 +114,61 @@ describe('VirtualDeviceInformationListener', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+	});
+
+	it('joins original synthesis and keeps its device bytes and catalog destinations after retirement', async () => {
+		let entered: () => void;
+		let release: () => void;
+		const entry = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		channelsService.findOneBy.mockImplementation(async () => {
+			entered();
+			await gate;
+			return infoChannel;
+		});
+		withConnectionStateProperty(connectionStateProperty(VirtualValueOrigin.LOCAL));
+		const original = channelsPropertiesService.create;
+		const successor = jest.fn();
+		const device = { ...virtualDevice };
+		let eligible = true;
+		const publication = new ControllerPublicationContext(() => eligible);
+		const completion = publication.run(() => {
+			void listener.handleDeviceCreated(device as DeviceEntity);
+			return Promise.resolve();
+		});
+		try {
+			await entry;
+			device.id = 'successor-device';
+			eligible = false;
+			channelsPropertiesService.create = successor;
+			release();
+			await completion;
+			expect(original).toHaveBeenCalledWith(
+				infoChannel.id,
+				expect.objectContaining({ identifier: 'serial_number', value: 'virtual-device' }),
+			);
+			expect(successor).not.toHaveBeenCalled();
+			expect(connectivity.setConnectionState).toHaveBeenCalledWith(
+				'virtual-device',
+				expect.objectContaining({ state: ConnectionState.CONNECTED }),
+			);
+			expect(publication.facts()).toContainEqual(
+				expect.objectContaining({
+					name: 'virtual-device-information.synthesis',
+					settled: true,
+					failed: false,
+					retired: true,
+				}),
+			);
+		} finally {
+			release();
+			await completion;
+			channelsPropertiesService.create = original;
+		}
 	});
 
 	it('ignores devices that are not virtual', async () => {

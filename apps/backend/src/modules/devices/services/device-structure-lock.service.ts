@@ -37,6 +37,20 @@ export class DeviceStructureLockService {
 		return this.context.getStore()?.active === true;
 	}
 
+	/** Capture this accepting exclusive owner; a later owner cannot renew the captured permission. */
+	captureExclusiveOwner(): () => boolean {
+		const storage = this.context;
+		const owner = storage.getStore();
+		if (!owner?.active || !owner.accepting || owner.mode !== 'exclusive')
+			throw new Error('An accepting exclusive device structure owner is required');
+		return () =>
+			this.context === storage &&
+			storage.getStore() === owner &&
+			owner.active &&
+			owner.accepting &&
+			owner.mode === 'exclusive';
+	}
+
 	async runShared<T>(fn: () => Promise<T>): Promise<T> {
 		const context = this.context.getStore();
 

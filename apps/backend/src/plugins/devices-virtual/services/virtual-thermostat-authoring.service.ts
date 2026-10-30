@@ -14,6 +14,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import {
 	assertCreationCurrent,
 	captureCreation,
@@ -86,190 +87,246 @@ export class VirtualThermostatAuthoringService {
 	}
 
 	async create(dto: CreateVirtualThermostatProducerDto): Promise<VirtualCreatedThermostatModel> {
-		// Every direct dispatch and all three registrations precede caller getters and lock queueing.
-		const own = captureCreation(this, [
-			'draft',
-			'devices',
-			'graph',
-			'configurations',
-			'lock',
-			'dataSource',
-		] as (keyof this)[]);
-		const lock = captureCreation(this.lock, [
-			'runExclusive',
-			'hasCurrentStructuralLease',
-			'context',
-		] as (keyof DeviceStructureLockService)[]);
-		const graph = captureCreation(this.graph, [
-			'withCreationWrite',
-			'structuralWrite',
-			'refreshValidation',
-			'dataSource',
-		] as (keyof VirtualDependencyGraphService)[]);
-		const devices = captureCreation(this.devices, ['captureCreationCatalog', 'create', 'findOne']);
-		const configurations = captureCreation(this.configurations, ['prepare', 'persist', 'snapshot', 'afterCommit']);
-		const responseDispatch = captureCreation(thermostatCreationResponse, ['pin']);
-		const response = responseDispatch.values.pin();
-		const readerDispatch = captureCreation(thermostatCreationCatalog, ['pin', 'expected', 'same']);
-		const reader = readerDispatch.values.pin(this.dataSource);
-		const catalog = devices.values.captureCreationCatalog.call(devices.receiver, 'virtual');
-		const draftMethod = Reflect.get(own.values, 'draft') as VirtualThermostatAuthoringService['draft'];
-		const createDevice: (dto: CreateVirtualDeviceDto, context: DeviceCreationContext) => Promise<DeviceEntity> =
-			devices.values.create;
-		const entryPins = [own, lock, graph, devices, configurations, catalog, responseDispatch, response];
-		const observationPins = [readerDispatch, reader, response.catalog];
-		const pins = [...entryPins, ...observationPins];
-		const settlement = new CreationSettlement<CreatedCatalogResponse>();
-		let proofFailure: Readonly<{ stage: string; cause: unknown; raw: ReturnType<typeof reader.evidence> }> | undefined;
-		const current = () => {
-			if (settlement.outcome !== 'committed') return pins.every((pin) => pin.current());
-			// Catalog observations veto the response, never the original post-ACK callback policy.
-			try {
-				assertCreationCurrent(observationPins);
-			} catch (cause: unknown) {
-				proofFailure ??= Object.freeze({ stage: 'publication', cause, raw: reader.evidence() });
-			}
-			return entryPins.every((pin) => pin.current());
-		};
-		const input = snapshotCreation(dto);
-		assertCreationCurrent(pins);
-		try {
-			return (await lock.values.runExclusive.call(lock.receiver, async () => {
-				assertCreationCurrent(pins);
-				// Retain the original active structure owner, including at the native callback boundary.
-				const ownerCurrent = AsyncLocalStorage.bind(() => lock.values.hasCurrentStructuralLease.call(lock.receiver));
-				const committed = await DeviceCreationContext.runPinned<CreatedCatalogResponse>(
-					(operation, admit) =>
-						graph.values.withCreationWrite.call(
-							graph.receiver,
-							operation,
-							input.configuration.expectedGraphRevision,
-							admit,
-						) as Promise<CreatedCatalogResponse>,
-					{ ...catalog, current },
-					ownerCurrent,
-					async (context) => {
-						const originalRead = reader.scoped(context.manager);
-						const draft = await DeviceCreationContext.check<
-							Awaited<ReturnType<VirtualThermostatAuthoringService['draft']>>
-						>(context, () => invokeCreation(draftMethod, own.receiver, context.manager, input));
-						const members = readerDispatch.values.expected(draft.device);
-						await DeviceCreationContext.check(context, () =>
-							configurations.values.prepare.call(
-								configurations.receiver,
-								context.manager,
-								draft.dto.id,
-								input.configuration,
-								draft.device,
-							),
-						);
-						const device = await DeviceCreationContext.check<DeviceEntity>(context, () =>
-							invokeCreation(createDevice, devices.receiver, draft.dto, context),
-						);
-						const prepared = await DeviceCreationContext.check(context, () =>
-							configurations.values.prepare.call(
-								configurations.receiver,
-								context.manager,
-								device.id,
-								input.configuration,
-							),
-						);
-						await DeviceCreationContext.check(context, () =>
-							configurations.values.persist.call(configurations.receiver, context.manager, device.id, prepared),
-						);
-						const persistedDevice = await DeviceCreationContext.check(context, () =>
-							buildDeviceGraphQuery(context.manager.getRepository(VirtualDeviceEntity))
-								.where('device.id = :id', { id: device.id })
-								.getOneOrFail(),
-						);
-						const configuration = await DeviceCreationContext.check(context, () =>
-							configurations.values.snapshot.call(configurations.receiver, context.manager, device.id),
-						);
-						const original = response.capture(persistedDevice, configuration, members);
-						const settings = (configuration.settings ?? []).map(({ setting, property }) => [setting, property]).sort();
-						const expectedSettings = input.configuration.settings
-							.map(({ setting, propertyId }) => [setting, propertyId])
-							.sort();
-						if (
-							configuration.controller !== draft.dto.id ||
-							JSON.stringify(settings) !== JSON.stringify(expectedSettings)
-						)
-							throw new Error('Original thermostat configuration membership changed');
-						const catalog = await DeviceCreationContext.check(context, () => originalRead(draft.dto.id, members));
-						return Object.freeze({ ...original, members, catalog });
-					},
-					settlement,
-				);
-				let configFailure: Readonly<{ cause: unknown }> | undefined;
-				let hydrationFailure: Readonly<{ cause: unknown }> | undefined;
-				let before: CatalogWitness | undefined;
-				let selectedDevice = committed.fullWire.device;
+		return ControllerPublicationContext.complete(async () => {
+			// Every direct dispatch and all three registrations precede caller getters and lock queueing.
+			const own = captureCreation(this, [
+				'draft',
+				'devices',
+				'graph',
+				'configurations',
+				'lock',
+				'dataSource',
+			] as (keyof this)[]);
+			const lock = captureCreation(this.lock, [
+				'runExclusive',
+				'hasCurrentStructuralLease',
+				'context',
+			] as (keyof DeviceStructureLockService)[]);
+			const graph = captureCreation(this.graph, [
+				'withCreationWrite',
+				'structuralWrite',
+				'refreshValidation',
+				'dataSource',
+			] as (keyof VirtualDependencyGraphService)[]);
+			const seal = captureCreation(this.graph, ['sealControllerLedger']);
+			const publicationGraph = captureCreation(this.graph, ['capturePublishGuard']);
+			const devices = captureCreation(this.devices, ['captureCreationCatalog', 'create', 'findOne']);
+			const configurations = captureCreation(this.configurations, [
+				'prepare',
+				'persist',
+				'snapshot',
+				'afterCommit',
+				'captureCreation',
+				'captureCreationPredecessor',
+			]);
+			const responseDispatch = captureCreation(thermostatCreationResponse, ['pin']);
+			const response = responseDispatch.values.pin();
+			const readerDispatch = captureCreation(thermostatCreationCatalog, ['pin', 'expected', 'same']);
+			const reader = readerDispatch.values.pin(this.dataSource);
+			const catalog = devices.values.captureCreationCatalog.call(devices.receiver, 'virtual');
+			const draftMethod = Reflect.get(own.values, 'draft') as VirtualThermostatAuthoringService['draft'];
+			const createDevice: (dto: CreateVirtualDeviceDto, context: DeviceCreationContext) => Promise<DeviceEntity> =
+				devices.values.create;
+			const entryPins = [own, lock, graph, devices, configurations, catalog, responseDispatch, response];
+			const observationPins = [readerDispatch, reader, response.catalog, publicationGraph];
+			const pins = [...entryPins, ...observationPins, seal];
+			const settlement = new CreationSettlement<CreatedCatalogResponse>();
+			let proofFailure:
+				| Readonly<{ stage: string; cause: unknown; raw: ReturnType<typeof reader.evidence> }>
+				| undefined;
+			const current = () => {
+				if (settlement.outcome !== 'committed') return pins.every((pin) => pin.current());
+				// Catalog observations veto the response, never the original post-ACK callback policy.
 				try {
-					assertCreationCurrent(entryPins);
-					await configurations.values.afterCommit.call(configurations.receiver, committed.identity.controller);
-				} catch (error: unknown) {
-					configFailure ??= Object.freeze({ cause: error });
-					this.logger.error('Thermostat committed but post-commit publication failed', error);
-				}
-				try {
-					before = await reader.read(committed.identity.controller, committed.members);
 					assertCreationCurrent(observationPins);
-					readerDispatch.values.same(before, committed.catalog);
 				} catch (cause: unknown) {
-					proofFailure ??= Object.freeze({ stage: 'Before', cause, raw: reader.evidence() });
+					proofFailure ??= Object.freeze({ stage: 'publication', cause, raw: reader.evidence() });
 				}
-				try {
-					assertCreationCurrent(entryPins);
-					const refreshed = await devices.values.findOne.call(devices.receiver, committed.identity.controller);
-					try {
-						assertCreationCurrent(observationPins);
-					} catch (cause: unknown) {
-						proofFailure ??= Object.freeze({ stage: 'hydration', cause, raw: reader.evidence() });
-					}
-					if (refreshed) selectedDevice = response.captureCatalogDevice(refreshed, committed.members);
-					if (refreshed && !proofFailure && !settlement.legacyPublicationFailure && !configFailure) {
-						try {
-							const after = await reader.read(committed.identity.controller, committed.members);
-							assertCreationCurrent(observationPins);
-							readerDispatch.values.same(after, committed.catalog);
-							readerDispatch.values.same(after, before);
-						} catch (cause: unknown) {
-							proofFailure ??= Object.freeze({ stage: 'After', cause, raw: reader.evidence() });
-						}
-					}
-					try {
+				return entryPins.every((pin) => pin.current());
+			};
+			const input = snapshotCreation(dto);
+			assertCreationCurrent(pins);
+			const predecessor = await configurations.values.captureCreationPredecessor.call(
+				configurations.receiver,
+				input.device.id,
+			);
+			assertCreationCurrent(pins);
+			try {
+				return (await lock.values.runExclusive.call(
+					lock.receiver,
+					ControllerPublicationContext.captureCallback(async () => {
 						assertCreationCurrent(pins);
-						reader.check();
-					} catch (cause: unknown) {
-						proofFailure ??= Object.freeze({ stage: 'gate', cause, raw: reader.evidence() });
-					}
-					// Selection and detachment remain inside the original lock and final isolated phase.
-					return response.materialize(
-						committed,
-						settlement.legacyPublicationFailure || configFailure || proofFailure
-							? committed.fullWire.device
-							: selectedDevice,
-					);
-				} catch (error: unknown) {
-					hydrationFailure ??= Object.freeze({ cause: error });
-					this.logger.error('Thermostat committed but post-commit device hydration failed', error);
+						// Retain the original active structure owner, including at the native callback boundary.
+						const ownerCurrent = AsyncLocalStorage.bind(() =>
+							lock.values.hasCurrentStructuralLease.call(lock.receiver),
+						);
+						const committed = await DeviceCreationContext.runPinned<CreatedCatalogResponse>(
+							(operation, admit) =>
+								graph.values.withCreationWrite.call(
+									graph.receiver,
+									operation,
+									input.configuration.expectedGraphRevision,
+									admit,
+								) as Promise<CreatedCatalogResponse>,
+							{ ...catalog, current },
+							ownerCurrent,
+							async (context) => {
+								const originalRead = reader.scoped(context.manager);
+								const draft = await DeviceCreationContext.check<
+									Awaited<ReturnType<VirtualThermostatAuthoringService['draft']>>
+								>(context, () => invokeCreation(draftMethod, own.receiver, context.manager, input));
+								const birth = await DeviceCreationContext.check(context, () =>
+									configurations.values.captureCreation.call(
+										configurations.receiver,
+										context.manager,
+										draft.dto.id,
+										predecessor,
+									),
+								);
+								if (birth.expectedRevision !== undefined && input.configuration.expectedRevision !== 0)
+									throw new Error('Fresh thermostat creation requires revision zero');
+								const creationInput =
+									birth.expectedRevision === undefined
+										? input.configuration
+										: { ...input.configuration, expectedRevision: birth.expectedRevision };
+								const members = readerDispatch.values.expected(draft.device);
+								await DeviceCreationContext.check(context, () =>
+									configurations.values.prepare.call(
+										configurations.receiver,
+										context.manager,
+										draft.dto.id,
+										creationInput,
+										draft.device,
+									),
+								);
+								const device = await DeviceCreationContext.check<DeviceEntity>(context, () =>
+									invokeCreation(createDevice, devices.receiver, draft.dto, context),
+								);
+								const prepared = snapshotCreation(
+									await DeviceCreationContext.check(context, () =>
+										configurations.values.prepare.call(
+											configurations.receiver,
+											context.manager,
+											device.id,
+											creationInput,
+										),
+									),
+								);
+								const before = birth.beforePersist
+									? await DeviceCreationContext.check(context, birth.beforePersist)
+									: undefined;
+								await DeviceCreationContext.check(context, () =>
+									configurations.values.persist.call(
+										configurations.receiver,
+										context.manager,
+										device.id,
+										prepared,
+										before,
+										birth.finish,
+									),
+								);
+								const persistedDevice = await DeviceCreationContext.check(context, () =>
+									buildDeviceGraphQuery(context.manager.getRepository(VirtualDeviceEntity))
+										.where('device.id = :id', { id: device.id })
+										.getOneOrFail(),
+								);
+								const configuration = await DeviceCreationContext.check(context, () =>
+									configurations.values.snapshot.call(configurations.receiver, context.manager, device.id),
+								);
+								const original = response.capture(persistedDevice, configuration, members);
+								const settings = (configuration.settings ?? [])
+									.map(({ setting, property }) => [setting, property])
+									.sort();
+								const expectedSettings = input.configuration.settings
+									.map(({ setting, propertyId }) => [setting, propertyId])
+									.sort();
+								if (
+									configuration.controller !== draft.dto.id ||
+									JSON.stringify(settings) !== JSON.stringify(expectedSettings)
+								)
+									throw new Error('Original thermostat configuration membership changed');
+								const catalog = await DeviceCreationContext.check(context, () => originalRead(draft.dto.id, members));
+								return Object.freeze({ ...original, members, catalog });
+							},
+							settlement,
+							(manager) => seal.values.sealControllerLedger.call(seal.receiver, manager),
+							() => {
+								const guard = publicationGraph.values.capturePublishGuard.call(publicationGraph.receiver);
+								return () => publicationGraph.current() && guard();
+							},
+						);
+						let configFailure: Readonly<{ cause: unknown }> | undefined;
+						let hydrationFailure: Readonly<{ cause: unknown }> | undefined;
+						let before: CatalogWitness | undefined;
+						let selectedDevice = committed.fullWire.device;
+						try {
+							assertCreationCurrent(entryPins);
+							await configurations.values.afterCommit.call(configurations.receiver, committed.identity.controller);
+						} catch (error: unknown) {
+							configFailure ??= Object.freeze({ cause: error });
+							this.logger.error('Thermostat committed but post-commit publication failed', error);
+						}
+						try {
+							before = await reader.read(committed.identity.controller, committed.members);
+							assertCreationCurrent(observationPins);
+							readerDispatch.values.same(before, committed.catalog);
+						} catch (cause: unknown) {
+							proofFailure ??= Object.freeze({ stage: 'Before', cause, raw: reader.evidence() });
+						}
+						try {
+							assertCreationCurrent(entryPins);
+							const refreshed = await devices.values.findOne.call(devices.receiver, committed.identity.controller);
+							try {
+								assertCreationCurrent(observationPins);
+							} catch (cause: unknown) {
+								proofFailure ??= Object.freeze({ stage: 'hydration', cause, raw: reader.evidence() });
+							}
+							if (refreshed) selectedDevice = response.captureCatalogDevice(refreshed, committed.members);
+							if (refreshed && !proofFailure && !settlement.legacyPublicationFailure && !configFailure) {
+								try {
+									const after = await reader.read(committed.identity.controller, committed.members);
+									assertCreationCurrent(observationPins);
+									readerDispatch.values.same(after, committed.catalog);
+									readerDispatch.values.same(after, before);
+								} catch (cause: unknown) {
+									proofFailure ??= Object.freeze({ stage: 'After', cause, raw: reader.evidence() });
+								}
+							}
+							try {
+								assertCreationCurrent(pins);
+								reader.check();
+							} catch (cause: unknown) {
+								proofFailure ??= Object.freeze({ stage: 'gate', cause, raw: reader.evidence() });
+							}
+							// Selection and detachment remain inside the original lock and final isolated phase.
+							return response.materialize(
+								committed,
+								settlement.legacyPublicationFailure || configFailure || proofFailure
+									? committed.fullWire.device
+									: selectedDevice,
+							);
+						} catch (error: unknown) {
+							hydrationFailure ??= Object.freeze({ cause: error });
+							this.logger.error('Thermostat committed but post-commit device hydration failed', error);
+						}
+						return response.materialize(
+							committed,
+							hydrationFailure || proofFailure || configFailure || settlement.legacyPublicationFailure
+								? committed.fullWire.device
+								: selectedDevice,
+						);
+					}),
+				)) as VirtualCreatedThermostatModel;
+			} catch (cause) {
+				// Existing known business rollback vocabulary remains intact. Unknown/ACK errors retain evidence.
+				if (cause instanceof DeviceCreationSettlementError) {
+					if (cause.settlement.outcome === 'rolled_back') throw cause.cause;
+					throw cause;
 				}
-				return response.materialize(
-					committed,
-					hydrationFailure || proofFailure || configFailure || settlement.legacyPublicationFailure
-						? committed.fullWire.device
-						: selectedDevice,
-				);
-			})) as VirtualCreatedThermostatModel;
-		} catch (cause) {
-			// Existing known business rollback vocabulary remains intact. Unknown/ACK errors retain evidence.
-			if (cause instanceof DeviceCreationSettlementError) {
-				if (cause.settlement.outcome === 'rolled_back') throw cause.cause;
+				if (settlement.receipt) throw new DeviceCreationSettlementError(settlement, cause, cause);
 				throw cause;
 			}
-			if (settlement.receipt) throw new DeviceCreationSettlementError(settlement, cause, cause);
-			throw cause;
-		}
+		});
 	}
 
 	async propertyBinding(id: string): Promise<{ property: string; channel: string; device: string } | null> {

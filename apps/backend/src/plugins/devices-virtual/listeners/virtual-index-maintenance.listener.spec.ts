@@ -13,6 +13,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
@@ -332,6 +333,123 @@ describe('VirtualIndexMaintenanceListener', () => {
 		listener.handleStructuralChange();
 		await flushUntil(() => graph.refreshQuarantine.mock.calls.length === 2);
 		expect(graph.refreshQuarantine).toHaveBeenCalledTimes(2);
+	});
+	it('settles coalesced original tickets without joining the independently requested later pass', async () => {
+		const first = createDeferred();
+		const second = createDeferred();
+		index.rebuild.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+		let aSettled = false;
+		let cSettled = false;
+		let bSettled = false;
+		const a = new ControllerPublicationContext(() => true)
+			.run(() => {
+				listener.handleStructuralChange();
+				return Promise.resolve();
+			})
+			.then(() => {
+				aSettled = true;
+			});
+		const c = new ControllerPublicationContext(() => true)
+			.run(() => {
+				listener.handleStructuralChange();
+				return Promise.resolve();
+			})
+			.then(() => {
+				cSettled = true;
+			});
+		let b: Promise<void> = Promise.resolve();
+		try {
+			await flushUntil(() => index.rebuild.mock.calls.length === 1);
+			expect(index.rebuild).toHaveBeenCalledTimes(1);
+			b = new ControllerPublicationContext(() => true)
+				.run(() => {
+					listener.handleStructuralChange();
+					return Promise.resolve();
+				})
+				.then(() => {
+					bSettled = true;
+				});
+			first.resolve();
+			await flushUntil(() => index.rebuild.mock.calls.length === 2 && aSettled && cSettled);
+			expect(index.rebuild).toHaveBeenCalledTimes(2);
+			expect(aSettled).toBe(true);
+			expect(cSettled).toBe(true);
+			expect(bSettled).toBe(false);
+		} finally {
+			first.resolve();
+			second.resolve();
+			await Promise.all([a, b, c]);
+		}
+	});
+	it('joins an original status descendant pass while allowing the shared loop to advance', async () => {
+		const second = createDeferred();
+		index.rebuild
+			.mockResolvedValueOnce({ ...NO_CHANGES, rewiredVirtualDeviceIds: ['original-virtual'] })
+			.mockReturnValueOnce(second.promise);
+		status.recompute.mockImplementationOnce(() => {
+			listener.handleStructuralChange();
+			return Promise.resolve();
+		});
+		let settled = false;
+		const publication = new ControllerPublicationContext(() => true);
+		const completion = publication
+			.run(() => {
+				listener.handleStructuralChange();
+				return Promise.resolve();
+			})
+			.then(() => {
+				settled = true;
+			});
+		try {
+			await flushUntil(() => index.rebuild.mock.calls.length === 2);
+			expect(index.rebuild).toHaveBeenCalledTimes(2);
+			expect(settled).toBe(false);
+			second.resolve();
+			await completion;
+			expect(publication.facts()).toContainEqual(
+				expect.objectContaining({ name: 'virtual-index.pass', submitted: true, settled: true, failed: false }),
+			);
+		} finally {
+			second.resolve();
+			await completion;
+		}
+	});
+
+	it('keeps the admitted status callback through a held rebuild and captures a successor only for the next pass', async () => {
+		const first = createDeferred({ ...NO_CHANGES, rewiredVirtualDeviceIds: ['original-device'] });
+		index.rebuild.mockReturnValueOnce(first.promise).mockResolvedValueOnce({
+			...NO_CHANGES,
+			rewiredVirtualDeviceIds: ['successor-device'],
+		});
+		const original = status.recompute;
+		const successor = jest.fn().mockResolvedValue(undefined);
+		let current = true;
+		const completion = new ControllerPublicationContext(() => current).run(() => {
+			listener.handleStructuralChange();
+			return Promise.resolve();
+		});
+		try {
+			await flushUntil(() => index.rebuild.mock.calls.length === 1);
+			expect(index.rebuild).toHaveBeenCalledTimes(1);
+			status.recompute = successor;
+			current = false;
+			first.resolve();
+			await completion;
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(original).toHaveBeenCalledWith('original-device', 'aggregated after a source wiring change');
+			expect(original.mock.contexts[0]).toBe(status);
+			expect(successor).not.toHaveBeenCalled();
+			await new ControllerPublicationContext(() => true).run(() => {
+				listener.handleStructuralChange();
+				return Promise.resolve();
+			});
+			expect(successor).toHaveBeenCalledTimes(1);
+			expect(successor).toHaveBeenCalledWith('successor-device', 'aggregated after a source wiring change');
+		} finally {
+			first.resolve();
+			await completion;
+			status.recompute = original;
+		}
 	});
 	it('coalesces events that arrive while a rebuild is in flight into exactly one subsequent rebuild', async () => {
 		const first = createDeferred();

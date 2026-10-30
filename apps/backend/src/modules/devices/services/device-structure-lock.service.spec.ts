@@ -19,6 +19,29 @@ describe('DeviceStructureLockService', () => {
 		lock = new DeviceStructureLockService();
 	});
 
+	it('captures only the original accepting exclusive owner and never adopts its successor', async () => {
+		expect(() => lock.captureExclusiveOwner()).toThrow('accepting exclusive');
+		await lock.runShared(() => {
+			expect(() => lock.captureExclusiveOwner()).toThrow('accepting exclusive');
+			return Promise.resolve();
+		});
+		let original: () => boolean;
+		await lock.runExclusiveReleased(async () => {
+			original = lock.captureExclusiveOwner();
+			expect(original()).toBe(true);
+			await lock.runExclusive(() => {
+				expect(original()).toBe(true);
+				return Promise.resolve();
+			});
+		});
+		expect(original()).toBe(false);
+		await lock.runExclusiveReleased(() => {
+			expect(lock.captureExclusiveOwner()()).toBe(true);
+			expect(original()).toBe(false);
+			return Promise.resolve();
+		});
+	});
+
 	// The whole point: the second caller's *first* statement must not run until the first caller's last
 	// one has. A check-then-write pair that interleaves is exactly what this exists to prevent.
 	it('does not start queued work until the work before it has finished', async () => {

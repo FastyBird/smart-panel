@@ -139,8 +139,8 @@
 					</template>
 					<template v-if="domain === 'climate'">
 						<el-alert
-							:title="text('climateUnsupported')"
-							type="warning"
+							:title="text('climateAutomation')"
+							type="info"
 							:closable="false"
 							class="mb-3"
 						/>

@@ -10,6 +10,7 @@ import { instanceToPlain } from 'class-transformer';
 import { useContainer } from 'class-validator';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { IncomingMessage, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
@@ -21,7 +22,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
-import { createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { SqliteDataSource, createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { AuthController } from '../src/modules/auth/controllers/auth.controller';
+import { IS_PUBLIC_KEY } from '../src/modules/auth/guards/auth.guard';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import {
 	ChannelCategory,
@@ -47,6 +50,8 @@ import { DevicesService } from '../src/modules/devices/services/devices.service'
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../src/modules/devices/utils/schema.utils';
+import { NotificationKind, NotificationSeverity } from '../src/modules/notifications/notifications.constants';
+import { NotificationsService } from '../src/modules/notifications/services/notifications.service';
 import { StorageService } from '../src/modules/storage/services/storage.service';
 import { SwaggerDocumentService } from '../src/modules/swagger/services/swagger-document.service';
 import {
@@ -78,6 +83,8 @@ import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/se
 import { VirtualDewPointConfigService } from '../src/plugins/devices-virtual/services/virtual-dew-point-config.service';
 import { DEW_POINT_FORMULA } from '../src/plugins/devices-virtual/services/virtual-dew-point.utils';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
+import { VirtualThermostatAutomationService } from '../src/plugins/devices-virtual/services/virtual-thermostat-automation.service';
+import { VirtualThermostatClaimsService } from '../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatConfigService } from '../src/plugins/devices-virtual/services/virtual-thermostat-config.service';
 import { VirtualThermostatRuntimeService } from '../src/plugins/devices-virtual/services/virtual-thermostat-runtime.service';
 import { InfluxV1ConfigModel } from '../src/plugins/influx-v1/models/config.model';
@@ -85,6 +92,7 @@ import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simu
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 import { RoomSpaceEntity } from '../src/plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../src/plugins/spaces-home-control/entities/zone-space.entity';
+import { SpaceClimateAutomationService } from '../src/plugins/spaces-home-control/services/space-climate-automation.service';
 
 import { createProtectionProbe } from './support/thermostat-protection-fixture';
 
@@ -321,16 +329,11 @@ function observeAmbientPointData(rows: unknown, memory: boolean) {
 				)
 					throw new Error('Non-scalar persisted point field');
 				observed[key] = { kind: typeof value, value };
-				result[key] =
-					value === undefined && ['numberValue', 'stringValue'].includes(key)
-						? null
-						: (value as string | number | boolean | null | undefined);
+				result[key] = value as string | number | boolean | null | undefined;
 			}
 		}
 		if (!Object.hasOwn(result, 'time') || typeof result.propertyId !== 'string')
 			throw new Error('Incomplete physical point');
-		// Only the two optional storage-protocol value fields have absence/null equivalence.
-		for (const key of ['numberValue', 'stringValue']) if (!Object.hasOwn(result, key)) result[key] = null;
 		raw.push(Object.freeze(observed));
 		return Object.freeze(result);
 	});
@@ -889,13 +892,14 @@ async function verifyThermostatWire(
 						before: physicalAmbientHistory,
 						after: physicalAmbientAfter,
 						qualification:
-							'Only optional numberValue/stringValue absence-null and known native query timestamp function handles differ in representation. All tag/scalar fields, order, actual18 and exact native timestamp remain in point DATA.',
+							'All scalar field presence, undefined/null distinctions, tags, row order and exact native timestamp DATA are retained; only known query-wrapper function identities are represented by their method names.',
 					}),
 				);
 				expect(physicalAmbientAfter.data).toHaveLength(1);
 				expect(physicalAmbientAfter.data[0].propertyId).toBe(ambient);
 				expect(physicalAmbientAfter.data[0].numberValue).toBe(18);
 				expect(physicalAmbientAfter.data).toStrictEqual(physicalAmbientHistory.data);
+				expect(physicalAmbientAfter.raw).toStrictEqual(physicalAmbientHistory.raw);
 				const settingHistory: Record<string, unknown> = {};
 				for (const setting of settings) {
 					const rows = await storage.queryStrict(
@@ -929,10 +933,21 @@ async function verifyThermostatWire(
 				const setpoint = settings.find(
 					(entry) => entry.setting === (hasHeating ? 'heating_setpoint' : 'cooling_setpoint'),
 				);
-				expect(
-					result.device.channels.flatMap((entry) => entry.properties).find((entry) => entry.id === setpoint.property)
-						.value.value,
-				).toBe(hasHeating ? 20 : 25);
+				const settingValue = result.device.channels
+					.flatMap((entry) => entry.properties)
+					.find((entry) => entry.id === setpoint.property).value;
+				if (settingValue.value !== (hasHeating ? 20 : 25))
+					console.info(
+						'healthy-setting-unavailable',
+						JSON.stringify({
+							variant,
+							settingValue,
+							graphValidated: moduleRef.get(VirtualDependencyGraphService).isValidated(),
+							primaryAvailable: storage.isPrimaryAvailable(),
+							fallback: storage.isUsingFallback(),
+						}),
+					);
+				expect(settingValue.value).toBe(hasHeating ? 20 : 25);
 				const information = result.device.channels.find(
 					(entry) => entry.category === (ChannelCategory.DEVICE_INFORMATION as string),
 				);
@@ -1011,7 +1026,22 @@ async function verifyThermostatWire(
 					(interleave?.foreignGraphWrites?.() ?? 0) -
 					foreignGraphBaseline,
 			);
-			expect(moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1')).toBeNull();
+			const provider = moduleRef.get(ClimateAutomationRegistryService).captureProvider('virtual-thermostat:v1');
+			expect(provider?.isCurrent()).toBe(true);
+			expect(provider.implementation).toBe(Reflect.get(moduleRef.get(VirtualThermostatAutomationService), 'provider'));
+			expect(
+				await dataSource.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: device.id }),
+			).toMatchObject({
+				state: 'EMPTY',
+				manualHold: false,
+				ownerId: null,
+				baselineId: null,
+				generationId: null,
+				candidateId: null,
+				installEvidence: null,
+			});
+			expect(await dataSource.manager.countBy(ClimateAutomationSlotEntity, { state: 'LIVE' })).toBe(0);
+			expect(await dataSource.manager.count(ClimateAutomationSourceEntity)).toBe(0);
 		}
 	} catch (cause: unknown) {
 		rejection = { cause };
@@ -1035,7 +1065,7 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 	const pending = new Set<Receipt>();
 	const restore: (() => void)[] = [];
 	let owned: Receipt[] | undefined;
-	let finished = false;
+	let disposed = false;
 	const repairs = new Map<NodeJS.Timeout, () => void>();
 	function retain(work: Promise<void>): Receipt {
 		const receipt: Receipt = { done: Promise.resolve() };
@@ -1111,22 +1141,34 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 	}
 	return {
 		begin(): void {
+			if (disposed) throw new Error('Original setup completion capture is disposed');
 			if (owned) throw new Error('Link setup completion already owns a request');
 			owned = [...pending];
 		},
 		async finish(): Promise<void> {
-			if (finished) return;
+			if (disposed) return;
 			owned ??= [...pending];
 			let failure: { cause: unknown } | undefined;
 			try {
-				// These are retained original promises, including callbacks admitted by awaited callbacks.
-				// The original loop owns coalesced passes; original repair timers retain their own receipts.
+				// Captured at original creation, including finite descendants of these callbacks.
 				for (const receipt of owned) {
 					await receipt.done;
 					failure ??= receipt.failure;
 				}
 			} finally {
-				finished = true;
+				owned = undefined;
+			}
+			if (failure) throw failure.cause;
+		},
+		async close(this: { finish: () => Promise<void> }): Promise<void> {
+			if (disposed) return;
+			let failure: { cause: unknown } | undefined;
+			try {
+				await this.finish();
+			} catch (cause: unknown) {
+				failure = { cause };
+			} finally {
+				disposed = true;
 				for (const cleanup of restore.splice(0).reverse()) {
 					try {
 						cleanup();
@@ -1175,7 +1217,7 @@ describe('devices-virtual plugin (e2e)', () => {
 
 		useContainer(moduleFixture, { fallbackOnErrors: true });
 
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 
 		// Wait for all modules to initialize
 		await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1218,13 +1260,18 @@ describe('devices-virtual plugin (e2e)', () => {
 
 	afterAll(async () => {
 		try {
-			await linkSetupCompletion?.finish();
+			await linkSetupCompletion?.close();
 		} finally {
+			const originalServer = app?.getHttpServer() as { listening: boolean; address(): unknown } | undefined;
 			await app?.close();
+			if (originalServer) {
+				expect(originalServer.listening).toBe(false);
+				expect(originalServer.address()).toBeNull();
+			}
 		}
 	});
 
-	it('boots the dormant ownership core through the real module and entity discovery without registering climate authority', async () => {
+	it('boots the actual activity/provider registrations without installing any climate authority by default', async () => {
 		const registry = moduleRef.get(ClimateAutomationRegistryService);
 		const ledger = moduleRef.get(ClimateAutomationLedgerService);
 		await expect(
@@ -1232,7 +1279,14 @@ describe('devices-virtual plugin (e2e)', () => {
 				expect((await ledger.readSource(manager, scope, 'activity:v1', 'boot-probe')).facts).toBeNull();
 			}),
 		).resolves.toEqual({ outcome: 'committed' });
-		expect(registry.captureProvider('virtual-thermostat:v1')).toBeNull();
+		expect(registry.captureProvider('virtual-thermostat:v1')?.isCurrent()).toBe(true);
+		expect(registry.captureProvider('virtual-thermostat:v1')?.implementation).toBe(
+			Reflect.get(moduleRef.get(VirtualThermostatAutomationService), 'provider'),
+		);
+		expect(registry.captureProducer('space-activity:v1')?.isCurrent()).toBe(true);
+		expect(registry.captureProducer('space-activity:v1')?.implementation).toBe(
+			Reflect.get(moduleRef.get(SpaceClimateAutomationService), 'producer'),
+		);
 		for (const key of ['activity:v1', 'schedule:v1', 'presence:v1']) {
 			expect(registry.captureProducer(key)).toBeNull();
 		}
@@ -2492,6 +2546,7 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 
 		it('returns committed nested wiring as unavailable when post-commit graph validation fails', async () => {
+			linkSetupCompletion.begin();
 			const graph = moduleRef.get(VirtualDependencyGraphService);
 			const propertyId = uuid();
 			const failure = new Error('injected nested post-commit validation failure');
@@ -2548,6 +2603,7 @@ describe('devices-virtual plugin (e2e)', () => {
 				).toBe(atomicSourcePropertyId);
 			} finally {
 				stop();
+				await linkSetupCompletion.finish();
 				await graph.refreshQuarantine();
 				if (deviceId) await ensureDeviceDeleted(authGet, authDelete, deviceId);
 			}
@@ -3028,6 +3084,10 @@ describe('devices-virtual plugin (e2e)', () => {
 			// the real schema.
 			await authPatch(`/modules/devices/devices/${ownSourceDeviceId}`)
 				.send({ data: { type: SIMULATOR_TYPE, hidden: true, enabled: false, hidden_by: DeviceHiddenBy.SYSTEM } })
+				.expect((response) => {
+					if (response.status !== 200)
+						throw new Error(`Source-unhide HTTP ${response.status}: ${JSON.stringify(response.body)}`);
+				})
 				.expect(200);
 
 			// Read immediately, with no polling — the same read-after-write assertion as in the
@@ -3086,7 +3146,12 @@ describe('devices-virtual plugin (e2e)', () => {
 			expect(typeof unhidden === 'string' ? unhidden : unhidden.hidden_by).toBeNull();
 
 			// Unhidden means genuinely back in the pickers, not merely a flipped column.
-			const visibleList = await authGet('/modules/devices/devices?hidden=false').expect(200);
+			const visibleList = await authGet('/modules/devices/devices?hidden=false')
+				.expect((response) => {
+					if (response.status !== 200)
+						throw new Error(`Source-unhide HTTP ${response.status}: ${JSON.stringify(response.body)}`);
+				})
+				.expect(200);
 
 			expect((visibleList.body as { data: DeviceBody[] }).data.map((device) => device.id)).toContain(ownSourceDeviceId);
 		});
@@ -3701,11 +3766,28 @@ describe('devices-virtual plugin (e2e)', () => {
 		// reason has to reach the user somewhere, and the case below is where: the wizard asks before it
 		// writes.
 		it('refuses a second one', async () => {
-			const rejected = await authPost('/modules/devices/devices').send(
-				virtualOutlet('E2E Office Meter', meterPropertyId),
-			);
-
-			expect(rejected.status).toBe(422);
+			const claims = moduleRef.get<VirtualThermostatClaimsService>(VirtualThermostatClaimsService);
+			const refresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
+			const completions: Promise<void>[] = [];
+			const refreshProbe = jest.spyOn(claims, 'refresh').mockImplementation(() => {
+				const original = refresh();
+				completions.push(original);
+				return original;
+			});
+			try {
+				const rejected = await authPost('/modules/devices/devices').send(
+					virtualOutlet('E2E Office Meter', meterPropertyId),
+				);
+				expect(rejected.status).toBe(422);
+				// Join only original refreshes observed during this rejection, outside its structural/DB owner.
+				// A swallowed post-commit ownership timeout must not masquerade as compatible cleanup.
+				expect(completions.length).toBeGreaterThan(0);
+				expect(await Promise.allSettled(completions)).toEqual(
+					completions.map(() => ({ status: 'fulfilled', value: undefined })),
+				);
+			} finally {
+				refreshProbe.mockRestore();
+			}
 		});
 
 		// A false green is the one answer a user acts on. `reportCompatibility` compares a candidate
@@ -3798,7 +3880,7 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 
 		useContainer(moduleFixture, { fallbackOnErrors: true });
 
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 
 		// Wait for all modules to initialize
 		await new Promise((resolve) => setTimeout(resolve, 100));
@@ -3837,7 +3919,12 @@ describe('thermostat creation response (isolated real AppModule e2e)', () => {
 		accessToken = loginBody.data.access_token;
 	});
 	afterEach(async () => {
+		const originalServer = app?.getHttpServer() as { listening: boolean; address(): unknown } | undefined;
 		await app?.close();
+		if (originalServer) {
+			expect(originalServer.listening).toBe(false);
+			expect(originalServer.address()).toBeNull();
+		}
 		useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
 	});
 	it.each([
@@ -3896,6 +3983,8 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 		held = false,
 		window = false,
 		unknown = false;
+	let unknownBits = 0;
+	let writerWitness: { held: boolean; matched: boolean; ambiguous: boolean } | undefined;
 	let aRunner: Runner, bRunner: Runner;
 	const depth = (runner: Runner) => Reflect.get(runner, 'transactionDepth') as number;
 	try {
@@ -3909,6 +3998,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 				beforeQuery(event) {
 					if (admissions.length === 512) {
 						unknown = true;
+						unknownBits |= label === 'A' ? 1 : 2;
 						return;
 					}
 					admissions.push({
@@ -3938,6 +4028,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 						if (!relevant) return;
 						if (facts.length === 256) {
 							unknown = true;
+							unknownBits |= label === 'A' ? 4 : 8;
 							return;
 						}
 						facts.push({
@@ -3968,7 +4059,11 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 					try {
 						const result: unknown = original.apply(this, forwarded);
 						if (label === 'B' && window && query === 'BEGIN IMMEDIATE TRANSACTION') {
-							if (!held || !admission || depth(admission.runner) !== 0) unknown = true;
+							if (!held || !admission || depth(admission.runner) !== 0) {
+								unknown = true;
+								unknownBits |= 16;
+								writerWitness = { held, matched: admission !== undefined, ambiguous: matches.length > 1 };
+							}
 							bRunner = admission?.runner;
 							writer.release();
 						}
@@ -4074,6 +4169,13 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 			jobs.push(promise);
 		},
 		verify() {
+			if (unknown) {
+				try {
+					console.info('channel-progress-unknown', JSON.stringify({ unknownBits, writerWitness }));
+				} catch {
+					// Fixed scalar observation cannot replace the original verification failure.
+				}
+			}
 			expect(unknown).toBe(false);
 			expect(aRunner).toBeDefined();
 			expect(bRunner).toBeDefined();
@@ -4590,6 +4692,12 @@ function createHttpAnchor(
 					route,
 					expectedStatus,
 					actualStatus: typeof status === 'number' ? status : undefined,
+					responseHeaders: Object.fromEntries(
+						['x-group-a-fixture', 'server', 'content-type', 'www-authenticate'].map((key) => [
+							key,
+							own(own(response, 'headers') ?? own(response, 'header'), key),
+						]),
+					),
 					strings,
 					causePresent: failure !== undefined,
 					causeKind: failure === undefined ? undefined : cause === null ? 'null' : typeof cause,
@@ -4651,7 +4759,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			migrationsTransactionMode: 'each',
 		});
 		try {
-			expect(await prepared.runMigrations({ transaction: 'each' })).toHaveLength(49);
+			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
+			expect(expectedNames).toHaveLength(50);
+			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
+			const applied = await prepared.runMigrations({ transaction: 'each' });
+			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {
 			await prepared.destroy();
 		}
@@ -4670,9 +4782,31 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		};
 		dataSource.subscribers.push(observer);
 		app = moduleRef.createNestApplication();
+		const fixtureIdentity = path.basename(directory);
+		const authController = moduleRef.get(AuthController);
+		app.use((incoming: IncomingMessage, outgoing: ServerResponse, next: () => void) => {
+			outgoing.setHeader('x-group-a-fixture', fixtureIdentity);
+			const localPort = incoming.socket.localPort;
+			outgoing.on('finish', () => {
+				if (outgoing.statusCode !== 401) return;
+				console.info(
+					'owned-http-auth-failure',
+					JSON.stringify({
+						fixtureIdentity,
+						method: incoming.method,
+						url: incoming.url,
+						localPort,
+						registerPublic:
+							Reflect.getMetadata(IS_PUBLIC_KEY, Reflect.get(authController, 'register') as object) === true,
+						loginPublic: Reflect.getMetadata(IS_PUBLIC_KEY, Reflect.get(authController, 'login') as object) === true,
+					}),
+				);
+			});
+			next();
+		});
 		app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 		useContainer(moduleRef, { fallbackOnErrors: true });
-		await app.init();
+		await app.listen(0, '127.0.0.1');
 		expect(moduleRef.get(ConfigService).getPluginConfig<InfluxV1ConfigModel>('influx-v1-plugin').database).toBe(
 			testInfluxDatabase,
 		);
@@ -4723,7 +4857,12 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		try {
 			await observe(pendingProgress);
 			pendingProgress = undefined;
+			const originalServer = app?.getHttpServer() as { listening: boolean; address(): unknown } | undefined;
 			await app?.close();
+			if (originalServer) {
+				expect(originalServer.listening).toBe(false);
+				expect(originalServer.address()).toBeNull();
+			}
 			console.info('channel-admission-A-closed', { initialized: dataSource?.isInitialized });
 		} finally {
 			app = undefined;
@@ -4872,7 +5011,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		};
 		try {
 			useContainer(otherModule, { fallbackOnErrors: true });
-			await otherApp.init();
+			await otherApp.listen(0, '127.0.0.1');
 			expect(otherSource).not.toBe(dataSource);
 			expect(otherSource.manager).not.toBe(dataSource.manager);
 			expect(otherSource.options.database).toBe(dataSource.options.database);
@@ -5416,8 +5555,52 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 	});
 });
 
+type SchemaCompositionFailure = { cause: unknown };
+
+/** Finite original receipts only; no cancellation or claim about detached Nest descendants. */
+function schemaCompositionOwner(clean: () => Promise<SchemaCompositionFailure | undefined>) {
+	const pending = new Set<Promise<unknown>>();
+	let stopped = false;
+	let uncertain = false;
+	let completion: Promise<SchemaCompositionFailure | undefined> | undefined;
+	return {
+		open(): void {
+			if (stopped) throw new Error('Schema composition case already entered cleanup');
+		},
+		uncertain: () => uncertain,
+		own<T>(original: Promise<T>): Promise<T> {
+			pending.add(original);
+			void original.then(
+				() => pending.delete(original),
+				() => {
+					uncertain = true;
+					pending.delete(original);
+				},
+			);
+			return original;
+		},
+		finish(): Promise<SchemaCompositionFailure | undefined> {
+			return (completion ??= (async () => {
+				stopped = true;
+				while (pending.size) await Promise.allSettled([...pending]);
+				try {
+					return await clean();
+				} catch (cause: unknown) {
+					return { cause };
+				}
+			})());
+		},
+	};
+}
+
 describe('P05b1b fresh full AppModule schema composition', () => {
-	it('reserves two real startup owners and preserves a no-change full sync/restart with normal memory fallback', async () => {
+	let finishCase: (() => Promise<SchemaCompositionFailure | undefined>) | undefined;
+	afterEach(async () => {
+		const result = await finishCase?.();
+		finishCase = undefined;
+		if (result) throw result.cause;
+	});
+	it('reserves two real startup owners, preserves an offline image, and serves after restart with memory fallback', async () => {
 		let phase = 'setup';
 		const report = (stage: string, cause: unknown): void => {
 			try {
@@ -5450,7 +5633,60 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 		const environment = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 		const directory = mkdtempSync(path.join(tmpdir(), 'p05b1b-fresh-nest-'));
 		const applications: INestApplication[] = [];
-		let failure: { cause: unknown } | undefined;
+		const modules: Array<{ module: TestingModule; app?: INestApplication; source: DataSource }> = [];
+		const offlineSources: DataSource[] = [];
+		const restores: Array<() => void> = [];
+		const appCloses = new Map<INestApplication, () => Promise<void>>();
+		const sourceCloses = new Map<DataSource, Promise<void>>();
+		let failure: SchemaCompositionFailure | undefined;
+		const owner = schemaCompositionOwner(async () => {
+			let problem: SchemaCompositionFailure | undefined;
+			const attempt = async (work: () => unknown) => {
+				try {
+					await work();
+				} catch (cause: unknown) {
+					problem ??= { cause };
+				}
+			};
+			for (const source of [...offlineSources].reverse()) await attempt(() => closeSource(source));
+			for (const item of [...modules].reverse()) {
+				await attempt(() => (item.app ? closeApp(item.app) : item.module.close()));
+				if (item.source.isInitialized) await attempt(() => closeSource(item.source));
+			}
+			for (const restore of [...restores].reverse()) await attempt(restore);
+			await attempt(() => useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true }));
+			for (const key of keys)
+				await attempt(() => {
+					if (environment[key] === undefined) delete process.env[key];
+					else process.env[key] = environment[key];
+				});
+			// A rejected initialization can leave private Nest descendants unknown. Never delete their database.
+			if (!problem && !owner.uncertain()) await attempt(() => rmSync(directory, { recursive: true, force: true }));
+			else report('cleanup:directory-retained', problem?.cause);
+			return problem;
+		});
+		finishCase = () => owner.finish();
+		const enter = (next: string): void => {
+			owner.open();
+			phase = next;
+		};
+		const closeSource = (source: DataSource): Promise<void> => {
+			let result = sourceCloses.get(source);
+			if (result === undefined) {
+				result = owner.own(
+					(async () => {
+						if (source.isInitialized) await source.destroy();
+					})(),
+				);
+				sourceCloses.set(source, result);
+			}
+			return result;
+		};
+		const closeApp = (app: INestApplication): Promise<void> => {
+			const close = appCloses.get(app);
+			if (!close) throw new Error('Missing original app close');
+			return close();
+		};
 		const state = async (source: DataSource) => {
 			const schema = await source.query<{ name: string; type: string; sql: string }[]>(
 				"SELECT name,type,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
@@ -5461,10 +5697,28 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 			return { schema, rows };
 		};
 		const construct = async () => {
-			const module = await Test.createTestingModule({
-				imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
-			}).compile();
+			const module = await owner.own(
+				Test.createTestingModule({
+					imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
+				}).compile(),
+			);
+			const item: (typeof modules)[number] = { module, source: module.get(DataSource) };
+			modules.push(item);
 			const app = module.createNestApplication();
+			item.app = app;
+			const init = app.init.bind(app) as INestApplication['init'];
+			const descriptor = Object.getOwnPropertyDescriptor(app, 'init');
+			app.init = () => {
+				owner.open();
+				return owner.own(init());
+			};
+			restores.push(() => {
+				if (descriptor) Object.defineProperty(app, 'init', descriptor);
+				else Reflect.deleteProperty(app, 'init');
+			});
+			const close = app.close.bind(app) as () => Promise<void>;
+			let closed: Promise<void> | undefined;
+			appCloses.set(app, () => (closed ??= owner.own(close())));
 			app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 			applications.push(app);
 			return { app, module, source: module.get(DataSource) };
@@ -5480,10 +5734,10 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				JSON.stringify({ plugins: { 'influx-v1-plugin': { enabled: false } }, modules: {} }),
 			);
 			// Finish the requested offline ORM DDL before racing the two actual serving readiness hooks.
-			phase = 'construct:first';
-			const first = await construct();
-			phase = 'construct:second';
-			const second = await construct();
+			enter('construct:first');
+			const first = await owner.own(construct());
+			enter('construct:second');
+			const second = await owner.own(construct());
 			expect(first.source).not.toBe(second.source);
 			expect(first.source.manager).not.toBe(second.source.manager);
 			expect(first.source.options.database).toBe(second.source.options.database);
@@ -5504,8 +5758,8 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 							catalogReads[index].push(observations[index].length - 1);
 					},
 				});
-			phase = 'init:concurrent';
-			await Promise.all([first.app.init(), second.app.init()]);
+			enter('init:concurrent');
+			await owner.own(Promise.all([first.app.init(), second.app.init()]));
 			for (const queries of observations) {
 				const index = queries.indexOf(
 					'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
@@ -5521,96 +5775,190 @@ describe('P05b1b fresh full AppModule schema composition', () => {
 				);
 				expect(observations[index][read - 2]).toBe('BEGIN TRANSACTION');
 			}
+			for (const queries of observations) {
+				const schemaRead = queries.indexOf('PRAGMA table_info("devices_module_devices")');
+				expect(schemaRead).toBeGreaterThan(1);
+				expect(queries[schemaRead - 1]).toBe(
+					'UPDATE "devices_virtual_graph_revision" SET "revision"="revision" WHERE 0',
+				);
+				expect(queries[schemaRead - 2]).toBe('BEGIN TRANSACTION');
+			}
 			for (const item of [first, second]) {
 				expect(item.module.get(StorageService).isPrimaryAvailable()).toBe(false);
 				expect(item.module.get(StorageService).isUsingFallback()).toBe(true);
 			}
-			phase = 'row:device';
-			await first.source.manager.insert(DeviceEntity, {
-				id: 'fresh-device',
-				name: 'Fresh preserved row',
-				category: DeviceCategory.GENERIC,
-			});
-			phase = 'row:channel';
-			await first.source.manager.insert(ChannelEntity, {
-				id: 'fresh-channel',
-				name: 'Fresh channel',
-				category: ChannelCategory.GENERIC,
-				device: 'fresh-device',
-			});
-			phase = 'row:property';
-			await first.source.manager.insert(ChannelPropertyEntity, {
-				id: 'fresh-property',
-				category: PropertyCategory.GENERIC,
-				identifier: 'fresh',
-				dataType: DataTypeType.FLOAT,
-				permissions: [PermissionType.READ_ONLY],
-				channel: 'fresh-channel',
-			});
-			phase = 'state:before-sync';
-			const before = await state(first.source);
+			enter('row:device');
+			await owner.own(
+				first.source.manager.insert(DeviceEntity, {
+					id: 'fresh-device',
+					name: 'Fresh preserved row',
+					category: DeviceCategory.GENERIC,
+				}),
+			);
+			enter('row:channel');
+			await owner.own(
+				first.source.manager.insert(ChannelEntity, {
+					id: 'fresh-channel',
+					name: 'Fresh channel',
+					category: ChannelCategory.GENERIC,
+					device: 'fresh-device',
+				}),
+			);
+			enter('row:property');
+			await owner.own(
+				first.source.manager.insert(ChannelPropertyEntity, {
+					id: 'fresh-property',
+					category: PropertyCategory.GENERIC,
+					identifier: 'fresh',
+					dataType: DataTypeType.FLOAT,
+					permissions: [PermissionType.READ_ONLY],
+					channel: 'fresh-channel',
+				}),
+			);
+			// The image is a distinct SQLite-consistent epoch; serving monitors continue on their original file.
+			enter('offline:export');
+			if (first.source.options.type !== 'sqlite') throw new Error('Expected SQLite serving source');
+			expect(first.source.manager.queryRunner?.isTransactionActive ?? false).toBe(false);
+			const [{ version }] = await owner.own(
+				first.source.query<{ version: string }[]>('SELECT sqlite_version() AS version'),
+			);
+			const [major, minor] = version.split('.').map(Number);
+			expect(major > 3 || (major === 3 && minor >= 27)).toBe(true);
+			const image = path.join(directory, 'offline-schema.sqlite');
+			await owner.own(first.source.query('VACUUM INTO ?', [image]));
+			const options = { ...first.source.options, database: image, synchronize: false, migrationsRun: false };
+			const openOffline = () => {
+				owner.open();
+				const source = new SqliteDataSource(options);
+				offlineSources.push(source);
+				return owner.own(source.initialize());
+			};
+			const offline = await openOffline();
+			expect(offline).not.toBe(first.source);
+			expect(offline.options.database).not.toBe(first.source.options.database);
+			expect(offline.entityMetadatas.map((item) => item.tablePath).sort()).toEqual(
+				first.source.entityMetadatas.map((item) => item.tablePath).sort(),
+			);
+			expect(offline.subscribers.map((item) => item.constructor.name).sort()).toEqual([
+				'DataSourceEntitySubscriber',
+				'PageEntitySubscriber',
+				'TileEntitySubscriber',
+			]);
+			enter('offline:baseline');
+			const before = await owner.own(state(offline));
 			expect(
 				before.schema.filter(({ name, type }) => type === 'trigger' && name.includes('_thermostat_catalog_birth_')),
 			).toHaveLength(6);
-			phase = 'schema:log-first';
-			expect((await first.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
-			phase = 'schema:synchronize';
-			await first.source.synchronize();
-			phase = 'state:after-sync';
-			expect(await state(first.source)).toEqual(before);
-			phase = 'close:second';
-			await second.app.close();
+			const seedRows = async (source: DataSource) =>
+				Promise.all([
+					owner.own(
+						source.query<Record<string, unknown>[]>('SELECT * FROM "devices_module_devices" WHERE id = ?', [
+							'fresh-device',
+						]),
+					),
+					owner.own(
+						source.query<Record<string, unknown>[]>('SELECT * FROM "devices_module_channels" WHERE id = ?', [
+							'fresh-channel',
+						]),
+					),
+					owner.own(
+						source.query<Record<string, unknown>[]>('SELECT * FROM "devices_module_channels_properties" WHERE id = ?', [
+							'fresh-property',
+						]),
+					),
+				]);
+			const seeds = await owner.own(seedRows(offline));
+			for (const rows of seeds) expect(rows).toHaveLength(1);
+			enter('serving:notification-control');
+			const liveBefore = await owner.own(state(first.source));
+			// Deliberately new writer, not a monitor poll or attribution of any historical failure.
+			const notification = await owner.own(
+				first.module.get(NotificationsService).notify({
+					source: 'storage-module',
+					key: 'schema-composition-control',
+					kind: NotificationKind.ISSUE,
+					severity: NotificationSeverity.WARNING,
+					title: 'Schema fixture owned notification',
+				}),
+			);
+			expect(notification).not.toBeNull();
+			if (!notification) throw new Error('Original fixture notification was not stored');
+			expect(
+				await owner.own(
+					first.source.query<Array<{ id: string; source: string; key: string; title: string }>>(
+						'SELECT id,source,"key",title FROM "notifications_module_notifications" WHERE id = ?',
+						[notification.id],
+					),
+				),
+			).toEqual([
+				{
+					id: notification.id,
+					source: 'storage-module',
+					key: 'schema-composition-control',
+					title: 'Schema fixture owned notification',
+				},
+			]);
+			expect(await owner.own(state(first.source))).not.toEqual(liveBefore);
+			enter('offline:synchronize');
+			expect((await owner.own(offline.driver.createSchemaBuilder().log())).upQueries).toEqual([]);
+			await owner.own(offline.synchronize());
+			expect(await owner.own(state(offline))).toEqual(before);
+			await closeSource(offline);
+			enter('offline:reopen');
+			const reopened = await openOffline();
+			expect(await owner.own(state(reopened))).toEqual(before);
+			expect((await owner.own(reopened.driver.createSchemaBuilder().log())).upQueries).toEqual([]);
+			await closeSource(reopened);
+			enter('close:second');
+			await closeApp(second.app);
 			applications.splice(applications.indexOf(second.app), 1);
-			phase = 'close:first';
-			await first.app.close();
+			enter('close:first');
+			await closeApp(first.app);
 			applications.splice(applications.indexOf(first.app), 1);
-			phase = 'construct:third';
-			const third = await construct();
-			phase = 'init:third';
+			enter('construct:third');
+			const third = await owner.own(construct());
+			enter('init:third');
 			await third.app.init();
-			phase = 'state:restart';
-			expect(await state(third.source)).toEqual(before);
-			phase = 'schema:log-third';
-			expect((await third.source.driver.createSchemaBuilder().log()).upQueries).toEqual([]);
+			// A real serving restart may legitimately resolve/re-raise notifications; compare the seeded rows, not live epochs.
+			enter('serving:restart-seeds');
+			expect(await owner.own(seedRows(third.source))).toEqual(seeds);
+			enter('schema:log-third');
+			expect((await owner.own(third.source.driver.createSchemaBuilder().log())).upQueries).toEqual([]);
 			useContainer(third.module, { fallbackOnErrors: true });
 			expect(third.module.get(StorageService).isPrimaryAvailable()).toBe(false);
 			expect(third.module.get(StorageService).isUsingFallback()).toBe(true);
-			phase = 'auth:register';
-			await request(third.app.getHttpServer())
-				.post('/modules/auth/auth/register')
-				.send({
-					data: { username: 'memorycatalog', password: 'securePassword123!', email: 'memorycatalog@example.com' },
-				})
-				.expect(204);
-			phase = 'auth:login';
-			const login = await request(third.app.getHttpServer())
-				.post('/modules/auth/auth/login')
-				.send({ data: { username: 'memorycatalog', password: 'securePassword123!' } })
-				.expect(201);
+			enter('auth:register');
+			await owner.own(
+				request(third.app.getHttpServer())
+					.post('/modules/auth/auth/register')
+					.send({
+						data: { username: 'memorycatalog', password: 'securePassword123!', email: 'memorycatalog@example.com' },
+					})
+					.expect(204)
+					.then((response) => response),
+			);
+			enter('auth:login');
+			const login = await owner.own(
+				request(third.app.getHttpServer())
+					.post('/modules/auth/auth/login')
+					.send({ data: { username: 'memorycatalog', password: 'securePassword123!' } })
+					.expect(201)
+					.then((response) => response),
+			);
 			const accessToken = (login.body as { data: { access_token: string } }).data.access_token;
-			phase = 'verify:wire';
-			await verifyThermostatWire(
-				{ app: third.app, moduleRef: third.module, dataSource: third.source, accessToken },
-				{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
+			enter('verify:wire');
+			await owner.own(
+				verifyThermostatWire(
+					{ app: third.app, moduleRef: third.module, dataSource: third.source, accessToken },
+					{ replaceBeforeCreate: false, variant: 'heating', failure: 'none', storageAudit: true },
+				),
 			);
 		} catch (cause: unknown) {
 			report(phase, cause);
 			failure = { cause };
 		} finally {
-			for (const app of applications.reverse()) {
-				try {
-					await app.close();
-				} catch (cause: unknown) {
-					report('cleanup:close', cause);
-					failure ??= { cause };
-				}
-			}
-			useContainer({ get: <T>(type: new () => T): T => new type() }, { fallbackOnErrors: true });
-			for (const key of keys) {
-				if (environment[key] === undefined) delete process.env[key];
-				else process.env[key] = environment[key];
-			}
-			rmSync(directory, { recursive: true, force: true });
+			const cleanupFailure = await owner.finish();
+			failure ??= cleanupFailure;
 		}
 		if (failure) throw failure.cause;
 	});

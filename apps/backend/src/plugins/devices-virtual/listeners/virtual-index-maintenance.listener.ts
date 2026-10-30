@@ -9,6 +9,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { findEnergySourceType } from '../../../modules/energy/utils/energy-source-type.utils';
@@ -24,6 +25,11 @@ import { VirtualStatusListener } from './virtual-status.listener';
  * The channel a property was loaded with, or undefined when it was loaded without one — `channel`
  * holds an id string unless the read asked for the relation.
  */
+interface IndexPassCompletion {
+	readonly resolve: () => void;
+	readonly reject: (cause: unknown) => void;
+}
+
 const channelOf = (property: ChannelPropertyEntity): ChannelEntity | undefined =>
 	typeof property.channel === 'string' ? undefined : property.channel;
 
@@ -111,6 +117,8 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 	private running = false;
 	private pending = false;
+	private pendingStatusRecompute?: VirtualStatusListener['recompute'];
+	private readonly pendingCompletions: IndexPassCompletion[] = [];
 	private graphRefreshPending = false;
 	private repairTimer: NodeJS.Timeout | null = null;
 	private repairPasses = 0;
@@ -263,9 +271,14 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 */
 	async onApplicationBootstrap(): Promise<void> {
 		try {
+			const recompute = this.status.recompute.bind(this.status) as VirtualStatusListener['recompute'];
 			const hydrated = await this.index.rebuild();
 
-			await this.recomputeStatuses(hydrated.rewiredVirtualDeviceIds, 'aggregated from source devices at startup');
+			await this.recomputeStatuses(
+				hydrated.rewiredVirtualDeviceIds,
+				'aggregated from source devices at startup',
+				recompute,
+			);
 
 			await this.reconcileSystemHiddenSources();
 
@@ -289,6 +302,12 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	@OnEvent(EventType.CHANNEL_PROPERTY_RESET)
 	@OnEvent(EventType.MODULE_RESET)
 	handleStructuralChange(): void {
+		if (ControllerPublicationContext.current()) {
+			const original = new Promise<void>((resolve, reject) => this.pendingCompletions.push({ resolve, reject }));
+			void ControllerPublicationContext.effect('virtual-index.pass', () => original);
+		}
+		if (!this.pending)
+			this.pendingStatusRecompute = this.status.recompute.bind(this.status) as VirtualStatusListener['recompute'];
 		this.pending = true;
 
 		if (this.running) {
@@ -299,7 +318,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 		this.running = true;
 
-		outsideSqliteTransaction(this.dataSource, () => void this.runRebuildLoop());
+		outsideSqliteTransaction(this.dataSource, () => {
+			ControllerPublicationContext.independent(() => {
+				void this.runRebuildLoop();
+			});
+		});
 	}
 
 	@OnEvent(EventType.DEVICE_DELETED)
@@ -375,91 +398,141 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 			do {
 				const settled = await this.deferPastOpenTransaction();
 
+				const recompute =
+					this.pendingStatusRecompute ??
+					(this.status.recompute.bind(this.status) as VirtualStatusListener['recompute']);
+				this.pendingStatusRecompute = undefined;
 				this.pending = false;
-				if (settled && this.graphRefreshPending) {
-					// Clear before awaiting: another deletion must retain its own pending refresh and
-					// invalidate this evaluation's generation rather than be acknowledged by this pass.
-					this.graphRefreshPending = false;
+				const completions = this.pendingCompletions.splice(0);
+				if (!completions.length) await this.rebuildPass(settled, recompute);
+				else {
+					let bodyResolve: () => void;
+					let bodyReject: (cause: unknown) => void;
+					const body = new Promise<void>((resolve, reject) => {
+						bodyResolve = resolve;
+						bodyReject = reject;
+					});
+					let guard = () => false;
 					try {
-						await this.graph.refreshQuarantine();
-					} catch (error) {
-						this.graphRefreshPending = true;
-						this.logger.error(
-							'Failed to refresh virtual value-source authority after deletion; reads remain unavailable until a successful settled pass.',
-							error instanceof Error ? error : undefined,
-						);
+						guard = this.graph?.capturePublishGuard?.() ?? guard;
+					} catch {
+						/* Observation only; preserve the original pass. */
 					}
-				}
-
-				// First, and before the rebuild: a released meter is unattributed until somebody takes it,
-				// and every reading that arrives in the meantime is billed to the physical device for good.
-				// This sweep reads storage rather than the index, so it owes the rebuild nothing — putting
-				// it after would add the rebuild, the status recomputation and the announcements to a
-				// window measured in samples. Gated on `settled` like every other write here: it acts on
-				// committed state or not at all, and the pass that follows a repair runs it again.
-				if (settled) {
-					await this.reconcileEnergyClaims();
-				}
-
-				const rebuilt = await this.rebuildWithRetry();
-
-				// null means the index was never refreshed, so it reported no transitions — not because
-				// there were none, but because it never looked. Left for the next pass / next structural
-				// event, which is exactly how a failed rebuild already behaved.
-				if (rebuilt) {
-					await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds);
-
-					for (const virtualDeviceId of rebuilt.rewiredVirtualDeviceIds) {
-						this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
-					}
-
-					for (const sourceDeviceId of rebuilt.abandonedSourceDeviceIds) {
-						this.pendingUnhideSourceDeviceIds.add(sourceDeviceId);
-					}
-				}
-
-				let repairPending = false;
-
-				if (settled) {
-					// The pass read with no transaction open, so whatever it read is committed state and
-					// no repair is owed. Clearing the counter here (rather than never) is what lets a
-					// later, genuinely slow transaction claim a full repair budget of its own.
-					this.repairPasses = 0;
-				} else {
-					repairPending = this.scheduleRepairPass();
-				}
-
-				if (rebuilt && !repairPending) {
-					await this.recheckPendingChannels();
-
-					await this.announceOrphanedProjections();
-
-					await this.unhideAbandonedSources();
-
-					// And the sweep, which catches what the diff structurally cannot.
-					//
-					// `unhideAbandonedSources` acts on an *edge*: a source device the rebuild watched leave
-					// the index. A virtual device created and deleted before any rebuild observed its links
-					// never produces that edge — both the outgoing and incoming maps are empty, so there is
-					// nothing to diff — while the hide the wizard performed in between is durable. The source
-					// is then hidden, referenced by nothing, and invisible to the one mechanism that would
-					// have freed it. Fast API-driven create/hide/delete does this, and so does a rebuild held
-					// back by an unrelated open transaction.
-					//
-					// This asks the state instead of the transition: every system-hidden device that nothing
-					// references. Bootstrap already ran it for exactly this reason — a hide that outlived the
-					// process — and the same reasoning applies to a hide that outlived a rebuild. Running it
-					// here makes the guarantee unconditional rather than restart-dependent.
-					//
-					// Cheap enough to run on every settled pass: one SQL-filtered read of the hidden devices,
-					// which are a handful, against a pass that has just read every virtual property anyway.
-					// Gated on the same settled condition as the unhide above, and for the same reason — it
-					// writes `hidden`, which no repair pass can take back.
-					await this.reconcileSystemHiddenSources();
+					const completed = ControllerPublicationContext.independent(() =>
+						ControllerPublicationContext.complete(() =>
+							new ControllerPublicationContext(guard).run(async () => {
+								try {
+									await this.rebuildPass(settled, recompute);
+									bodyResolve();
+								} catch (cause: unknown) {
+									bodyReject(cause);
+									throw cause;
+								}
+							}),
+						),
+					);
+					void completed.then(
+						() => {
+							for (const completion of completions) completion.resolve();
+						},
+						(cause: unknown) => {
+							for (const completion of completions) completion.reject(cause);
+						},
+					);
+					// Advance the existing loop after this actual body; original descendants may require a subsequent pass.
+					// Its finite completion remains owned by the exact tickets above, never by a global flush.
+					await body;
 				}
 			} while (this.pending);
+		} catch (cause: unknown) {
+			for (const completion of this.pendingCompletions.splice(0)) completion.reject(cause);
+			throw cause;
 		} finally {
 			this.running = false;
+		}
+	}
+
+	private async rebuildPass(settled: boolean, recompute: VirtualStatusListener['recompute']): Promise<void> {
+		if (settled && this.graphRefreshPending) {
+			// Clear before awaiting: another deletion must retain its own pending refresh and
+			// invalidate this evaluation's generation rather than be acknowledged by this pass.
+			this.graphRefreshPending = false;
+			try {
+				await this.graph.refreshQuarantine();
+			} catch (error) {
+				this.graphRefreshPending = true;
+				this.logger.error(
+					'Failed to refresh virtual value-source authority after deletion; reads remain unavailable until a successful settled pass.',
+					error instanceof Error ? error : undefined,
+				);
+			}
+		}
+
+		// First, and before the rebuild: a released meter is unattributed until somebody takes it,
+		// and every reading that arrives in the meantime is billed to the physical device for good.
+		// This sweep reads storage rather than the index, so it owes the rebuild nothing — putting
+		// it after would add the rebuild, the status recomputation and the announcements to a
+		// window measured in samples. Gated on `settled` like every other write here: it acts on
+		// committed state or not at all, and the pass that follows a repair runs it again.
+		if (settled) {
+			await this.reconcileEnergyClaims();
+		}
+
+		const rebuilt = await this.rebuildWithRetry();
+
+		// null means the index was never refreshed, so it reported no transitions — not because
+		// there were none, but because it never looked. Left for the next pass / next structural
+		// event, which is exactly how a failed rebuild already behaved.
+		if (rebuilt) {
+			await this.recomputeStatuses(rebuilt.rewiredVirtualDeviceIds, undefined, recompute);
+
+			for (const virtualDeviceId of rebuilt.rewiredVirtualDeviceIds) {
+				this.pendingAnnounceVirtualDeviceIds.add(virtualDeviceId);
+			}
+
+			for (const sourceDeviceId of rebuilt.abandonedSourceDeviceIds) {
+				this.pendingUnhideSourceDeviceIds.add(sourceDeviceId);
+			}
+		}
+
+		let repairPending = false;
+
+		if (settled) {
+			// The pass read with no transaction open, so whatever it read is committed state and
+			// no repair is owed. Clearing the counter here (rather than never) is what lets a
+			// later, genuinely slow transaction claim a full repair budget of its own.
+			this.repairPasses = 0;
+		} else {
+			repairPending = this.scheduleRepairPass();
+		}
+
+		if (rebuilt && !repairPending) {
+			await this.recheckPendingChannels();
+
+			await this.announceOrphanedProjections();
+
+			await this.unhideAbandonedSources();
+
+			// And the sweep, which catches what the diff structurally cannot.
+			//
+			// `unhideAbandonedSources` acts on an *edge*: a source device the rebuild watched leave
+			// the index. A virtual device created and deleted before any rebuild observed its links
+			// never produces that edge — both the outgoing and incoming maps are empty, so there is
+			// nothing to diff — while the hide the wizard performed in between is durable. The source
+			// is then hidden, referenced by nothing, and invisible to the one mechanism that would
+			// have freed it. Fast API-driven create/hide/delete does this, and so does a rebuild held
+			// back by an unrelated open transaction.
+			//
+			// This asks the state instead of the transition: every system-hidden device that nothing
+			// references. Bootstrap already ran it for exactly this reason — a hide that outlived the
+			// process — and the same reasoning applies to a hide that outlived a rebuild. Running it
+			// here makes the guarantee unconditional rather than restart-dependent.
+			//
+			// Cheap enough to run on every settled pass: one SQL-filtered read of the hidden devices,
+			// which are a handful, against a pass that has just read every virtual property anyway.
+			// Gated on the same settled condition as the unhide above, and for the same reason — it
+			// writes `hidden`, which no repair pass can take back.
+			await this.reconcileSystemHiddenSources();
 		}
 	}
 
@@ -624,10 +697,11 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	private async recomputeStatuses(
 		virtualDeviceIds: string[],
 		reason = 'aggregated after a source wiring change',
+		recompute = this.status.recompute.bind(this.status) as VirtualStatusListener['recompute'],
 	): Promise<void> {
 		for (const virtualDeviceId of virtualDeviceIds) {
 			try {
-				await this.status.recompute(virtualDeviceId, reason);
+				await recompute(virtualDeviceId, reason);
 			} catch (error) {
 				this.logger.warn(`Failed to recompute connection state for virtual device id=${virtualDeviceId}: ${error}`);
 			}

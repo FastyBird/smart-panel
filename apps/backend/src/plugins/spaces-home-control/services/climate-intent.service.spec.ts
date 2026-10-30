@@ -20,6 +20,7 @@ import {
 	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
+	SetpointDelta,
 } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
@@ -185,6 +186,161 @@ describe('ClimateIntentService', () => {
 		mockPlatform.setPropertyValue.mockResolvedValue(true);
 		mockPlatform.prepareBatch.mockImplementation((updates: IDevicePropertyData[]) => updates);
 		mockPlatform.processBatch.mockResolvedValue(true);
+	});
+
+	it('retains the activity target plan and supplies its original currentness guard at physical dispatch', async () => {
+		const device = createMockPrimaryClimateDevice();
+		let current = true;
+		const isCurrent = () => current;
+		const dispatch = module.get(PropertyCommandDispatchService);
+		const guarded = jest.spyOn(dispatch, 'dispatchBatch').mockImplementation((commands, options) => {
+			expect(commands.every((command) => command.device.id === device.device.id)).toBe(true);
+			expect(options?.isRequestCurrent).toBe(isCurrent);
+			current = false;
+			expect(options.isRequestCurrent()).toBe(false);
+			return Promise.resolve({ success: false } as Awaited<
+				ReturnType<PropertyCommandDispatchService['dispatchBatch']>
+			>);
+		});
+		const result = await service.executeClimateIntent(
+			mockSpaceId,
+			{ type: ClimateIntentType.SET_MODE, mode: ClimateMode.HEAT },
+			{
+				targets: [device],
+				isCurrent,
+			},
+		);
+		expect(guarded).toHaveBeenCalled();
+		expect(result.success).toBe(false);
+		expect(climateStateService.getPrimaryClimateDevicesInSpace).not.toHaveBeenCalled();
+	});
+
+	it.each([ClimateMode.HEAT, ClimateMode.COOL, undefined] as const)(
+		'keeps activity delta branch %s separate from ordinary dual-branch manual delta',
+		async (mode) => {
+			const device = createMockPrimaryClimateDevice({
+				coolerChannel: { id: uuid() } as ChannelEntity,
+				coolerOnProperty: { id: uuid() } as ChannelPropertyEntity,
+				coolerSetpointProperty: { id: uuid() } as ChannelPropertyEntity,
+				supportsCooling: true,
+			});
+			climateStateService.getClimateState.mockResolvedValue(
+				createMockClimateState({
+					mode: ClimateMode.AUTO,
+					heatingSetpoint: 20,
+					coolingSetpoint: 24,
+					supportsCooling: true,
+				}),
+			);
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
+			for (const delta of [-1, 0, 1]) {
+				mockPlatform.prepareBatch.mockClear();
+				await service.executeClimateIntent(
+					mockSpaceId,
+					{ type: ClimateIntentType.SETPOINT_DELTA, delta: SetpointDelta.SMALL, increase: delta >= 0 },
+					mode === undefined
+						? undefined
+						: {
+								targets: [device],
+								isCurrent: () => true,
+								numericDelta: Math.abs(delta),
+								numericDeltaMode: mode,
+							},
+				);
+				const setpoints = mockPlatform.prepareBatch.mock.calls
+					.flatMap(([updates]: [IDevicePropertyData[]]) => updates)
+					.filter((update) =>
+						[device.heaterSetpointProperty.id, device.coolerSetpointProperty.id].includes(update.property.id),
+					);
+				if (mode !== undefined) {
+					const selected = mode === ClimateMode.HEAT ? device.heaterSetpointProperty : device.coolerSetpointProperty;
+					expect(setpoints).toHaveLength(1);
+					expect(setpoints[0]).toMatchObject({
+						property: { id: selected.id },
+						value: (mode === ClimateMode.HEAT ? 20 : 24) + delta,
+					});
+				} else {
+					expect(setpoints.map((update) => update.property.id).sort()).toEqual(
+						[device.heaterSetpointProperty.id, device.coolerSetpointProperty.id].sort(),
+					);
+					const step = delta >= 0 ? 0.5 : -0.5;
+					expect(setpoints.find((update) => update.property.id === device.heaterSetpointProperty.id)?.value).toBe(
+						20 + step,
+					);
+					expect(setpoints.find((update) => update.property.id === device.coolerSetpointProperty.id)?.value).toBe(
+						24 + step,
+					);
+				}
+			}
+		},
+	);
+	it.each([ClimateMode.HEAT, ClimateMode.COOL] as const)(
+		'refuses a %s activity delta with no current branch setpoint',
+		async (mode) => {
+			const device = createMockPrimaryClimateDevice();
+			climateStateService.getClimateState.mockResolvedValue(
+				createMockClimateState({
+					heatingSetpoint: mode === ClimateMode.HEAT ? null : 20,
+					coolingSetpoint: mode === ClimateMode.COOL ? null : 24,
+				}),
+			);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			const result = await service.executeClimateIntent(
+				mockSpaceId,
+				{ type: ClimateIntentType.SETPOINT_DELTA, delta: SetpointDelta.SMALL, increase: true },
+				{ targets: [device], isCurrent: () => true, numericDelta: 1, numericDeltaMode: mode },
+			);
+			expect(result).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+			expect(dispatch).not.toHaveBeenCalled();
+			expect(mockPlatform.prepareBatch).not.toHaveBeenCalled();
+		},
+	);
+	it.each([ClimateMode.HEAT, ClimateMode.COOL] as const)(
+		'does not count an empty combined %s command as affected while preserving standalone mode',
+		async (mode) => {
+			const device = createMockPrimaryClimateDevice({
+				heaterChannel: null,
+				heaterOnProperty: null,
+				heaterSetpointProperty: null,
+				supportsHeating: false,
+				supportsCooling: false,
+			});
+			device.device.category = DeviceCategory.THERMOSTAT;
+			climateStateService.getClimateState.mockResolvedValue(createMockClimateState());
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			expect(await service.executeClimateIntent(mockSpaceId, { type: ClimateIntentType.SET_MODE, mode })).toMatchObject(
+				{ success: true, affectedDevices: 1 },
+			);
+			expect(
+				await service.executeClimateIntent(
+					mockSpaceId,
+					{
+						type: ClimateIntentType.CLIMATE_SET,
+						mode,
+						heatingSetpoint: mode === ClimateMode.HEAT ? 20 : undefined,
+						coolingSetpoint: mode === ClimateMode.COOL ? 24 : undefined,
+					},
+					{ targets: [device], isCurrent: () => true },
+				),
+			).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+			expect(dispatch).not.toHaveBeenCalled();
+			expect(mockPlatform.prepareBatch).not.toHaveBeenCalled();
+		},
+	);
+	it('refuses an already retired activity context before intent creation or physical dispatch', async () => {
+		const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+		const result = await service.executeClimateIntent(
+			mockSpaceId,
+			{ type: ClimateIntentType.SET_MODE, mode: ClimateMode.HEAT },
+			{
+				targets: [createMockPrimaryClimateDevice()],
+				isCurrent: () => false,
+			},
+		);
+		expect(result.success).toBe(false);
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(spacesService.findOne).not.toHaveBeenCalled();
 	});
 
 	describe('getClimateState', () => {

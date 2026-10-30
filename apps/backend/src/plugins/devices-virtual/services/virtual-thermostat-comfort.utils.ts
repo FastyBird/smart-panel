@@ -118,6 +118,11 @@ export function validateThermostatComfort(
 export function effectiveThermostatComfort(
 	policy: VirtualThermostatPolicy,
 	comfort: ThermostatComfortConfiguration | null | undefined,
+	intent?: Readonly<{
+		baseline: ThermostatComfortConfiguration['automation_baseline'];
+		manualHold: boolean;
+		isCurrent: () => boolean;
+	}>,
 ): ThermostatEffectiveComfort {
 	const result: ThermostatEffectiveComfort = {
 		heating_setpoint: policy.heatingSetpoint,
@@ -131,8 +136,14 @@ export function effectiveThermostatComfort(
 	const override = ['active', 'clock_uncertain'].includes(comfort.temporary_override?.status)
 		? comfort.temporary_override
 		: null;
-	const automation = comfort.automation_enabled ? comfort.automation_baseline : null;
-	const preset = override ? override.preset : automation ? automation.preset : comfort.selected_preset;
+	const automation = comfort.automation_enabled && !intent?.manualHold && intent?.isCurrent() ? intent.baseline : null;
+	const preset = override
+		? override.preset
+		: automation
+			? automation.preset
+			: intent?.manualHold
+				? null
+				: comfort.selected_preset;
 	const setpoints =
 		override?.resolved_setpoints ??
 		automation?.setpoints ??

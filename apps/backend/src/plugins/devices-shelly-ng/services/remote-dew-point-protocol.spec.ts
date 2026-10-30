@@ -1,14 +1,25 @@
+import { mkdtemp, rm } from 'node:fs/promises';
 import { Server, createServer } from 'node:http';
 import { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { DataSource } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
@@ -17,7 +28,10 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { ThermostatCoolingDependencyEntity } from '../../devices-virtual/entities/thermostat-cooling-dependency.entity';
 import { VirtualThermostatCommandEntity } from '../../devices-virtual/entities/virtual-thermostat-runtime.entity';
-import { VirtualThermostatActuatorClaimEntity } from '../../devices-virtual/entities/virtual-thermostat.entity';
+import {
+	VirtualThermostatActuatorClaimEntity,
+	VirtualThermostatConfigEntity,
+} from '../../devices-virtual/entities/virtual-thermostat.entity';
 import {
 	CoolingBinding,
 	ThermostatCoolingDependencyService,
@@ -29,7 +43,9 @@ import {
 	VirtualThermostatClaimsService,
 } from '../../devices-virtual/services/virtual-thermostat-claims.service';
 import { thermostatPropertyContract } from '../../devices-virtual/services/virtual-thermostat-contract.utils';
+import { ThermostatRuntimeOwnership } from '../../devices-virtual/services/virtual-thermostat-runtime-ownership';
 import { VirtualThermostatRuntimeService } from '../../devices-virtual/services/virtual-thermostat-runtime.service';
+import { VirtualThermostatTransportService } from '../../devices-virtual/services/virtual-thermostat-transport.service';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 import { AuthenticatedShellyScriptHttp, shellyScriptDigest } from './authenticated-shelly-script-http';
@@ -1012,77 +1028,132 @@ describe('cooling recovery with real recursive accepted lineage and compiled OFF
 
 describe('actual runtime journal dispatch to remote provider continuity', () => {
 	it('renews threshold+finite ON with a NEW persisted command identity while the native output is already ON', async () => {
-		const f = installedFixture(),
-			component = firmware();
-		component.drain();
-		component.sample();
-		const http = firmwareHttp(component),
-			events = new EventEmitter2(),
-			structure = new DeviceStructureLockService();
-		const target = {
-			device: Object.assign(new ShellyNgDeviceEntity(), {
-				id: 'relay',
-				enabled: true,
-				canonicalMac: binding.deviceHardwareId,
-				password: 'fixture-private',
-			}),
-			channel: Object.assign(new ChannelEntity(), { id: 'switch', identifier: 'switch:0' }),
-			property: Object.assign(new ChannelPropertyEntity(), {
-				id: 'relay-output',
-				identifier: 'output',
-				category: PropertyCategory.ON,
-				dataType: DataTypeType.BOOL,
-				permissions: [PermissionType.READ_WRITE],
-			}),
-			value: true,
-		};
-		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
-			id: 'continuity-claim',
-			controllerId: 'continuity-controller',
-			revision: 1,
-			state: 'reserved',
-			sourcePropertyId: target.property.id,
-			sourcePropertyIdentity: target.property.id,
-			sourceDeviceId: target.device.id,
-			physicalIdentity: binding.physicalActuator,
-			contractFingerprint: thermostatPropertyContract(target.property, target.channel, target.device),
-			role: 'cooling',
-			providerProfile: REMOTE_DEW_POINT_PROFILE,
-			providerProfileVersion: 1,
-			qualificationGeneration: 'fixture-generation',
-			leaseSeconds: 5,
+		const directory = await mkdtemp(join(tmpdir(), 'remote-continuity-'));
+		const db = new SqliteDataSource({
+			type: 'sqlite',
+			database: join(directory, 'journal.sqlite'),
+			entities: [__dirname + '/../../../**/*.entity.ts'],
+			synchronize: true,
 		});
-		const journals: VirtualThermostatCommandEntity[] = [];
-		const manager = {
-			find: () => Promise.resolve([claim]),
-			create: (entity: new () => object, row: object) => Object.assign(new entity(), row),
-			insert: (_entity: unknown, row: VirtualThermostatCommandEntity) => {
-				journals.push(row);
-				return Promise.resolve();
-			},
-			save: () => Promise.resolve(undefined),
-		};
-		const db = {
-			manager,
-			transaction: async (task: (m: typeof manager) => Promise<unknown>) => task(manager),
-		} as unknown as DataSource;
-		const graph = {} as VirtualDependencyGraphService;
-		const registry = new VirtualThermostatClaimsService(
-			db,
-			structure,
-			graph,
-			new PropertyCommandAdmissionRegistryService(),
-			events,
-			new ConfigService({ FB_CLI: 'off' }),
-		);
-		await registry.onApplicationBootstrap();
-		registry.recordQualification(f.qualification);
-		registry.registerRuntimeAdmission(() => true);
-		let generation = 1,
-			threshold = 12;
-		const adapter = new ThermostatRemoteCoolingAdapter(
-			{} as PropertyValueService,
-			() => {
+		const cleanup: (() => void | Promise<void>)[] = [];
+		try {
+			await db.initialize();
+			const f = installedFixture(),
+				component = firmware();
+			component.drain();
+			component.sample();
+			const http = firmwareHttp(component),
+				events = new EventEmitter2(),
+				structure = new DeviceStructureLockService();
+			const target = {
+				device: Object.assign(new ShellyNgDeviceEntity(), {
+					id: 'relay',
+					name: 'Relay',
+					category: DeviceCategory.SWITCHER,
+					enabled: true,
+					canonicalMac: binding.deviceHardwareId,
+					password: 'fixture-private',
+				}),
+				channel: Object.assign(new ChannelEntity(), {
+					id: 'switch',
+					identifier: 'switch:0',
+					name: 'Switch',
+					category: ChannelCategory.SWITCHER,
+					device: 'relay',
+				}),
+				property: Object.assign(new ChannelPropertyEntity(), {
+					id: 'relay-output',
+					channel: 'switch',
+					identifier: 'output',
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+					permissions: [PermissionType.READ_WRITE],
+				}),
+				value: true,
+			};
+			let claim: VirtualThermostatActuatorClaimEntity = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+				id: 'continuity-claim',
+				controllerId: 'continuity-controller',
+				revision: 1,
+				state: 'reserved',
+				sourcePropertyId: target.property.id,
+				sourcePropertyIdentity: target.property.id,
+				sourceDeviceId: target.device.id,
+				sourceDeviceIdentity: target.device.id,
+				physicalIdentity: binding.physicalActuator,
+				contractFingerprint: thermostatPropertyContract(target.property, target.channel, target.device),
+				role: 'cooling',
+				providerProfile: REMOTE_DEW_POINT_PROFILE,
+				providerProfileVersion: 1,
+				qualificationGeneration: 'fixture-generation',
+				leaseSeconds: 5,
+			});
+			await db.manager.insert(ShellyNgDeviceEntity, target.device);
+			await db.manager.insert(ChannelEntity, target.channel);
+			await db.manager.insert(ChannelPropertyEntity, target.property);
+			await db.manager.insert(VirtualThermostatConfigEntity, {
+				controllerId: claim.controllerId,
+				ownerDeviceId: null,
+				revision: 3,
+				requestedMode: 'cool',
+				locked: false,
+				policy: {
+					heatingSetpoint: null,
+					coolingSetpoint: 20,
+					coldTolerance: 0.5,
+					hotTolerance: 0.5,
+					neutralMargin: 1,
+					minimumOffMs: 0,
+					changeoverMs: 0,
+					floor: null,
+				},
+				heuristic: null,
+				contactOpeningMs: 0,
+				contactClosingMs: 0,
+				configuredAt: new Date(),
+				releaseRequestedAt: null,
+			});
+			await db.manager.insert(VirtualThermostatActuatorClaimEntity, claim);
+			claim = await db.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id });
+			const graph = new VirtualDependencyGraphService(db);
+			await graph.onApplicationBootstrap();
+			const registry = new VirtualThermostatClaimsService(
+				db,
+				structure,
+				graph,
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+			cleanup.push(() => registry.onModuleDestroy());
+			await registry.onApplicationBootstrap();
+			registry.recordQualification(f.qualification);
+			registry.registerRuntimeAdmission(() => true);
+			let generation = 1,
+				threshold = 12;
+			const adapter = new ThermostatRemoteCoolingAdapter(
+				{} as PropertyValueService,
+				() => {
+					const captured = generation;
+					return {
+						threshold,
+						expiresAt: Date.now() + 5000,
+						controllerRevision: 3,
+						protectionFingerprint: binding.protectionFingerprint,
+						isCurrent: () => captured === generation,
+					};
+				},
+				() => Promise.resolve({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
+				() => http,
+			);
+			const producers = new PropertyProducerRegistryService(events);
+			cleanup.push(() => producers.onModuleDestroy());
+			const transport = new VirtualThermostatTransportService(
+				{ get: () => null } as unknown as PlatformRegistryService,
+				{} as PropertyValueService,
+			);
+			Object.assign(transport, { remoteCooling: adapter });
+			transport.registerCoolingFrameReader(() => {
 				const captured = generation;
 				return {
 					threshold,
@@ -1091,82 +1162,87 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 					protectionFingerprint: binding.protectionFingerprint,
 					isCurrent: () => captured === generation,
 				};
-			},
-			() => Promise.resolve({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
-			() => http,
-		);
-		const producers = new PropertyProducerRegistryService(events);
-		const runtime = new VirtualThermostatRuntimeService(
-			db,
-			structure,
-			registry,
-			{ read: () => ({}) } as never,
-			{ get: () => adapter } as never,
-			{} as PropertyValueService,
-			producers,
-			events,
-			graph,
-			{} as never,
-		);
-		// Isolate renewed-command continuity: the full decision evaluator has separate runtime suites.
-		// Actual prepare/dispatch, final ownership authority, installed registry, source guard, adapter, session and compiled protocol execute here.
-		const internal = runtime as unknown as {
-			active: boolean;
-			contexts: Map<string, unknown>;
-			epochs: Map<string, number>;
-			decide: (...args: unknown[]) => { desiredCooling: boolean };
-			prepare: (context: unknown, claim: VirtualThermostatActuatorClaimEntity, action: 'on') => Promise<void>;
-			inFlight: Map<string, Promise<void>>;
-		};
-		const context = {
-			config: { controllerId: claim.controllerId, revision: 3 },
-			claims: [claim],
-			admission: { isCurrent: () => true },
-			publishGuard: () => true,
-			epoch: 1,
-			branches: new Map([[claim.id, { activity: 'on' }]]),
-			bindings: [],
-			targets: new Map([[claim.id, target]]),
-			commands: [],
-			state: { decisionRevision: 1 },
-		};
-		internal.active = true;
-		internal.contexts.set(claim.controllerId, context);
-		internal.epochs.set(claim.controllerId, 1);
-		jest.spyOn(internal, 'decide').mockReturnValue({ desiredCooling: true });
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		try {
-			await internal.prepare(context, claim, 'on');
-			await Promise.all([...internal.inFlight.values()]);
-			expect(component.output).toBe(true);
-			threshold = 15;
-			generation++; // New T/RH acceptance invalidates the original captured guard.
-			await internal.prepare(context, claim, 'on');
-			await Promise.all([...internal.inFlight.values()]);
-			expect(component.output).toBe(true);
-			expect(journals).toHaveLength(2);
-			expect(journals[0].id).not.toBe(journals[1].id);
-			expect(journals.map((j) => j.status)).toEqual(['accepted', 'accepted']);
-			const packets = jest
-				.spyOn(http, 'request')
-				.mock.calls.filter(
-					([method, packet]) => method === 'POST' && packet && 'action' in packet && packet.action === 'on',
-				)
-				.map(([, packet]) => {
-					if (!packet || !('requestId' in packet) || !('thresholdC' in packet) || !('sequence' in packet))
-						throw new Error('Missing fixture packet identity or threshold');
-					return { requestId: packet.requestId, thresholdC: packet.thresholdC, sequence: packet.sequence };
-				});
-			expect(packets.map((p) => p.requestId)).toEqual(journals.map((j) => j.id));
-			expect(packets.map((p) => p.thresholdC)).toEqual([12, 15]);
-			expect(packets.map((p) => p.sequence)).toEqual([1, 2]);
-			const nativeOns = component.switches.filter((s) => s.on);
-			expect(nativeOns).toHaveLength(2);
-			expect(nativeOns.every((s) => s.toggle_after > 0 && s.toggle_after <= 5)).toBe(true);
+			});
+			const runtime = new VirtualThermostatRuntimeService(
+				db,
+				structure,
+				registry,
+				{ read: () => ({}), load: () => Promise.resolve([]) } as never,
+				transport,
+				{} as PropertyValueService,
+				producers,
+				events,
+				graph,
+				{ settle: () => Promise.resolve() } as never,
+			);
+			// Isolate renewed-command continuity: the full decision evaluator has separate runtime suites.
+			// Actual prepare/dispatch, final ownership authority, installed registry, source guard, adapter, session and compiled protocol execute here.
+			const internal = runtime as unknown as {
+				active: boolean;
+				contexts: Map<string, unknown>;
+				epochs: Map<string, number>;
+				decide: (...args: unknown[]) => { desiredCooling: boolean };
+				prepare: (context: unknown, claim: VirtualThermostatActuatorClaimEntity, action: 'on') => Promise<void>;
+				inFlight: Map<string, Promise<void>>;
+				load: (id: string) => Promise<{ claims: VirtualThermostatActuatorClaimEntity[] }>;
+				ownership: ThermostatRuntimeOwnership;
+			};
+			cleanup.push(async () => {
+				internal.active = false;
+				await runtime.capturePredecessors(claim.controllerId);
+			});
+			internal.epochs.set(claim.controllerId, 1);
+			const context = await internal.load(claim.controllerId);
+			claim = context.claims[0];
+			internal.active = true;
+			internal.contexts.set(claim.controllerId, context);
+			internal.epochs.set(claim.controllerId, 1);
+			jest.spyOn(internal, 'decide').mockReturnValue({ desiredCooling: true });
+			jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
+			const prepare = async () => {
+				const owned = internal.ownership.admit(claim.controllerId);
+				const completion = internal.ownership.completion(owned);
+				await internal.ownership.run(owned, () => internal.prepare(context, claim, 'on'));
+				await completion;
+			};
+			try {
+				await prepare();
+				expect(component.output).toBe(true);
+				threshold = 15;
+				generation++; // New T/RH acceptance invalidates the original captured guard.
+				await prepare();
+				expect(component.output).toBe(true);
+				const journals = await db.manager.find(VirtualThermostatCommandEntity, { order: { preparedAt: 'ASC' } });
+				expect(journals).toHaveLength(2);
+				expect(journals[0].id).not.toBe(journals[1].id);
+				expect(journals.map((j) => j.status)).toEqual(['accepted', 'accepted']);
+				const packets = jest
+					.spyOn(http, 'request')
+					.mock.calls.filter(
+						([method, packet]) => method === 'POST' && packet && 'action' in packet && packet.action === 'on',
+					)
+					.map(([, packet]) => {
+						if (!packet || !('requestId' in packet) || !('thresholdC' in packet) || !('sequence' in packet))
+							throw new Error('Missing fixture packet identity or threshold');
+						return { requestId: packet.requestId, thresholdC: packet.thresholdC, sequence: packet.sequence };
+					});
+				expect(packets.map((p) => p.requestId)).toEqual(journals.map((j) => j.id));
+				expect(packets.map((p) => p.thresholdC)).toEqual([12, 15]);
+				expect(packets.map((p) => p.sequence)).toEqual([1, 2]);
+				const nativeOns = component.switches.filter((s) => s.on);
+				expect(nativeOns).toHaveLength(2);
+				expect(nativeOns.every((s) => s.toggle_after > 0 && s.toggle_after <= 5)).toBe(true);
+			} finally {
+				internal.active = false;
+				await runtime.capturePredecessors(claim.controllerId);
+			}
 		} finally {
-			internal.active = false;
-			registry.onModuleDestroy();
-			producers.onModuleDestroy();
+			try {
+				for (const close of cleanup.reverse()) await close();
+			} finally {
+				if (db.isInitialized) await db.destroy();
+			}
+			await rm(directory, { recursive: true, force: true });
 		}
 	});
 });
@@ -1248,6 +1324,7 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 			adapter.reconcile({ ...target, value: false }, ids, accepted, () => true, scope);
 		return {
 			installed,
+			values,
 			component,
 			http,
 			target,
@@ -1261,6 +1338,64 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 			},
 		};
 	}
+	it('retains the original OFF session and fallback while a successor replaces both during the await', async () => {
+		const f = fixture();
+		expect((await f.send('original-on')).outcome).toBe('accepted');
+		const internal = f.adapter as unknown as {
+			sessions: Map<string, { session: RemoteDewPointSession; journals: Set<string> }>;
+		};
+		const owner = internal.sessions.get(binding.physicalActuator);
+		let release: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const originalOff = jest.spyOn(owner.session, 'off').mockImplementation(async () => {
+			await held;
+			return { outcome: 'unknown', pendingOnDrained: false, reasons: ['original-off-unknown'] };
+		});
+		const fallback = jest
+			.fn()
+			.mockResolvedValue({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false });
+		const captured = f.adapter.capture(
+			{ ...f.target, value: false },
+			f.claim,
+			f.installed.qualification,
+			undefined,
+			fallback,
+		);
+		const operation = captured.send({ ...f.target, value: false }, f.claim, f.installed.qualification, () => false);
+		const successorOff = jest.fn();
+		const successorFallback = jest.fn();
+		try {
+			owner.session.off = successorOff;
+			Object.assign(f.adapter, { fallbackOff: successorFallback });
+			internal.sessions.set(binding.physicalActuator, { ...owner, journals: new Set(['successor']) });
+			expect(captured.isCurrent()).toBe(false);
+		} finally {
+			release();
+		}
+		expect((await operation).outcome).toBe('unknown');
+		expect(originalOff).toHaveBeenCalledTimes(1);
+		expect(originalOff.mock.contexts[0]).toBe(owner.session);
+		expect(fallback).toHaveBeenCalledTimes(1);
+		expect(successorOff).not.toHaveBeenCalled();
+		expect(successorFallback).not.toHaveBeenCalled();
+		expect(internal.sessions.get(binding.physicalActuator).journals).toEqual(new Set(['successor']));
+	});
+	it('retains the original feedback reader but refuses proof when it is replaced during the original write', async () => {
+		const f = fixture();
+		expect((await f.send('feedback-original')).outcome).toBe('accepted');
+		const originalRead = jest.spyOn(f.values, 'readQualifiedSample');
+		const replacement = jest.fn();
+		f.setBeforeWrite(() => {
+			f.values.readQualifiedSample = replacement;
+			return Promise.resolve();
+		});
+		expect(await f.reconcile(['feedback-original'])).toBeNull();
+		expect(originalRead).toHaveBeenCalledTimes(1);
+		expect(originalRead.mock.contexts[0]).toBe(f.values);
+		expect(replacement).not.toHaveBeenCalled();
+	});
 	it('allows more than256 completed drained cycles without increasing unresolved capacity', async () => {
 		const f = fixture();
 		for (let n = 0; n < 257; n++) {

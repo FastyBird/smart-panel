@@ -2,6 +2,7 @@ import {
 	AfterQueryEvent,
 	BeforeQueryEvent,
 	DataSource,
+	EntityManager,
 	EntitySubscriberInterface,
 	Not,
 	QueryRunner,
@@ -13,8 +14,15 @@ import {
 
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 
+import {
+	SqliteNoMutationWindow,
+	SqliteReadCheckpoint,
+	captureSqliteNoMutationWindow,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { initializeThermostatCreationCatalog } from '../services/thermostat-creation-catalog';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
@@ -35,6 +43,66 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 	) {
 		this.dataSource.subscribers.push(this);
 	}
+	/** Metadata adapter only. Attempt history belongs to the original core native scope. */
+	static captureNoopFence(database: DataSource, ownerCurrent: () => boolean) {
+		const source = captureCreation(database, ['driver', 'subscribers', 'isInitialized']);
+		const subscribers = [...database.subscribers];
+		const originals = subscribers.filter((subscriber) => subscriber instanceof VirtualThermostatOwnershipSubscriber);
+		const dispatch = subscribers.map((subscriber) => ({
+			prototype: Object.getPrototypeOf(subscriber) as object,
+			pin: captureCreation(subscriber, [
+				'beforeQuery',
+				'afterQuery',
+				'beforeTransactionCommit',
+				'afterTransactionCommit',
+				'afterTransactionRollback',
+				'listenTo',
+			]),
+		}));
+		const list = captureCreation(database.subscribers, ['forEach', 'filter', Symbol.iterator]);
+		let window: SqliteNoMutationWindow | undefined;
+		let checkpoint: SqliteReadCheckpoint | undefined;
+		let applied = false;
+		let closed = false;
+		const current = () =>
+			!closed &&
+			originals.length === 1 &&
+			source.current() &&
+			list.current() &&
+			database.subscribers.length === subscribers.length &&
+			subscribers.every(
+				(subscriber, index) =>
+					database.subscribers[index] === subscriber &&
+					dispatch[index].pin.current() &&
+					Object.getPrototypeOf(subscriber) === dispatch[index].prototype,
+			) &&
+			ownerCurrent();
+		return Object.freeze({
+			admit(manager: EntityManager): void {
+				if (window || closed) throw new DevicesValidationException('Original no-op admission already used.');
+				window = captureSqliteNoMutationWindow(manager, ownerCurrent);
+				registerSqliteCommitGuard(manager, () => applied || current());
+			},
+			async reserveZeroRows(table: string, column: string): Promise<void> {
+				await window.reserveZeroRows(table, column);
+			},
+			beginReads(): void {
+				checkpoint = window.beginReads();
+			},
+			arm(): void {
+				window.armUnchanged(checkpoint);
+			},
+			applied(): void {
+				window.applied();
+				applied = true;
+			},
+			close(): void {
+				if (window?.outcome === 'pending') return;
+				closed = true;
+			},
+		});
+	}
+
 	async onApplicationBootstrap(): Promise<void> {
 		if (process.env.FB_CLI !== 'on') {
 			await this.dataSource.transaction((manager) =>
@@ -58,7 +126,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		this.installed = true;
 	}
 	private isCatalogMutation(query: string): boolean {
-		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings|member_protection)|devices_virtual_transform_[a-z_]+|devices_shelly_ng_sample_sources)["`\]]?\b/i.test(
+		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties|climate_automation_slots)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings|member_protection)|devices_virtual_transform_[a-z_]+|devices_shelly_ng_sample_sources)["`\]]?\b/i.test(
 			query,
 		);
 	}

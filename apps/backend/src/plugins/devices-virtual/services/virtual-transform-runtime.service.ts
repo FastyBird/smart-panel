@@ -8,6 +8,7 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { ConnectionState, EventType, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IncorporatedPropertySample } from '../../../modules/devices/models/property-sample.model';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import {
 	PropertyProducerEvaluation,
@@ -310,6 +311,12 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			// simple-json can contain null/scalars. Let shared contract validation isolate invalid stored policies.
 			const operatorId =
 				config.policy?.operator === VirtualNumericTransformOperator.EXTENSION ? config.policy.operatorId : undefined;
+			const registry = captureCreation(this.producers, ['captureRuntimeSlot', 'registerRuntime', 'isAvailable']);
+			const originalSlot = registry.values.captureRuntimeSlot.call(
+				registry.receiver,
+				config.outputPropertyId,
+				this.outputs.get(config.outputPropertyId)?.lease,
+			);
 			const property = await this.dataSource.manager.findOne(VirtualChannelPropertyEntity, {
 				where: { id: config.outputPropertyId },
 				relations: ['channel', 'channel.device'],
@@ -317,18 +324,25 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!property) continue;
 			let output = this.outputs.get(property.id);
-			if (!output || output.revision !== config.revision || !this.producers.isAvailable(output.lease)) {
+			if (
+				!output ||
+				output.revision !== config.revision ||
+				!registry.values.isAvailable.call(registry.receiver, output.lease)
+			) {
+				if (!registry.current()) continue;
+				const lease = registry.values.registerRuntime.call(registry.receiver, property, config.revision, originalSlot, {
+					isCurrent: (() => {
+						const graphCurrent = this.graph.capturePublishGuard();
+						return () => graphCurrent() && (!operatorId || !!operatorScope?.isCurrent());
+					})(),
+					reason: operatorId ? 'operator_unavailable' : 'graph_validation_pending',
+				});
+				if (!lease) continue;
 				output = {
 					property,
 					operatorId,
 					revision: config.revision,
-					lease: this.producers.register(property, config.revision, {
-						isCurrent: (() => {
-							const graphCurrent = this.graph.capturePublishGuard();
-							return () => graphCurrent() && (!operatorId || !!operatorScope?.isCurrent());
-						})(),
-						reason: operatorId ? 'operator_unavailable' : 'graph_validation_pending',
-					}),
+					lease,
 				};
 				this.outputs.set(property.id, output);
 			}

@@ -4,10 +4,11 @@ import omitBy from 'lodash.omitby';
 import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { SqliteCommitGuardReceipt, observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance, toSnakeCase, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
@@ -36,6 +37,12 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import {
+	ClimateAutomationDeletionCaptureChanged,
+	ClimateAutomationLedgerConflict,
+	ClimateAutomationLedgerService,
+} from './climate-automation-ledger.service';
+import { ControllerPublicationContext } from './controller-publication-context';
 import { captureCreation, creationMapping } from './creation-capture';
 import { CreationCatalog, DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
@@ -114,6 +121,7 @@ export class DevicesService {
 		private readonly structureLock: DeviceStructureLockService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		@Optional() private readonly climateLedger?: ClimateAutomationLedgerService,
 	) {}
 
 	async getCount<TDevice extends DeviceEntity>(type?: string): Promise<number> {
@@ -847,15 +855,19 @@ export class DevicesService {
 			// left channel properties behind with no channel at all, which the containment e2e caught. A
 			// freshly loaded row has no relations loaded, so the removal is exactly one DELETE on the device
 			// — subscribers and all — and the cascade below it is the schema's.
-			const rollbackTarget = await DeviceCreationContext.check(creation, () =>
-				repository.findOne({
-					where: { id: raw.id } as FindOptionsWhere<TDevice>,
-				}),
-			);
+			// Entity removal opens a native transaction whose awaited post-commit ownership
+			// reconciliation needs this structural owner. Acquire it before that database lease.
+			await this.structureLock.runExclusive(async () => {
+				const rollbackTarget = await DeviceCreationContext.check(creation, () =>
+					repository.findOne({
+						where: { id: raw.id } as FindOptionsWhere<TDevice>,
+					}),
+				);
 
-			if (rollbackTarget) {
-				await DeviceCreationContext.check(creation, () => repository.remove(rollbackTarget));
-			}
+				if (rollbackTarget) {
+					await DeviceCreationContext.check(creation, () => repository.remove(rollbackTarget));
+				}
+			});
 
 			for (const channel of orphanedChannels) {
 				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
@@ -1219,35 +1231,96 @@ export class DevicesService {
 	}
 
 	async remove(id: string): Promise<void> {
-		return this.structureLock.runExclusive(async (): Promise<void> => {
-			this.logger.debug(`Removing device with id=${id}`);
+		// A newly born slot gets one fresh capture, always after releasing the prior owners.
+		if (await this.removeWithDeletionCapture(id)) return;
+		if (await this.removeWithDeletionCapture(id)) return;
+		throw new ClimateAutomationLedgerConflict('stale');
+	}
 
-			// Get the full device entity before removal to preserve ID for event emission
-			const fullDevice = await this.getOneOrThrow(id);
+	private async removeWithDeletionCapture(id: string): Promise<boolean> {
+		const climateDeletion = await this.climateLedger?.captureControllerDeletion(id);
+		let native: SqliteCommitGuardReceipt;
+		let callbackEntered = false;
+		const removeOriginal = () =>
+			this.structureLock.runExclusive(
+				ControllerPublicationContext.captureCallback(async (): Promise<void> => {
+					this.logger.debug(`Removing device with id=${id}`);
 
-			await this.dataSource.transaction(async (manager) => {
-				const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
+					// Get the full device entity before removal to preserve ID for event emission
+					const fullDevice = await this.getOneOrThrow(id);
 
-				const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
+					await this.dataSource.transaction(async (manager) => {
+						callbackEntered = true;
+						const receipt = climateDeletion ? (native = observeSqliteOuterOutcome(manager)) : undefined;
+						const remove = async () => {
+							const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
-				for (const channel of channels) {
-					await this.channelsService.remove(channel.id, manager);
-				}
+							const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
 
-				const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, { where: { device: { id } } });
+							for (const channel of channels) {
+								await this.channelsService.remove(channel.id, manager);
+							}
 
-				for (const control of controls) {
-					await this.devicesControlsService.remove(control.id, device.id, manager);
-				}
+							const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, {
+								where: { device: { id } },
+							});
 
-				await manager.remove(device);
+							for (const control of controls) {
+								await this.devicesControlsService.remove(control.id, device.id, manager);
+							}
 
-				this.logger.log(`Successfully removed device with id=${id}`);
+							await manager.remove(device);
 
-				// Emit event with the full device entity captured before removal to preserve ID
-				this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
-			});
-		});
+							this.logger.log(`Successfully removed device with id=${id}`);
+
+							// Publication follows validation and native commit below.
+						};
+						if (receipt) {
+							await manager.query(
+								'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0',
+							);
+							await this.climateLedger.inAdmittedManager(manager, receipt, (scope) =>
+								climateDeletion(manager, scope, remove),
+							);
+						} else await remove();
+					});
+					this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+				}),
+			);
+		// Deletion retires observation eligibility. Original callbacks still execute and
+		// their finite completion is joined after the original structural/native owners.
+		if (!climateDeletion) {
+			await removeOriginal();
+			return true;
+		}
+		let failure: { cause: unknown } | undefined;
+		try {
+			if (climateDeletion.hasControllerSlot) {
+				await ControllerPublicationContext.complete(
+					() => new ControllerPublicationContext(() => false).run(removeOriginal),
+					true,
+				);
+			} else await removeOriginal();
+		} catch (cause: unknown) {
+			failure = { cause };
+		}
+		try {
+			await climateDeletion.finish(
+				native?.outcome === 'rolled_back' || native?.outcome === 'committed'
+					? native.outcome
+					: callbackEntered
+						? 'unknown'
+						: 'not_started',
+			);
+		} catch (cause: unknown) {
+			failure ??= { cause };
+		}
+		if (failure) {
+			if (failure.cause instanceof ClimateAutomationDeletionCaptureChanged && native?.outcome === 'rolled_back')
+				return false;
+			throw failure.cause;
+		}
+		return true;
 	}
 
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {

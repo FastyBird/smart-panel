@@ -12,6 +12,24 @@ import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 @Injectable()
 export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterface<ChannelPropertyEntity> {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelPropertyEntitySubscriber');
+	private readonly updateTimestamps = new WeakMap<object, { value?: number; observed: boolean }>();
+
+	/** Observe only this subscriber's original timestamp assignment for one native update payload. */
+	captureUpdateTimestamp(entity: object): { read: () => number; close: () => void } {
+		if (this.updateTimestamps.has(entity)) throw new Error('Property timestamp capture already exists');
+		const capture = { value: undefined as number | undefined, observed: false };
+		this.updateTimestamps.set(entity, capture);
+		return {
+			read: () => {
+				if (this.updateTimestamps.get(entity) !== capture || !capture.observed || !Number.isFinite(capture.value))
+					throw new Error('Original property timestamp callback required');
+				return capture.value;
+			},
+			close: () => {
+				if (this.updateTimestamps.get(entity) === capture) this.updateTimestamps.delete(entity);
+			},
+		};
+	}
 
 	constructor(
 		private readonly propertyValueService: PropertyValueService,
@@ -68,6 +86,12 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 	beforeUpdate(event: UpdateEvent<ChannelPropertyEntity>): void {
 		if (event.entity) {
 			event.entity.updatedAt = new Date();
+			const capture = this.updateTimestamps.get(event.entity);
+			if (capture) {
+				if (capture.observed) throw new Error('Original property timestamp callback repeated');
+				capture.observed = true;
+				capture.value = Date.prototype.getTime.call(event.entity.updatedAt) as number;
+			}
 		}
 	}
 

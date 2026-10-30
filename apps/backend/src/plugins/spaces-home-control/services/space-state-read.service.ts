@@ -1,5 +1,6 @@
 import {
 	DataSource,
+	EntityManager,
 	EntitySubscriberInterface,
 	InsertEvent,
 	QueryRunner,
@@ -75,6 +76,40 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 		}
 	}
 
+	/** Structural climate planning only: no cached membership, history, status or live value hydration. */
+	async readClimateConfigurationInManager(
+		manager: EntityManager,
+		spaceId: string,
+	): Promise<{
+		devices: DeviceEntity[];
+		roles: Map<string, SpaceClimateRoleEntity>;
+	}> {
+		if (manager.connection !== this.dataSource || !manager.queryRunner?.isTransactionActive)
+			throw new Error('Climate target planning requires the original transaction manager');
+		const configuration = await this.query(spaceId, manager);
+		if (!configuration) throw new SpacesNotFoundException('Requested space does not exist');
+		const devices = configuration.deviceIds.length
+			? await manager
+					.getRepository(DeviceEntity)
+					.createQueryBuilder('device')
+					.leftJoinAndSelect('device.channels', 'channel')
+					.leftJoinAndSelect('channel.properties', 'property')
+					.where('device.id IN (:...ids)', { ids: configuration.deviceIds })
+					.andWhere('device.hidden = :hidden', { hidden: false })
+					.callListeners(false)
+					.getMany()
+			: [];
+		return {
+			devices,
+			roles: new Map(
+				configuration.climate.map((role) => [
+					role.channelId ? `${role.deviceId}:${role.channelId}` : role.deviceId,
+					role,
+				]),
+			),
+		};
+	}
+
 	async getLightingRoleMap(spaceId: string): Promise<Map<string, SpaceLightingRoleEntity>> {
 		const configuration = await this.requiredConfiguration(spaceId);
 		return new Map(
@@ -144,8 +179,9 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 		}
 	}
 
-	private async query(spaceId: string): Promise<StateConfiguration | null> {
-		const space = await this.dataSource
+	private async query(spaceId: string, manager?: EntityManager): Promise<StateConfiguration | null> {
+		const reader = manager ?? this.dataSource;
+		const space = await reader
 			.getRepository(SpaceEntity)
 			.createQueryBuilder('space')
 			.callListeners(false)
@@ -155,7 +191,7 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 		// Match SpacesService membership: direct room assignment, junction membership for other space types.
 		const members =
 			space.type === SpaceType.ROOM
-				? await this.dataSource
+				? await reader
 						.getRepository(DeviceEntity)
 						.createQueryBuilder('device')
 						.select('device.id', 'id')
@@ -163,7 +199,7 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 						.andWhere('device.hidden = :hidden', { hidden: false })
 						.orderBy('device.name', 'ASC')
 						.getRawMany<{ id: string }>()
-				: await this.dataSource
+				: await reader
 						.getRepository(DeviceZoneEntity)
 						.createQueryBuilder('membership')
 						.innerJoin('membership.device', 'device')
@@ -172,7 +208,7 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 						.andWhere('device.hidden = :hidden', { hidden: false })
 						.getRawMany<{ id: string }>();
 		const [lighting, climate, sensor] = await Promise.all([
-			this.dataSource
+			reader
 				.getRepository(SpaceLightingRoleEntity)
 				.createQueryBuilder('role')
 				.callListeners(false)
@@ -180,7 +216,7 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 				.orderBy('role.role', 'ASC')
 				.addOrderBy('role.priority', 'ASC')
 				.getMany(),
-			this.dataSource
+			reader
 				.getRepository(SpaceClimateRoleEntity)
 				.createQueryBuilder('role')
 				.callListeners(false)
@@ -188,7 +224,7 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 				.orderBy('role.role', 'ASC')
 				.addOrderBy('role.priority', 'ASC')
 				.getMany(),
-			this.dataSource
+			reader
 				.getRepository(SpaceSensorRoleEntity)
 				.createQueryBuilder('role')
 				.callListeners(false)

@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EventType } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
@@ -39,13 +40,32 @@ export class VirtualTransformConfigService {
 		outputPropertyId: string,
 		dto: ConfigureVirtualTransformDto,
 	): Promise<VirtualTransformConfigurationModel> {
+		const state = captureCreation(this.state, [
+			'captureConfigurationHandoff',
+			'withConfigurationWrite',
+			'recordConfiguration',
+			'installUnavailable',
+		]);
+		const handoff = state.values.captureConfigurationHandoff.call(state.receiver);
 		return this.structureLock.runExclusive(async () => {
 			let prepared: Awaited<ReturnType<VirtualTransformConfigService['prepare']>>;
-			await this.graph.withStructuralWrite(async (manager) => {
-				prepared = await this.prepare(manager, outputPropertyId, dto);
-				await this.persist(manager, prepared);
-			}, dto.expectedGraphRevision);
-			this.state.installUnavailable(prepared.output, prepared.config.revision);
+			await state.values.withConfigurationWrite.call(
+				state.receiver,
+				handoff,
+				async (manager) => {
+					prepared = await this.prepare(manager, outputPropertyId, dto);
+					await state.values.recordConfiguration.call(state.receiver, manager, handoff, {
+						kind: 'transform',
+						config: prepared.config,
+						source: prepared.source,
+						outputs: [prepared.output],
+					});
+					await this.persist(manager, prepared);
+				},
+				dto.expectedGraphRevision,
+				this.structureLock.captureExclusiveOwner(),
+			);
+			state.values.installUnavailable.call(state.receiver, prepared.output, prepared.config.revision);
 			prepared.output.unit = prepared.config.unit;
 			prepared.output.measurementQuantity = prepared.config.quantity;
 			this.runtime?.requireFreshSample(outputPropertyId, prepared.source.sourcePropertyId);

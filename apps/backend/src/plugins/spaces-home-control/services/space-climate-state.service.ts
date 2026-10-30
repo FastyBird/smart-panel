@@ -1,3 +1,5 @@
+import { EntityManager } from 'typeorm';
+
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -332,7 +334,11 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	 * Performance note: This method fetches devices and role map. If you already have
 	 * this data, use extractPrimaryClimateDevices() instead to avoid redundant queries.
 	 */
-	async getPrimaryClimateDevicesInSpace(spaceId: string): Promise<PrimaryClimateDevice[]> {
+	async getPrimaryClimateDevicesInSpace(spaceId: string, manager?: EntityManager): Promise<PrimaryClimateDevice[]> {
+		if (manager) {
+			const { devices, roles } = await this.stateReads.readClimateConfigurationInManager(manager, spaceId);
+			return this.extractPrimaryClimateDevices(devices, roles);
+		}
 		// Fetch devices and role map in parallel (performance optimization)
 		const [devices, roleMap] = await Promise.all([
 			this.stateReads.findDevicesBySpace(spaceId),

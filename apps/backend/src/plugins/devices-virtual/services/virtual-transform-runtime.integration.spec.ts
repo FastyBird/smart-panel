@@ -138,6 +138,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		);
 		graph = new VirtualDependencyGraphService(database);
 		state = new VirtualProducerStateService(database, producers, graph, events);
+		await state.onModuleInit();
 		configs = new VirtualProducerConfigService(database, new DeviceStructureLockService(), graph, events, state);
 		statuses = new Map();
 		operators = new VirtualNumericOperatorRegistry();

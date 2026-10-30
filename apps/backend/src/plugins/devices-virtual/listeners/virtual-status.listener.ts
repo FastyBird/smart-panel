@@ -4,6 +4,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
+import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
@@ -119,20 +121,24 @@ export class VirtualStatusListener {
 	 * rebuild loop) either returns without calling recompute() or is not awaited by this call.
 	 */
 	async recompute(virtualDeviceId: string, reason: string): Promise<void> {
-		const previous = this.recomputeQueue;
-		let settle: () => void = () => {};
-		this.recomputeQueue = new Promise<void>((resolve) => (settle = resolve));
+		const destination = ControllerPublicationContext.current()
+			? captureCreation(this.deviceConnectivityService, ['setConnectionState'])
+			: undefined;
+		return ControllerPublicationContext.effect('virtual-status.recompute', async () => {
+			const previous = this.recomputeQueue;
+			let settle: () => void = () => {};
+			this.recomputeQueue = new Promise<void>((resolve) => (settle = resolve));
 
-		try {
-			await previous;
+			try {
+				await previous;
 
-			await this.deviceConnectivityService.setConnectionState(virtualDeviceId, {
-				state: await this.aggregateState(virtualDeviceId),
-				reason,
-			});
-		} finally {
-			settle();
-		}
+				const state = { state: await this.aggregateState(virtualDeviceId), reason };
+				if (destination) await destination.values.setConnectionState.call(destination.receiver, virtualDeviceId, state);
+				else await this.deviceConnectivityService.setConnectionState(virtualDeviceId, state);
+			} finally {
+				settle();
+			}
+		});
 	}
 
 	/**

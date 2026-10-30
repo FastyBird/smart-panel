@@ -190,7 +190,7 @@ export class ThermostatInstallationService {
 	}
 	private invalidate(identity: string, controllerId: string): void {
 		this.claims.revokeQualification(identity);
-		this.runtime.request(controllerId);
+		void this.runtime.request(controllerId);
 	}
 	async inspect(claimId: string) {
 		const row = await this.dataSource.manager.findOneBy(ThermostatInstallationEntity, { claimId });

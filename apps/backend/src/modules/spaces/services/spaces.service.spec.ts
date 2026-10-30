@@ -6,13 +6,23 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { createSqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { VirtualDeviceEntity } from '../../../plugins/devices-virtual/entities/devices-virtual.entity';
 import { CreateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/dto/create-home-control-space.dto';
 import { UpdateHomeControlSpaceDto } from '../../../plugins/spaces-home-control/dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
+import { SpaceActivityStateEntity } from '../../../plugins/spaces-home-control/entities/space-activity-state.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DevicesNotAllowedException } from '../../devices/devices.exceptions';
+import {
+	ClimateAutomationSlotEntity,
+	ClimateAutomationSourceEntity,
+} from '../../devices/entities/climate-automation.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { ClimateAutomationLedgerService } from '../../devices/services/climate-automation-ledger.service';
+import { ClimateAutomationRegistryService } from '../../devices/services/climate-automation.registry.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
+import { DeviceStructureLockService } from '../../devices/services/device-structure-lock.service';
 import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
@@ -23,6 +33,7 @@ import { SpaceEntity } from '../entities/space.entity';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
+import { SpaceLifecycleRegistryService } from './space-lifecycle-registry.service';
 import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 import { SpacesService } from './spaces.service';
 
@@ -1480,4 +1491,272 @@ describe('SpacesService', () => {
 		module = undefined;
 		await moduleToClose?.close();
 	});
+});
+
+describe('SpacesService native climate lifecycle boundary', () => {
+	it.each([
+		['beforeAdmission', 'data', false],
+		['beforeAdmission', 'getter', false],
+		['beforeMutation', 'data', false],
+		['beforeMutation', 'getter', false],
+		['beforeMutation', 'data', true],
+	] as const)('retains original space %s after call %s changes; failure=%s', async (method, mutation, fail) => {
+		const database = await createSqliteDataSource({
+			type: 'sqlite',
+			database: ':memory:',
+			synchronize: true,
+			entities: [__dirname + '/../../../**/*.entity.ts'],
+		});
+		const registry = new ClimateAutomationRegistryService();
+		let release: () => void, entered: () => void;
+		const held = new Promise<void>((resolve) => (release = resolve));
+		const admitted = new Promise<void>((resolve) => (entered = resolve));
+		const releases: string[] = [],
+			mutations: string[] = [];
+		let operation: Promise<void> | undefined;
+		let fn: object | undefined, descriptor: PropertyDescriptor | undefined;
+		try {
+			const structure = new DeviceStructureLockService();
+			const ledger = new ClimateAutomationLedgerService(database, structure, registry);
+			const lifecycle = new SpaceLifecycleRegistryService(structure, ledger);
+			const room = await database.manager.save(
+				RoomSpaceEntity,
+				database.manager.create(RoomSpaceEntity, { name: 'Owned room' }),
+			);
+			lifecycle.register({
+				reconcile: () => Promise.resolve(),
+				beforeAdmission: async () => {
+					entered();
+					await held;
+					return () => {
+						releases.push('first');
+					};
+				},
+				beforeMutation: () => {
+					mutations.push('first');
+					return Promise.resolve();
+				},
+			});
+			const beforeAdmission = jest.fn((_id: string, _kind: 'delete' | 'type-change') =>
+				Promise.resolve(() => {
+					releases.push('second');
+				}),
+			);
+			const beforeMutation = jest.fn(
+				async (_id: string, _kind: 'delete' | 'type-change', manager: import('typeorm').EntityManager) => {
+					expect(structure.captureExclusiveOwner()()).toBe(true);
+					expect(manager.queryRunner.isTransactionActive).toBe(true);
+					expect(ledger.currentScope(manager)).toBeDefined();
+					expect(await manager.findOneBy(RoomSpaceEntity, { id: room.id })).not.toBeNull();
+					mutations.push('second');
+					if (fail) throw JSON.parse('false') as unknown;
+				},
+			);
+			const hook = { reconcile: () => Promise.resolve(), beforeAdmission, beforeMutation };
+			lifecycle.register(hook);
+			lifecycle.register({
+				reconcile: () => Promise.resolve(),
+				beforeMutation: () => {
+					mutations.push('optional-admission-absent');
+					return Promise.resolve();
+				},
+			});
+			const events = new EventEmitter2();
+			const event = jest.spyOn(events, 'emit');
+			const service = new SpacesService(
+				database.getRepository(SpaceEntity),
+				database.getRepository(DeviceEntity),
+				database.getRepository(DisplayEntity),
+				{} as never,
+				{} as never,
+				{} as never,
+				{} as never,
+				database,
+				events,
+				new SpacesTypeMapperService(),
+				lifecycle,
+			);
+			fn = hook[method];
+			descriptor = Object.getOwnPropertyDescriptor(fn, 'call');
+			const replacement = jest.fn(() => Promise.resolve()),
+				getter = jest.fn(() => replacement);
+			operation = service.remove(room.id);
+			const observed = operation.then(
+				() => ({ fulfilled: true }),
+				(cause: unknown) => ({ cause }),
+			);
+			await admitted;
+			Object.defineProperty(fn, 'call', {
+				configurable: true,
+				...(mutation === 'data' ? { value: replacement } : { get: getter }),
+			});
+			expect(hook[method]).toBe(fn);
+			release();
+			expect(await observed).toEqual(fail ? { cause: false } : { fulfilled: true });
+			expect(beforeAdmission).toHaveBeenCalledTimes(1);
+			expect(beforeAdmission.mock.contexts[0]).toBe(hook);
+			expect(beforeAdmission.mock.calls[0]).toEqual([room.id, 'delete']);
+			expect(beforeMutation).toHaveBeenCalledTimes(1);
+			expect(beforeMutation.mock.contexts[0]).toBe(hook);
+			expect(beforeMutation.mock.calls[0].slice(0, 2)).toEqual([room.id, 'delete']);
+			expect(releases).toEqual(['second', 'first']);
+			expect(mutations).toEqual(fail ? ['first', 'second'] : ['first', 'second', 'optional-admission-absent']);
+			if (fail) {
+				expect(await database.manager.findOneBy(RoomSpaceEntity, { id: room.id })).not.toBeNull();
+				expect(event).not.toHaveBeenCalled();
+			} else {
+				expect(await database.manager.findOneBy(RoomSpaceEntity, { id: room.id })).toBeNull();
+				expect(event).toHaveBeenCalledTimes(1);
+				expect(event).toHaveBeenCalledWith('SpacesModule.Space.Deleted', { id: room.id });
+			}
+			expect(replacement).not.toHaveBeenCalled();
+			expect(getter).not.toHaveBeenCalled();
+		} finally {
+			release();
+			await operation?.catch(() => undefined);
+			if (fn) {
+				if (descriptor) Object.defineProperty(fn, 'call', descriptor);
+				else Reflect.deleteProperty(fn, 'call');
+			}
+			registry.onModuleDestroy();
+			await database.destroy();
+		}
+	});
+
+	it.each(['success', 'retirement-failure', 'disposed-registration'] as const)(
+		'deletes assignments and exact source in one original native unit: %s',
+		async (outcome) => {
+			const database = await createSqliteDataSource({
+				type: 'sqlite',
+				database: ':memory:',
+				synchronize: true,
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+			});
+			const registry = new ClimateAutomationRegistryService();
+			try {
+				const structure = new DeviceStructureLockService();
+				const ledger = new ClimateAutomationLedgerService(database, structure, registry);
+				const lifecycle = new SpaceLifecycleRegistryService(structure, ledger);
+				const events = new EventEmitter2();
+				const room = await database.manager.save(
+					RoomSpaceEntity,
+					database.manager.create(RoomSpaceEntity, { name: 'Owned room' }),
+				);
+				const child = await database.manager.save(
+					RoomSpaceEntity,
+					database.manager.create(RoomSpaceEntity, { name: 'Child', parentId: room.id }),
+				);
+				const device = await database.manager.save(
+					VirtualDeviceEntity,
+					database.manager.create(VirtualDeviceEntity, { name: 'Controller', roomId: room.id }),
+				);
+				const display = await database.manager.save(
+					DisplayEntity,
+					database.manager.create(DisplayEntity, { macAddress: 'AA:BB:CC:DD:EE:FF', spaceId: room.id }),
+				);
+				await database.manager.save(
+					SpaceActivityStateEntity,
+					database.manager.create(SpaceActivityStateEntity, { spaceId: room.id, activationId: uuid() }),
+				);
+				const generationId = uuid(),
+					ownerId = uuid();
+				await database.manager.insert(ClimateAutomationSourceEntity, {
+					generationId,
+					ownerId,
+					producerKey: 'activity:v1',
+					subjectId: room.id,
+					generationIndex: 1,
+					revision: 1,
+					isCurrent: true,
+					state: 'FINALIZED_LIVE',
+					evidence: '{}',
+					evidenceDigest: 'test',
+				});
+				await database.manager.insert(ClimateAutomationSlotEntity, {
+					controllerId: device.id,
+					providerKey: 'virtual-thermostat:v1',
+					controllerIncarnation: uuid(),
+					slotRevision: 1,
+					manualGeneration: uuid(),
+					manualCounter: 1,
+					manualHold: false,
+					state: 'LIVE',
+					ownerId,
+					generationId,
+					baselineId: uuid(),
+					candidateId: uuid(),
+					bundleId: uuid(),
+					selection: '{}',
+					installEvidence: '{}',
+					legacyDigest: null,
+				});
+				const tables = [
+					'spaces_module_spaces',
+					'spaces_module_space_roles',
+					'devices_module_devices',
+					'displays_module_displays',
+					'devices_module_climate_automation_sources',
+					'devices_module_climate_automation_slots',
+				];
+				const snapshot = () =>
+					Promise.all(tables.map((table) => database.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`)));
+				const before = await snapshot();
+				const dispose = lifecycle.register({
+					reconcile: () => Promise.resolve(),
+					beforeMutation: async (id, kind, manager) => {
+						expect(id).toBe(room.id);
+						expect(kind).toBe('delete');
+						expect(structure.captureExclusiveOwner()()).toBe(true);
+						// Retirement precedes ALL assignment mutations, under the same original manager.
+						expect((await manager.findOneBy(RoomSpaceEntity, { id: child.id })).parentId).toBe(room.id);
+						expect((await manager.findOneBy(VirtualDeviceEntity, { id: device.id })).roomId).toBe(room.id);
+						expect((await manager.findOneBy(DisplayEntity, { id: display.id })).spaceId).toBe(room.id);
+						const scope = ledger.currentScope(manager);
+						const source = await ledger.readSource(manager, scope, 'activity:v1', id);
+						const slot = await ledger.readSlot(manager, scope, device.id, false);
+						await ledger.revokeSource(manager, scope, source, [slot], true);
+						if (outcome === 'retirement-failure') throw new Error('retirement failed');
+						if (outcome === 'disposed-registration') dispose();
+					},
+				});
+				const service = new SpacesService(
+					database.getRepository(SpaceEntity),
+					database.getRepository(DeviceEntity),
+					database.getRepository(DisplayEntity),
+					{} as never,
+					{} as never,
+					{} as never,
+					{} as never,
+					database,
+					events,
+					new SpacesTypeMapperService(),
+					lifecycle,
+				);
+				const event = jest.spyOn(events, 'emit');
+				if (outcome === 'success') {
+					await service.remove(room.id);
+					expect(await database.manager.findOneBy(SpaceEntity, { id: room.id })).toBeNull();
+					expect(await database.manager.findBy(SpaceActivityStateEntity, { spaceId: room.id })).toEqual([]);
+					expect((await database.manager.findOneBy(RoomSpaceEntity, { id: child.id })).parentId).toBeNull();
+					expect((await database.manager.findOneBy(VirtualDeviceEntity, { id: device.id })).roomId).toBeNull();
+					expect((await database.manager.findOneBy(DisplayEntity, { id: display.id })).spaceId).toBeNull();
+					expect(await database.manager.findOneBy(ClimateAutomationSourceEntity, { generationId })).toMatchObject({
+						state: 'DELETED',
+					});
+					expect(
+						await database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: device.id }),
+					).toMatchObject({ state: 'RETIRED', generationId });
+					expect(event).toHaveBeenCalledTimes(1);
+					expect(event).toHaveBeenCalledWith('SpacesModule.Space.Deleted', { id: room.id });
+				} else {
+					await expect(service.remove(room.id)).rejects.toThrow();
+					expect(await snapshot()).toEqual(before);
+					expect(event).not.toHaveBeenCalled();
+				}
+			} finally {
+				registry.onModuleDestroy();
+				await database.destroy();
+			}
+		},
+	);
 });

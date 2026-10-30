@@ -73,3 +73,35 @@ export class ClimateAutomationSlotEntity implements ClimateAutomationSlotFacts {
 		return {};
 	}
 }
+
+/** Retained native deletion provenance. Consumption never removes the historical image. */
+@Exclude()
+@Entity('devices_module_climate_automation_deletions')
+@Unique('UQ_climate_deletion_incarnation', ['controllerId', 'controllerIncarnation'])
+@Check(
+	'CHK_climate_deletion_revision',
+	'typeof("slotRevision") = \'integer\' AND typeof("manualCounter") = \'integer\' AND "slotRevision" BETWEEN 1 AND 9007199254740991 AND "manualCounter" BETWEEN 1 AND 9007199254740991',
+)
+@Check(
+	'CHK_climate_deletion_consumption',
+	'("consumedByIncarnation" IS NULL AND "consumedSlotRevision" IS NULL) OR ("consumedByIncarnation" IS NOT NULL AND "consumedByIncarnation" <> "controllerIncarnation" AND "nativeDeviceEvidence" IS NOT NULL AND "nativeConfigurationEvidence" IS NOT NULL AND "consumedSlotRevision" > "slotRevision" AND "consumedSlotRevision" <= 9007199254740991)',
+)
+export class ClimateAutomationDeletionEntity {
+	@PrimaryColumn({ type: 'varchar' }) deletionId!: string;
+	@Column({ type: 'varchar' }) controllerId!: string;
+	@Column({ type: 'varchar' }) controllerIncarnation!: string;
+	@Column({ type: 'varchar' }) providerKey!: string;
+	@Column({ type: 'integer' }) slotRevision!: number;
+	@Column({ type: 'integer' }) manualCounter!: number;
+	@Column({ type: 'text' }) slotEvidence!: string;
+	@Column({ type: 'text' }) controllerEvidence!: string;
+	@Column({ type: 'text' }) deviceEvidence!: string;
+	@Column({ type: 'text' }) configurationEvidence!: string;
+	@Column({ type: 'text', nullable: true }) nativeDeviceEvidence!: string | null;
+	@Column({ type: 'text', nullable: true }) nativeConfigurationEvidence!: string | null;
+	@Column({ type: 'varchar', nullable: true }) consumedByIncarnation!: string | null;
+	@Column({ type: 'integer', nullable: true }) consumedSlotRevision!: number | null;
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}

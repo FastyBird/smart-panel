@@ -10,6 +10,8 @@ import {
 	clonePropertyValueState,
 } from '../models/property-value-state.model';
 
+import { captureCreation, snapshotCreation } from './creation-capture';
+
 export interface PropertyProducerLease {
 	readonly propertyId: string;
 	readonly revision: number;
@@ -27,6 +29,73 @@ export interface PropertyProducerGuard {
 	readonly reason: string;
 }
 
+export interface ProducerRuntimeSlot {
+	readonly toJSON: () => object;
+}
+
+export interface ProducerStateOwner {
+	readonly toJSON: () => object;
+}
+export interface ProducerStateBatch {
+	readonly toJSON: () => object;
+}
+export interface ProducerStatePlan {
+	readonly toJSON: () => object;
+}
+export interface ProducerStateIntent {
+	readonly property: ChannelPropertyEntity;
+	readonly revision: number;
+	readonly reason: 'runtime_unavailable' | 'graph_quarantined';
+}
+export interface ProducerStatePublicationReport {
+	readonly attempted: number;
+	readonly installed: number;
+	readonly submitted: number;
+	readonly settled: number;
+	readonly failed: number;
+	readonly retired: boolean;
+	readonly terminal: 'prepared' | 'installed' | 'complete' | 'refused' | 'partial';
+}
+interface StateOwnerRecord {
+	readonly family: string;
+	readonly lifecycle: number;
+	active: boolean;
+	readonly slots: Map<string, ProducerEntry>;
+}
+interface StateBatchRecord {
+	readonly owner: StateOwnerRecord;
+	readonly entries: Map<string, ProducerEntry>;
+	readonly versions: Map<string, number>;
+	readonly removalEpoch: object;
+	readonly current: () => boolean;
+	readonly ready: () => boolean;
+	readonly emit: (property: ChannelPropertyEntity, state: PropertyValueState) => void;
+	active: boolean;
+}
+interface StatePlanRecord {
+	readonly batch: StateBatchRecord;
+	readonly operations: readonly { id: string; previous?: ProducerEntry; next?: ProducerEntry }[];
+	readonly restore?: (id: string) => Promise<void>;
+	readonly report: { -readonly [K in keyof ProducerStatePublicationReport]: ProducerStatePublicationReport[K] };
+	published: boolean;
+	removalEpoch?: object;
+}
+function privateStateToken() {
+	return Object.freeze({ toJSON: () => ({}) });
+}
+function detachedStateValue<T>(value: T): T {
+	const owned = snapshotCreation(value);
+	const seen = new Set<object>();
+	const freeze = (item: unknown): void => {
+		if (!item || typeof item !== 'object' || seen.has(item)) return;
+		seen.add(item);
+		for (const key of Object.keys(item)) freeze(Reflect.get(item, key));
+		Object.freeze(item);
+	};
+	freeze(owned);
+	return owned;
+}
+
 interface ProducerEntry {
 	property: ChannelPropertyEntity;
 	lease: PropertyProducerLease;
@@ -37,6 +106,8 @@ interface ProducerEntry {
 	sourceSamples?: readonly IncorporatedPropertySample[];
 	publication: number;
 	guard?: PropertyProducerGuard;
+	ownedState?: StateOwnerRecord;
+	retiredByUnregister?: true;
 }
 
 /** Owns process-local live authority. Persisted history is never restart evidence. */
@@ -45,6 +116,289 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	private readonly entries = new Map<string, ProducerEntry>();
 	private timer: NodeJS.Timeout | null = null;
 	private publicationSequence = 0;
+	private stateLifecycle = 0;
+	private readonly stateOwners = new WeakMap<ProducerStateOwner, StateOwnerRecord>();
+	private readonly stateBatches = new WeakMap<ProducerStateBatch, StateBatchRecord>();
+	private readonly statePlans = new WeakMap<ProducerStatePlan, StatePlanRecord>();
+	private readonly slotVersions = new Map<string, number>();
+	private removalEpoch: object = {};
+	private readonly runtimeSlots = new WeakMap<
+		ProducerRuntimeSlot,
+		{
+			id: string;
+			previous?: ProducerEntry;
+			version: number;
+			removalEpoch: object;
+			eligible: boolean;
+			used: boolean;
+			current: () => boolean;
+			emit: (property: ChannelPropertyEntity, state: PropertyValueState) => void;
+		}
+	>();
+	private advanceSlot(id: string): void {
+		this.slotVersions.set(id, (this.slotVersions.get(id) ?? 0) + 1);
+	}
+	private forgetSlot(id: string): void {
+		// Conservatively expire pending absence captures on any removal. Concrete live slots retain per-ID fences.
+		this.removalEpoch = {};
+		this.slotVersions.delete(id);
+	}
+
+	/** Private fallback ownership; ordinary runtime registration deliberately remains independent. */
+	createStateOwner(family: string): ProducerStateOwner {
+		const token = privateStateToken();
+		this.stateOwners.set(token, { family, lifecycle: this.stateLifecycle, active: true, slots: new Map() });
+		return token;
+	}
+	beginStateBatch(owner: ProducerStateOwner, current: () => boolean, ready: () => boolean): ProducerStateBatch {
+		const record = this.stateOwners.get(owner);
+		const lifecycle = this.stateLifecycle;
+		if (!record?.active || record.lifecycle !== this.stateLifecycle) throw new Error('Producer state owner is closed');
+		const pins = captureCreation(this, [
+			'createStateOwner',
+			'beginStateBatch',
+			'prepareStateBatch',
+			'installStatePlan',
+			'publishStatePlan',
+			'disposeStateOwner',
+			'validateStatePlan',
+			'readStatePlan',
+			'closeStateBatch',
+			'register',
+			'owns',
+			'isCurrent',
+		]);
+		const eventPins = this.events && captureCreation(this.events, ['emit']);
+		const originalEmit = this.emit.bind(this) as PropertyProducerRegistryService['emit'];
+		const dispatch = eventPins
+			? (property: ChannelPropertyEntity) => {
+					eventPins.values.emit.call(eventPins.receiver, EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, property);
+				}
+			: null;
+		const emission = (property: ChannelPropertyEntity, state: PropertyValueState) =>
+			originalEmit(property, state, dispatch);
+		const token = privateStateToken();
+		this.stateBatches.set(token, {
+			owner: record,
+			entries: new Map(this.entries),
+			versions: new Map(this.slotVersions),
+			removalEpoch: this.removalEpoch,
+			current: () =>
+				lifecycle === this.stateLifecycle &&
+				record.active &&
+				pins.current() &&
+				(!eventPins || eventPins.current()) &&
+				current(),
+			ready,
+			emit: emission,
+			active: true,
+		});
+		return token;
+	}
+	prepareStateBatch(
+		token: ProducerStateBatch,
+		intents: readonly ProducerStateIntent[],
+		removeMissing = true,
+		replaceOwned = true,
+		restore?: (id: string) => Promise<void>,
+		replaceOriginalConfigurationSlots: ReadonlySet<string> = new Set(),
+		allowAbsent: true | ReadonlySet<string> = true,
+	): ProducerStatePlan {
+		const batch = this.stateBatches.get(token);
+		if (!batch?.active || !batch.current()) throw new Error('Producer state batch expired');
+		const owned = detachedStateValue(intents);
+		const ids = new Set<string>();
+		const operations: StatePlanRecord['operations'][number][] = [];
+		for (const intent of owned) {
+			const id = intent.property.id;
+			if (!id || ids.has(id) || !Number.isSafeInteger(intent.revision) || intent.revision < 0)
+				throw new Error('Invalid producer state intent');
+			ids.add(id);
+			const previous = batch.entries.get(id);
+			if (!previous && intent.reason === 'runtime_unavailable' && allowAbsent !== true && !allowAbsent.has(id))
+				continue;
+			if (previous && !replaceOwned && !previous.retiredByUnregister) continue;
+			// Independent runtime authority is never replaced by a state fallback or quarantine mask.
+			if (
+				previous &&
+				previous.ownedState !== batch.owner &&
+				!previous.retiredByUnregister &&
+				!replaceOriginalConfigurationSlots.has(id) &&
+				!(previous.ownedState?.family === batch.owner.family && !previous.ownedState.active)
+			)
+				continue;
+			const state = this.unavailable(intent.revision, [intent.reason], new Date());
+			operations.push({
+				id,
+				previous,
+				next: {
+					property: intent.property,
+					lease: Object.freeze({ propertyId: id, revision: intent.revision }),
+					state,
+					epoch: (previous?.epoch ?? 0) + 1,
+					generation: 0,
+					publication: 0,
+					ownedState: batch.owner,
+					guard: Object.freeze({
+						isCurrent: () => batch.owner.active && batch.ready(),
+						reason: 'graph_validation_pending',
+					}),
+				},
+			});
+		}
+		if (removeMissing)
+			for (const [id, previous] of batch.owner.slots)
+				if (!ids.has(id) && batch.entries.get(id) === previous) operations.push({ id, previous });
+		const plan = privateStateToken();
+		this.statePlans.set(plan, {
+			batch,
+			operations: Object.freeze(operations),
+			restore,
+			published: false,
+			report: {
+				attempted: operations.length,
+				installed: 0,
+				submitted: 0,
+				settled: 0,
+				failed: 0,
+				retired: false,
+				terminal: 'prepared',
+			},
+		});
+		return plan;
+	}
+	validateStatePlan(token: ProducerStatePlan): boolean {
+		const plan = this.statePlans.get(token);
+		if (!plan || !plan.batch.current()) return false;
+		if (plan.report.terminal === 'prepared')
+			return (
+				plan.batch.active &&
+				plan.operations.every(
+					({ id, previous }) =>
+						this.entries.get(id) === previous &&
+						(previous !== undefined || plan.batch.removalEpoch === this.removalEpoch) &&
+						(this.slotVersions.get(id) ?? 0) === (plan.batch.versions.get(id) ?? 0),
+				)
+			);
+		return (
+			(plan.report.terminal === 'installed' || plan.report.terminal === 'complete') &&
+			plan.report.failed === 0 &&
+			plan.operations.every(
+				({ id, next }) =>
+					this.entries.get(id) === next &&
+					(next === undefined
+						? plan.removalEpoch === this.removalEpoch
+						: (this.slotVersions.get(id) ?? 0) === (plan.batch.versions.get(id) ?? 0) + 1),
+			)
+		);
+	}
+	installStatePlan(token: ProducerStatePlan): boolean {
+		const plan = this.statePlans.get(token);
+		if (!plan || plan.report.terminal !== 'prepared') return false;
+		if (!this.validateStatePlan(token)) {
+			plan.report.retired = true;
+			plan.report.terminal = 'refused';
+			plan.batch.active = false;
+			return false;
+		}
+		// Synchronous identity CAS, with no plugin/event callbacks between validation and map installation.
+		for (const { id, next } of plan.operations) {
+			if (next) {
+				this.entries.set(id, next);
+				plan.batch.owner.slots.set(id, next);
+				this.advanceSlot(id);
+			} else {
+				this.entries.delete(id);
+				plan.batch.owner.slots.delete(id);
+				this.forgetSlot(id);
+			}
+			plan.report.installed++;
+		}
+		plan.removalEpoch = this.removalEpoch;
+		plan.report.terminal = 'installed';
+		return true;
+	}
+	publishStatePlan(token: ProducerStatePlan): void | Promise<void> {
+		const plan = this.statePlans.get(token);
+		if (!plan || plan.report.terminal !== 'installed' || plan.published)
+			throw new Error('Producer state publication is closed');
+		plan.published = true;
+		let failure: { cause: unknown } | undefined;
+		const failed = (cause: unknown) => {
+			plan.report.failed++;
+			failure ??= { cause };
+		};
+		const finish = () => {
+			plan.report.retired ||= !plan.batch.current();
+			plan.report.terminal = failure ? 'partial' : 'complete';
+			plan.batch.active = false;
+			if (failure) throw failure.cause;
+		};
+		const run = (start: number): void | Promise<void> => {
+			for (let index = start; index < plan.operations.length; index++) {
+				const { id, next } = plan.operations[index];
+				if (!next && !plan.restore) continue;
+				plan.report.retired ||= !plan.batch.current() || this.entries.get(id) !== next;
+				plan.report.submitted++;
+				if (!next) {
+					// The exact original hydration/event operation is issued here, once. Its completion
+					// remains owed after observation expiry; it never installs a successor registry slot.
+					let original: Promise<void>;
+					try {
+						original = plan.restore(id);
+					} catch (cause: unknown) {
+						failed(cause);
+						plan.report.settled++;
+						continue;
+					}
+					return original.catch(failed).then(() => {
+						plan.report.settled++;
+						return run(index + 1);
+					});
+				}
+				try {
+					plan.batch.emit(next.property, next.state);
+				} catch (cause: unknown) {
+					failed(cause);
+				} finally {
+					plan.report.settled++;
+				}
+			}
+			return finish();
+		};
+		return run(0);
+	}
+
+	readStatePlan(token: ProducerStatePlan): ProducerStatePublicationReport | undefined {
+		const plan = this.statePlans.get(token);
+		return plan && Object.freeze({ ...plan.report, retired: plan.report.retired || !plan.batch.current() });
+	}
+	closeStateBatch(token: ProducerStateBatch): void {
+		const batch = this.stateBatches.get(token);
+		if (batch) batch.active = false;
+	}
+	removeOwnedState(owner: ProducerStateOwner, id: string): boolean {
+		const record = this.stateOwners.get(owner),
+			entry = this.entries.get(id);
+		if (!record?.active || !entry || entry.ownedState !== record || record.slots.get(id) !== entry) return false;
+		this.entries.delete(id);
+		record.slots.delete(id);
+		this.forgetSlot(id);
+		return true;
+	}
+	disposeStateOwner(owner: ProducerStateOwner): void {
+		const record = this.stateOwners.get(owner);
+		if (!record?.active) return;
+		record.active = false;
+		// Retained unavailable overlays carry original provenance for a fresh same-family owner.
+		for (const [id, entry] of record.slots)
+			if (this.entries.get(id) === entry) {
+				entry.epoch++;
+				this.advanceSlot(id);
+			}
+		record.slots.clear();
+	}
+
 	private evidenceValidator?: (sources: readonly IncorporatedPropertySample[]) => boolean;
 
 	setEvidenceValidator(validator: (sources: readonly IncorporatedPropertySample[]) => boolean): void {
@@ -111,10 +465,98 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 
 	onModuleDestroy(): void {
+		this.stateLifecycle++;
 		if (this.timer) clearInterval(this.timer);
 		this.events?.off(EventType.CHANNEL_PROPERTY_UPDATED, this.refreshPropertyMetadata);
 		this.timer = null;
 		this.entries.clear();
+		this.slotVersions.clear();
+		this.removalEpoch = {};
+	}
+
+	/** Capture an actual runtime's original slot before property/configuration awaits. */
+	captureRuntimeSlot(propertyId: string, originalLease?: PropertyProducerLease): ProducerRuntimeSlot {
+		const previous = this.entries.get(propertyId),
+			lifecycle = this.stateLifecycle;
+		const methods = captureCreation(this, [
+			'captureRuntimeSlot',
+			'registerRuntime',
+			'register',
+			'isAvailable',
+			'isCurrent',
+		]);
+		const event = this.events && captureCreation(this.events, ['emit']);
+		const emit = this.emit.bind(this) as PropertyProducerRegistryService['emit'];
+		const dispatch = event
+			? (property: ChannelPropertyEntity) => {
+					event.values.emit.call(event.receiver, EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, property);
+				}
+			: null;
+		const token = privateStateToken();
+		this.runtimeSlots.set(token, {
+			id: propertyId,
+			previous,
+			version: this.slotVersions.get(propertyId) ?? 0,
+			removalEpoch: this.removalEpoch,
+			eligible:
+				!previous ||
+				previous.lease === originalLease ||
+				previous.ownedState?.active === true ||
+				previous.retiredByUnregister === true,
+			used: false,
+			current: () => lifecycle === this.stateLifecycle && methods.current() && (!event || event.current()),
+			emit: (property, state) => emit(property, state, dispatch),
+		});
+		return token;
+	}
+	registerRuntime(
+		property: ChannelPropertyEntity,
+		revision: number,
+		token: ProducerRuntimeSlot,
+		guard?: PropertyProducerGuard,
+	): PropertyProducerLease | null {
+		const slot = this.runtimeSlots.get(token);
+		if (!slot || slot.used) return null;
+		slot.used = true;
+		if (
+			!slot.eligible ||
+			!slot.current() ||
+			slot.id !== property.id ||
+			this.entries.get(slot.id) !== slot.previous ||
+			(slot.previous === undefined && slot.removalEpoch !== this.removalEpoch) ||
+			(this.slotVersions.get(slot.id) ?? 0) !== slot.version
+		)
+			return null;
+		if (!Number.isSafeInteger(revision) || revision < 0) throw new Error('Invalid producer revision');
+		const lease = Object.freeze({ propertyId: property.id, revision });
+		const state = this.unavailable(revision, ['initializing'], new Date());
+		this.advanceSlot(property.id);
+		const entry: ProducerEntry = {
+			property,
+			lease,
+			state,
+			epoch: (slot.previous?.epoch ?? 0) + 1,
+			generation: 0,
+			publication: 0,
+			guard: guard ? Object.freeze({ ...guard }) : undefined,
+		};
+		this.entries.set(property.id, entry);
+		try {
+			slot.emit(property, state);
+		} catch (cause: unknown) {
+			// A reentrant listener may already have installed a successor. Only undo this exact entry.
+			if (this.entries.get(property.id) === entry) {
+				if (slot.previous) {
+					this.entries.set(property.id, slot.previous);
+					this.advanceSlot(property.id);
+				} else {
+					this.entries.delete(property.id);
+					this.forgetSlot(property.id);
+				}
+			}
+			throw cause;
+		}
+		return lease;
 	}
 
 	/** Installs a live lease, optionally bounded by its owner's captured validation lifecycle. */
@@ -123,6 +565,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const lease = Object.freeze({ propertyId: property.id, revision });
 		const previous = this.entries.get(property.id);
 		const state = this.unavailable(revision, ['initializing'], new Date());
+		this.advanceSlot(property.id);
 		this.entries.set(property.id, {
 			property,
 			lease,
@@ -263,8 +706,10 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const entry = this.entries.get(lease.propertyId);
 		if (!entry || entry.lease !== lease) return false;
 		// Retire the original owner before synchronous listeners can publish, replace it or throw.
+		this.advanceSlot(lease.propertyId);
 		entry.epoch++;
 		entry.lease = Object.freeze({ propertyId: lease.propertyId, revision: lease.revision });
+		entry.retiredByUnregister = true;
 		entry.state = this.unavailable(lease.revision, ['producer_disposed'], new Date());
 		entry.sourceSample = undefined;
 		entry.sourceSamples = undefined;
@@ -274,6 +719,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	remove(propertyId: string): void {
 		this.entries.delete(propertyId);
+		this.forgetSlot(propertyId);
 	}
 
 	/** Detached diagnostic snapshot; does not expire publications or emit events. Never admission authority. */
@@ -332,7 +778,11 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		return state;
 	}
 
-	private emit(property: ChannelPropertyEntity, state: PropertyValueState): void {
+	private emit(
+		property: ChannelPropertyEntity,
+		state: PropertyValueState,
+		dispatch?: ((property: ChannelPropertyEntity) => void) | null,
+	): void {
 		const snapshot = Object.assign(
 			Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
 			property,
@@ -342,6 +792,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		Object.freeze(snapshot.value.producer);
 		Object.freeze(snapshot.value);
 		Object.freeze(snapshot);
-		this.events?.emit(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, snapshot);
+		if (dispatch === undefined) this.events?.emit(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, snapshot);
+		else dispatch?.(snapshot);
 	}
 }

@@ -1,7 +1,8 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DataSource } from 'typeorm';
+import { DataSource, EntitySubscriberInterface } from 'typeorm';
+import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -79,6 +80,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		graph = new VirtualDependencyGraphService(database);
 		producers = new PropertyProducerRegistryService(new EventEmitter2());
 		producerState = new VirtualProducerStateService(database, producers, graph, new EventEmitter2());
+		await producerState.onModuleInit();
 		configs = new VirtualProducerConfigService(
 			database,
 			new DeviceStructureLockService(),
@@ -535,6 +537,186 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		expect(producers.owns(output.propertyId)).toBe(false);
 	});
 
+	it.each(['before-commit', 'after-ack'] as const)(
+		'preserves original native %s failure while applying only an acknowledged configuration fence',
+		async (boundary) => {
+			const a = await measurement(),
+				b = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
+			const property = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.propertyId });
+			const old = producers.register(property, 1, {
+				isCurrent: graph.capturePublishGuard(),
+				reason: 'graph_validation_pending',
+			});
+			const before = producers.readDiagnosticState(property.id),
+				primary = new Error('Original native configuration callback');
+			let armed = true;
+			const reject = () => {
+				if (armed) {
+					armed = false;
+					throw primary;
+				}
+			};
+			const subscriber =
+				boundary === 'before-commit' ? { beforeTransactionCommit: reject } : { afterTransactionCommit: reject };
+			database.subscribers.push(subscriber);
+			try {
+				await expect(
+					configs.configureAggregate(property.id, aggregateDto([a.propertyId, b.propertyId], 1)),
+				).rejects.toBe(primary);
+				expect((await configs.getAggregate(property.id)).revision).toBe(boundary === 'after-ack' ? 2 : 1);
+				if (boundary === 'after-ack') {
+					expect(producers.isCurrent(old)).toBe(false);
+					expect(producers.read(property.id)).toMatchObject({
+						value: null,
+						producer: { revision: 2, quality: 'unavailable' },
+					});
+				} else {
+					expect(producers.isCurrent(old)).toBe(true);
+					expect(producers.readDiagnosticState(property.id)).toEqual(before);
+				}
+			} finally {
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+			}
+		},
+	);
+	it('keeps an actual submitted UNKNOWN configuration closed without promoting its committed bytes', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
+		const property = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.propertyId });
+		const old = producers.register(property, 1, {
+			isCurrent: graph.capturePublishGuard(),
+			reason: 'graph_validation_pending',
+		});
+		interface Native {
+			all(
+				sql: string,
+				params: unknown[],
+				callback: (this: unknown, error: Error | null, rows?: unknown[]) => void,
+			): unknown;
+		}
+		const native = (database.driver as SqliteDriver).databaseConnection as Native;
+		const original = native.all.bind(native) as Native['all'];
+		const primary = new Error('Actual native configuration ACK unavailable');
+		let submissions = 0;
+		const nativeCall = jest.spyOn(native, 'all').mockImplementation((sql, params, callback) => {
+			if (sql === 'COMMIT') submissions++;
+			return original(sql, params, function (error, rows) {
+				callback.call(this, sql === 'COMMIT' && !error ? primary : error, rows);
+			});
+		});
+		try {
+			await expect(
+				configs.configureAggregate(property.id, aggregateDto([a.propertyId, b.propertyId], 1)),
+			).rejects.toMatchObject({ driverError: primary });
+			expect(submissions).toBe(1);
+			expect((await configs.getAggregate(property.id)).revision).toBe(2);
+			expect(producers.isCurrent(old)).toBe(true);
+			expect(producers.isAvailable(old)).toBe(false);
+			expect(producers.read(property.id)).toMatchObject({
+				value: null,
+				producer: { revision: 1, quality: 'unavailable', reasons: ['graph_validation_pending'] },
+			});
+			expect(graph.isValidated()).toBe(false);
+		} finally {
+			nativeCall.mockRestore();
+		}
+	});
+	it.each(['postimage', 'after-ready'] as const)(
+		'rolls back every configuration row and retains the original lease after native %s drift',
+		async (boundary) => {
+			const a = await measurement(),
+				b = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
+			const property = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.propertyId });
+			const old = producers.register(property, 1),
+				before = producers.readDiagnosticState(property.id);
+			const rows = async () => ({
+				config: await database.query<unknown[]>(
+					'SELECT * FROM devices_virtual_aggregate_configs ORDER BY outputPropertyId',
+				),
+				inputs: await database.query<unknown[]>('SELECT * FROM devices_virtual_aggregate_inputs ORDER BY id'),
+			});
+			const originalRows = await rows();
+			let armed = true,
+				mutations = 0,
+				acknowledgements = 0;
+			const mutate: EntitySubscriberInterface['beforeTransactionCommit'] = async (event) => {
+				if (!armed) return;
+				armed = false;
+				mutations++;
+				await event.manager.query(
+					'UPDATE devices_virtual_aggregate_configs SET maximumAgeSeconds = ? WHERE outputPropertyId = ?',
+					[301, property.id],
+				);
+			};
+			const subscriber: EntitySubscriberInterface = {
+				afterUpdate: async (event) => {
+					if (boundary === 'postimage' && event.metadata.target === VirtualAggregateConfigEntity) await mutate(event);
+				},
+				beforeTransactionCommit: boundary === 'after-ready' ? mutate : undefined,
+				afterTransactionCommit: () => {
+					acknowledgements++;
+				},
+			};
+			database.subscribers.push(subscriber);
+			try {
+				await expect(
+					configs.configureAggregate(property.id, aggregateDto([a.propertyId, b.propertyId], 1)),
+				).rejects.toThrow();
+				expect(mutations).toBe(1);
+				expect(acknowledgements).toBe(0);
+				expect(await rows()).toEqual(originalRows);
+				expect(producers.isCurrent(old)).toBe(true);
+				expect(producers.readDiagnosticState(property.id)).toEqual(before);
+			} finally {
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+			}
+		},
+	);
+	it('invokes the original postACK configuration callback without adopting its replacement or independent runtime B', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
+		const property = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.propertyId });
+		const original = jest.spyOn(producerState, 'installUnavailable');
+		await producerState.onModuleInit();
+		original.mockClear();
+		const replacement = jest.fn(() => {
+			throw new Error('Replacement must never run');
+		});
+		let armed = true,
+			runtime: ReturnType<PropertyProducerRegistryService['register']> | undefined;
+		const subscriber: EntitySubscriberInterface = {
+			afterTransactionCommit: () => {
+				if (!armed) return;
+				armed = false;
+				producerState.installUnavailable = replacement;
+				runtime = producers.register(property, 99);
+			},
+		};
+		database.subscribers.push(subscriber);
+		try {
+			expect(
+				(await configs.configureAggregate(property.id, aggregateDto([a.propertyId, b.propertyId], 1))).revision,
+			).toBe(2);
+			expect(original).toHaveBeenCalledTimes(1);
+			expect(replacement).not.toHaveBeenCalled();
+			expect(producers.isCurrent(runtime)).toBe(true);
+			expect(producers.readDiagnosticState(property.id)?.producer.revision).toBe(99);
+		} finally {
+			const index = database.subscribers.indexOf(subscriber);
+			if (index >= 0) database.subscribers.splice(index, 1);
+			original.mockRestore();
+		}
+	});
 	it('fences former runtime leases on configuration revision changes and leaves state intact on rejected edits', async () => {
 		const a = await measurement();
 		const b = await measurement();

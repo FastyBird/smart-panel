@@ -1,3 +1,5 @@
+import type { EntityManager } from 'typeorm';
+
 /** SQLite persistence guards apply equally to entity, bulk/query-builder and raw SQL mutations. */
 export const THERMOSTAT_OWNERSHIP_TRIGGERS: Readonly<Record<string, string>> = {
 	virtual_thermostat_property_delete: `BEFORE DELETE ON "devices_module_channels_properties"
@@ -42,3 +44,20 @@ export const THERMOSTAT_BRANCH_MEMBER_TRIGGERS: Readonly<Record<string, string>>
 		BEGIN SELECT RAISE(ABORT, 'Thermostat branches require at most eight total mandatory members'); END`,
 	]),
 );
+
+/** Separate retained deletion proof; a raw deletion without an admitted pending record creates no authority. */
+export async function climateDeletionCaptureSql(manager: EntityManager): Promise<string> {
+	const device = await manager.query<{ name: string }[]>('PRAGMA table_info("devices_module_devices")');
+	const config = await manager.query<{ name: string }[]>('PRAGMA table_info("devices_virtual_thermostat_configs")');
+	const image = (columns: { name: string }[], prefix: string) =>
+		'json_object(' +
+		columns.map(({ name }) => `'${name.replace(/'/g, "''")}', ${prefix}."${name.replace(/"/g, '""')}"`).join(', ') +
+		')';
+	if (!device.length || !config.length) throw new Error('Controller deletion schema is missing');
+	return `CREATE TRIGGER "virtual_thermostat_capture_admitted_deletion" BEFORE DELETE ON "devices_module_devices"
+		BEGIN UPDATE "devices_module_climate_automation_deletions"
+		SET "nativeDeviceEvidence" = ${image(device, 'OLD')},
+		"nativeConfigurationEvidence" = (SELECT ${image(config, 'c')} FROM "devices_virtual_thermostat_configs" c WHERE c."controllerId" = OLD."id")
+		WHERE "controllerId" = OLD."id" AND "nativeDeviceEvidence" IS NULL AND "consumedByIncarnation" IS NULL;
+		END`;
+}

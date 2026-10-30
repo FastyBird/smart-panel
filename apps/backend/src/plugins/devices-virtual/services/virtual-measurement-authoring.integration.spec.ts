@@ -119,6 +119,7 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		graph = new VirtualDependencyGraphService(database);
 		lock = new DeviceStructureLockService();
 		state = new VirtualProducerStateService(database, producers, graph, events);
+		await state.onModuleInit();
 		events.on(EventType.CHANNEL_PROPERTY_CREATED, (property: VirtualChannelPropertyEntity) =>
 			state.handlePropertyChanged(property),
 		);

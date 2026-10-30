@@ -1,3 +1,5 @@
+import type { EntityManager } from 'typeorm';
+
 import { ActivityClimateModel } from '../models/activity-configuration.model';
 import { ActivityDomainResultModel } from '../models/activity-result.model';
 
@@ -10,12 +12,16 @@ export interface SpaceActivationIdentity {
 	readonly isCurrent: () => Promise<boolean>;
 }
 /**
- * Future adapter must resolve presets/ranges/deadband and implement internal owner+baseline CAS,
- * graph/controller fencing and source tombstones before dispatch. It must reject foreign or
- * legacy unowned baselines. Withdrawing a matching baseline is not a general user-state reset.
- * This foundation intentionally registers no adapter and performs no climate startup actuation.
+ * Internal activity bridge. The application registers the producer through its Nest lifecycle.
+ * Provider installation uses native source/slot/incarnation evidence and the original manager/receipt.
+ * Withdrawing a matching baseline is not a general user-state reset; missing providers refuse installation.
  */
+export type SpaceClimateCompletion = (
+	results: readonly ActivityDomainResultModel[],
+	write: (manager: EntityManager) => Promise<boolean>,
+) => Promise<boolean>;
 export interface SpaceClimateAutomationPort {
+	captureCompletion?(identity: SpaceActivationIdentity): SpaceClimateCompletion;
 	preview(spaceId: string, selection: ActivityClimateModel): Promise<ActivityDomainResultModel>;
 	apply(identity: SpaceActivationIdentity, selection: ActivityClimateModel): Promise<ActivityDomainResultModel>;
 	withdraw(identity: SpaceActivationIdentity): Promise<void>;

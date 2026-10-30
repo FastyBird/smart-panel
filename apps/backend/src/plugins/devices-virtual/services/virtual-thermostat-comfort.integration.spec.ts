@@ -3,17 +3,49 @@ import { performance } from 'node:perf_hooks';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardReceipt,
+	SqliteDataSource,
+	observeSqliteOuterOutcome,
+} from '../../../common/database/sqlite-data-source';
 import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
-import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ClimateAutomationSlotFacts } from '../../../modules/devices/contracts/climate-automation.contract';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import {
+	ClimateAutomationSlotEntity,
+	ClimateAutomationSourceEntity,
+} from '../../../modules/devices/entities/climate-automation.entity';
+import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
-import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
-import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
+import { VirtualThermostatConfigEntity, VirtualThermostatSettingEntity } from '../entities/virtual-thermostat.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import {
+	THERMOSTAT_AUTOMATION_PROVIDER,
+	VirtualThermostatAutomationService,
+} from './virtual-thermostat-automation.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
+import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 
 jest.setTimeout(30_000);
 
@@ -125,6 +157,97 @@ describe('thermostat durable comfort lifecycle', () => {
 		if (database?.isInitialized) await database.destroy();
 	});
 
+	it.each(['definition', 'selection'] as const)(
+		'keeps an exact %s repeat native-unchanged, including MAX, while retaining final GET',
+		async (kind) => {
+			await configured();
+			if (kind === 'selection') await comfort.select(id, await fence(), 'eco', false);
+			const snapshot = async () => {
+				const rows: Record<string, unknown[]> = {};
+				for (const table of database.entityMetadatas.map((metadata) => metadata.tableName).sort())
+					rows[table] = await database.query<unknown[]>(`SELECT * FROM "${table.replace(/"/g, '""')}" ORDER BY rowid`);
+				return rows;
+			};
+			const emit = jest.spyOn(events, 'emit');
+			const get = jest.spyOn(comfort, 'get');
+			for (const max of [false, true]) {
+				if (max) {
+					await database.manager.update(
+						VirtualThermostatConfigEntity,
+						{ controllerId: id },
+						{ revision: Number.MAX_SAFE_INTEGER },
+					);
+					await database.query('UPDATE devices_virtual_graph_revision SET revision=?', [Number.MAX_SAFE_INTEGER]);
+				}
+				const originalFence = await fence(),
+					before = await snapshot();
+				emit.mockClear();
+				get.mockClear();
+				const result =
+					kind === 'definition'
+						? await comfort.configure(id, originalFence, input())
+						: await comfort.select(id, originalFence, 'eco', false);
+				expect(result.revision).toBe(originalFence.expected_revision);
+				expect(result.graph_revision).toBe(originalFence.expected_graph_revision);
+				expect(await snapshot()).toEqual(before);
+				expect(emit).not.toHaveBeenCalled();
+				expect(get).toHaveBeenCalledTimes(1);
+				await expect(
+					comfort.select(
+						id,
+						{ ...originalFence, expected_graph_revision: originalFence.expected_graph_revision - 1 },
+						'eco',
+						false,
+					),
+				).rejects.toThrow();
+				expect(await snapshot()).toEqual(before);
+				get.mockRejectedValueOnce(false);
+				await expect(
+					kind === 'definition'
+						? comfort.configure(id, originalFence, input())
+						: comfort.select(id, originalFence, 'eco', false),
+				).rejects.toBe(false);
+				expect(await snapshot()).toEqual(before);
+				await expect(
+					comfort.select(
+						id,
+						{ ...originalFence, expected_revision: originalFence.expected_revision - 1 },
+						'eco',
+						false,
+					),
+				).rejects.toThrow();
+				expect(await snapshot()).toEqual(before);
+				if (max) {
+					await expect(comfort.select(id, originalFence, 'comfort', false)).rejects.toThrow();
+					expect(await snapshot()).toEqual(before);
+				}
+			}
+		},
+	);
+
+	it.each([Number.MAX_SAFE_INTEGER - 1, Number.MAX_SAFE_INTEGER])(
+		'settles expiry without overflowing revision %s',
+		async (revision) => {
+			await configured();
+			await overridden();
+			await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { revision });
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			wall += 1001;
+			elapsed += 1001;
+			if (revision === Number.MAX_SAFE_INTEGER) {
+				await expect(comfort.settle(id)).rejects.toThrow('overflow');
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(
+					before,
+				);
+				expect(comfort.isCurrent(before)).toBe(false);
+			} else {
+				await comfort.settle(id);
+				const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				expect(after.revision).toBe(Number.MAX_SAFE_INTEGER);
+				expect(after.comfort.temporary_override.status).toBe('expired');
+			}
+		},
+	);
 	it('preserves installed settings and leaves presets and automation unset until configured', async () => {
 		expect(await comfort.get(id)).toMatchObject({
 			configuration: null,
@@ -532,7 +655,319 @@ describe('thermostat durable comfort lifecycle', () => {
 		).toContain('invalid_branch_range');
 	});
 
-	it('requires explicit automation opt-in and keeps overrides/OFF stronger than the current trusted baseline', async () => {
+	it.each([
+		{ userOff: false, retirement: 'preset' },
+		{ userOff: true, retirement: 'preset' },
+		{ userOff: false, retirement: 'disable' },
+		{ userOff: true, retirement: 'disable' },
+		{ userOff: false, retirement: 'remove' },
+		{ userOff: true, retirement: 'remove' },
+		{ userOff: false, retirement: 'locked' },
+		{ userOff: true, retirement: 'locked' },
+		{ userOff: false, retirement: 'setpoint' },
+		{ userOff: true, retirement: 'setpoint' },
+	])(
+		'requires the real installed provider/source/slot view through override recovery and $retirement retirement with user_off=$userOff',
+		async ({ userOff, retirement }) => {
+			await configured();
+			await comfort.configure(id, await fence(), { ...input(), automation_enabled: true });
+			if (userOff) {
+				const initial = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				initial.comfort.user_off = true;
+				await database.manager.save(initial);
+			}
+			let manualCommand: IDevicePropertyData | undefined;
+			if (retirement === 'locked' || retirement === 'setpoint') {
+				const channelId = randomUUID(),
+					propertyId = randomUUID();
+				const locked = retirement === 'locked';
+				await database.manager.insert(VirtualChannelEntity, {
+					id: channelId,
+					device: id,
+					name: 'Manual settings',
+					identifier: 'manual',
+					category: locked ? ChannelCategory.THERMOSTAT : ChannelCategory.HEATER,
+				});
+				await database.manager.insert(VirtualChannelPropertyEntity, {
+					id: propertyId,
+					channel: channelId,
+					identifier: locked ? 'locked' : 'temperature',
+					category: locked ? PropertyCategory.LOCKED : PropertyCategory.TEMPERATURE,
+					dataType: locked ? DataTypeType.BOOL : DataTypeType.FLOAT,
+					permissions: [PermissionType.READ_WRITE],
+					valueOrigin: VirtualValueOrigin.LOCAL,
+					sourcePropertyId: null,
+				});
+				const property = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+					where: { id: propertyId },
+					relations: ['channel', 'channel.device'],
+				});
+				const channel = property.channel as ChannelEntity;
+				const device = channel.device as DeviceEntity;
+				await database.manager.insert(VirtualThermostatSettingEntity, {
+					controllerId: id,
+					propertyId,
+					setting: locked ? 'locked' : 'heating_setpoint',
+					contractFingerprint: thermostatPropertyContract(property, channel, device),
+				});
+				manualCommand = { property, channel, device, value: locked ? true : 20 };
+			}
+			const registry = new ClimateAutomationRegistryService();
+			const ledger = new ClimateAutomationLedgerService(database, structure, registry);
+			const graph = new VirtualDependencyGraphService(database, undefined, ledger);
+			const automation = new VirtualThermostatAutomationService(database, registry, ledger, graph, structure);
+			const claims = {
+				invalidate: jest.fn(),
+				refresh: jest.fn().mockResolvedValue(undefined),
+			} as unknown as VirtualThermostatClaimsService;
+			const service = new VirtualThermostatComfortService(database, structure, graph, claims, events, automation);
+			// This tests the production thermostat participant. The actual activity producer/HTTP pack is separate.
+			registry.registerProducerOwned('test-activity:v1', {
+				validateInManager: () => Promise.resolve({ selection: 'eco' }),
+			});
+			automation.onModuleInit();
+			try {
+				let receipt: SqliteCommitGuardReceipt;
+				let installed: ClimateAutomationSlotFacts;
+				await structure.runExclusiveReleased(() =>
+					graph.withControllerMutationWrite(
+						async (manager) => {
+							await automation.explicitOptIn(manager, id);
+							const scope = ledger.currentScope(manager);
+							const previous = await ledger.readSource(manager, scope, 'test-activity:v1', 'room');
+							const source = await ledger.stageSource(manager, scope, {
+								producerKey: 'test-activity:v1',
+								subjectId: 'room',
+								expected: previous,
+								evidence: { selection: 'eco' },
+							});
+							const slot = await ledger.readSlot(manager, scope, id, true, THERMOSTAT_AUTOMATION_PROVIDER);
+							const candidate = await ledger.stageSlot(manager, scope, {
+								expectedSlot: slot,
+								expectedSource: source,
+								selection: { preset: 'eco', setpoints: null },
+								bundleId: randomUUID(),
+							});
+							[installed] = (await ledger.installBundle(manager, scope, source, [candidate])).map(({ facts }) => facts);
+							await graph.sealControllerLedger(manager);
+						},
+						undefined,
+						(manager) => {
+							receipt = observeSqliteOuterOutcome(manager);
+						},
+						() => {
+							expect(receipt.outcome).toBe('committed');
+						},
+					),
+				);
+				expect((await service.get(id)).effective).toMatchObject({
+					source: userOff ? 'user_off' : 'manual',
+					heating_setpoint: 20,
+				});
+				expect(await automation.activateLocal(database.manager, installed)).toBe(true);
+				// A suspended original local admission cannot undo a later synchronous mutation fence.
+				const originalRead = database.manager.findOneBy.bind(database.manager) as typeof database.manager.findOneBy;
+				let releaseRead: () => void;
+				let readEntered: () => void;
+				const heldRead = new Promise<void>((resolve) => {
+					releaseRead = resolve;
+				});
+				const enteredRead = new Promise<void>((resolve) => {
+					readEntered = resolve;
+				});
+				let holdSource = true;
+				const readSpy = jest
+					.spyOn(database.manager, 'findOneBy')
+					.mockImplementation(async (...args: Parameters<typeof database.manager.findOneBy>) => {
+						const result = await originalRead(...args);
+						if (args[0] === ClimateAutomationSourceEntity && holdSource) {
+							holdSource = false;
+							readEntered();
+							await heldRead;
+						}
+						return result;
+					});
+				try {
+					const pendingAdmission = automation.activateLocal(database.manager, installed);
+					await enteredRead;
+					await automation.beginMutation(id);
+					releaseRead();
+					expect(await pendingAdmission).toBe(false);
+					expect((await service.get(id)).effective.source).toBe(userOff ? 'user_off' : 'manual');
+				} finally {
+					releaseRead?.();
+					readSpy.mockRestore();
+				}
+				expect(await automation.activateLocal(database.manager, installed)).toBe(true);
+				const originalView = await automation.resolve(
+					database.manager,
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }),
+				);
+				await structure.runExclusive(() => graph.withStructuralWrite(() => Promise.resolve(undefined)));
+				expect(originalView.isCurrent()).toBe(false);
+
+				expect((await service.get(id)).effective).toMatchObject({
+					source: userOff ? 'user_off' : 'automation',
+					preset: 'eco',
+					heating_setpoint: 17,
+				});
+				const currentFence = async () => {
+					const current = await service.get(id);
+					return { expected_revision: current.revision, expected_graph_revision: current.graph_revision };
+				};
+				for (const flag of ['omitted', 'undefined', 'null', 'true'] as const) {
+					const payload =
+						flag === 'omitted'
+							? input()
+							: {
+									...input(),
+									automation_enabled: flag === 'null' ? null : flag === 'true' ? true : undefined,
+								};
+					const definition = await service.configure(id, await currentFence(), payload);
+					expect(definition.effective).toMatchObject({
+						source: userOff ? 'user_off' : 'automation',
+						preset: 'eco',
+						heating_setpoint: 17,
+					});
+					expect((await service.get(id)).effective).toEqual(definition.effective);
+					expect(
+						await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id }),
+					).toMatchObject({
+						state: 'LIVE',
+						candidateId: installed.candidateId,
+						manualCounter: installed.manualCounter,
+					});
+				}
+				const override = await service.override(
+					id,
+					await currentFence(),
+					{ preset: 'comfort', setpoints: null, expires_at: new Date(wall + 1000).toISOString() },
+					'operator',
+				);
+				expect(override.effective).toMatchObject({ source: userOff ? 'user_off' : 'override', heating_setpoint: 23 });
+				wall += 100;
+				elapsed += 100;
+				expect((await service.get(id)).effective).toMatchObject({
+					source: userOff ? 'user_off' : 'override',
+					heating_setpoint: 23,
+				});
+				const watermarkSlot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, {
+					controllerId: id,
+				});
+				expect(watermarkSlot).toMatchObject({
+					state: 'LIVE',
+					manualCounter: installed.manualCounter,
+					candidateId: installed.candidateId,
+				});
+				const cancelled = await service.cancel(id, await currentFence(), override.configuration.temporary_override.id);
+				expect((await service.get(id)).effective).toMatchObject({
+					source: userOff ? 'user_off' : 'automation',
+					preset: 'eco',
+					heating_setpoint: 17,
+				});
+				expect(cancelled.configuration.temporary_override.status).toBe('cancelled');
+				expect(cancelled.effective).toMatchObject({
+					source: userOff ? 'user_off' : 'automation',
+					preset: 'eco',
+					heating_setpoint: 17,
+				});
+				await service.override(
+					id,
+					await currentFence(),
+					{
+						preset: null,
+						setpoints: { heating_setpoint: 25, cooling_setpoint: null },
+						expires_at: new Date(wall + 1000).toISOString(),
+					},
+					'operator',
+				);
+				wall += 1000;
+				elapsed += 1000;
+				expect((await service.get(id)).effective).toMatchObject({
+					source: userOff ? 'user_off' : 'automation',
+					preset: 'eco',
+					heating_setpoint: 17,
+				});
+				if (manualCommand) {
+					const before = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id });
+					const valueCalls = {
+						write: jest.fn().mockResolvedValue(true),
+						readLatest: jest.fn().mockResolvedValue(null),
+					};
+					const values = valueCalls as unknown as PropertyValueService;
+					const configurations = new VirtualThermostatConfigService(
+						database,
+						structure,
+						graph,
+						claims,
+						events,
+						values,
+						undefined,
+						automation,
+					);
+					expect(await configurations.command([manualCommand, manualCommand])).toBe(true);
+					const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id });
+					expect(slot).toMatchObject({
+						state: 'RETIRED',
+						manualHold: retirement === 'setpoint',
+						manualCounter: before.manualCounter + (retirement === 'setpoint' ? 1 : 0),
+						candidateId: before.candidateId,
+						controllerIncarnation: before.controllerIncarnation,
+					});
+					if (retirement === 'locked') expect(slot.manualGeneration).toBe(before.manualGeneration);
+					else expect(slot.manualGeneration).not.toBe(before.manualGeneration);
+					expect(valueCalls.write).toHaveBeenCalledTimes(2);
+					expect(valueCalls.readLatest).toHaveBeenCalledTimes(2);
+					expect((await service.get(id)).effective).toMatchObject({
+						source: userOff ? 'user_off' : 'manual',
+						heating_setpoint: 20,
+					});
+				} else if (retirement === 'disable' || retirement === 'remove') {
+					const definition = input();
+					const disabled = await service.configure(id, await currentFence(), {
+						...definition,
+						automation_enabled: retirement !== 'disable',
+						presets:
+							retirement === 'remove'
+								? definition.presets.filter(({ preset }) => preset !== 'eco')
+								: definition.presets,
+					});
+					expect(disabled.configuration.automation_baseline).toBeNull();
+					expect(disabled.effective).toMatchObject({ source: userOff ? 'user_off' : 'manual', heating_setpoint: 20 });
+					expect(
+						await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id }),
+					).toMatchObject({
+						state: 'RETIRED',
+						manualHold: false,
+						manualCounter: installed.manualCounter + 1,
+					});
+				} else {
+					const current = await service.get(id);
+					await service.select(
+						id,
+						{ expected_revision: current.revision, expected_graph_revision: current.graph_revision },
+						'comfort',
+						false,
+					);
+					expect(await database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: id })).toMatchObject({
+						state: 'RETIRED',
+						manualHold: false,
+					});
+					expect((await service.get(id)).effective).toMatchObject({
+						source: userOff ? 'user_off' : 'preset',
+						preset: 'comfort',
+						heating_setpoint: 23,
+					});
+				}
+				expect(await automation.activateLocal(database.manager, installed)).toBe(false);
+			} finally {
+				automation.onModuleDestroy();
+				registry.onModuleDestroy();
+			}
+		},
+	);
+
+	it('requires explicit opt-in but never promotes actor-tagged JSON over manual, override or OFF intent', async () => {
 		await configured();
 		await expect(
 			comfort.applyAutomationBaseline(id, await fence(), { preset: 'eco', setpoints: null }, 'space-bridge'),
@@ -540,9 +975,9 @@ describe('thermostat durable comfort lifecycle', () => {
 		await comfort.configure(id, await fence(), { ...input(), automation_enabled: true });
 		await comfort.applyAutomationBaseline(id, await fence(), { preset: 'eco', setpoints: null }, 'space-bridge');
 		expect((await comfort.get(id)).effective).toMatchObject({
-			source: 'automation',
-			preset: 'eco',
-			heating_setpoint: 17,
+			source: 'manual',
+			preset: null,
+			heating_setpoint: 20,
 		});
 		await overridden();
 		await comfort.applyAutomationBaseline(
@@ -551,12 +986,16 @@ describe('thermostat durable comfort lifecycle', () => {
 			{ preset: null, setpoints: { heating_setpoint: 18, cooling_setpoint: null } },
 			'space-bridge',
 		);
-		expect((await comfort.get(id)).effective.heating_setpoint).toBe(23);
+		expect((await comfort.get(id)).configuration.automation_baseline).toMatchObject({
+			actor_id: 'space-bridge',
+			setpoints: { heating_setpoint: 18, cooling_setpoint: null },
+		});
+		expect((await comfort.get(id)).effective).toMatchObject({ source: 'override', heating_setpoint: 23 });
 		elapsed += 1000;
 		expect((await comfort.get(id)).effective).toMatchObject({
-			source: 'automation',
+			source: 'manual',
 			preset: null,
-			heating_setpoint: 18,
+			heating_setpoint: 20,
 		});
 		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { requestedMode: 'off' });
 		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
