@@ -4855,7 +4855,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get space_schedule_last_failed =>
-      'Posledný plánovaný pokus sa nespustil.';
+      'Posledný plánovaný pokus zlyhal alebo bol prerušený. Skontrolujte výsledky aktivity.';
 
   @override
   String get space_schedule_plan_only =>

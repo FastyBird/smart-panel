@@ -1541,6 +1541,6 @@
   "space_schedule_current": "Aktuální režim podle plánu",
   "space_schedule_next": "Příští změna",
   "space_schedule_empty": "Žádná další položka.",
-  "space_schedule_last_failed": "Poslední plánovaný pokus se nespustil.",
+  "space_schedule_last_failed": "Poslední plánovaný pokus selhal nebo byl přerušen. Zkontrolujte výsledky aktivity.",
   "space_schedule_plan_only": "Plánované časy nepotvrzují stav zařízení."
 }

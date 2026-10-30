@@ -46,7 +46,7 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 	};
 	const save = async (expectedRevision: number, draft: ScheduleDraft): Promise<ScheduleConfiguration | null> => {
 		const id = spaceId.value;
-		if (!id || busy.value || loading.value || error.value === 'conflict') return null;
+		if (!id || busy.value || loading.value || error.value === 'conflict' || configuration.value?.revision !== expectedRevision) return null;
 		const token = ++generation;
 		busy.value = true;
 		error.value = null;

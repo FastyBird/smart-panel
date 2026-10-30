@@ -88,6 +88,7 @@
 					<space-domains-section :space="props.space" />
 					<space-mode-schedule-section
 						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
+						ref="scheduleSectionRef"
 						:space-id="props.space.id"
 					/>
 				</el-scrollbar>
@@ -262,7 +263,7 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar, ElTabPane, ElTabs, useNamespace } from 'element-plus';
 
@@ -317,6 +318,23 @@ const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
 const remoteFormChanged = ref<boolean>(false);
+const scheduleSectionRef = ref<InstanceType<typeof SpaceModeScheduleSection> | null>(null);
+// This route survives the keyed child replacement on a space-id change: ask before it commits.
+const confirmScheduleDiscard = async (): Promise<boolean> => {
+	if (!scheduleSectionRef.value?.hasUnsavedChanges) return true;
+	try {
+		await ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
+			confirmButtonText: t('spacesModule.buttons.yes.title'),
+			cancelButtonText: t('spacesModule.buttons.no.title'),
+			type: 'warning',
+		});
+		return true;
+	} catch {
+		return false;
+	}
+};
+onBeforeRouteLeave(confirmScheduleDiscard);
+onBeforeRouteUpdate((to, from) => to.params.id === from.params.id || confirmScheduleDiscard());
 
 const isSpaceEditRoute = computed<boolean>(
 	(): boolean => route.matched.find((matched) => matched.name === PluginRouteNames.SPACE_EDIT) !== undefined

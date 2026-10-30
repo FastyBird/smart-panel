@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/space_mode_sections.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -44,6 +48,9 @@ class ScheduleAdapter implements HttpClientAdapter {
   bool wrongSpace = false;
   bool unknown = false;
   bool transitioned = false;
+  bool disabled = false;
+  bool failed = false;
+  bool retryTimeouts = false;
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -51,8 +58,17 @@ class ScheduleAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (retryTimeouts) {
+      await Future<void>.delayed(const Duration(seconds: 15));
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.receiveTimeout,
+      );
+    }
     final data = schedule(wrongSpace ? 'wrong' : options.path.split('/')[4]);
     if (unknown) data['status'] = 'new_status';
+    if (disabled) data['enabled'] = false;
+    if (failed) data['last_attempt_status'] = 'failed';
     if (transitioned) {
       data['current'] = data['next'];
       data['next'] = null;
@@ -133,6 +149,8 @@ void main() {
       final gate = Completer<void>();
       adapter.gate = gate;
       final first = repository.bind('first');
+      await pumpEventQueue();
+      expect(adapter.requests.last.path, contains('/first/'));
       await repository.bind('second');
       gate.complete();
       await first;
@@ -170,6 +188,164 @@ void main() {
         expect(adapter.requests, hasLength(5));
       } finally {
         registry.dispose();
+      }
+    },
+  );
+  test(
+    'new offline sessions do not read and disconnect cancels an original read',
+    () async {
+      final registry = ModeScheduleRegistry(dio: dio);
+      await registry.connectionChanged(false);
+      final session = registry.create();
+      try {
+        await session.bind('space');
+        expect(adapter.requests, isEmpty);
+        expect(session.fresh, isFalse);
+        await registry.connectionChanged(true);
+        expect(session.fresh, isTrue);
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final pending = session.refresh();
+        await pumpEventQueue();
+        await registry.connectionChanged(false);
+        gate.complete();
+        await pending;
+        expect(session.fresh, isFalse);
+        expect(session.loading, isFalse);
+        expect(adapter.requests.last.cancelToken!.isCancelled, isTrue);
+      } finally {
+        registry.dispose();
+      }
+    },
+  );
+  test(
+    'the total deadline cancels retries and clears loading before the next poll',
+    () {
+      fakeAsync((async) {
+        dio.interceptors.add(RetryInterceptor(dio));
+        adapter.retryTimeouts = true;
+        var completed = false;
+        repository.bind('space').then((_) => completed = true);
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 55));
+        async.flushMicrotasks();
+        expect(completed, isTrue);
+        expect(repository.loading, isFalse);
+        expect(repository.unavailable, isTrue);
+        expect(repository.fresh, isFalse);
+        expect(adapter.requests.first.cancelToken!.isCancelled, isTrue);
+        final attempts = adapter.requests.length;
+        async.elapse(const Duration(minutes: 2));
+        async.flushMicrotasks();
+        expect(adapter.requests, hasLength(attempts));
+      });
+    },
+  );
+  testWidgets('fresh disabled schedules render no schedule content', (
+    tester,
+  ) async {
+    adapter.disabled = true;
+    await tester.runAsync(() => repository.bind('space'));
+    expect(repository.fresh, isTrue);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ModeScheduleSection(spaceId: 'space', repository: repository),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(Text), findsNothing);
+    expect(find.byKey(const ValueKey('schedule-current')), findsNothing);
+    expect(find.byKey(const ValueKey('schedule-next')), findsNothing);
+    expect(find.byKey(const ValueKey('schedule-manual')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('reports a failed attempt without claiming that it never started', (
+    tester,
+  ) async {
+    adapter.failed = true;
+    await tester.runAsync(() => repository.bind('space'));
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ModeScheduleSection(spaceId: 'space', repository: repository),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'The last scheduled attempt failed or was interrupted. Check activity results.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('did not start'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets(
+    'room mode sections scroll in a short viewport with enlarged text',
+    (tester) async {
+      final schedules = ModeScheduleRegistry(dio: dio);
+      final activities = ActivityModesRegistry(dio: dio);
+      locator.registerSingleton<ModeScheduleRegistry>(schedules);
+      locator.registerSingleton<ActivityModesRegistry>(activities);
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(2.5)),
+              child: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: 480,
+                    height: 280,
+                    child: Column(
+                      children: [
+                        const Flexible(
+                          child: SpaceModeSections(spaceId: 'space'),
+                        ),
+                        const Expanded(
+                          child: SizedBox(key: ValueKey('domains')),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.runAsync(() => pumpEventQueue());
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          tester.getSize(find.byKey(const ValueKey('domains'))).height,
+          greaterThan(0),
+        );
+        final scroll = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        expect(scroll.position.maxScrollExtent, greaterThan(0));
+        await tester.drag(
+          find.byType(SingleChildScrollView).first,
+          const Offset(0, -500),
+        );
+        await tester.pumpAndSettle();
+        expect(scroll.position.pixels, greaterThan(0));
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        locator.unregister<ModeScheduleRegistry>();
+        locator.unregister<ActivityModesRegistry>();
+        schedules.dispose();
+        activities.dispose();
       }
     },
   );

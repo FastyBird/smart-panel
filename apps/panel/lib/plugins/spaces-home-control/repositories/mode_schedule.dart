@@ -8,8 +8,12 @@ typedef ModeScheduleState = SpacesHomeControlPluginDataScheduleState;
 
 /// Read-only planned activity. A plan is never evidence of device convergence.
 class ModeScheduleRepository extends ChangeNotifier {
-  ModeScheduleRepository({required Dio dio}) : _dio = dio;
+  ModeScheduleRepository({required Dio dio, bool Function()? isConnected})
+    : _dio = dio,
+      _isConnected = isConnected ?? (() => true);
   final Dio _dio;
+  final bool Function() _isConnected;
+  CancelToken? _request;
   String? spaceId;
   ModeScheduleState? state;
   bool fresh = false;
@@ -21,6 +25,7 @@ class ModeScheduleRepository extends ChangeNotifier {
   Future<void> bind(String? id) async {
     if (_disposed || spaceId == id) return;
     _generation++;
+    _request?.cancel('Space binding changed');
     spaceId = id;
     state = null;
     fresh = false;
@@ -36,6 +41,7 @@ class ModeScheduleRepository extends ChangeNotifier {
   void markStale() {
     if (_disposed) return;
     _generation++;
+    _request?.cancel('Schedule state is stale');
     fresh = false;
     loading = false;
     notifyListeners();
@@ -44,18 +50,35 @@ class ModeScheduleRepository extends ChangeNotifier {
   Future<void> refresh() async {
     final id = spaceId;
     if (_disposed || id == null || id.isEmpty) return;
+    if (!_isConnected()) {
+      markStale();
+      return;
+    }
     final generation = ++_generation;
+    _request?.cancel('Schedule refresh superseded');
+    final request = CancelToken();
+    _request = request;
     loading = true;
     fresh = false;
     notifyListeners();
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/modules/spaces/spaces/$id/schedules/state',
-        options: Options(receiveTimeout: const Duration(seconds: 15)),
-      );
+      final response = await _dio
+          .get<Map<String, dynamic>>(
+            '/modules/spaces/spaces/$id/schedules/state',
+            options: Options(receiveTimeout: const Duration(seconds: 15)),
+            cancelToken: request,
+          )
+          .timeout(
+            const Duration(seconds: 55),
+            onTimeout: () {
+              request.cancel('Schedule-state deadline exceeded');
+              throw TimeoutException('Schedule-state deadline exceeded');
+            },
+          );
       final data = response.data?['data'];
-      if (data is! Map<String, dynamic>)
+      if (data is! Map<String, dynamic>) {
         throw StateError('Missing schedule state');
+      }
       final next = ModeScheduleState.fromJson(data);
       if (next.spaceId != id ||
           next.status.json == null ||
@@ -69,12 +92,17 @@ class ModeScheduleRepository extends ChangeNotifier {
         throw StateError('Unsupported schedule state');
       }
       if (!_current(id, generation)) return;
+      if (!_isConnected()) {
+        markStale();
+        return;
+      }
       state = next;
       unavailable = false;
       fresh = true;
     } catch (_) {
       if (_current(id, generation)) unavailable = true;
     } finally {
+      if (identical(_request, request)) _request = null;
       if (_current(id, generation)) {
         loading = false;
         notifyListeners();
@@ -89,6 +117,7 @@ class ModeScheduleRepository extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     _generation++;
+    _request?.cancel('Schedule session disposed');
     super.dispose();
   }
 }
@@ -104,7 +133,10 @@ class ModeScheduleRegistry {
 
   ModeScheduleRepository create() {
     if (_disposed) throw StateError('Schedule registry is disposed');
-    final session = ModeScheduleRepository(dio: _dio);
+    final session = ModeScheduleRepository(
+      dio: _dio,
+      isConnected: () => _connected,
+    );
     _sessions.add(session);
     _timer ??= Timer.periodic(const Duration(minutes: 1), (_) {
       if (_connected) refresh();

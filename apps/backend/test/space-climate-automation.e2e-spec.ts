@@ -326,57 +326,59 @@ describe('Group A default-migrated authenticated activity climate automation', (
 			}
 			await author(roomId, { thermostat_preset: 'eco' });
 			const scheduler = module.get(SpaceModeSchedulerService);
-			const minute = Math.floor(Date.now() / 60_000) * 60_000;
-			const due = new Date(minute + 60_000);
-			const time = due.toISOString().slice(11, 16);
-			await http()
-				.put(`/modules/spaces/spaces/${roomId}/schedules`)
-				.set('Authorization', `Bearer ${token}`)
-				.send({
-					data: {
-						expected_revision: 1,
-						enabled: true,
-						timezone: 'UTC',
-						entries: [{ id: randomUUID(), mode: 'work', time, days_of_week: [0, 1, 2, 3, 4, 5, 6], enabled: true }],
-					},
-				})
-				.expect(200);
-			expect(await database.manager.count(ClimateAutomationSourceEntity)).toBe(0);
-			const modeService = module.get(SpaceModeService);
-			const activate = modeService.activateMode.bind(modeService) as SpaceModeService['activateMode'];
-			const activationFailures: unknown[] = [];
-			jest.spyOn(modeService, 'activateMode').mockImplementation(async (...args) => {
-				try {
-					return await activate(...args);
-				} catch (cause: unknown) {
-					activationFailures.push(cause);
-					throw cause;
-				}
-			});
-			const now = jest.spyOn(Date, 'now').mockReturnValue(due.getTime() + 1000);
+			const frozen = Date.now();
+			const now = jest.spyOn(Date, 'now').mockReturnValue(frozen);
 			try {
+				const minute = Math.floor(frozen / 60_000) * 60_000;
+				const due = new Date(minute + 60_000);
+				const time = due.toISOString().slice(11, 16);
+				await http()
+					.put(`/modules/spaces/spaces/${roomId}/schedules`)
+					.set('Authorization', `Bearer ${token}`)
+					.send({
+						data: {
+							expected_revision: 1,
+							enabled: true,
+							timezone: 'UTC',
+							entries: [{ id: randomUUID(), mode: 'work', time, days_of_week: [0, 1, 2, 3, 4, 5, 6], enabled: true }],
+						},
+					})
+					.expect(200);
+				expect(await database.manager.count(ClimateAutomationSourceEntity)).toBe(0);
+				const modeService = module.get(SpaceModeService);
+				const activate = modeService.activateMode.bind(modeService) as SpaceModeService['activateMode'];
+				const activationFailures: unknown[] = [];
+				jest.spyOn(modeService, 'activateMode').mockImplementation(async (...args) => {
+					try {
+						return await activate(...args);
+					} catch (cause: unknown) {
+						activationFailures.push(cause);
+						throw cause;
+					}
+				});
+				now.mockReturnValue(due.getTime() + 1000);
 				await scheduler.runCycle();
+				expect(activationFailures).toEqual([]);
+				const active = await module.get(SpaceModeService).getActiveMode(roomId);
+				expect(active.activityActor).toMatch(/^schedule:/);
+				expect(active).toMatchObject({
+					selectedActivityMode: ActivityMode.WORK,
+					activityStatus: manualHold ? ActivityActivationStatus.FAILED : ActivityActivationStatus.ACTIVE,
+				});
+				const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+				expect(slot.manualHold).toBe(manualHold);
+				if (!manualHold) expect(slot.state).toBe('LIVE');
+				const comfort = await module.get(VirtualThermostatComfortService).get(controllerId);
+				expect(comfort.effective).toMatchObject({
+					source: manualHold ? 'manual' : 'automation',
+					heating_setpoint: manualHold ? 20 : 17,
+				});
+				expect(
+					(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).comfort.presets,
+				).toEqual(expect.arrayContaining([expect.objectContaining({ preset: 'eco' })]));
 			} finally {
 				now.mockRestore();
 			}
-			expect(activationFailures).toEqual([]);
-			const active = await module.get(SpaceModeService).getActiveMode(roomId);
-			expect(active.activityActor).toMatch(/^schedule:/);
-			expect(active).toMatchObject({
-				selectedActivityMode: ActivityMode.WORK,
-				activityStatus: manualHold ? ActivityActivationStatus.FAILED : ActivityActivationStatus.ACTIVE,
-			});
-			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
-			expect(slot.manualHold).toBe(manualHold);
-			if (!manualHold) expect(slot.state).toBe('LIVE');
-			const comfort = await module.get(VirtualThermostatComfortService).get(controllerId);
-			expect(comfort.effective).toMatchObject({
-				source: manualHold ? 'manual' : 'automation',
-				heating_setpoint: manualHold ? 20 : 17,
-			});
-			expect(
-				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).comfort.presets,
-			).toEqual(expect.arrayContaining([expect.objectContaining({ preset: 'eco' })]));
 		},
 	);
 

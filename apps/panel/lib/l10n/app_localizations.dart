@@ -8719,7 +8719,7 @@ abstract class AppLocalizations {
   /// No description provided for @space_schedule_last_failed.
   ///
   /// In en, this message translates to:
-  /// **'The last scheduled attempt did not start.'**
+  /// **'The last scheduled attempt failed or was interrupted. Check activity results.'**
   String get space_schedule_last_failed;
 
   /// No description provided for @space_schedule_plan_only.

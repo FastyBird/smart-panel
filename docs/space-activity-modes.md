@@ -116,7 +116,7 @@ Each entry has a stable UUID, an explicit activity `mode`, local `HH:MM`, unique
 `6` Saturday) and `enabled`. The limit is 64 entries. Two enabled entries cannot occupy the same weekday/time.
 The Admin preserves a conflicting draft and requires the user to review/discard it before saving against new truth.
 
-The managed scheduler checks at UTC wall-minute boundaries. Entry calculations use the resolved local timezone,
+The managed scheduler checks at UTC wall-minute boundaries. Each space retains its own in-flight attempt; a slow room skips only its own later triggers. Stopping revokes admission and joins every original attempt. An unreadable house-timezone configuration makes inherited schedules unavailable until it can be read again. Entry calculations use the resolved local timezone,
 independently of the server or Panel timezone. Missing spring times are skipped; repeated autumn times execute
 only at their first real instant, including half-hour DST transitions. Migration 50 backfills disabled empty
 schedules and adds an activity-request admission timestamp; other role rows and thermostat definitions are preserved.

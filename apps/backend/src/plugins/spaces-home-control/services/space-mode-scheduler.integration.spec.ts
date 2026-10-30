@@ -7,6 +7,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { domainResult } from '../activity/activity-result.utils';
 import { ActivityDomain, ActivityDomainStatus, ActivityMode } from '../activity/space-activity.constants';
+import { RoomSpaceEntity } from '../entities/room-space.entity';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity';
 import { ScheduleRuntimeStatus } from '../models/space-mode-schedule.model';
@@ -26,6 +27,7 @@ describe('durable space scheduling through the real activity admission', () => {
 	let jobs: SchedulerRegistry;
 	let modes: SpaceModeService;
 	let run: jest.Mock;
+	let readConfig: jest.Mock;
 	const clock = (iso: string) => jest.setSystemTime(new Date(iso));
 	const entry = (time: string, mode = ActivityMode.WORK): ScheduleEntry => ({
 		id: randomUUID(),
@@ -44,11 +46,12 @@ describe('durable space scheduling through the real activity admission', () => {
 			Promise.resolve(domainResult(domain, ActivityDomainStatus.NO_TARGETS, 'test')),
 		);
 		modes = new SpaceModeService(h.database, h.configs, { run } as never, h.events);
+		readConfig = jest.fn(() => ({ timezone: 'UTC' }));
 		schedules = new SpaceModeScheduleConfigService(
 			h.database,
 			h.configs,
 			h.lifecycle,
-			{ getModuleConfig: () => ({ timezone: 'UTC' }) } as unknown as ConfigService,
+			{ getModuleConfig: readConfig } as unknown as ConfigService,
 			h.events,
 		);
 		schedules.onModuleInit();
@@ -134,6 +137,79 @@ describe('durable space scheduling through the real activity admission', () => {
 			manual_override: false,
 			last_attempt_status: 'started',
 		});
+	});
+
+	it('keeps house-timezone read failures unavailable without consuming or activating the due minute', async () => {
+		await save([entry('09:00')]);
+		await h.database.getRepository(SpaceModeScheduleEntity).update({ spaceId: h.room.id }, { timezone: null });
+		const before = await schedules.get(h.room.id);
+		readConfig.mockImplementation(() => {
+			throw new Error('Configuration unavailable');
+		});
+		clock('2026-11-02T09:00:01Z');
+		await scheduler.runCycle();
+		expect(run).not.toHaveBeenCalled();
+		expect((await schedules.get(h.room.id)).cursor).toBe(before.cursor);
+		expect(await scheduler.getScheduleState(h.room.id)).toMatchObject({
+			status: 'unavailable',
+			timezone: null,
+			current: null,
+			next: null,
+		});
+		readConfig.mockReturnValue({ timezone: 'UTC' });
+		await scheduler.runCycle();
+		expect(run).toHaveBeenCalledTimes(5);
+		expect(await scheduler.getScheduleState(h.room.id)).toMatchObject({
+			status: 'running',
+			timezone: 'UTC',
+			last_attempt_status: 'started',
+		});
+	});
+
+	it('lets a later room trigger while original work is pending, skips only that room, and joins it on stop', async () => {
+		const rooms = h.database.getRepository(RoomSpaceEntity);
+		const room = await rooms.save(rooms.create({ name: 'Second room' }));
+		await h.database.transaction((manager) => h.lifecycle.reconcile(room, manager));
+		await save([entry('09:00'), entry('09:01')]);
+		await schedules.update(room.id, {
+			expected_revision: 1,
+			enabled: true,
+			timezone: 'UTC',
+			entries: [entry('09:01')],
+		});
+		const entered = deferred<void>(),
+			release = deferred<void>();
+		run.mockImplementation(async (domain: ActivityDomain, _config: unknown, _identity: unknown, spaceId: string) => {
+			if (spaceId === h.room.id) {
+				entered.resolve();
+				await release.promise;
+			}
+			return domainResult(domain, ActivityDomainStatus.NO_TARGETS, 'test');
+		});
+		let stopped: Promise<void> | undefined;
+		try {
+			clock('2026-11-02T09:00:01Z');
+			await jobs.getCronJob('spaceModeSchedules').fireOnTick();
+			await entered.promise;
+			expect(run).toHaveBeenCalledTimes(5);
+			clock('2026-11-02T09:01:01Z');
+			await scheduler.runCycle();
+			expect(run).toHaveBeenCalledTimes(10);
+			expect((await modes.getActiveMode(room.id)).activityActor).toMatch(/^schedule:/);
+			expect(await scheduler.isHealthy()).toBe(true);
+			await scheduler.runCycle();
+			expect(run).toHaveBeenCalledTimes(10);
+			let joined = false;
+			stopped = scheduler.stop().then(() => {
+				joined = true;
+			});
+			await Promise.resolve();
+			expect(joined).toBe(false);
+		} finally {
+			release.resolve();
+			await stopped;
+		}
+		expect(jobs.getCronJobs().size).toBe(0);
 	});
 
 	it('retains manual selection until the next future trigger', async () => {

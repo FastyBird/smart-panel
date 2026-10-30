@@ -30,7 +30,8 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 	readonly serviceId = 'activity-scheduler';
 	private readonly logger = createExtensionLogger(SPACES_HOME_CONTROL_PLUGIN_NAME, 'SpaceModeSchedulerService');
 	private job: CronJob | null = null;
-	private cycle: Promise<void> | null = null;
+	private cycle: Promise<{ attempts: Promise<void>[] }> | null = null;
+	private readonly pending = new Map<string, Promise<void>>();
 	private cycleStartedAt: number | null = null;
 	private epoch: object | null = null;
 
@@ -44,6 +45,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		super();
 	}
 
+	/** Register the minute scan before establishing a fresh, non-replaying runtime epoch. */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
 			if (this.state === 'started') return;
@@ -53,7 +55,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 					cronTime: '0 * * * * *',
 					threshold: MINUTE_MS - 1,
 					onTick: async () => {
-						await this.runCycle();
+						await this.scanCycle();
 					},
 					unrefTimeout: true,
 					waitForCompletion: true,
@@ -87,6 +89,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		});
 	}
 
+	/** Revoke admission first, then join the scan and every original per-space activation. */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
 			this.state = 'stopping';
@@ -95,6 +98,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 			if (this.ownsRegisteredJob()) this.registry.deleteCronJob(JOB_NAME);
 			this.job = null;
 			await this.cycle;
+			await Promise.allSettled([...this.pending.values()]);
 			this.state = 'stopped';
 		});
 	}
@@ -116,9 +120,15 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		);
 	}
 
-	runCycle(now = Date.now()): Promise<void> {
+	/** Explicit callers join this scan's attempts; the cron job only waits for the short scan. */
+	async runCycle(now = Date.now()): Promise<void> {
+		const { attempts } = await this.scanCycle(now);
+		await Promise.allSettled(attempts);
+	}
+
+	private scanCycle(now = Date.now()): Promise<{ attempts: Promise<void>[] }> {
 		if (this.state !== 'started' || !this.ownsRegisteredJob() || !this.job?.isActive || this.cycle !== null)
-			return this.cycle ?? Promise.resolve();
+			return this.cycle ?? Promise.resolve({ attempts: [] });
 		this.cycleStartedAt = now;
 		this.cycle = this.check(now).finally(() => {
 			this.cycle = null;
@@ -127,18 +137,30 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		return this.cycle;
 	}
 
-	private async check(now: number): Promise<void> {
+	private async check(now: number): Promise<{ attempts: Promise<void>[] }> {
+		const attempts: Promise<void>[] = [];
 		try {
 			const rows = await this.database.getRepository(SpaceModeScheduleEntity).findBy({ enabled: true });
-			// No waiting list across spaces: every current occurrence starts independently. The cycle joins
-			// all original work, and cannot overlap a later tick while any original activation remains pending.
-			const results = await Promise.allSettled(rows.map((row) => this.attempt(row, now)));
-			for (const result of results)
-				if (result.status === 'rejected')
-					this.logger.error(`Schedule completion unavailable: ${String(result.reason)}`);
+			for (const row of rows) {
+				if (this.state !== 'started' || this.pending.has(row.spaceId)) continue;
+				// Retain each original completion independently. A slow room only skips its own later ticks.
+				const attempt = this.attempt(row, now)
+					.catch((cause: unknown) =>
+						this.logger.error(
+							'Schedule completion unavailable',
+							cause instanceof Error ? cause : 'Unknown scheduling failure',
+						),
+					)
+					.finally(() => {
+						if (this.pending.get(row.spaceId) === attempt) this.pending.delete(row.spaceId);
+					});
+				this.pending.set(row.spaceId, attempt);
+				attempts.push(attempt);
+			}
 		} catch (cause) {
 			this.logger.error(`Schedule cycle unavailable: ${String(cause)}`);
 		}
+		return { attempts };
 	}
 
 	private async attempt(row: SpaceModeScheduleEntity, now: number): Promise<void> {

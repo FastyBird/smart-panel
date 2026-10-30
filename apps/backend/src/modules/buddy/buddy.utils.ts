@@ -1,10 +1,20 @@
+import { ConfigService } from '../config/services/config.service';
+import { getConfigTimezone as getHouseTimezone } from '../system/utils/timezone.utils';
+
 import {
 	BuddyProviderTimeoutException,
 	BuddySttProviderTimeoutException,
 	BuddyTtsProviderTimeoutException,
 } from './buddy.exceptions';
 
-export { getConfigTimezone } from '../system/utils/timezone.utils';
+/** Preserve Buddy's best-effort pattern timezone without weakening scheduled activation. */
+export function getConfigTimezone(configService: ConfigService): string {
+	try {
+		return getHouseTimezone(configService);
+	} catch {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone;
+	}
+}
 
 /**
  * Race a promise against a timeout. If the timeout fires first, abort the

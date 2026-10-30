@@ -5026,6 +5026,6 @@
   "space_schedule_current": "Planned current mode",
   "space_schedule_next": "Next change",
   "space_schedule_empty": "No upcoming entry.",
-  "space_schedule_last_failed": "The last scheduled attempt did not start.",
+  "space_schedule_last_failed": "The last scheduled attempt failed or was interrupted. Check activity results.",
   "space_schedule_plan_only": "Planned times are not confirmation of device state."
 }

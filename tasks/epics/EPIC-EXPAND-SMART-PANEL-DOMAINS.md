@@ -25,7 +25,8 @@ I want to control my home through simple activity-based modes (Work, Relax, Slee
 - **Security domain**: Device spec exists, but NO space-level roles or intents (the house-level `security` module with alerts and providers exists, the space-level domain does not)
 - **House modes**: Basic implementation (HOME, AWAY, NIGHT) exists but only affects lighting
 - **Space domain code** lives in the `spaces-home-control` plugin (Spaces refactor, PRs #578-#592): backend `apps/backend/src/plugins/spaces-home-control/`, admin `apps/admin/src/plugins/spaces-home-control/`, panel `apps/panel/lib/plugins/spaces-home-control/`
-- **Not present yet**: activity modes, scheduling, seasonal adjustments, occupancy state machine. `SpaceActivityService` (#1143) is only a last-activity timestamp and is unrelated to activity modes. `space-sensor-state.service.ts` already aggregates motionDetected/occupancyDetected (input level only)
+- **Activity modes and weekly scheduling**: Software implementation is complete; installed-equipment qualification remains separate.
+- **Not present yet**: seasonal adjustments, occupancy state machine. `SpaceActivityService` (#1143) is only a last-activity timestamp and is unrelated to activity modes. `space-sensor-state.service.ts` already aggregates motionDetected/occupancyDetected (input level only)
 
 ### Vision
 
@@ -92,7 +93,7 @@ The smart panel should act as a bridge between users and their smart devices. In
 
 ### Triggers
 
-- [ ] Time-based mode scheduling can be configured per space
+- [x] Time-based mode scheduling can be configured per space
 - [ ] Occupancy sensors can trigger Occupied/Vacant mode changes
 - [ ] Manual mode override is always available and takes priority
 

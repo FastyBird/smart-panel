@@ -5,6 +5,7 @@ import { ScheduleEntry, ScheduleOccurrence } from './space-mode-schedule.types';
 export const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
+/** Accept named zones understood by both Intl and recurrence evaluation, excluding fixed numeric offsets. */
 export function isScheduleTimezone(timezone: string): boolean {
 	try {
 		new Intl.DateTimeFormat('en', { timeZone: timezone }).format();
@@ -23,6 +24,7 @@ export function nextScheduleOccurrence(
 	return resolveEntry(entry, timezone)(after);
 }
 
+/** Reuse one cron resolver per entry and reject DST-adjusted wall times before choosing the first fold instant. */
 function resolveEntry(entry: ScheduleEntry, timezone: string): (after: number) => ScheduleOccurrence | null {
 	if (!isScheduleTimezone(timezone)) throw new Error('Invalid schedule timezone');
 	if (!entry.enabled) return () => null;
@@ -74,6 +76,7 @@ export function evaluateSchedule(entries: ScheduleEntry[], timezone: string, now
 	return { current, next };
 }
 
+/** Durable local occurrence identity deduplicates both UTC representations of an autumn fold. */
 export function scheduleOccurrenceKey(occurrence: ScheduleOccurrence): string {
 	return `${occurrence.timezone}|${occurrence.local_date}|${occurrence.time}`;
 }

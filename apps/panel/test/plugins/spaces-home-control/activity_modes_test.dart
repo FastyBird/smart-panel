@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/module.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/mode_schedule.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -117,7 +118,10 @@ Widget retainedActivityViews(
 
 class ActivityDisplay extends Mock implements DisplayRepository {}
 
-class ActivitySocket extends Mock implements SocketService {}
+class ActivitySocket extends Mock implements SocketService {
+  @override
+  bool get isConnected => false;
+}
 
 class ActivityAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
@@ -465,6 +469,25 @@ void main() {
       expect(repository.state, isNull);
       expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
       expect(adapter.requests.where((r) => r.method == 'GET').length, reads);
+    },
+  );
+
+  test(
+    'module synchronizes the current disconnected socket before any schedule page binds',
+    () async {
+      final (module, liveDisplay, intents) = await initializeActivityModule();
+      final registry = locator<ModeScheduleRegistry>();
+      final session = registry.create();
+      try {
+        adapter.requests.clear();
+        await session.bind(space);
+        expect(adapter.requests, isEmpty);
+        expect(session.fresh, isFalse);
+        expect(session.loading, isFalse);
+      } finally {
+        registry.release(session);
+        disposeActivityModule(module, liveDisplay, intents);
+      }
     },
   );
 

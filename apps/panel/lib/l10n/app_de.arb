@@ -1490,6 +1490,6 @@
   "space_schedule_current": "Aktuell geplanter Modus",
   "space_schedule_next": "Nächste Änderung",
   "space_schedule_empty": "Kein weiterer Eintrag.",
-  "space_schedule_last_failed": "Der letzte geplante Versuch wurde nicht gestartet.",
+  "space_schedule_last_failed": "Der letzte geplante Versuch ist fehlgeschlagen oder wurde unterbrochen. Prüfen Sie die Aktivitätsergebnisse.",
   "space_schedule_plan_only": "Geplante Zeiten bestätigen keinen Gerätezustand."
 }

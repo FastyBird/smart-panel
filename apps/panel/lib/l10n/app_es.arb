@@ -1490,6 +1490,6 @@
   "space_schedule_current": "Modo actual planificado",
   "space_schedule_next": "Próximo cambio",
   "space_schedule_empty": "No hay próximas entradas.",
-  "space_schedule_last_failed": "El último intento programado no se inició.",
+  "space_schedule_last_failed": "El último intento programado falló o se interrumpió. Consulte los resultados de la actividad.",
   "space_schedule_plan_only": "Los horarios no confirman el estado de los dispositivos."
 }

@@ -126,6 +126,12 @@ describe('weekly scheduling editor with the actual API client', () => {
 		expect(wrapper.findAll('tbody li')).toHaveLength(2);
 		expect(wrapper.text()).toContain(en.schedules.conflictHelp);
 		expect(wrapper.get('[data-testid="schedule-save"]').attributes('disabled')).toBeDefined();
+		await wrapper.get('[data-testid="schedule-refresh"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findAll('tbody li')).toHaveLength(2);
+		expect(wrapper.get('[data-testid="schedule-save"]').attributes('disabled')).toBeDefined();
+		await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+		expect(writes).toHaveLength(1);
 		await wrapper.get('[data-testid="schedule-discard"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.findAll('tbody li')).toHaveLength(0);

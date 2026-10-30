@@ -4859,7 +4859,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get space_schedule_last_failed =>
-      'Der letzte geplante Versuch wurde nicht gestartet.';
+      'Der letzte geplante Versuch ist fehlgeschlagen oder wurde unterbrochen. Prüfen Sie die Aktivitätsergebnisse.';
 
   @override
   String get space_schedule_plan_only =>

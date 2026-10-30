@@ -129,6 +129,7 @@ class SpacesHomeControlPluginService {
     );
 
     _socketService.addConnectionListener(_onActivityConnectionChanged);
+    await _modeScheduleRegistry.connectionChanged(_socketService.isConnected);
     if (locator.isRegistered<DisplayRepository>()) {
       _activityDisplay = locator<DisplayRepository>();
       _activityDisplaySpace = _activityDisplay?.display?.spaceId;

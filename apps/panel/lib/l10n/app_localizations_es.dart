@@ -4856,7 +4856,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get space_schedule_last_failed =>
-      'El último intento programado no se inició.';
+      'El último intento programado falló o se interrumpió. Consulte los resultados de la actividad.';
 
   @override
   String get space_schedule_plan_only =>

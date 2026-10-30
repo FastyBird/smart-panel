@@ -17,6 +17,7 @@
 		/>
 		<el-button
 			v-if="error === 'loadFailed' || error === 'conflict'"
+			data-testid="schedule-refresh"
 			@click="load"
 		>
 			{{ text('refresh') }}
@@ -135,7 +136,7 @@
 				{{ text('discard') }}
 			</el-button>
 			<p v-if="dirty">{{ text('unsaved') }}</p>
-			<p v-if="error === 'conflict'">{{ text('conflictHelp') }}</p>
+			<p v-if="error === 'conflict' || (dirty && configuration?.revision !== revision)">{{ text('conflictHelp') }}</p>
 		</template>
 	</el-card>
 	<el-dialog
@@ -283,8 +284,17 @@ const valid = computed(() => {
 	}
 	return true;
 });
+defineExpose({ hasUnsavedChanges: computed(() => dirty.value || editing.value) });
 const canSave = computed(
-	() => canEdit.value && dirty.value && valid.value && !loading.value && !busy.value && error.value !== 'conflict' && error.value !== 'loadFailed'
+	() =>
+		configuration.value?.revision === revision.value &&
+		canEdit.value &&
+		dirty.value &&
+		valid.value &&
+		!loading.value &&
+		!busy.value &&
+		error.value !== 'conflict' &&
+		error.value !== 'loadFailed'
 );
 const reset = () => {
 	if (!configuration.value) return;

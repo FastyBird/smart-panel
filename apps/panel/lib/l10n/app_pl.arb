@@ -1490,6 +1490,6 @@
   "space_schedule_current": "Aktualny planowany tryb",
   "space_schedule_next": "Następna zmiana",
   "space_schedule_empty": "Brak kolejnych wpisów.",
-  "space_schedule_last_failed": "Ostatnia zaplanowana próba nie została uruchomiona.",
+  "space_schedule_last_failed": "Ostatnia zaplanowana próba nie powiodła się lub została przerwana. Sprawdź wyniki aktywności.",
   "space_schedule_plan_only": "Planowane godziny nie potwierdzają stanu urządzeń."
 }
