@@ -15,6 +15,9 @@ import { VirtualChannelPropertyEntity } from './devices-virtual.entity';
 describe('the energy claim constraint under synchronize', () => {
 	let dataSource: DataSource;
 
+	// This fixture loads and synchronizes the whole backend entity graph. Cold, coverage-instrumented
+	// CI startup can outlast Jest's default five-second hook budget; the constraint tests below keep
+	// their normal timeout and still exercise the real synchronized schema.
 	beforeAll(async () => {
 		dataSource = new DataSource({
 			type: 'sqlite',
@@ -25,7 +28,7 @@ describe('the energy claim constraint under synchronize', () => {
 		});
 
 		await dataSource.initialize();
-	});
+	}, 30_000);
 
 	afterAll(async () => {
 		await dataSource.destroy();
