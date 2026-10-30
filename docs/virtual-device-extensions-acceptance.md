@@ -1,0 +1,233 @@
+# Virtual device extensions: software acceptance reconciliation
+
+Reconciled on 2026-10-30 against main `b0bfd429ae9f015911d1baad37583652b62d3995`.
+PR [#1498](https://github.com/FastyBird/smart-panel/pull/1498) merged the governed activity climate bridge;
+its qualified head `a68f76d` and the squash commit have the same tree `ebf3c05f`.
+[All 14 checks passed](https://github.com/FastyBird/smart-panel/actions/runs/41079491039), including backend,
+Admin, Panel and ordinary E2E. The [completed current-source review reconciliation](https://github.com/FastyBird/smart-panel/pull/1498#issuecomment-6527804523)
+confirmed the corrections and repeated-conflict regression. These are software results, not installed qualification.
+This document reconciles existing evidence; no tests were rerun for this documentation change.
+
+## Software delivery state
+
+| Work                                                                  | State and evidence                                                            | Remaining boundary                                                                                  |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Numeric policy, numeric/binary aggregates and authoring (#1448–#1450) | Complete; #1464/#1465, child issues already closed                            | Preserve through final composition                                                                  |
+| Switch/outlet group foundation (#1451)                                | Complete; #1464, child already closed                                         | No new room intent domain is implied                                                                |
+| Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Qualified POSITION/TILT commands and their obstruction/late/partial feedback acceptance             |
+| Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | #1452's unsupported commands and full native HomeKit acceptance remain separate                     |
+| Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | HA/Zigbee native units and installed equipment are separate                                         |
+| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Schedule/presence triggers remain #1458                                                             |
+| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Full reused schedule/presence acceptance remains open                                               |
+| Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                            |
+| Home Assistant native units (#1456)                                   | Not implemented                                                               | Actual adapter, authoring, requested/observed state and protocol tests                              |
+| Zigbee2MQTT native units (#1457)                                      | Not implemented                                                               | Actual model/expose-qualified adapter and protocol tests                                            |
+| SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                        |
+| HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Native/composed thermostat, remap and partial-result acceptance                                     |
+| Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts |
+| Parent epic (#1447)                                                   | Open                                                                          | All remaining software and actual alpha publication                                                 |
+| Installed acceptance (#1463)                                          | Open, after the published alpha                                               | Named equipment/firmware and separately reviewed actual procedure, including Apple Home pairing     |
+
+A dependency remaining open does not revoke a completed child's supported-software scope. In particular,
+#1453 does not promise commands that #1452 explicitly refuses. Unavailable optional domain actions retain
+existing disabled/no-targets/unsupported/partial semantics; this epic does not silently acquire the unrelated
+security epic or require the optional camera input.
+
+## Reused activity issues
+
+| Issue | Disposition              | Evidence or exact remainder                                                                                                                                                     |
+| ----- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #1292 | Already closed; preserve | Definitions, per-space configuration and disabled/unset climate defaults, #1472                                                                                                 |
+| #1293 | Keep open                | Actual climate is delivered. The shared task's combined all-domains-present orchestration acceptance remains to be demonstrated; separate green domain suites are not that case |
+| #1294 | Software complete        | Authenticated activation/configuration endpoints, revision/identity events and generated contracts, #1472                                                                       |
+| #1295 | Software complete        | Mounted Admin configuration, reset/preview/conflict handling and six locales, #1472/#1498                                                                                       |
+| #1296 | Software complete        | Panel selection, loading, truthful results, manual clear, reconnect and localization, #1472                                                                                     |
+| #1297 | Open                     | Persisted daily/weekday/per-day scheduling, timezone/DST gap/fold, restart/dedup and manual-until-next-trigger                                                                  |
+| #1298 | Open                     | Weekly Admin schedule editor, validation and enable/disable                                                                                                                     |
+| #1362 | Open                     | Panel current/next scheduled mode and manual override state; no Panel editor                                                                                                    |
+| #1299 | Open                     | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
+| #1300 | Open                     | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
+
+#1293 is not a reason to rebuild the delivered bridge. Its remaining acceptance must use the existing adapters
+and their explicit availability outcomes. Schedules and presence stay with their own issues.
+
+## Complete child acceptance and named evidence
+
+The following original criteria have merged implementations and named source/test witnesses. Links pin the
+reconciled main commit, rather than a moving branch. The corresponding issues can close as software-complete;
+closing them neither closes #1447 nor grants installed qualification.
+
+### #1453: feat(cross): expose actuator group profiles in device and room controls
+
+Merged delivery: [#1466](https://github.com/FastyBird/smart-panel/pull/1466), [#1467](https://github.com/FastyBird/smart-panel/pull/1467), [#1471](https://github.com/FastyBird/smart-panel/pull/1471).
+
+| Original criterion                                                                                                      | Current source/test witnesses                    |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Admin profile selection, candidate compatibility, create/edit/repair and explicit capability-change diagnostics.        | [groupAuthor], [wizard], [repair], [groupPolicy] |
+| Panel handles fan/cover/switch/outlet group mixed/unknown state and member command outcomes without synthetic averages. | [groupPanel], [feedback], [partial]              |
+| Scenes and room intents use existing composite path with actual supported controls.                                     | [groupRoom], [scene], [groupCommand]             |
+| Regenerate contracts and test existing lights, locales, partial failures and reconnect/repair.                          | [reconnect], [repair], [wizard]                  |
+
+### #1454: feat(backend): add provider-neutral parallel thermostat branches
+
+Merged delivery: [#1469](https://github.com/FastyBird/smart-panel/pull/1469), [#1470](https://github.com/FastyBird/smart-panel/pull/1470), [#1471](https://github.com/FastyBird/smart-panel/pull/1471).
+
+| Original criterion                                                                                                                                           | Current source/test witnesses                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Version provider-neutral actuation/observation/qualification before extending Shelly-specific contracts.                                                     | [actuation]                                         |
+| Migrate existing claims/journals to singleton groups preserving identity/generation and global physical ownership; bounded8 total mandatory members.         | [migration], [bounds], [legacy]                     |
+| Same-mode parallel members differ from opposed branches; persist leaf dispatches and unresolved outcomes, whole-branch inhibit/release on mandatory failure. | [dispatch], [lateOn], [retirement], [branchRuntime] |
+| Require all opposed leaves OFF/drained before changeover; test restart/remap/delete/recovery/partial late ON and unchanged legacy qualified Shelly behavior. | [opposed], [restart], [retirement], [legacy]        |
+
+### #1455: feat(cross): add thermostat presets and durable temporary overrides
+
+Merged delivery: [#1469](https://github.com/FastyBird/smart-panel/pull/1469), [#1470](https://github.com/FastyBird/smart-panel/pull/1470), [#1488](https://github.com/FastyBird/smart-panel/pull/1488), [#1489](https://github.com/FastyBird/smart-panel/pull/1489), [#1490](https://github.com/FastyBird/smart-panel/pull/1490), [#1491](https://github.com/FastyBird/smart-panel/pull/1491).
+
+| Original criterion                                                                                                                      | Current source/test witnesses                                                    |
+| --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Explicit comfort/eco/away configurations validate branches, ranges and deadband; old controllers remain manual/disabled automation.     | [defaults], [validation], [comfortService]                                       |
+| Persist override identity/actor/source/revision/absolute expiry and expose effective source/preset/expiry in admin/panel.               | [overrideIdentity], [comfortAdmin], [comfortPanel], [comfortDocs]                |
+| Explicit OFF and all protective guards precede automation; overrides survive background changes and expiry recomputes current baseline. | [off], [priority], [baseline], [queuedGuard]                                     |
+| Test exact expiry, restart, clock rollback, stale command revisions, mode changes and final-dispatch guard checks.                      | [baseline], [overrideRestart], [rollback], [validation], [queuedGuard], [manual] |
+
+### #1459: feat(cross): add dew point sensors and cooling protection
+
+Merged delivery: [#1471](https://github.com/FastyBird/smart-panel/pull/1471).
+
+| Original criterion                                                                                                                                         | Current source/test witnesses                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Typed two-input versioned dew-point producer preserves both identities, quantity/unit/domain, bounded skew, source ages and earliest expiry.               | [dewFormula], [dewRuntime], [dewFresh], [dewSkew], [dewRepair]   |
+| Dew point cannot masquerade as ambient/floor Celsius; add authoring/repair/quality presentation and reference-vector/domain tests.                         | [dewRole], [vectors], [dewAdmin]                                 |
+| Separate cooling guard trips at surface<=dewpoint+margin, strict hysteresis recovery and required-input failure; optional explicit absolute floor minimum. | [cutoff], [coolingFault], [coolingEligibility], [coolingRelease] |
+| Preserve heating high guard; preview and activation expose actual provider protection eligibility, never reusing a heating-only artifact as cooling proof. | [coolingEligibility], [coolingRecord], [legacy]                  |
+
+### #1294: feat(backend): expose activity mode activation endpoints and events
+
+Merged delivery: [#1472](https://github.com/FastyBird/smart-panel/pull/1472).
+
+| Original criterion                                      | Current source/test witnesses                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------- |
+| REST endpoints, websocket events, OpenAPI regeneration. | [activityAPI], [activityAPITest], [activityService], [activityDocs] |
+
+### #1295: feat(admin): configure space activity modes
+
+Merged delivery: [#1472](https://github.com/FastyBird/smart-panel/pull/1472).
+
+| Original criterion                                        | Current source/test witnesses                                          |
+| --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Space detail page shows "Activity Modes" section          | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Admin can enable/disable each mode for the space          | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Admin can click on a mode to edit its configuration       | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Mode editor shows per-domain settings with current values | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Admin can override default values for any domain          | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Admin can reset mode to defaults                          | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Changes are saved via API and reflected immediately       | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| Disabled modes are hidden from panel UI                   | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| UI is responsive and follows existing admin patterns      | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+| All strings are localized (en-US at minimum)              | [activityAdmin], [activityValidation], [activityPanel], [activityDocs] |
+
+### #1296: feat(panel): add activity mode quick actions to space pages
+
+Merged delivery: [#1472](https://github.com/FastyBird/smart-panel/pull/1472).
+
+| Original criterion                                       | Current source/test witnesses                                        |
+| -------------------------------------------------------- | -------------------------------------------------------------------- |
+| SpacePage shows "Modes" section when modes are available | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Each enabled mode is shown as a tappable button          | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Buttons show mode icon and localized name                | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Active mode button is visually highlighted               | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Tapping a mode activates it (API call)                   | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Loading indicator shown during activation                | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Success feedback on completion                           | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Partial failure shows warning indicator                  | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Tapping active mode deactivates it (returns to manual)   | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| Modes section hidden when no modes enabled for space     | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| UI is responsive across different panel sizes            | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+| All strings are localized (en, cs at minimum)            | [activityPanel], [activityNarrow], [activityPartial], [activityDocs] |
+
+The original legacy actor-tagged baseline priority test is not used as live automation evidence. Its replacement
+witness is the actual native opt-in/manual-hold path, alongside explicit OFF, override and queued-command tests.
+
+## Parent acceptance and original PR #1473
+
+Completed software rows: shared aggregate policies/quality, comfort/override semantics, dew-point identity/age,
+cooling cutoff policy, guarded parallel ownership/release and SDK operator lifecycle. Overall migration,
+all new group controls, schedule/presence, both native units, full HomeKit, final composed acceptance and alpha
+remain unchecked where their complete scope is still missing. A green PR is not the entire milestone.
+
+PR [#1473](https://github.com/FastyBird/smart-panel/pull/1473) stays a frozen draft reference at `2c19907`;
+its historical 200 PASS / 61 FAIL / 261 control is not a current-main failing-test count. Its source and historical
+records remain preserved. The current bridge was delivered through scoped PRs ending in #1498.
+Before superseding that reference, #1462 must map every required original scenario to a named current case and
+its evidence, or a concrete residual requirement. This issue reconciliation is not that exhaustive scenario map.
+
+## Boundaries retained
+
+- Climate defaults are disabled/unset. Activity names never manufacture presets or setpoints.
+- Explicit OFF, manual hold, overrides, protective admission and original ownership remain authoritative.
+- A graph refresh during pending installation settlement may fail and retire that activation. Original runtime
+  work is joined; newer graph authority is not adopted and physical work is not automatically retried. This is the
+  explicitly accepted availability boundary, not a claim of seamless pending continuation.
+- Native-unit adapters remain refused until implemented. Unsupported cover commands remain refused.
+- Historical timeout/worker-warning causes remain unknown. Later passing results do not diagnose them.
+- No next alpha has been certified by this reconciliation, and no equipment was operated or commissioned.
+
+## Pinned source and test links
+
+[activityAPI]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/spaces-home-control/controllers/space-modes.controller.ts#L23
+[activityAPITest]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/spaces-home-control/controllers/space-modes.controller.spec.ts#L24
+[activityAdmin]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/spaces-home-control/components/space-activity-modes-section.spec.ts#L147
+[activityDocs]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/docs/space-activity-modes.md#L1
+[activityNarrow]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/panel/test/plugins/spaces-home-control/activity_modes_test.dart#L925
+[activityPanel]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/panel/test/plugins/spaces-home-control/activity_modes_test.dart#L471
+[activityPartial]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/spaces-home-control/services/space-mode.service.spec.ts#L68
+[activityService]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/spaces-home-control/services/space-mode.service.ts#L72
+[activityValidation]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/spaces-home-control/components/space-activity-modes-section.spec.ts#L310
+[actuation]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/contracts/thermostat-actuation.contract.ts#L6
+[baseline]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L312
+[bounds]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.integration.spec.ts#L830
+[branchRuntime]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts#L214
+[comfortAdmin]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/components/virtual-thermostat-comfort.spec.ts#L87
+[comfortDocs]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/docs/climate-architecture.md#L73
+[comfortPanel]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/panel/test/modules/devices/presentation/virtual_thermostat_comfort_test.dart#L62
+[comfortService]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts#L51
+[coolingEligibility]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/thermostat-cooling-dependency.service.ts#L70
+[coolingFault]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point.utils.spec.ts#L36
+[coolingRecord]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/docs/work/virtual-thermostat/dew-point-cooling-validation.md#L40
+[coolingRelease]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L4555
+[cutoff]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point.utils.spec.ts#L27
+[defaults]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L251
+[dewAdmin]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/components/virtual-dew-point-editor.spec.ts#L52
+[dewFormula]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point.utils.ts#L2
+[dewFresh]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point-runtime.integration.spec.ts#L171
+[dewRepair]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point-runtime.integration.spec.ts#L187
+[dewRole]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point-runtime.integration.spec.ts#L235
+[dewRuntime]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point-runtime.service.ts#L52
+[dewSkew]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point-runtime.integration.spec.ts#L216
+[dispatch]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L3209
+[feedback]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/components/virtual-light-group-detail.spec.ts#L213
+[groupAuthor]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/docs/virtual-light-groups.md#L200
+[groupCommand]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-light-group-command.service.ts#L45
+[groupPanel]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/panel/test/modules/devices/presentation/actuator_group_flow_test.dart#L214
+[groupPolicy]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-group-profile.ts#L31
+[groupRoom]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/docs/virtual-light-groups.md#L280
+[lateOn]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L3439
+[legacy]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/thermostat-installation.integration.spec.ts#L1306
+[manual]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/thermostat-comfort-selection.integration.spec.ts#L3125
+[migration]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.integration.spec.ts#L896
+[off]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L612
+[opposed]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L3467
+[overrideIdentity]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L294
+[overrideRestart]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L367
+[partial]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/components/virtual-light-group-detail.spec.ts#L110
+[priority]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.integration.spec.ts#L864
+[queuedGuard]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L831
+[reconnect]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/components/virtual-light-group-detail.spec.ts#L89
+[repair]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/components/virtual-light-group-detail.spec.ts#L299
+[restart]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L3515
+[retirement]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.integration.spec.ts#L991
+[rollback]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L338
+[scene]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/panel/test/modules/scenes/group_scene_transport_test.dart#L94
+[validation]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L263
+[vectors]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point.utils.spec.ts#L11
+[wizard]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/views/view-light-group-wizard.spec.ts#L68

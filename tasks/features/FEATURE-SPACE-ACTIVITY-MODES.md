@@ -1,10 +1,11 @@
 # Task: Add activity-based room modes
+
 ID: FEATURE-SPACE-ACTIVITY-MODES
 Type: feature
 Scope: backend
 Size: large
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in_progress (backend foundation implemented; client UI and climate bridge pending)
+Status: in_progress (foundation, clients and climate bridge merged; combined all-domains acceptance remains)
 Tracking: #1287
 Issues: #1292 (definitions and config), #1293 (orchestration), #1294 (activation endpoints and events)
 
@@ -17,10 +18,12 @@ I want to activate activity-based modes (Work, Relax, Sleep, etc.) that automati
 ## 2. Context
 
 ### Related Tasks (NOT Overlapping - Different Scopes)
+
 - **`FEATURE-HOUSE-MODES-MVP-V2`** (done) - **House-wide** modes (Home/Away/Night) that affect the ENTIRE house from entry panels. This task is about **space-level** activity modes (Work/Relax/Sleep) that affect a SINGLE room.
 - **`EPIC-SCENES-MVP`** (done) - Room-scoped scenes with arbitrary device commands. Activity modes are higher-level abstractions with sensible defaults.
 
 ### Existing Code References
+
 - **House modes**: `apps/backend/src/modules/system/` (HOME, AWAY, NIGHT)
 - **Lighting modes**: WORK, RELAX, NIGHT (lighting domain only)
 - **Scenes**: `apps/backend/src/modules/scenes/` (arbitrary device commands)
@@ -29,33 +32,36 @@ I want to activate activity-based modes (Work, Relax, Sleep, etc.) that automati
 - **Role storage**: new role types go into the unified `SpaceRoleEntity` hierarchy (`apps/backend/src/plugins/spaces-home-control/entities/`, discriminators lighting, climate, covers, sensor, media_binding, active_media) and need an incremental migration, never an edit of the initial migration
 
 ### Concept Differentiation (Key Distinction)
-| Concept | Scope | Orchestration | Customization |
-|---------|-------|---------------|---------------|
-| **House Modes** | House-wide | All spaces | Fixed actions |
-| **Activity Modes** | Per-space | All domains | Configurable per space |
-| **Scenes** | Per-space | Specific devices | Fully custom |
+
+| Concept            | Scope      | Orchestration    | Customization          |
+| ------------------ | ---------- | ---------------- | ---------------------- |
+| **House Modes**    | House-wide | All spaces       | Fixed actions          |
+| **Activity Modes** | Per-space  | All domains      | Configurable per space |
+| **Scenes**         | Per-space  | Specific devices | Fully custom           |
 
 Activity modes sit between house modes (too broad) and scenes (too specific), providing sensible defaults that users can customize.
 
 ### Proposed Activity Modes
-| Mode | Primary Use Case | Typical Settings |
-|------|------------------|------------------|
-| **Work** | Home office | Bright lights, cool temp, covers anti-glare, media off |
-| **Relax** | Unwinding | Dim ambient, warm temp, covers open, background music |
-| **Sleep** | Bedtime | Lights off, cool temp, blackout covers, media off |
-| **Entertainment** | Movies/TV | Accent lights, comfortable temp, blackout, focused audio |
-| **Cooking** | Kitchen use | Bright task lights, cool temp, covers open, background music |
-| **Gaming** | Gaming session | Accent lights, cool temp, blackout, gaming audio |
-| **Reading** | Reading time | Task lights, comfortable temp, natural light, quiet |
-| **Conversation** | Social | Ambient lights, comfortable temp, open, media off |
-| **Away** | Leaving room | All off, setback temp, covers as-is, media off |
-| **Custom** | User-defined | Fully configurable |
+
+| Mode              | Primary Use Case | Typical Settings                                             |
+| ----------------- | ---------------- | ------------------------------------------------------------ |
+| **Work**          | Home office      | Bright lights, cool temp, covers anti-glare, media off       |
+| **Relax**         | Unwinding        | Dim ambient, warm temp, covers open, background music        |
+| **Sleep**         | Bedtime          | Lights off, cool temp, blackout covers, media off            |
+| **Entertainment** | Movies/TV        | Accent lights, comfortable temp, blackout, focused audio     |
+| **Cooking**       | Kitchen use      | Bright task lights, cool temp, covers open, background music |
+| **Gaming**        | Gaming session   | Accent lights, cool temp, blackout, gaming audio             |
+| **Reading**       | Reading time     | Task lights, comfortable temp, natural light, quiet          |
+| **Conversation**  | Social           | Ambient lights, comfortable temp, open, media off            |
+| **Away**          | Leaving room     | All off, setback temp, covers as-is, media off               |
+| **Custom**        | User-defined     | Fully configurable                                           |
 
 ## 3. Scope
 
 **In scope**
 
 Backend:
+
 - Create `SpaceModesModule` or extend `SpacesModule`
 - Define `ActivityMode` enum with preset modes
 - Create `SpaceModeEntity` for storing active mode per space
@@ -71,6 +77,7 @@ Backend:
 Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`, `FEATURE-SPACE-MODE-PANEL-UI`).
 
 **Out of scope**
+
 - Automatic mode triggers (time, occupancy) - separate task
 - Cross-space mode propagation
 - Mode history/logging
@@ -85,8 +92,8 @@ Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`
 - [x] Active mode is persisted per space
 - [x] Admin can customize mode behavior per space
 - [x] Admin can enable/disable modes per space
-- [ ] Panel shows available modes and allows one-tap activation
-- [ ] Panel shows active mode indicator
+- [x] Panel shows available modes and allows one-tap activation
+- [x] Panel shows active mode indicator
 - [x] Modes only affect domains that have devices in the space
 - [ ] Unit tests cover:
   - [ ] Mode activation with all domains present
@@ -99,27 +106,29 @@ Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`
 ### Scenario: Activate Work mode in home office
 
 Given Space "Office" has:
-  - 2 lights (MAIN, TASK)
-  - 1 thermostat
-  - 1 window covering
-  - No media devices
-And the operator explicitly enabled the Work climate action with a validated 21°C setpoint
-When the user taps "Work" mode
-Then:
-  - Lighting: WORK mode (100% MAIN and TASK)
-  - Climate: setpoint 21°C
-  - Covers: anti-glare position (75%)
-  - Media: skipped (no devices)
-And panel shows "Work" mode active
-And mode is persisted as active
+
+- 2 lights (MAIN, TASK)
+- 1 thermostat
+- 1 window covering
+- No media devices
+  And the operator explicitly enabled the Work climate action with a validated 21°C setpoint
+  When the user taps "Work" mode
+  Then:
+- Lighting: WORK mode (100% MAIN and TASK)
+- Climate: setpoint 21°C
+- Covers: anti-glare position (75%)
+- Media: skipped (no devices)
+  And panel shows "Work" mode active
+  And mode is persisted as active
 
 ### Scenario: Customized Relax mode
 
 Given Space "Living Room" has customized Relax mode:
-  - Lighting: 40% (instead of default 50%)
-  - Climate: explicitly enabled with an operator-configured, validated 23°C setpoint
-When the user taps "Relax" mode
-Then custom values are applied instead of defaults
+
+- Lighting: 40% (instead of default 50%)
+- Climate: explicitly enabled with an operator-configured, validated 23°C setpoint
+  When the user taps "Relax" mode
+  Then custom values are applied instead of defaults
 
 ### Scenario: Partial domain failure
 
@@ -150,6 +159,7 @@ And configured actions for other domains still execute
 ## 7. Implementation hints
 
 ### Mode Configuration Structure
+
 ```typescript
 interface ModeConfiguration {
   id: string;
@@ -167,7 +177,7 @@ interface ModeConfiguration {
     setpoint?: number;
     setpointDelta?: number;
     mode?: ClimateMode;
-    thermostatPreset?: 'comfort' | 'eco' | 'away';
+    thermostatPreset?: "comfort" | "eco" | "away";
   };
 
   covers?: {
@@ -229,6 +239,7 @@ const DEFAULT_MODES: Record<ActivityMode, ModeConfiguration> = {
 ```
 
 ### Orchestration Flow
+
 ```typescript
 async activateMode(spaceId: string, mode: ActivityMode): Promise<ModeResult> {
   const config = await this.getModeConfig(spaceId, mode);
@@ -290,15 +301,11 @@ position controls that can represent the exact range/grid/value. A present read-
 a writable command. Command-only intermediate positions and unsupported group percentages are refused explicitly.
 Media activation requires an existing operator binding; OFF follows actual guarded deactivation with read-only admission,
 pausing persisted resolved playback without requiring an OFF binding. No defaults are created during preview/activation.
-Enabled security and climate explicitly report unsupported in this foundation. Climate configuration is validated
-and persisted, but no adapter, thermostat preset creation or climate command is provided. The trusted climate port
-is internal only; controller owner/baseline CAS, graph fencing and source tombstones remain future bridge work.
+The original #1472 foundation left climate and security unsupported. The climate bridge is now merged in #1498: explicit operator-configured numeric/preset actions use the existing climate intents and guarded thermostat provider. Target validation, private source/slot evidence, manual precedence and original completion remain enforced. Security actuation remains unavailable and reports UNSUPPORTED; this milestone does not implement the unrelated security epic.
 
 Each domain reports disabled/no_targets/unsupported/failed/succeeded (preview uses ready). Partial failure preserves
 the selected mode. Per-space overlap is rejected without a queue. Revision/identity fences prevent stale completion
 and stop later physical steps; a command already admitted to a provider cannot be undone. Deactivation clears manual
 selection and does not restore prior device state. Restart marks unfinished activation interrupted without replay.
 
-Panel/admin UI (#1295/#1296), scheduling, presence, the VD1458 climate adapter, additional presets/custom authoring,
-and installed-hardware qualification remain pending. The full all-domains actuation criterion stays unchecked until
-the trusted climate bridge and security actuation exist. See `docs/space-activity-modes.md` for API details and limits.
+Admin/Panel UI (#1295/#1296) merged in #1472 and the configured climate adapter merged in #1498. The shared all-domains-present orchestration criterion and its combined test remain unchecked: separate lighting/cover/media/climate and partial-result suites do not supply that original case. Preserve explicit unavailable optional-domain outcomes when completing it. Scheduling, presence, custom mode authoring and installed qualification remain separate. See `docs/space-activity-modes.md` and the [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md).

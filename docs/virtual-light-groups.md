@@ -197,7 +197,7 @@ adapters that write only values remain unknown. WLED partial observations preser
 snapshots or explicitly unsafe main-segment identities invalidate those colors. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.
 
-## Authoring and repairing native groups (locally staged #1453)
+## Authoring and repairing native groups (#1453, merged software)
 
 In Admin, open the group wizard and select Light, Switch, Outlet, Fan or Cover. Profile definitions and candidate
 compatibility come from `POST /plugins/devices-virtual/producers/light-group-candidates`, using the same typed policy

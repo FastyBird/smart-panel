@@ -1,5 +1,11 @@
 # VD3-10 backend foundation — local validation
 
+Current software status (2026-10-30): merged in #1469/#1470/#1471; the [acceptance reconciliation](../../virtual-device-extensions-acceptance.md) records scoped completion and remaining work. Installed qualification and the parent epic remain open.
+
+## Historical preparation record
+
+The checkpoint results and publication-pending statements below describe their original preparation time. They are preserved as historical evidence, not current delivery status.
+
 Issue: [FastyBird/smart-panel #1454](https://github.com/FastyBird/smart-panel/issues/1454).
 Base: `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba` (merged PR #1464).
 Worktree: `/Users/akadlec/.t3/worktrees/smart-panel/t3-016d362e`.

@@ -1,5 +1,11 @@
 # Local mandatory-member clients and authoring context
 
+Current software status (2026-10-30): merged in #1470; the [acceptance reconciliation](../../virtual-device-extensions-acceptance.md) records scoped completion and remaining work. Installed qualification and the parent epic remain open.
+
+## Historical preparation record
+
+The checkpoint results and publication-pending statements below describe their original preparation time. They are preserved as historical evidence, not current delivery status.
+
 This local batch follows independently accepted composed comfort/foundation head
 `5cabef74eb9f914d6970e3cfd526df5a8c4f4608` on `feat/virtual-thermostat-comfort-branches`.
 It incorporates per-member source `23a00e3f3466643e264ca7a634b97ecf9ef1f98c` and safety correction
