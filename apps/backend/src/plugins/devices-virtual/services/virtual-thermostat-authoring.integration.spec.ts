@@ -44,7 +44,10 @@ import { ChannelsTypeMapperService } from '../../../modules/devices/services/cha
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { ClimateAutomationLedgerService } from '../../../modules/devices/services/climate-automation-ledger.service';
+import {
+	ClimateAutomationLedgerConflict,
+	ClimateAutomationLedgerService,
+} from '../../../modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { ControllerPublicationContext } from '../../../modules/devices/services/controller-publication-context';
 import {
@@ -1131,6 +1134,7 @@ describe('atomic virtual thermostat authoring', () => {
 	it.each([
 		'success',
 		'slot_birth',
+		'slot_birth_repeated',
 		'delete_rollback',
 		'native_preimage',
 		'lost_cas',
@@ -1374,15 +1378,19 @@ describe('atomic virtual thermostat authoring', () => {
 			}
 			const capturedFinishes: jest.Mock[] = [];
 			let recapture: jest.SpyInstance | undefined;
-			if (scenario === 'slot_birth') {
+			if (scenario === 'slot_birth' || scenario === 'slot_birth_repeated') {
 				await database.manager.delete(ClimateAutomationSlotEntity, { controllerId: id });
 				const capture: ClimateAutomationLedgerService['captureControllerDeletion'] =
 					ledger.captureControllerDeletion.bind(ledger);
 				let calls = 0;
 				recapture = jest.spyOn(ledger, 'captureControllerDeletion').mockImplementation(async (controllerId) => {
 					expect(lock.hasCurrentStructuralLease()).toBe(false);
+					if (++calls > 2) throw new Error('Unexpected third deletion capture');
+					if (scenario === 'slot_birth_repeated')
+						await database.manager.delete(ClimateAutomationSlotEntity, { controllerId: id });
 					const original = await capture(controllerId);
-					if (++calls === 1) await database.manager.insert(ClimateAutomationSlotEntity, initial);
+					if (calls === 1 || scenario === 'slot_birth_repeated')
+						await database.manager.insert(ClimateAutomationSlotEntity, initial);
 					if (!original) return original;
 					const finish = jest.fn((outcome: ClimateAutomationMutationOutcome) => original.finish(outcome));
 					capturedFinishes.push(finish);
@@ -1395,6 +1403,27 @@ describe('atomic virtual thermostat authoring', () => {
 				});
 			}
 			try {
+				if (scenario === 'slot_birth_repeated') {
+					const failure: unknown = await devices.remove(id).then(
+						() => undefined,
+						(cause: unknown) => cause,
+					);
+					expect(failure).toBeInstanceOf(ClimateAutomationLedgerConflict);
+					expect(failure).toMatchObject({ reason: 'stale' });
+					expect(recapture).toHaveBeenCalledTimes(2);
+					expect(capturedFinishes).toHaveLength(2);
+					for (const finish of capturedFinishes) {
+						expect(finish).toHaveBeenCalledTimes(1);
+						expect(finish).toHaveBeenCalledWith('rolled_back');
+					}
+					expect(deletionEvents).toEqual([]);
+					expect(await database.manager.count(ClimateAutomationDeletionEntity)).toBe(0);
+					expect(await database.manager.findOneBy(VirtualDeviceEntity, { id })).not.toBeNull();
+					expect({
+						...(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id })),
+					}).toEqual(initial);
+					return;
+				}
 				await devices.remove(id);
 				if (scenario === 'slot_birth') {
 					expect(recapture).toHaveBeenCalledTimes(2);
