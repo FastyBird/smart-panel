@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/mode_schedule.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/media_activity.dart';
@@ -39,6 +40,7 @@ class SpacesHomeControlPluginService {
   late SpaceStateRepository _spaceStateRepository;
   late MediaActivityRepository _mediaActivityRepository;
   late ActivityModesRegistry _activityModesRegistry;
+  late ModeScheduleRegistry _modeScheduleRegistry;
   late MediaActivityService _mediaActivityService;
   late SpacesService _spacesService;
   late SpaceSuggestionProvider _suggestionProvider;
@@ -76,6 +78,7 @@ class SpacesHomeControlPluginService {
     );
 
     _activityModesRegistry = ActivityModesRegistry(dio: dio);
+    _modeScheduleRegistry = ModeScheduleRegistry(dio: dio);
 
     _mediaActivityRepository = MediaActivityRepository(dio: dio);
 
@@ -98,6 +101,7 @@ class SpacesHomeControlPluginService {
     locator.registerSingleton(_spaceStateRepository);
     locator.registerSingleton(_mediaActivityRepository);
     locator.registerSingleton(_activityModesRegistry);
+    locator.registerSingleton(_modeScheduleRegistry);
     locator.registerSingleton(_mediaActivityService);
     locator.registerSingleton(_spacesService);
   }
@@ -161,6 +165,7 @@ class SpacesHomeControlPluginService {
   Future<void> refresh() async {
     await _spacesRepository.fetchAll();
     await _activityModesRegistry.refresh();
+    await _modeScheduleRegistry.refresh();
 
     // Refresh media activity data for the display's space
     try {
@@ -182,6 +187,7 @@ class SpacesHomeControlPluginService {
   }
 
   void _onActivityConnectionChanged(bool connected) {
+    _modeScheduleRegistry.connectionChanged(connected);
     if (connected) {
       _activityModesRegistry.refresh();
     } else {
@@ -192,6 +198,10 @@ class SpacesHomeControlPluginService {
   void dispose() {
     _socketService.removeConnectionListener(_onActivityConnectionChanged);
     _activityDisplay?.removeListener(_onActivityDisplayChanged);
+    _modeScheduleRegistry.dispose();
+    if (locator.isRegistered<ModeScheduleRegistry>()) {
+      locator.unregister<ModeScheduleRegistry>();
+    }
     _activityModesRegistry.dispose();
     if (locator.isRegistered<ActivityModesRegistry>()) {
       locator.unregister<ActivityModesRegistry>();
@@ -257,6 +267,12 @@ class SpacesHomeControlPluginService {
   /// ////////////////
 
   void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    if (event == 'SpacesModule.ActivitySchedule.Changed' ||
+        event == 'SpacesModule.ActivityMode.StateChanged') {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) _modeScheduleRegistry.refresh(spaceId);
+      if (event == 'SpacesModule.ActivitySchedule.Changed') return;
+    }
     if (event == 'SpacesModule.ActivityMode.ConfigChanged' ||
         event == 'SpacesModule.ActivityMode.StateChanged') {
       final spaceId = payload['space_id'] as String?;
@@ -269,12 +285,14 @@ class SpacesHomeControlPluginService {
         event == SpacesModuleConstants.spaceUpdatedEvent) {
       _spacesRepository.insert([payload]);
       _activityModesRegistry.refresh(payload['id'] as String?);
+      _modeScheduleRegistry.refresh(payload['id'] as String?);
 
       /// Space DELETE
     } else if (event == SpacesModuleConstants.spaceDeletedEvent &&
         payload.containsKey('id')) {
       _spacesRepository.delete(payload['id']);
       _activityModesRegistry.clearSpace(payload['id'] as String);
+      _modeScheduleRegistry.clearSpace(payload['id'] as String);
       _lightTargetsRepository.deleteForSpace(payload['id']);
       _climateTargetsRepository.deleteForSpace(payload['id']);
       _coversTargetsRepository.deleteForSpace(payload['id']);

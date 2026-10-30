@@ -32,6 +32,8 @@ import { DeviceConnectionStateService } from '../src/modules/devices/services/de
 import { PlatformRegistryService } from '../src/modules/devices/services/platform.registry.service';
 import { getPropertyMetadata } from '../src/modules/devices/utils/schema.utils';
 import { SpaceLifecycleRegistryService } from '../src/modules/spaces/services/space-lifecycle-registry.service';
+import { UserEntity } from '../src/modules/users/entities/users.entity';
+import { UserRole } from '../src/modules/users/users.constants';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -64,6 +66,7 @@ import { SpaceActivityConfigService } from '../src/plugins/spaces-home-control/s
 import { SpaceActivityDomainsService } from '../src/plugins/spaces-home-control/services/space-activity-domains.service';
 import { SpaceActivationIdentity } from '../src/plugins/spaces-home-control/services/space-climate-automation.port';
 import { SpaceClimateAutomationService } from '../src/plugins/spaces-home-control/services/space-climate-automation.service';
+import { SpaceModeSchedulerService } from '../src/plugins/spaces-home-control/services/space-mode-scheduler.service';
 import { SpaceModeService } from '../src/plugins/spaces-home-control/services/space-mode.service';
 
 // Real AppModule, migrations, authentication, authoring and activation. Physical qualification is a separate software fixture gate.
@@ -251,6 +254,131 @@ describe('Group A default-migrated authenticated activity climate automation', (
 			if (directory) rmSync(directory, { recursive: true, force: true });
 		}
 	});
+
+	it('persists a validated authenticated schedule without side effects and hides internal occurrence custody', async () => {
+		const { roomId } = await seed();
+		const url = `/modules/spaces/spaces/${roomId}/schedules`;
+		await http().get(url).expect(401);
+		const read = await http().get(url).set('Authorization', `Bearer ${token}`).expect(200);
+		expect((read.body as { data: unknown }).data).toMatchObject({
+			enabled: false,
+			entries: [],
+			revision: 1,
+			timezone: null,
+		});
+		expect(JSON.stringify(read.body)).not.toMatch(
+			/seenOccurrences|pendingOccurrenceId|cursor|lastScheduledActivationId/,
+		);
+		const data = {
+			expected_revision: 1,
+			enabled: true,
+			timezone: 'Europe/Prague',
+			entries: [{ id: randomUUID(), mode: 'work', time: '09:00', days_of_week: [1, 2, 3, 4, 5], enabled: true }],
+		};
+		for (const invalid of [
+			{ ...data, entries: [{ ...data.entries[0], time: '25:00' }] },
+			{ ...data, entries: [{ ...data.entries[0], days_of_week: [7] }] },
+			{ ...data, entries: [{ ...data.entries[0], days_of_week: [1, 1] }] },
+			{ ...data, entries: [{ ...data.entries[0], mode: 'unknown' }] },
+			{ ...data, cursor: 0 },
+		])
+			await http().put(url).set('Authorization', `Bearer ${token}`).send({ data: invalid }).expect(400);
+		await http()
+			.put(url)
+			.set('Authorization', `Bearer ${token}`)
+			.send({ data: { ...data, timezone: 'Wrong/Zone' } })
+			.expect(422);
+		const saved = await http().put(url).set('Authorization', `Bearer ${token}`).send({ data }).expect(200);
+		expect((saved.body as { data: unknown }).data).toMatchObject({ revision: 2, entries: data.entries });
+		await http().put(url).set('Authorization', `Bearer ${token}`).send({ data }).expect(409);
+		await database.manager.update(UserEntity, { username: 'selection' }, { role: UserRole.USER });
+		await http().get(url).set('Authorization', `Bearer ${token}`).expect(200);
+		await http()
+			.put(url)
+			.set('Authorization', `Bearer ${token}`)
+			.send({ data: { ...data, expected_revision: 2 } })
+			.expect(403);
+		expect(await database.manager.count(SpaceActivityStateEntity)).toBe(0);
+		expect(await database.manager.count(ClimateAutomationSourceEntity)).toBe(0);
+		await http()
+			.get(url + '/state')
+			.set('Authorization', `Bearer ${token}`)
+			.expect(200);
+	});
+
+	it.each([false, true])(
+		'runs a due schedule through the actual governed climate bridge; thermostat manual hold=%s',
+		async (manualHold) => {
+			const { roomId, controllerId } = await seed();
+			await enable(controllerId);
+			if (manualHold) {
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				await http()
+					.post(comfortPath(controllerId) + '/selection')
+					.set('Authorization', `Bearer ${token}`)
+					.send({
+						expected_revision: config.revision,
+						expected_graph_revision: await module.get(VirtualDependencyGraphService).revision(),
+						preset: null,
+						clear_user_off: false,
+					})
+					.expect(201);
+			}
+			await author(roomId, { thermostat_preset: 'eco' });
+			const scheduler = module.get(SpaceModeSchedulerService);
+			const minute = Math.floor(Date.now() / 60_000) * 60_000;
+			const due = new Date(minute + 60_000);
+			const time = due.toISOString().slice(11, 16);
+			await http()
+				.put(`/modules/spaces/spaces/${roomId}/schedules`)
+				.set('Authorization', `Bearer ${token}`)
+				.send({
+					data: {
+						expected_revision: 1,
+						enabled: true,
+						timezone: 'UTC',
+						entries: [{ id: randomUUID(), mode: 'work', time, days_of_week: [0, 1, 2, 3, 4, 5, 6], enabled: true }],
+					},
+				})
+				.expect(200);
+			expect(await database.manager.count(ClimateAutomationSourceEntity)).toBe(0);
+			const modeService = module.get(SpaceModeService);
+			const activate = modeService.activateMode.bind(modeService) as SpaceModeService['activateMode'];
+			const activationFailures: unknown[] = [];
+			jest.spyOn(modeService, 'activateMode').mockImplementation(async (...args) => {
+				try {
+					return await activate(...args);
+				} catch (cause: unknown) {
+					activationFailures.push(cause);
+					throw cause;
+				}
+			});
+			const now = jest.spyOn(Date, 'now').mockReturnValue(due.getTime() + 1000);
+			try {
+				await scheduler.runCycle();
+			} finally {
+				now.mockRestore();
+			}
+			expect(activationFailures).toEqual([]);
+			const active = await module.get(SpaceModeService).getActiveMode(roomId);
+			expect(active.activityActor).toMatch(/^schedule:/);
+			expect(active).toMatchObject({
+				selectedActivityMode: ActivityMode.WORK,
+				activityStatus: manualHold ? ActivityActivationStatus.FAILED : ActivityActivationStatus.ACTIVE,
+			});
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId });
+			expect(slot.manualHold).toBe(manualHold);
+			if (!manualHold) expect(slot.state).toBe('LIVE');
+			const comfort = await module.get(VirtualThermostatComfortService).get(controllerId);
+			expect(comfort.effective).toMatchObject({
+				source: manualHold ? 'manual' : 'automation',
+				heating_setpoint: manualHold ? 20 : 17,
+			});
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).comfort.presets,
+			).toEqual(expect.arrayContaining([expect.objectContaining({ preset: 'eco' })]));
+		},
+	);
 
 	it.each(['pending', 'installed', 'different-activation'] as const)(
 		'late ordinary physical A failure preserves %s B and its native completion',

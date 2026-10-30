@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { SpaceModeSchedulesController } from '../../plugins/spaces-home-control/controllers/space-mode-schedules.controller';
 import { SpaceModesController } from '../../plugins/spaces-home-control/controllers/space-modes.controller';
 import { SpacesDomainController } from '../../plugins/spaces-home-control/controllers/spaces-domain.controller';
 import { RoomSpaceEntity } from '../../plugins/spaces-home-control/entities/room-space.entity';
@@ -74,7 +75,7 @@ import { SpaceActivitySubscriber } from './subscribers/space-activity.subscriber
 	// (lighting, climate, covers, sensors, media, suggestions, undo, intent
 	// catalog) that admin and panel clients expect. Once they migrate to the
 	// plugin's own prefix, this dual-location registration can move back.
-	controllers: [SpacesController, SpacesDomainController, SpaceModesController],
+	controllers: [SpacesController, SpacesDomainController, SpaceModesController, SpaceModeSchedulesController],
 	providers: [
 		SpacesService,
 		SpaceActivityService,

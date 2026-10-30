@@ -86,6 +86,10 @@
 						:space-id="props.space.id"
 					/>
 					<space-domains-section :space="props.space" />
+					<space-mode-schedule-section
+						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
+						:space-id="props.space.id"
+					/>
 				</el-scrollbar>
 			</el-tab-pane>
 
@@ -278,6 +282,7 @@ import {
 	SpaceDevicesSection,
 	SpaceDisplaysSection,
 	SpaceDomainsSection,
+	SpaceModeScheduleSection,
 	SpaceParentZoneSection,
 	SpaceScenesSection,
 } from '../components/components';

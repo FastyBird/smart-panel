@@ -39,6 +39,7 @@ import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
+import { SpaceModeScheduleEntity } from './entities/space-mode-schedule.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
@@ -73,6 +74,8 @@ import { SpaceLightingStateService } from './services/space-lighting-state.servi
 import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
+import { SpaceModeScheduleConfigService } from './services/space-mode-schedule-config.service';
+import { SpaceModeSchedulerService } from './services/space-mode-scheduler.service';
 import { SpaceModeService } from './services/space-mode.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
@@ -132,6 +135,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceActiveMediaActivityEntity,
 			SpaceActivityConfigEntity,
 			SpaceActivityStateEntity,
+			SpaceModeScheduleEntity,
 			DeviceEntity,
 			ChannelEntity,
 		]),
@@ -151,6 +155,8 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceActivityConfigService,
 		SpaceActivityDomainsService,
 		SpaceModeService,
+		SpaceModeScheduleConfigService,
+		SpaceModeSchedulerService,
 		CoverGroupIntentPort,
 		LightingContributionPlannerService,
 		ClimateContributionPlannerService,
@@ -198,6 +204,8 @@ import { IntentSpecLoaderService } from './spec';
 	exports: [
 		SpaceActivityConfigService,
 		SpaceModeService,
+		SpaceModeScheduleConfigService,
+		SpaceModeSchedulerService,
 		HomeControlSpacesService,
 		IntentSpecLoaderService,
 		ClimateIntentService,
@@ -240,6 +248,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly spaceLightingTool: SpaceLightingToolService,
 		private readonly spaceSuggestionHeartbeat: SpaceSuggestionHeartbeatService,
+		private readonly spaceModeScheduler: SpaceModeSchedulerService,
 	) {}
 
 	onModuleInit() {
@@ -432,5 +441,6 @@ Contributes the **Room** and **Zone** space types — the home-control surface t
 		});
 
 		this.managedServiceManager.register(this.spaceSuggestionHeartbeat);
+		this.managedServiceManager.register(this.spaceModeScheduler);
 	}
 }

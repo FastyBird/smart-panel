@@ -4861,4 +4861,38 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get dewPointInstallation =>
       'Zainstalowane chłodzenie pozostaje niedopuszczone do czasu kwalifikacji powierzchni, uwierzytelniania, synchronizacji czasowej, izolacji zapisu i opróżnienia po restarcie po wersji alfa.';
+
+  @override
+  String get space_schedule_title => 'Harmonogram';
+
+  @override
+  String get space_schedule_loading => 'Wczytywanie harmonogramu…';
+
+  @override
+  String get space_schedule_clock_uncertain =>
+      'Czas został zmieniony; automatyczne wyzwalanie jest wstrzymane.';
+
+  @override
+  String get space_schedule_unavailable =>
+      'Harmonogram jest niedostępny lub zatrzymany.';
+
+  @override
+  String get space_schedule_manual => 'Wybór ręczny do następnego wyzwolenia';
+
+  @override
+  String get space_schedule_current => 'Aktualny planowany tryb';
+
+  @override
+  String get space_schedule_next => 'Następna zmiana';
+
+  @override
+  String get space_schedule_empty => 'Brak kolejnych wpisów.';
+
+  @override
+  String get space_schedule_last_failed =>
+      'Ostatnia zaplanowana próba nie została uruchomiona.';
+
+  @override
+  String get space_schedule_plan_only =>
+      'Planowane godziny nie potwierdzają stanu urządzeń.';
 }

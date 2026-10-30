@@ -495,5 +495,51 @@
 			"background": "Na pozadí",
 			"off": "Vypnuto"
 		}
+	},
+	"schedules": {
+		"title": "Časové plány",
+		"description": "Zvolte, kdy se mají spouštět existující režimy aktivity. Uložení režim nespustí.",
+		"enabled": "Zapnout plánování pro tento prostor",
+		"timezone": "Časové pásmo",
+		"houseTimezone": "Použít časové pásmo domácnosti",
+		"clockPolicy": "Časy přeskočené při změně času se neprovedou; při opakování hodiny se použije jen první výskyt. Ruční volba platí do dalšího spuštění. Zmeškané změny se po restartu nepřehrávají.",
+		"weeklyView": "Týdenní plán aktivit",
+		"entryDisabled": "Vypnuto",
+		"empty": "Zatím nejsou naplánované žádné změny. Přidejte první termín.",
+		"add": "Přidat naplánovanou změnu",
+		"save": "Uložit plán",
+		"discard": "Zahodit změny",
+		"unsaved": "Změny zatím nejsou uložené.",
+		"conflictHelp": "Byla načtena novější uložená konfigurace. Koncept zůstal zachován; pro zobrazení aktuální verze jej výslovně zahoďte.",
+		"editEntry": "Naplánovaná změna",
+		"mode": "Režim aktivity",
+		"time": "Místní čas",
+		"pattern": "Opakování",
+		"daysLabel": "Dny",
+		"entryEnabled": "Zapnout tento termín",
+		"remove": "Odebrat z konceptu",
+		"cancel": "Zrušit",
+		"apply": "Použít v konceptu",
+		"loadFailed": "Plán se nepodařilo načíst.",
+		"saveFailed": "Plán se nepodařilo uložit.",
+		"conflict": "Plán mezitím změnil jiný požadavek.",
+		"invalid": "Zkontrolujte časové pásmo a překrývající se termíny.",
+		"refresh": "Obnovit",
+		"readOnly": "Plány může upravovat vlastník nebo administrátor.",
+		"days": {
+			"0": "Ne",
+			"1": "Po",
+			"2": "Út",
+			"3": "St",
+			"4": "Čt",
+			"5": "Pá",
+			"6": "So"
+		},
+		"patterns": {
+			"daily": "Každý den",
+			"weekdays": "Pondělí až pátek",
+			"weekend": "Sobota a neděle",
+			"custom": "Vybrané dny"
+		}
 	}
 }

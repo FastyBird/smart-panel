@@ -1481,5 +1481,15 @@
   "dewPointCooling": "Ochrona chłodzenia przed kondensacją",
   "dewPointSurface": "UUID lokalnej sondy chłodzonej powierzchni",
   "dewPointSurfaceTemperature": "Temperatura chłodzonej powierzchni (°C)",
-  "dewPointInstallation": "Zainstalowane chłodzenie pozostaje niedopuszczone do czasu kwalifikacji powierzchni, uwierzytelniania, synchronizacji czasowej, izolacji zapisu i opróżnienia po restarcie po wersji alfa."
+  "dewPointInstallation": "Zainstalowane chłodzenie pozostaje niedopuszczone do czasu kwalifikacji powierzchni, uwierzytelniania, synchronizacji czasowej, izolacji zapisu i opróżnienia po restarcie po wersji alfa.",
+  "space_schedule_title": "Harmonogram",
+  "space_schedule_loading": "Wczytywanie harmonogramu…",
+  "space_schedule_clock_uncertain": "Czas został zmieniony; automatyczne wyzwalanie jest wstrzymane.",
+  "space_schedule_unavailable": "Harmonogram jest niedostępny lub zatrzymany.",
+  "space_schedule_manual": "Wybór ręczny do następnego wyzwolenia",
+  "space_schedule_current": "Aktualny planowany tryb",
+  "space_schedule_next": "Następna zmiana",
+  "space_schedule_empty": "Brak kolejnych wpisów.",
+  "space_schedule_last_failed": "Ostatnia zaplanowana próba nie została uruchomiona.",
+  "space_schedule_plan_only": "Planowane godziny nie potwierdzają stanu urządzeń."
 }

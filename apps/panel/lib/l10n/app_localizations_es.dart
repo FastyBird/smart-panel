@@ -4827,4 +4827,38 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get dewPointInstallation =>
       'La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa.';
+
+  @override
+  String get space_schedule_title => 'Horario';
+
+  @override
+  String get space_schedule_loading => 'Cargando horario…';
+
+  @override
+  String get space_schedule_clock_uncertain =>
+      'La hora cambió; los activadores automáticos están en pausa.';
+
+  @override
+  String get space_schedule_unavailable => 'Horario no disponible o detenido.';
+
+  @override
+  String get space_schedule_manual =>
+      'Selección manual hasta el próximo activador';
+
+  @override
+  String get space_schedule_current => 'Modo actual planificado';
+
+  @override
+  String get space_schedule_next => 'Próximo cambio';
+
+  @override
+  String get space_schedule_empty => 'No hay próximas entradas.';
+
+  @override
+  String get space_schedule_last_failed =>
+      'El último intento programado no se inició.';
+
+  @override
+  String get space_schedule_plan_only =>
+      'Los horarios no confirman el estado de los dispositivos.';
 }

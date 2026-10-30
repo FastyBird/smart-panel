@@ -12,6 +12,7 @@
  * from their co-located files.
  */
 export { SpaceAddForm, SpaceDetail, SpaceEditForm } from '../../../modules/spaces/components/components';
+export { default as SpaceModeScheduleSection } from './SpaceModeScheduleSection.vue';
 
 // Role panels
 export { default as SpaceLightingRoles } from './space-lighting-roles.vue';

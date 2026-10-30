@@ -4829,4 +4829,39 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dewPointInstallation =>
       'Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt.';
+
+  @override
+  String get space_schedule_title => 'Zeitplan';
+
+  @override
+  String get space_schedule_loading => 'Zeitplan wird geladen…';
+
+  @override
+  String get space_schedule_clock_uncertain =>
+      'Die Uhrzeit wurde geändert; automatische Auslöser sind pausiert.';
+
+  @override
+  String get space_schedule_unavailable =>
+      'Zeitplan nicht verfügbar oder angehalten.';
+
+  @override
+  String get space_schedule_manual =>
+      'Manuelle Auswahl bis zum nächsten Auslöser';
+
+  @override
+  String get space_schedule_current => 'Aktuell geplanter Modus';
+
+  @override
+  String get space_schedule_next => 'Nächste Änderung';
+
+  @override
+  String get space_schedule_empty => 'Kein weiterer Eintrag.';
+
+  @override
+  String get space_schedule_last_failed =>
+      'Der letzte geplante Versuch wurde nicht gestartet.';
+
+  @override
+  String get space_schedule_plan_only =>
+      'Geplante Zeiten bestätigen keinen Gerätezustand.';
 }

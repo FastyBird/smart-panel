@@ -1481,5 +1481,15 @@
   "dewPointCooling": "Kondensationsschutz bei Kühlung",
   "dewPointSurface": "UUID des lokalen gekühlten Oberflächenfühlers",
   "dewPointSurfaceTemperature": "Temperatur der gekühlten Oberfläche (°C)",
-  "dewPointInstallation": "Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt."
+  "dewPointInstallation": "Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt.",
+  "space_schedule_title": "Zeitplan",
+  "space_schedule_loading": "Zeitplan wird geladen…",
+  "space_schedule_clock_uncertain": "Die Uhrzeit wurde geändert; automatische Auslöser sind pausiert.",
+  "space_schedule_unavailable": "Zeitplan nicht verfügbar oder angehalten.",
+  "space_schedule_manual": "Manuelle Auswahl bis zum nächsten Auslöser",
+  "space_schedule_current": "Aktuell geplanter Modus",
+  "space_schedule_next": "Nächste Änderung",
+  "space_schedule_empty": "Kein weiterer Eintrag.",
+  "space_schedule_last_failed": "Der letzte geplante Versuch wurde nicht gestartet.",
+  "space_schedule_plan_only": "Geplante Zeiten bestätigen keinen Gerätezustand."
 }

@@ -495,5 +495,51 @@
 			"background": "W tle",
 			"off": "Wyłączone"
 		}
+	},
+	"schedules": {
+		"title": "Harmonogramy",
+		"description": "Wybierz, kiedy uruchamiać istniejące tryby aktywności. Zapisanie nie uruchamia trybu.",
+		"enabled": "Włącz harmonogram dla tej przestrzeni",
+		"timezone": "Strefa czasowa",
+		"houseTimezone": "Użyj strefy czasowej domu",
+		"clockPolicy": "Nieistniejące godziny podczas zmiany czasu są pomijane; powtórzone godziny uruchamiają się tylko przy pierwszym wystąpieniu. Wybór ręczny obowiązuje do następnego terminu. Pominięte zmiany nie są odtwarzane po ponownym uruchomieniu.",
+		"weeklyView": "Tygodniowy harmonogram aktywności",
+		"entryDisabled": "Wyłączone",
+		"empty": "Nie zaplanowano zmian. Dodaj pierwszy termin.",
+		"add": "Dodaj zaplanowaną zmianę",
+		"save": "Zapisz harmonogram",
+		"discard": "Odrzuć zmiany",
+		"unsaved": "Zmiany nie zostały jeszcze zapisane.",
+		"conflictHelp": "Wczytano nowszą zapisaną konfigurację. Szkic został zachowany; odrzuć go świadomie, aby sprawdzić bieżącą wersję.",
+		"editEntry": "Zaplanowana zmiana",
+		"mode": "Tryb aktywności",
+		"time": "Czas lokalny",
+		"pattern": "Powtarzanie",
+		"daysLabel": "Dni",
+		"entryEnabled": "Włącz ten termin",
+		"remove": "Usuń ze szkicu",
+		"cancel": "Anuluj",
+		"apply": "Zastosuj w szkicu",
+		"loadFailed": "Nie udało się wczytać harmonogramu.",
+		"saveFailed": "Nie udało się zapisać harmonogramu.",
+		"conflict": "Inne żądanie zmieniło harmonogram.",
+		"invalid": "Sprawdź strefę czasową i nakładające się terminy.",
+		"refresh": "Odśwież",
+		"readOnly": "Harmonogramy może edytować właściciel lub administrator.",
+		"days": {
+			"0": "Nd",
+			"1": "Pn",
+			"2": "Wt",
+			"3": "Śr",
+			"4": "Cz",
+			"5": "Pt",
+			"6": "So"
+		},
+		"patterns": {
+			"daily": "Codziennie",
+			"weekdays": "Od poniedziałku do piątku",
+			"weekend": "Sobota i niedziela",
+			"custom": "Wybrane dni"
+		}
 	}
 }

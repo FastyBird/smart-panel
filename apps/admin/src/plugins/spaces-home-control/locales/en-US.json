@@ -495,5 +495,51 @@
 			"background": "Background",
 			"off": "Off"
 		}
+	},
+	"schedules": {
+		"title": "Time schedules",
+		"description": "Choose when existing activity modes should run. Saving does not activate a mode.",
+		"enabled": "Enable scheduling for this space",
+		"timezone": "Timezone",
+		"houseTimezone": "Use the house timezone",
+		"clockPolicy": "Missing daylight-saving times are skipped; repeated times run only on the first occurrence. Manual selection lasts until the next trigger. Missed changes are not replayed after restart.",
+		"weeklyView": "Weekly activity schedule",
+		"entryDisabled": "Disabled",
+		"empty": "No scheduled changes. Add an entry to begin.",
+		"add": "Add scheduled change",
+		"save": "Save schedule",
+		"discard": "Discard changes",
+		"unsaved": "Changes are not saved yet.",
+		"conflictHelp": "Newer saved settings were loaded. Your draft is preserved; discard it explicitly to review the current version.",
+		"editEntry": "Scheduled change",
+		"mode": "Activity mode",
+		"time": "Local time",
+		"pattern": "Repeat",
+		"daysLabel": "Days",
+		"entryEnabled": "Enable this entry",
+		"remove": "Remove from draft",
+		"cancel": "Cancel",
+		"apply": "Apply to draft",
+		"loadFailed": "The schedule could not be loaded.",
+		"saveFailed": "The schedule could not be saved.",
+		"conflict": "The schedule was changed by another request.",
+		"invalid": "Check the timezone and overlapping scheduled times.",
+		"refresh": "Refresh",
+		"readOnly": "Schedule editing requires an owner or administrator.",
+		"days": {
+			"0": "Sun",
+			"1": "Mon",
+			"2": "Tue",
+			"3": "Wed",
+			"4": "Thu",
+			"5": "Fri",
+			"6": "Sat"
+		},
+		"patterns": {
+			"daily": "Every day",
+			"weekdays": "Monday to Friday",
+			"weekend": "Saturday and Sunday",
+			"custom": "Selected days"
+		}
 	}
 }
