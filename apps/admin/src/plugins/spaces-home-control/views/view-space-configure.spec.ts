@@ -1,5 +1,5 @@
 /* eslint-disable vue/one-component-per-file */
-import { defineComponent, h, nextTick } from 'vue';
+import { type Ref, defineComponent, h, nextTick } from 'vue';
 import { RouterView, createMemoryHistory, createRouter } from 'vue-router';
 
 import { ElMessageBox, ElSwitch } from 'element-plus';
@@ -18,6 +18,8 @@ import ViewSpaceConfigure from './view-space-configure.vue';
 const mocks = vi.hoisted(() => ({
 	client: null as unknown,
 	realRouter: false,
+	lgDevice: null as Ref<boolean> | null,
+	saveGate: null as Promise<void> | null,
 	displaysLoaded: true,
 	fetchDevices: vi.fn(),
 	fetchDisplays: vi.fn(),
@@ -74,7 +76,7 @@ vi.mock('../../../common', async () => {
 		}),
 		useBackend: () => ({ client: mocks.client }),
 		useBreakpoints: () => ({
-			isLGDevice: ref(mocks.isLGDevice),
+			isLGDevice: (mocks.lgDevice = ref(mocks.isLGDevice)),
 		}),
 	};
 });
@@ -174,6 +176,7 @@ describe('ViewSpaceConfigure', () => {
 		mocks.displaysLoaded = true;
 		mocks.isLGDevice = false;
 		mocks.realRouter = false;
+		mocks.saveGate = null;
 		mocks.routeMatched = [];
 		mocks.spacesFirstLoadFinished = false;
 	});
@@ -341,6 +344,7 @@ describe('mounted configure activity mode support', () => {
 	let requests: Request[];
 	beforeEach(() => {
 		mocks.realRouter = false;
+		mocks.saveGate = null;
 		mocks.routeMatched = [];
 		mocks.spacesFirstLoadFinished = true;
 		requests = [];
@@ -351,6 +355,16 @@ describe('mounted configure activity mode support', () => {
 			baseUrl: 'http://localhost/api/v1',
 			fetch: async (request: Request) => {
 				requests.push(request);
+				if (request.method === 'PUT') {
+					const body = await request.json();
+					if (mocks.saveGate) await mocks.saveGate;
+					return new Response(
+						JSON.stringify({
+							data: { id: 'schedule', space_id: space(SpaceType.ROOM).id, created_at: '2026-11-02T00:00:00Z', ...body.data, revision: 2 },
+						}),
+						{ headers: { 'Content-Type': 'application/json' } }
+					);
+				}
 				if (new URL(request.url).pathname.endsWith('/schedules'))
 					return new Response(
 						JSON.stringify({
@@ -440,7 +454,10 @@ describe('mounted configure activity mode support', () => {
 			],
 		});
 		await router.push(`/space/${initial}/plugin/configure`);
-		const wrapper = mount(defineComponent({ render: () => h(RouterView) }), { global: { plugins: [router], stubs: { teleport: false } } });
+		const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
+			attachTo: document.body,
+			global: { plugins: [router], stubs: { teleport: false } },
+		});
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
 		try {
 			await flushPromises();
@@ -463,6 +480,111 @@ describe('mounted configure activity mode support', () => {
 			wrapper.unmount();
 			confirm.mockRestore();
 			mocks.realRouter = false;
+		}
+	});
+	it('retains the draft across same-space edit navigation and a desktop-to-mobile resize', async () => {
+		mocks.realRouter = true;
+		mocks.isLGDevice = true;
+		const initial = space(SpaceType.ROOM).id;
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{
+					path: '/space/:id/plugin',
+					component: defineComponent({ template: '<router-view :key="$route.params.id" />' }),
+					children: [
+						{
+							path: 'configure',
+							component: ViewSpaceConfigure,
+							props: (route) => ({ space: { ...space(SpaceType.ROOM), id: route.params.id } }),
+							children: [
+								{ path: 'edit', name: 'spaces_home_control_plugin-space_edit', component: defineComponent({ template: '<p>Edit space</p>' }) },
+							],
+						},
+					],
+				},
+			],
+		});
+		await router.push(`/space/${initial}/plugin/configure`);
+		const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
+			attachTo: document.body,
+			global: { plugins: [router], stubs: { teleport: false } },
+		});
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
+		try {
+			await flushPromises();
+			const section = wrapper.getComponent(SpaceModeScheduleSection);
+			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			await router.push(`/space/${initial}/plugin/configure/edit`);
+			await flushPromises();
+			mocks.lgDevice!.value = false;
+			await flushPromises();
+			expect(wrapper.getComponent(SpaceModeScheduleSection).vm.$.uid).toBe(section.vm.$.uid);
+			expect(section.vm.hasUnsavedChanges).toBe(true);
+			expect(section.get('.el-card').isVisible()).toBe(false);
+			await router.push(`/space/${initial}/plugin/configure`);
+			await flushPromises();
+			expect(section.get('.el-card').isVisible()).toBe(true);
+			expect(section.get('[data-testid="schedule-save"]').attributes('disabled')).toBeUndefined();
+			await router.push(`/space/${initial}/plugin/configure/edit`);
+			await flushPromises();
+			expect(wrapper.getComponent(SpaceModeScheduleSection).vm.$.uid).toBe(section.vm.$.uid);
+			expect(section.vm.hasUnsavedChanges).toBe(true);
+			expect(confirm).not.toHaveBeenCalled();
+		} finally {
+			wrapper.unmount();
+			confirm.mockRestore();
+			mocks.realRouter = false;
+			mocks.isLGDevice = false;
+		}
+	});
+	it('waits for the original in-flight schedule save before completing navigation', async () => {
+		mocks.realRouter = true;
+		const initial = space(SpaceType.ROOM).id;
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/space/:id/plugin/configure', component: ViewSpaceConfigure, props: { space: space(SpaceType.ROOM) } },
+				{ path: '/elsewhere', component: defineComponent({ template: '<p>Elsewhere</p>' }) },
+			],
+		});
+		await router.push(`/space/${initial}/plugin/configure`);
+		const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
+			attachTo: document.body,
+			global: { plugins: [router], stubs: { teleport: false } },
+		});
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
+		let release!: () => void;
+		mocks.saveGate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		try {
+			await flushPromises();
+			const section = wrapper.getComponent(SpaceModeScheduleSection);
+			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			await section.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+			let navigated = false;
+			const navigation = router.push('/elsewhere').then(() => {
+				navigated = true;
+			});
+			await flushPromises();
+			expect(navigated).toBe(false);
+			expect(confirm).not.toHaveBeenCalled();
+			release();
+			await flushPromises();
+			await navigation;
+			expect(router.currentRoute.value.path).toBe('/elsewhere');
+			expect(confirm).not.toHaveBeenCalled();
+		} finally {
+			release();
+			wrapper.unmount();
+			confirm.mockRestore();
+			mocks.realRouter = false;
+			mocks.saveGate = null;
 		}
 	});
 	it('unmounts activity controls when a reactive space becomes unsupported and remounts for a zone', async () => {

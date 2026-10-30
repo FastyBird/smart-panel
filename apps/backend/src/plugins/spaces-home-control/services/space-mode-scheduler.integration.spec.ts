@@ -212,6 +212,50 @@ describe('durable space scheduling through the real activity admission', () => {
 		expect(jobs.getCronJobs().size).toBe(0);
 	});
 
+	it('coalesces an overlapping cron tick into a fresh scan and never replays the expired minute', async () => {
+		await save([entry('09:00', ActivityMode.WORK), entry('09:01', ActivityMode.RELAX)]);
+		const repository = h.database.getRepository(SpaceModeScheduleEntity);
+		const read = repository.findBy.bind(repository) as typeof repository.findBy;
+		const entered = deferred<void>(),
+			release = deferred<void>(),
+			fresh = deferred<void>(),
+			dispatched = deferred<void>();
+		const find = jest.spyOn(repository, 'findBy').mockImplementationOnce(async (where) => {
+			const rows = await read(where);
+			entered.resolve();
+			await release.promise;
+			return rows;
+		});
+		find.mockImplementationOnce(async (where) => {
+			const rows = await read(where);
+			fresh.resolve();
+			return rows;
+		});
+		const activate = jest.spyOn(modes, 'activateMode');
+		run.mockImplementation((domain: ActivityDomain) => {
+			dispatched.resolve();
+			return Promise.resolve(domainResult(domain, ActivityDomainStatus.NO_TARGETS, 'test'));
+		});
+		try {
+			clock('2026-11-02T09:00:01Z');
+			const firstTick = jobs.getCronJob('spaceModeSchedules').fireOnTick();
+			await entered.promise;
+			clock('2026-11-02T09:01:01Z');
+			const nextTick = jobs.getCronJob('spaceModeSchedules').fireOnTick();
+			release.resolve();
+			await Promise.all([firstTick, nextTick]);
+			await fresh.promise;
+			expect(find).toHaveBeenCalledTimes(2);
+			await dispatched.promise;
+			await scheduler.stop();
+			expect(activate).toHaveBeenCalledTimes(1);
+			expect(activate.mock.calls[0][1]).toBe(ActivityMode.RELAX);
+			expect((await modes.getActiveMode(h.room.id)).selectedActivityMode).toBe(ActivityMode.RELAX);
+		} finally {
+			release.resolve();
+		}
+	});
+
 	it('retains manual selection until the next future trigger', async () => {
 		await save([entry('09:00'), entry('18:00', ActivityMode.AWAY)]);
 		clock('2026-11-02T09:00:05Z');

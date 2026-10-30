@@ -55,7 +55,7 @@
 	</teleport>
 
 	<div
-		v-if="!isSpaceEditRoute || isLGDevice"
+		v-show="!isSpaceEditRoute || isLGDevice"
 		class="flex flex-col h-full min-h-0"
 	>
 		<space-detail :space="props.space">
@@ -321,7 +321,9 @@ const remoteFormChanged = ref<boolean>(false);
 const scheduleSectionRef = ref<InstanceType<typeof SpaceModeScheduleSection> | null>(null);
 // This route survives the keyed child replacement on a space-id change: ask before it commits.
 const confirmScheduleDiscard = async (): Promise<boolean> => {
-	if (!scheduleSectionRef.value?.hasUnsavedChanges) return true;
+	const section = scheduleSectionRef.value;
+	await section?.waitForSave();
+	if (!section?.hasUnsavedChanges) return true;
 	try {
 		await ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
 			confirmButtonText: t('spacesModule.buttons.yes.title'),

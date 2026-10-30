@@ -284,7 +284,11 @@ const valid = computed(() => {
 	}
 	return true;
 });
-defineExpose({ hasUnsavedChanges: computed(() => dirty.value || editing.value) });
+let submission: Promise<void> | null = null;
+defineExpose({
+	hasUnsavedChanges: computed(() => dirty.value || editing.value),
+	waitForSave: () => submission ?? Promise.resolve(),
+});
 const canSave = computed(
 	() =>
 		configuration.value?.revision === revision.value &&
@@ -348,9 +352,15 @@ const remove = () => {
 	if (draft.value && entry.value && canEdit.value) draft.value.entries = draft.value.entries.filter((item) => item.id !== entry.value?.id);
 	editing.value = false;
 };
-const submit = async () => {
-	if (!draft.value || !canSave.value) return;
-	const row = await save(revision.value, draft.value);
-	if (row) reset();
+const submit = () => {
+	if (!draft.value || !canSave.value || submission) return;
+	const value = draft.value;
+	submission = (async () => {
+		const row = await save(revision.value, value);
+		if (row) reset();
+	})().finally(() => {
+		submission = null;
+	});
+	return submission;
 };
 </script>

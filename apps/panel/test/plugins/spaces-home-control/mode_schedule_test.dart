@@ -241,6 +241,38 @@ void main() {
       });
     },
   );
+  testWidgets(
+    'a widget-owned session binds its space and displays the fetched schedule',
+    (tester) async {
+      final registry = ModeScheduleRegistry(dio: dio);
+      locator.registerSingleton<ModeScheduleRegistry>(registry);
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: ModeScheduleSection(spaceId: 'owned-space'),
+            ),
+          ),
+        );
+        await tester.runAsync(() => pumpEventQueue());
+        await tester.pumpAndSettle();
+        expect(adapter.requests, hasLength(1));
+        expect(
+          adapter.requests.single.path,
+          '/modules/spaces/spaces/owned-space/schedules/state',
+        );
+        expect(find.byKey(const ValueKey('schedule-current')), findsOneWidget);
+        expect(find.textContaining('09:00 (Europe/Prague)'), findsOneWidget);
+        expect(find.byKey(const ValueKey('schedule-next')), findsOneWidget);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        locator.unregister<ModeScheduleRegistry>();
+        registry.dispose();
+      }
+    },
+  );
   testWidgets('fresh disabled schedules render no schedule content', (
     tester,
   ) async {

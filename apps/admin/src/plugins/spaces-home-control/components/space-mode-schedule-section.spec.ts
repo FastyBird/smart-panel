@@ -135,6 +135,12 @@ describe('weekly scheduling editor with the actual API client', () => {
 		await wrapper.get('[data-testid="schedule-discard"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.findAll('tbody li')).toHaveLength(0);
+		conflict = false;
+		await addEntry(wrapper);
+		await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+		await flushPromises();
+		expect(writes).toHaveLength(2);
+		expect(writes[1]).toMatchObject({ expected_revision: 2 });
 	});
 	it('does not let an old save replace the next space', async () => {
 		const wrapper = render();

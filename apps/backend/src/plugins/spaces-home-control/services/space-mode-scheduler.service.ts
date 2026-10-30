@@ -33,6 +33,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 	private cycle: Promise<{ attempts: Promise<void>[] }> | null = null;
 	private readonly pending = new Map<string, Promise<void>>();
 	private cycleStartedAt: number | null = null;
+	private rescanRequested = false;
 	private epoch: object | null = null;
 
 	constructor(
@@ -58,7 +59,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 						await this.scanCycle();
 					},
 					unrefTimeout: true,
-					waitForCompletion: true,
+					waitForCompletion: false,
 					errorHandler: (cause) =>
 						this.logger.error('Schedule check failed', cause instanceof Error ? cause : 'Unknown scheduling failure'),
 				});
@@ -94,6 +95,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		await this.withLock(async () => {
 			this.state = 'stopping';
 			this.epoch = null;
+			this.rescanRequested = false;
 			await this.job?.stop();
 			if (this.ownsRegisteredJob()) this.registry.deleteCronJob(JOB_NAME);
 			this.job = null;
@@ -120,27 +122,43 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		);
 	}
 
-	/** Explicit callers join this scan's attempts; the cron job only waits for the short scan. */
+	/** Explicit callers join this scan's attempts; cron ticks coalesce requests for a short scan. */
 	async runCycle(now = Date.now()): Promise<void> {
 		const { attempts } = await this.scanCycle(now);
 		await Promise.allSettled(attempts);
 	}
 
 	private scanCycle(now = Date.now()): Promise<{ attempts: Promise<void>[] }> {
-		if (this.state !== 'started' || !this.ownsRegisteredJob() || !this.job?.isActive || this.cycle !== null)
-			return this.cycle ?? Promise.resolve({ attempts: [] });
+		if (this.state !== 'started' || !this.ownsRegisteredJob() || !this.job?.isActive)
+			return Promise.resolve({ attempts: [] });
+		if (this.cycle !== null) {
+			this.rescanRequested = true;
+			return this.cycle;
+		}
 		this.cycleStartedAt = now;
-		this.cycle = this.check(now).finally(() => {
+		this.cycle = this.drainScans().finally(() => {
 			this.cycle = null;
 			this.cycleStartedAt = null;
 		});
 		return this.cycle;
 	}
 
-	private async check(now: number): Promise<{ attempts: Promise<void>[] }> {
+	/** Coalesce overlapping ticks; every follow-up reads the current minute, never a waiting list of old ticks. */
+	private async drainScans(): Promise<{ attempts: Promise<void>[] }> {
+		const attempts: Promise<void>[] = [];
+		do {
+			this.rescanRequested = false;
+			attempts.push(...(await this.check()).attempts);
+		} while (this.rescanRequested && this.state === 'started');
+		return { attempts };
+	}
+
+	private async check(): Promise<{ attempts: Promise<void>[] }> {
 		const attempts: Promise<void>[] = [];
 		try {
 			const rows = await this.database.getRepository(SpaceModeScheduleEntity).findBy({ enabled: true });
+			// A slow read must not launch the expired minute captured before that read.
+			const now = Date.now();
 			for (const row of rows) {
 				if (this.state !== 'started' || this.pending.has(row.spaceId)) continue;
 				// Retain each original completion independently. A slow room only skips its own later ticks.

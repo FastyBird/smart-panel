@@ -3,6 +3,13 @@ import { DataSource } from 'typeorm';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import {
+	DEVICES_RETERMINAL_TYPE,
+	RETERMINAL_CHANNEL_IDENTIFIERS,
+	RETERMINAL_SYSFS,
+} from '../../../plugins/devices-reterminal/devices-reterminal.constants';
+import { ReTerminalDevicePlatform } from '../../../plugins/devices-reterminal/platforms/reterminal.device.platform';
+import { ReTerminalSysfsService } from '../../../plugins/devices-reterminal/services/reterminal-sysfs.service';
 import { ShellyNgDeviceEntity } from '../../../plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { VirtualThermostatActuatorClaimEntity } from '../../../plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
@@ -138,6 +145,36 @@ describe('PropertyCommandDispatchService', () => {
 		} finally {
 			entry.dispose();
 		}
+	});
+
+	it('refuses an unprepared reTerminal sysfs batch under a captured room-selection guard', async () => {
+		const writeFile = jest.fn().mockResolvedValue(undefined);
+		const terminal = new ReTerminalDevicePlatform({ writeFile } as unknown as ReTerminalSysfsService);
+		const processBatch = jest.spyOn(terminal, 'processBatch');
+		const terminalDevice = { ...device, type: DEVICES_RETERMINAL_TYPE } as DeviceEntity;
+		const terminalChannel = {
+			...channel,
+			category: ChannelCategory.LIGHT,
+			identifier: RETERMINAL_CHANNEL_IDENTIFIERS.USR_LED,
+			device: terminalDevice,
+		} as ChannelEntity;
+		const terminalProperty = {
+			...sourceProperty,
+			identifier: 'on',
+			category: PropertyCategory.ON,
+			channel: terminalChannel,
+		} as ChannelPropertyEntity;
+		const target = { device: terminalDevice, channel: terminalChannel, property: terminalProperty, value: true };
+		properties.findOne.mockResolvedValue(terminalProperty);
+		platformRegistry.get.mockReturnValue(terminal);
+		await expect(service.dispatchBatch([target], { isRequestCurrent: () => true })).resolves.toMatchObject({
+			success: false,
+		});
+		expect(processBatch).not.toHaveBeenCalled();
+		expect(writeFile).not.toHaveBeenCalled();
+		// The same real platform and writable target remain valid for legacy manual dispatch.
+		await expect(service.dispatchBatch([target])).resolves.toMatchObject({ success: true });
+		expect(writeFile).toHaveBeenCalledWith(RETERMINAL_SYSFS.USR_LED, '255');
 	});
 
 	it('coalesces alias windows by canonical source without another platform dispatch', async () => {
