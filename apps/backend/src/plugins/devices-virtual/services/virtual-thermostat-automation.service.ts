@@ -207,6 +207,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 				if (canonical(captured.controller) !== canonical(original)) fail();
 				const row = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
 				const nextRevision = increment(row.revision);
+				row.revision = nextRevision;
 				const history = await resetThermostatRecreationRuntime(
 					manager,
 					id,
@@ -776,6 +777,8 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnAppli
 						isCurrent: () => !finished && same() && this.retiringGenerations.get(generation) === attempt,
 						finish: () => {
 							finished = true;
+							if (this.generationAdmissions.get(generation) === attempt) this.generationAdmissions.delete(generation);
+							if (this.retiringGenerations.get(generation) === attempt) this.retiringGenerations.delete(generation);
 						},
 					});
 					return permit;

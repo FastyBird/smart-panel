@@ -37,7 +37,11 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
-import { ClimateAutomationLedgerService } from './climate-automation-ledger.service';
+import {
+	ClimateAutomationDeletionCaptureChanged,
+	ClimateAutomationLedgerConflict,
+	ClimateAutomationLedgerService,
+} from './climate-automation-ledger.service';
 import { ControllerPublicationContext } from './controller-publication-context';
 import { captureCreation, creationMapping } from './creation-capture';
 import { CreationCatalog, DeviceCreationContext } from './device-creation-context';
@@ -1227,6 +1231,13 @@ export class DevicesService {
 	}
 
 	async remove(id: string): Promise<void> {
+		// A newly born slot gets one fresh capture, always after releasing the prior owners.
+		if (await this.removeWithDeletionCapture(id)) return;
+		if (await this.removeWithDeletionCapture(id)) return;
+		throw new ClimateAutomationLedgerConflict('stale');
+	}
+
+	private async removeWithDeletionCapture(id: string): Promise<boolean> {
 		const climateDeletion = await this.climateLedger?.captureControllerDeletion(id);
 		let native: SqliteCommitGuardReceipt;
 		let callbackEntered = false;
@@ -1262,8 +1273,7 @@ export class DevicesService {
 
 							this.logger.log(`Successfully removed device with id=${id}`);
 
-							// Emit event with the full device entity captured before removal to preserve ID
-							this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+							// Publication follows validation and native commit below.
 						};
 						if (receipt) {
 							await manager.query(
@@ -1274,17 +1284,23 @@ export class DevicesService {
 							);
 						} else await remove();
 					});
+					this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
 				}),
 			);
 		// Deletion retires observation eligibility. Original callbacks still execute and
 		// their finite completion is joined after the original structural/native owners.
-		if (!climateDeletion) return removeOriginal();
+		if (!climateDeletion) {
+			await removeOriginal();
+			return true;
+		}
 		let failure: { cause: unknown } | undefined;
 		try {
-			await ControllerPublicationContext.complete(
-				() => new ControllerPublicationContext(() => false).run(removeOriginal),
-				true,
-			);
+			if (climateDeletion.hasControllerSlot) {
+				await ControllerPublicationContext.complete(
+					() => new ControllerPublicationContext(() => false).run(removeOriginal),
+					true,
+				);
+			} else await removeOriginal();
 		} catch (cause: unknown) {
 			failure = { cause };
 		}
@@ -1299,7 +1315,12 @@ export class DevicesService {
 		} catch (cause: unknown) {
 			failure ??= { cause };
 		}
-		if (failure) throw failure.cause;
+		if (failure) {
+			if (failure.cause instanceof ClimateAutomationDeletionCaptureChanged && native?.outcome === 'rolled_back')
+				return false;
+			throw failure.cause;
+		}
+		return true;
 	}
 
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {

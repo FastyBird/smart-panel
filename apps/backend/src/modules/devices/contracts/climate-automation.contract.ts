@@ -88,6 +88,8 @@ export interface ClimateAutomationMutationCompletion {
 	readonly finish: (outcome?: ClimateAutomationMutationOutcome) => Promise<void>;
 }
 export interface ClimateAutomationDeletionCapture extends ClimateAutomationMutationCompletion {
+	/** Absent-slot proofs preserve ordinary publication policy while still validating negative native evidence. */
+	readonly hasControllerSlot?: true;
 	(manager: EntityManager, scope: ClimateAutomationLedgerScope, remove: () => Promise<void>): Promise<void>;
 }
 

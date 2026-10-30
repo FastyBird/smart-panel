@@ -1674,6 +1674,21 @@ describe('configured activity through the native thermostat participant', () => 
 			}
 		},
 	);
+	it('refuses controller deletion under native ownership before any global-manager read', async () => {
+		await database.transaction(async () => {
+			const read = jest.spyOn(database.manager, 'findOneBy').mockImplementation(() => {
+				throw new Error('global manager read must not run');
+			});
+			try {
+				await expect(ledger.captureControllerDeletion(controllerId)).rejects.toThrow(
+					'Controller deletion requires entry before native ownership',
+				);
+				expect(read).not.toHaveBeenCalled();
+			} finally {
+				read.mockRestore();
+			}
+		});
+	});
 	it('original completion reserves retirement before joining predecessors and refuses later same-generation admission', async () => {
 		const authored = await author({ thermostat_preset: 'eco' });
 		const activationId = randomUUID();
@@ -1730,6 +1745,10 @@ describe('configured activity through the native thermostat participant', () => 
 			release();
 			expect(await completion).toBe(true);
 			expect(writes).toBe(1);
+			const generation = (await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId }))
+				.generationId;
+			expect((Reflect.get(provider, 'generationAdmissions') as Map<string, unknown>).has(generation)).toBe(false);
+			expect((Reflect.get(provider, 'retiringGenerations') as Map<string, unknown>).has(generation)).toBe(false);
 			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
 				state: 'RETIRED',
 			});

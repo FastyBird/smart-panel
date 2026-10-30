@@ -16,7 +16,11 @@ import {
 	SqliteDataSource,
 	isSqliteTransactionActive,
 } from '../../../common/database/sqlite-data-source';
-import { ClimateAutomationLedgerScope } from '../../../modules/devices/contracts/climate-automation.contract';
+import {
+	ClimateAutomationDeletionCapture,
+	ClimateAutomationLedgerScope,
+	ClimateAutomationMutationOutcome,
+} from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -429,7 +433,11 @@ describe('atomic virtual thermostat authoring', () => {
 						events.off(EventType.DEVICE_DELETED, observe);
 					});
 					await owner.step(() => devices.remove(id));
-					expect(captures).toEqual([null]);
+					expect(captures).toHaveLength(1);
+					expect(captures[0]).toEqual(expect.any(Function));
+					expect(captures[0].hasControllerSlot).toBeUndefined();
+					expect(await owner.step(() => database.manager.count(ClimateAutomationSlotEntity))).toBe(0);
+					expect(await owner.step(() => database.manager.count(ClimateAutomationDeletionEntity))).toBe(0);
 					expect(seen).toEqual([undefined]);
 					expect(await owner.step(() => database.manager.findOneBy(DeviceEntity, { id }))).toBeNull();
 					expect(await owner.step(() => database.manager.findOneBy(DeviceControlEntity, { id: controlId }))).toBeNull();
@@ -1122,6 +1130,7 @@ describe('atomic virtual thermostat authoring', () => {
 
 	it.each([
 		'success',
+		'slot_birth',
 		'delete_rollback',
 		'native_preimage',
 		'lost_cas',
@@ -1177,6 +1186,12 @@ describe('atomic virtual thermostat authoring', () => {
 		await automation.onApplicationBootstrap();
 		const input = request(relayId);
 		const id = input.device.id;
+		const deletionEvents: unknown[] = [];
+		const deletionListener = (device: DeviceEntity) => {
+			if (device.id !== id) return;
+			deletionEvents.push({ device, transactionActive: isSqliteTransactionActive(database) });
+		};
+		events.on(EventType.DEVICE_DELETED, deletionListener);
 		try {
 			await authoring.create(input);
 			const initial = {
@@ -1334,6 +1349,7 @@ describe('atomic virtual thermostat authoring', () => {
 						? 'original deletion failure'
 						: 'Thermostat automation provenance or selection is unavailable.',
 				);
+				expect(deletionEvents).toEqual([]);
 				expect(await database.manager.count(ClimateAutomationDeletionEntity)).toBe(0);
 				expect({
 					...(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id })),
@@ -1356,7 +1372,42 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(await database.manager.findOneBy(VirtualDeviceEntity, { id })).toBeNull();
 				return;
 			}
-			await devices.remove(id);
+			const capturedFinishes: jest.Mock[] = [];
+			let recapture: jest.SpyInstance | undefined;
+			if (scenario === 'slot_birth') {
+				await database.manager.delete(ClimateAutomationSlotEntity, { controllerId: id });
+				const capture: ClimateAutomationLedgerService['captureControllerDeletion'] =
+					ledger.captureControllerDeletion.bind(ledger);
+				let calls = 0;
+				recapture = jest.spyOn(ledger, 'captureControllerDeletion').mockImplementation(async (controllerId) => {
+					expect(lock.hasCurrentStructuralLease()).toBe(false);
+					const original = await capture(controllerId);
+					if (++calls === 1) await database.manager.insert(ClimateAutomationSlotEntity, initial);
+					if (!original) return original;
+					const finish = jest.fn((outcome: ClimateAutomationMutationOutcome) => original.finish(outcome));
+					capturedFinishes.push(finish);
+					return Object.freeze(
+						Object.assign((...args: Parameters<ClimateAutomationDeletionCapture>) => original(...args), {
+							finish,
+							hasControllerSlot: original.hasControllerSlot,
+						}),
+					);
+				});
+			}
+			try {
+				await devices.remove(id);
+				if (scenario === 'slot_birth') {
+					expect(recapture).toHaveBeenCalledTimes(2);
+					expect(capturedFinishes).toHaveLength(2);
+					expect(capturedFinishes[0]).toHaveBeenCalledTimes(1);
+					expect(capturedFinishes[0]).toHaveBeenCalledWith('rolled_back');
+					expect(capturedFinishes[1]).toHaveBeenCalledTimes(1);
+					expect(capturedFinishes[1]).toHaveBeenCalledWith('committed');
+				}
+			} finally {
+				recapture?.mockRestore();
+			}
+			expect(deletionEvents).toMatchObject([{ transactionActive: false }]);
 			const deleted = {
 				...(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id })),
 			};
@@ -1517,6 +1568,9 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(publications).toEqual([]);
 				return;
 			}
+			const priorConfigurationRevision = (
+				await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })
+			).revision;
 			if (scenario === 'concurrent' || scenario === 'history_concurrent') {
 				const other = request(relayId);
 				other.device.id = id;
@@ -1525,6 +1579,7 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
 			} else await authoring.create(successor);
 			const next = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: id });
+
 			expect(next).toMatchObject({
 				state: 'EMPTY',
 				manualHold: false,
@@ -1593,7 +1648,7 @@ describe('atomic virtual thermostat authoring', () => {
 				}).toEqual({ ...next });
 			}
 			const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
-			expect(configuration.revision).toBe(2);
+			expect(configuration.revision).toBe(priorConfigurationRevision + 2);
 			const freshClaims = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, {
 				controllerId: id,
 				state: 'reserved',
@@ -1605,6 +1660,7 @@ describe('atomic virtual thermostat authoring', () => {
 			expect(configuration.comfort?.automation_baseline ?? null).toBeNull();
 			expect(publications.filter((event) => event === EventType.DEVICE_CREATED)).toHaveLength(1);
 		} finally {
+			events.off(EventType.DEVICE_DELETED, deletionListener);
 			automation.onModuleDestroy();
 			automationRegistry.onModuleDestroy();
 		}

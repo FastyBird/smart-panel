@@ -62,6 +62,13 @@ function privateSnapshot<T extends object>(fields: T): Readonly<T> {
 type Phase = 'OPENING' | 'OPEN' | 'DRAINING' | 'VALIDATING' | 'READY' | 'SETTLED';
 type Outcome = Exclude<SqliteCommitGuardReceipt['outcome'], 'pending'> | 'not_started';
 
+/** Private retry signal: the empty entry image changed before any deletion began. */
+export class ClimateAutomationDeletionCaptureChanged extends ClimateAutomationLedgerConflict {
+	constructor() {
+		super('stale');
+	}
+}
+
 export class ClimateAutomationLedgerError extends Error {
 	constructor(
 		readonly outcome: Outcome,
@@ -482,11 +489,32 @@ export class ClimateAutomationLedgerService {
 
 	/** Capture an original predecessor before the caller acquires structure or a native lease. */
 	async captureControllerDeletion(id: string): Promise<ClimateAutomationDeletionCapture | null> {
-		const providers = this.registry.captureProviders();
-		const row = await this.database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: id });
-		if (!row) return null;
 		if (hasCurrentSqliteConnectionLease(this.database))
 			throw new Error('Controller deletion requires entry before native ownership');
+		const providers = this.registry.captureProviders();
+		const row = await this.database.manager.findOneBy(ClimateAutomationSlotEntity, { controllerId: id });
+		if (!row) {
+			let finished = false;
+			const execute = async (
+				manager: EntityManager,
+				scope: ClimateAutomationLedgerScope,
+				remove: () => Promise<void>,
+			) => {
+				if (finished) throw new ClimateAutomationLedgerConflict('stale');
+				// Retain negative slot evidence through final validation, including same-manager callbacks.
+				const slot = await this.readSlot(manager, scope, id, false);
+				if (slot.facts) throw new ClimateAutomationDeletionCaptureChanged();
+				await this.inReservedManager(manager, scope, remove);
+			};
+			return Object.freeze(
+				Object.assign(execute, {
+					finish: () => {
+						finished = true;
+						return Promise.resolve();
+					},
+				}),
+			);
+		}
 		const expected = Object.freeze({ ...row });
 		const capture = providers.get(expected.providerKey) ?? null;
 		const predecessor = this.pin(capture, 'beginControllerDeletion');
@@ -613,7 +641,7 @@ export class ClimateAutomationLedgerService {
 				this.issue(operation, fenced, { ...record, validate }, true);
 			});
 		};
-		return Object.freeze(Object.assign(execute, { finish }));
+		return Object.freeze(Object.assign(execute, { finish, hasControllerSlot: true as const }));
 	}
 
 	/** Original creation consumes this operation-local closure only after its own catalog birth. */
