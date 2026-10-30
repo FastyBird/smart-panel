@@ -106,44 +106,40 @@ SpaceModeSection/
 
 ### API Integration
 
-```typescript
-// Read every built-in configuration, including disabled modes
-GET / api / v1 / modules / spaces / spaces / { id } / activity -
-  modes / { mode } / config;
+```http
+// Read one built-in configuration, including a disabled mode
+GET /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config
 
 // Full configuration replacement with data.expected_revision
-PUT / api / v1 / modules / spaces / spaces / { id } / activity -
-  modes / { mode } / config;
+PUT /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config
 
 // Explicit reset with data.expected_revision
-POST / api / v1 / modules / spaces / spaces / { id } / activity -
-  modes / { mode } / config / reset;
+POST /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config/reset
 
 // Readiness of SAVED configuration only, with data.expected_revision
-POST / api / v1 / modules / spaces / spaces / { id } / activity -
-  modes / { mode } / preview;
+POST /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/preview
 ```
 
 ### Localization Keys
 
 ```json
 {
-  "spaces.modes.title": "Activity Modes",
-  "spaces.modes.description": "Configure how modes affect this space",
-  "spaces.modes.enabled": "Enabled",
-  "spaces.modes.disabled": "Disabled",
-  "spaces.modes.edit": "Edit Mode",
-  "spaces.modes.reset": "Reset to Defaults",
-  "spaces.modes.domain.lighting": "Lighting",
-  "spaces.modes.domain.climate": "Climate",
-  "spaces.modes.domain.covers": "Window Coverings",
-  "spaces.modes.domain.media": "Media",
-  "spaces.modes.domain.security": "Security",
-  "spaces.modes.work": "Work",
-  "spaces.modes.relax": "Relax",
-  "spaces.modes.sleep": "Sleep",
-  "spaces.modes.entertainment": "Entertainment",
-  "spaces.modes.away": "Away"
+	"spaces.modes.title": "Activity Modes",
+	"spaces.modes.description": "Configure how modes affect this space",
+	"spaces.modes.enabled": "Enabled",
+	"spaces.modes.disabled": "Disabled",
+	"spaces.modes.edit": "Edit Mode",
+	"spaces.modes.reset": "Reset to Defaults",
+	"spaces.modes.domain.lighting": "Lighting",
+	"spaces.modes.domain.climate": "Climate",
+	"spaces.modes.domain.covers": "Window Coverings",
+	"spaces.modes.domain.media": "Media",
+	"spaces.modes.domain.security": "Security",
+	"spaces.modes.work": "Work",
+	"spaces.modes.relax": "Relax",
+	"spaces.modes.sleep": "Sleep",
+	"spaces.modes.entertainment": "Entertainment",
+	"spaces.modes.away": "Away"
 }
 ```
 

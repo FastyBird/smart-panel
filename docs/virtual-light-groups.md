@@ -16,7 +16,7 @@ or its scene/tile references. Missing members retain the last validated exposed 
 
 The backend authoring/configuration API also supports `switch` and `outlet` profiles with matching device/channel
 categories. Each group has 2–256 homogeneous physical members. Existing light-group endpoint, schema and storage names
-remain compatibility aliases. The locally staged #1453 batch adds Admin authoring and Panel controls for all five profiles; delivery remains pending PR review and CI.
+remain compatibility aliases. The merged #1453 software batch adds Admin authoring and Panel controls for all five profiles; installed-equipment qualification remains pending.
 
 Switch and outlet profiles expose common readable/writable ON. An outlet may additionally expose common read-only
 `in_use`; it is a reported value, not a command target. They do not create aggregate power or energy counters.
@@ -99,7 +99,7 @@ Acceptance uses mock RPC transport with the real pinned SDK, production Shelly a
 normal qualified sample admission and core composite windows. It covers tagged motion/no-op endpoints/STOP, malformed
 and missing evidence, ACK-only/late responses, partial members, direct/group supersession, ownership effects,
 configuration/metadata/deletion/disconnect/shutdown fences, normal raw reports, TYPE persistence/readiness and journal
-migration/restart behavior. This is backend software evidence. The #1453 software UI flows below are staged locally; installed equipment
+migration/restart behavior. This is backend software evidence. The #1453 software UI flows below are merged; installed equipment
 qualification and hardware acceptance remain after alpha.
 
 ## Feedback and quality

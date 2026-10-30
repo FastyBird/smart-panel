@@ -60,7 +60,7 @@ actuator acknowledgements.
 
 Climate defaults have no preset, mode or numeric temperature. Explicit enabled climate configuration requires a
 preset reference or an explicit heat/cool numeric setpoint/delta. Presets cannot mix with mode/numeric settings;
-absolute setpoint and delta are mutually exclusive. Target-specific preset existence, ranges and deadband are validated by the trusted climate adapter during write-free preview and activation. Missing providers and incompatible targets return explicit unavailable/unsupported outcomes. Configuration persistence alone does not claim target availability.
+absolute setpoint and delta are mutually exclusive. For virtual thermostat targets, the trusted climate adapter validates preset existence, ranges and deadband during write-free preview and activation. Numeric physical targets do not receive target-specific range or deadband validation during preview and can still report `READY`; activation clamps numeric setpoints to the current supported ranges. Missing providers and incompatible targets return explicit unavailable/unsupported outcomes. Configuration persistence alone does not claim target availability.
 
 Virtual thermostat activation requires explicit automation opt-in and a valid current source/controller/slot group. Existing manual holds, explicit OFF, temporary overrides and protective qualification keep precedence. Deactivation or source changes withdraw only the original owned installation; they cannot adopt legacy actor-tagged JSON or retire a successor. The guarded runtime and physical intent paths retain their original command and observation contracts.
 
