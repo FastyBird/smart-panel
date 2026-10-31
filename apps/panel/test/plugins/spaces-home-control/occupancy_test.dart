@@ -245,48 +245,71 @@ void main() {
         expect(initialized, isTrue);
         adapter.requests.clear();
         final registry = locator<OccupancyRegistry>();
-        final session = registry.create();
+        final session = registry.create(), other = registry.create();
+        List<RequestOptions> reads(String id) => adapter.requests
+            .where(
+              (request) =>
+                  request.path == '/modules/spaces/spaces/$id/occupancy/state',
+            )
+            .toList();
         try {
           session.bind('room');
+          other.bind('other');
           settle();
           expect(session.fresh, isTrue);
           expect(session.state!.enabled, isFalse);
-          expect(adapter.requests.length, 1);
+          expect(reads('room').length, 1);
           async.elapse(const Duration(minutes: 1));
           settle();
-          expect(adapter.requests.length, 1);
+          expect(reads('room').length, 1);
+          expect(other.fresh, isTrue);
+          expect(other.state!.enabled, isFalse);
+          expect(reads('other').length, 1);
           adapter.enabled = true;
           socket.emit('SpacesModule.Occupancy.Changed', {'space_id': 'room'});
           settle();
           expect(session.state!.enabled, isTrue);
-          expect(adapter.requests.length, 2);
+          expect(reads('room').length, 2);
+          expect(reads('other').length, 1);
+          expect(other.state!.enabled, isFalse);
           expect(
             adapter.requests.last.path,
             '/modules/spaces/spaces/room/occupancy/state',
           );
           async.elapse(const Duration(seconds: 15));
           settle();
-          expect(adapter.requests.length, 3);
+          expect(reads('room').length, 3);
           adapter.enabled = false;
           socket.emit('SpacesModule.Occupancy.Changed', {'space_id': 'room'});
           settle();
+          expect(reads('other').length, 1);
           socket.connectionChanged(false);
           settle();
+          expect(session.fresh, isFalse);
+          expect(other.fresh, isFalse);
           adapter.enabled = true;
           socket.connectionChanged(true);
           settle();
           expect(session.state!.enabled, isTrue);
-          expect(adapter.requests.length, 5);
+          expect(reads('room').length, 5);
+          expect(reads('other').length, 2);
+          expect(other.fresh, isTrue);
+          expect(other.state!.enabled, isTrue);
+          expect(adapter.requests.length, 7);
           expect(
             adapter.requests.every(
               (request) =>
                   request.method == 'GET' &&
-                  request.path == '/modules/spaces/spaces/room/occupancy/state',
+                  {
+                    '/modules/spaces/spaces/room/occupancy/state',
+                    '/modules/spaces/spaces/other/occupancy/state',
+                  }.contains(request.path),
             ),
             isTrue,
           );
         } finally {
           registry.release(session);
+          registry.release(other);
           module.dispose();
           locator.unregister<IntentsRepository>();
           intents.dispose();
