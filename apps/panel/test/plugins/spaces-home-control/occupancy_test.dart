@@ -283,6 +283,11 @@ void main() {
           socket.emit('SpacesModule.Occupancy.Changed', {'space_id': 'room'});
           settle();
           expect(reads('other').length, 1);
+          final disabledRoomReads = reads('room').length;
+          async.elapse(const Duration(seconds: 15));
+          settle();
+          expect(reads('room').length, disabledRoomReads);
+          expect(reads('other').length, 1);
           socket.connectionChanged(false);
           settle();
           expect(session.fresh, isFalse);

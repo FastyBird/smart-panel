@@ -144,7 +144,7 @@ describe('standalone SQLite property removal writer admission', () => {
 		});
 		// Attach rejection custody immediately while the original native operation is held.
 		void writer.catch(() => undefined);
-		await ready.promise;
+		await Promise.race([ready.promise, writer]);
 		const removal = service.remove(propertyId);
 		try {
 			await removal;
