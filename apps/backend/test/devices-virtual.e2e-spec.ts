@@ -4026,7 +4026,17 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 					const matches = admissions.filter((entry) => entry.query === query && entry.parameters === args[1]);
 					for (const entry of matches) admissions.splice(admissions.indexOf(entry), 1);
 					const admission = matches.length === 1 ? matches[0] : undefined;
-					const relevant = admission && (label === 'A' ? admission.selected : window);
+					// Retain the original first B statement plus the exact statement classes verified below.
+					// Forward every catalog/readback callback unchanged without spending proof capacity on it.
+					const proofQuery =
+						label === 'A'
+							? query === 'COMMIT' || /^(INSERT|UPDATE) .*"devices_virtual_thermostat_runtime"/.test(query)
+							: !bRunner ||
+								(admission?.runner === bRunner &&
+									(/^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)\b/.test(query) ||
+										query.includes('FROM "devices_module_channels_properties"') ||
+										/^UPDATE "devices_module_channels"/.test(query)));
+					const relevant = admission && proofQuery && (label === 'A' ? admission.selected : window);
 					const record = (edge: string, error?: unknown) => {
 						if (!relevant) return;
 						if (facts.length === 256) {

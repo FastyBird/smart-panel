@@ -7,7 +7,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/com
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
+import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -1513,7 +1513,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 						// Capture property entity before removal to preserve ID for event emission
 						const propertyForEvent = { ...property };
 
-						await manager.remove(property);
+						// beforeRemove subscribers read the catalog. A standalone deferred transaction
+						// could acquire a read lock and then fail to upgrade while another connection writes.
+						// Reserve the writer before those reads; borrowed managers keep their original owner.
+						if (standalone && manager === this.dataSource.manager && this.dataSource instanceof SqliteDataSource)
+							await this.dataSource.transactionWithWriteIntent((scoped) => scoped.remove(property));
+						else await manager.remove(property);
 
 						this.logger.log(`Successfully removed property with id=${id}`);
 
