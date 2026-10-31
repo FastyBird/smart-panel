@@ -5,6 +5,11 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
+import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -12,6 +17,49 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/w
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/occupancy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+// Deliver events to the handlers registered by the real plugin module.
+class OccupancySocket extends SocketService {
+  final handlers = <String, void Function(String, Map<String, dynamic>)>{};
+  final connections = <void Function(bool)>[];
+  bool connected = true;
+
+  @override
+  bool get isConnected => connected;
+  @override
+  void registerEventHandler(
+    String event,
+    void Function(String, Map<String, dynamic>) callback,
+  ) {
+    handlers[event] = callback;
+  }
+
+  @override
+  void unregisterEventHandler(
+    String event,
+    void Function(String, Map<String, dynamic>) callback,
+  ) {
+    if (handlers[event] == callback) handlers.remove(event);
+  }
+
+  @override
+  void addConnectionListener(void Function(bool) listener) =>
+      connections.add(listener);
+  @override
+  void removeConnectionListener(void Function(bool) listener) =>
+      connections.remove(listener);
+
+  void emit(String event, Map<String, dynamic> payload) {
+    handlers[SpacesModuleConstants.moduleWildcardEvent]!(event, payload);
+  }
+
+  void connectionChanged(bool value) {
+    connected = value;
+    for (final listener in connections.toList()) {
+      listener(value);
+    }
+  }
+}
 
 class OccupancyAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
@@ -28,6 +76,27 @@ class OccupancyAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (options.path == '/modules/spaces/spaces') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': <Map<String, dynamic>>[],
+          'status': 'success',
+          'timestamp': '2026-10-31T00:00:00Z',
+          'request_id': 'occupancy-spaces',
+          'path': options.path,
+          'method': options.method,
+          'metadata': {
+            'request_duration_ms': 1,
+            'server_time': '2026-10-31T00:00:00Z',
+            'cpu_usage': 0,
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
     entered?.complete();
     entered = null;
     final data = <String, dynamic>{
@@ -152,7 +221,7 @@ void main() {
     });
   });
   test(
-    'disabled sessions skip periodic reads but events and reconnect discover re-enablement',
+    'disabled sessions skip periodic reads but production events and reconnect discover re-enablement',
     () {
       fakeAsync((async) {
         void settle() {
@@ -162,35 +231,68 @@ void main() {
         }
 
         adapter.enabled = false;
-        final registry = OccupancyRegistry(dio: dio);
+        final socket = OccupancySocket();
+        final intents = IntentsRepository();
+        locator.registerSingleton<IntentsRepository>(intents);
+        final module = SpacesHomeControlPluginService(
+          apiClient: ApiClient(dio),
+          socketService: socket,
+          dio: dio,
+        );
+        var initialized = false;
+        module.initialize().then((_) => initialized = true);
+        settle();
+        expect(initialized, isTrue);
+        adapter.requests.clear();
+        final registry = locator<OccupancyRegistry>();
         final session = registry.create();
-        session.bind('room');
-        settle();
-        expect(adapter.requests.length, 1);
-        async.elapse(const Duration(minutes: 1));
-        settle();
-        expect(adapter.requests.length, 1);
-        adapter.enabled = true;
-        // The production occupancy-change event explicitly refreshes the affected room.
-        registry.refresh('room');
-        settle();
-        expect(session.state!.enabled, isTrue);
-        expect(adapter.requests.length, 2);
-        async.elapse(const Duration(seconds: 15));
-        settle();
-        expect(adapter.requests.length, 3);
-        adapter.enabled = false;
-        registry.refresh('room');
-        settle();
-        registry.connectionChanged(false);
-        settle();
-        adapter.enabled = true;
-        registry.connectionChanged(true);
-        settle();
-        expect(session.state!.enabled, isTrue);
-        expect(adapter.requests.length, 5);
-        registry.release(session);
-        registry.dispose();
+        try {
+          session.bind('room');
+          settle();
+          expect(session.fresh, isTrue);
+          expect(session.state!.enabled, isFalse);
+          expect(adapter.requests.length, 1);
+          async.elapse(const Duration(minutes: 1));
+          settle();
+          expect(adapter.requests.length, 1);
+          adapter.enabled = true;
+          socket.emit('SpacesModule.Occupancy.Changed', {'space_id': 'room'});
+          settle();
+          expect(session.state!.enabled, isTrue);
+          expect(adapter.requests.length, 2);
+          expect(
+            adapter.requests.last.path,
+            '/modules/spaces/spaces/room/occupancy/state',
+          );
+          async.elapse(const Duration(seconds: 15));
+          settle();
+          expect(adapter.requests.length, 3);
+          adapter.enabled = false;
+          socket.emit('SpacesModule.Occupancy.Changed', {'space_id': 'room'});
+          settle();
+          socket.connectionChanged(false);
+          settle();
+          adapter.enabled = true;
+          socket.connectionChanged(true);
+          settle();
+          expect(session.state!.enabled, isTrue);
+          expect(adapter.requests.length, 5);
+          expect(
+            adapter.requests.every(
+              (request) =>
+                  request.method == 'GET' &&
+                  request.path == '/modules/spaces/spaces/room/occupancy/state',
+            ),
+            isTrue,
+          );
+        } finally {
+          registry.release(session);
+          module.dispose();
+          locator.unregister<IntentsRepository>();
+          intents.dispose();
+        }
+        expect(socket.handlers, isEmpty);
+        expect(socket.connections, isEmpty);
       });
     },
   );
