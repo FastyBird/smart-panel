@@ -544,7 +544,7 @@
 		}
 	},
 	"occupancy": {
-		"title": "Ocupación de la habitación",
+		"title": "Ocupación",
 		"description": "Los sensores de movimiento o presencia en vivo seleccionados activan los modos configurados. Una entrada ausente u obsoleta no indica una habitación vacía. Se mantienen las protecciones del termostato.",
 		"status": "Estado observado",
 		"occupied": "Ocupada",
@@ -570,6 +570,8 @@
 		"loadFailed": "No se pudieron cargar los ajustes de ocupación.",
 		"saveUnconfirmed": "No se pudo confirmar el guardado. Puede haberse realizado; tu borrador se conserva. Actualiza para comprobarlo.",
 		"conflict": "Otra solicitud cambió los ajustes.",
-		"readOnly": "La edición requiere un propietario o administrador."
+		"readOnly": "La edición requiere un propietario o administrador.",
+		"supplementalFailed": "No se pudieron cargar los sensores o el estado de ocupación. Actualiza para reintentar.",
+		"unsupportedSpace": "Este tipo de espacio ya no admite ocupación. Se conserva el borrador para revisarlo; guardar y reanudar no están disponibles."
 	}
 }

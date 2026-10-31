@@ -2,7 +2,7 @@
 import { type Ref, defineComponent, h, nextTick } from 'vue';
 import { RouterView, createMemoryHistory, createRouter } from 'vue-router';
 
-import { ElMessageBox, ElSwitch } from 'element-plus';
+import { ElCheckboxGroup, ElMessageBox, ElSwitch } from 'element-plus';
 import createClient from 'openapi-fetch';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -373,11 +373,11 @@ describe('mounted configure activity mode support', () => {
 			baseUrl: 'http://localhost/api/v1',
 			fetch: async (request: Request) => {
 				requests.push(request);
-				const occupancySpace = new URL(request.url).pathname.match(/\/spaces\/([^/]+)\/occupancy/)?.[1];
+				const occupancySpace = new URL(request.url).pathname.match(/\/spaces\/([^/]+)\/occupancy(?:\/(?:state|sensors))?$/)?.[1];
 				if (request.method === 'GET' && occupancySpace) {
 					const pathname = new URL(request.url).pathname;
 					const data = pathname.endsWith('/sensors')
-						? []
+						? [{ property_id: 'sensor-1', device_id: 'device-1', label: 'Hall motion' }]
 						: pathname.endsWith('/state')
 							? {
 									space_id: occupancySpace,
@@ -409,7 +409,13 @@ describe('mounted configure activity mode support', () => {
 					await waitForSaveGate(request);
 					return new Response(
 						JSON.stringify({
-							data: { id: 'schedule', space_id: space(SpaceType.ROOM).id, created_at: '2026-11-02T00:00:00Z', ...body.data, revision: 2 },
+							data: {
+								id: new URL(request.url).pathname.endsWith('/occupancy') ? 'occupancy' : 'schedule',
+								space_id: space(SpaceType.ROOM).id,
+								created_at: '2026-11-02T00:00:00Z',
+								...body.data,
+								revision: 2,
+							},
 						}),
 						{ headers: { 'Content-Type': 'application/json' } }
 					);
@@ -478,19 +484,44 @@ describe('mounted configure activity mode support', () => {
 				expect(new URL(scheduleRequests[0]!.url).pathname).toBe(`/api/v1/modules/spaces/spaces/${space(type).id}/schedules`);
 			}
 			expect(requests.filter((request) => new URL(request.url).pathname.endsWith('/config'))).toHaveLength(supported ? 5 : 0);
-			expect(
-				requests.every(
-					(request) =>
-						request.method === 'GET' &&
-						(new URL(request.url).pathname.endsWith('/config') ||
-							new URL(request.url).pathname.endsWith('/schedules') ||
-							new URL(request.url).pathname.includes('/occupancy'))
-				)
-			).toBe(true);
+			const prefix = `/api/v1/modules/spaces/spaces/${space(type).id}`;
+			const allowedReads = new Set([
+				...['work', 'relax', 'sleep', 'entertainment', 'away'].map((mode) => `${prefix}/activity-modes/${mode}/config`),
+				`${prefix}/schedules`,
+				...['', '/state', '/sensors'].map((suffix) => `${prefix}/occupancy${suffix}`),
+			]);
+			expect(requests.every((request) => request.method === 'GET' && allowedReads.has(new URL(request.url).pathname))).toBe(true);
 			expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
 			wrapper.unmount();
 		}
 	);
+	it('preserves a canceled occupancy draft read-only across an authoritative unsupported type change', async () => {
+		const wrapper = render(SpaceType.ROOM);
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
+		try {
+			await flushPromises();
+			const section = wrapper.getComponent(SpaceOccupancySection);
+			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			await wrapper.setProps({ space: { ...space(SpaceType.ROOM), type: SpaceType.MASTER } });
+			await flushPromises();
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(wrapper.getComponent(SpaceOccupancySection).vm.$.uid).toBe(section.vm.$.uid);
+			expect(section.vm.hasUnsavedChanges).toBe(true);
+			expect(section.props('supported')).toBe(false);
+			expect(section.text()).toContain('spacesHomeControlPlugin.occupancy.unsupportedSpace');
+			expect(section.get('[data-testid="occupancy-save"]').attributes('disabled')).toBeDefined();
+			expect(wrapper.props('space').type).toBe(SpaceType.MASTER);
+			confirm.mockResolvedValue('confirm' as Awaited<ReturnType<typeof ElMessageBox.confirm>>);
+			await wrapper.setProps({ space: space(SpaceType.ROOM) });
+			await wrapper.setProps({ space: { ...space(SpaceType.ROOM), type: SpaceType.MASTER } });
+			await flushPromises();
+			expect(wrapper.findComponent(SpaceOccupancySection).exists()).toBe(false);
+		} finally {
+			wrapper.unmount();
+			confirm.mockRestore();
+		}
+	});
 	it.each(['schedule', 'occupancy'])('guards keyed replacement and departure before discarding unsaved %s settings', async (target) => {
 		const Selected = target === 'schedule' ? SpaceModeScheduleSection : SpaceOccupancySection;
 		mocks.realRouter = true;
@@ -594,7 +625,7 @@ describe('mounted configure activity mode support', () => {
 			mocks.isLGDevice = false;
 		}
 	});
-	it('waits for the original in-flight schedule save before completing navigation', async () => {
+	it.each(['schedule', 'occupancy'])('waits for the original in-flight %s save before completing navigation', async (target) => {
 		mocks.realRouter = true;
 		const initial = space(SpaceType.ROOM).id;
 		const router = createRouter({
@@ -616,10 +647,11 @@ describe('mounted configure activity mode support', () => {
 		});
 		try {
 			await flushPromises();
-			const section = wrapper.getComponent(SpaceModeScheduleSection);
+			const section = wrapper.getComponent(target === 'schedule' ? SpaceModeScheduleSection : SpaceOccupancySection);
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			if (target === 'occupancy') section.getComponent(ElCheckboxGroup).vm.$emit('update:modelValue', ['sensor-1']);
 			await flushPromises();
-			await section.get('[data-testid="schedule-save"]').trigger('click');
+			await section.get(`[data-testid="${target}-save"]`).trigger('click');
 			await flushPromises();
 			expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
 			let navigated = false;

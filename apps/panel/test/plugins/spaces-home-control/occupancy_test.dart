@@ -151,6 +151,49 @@ void main() {
       async.flushMicrotasks();
     });
   });
+  test(
+    'disabled sessions skip periodic reads but events and reconnect discover re-enablement',
+    () {
+      fakeAsync((async) {
+        void settle() {
+          async.flushMicrotasks();
+          async.elapse(Duration.zero);
+          async.flushMicrotasks();
+        }
+
+        adapter.enabled = false;
+        final registry = OccupancyRegistry(dio: dio);
+        final session = registry.create();
+        session.bind('room');
+        settle();
+        expect(adapter.requests.length, 1);
+        async.elapse(const Duration(minutes: 1));
+        settle();
+        expect(adapter.requests.length, 1);
+        adapter.enabled = true;
+        // The production occupancy-change event explicitly refreshes the affected room.
+        registry.refresh('room');
+        settle();
+        expect(session.state!.enabled, isTrue);
+        expect(adapter.requests.length, 2);
+        async.elapse(const Duration(seconds: 15));
+        settle();
+        expect(adapter.requests.length, 3);
+        adapter.enabled = false;
+        registry.refresh('room');
+        settle();
+        registry.connectionChanged(false);
+        settle();
+        adapter.enabled = true;
+        registry.connectionChanged(true);
+        settle();
+        expect(session.state!.enabled, isTrue);
+        expect(adapter.requests.length, 5);
+        registry.release(session);
+        registry.dispose();
+      });
+    },
+  );
   test('releasing the final page session stops its periodic reads', () {
     fakeAsync((async) {
       final registry = OccupancyRegistry(dio: dio);

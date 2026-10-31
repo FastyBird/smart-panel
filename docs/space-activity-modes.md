@@ -186,7 +186,7 @@ are not automatically retried under a new identity. Per-domain results still des
 than physical convergence.
 
 The Panel shows a localized occupancy indicator above the room domains, with automatic/manual precedence.
-Its page-owned read model refreshes on events, reconnect and periodic reads. Unavailable/stale state appears
+Its page-owned read model refreshes on events, reconnect and periodic reads. Fresh disabled sessions skip periodic reads; occupancy-change events and reconnection refetch them to discover re-enablement. Unavailable/stale state appears
 Unknown; a known disabled configuration hides the indicator. Panel occupancy display does not issue commands.
 Recently Occupied/Extended Vacant are illustrative future extensions, not additional states in this implementation.
 Installed-equipment behavior and release qualification remain separate acceptance gates.

@@ -92,9 +92,10 @@
 						:space-id="props.space.id"
 					/>
 					<space-occupancy-section
-						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
+						v-if="occupancyEditorSpaceId === props.space.id"
 						ref="occupancySectionRef"
 						:space-id="props.space.id"
+						:supported="occupancySupported"
 					/>
 				</el-scrollbar>
 			</el-tab-pane>
@@ -266,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
@@ -325,10 +326,12 @@ const showAddDisplayDialog = ref<boolean>(false);
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
 const remoteFormChanged = ref<boolean>(false);
 const scheduleSectionRef = ref<InstanceType<typeof SpaceModeScheduleSection> | null>(null);
+const occupancySupported = computed(() => [SpaceType.ROOM, SpaceType.ZONE].includes(props.space.type));
+const occupancyEditorSpaceId = ref<string | null>(null);
+let occupancyTypeGeneration = 0;
 const occupancySectionRef = ref<InstanceType<typeof SpaceOccupancySection> | null>(null);
 // This route survives the keyed child replacement on a space-id change: ask before it commits.
-const confirmScheduleDiscard = async (): Promise<boolean> => {
-	const sections = [scheduleSectionRef.value, occupancySectionRef.value];
+const confirmScheduleDiscard = async (sections = [scheduleSectionRef.value, occupancySectionRef.value]): Promise<boolean> => {
 	await Promise.all(sections.map((section) => section?.waitForSave()));
 	if (!sections.some((section) => section?.hasUnsavedChanges)) return true;
 	try {
@@ -342,8 +345,23 @@ const confirmScheduleDiscard = async (): Promise<boolean> => {
 		return false;
 	}
 };
-onBeforeRouteLeave(confirmScheduleDiscard);
+onBeforeRouteLeave(() => confirmScheduleDiscard());
 onBeforeRouteUpdate((to, from) => to.params.id === from.params.id || confirmScheduleDiscard());
+// A server-side type change is authoritative. Retain the draft read-only until the user agrees to discard it.
+watch(
+	() => [props.space.id, props.space.type] as const,
+	([id]) => {
+		const generation = ++occupancyTypeGeneration;
+		if (occupancySupported.value) occupancyEditorSpaceId.value = id;
+		else if (occupancyEditorSpaceId.value === id) {
+			void confirmScheduleDiscard([occupancySectionRef.value]).then((discard) => {
+				if (discard && generation === occupancyTypeGeneration) occupancyEditorSpaceId.value = null;
+			});
+		} else occupancyEditorSpaceId.value = null;
+	},
+	{ immediate: true, flush: 'sync' }
+);
+onScopeDispose(() => occupancyTypeGeneration++);
 
 const isSpaceEditRoute = computed<boolean>(
 	(): boolean => route.matched.find((matched) => matched.name === PluginRouteNames.SPACE_EDIT) !== undefined

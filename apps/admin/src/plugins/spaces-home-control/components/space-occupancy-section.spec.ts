@@ -41,6 +41,10 @@ let conflict: boolean;
 let loseResponse: boolean;
 let manualOverride: boolean;
 let resumes: number;
+let resumeBodies: unknown[];
+let resumeConflict: boolean;
+let failConfiguration: boolean;
+let failSupplemental: 'sensors' | 'state' | null;
 let wrappers: ReturnType<typeof mount>[];
 const render = (locale: keyof typeof locales = 'en-US') => {
 	const wrapper = mount(SpaceOccupancySection, {
@@ -60,6 +64,10 @@ beforeEach(() => {
 	loseResponse = false;
 	manualOverride = false;
 	resumes = 0;
+	resumeBodies = [];
+	resumeConflict = false;
+	failConfiguration = false;
+	failSupplemental = null;
 	wrappers = [];
 	harness.role = 'owner';
 	harness.client = createClient<paths>({
@@ -68,7 +76,9 @@ beforeEach(() => {
 			const path = new URL(request.url).pathname;
 			if (request.method === 'POST' && path.endsWith('/resume')) {
 				resumes++;
+				resumeBodies.push(await request.json());
 				stored.revision++;
+				if (resumeConflict) return json(null, 409);
 				manualOverride = false;
 				return new Promise<never>((_, reject) => {
 					request.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
@@ -88,6 +98,7 @@ beforeEach(() => {
 					});
 				return json(stored);
 			}
+			if (failSupplemental && path.endsWith('/' + failSupplemental)) throw new Error('Supplemental request failed');
 			if (path.endsWith('/sensors')) return json([{ property_id: sensor, device_id: 'device', label: 'Office motion' }]);
 			if (path.endsWith('/state'))
 				return json({
@@ -99,7 +110,7 @@ beforeEach(() => {
 					vacancy_remaining_seconds: null,
 					last_attempt_status: null,
 				});
-			return json(stored);
+			return failConfiguration ? json(null, 500) : json(stored);
 		},
 	});
 });
@@ -198,6 +209,7 @@ describe('occupancy editor using the actual API client', () => {
 		await flushPromises();
 		await wrapper.vm.waitForSave();
 		expect(resumes).toBe(1);
+		expect(resumeBodies).toEqual([{ data: { expected_revision: 1 } }]);
 		expect(stored.revision).toBe(2);
 		expect(wrapper.find('[data-testid="occupancy-resume"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain(en.occupancy.saveUnconfirmed);
@@ -205,6 +217,42 @@ describe('occupancy editor using the actual API client', () => {
 		await flushPromises();
 		expect(wrapper.text()).not.toContain(en.occupancy.saveUnconfirmed);
 		expect(resumes).toBe(1);
+	});
+	it('disables Resume if only observed state loaded and configuration failed', async () => {
+		manualOverride = true;
+		failConfiguration = true;
+		const wrapper = render();
+		await flushPromises();
+		expect(wrapper.get('[data-testid="occupancy-resume"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.text()).toContain(en.occupancy.loadFailed);
+		expect(resumes).toBe(0);
+	});
+	it.each(['sensors', 'state'] as const)('keeps the independent successful response when %s fails', async (failed) => {
+		manualOverride = true;
+		failSupplemental = failed;
+		const wrapper = render();
+		await flushPromises();
+		expect(wrapper.text()).toContain(en.occupancy.supplementalFailed);
+		expect(wrapper.text()).not.toContain(en.occupancy.loadFailed);
+		if (failed === 'sensors') expect(wrapper.find('[data-testid="occupancy-resume"]').exists()).toBe(true);
+		else {
+			expect(wrapper.get('[data-testid="occupancy-observed"]').text()).toContain(en.occupancy.unknown);
+			expect(wrapper.text()).toContain('Office motion');
+		}
+	});
+	it('reports a Resume revision conflict after reloading without claiming an unconfirmed save', async () => {
+		manualOverride = true;
+		resumeConflict = true;
+		const wrapper = render();
+		await flushPromises();
+		await wrapper.get('[data-testid="occupancy-resume"]').trigger('click');
+		await flushPromises();
+		await wrapper.vm.waitForSave();
+		expect(wrapper.text()).toContain(en.occupancy.conflict);
+		expect(wrapper.text()).not.toContain(en.occupancy.saveUnconfirmed);
+		expect(resumeBodies).toEqual([{ data: { expected_revision: 1 } }]);
+		expect(resumes).toBe(1);
+		expect(manualOverride).toBe(true);
 	});
 	it('blocks missing sensors and invalid timing, and keeps viewers read-only', async () => {
 		const wrapper = render();

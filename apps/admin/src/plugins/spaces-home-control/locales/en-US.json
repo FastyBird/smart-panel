@@ -544,7 +544,7 @@
 		}
 	},
 	"occupancy": {
-		"title": "Room occupancy",
+		"title": "Occupancy",
 		"description": "Selected live motion or presence sensors drive configured activity modes. Missing or stale input never means vacant. Thermostat safeguards remain in force.",
 		"status": "Observed state",
 		"occupied": "Occupied",
@@ -570,6 +570,8 @@
 		"loadFailed": "The occupancy settings could not be loaded.",
 		"saveUnconfirmed": "The save could not be confirmed. It may have been saved; your draft is preserved. Refresh to check.",
 		"conflict": "Settings changed in another request.",
-		"readOnly": "Occupancy editing requires an owner or administrator."
+		"readOnly": "Occupancy editing requires an owner or administrator.",
+		"supplementalFailed": "Occupancy sensors or observed state could not be loaded. Refresh to retry.",
+		"unsupportedSpace": "This space type no longer supports occupancy. Your draft is preserved for review; saving and Resume are unavailable."
 	}
 }

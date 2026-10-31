@@ -544,7 +544,7 @@
 		}
 	},
 	"occupancy": {
-		"title": "Raumbelegung",
+		"title": "Belegung",
 		"description": "Ausgewählte Live-Bewegungs- oder Präsenzsensoren steuern konfigurierte Aktivitäten. Fehlende oder veraltete Eingaben bedeuten keinen Leerstand. Thermostatschutz bleibt vorrangig.",
 		"status": "Erfasster Zustand",
 		"occupied": "Belegt",
@@ -570,6 +570,8 @@
 		"loadFailed": "Die Belegungseinstellungen konnten nicht geladen werden.",
 		"saveUnconfirmed": "Das Speichern konnte nicht bestätigt werden. Es könnte erfolgreich gewesen sein; Ihr Entwurf bleibt erhalten. Aktualisieren Sie zur Prüfung.",
 		"conflict": "Eine andere Anfrage hat die Einstellungen geändert.",
-		"readOnly": "Die Bearbeitung erfordert einen Eigentümer oder Administrator."
+		"readOnly": "Die Bearbeitung erfordert einen Eigentümer oder Administrator.",
+		"supplementalFailed": "Belegungssensoren oder erfasster Zustand konnten nicht geladen werden. Bitte aktualisieren.",
+		"unsupportedSpace": "Dieser Raumtyp unterstützt keine Belegung mehr. Der Entwurf bleibt zur Prüfung erhalten; Speichern und Fortsetzen sind nicht verfügbar."
 	}
 }

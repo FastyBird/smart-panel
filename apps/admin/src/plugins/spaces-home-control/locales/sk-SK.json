@@ -544,7 +544,7 @@
 		}
 	},
 	"occupancy": {
-		"title": "Obsadenosť miestnosti",
+		"title": "Obsadenosť",
 		"description": "Vybrané živé snímače pohybu alebo prítomnosti spúšťajú nastavené režimy. Chýbajúci ani zastaraný vstup neznamená prázdnu miestnosť. Ochrany termostatu majú naďalej prednosť.",
 		"status": "Zistený stav",
 		"occupied": "Obsadené",
@@ -570,6 +570,8 @@
 		"loadFailed": "Nastavenia obsadenosti sa nepodarilo načítať.",
 		"saveUnconfirmed": "Uloženie sa nepodarilo potvrdiť. Mohlo byť vykonané; koncept zostal zachovaný. Obnovte stav na overenie.",
 		"conflict": "Nastavenia zmenila iná požiadavka.",
-		"readOnly": "Nastavenia obsadenosti môže meniť vlastník alebo správca."
+		"readOnly": "Nastavenia obsadenosti môže meniť vlastník alebo správca.",
+		"supplementalFailed": "Senzory alebo zistený stav obsadenosti sa nepodarilo načítať. Skúste obnoviť stav.",
+		"unsupportedSpace": "Tento typ priestoru už nepodporuje obsadenosť. Koncept zostal zachovaný na kontrolu; ukladanie ani obnovenie automatiky nie je dostupné."
 	}
 }

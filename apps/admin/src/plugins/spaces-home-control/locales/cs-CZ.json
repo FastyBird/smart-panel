@@ -544,7 +544,7 @@
 		}
 	},
 	"occupancy": {
-		"title": "Obsazenost místnosti",
+		"title": "Obsazenost",
 		"description": "Vybrané živé senzory pohybu nebo přítomnosti spouštějí nastavené režimy. Chybějící ani zastaralý vstup neznamená prázdnou místnost. Ochrany termostatu mají nadále přednost.",
 		"status": "Zjištěný stav",
 		"occupied": "Obsazeno",
@@ -570,6 +570,8 @@
 		"loadFailed": "Nastavení obsazenosti se nepodařilo načíst.",
 		"saveUnconfirmed": "Uložení se nepodařilo potvrdit. Mohlo být provedeno; koncept zůstal zachován. Obnovte stav pro ověření.",
 		"conflict": "Nastavení změnil jiný požadavek.",
-		"readOnly": "Nastavení obsazenosti může měnit vlastník nebo správce."
+		"readOnly": "Nastavení obsazenosti může měnit vlastník nebo správce.",
+		"supplementalFailed": "Senzory nebo zjištěný stav obsazenosti se nepodařilo načíst. Zkuste obnovit stav.",
+		"unsupportedSpace": "Tento typ prostoru již nepodporuje obsazenost. Koncept zůstal zachován pro kontrolu; ukládání ani obnovení automatiky není dostupné."
 	}
 }

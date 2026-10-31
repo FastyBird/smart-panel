@@ -3639,20 +3639,23 @@ describe('devices-virtual plugin (e2e)', () => {
 		// creation path performs on itself — a guard that rejected them would leave the device with no
 		// connection state at all, which is a permanently offline device.
 		it('still synthesizes all four owned device_information properties, owned and read-only', async () => {
-			const informationProperties = await waitUntil(async () => {
-				const response = await authGet(`/modules/devices/devices/${ownedDeviceId}`);
-
-				if (response.status !== 200) {
-					return { done: false, value: [] as ChannelPropertyBody[] };
-				}
-
+			// Poll the channel collection, as in the nested-wiring synthesis case. The device-detail
+			// route has a shared throttle budget consumed by many preceding cases in this file.
+			const observed = await waitUntil(async () => {
+				const response = await authGet(`/modules/devices/devices/${ownedDeviceId}/channels`);
 				const properties =
-					(response.body as { data: DeviceBody }).data.channels.find(
-						(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
-					)?.properties ?? [];
-
-				return { done: properties.length >= 4, value: properties };
-			}, 'the four synthesized device_information properties appearing');
+					response.status === 200
+						? ((response.body as { data: ChannelBody[] }).data.find(
+								(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+							)?.properties ?? [])
+						: [];
+				return {
+					done: response.status === 200 && properties.length >= 4,
+					value: { httpStatus: response.status, properties },
+				};
+			}, 'the four synthesized device_information properties appearing through the channel collection');
+			expect(observed.httpStatus).toBe(200);
+			const informationProperties = observed.properties;
 
 			expect(informationProperties.map((property) => property.category).sort()).toEqual(
 				[
@@ -5305,6 +5308,23 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						JSON.stringify({
 							phase,
 							mutations,
+							// Keep the underlying server exception when an independent HTTP writer fails,
+							// rather than reporting only the outer Supertest status assertion.
+							nativeErrors: loggedErrors.mock.calls
+								.flatMap((args) =>
+									args
+										.filter((value): value is Error => value instanceof Error)
+										.map((error) => ({
+											name: error.name,
+											message: error.message,
+											stack: error.stack?.split('\n').slice(0, 8),
+											cause:
+												error.cause instanceof Error
+													? { name: error.cause.name, message: error.cause.message }
+													: typeof error.cause,
+										})),
+								)
+								.slice(-16),
 							errors: loggedErrors.mock.calls
 								.filter(([message]) => typeof message === 'string' && message.startsWith('Thermostat committed'))
 								.slice(-20)

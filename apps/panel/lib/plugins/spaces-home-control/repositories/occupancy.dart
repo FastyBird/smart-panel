@@ -131,7 +131,7 @@ class OccupancyRegistry {
     );
     _sessions.add(session);
     _timer ??= Timer.periodic(const Duration(seconds: 15), (_) {
-      if (_connected) refresh();
+      if (_connected) _refresh(null, true);
     });
     return session;
   }
@@ -144,11 +144,15 @@ class OccupancyRegistry {
     }
   }
 
-  Future<void> refresh([String? spaceId]) async {
+  Future<void> refresh([String? spaceId]) => _refresh(spaceId, false);
+
+  Future<void> _refresh(String? spaceId, bool periodic) async {
     if (_disposed || !_connected) return;
     await Future.wait([
       for (final session in _sessions.toList())
-        if (spaceId == null || session.spaceId == spaceId) session.refresh(),
+        if ((spaceId == null || session.spaceId == spaceId) &&
+            !(periodic && session.fresh && session.state?.enabled == false))
+          session.refresh(),
     ]);
   }
 

@@ -8,11 +8,13 @@
 			<h3 class="m-0">{{ text('title') }}</h3>
 		</template>
 		<p>{{ text('description') }}</p>
-		<p data-testid="occupancy-observed">{{ text('status') }}: {{ text(state?.running ? (state.status ?? 'unknown') : 'unknown') }}</p>
+		<p data-testid="occupancy-observed">
+			{{ text('status') }}: {{ text(props.supported !== false && state?.running ? (state.status ?? 'unknown') : 'unknown') }}
+		</p>
 		<p v-if="state?.manual_override">{{ text('manual') }}</p>
 		<el-button
 			v-if="state?.manual_override && canEdit"
-			:disabled="busy || loading || submitting || dirty"
+			:disabled="busy || loading || submitting || dirty || !configuration"
 			:loading="submitting"
 			data-testid="occupancy-resume"
 			@click="resume"
@@ -21,7 +23,7 @@
 		</el-button>
 		<el-alert
 			v-if="error || supplementalError"
-			:title="text(error ?? 'loadFailed')"
+			:title="text(error ?? 'supplementalFailed')"
 			type="warning"
 			:closable="false"
 		/>
@@ -33,7 +35,8 @@
 			{{ text('refresh') }}
 		</el-button>
 		<template v-if="draft">
-			<p v-if="!canEdit">{{ text('readOnly') }}</p>
+			<p v-if="props.supported === false">{{ text('unsupportedSpace') }}</p>
+			<p v-else-if="!canEdit">{{ text('readOnly') }}</p>
 			<el-form
 				label-position="top"
 				:disabled="!canEdit || busy || loading || submitting"
@@ -179,12 +182,14 @@ import { UsersModuleUserRole } from '../../../openapi.constants';
 import { ActivityMode } from '../composables/useSpaceActivityModes';
 import { type OccupancyDraft, occupancyDraft, useSpaceOccupancy } from '../composables/useSpaceOccupancy';
 
-const props = defineProps<{ spaceId: string }>();
+const props = withDefaults(defineProps<{ spaceId: string; supported?: boolean }>(), { supported: true });
 const { t } = useI18n();
 const text = (key: string) => t(`spacesHomeControlPlugin.occupancy.${key}`);
 const modeText = (mode: string) => t(`spacesHomeControlPlugin.activityModes.modes.${mode}`);
 const { profile } = useSession();
-const canEdit = computed(() => [UsersModuleUserRole.owner, UsersModuleUserRole.admin].includes(profile.value?.role as UsersModuleUserRole));
+const canEdit = computed(
+	() => props.supported !== false && [UsersModuleUserRole.owner, UsersModuleUserRole.admin].includes(profile.value?.role as UsersModuleUserRole)
+);
 const { client } = useBackend();
 const { configuration, loading, busy, error, load, save } = useSpaceOccupancy(computed(() => props.spaceId));
 const draft = ref<OccupancyDraft | null>(null);
@@ -259,14 +264,16 @@ const supplemental = async () => {
 	supplementalError.value = false;
 	const timeout = setTimeout(() => current.abort(), 10_000);
 	try {
-		const [available, observed] = await Promise.all([
+		const [available, observed] = await Promise.allSettled([
 			client.GET('/modules/spaces/spaces/{id}/occupancy/sensors', { params: { path: { id } }, signal: current.signal }),
 			client.GET('/modules/spaces/spaces/{id}/occupancy/state', { params: { path: { id } }, signal: current.signal }),
 		]);
 		if (token !== generation || id !== props.spaceId) return;
-		if (!available.data || !observed.data || observed.data.data.space_id !== id) throw new Error('loadFailed');
-		sensors.value = available.data.data;
-		state.value = observed.data.data;
+		const sensorData = available.status === 'fulfilled' ? available.value.data?.data : undefined;
+		const stateData = observed.status === 'fulfilled' ? observed.value.data?.data : undefined;
+		sensors.value = sensorData ?? [];
+		state.value = stateData?.space_id === id ? stateData : null;
+		supplementalError.value = !sensorData || !state.value;
 	} catch {
 		if (token === generation) {
 			supplementalError.value = true;
@@ -313,10 +320,10 @@ const submit = () => {
 	return submission;
 };
 const resume = () => {
-	if (!configuration.value || submission || busy.value || dirty.value) return;
+	if (!canEdit.value || !configuration.value || submission || busy.value || loading.value || dirty.value) return;
 	const id = props.spaceId;
 	const expected = configuration.value.revision;
-	let unconfirmed = false;
+	let outcomeError: 'conflict' | 'saveUnconfirmed' | null = null;
 	submitting.value = true;
 	submission = (async () => {
 		const abort = new AbortController();
@@ -328,9 +335,10 @@ const resume = () => {
 				body: { data: { expected_revision: expected } },
 				signal: abort.signal,
 			});
-			if (result.error) throw new Error('resumeFailed');
+			if (result.response.status === 409) outcomeError = 'conflict';
+			else if (result.error) throw new Error('resumeFailed');
 		} catch {
-			unconfirmed = true;
+			outcomeError = 'saveUnconfirmed';
 			if (!disposed && props.spaceId === id) error.value = 'saveUnconfirmed';
 		} finally {
 			clearTimeout(timeout);
@@ -339,7 +347,7 @@ const resume = () => {
 		if (!disposed && props.spaceId === id) {
 			await refresh();
 			// A GET can precede the original POST's late commit; it cannot confirm that response.
-			if (unconfirmed && !disposed && props.spaceId === id) error.value = 'saveUnconfirmed';
+			if (outcomeError && !disposed && props.spaceId === id) error.value = outcomeError;
 		}
 	})().finally(() => {
 		submission = null;

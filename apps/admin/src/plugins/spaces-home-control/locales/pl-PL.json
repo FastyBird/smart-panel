@@ -544,7 +544,7 @@
 		}
 	},
 	"occupancy": {
-		"title": "Obecność w pomieszczeniu",
+		"title": "Obecność",
 		"description": "Wybrane aktywne czujniki ruchu lub obecności uruchamiają skonfigurowane tryby. Brak lub nieaktualność odczytu nie oznacza pustego pokoju. Zabezpieczenia termostatu pozostają nadrzędne.",
 		"status": "Wykryty stan",
 		"occupied": "Zajęte",
@@ -570,6 +570,8 @@
 		"loadFailed": "Nie udało się wczytać ustawień obecności.",
 		"saveUnconfirmed": "Nie udało się potwierdzić zapisu. Mógł się powieść; szkic zachowano. Odśwież, aby sprawdzić.",
 		"conflict": "Inne żądanie zmieniło ustawienia.",
-		"readOnly": "Edycja wymaga właściciela lub administratora."
+		"readOnly": "Edycja wymaga właściciela lub administratora.",
+		"supplementalFailed": "Nie udało się wczytać czujników lub stanu obecności. Odśwież, aby spróbować ponownie.",
+		"unsupportedSpace": "Ten typ przestrzeni nie obsługuje już obecności. Zachowano wersję roboczą do sprawdzenia; zapis i wznowienie są niedostępne."
 	}
 }
