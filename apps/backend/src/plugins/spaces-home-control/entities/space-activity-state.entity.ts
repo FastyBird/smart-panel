@@ -52,6 +52,17 @@ export class SpaceActivityStateEntity extends SpaceRoleEntity {
 	@Column({ type: 'varchar', nullable: true })
 	activityActor: string;
 	@ApiProperty({
+		name: 'activity_requested_at',
+		description: 'Selection or clear admission time; null for legacy state',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		required: false,
+	})
+	@Expose({ name: 'activity_requested_at' })
+	@Column({ type: 'datetime', nullable: true })
+	activityRequestedAt: Date | null;
+	@ApiProperty({
 		name: 'activity_results',
 		description: 'Per-domain execution results, not actuator acknowledgement',
 		type: () => ActivityDomainResultModel,

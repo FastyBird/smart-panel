@@ -835,6 +835,7 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 		activationId: string | undefined,
 		work: (manager: EntityManager) => Promise<T>,
 		configId?: string,
+		prepareFinalValidation?: (manager: EntityManager) => () => Promise<void>,
 	): Promise<T> {
 		const release = this.blockAdmission(
 			configId !== undefined
@@ -860,11 +861,15 @@ export class SpaceClimateAutomationService implements OnModuleInit, OnModuleDest
 					callbackEntered = true;
 					const receipt = (native = observeSqliteOuterOutcome(manager));
 					registerSqliteCommitGuard(manager, () => owner() && producer.isCurrent());
+					// Capture before any query; close the caller image only after all borrowed ledger work settles.
+					const validate = prepareFinalValidation?.(manager);
 					await manager.query('UPDATE "spaces_module_space_roles" SET "id"="id" WHERE 0');
-					return this.ledger.inAdmittedManager(manager, receipt, async () => {
+					const value = await this.ledger.inAdmittedManager(manager, receipt, async () => {
 						await this.retireInManager(manager, spaceId, activationId, false, configId);
 						return work(manager);
 					});
+					await validate?.();
+					return value;
 				});
 			});
 		} catch (cause: unknown) {

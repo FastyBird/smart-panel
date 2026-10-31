@@ -495,5 +495,52 @@
 			"background": "De fondo",
 			"off": "Apagado"
 		}
+	},
+	"schedules": {
+		"title": "Programaciones horarias",
+		"description": "Elige cuándo se deben activar los modos de actividad existentes. Guardar no activa ningún modo.",
+		"enabled": "Activar la programación de este espacio",
+		"timezone": "Zona horaria",
+		"houseTimezone": "Usar la zona horaria de la vivienda",
+		"clockPolicy": "Las horas que no existen por el cambio de hora se omiten; las horas repetidas se ejecutan solo la primera vez. La selección manual dura hasta el siguiente evento. Los cambios perdidos no se repiten tras reiniciar.",
+		"weeklyView": "Programación semanal de actividades",
+		"entryDisabled": "Desactivado",
+		"empty": "No hay cambios programados. Añade el primero.",
+		"add": "Añadir cambio programado",
+		"save": "Guardar programación",
+		"discard": "Descartar cambios",
+		"unsaved": "Los cambios todavía no se han guardado.",
+		"conflictHelp": "Se ha cargado una configuración guardada más reciente. Tu borrador se conserva; descártalo expresamente para revisar la versión actual.",
+		"editEntry": "Cambio programado",
+		"mode": "Modo de actividad",
+		"time": "Hora local",
+		"pattern": "Repetición",
+		"daysLabel": "Días",
+		"entryEnabled": "Activar este evento",
+		"remove": "Eliminar del borrador",
+		"cancel": "Cancelar",
+		"apply": "Aplicar al borrador",
+		"loadFailed": "No se ha podido cargar la programación.",
+		"saveFailed": "No se ha podido guardar la programación.",
+		"saveUnconfirmed": "No se pudo confirmar el guardado. Puede haberse guardado; tu borrador se conserva. Actualiza para comprobar la programación guardada.",
+		"conflict": "Otra solicitud ha cambiado la programación.",
+		"invalid": "Comprueba la zona horaria y los horarios superpuestos.",
+		"refresh": "Actualizar",
+		"readOnly": "Solo los propietarios o administradores pueden editar las programaciones.",
+		"days": {
+			"0": "Dom",
+			"1": "Lun",
+			"2": "Mar",
+			"3": "Mié",
+			"4": "Jue",
+			"5": "Vie",
+			"6": "Sáb"
+		},
+		"patterns": {
+			"daily": "Todos los días",
+			"weekdays": "De lunes a viernes",
+			"weekend": "Sábado y domingo",
+			"custom": "Días seleccionados"
+		}
 	}
 }

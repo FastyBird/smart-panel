@@ -495,5 +495,52 @@
 			"background": "Hintergrund",
 			"off": "Aus"
 		}
+	},
+	"schedules": {
+		"title": "Zeitpläne",
+		"description": "Wählen Sie, wann vorhandene Aktivitätsmodi starten sollen. Speichern aktiviert keinen Modus.",
+		"enabled": "Zeitplanung für diesen Bereich aktivieren",
+		"timezone": "Zeitzone",
+		"houseTimezone": "Zeitzone des Hauses verwenden",
+		"clockPolicy": "Bei der Zeitumstellung entfallende Uhrzeiten werden übersprungen; doppelte Uhrzeiten werden nur beim ersten Auftreten ausgeführt. Manuelle Auswahl gilt bis zum nächsten Termin. Nach einem Neustart werden verpasste Änderungen nicht nachgeholt.",
+		"weeklyView": "Wöchentlicher Aktivitätsplan",
+		"entryDisabled": "Deaktiviert",
+		"empty": "Noch keine Änderungen geplant. Fügen Sie einen Termin hinzu.",
+		"add": "Geplante Änderung hinzufügen",
+		"save": "Zeitplan speichern",
+		"discard": "Änderungen verwerfen",
+		"unsaved": "Die Änderungen sind noch nicht gespeichert.",
+		"conflictHelp": "Neuere gespeicherte Einstellungen wurden geladen. Ihr Entwurf bleibt erhalten; verwerfen Sie ihn ausdrücklich, um die aktuelle Version zu prüfen.",
+		"editEntry": "Geplante Änderung",
+		"mode": "Aktivitätsmodus",
+		"time": "Ortszeit",
+		"pattern": "Wiederholung",
+		"daysLabel": "Tage",
+		"entryEnabled": "Diesen Termin aktivieren",
+		"remove": "Aus Entwurf entfernen",
+		"cancel": "Abbrechen",
+		"apply": "In Entwurf übernehmen",
+		"loadFailed": "Der Zeitplan konnte nicht geladen werden.",
+		"saveFailed": "Der Zeitplan konnte nicht gespeichert werden.",
+		"saveUnconfirmed": "Das Speichern konnte nicht bestätigt werden. Der Zeitplan wurde möglicherweise gespeichert; Ihr Entwurf bleibt erhalten. Aktualisieren Sie den gespeicherten Zeitplan zur Prüfung.",
+		"conflict": "Der Zeitplan wurde durch eine andere Anfrage geändert.",
+		"invalid": "Prüfen Sie die Zeitzone und sich überschneidende Termine.",
+		"refresh": "Aktualisieren",
+		"readOnly": "Nur Eigentümer oder Administratoren können Zeitpläne bearbeiten.",
+		"days": {
+			"0": "So",
+			"1": "Mo",
+			"2": "Di",
+			"3": "Mi",
+			"4": "Do",
+			"5": "Fr",
+			"6": "Sa"
+		},
+		"patterns": {
+			"daily": "Täglich",
+			"weekdays": "Montag bis Freitag",
+			"weekend": "Samstag und Sonntag",
+			"custom": "Ausgewählte Tage"
+		}
 	}
 }

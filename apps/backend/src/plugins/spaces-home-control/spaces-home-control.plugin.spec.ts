@@ -6,7 +6,7 @@ jest.mock('../../modules/devices/utils/schema.utils', () => ({
 }));
 
 describe('SpacesHomeControlPlugin', () => {
-	it('registers the suggestion heartbeat as an owner-enabled managed runtime', () => {
+	it('registers suggestions and activity scheduling as owner-enabled managed runtimes', () => {
 		const register = jest.fn();
 		const genericRegistry = {
 			register,
@@ -14,6 +14,7 @@ describe('SpacesHomeControlPlugin', () => {
 			registerPluginMetadata: jest.fn(),
 		};
 		const heartbeat = {};
+		const scheduler = {};
 		const plugin = new SpacesHomeControlPlugin(
 			genericRegistry as never,
 			genericRegistry as never,
@@ -29,10 +30,12 @@ describe('SpacesHomeControlPlugin', () => {
 			genericRegistry as never,
 			{} as never,
 			heartbeat as never,
+			scheduler as never,
 		);
 
 		plugin.onModuleInit();
 
 		expect(register).toHaveBeenCalledWith(heartbeat);
+		expect(register).toHaveBeenCalledWith(scheduler);
 	});
 });

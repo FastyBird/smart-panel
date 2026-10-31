@@ -1532,5 +1532,15 @@
   "dewPointCooling": "Ochrana chlazení před kondenzací",
   "dewPointSurface": "UUID místního čidla chlazeného povrchu",
   "dewPointSurfaceTemperature": "Teplota chlazeného povrchu (°C)",
-  "dewPointInstallation": "Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa."
+  "dewPointInstallation": "Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa.",
+  "space_schedule_title": "Časový plán",
+  "space_schedule_loading": "Načítání plánu…",
+  "space_schedule_clock_uncertain": "Čas se změnil; automatické spouštění je pozastaveno.",
+  "space_schedule_unavailable": "Plán je nedostupný nebo zastavený.",
+  "space_schedule_manual": "Ruční volba do příštího spuštění",
+  "space_schedule_current": "Aktuální režim podle plánu",
+  "space_schedule_next": "Příští změna",
+  "space_schedule_empty": "Žádná další položka.",
+  "space_schedule_last_failed": "Poslední plánovaný pokus selhal nebo byl přerušen. Zkontrolujte výsledky aktivity.",
+  "space_schedule_plan_only": "Plánované časy nepotvrzují stav zařízení."
 }

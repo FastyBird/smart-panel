@@ -4779,4 +4779,37 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dewPointInstallation =>
       'Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.';
+
+  @override
+  String get space_schedule_title => 'Schedule';
+
+  @override
+  String get space_schedule_loading => 'Loading schedule…';
+
+  @override
+  String get space_schedule_clock_uncertain =>
+      'Clock changed; automatic triggers are paused.';
+
+  @override
+  String get space_schedule_unavailable => 'Schedule unavailable or stopped.';
+
+  @override
+  String get space_schedule_manual => 'Manual selection until the next trigger';
+
+  @override
+  String get space_schedule_current => 'Planned current mode';
+
+  @override
+  String get space_schedule_next => 'Next change';
+
+  @override
+  String get space_schedule_empty => 'No upcoming entry.';
+
+  @override
+  String get space_schedule_last_failed =>
+      'The last scheduled attempt failed or was interrupted. Check activity results.';
+
+  @override
+  String get space_schedule_plan_only =>
+      'Planned times are not confirmation of device state.';
 }

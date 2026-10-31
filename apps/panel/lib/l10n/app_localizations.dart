@@ -8667,6 +8667,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.'**
   String get dewPointInstallation;
+
+  /// No description provided for @space_schedule_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get space_schedule_title;
+
+  /// No description provided for @space_schedule_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading schedule…'**
+  String get space_schedule_loading;
+
+  /// No description provided for @space_schedule_clock_uncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock changed; automatic triggers are paused.'**
+  String get space_schedule_clock_uncertain;
+
+  /// No description provided for @space_schedule_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule unavailable or stopped.'**
+  String get space_schedule_unavailable;
+
+  /// No description provided for @space_schedule_manual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual selection until the next trigger'**
+  String get space_schedule_manual;
+
+  /// No description provided for @space_schedule_current.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned current mode'**
+  String get space_schedule_current;
+
+  /// No description provided for @space_schedule_next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next change'**
+  String get space_schedule_next;
+
+  /// No description provided for @space_schedule_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming entry.'**
+  String get space_schedule_empty;
+
+  /// No description provided for @space_schedule_last_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The last scheduled attempt failed or was interrupted. Check activity results.'**
+  String get space_schedule_last_failed;
+
+  /// No description provided for @space_schedule_plan_only.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned times are not confirmation of device state.'**
+  String get space_schedule_plan_only;
 }
 
 class _AppLocalizationsDelegate

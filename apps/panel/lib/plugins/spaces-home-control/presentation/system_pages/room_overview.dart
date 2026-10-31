@@ -18,8 +18,9 @@ import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dar
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
-import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/activity_modes_section.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/space_mode_sections.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/mode_schedule.dart';
 import 'package:fastybird_smart_panel/modules/weather/presentation/weather_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -1077,8 +1078,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				else if (isPortrait)
 					SizedBox(height: AppSpacings.pMd),
 
-				if (locator.isRegistered<ActivityModesRegistry>())
-					ActivityModesSection(spaceId: _roomId),
+				if (locator.isRegistered<ActivityModesRegistry>() || locator.isRegistered<ModeScheduleRegistry>())
+					Flexible(child: SpaceModeSections(spaceId: _roomId)),
 
 				// Domain cards grid
 				if (model.domainCards.isNotEmpty)

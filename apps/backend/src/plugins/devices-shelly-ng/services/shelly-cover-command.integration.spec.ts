@@ -1839,7 +1839,10 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		events.on('DevicesModule.CompositeCommand.Progress', onProgress);
 		try {
 			transports[0].post = () => HOLD;
-			const pending = send('open', groupCommand, 400);
+			// Keep the held read alive beyond the parent deadline so expiry precedes the late reply.
+			transports[0].setRequestTimeoutForTest(10);
+			// Leave room for real SQLite admission under coverage before observing ACK-only deadline expiry.
+			const pending = send('open', groupCommand, 3000);
 			// Observe a side branch without replacing/awaiting pending or changing its rejection.
 			void pending.then(
 				(result) => {

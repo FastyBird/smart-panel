@@ -5,6 +5,7 @@ import { ConflictException, Injectable, OnApplicationBootstrap, Optional } from 
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { captureSqliteNoMutationWindow, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { activationStatus } from '../activity/activity-result.utils';
 import {
@@ -15,7 +16,10 @@ import {
 } from '../activity/space-activity.constants';
 import { SpaceActivityConfigEntity } from '../entities/space-activity-config.entity';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
+import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity';
 import { ActivityDomainResultModel } from '../models/activity-result.model';
+import { MINUTE_MS } from '../schedule/schedule-time';
+import { ScheduledActivityAdmission } from '../schedule/space-mode-schedule.types';
 
 import { SpaceActivityConfigService } from './space-activity-config.service';
 import { SpaceActivityDomainsService } from './space-activity-domains.service';
@@ -74,7 +78,9 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		mode: ActivityMode,
 		revision: number,
 		actor: string,
+		scheduledAdmission?: ScheduledActivityAdmission,
 	): Promise<SpaceActivityStateEntity | null> {
+		const scheduled = scheduledAdmission ? Object.freeze({ ...scheduledAdmission }) : null;
 		if (this.running.has(spaceId))
 			throw new ConflictException('Space activity activation is in progress; retry after completion');
 		this.running.add(spaceId);
@@ -92,26 +98,112 @@ export class SpaceModeService implements OnApplicationBootstrap {
 				activityActor: actor,
 				activityResults: [],
 			};
+			const prepareScheduledValidation = scheduled
+				? (manager: EntityManager) => {
+						const nativeWindow = captureSqliteNoMutationWindow(
+							manager,
+							() =>
+								scheduled.isCurrent() &&
+								Date.now() >= scheduled.occursAt &&
+								Date.now() < scheduled.occursAt + MINUTE_MS,
+						);
+						return async () => {
+							// Every required write has settled. Final evidence reads and COMMIT may not issue new DML.
+							nativeWindow.beginFinalValidation();
+							const admitted = await manager.query<{ id: string }[]>(
+								`
+						SELECT s.id FROM spaces_home_control_mode_schedules s
+						JOIN spaces_module_spaces p ON p.id = s.spaceId
+						JOIN spaces_module_space_roles c ON c.id = ? AND c.spaceId = s.spaceId
+						JOIN spaces_module_space_roles a ON a.spaceId = s.spaceId AND a.activationId = ?
+						WHERE s.id = ? AND s.spaceId = ? AND s.revision = ? AND s.enabled = 1
+						AND s.pendingOccurrenceId = ? AND s.lastScheduledActivationId = ?
+						AND s.lastTriggerPriorActivationId IS ? AND s.lastAttemptStatus = 'started'
+						AND a.selectedActivityMode = ? AND a.selectedActivityRevision = ? AND a.activityStatus = 'activating' AND a.activityActor = ?
+						AND c.activityRevision = ? AND c.activityEnabled = 1 AND p.type IN ('room','zone')`,
+								[
+									config.id,
+									activationId,
+									scheduled.scheduleId,
+									spaceId,
+									scheduled.revision,
+									scheduled.occurrenceId,
+									activationId,
+									scheduled.previousActivationId,
+									mode,
+									revision,
+									actor,
+									revision,
+								],
+							);
+							if (admitted.length !== 1) throw new ConflictException('Scheduled admission changed before COMMIT');
+							nativeWindow.applied();
+						};
+					}
+				: undefined;
 			const start = async (manager: EntityManager) => {
 				const currentRepository = manager.getRepository(SpaceActivityStateEntity);
-				if (prior) {
-					const started = await currentRepository
+				const admittedValues = { ...values, activityRequestedAt: new Date() };
+				const checkScheduledTime = () => {
+					if (!scheduled) return;
+					const now = Date.now();
+					if (!scheduled.isCurrent() || now < scheduled.occursAt || now >= scheduled.occursAt + MINUTE_MS)
+						throw new ConflictException('Scheduled occurrence is no longer current');
+				};
+				if (scheduled) {
+					checkScheduledTime();
+					registerSqliteCommitGuard(
+						manager,
+						() =>
+							scheduled.isCurrent() && Date.now() >= scheduled.occursAt && Date.now() < scheduled.occursAt + MINUTE_MS,
+					);
+					if ((prior?.activationId ?? null) !== scheduled.previousActivationId)
+						throw new ConflictException('A newer activity request superseded this scheduled occurrence');
+					if (prior?.activityRequestedAt && new Date(prior.activityRequestedAt).getTime() >= scheduled.occursAt)
+						throw new ConflictException('A newer activity request superseded this scheduled occurrence');
+					const accepted = await manager
+						.getRepository(SpaceModeScheduleEntity)
 						.createQueryBuilder()
 						.update()
-						.set(values)
+						.set({ lastScheduledActivationId: activationId, lastAttemptStatus: 'started' })
+						.where(
+							'id = :id AND spaceId = :spaceId AND revision = :revision AND enabled = 1 AND pendingOccurrenceId = :occurrence',
+							{ id: scheduled.scheduleId, spaceId, revision: scheduled.revision, occurrence: scheduled.occurrenceId },
+						)
+						.andWhere('lastTriggerPriorActivationId IS :previous', { previous: scheduled.previousActivationId })
+						.execute();
+					if (accepted.affected !== 1) throw new ConflictException('Scheduled configuration or occurrence changed');
+					checkScheduledTime();
+				}
+				if (prior) {
+					const query = currentRepository
+						.createQueryBuilder()
+						.update()
+						.set(admittedValues)
 						.where('id = :id', { id: prior.id })
 						.andWhere(
 							'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
 							{ configId: config.id, revision },
-						)
-						.execute();
+						);
+					if (scheduled)
+						query.andWhere('activationId IS :previousActivation', {
+							previousActivation: scheduled.previousActivationId,
+						});
+					const started = await query.execute();
 					if (started.affected !== 1) throw new ConflictException('Activity configuration changed');
 				} else {
 					// Lifecycle FK + uniqueness prevents resurrecting removed spaces or creating multiple active rows.
-					await currentRepository.save(currentRepository.create({ spaceId, ...values }));
+					await currentRepository.save(currentRepository.create({ spaceId, ...admittedValues }));
 				}
 			};
-			if (this.climateAutomation) await this.climateAutomation.mutate(spaceId, undefined, start);
+			if (this.climateAutomation)
+				await this.climateAutomation.mutate(spaceId, undefined, start, undefined, prepareScheduledValidation);
+			else if (prepareScheduledValidation)
+				await this.dataSource.transaction(async (manager) => {
+					const validate = prepareScheduledValidation(manager);
+					await start(manager);
+					await validate();
+				});
 			else await start(this.dataSource.manager);
 			const identity: SpaceActivationIdentity = {
 				spaceId,
@@ -174,6 +266,7 @@ export class SpaceModeService implements OnApplicationBootstrap {
 					activationId: randomUUID(),
 					activityStatus: ActivityActivationStatus.DEACTIVATED,
 					activityActor: actor,
+					activityRequestedAt: new Date(),
 					activityResults: [],
 				},
 			);

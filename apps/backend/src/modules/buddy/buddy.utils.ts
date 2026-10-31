@@ -1,12 +1,20 @@
 import { ConfigService } from '../config/services/config.service';
-import { SystemConfigModel } from '../system/models/config.model';
-import { SYSTEM_MODULE_NAME } from '../system/system.constants';
+import { getConfigTimezone as getHouseTimezone } from '../system/utils/timezone.utils';
 
 import {
 	BuddyProviderTimeoutException,
 	BuddySttProviderTimeoutException,
 	BuddyTtsProviderTimeoutException,
 } from './buddy.exceptions';
+
+/** Preserve Buddy's best-effort pattern timezone without weakening scheduled activation. */
+export function getConfigTimezone(configService: ConfigService): string {
+	try {
+		return getHouseTimezone(configService);
+	} catch {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone;
+	}
+}
 
 /**
  * Race a promise against a timeout. If the timeout fires first, abort the
@@ -143,20 +151,6 @@ export function formatIntentLabel(intentType: string): string {
 	}
 
 	return labels[intentType];
-}
-
-/**
- * Get the configured house timezone from system config.
- * Falls back to the system's default timezone.
- */
-export function getConfigTimezone(configService: ConfigService): string {
-	try {
-		const config = configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
-
-		return config.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-	} catch {
-		return Intl.DateTimeFormat().resolvedOptions().timeZone;
-	}
 }
 
 /**

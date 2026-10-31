@@ -4,6 +4,15 @@ import { ThirdPartyDeviceEntity } from '../../../plugins/devices-third-party/ent
 import { RoomSpaceEntity } from '../../../plugins/spaces-home-control/entities/room-space.entity';
 import { ZoneSpaceEntity } from '../../../plugins/spaces-home-control/entities/zone-space.entity';
 import { DeviceCategory } from '../../devices/devices.constants';
+import { DeviceZoneEntity } from '../../devices/entities/device-zone.entity';
+import {
+	ChannelControlEntity,
+	ChannelEntity,
+	ChannelPropertyEntity,
+	DeviceControlEntity,
+	DeviceEntity,
+} from '../../devices/entities/devices.entity';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { EnergySourceType } from '../energy.constants';
 import { EnergyDeltaEntity } from '../entities/energy-delta.entity';
 
@@ -34,7 +43,20 @@ describe('energy history across a room change', () => {
 		dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
-			entities: [__dirname + '/../../../**/*.entity.ts'],
+			// Keep the real device/space relation graph, without discovering every unrelated plugin schema.
+			entities: [
+				EnergyDeltaEntity,
+				SpaceEntity,
+				RoomSpaceEntity,
+				ZoneSpaceEntity,
+				DeviceEntity,
+				ThirdPartyDeviceEntity,
+				DeviceZoneEntity,
+				DeviceControlEntity,
+				ChannelEntity,
+				ChannelControlEntity,
+				ChannelPropertyEntity,
+			],
 			synchronize: true,
 		});
 
@@ -49,10 +71,10 @@ describe('energy history across a room change', () => {
 			{ id: 'office', name: 'Office', parentId: 'upstairs' },
 			{ id: 'bedroom', name: 'Bedroom', parentId: 'upstairs' },
 		] as never);
-	});
+	}, 30_000); // Allow bounded SQLite initialization under coverage; test bodies retain the default timeout.
 
 	afterEach(async () => {
-		await dataSource.destroy();
+		if (dataSource?.isInitialized) await dataSource.destroy();
 	});
 
 	const givenDevice = async (id: string, roomId: string | null): Promise<void> => {

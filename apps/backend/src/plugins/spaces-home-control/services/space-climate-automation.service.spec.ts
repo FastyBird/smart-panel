@@ -99,7 +99,7 @@ describe('activity climate producer and atomic lifecycle', () => {
 			installEvidence: '{}',
 			legacyDigest: null,
 		});
-	});
+	}, 30_000); // Full coordinated SQLite schema + fixture writes need a bounded setup budget under CI coverage.
 	afterEach(async () => {
 		configs.onModuleDestroy();
 		service.onModuleDestroy();

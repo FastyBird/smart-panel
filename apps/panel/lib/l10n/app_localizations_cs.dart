@@ -4819,4 +4819,37 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get dewPointInstallation =>
       'Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa.';
+
+  @override
+  String get space_schedule_title => 'Časový plán';
+
+  @override
+  String get space_schedule_loading => 'Načítání plánu…';
+
+  @override
+  String get space_schedule_clock_uncertain =>
+      'Čas se změnil; automatické spouštění je pozastaveno.';
+
+  @override
+  String get space_schedule_unavailable => 'Plán je nedostupný nebo zastavený.';
+
+  @override
+  String get space_schedule_manual => 'Ruční volba do příštího spuštění';
+
+  @override
+  String get space_schedule_current => 'Aktuální režim podle plánu';
+
+  @override
+  String get space_schedule_next => 'Příští změna';
+
+  @override
+  String get space_schedule_empty => 'Žádná další položka.';
+
+  @override
+  String get space_schedule_last_failed =>
+      'Poslední plánovaný pokus selhal nebo byl přerušen. Zkontrolujte výsledky aktivity.';
+
+  @override
+  String get space_schedule_plan_only =>
+      'Plánované časy nepotvrzují stav zařízení.';
 }

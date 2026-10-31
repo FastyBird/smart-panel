@@ -6,7 +6,7 @@ its qualified head `a68f76d` and the squash commit have the same tree `ebf3c05f`
 [All 14 checks passed](https://github.com/FastyBird/smart-panel/actions/runs/41079491039), including backend,
 Admin, Panel and ordinary E2E. The [completed current-source review reconciliation](https://github.com/FastyBird/smart-panel/pull/1498#issuecomment-6527804523)
 confirmed the corrections and repeated-conflict regression. These are software results, not installed qualification.
-This document reconciles existing evidence; no tests were rerun for this documentation change.
+The initial reconciliation used existing evidence without rerunning tests. The time-scheduling follow-up described below adds implementation and executable verification; its PR owns fresh CI/review gates.
 
 ## Software delivery state
 
@@ -17,8 +17,8 @@ This document reconciles existing evidence; no tests were rerun for this documen
 | Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Qualified POSITION/TILT commands and their obstruction/late/partial feedback acceptance             |
 | Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | #1452's unsupported commands and full native HomeKit acceptance remain separate                     |
 | Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | HA/Zigbee native units and installed equipment are separate                                         |
-| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Schedule/presence triggers remain #1458                                                             |
-| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Full reused schedule/presence acceptance remains open                                               |
+| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Presence/composed automation acceptance remains #1458; time schedules are delivered below           |
+| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Time schedules reuse that path in this follow-up; presence/occupancy acceptance remains open        |
 | Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                            |
 | Home Assistant native units (#1456)                                   | Not implemented                                                               | Actual adapter, authoring, requested/observed state and protocol tests                              |
 | Zigbee2MQTT native units (#1457)                                      | Not implemented                                                               | Actual model/expose-qualified adapter and protocol tests                                            |
@@ -42,14 +42,34 @@ security epic or require the optional camera input.
 | #1294 | Software complete        | Authenticated activation/configuration endpoints, revision/identity events and generated contracts, #1472                                                                       |
 | #1295 | Software complete        | Mounted Admin configuration, reset/preview/conflict handling and six locales, #1472/#1498                                                                                       |
 | #1296 | Software complete        | Panel selection, loading, truthful results, manual clear, reconnect and localization, #1472                                                                                     |
-| #1297 | Open                     | Persisted daily/weekday/per-day scheduling, timezone/DST gap/fold, restart/dedup and manual-until-next-trigger                                                                  |
-| #1298 | Open                     | Weekly Admin schedule editor, validation and enable/disable                                                                                                                     |
-| #1362 | Open                     | Panel current/next scheduled mode and manual override state; no Panel editor                                                                                                    |
+| #1297 | Software implementation  | Persisted weekly schedules, timezone/DST gap/fold, durable watermark/dedup and manual selection/clear until the next trigger; see scheduling evidence below                     |
+| #1298 | Software implementation  | Mounted weekly Admin editor with entry CRUD, per-space enablement/timezone, six locales, validation, CAS conflicts and space rebinding                                          |
+| #1362 | Software implementation  | Read-only Panel current/next plan and manual indication, transitions, unknown/unavailable states and owned refresh/disposal; no Panel editor                                    |
 | #1299 | Open                     | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
 | #1300 | Open                     | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
 
 #1293 is not a reason to rebuild the delivered bridge. Its remaining acceptance must use the existing adapters
 and their explicit availability outcomes. Schedules and presence stay with their own issues.
+
+## Time-scheduling follow-up (#1297, #1298, #1362)
+
+The scheduler reuses `SpaceModeService` and the existing governed climate adapter. It creates no second thermostat
+or presence engine. Default schedules are disabled/empty; climate mode names still imply no presets or temperatures.
+The configured preset and thermostat manual-hold cases execute through the real migrated AppModule and native ledger.
+#1458 remains open for presence/occupancy, unavailable-presence semantics and remaining final composition.
+
+| Acceptance boundary                                                                                     | Current source/test witnesses                                                                                              |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Weekday patterns, timezone, DST gap/first fold and half-hour transitions                                | [schedule clock](../apps/backend/src/plugins/spaces-home-control/schedule/schedule-time.spec.ts)                           |
+| Native claim dedup, manual selection/clear, restart without replay, clock rollback, disable/delete/stop | [scheduler integration](../apps/backend/src/plugins/spaces-home-control/services/space-mode-scheduler.integration.spec.ts) |
+| Disabled upgrade backfill, retained manual rows, reopen and space cascade                               | [migration 50 test](../apps/backend/src/migrations/__tests__/1000000000050-AddSpaceModeSchedules.spec.ts)                  |
+| Authentication, validation, configuration CAS and explicit preset/manual hold composition               | [activity/climate HTTP fixture](../apps/backend/test/space-climate-automation.e2e-spec.ts)                                 |
+| Actual weekly Admin editor, local draft CRUD, six locales, conflicts and space changes                  | [mounted schedule editor](../apps/admin/src/plugins/spaces-home-control/components/space-mode-schedule-section.spec.ts)    |
+| Panel planned state, manual indication, read-only transitions, disconnect and polling disposal          | [Panel schedule tests](../apps/panel/test/plugins/spaces-home-control/mode_schedule_test.dart)                             |
+
+[Execution policy and API](space-activity-modes.md#time-schedules) distinguish planned state, original activity
+admission and actual device convergence. These are software fixtures; published-alpha and installed-equipment gates
+remain separate. Historical RED/UNKNOWN evidence remains attached to its original source and is not erased by this work.
 
 ## Complete child acceptance and named evidence
 
