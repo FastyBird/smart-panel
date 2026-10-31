@@ -240,7 +240,7 @@ import {
 	ElSwitch,
 	vLoading,
 } from 'element-plus';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 import { useSession } from '../../../modules/auth/composables/useSession';
@@ -286,7 +286,16 @@ const valid = computed(() => {
 });
 let submission: Promise<void> | null = null;
 defineExpose({
-	hasUnsavedChanges: computed(() => dirty.value || editing.value),
+	hasUnsavedChanges: computed(
+		() =>
+			dirty.value ||
+			(editing.value &&
+				!!entry.value &&
+				!isEqual(
+					entry.value,
+					draft.value?.entries.find((item) => item.id === entry.value?.id)
+				))
+	),
 	waitForSave: () => submission ?? Promise.resolve(),
 });
 const canSave = computed(

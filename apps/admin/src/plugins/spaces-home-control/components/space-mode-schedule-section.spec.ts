@@ -104,6 +104,7 @@ describe('weekly scheduling editor with the actual API client', () => {
 			expect.objectContaining({
 				expected_revision: 1,
 				timezone: null,
+				enabled: false,
 				entries: [expect.objectContaining({ time: '19:30', days_of_week: [0, 6], enabled: true })],
 			}),
 		]);
@@ -114,6 +115,27 @@ describe('weekly scheduling editor with the actual API client', () => {
 		await wrapper.get('[data-testid="schedule-save"]').trigger('click');
 		await flushPromises();
 		expect(writes[1]).toMatchObject({ expected_revision: 2, entries: [] });
+	});
+	it('counts new and changed entries as unsaved, but not an unchanged open entry', async () => {
+		const wrapper = render();
+		await flushPromises();
+		expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+		await wrapper.get('[data-testid="schedule-add"]').trigger('click');
+		expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+		await wrapper.get('[data-testid="schedule-entry-apply"]').trigger('click');
+		await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+		await wrapper.get('tbody li button').trigger('click');
+		await flushPromises();
+		expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+		await wrapper.get('input[data-testid="schedule-entry-time"]').setValue('09:30');
+		expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+		await wrapper.get('input[data-testid="schedule-entry-time"]').setValue('08:00');
+		expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+		wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', true);
+		await flushPromises();
+		expect(wrapper.vm.hasUnsavedChanges).toBe(true);
 	});
 	it('preserves a conflicting draft until explicit discard and never retries a write', async () => {
 		const wrapper = render();

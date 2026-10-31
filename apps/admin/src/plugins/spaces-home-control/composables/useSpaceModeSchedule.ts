@@ -22,10 +22,11 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 	const busy = ref(false);
 	const error = ref<'loadFailed' | 'saveFailed' | 'conflict' | 'invalid' | null>(null);
 	let generation = 0;
+	let activeSave: AbortController | null = null;
 	const path = '/modules/spaces/spaces/{id}/schedules' as const;
 	const current = (id: string, token: number) => spaceId.value === id && token === generation;
-	const read = async (id: string) => {
-		const result = await client.GET(path, { params: { path: { id } } });
+	const read = async (id: string, signal?: AbortSignal) => {
+		const result = await client.GET(path, { params: { path: { id } }, signal });
 		if (result.error || !result.data?.data || result.data.data.space_id !== id) throw new Error('loadFailed');
 		return result.data.data;
 	};
@@ -50,8 +51,13 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 		const token = ++generation;
 		busy.value = true;
 		error.value = null;
+		const controller = new AbortController();
+		activeSave = controller;
+		// Include conflict reloads in the save deadline so route guards can always settle.
+		const timeout = setTimeout(() => controller.abort(), 30_000);
 		try {
 			const result = await client.PUT(path, {
+				signal: controller.signal,
 				params: { path: { id } },
 				body: { data: { ...cloneDeep(draft), timezone: draft.timezone ?? null, expected_revision: expectedRevision } },
 			});
@@ -59,7 +65,7 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 			if (result.response.status === 409) {
 				error.value = 'conflict';
 				try {
-					const row = await read(id);
+					const row = await read(id, controller.signal);
 					if (current(id, token)) configuration.value = row;
 				} catch {
 					if (current(id, token)) error.value = 'loadFailed';
@@ -77,6 +83,8 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 			if (current(id, token) && error.value !== 'conflict') error.value = 'saveFailed';
 			return null;
 		} finally {
+			clearTimeout(timeout);
+			if (activeSave === controller) activeSave = null;
 			if (current(id, token)) busy.value = false;
 		}
 	};
@@ -84,6 +92,8 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 		spaceId,
 		() => {
 			generation++;
+			activeSave?.abort();
+			activeSave = null;
 			configuration.value = null;
 			busy.value = false;
 			loading.value = false;
@@ -94,6 +104,7 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 	);
 	onScopeDispose(() => {
 		generation++;
+		activeSave?.abort();
 	});
 	return { configuration, loading, busy, error, load, save };
 };

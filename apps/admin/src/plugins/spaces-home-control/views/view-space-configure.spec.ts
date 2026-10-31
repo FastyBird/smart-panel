@@ -357,7 +357,18 @@ describe('mounted configure activity mode support', () => {
 				requests.push(request);
 				if (request.method === 'PUT') {
 					const body = await request.json();
-					if (mocks.saveGate) await mocks.saveGate;
+					if (mocks.saveGate) {
+						const gate = mocks.saveGate;
+						await new Promise<void>((resolve, reject) => {
+							request.signal.throwIfAborted();
+							const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+							request.signal.addEventListener('abort', abort, { once: true });
+							void gate.then(() => {
+								request.signal.removeEventListener('abort', abort);
+								resolve();
+							});
+						});
+					}
 					return new Response(
 						JSON.stringify({
 							data: { id: 'schedule', space_id: space(SpaceType.ROOM).id, created_at: '2026-11-02T00:00:00Z', ...body.data, revision: 2 },
@@ -582,6 +593,65 @@ describe('mounted configure activity mode support', () => {
 		} finally {
 			release();
 			wrapper.unmount();
+			confirm.mockRestore();
+			mocks.realRouter = false;
+			mocks.saveGate = null;
+		}
+	});
+	it('aborts a stalled save within 30 seconds and preserves the discard choice during navigation', async () => {
+		mocks.realRouter = true;
+		const initial = space(SpaceType.ROOM).id;
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/space/:id/plugin/configure', component: ViewSpaceConfigure, props: { space: space(SpaceType.ROOM) } },
+				{ path: '/elsewhere', component: defineComponent({ template: '<p>Elsewhere</p>' }) },
+			],
+		});
+		await router.push(`/space/${initial}/plugin/configure`);
+		const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
+			attachTo: document.body,
+			global: { plugins: [router], stubs: { teleport: false } },
+		});
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
+		let release!: () => void;
+		mocks.saveGate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		try {
+			await flushPromises();
+			const section = wrapper.getComponent(SpaceModeScheduleSection);
+			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			await section.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			const request = requests.find((request) => request.method === 'PUT')!;
+			let settled = false;
+			const navigation = router.push('/elsewhere').then(() => {
+				settled = true;
+			});
+			await vi.advanceTimersByTimeAsync(29_999);
+			expect(request.signal.aborted).toBe(false);
+			expect(settled).toBe(false);
+			expect(confirm).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(1);
+			await flushPromises();
+			await navigation;
+			expect(request.signal.aborted).toBe(true);
+			expect(settled).toBe(true);
+			expect(router.currentRoute.value.params.id).toBe(initial);
+			expect(section.vm.hasUnsavedChanges).toBe(true);
+			expect(section.text()).toContain('spacesHomeControlPlugin.schedules.saveFailed');
+			expect(confirm).toHaveBeenCalledTimes(1);
+			confirm.mockResolvedValue('confirm' as Awaited<ReturnType<typeof ElMessageBox.confirm>>);
+			await router.push('/elsewhere');
+			expect(router.currentRoute.value.path).toBe('/elsewhere');
+			expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+		} finally {
+			release();
+			wrapper.unmount();
+			vi.useRealTimers();
 			confirm.mockRestore();
 			mocks.realRouter = false;
 			mocks.saveGate = null;
