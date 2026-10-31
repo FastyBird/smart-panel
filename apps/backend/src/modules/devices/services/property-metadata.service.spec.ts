@@ -2,6 +2,7 @@ import { DataSource, InsertEvent, RemoveEvent, TransactionCommitEvent } from 'ty
 
 import { ConfigService } from '@nestjs/config';
 
+import { BaseEntity } from '../../../common/entities/base.entity';
 import { PermissionType } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
@@ -133,6 +134,39 @@ describe('PropertyMetadataService', () => {
 		service.onModuleDestroy();
 		expect(dataSource.subscribers).toEqual([unrelated]);
 	});
+	it('does not confuse a common BaseEntity ancestor with an eager plugin relation dependency', () => {
+		class Address extends BaseEntity {}
+		class AddressVariant extends Address {}
+		class ActivityState extends BaseEntity {}
+		Object.defineProperty(dataSource, 'entityMetadatas', {
+			value: [
+				{
+					inheritanceTree: [DeviceEntity, BaseEntity],
+					relations: [
+						{
+							isEager: true,
+							inverseEntityMetadata: {
+								target: Address,
+								inheritanceTree: [Address, BaseEntity],
+							},
+						},
+					],
+				},
+			],
+		});
+		const revision = service.getGeneration();
+		service.afterInsert({
+			metadata: { inheritanceTree: [ActivityState, BaseEntity] },
+			queryRunner: { isTransactionActive: false },
+		} as unknown as InsertEvent<unknown>);
+		expect(service.getGeneration()).toBe(revision);
+		service.afterInsert({
+			metadata: { inheritanceTree: [AddressVariant, Address, BaseEntity] },
+			queryRunner: { isTransactionActive: false },
+		} as unknown as InsertEvent<unknown>);
+		expect(service.getGeneration()).toBe(revision + 1);
+	});
+
 	it('preloads once, then refreshes only requested rows after invalidation', async () => {
 		await service.onModuleInit();
 		await service.findOne('property');

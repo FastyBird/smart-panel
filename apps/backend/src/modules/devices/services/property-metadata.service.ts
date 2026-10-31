@@ -215,7 +215,7 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 				entity.relations.some(
 					(relation) =>
 						relation.isEager &&
-						relation.inverseEntityMetadata.inheritanceTree.some((type) => metadata.inheritanceTree.includes(type)),
+						metadata.inheritanceTree.includes(relation.inverseEntityMetadata.target as typeof DeviceEntity),
 				),
 		);
 	}

@@ -32,6 +32,11 @@ export class DeviceConnectionStateService {
 
 	constructor(private readonly storageService: StorageService) {}
 
+	/** Cache-only check for synchronous admission guards. Missing state is unavailable. */
+	isCurrentlyOnline(deviceId: string): boolean {
+		return this.statusMap.get(deviceId)?.online === true;
+	}
+
 	/**
 	 * Returns the number of currently-registered devices that are online.
 	 *

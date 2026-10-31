@@ -4860,4 +4860,24 @@ class AppLocalizationsSk extends AppLocalizations {
   @override
   String get space_schedule_plan_only =>
       'Plánované časy nepotvrdzujú stav zariadenia.';
+
+  @override
+  String get space_occupancy_title => 'Obsadenosť miestnosti';
+
+  @override
+  String get space_occupancy_occupied => 'Obsadené';
+
+  @override
+  String get space_occupancy_vacant => 'Voľné';
+
+  @override
+  String get space_occupancy_unknown =>
+      'Obsadenosť je neznáma alebo nedostupná';
+
+  @override
+  String get space_occupancy_manual =>
+      'Ručný režim: automatika obsadenosti je pozastavená';
+
+  @override
+  String get space_occupancy_automatic => 'Automatika obsadenosti je zapnutá';
 }

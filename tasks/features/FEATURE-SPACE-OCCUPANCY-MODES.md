@@ -1,10 +1,11 @@
 # Task: Occupancy-based mode triggers
+
 ID: FEATURE-SPACE-OCCUPANCY-MODES
 Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: planned
+Status: done (software; this PR owns fresh CI/review gates)
 Tracking: #1287
 Issues: #1299 (state machine), #1300 (admin config)
 
@@ -17,6 +18,7 @@ I want rooms to automatically adjust when I enter or leave, saving energy when v
 ## 2. Context
 
 ### Existing Code References
+
 - **Space modes**: `FEATURE-SPACE-ACTIVITY-MODES` (dependency)
 - **Motion sensors**: Device spec includes motion detection
 - **Sensor aggregation**: `apps/backend/src/plugins/spaces-home-control/services/space-sensor-state.service.ts` already aggregates `motionDetected` / `occupancyDetected` per space; this is input level only, there is no occupancy state machine yet
@@ -24,24 +26,27 @@ I want rooms to automatically adjust when I enter or leave, saving energy when v
 - **Climate sensors**: Already used in climate domain
 
 ### Occupancy Detection Methods
+
 1. **Motion sensors** - Detect movement in space
 2. **Door sensors** - Detect entry/exit
 3. **Presence sensors** - mmWave, ultrasonic (more accurate)
 4. **Camera-based** - Person detection (consumed as an input only, via #1221; camera integration itself is out of scope)
 
 ### Occupancy States
-| State | Trigger | Typical Actions |
-|-------|---------|-----------------|
-| **Occupied** | Motion detected | Resume comfort mode |
-| **Recently Occupied** | No motion for 5 min | Keep current mode |
-| **Vacant** | No motion for 15 min | Energy saving mode |
-| **Extended Vacant** | No motion for 1 hour | Deep setback |
+
+| State                 | Trigger              | Typical Actions     |
+| --------------------- | -------------------- | ------------------- |
+| **Occupied**          | Motion detected      | Resume comfort mode |
+| **Recently Occupied** | No motion for 5 min  | Keep current mode   |
+| **Vacant**            | No motion for 15 min | Energy saving mode  |
+| **Extended Vacant**   | No motion for 1 hour | Deep setback        |
 
 ## 3. Scope
 
 **In scope**
 
 Backend:
+
 - Track occupancy state per space based on sensor data
 - Create `SpaceOccupancyService` for:
   - Aggregating sensor data
@@ -51,16 +56,19 @@ Backend:
 - Configure occupied/vacant modes per space
 
 Admin:
+
 - Enable/disable occupancy-based modes per space
 - Configure vacancy timeout
 - Select which sensors to use for occupancy
 - Configure occupied/vacant mode mapping
 
 Panel:
+
 - Show occupancy status indicator
 - Show when occupancy mode is active vs manual
 
 **Out of scope**
+
 - Person counting (how many people)
 - Person identification (who is present)
 - Cross-space tracking (following users between rooms)
@@ -68,20 +76,20 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Occupancy state is tracked per space (Occupied/Vacant)
-- [ ] Motion sensor events update occupancy state
-- [ ] Configurable vacancy timeout (default 15 min)
-- [ ] Vacant mode triggers after timeout expires
-- [ ] Motion detection returns space to Occupied state
-- [ ] Admin can enable/disable occupancy automation per space
-- [ ] Admin can configure which mode to use for Occupied/Vacant
-- [ ] Manual mode activation overrides occupancy automation
-- [ ] Panel shows occupancy indicator
-- [ ] Unit tests cover:
-  - [ ] State transitions
-  - [ ] Timeout behavior
-  - [ ] Multiple sensors in space
-  - [ ] Manual override behavior
+- [x] Occupancy state is tracked per space (Occupied/Vacant)
+- [x] Motion sensor events update occupancy state
+- [x] Configurable vacancy timeout (default 15 min)
+- [x] Vacant mode triggers after timeout expires
+- [x] Motion detection returns space to Occupied state
+- [x] Admin can enable/disable occupancy automation per space
+- [x] Admin can configure which mode to use for Occupied/Vacant
+- [x] Manual mode activation overrides occupancy automation
+- [x] Panel shows occupancy indicator
+- [x] Unit tests cover:
+  - [x] State transitions
+  - [x] Timeout behavior
+  - [x] Multiple sensors in space
+  - [x] Manual override behavior
 
 ## 5. Example scenarios
 
@@ -134,6 +142,7 @@ Then space becomes Vacant
 ## 7. Implementation hints
 
 ### Occupancy State Machine
+
 ```
                motion detected
          ┌─────────────────────────┐
@@ -148,6 +157,7 @@ Then space becomes Vacant
 ```
 
 ### Service Structure
+
 ```typescript
 @Injectable()
 export class SpaceOccupancyService {
@@ -190,6 +200,7 @@ export class SpaceOccupancyService {
 ```
 
 ### Configuration Entity
+
 ```typescript
 @Entity()
 export class SpaceOccupancyConfigEntity extends BaseEntity {
@@ -203,15 +214,16 @@ export class SpaceOccupancyConfigEntity extends BaseEntity {
   @Column({ default: 900000 }) // 15 minutes
   vacancyTimeoutMs: number;
 
-  @Column({ type: 'enum', enum: ActivityMode, nullable: true })
+  @Column({ type: "enum", enum: ActivityMode, nullable: true })
   occupiedMode?: ActivityMode; // null = restore previous
 
-  @Column({ type: 'enum', enum: ActivityMode, nullable: true })
+  @Column({ type: "enum", enum: ActivityMode, nullable: true })
   vacantMode?: ActivityMode; // null = no change
 }
 ```
 
 ### Admin UI Configuration
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Occupancy Automation                   [ON] │
@@ -236,3 +248,16 @@ export class SpaceOccupancyConfigEntity extends BaseEntity {
 - Keep changes scoped to this task and its `Scope`.
 - For each acceptance criterion, either implement it or explain why it's skipped.
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+
+## 9. Delivered software boundary
+
+The implemented states are Occupied, Vacant and fail-closed Unknown; the four-state table above is illustrative.
+Selected live motion/presence properties are the automation inputs. Door contacts alone are excluded, and camera
+integration remains optional. The Admin exposes sensor freshness, explicit manual-resume and conflict recovery;
+the Panel displays occupancy and manual/automatic precedence. See `docs/space-activity-modes.md#room-occupancy`
+for routes, lifecycle, restore identity and precedence contracts.
+
+Verification covers pure transitions/clock changes, multiple qualified inputs and unavailable evidence, native
+SQLite admission/rollback, manual revision fencing, upgrade/reopen/cascade, authenticated HTTP and composed
+thermostat precedence, localized Admin editing and Panel request/session ownership. Exact test outcomes and PR
+checks belong to the delivery record; no physical device or installed-equipment qualification is claimed here.

@@ -5027,5 +5027,11 @@
   "space_schedule_next": "Next change",
   "space_schedule_empty": "No upcoming entry.",
   "space_schedule_last_failed": "The last scheduled attempt failed or was interrupted. Check activity results.",
-  "space_schedule_plan_only": "Planned times are not confirmation of device state."
+  "space_schedule_plan_only": "Planned times are not confirmation of device state.",
+  "space_occupancy_title": "Room occupancy",
+  "space_occupancy_occupied": "Occupied",
+  "space_occupancy_vacant": "Vacant",
+  "space_occupancy_unknown": "Occupancy unknown or unavailable",
+  "space_occupancy_manual": "Manual mode: occupancy automation paused",
+  "space_occupancy_automatic": "Occupancy automation enabled"
 }

@@ -4895,4 +4895,23 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get space_schedule_plan_only =>
       'Planowane godziny nie potwierdzają stanu urządzeń.';
+
+  @override
+  String get space_occupancy_title => 'Obecność w pomieszczeniu';
+
+  @override
+  String get space_occupancy_occupied => 'Zajęte';
+
+  @override
+  String get space_occupancy_vacant => 'Puste';
+
+  @override
+  String get space_occupancy_unknown => 'Obecność nieznana lub niedostępna';
+
+  @override
+  String get space_occupancy_manual =>
+      'Tryb ręczny: automatyka obecności wstrzymana';
+
+  @override
+  String get space_occupancy_automatic => 'Automatyka obecności włączona';
 }

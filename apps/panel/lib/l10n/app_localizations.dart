@@ -8727,6 +8727,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Planned times are not confirmation of device state.'**
   String get space_schedule_plan_only;
+
+  /// No description provided for @space_occupancy_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Room occupancy'**
+  String get space_occupancy_title;
+
+  /// No description provided for @space_occupancy_occupied.
+  ///
+  /// In en, this message translates to:
+  /// **'Occupied'**
+  String get space_occupancy_occupied;
+
+  /// No description provided for @space_occupancy_vacant.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacant'**
+  String get space_occupancy_vacant;
+
+  /// No description provided for @space_occupancy_unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Occupancy unknown or unavailable'**
+  String get space_occupancy_unknown;
+
+  /// No description provided for @space_occupancy_manual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual mode: occupancy automation paused'**
+  String get space_occupancy_manual;
+
+  /// No description provided for @space_occupancy_automatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Occupancy automation enabled'**
+  String get space_occupancy_automatic;
 }
 
 class _AppLocalizationsDelegate

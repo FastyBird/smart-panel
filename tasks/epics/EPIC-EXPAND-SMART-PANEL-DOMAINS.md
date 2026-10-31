@@ -26,7 +26,7 @@ I want to control my home through simple activity-based modes (Work, Relax, Slee
 - **House modes**: Basic implementation (HOME, AWAY, NIGHT) exists but only affects lighting
 - **Space domain code** lives in the `spaces-home-control` plugin (Spaces refactor, PRs #578-#592): backend `apps/backend/src/plugins/spaces-home-control/`, admin `apps/admin/src/plugins/spaces-home-control/`, panel `apps/panel/lib/plugins/spaces-home-control/`
 - **Activity modes and weekly scheduling**: Software implementation is complete; installed-equipment qualification remains separate.
-- **Not present yet**: seasonal adjustments, occupancy state machine. `SpaceActivityService` (#1143) is only a last-activity timestamp and is unrelated to activity modes. `space-sensor-state.service.ts` already aggregates motionDetected/occupancyDetected (input level only)
+- **Remaining**: seasonal adjustments. Occupancy software is implemented by the occupancy follow-up; its PR owns CI/review gates. `SpaceActivityService` (#1143) is only a last-activity timestamp and is unrelated to activity modes. `space-sensor-state.service.ts` already aggregates motionDetected/occupancyDetected (input level only)
 
 ### Vision
 
@@ -94,7 +94,7 @@ The smart panel should act as a bridge between users and their smart devices. In
 ### Triggers
 
 - [x] Time-based mode scheduling can be configured per space
-- [ ] Occupancy sensors can trigger Occupied/Vacant mode changes
+- [x] Occupancy sensors can trigger Occupied/Vacant mode changes (software)
 - [ ] Manual mode override is always available and takes priority
 
 ## 5. Example scenarios
@@ -223,5 +223,5 @@ Phase 3 = #1297 to #1302. The UniFi epic (#1221) adds camera person detections a
 | ID                              | Task                                                                                                   | Size   | Status          |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------ | ------ | --------------- |
 | FEATURE-SPACE-TIME-SCHEDULING   | Time-based mode scheduling (#1297 backend, #1298 admin schedule editor, #1362 panel current/next mode) | medium | done (software) |
-| FEATURE-SPACE-OCCUPANCY-MODES   | Occupancy-based mode triggers (#1299 state machine, #1300 admin config; input #1221)                   | medium | planned         |
+| FEATURE-SPACE-OCCUPANCY-MODES   | Occupancy-based mode triggers (#1299 state machine, #1300 admin config; input #1221)                   | medium | done (software) |
 | FEATURE-SPACE-SEASONAL-DEFAULTS | Seasonal baseline adjustments (#1301 backend, #1302 admin)                                             | small  | planned         |

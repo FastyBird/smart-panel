@@ -1491,5 +1491,11 @@
   "space_schedule_next": "Próximo cambio",
   "space_schedule_empty": "No hay próximas entradas.",
   "space_schedule_last_failed": "El último intento programado falló o se interrumpió. Consulte los resultados de la actividad.",
-  "space_schedule_plan_only": "Los horarios no confirman el estado de los dispositivos."
+  "space_schedule_plan_only": "Los horarios no confirman el estado de los dispositivos.",
+  "space_occupancy_title": "Ocupación de la habitación",
+  "space_occupancy_occupied": "Ocupada",
+  "space_occupancy_vacant": "Vacía",
+  "space_occupancy_unknown": "Ocupación desconocida o no disponible",
+  "space_occupancy_manual": "Modo manual: automatización de ocupación en pausa",
+  "space_occupancy_automatic": "Automatización de ocupación activada"
 }
