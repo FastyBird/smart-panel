@@ -15,6 +15,7 @@ describe('SpacesHomeControlPlugin', () => {
 		};
 		const heartbeat = {};
 		const scheduler = {};
+		const occupancy = {};
 		const plugin = new SpacesHomeControlPlugin(
 			genericRegistry as never,
 			genericRegistry as never,
@@ -31,11 +32,13 @@ describe('SpacesHomeControlPlugin', () => {
 			{} as never,
 			heartbeat as never,
 			scheduler as never,
+			occupancy as never,
 		);
 
 		plugin.onModuleInit();
 
 		expect(register).toHaveBeenCalledWith(heartbeat);
 		expect(register).toHaveBeenCalledWith(scheduler);
+		expect(register).toHaveBeenCalledWith(occupancy);
 	});
 });

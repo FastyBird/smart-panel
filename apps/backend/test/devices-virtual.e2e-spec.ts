@@ -3639,20 +3639,23 @@ describe('devices-virtual plugin (e2e)', () => {
 		// creation path performs on itself — a guard that rejected them would leave the device with no
 		// connection state at all, which is a permanently offline device.
 		it('still synthesizes all four owned device_information properties, owned and read-only', async () => {
-			const informationProperties = await waitUntil(async () => {
-				const response = await authGet(`/modules/devices/devices/${ownedDeviceId}`);
-
-				if (response.status !== 200) {
-					return { done: false, value: [] as ChannelPropertyBody[] };
-				}
-
+			// Poll the channel collection, as in the nested-wiring synthesis case. The device-detail
+			// route has a shared throttle budget consumed by many preceding cases in this file.
+			const observed = await waitUntil(async () => {
+				const response = await authGet(`/modules/devices/devices/${ownedDeviceId}/channels`);
 				const properties =
-					(response.body as { data: DeviceBody }).data.channels.find(
-						(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
-					)?.properties ?? [];
-
-				return { done: properties.length >= 4, value: properties };
-			}, 'the four synthesized device_information properties appearing');
+					response.status === 200
+						? ((response.body as { data: ChannelBody[] }).data.find(
+								(channel) => channel.category === String(ChannelCategory.DEVICE_INFORMATION),
+							)?.properties ?? [])
+						: [];
+				return {
+					done: response.status === 200 && properties.length >= 4,
+					value: { httpStatus: response.status, properties },
+				};
+			}, 'the four synthesized device_information properties appearing through the channel collection');
+			expect(observed.httpStatus).toBe(200);
+			const informationProperties = observed.properties;
 
 			expect(informationProperties.map((property) => property.category).sort()).toEqual(
 				[
@@ -4023,7 +4026,17 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 					const matches = admissions.filter((entry) => entry.query === query && entry.parameters === args[1]);
 					for (const entry of matches) admissions.splice(admissions.indexOf(entry), 1);
 					const admission = matches.length === 1 ? matches[0] : undefined;
-					const relevant = admission && (label === 'A' ? admission.selected : window);
+					// Retain the original first B statement plus the exact statement classes verified below.
+					// Forward every catalog/readback callback unchanged without spending proof capacity on it.
+					const proofQuery =
+						label === 'A'
+							? query === 'COMMIT' || /^(INSERT|UPDATE) .*"devices_virtual_thermostat_runtime"/.test(query)
+							: !bRunner ||
+								(admission?.runner === bRunner &&
+									(/^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)\b/.test(query) ||
+										query.includes('FROM "devices_module_channels_properties"') ||
+										/^UPDATE "devices_module_channels"/.test(query)));
+					const relevant = admission && proofQuery && (label === 'A' ? admission.selected : window);
 					const record = (edge: string, error?: unknown) => {
 						if (!relevant) return;
 						if (facts.length === 256) {
@@ -4760,9 +4773,10 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		});
 		try {
 			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
-			expect(expectedNames).toHaveLength(51);
+			expect(expectedNames).toHaveLength(52);
 			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
 			expect(expectedNames).toContain('AddSpaceModeSchedules1000000000050');
+			expect(expectedNames).toContain('AddSpaceOccupancy1000000000051');
 			const applied = await prepared.runMigrations({ transaction: 'each' });
 			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {
@@ -5304,6 +5318,23 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 						JSON.stringify({
 							phase,
 							mutations,
+							// Keep the underlying server exception when an independent HTTP writer fails,
+							// rather than reporting only the outer Supertest status assertion.
+							nativeErrors: loggedErrors.mock.calls
+								.flatMap((args) =>
+									args
+										.filter((value): value is Error => value instanceof Error)
+										.map((error) => ({
+											name: error.name,
+											message: error.message,
+											stack: error.stack?.split('\n').slice(0, 8),
+											cause:
+												error.cause instanceof Error
+													? { name: error.cause.name, message: error.cause.message }
+													: typeof error.cause,
+										})),
+								)
+								.slice(-16),
 							errors: loggedErrors.mock.calls
 								.filter(([message]) => typeof message === 'string' && message.startsWith('Thermostat committed'))
 								.slice(-20)

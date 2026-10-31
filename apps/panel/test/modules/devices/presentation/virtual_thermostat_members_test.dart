@@ -5972,7 +5972,12 @@ void coolingHttpAdmissionRegressions() {
       final now = DateTime.now();
       f.role = 'cooling';
       f.configurationRevision = 1;
-      f.cooling = coolingObservation(now);
+      // Keep this original observation valid through the HTTP/revision sequence.
+      // The separate deadline regressions exercise expiry with short-lived reports.
+      f.cooling = {
+        ...coolingObservation(now),
+        'expires_at': now.add(const Duration(minutes: 1)).toIso8601String(),
+      };
       await f.mount(tester);
       final good = f.cooling!;
       f.runtimeConfigurationRevision = 2;

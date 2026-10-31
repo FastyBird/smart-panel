@@ -1,7 +1,7 @@
 # Space activity modes
 
 The home-control plugin provides Work, Relax, Sleep, Entertainment and Away for rooms and zones.
-These modes are independent of last-interaction tracking and media activities. Climate and security are disabled in authored defaults. Explicitly configured climate actions use the governed activity bridge merged in #1498. Startup never replays an activation; custom mode authoring, presence triggers and security actuation remain separate. Time schedules reuse the same activation service. Admin and Panel use the same saved configuration and persisted selection contract.
+These modes are independent of last-interaction tracking and media activities. Climate and security are disabled in authored defaults. Explicitly configured climate actions use the governed activity bridge merged in #1498. Startup never replays an activation; custom mode authoring and security actuation remain separate. Opt-in occupancy triggers reuse the same activation service. Time schedules reuse the same activation service. Admin and Panel use the same saved configuration and persisted selection contract.
 
 ## API
 
@@ -64,7 +64,7 @@ absolute setpoint and delta are mutually exclusive. For virtual thermostat targe
 
 Virtual thermostat activation requires explicit automation opt-in and a valid current source/controller/slot group. Existing manual holds, explicit OFF, temporary overrides and protective qualification keep precedence. Deactivation or source changes withdraw only the original owned installation; they cannot adopt legacy actor-tagged JSON or retire a successor. The guarded runtime and physical intent paths retain their original command and observation contracts.
 
-Settled unchanged groups can renew after unrelated graph validation. An activation still waiting for original runtime completion can fail and retire if graph authority changes; it is not retried under newer authority. See [climate architecture](climate-architecture.md#activity-climate-automation) for the bounded source/slot/effect contracts. Time schedules reuse this bridge; occupancy integration remains #1458 work.
+Settled unchanged groups can renew after unrelated graph validation. An activation still waiting for original runtime completion can fail and retire if graph authority changes; it is not retried under newer authority. See [climate architecture](climate-architecture.md#activity-climate-automation) for the bounded source/slot/effect contracts. Time schedules and occupancy transitions reuse this bridge; final installed-equipment qualification remains #1458 work.
 
 Enabled security reports unsupported because current security services expose status/acknowledgement, not arm/disarm.
 
@@ -94,8 +94,7 @@ section. An unconfirmed response stays explicitly uncertain even when a read-onl
 
 Configuration/state events, device changes and reconnection refetch HTTP state only. Each mounted room page owns an independent read model. Space/request generations fence
 late responses, and stale or busy controls cannot submit. Manual activation/deactivation bypass automatic network and
-token-refresh replay, use no WebSocket actuation fallback, and never retry a conflict automatically. Scheduling,
-presence, custom activity authoring, security actuation and hardware qualification remain separate work. Merged #1472/#1498 carry exact-head CI and completed reviews; final epic acceptance and alpha publication remain open. See [software acceptance](virtual-device-extensions-acceptance.md).
+token-refresh replay, use no WebSocket actuation fallback, and never retry a conflict automatically. Custom activity authoring, security actuation and hardware qualification remain separate work. Merged #1472/#1498 carry exact-head CI and completed reviews; final epic acceptance and alpha publication remain open. See [software acceptance](virtual-device-extensions-acceptance.md).
 
 ## Time schedules
 
@@ -138,4 +137,56 @@ schedule editing. Disconnect, unknown state, a stopped scheduler or clock uncert
 as current. HTTP refetch follows `SpacesModule.ActivitySchedule.Changed`, activity-state changes, reconnect and a
 minute refresh while a page owns a session; page disposal stops its polling. Planned mode and last admission status
 are not proof of device convergence. Thermostat manual hold, explicit OFF, temporary overrides and protective guards
-retain their existing precedence. Occupancy, sunrise/sunset, holidays and calendar integration remain separate.
+retain their existing precedence. Sunrise/sunset, holidays and calendar integration remain separate.
+
+## Room occupancy
+
+Occupancy automation is opt-in for rooms and zones. In space configuration, the Admin selects motion or
+presence inputs, a vacancy timeout (15 minutes by default), a sensor freshness limit, and the existing activity
+modes to use when occupied or vacant. The freshness limit must exceed the vacancy timeout. Empty Occupied
+mapping restores the activity selection captured before the occupancy vacancy action; empty Vacant mapping
+leaves the selection alone. Restore requires that the vacancy activation still owns the current selection.
+It does not restore individual device values or override newer manual/scheduled activity selections.
+
+Only selected `DETECTED` properties on `MOTION` or `OCCUPANCY` channels currently assigned to the room/zone
+are eligible. Any fresh, qualified positive input means Occupied. Every selected input must remain fresh,
+online and qualified negative for the full timeout before Vacant. Missing, stale, invalid, offline or unknown
+inputs reset vacancy timing instead of establishing vacancy. Door contacts alone do not infer presence.
+A camera can participate if an integration exposes an eligible presence property; camera integration is optional.
+Stored display/history values never establish live occupancy authority.
+
+The managed runtime debounces input notifications for 100 ms and checks enabled spaces at least every five
+seconds. Vacancy elapsed time uses a monotonic process clock. Restart, enablement/configuration changes,
+explicit resume, input gaps and wall-clock rollback require fresh observation and a new full vacancy interval.
+Migration 51 creates disabled, empty configuration for existing rooms/zones and preserves all activity and
+thermostat definitions. Configuration and observed state are persisted, but startup reports Unknown and never
+replays an elapsed vacancy interval. Plugin shutdown revokes admission, cancels its timers and joins original work.
+
+Manual activity selection **or clearing** pauses occupancy actions until **Resume occupancy automation** in the
+Admin. Observation continues while paused. Manual choices increment the occupancy revision, so a stale Resume
+cannot clear a newer hold. Configuration saves preserve that hold. Schedules retain their independent policy:
+their next future trigger can still run; they neither clear nor establish the occupancy manual hold. Thermostat
+manual hold, user OFF and protective constraints remain dominant through the existing governed climate bridge.
+
+Authenticated routes below `/api/v1/modules/spaces/spaces/{id}/occupancy` use the standard `data` envelope:
+
+- `GET /`: saved configuration and revision.
+- `PUT /`: owner/admin atomic replacement with `expected_revision`, `enabled`, `sensor_property_ids`,
+  `vacancy_timeout_seconds`, `maximum_age_seconds`, `occupied_mode` and `vacant_mode`.
+- `GET /sensors`: eligible sensor property IDs and labels in this space.
+- `GET /state`: observed Occupied/Vacant/Unknown, runtime availability, manual hold, remaining vacancy time
+  and last software attempt; this read never actuates a device.
+- `POST /resume`: display or owner/admin manual-control policy, with `data.expected_revision`.
+
+Saving configuration is not an activation request. Stale revisions conflict. Admin saves retain conflicting or
+unconfirmed drafts and require explicit review/discard; an interrupted response is not evidence of rollback.
+Automatic transitions use private, single-consumption admission tied to the configuration, input validity,
+original activity identity and runtime lifetime through native COMMIT. Refused/failed actions are reported and
+are not automatically retried under a new identity. Per-domain results still describe software commands rather
+than physical convergence.
+
+The Panel shows a localized occupancy indicator above the room domains, with automatic/manual precedence.
+Its page-owned read model refreshes on events, reconnect and periodic reads. Fresh disabled sessions skip periodic reads; occupancy-change events and reconnection refetch them to discover re-enablement. Unavailable/stale state appears
+Unknown; a known disabled configuration hides the indicator. Panel occupancy display does not issue commands.
+Recently Occupied/Extended Vacant are illustrative future extensions, not additional states in this implementation.
+Installed-equipment behavior and release qualification remain separate acceptance gates.

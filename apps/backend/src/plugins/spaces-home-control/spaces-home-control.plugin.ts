@@ -40,6 +40,7 @@ import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceModeScheduleEntity } from './entities/space-mode-schedule.entity';
+import { SpaceOccupancyEntity } from './entities/space-occupancy.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
@@ -77,6 +78,9 @@ import { SpaceMediaActivityService } from './services/space-media-activity.servi
 import { SpaceModeScheduleConfigService } from './services/space-mode-schedule-config.service';
 import { SpaceModeSchedulerService } from './services/space-mode-scheduler.service';
 import { SpaceModeService } from './services/space-mode.service';
+import { SpaceOccupancyConfigService } from './services/space-occupancy-config.service';
+import { SpaceOccupancyInputsService } from './services/space-occupancy-inputs.service';
+import { SpaceOccupancyService } from './services/space-occupancy.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceStateReadService } from './services/space-state-read.service';
@@ -136,6 +140,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceActivityConfigEntity,
 			SpaceActivityStateEntity,
 			SpaceModeScheduleEntity,
+			SpaceOccupancyEntity,
 			DeviceEntity,
 			ChannelEntity,
 		]),
@@ -157,6 +162,9 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceModeService,
 		SpaceModeScheduleConfigService,
 		SpaceModeSchedulerService,
+		SpaceOccupancyConfigService,
+		SpaceOccupancyInputsService,
+		SpaceOccupancyService,
 		CoverGroupIntentPort,
 		LightingContributionPlannerService,
 		ClimateContributionPlannerService,
@@ -202,6 +210,9 @@ import { IntentSpecLoaderService } from './spec';
 	],
 	controllers: [],
 	exports: [
+		SpaceOccupancyConfigService,
+		SpaceOccupancyInputsService,
+		SpaceOccupancyService,
 		SpaceActivityConfigService,
 		SpaceModeService,
 		SpaceModeScheduleConfigService,
@@ -249,6 +260,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly spaceLightingTool: SpaceLightingToolService,
 		private readonly spaceSuggestionHeartbeat: SpaceSuggestionHeartbeatService,
 		private readonly spaceModeScheduler: SpaceModeSchedulerService,
+		private readonly spaceOccupancy: SpaceOccupancyService,
 	) {}
 
 	onModuleInit() {
@@ -442,5 +454,6 @@ Contributes the **Room** and **Zone** space types — the home-control surface t
 
 		this.managedServiceManager.register(this.spaceSuggestionHeartbeat);
 		this.managedServiceManager.register(this.spaceModeScheduler);
+		this.managedServiceManager.register(this.spaceOccupancy);
 	}
 }

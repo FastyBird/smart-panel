@@ -542,5 +542,36 @@
 			"weekend": "Sobota a neděle",
 			"custom": "Vybrané dny"
 		}
+	},
+	"occupancy": {
+		"title": "Obsazenost",
+		"description": "Vybrané živé senzory pohybu nebo přítomnosti spouštějí nastavené režimy. Chybějící ani zastaralý vstup neznamená prázdnou místnost. Ochrany termostatu mají nadále přednost.",
+		"status": "Zjištěný stav",
+		"occupied": "Obsazeno",
+		"vacant": "Volno",
+		"unknown": "Neznámý nebo nedostupný stav",
+		"manual": "Ruční režim pozastavuje automatiku obsazenosti.",
+		"resume": "Obnovit automatiku obsazenosti",
+		"enabled": "Zapnout automatiku obsazenosti",
+		"timeout": "Prodleva do uvolnění (minuty)",
+		"maximumAge": "Platnost měření senzoru (minuty)",
+		"sensors": "Senzory obsazenosti",
+		"whenOccupied": "Při obsazení",
+		"whenVacant": "Při uvolnění",
+		"restore": "Obnovit předchozí režim",
+		"noChange": "Ponechat aktuální režim",
+		"missingSensor": "Chybějící senzor",
+		"invalid": "Vyberte senzor a nastavte platnost měření delší než prodlevu do uvolnění.",
+		"refresh": "Obnovit",
+		"save": "Uložit obsazenost",
+		"discard": "Zahodit změny",
+		"unsaved": "Změny zatím nejsou uložené.",
+		"conflictHelp": "Bylo načteno novější nastavení. Koncept zůstal zachován; pro zobrazení uložené verze jej zahoďte.",
+		"loadFailed": "Nastavení obsazenosti se nepodařilo načíst.",
+		"saveUnconfirmed": "Uložení se nepodařilo potvrdit. Mohlo být provedeno; koncept zůstal zachován. Obnovte stav pro ověření.",
+		"conflict": "Nastavení změnil jiný požadavek.",
+		"readOnly": "Nastavení obsazenosti může měnit vlastník nebo správce.",
+		"supplementalFailed": "Senzory nebo zjištěný stav obsazenosti se nepodařilo načíst. Zkuste obnovit stav.",
+		"unsupportedSpace": "Tento typ prostoru již nepodporuje obsazenost. Koncept zůstal zachován pro kontrolu; ukládání ani obnovení automatiky není dostupné."
 	}
 }

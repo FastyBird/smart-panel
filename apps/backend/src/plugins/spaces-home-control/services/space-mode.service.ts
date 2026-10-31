@@ -18,6 +18,8 @@ import { SpaceActivityConfigEntity } from '../entities/space-activity-config.ent
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity';
 import { ActivityDomainResultModel } from '../models/activity-result.model';
+import { claimOccupancy, prepareOccupancyValidation } from '../occupancy/occupancy-admission';
+import { OccupancyActivityAdmission } from '../occupancy/space-occupancy.types';
 import { MINUTE_MS } from '../schedule/schedule-time';
 import { ScheduledActivityAdmission } from '../schedule/space-mode-schedule.types';
 
@@ -25,6 +27,7 @@ import { SpaceActivityConfigService } from './space-activity-config.service';
 import { SpaceActivityDomainsService } from './space-activity-domains.service';
 import { SpaceActivationIdentity } from './space-climate-automation.port';
 import { SpaceClimateAutomationService } from './space-climate-automation.service';
+import { SpaceOccupancyConfigService } from './space-occupancy-config.service';
 
 @Injectable()
 export class SpaceModeService implements OnApplicationBootstrap {
@@ -37,6 +40,7 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		private readonly events: EventEmitter2,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 		@Optional() private readonly climateAutomation?: SpaceClimateAutomationService,
+		@Optional() private readonly occupancyConfigs?: SpaceOccupancyConfigService,
 	) {}
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
@@ -79,8 +83,11 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		revision: number,
 		actor: string,
 		scheduledAdmission?: ScheduledActivityAdmission,
+		occupancyAdmission?: OccupancyActivityAdmission,
 	): Promise<SpaceActivityStateEntity | null> {
 		const scheduled = scheduledAdmission ? Object.freeze({ ...scheduledAdmission }) : null;
+		const occupancy = occupancyAdmission ? Object.freeze({ ...occupancyAdmission }) : null;
+		if (scheduled && occupancy) throw new ConflictException('Only one automatic activity source may be admitted');
 		if (this.running.has(spaceId))
 			throw new ConflictException('Space activity activation is in progress; retry after completion');
 		this.running.add(spaceId);
@@ -141,7 +148,15 @@ export class SpaceModeService implements OnApplicationBootstrap {
 						};
 					}
 				: undefined;
+			const prepareValidation = occupancy
+				? prepareOccupancyValidation(occupancy, activationId, spaceId, { id: config.id, revision })
+				: prepareScheduledValidation;
 			const start = async (manager: EntityManager) => {
+				if (occupancy) {
+					if ((prior?.activationId ?? null) !== occupancy.previousActivationId)
+						throw new ConflictException('A newer activity superseded occupancy');
+					await claimOccupancy(manager, occupancy, activationId);
+				} else if (!scheduled) await this.occupancyConfigs?.markManual(manager, spaceId);
 				const currentRepository = manager.getRepository(SpaceActivityStateEntity);
 				const admittedValues = { ...values, activityRequestedAt: new Date() };
 				const checkScheduledTime = () => {
@@ -185,9 +200,9 @@ export class SpaceModeService implements OnApplicationBootstrap {
 							'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
 							{ configId: config.id, revision },
 						);
-					if (scheduled)
+					if (scheduled || occupancy)
 						query.andWhere('activationId IS :previousActivation', {
-							previousActivation: scheduled.previousActivationId,
+							previousActivation: (scheduled ?? occupancy).previousActivationId,
 						});
 					const started = await query.execute();
 					if (started.affected !== 1) throw new ConflictException('Activity configuration changed');
@@ -197,12 +212,12 @@ export class SpaceModeService implements OnApplicationBootstrap {
 				}
 			};
 			if (this.climateAutomation)
-				await this.climateAutomation.mutate(spaceId, undefined, start, undefined, prepareScheduledValidation);
-			else if (prepareScheduledValidation)
+				await this.climateAutomation.mutate(spaceId, undefined, start, undefined, prepareValidation);
+			else if (prepareValidation || this.occupancyConfigs)
 				await this.dataSource.transaction(async (manager) => {
-					const validate = prepareScheduledValidation(manager);
+					const validate = prepareValidation?.(manager);
 					await start(manager);
-					await validate();
+					await validate?.();
 				});
 			else await start(this.dataSource.manager);
 			const identity: SpaceActivationIdentity = {
@@ -255,15 +270,27 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		);
 		return rows.length === 1;
 	}
-	async deactivateMode(spaceId: string, activationId: string, actor: string): Promise<SpaceActivityStateEntity | null> {
+	async deactivateMode(
+		spaceId: string,
+		activationId: string,
+		actor: string,
+		occupancy?: OccupancyActivityAdmission,
+	): Promise<SpaceActivityStateEntity | null> {
 		await this.configs.assertSupported(spaceId);
 		const repository = this.dataSource.getRepository(SpaceActivityStateEntity);
+		const nextActivation = randomUUID();
+		const prepareValidation = occupancy ? prepareOccupancyValidation(occupancy, nextActivation, spaceId) : undefined;
 		const write = async (manager: EntityManager) => {
+			if (occupancy) {
+				if (occupancy.previousActivationId !== activationId)
+					throw new ConflictException('Occupancy restore was superseded');
+				await claimOccupancy(manager, occupancy, nextActivation);
+			} else await this.occupancyConfigs?.markManual(manager, spaceId);
 			const result = await manager.getRepository(SpaceActivityStateEntity).update(
 				{ spaceId, activationId },
 				{
 					selectedActivityMode: null,
-					activationId: randomUUID(),
+					activationId: nextActivation,
 					activityStatus: ActivityActivationStatus.DEACTIVATED,
 					activityActor: actor,
 					activityRequestedAt: new Date(),
@@ -272,7 +299,14 @@ export class SpaceModeService implements OnApplicationBootstrap {
 			);
 			if (result.affected !== 1) throw new ConflictException('Activity activation identity changed');
 		};
-		if (this.climateAutomation) await this.climateAutomation.mutate(spaceId, activationId, write);
+		if (this.climateAutomation)
+			await this.climateAutomation.mutate(spaceId, activationId, write, undefined, prepareValidation);
+		else if (prepareValidation || this.occupancyConfigs)
+			await this.dataSource.transaction(async (manager) => {
+				const validate = prepareValidation?.(manager);
+				await write(manager);
+				await validate?.();
+			});
 		else await write(this.dataSource.manager);
 		const state = await repository.findOneBy({ spaceId });
 		this.emit(spaceId, state.activationId, state.selectedActivityRevision);

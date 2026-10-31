@@ -4864,4 +4864,24 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get space_schedule_plan_only =>
       'Geplante Zeiten bestätigen keinen Gerätezustand.';
+
+  @override
+  String get space_occupancy_title => 'Raumbelegung';
+
+  @override
+  String get space_occupancy_occupied => 'Belegt';
+
+  @override
+  String get space_occupancy_vacant => 'Unbelegt';
+
+  @override
+  String get space_occupancy_unknown =>
+      'Belegung unbekannt oder nicht verfügbar';
+
+  @override
+  String get space_occupancy_manual =>
+      'Manueller Modus: Belegungsautomatik pausiert';
+
+  @override
+  String get space_occupancy_automatic => 'Belegungsautomatik aktiviert';
 }
