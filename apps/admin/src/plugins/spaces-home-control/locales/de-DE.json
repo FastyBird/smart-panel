@@ -522,6 +522,7 @@
 		"apply": "In Entwurf übernehmen",
 		"loadFailed": "Der Zeitplan konnte nicht geladen werden.",
 		"saveFailed": "Der Zeitplan konnte nicht gespeichert werden.",
+		"saveUnconfirmed": "Das Speichern konnte nicht bestätigt werden. Der Zeitplan wurde möglicherweise gespeichert; Ihr Entwurf bleibt erhalten. Aktualisieren Sie den gespeicherten Zeitplan zur Prüfung.",
 		"conflict": "Der Zeitplan wurde durch eine andere Anfrage geändert.",
 		"invalid": "Prüfen Sie die Zeitzone und sich überschneidende Termine.",
 		"refresh": "Aktualisieren",

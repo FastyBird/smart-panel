@@ -522,6 +522,7 @@
 		"apply": "Apply to draft",
 		"loadFailed": "The schedule could not be loaded.",
 		"saveFailed": "The schedule could not be saved.",
+		"saveUnconfirmed": "The save could not be confirmed. It may have been saved; your draft is preserved. Refresh to check the stored schedule.",
 		"conflict": "The schedule was changed by another request.",
 		"invalid": "Check the timezone and overlapping scheduled times.",
 		"refresh": "Refresh",

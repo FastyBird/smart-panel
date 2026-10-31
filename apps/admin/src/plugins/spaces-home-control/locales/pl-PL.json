@@ -522,6 +522,7 @@
 		"apply": "Zastosuj w szkicu",
 		"loadFailed": "Nie udało się wczytać harmonogramu.",
 		"saveFailed": "Nie udało się zapisać harmonogramu.",
+		"saveUnconfirmed": "Nie udało się potwierdzić zapisu. Harmonogram mógł zostać zapisany; szkic został zachowany. Odśwież, aby sprawdzić zapisany harmonogram.",
 		"conflict": "Inne żądanie zmieniło harmonogram.",
 		"invalid": "Sprawdź strefę czasową i nakładające się terminy.",
 		"refresh": "Odśwież",

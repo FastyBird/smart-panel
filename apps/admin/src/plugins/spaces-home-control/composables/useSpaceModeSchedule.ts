@@ -20,7 +20,7 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 	const configuration = ref<ScheduleConfiguration | null>(null);
 	const loading = ref(false);
 	const busy = ref(false);
-	const error = ref<'loadFailed' | 'saveFailed' | 'conflict' | 'invalid' | null>(null);
+	const error = ref<'loadFailed' | 'saveUnconfirmed' | 'conflict' | 'invalid' | null>(null);
 	let generation = 0;
 	let activeSave: AbortController | null = null;
 	const path = '/modules/spaces/spaces/{id}/schedules' as const;
@@ -64,6 +64,7 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 			if (!current(id, token)) return null;
 			if (result.response.status === 409) {
 				error.value = 'conflict';
+				configuration.value = null;
 				try {
 					const row = await read(id, controller.signal);
 					if (current(id, token)) configuration.value = row;
@@ -80,7 +81,24 @@ export const useSpaceModeSchedule = (spaceId: Ref<string | undefined>) => {
 			configuration.value = result.data.data;
 			return result.data.data;
 		} catch {
-			if (current(id, token) && error.value !== 'conflict') error.value = 'saveFailed';
+			if (!current(id, token)) return null;
+			// An interrupted response does not establish whether the server committed.
+			// Drop the old baseline before a separately bounded reconciliation read.
+			clearTimeout(timeout);
+			configuration.value = null;
+			error.value = 'saveUnconfirmed';
+			const reconciliation = new AbortController();
+			activeSave = reconciliation;
+			const reconciliationTimeout = setTimeout(() => reconciliation.abort(), 10_000);
+			try {
+				const row = await read(id, reconciliation.signal);
+				if (current(id, token)) configuration.value = row;
+			} catch {
+				// Keep the draft and unknown outcome; Refresh can recover a current baseline.
+			} finally {
+				clearTimeout(reconciliationTimeout);
+				if (activeSave === reconciliation) activeSave = null;
+			}
 			return null;
 		} finally {
 			clearTimeout(timeout);

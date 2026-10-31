@@ -522,6 +522,7 @@
 		"apply": "Použít v konceptu",
 		"loadFailed": "Plán se nepodařilo načíst.",
 		"saveFailed": "Plán se nepodařilo uložit.",
+		"saveUnconfirmed": "Uložení se nepodařilo potvrdit. Plán mohl být uložen; koncept zůstal zachován. Obnovte uložený plán pro ověření.",
 		"conflict": "Plán mezitím změnil jiný požadavek.",
 		"invalid": "Zkontrolujte časové pásmo a překrývající se termíny.",
 		"refresh": "Obnovit",

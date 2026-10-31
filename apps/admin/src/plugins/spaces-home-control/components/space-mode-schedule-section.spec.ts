@@ -181,6 +181,66 @@ describe('weekly scheduling editor with the actual API client', () => {
 		expect(wrapper.findAll('tbody li')).toHaveLength(0);
 		expect(writes).toHaveLength(1);
 	});
+	it.each([false, true])('reconciles a committed save after response timeout (reconciliation stalls: %s)', async (stallRead) => {
+		let stored = row();
+		let saving = false;
+		let holdReconciliation = stallRead;
+		const untilAbort = (request: Request) =>
+			new Promise<never>((_, reject) => {
+				request.signal.throwIfAborted();
+				request.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+			});
+		harness.client = createClient<paths>({
+			baseUrl: 'http://localhost/api/v1',
+			fetch: async (request: Request) => {
+				if (request.method === 'PUT') {
+					const body = await request.json();
+					writes.push(body.data);
+					stored = { ...stored, ...body.data, revision: stored.revision + 1 };
+					if (!saving) {
+						saving = true;
+						return untilAbort(request);
+					}
+					return json(stored);
+				}
+				return saving && holdReconciliation ? untilAbort(request) : json(stored);
+			},
+		});
+		const wrapper = render();
+		try {
+			await flushPromises();
+			wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(30_000);
+			if (stallRead) await vi.advanceTimersByTimeAsync(10_000);
+			await flushPromises();
+			await wrapper.vm.waitForSave();
+			expect(wrapper.text()).toContain(en.schedules.saveUnconfirmed);
+			expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+			expect(wrapper.get('[data-testid="schedule-save"]').attributes('disabled')).toBeDefined();
+			expect(writes).toHaveLength(1);
+			if (stallRead) {
+				expect(wrapper.get('[data-testid="schedule-discard"]').attributes('disabled')).toBeDefined();
+				holdReconciliation = false;
+				await wrapper.get('[data-testid="schedule-refresh"]').trigger('click');
+				await flushPromises();
+			}
+			await wrapper.get('[data-testid="schedule-discard"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.findComponent(ElSwitch).props('modelValue')).toBe(true);
+			expect(wrapper.vm.hasUnsavedChanges).toBe(false);
+			wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', false);
+			await flushPromises();
+			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			expect(writes[1]).toMatchObject({ expected_revision: 2, enabled: false });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 	it('keeps viewers read-only and prevents invalid timezone saves', async () => {
 		harness.role = 'user';
 		const viewer = render();

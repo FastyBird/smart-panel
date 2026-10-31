@@ -522,6 +522,7 @@
 		"apply": "Aplicar al borrador",
 		"loadFailed": "No se ha podido cargar la programación.",
 		"saveFailed": "No se ha podido guardar la programación.",
+		"saveUnconfirmed": "No se pudo confirmar el guardado. Puede haberse guardado; tu borrador se conserva. Actualiza para comprobar la programación guardada.",
 		"conflict": "Otra solicitud ha cambiado la programación.",
 		"invalid": "Comprueba la zona horaria y los horarios superpuestos.",
 		"refresh": "Actualizar",

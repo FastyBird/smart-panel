@@ -16,7 +16,7 @@
 			show-icon
 		/>
 		<el-button
-			v-if="error === 'loadFailed' || error === 'conflict'"
+			v-if="error === 'loadFailed' || error === 'conflict' || error === 'saveUnconfirmed'"
 			data-testid="schedule-refresh"
 			@click="load"
 		>
@@ -129,7 +129,7 @@
 				{{ text('save') }}
 			</el-button>
 			<el-button
-				:disabled="busy || loading || !dirty"
+				:disabled="busy || loading || !dirty || !configuration"
 				data-testid="schedule-discard"
 				@click="discard"
 			>
@@ -306,6 +306,7 @@ const canSave = computed(
 		valid.value &&
 		!loading.value &&
 		!busy.value &&
+		error.value !== 'saveUnconfirmed' &&
 		error.value !== 'conflict' &&
 		error.value !== 'loadFailed'
 );
@@ -329,6 +330,7 @@ watch(
 	}
 );
 const discard = () => {
+	if (!configuration.value) return;
 	reset();
 	error.value = null;
 };

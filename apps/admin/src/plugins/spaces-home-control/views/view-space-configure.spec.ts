@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 	realRouter: false,
 	lgDevice: null as Ref<boolean> | null,
 	saveGate: null as Promise<void> | null,
+	saveConflict: false,
 	displaysLoaded: true,
 	fetchDevices: vi.fn(),
 	fetchDisplays: vi.fn(),
@@ -177,6 +178,7 @@ describe('ViewSpaceConfigure', () => {
 		mocks.isLGDevice = false;
 		mocks.realRouter = false;
 		mocks.saveGate = null;
+		mocks.saveConflict = false;
 		mocks.routeMatched = [];
 		mocks.spacesFirstLoadFinished = false;
 	});
@@ -342,9 +344,23 @@ describe('mounted configure activity mode support', () => {
 		draft: false,
 	});
 	let requests: Request[];
+	const waitForSaveGate = async (request: Request) => {
+		if (!mocks.saveGate) return;
+		const gate = mocks.saveGate;
+		await new Promise<void>((resolve, reject) => {
+			request.signal.throwIfAborted();
+			const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+			request.signal.addEventListener('abort', abort, { once: true });
+			void gate.then(() => {
+				request.signal.removeEventListener('abort', abort);
+				resolve();
+			});
+		});
+	};
 	beforeEach(() => {
 		mocks.realRouter = false;
 		mocks.saveGate = null;
+		mocks.saveConflict = false;
 		mocks.routeMatched = [];
 		mocks.spacesFirstLoadFinished = true;
 		requests = [];
@@ -357,18 +373,8 @@ describe('mounted configure activity mode support', () => {
 				requests.push(request);
 				if (request.method === 'PUT') {
 					const body = await request.json();
-					if (mocks.saveGate) {
-						const gate = mocks.saveGate;
-						await new Promise<void>((resolve, reject) => {
-							request.signal.throwIfAborted();
-							const abort = () => reject(new DOMException('Aborted', 'AbortError'));
-							request.signal.addEventListener('abort', abort, { once: true });
-							void gate.then(() => {
-								request.signal.removeEventListener('abort', abort);
-								resolve();
-							});
-						});
-					}
+					if (mocks.saveConflict) return new Response(JSON.stringify({ data: null }), { status: 409 });
+					await waitForSaveGate(request);
 					return new Response(
 						JSON.stringify({
 							data: { id: 'schedule', space_id: space(SpaceType.ROOM).id, created_at: '2026-11-02T00:00:00Z', ...body.data, revision: 2 },
@@ -376,7 +382,8 @@ describe('mounted configure activity mode support', () => {
 						{ headers: { 'Content-Type': 'application/json' } }
 					);
 				}
-				if (new URL(request.url).pathname.endsWith('/schedules'))
+				if (new URL(request.url).pathname.endsWith('/schedules')) {
+					if (mocks.saveConflict && requests.some((request) => request.method === 'PUT')) await waitForSaveGate(request);
 					return new Response(
 						JSON.stringify({
 							data: {
@@ -391,6 +398,7 @@ describe('mounted configure activity mode support', () => {
 						}),
 						{ headers: { 'Content-Type': 'application/json' } }
 					);
+				}
 				const mode = new URL(request.url).pathname.split('/')[8];
 				return new Response(
 					JSON.stringify({
@@ -598,7 +606,7 @@ describe('mounted configure activity mode support', () => {
 			mocks.saveGate = null;
 		}
 	});
-	it('aborts a stalled save within 30 seconds and preserves the discard choice during navigation', async () => {
+	it.each(['PUT', 'conflict reload'])('aborts a stalled %s within 30 seconds and preserves the discard choice during navigation', async (phase) => {
 		mocks.realRouter = true;
 		const initial = space(SpaceType.ROOM).id;
 		const router = createRouter({
@@ -624,9 +632,11 @@ describe('mounted configure activity mode support', () => {
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
 			await flushPromises();
 			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			mocks.saveConflict = phase === 'conflict reload';
 			await section.get('[data-testid="schedule-save"]').trigger('click');
 			await flushPromises();
-			const request = requests.find((request) => request.method === 'PUT')!;
+			const request = phase === 'PUT' ? requests.find((request) => request.method === 'PUT')! : requests.at(-1)!;
+			expect(request.method).toBe(phase === 'PUT' ? 'PUT' : 'GET');
 			let settled = false;
 			const navigation = router.push('/elsewhere').then(() => {
 				settled = true;
@@ -642,7 +652,7 @@ describe('mounted configure activity mode support', () => {
 			expect(settled).toBe(true);
 			expect(router.currentRoute.value.params.id).toBe(initial);
 			expect(section.vm.hasUnsavedChanges).toBe(true);
-			expect(section.text()).toContain('spacesHomeControlPlugin.schedules.saveFailed');
+			expect(section.text()).toContain(`spacesHomeControlPlugin.schedules.${phase === 'PUT' ? 'saveUnconfirmed' : 'loadFailed'}`);
 			expect(confirm).toHaveBeenCalledTimes(1);
 			confirm.mockResolvedValue('confirm' as Awaited<ReturnType<typeof ElMessageBox.confirm>>);
 			await router.push('/elsewhere');
