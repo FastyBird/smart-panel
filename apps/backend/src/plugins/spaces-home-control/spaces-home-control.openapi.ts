@@ -47,6 +47,7 @@ import {
 	ScheduleEntryDto,
 	UpdateSpaceModeScheduleDto,
 } from './dto/space-mode-schedule.dto';
+import { ReqUpdateSpaceOccupancyDto, UpdateSpaceOccupancyDto } from './dto/space-occupancy.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeControlSpaceDto } from './dto/update-home-control-space.dto';
@@ -59,6 +60,7 @@ import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceModeScheduleEntity } from './entities/space-mode-schedule.entity';
+import { SpaceOccupancyEntity } from './entities/space-occupancy.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
 import {
@@ -115,6 +117,13 @@ import {
 	ScheduleOccurrenceModel,
 	SpaceModeScheduleStateModel,
 } from './models/space-mode-schedule.model';
+import {
+	SpaceOccupancyResponseModel,
+	SpaceOccupancySensorModel,
+	SpaceOccupancySensorsResponseModel,
+	SpaceOccupancyStateModel,
+	SpaceOccupancyStateResponseModel,
+} from './models/space-occupancy.model';
 import {
 	BulkClimateRoleResultItemModel,
 	BulkClimateRolesResponseModel,
@@ -198,6 +207,14 @@ export const SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS: (
 	UpdateSpaceModeScheduleDto,
 	ReqUpdateSpaceModeScheduleDto,
 	SpaceModeScheduleEntity,
+	SpaceOccupancyEntity,
+	ReqUpdateSpaceOccupancyDto,
+	UpdateSpaceOccupancyDto,
+	SpaceOccupancyResponseModel,
+	SpaceOccupancySensorModel,
+	SpaceOccupancySensorsResponseModel,
+	SpaceOccupancyStateModel,
+	SpaceOccupancyStateResponseModel,
 	ScheduleEntryModel,
 	ScheduleOccurrenceModel,
 	SpaceModeScheduleStateModel,

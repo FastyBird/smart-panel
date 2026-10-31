@@ -542,5 +542,34 @@
 			"weekend": "Samstag und Sonntag",
 			"custom": "Ausgewählte Tage"
 		}
+	},
+	"occupancy": {
+		"title": "Raumbelegung",
+		"description": "Ausgewählte Live-Bewegungs- oder Präsenzsensoren steuern konfigurierte Aktivitäten. Fehlende oder veraltete Eingaben bedeuten keinen Leerstand. Thermostatschutz bleibt vorrangig.",
+		"status": "Erfasster Zustand",
+		"occupied": "Belegt",
+		"vacant": "Unbelegt",
+		"unknown": "Unbekannt oder nicht verfügbar",
+		"manual": "Der manuelle Modus pausiert die Belegungsautomatik.",
+		"resume": "Belegungsautomatik fortsetzen",
+		"enabled": "Belegungsautomatik aktivieren",
+		"timeout": "Leerstandsverzögerung (Minuten)",
+		"maximumAge": "Sensorgültigkeit (Minuten)",
+		"sensors": "Belegungssensoren",
+		"whenOccupied": "Bei Belegung",
+		"whenVacant": "Bei Leerstand",
+		"restore": "Vorherige Aktivität wiederherstellen",
+		"noChange": "Aktuelle Aktivität beibehalten",
+		"missingSensor": "Fehlender Sensor",
+		"invalid": "Wählen Sie einen Sensor. Seine Gültigkeit muss länger als die Leerstandsverzögerung sein.",
+		"refresh": "Aktualisieren",
+		"save": "Belegungseinstellungen speichern",
+		"discard": "Änderungen verwerfen",
+		"unsaved": "Ihre Änderungen sind noch nicht gespeichert.",
+		"conflictHelp": "Neuere Einstellungen wurden geladen. Ihr Entwurf bleibt erhalten; verwerfen Sie ihn, um die gespeicherte Version zu prüfen.",
+		"loadFailed": "Die Belegungseinstellungen konnten nicht geladen werden.",
+		"saveUnconfirmed": "Das Speichern konnte nicht bestätigt werden. Es könnte erfolgreich gewesen sein; Ihr Entwurf bleibt erhalten. Aktualisieren Sie zur Prüfung.",
+		"conflict": "Eine andere Anfrage hat die Einstellungen geändert.",
+		"readOnly": "Die Bearbeitung erfordert einen Eigentümer oder Administrator."
 	}
 }

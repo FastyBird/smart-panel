@@ -1491,5 +1491,11 @@
   "space_schedule_next": "Następna zmiana",
   "space_schedule_empty": "Brak kolejnych wpisów.",
   "space_schedule_last_failed": "Ostatnia zaplanowana próba nie powiodła się lub została przerwana. Sprawdź wyniki aktywności.",
-  "space_schedule_plan_only": "Planowane godziny nie potwierdzają stanu urządzeń."
+  "space_schedule_plan_only": "Planowane godziny nie potwierdzają stanu urządzeń.",
+  "space_occupancy_title": "Obecność w pomieszczeniu",
+  "space_occupancy_occupied": "Zajęte",
+  "space_occupancy_vacant": "Puste",
+  "space_occupancy_unknown": "Obecność nieznana lub niedostępna",
+  "space_occupancy_manual": "Tryb ręczny: automatyka obecności wstrzymana",
+  "space_occupancy_automatic": "Automatyka obecności włączona"
 }

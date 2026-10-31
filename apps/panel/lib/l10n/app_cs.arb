@@ -1542,5 +1542,11 @@
   "space_schedule_next": "Příští změna",
   "space_schedule_empty": "Žádná další položka.",
   "space_schedule_last_failed": "Poslední plánovaný pokus selhal nebo byl přerušen. Zkontrolujte výsledky aktivity.",
-  "space_schedule_plan_only": "Plánované časy nepotvrzují stav zařízení."
+  "space_schedule_plan_only": "Plánované časy nepotvrzují stav zařízení.",
+  "space_occupancy_title": "Obsazenost místnosti",
+  "space_occupancy_occupied": "Obsazeno",
+  "space_occupancy_vacant": "Volno",
+  "space_occupancy_unknown": "Obsazenost je neznámá nebo nedostupná",
+  "space_occupancy_manual": "Ruční režim: automatika obsazenosti je pozastavena",
+  "space_occupancy_automatic": "Automatika obsazenosti je zapnutá"
 }

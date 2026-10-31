@@ -1,8 +1,10 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/activity_modes_section.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/mode_schedule_section.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/occupancy_section.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/mode_schedule.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/occupancy.dart';
 import 'package:flutter/material.dart';
 
 /// The room gives this stack a loose flex constraint, so enlarged labels scroll
@@ -21,6 +23,8 @@ class SpaceModeSections extends StatelessWidget {
           ActivityModesSection(spaceId: spaceId),
         if (locator.isRegistered<ModeScheduleRegistry>())
           ModeScheduleSection(spaceId: spaceId),
+        if (locator.isRegistered<OccupancyRegistry>())
+          OccupancySection(spaceId: spaceId),
       ],
     ),
   );

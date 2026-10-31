@@ -11,6 +11,7 @@ import { flushPromises, mount, shallowMount } from '@vue/test-utils';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import type { paths } from '../../../openapi';
 import SpaceModeScheduleSection from '../components/SpaceModeScheduleSection.vue';
+import SpaceOccupancySection from '../components/SpaceOccupancySection.vue';
 import SpaceActivityModesSection from '../components/space-activity-modes-section.vue';
 
 import ViewSpaceConfigure from './view-space-configure.vue';
@@ -156,6 +157,7 @@ vi.mock('../components/components', async () => {
 	return {
 		SpaceActivityModesSection: (await import('../components/space-activity-modes-section.vue')).default,
 		SpaceModeScheduleSection: (await import('../components/SpaceModeScheduleSection.vue')).default,
+		SpaceOccupancySection: (await import('../components/SpaceOccupancySection.vue')).default,
 		SpaceAddDeviceDialog: StubComponent('SpaceAddDeviceDialog'),
 		SpaceAddDisplayDialog: StubComponent('SpaceAddDisplayDialog'),
 		SpaceAddSceneDialog: StubComponent('SpaceAddSceneDialog'),
@@ -371,6 +373,36 @@ describe('mounted configure activity mode support', () => {
 			baseUrl: 'http://localhost/api/v1',
 			fetch: async (request: Request) => {
 				requests.push(request);
+				const occupancySpace = new URL(request.url).pathname.match(/\/spaces\/([^/]+)\/occupancy/)?.[1];
+				if (request.method === 'GET' && occupancySpace) {
+					const pathname = new URL(request.url).pathname;
+					const data = pathname.endsWith('/sensors')
+						? []
+						: pathname.endsWith('/state')
+							? {
+									space_id: occupancySpace,
+									status: 'unknown',
+									enabled: false,
+									running: true,
+									manual_override: false,
+									vacancy_remaining_seconds: null,
+									last_attempt_status: null,
+								}
+							: {
+									id: 'occupancy',
+									space_id: occupancySpace,
+									created_at: '2026-11-02T00:00:00Z',
+									revision: 1,
+									enabled: false,
+									vacancy_timeout_seconds: 900,
+									maximum_age_seconds: 3600,
+									sensor_property_ids: [],
+									occupied_mode: null,
+									vacant_mode: null,
+								};
+					return new Response(JSON.stringify({ data }), { headers: { 'Content-Type': 'application/json' } });
+				}
+
 				if (request.method === 'PUT') {
 					const body = await request.json();
 					if (mocks.saveConflict) return new Response(JSON.stringify({ data: null }), { status: 409 });
@@ -438,7 +470,7 @@ describe('mounted configure activity mode support', () => {
 			const supported = type === SpaceType.ROOM || type === SpaceType.ZONE;
 			expect(wrapper.findComponent(SpaceActivityModesSection).exists()).toBe(supported);
 			expect(wrapper.findComponent(SpaceModeScheduleSection).exists()).toBe(supported);
-			expect(requests).toHaveLength(supported ? 6 : 0);
+			expect(requests).toHaveLength(supported ? 9 : 0);
 			const scheduleRequests = requests.filter((request) => new URL(request.url).pathname.endsWith('/schedules'));
 			expect(scheduleRequests).toHaveLength(supported ? 1 : 0);
 			if (supported) {
@@ -449,14 +481,18 @@ describe('mounted configure activity mode support', () => {
 			expect(
 				requests.every(
 					(request) =>
-						request.method === 'GET' && (new URL(request.url).pathname.endsWith('/config') || new URL(request.url).pathname.endsWith('/schedules'))
+						request.method === 'GET' &&
+						(new URL(request.url).pathname.endsWith('/config') ||
+							new URL(request.url).pathname.endsWith('/schedules') ||
+							new URL(request.url).pathname.includes('/occupancy'))
 				)
 			).toBe(true);
 			expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
 			wrapper.unmount();
 		}
 	);
-	it('guards keyed space replacement and route departure before discarding an unsaved schedule', async () => {
+	it.each(['schedule', 'occupancy'])('guards keyed replacement and departure before discarding unsaved %s settings', async (target) => {
+		const Selected = target === 'schedule' ? SpaceModeScheduleSection : SpaceOccupancySection;
 		mocks.realRouter = true;
 		const initial = space(SpaceType.ROOM).id;
 		const router = createRouter({
@@ -480,13 +516,13 @@ describe('mounted configure activity mode support', () => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
 		try {
 			await flushPromises();
-			const section = wrapper.getComponent(SpaceModeScheduleSection);
+			const section = wrapper.getComponent(Selected);
 			section.getComponent(ElSwitch).vm.$emit('update:modelValue', true);
 			await flushPromises();
 			await router.push('/space/other/plugin/configure');
 			expect(router.currentRoute.value.params.id).toBe(initial);
-			expect(wrapper.getComponent(SpaceModeScheduleSection).vm.$.uid).toBe(section.vm.$.uid);
-			expect(section.get('[data-testid="schedule-save"]').attributes('disabled')).toBeUndefined();
+			expect(wrapper.getComponent(Selected).vm.$.uid).toBe(section.vm.$.uid);
+			expect(section.vm.hasUnsavedChanges).toBe(true);
 			await router.push('/elsewhere');
 			expect(router.currentRoute.value.params.id).toBe(initial);
 			expect(confirm).toHaveBeenCalledTimes(2);
@@ -494,7 +530,7 @@ describe('mounted configure activity mode support', () => {
 			await router.push('/space/other/plugin/configure');
 			await flushPromises();
 			expect(router.currentRoute.value.params.id).toBe('other');
-			expect(wrapper.getComponent(SpaceModeScheduleSection).vm.$.uid).not.toBe(section.vm.$.uid);
+			expect(wrapper.getComponent(Selected).vm.$.uid).not.toBe(section.vm.$.uid);
 		} finally {
 			wrapper.unmount();
 			confirm.mockRestore();
@@ -670,17 +706,17 @@ describe('mounted configure activity mode support', () => {
 	it('unmounts activity controls when a reactive space becomes unsupported and remounts for a zone', async () => {
 		const wrapper = render(SpaceType.ROOM);
 		await flushPromises();
-		expect(requests).toHaveLength(6);
+		expect(requests).toHaveLength(9);
 		const original = wrapper.getComponent(SpaceActivityModesSection).vm;
 		await wrapper.setProps({ space: space(SpaceType.MASTER) });
 		await flushPromises();
 		expect(wrapper.findComponent(SpaceActivityModesSection).exists()).toBe(false);
-		expect(requests).toHaveLength(6);
+		expect(requests).toHaveLength(9);
 		expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
 		await wrapper.setProps({ space: space(SpaceType.ZONE) });
 		await flushPromises();
 		expect(wrapper.getComponent(SpaceActivityModesSection).vm).not.toBe(original);
-		expect(requests).toHaveLength(12);
+		expect(requests).toHaveLength(18);
 		expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
 		wrapper.unmount();
 	});

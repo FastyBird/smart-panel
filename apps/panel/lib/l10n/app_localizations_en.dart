@@ -4812,4 +4812,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get space_schedule_plan_only =>
       'Planned times are not confirmation of device state.';
+
+  @override
+  String get space_occupancy_title => 'Room occupancy';
+
+  @override
+  String get space_occupancy_occupied => 'Occupied';
+
+  @override
+  String get space_occupancy_vacant => 'Vacant';
+
+  @override
+  String get space_occupancy_unknown => 'Occupancy unknown or unavailable';
+
+  @override
+  String get space_occupancy_manual =>
+      'Manual mode: occupancy automation paused';
+
+  @override
+  String get space_occupancy_automatic => 'Occupancy automation enabled';
 }

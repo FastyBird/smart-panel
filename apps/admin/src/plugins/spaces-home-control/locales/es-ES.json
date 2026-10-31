@@ -542,5 +542,34 @@
 			"weekend": "Sábado y domingo",
 			"custom": "Días seleccionados"
 		}
+	},
+	"occupancy": {
+		"title": "Ocupación de la habitación",
+		"description": "Los sensores de movimiento o presencia en vivo seleccionados activan los modos configurados. Una entrada ausente u obsoleta no indica una habitación vacía. Se mantienen las protecciones del termostato.",
+		"status": "Estado observado",
+		"occupied": "Ocupada",
+		"vacant": "Vacía",
+		"unknown": "Desconocido o no disponible",
+		"manual": "El modo manual pausa la automatización de ocupación.",
+		"resume": "Reanudar la automatización",
+		"enabled": "Activar la automatización de ocupación",
+		"timeout": "Espera antes de desocupar (minutos)",
+		"maximumAge": "Validez del sensor (minutos)",
+		"sensors": "Sensores de ocupación",
+		"whenOccupied": "Al ocuparse",
+		"whenVacant": "Al quedar vacía",
+		"restore": "Restaurar la actividad anterior",
+		"noChange": "Mantener la actividad actual",
+		"missingSensor": "Sensor ausente",
+		"invalid": "Selecciona un sensor y una validez superior a la espera de desocupación.",
+		"refresh": "Actualizar",
+		"save": "Guardar ocupación",
+		"discard": "Descartar cambios",
+		"unsaved": "Tus cambios aún no se han guardado.",
+		"conflictHelp": "Se han cargado ajustes nuevos. Tu borrador se conserva; descártalo para revisar la versión guardada.",
+		"loadFailed": "No se pudieron cargar los ajustes de ocupación.",
+		"saveUnconfirmed": "No se pudo confirmar el guardado. Puede haberse realizado; tu borrador se conserva. Actualiza para comprobarlo.",
+		"conflict": "Otra solicitud cambió los ajustes.",
+		"readOnly": "La edición requiere un propietario o administrador."
 	}
 }

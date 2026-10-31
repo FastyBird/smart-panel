@@ -542,5 +542,34 @@
 			"weekend": "Sobota i niedziela",
 			"custom": "Wybrane dni"
 		}
+	},
+	"occupancy": {
+		"title": "Obecność w pomieszczeniu",
+		"description": "Wybrane aktywne czujniki ruchu lub obecności uruchamiają skonfigurowane tryby. Brak lub nieaktualność odczytu nie oznacza pustego pokoju. Zabezpieczenia termostatu pozostają nadrzędne.",
+		"status": "Wykryty stan",
+		"occupied": "Zajęte",
+		"vacant": "Puste",
+		"unknown": "Nieznany lub niedostępny",
+		"manual": "Tryb ręczny wstrzymuje automatykę obecności.",
+		"resume": "Wznów automatykę obecności",
+		"enabled": "Włącz automatykę obecności",
+		"timeout": "Opóźnienie opróżnienia (minuty)",
+		"maximumAge": "Ważność odczytu czujnika (minuty)",
+		"sensors": "Czujniki obecności",
+		"whenOccupied": "Po wykryciu obecności",
+		"whenVacant": "Gdy pomieszczenie jest puste",
+		"restore": "Przywróć poprzednią aktywność",
+		"noChange": "Zachowaj bieżącą aktywność",
+		"missingSensor": "Brakujący czujnik",
+		"invalid": "Wybierz czujnik i ważność odczytu dłuższą niż opóźnienie opróżnienia.",
+		"refresh": "Odśwież",
+		"save": "Zapisz obecność",
+		"discard": "Odrzuć zmiany",
+		"unsaved": "Zmiany nie zostały jeszcze zapisane.",
+		"conflictHelp": "Wczytano nowsze ustawienia. Szkic zachowano; odrzuć go, aby sprawdzić zapisaną wersję.",
+		"loadFailed": "Nie udało się wczytać ustawień obecności.",
+		"saveUnconfirmed": "Nie udało się potwierdzić zapisu. Mógł się powieść; szkic zachowano. Odśwież, aby sprawdzić.",
+		"conflict": "Inne żądanie zmieniło ustawienia.",
+		"readOnly": "Edycja wymaga właściciela lub administratora."
 	}
 }

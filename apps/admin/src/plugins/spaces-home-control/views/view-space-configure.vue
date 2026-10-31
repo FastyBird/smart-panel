@@ -91,6 +91,11 @@
 						ref="scheduleSectionRef"
 						:space-id="props.space.id"
 					/>
+					<space-occupancy-section
+						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
+						ref="occupancySectionRef"
+						:space-id="props.space.id"
+					/>
 				</el-scrollbar>
 			</el-tab-pane>
 
@@ -284,6 +289,7 @@ import {
 	SpaceDisplaysSection,
 	SpaceDomainsSection,
 	SpaceModeScheduleSection,
+	SpaceOccupancySection,
 	SpaceParentZoneSection,
 	SpaceScenesSection,
 } from '../components/components';
@@ -319,11 +325,12 @@ const showAddDisplayDialog = ref<boolean>(false);
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
 const remoteFormChanged = ref<boolean>(false);
 const scheduleSectionRef = ref<InstanceType<typeof SpaceModeScheduleSection> | null>(null);
+const occupancySectionRef = ref<InstanceType<typeof SpaceOccupancySection> | null>(null);
 // This route survives the keyed child replacement on a space-id change: ask before it commits.
 const confirmScheduleDiscard = async (): Promise<boolean> => {
-	const section = scheduleSectionRef.value;
-	await section?.waitForSave();
-	if (!section?.hasUnsavedChanges) return true;
+	const sections = [scheduleSectionRef.value, occupancySectionRef.value];
+	await Promise.all(sections.map((section) => section?.waitForSave()));
+	if (!sections.some((section) => section?.hasUnsavedChanges)) return true;
 	try {
 		await ElMessageBox.confirm(t('spacesModule.texts.confirmDiscard'), t('spacesModule.headings.discard'), {
 			confirmButtonText: t('spacesModule.buttons.yes.title'),

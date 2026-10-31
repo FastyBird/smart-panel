@@ -6,27 +6,27 @@ its qualified head `a68f76d` and the squash commit have the same tree `ebf3c05f`
 [All 14 checks passed](https://github.com/FastyBird/smart-panel/actions/runs/41079491039), including backend,
 Admin, Panel and ordinary E2E. The [completed current-source review reconciliation](https://github.com/FastyBird/smart-panel/pull/1498#issuecomment-6527804523)
 confirmed the corrections and repeated-conflict regression. These are software results, not installed qualification.
-The initial reconciliation used existing evidence without rerunning tests. The time-scheduling follow-up described below adds implementation and executable verification; its PR owns fresh CI/review gates.
+The initial reconciliation used existing evidence without rerunning tests. The time-scheduling and occupancy follow-ups described below add implementation and executable verification; each PR owns fresh CI/review gates.
 
 ## Software delivery state
 
-| Work                                                                  | State and evidence                                                            | Remaining boundary                                                                                  |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Numeric policy, numeric/binary aggregates and authoring (#1448–#1450) | Complete; #1464/#1465, child issues already closed                            | Preserve through final composition                                                                  |
-| Switch/outlet group foundation (#1451)                                | Complete; #1464, child already closed                                         | No new room intent domain is implied                                                                |
-| Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Qualified POSITION/TILT commands and their obstruction/late/partial feedback acceptance             |
-| Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | #1452's unsupported commands and full native HomeKit acceptance remain separate                     |
-| Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | HA/Zigbee native units and installed equipment are separate                                         |
-| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Presence/composed automation acceptance remains #1458; time schedules are delivered below           |
-| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Time schedules reuse that path in this follow-up; presence/occupancy acceptance remains open        |
-| Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                            |
-| Home Assistant native units (#1456)                                   | Not implemented                                                               | Actual adapter, authoring, requested/observed state and protocol tests                              |
-| Zigbee2MQTT native units (#1457)                                      | Not implemented                                                               | Actual model/expose-qualified adapter and protocol tests                                            |
-| SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                        |
-| HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Native/composed thermostat, remap and partial-result acceptance                                     |
-| Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts |
-| Parent epic (#1447)                                                   | Open                                                                          | All remaining software and actual alpha publication                                                 |
-| Installed acceptance (#1463)                                          | Open, after the published alpha                                               | Named equipment/firmware and separately reviewed actual procedure, including Apple Home pairing     |
+| Work                                                                  | State and evidence                                                            | Remaining boundary                                                                                                                      |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Numeric policy, numeric/binary aggregates and authoring (#1448–#1450) | Complete; #1464/#1465, child issues already closed                            | Preserve through final composition                                                                                                      |
+| Switch/outlet group foundation (#1451)                                | Complete; #1464, child already closed                                         | No new room intent domain is implied                                                                                                    |
+| Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Qualified POSITION/TILT commands and their obstruction/late/partial feedback acceptance                                                 |
+| Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | #1452's unsupported commands and full native HomeKit acceptance remain separate                                                         |
+| Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | HA/Zigbee native units and installed equipment are separate                                                                             |
+| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Presence/composed automation acceptance remains #1458; time schedules are delivered below                                               |
+| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Time schedules and the occupancy follow-up reuse that path; the occupancy PR owns fresh CI/review gates; final composition remains open |
+| Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                                                                |
+| Home Assistant native units (#1456)                                   | Not implemented                                                               | Actual adapter, authoring, requested/observed state and protocol tests                                                                  |
+| Zigbee2MQTT native units (#1457)                                      | Not implemented                                                               | Actual model/expose-qualified adapter and protocol tests                                                                                |
+| SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                                                            |
+| HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Native/composed thermostat, remap and partial-result acceptance                                                                         |
+| Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts                                     |
+| Parent epic (#1447)                                                   | Open                                                                          | All remaining software and actual alpha publication                                                                                     |
+| Installed acceptance (#1463)                                          | Open, after the published alpha                                               | Named equipment/firmware and separately reviewed actual procedure, including Apple Home pairing                                         |
 
 A dependency remaining open does not revoke a completed child's supported-software scope. In particular,
 #1453 does not promise commands that #1452 explicitly refuses. Unavailable optional domain actions retain
@@ -35,18 +35,18 @@ security epic or require the optional camera input.
 
 ## Reused activity issues
 
-| Issue | Disposition              | Evidence or exact remainder                                                                                                                                                     |
-| ----- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #1292 | Already closed; preserve | Definitions, per-space configuration and disabled/unset climate defaults, #1472                                                                                                 |
-| #1293 | Keep open                | Actual climate is delivered. The shared task's combined all-domains-present orchestration acceptance remains to be demonstrated; separate green domain suites are not that case |
-| #1294 | Software complete        | Authenticated activation/configuration endpoints, revision/identity events and generated contracts, #1472                                                                       |
-| #1295 | Software complete        | Mounted Admin configuration, reset/preview/conflict handling and six locales, #1472/#1498                                                                                       |
-| #1296 | Software complete        | Panel selection, loading, truthful results, manual clear, reconnect and localization, #1472                                                                                     |
-| #1297 | Software implementation  | Persisted weekly schedules, timezone/DST gap/fold, durable watermark/dedup and manual selection/clear until the next trigger; see scheduling evidence below                     |
-| #1298 | Software implementation  | Mounted weekly Admin editor with entry CRUD, per-space enablement/timezone, six locales, validation, CAS conflicts and space rebinding                                          |
-| #1362 | Software implementation  | Read-only Panel current/next plan and manual indication, transitions, unknown/unavailable states and owned refresh/disposal; no Panel editor                                    |
-| #1299 | Open                     | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
-| #1300 | Open                     | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
+| Issue | Disposition                                 | Evidence or exact remainder                                                                                                                                                     |
+| ----- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #1292 | Already closed; preserve                    | Definitions, per-space configuration and disabled/unset climate defaults, #1472                                                                                                 |
+| #1293 | Keep open                                   | Actual climate is delivered. The shared task's combined all-domains-present orchestration acceptance remains to be demonstrated; separate green domain suites are not that case |
+| #1294 | Software complete                           | Authenticated activation/configuration endpoints, revision/identity events and generated contracts, #1472                                                                       |
+| #1295 | Software complete                           | Mounted Admin configuration, reset/preview/conflict handling and six locales, #1472/#1498                                                                                       |
+| #1296 | Software complete                           | Panel selection, loading, truthful results, manual clear, reconnect and localization, #1472                                                                                     |
+| #1297 | Software implementation                     | Persisted weekly schedules, timezone/DST gap/fold, durable watermark/dedup and manual selection/clear until the next trigger; see scheduling evidence below                     |
+| #1298 | Software implementation                     | Mounted weekly Admin editor with entry CRUD, per-space enablement/timezone, six locales, validation, CAS conflicts and space rebinding                                          |
+| #1362 | Software implementation                     | Read-only Panel current/next plan and manual indication, transitions, unknown/unavailable states and owned refresh/disposal; no Panel editor                                    |
+| #1299 | Delivered in occupancy follow-up (on merge) | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
+| #1300 | Delivered in occupancy follow-up (on merge) | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
 
 #1293 is not a reason to rebuild the delivered bridge. Its remaining acceptance must use the existing adapters
 and their explicit availability outcomes. Schedules and presence stay with their own issues.
@@ -70,6 +70,27 @@ The configured preset and thermostat manual-hold cases execute through the real 
 [Execution policy and API](space-activity-modes.md#time-schedules) distinguish planned state, original activity
 admission and actual device convergence. These are software fixtures; published-alpha and installed-equipment gates
 remain separate. Historical RED/UNKNOWN evidence remains attached to its original source and is not erased by this work.
+
+## Occupancy follow-up (#1299, #1300)
+
+The occupancy implementation has passed local software qualification and is ready for its PR delivery gates. These issues remain open until the
+occupancy PR passes CI/review and merges. Parent #1458 still owns remaining combined-domain acceptance;
+this implementation does not close that parent or grant installed-equipment qualification.
+
+| Acceptance boundary                                                                                                | Current source/test witnesses                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Occupied/Vacant/Unknown, monotonic timeout, clock changes and unavailable reset                                    | [occupancy state machine](../apps/backend/src/plugins/spaces-home-control/occupancy/space-occupancy.spec.ts)                                                                                                           |
+| Explicit selected/multiple motion or presence inputs, fresh live reports, offline/degraded/membership refusal      | [occupancy input tests](../apps/backend/src/plugins/spaces-home-control/services/space-occupancy-inputs.service.spec.ts)                                                                                               |
+| Vacancy action, exact prior-selection restore, empty restore, manual hold/resume CAS and native rollback           | [occupancy SQLite integration](../apps/backend/src/plugins/spaces-home-control/services/space-occupancy.integration.spec.ts)                                                                                           |
+| Dormant existing-installation backfill, persisted configuration, reopen and cascade                                | [migration 51](../apps/backend/src/migrations/__tests__/1000000000051-AddSpaceOccupancy.spec.ts)                                                                                                                       |
+| Authentication, validated config, live motion and thermostat manual precedence through the existing climate bridge | [composed activity HTTP](../apps/backend/test/space-climate-automation.e2e-spec.ts)                                                                                                                                    |
+| Sensor metadata remains valid after unrelated state writes; real eager plugin dependency edits still invalidate it | [metadata regression](../apps/backend/src/modules/devices/services/property-metadata.service.spec.ts)                                                                                                                  |
+| Actual localized Admin controls, sensor/mode/timeout save, conflict, lost response and route-owned drafts          | [occupancy editor](../apps/admin/src/plugins/spaces-home-control/components/space-occupancy-section.spec.ts), [configure navigation](../apps/admin/src/plugins/spaces-home-control/views/view-space-configure.spec.ts) |
+| Panel status/manual indication, foreign/stale requests, disconnect, deadline, polling and page disposal            | [Panel occupancy tests](../apps/panel/test/plugins/spaces-home-control/occupancy_test.dart)                                                                                                                            |
+
+[Occupancy execution policy and API](space-activity-modes.md#room-occupancy) define the fail-closed input,
+manual-resume and admitted-operation boundaries. Camera input remains optional. Software results do not establish
+that installed lighting, heating or other equipment converged; original per-domain outcomes still apply.
 
 ## Complete child acceptance and named evidence
 
