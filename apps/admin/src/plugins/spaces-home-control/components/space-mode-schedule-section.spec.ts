@@ -215,7 +215,10 @@ describe('weekly scheduling editor with the actual API client', () => {
 			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
 			await flushPromises();
 			await vi.advanceTimersByTimeAsync(30_000);
-			if (stallRead) await vi.advanceTimersByTimeAsync(10_000);
+			if (stallRead) {
+				expect(wrapper.get('[data-testid="schedule-refresh"]').attributes('disabled')).toBeDefined();
+				await vi.advanceTimersByTimeAsync(10_000);
+			}
 			await flushPromises();
 			await wrapper.vm.waitForSave();
 			expect(wrapper.text()).toContain(en.schedules.saveUnconfirmed);
@@ -224,6 +227,7 @@ describe('weekly scheduling editor with the actual API client', () => {
 			expect(writes).toHaveLength(1);
 			if (stallRead) {
 				expect(wrapper.get('[data-testid="schedule-discard"]').attributes('disabled')).toBeDefined();
+				expect(wrapper.get('[data-testid="schedule-refresh"]').attributes('disabled')).toBeUndefined();
 				holdReconciliation = false;
 				await wrapper.get('[data-testid="schedule-refresh"]').trigger('click');
 				await flushPromises();
@@ -237,6 +241,71 @@ describe('weekly scheduling editor with the actual API client', () => {
 			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
 			await flushPromises();
 			expect(writes[1]).toMatchObject({ expected_revision: 2, enabled: false });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+	it('refuses a stale revision when the timed-out PUT commits after reconciliation, then recovers revision 2', async () => {
+		let stored = row();
+		const reads: number[] = [];
+		harness.client = createClient<paths>({
+			baseUrl: 'http://localhost/api/v1',
+			fetch: async (request: Request) => {
+				if (request.method === 'PUT') {
+					const body = await request.json();
+					writes.push(body.data);
+					if (writes.length === 1) {
+						return new Promise<never>((_, reject) => {
+							request.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+						});
+					}
+					if (body.data.expected_revision !== stored.revision) return json(null, 409);
+					stored = { ...stored, ...body.data, revision: stored.revision + 1 };
+					return json(stored);
+				}
+				reads.push(stored.revision);
+				return json(stored);
+			},
+		});
+		const wrapper = render();
+		try {
+			await flushPromises();
+			wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(30_000);
+			await flushPromises();
+			await wrapper.vm.waitForSave();
+			expect(reads).toEqual([1, 1]);
+			expect(wrapper.text()).toContain(en.schedules.saveUnconfirmed);
+			expect(wrapper.get('[data-testid="schedule-save"]').attributes('disabled')).toBeDefined();
+			// The server completes only after the reconciliation snapshot was read.
+			expect(writes).toHaveLength(1);
+			stored = { ...stored, ...writes[0], revision: 2 };
+			await wrapper.get('[data-testid="schedule-discard"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.findComponent(ElSwitch).props('modelValue')).toBe(false);
+			wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', true);
+			await flushPromises();
+			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			expect(writes[1]).toMatchObject({ expected_revision: 1 });
+			expect(stored).toMatchObject({ revision: 2, enabled: true });
+			expect(wrapper.vm.hasUnsavedChanges).toBe(true);
+			expect(wrapper.text()).toContain(en.schedules.conflictHelp);
+			expect(wrapper.get('[data-testid="schedule-save"]').attributes('disabled')).toBeDefined();
+			expect(reads).toEqual([1, 1, 2]);
+			await wrapper.get('[data-testid="schedule-discard"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.findComponent(ElSwitch).props('modelValue')).toBe(true);
+			wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', false);
+			await flushPromises();
+			await wrapper.get('[data-testid="schedule-save"]').trigger('click');
+			await flushPromises();
+			expect(writes[2]).toMatchObject({ expected_revision: 2, enabled: false });
+			expect(stored).toMatchObject({ revision: 3, enabled: false });
 		} finally {
 			vi.useRealTimers();
 		}

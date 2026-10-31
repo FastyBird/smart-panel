@@ -17,6 +17,7 @@
 		/>
 		<el-button
 			v-if="error === 'loadFailed' || error === 'conflict' || error === 'saveUnconfirmed'"
+			:disabled="busy || loading"
 			data-testid="schedule-refresh"
 			@click="load"
 		>
