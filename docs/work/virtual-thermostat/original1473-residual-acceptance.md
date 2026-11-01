@@ -90,7 +90,8 @@ closed by these method controls.
 The two variants in `virtual-thermostat-runtime.service.spec.ts` reuse the same
 `prepareIssuedOffJournalSettlement` helper as the existing positive rollback/ACK cases. Accepted
 remains its default. The helper preserves the original send receiver, arguments, Promise and result;
-it observes the actual OFF outcome and its saved SQLite row. A refused or unknown outcome rejects
+it observes the original OFF outcome and its saved SQLite row. The observed outcome must match the
+selected variant, so a generic guard refusal cannot stand in for unknown. A refused or unknown outcome rejects
 **test preparation**, before any explicit second settlement request. The product public method's
 return contract is unchanged.
 

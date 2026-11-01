@@ -5004,6 +5004,7 @@ describe('virtual thermostat durable runtime', () => {
 		const pendingIds = Object.freeze([command.id, delivered[0]].sort());
 		const originalJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 		expect(deliveredOutcomes).toHaveLength(1);
+		expect(deliveredOutcomes[0].outcome).toBe(offResult);
 		if (deliveredOutcomes[0].outcome !== 'accepted')
 			throw new Error('Original OFF did not finish an accepted saved native outcome');
 		for (const pending of pendingIds)
