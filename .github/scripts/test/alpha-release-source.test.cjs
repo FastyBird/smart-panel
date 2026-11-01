@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { test } = require('node:test');
 const { parse } = require(
@@ -16,18 +18,6 @@ test('every alpha publisher and builder consumes the immutable post-version-sync
 	assert.equal(workflow.jobs['sync-versions'].outputs.buildNumber, '${{ steps.set-version.outputs.buildNumber }}');
 	const sync = workflow.jobs['sync-versions'].steps.find((step) => step.id === 'version-commit');
 	assert.match(sync.run, /sha=\$\(git rev-parse HEAD\)/);
-	const commitIndex = sync.run.indexOf('git commit');
-	assert.ok(commitIndex >= 0, 'version-commit must commit the version change');
-	const pushIndex = sync.run.indexOf('git push', commitIndex);
-	assert.ok(pushIndex > commitIndex, 'version-commit must push the version commit');
-	const elseOffset = /^[ \t]*else[ \t]*$/m.exec(sync.run.slice(commitIndex))?.index;
-	assert.notEqual(elseOffset, undefined, 'version-commit must retain its no-change branch');
-	const elseIndex = commitIndex + elseOffset;
-	const fiOffset = /^[ \t]*fi[ \t]*$/m.exec(sync.run.slice(elseIndex))?.index;
-	assert.notEqual(fiOffset, undefined, 'version-commit must close its no-change branch');
-	const fiIndex = elseIndex + fiOffset;
-	assert.ok(pushIndex < elseIndex || pushIndex > fiIndex, 'version-commit must not push from the else branch');
-	assert.ok(pushIndex < sync.run.indexOf('git rev-parse HEAD'));
 	const checkouts = [];
 	for (const [name, job] of Object.entries(workflow.jobs)) {
 		if (name === 'sync-versions') continue;
@@ -52,6 +42,58 @@ test('every alpha publisher and builder consumes the immutable post-version-sync
 		'pre-release-alpha',
 	]) {
 		assert.ok(checkouts.includes(required), required);
+	}
+});
+
+test('version synchronization exports a published commit with and without version changes', () => {
+	const sync = workflow.jobs['sync-versions'].steps.find((step) => step.id === 'version-commit');
+	const originalSha = '1'.repeat(40);
+	const versionSha = '2'.repeat(40);
+	// Bash executes the original control flow; Git only updates local in-memory commit/publication state.
+	const git = `
+current="$ORIGINAL_SHA"
+published="$ORIGINAL_SHA"
+git() {
+  case "$1" in
+    config|add) ;;
+    status)
+      if [ "$VERSION_CHANGED" = 1 ]; then printf ' M package.json\\n'; fi
+      ;;
+    commit) current="$VERSION_SHA" ;;
+    push) published="$current" ;;
+    rev-parse)
+      if [ "$current" != "$published" ]; then
+        printf 'SHA capture precedes publication\\n' >&2
+        return 1
+      fi
+      printf '%s\\n' "$current"
+      ;;
+    *) return 127 ;;
+  esac
+}
+`;
+	for (const changed of ['1', '0']) {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-source-'));
+		const output = path.join(directory, 'output');
+		try {
+			const result = spawnSync('/bin/bash', ['--noprofile', '--norc', '-euo', 'pipefail', '-c', git + sync.run], {
+				cwd: directory,
+				encoding: 'utf8',
+				timeout: 5_000,
+				env: {
+					PATH: directory,
+					GITHUB_OUTPUT: output,
+					ORIGINAL_SHA: originalSha,
+					VERSION_SHA: versionSha,
+					VERSION_CHANGED: changed,
+				},
+			});
+			assert.ifError(result.error);
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(fs.readFileSync(output, 'utf8').trim(), `sha=${changed === '1' ? versionSha : originalSha}`);
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
 	}
 });
 
