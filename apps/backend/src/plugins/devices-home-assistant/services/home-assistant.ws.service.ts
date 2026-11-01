@@ -106,6 +106,32 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	// talking about the socket that is actually active, or a stopped / superseded one.
 	private socketGeneration = 0;
 
+	private readonly nativeClimateListeners = new Set<(event: Record<string, unknown>) => void>();
+
+	registerNativeClimateListener(listener: (event: Record<string, unknown>) => void): () => void {
+		this.nativeClimateListeners.add(listener);
+		return () => this.nativeClimateListeners.delete(listener);
+	}
+
+	captureNativeClimateConnection(): {
+		identity: string;
+		serverIdentity: string;
+		isCurrent: () => boolean;
+		send: (data: Record<string, unknown>) => Promise<string>;
+	} | null {
+		if (this.state !== 'started' || !this.isConnected()) return null;
+		const generation = this.socketGeneration;
+		const socket = this.ws;
+		const send = this.send.bind(this) as (data: Record<string, unknown>) => Promise<string>;
+		return {
+			identity: String(generation),
+			serverIdentity: new URL(this.baseUrl).origin + new URL(this.baseUrl).pathname,
+			isCurrent: () =>
+				this.state === 'started' && this.socketGeneration === generation && this.ws === socket && this.isConnected(),
+			send,
+		};
+	}
+
 	// The close-handling continuation currently in flight for the current socket, if any.
 	// stop() awaits it before calling resolveAll(), so a notify() it starts is either fully
 	// written (and so visible for resolveAll() to clean up) or never started, never left to
@@ -348,6 +374,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		});
 
 		this.ws.on('message', (data: string) => {
+			if (generation !== this.socketGeneration) return;
 			void (async () => {
 				await this.handleMessage(data);
 			})();
@@ -760,6 +787,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 				typeof msg.event.event_type === 'string'
 			) {
 				const eventType = msg.event.event_type;
+				for (const listener of this.nativeClimateListeners) listener(msg.event as Record<string, unknown>);
 				const handler = this.eventsHandlers.get(eventType) ?? this.eventsHandlers.get('*');
 
 				if (handler) {
@@ -782,7 +810,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private subscribeToEvents() {
-		const subscribedEvents = new Set<string>(['state_changed']);
+		const subscribedEvents = new Set<string>(['state_changed', 'entity_registry_updated', 'core_config_updated']);
 		for (const eventType of this.eventsHandlers.keys()) {
 			if (eventType !== '*') {
 				subscribedEvents.add(eventType);

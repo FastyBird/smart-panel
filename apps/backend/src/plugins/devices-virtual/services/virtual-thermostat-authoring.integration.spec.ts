@@ -6,8 +6,11 @@ import { EntityManager, EntitySubscriberInterface, QueryRunner, RemoveEvent } fr
 import { SqliteDriver } from 'typeorm/driver/sqlite/SqliteDriver';
 import { v4 as uuid } from 'uuid';
 
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
 
 import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
 import { realThermostatGuardFixture } from '../../../../test/support/thermostat-real-guard-fixture';
@@ -40,6 +43,7 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from '../../../modules/devices/entities/devices.entity';
+import type { NativeClimateUnit } from '../../../modules/devices/platforms/native-climate.contract';
 import { ChannelsTypeMapperService } from '../../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -61,6 +65,7 @@ import { DeviceZonesService } from '../../../modules/devices/services/device-zon
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesControlsService } from '../../../modules/devices/services/devices.controls.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
@@ -75,6 +80,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { NativeThermostatController } from '../controllers/native-thermostat.controller';
 import { CreateVirtualChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from '../dto/create-channel.dto';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
@@ -89,6 +95,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { NativeThermostatEntity } from '../entities/native-thermostat.entity';
 import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
@@ -109,6 +116,7 @@ import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-the
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
+import { NativeThermostatService } from './native-thermostat.service';
 import { initializeThermostatCreationCatalog } from './thermostat-creation-catalog';
 import { RetainedOriginalCreatedResponse, thermostatCreationResponse } from './thermostat-creation-response';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
@@ -2599,6 +2607,90 @@ describe('atomic virtual thermostat authoring', () => {
 		expect((await authoring.create(fresh)).device.id).toBe(fresh.device.id);
 	});
 
+	it('creates a native thermostat over HTTP through the actual DevicesService and keeps supported settings local', async () => {
+		const unit: NativeClimateUnit = {
+			contractVersion: 1,
+			provider: 'home-assistant',
+			deviceId: relayDeviceId,
+			physicalIdentity: 'ha:native-http',
+			fingerprint: 'ha-native-http-v1',
+			ownedPropertyIds: [relayId],
+			capabilities: {
+				modes: ['off', 'heat'],
+				heating: { minimum: 5, maximum: 30, step: 0.5 },
+				cooling: null,
+				supportsCompound: true,
+			},
+			isCurrent: () => true,
+			observe: () => ({
+				available: false,
+				temperature: null,
+				mode: null,
+				heatingSetpoint: null,
+				coolingSetpoint: null,
+				activity: null,
+				observedAt: null,
+				reasons: ['awaiting_live_feedback'],
+			}),
+			prepare: () => ({
+				isCurrent: () => true,
+				dispatch: () => Promise.resolve([{ operation: 'mode', outcome: 'accepted', confirmed: false }]),
+			}),
+		};
+		const native = new NativeThermostatService(
+			database,
+			lock,
+			graph,
+			devices,
+			{ get: () => ({ captureNativeClimateUnit: () => Promise.resolve(unit) }) } as unknown as PlatformRegistryService,
+			registry,
+			values,
+			new PropertyProducerRegistryService(events),
+		);
+		const module = await Test.createTestingModule({
+			controllers: [NativeThermostatController],
+			providers: [{ provide: NativeThermostatService, useValue: native }],
+		}).compile();
+		const app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+		app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }));
+		await app.init();
+		await app.getHttpAdapter().getInstance().ready();
+		try {
+			const response = await app.inject({
+				method: 'POST',
+				url: '/producers/thermostats/native',
+				payload: {
+					name: 'Native thermostat over HTTP',
+					source_device: relayDeviceId,
+					expected_graph_revision: await graph.revision(),
+				},
+			});
+			expect(response.statusCode).toBe(201);
+			const body = response.json<{
+				data: { controller: string; properties: Record<string, string>; requested: object };
+			}>();
+			expect(body.data.requested).toEqual({});
+			const owner = await devices.findOne(body.data.controller);
+			expect(owner).toMatchObject({ category: DeviceCategory.THERMOSTAT, mode: VirtualDeviceMode.CLIMATE_CONTROLLER });
+			expect(
+				await database.manager.findOneBy(NativeThermostatEntity, { controllerId: body.data.controller }),
+			).not.toBeNull();
+			const setpoint = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, {
+				id: body.data.properties.heating_setpoint,
+			});
+			expect(setpoint.valueOrigin).toBe(VirtualValueOrigin.LOCAL);
+			expect(setpoint.permissions).toEqual([PermissionType.READ_WRITE]);
+			expect(setpoint.format).toEqual([5, 30]);
+			expect(setpoint.step).toBe(0.5);
+			const activity = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, {
+				id: body.data.properties.heating_activity,
+			});
+			expect(activity.dataType).toBe(getPropertyMetadata(ChannelCategory.HEATER, PropertyCategory.STATUS)?.data_type);
+			expect(activity.permissions).toEqual([PermissionType.READ_ONLY]);
+		} finally {
+			await app.close();
+		}
+	});
 	it('creates only original caller A while its captured request waits for the structural owner', async () => {
 		const entered = gate(),
 			resume = gate();

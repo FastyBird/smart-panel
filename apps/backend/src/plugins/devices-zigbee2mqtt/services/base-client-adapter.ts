@@ -29,6 +29,30 @@ export abstract class Z2mBaseClientAdapter {
 	protected readonly logger: ExtensionLoggerService;
 
 	private sourceGeneration = 0;
+	private readonly nativeEpochs = new Map<string, object>();
+	/** Native capability/availability changes expire only this unit, without invalidating unrelated measurements. */
+	getNativeClimateGuard(friendlyName: string): () => boolean {
+		let token = this.nativeEpochs.get(friendlyName);
+		if (!token) {
+			token = Object.freeze({});
+			this.nativeEpochs.set(friendlyName, token);
+		}
+		return () => this.nativeEpochs.get(friendlyName) === token;
+	}
+	private expireNativeClimate(friendlyName: string): void {
+		this.nativeEpochs.set(friendlyName, Object.freeze({}));
+		this.nativeSamples.delete(friendlyName);
+	}
+	private readonly nativeSamples = new Map<
+		string,
+		{ state: Readonly<Record<string, unknown>>; metadata: Z2mDeviceStateMetadata }
+	>();
+
+	/** Original packet fields only; never a merged gateway/backend cache. */
+	getNativeClimateSample(friendlyName: string) {
+		return this.nativeSamples.get(friendlyName) ?? null;
+	}
+
 	private cacheState: boolean | null = null;
 	private cacheProofGeneration = 0;
 	private readonly sourceIdentities = new Map<string, ZigbeeSourceIdentity>();
@@ -370,6 +394,14 @@ export abstract class Z2mBaseClientAdapter {
 				}
 
 				const existing = this.deviceRegistry.get(device.friendly_name);
+				if (
+					existing &&
+					(existing.softwareBuildId !== device.software_build_id ||
+						existing.modelId !== device.model_id ||
+						existing.definition?.model !== device.definition?.model ||
+						existing.definition?.vendor !== device.definition?.vendor)
+				)
+					this.expireNativeClimate(device.friendly_name);
 				const cachedState = this.stateCache.get(device.friendly_name) ?? {};
 
 				const registeredDevice: Z2mRegisteredDevice = {
@@ -382,6 +414,7 @@ export abstract class Z2mBaseClientAdapter {
 					definition: device.definition,
 					powerSource: device.power_source,
 					modelId: device.model_id,
+					softwareBuildId: device.software_build_id,
 					available: existing?.available ?? true,
 					lastSeen: existing?.lastSeen,
 					currentState: { ...(existing?.currentState ?? {}), ...cachedState },
@@ -401,6 +434,8 @@ export abstract class Z2mBaseClientAdapter {
 			for (const friendlyName of this.deviceRegistry.keys()) {
 				if (!currentFriendlyNames.has(friendlyName)) {
 					this.deviceRegistry.delete(friendlyName);
+					this.nativeSamples.delete(friendlyName);
+					this.nativeEpochs.delete(friendlyName);
 				}
 			}
 
@@ -457,6 +492,8 @@ export abstract class Z2mBaseClientAdapter {
 
 					if (event.data.friendly_name) {
 						this.deviceRegistry.delete(event.data.friendly_name);
+						this.nativeSamples.delete(event.data.friendly_name);
+						this.nativeEpochs.delete(event.data.friendly_name);
 					}
 
 					void this.callbacks.onDeviceLeft?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
@@ -540,6 +577,8 @@ export abstract class Z2mBaseClientAdapter {
 				isDup: options?.isDup,
 				packetId: options?.packetId,
 			};
+			if (identity && device?.definition?.exposes.some((expose) => expose.type === 'climate'))
+				this.nativeSamples.set(friendlyName, { state: Object.freeze({ ...state }), metadata });
 			void this.callbacks.onDeviceStateChanged?.(friendlyName, state, metadata);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {
@@ -566,6 +605,7 @@ export abstract class Z2mBaseClientAdapter {
 
 			const device = this.deviceRegistry.get(friendlyName);
 			if (device) {
+				if (device.available !== available) this.expireNativeClimate(friendlyName);
 				device.available = available;
 			}
 
@@ -597,6 +637,8 @@ export abstract class Z2mBaseClientAdapter {
 		this.bridgeOnline = false;
 		this.deviceRegistry.clear();
 		this.stateCache.clear();
+		this.nativeSamples.clear();
+		this.nativeEpochs.clear();
 		this.sourceIdentities.clear();
 	}
 }

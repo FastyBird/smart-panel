@@ -1,5 +1,7 @@
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
+import { NativeClimateUnit } from './native-climate.contract';
+
 export interface IDevicePropertyData {
 	device: DeviceEntity;
 	channel: ChannelEntity;
@@ -46,6 +48,8 @@ export interface PreparedCompositeDeviceBatch {
 }
 
 export interface IDevicePlatform {
+	/** Capture an actual native regulator; absent support never grants a protective capability. */
+	captureNativeClimateUnit?(device: DeviceEntity): Promise<NativeClimateUnit | null>;
 	process({ device, channel, property, value }: IDevicePropertyData): Promise<boolean>;
 
 	processBatch(updates: Array<IDevicePropertyData>): Promise<boolean>;

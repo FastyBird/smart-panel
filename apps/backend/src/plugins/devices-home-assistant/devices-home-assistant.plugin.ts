@@ -66,6 +66,7 @@ import { HaSupervisorService } from './services/ha-supervisor.service';
 import { HelperAdoptionService } from './services/helper-adoption.service';
 import { HelperMappingPreviewService } from './services/helper-mapping-preview.service';
 import { HomeAssistantConfigValidatorService } from './services/home-assistant-config-validator.service';
+import { HomeAssistantNativeClimateService } from './services/home-assistant-native-climate.service';
 import { HomeAssistantRawEventService } from './services/home-assistant-raw-event.service';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
@@ -103,6 +104,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		HomeAssistantHttpService,
 		HomeAssistantWsService,
 		HomeAssistantDevicePlatform,
+		HomeAssistantNativeClimateService,
 		MapperService,
 		BinarySensorEntityMapperService,
 		ClimateEntityMapperService,

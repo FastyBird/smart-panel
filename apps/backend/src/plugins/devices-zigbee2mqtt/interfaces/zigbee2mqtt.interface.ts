@@ -244,6 +244,7 @@ export interface Z2mRegisteredDevice {
 	definition?: Z2mDeviceDefinition;
 	powerSource?: string;
 	modelId?: string;
+	softwareBuildId?: string;
 	available: boolean;
 	lastSeen?: Date;
 	currentState: Record<string, unknown>;

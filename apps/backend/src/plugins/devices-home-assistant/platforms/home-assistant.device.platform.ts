@@ -1,15 +1,16 @@
 import { validate } from 'class-validator';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
+import { NativeClimateUnit } from '../../../modules/devices/platforms/native-climate.contract';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { HomeAssistantServiceRequestDto } from '../dto/home-assistant-service-request.dto';
 import {
@@ -19,6 +20,7 @@ import {
 import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config.model';
 import { HaSupervisorService } from '../services/ha-supervisor.service';
+import { HomeAssistantNativeClimateService } from '../services/home-assistant-native-climate.service';
 
 export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 	device: HomeAssistantDeviceEntity;
@@ -32,13 +34,63 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	);
 
 	private pluginConfig: HomeAssistantConfigModel | null = null;
+	private readonly legacyCommands = new Map<string, { pending: number; generation: number }>();
 
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly mapperService: MapperService,
 		private readonly supervisorService: HaSupervisorService,
+		@Optional() private readonly nativeClimateService?: HomeAssistantNativeClimateService,
 	) {
 		super();
+	}
+
+	async captureNativeClimateUnit(device: DeviceEntity): Promise<NativeClimateUnit | null> {
+		let fence = this.legacyCommands.get(device.id);
+		if (!fence) {
+			fence = { pending: 0, generation: 0 };
+			this.legacyCommands.set(device.id, fence);
+		}
+		if (fence.pending) return null;
+		const generation = fence.generation;
+		const unit = await this.nativeClimateService?.capture(device);
+		const current = () =>
+			this.legacyCommands.get(device.id) === fence &&
+			fence.pending === 0 &&
+			fence.generation === generation &&
+			unit?.isCurrent() === true;
+		if (!unit || !current()) return null;
+		return {
+			...unit,
+			isCurrent: current,
+			observe: () =>
+				current()
+					? unit.observe()
+					: {
+							available: false,
+							temperature: null,
+							mode: null,
+							heatingSetpoint: null,
+							coolingSetpoint: null,
+							activity: null,
+							observedAt: null,
+							reasons: ['legacy_command_in_flight'],
+						},
+			prepare: (request) => {
+				if (!current()) return null;
+				const prepared = unit.prepare(request);
+				if (!prepared) return null;
+				return {
+					isCurrent: () => current() && prepared.isCurrent(),
+					dispatch: (isAdmitted) => prepared.dispatch(() => current() && isAdmitted()),
+				};
+			},
+		};
+	}
+
+	@OnEvent('DevicesModule.Device.Deleted')
+	retireNativeCommandFence(device: { id?: string }): void {
+		if (device.id) this.legacyCommands.delete(device.id);
 	}
 
 	getType(): string {
@@ -55,6 +107,23 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	}
 
 	async processBatch(updates: Array<IHomeAssistantDevicePropertyData>): Promise<boolean> {
+		if (!updates.length) return true;
+		const id = updates[0].device.id;
+		let fence = this.legacyCommands.get(id);
+		if (!fence) {
+			fence = { pending: 0, generation: 0 };
+			this.legacyCommands.set(id, fence);
+		}
+		fence.pending++;
+		fence.generation++;
+		try {
+			return await this.processLegacyBatch(updates);
+		} finally {
+			fence.pending--;
+		}
+	}
+
+	private async processLegacyBatch(updates: Array<IHomeAssistantDevicePropertyData>): Promise<boolean> {
 		const device = updates[0].device;
 
 		if (!(device instanceof HomeAssistantDeviceEntity)) {

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/native_thermostat.dart';
+
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -19,8 +21,13 @@ import 'package:flutter/material.dart';
 /// details use their own controller and must never command these claimed leaves.
 class VirtualThermostatDeviceDetail extends StatefulWidget {
   final ThermostatDeviceView device;
+  final bool detectNative;
 
-  const VirtualThermostatDeviceDetail({super.key, required this.device});
+  const VirtualThermostatDeviceDetail({
+    super.key,
+    required this.device,
+    this.detectNative = false,
+  });
 
   @override
   State<VirtualThermostatDeviceDetail> createState() =>
@@ -63,6 +70,7 @@ class _VirtualThermostatDeviceDetailState
   @override
   void initState() {
     super.initState();
+    if (widget.detectNative) return;
     if (locator.isRegistered<SocketService>()) {
       _socket = locator<SocketService>();
       _socket!.registerEventHandler(_runtimeEvent, _runtimeChanged);
@@ -101,6 +109,7 @@ class _VirtualThermostatDeviceDetailState
   @override
   void didUpdateWidget(covariant VirtualThermostatDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.detectNative) return;
     if (identical(oldWidget.device, widget.device)) return;
     final replacedDevice = oldWidget.device.id != widget.device.id;
     _refreshGeneration++;
@@ -358,6 +367,9 @@ class _VirtualThermostatDeviceDetailState
 
   @override
   Widget build(BuildContext context) {
+    if (widget.detectNative) {
+      return NativeThermostatDeviceDetail(device: widget.device);
+    }
     final l = AppLocalizations.of(context) ?? AppLocalizationsEn();
     final config = _configuration;
     final runtime = _runtime;

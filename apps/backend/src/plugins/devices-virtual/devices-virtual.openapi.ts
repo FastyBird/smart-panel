@@ -10,6 +10,12 @@ import * as DewPointDtos from './dto/dew-point-config.dto';
 import * as GroupCatalogDtos from './dto/group-catalog.dto';
 import * as LightGroupDraftDtos from './dto/light-group-draft.dto';
 import * as MeasurementAuthoringDtos from './dto/measurement-authoring.dto';
+import {
+	CreateNativeThermostatDto,
+	ReleaseNativeThermostatDto,
+	RequestNativeThermostatDto,
+	UpdateNativeThermostatDto,
+} from './dto/native-thermostat.dto';
 import * as ProducerDtos from './dto/producer-config.dto';
 import { CreateVirtualThermostatProducerDto } from './dto/thermostat-authoring.dto';
 import * as ComfortDtos from './dto/thermostat-comfort.dto';
@@ -41,6 +47,13 @@ import * as DewPointModels from './models/dew-point-response.model';
 import * as GroupCatalogModels from './models/group-catalog.model';
 import * as LightGroupDraftModels from './models/light-group-draft.model';
 import * as MeasurementAuthoringModels from './models/measurement-authoring-response.model';
+import * as NativeThermostatModels from './models/native-thermostat-response.model';
+import {
+	NativeClimateCandidateModel,
+	NativeClimateCandidatesResponseModel,
+	NativeThermostatModel,
+	NativeThermostatResponseModel,
+} from './models/native-thermostat-response.model';
 import * as NumericOperatorModels from './models/numeric-operator.model';
 import * as ProducerModels from './models/producer-response.model';
 import * as ThermostatAuthoringModels from './models/thermostat-authoring-response.model';
@@ -51,6 +64,15 @@ import * as TransformModels from './models/transform-response.model';
 import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
 
 export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	...Object.values(NativeThermostatModels),
+	CreateNativeThermostatDto,
+	UpdateNativeThermostatDto,
+	RequestNativeThermostatDto,
+	ReleaseNativeThermostatDto,
+	NativeClimateCandidateModel,
+	NativeClimateCandidatesResponseModel,
+	NativeThermostatModel,
+	NativeThermostatResponseModel,
 	...Object.values(DewPointDtos),
 	...Object.values(DewPointModels),
 	...Object.values(GroupCatalogDtos),

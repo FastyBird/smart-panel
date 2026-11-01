@@ -4831,4 +4831,79 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get space_occupancy_automatic => 'Occupancy automation enabled';
+
+  @override
+  String get native_thermostat_title => 'Native thermostat';
+
+  @override
+  String get native_thermostat_explanation =>
+      'The physical unit regulates temperature. External sensor substitution and protective guards are not provided by this strategy. Temperatures are in °C.';
+
+  @override
+  String get native_thermostat_binding => 'Binding';
+
+  @override
+  String get native_thermostat_requested_mode => 'Requested mode';
+
+  @override
+  String get native_thermostat_requested_heat => 'Requested heating target';
+
+  @override
+  String get native_thermostat_requested_cool => 'Requested cooling target';
+
+  @override
+  String get native_thermostat_observed_temperature => 'Observed temperature';
+
+  @override
+  String get native_thermostat_observed_mode => 'Observed mode';
+
+  @override
+  String get native_thermostat_observed_heat => 'Observed heating target';
+
+  @override
+  String get native_thermostat_observed_cool => 'Observed cooling target';
+
+  @override
+  String get native_thermostat_activity => 'Observed activity';
+
+  @override
+  String get native_thermostat_observed_at => 'Observation time';
+
+  @override
+  String get native_thermostat_drift => 'External changes';
+
+  @override
+  String get native_thermostat_accepted => 'Accepted / unconfirmed';
+
+  @override
+  String get native_thermostat_refused => 'Refused';
+
+  @override
+  String get native_thermostat_unknown =>
+      'Unknown outcome — refresh before another request';
+
+  @override
+  String get native_thermostat_stale =>
+      'Current state unavailable — controls disabled';
+
+  @override
+  String get native_thermostat_auto => 'Apply auto with both entered targets';
+
+  @override
+  String get native_thermostat_refresh => 'Refresh state';
+
+  @override
+  String get native_thermostat_decrease => 'Decrease target';
+
+  @override
+  String get native_thermostat_increase => 'Increase target';
+
+  @override
+  String get native_thermostat_draft => 'Enter target (°C)';
+
+  @override
+  String get native_thermostat_apply => 'Apply target';
+
+  @override
+  String get native_thermostat_request_state => 'Request state';
 }

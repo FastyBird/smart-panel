@@ -44,8 +44,8 @@ CodeRabbit completed that review and confirmed the older follow-up corrections.
 - [ ] VD3-8 / #1458: configured activity climate bridge is merged in #1498; schedule/presence acceptance remains.
 - [x] VD3-9 / #1459: typed dew point and cooling cutoff software, #1471.
 - [x] VD3-10 / #1454: provider-neutral guarded parallel branches, #1469/#1470/#1471.
-- [ ] VD3-11 / #1456: Home Assistant native-unit adapter remains unimplemented.
-- [ ] VD3-12 / #1457: Zigbee2MQTT native-unit adapter remains unimplemented.
+- [ ] VD3-11 / #1456: Home Assistant native-unit adapter and ordinary virtual authoring are implemented in the native follow-up; delivery gates remain.
+- [ ] VD3-12 / #1457: Zigbee2MQTT capability-qualified native adapter is implemented in the native follow-up; delivery gates remain.
 - [x] VD3-13 / #1460: SDK numeric operators, #1468.
 - [ ] VD3-14 / #1461: standard mappings are merged; native/composed HomeKit acceptance remains.
 - [ ] VD3-15 / #1462: final composed/upgrade/reference-scenario acceptance, docs and actual alpha publication remain.
@@ -53,7 +53,7 @@ CodeRabbit completed that review and confirmed the older follow-up corrections.
 Reused definitions #1292 are already closed. Activity API #1294, Admin #1295 and Panel #1296 have complete scoped
 software evidence. #1293 remains open for the original combined all-domains-present orchestration acceptance;
 separate domain suites are not that single case. Optional unavailable domains keep their explicit result contract.
-Time scheduling #1297/#1298/#1362 and occupancy #1299/#1300 remain implementation work.
+Time scheduling #1297/#1298/#1362 merged in #1501; occupancy #1299/#1300 merged in #1502. Final combined-domain acceptance remains separate.
 
 [PR #1473](https://github.com/FastyBird/smart-panel/pull/1473) remains a frozen draft reference. Its historical
 200/61/261 result is not a current-main failure count. #1462 still owns the exact original-scenario reconciliation
