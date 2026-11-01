@@ -20,6 +20,13 @@ test('every alpha publisher and builder consumes the immutable post-version-sync
 	assert.ok(commitIndex >= 0, 'version-commit must commit the version change');
 	const pushIndex = sync.run.indexOf('git push', commitIndex);
 	assert.ok(pushIndex > commitIndex, 'version-commit must push the version commit');
+	const elseOffset = /^[ \t]*else[ \t]*$/m.exec(sync.run.slice(commitIndex))?.index;
+	assert.notEqual(elseOffset, undefined, 'version-commit must retain its no-change branch');
+	const elseIndex = commitIndex + elseOffset;
+	const fiOffset = /^[ \t]*fi[ \t]*$/m.exec(sync.run.slice(elseIndex))?.index;
+	assert.notEqual(fiOffset, undefined, 'version-commit must close its no-change branch');
+	const fiIndex = elseIndex + fiOffset;
+	assert.ok(pushIndex < elseIndex || pushIndex > fiIndex, 'version-commit must not push from the else branch');
 	assert.ok(pushIndex < sync.run.indexOf('git rev-parse HEAD'));
 	const checkouts = [];
 	for (const [name, job] of Object.entries(workflow.jobs)) {
