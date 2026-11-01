@@ -501,6 +501,34 @@ export class DeviceManagerService {
 								positionPropertyMapping,
 							);
 
+							// A native slat percentage is a distinct contract, never a guessed angle.
+							const slat = (coverStatus as unknown as { slat_pos?: unknown }).slat_pos;
+							const tiltMapping = this.findPropertyMapping(coverChannelDef, PropertyCategory.TILT);
+							const existingTilt = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+								'category',
+								PropertyCategory.TILT,
+								chan.id,
+							);
+							if (
+								(!existingTilt ||
+									(existingTilt.dataType === DataTypeType.UCHAR && existingTilt.identifier === 'slat_pos')) &&
+								tiltMapping &&
+								typeof slat === 'number' &&
+								Number.isFinite(slat) &&
+								slat >= 0 &&
+								slat <= 100
+							) {
+								await this.ensureProperty(
+									chan,
+									PropertyCategory.TILT,
+									'identifier',
+									'slat_pos',
+									slat,
+									{ data_type: DataTypeType.UCHAR, format: [0, 100], step: 1 },
+									tiltMapping,
+								);
+							}
+
 							// Handle static properties
 							if (coverChannelDef.staticProperties) {
 								for (const staticProp of coverChannelDef.staticProperties) {

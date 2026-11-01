@@ -16,6 +16,8 @@ export interface PreparedCoverAction {
 	readonly commandPropertyId: string;
 	readonly status: ChannelPropertyEntity;
 	readonly position: ChannelPropertyEntity;
+	/** Optional native percentage slat reading; never inferred from motor position. */
+	readonly tilt?: ChannelPropertyEntity;
 	readonly effects: readonly ChannelPropertyEntity[];
 }
 export interface CoverActionObservation {
@@ -27,6 +29,8 @@ export interface CoverActionObservation {
 	readonly acceptanceBoundary: number;
 	readonly statusAcceptance: number;
 	readonly positionAcceptance: number;
+	readonly tilt?: number;
+	readonly tiltAcceptance?: number;
 }
 export interface CoverActionDispatchContext {
 	readonly tag: string;

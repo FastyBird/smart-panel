@@ -14,16 +14,16 @@ The initial reconciliation used existing evidence without rerunning tests. The t
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Numeric policy, numeric/binary aggregates and authoring (#1448–#1450) | Complete; #1464/#1465, child issues already closed                            | Preserve through final composition                                                                                                      |
 | Switch/outlet group foundation (#1451)                                | Complete; #1464, child already closed                                         | No new room intent domain is implied                                                                                                    |
-| Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Qualified POSITION/TILT commands and their obstruction/late/partial feedback acceptance                                                 |
+| Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Cover/HomeKit follow-up implements qualified native percentage POSITION/TILT; fresh delivery gates remain                               |
 | Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | #1452's unsupported commands and full native HomeKit acceptance remain separate                                                         |
 | Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | HA/Zigbee native units and installed equipment are separate                                                                             |
 | Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Presence/composed automation acceptance remains #1458; time schedules are delivered below                                               |
 | Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Time schedules and the occupancy follow-up reuse that path; the occupancy PR owns fresh CI/review gates; final composition remains open |
 | Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                                                                |
-| Home Assistant native units (#1456)                                   | Implemented; native follow-up delivery gates pending                          | Exact-head CI and completed main review gates for the native follow-up                                                                  |
-| Zigbee2MQTT native units (#1457)                                      | Implemented; native follow-up delivery gates pending                          | Exact-head CI and completed main review gates for the native follow-up                                                                  |
+| Home Assistant native units (#1456)                                   | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
+| Zigbee2MQTT native units (#1457)                                      | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
 | SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                                                            |
-| HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Native/composed thermostat, remap and partial-result acceptance                                                                         |
+| HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Cover/HomeKit follow-up adds atomic native modes and HAP composite target/partial tests; fresh delivery gates remain                    |
 | Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts                                     |
 | Parent epic (#1447)                                                   | Open                                                                          | All remaining software and actual alpha publication                                                                                     |
 | Installed acceptance (#1463)                                          | Open, after the published alpha                                               | Named equipment/firmware and separately reviewed actual procedure, including Apple Home pairing                                         |
@@ -97,7 +97,7 @@ that installed lighting, heating or other equipment converged; original per-doma
 The native strategy binds one canonical adopted unit to an ordinary virtual thermostat and reserves its Smart Panel
 mode/setpoint aliases. It keeps requested settings, qualified provider observations and unconfirmed operation outcomes
 separate. It delegates regulation to the unit and adds no protective floor, parallel-output or opposed-output authority.
-The follow-up owns fresh CI and completed main-review gates; the unchecked epic rows remain pending until merge.
+Delivered in [#1504](https://github.com/FastyBird/smart-panel/pull/1504), squash `12b0bda95df843b5009432fea2da936508863978`. All 14 checks and the completed nonblocking main review passed at `d16b7929b03e778b0fde16bfaab7c4890238035f`. Installed equipment remains separate.
 
 | Acceptance boundary                                                                                                                                      | Source/test witnesses                                                                                                                                                                                                                                                                                                                    |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -111,6 +111,24 @@ The follow-up owns fresh CI and completed main-review gates; the unchecked epic 
 The [native thermostat guide](native-thermostats.md) names supported and refused profiles, release semantics and
 external-writer drift. Protocol fixtures exercise production transport adapters with component fakes; they do not
 qualify installed equipment, every Zigbee model/firmware, HomeKit composition or alpha publication.
+
+## Cover groups and HomeKit follow-up (#1452, #1461)
+
+The follow-up implements calibrated Shelly native POSITION and capability-qualified slat percentage TILT through
+existing composite admission, motor ordering and deadlines. A fresh post-response full status must contain the exact
+requested target at rest. Native percentages and explicit degree tilt remain separate contracts; no inversion or
+angle conversion is guessed. Unsupported providers/profiles retain explicit refusals.
+
+Named witnesses: [real RPC/SQLite/core/HAP covering tests](../apps/backend/src/plugins/devices-shelly-ng/services/shelly-cover-command.integration.spec.ts),
+[degree/percentage compatibility](../apps/backend/src/plugins/devices-virtual/services/virtual-typed-group.utils.spec.ts),
+[real HAP/native journal composition](../apps/backend/src/plugins/devices-virtual/services/native-thermostat.integration.spec.ts),
+[managed HAP feedback, expiry and unavailable setpoints](../apps/backend/src/plugins/devices-homekit/services/homekit-virtual-state.integration.spec.ts),
+[existing HomeKit component lifecycle](../apps/backend/src/plugins/devices-homekit/services/homekit-command-convergence.integration.spec.ts),
+[Admin controls](../apps/admin/src/plugins/devices-virtual/components/virtual-light-group-detail.spec.ts) and
+[Panel controls](../apps/panel/test/modules/devices/presentation/actuator_group_flow_test.dart).
+
+Fresh local/hosted qualification and completed main review belong to this follow-up. These source witnesses do not
+claim physical actuation, real Apple pairing, complete original-scenario reconciliation or alpha publication.
 
 ## Complete child acceptance and named evidence
 

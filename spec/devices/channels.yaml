@@ -2285,9 +2285,20 @@ window_covering:
         en: ""
       permissions:
         - rw
-      data_type: float
-      unit: °
-      format: [-90,90]
+      data_types:
+        - id: angle
+          data_type: float
+          unit: °
+          format: [-90,90]
+          description:
+            en: Explicit native tilt angle in degrees
+        - id: percentage
+          data_type: uchar
+          unit: "%"
+          format: [0,100]
+          step: 1
+          description:
+            en: Native slat opening percentage, never converted to an inferred angle
     fault:
       category: fault
       required: false

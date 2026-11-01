@@ -486,6 +486,65 @@ describe('DeviceManagerService.createOrUpdate', () => {
 	});
 });
 
+describe('DeviceManagerService native slat discovery', () => {
+	test.each([
+		{ slat: 70, existing: null, expected: true },
+		{ slat: undefined, existing: null, expected: false },
+		{ slat: 101, existing: null, expected: false },
+		{ slat: 70, existing: { dataType: DataTypeType.FLOAT, identifier: 'tilt' }, expected: false },
+	])(
+		'admits finite native percentages without overwriting degree metadata: %j',
+		async ({ slat, existing, expected }) => {
+			const svc = makeService();
+			const device = { id: 'slat-device', category: DeviceCategory.GENERIC, password: null };
+			mockDevicesService.findOne.mockResolvedValue(device);
+			jest.spyOn<any, any>(svc, 'getSpecification').mockReturnValue({ system: [], components: [] });
+			jest.spyOn(svc, 'getDeviceInfo').mockResolvedValue({
+				model: 'test',
+				profile: 'cover',
+				components: [{ type: 'cover', ids: [0] }],
+			} as any);
+			jest.spyOn<any, any>(svc, 'ensureChannel').mockImplementation(async (...args: any[]) => ({
+				id: args[2],
+				identifier: args[2],
+				category: args[3],
+			}));
+			const ensure = jest.spyOn<any, any>(svc, 'ensureProperty').mockImplementation(async (...args: any[]) => ({
+				id: args[0].id + '-' + args[1],
+			}));
+			mockMappingLoaderService.findMatchingMapping.mockReturnValueOnce({
+				channels: [
+					{
+						category: ChannelCategory.WINDOW_COVERING,
+						properties: [{ panel: { identifier: PropertyCategory.TILT }, shellyProperty: 'slat_pos' }],
+					},
+				],
+			});
+			mockRpc.getCoverConfig.mockResolvedValue({ id: 0, name: 'Slats' } as any);
+			mockRpc.getCoverStatus.mockResolvedValue({ id: 0, state: 'stopped', current_pos: 40, slat_pos: slat } as any);
+			mockChannelsPropertiesService.findOneBy.mockResolvedValue(existing);
+			mockChannelsService.findAll.mockResolvedValue([]);
+			try {
+				await expect(svc.createOrUpdate(device.id)).resolves.toBe(device);
+				const calls = ensure.mock.calls.filter((args) => args[1] === PropertyCategory.TILT);
+				expect(calls).toHaveLength(expected ? 1 : 0);
+				if (expected)
+					expect(calls[0]).toEqual([
+						expect.objectContaining({ id: 'cover:0' }),
+						PropertyCategory.TILT,
+						'identifier',
+						'slat_pos',
+						70,
+						{ data_type: DataTypeType.UCHAR, format: [0, 100], step: 1 },
+						expect.objectContaining({ shellyProperty: 'slat_pos' }),
+					]);
+			} finally {
+				jest.restoreAllMocks();
+			}
+		},
+	);
+});
+
 describe('DeviceManagerService partial provisioning', () => {
 	test.each(['rpc', 'property write', 'device power RPC'])(
 		'preserves channels after a component %s failure and prunes only after a complete retry',

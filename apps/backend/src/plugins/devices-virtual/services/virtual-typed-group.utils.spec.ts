@@ -56,6 +56,21 @@ describe('fan and cover native contracts', () => {
 		});
 	}
 
+	it('keeps degree tilt and native percentage tilt as separate common contracts', () => {
+		const angle = native(cover, PropertyCategory.TILT, DataTypeType.FLOAT, [-90, 90], 0.5);
+		const percent = native(cover, PropertyCategory.TILT, DataTypeType.UCHAR, [0, 100], 1);
+		expect(commonGroupCapabilities(cover, [[angle], [percent]])).toEqual([]);
+		expect(commonGroupCapabilities(cover, [[percent], [percent]])).toEqual([
+			expect.objectContaining({
+				category: PropertyCategory.TILT,
+				dataType: DataTypeType.UCHAR,
+				unit: '%',
+				format: [0, 100],
+				step: 1,
+			}),
+		]);
+		expect(typedGroupSourceMatchesOutput(cover, groupField(cover, PropertyCategory.TILT), percent, angle)).toBe(false);
+	});
 	it('keeps percentage and discrete speed distinct and excludes specialty fields', () => {
 		const percent = native(fan, PropertyCategory.SPEED, DataTypeType.UCHAR, [0, 100], 1);
 		const discrete = native(fan, PropertyCategory.SPEED, DataTypeType.ENUM, ['low', 'high']);

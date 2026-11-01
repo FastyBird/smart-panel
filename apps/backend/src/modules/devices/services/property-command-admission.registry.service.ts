@@ -5,7 +5,7 @@ import { IDevicePropertyData } from '../platforms/device.platform';
 /** A physical side effect reservation check, never a sibling write or guessed numeric target. */
 export interface PropertyCommandEffect extends Pick<IDevicePropertyData, 'device' | 'channel' | 'property'> {
 	readonly kind: 'cover_action';
-	readonly action: 'open' | 'close' | 'stop';
+	readonly action: 'open' | 'close' | 'stop' | 'position' | 'tilt';
 }
 
 export interface PropertyCommandAdmissionSnapshot {

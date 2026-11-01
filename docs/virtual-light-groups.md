@@ -39,7 +39,7 @@ The `LightGroup` API/storage names remain compatibility aliases. HomeKit/HA mapp
 | Cover   | `type`, `status`, `position`, `command` | `tilt`, `obstruction`                 | Type/status/obstruction read; position/tilt read/write; command write |
 
 Fan speed uses either native percentage (`uchar`, %) or discrete enum levels; these representations cannot mix.
-Cover position likewise preserves percentage versus discrete states. Tilt uses native degrees. Numeric fields require
+Cover position likewise preserves percentage versus discrete states. Tilt preserves either explicit native degrees (`float`, °) or native slat percentage (`uchar`, %); the two contracts cannot mix. Numeric fields require
 explicit finite ranges within the channel specification and a compatible common decimal grid. Enum controls expose
 only the shared supported values. Cover command sets must match exactly. Cover type requires the same singleton
 metadata declaration on every member; a broad list of possible installed types is refused. There is no inversion,
@@ -63,18 +63,18 @@ Unconfigured or broad TYPE declarations remain visible but ineligible. The group
 `provenance: configured`, without a physical sample timestamp or derived history publication.
 
 Preview and configuration responses expose per-operation `operations` readiness, with per-member refusal reasons.
-Structural `rw`/`wo` field access is separate from current commandability. Shelly POSITION and TILT commands are
-explicitly unavailable in this adapter; their truthful observations remain available. Full required TYPE/STATUS/
+Structural `rw`/`wo` field access is separate from current commandability. Shelly POSITION commands require calibrated native 0–100% control. TILT requires a current finite `slat_pos` and the separate native percentage contract; a degree-valued tilt is never converted into a guessed percentage. Full required TYPE/STATUS/
 POSITION/COMMAND and exposed optional metadata are checked together during creation, repair, planning and reporting.
 Drift or deletion excludes the entire affected member, preserving intended identities and unknowns.
 
 The native field contract follows the [Shelly Cover API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Cover/), including its nullable status tag and optional action tag. The pinned SDK cover helpers omit action tags, so the adapter uses its guarded native RPC transport.
 
-COMMAND confirmation uses the same pinned guarded RPC session for a tagged action and a distinct post-response
+COMMAND/POSITION/TILT confirmation uses the same pinned guarded RPC session for a tagged action and a distinct post-response
 `Cover.GetStatus`. OPEN/CLOSE confirm **motion begun in the requested direction**, or a freshly observed correct terminal
 endpoint. They do not claim full travel completed. Child reasons distinguish `cover_action_begun`,
 `cover_target_observed` and `cover_stopped`. Group STATUS/POSITION always come from actual samples, never the requested
 terminal target. STOP requires explicit native `open`, `closed` or `stopped`; unchanged position cannot prove cessation.
+POSITION/TILT use `Cover.GoToPosition` with `pos` or `slat_pos`, respectively. A new post-response full status must show the exact requested field at rest; an RPC acknowledgement, movement begun, an unrelated equal sample or a different vertical position cannot confirm the target. Partial results retain successful members and the actual mixed/unknown readings.
 A fresh idle no-op STOP is accepted only after the serialized successful action response and fresh matching idle state.
 Cover STATUS reporting also requires the internal native-status semantic classification; a generic live packet or imperative STOP mapping cannot establish stopped state.
 Moving confirmation requires the exact unique action tag. Incorrect tags cannot prove motion; freshly correct terminal endpoints and ordered idle STOP no-ops may retain an earlier tag. Calibration, malformed/out-of-range
@@ -243,8 +243,7 @@ superseded, timed-out and unavailable outcomes retain individual member identiti
 late responses; configuration changes require an explicit reload and membership repair in Admin where necessary.
 
 Cover controls use each operation's backend readiness. OPEN/CLOSE confirms motion started or an already correct
-endpoint, not full travel. STOP requires the qualified stopped-feedback path described above. POSITION and TILT remain
-unavailable as commands in the current adapter; they can still display qualified actual observations. Unsupported
+endpoint, not full travel. STOP requires the qualified stopped-feedback path described above. Qualified POSITION and native percentage TILT controls use the same bounded composite transport and wait for the exact observed target at rest. Degree tilt and unqualified provider shapes remain unavailable. Unsupported
 providers, tag uncertainty, uncalibrated/unavailable position and missing bindings retain concrete refusal reasons.
 The backend rechecks readiness and all core evidence/ordering guards at execution.
 
@@ -274,14 +273,12 @@ a current-condition prerequisite. **It does not prove upstream drain or completi
 operator's actor/time, old identity/token, reason, observed condition and new override epoch are committed together in the
 migration-42 audit table. A fresh session is published behind the closed motor lane only on commit; rollback retires it.
 The result is labelled `operator_overridden_unresolved_ordering`, an advisory rather than command evidence. Subsequent
-commands still require their own current core admission and qualified action/readback proof. POSITION/TILT remain
-unavailable on the current qualified adapter.
+commands still require their own current core admission and qualified action/readback proof. POSITION/TILT require their own current qualification and fresh target proof; recovery does not grant either.
 
 ## Scenes and room intent scope
 
 Admin scene action add/edit reads the same native group access/readiness metadata, including derived output properties
-whose storage permission is read-only. Cover scene choices include only ready native COMMAND values; no position/tilt
-control is advertised as usable. Scene execution remains in `LocalScenePlatform` and core composite dispatch with the
+whose storage permission is read-only. Cover scene choices follow per-operation readiness for native commands, percentage position and qualified tilt. Scene execution remains in `LocalScenePlatform` and core composite dispatch with the
 scene's existing absolute deadline, estimated group budget and per-member outcomes. There is no second command engine.
 
 The existing covers room domain dispatches group OPEN/CLOSE/STOP as native COMMAND operations.
@@ -306,7 +303,7 @@ Group-containing rooms offer no relative-position, preset-mode or guessed positi
 relative-position and mode requests fail for every target before any dispatch, including in mixed rooms. A group outside
 a role-specific target does not block that role's ordinary controls. The shading page removes mode popups and also guards
 retained popup callbacks when a room changes to grouped controls. Explicit
-position requests still reach core validation and remain unavailable on the current qualified adapter. Ordinary
+position requests use core composite validation and succeed only for qualified current members whose targets are physically observed. Ordinary
 physical-only covers and the existing light room domain retain their policies.
 
 There is currently **no standalone switch, outlet or fan room intent domain**. Device controls and scene actions for

@@ -60,10 +60,11 @@ ActuatorGroupConfiguration config({
   String profile = 'cover',
   int revision = 1,
   bool expired = false,
+  bool nativePercent = false,
 }) {
   final cover = profile == 'cover';
   final fields = cover
-      ? ['type', 'status', 'position', 'command']
+      ? ['type', 'status', 'position', 'command', if (nativePercent) 'tilt']
       : ['on', 'speed', 'direction'];
   return ActuatorGroupConfiguration.fromJson({
     'group_channel': 'group-channel',
@@ -78,7 +79,7 @@ ActuatorGroupConfiguration config({
           'category': field,
           'data_type': ['on'].contains(field)
               ? 'bool'
-              : field == 'position'
+              : ['position', 'tilt'].contains(field)
               ? 'uchar'
               : 'enum',
           'access': ['type', 'status'].contains(field)
@@ -86,11 +87,11 @@ ActuatorGroupConfiguration config({
               : field == 'command'
               ? 'wo'
               : 'rw',
-          'unit': field == 'position' ? '%' : null,
-          'step': field == 'position' ? 1 : null,
+          'unit': ['position', 'tilt'].contains(field) ? '%' : null,
+          'step': ['position', 'tilt'].contains(field) ? 1 : null,
           'format': switch (field) {
             'type' => ['blind'],
-            'position' => [0, 100],
+            'position' || 'tilt' => [0, 100],
             'command' => ['open', 'close', 'stop'],
             'speed' => ['low', 'high'],
             'direction' => ['clockwise', 'counter_clockwise'],
@@ -128,12 +129,21 @@ ActuatorGroupConfiguration config({
             ])
               {
                 'operation': operation,
-                'commandable': operation == 'open',
+                'commandable':
+                    (operation == 'open' ||
+                    (nativePercent &&
+                        ['position', 'tilt'].contains(operation))),
                 'members': [
                   {
                     'source_identity': 'a',
-                    'commandable': operation == 'open',
-                    'reasons': operation == 'open'
+                    'commandable':
+                        (operation == 'open' ||
+                        (nativePercent &&
+                            ['position', 'tilt'].contains(operation))),
+                    'reasons':
+                        (operation == 'open' ||
+                            (nativePercent &&
+                                ['position', 'tilt'].contains(operation)))
                         ? <String>[]
                         : ['tag_unavailable'],
                   },
@@ -407,6 +417,62 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets(
+    'qualified native cover tilt keeps percent units and sends only its explicit draft',
+    (tester) async {
+      final state = ActuatorGroupState(
+        channelId: 'group-channel',
+        loader: () async => config(nativePercent: true),
+      );
+      List<PropertyCommandItem>? sent;
+      await tester.pumpWidget(
+        localized(
+          ActuatorGroupDeviceDetail(
+            device: groupDevice('cover'),
+            state: state,
+            sender: (targets) {
+              sent = targets;
+              return Future.value(
+                const CompositeCommandOutcome(
+                  id: 'tilt-outcome',
+                  requestId: 'tilt-request',
+                  status: 'confirmed',
+                  children: [],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final scrollable = find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      final position = find.byKey(const ValueKey('group-number-position'));
+      await tester.scrollUntilVisible(position, 200, scrollable: scrollable);
+      expect(position, findsOneWidget);
+      final input = find.byKey(const ValueKey('group-number-tilt'));
+      await tester.scrollUntilVisible(input, 200, scrollable: scrollable);
+      expect(find.text('Tilt %'), findsOneWidget);
+      await tester.enterText(input, '70');
+      await tester.pump();
+      final apply = find.descendant(
+        of: find.ancestor(of: input, matching: find.byType(Card)).first,
+        matching: find.widgetWithText(OutlinedButton, 'Apply'),
+      );
+      await tester.ensureVisible(apply);
+      await tester.tap(apply);
+      await tester.pumpAndSettle();
+      expect(sent!.single.propertyId, 'output-tilt');
+      expect(sent!.single.value, 70);
+      await tester.pumpWidget(const SizedBox.shrink());
+      state.dispose();
+    },
+  );
+
   testWidgets(
     'cover operations use readiness, preserve actual mixed feedback and show partial children',
     (tester) async {

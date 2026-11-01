@@ -15,6 +15,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
+	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import {
@@ -29,8 +30,14 @@ import { CommandLatencyTraceCollectorService } from '../../../modules/devices/se
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { ManagedRuntimeAdmission } from '../../../modules/extensions/services/managed-service-manager.service';
-import { configuredCoverType, coverStatusReason, nativeCoverStatus } from '../contracts/cover-action.contract';
+import {
+	configuredCoverType,
+	coverStatusReason,
+	nativeCoverPercentage,
+	nativeCoverStatus,
+} from '../contracts/cover-action.contract';
 import { CoverRecoveryTarget } from '../contracts/cover-recovery.contract';
 import {
 	ShellyRawSample,
@@ -2357,6 +2364,12 @@ export class DelegatesManagerService {
 					channel.id,
 				);
 				if (position) sources.push({ channel, property: position, componentKey, attribute: 'current_pos' });
+				const tilt = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'slat_pos',
+					channel.id,
+				);
+				if (tilt) sources.push({ channel, property: tilt, componentKey, attribute: 'slat_pos' });
 			}
 			if (/^light:\d+$/.test(channel.identifier)) {
 				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -2404,7 +2417,15 @@ export class DelegatesManagerService {
 							? cover.state === 'open'
 								? 'opened'
 								: cover.state
-							: cover.current_pos
+							: source.attribute === 'slat_pos'
+								? nativeCoverPercentage(source.property) &&
+									typeof cover.slat_pos === 'number' &&
+									Number.isFinite(cover.slat_pos) &&
+									cover.slat_pos >= 0 &&
+									cover.slat_pos <= 100
+									? cover.slat_pos
+									: null
+								: cover.current_pos
 						: null
 					: !fault &&
 						  ((source.attribute === 'output' && typeof raw === 'boolean') ||
@@ -2516,6 +2537,9 @@ export class DelegatesManagerService {
 			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value }),
 			{
 				...sample.evidence,
+				...(property.category === PropertyCategory.TILT && property.identifier === 'slat_pos'
+					? { semanticOrigin: 'native_cover_tilt_percentage' as const }
+					: {}),
 				...(property.category === PropertyCategory.STATUS &&
 				/^cover:\d+$/.test(sample.componentKey) &&
 				nativeCoverStatus(sample.values, Number(sample.componentKey.split(':')[1]))
@@ -2748,7 +2772,9 @@ export class DelegatesManagerService {
 
 	private readonly coverIssues = new Map<string, string>();
 	async coverCommandReadiness(update: IDevicePropertyData): Promise<{ commandable: boolean; reasons: string[] }> {
-		if (update.property.category !== PropertyCategory.COMMAND)
+		if (
+			![PropertyCategory.COMMAND, PropertyCategory.POSITION, PropertyCategory.TILT].includes(update.property.category)
+		)
 			return { commandable: false, reasons: ['qualified_cover_position_or_tilt_adapter_unavailable'] };
 		// Durable uncertainty survives faults and telemetry expiry. Expose its recovery
 		// requirement independently of the fresh safe-condition checks performed by recovery.
@@ -2856,13 +2882,20 @@ export class DelegatesManagerService {
 		}
 		return null;
 	}
-	/** Exact native cover command preparation; POSITION/TILT remain explicitly unsupported in this adapter. */
+	/** Exact calibrated native percentages, with the same motor ordering and observation authority as COMMAND. */
 	async prepareCoverAction(update: IDevicePropertyData): Promise<PreparedCompositeDeviceBatch | null> {
 		if (
 			!this.coverValues ||
 			!this.coverOrdering ||
-			update.property.category !== PropertyCategory.COMMAND ||
-			!['open', 'close', 'stop'].includes(String(update.value)) ||
+			![PropertyCategory.COMMAND, PropertyCategory.POSITION, PropertyCategory.TILT].includes(
+				update.property.category,
+			) ||
+			(update.property.category === PropertyCategory.COMMAND
+				? !['open', 'close', 'stop'].includes(String(update.value))
+				: typeof update.value !== 'number' ||
+					!Number.isInteger(update.value) ||
+					update.value < 0 ||
+					update.value > 100) ||
 			!/^cover:\d+$/.test(update.channel.identifier ?? '')
 		)
 			return null;
@@ -2870,6 +2903,9 @@ export class DelegatesManagerService {
 		const status = properties.find((property) => property.category === PropertyCategory.STATUS);
 		const position = properties.find((property) => property.category === PropertyCategory.POSITION);
 		const command = properties.find((property) => property.id === update.property.id);
+		const tilt = properties.find(
+			(property) => property.category === PropertyCategory.TILT && nativeCoverPercentage(property),
+		);
 		if (
 			!configuredCoverType(properties) ||
 			!status ||
@@ -2880,8 +2916,16 @@ export class DelegatesManagerService {
 			position.identifier !== 'current_pos' ||
 			position.dataType !== DataTypeType.UCHAR ||
 			JSON.stringify(position.format) !== '[0,100]' ||
-			command.dataType !== DataTypeType.ENUM ||
-			JSON.stringify(command.format) !== '["open","close","stop"]'
+			(update.property.category === PropertyCategory.COMMAND
+				? command.dataType !== DataTypeType.ENUM || JSON.stringify(command.format) !== '["open","close","stop"]'
+				: command.dataType !== DataTypeType.UCHAR ||
+					resolvePropertyUnit(command) !== '%' ||
+					JSON.stringify(command.format) !== '[0,100]' ||
+					(command.step != null && command.step !== 1) ||
+					!command.permissions.includes(PermissionType.READ_WRITE) ||
+					(update.property.category === PropertyCategory.POSITION
+						? command.id !== position.id
+						: command.id !== tilt?.id))
 		)
 			return null;
 		if (this.coverValues.readQualifiedSample(status, 300_000)?.nativeCoverTagPresent !== true) return null;
@@ -2891,6 +2935,12 @@ export class DelegatesManagerService {
 			const componentId = Number(update.channel.identifier.split(':')[1]);
 			const component = delegate.covers.get(componentId);
 			if (!nativeCoverStatus(component, componentId)) continue;
+			if (
+				update.property.category === PropertyCategory.TILT &&
+				(typeof (component as unknown as { slat_pos?: unknown }).slat_pos !== 'number' ||
+					!Number.isFinite((component as unknown as { slat_pos: number }).slat_pos))
+			)
+				continue;
 			const canonicalMac = (update.device as ShellyNgDeviceEntity).canonicalMac;
 			if (!canonicalMac || (await this.coverOrdering.blocked(`${canonicalMac.toUpperCase()}|cover:${componentId}`)))
 				continue;
@@ -2933,6 +2983,7 @@ export class DelegatesManagerService {
 				commandPropertyId: command.id,
 				status,
 				position,
+				...(update.property.category === PropertyCategory.TILT ? { tilt } : {}),
 				effects: properties.filter((property) =>
 					[PropertyCategory.POSITION, PropertyCategory.TILT].includes(property.category),
 				),
@@ -2951,7 +3002,11 @@ export class DelegatesManagerService {
 					const leave = recoveryLease?.enter();
 					try {
 						return await session.dispatch(
-							update.value as 'open' | 'close' | 'stop',
+							update.property.category === PropertyCategory.POSITION
+								? { position: update.value as number }
+								: update.property.category === PropertyCategory.TILT
+									? { tilt: update.value as number }
+									: (update.value as 'open' | 'close' | 'stop'),
 							{ ...context, isCurrent: current },
 							async (raw, observedAt, preflightState) => {
 								if (!current()) return false;
@@ -2972,6 +3027,17 @@ export class DelegatesManagerService {
 								};
 								await this.admitRawSample(status, raw.state === 'open' ? 'opened' : raw.state, sample);
 								await this.admitRawSample(position, raw.current_pos, sample);
+								if (tilt)
+									await this.admitRawSample(
+										tilt,
+										typeof raw.slat_pos === 'number' &&
+											Number.isFinite(raw.slat_pos) &&
+											raw.slat_pos >= 0 &&
+											raw.slat_pos <= 100
+											? raw.slat_pos
+											: null,
+										sample,
+									);
 								const statusSample = this.coverValues.readQualifiedSample(status, 30_000);
 								const positionSample = this.coverValues.readQualifiedSample(position, 30_000);
 								if (!current() || !statusSample || !positionSample) return false;
@@ -2984,6 +3050,10 @@ export class DelegatesManagerService {
 									acceptanceBoundary,
 									statusAcceptance: statusSample.acceptanceGeneration,
 									positionAcceptance: positionSample.acceptanceGeneration,
+									tilt: raw.slat_pos ?? undefined,
+									tiltAcceptance: tilt
+										? this.coverValues.readQualifiedSample(tilt, 30_000)?.acceptanceGeneration
+										: undefined,
 								});
 							},
 							async (raw, observedAt) => {

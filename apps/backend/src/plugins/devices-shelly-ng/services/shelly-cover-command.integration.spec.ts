@@ -4,6 +4,7 @@ import { ShellyPlus2Pm } from 'shellies-ds9';
 import { v4 as uuid } from 'uuid';
 import WebSocket from 'ws';
 
+import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
@@ -39,6 +40,9 @@ import { IntentEventType, IntentStatus, IntentTargetStatus } from '../../../modu
 import { IntentRecord } from '../../../modules/intents/models/intent.model';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { UserRole } from '../../../modules/users/users.constants';
+import { HomeKitCommandDispatcher } from '../../devices-homekit/services/homekit-command.dispatcher';
+import { HomeKitMapperRegistryService } from '../../devices-homekit/services/homekit-mapper-registry.service';
+import { HomeKitPropertyStateService } from '../../devices-homekit/services/homekit-property-state.service';
 import { ConfigureVirtualLightGroupDto } from '../../devices-virtual/dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -127,6 +131,11 @@ class CoverTransport extends GuardedShellyRpcHandler {
 					this.state = {
 						...this.state,
 						state: frame.method === 'Cover.Open' ? 'opening' : frame.method === 'Cover.Close' ? 'closing' : 'stopped',
+						...(frame.method === 'Cover.GoToPosition'
+							? typeof frame.params.pos === 'number'
+								? { current_pos: frame.params.pos }
+								: { slat_pos: frame.params.slat_pos }
+							: {}),
 					};
 					result = this.actionResponse();
 				}
@@ -1094,7 +1103,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 							property: Object.assign(new ShellyNgChannelPropertyEntity(), command, { category }),
 						})
 					).reasons,
-				).not.toContain('cover_ordering_unresolved_operator_recovery_required');
+				).toContain('cover_ordering_unresolved_operator_recovery_required');
 			expect(
 				(
 					await manager.coverCommandReadiness({
@@ -1512,6 +1521,184 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
 		},
 	);
+	it.each([false, true])(
+		'routes real HAP group position through the qualified core proof (partial=%s)',
+		async (partial) => {
+			await runtime.refresh();
+			const channel = await db.manager.findOneOrFail(VirtualChannelEntity, {
+				where: { id: group },
+				relations: ['device', 'properties'],
+			});
+			const device = channel.device as VirtualDeviceEntity;
+			device.channels = [channel];
+			device.status = { online: true } as DeviceEntity['status'];
+			for (const property of channel.properties) property.channel = channel;
+			const hapRegistry = new HomeKitMapperRegistryService(new HomeKitPropertyStateService(producers, sources));
+			const hapDispatch = new HomeKitCommandDispatcher({
+				canExecuteCompositeProperty: () => true,
+				executePropertyCommandById: (id: string, value: number) => send(value, id),
+			} as never);
+			const staged = hapRegistry.buildAccessory(device, hapDispatch);
+			hapRegistry.commitStaged(staged);
+			const service = staged.accessory.getService(Service.WindowCovering);
+			const target = service.getCharacteristic(Characteristic.TargetPosition);
+			const actual = service.getCharacteristic(Characteristic.CurrentPosition);
+			expect(await actual.handleGetRequest()).toBe(40);
+			if (partial) transports[0].actionResponse = () => ({ refused: true });
+			if (partial) await expect(target.handleSetRequest(70)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			else await target.handleSetRequest(70);
+			await runtime.refresh();
+			if (partial) await expect(actual.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			else expect(await actual.handleGetRequest()).toBe(70);
+			expect(
+				staged.accessory
+					.getService(Service.WindowCovering)
+					.testCharacteristic(Characteristic.CurrentHorizontalTiltAngle),
+			).toBe(false);
+		},
+	);
+
+	it.each([0, 37, 100])(
+		'confirms a group percentage target %s only after fresh idle physical feedback',
+		async (target) => {
+			const result = await send(target, groupPosition);
+			expect(result.composite.children.map((child) => ({ status: child.status, reason: child.reason }))).toEqual([
+				expect.objectContaining({ status: 'confirmed' }),
+				expect.objectContaining({ status: 'confirmed' }),
+			]);
+			expect(result.composite.children.every((child) => child.reason === 'cover_target_observed')).toBe(true);
+			for (const rpc of transports) {
+				expect(rpc.frames.map((frame) => frame.method)).toEqual([
+					'Cover.GetStatus',
+					'Cover.GoToPosition',
+					'Cover.GetStatus',
+				]);
+				expect(rpc.frames[1].params).toMatchObject({ id: 0, pos: target, tag: expect.any(String) as string });
+			}
+		},
+	);
+	it.each(['moving', 'wrong target', 'obstruction', 'unknown position'])(
+		'keeps POSITION partial after %s then read failure, without rewriting successful sibling feedback',
+		async (failure) => {
+			transports[0].post = (raw) => {
+				transports[0].failStatusReads = true;
+				return {
+					...raw,
+					...(failure === 'moving'
+						? { state: 'opening' }
+						: failure === 'wrong target'
+							? { current_pos: 49 }
+							: failure === 'obstruction'
+								? { errors: ['obstruction'] }
+								: { current_pos: null }),
+				};
+			};
+			const result = await send(50, groupPosition, 1500);
+			expect(result.composite.status).toBe('partial');
+			expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(1);
+			await runtime.refresh();
+			expect(producers.read(groupPosition)?.value ?? null).toBe(failure === 'moving' ? 50 : null);
+		},
+	);
+	it.each(['position', 'tilt'] as const)(
+		'requires post-response readback for %s, not an RPC acknowledgement',
+		async (kind) => {
+			let target = groupPosition;
+			if (kind === 'tilt') target = await installTilt();
+			transports[0].setRequestTimeoutForTest(0.1);
+			transports[0].post = () => HOLD;
+			const issued = send(60, target, 1500);
+			await until(() => transports[0].frames.length >= 3);
+			const pendingFrame = transports[0].frames[2];
+			const result = await issued;
+			expect(result.composite.status).toBe('partial');
+			transports[0].answer(pendingFrame, { ...transports[0].state, tag: transports[0].actionTag });
+			expect(
+				windows.get(property(0, kind === 'position' ? PropertyCategory.POSITION : PropertyCategory.TILT).id),
+			).toBeNull();
+		},
+	);
+	const installTilt = async () => {
+		const id = uuid();
+		await db.manager.insert(VirtualChannelPropertyEntity, {
+			id,
+			channel: group,
+			category: PropertyCategory.TILT,
+			dataType: DataTypeType.UCHAR,
+			format: [0, 100],
+			step: 1,
+			permissions: [PermissionType.READ_ONLY],
+			valueOrigin: VirtualValueOrigin.DERIVED,
+		} as never);
+		for (let i = 0; i < physical.length; i++) {
+			const tiltId = uuid();
+			await db.manager.insert(ShellyNgChannelPropertyEntity, {
+				id: tiltId,
+				channel: physical[i].channel.id,
+				identifier: 'slat_pos',
+				category: PropertyCategory.TILT,
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				step: 1,
+				permissions: [PermissionType.READ_WRITE],
+			} as never);
+			const tilt = await db.manager.findOne(ShellyNgChannelPropertyEntity, {
+				where: { id: tiltId },
+				relations: ['channel', 'channel.device'],
+			});
+			physical[i].properties.push(tilt);
+			transports[i].state.slat_pos = 20;
+		}
+		const dto = await configs.getLightGroup(group);
+		await configs.configureLightGroup(group, {
+			expectedRevision: dto.revision,
+			profile: VirtualLightGroupProfile.COVER,
+			members: dto.members.map((member) => {
+				const i = physical.findIndex((target) => target.channel.id === member.source_channel);
+				return {
+					sourceChannelId: physical[i].channel.id,
+					bindings: [
+						...member.bindings.map((binding) => ({
+							outputPropertyId: binding.output_property,
+							sourcePropertyId: binding.source_property,
+						})),
+						{ outputPropertyId: id, sourcePropertyId: property(i, PropertyCategory.TILT).id },
+					],
+				};
+			}),
+		} as never);
+		for (let i = 0; i < transports.length; i++) {
+			await manager['unbindSamples'](manager.get(physical[i].device.identifier));
+			await manager['bindSampleSources'](manager.get(physical[i].device.identifier), physical[i].device);
+			emitRaw(i, transports[i].state);
+		}
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.TILT), 300000)?.value === 20);
+		return id;
+	};
+	it('refuses to reinterpret queued native slat percentages as degree readings after metadata drift', async () => {
+		const tilt = await installTilt();
+		await db.manager.update(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.TILT).id, {
+			dataType: DataTypeType.FLOAT,
+			format: [-90, 90],
+			step: 1,
+		});
+		emitRaw(0, { ...transports[0].state, slat_pos: 70 });
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.TILT), 300000) === null);
+		const result = await send(70, tilt);
+		expect(result.success).toBe(false);
+		expect(result.composite.children.some((child) => child.status === 'unavailable')).toBe(true);
+		expect(transports[0].frames.some((frame) => frame.method === 'Cover.GoToPosition')).toBe(false);
+	});
+	it('commands native slat percentages without inventing an angle or a matching vertical position', async () => {
+		const tilt = await installTilt();
+		const result = await send(70, tilt);
+		expect(result.composite.status).toBe('confirmed');
+		for (const rpc of transports) expect(rpc.frames[1].params).toMatchObject({ slat_pos: 70 });
+		await runtime.refresh();
+		expect(producers.read(tilt)?.value).toBe(70);
+		expect(producers.read(groupPosition)?.value).toBe(40);
+	});
+
 	it('confirms tagged motion begun through real RPC, sample admission and composite windows without inventing endpoint state', async () => {
 		const result = await send();
 		expect(result.composite.status).toBe('confirmed');
@@ -2090,7 +2277,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		const ready = await configs.getLightGroup(group);
 		expect(
 			ready.operations.filter((operation) => operation.commandable).map((operation) => operation.operation),
-		).toEqual(['open', 'close', 'stop']);
+		).toEqual(['open', 'close', 'stop', 'position']);
 		await db.manager.update(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.TYPE).id, {
 			format: ['blind', 'curtain'],
 		});
@@ -2318,14 +2505,15 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
 		expect(JSON.stringify(result)).toBe(terminal);
 	});
-	it('direct POSITION supersedes a group COMMAND across the motor scope and is explicitly unavailable', async () => {
+	it('direct POSITION supersedes a group COMMAND across the motor scope and confirms its own target', async () => {
 		transports[0].post = () => HOLD;
 		const pending = send('open', groupCommand, 1500);
 		await until(() => transports[0].frames.length >= 3);
+		transports[0].post = (raw) => raw;
 		const direct = await send(60, property(0, PropertyCategory.POSITION).id);
-		expect(direct.success).toBe(false);
+		expect(direct.success).toBe(true);
 		expect((await pending).composite.children.some((child) => child.status === 'superseded')).toBe(true);
-		expect(transports[0].frames.some((frame) => frame.method === 'Cover.GoToPosition')).toBe(false);
+		expect(transports[0].frames.some((frame) => frame.method === 'Cover.GoToPosition')).toBe(true);
 	});
 	it('blocks a new STOP after an earlier sent action response becomes uncertain, including restart of the ordering service', async () => {
 		let sent: () => void, confirmed: () => void;

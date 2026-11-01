@@ -82,6 +82,7 @@ export class ThermostatMapper extends BaseHomeKitMapper {
 			coolerTempProperty: validCooler ? this.findProperty(validCooler, PropertyCategory.TEMPERATURE) : undefined,
 			coolerStatusProperty: validCooler ? this.findProperty(validCooler, PropertyCategory.STATUS) : undefined,
 			lockedProperty: lockedProp,
+			modeProperty: thermostatChannel ? this.findProperty(thermostatChannel, PropertyCategory.MODE) : undefined,
 		});
 
 		return accessory;

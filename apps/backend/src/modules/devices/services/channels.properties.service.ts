@@ -1367,7 +1367,16 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const receipt = { value: validation.value, receivedAt: Date.now() };
 
 		// Sibling-observation actions can only be confirmed by the core-minted proof context.
-		if (window.proofKind === 'cover_action') return { changed: false, state: null, held: true, forceValueEvent: false };
+		if (window.proofKind === 'cover_action') {
+			// Position/slat readings remain physical observations while their command is pending.
+			// Persist them normally, without confirming, closing or extending the motor window.
+			// Only the core proof context can confirm the exact admitted sibling sample bundle.
+			if (evidence && [PropertyCategory.POSITION, PropertyCategory.TILT].includes(property.category)) {
+				const result = await writers.unwindowed();
+				return { ...result, held: false, forceValueEvent: false };
+			}
+			return { changed: false, state: null, held: true, forceValueEvent: false };
+		}
 		const isConfirmation = validation.value === window.commandedValue;
 
 		// A same-value command (or a repeated command generation) can deliberately have an identical

@@ -23,6 +23,8 @@ export interface ThermostatCoordinatorConfig {
 	coolerTempProperty?: ChannelPropertyEntity;
 	coolerStatusProperty?: ChannelPropertyEntity;
 	lockedProperty?: ChannelPropertyEntity;
+	/** Managed controllers expose one atomic requested mode, independent of observed activity. */
+	modeProperty?: ChannelPropertyEntity;
 }
 
 interface PendingPropertyWrite {
@@ -80,6 +82,7 @@ export class ThermostatCoordinator {
 		registerProp(this.config.coolerTempProperty);
 		registerProp(this.config.coolerStatusProperty);
 		registerProp(this.config.lockedProperty);
+		registerProp(this.config.modeProperty);
 	}
 
 	private configureValidValues(): void {
@@ -100,8 +103,11 @@ export class ThermostatCoordinator {
 			this.coolingThresholdChar = this.config.service.getCharacteristic(Characteristic.CoolingThresholdTemperature);
 		}
 
+		const mode = this.managedModeProperty();
 		this.targetHeatingCoolingChar.setProps({
-			validValues,
+			validValues: mode
+				? validValues.filter((value) => (mode.format as string[]).includes(['off', 'heat', 'cool', 'auto'][value]))
+				: validValues,
 		});
 	}
 
@@ -143,6 +149,11 @@ export class ThermostatCoordinator {
 						const coolRaw = coolProp ? this.values.get(coolProp.id) : null;
 						const currentHeat = heatRaw !== null && heatRaw !== undefined ? Number(heatRaw) : NaN;
 						const currentCool = coolRaw !== null && coolRaw !== undefined ? Number(coolRaw) : NaN;
+						if (
+							this.isManagedController() &&
+							(!Number.isFinite(currentHeat) || !Number.isFinite(currentCool) || currentHeat >= currentCool)
+						)
+							throw communicationFailure();
 						const span = !isNaN(currentHeat) && !isNaN(currentCool) ? Math.max(0, currentCool - currentHeat) / 2 : 1;
 
 						if (heatProp && this.isPropertyWritable(heatProp)) {
@@ -187,6 +198,14 @@ export class ThermostatCoordinator {
 				this.targetHeatingCoolingChar,
 				async (value: CharacteristicValue) => {
 					const targetMode = Number(value);
+					const mode = this.managedModeProperty();
+					if (mode) {
+						const requested = ['off', 'heat', 'cool', 'auto'][targetMode];
+						if (!Number.isInteger(targetMode) || !requested || !(mode.format as string[]).includes(requested))
+							throw communicationFailure();
+						await this.dispatchPending(mode.id, requested);
+						return;
+					}
 					const commands: Array<{ propertyId: string; value: unknown }> = [];
 
 					if (targetMode === Characteristic.TargetHeatingCoolingState.OFF) {
@@ -313,6 +332,7 @@ export class ThermostatCoordinator {
 			this.config.coolerTempProperty,
 			this.config.coolerStatusProperty,
 			this.config.lockedProperty,
+			this.config.modeProperty,
 		].filter((p): p is ChannelPropertyEntity => !!p);
 
 		for (const prop of propsToListen) {
@@ -467,6 +487,19 @@ export class ThermostatCoordinator {
 			: Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
 	}
 
+	/** Only managed canonical modes opt into atomic mode commands; physical legacy mapping is unchanged. */
+	private managedModeProperty(): ChannelPropertyEntity | undefined {
+		const mode = this.config.modeProperty;
+		return this.isManagedController() &&
+			mode &&
+			Array.isArray(mode.format) &&
+			mode.format.length > 0 &&
+			mode.format.every((value) => ['off', 'heat', 'cool', 'auto'].includes(String(value))) &&
+			this.isPropertyWritable(mode)
+			? mode
+			: undefined;
+	}
+
 	private isManagedController(): boolean {
 		return !!(
 			this.config.heaterStatusProperty?.requiresLiveValue || this.config.coolerStatusProperty?.requiresLiveValue
@@ -608,6 +641,13 @@ export class ThermostatCoordinator {
 	}
 
 	private deriveTargetHeatingCoolingState(): number {
+		const mode = this.managedModeProperty();
+		if (mode) {
+			const value = this.values.get(mode.id);
+			const index = ['off', 'heat', 'cool', 'auto'].indexOf(value as string);
+			if (index < 0 || !(mode.format as string[]).includes(value as string)) throw communicationFailure();
+			return index;
+		}
 		if (
 			this.isManagedController() &&
 			[this.config.heaterOnProperty, this.config.coolerOnProperty].some(
