@@ -50,6 +50,7 @@ describe('native thermostat durable request lifecycle', () => {
 	let extraUnits: Map<string, NativeClimateUnit>;
 	let structuralCompletion: (() => Promise<void>) | undefined;
 	let structuralPreflightFailure = false;
+	let structuralRollback: (() => void) | undefined;
 	let failingMirror: { id: string; reject: boolean } | undefined;
 
 	const start = async () => {
@@ -67,11 +68,20 @@ describe('native thermostat durable request lifecycle', () => {
 			withStructuralWrite: async <T>(work: (manager: EntityManager) => Promise<T>) => {
 				const complete = structuralCompletion;
 				const preflightFailure = structuralPreflightFailure;
+				const rollback = structuralRollback;
+				structuralRollback = undefined;
 				structuralCompletion = undefined;
 				structuralPreflightFailure = false;
 				try {
 					if (preflightFailure) throw new Error('graph preflight refused');
-					return await database.transaction(work);
+					return await database.transaction(async (manager) => {
+						const value = await work(manager);
+						if (rollback) {
+							rollback();
+							throw new Error('graph write rolled back');
+						}
+						return value;
+					});
 				} finally {
 					await complete?.();
 				}
@@ -98,6 +108,7 @@ describe('native thermostat durable request lifecycle', () => {
 		failingMirror = undefined;
 		structuralCompletion = undefined;
 		structuralPreflightFailure = false;
+		structuralRollback = undefined;
 		database = await new SqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -815,6 +826,40 @@ describe('native thermostat durable request lifecycle', () => {
 		expect(result?.latest_request?.operations[0].outcome).toBe('accepted');
 		expect(dispatch).toHaveBeenCalledTimes(1);
 	});
+
+	it.each([false, true])(
+		'a rolled-back release preserves original admission unless the catalog invalidates it (%s)',
+		async (catalogChanged) => {
+			let enter!: () => void, finish!: () => void;
+			const entered = new Promise<void>((resolve) => {
+				enter = resolve;
+			});
+			const gate = new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+			dispatch.mockImplementationOnce(async (current: () => boolean) => {
+				enter();
+				await gate;
+				return [{ operation: 'mode', outcome: current() ? 'accepted' : 'refused', confirmed: false }];
+			});
+			const attempt = service.request(controller, { requestId: uuid(), expectedRevision: 1, mode: 'heat' });
+			await entered;
+			structuralRollback = () => {
+				if (catalogChanged) service.onCatalogChanged({ id: source });
+			};
+			try {
+				await expect(service.release(controller, { expectedRevision: 2 })).rejects.toThrow('graph write rolled back');
+				expect(
+					await database.manager.findOneByOrFail(NativeThermostatEntity, { controllerId: controller }),
+				).toMatchObject({ bindingState: 'bound', revision: 2 });
+			} finally {
+				finish();
+			}
+			const result = await attempt;
+			expect(result?.latest_request?.operations[0].outcome).toBe(catalogChanged ? 'refused' : 'accepted');
+			expect(dispatch).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it('a stale release does not discard a request already waiting for structural admission', async () => {
 		let enter!: () => void, finish!: () => void;

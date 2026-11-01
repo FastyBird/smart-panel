@@ -105,6 +105,7 @@ describe('HomeAssistantWsService', () => {
 		module = undefined;
 		await moduleToClose?.close();
 		service?.['stopPing']();
+		service?.['invalidateNativeSubscriptions']();
 
 		// A test that drives an unexpected close leaves a real reconnect timer scheduled;
 		// clear it so it cannot fire against a torn-down service once the test has moved on.
@@ -176,6 +177,63 @@ describe('HomeAssistantWsService', () => {
 		await accept();
 		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
 		expect(original?.isCurrent()).toBe(false);
+	});
+
+	it('reconnects after a lost subscription acknowledgement and accepts only the new subscription epoch', async () => {
+		jest.useFakeTimers();
+		setupStartedService();
+		service['connect']();
+		service['subscribeToEvents']();
+		const packets = (mockWs.send.mock.calls as [string][]).map(([data]) => JSON.parse(data) as { id: number });
+		await jest.advanceTimersByTimeAsync(10_000);
+		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
+		for (const packet of packets)
+			await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		expect(service.captureNativeClimateConnection()).toBeNull();
+		getRegisteredHandler('close')();
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(WebSocket).toHaveBeenCalledTimes(2);
+		mockWs.send.mockClear();
+		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		for (const [data] of mockWs.send.mock.calls as [string][]) {
+			const packet = JSON.parse(data) as { id: number; type: string };
+			if (packet.type === 'subscribe_events')
+				await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		}
+		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
+		await jest.advanceTimersByTimeAsync(10_000);
+		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['acknowledged', 'stopped', 'replaced'] as const)(
+		'clears subscription deadlines when %s',
+		async (boundary) => {
+			jest.useFakeTimers();
+			setupStartedService();
+			service['subscribeToEvents']();
+			if (boundary === 'acknowledged') {
+				for (const [data] of mockWs.send.mock.calls as [string][]) {
+					const packet = JSON.parse(data) as { id: number };
+					await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+				}
+			} else if (boundary === 'stopped') await service.stop();
+			else service['connect']();
+			await jest.advanceTimersByTimeAsync(10_000);
+			expect(mockWs.terminate).not.toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
+		},
+	);
+
+	it('does not let superseded subscription deadlines close a new subscription window', async () => {
+		jest.useFakeTimers();
+		setupStartedService();
+		service['subscribeToEvents']();
+		await jest.advanceTimersByTimeAsync(5000);
+		service['subscribeToEvents']();
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(mockWs.terminate).not.toHaveBeenCalled();
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
 	});
 
 	it('should reject send if not connected', async () => {

@@ -60,17 +60,24 @@ export class ZigbeeNativeClimateAdapterService {
 			!Array.isArray(registered.definition.exposes)
 		)
 			return null;
-		const climates = registered.definition.exposes.filter((field) => field.type === 'climate');
+		const climates = registered.definition.exposes.filter(
+			(field) => field && typeof field === 'object' && field.type === 'climate',
+		);
 		if (climates.length !== 1) return null;
 		const climate = climates[0];
-		if (!('features' in climate)) return null;
+		if (
+			!('features' in climate) ||
+			!Array.isArray(climate.features) ||
+			!climate.features.every((field) => field && typeof field === 'object')
+		)
+			return null;
 		// Endpoint routing semantics are model-specific. This profile deliberately supports only the default endpoint.
 		if (climate.endpoint || climate.features.some((field) => field.endpoint)) return null;
 		const features = climate.features;
 		if (new Set(features.map((field) => field.property)).size !== features.length) return null;
 		const get = (name: string) => features.find((field) => field.property === name);
 		const mode = get('system_mode');
-		if (!mode || mode.type !== 'enum' || ((mode.access ?? 0) & 2) !== 2) return null;
+		if (!mode || mode.type !== 'enum' || !Array.isArray(mode.values) || ((mode.access ?? 0) & 2) !== 2) return null;
 		const heatingFields = ['occupied_heating_setpoint', 'current_heating_setpoint'].map(get).filter(Boolean);
 		if (heatingFields.length > 1) return null;
 		const heatingField = heatingFields[0];

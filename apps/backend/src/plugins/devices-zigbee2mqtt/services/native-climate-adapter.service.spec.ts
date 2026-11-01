@@ -148,6 +148,23 @@ describe('Zigbee native climate production profile', () => {
 		expect(unit.observe().available).toBe(offset > 0);
 	});
 
+	it.each([
+		['features', undefined],
+		['features', null],
+		['features', 'invalid'],
+		['features', {}],
+		['features', [null]],
+		['values', undefined],
+		['values', null],
+		['values', 'invalid'],
+		['values', {}],
+	])('refuses a malformed native climate %s profile without throwing (%p)', async (field, value) => {
+		const climate = adapter.getDevice('trv').definition.exposes.find((expose) => expose.type === 'climate');
+		if (field === 'features') Object.assign(climate, { features: value });
+		else Object.assign((climate as { features: object[] }).features[0], { values: value });
+		await expect(service.capture(device)).resolves.toBeNull();
+	});
+
 	it('dispatches exact native settings and snapshots the original request', async () => {
 		expect(unit.physicalIdentity).toBe('zigbee2mqtt:0x00124b0000000001:default');
 		expect(unit.ownedPropertyIds).toContain('heater-on');

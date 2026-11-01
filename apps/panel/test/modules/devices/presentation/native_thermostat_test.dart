@@ -368,6 +368,9 @@ void main() {
       await settle(tester);
       expect(find.text('Observed temperature: N/A'), findsOneWidget);
       expect(find.text('Observed activity: N/A'), findsOneWidget);
+      expect(find.text('Observed mode: N/A'), findsOneWidget);
+      expect(find.text('Observed heating target: N/A'), findsOneWidget);
+      expect(find.text('Observed cooling target: N/A'), findsOneWidget);
       expect(find.textContaining('Observed temperature: 19'), findsNothing);
       expect(find.text('Binding: bound'), findsOneWidget);
       expect(find.text('provider_offline'), findsOneWidget);

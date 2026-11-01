@@ -729,8 +729,6 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 						if (row.revision !== expectedRevision) fail('Native thermostat revision changed.');
 						if (row.bindingState === 'released') return null;
 						this.releaseOwners.set(id, token);
-						this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
-						this.epoch++;
 						const next = row.revision + 1;
 						await manager.update(
 							NativeThermostatEntity,
@@ -745,6 +743,10 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 					}
 				});
 			});
+			if (revision !== null) {
+				this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
+				this.epoch++;
+			}
 			completeAdmission();
 			// No structural or SQLite lock is held while original issued attempts drain.
 			await Promise.allSettled(originalAttempts);
