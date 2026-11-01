@@ -49,6 +49,7 @@ import type { NativeClimateUnit } from '../src/modules/devices/platforms/native-
 import { ChannelsPropertiesTypeMapperService } from '../src/modules/devices/services/channels.properties-type-mapper.service';
 import { ClimateAutomationLedgerService } from '../src/modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
+import { ControllerPublicationContext } from '../src/modules/devices/services/controller-publication-context';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
@@ -668,8 +669,31 @@ async function verifyThermostatWire(
 			});
 		}
 
-		const emitted = jest.spyOn(moduleRef.get(EventEmitter2), 'emit');
+		const emitter = moduleRef.get(EventEmitter2);
+		const originalEmit = emitter.emit.bind(emitter) as EventEmitter2['emit'];
+		const emitted = jest.spyOn(emitter, 'emit');
 		restore.push(() => emitted.mockRestore());
+		const healthyPublication = !replaceBeforeCreate && !duplicateKind && failure === 'none' && !interleave;
+		const synthesis: Promise<unknown>[] = [];
+		if (healthyPublication) {
+			const delivered = new AsyncLocalStorage<boolean>();
+			const originalEffect = ControllerPublicationContext.effect.bind(
+				ControllerPublicationContext,
+			) as typeof ControllerPublicationContext.effect;
+			const effects = jest.spyOn(ControllerPublicationContext, 'effect');
+			restore.push(() => effects.mockRestore());
+			effects.mockImplementation(function <T>(name: string, work: () => Promise<T>): Promise<T> {
+				const original = originalEffect(name, work);
+				if (delivered.getStore() && name === 'virtual-device-information.synthesis') synthesis.push(original);
+				return original;
+			});
+			emitted.mockImplementation((event, ...args: unknown[]) => {
+				const emit = () => originalEmit(event, ...args);
+				return event === EventType.DEVICE_CREATED && (args[0] as DeviceEntity | undefined)?.id === device.id
+					? delivered.run(true, emit)
+					: emit();
+			});
+		}
 		const originalAfterCreate = mapping.afterCreate;
 		restore.push(() => {
 			mapping.beforeCreate = originalHook;
@@ -727,6 +751,11 @@ async function verifyThermostatWire(
 		restore.push(() => configSpy.mockRestore());
 		configSpy.mockImplementation(async (...args) => {
 			const result = await afterCommit(...args);
+			// The healthy-wire fixture snapshots after this root's original DEVICE_CREATED synthesis.
+			if (healthyPublication) {
+				expect(synthesis).toHaveLength(1);
+				await synthesis[0];
+			}
 			configured = true;
 			await interleave?.afterPublication?.(device.id);
 			if (failure === 'configuration') {
