@@ -408,6 +408,9 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		});
 
 		this.ws.on('close', () => {
+			// A replaced socket cannot stop its replacement's ping or disconnect its devices.
+			// Intentional stop changes the generation too, but still owns disconnected cleanup.
+			if (generation !== this.socketGeneration && !this.intentionalDisconnect) return;
 			if (generation === this.socketGeneration) this.invalidateNativeSubscriptions();
 			this.stopPing();
 

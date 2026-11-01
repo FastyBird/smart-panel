@@ -567,7 +567,6 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 	}
 	private async requestOwned(id: string, dto: RequestNativeThermostatDto): Promise<NativeThermostatModel | null> {
 		if (!this.ready || this.destroyed) fail('Native runtime is not ready.');
-		if (this.releaseOwners.has(id)) fail('Native binding is not bound.');
 		const pendingRelease = this.pendingReleaseAdmissions.get(id);
 		if (pendingRelease !== undefined) {
 			if (pendingRelease.isOriginalOwner?.()) fail('Native release admission is still being decided.');
@@ -737,9 +736,9 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 						);
 						return next;
 					} finally {
-						// Publication and rollback completion can await requests from this writer.
-						// Settle every decision before those callbacks, including refusal and no-op.
-						completeAdmission();
+						// No-op/refusal can settle before callbacks. An admitted mutation must keep external
+						// requests waiting for COMMIT/rollback; original-writer callbacks still fail fast.
+						if (this.releaseOwners.get(id) !== token) completeAdmission();
 					}
 				});
 			});
@@ -773,8 +772,8 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 				});
 			return this.get(id);
 		} finally {
-			completeAdmission();
 			if (this.releaseOwners.get(id) === token) this.releaseOwners.delete(id);
+			completeAdmission();
 			settle();
 			this.work.delete(completion);
 		}

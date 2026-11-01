@@ -236,6 +236,43 @@ describe('HomeAssistantWsService', () => {
 		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps the authenticated replacement live when a replaced socket closes late', async () => {
+		jest.useFakeTimers();
+		setupStartedService();
+		service['connect']();
+		const oldClose = getRegisteredHandler('close');
+		mockWs = { ...mockWs, on: jest.fn(), send: jest.fn(), close: jest.fn(), terminate: jest.fn() };
+		service['connect']();
+		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		for (const [data] of mockWs.send.mock.calls as [string][]) {
+			const packet = JSON.parse(data) as { id: number };
+			await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		}
+		const ping = service['pingInterval'];
+		expect(ping).not.toBeNull();
+		oldClose();
+		expect(service['pingInterval']).toBe(ping);
+		expect(mockHttpService.markAllDevicesDisconnected).not.toHaveBeenCalled();
+		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
+		await jest.advanceTimersByTimeAsync(30_000);
+		const packet = (mockWs.send.mock.calls as [string][])
+			.map(([data]) => JSON.parse(data) as { id: number; type: string })
+			.find((packet) => packet.type === 'ping');
+		expect(packet).toBeDefined();
+		await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'pong' }));
+	});
+
+	it('still disconnects devices when the socket closes after intentional stop', async () => {
+		setupStartedService();
+		service['connect']();
+		const close = getRegisteredHandler('close');
+		await service.stop();
+		close();
+		expect(mockHttpService.markAllDevicesDisconnected).toHaveBeenCalledTimes(1);
+		expect(service['pingInterval']).toBeNull();
+		expect(mockNotifications.notify).not.toHaveBeenCalled();
+	});
+
 	it('should reject send if not connected', async () => {
 		service['ws'] = { readyState: WebSocket.CLOSED } as unknown as WebSocket;
 

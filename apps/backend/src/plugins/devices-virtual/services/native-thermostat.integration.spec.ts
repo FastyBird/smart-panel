@@ -888,7 +888,63 @@ describe('native thermostat durable request lifecycle', () => {
 		expect(dispatch).toHaveBeenCalledTimes(1);
 	});
 
-	it.each(['stale', 'released', 'preflight'] as const)(
+	it.each([
+		['decision', true],
+		['decision', false],
+		['structure', true],
+		['structure', false],
+	] as const)(
+		'keeps a request queued on %s admission until release settles (rollback=%s)',
+		async (ordering, rollback) => {
+			let enter!: () => void, unlock!: () => void;
+			const entered = new Promise<void>((resolve) => {
+				enter = resolve;
+			});
+			const gate = new Promise<void>((resolve) => {
+				unlock = resolve;
+			});
+			const holder = lock.runExclusive(async () => {
+				enter();
+				await gate;
+			});
+			await entered;
+			if (rollback) structuralRollback = () => {};
+			const request = () =>
+				service.request(controller, { requestId: uuid(), expectedRevision: 1, mode: 'heat' }).then(
+					(value) => ({ value }),
+					(cause: unknown) => ({ cause }),
+				);
+			let attempt: ReturnType<typeof request>;
+			let release: Promise<unknown>;
+			if (ordering === 'decision') {
+				release = service.release(controller, { expectedRevision: 1 });
+				attempt = request();
+			} else {
+				attempt = request();
+				release = service.release(controller, { expectedRevision: 1 });
+			}
+			const released = release.then(
+				(value) => ({ value }),
+				(cause: unknown) => ({ cause }),
+			);
+			unlock();
+			await holder;
+			const outcome = await released;
+			const result = await attempt;
+			if (rollback) {
+				expect(outcome).toHaveProperty('cause.message', 'graph write rolled back');
+				expect(result).toHaveProperty('value.latest_request.operations.0.outcome', 'accepted');
+				expect(dispatch).toHaveBeenCalledTimes(1);
+			} else {
+				expect(outcome).toHaveProperty('value.binding_state', 'released');
+				expect(result).toHaveProperty('cause.message', 'Native binding is not bound.');
+				expect(dispatch).not.toHaveBeenCalled();
+				expect(await database.manager.count(NativeThermostatRequestEntity)).toBe(0);
+			}
+		},
+	);
+
+	it.each(['stale', 'released', 'preflight', 'rollback'] as const)(
 		'release %s completion cannot wait on its own provisional request admission',
 		async (boundary) => {
 			await database.manager.update(
@@ -903,6 +959,7 @@ describe('native thermostat durable request lifecycle', () => {
 			let settledBeforeRescue = false;
 			let rescue: ReturnType<typeof setTimeout> | undefined;
 			structuralPreflightFailure = boundary === 'preflight';
+			if (boundary === 'rollback') structuralRollback = () => {};
 			// Model the awaited publication/rollback completion boundary after the original writer.
 			// The rescue only lets a broken implementation unwind so teardown joins all work.
 			structuralCompletion = async () => {
@@ -920,7 +977,14 @@ describe('native thermostat durable request lifecycle', () => {
 			};
 			const release = service.release(controller, { expectedRevision: boundary === 'stale' ? 1 : 2 });
 			if (boundary === 'released') expect((await release)?.binding_state).toBe('released');
-			else await expect(release).rejects.toThrow(boundary === 'stale' ? 'revision changed' : 'preflight refused');
+			else
+				await expect(release).rejects.toThrow(
+					boundary === 'stale'
+						? 'revision changed'
+						: boundary === 'rollback'
+							? 'graph write rolled back'
+							: 'preflight refused',
+				);
 			const result = await request;
 			expect(settledBeforeRescue).toBe(true);
 			if (boundary === 'stale') expect(result).toHaveProperty('value.latest_request.operations.0.outcome', 'accepted');
