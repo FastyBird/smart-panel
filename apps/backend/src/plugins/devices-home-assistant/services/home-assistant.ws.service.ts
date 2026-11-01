@@ -436,6 +436,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		});
 
 		this.ws.on('error', (err) => {
+			if (generation !== this.socketGeneration) return;
 			this.logger.error('WebSocket connection error', {
 				message: err instanceof Error ? err.message : String(err),
 			});

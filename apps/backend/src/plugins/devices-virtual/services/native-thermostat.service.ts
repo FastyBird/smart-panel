@@ -94,7 +94,7 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 	) {}
 
 	async onApplicationBootstrap() {
-		if (process.env.FB_CLI === 'on') return;
+		if (process.env.FB_CLI === 'on' || this.stop !== undefined || this.destroyed) return;
 		this.stop = this.admission.register({
 			capture: () => {
 				const epoch = this.epoch;
@@ -108,6 +108,22 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 		});
 		await this.lock.runExclusive(async () => {
 			await this.database.manager.update(NativeThermostatRequestEntity, { state: 'pending' }, { state: 'interrupted' });
+			// A fresh runtime has no issued work from the stopped process to drain. Complete only
+			// its persisted metadata handback; never replay a request or send an OFF command.
+			const releasing = await this.database.manager.findBy(NativeThermostatEntity, { bindingState: 'releasing' });
+			if (releasing.length)
+				await this.graph.withStructuralWrite(async (manager) => {
+					for (const row of releasing) {
+						if (!Number.isSafeInteger(row.revision) || row.revision >= Number.MAX_SAFE_INTEGER)
+							fail('Native release recovery revision is invalid.');
+						const result = await manager.update(
+							NativeThermostatEntity,
+							{ controllerId: row.controllerId, revision: row.revision, bindingState: 'releasing' },
+							{ bindingState: 'released', revision: row.revision + 1 },
+						);
+						if (result.affected !== 1) fail('Native release recovery owner changed.');
+					}
+				});
 			await this.reload();
 		});
 		this.timer = setInterval(() => {

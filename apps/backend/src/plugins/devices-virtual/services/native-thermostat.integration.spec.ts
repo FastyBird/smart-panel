@@ -48,6 +48,7 @@ describe('native thermostat durable request lifecycle', () => {
 	let guardedDispatch: () => boolean;
 	let valueWriter: { write: jest.Mock; publishDerived: jest.Mock };
 	let extraUnits: Map<string, NativeClimateUnit>;
+	let graphOverride: VirtualDependencyGraphService | undefined;
 	let structuralCompletion: (() => Promise<void>) | undefined;
 	let structuralPreflightFailure = false;
 	let structuralRollback: (() => void) | undefined;
@@ -90,7 +91,7 @@ describe('native thermostat durable request lifecycle', () => {
 		service = new NativeThermostatService(
 			database,
 			lock,
-			graph as unknown as VirtualDependencyGraphService,
+			(graphOverride ?? graph) as VirtualDependencyGraphService,
 			{} as DevicesService,
 			{
 				get: () => ({
@@ -105,6 +106,7 @@ describe('native thermostat durable request lifecycle', () => {
 	};
 	beforeEach(async () => {
 		extraUnits = new Map();
+		graphOverride = undefined;
 		failingMirror = undefined;
 		structuralCompletion = undefined;
 		structuralPreflightFailure = false;
@@ -644,15 +646,126 @@ describe('native thermostat durable request lifecycle', () => {
 		expect((await service.get(controller))?.latest_request?.state).toBe('interrupted');
 		expect(dispatch).not.toHaveBeenCalled();
 	});
+	it('recovers a release whose final transaction rolled back and does not repeat transport', async () => {
+		const requested = await service.request(controller, { requestId: uuid(), expectedRevision: 1, mode: 'heat' });
+		structuralCompletion = () => {
+			structuralRollback = () => {};
+			return Promise.resolve();
+		};
+		await expect(service.release(controller, { expectedRevision: 2 })).rejects.toThrow('graph write rolled back');
+		expect(await database.manager.findOneByOrFail(NativeThermostatEntity, { controllerId: controller })).toMatchObject({
+			bindingState: 'releasing',
+			revision: 3,
+		});
+		await service.onModuleDestroy();
+		await start();
+		const recovered = await service.get(controller);
+		expect(recovered).toMatchObject({
+			binding_state: 'released',
+			revision: 4,
+			requested: { mode: 'heat' },
+			latest_request: { id: requested?.latest_request?.id, operations: [{ outcome: 'accepted', confirmed: false }] },
+		});
+		expect((await service.candidates()).find((candidate) => candidate.device === source)?.reasons).toEqual([]);
+		expect(dispatch).toHaveBeenCalledTimes(1);
+		await service.onModuleDestroy();
+		await start();
+		expect((await service.get(controller))?.revision).toBe(4);
+		expect(dispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([false, true])(
+		'recovers persisted releasing metadata and interrupts pending journal without replay (source missing=%s)',
+		async (missing) => {
+			await service.onModuleDestroy();
+			const id = uuid();
+			await database.manager.insert(NativeThermostatRequestEntity, {
+				id,
+				controllerId: controller,
+				revision: 2,
+				request: { mode: 'heat' },
+				operations: [],
+				state: 'pending',
+				createdAt: new Date(),
+			});
+			await database.manager.update(
+				NativeThermostatEntity,
+				{ controllerId: controller },
+				{ bindingState: 'releasing', revision: 3, requested: { mode: 'heat' }, latestRequestId: id },
+			);
+			if (missing) await database.manager.delete(DeviceEntity, { id: source });
+			await start();
+			expect(await service.get(controller)).toMatchObject({
+				binding_state: 'released',
+				revision: 4,
+				physical_identity: unit.physicalIdentity,
+				requested: { mode: 'heat' },
+				latest_request: { id, state: 'interrupted', operations: [] },
+				observed: { available: false },
+				capabilities: null,
+			});
+			expect(
+				await database.manager.findOneByOrFail(NativeThermostatEntity, { controllerId: controller }),
+			).toMatchObject({ sourceDeviceId: source, fingerprint: unit.fingerprint });
+			expect(prepare).not.toHaveBeenCalled();
+			expect(dispatch).not.toHaveBeenCalled();
+		},
+	);
+
+	it('publishes startup release recovery through the real graph before accepting native requests', async () => {
+		await service.onModuleDestroy();
+		await database.manager.update(
+			NativeThermostatEntity,
+			{ controllerId: controller },
+			{ bindingState: 'releasing', revision: 2 },
+		);
+		graphOverride = new VirtualDependencyGraphService(database);
+		await graphOverride.onApplicationBootstrap();
+		const completed: { binding: string | undefined; outcome: unknown }[] = [];
+		const stop = graphOverride.observeCompletion(async () => {
+			const row = await database.manager.findOneBy(NativeThermostatEntity, { controllerId: controller });
+			const outcome = await service.request(controller, { requestId: uuid(), expectedRevision: 3, mode: 'heat' }).then(
+				(value) => ({ value }),
+				(cause: unknown) => ({ cause }),
+			);
+			completed.push({ binding: row?.bindingState, outcome });
+		});
+		try {
+			await start();
+			expect(completed).toHaveLength(1);
+			expect(completed[0]).toMatchObject({
+				binding: 'released',
+				outcome: { cause: { message: 'Native runtime is not ready.' } },
+			});
+			expect(await service.get(controller)).toMatchObject({ binding_state: 'released', revision: 3 });
+			expect(await database.manager.count(NativeThermostatRequestEntity)).toBe(0);
+			expect(prepare).not.toHaveBeenCalled();
+			expect(dispatch).not.toHaveBeenCalled();
+		} finally {
+			stop();
+		}
+	});
+
+	it('keeps releasing metadata reserved if startup recovery rolls back', async () => {
+		await service.onModuleDestroy();
+		await database.manager.update(
+			NativeThermostatEntity,
+			{ controllerId: controller },
+			{ bindingState: 'releasing', revision: 2 },
+		);
+		structuralRollback = () => {};
+		await expect(start()).rejects.toThrow('graph write rolled back');
+		expect(await database.manager.findOneByOrFail(NativeThermostatEntity, { controllerId: controller })).toMatchObject({
+			bindingState: 'releasing',
+			revision: 2,
+		});
+		expect(dispatch).not.toHaveBeenCalled();
+	});
+
 	it.each(['releasing', 'released'] as const)(
 		'does not read live source observations from a %s binding',
 		async (bindingState) => {
 			await service.onModuleDestroy();
-			await database.manager.update(
-				NativeThermostatEntity,
-				{ controllerId: controller },
-				{ bindingState, requested: { mode: 'heat' } },
-			);
 			const observe = jest.fn(
 				(): ReturnType<NativeClimateUnit['observe']> => ({
 					available: true,
@@ -668,6 +781,14 @@ describe('native thermostat durable request lifecycle', () => {
 			);
 			unit = { ...unit, observe };
 			await start();
+			await lock.runExclusive(async () => {
+				await database.manager.update(
+					NativeThermostatEntity,
+					{ controllerId: controller },
+					{ bindingState, requested: { mode: 'heat' } },
+				);
+				await service['reload']();
+			});
 			observe.mockClear();
 			const result = await service.get(controller);
 			expect(result).toMatchObject({
@@ -1044,6 +1165,8 @@ describe('native thermostat durable request lifecycle', () => {
 		});
 		const snapshot = await service.get(controller);
 		expect(snapshot?.binding_state).toBe('releasing');
+		await service.onApplicationBootstrap();
+		expect((await service.get(controller))?.binding_state).toBe('releasing');
 		// Only a revision-validated release owns revocation; it still fences before original work settles.
 		expect(originalCurrent()).toBe(false);
 		expect(settled).toBe(false);

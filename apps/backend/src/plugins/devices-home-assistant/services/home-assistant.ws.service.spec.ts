@@ -243,10 +243,15 @@ describe('HomeAssistantWsService', () => {
 		const oldClose = getRegisteredHandler('close');
 		mockWs = { ...mockWs, on: jest.fn(), send: jest.fn(), close: jest.fn(), terminate: jest.fn() };
 		service['connect']();
-		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		const onMessage: (data: string) => void = getRegisteredHandler('message');
+		const deliver = async (message: object) => {
+			onMessage(JSON.stringify(message));
+			await jest.advanceTimersByTimeAsync(0);
+		};
+		await deliver({ type: 'auth_ok' });
 		for (const [data] of mockWs.send.mock.calls as [string][]) {
 			const packet = JSON.parse(data) as { id: number };
-			await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+			await deliver({ id: packet.id, type: 'result', success: true });
 		}
 		const ping = service['pingInterval'];
 		expect(ping).not.toBeNull();
@@ -259,7 +264,7 @@ describe('HomeAssistantWsService', () => {
 			.map(([data]) => JSON.parse(data) as { id: number; type: string })
 			.find((packet) => packet.type === 'ping');
 		expect(packet).toBeDefined();
-		await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'pong' }));
+		await deliver({ id: packet.id, type: 'pong' });
 	});
 
 	it('still disconnects devices when the socket closes after intentional stop', async () => {
@@ -272,6 +277,37 @@ describe('HomeAssistantWsService', () => {
 		expect(service['pingInterval']).toBeNull();
 		expect(mockNotifications.notify).not.toHaveBeenCalled();
 	});
+
+	it.each(['superseded', 'current'] as const)(
+		'handles %s socket errors during replacement authentication',
+		async (boundary) => {
+			jest.useFakeTimers();
+			setupStartedService();
+			service['connect']();
+			const oldError: (error: Error) => void = getRegisteredHandler('error');
+			await service.stop();
+			mockWs = { ...mockWs, on: jest.fn(), send: jest.fn(), close: jest.fn(), terminate: jest.fn() };
+			const starting = service.start().then(
+				() => ({ started: true }),
+				(cause: unknown) => ({ cause }),
+			);
+			await jest.advanceTimersByTimeAsync(0);
+			const currentError: (error: Error) => void = getRegisteredHandler('error');
+			const original = new Error('socket frame error');
+			(boundary === 'superseded' ? oldError : currentError)(original);
+			const onMessage: (data: string) => void = getRegisteredHandler('message');
+			if (boundary === 'superseded') onMessage(JSON.stringify({ type: 'auth_ok' }));
+			await jest.advanceTimersByTimeAsync(0);
+			const result = await starting;
+			if (boundary === 'superseded') {
+				expect(result).toEqual({ started: true });
+				expect(service.getState()).toBe('started');
+			} else {
+				expect(result).toEqual({ cause: original });
+				expect(service.getState()).toBe('error');
+			}
+		},
+	);
 
 	it('should reject send if not connected', async () => {
 		service['ws'] = { readyState: WebSocket.CLOSED } as unknown as WebSocket;

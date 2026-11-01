@@ -52,6 +52,8 @@ mode choices and target ranges/steps together, preserving property identity and 
 controls are refused. Physical remapping and changed branch topology require a new controller. Explicit release validates its revision before withdrawing request authority. Requests still waiting for admission
 wait for that decision; a stale release leaves them unaffected. An admitted release relinquishes the Smart Panel
 reservation after joining its issued work; it sends no OFF command and makes no statement about the physical unit's current regulation.
+At startup, a persisted `releasing` binding completes its metadata handback to `released`; interrupted request outcomes
+remain in history and no native transport is replayed. A rolled-back recovery keeps the binding reserved.
 Deletion retains the binding and request ledger so it cannot silently free an unresolved reservation. Changing an
 upstream identity or moving existing command aliases does not free their reservation; the original binding must be
 explicitly released first.
