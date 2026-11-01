@@ -222,6 +222,14 @@ jest.mock('../../../spec/channels', () => {
 				[PropertyCategory.STATUS]: common(),
 				[PropertyCategory.POSITION]: { ...common(), data_type: 'number' as any },
 				[PropertyCategory.COMMAND]: common(['open', 'close', 'stop']),
+				[PropertyCategory.TILT]: {
+					category: PropertyCategory.TILT,
+					permissions: ['rw'],
+					data_type: 'uchar',
+					unit: '%',
+					format: [0, 100],
+					step: 1,
+				},
 			},
 		},
 		[ChannelCategory.HUMIDITY]: {
@@ -487,14 +495,31 @@ describe('DeviceManagerService.createOrUpdate', () => {
 });
 
 describe('DeviceManagerService native slat discovery', () => {
-	test.each([
+	const nativeTilt = {
+		id: 'native-slat',
+		category: PropertyCategory.TILT,
+		identifier: 'slat_pos',
+		channel: { category: ChannelCategory.WINDOW_COVERING },
+		dataType: DataTypeType.UCHAR,
+		unit: '%',
+		format: [0, 100],
+		step: 1,
+		permissions: [PermissionType.READ_WRITE],
+	};
+	test.each<{ slat: unknown; existing: object | null; expected: boolean; enabled?: boolean; removed?: boolean }>([
 		{ slat: 70, existing: null, expected: true },
 		{ slat: undefined, existing: null, expected: false },
 		{ slat: 101, existing: null, expected: false },
 		{ slat: 70, existing: { dataType: DataTypeType.FLOAT, identifier: 'tilt' }, expected: false },
+		{ slat: undefined, existing: nativeTilt, expected: false, enabled: true },
+		{ slat: 101, existing: nativeTilt, expected: false },
+		{ slat: undefined, existing: nativeTilt, expected: false, enabled: false, removed: true },
+		{ slat: null, existing: nativeTilt, expected: false, enabled: false, removed: true },
+		{ slat: 70, existing: nativeTilt, expected: true, enabled: false },
+		{ slat: undefined, existing: { ...nativeTilt, dataType: DataTypeType.FLOAT }, expected: false, enabled: false },
 	])(
 		'admits finite native percentages without overwriting degree metadata: %j',
-		async ({ slat, existing, expected }) => {
+		async ({ slat, existing, expected, enabled, removed }) => {
 			const svc = makeService();
 			const device = { id: 'slat-device', category: DeviceCategory.GENERIC, password: null };
 			mockDevicesService.findOne.mockResolvedValue(device);
@@ -520,7 +545,11 @@ describe('DeviceManagerService native slat discovery', () => {
 					},
 				],
 			});
-			mockRpc.getCoverConfig.mockResolvedValue({ id: 0, name: 'Slats' } as any);
+			mockRpc.getCoverConfig.mockResolvedValue({
+				id: 0,
+				name: 'Slats',
+				...(enabled === undefined ? {} : { slat: { enable: enabled } }),
+			} as any);
 			mockRpc.getCoverStatus.mockResolvedValue({ id: 0, state: 'stopped', current_pos: 40, slat_pos: slat } as any);
 			mockChannelsPropertiesService.findOneBy.mockResolvedValue(existing);
 			mockChannelsService.findAll.mockResolvedValue([]);
@@ -528,6 +557,8 @@ describe('DeviceManagerService native slat discovery', () => {
 				await expect(svc.createOrUpdate(device.id)).resolves.toBe(device);
 				const calls = ensure.mock.calls.filter((args) => args[1] === PropertyCategory.TILT);
 				expect(calls).toHaveLength(expected ? 1 : 0);
+				if (removed) expect(mockChannelsPropertiesService.remove).toHaveBeenCalledWith('native-slat');
+				else expect(mockChannelsPropertiesService.remove).not.toHaveBeenCalled();
 				if (expected)
 					expect(calls[0]).toEqual([
 						expect.objectContaining({ id: 'cover:0' }),

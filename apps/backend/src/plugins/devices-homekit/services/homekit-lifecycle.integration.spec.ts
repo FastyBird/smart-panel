@@ -24,6 +24,10 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { ExtensionsService } from '../../../modules/extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { SwaggerModelsRegistryService } from '../../../modules/swagger/services/swagger-models-registry.service';
+import {
+	VirtualChannelPropertyEntity,
+	VirtualValueOrigin,
+} from '../../devices-virtual/entities/devices-virtual.entity';
 import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 import { DevicesHomeKitPlugin } from '../devices-homekit.plugin';
 import { HomeKitUpdatePluginConfigDto } from '../dto/update-config.dto';
@@ -189,6 +193,76 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 		const count = commits;
 		await listener.handleDeviceDeleted(device);
 		expect(commits).toBe(count);
+	});
+
+	it('rebuilds thermostat supported modes after metadata changes while preserving accessory identity', async () => {
+		device.channels = [];
+		device.category = DeviceCategory.THERMOSTAT;
+		const ambient = property(
+			channel(device, 'ambient', ChannelCategory.TEMPERATURE),
+			'ambient-value',
+			PropertyCategory.TEMPERATURE,
+			20,
+		);
+		ambient.permissions = [PermissionType.READ_ONLY];
+		for (const category of [ChannelCategory.HEATER, ChannelCategory.COOLER]) {
+			const branch = channel(device, category, category);
+			property(branch, category + '-on', PropertyCategory.ON, false);
+			property(
+				branch,
+				category + '-temperature',
+				PropertyCategory.TEMPERATURE,
+				category === ChannelCategory.HEATER ? 22 : 24,
+			);
+			branch.properties.push(
+				Object.assign(new VirtualChannelPropertyEntity(), {
+					id: category + '-status',
+					channel: branch,
+					category: PropertyCategory.STATUS,
+					permissions: [PermissionType.READ_ONLY],
+					valueOrigin: VirtualValueOrigin.DERIVED,
+				}),
+			);
+		}
+		const thermostat = channel(device, 'thermostat', ChannelCategory.THERMOSTAT);
+		const mode = property(thermostat, 'requested-mode', PropertyCategory.MODE, 'off');
+		mode.format = ['off', 'heat'];
+		await bridge.start();
+		const initial = accessory();
+		expect(
+			initial.getService(Service.Thermostat).getCharacteristic(Characteristic.TargetHeatingCoolingState).props
+				.validValues,
+		).toEqual([0, 1]);
+		for (const [format, expected] of [
+			[
+				['off', 'heat', 'cool', 'auto'],
+				[0, 1, 2, 3],
+			],
+			[
+				['off', 'cool'],
+				[0, 2],
+			],
+		] as const) {
+			const previous = accessory();
+			mode.format = [...format];
+			await listener.handleThermostatMetadataChanged(
+				Object.assign(new ChannelPropertyEntity(), mode, { channel: thermostat.id }),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			await bridge.applyMapping();
+			expect(accessory()).not.toBe(previous);
+			expect(accessory().UUID).toBe(initial.UUID);
+			expect(
+				accessory().getService(Service.Thermostat).getCharacteristic(Characteristic.TargetHeatingCoolingState).props
+					.validValues,
+			).toEqual(expected);
+			await expect(
+				previous
+					.getService(Service.Thermostat)
+					.getCharacteristic(Characteristic.TargetHeatingCoolingState)
+					.handleGetRequest(),
+			).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		}
 	});
 
 	it.each([ChannelCategory.CARBON_DIOXIDE, ChannelCategory.FAN])(

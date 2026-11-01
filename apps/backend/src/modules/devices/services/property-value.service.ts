@@ -278,6 +278,7 @@ export class PropertyValueService {
 				const validSemantic =
 					evidence.semanticOrigin !== 'native_cover_tilt_percentage' ||
 					(property.category === PropertyCategory.TILT &&
+						property.identifier === 'slat_pos' &&
 						property.dataType === DataTypeType.UCHAR &&
 						resolvePropertyUnit(property) === '%');
 				if (!validClock || !validSemantic || !this.isSampleValueValid(property, value)) {

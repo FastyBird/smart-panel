@@ -1675,20 +1675,34 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		await until(() => values.readQualifiedSample(property(0, PropertyCategory.TILT), 300000)?.value === 20);
 		return id;
 	};
-	it('refuses to reinterpret queued native slat percentages as degree readings after metadata drift', async () => {
-		const tilt = await installTilt();
-		await db.manager.update(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.TILT).id, {
-			dataType: DataTypeType.FLOAT,
-			format: [-90, 90],
-			step: 1,
-		});
-		emitRaw(0, { ...transports[0].state, slat_pos: 70 });
-		await until(() => values.readQualifiedSample(property(0, PropertyCategory.TILT), 300000) === null);
-		const result = await send(70, tilt);
-		expect(result.success).toBe(false);
-		expect(result.composite.children.some((child) => child.status === 'unavailable')).toBe(true);
-		expect(transports[0].frames.some((frame) => frame.method === 'Cover.GoToPosition')).toBe(false);
+	it.each([{ dataType: DataTypeType.FLOAT, format: [-90, 90], step: 1 }, { identifier: 'operator-renamed-slat' }])(
+		'refuses queued native slat samples after incompatible metadata drift: %j',
+		async (metadata) => {
+			const tilt = await installTilt();
+			await db.manager.update(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.TILT).id, metadata);
+			emitRaw(0, { ...transports[0].state, slat_pos: 70 });
+			await until(() => values.readQualifiedSample(property(0, PropertyCategory.TILT), 300000) === null);
+			const result = await send(70, tilt);
+			expect(result.success).toBe(false);
+			expect(result.composite.children.some((child) => child.status === 'unavailable')).toBe(true);
+			expect(transports[0].frames.some((frame) => frame.method === 'Cover.GoToPosition')).toBe(false);
+		},
+	);
+	it.each([-1, 101])('refuses tilt readiness for out-of-range native slat status %p', async (slat) => {
+		await installTilt();
+		const delegate = manager.get(physical[0].device.identifier);
+		Object.assign(delegate.covers.get(0), { slat_pos: slat });
+		const target = {
+			device: physical[0].device,
+			channel: physical[0].channel,
+			property: property(0, PropertyCategory.TILT),
+			value: 70,
+		};
+		expect((await manager.coverCommandReadiness(target)).commandable).toBe(false);
+		expect(await manager.prepareCoverAction(target)).toBeNull();
+		expect(transports[0].frames).toEqual([]);
 	});
+
 	it('commands native slat percentages without inventing an angle or a matching vertical position', async () => {
 		const tilt = await installTilt();
 		const result = await send(70, tilt);

@@ -66,6 +66,7 @@ Preview and configuration responses expose per-operation `operations` readiness,
 Structural `rw`/`wo` field access is separate from current commandability. Shelly POSITION commands require calibrated native 0–100% control. TILT requires a current finite `slat_pos` and the separate native percentage contract; a degree-valued tilt is never converted into a guessed percentage. Full required TYPE/STATUS/
 POSITION/COMMAND and exposed optional metadata are checked together during creation, repair, planning and reporting.
 Drift or deletion excludes the entire affected member, preserving intended identities and unknowns.
+Rediscovery retains an existing native slat property during absent or invalid measurements. It withdraws that property only when the component configuration explicitly disables slat control and the status supplies no contradictory valid slat position. Custom degree metadata is preserved.
 
 The native field contract follows the [Shelly Cover API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Cover/), including its nullable status tag and optional action tag. The pinned SDK cover helpers omit action tags, so the adapter uses its guarded native RPC transport.
 

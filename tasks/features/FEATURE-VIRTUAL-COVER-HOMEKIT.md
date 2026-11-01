@@ -24,10 +24,10 @@ Use the existing group identity, composite dispatch, ownership, deadlines and pr
 
 ## Local validation
 
-- Cover/core/native/HomeKit pack: 59 suites, 1,174 tests passed.
-- Discovery suite after four additional slat cases: 33 tests passed.
-- Full ordinary HTTP/E2E: 28 suites, 420 tests passed.
-- Full Admin: 3,949 tests passed. Panel device/control/scene selection: 17 tests passed.
+- Cover/core/native/HomeKit: 59 suites, 1,193 tests passed across focused and complementary runs.
+- Discovery suite, including explicit disable and transient-reading cases: 39 tests passed (included above).
+- Initial feature head `0f53af83`: full ordinary HTTP/E2E, 28 suites and 420 tests passed.
+- Initial feature head `0f53af83`: full Admin, 3,949 tests passed; Panel device/control/scene selection, 17 tests passed.
 - Three mutation controls caused four substantive assertion failures; original source restored.
 - Backend/Admin types and strict lint, Flutter analysis, formatting and generated specs checked.
 

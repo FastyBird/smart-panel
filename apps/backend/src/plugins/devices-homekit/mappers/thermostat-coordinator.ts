@@ -203,6 +203,20 @@ export class ThermostatCoordinator {
 						const requested = ['off', 'heat', 'cool', 'auto'][targetMode];
 						if (!Number.isInteger(targetMode) || !requested || !(mode.format as string[]).includes(requested))
 							throw communicationFailure();
+						if (requested === 'auto') {
+							const heat = this.config.heaterTempProperty;
+							const cool = this.config.coolerTempProperty;
+							const heatValue = heat ? this.values.get(heat.id) : null;
+							const coolValue = cool ? this.values.get(cool.id) : null;
+							if (
+								typeof heatValue !== 'number' ||
+								!Number.isFinite(heatValue) ||
+								typeof coolValue !== 'number' ||
+								!Number.isFinite(coolValue) ||
+								heatValue >= coolValue
+							)
+								throw communicationFailure();
+						}
 						await this.dispatchPending(mode.id, requested);
 						return;
 					}

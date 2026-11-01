@@ -2935,10 +2935,10 @@ export class DelegatesManagerService {
 			const componentId = Number(update.channel.identifier.split(':')[1]);
 			const component = delegate.covers.get(componentId);
 			if (!nativeCoverStatus(component, componentId)) continue;
+			const slat = (component as unknown as { slat_pos?: unknown }).slat_pos;
 			if (
 				update.property.category === PropertyCategory.TILT &&
-				(typeof (component as unknown as { slat_pos?: unknown }).slat_pos !== 'number' ||
-					!Number.isFinite((component as unknown as { slat_pos: number }).slat_pos))
+				(typeof slat !== 'number' || !Number.isFinite(slat) || slat < 0 || slat > 100)
 			)
 				continue;
 			const canonicalMac = (update.device as ShellyNgDeviceEntity).canonicalMac;
