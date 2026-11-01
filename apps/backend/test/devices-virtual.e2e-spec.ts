@@ -1069,8 +1069,12 @@ async function verifyThermostatWire(
 	return { publicRequest, device, settings };
 }
 
-/** Retain this app's original index/status setup work; never start a replacement rebuild or refresh. */
-function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, status: VirtualStatusListener) {
+/** Retain this app's original synthesis/index/status work; never start a replacement rebuild or refresh. */
+function captureLinkSetupCompletion(
+	index: VirtualIndexMaintenanceListener,
+	status: VirtualStatusListener,
+	information: VirtualDeviceInformationListener,
+) {
 	type Receipt = { done: Promise<void>; failure?: { cause: unknown } };
 	const pending = new Set<Receipt>();
 	const restore: (() => void)[] = [];
@@ -1098,11 +1102,12 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 		const own = Object.getOwnPropertyDescriptor(target, key);
 		const original = Reflect.get(target, key) as (...args: unknown[]) => unknown;
 		if (own || typeof original !== 'function') throw new Error(`Unsupported setup completion method: ${key}`);
-		Object.defineProperty(target, key, {
-			configurable: true,
-			writable: true,
-			value: (...args: unknown[]) => invoke(original.bind(target), args),
-		});
+		const observed = (...args: unknown[]) => invoke(original.bind(target), args);
+		// Nest discovers decorated event handlers after this fixture installs its passive wrapper.
+		for (const metadataKey of Reflect.getMetadataKeys(original) as unknown[]) {
+			Reflect.defineMetadata(metadataKey, Reflect.getMetadata(metadataKey, original) as unknown, observed);
+		}
+		Object.defineProperty(target, key, { configurable: true, writable: true, value: observed });
 		restore.push(() => {
 			if (!Reflect.deleteProperty(target, key)) throw new Error(`Cannot restore setup completion method: ${key}`);
 		});
@@ -1135,6 +1140,13 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 			return result;
 		});
 		wrap(status, 'recompute', (original, args) => {
+			const work = original(...args) as Promise<void>;
+			retain(work);
+			return work;
+		});
+		// Status may settle before the same DEVICE_CREATED handler writes its remaining owned properties.
+		// Keep that original finite synthesis and its descendants ahead of an explicit graph recovery.
+		wrap(information, 'handleDeviceCreated', (original, args) => {
 			const work = original(...args) as Promise<void>;
 			retain(work);
 			return work;
@@ -1215,6 +1227,7 @@ describe('devices-virtual plugin (e2e)', () => {
 		linkSetupCompletion = captureLinkSetupCompletion(
 			moduleFixture.get(VirtualIndexMaintenanceListener),
 			moduleFixture.get(VirtualStatusListener),
+			moduleFixture.get(VirtualDeviceInformationListener),
 		);
 
 		app.useGlobalPipes(

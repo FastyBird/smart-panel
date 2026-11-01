@@ -266,6 +266,18 @@ A configured physical window contact and automatic temperature-change detection 
 
 Actuator claims bind a qualified physical output to one controller and refuse unsupported or conflicting configurations at preview and persistence. Stop, restart and binding changes reconcile outstanding commands and claims before output may resume. The controller's software safeguards still require independent equipment protection and an operator-approved installation qualification before a live heating or cooling output is activated.
 
+Concurrent startup callers join the same original bootstrap completion, including its exact failure. Failed startup
+retires its own registrations and timer before a fresh attempt may become current. Stop revokes that lifetime
+synchronously: a late start or completed load cannot publish into the next lifetime, lend it an old send guard or
+enqueue old settlement work. A stopped flush still joins its already-issued evaluations; a fresh start uses a new
+queue and its own structural admission.
+
+Restart suspends branch observations and preserves every unresolved identity. On a same-instance restart, an
+actually in-flight command may retain its exact acknowledged journal row until its original outcome arrives.
+Only an original object known to that journal, with matching complete native row and unchanged identity, can use
+this path; clones and foreign row changes are refused. Commands recovered without that live original are marked
+unknown. Late outcomes remain history and cannot supply a fresh ON admission or substitute for qualified OFF/drain.
+
 ## Mandatory parallel thermostat branches
 
 Guarded controllers group physical actuator claims by the stable `(controllerId, role)` identity. The existing

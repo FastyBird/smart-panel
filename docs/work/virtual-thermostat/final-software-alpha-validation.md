@@ -18,20 +18,59 @@ No alpha was dispatched or published by this preparation. No installed equipment
 The ordinary HTTP suite also retains existing physical-control, API, private-data, CLI/authoring and ownership cases.
 HomeKit/native, energy, provenance, expiry/restart/remap and provider lifecycle suites remain separate complementary
 witnesses. Separate suites do not substitute for the single all-domain operation above. Generated wire contracts
-are unchanged by this test/release preparation; no generated API/spec files are hand-edited.
+are unchanged by this runtime/test/release preparation; no generated API/spec files are hand-edited.
 
 ## Measured local validation
 
-| Run                                                                                                  | Result                                                                                                                                                                                                           |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Complete ordinary E2E after adding the four cases                                                    | **29 suites / 424 tests PASS**, zero skips, natural exit 0. The final prefix-hash/cleanup strengthening also passes separately (1/1). The final exact physical-command cardinality also passes separately (2/2). |
-| Complete durable thermostat runtime including the multi-command controls and actual-interval held ON | **147/147 PASS**, zero skips, natural exit 0.                                                                                                                                                                    |
-| Ported inherited-method descriptor controls                                                          | **6/6 PASS**, zero skips.                                                                                                                                                                                        |
-| Backend types                                                                                        | Final combined noEmit/incremental-false gate PASS, including the six descriptor controls and actual-interval held ON test.                                                                                       |
-| Strict lint                                                                                          | Changed runtime/HTTP/upgrade/descriptor tests PASS with zero warnings.                                                                                                                                           |
-| Release version selection + immutable source contract                                                | Final **3/3 PASS**; actionlint workflow syntax/dependency/expression checks PASS.                                                                                                                                |
-| Generated API/spec and Admin/Panel clients                                                           | All generators PASS; **5,671 actual files** reproduce byte-for-byte, with zero new or changed outputs on the verified repeat.                                                                                    |
-| Complete backend before adding six descriptor controls, two workers                                  | **725 suites / 13,287 tests PASS**, zero failures; one existing pending agricultural/device-temperature Zigbee mapper test. Natural exit 0.                                                                      |
+| Run                                                                                                  | Result                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Complete ordinary E2E after adding the four cases                                                    | **29 suites / 424 passing cases, composed**: 28 suites / 310 PASS in the complete run, then the entire corrected virtual-device file / 114 PASS. Both have zero skips and natural exits. The initial full run remains RED (423 PASS / 1 FAIL). Earlier strengthened upgrade (1/1) and composition (2/2) remain retained. |
+| Complete durable thermostat runtime including the multi-command controls and actual-interval held ON | **155/155 PASS**, zero skips, natural exit 0. Includes six startup/lifetime cases and two original-row refusal controls.                                                                                                                                                                                                 |
+| Ported inherited-method descriptor controls                                                          | **6/6 PASS**, zero skips.                                                                                                                                                                                                                                                                                                |
+| Backend types                                                                                        | Final noEmit/incremental-false gate PASS, including the production lifecycle/journal changes and eight new cases.                                                                                                                                                                                                        |
+| Strict lint                                                                                          | All three changed runtime/journal TypeScript files and the corrected E2E setup PASS with zero warnings; prior HTTP/upgrade/descriptor checks retained.                                                                                                                                                                   |
+| Release version selection + immutable source contract                                                | Final **3/3 PASS**; actionlint workflow syntax/dependency/expression checks PASS.                                                                                                                                                                                                                                        |
+| Generated API/spec and Admin/Panel clients                                                           | All generators PASS; **5,671 actual files** reproduce byte-for-byte, with zero new or changed outputs on the verified repeat.                                                                                                                                                                                            |
+| Prior complete backend before the lifecycle correction, two workers                                  | **725 suites / 13,287 tests PASS**, zero failures; one existing pending agricultural/device-temperature Zigbee mapper test. Natural exit 0.                                                                                                                                                                              |
+
+The current native consumer qualification composes **23 suites / 1,190 passing cases**: 22 consumer suites /
+1,035 cases passed on this production, followed by the complete corrected runtime file / 155 cases in a fresh
+process. The initial 23-suite invocation remains RED: the new native-read test incorrectly asserted that an
+SQLite callback inherited the caller's AsyncLocalStorage lease. Throwing that assertion inside the native
+callback also caused body/cleanup timeouts. The assertion was removed, callback failure was observed outside
+SQLite, and the actual read/stop/fresh-B/persistence assertions remain. The corrected case and full runtime
+passed. The 22 green suites were not rerun. The earlier 725-suite backend result predates these production
+changes and is retained as historical evidence; exact-head hosted CI is still required.
+
+The ordinary E2E invocation passed 423 cases and failed during explicit graph recovery in the cleanup of
+`returns committed nested wiring as unavailable when post-commit graph validation fails`. Its main HTTP and
+persistence assertions completed; recovery refused an expired original graph generation. A bounded passive
+full-file diagnostic passed 114/114 and did not reproduce that exact interleaving, so its cause remains UNKNOWN.
+Source inspection identified an unjoined operation: the device-information event handler can write further
+owned properties after its status recomputation. The setup helper now retains the original complete synthesis
+Promise and its index/status descendants before explicit recovery, while preserving Nest event metadata and
+all original E2E case bodies. The corrected full file passes 114/114. No graph refusal was suppressed, no retry
+loop or production graph change was added. An earlier fixture attempt without copied event metadata was
+interrupted and grants no qualification. This composed E2E result does not rewrite the first full run as green.
+
+### Runtime lifecycle correction
+
+Two real-SQL baseline cases exposed that concurrent bootstrap callers did not receive the original pending
+completion. Startup now publishes one original Promise before registration/recovery, preserves its exact failure,
+and closes its own registrations after failure. Stopping an old pending startup cannot clear a newer startup's
+Promise or install an old timer. Each lifetime owns its listeners, contexts, evaluation queue and send/publication
+guards. Stopped `flush()` joins retired evaluations while a fresh startup obtains its own queue and native admission.
+
+The actual native-load tests stop A at the read boundary or hold its completed result after an exclusive ticket
+proves shared release. B completes under its own admission; A cannot overwrite B or persist stale work. Restoring
+the former post-load active-only check causes the held-result control to fail, and production was restored exactly.
+A separate real guard/delegate/HTTP case holds the response of an already recorded ON: after stop and fresh B,
+the original A outcome persists on the same command ID as unknown without another ON or new admission.
+
+Same-instance journal recovery retains a pending row only for this journal's exact acknowledged in-flight object,
+after complete native-image comparison. Other prepared/dispatching rows become unknown as before. Clone and
+foreign-write controls refuse retention atomically without rewriting history. Acknowledged insert/write images
+are published inside the existing post-ACK exclusive scope. Retained history supplies no actuation authority.
 
 The initial generated-output inventory used Git-tracked paths and found zero files because these outputs are ignored. It grants no comparison credit. The corrected filesystem inventory captured all 5,671 files before and after a complete generator repeat; those hashes match.
 
@@ -52,11 +91,12 @@ Its **200 PASS / 61 FAIL** describes that historical source, not a current-main 
 
 The current reconciliation distinguishes scoped business outcomes from complete original-case acceptance:
 
-- **103 rows** now bind to current observable invariants after comparing every one of the 68 distinct same-title test-body pairs, their setup, controlled order and full assertion differences. Per-row notes state changed ports and limits. Current basic mutation fixtures control claims/value ports; these bindings do not certify the former full mutation-provider or SDK custody pipeline.
+- **109 rows** now bind to current observable invariants. The preceding 103 bindings retain comparison of all 68 distinct same-title test-body pairs, their setup, controlled order and full assertion differences; six further startup/lifetime bindings are detailed below. Per-row notes state changed ports and limits. Current basic mutation fixtures control claims/value ports; these bindings do not certify the former full mutation-provider or SDK custody pipeline.
 - **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
+- **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
 - **Seven replacement rows (105–109, 111, 240)** bind the current native OFF, protected-write, qualification, held ON and actual-interval boundaries. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **145 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **139 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
 
 The history oracle was independently challenged with three controlled production mutants: oldest prepared command first, duplicate returned rows and a corrupted proof ID. Each caused both history cases to fail at the intended predicate, uniqueness or complete-row assertion (six expected failures total). The production file was restored byte-for-byte before the complete **147/147** runtime rerun passed.
 
@@ -69,7 +109,7 @@ strengthening above. That correction does not clear unrelated original controlle
 observer or fixture-ownership schedules. #1473 remains frozen and is not superseded. #1462 and alpha clearance
 remain open until required residuals are resolved or explicitly dispositioned with evidence.
 
-Hosted CI on preparation head `742d747d49e48b328eff6a2fe5b00c962ad99c21` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41310923184) succeeded. This includes the interval case and earlier map, but predates the real issued-OFF enhancement; its next exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
+Hosted CI on preparation head `dd9b9b8549c72d0796aa618648730e145d287337` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41314503661) succeeded. It includes the real issued-OFF enhancement but predates the lifecycle correction; exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
 
 ## Release preparation
 

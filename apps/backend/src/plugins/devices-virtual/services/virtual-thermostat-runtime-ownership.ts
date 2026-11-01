@@ -502,7 +502,9 @@ export class ThermostatRuntimeJournal {
 		});
 	}
 	/** Restart is diagnostic suspension only; its original native rows are never new OFF/ON authority. */
-	async restart(): Promise<void> {
+	async restart(inFlight: readonly VirtualThermostatCommandEntity[] = []): Promise<void> {
+		// Only original objects acknowledged by this journal can retain an outstanding native outcome.
+		for (const command of inFlight) if (!this.originals.has(command)) this.refuse();
 		await this.runNative(async (manager, current) => {
 			const pending = await manager
 				.createQueryBuilder(VirtualThermostatCommandEntity, 'command')
@@ -517,8 +519,19 @@ export class ThermostatRuntimeJournal {
 				.orderBy('branch.claimId')
 				.callListeners(false)
 				.getRawMany<BranchImage>();
-			for (let offset = 0; offset < pending.length; offset += 32) {
-				const batch = pending.slice(offset, offset + 32);
+			const retained = new Map<string, CommandImage>();
+			for (const command of inFlight) {
+				const original = this.originals.get(command),
+					value = this.image(command);
+				if (!original || commandIdentity.some((key) => !Object.is(original[key], value[key]))) this.refuse();
+				const row = pending.find((candidate) => candidate.id === original.id);
+				if (!row) continue;
+				if (!this.equal(row, original)) this.refuse();
+				retained.set(row.id as string, row);
+			}
+			const suspended = pending.filter((row) => !retained.has(row.id as string));
+			for (let offset = 0; offset < suspended.length; offset += 32) {
+				const batch = suspended.slice(offset, offset + 32);
 				const query = manager
 					.createQueryBuilder()
 					.update(VirtualThermostatCommandEntity)
@@ -553,15 +566,16 @@ export class ThermostatRuntimeJournal {
 				}
 				if ((await query.execute()).affected !== batch.length) this.refuse();
 			}
-			for (const row of pending)
-				if (
-					!this.equal(await this.read(manager, row.id as string), {
-						...row,
-						status: 'unknown',
-						fault: 'restart_requires_release_reconciliation',
-					})
-				)
-					this.refuse();
+			for (const row of pending) {
+				const expected = retained.has(row.id as string)
+					? row
+					: {
+							...row,
+							status: 'unknown',
+							fault: 'restart_requires_release_reconciliation',
+						};
+				if (!this.equal(await this.read(manager, row.id as string), expected)) this.refuse();
+			}
 			const remaining = await manager
 				.createQueryBuilder(VirtualThermostatCommandEntity, 'command')
 				.where("command.status IN ('prepared','dispatching')")
@@ -572,7 +586,7 @@ export class ThermostatRuntimeJournal {
 				.orderBy('branch.claimId')
 				.callListeners(false)
 				.getRawMany<BranchImage>();
-			if (remaining || after.length !== branches.length || !current()) this.refuse();
+			if (remaining !== retained.size || after.length !== branches.length || !current()) this.refuse();
 			for (const [index, row] of branches.entries()) {
 				const expected = { ...row, activity: 'unknown', releaseAttempts: 0, nextReleaseAt: null };
 				if (!branchColumns.every((key) => Object.is(expected[key], after[index][key]))) this.refuse();
@@ -601,8 +615,8 @@ export class ThermostatRuntimeJournal {
 				!this.equal(this.image(command), expected)
 			)
 				this.refuse();
+			this.scopes.get(manager).accept.push(() => this.originals.set(command, expected));
 		});
-		this.originals.set(command, expected);
 	}
 	async write(
 		command: VirtualThermostatCommandEntity,
@@ -629,8 +643,8 @@ export class ThermostatRuntimeJournal {
 			for (const key of commandColumns) query.andWhere(`"${key}" IS :old_${key}`, { [`old_${key}`]: before[key] });
 			if ((await query.execute()).affected !== 1) this.refuse();
 			if (!current() || !this.equal(await this.read(manager, value.id), expected)) this.refuse();
+			this.scopes.get(manager).accept.push(() => this.originals.set(command, expected));
 		});
-		this.originals.set(command, expected);
 	}
 }
 
