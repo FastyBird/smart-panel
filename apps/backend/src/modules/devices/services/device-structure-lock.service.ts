@@ -85,16 +85,29 @@ export class DeviceStructureLockService {
 		}
 
 		return new Promise<T>((resolve, reject) => {
-			this.queue.push({ mode: 'exclusive', fn, resolve, reject, releaseBeforeSettlement: true });
+			this.queue.push({
+				mode: 'exclusive',
+				fn: this.captureQueued(fn),
+				resolve,
+				reject,
+				releaseBeforeSettlement: true,
+			});
 			this.drain();
 		});
 	}
 
 	private enqueue<T>(mode: LockMode, fn: () => Promise<T>): Promise<T> {
 		return new Promise<T>((resolve, reject) => {
-			this.queue.push({ mode, fn, resolve, reject });
+			this.queue.push({ mode, fn: this.captureQueued(fn), resolve, reject });
 			this.drain();
 		});
+	}
+
+	private captureQueued<T>(fn: () => Promise<T>): (context: LockContext) => Promise<T> {
+		// A predecessor drains this queue in its own async context. Retain this caller's
+		// other contexts, then install only the new structural owner at admission.
+		const resume = AsyncLocalStorage.snapshot();
+		return (context) => resume(() => this.context.run(context, fn));
 	}
 
 	private drain(): void {
@@ -139,7 +152,7 @@ export class DeviceStructureLockService {
 		const context: LockContext = { mode: request.mode, active: true, accepting: true, nestedOperations: new Set() };
 
 		void Promise.resolve()
-			.then(() => this.context.run(context, request.fn))
+			.then(() => request.fn(context))
 			.then(
 				async (value) => {
 					await this.waitForNestedOperations(context);
@@ -174,7 +187,7 @@ export class DeviceStructureLockService {
 		};
 
 		void Promise.resolve()
-			.then(() => this.context.run(context, request.fn))
+			.then(() => request.fn(context))
 			.then(
 				async (value) => {
 					await this.waitForNestedOperations(context);
@@ -223,7 +236,7 @@ interface LockContext {
 interface LockRequest<T> {
 	mode: LockMode;
 	releaseBeforeSettlement?: true;
-	fn: () => Promise<T>;
+	fn: (context: LockContext) => Promise<T>;
 	resolve: (value: T | PromiseLike<T>) => void;
 	reject: (reason?: unknown) => void;
 }

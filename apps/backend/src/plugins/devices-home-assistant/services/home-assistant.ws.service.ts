@@ -106,6 +106,58 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	// talking about the socket that is actually active, or a stopped / superseded one.
 	private socketGeneration = 0;
 
+	private readonly nativeClimateListeners = new Set<(event: Record<string, unknown>) => void>();
+	private readonly nativeSubscriptionEvents = new Set([
+		'state_changed',
+		'entity_registry_updated',
+		'core_config_updated',
+	]);
+	private readonly subscriptionRequests = new Map<
+		number,
+		{ event: string; generation: number; timeout: NodeJS.Timeout }
+	>();
+	private readonly acceptedNativeSubscriptions = new Set<string>();
+	private nativeSubscriptionGeneration = 0;
+	private nativeSubscriptionsReady(): boolean {
+		return [...this.nativeSubscriptionEvents].every((event) => this.acceptedNativeSubscriptions.has(event));
+	}
+	private invalidateNativeSubscriptions(): void {
+		this.nativeSubscriptionGeneration++;
+		for (const request of this.subscriptionRequests.values()) clearTimeout(request.timeout);
+		this.subscriptionRequests.clear();
+		this.acceptedNativeSubscriptions.clear();
+	}
+
+	registerNativeClimateListener(listener: (event: Record<string, unknown>) => void): () => void {
+		this.nativeClimateListeners.add(listener);
+		return () => this.nativeClimateListeners.delete(listener);
+	}
+
+	captureNativeClimateConnection(): {
+		identity: string;
+		serverIdentity: string;
+		isCurrent: () => boolean;
+		send: (data: Record<string, unknown>) => Promise<string>;
+	} | null {
+		if (this.state !== 'started' || !this.isConnected() || !this.nativeSubscriptionsReady()) return null;
+		const generation = this.socketGeneration;
+		const subscriptions = this.nativeSubscriptionGeneration;
+		const socket = this.ws;
+		const send = this.send.bind(this) as (data: Record<string, unknown>) => Promise<string>;
+		return {
+			identity: `${generation}:${subscriptions}`,
+			serverIdentity: new URL(this.baseUrl).origin + new URL(this.baseUrl).pathname,
+			isCurrent: () =>
+				this.state === 'started' &&
+				this.socketGeneration === generation &&
+				this.ws === socket &&
+				this.isConnected() &&
+				this.nativeSubscriptionGeneration === subscriptions &&
+				this.nativeSubscriptionsReady(),
+			send,
+		};
+	}
+
 	// The close-handling continuation currently in flight for the current socket, if any.
 	// stop() awaits it before calling resolveAll(), so a notify() it starts is either fully
 	// written (and so visible for resolveAll() to clean up) or never started, never left to
@@ -320,6 +372,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private connect() {
+		this.invalidateNativeSubscriptions();
 		// Clear the intentional disconnect flag when starting a new connection
 		this.intentionalDisconnect = false;
 
@@ -348,12 +401,17 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		});
 
 		this.ws.on('message', (data: string) => {
+			if (generation !== this.socketGeneration) return;
 			void (async () => {
 				await this.handleMessage(data);
 			})();
 		});
 
 		this.ws.on('close', () => {
+			// A replaced socket cannot stop its replacement's ping or disconnect its devices.
+			// Intentional stop changes the generation too, but still owns disconnected cleanup.
+			if (generation !== this.socketGeneration && !this.intentionalDisconnect) return;
+			if (generation === this.socketGeneration) this.invalidateNativeSubscriptions();
 			this.stopPing();
 
 			// Reject pending connection promise if still waiting
@@ -378,6 +436,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		});
 
 		this.ws.on('error', (err) => {
+			if (generation !== this.socketGeneration) return;
 			this.logger.error('WebSocket connection error', {
 				message: err instanceof Error ? err.message : String(err),
 			});
@@ -390,6 +449,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private disconnect() {
+		this.invalidateNativeSubscriptions();
 		this.intentionalDisconnect = true;
 
 		this.stopPing();
@@ -696,6 +756,23 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			return;
 		}
 
+		if (msg.type === 'result' && typeof msg.id === 'number') {
+			const subscription = this.subscriptionRequests.get(msg.id);
+			if (subscription) {
+				clearTimeout(subscription.timeout);
+				this.subscriptionRequests.delete(msg.id);
+				if (subscription.generation === this.nativeSubscriptionGeneration) {
+					if (msg.success === true) {
+						if (this.nativeSubscriptionEvents.has(subscription.event))
+							this.acceptedNativeSubscriptions.add(subscription.event);
+					} else {
+						this.logger.warn(`Home Assistant event subscription rejected: ${subscription.event}`);
+						if (this.nativeSubscriptionEvents.has(subscription.event)) this.invalidateNativeSubscriptions();
+					}
+				}
+			}
+		}
+
 		if ('id' in msg && msg.id && typeof msg.id === 'number' && this.responses.has(msg.id)) {
 			const { resolve, timeout } = this.responses.get(msg.id);
 
@@ -760,6 +837,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 				typeof msg.event.event_type === 'string'
 			) {
 				const eventType = msg.event.event_type;
+				for (const listener of this.nativeClimateListeners) listener(msg.event as Record<string, unknown>);
 				const handler = this.eventsHandlers.get(eventType) ?? this.eventsHandlers.get('*');
 
 				if (handler) {
@@ -782,7 +860,11 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private subscribeToEvents() {
-		const subscribedEvents = new Set<string>(['state_changed']);
+		this.invalidateNativeSubscriptions();
+		const socket = this.ws;
+		if (!socket) return;
+		const socketGeneration = this.socketGeneration;
+		const subscribedEvents = new Set<string>(this.nativeSubscriptionEvents);
 		for (const eventType of this.eventsHandlers.keys()) {
 			if (eventType !== '*') {
 				subscribedEvents.add(eventType);
@@ -790,9 +872,25 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		}
 
 		for (const eventType of subscribedEvents) {
-			this.ws?.send(
+			const id = this.nextId++;
+			const generation = this.nativeSubscriptionGeneration;
+			const timeout = setTimeout(() => {
+				if (
+					this.subscriptionRequests.get(id)?.timeout !== timeout ||
+					generation !== this.nativeSubscriptionGeneration ||
+					socketGeneration !== this.socketGeneration ||
+					this.ws !== socket
+				)
+					return;
+				this.logger.warn(`Home Assistant event subscription acknowledgement timed out: ${eventType}`);
+				this.invalidateNativeSubscriptions();
+				// Terminating the original socket lets its existing close handler reconnect and subscribe anew.
+				socket.terminate();
+			}, 10_000);
+			this.subscriptionRequests.set(id, { event: eventType, generation, timeout });
+			socket.send(
 				JSON.stringify({
-					id: this.nextId++,
+					id,
 					type: 'subscribe_events',
 					event_type: eventType,
 				}),

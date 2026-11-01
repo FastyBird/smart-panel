@@ -116,8 +116,12 @@
 		</div>
 	</el-card>
 
-	<virtual-thermostat-editor
-		v-if="props.device.category === DevicesModuleDeviceCategory.thermostat && 'mode' in props.device && props.device.mode === DevicesVirtualPluginDeviceMode.climate_controller"
+	<virtual-thermostat-controller
+		v-if="
+			props.device.category === DevicesModuleDeviceCategory.thermostat &&
+			'mode' in props.device &&
+			props.device.mode === DevicesVirtualPluginDeviceMode.climate_controller
+		"
 		:device-id="props.device.id"
 	/>
 
@@ -149,8 +153,8 @@ import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import type { IVirtualChannelProperty } from '../store/channels.properties.store.types';
 import type { MeasurementMode } from '../utils/measurement-authoring.utils';
 
+import VirtualThermostatController from './VirtualThermostatController.vue';
 import VirtualDeviceRemapDialog from './virtual-device-remap-dialog.vue';
-import VirtualThermostatEditor from './virtual-thermostat-editor.vue';
 import type { IVirtualDeviceSourcesProps, IVirtualSourceWarning } from './virtual-device-sources.types';
 import VirtualLightGroupDetail from './virtual-light-group-detail.vue';
 

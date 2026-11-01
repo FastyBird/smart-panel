@@ -252,6 +252,7 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 	): Promise<{
 		allowed: boolean;
 		bound: boolean;
+		observedAfter: Date | null;
 		reasons: readonly string[];
 		isCurrent(): boolean;
 	}> {
@@ -286,6 +287,7 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 		return {
 			allowed: isCurrent(),
 			bound,
+			observedAfter: rows.length ? new Date(Math.max(...rows.map((row) => row.identifiedAt.getTime()))) : null,
 			reasons: isCurrent() ? [] : [bound ? 'zigbee_bound_source_dispatch_refused' : 'zigbee_dispatch_identity_unbound'],
 			isCurrent,
 		};

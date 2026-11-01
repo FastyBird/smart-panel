@@ -105,6 +105,7 @@ describe('HomeAssistantWsService', () => {
 		module = undefined;
 		await moduleToClose?.close();
 		service?.['stopPing']();
+		service?.['invalidateNativeSubscriptions']();
 
 		// A test that drives an unexpected close leaves a real reconnect timer scheduled;
 		// clear it so it cannot fire against a torn-down service once the test has moved on.
@@ -133,6 +134,180 @@ describe('HomeAssistantWsService', () => {
 
 		expect(() => service.registerEventsHandler('test', handler)).toThrow(DevicesHomeAssistantException);
 	});
+
+	it.each(['state_changed', 'entity_registry_updated', 'core_config_updated'])(
+		'keeps native capture unavailable if HA rejects the %s subscription',
+		async (rejected) => {
+			const starting = service.start();
+			await flush();
+			await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+			await starting;
+			expect(service.captureNativeClimateConnection()).toBeNull();
+			const packets = (mockWs.send.mock.calls as [string][])
+				.map(([payload]) => JSON.parse(payload) as { id: number; type: string; event_type: string })
+				.filter((packet) => packet.type === 'subscribe_events');
+			for (const packet of packets)
+				await service['handleMessage'](
+					JSON.stringify({ id: packet.id, type: 'result', success: packet.event_type !== rejected }),
+				);
+			expect(service.captureNativeClimateConnection()).toBeNull();
+			expect(await service.isHealthy()).toBe(true);
+		},
+	);
+
+	it('revokes original native captures during re-subscription and never revives them on the same socket', async () => {
+		const starting = service.start();
+		await flush();
+		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		await starting;
+		const accept = async () => {
+			const packets = (mockWs.send.mock.calls as [string][])
+				.map(([payload]) => JSON.parse(payload) as { id: number; type: string })
+				.filter((packet) => packet.type === 'subscribe_events');
+			for (const packet of packets)
+				await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		};
+		await accept();
+		const original = service.captureNativeClimateConnection();
+		expect(original?.isCurrent()).toBe(true);
+		mockWs.send.mockClear();
+		service['subscribeToEvents']();
+		expect(original?.isCurrent()).toBe(false);
+		expect(service.captureNativeClimateConnection()).toBeNull();
+		await accept();
+		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
+		expect(original?.isCurrent()).toBe(false);
+	});
+
+	it('reconnects after a lost subscription acknowledgement and accepts only the new subscription epoch', async () => {
+		jest.useFakeTimers();
+		setupStartedService();
+		service['connect']();
+		service['subscribeToEvents']();
+		const packets = (mockWs.send.mock.calls as [string][]).map(([data]) => JSON.parse(data) as { id: number });
+		await jest.advanceTimersByTimeAsync(10_000);
+		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
+		for (const packet of packets)
+			await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		expect(service.captureNativeClimateConnection()).toBeNull();
+		getRegisteredHandler('close')();
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(WebSocket).toHaveBeenCalledTimes(2);
+		mockWs.send.mockClear();
+		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		for (const [data] of mockWs.send.mock.calls as [string][]) {
+			const packet = JSON.parse(data) as { id: number; type: string };
+			if (packet.type === 'subscribe_events')
+				await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		}
+		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
+		await jest.advanceTimersByTimeAsync(10_000);
+		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['acknowledged', 'stopped', 'replaced'] as const)(
+		'clears subscription deadlines when %s',
+		async (boundary) => {
+			jest.useFakeTimers();
+			setupStartedService();
+			service['subscribeToEvents']();
+			if (boundary === 'acknowledged') {
+				for (const [data] of mockWs.send.mock.calls as [string][]) {
+					const packet = JSON.parse(data) as { id: number };
+					await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+				}
+			} else if (boundary === 'stopped') await service.stop();
+			else service['connect']();
+			await jest.advanceTimersByTimeAsync(10_000);
+			expect(mockWs.terminate).not.toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
+		},
+	);
+
+	it('does not let superseded subscription deadlines close a new subscription window', async () => {
+		jest.useFakeTimers();
+		setupStartedService();
+		service['subscribeToEvents']();
+		await jest.advanceTimersByTimeAsync(5000);
+		service['subscribeToEvents']();
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(mockWs.terminate).not.toHaveBeenCalled();
+		await jest.advanceTimersByTimeAsync(5000);
+		expect(mockWs.terminate).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the authenticated replacement live when a replaced socket closes late', async () => {
+		jest.useFakeTimers();
+		setupStartedService();
+		service['connect']();
+		const oldClose = getRegisteredHandler('close');
+		mockWs = { ...mockWs, on: jest.fn(), send: jest.fn(), close: jest.fn(), terminate: jest.fn() };
+		service['connect']();
+		const onMessage: (data: string) => void = getRegisteredHandler('message');
+		const deliver = async (message: object) => {
+			onMessage(JSON.stringify(message));
+			await jest.advanceTimersByTimeAsync(0);
+		};
+		await deliver({ type: 'auth_ok' });
+		for (const [data] of mockWs.send.mock.calls as [string][]) {
+			const packet = JSON.parse(data) as { id: number };
+			await deliver({ id: packet.id, type: 'result', success: true });
+		}
+		const ping = service['pingInterval'];
+		expect(ping).not.toBeNull();
+		oldClose();
+		expect(service['pingInterval']).toBe(ping);
+		expect(mockHttpService.markAllDevicesDisconnected).not.toHaveBeenCalled();
+		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
+		await jest.advanceTimersByTimeAsync(30_000);
+		const packet = (mockWs.send.mock.calls as [string][])
+			.map(([data]) => JSON.parse(data) as { id: number; type: string })
+			.find((packet) => packet.type === 'ping');
+		expect(packet).toBeDefined();
+		await deliver({ id: packet.id, type: 'pong' });
+	});
+
+	it('still disconnects devices when the socket closes after intentional stop', async () => {
+		setupStartedService();
+		service['connect']();
+		const close = getRegisteredHandler('close');
+		await service.stop();
+		close();
+		expect(mockHttpService.markAllDevicesDisconnected).toHaveBeenCalledTimes(1);
+		expect(service['pingInterval']).toBeNull();
+		expect(mockNotifications.notify).not.toHaveBeenCalled();
+	});
+
+	it.each(['superseded', 'current'] as const)(
+		'handles %s socket errors during replacement authentication',
+		async (boundary) => {
+			jest.useFakeTimers();
+			setupStartedService();
+			service['connect']();
+			const oldError: (error: Error) => void = getRegisteredHandler('error');
+			await service.stop();
+			mockWs = { ...mockWs, on: jest.fn(), send: jest.fn(), close: jest.fn(), terminate: jest.fn() };
+			const starting = service.start().then(
+				() => ({ started: true }),
+				(cause: unknown) => ({ cause }),
+			);
+			await jest.advanceTimersByTimeAsync(0);
+			const currentError: (error: Error) => void = getRegisteredHandler('error');
+			const original = new Error('socket frame error');
+			(boundary === 'superseded' ? oldError : currentError)(original);
+			const onMessage: (data: string) => void = getRegisteredHandler('message');
+			if (boundary === 'superseded') onMessage(JSON.stringify({ type: 'auth_ok' }));
+			await jest.advanceTimersByTimeAsync(0);
+			const result = await starting;
+			if (boundary === 'superseded') {
+				expect(result).toEqual({ started: true });
+				expect(service.getState()).toBe('started');
+			} else {
+				expect(result).toEqual({ cause: original });
+				expect(service.getState()).toBe('error');
+			}
+		},
+	);
 
 	it('should reject send if not connected', async () => {
 		service['ws'] = { readyState: WebSocket.CLOSED } as unknown as WebSocket;

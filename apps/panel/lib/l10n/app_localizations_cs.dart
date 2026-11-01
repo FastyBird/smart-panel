@@ -4871,4 +4871,80 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get space_occupancy_automatic => 'Automatika obsazenosti je zapnutá';
+
+  @override
+  String get native_thermostat_title => 'Nativní termostat';
+
+  @override
+  String get native_thermostat_explanation =>
+      'Teplotu reguluje fyzická jednotka. Tato strategie neposkytuje náhradu externího čidla ani ochranné mechanismy. Teploty jsou v °C.';
+
+  @override
+  String get native_thermostat_binding => 'Vazba';
+
+  @override
+  String get native_thermostat_requested_mode => 'Požadovaný režim';
+
+  @override
+  String get native_thermostat_requested_heat => 'Požadovaná teplota vytápění';
+
+  @override
+  String get native_thermostat_requested_cool => 'Požadovaná teplota chlazení';
+
+  @override
+  String get native_thermostat_observed_temperature => 'Pozorovaná teplota';
+
+  @override
+  String get native_thermostat_observed_mode => 'Pozorovaný režim';
+
+  @override
+  String get native_thermostat_observed_heat => 'Pozorovaná teplota vytápění';
+
+  @override
+  String get native_thermostat_observed_cool => 'Pozorovaná teplota chlazení';
+
+  @override
+  String get native_thermostat_activity => 'Pozorovaná aktivita';
+
+  @override
+  String get native_thermostat_observed_at => 'Čas pozorování';
+
+  @override
+  String get native_thermostat_drift => 'Externí změny';
+
+  @override
+  String get native_thermostat_accepted => 'Přijato / nepotvrzeno';
+
+  @override
+  String get native_thermostat_refused => 'Odmítnuto';
+
+  @override
+  String get native_thermostat_unknown =>
+      'Neznámý výsledek — před dalším požadavkem obnovte stav';
+
+  @override
+  String get native_thermostat_stale =>
+      'Aktuální stav není dostupný — ovládání je zakázáno';
+
+  @override
+  String get native_thermostat_auto =>
+      'Použít automatický režim s oběma zadanými teplotami';
+
+  @override
+  String get native_thermostat_refresh => 'Obnovit stav';
+
+  @override
+  String get native_thermostat_decrease => 'Snížit teplotu';
+
+  @override
+  String get native_thermostat_increase => 'Zvýšit teplotu';
+
+  @override
+  String get native_thermostat_draft => 'Zadejte teplotu (°C)';
+
+  @override
+  String get native_thermostat_apply => 'Použít teplotu';
+
+  @override
+  String get native_thermostat_request_state => 'Stav požadavku';
 }

@@ -30,6 +30,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { NativeThermostatController } from './controllers/native-thermostat.controller';
 import { ThermostatAuthoringContextController } from './controllers/thermostat-authoring-context.controller';
 import { ThermostatInstallationController } from './controllers/thermostat-installation.controller';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
@@ -69,6 +70,7 @@ import {
 	VirtualDeviceEntity,
 	VirtualDeviceMode,
 } from './entities/devices-virtual.entity';
+import { NativeThermostatEntity, NativeThermostatRequestEntity } from './entities/native-thermostat.entity';
 import { ThermostatCoolingDependencyEntity } from './entities/thermostat-cooling-dependency.entity';
 import {
 	ThermostatInstallationAuditEntity,
@@ -94,6 +96,7 @@ import { VirtualProjectionListener } from './listeners/virtual-projection.listen
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { NativeThermostatService } from './services/native-thermostat.service';
 import { ThermostatAuthoringContextService } from './services/thermostat-authoring-context.service';
 import { ThermostatInstallationBindingsService } from './services/thermostat-installation-bindings.service';
 import { ThermostatInstallationLoaderService } from './services/thermostat-installation-loader.service';
@@ -148,6 +151,8 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		// DevicesModule registration is fine: TypeORM scopes repositories per module and both owners
 		// get their own instance over the same table.
 		TypeOrmModule.forFeature([
+			NativeThermostatEntity,
+			NativeThermostatRequestEntity,
 			VirtualDeviceEntity,
 			VirtualChannelPropertyEntity,
 			DeviceEntity,
@@ -174,6 +179,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		NativeThermostatService,
 		VirtualDewPointConfigService,
 		VirtualDewPointRuntimeService,
 		ThermostatAuthoringContextService,
@@ -222,6 +228,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		SourceNotVirtualConstraintValidator,
 	],
 	controllers: [
+		NativeThermostatController,
 		VirtualDewPointConfigController,
 		ThermostatInstallationController,
 		ThermostatAuthoringContextController,

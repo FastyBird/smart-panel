@@ -20,8 +20,8 @@ The initial reconciliation used existing evidence without rerunning tests. The t
 | Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Presence/composed automation acceptance remains #1458; time schedules are delivered below                                               |
 | Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Time schedules and the occupancy follow-up reuse that path; the occupancy PR owns fresh CI/review gates; final composition remains open |
 | Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                                                                |
-| Home Assistant native units (#1456)                                   | Not implemented                                                               | Actual adapter, authoring, requested/observed state and protocol tests                                                                  |
-| Zigbee2MQTT native units (#1457)                                      | Not implemented                                                               | Actual model/expose-qualified adapter and protocol tests                                                                                |
+| Home Assistant native units (#1456)                                   | Implemented; native follow-up delivery gates pending                          | Exact-head CI and completed main review gates for the native follow-up                                                                  |
+| Zigbee2MQTT native units (#1457)                                      | Implemented; native follow-up delivery gates pending                          | Exact-head CI and completed main review gates for the native follow-up                                                                  |
 | SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                                                            |
 | HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Native/composed thermostat, remap and partial-result acceptance                                                                         |
 | Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts                                     |
@@ -91,6 +91,26 @@ this implementation does not close that parent or grant installed-equipment qual
 [Occupancy execution policy and API](space-activity-modes.md#room-occupancy) define the fail-closed input,
 manual-resume and admitted-operation boundaries. Camera input remains optional. Software results do not establish
 that installed lighting, heating or other equipment converged; original per-domain outcomes still apply.
+
+## Native HA and Zigbee2MQTT follow-up (#1456, #1457)
+
+The native strategy binds one canonical adopted unit to an ordinary virtual thermostat and reserves its Smart Panel
+mode/setpoint aliases. It keeps requested settings, qualified provider observations and unconfirmed operation outcomes
+separate. It delegates regulation to the unit and adds no protective floor, parallel-output or opposed-output authority.
+The follow-up owns fresh CI and completed main-review gates; the unchecked epic rows remain pending until merge.
+
+| Acceptance boundary                                                                                                                                      | Source/test witnesses                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registry-backed HA entity, units/ranges, explicit heat/cool and advertised heat_cool compounds, exact service calls, original connection and sample ages | [HA native adapter](../apps/backend/src/plugins/devices-home-assistant/services/home-assistant-native-climate.service.spec.ts), [prior ordinary work fence](../apps/backend/src/plugins/devices-home-assistant/platforms/home-assistant.native-climate.spec.ts)                                                                          |
+| Canonical IEEE/model/exposes/default endpoint, exact scalar publication, explicit auto/compound refusal and qualified raw feedback                       | [Zigbee native adapter](../apps/backend/src/plugins/devices-zigbee2mqtt/services/native-climate-adapter.service.spec.ts)                                                                                                                                                                                                                 |
+| Exclusive durable binding, UUID/revision journaling, original completion, release, observation guard and restart without replay                          | [native lifecycle](../apps/backend/src/plugins/devices-virtual/services/native-thermostat.integration.spec.ts), [incremental migration 52](../apps/backend/src/migrations/__tests__/1000000000052-AddNativeThermostats.spec.ts)                                                                                                          |
+| Queued operations preserve their original async context while receiving a fresh structural owner                                                         | [structural lock regressions](../apps/backend/src/modules/devices/services/device-structure-lock.service.spec.ts)                                                                                                                                                                                                                        |
+| Authenticated AppModule creation, ordinary virtual commands and reserved physical writes                                                                 | [virtual device HTTP fixture](../apps/backend/test/devices-virtual.e2e-spec.ts)                                                                                                                                                                                                                                                          |
+| Explicit authoring/commands, truthful outcomes, refresh and old-response fencing                                                                         | [mounted Admin editor](../apps/admin/src/plugins/devices-virtual/components/native-thermostat-editor.spec.ts), [actual six-locale rendering](../apps/admin/src/plugins/devices-virtual/components/native-thermostat-locales.spec.ts), [Panel native detail](../apps/panel/test/modules/devices/presentation/native_thermostat_test.dart) |
+
+The [native thermostat guide](native-thermostats.md) names supported and refused profiles, release semantics and
+external-writer drift. Protocol fixtures exercise production transport adapters with component fakes; they do not
+qualify installed equipment, every Zigbee model/firmware, HomeKit composition or alpha publication.
 
 ## Complete child acceptance and named evidence
 
@@ -209,7 +229,7 @@ its evidence, or a concrete residual requirement. This issue reconciliation is n
 - A graph refresh during pending installation settlement may fail and retire that activation. Original runtime
   work is joined; newer graph authority is not adopted and physical work is not automatically retried. This is the
   explicitly accepted availability boundary, not a claim of seamless pending continuation.
-- Native-unit adapters remain refused until implemented. Unsupported cover commands remain refused.
+- Native-unit adapters use the explicitly supported HA and Zigbee2MQTT contracts above. Unsupported native shapes and cover commands remain refused.
 - Historical timeout/worker-warning causes remain unknown. Later passing results do not diagnose them.
 - No next alpha has been certified by this reconciliation, and no equipment was operated or commissioned.
 

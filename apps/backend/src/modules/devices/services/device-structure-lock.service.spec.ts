@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
 describe('DeviceStructureLockService', () => {
@@ -18,6 +20,40 @@ describe('DeviceStructureLockService', () => {
 	beforeEach(() => {
 		lock = new DeviceStructureLockService();
 	});
+
+	it.each(['runShared', 'runExclusive', 'runExclusiveReleased'] as const)(
+		'keeps the queued caller async context while installing its new structural owner (%s)',
+		async (method) => {
+			const ambient = new AsyncLocalStorage<string>();
+			const entered = deferred();
+			const release = deferred();
+			const predecessor = ambient.run('unrelated ledger owner', () =>
+				lock.runExclusive(async () => {
+					entered.resolve();
+					await release.promise;
+				}),
+			);
+			await entered.promise;
+			const queued = ambient.run('original request', () =>
+				lock[method](async () => {
+					expect(ambient.getStore()).toBe('original request');
+					expect(lock.hasCurrentStructuralLease()).toBe(true);
+					await lock.runShared(() => {
+						expect(ambient.getStore()).toBe('original request');
+						return Promise.resolve();
+					});
+				}),
+			);
+			const independent = lock[method](() => {
+				expect(ambient.getStore()).toBeUndefined();
+				expect(lock.hasCurrentStructuralLease()).toBe(true);
+				return Promise.resolve();
+			});
+			release.resolve();
+			await Promise.all([predecessor, queued, independent]);
+			expect(lock.hasCurrentStructuralLease()).toBe(false);
+		},
+	);
 
 	it('captures only the original accepting exclusive owner and never adopts its successor', async () => {
 		expect(() => lock.captureExclusiveOwner()).toThrow('accepting exclusive');

@@ -2,11 +2,13 @@ import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import {
 	IDevicePlatform,
 	IDevicePropertyData,
 	PreparedCompositeDeviceBatch,
 } from '../../../modules/devices/platforms/device.platform';
+import { NativeClimateUnit } from '../../../modules/devices/platforms/native-climate.contract';
 import { sourceFingerprint } from '../contracts/sample-source.contract';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import {
@@ -18,6 +20,7 @@ import { Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 import { Z2mBaseClientAdapter } from '../services/base-client-adapter';
 import { Z2mDeviceMapperService } from '../services/device-mapper.service';
+import { ZigbeeNativeClimateAdapterService } from '../services/native-climate-adapter.service';
 import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
 import { Zigbee2mqttService } from '../services/zigbee2mqtt.service';
 import { ZigbeeSampleSourcesService } from '../services/zigbee-sample-sources.service';
@@ -46,7 +49,12 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		private readonly configDrivenConverter: ConfigDrivenConverter,
 		private readonly deviceMapper: Z2mDeviceMapperService,
 		@Optional() private readonly sampleSources?: ZigbeeSampleSourcesService,
+		@Optional() private readonly nativeClimate?: ZigbeeNativeClimateAdapterService,
 	) {}
+
+	captureNativeClimateUnit(device: DeviceEntity): Promise<NativeClimateUnit | null> {
+		return this.nativeClimate?.capture(device) ?? Promise.resolve(null);
+	}
 
 	getType(): string {
 		return DEVICES_ZIGBEE2MQTT_TYPE;

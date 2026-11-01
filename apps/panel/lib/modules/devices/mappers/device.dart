@@ -888,18 +888,18 @@ deviceWidgetMappers = {
         }
         return ProjectorDeviceDetail(device: device, config: config);
       },
-  DevicesModuleDeviceCategory.thermostat:
-      (device, {DeviceDetailConfig? config}) {
-        if (device is! ThermostatDeviceView) {
-          throw ArgumentError(
-            'Device view is not valid for Thermostat device detail',
-          );
-        }
-        if (device.type == 'virtual') {
-          return VirtualThermostatDeviceDetail(device: device);
-        }
-        return ThermostatDeviceDetail(device: device, config: config);
-      },
+  DevicesModuleDeviceCategory
+      .thermostat: (device, {DeviceDetailConfig? config}) {
+    if (device is! ThermostatDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Thermostat device detail',
+      );
+    }
+    if (device.type == 'virtual') {
+      return VirtualThermostatDeviceDetail(device: device, detectNative: true);
+    }
+    return ThermostatDeviceDetail(device: device, config: config);
+  },
   DevicesModuleDeviceCategory.valve: (device, {DeviceDetailConfig? config}) {
     if (device is! ValveDeviceView) {
       throw ArgumentError('Device view is not valid for Valve device detail');

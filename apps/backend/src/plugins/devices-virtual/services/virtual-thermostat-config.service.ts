@@ -45,6 +45,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { NativeThermostatEntity } from '../entities/native-thermostat.entity';
 import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import {
@@ -58,6 +59,7 @@ import {
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { NativeThermostatService } from './native-thermostat.service';
 import { thermostatComfortSelection } from './thermostat-comfort-selection';
 import {
 	ControllerMutationImage,
@@ -113,6 +115,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 		private readonly values: PropertyValueService,
 		@Optional() private readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
 		@Optional() private readonly automation?: VirtualThermostatAutomationService,
+		@Optional() private readonly native?: NativeThermostatService,
 	) {}
 
 	onModuleInit(): void {
@@ -743,6 +746,9 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 			const selection = helper.values.pin(this.dataSource, 'registered-settings');
 			const { input, destinations } = selection.registeredInput(updates);
 			if (input === null) return true;
+			// Route only after the original synchronous one-read input capture.
+			if (this.native && (await this.native.ownsController(input.id)))
+				return this.native.commandSettings(input.commands);
 			const pins = [own, lock, graph, claims, values, events, helper, selection];
 			const current = () => pins.every((pin) => pin.current());
 			const check = () => {
@@ -850,6 +856,7 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 		property: VirtualChannelPropertyEntity,
 		manager: EntityManager = this.dataSource.manager,
 	): Promise<boolean> {
+		if (await this.native?.isRegisteredSetting(property, manager)) return true;
 		const setting = await manager.findOneBy(VirtualThermostatSettingEntity, { propertyId: property.id });
 		if (!setting) return false;
 		const target = await this.property(manager, property.id);
@@ -896,10 +903,18 @@ export class VirtualThermostatConfigService implements OnModuleInit, OnModuleDes
 		if (!owner || owner.mode !== VirtualDeviceMode.CLIMATE_CONTROLLER || owner.category !== DeviceCategory.THERMOSTAT)
 			fail('Thermostat configuration requires a climate-controller thermostat device.');
 		const previous = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+		// Existing guarded no-op windows retain their closed read grammar. SQL uniqueness
+		// and reciprocal insert triggers exclude a second strategy on the same controller.
+		if (
+			!previous &&
+			this.dataSource.hasMetadata(NativeThermostatEntity) &&
+			(await manager.existsBy(NativeThermostatEntity, { controllerId }))
+		)
+			fail('Guarded branches and native units are mutually exclusive.');
 		if (dto.schemaVersion !== 1 || dto.expectedRevision !== (previous?.revision ?? 0))
 			fail('Thermostat configuration revision changed.');
 		if (dto.controlStrategy !== undefined && dto.controlStrategy !== 'guarded_branches')
-			fail('Native unit adapters are not implemented; guarded branches are required.');
+			fail('Use the native thermostat API to configure the native_unit strategy.');
 		this.validatePolicy(dto.policy, dto.requestedMode);
 		const comfort = dto.comfort
 			? {

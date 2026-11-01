@@ -357,3 +357,9 @@ Exact repeated thermostat configuration and comfort commands use a private obser
 A closed SELECT grammar admits ordinary ORM tables and reviewed `COUNT` expressions. Unknown statements and functions cannot establish an unchanged operation. This is not a sandbox for raw native handles, private/prototype rewrites, independent handles, or side-effecting native extensions. Native ACK ends the observation interval; required original post-ACK callbacks remain outside it. An unchanged command still performs required entry maintenance and its final diagnostic read. First manual takeover, changed configuration, override lifetimes, and installed-evidence refresh remain actual mutations.
 
 Changed semantic comfort selection and definition commands complete their configuration, manual-slot and installed-intent writes before beginning final validation on the same native transaction window. This one-shot barrier precedes the final controller image, binding and ledger checks and remains effective through COMMIT. A later mutation attempt refuses the original operation even if its callback catches the refusal; read-only validation may continue. Unchanged commands retain their existing checkpoint path, and override/cancel commands do not use this barrier. Native transaction acceptance does not by itself establish downstream effects, hardware qualification or whole-feature acceptance.
+
+## Native delegated thermostats
+
+The [native HA and Zigbee2MQTT guide](native-thermostats.md) describes the separate `native_unit` strategy,
+canonical reservation, requested/observed state and durable unconfirmed operation outcomes. The native unit regulates;
+this strategy does not inherit guarded floor/condensation/parallel/opposed protection or continuous drift replay.

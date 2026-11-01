@@ -4914,4 +4914,85 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get space_occupancy_automatic => 'Automatyka obecności włączona';
+
+  @override
+  String get native_thermostat_title => 'Termostat natywny';
+
+  @override
+  String get native_thermostat_explanation =>
+      'Temperaturę reguluje fizyczne urządzenie. Ta strategia nie zapewnia zastępowania czujnika zewnętrznego ani zabezpieczeń. Temperatury są podane w °C.';
+
+  @override
+  String get native_thermostat_binding => 'Powiązanie';
+
+  @override
+  String get native_thermostat_requested_mode => 'Żądany tryb';
+
+  @override
+  String get native_thermostat_requested_heat =>
+      'Żądana temperatura ogrzewania';
+
+  @override
+  String get native_thermostat_requested_cool =>
+      'Żądana temperatura chłodzenia';
+
+  @override
+  String get native_thermostat_observed_temperature =>
+      'Zaobserwowana temperatura';
+
+  @override
+  String get native_thermostat_observed_mode => 'Zaobserwowany tryb';
+
+  @override
+  String get native_thermostat_observed_heat =>
+      'Zaobserwowana temperatura ogrzewania';
+
+  @override
+  String get native_thermostat_observed_cool =>
+      'Zaobserwowana temperatura chłodzenia';
+
+  @override
+  String get native_thermostat_activity => 'Zaobserwowana aktywność';
+
+  @override
+  String get native_thermostat_observed_at => 'Czas obserwacji';
+
+  @override
+  String get native_thermostat_drift => 'Zmiany zewnętrzne';
+
+  @override
+  String get native_thermostat_accepted => 'Przyjęto / niepotwierdzone';
+
+  @override
+  String get native_thermostat_refused => 'Odrzucono';
+
+  @override
+  String get native_thermostat_unknown =>
+      'Nieznany wynik — odśwież przed kolejnym żądaniem';
+
+  @override
+  String get native_thermostat_stale =>
+      'Bieżący stan niedostępny — sterowanie wyłączone';
+
+  @override
+  String get native_thermostat_auto =>
+      'Zastosuj automatykę z obiema wpisanymi temperaturami';
+
+  @override
+  String get native_thermostat_refresh => 'Odśwież stan';
+
+  @override
+  String get native_thermostat_decrease => 'Zmniejsz temperaturę';
+
+  @override
+  String get native_thermostat_increase => 'Zwiększ temperaturę';
+
+  @override
+  String get native_thermostat_draft => 'Wpisz temperaturę (°C)';
+
+  @override
+  String get native_thermostat_apply => 'Zastosuj temperaturę';
+
+  @override
+  String get native_thermostat_request_state => 'Stan żądania';
 }

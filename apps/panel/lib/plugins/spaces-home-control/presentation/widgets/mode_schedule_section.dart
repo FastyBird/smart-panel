@@ -65,8 +65,9 @@ class _ModeScheduleSectionState extends State<ModeScheduleSection> {
       final l = AppLocalizations.of(context)!;
       if (r.spaceId != widget.spaceId) return const SizedBox.shrink();
       final state = r.state;
-      if (r.fresh && state != null && !state.enabled)
+      if (r.fresh && state != null && !state.enabled) {
         return const SizedBox.shrink();
+      }
       final available =
           r.fresh && state != null && state.status.json == 'running';
       return Padding(

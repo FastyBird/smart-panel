@@ -19,12 +19,16 @@ import { v4 as uuid } from 'uuid';
 
 import { INestApplication, Logger, ValidationPipe } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
 import { SqliteDataSource, createSqliteDataSource } from '../src/common/database/sqlite-data-source';
+import { TokenOwnerType } from '../src/modules/auth/auth.constants';
 import { AuthController } from '../src/modules/auth/controllers/auth.controller';
 import { IS_PUBLIC_KEY } from '../src/modules/auth/guards/auth.guard';
+import { AuthService } from '../src/modules/auth/services/auth.service';
+import { TokensService } from '../src/modules/auth/services/tokens.service';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import {
 	ChannelCategory,
@@ -41,12 +45,14 @@ import {
 	ClimateAutomationSourceEntity,
 } from '../src/modules/devices/entities/climate-automation.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../src/modules/devices/entities/devices.entity';
+import type { NativeClimateUnit } from '../src/modules/devices/platforms/native-climate.contract';
 import { ChannelsPropertiesTypeMapperService } from '../src/modules/devices/services/channels.properties-type-mapper.service';
 import { ClimateAutomationLedgerService } from '../src/modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
+import { PropertyCommandService } from '../src/modules/devices/services/property-command.service';
 import { PropertyValueSourceRegistryService } from '../src/modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../src/modules/devices/utils/schema.utils';
@@ -77,6 +83,7 @@ import {
 import { VirtualDeviceInformationListener } from '../src/plugins/devices-virtual/listeners/virtual-device-information.listener';
 import { VirtualIndexMaintenanceListener } from '../src/plugins/devices-virtual/listeners/virtual-index-maintenance.listener';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
+import { NativeThermostatModel } from '../src/plugins/devices-virtual/models/native-thermostat-response.model';
 import { VirtualCreatedThermostatModel } from '../src/plugins/devices-virtual/models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../src/plugins/devices-virtual/models/thermostat-response.model';
 import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/services/virtual-dependency-graph.service';
@@ -111,6 +118,9 @@ interface PropertyValueBody {
 }
 
 interface ChannelPropertyBody {
+	unit?: string | null;
+	format?: string[] | number[] | null;
+	step?: number | null;
 	id: string;
 	type?: string;
 	data_type?: DataTypeType;
@@ -1319,6 +1329,195 @@ describe('devices-virtual plugin (e2e)', () => {
 	function authDelete(path: string) {
 		return request(app.getHttpServer()).delete(path).set('Authorization', `Bearer ${accessToken}`);
 	}
+
+	it('authors a native controller through authenticated AppModule HTTP and routes ordinary commands through its reserved port', async () => {
+		const source = await authPost('/modules/devices/devices')
+			.send({
+				data: {
+					type: SIMULATOR_TYPE,
+					category: DeviceCategory.OUTLET,
+					name: 'Native transport port fixture',
+					channels: [
+						{
+							type: SIMULATOR_TYPE,
+							category: ChannelCategory.OUTLET,
+							name: 'Port',
+							properties: [
+								{
+									type: SIMULATOR_TYPE,
+									category: PropertyCategory.ON,
+									name: 'On',
+									data_type: DataTypeType.BOOL,
+									permissions: [PermissionType.READ_WRITE],
+									value: false,
+								},
+								{
+									type: SIMULATOR_TYPE,
+									category: PropertyCategory.IN_USE,
+									name: 'In use',
+									data_type: DataTypeType.BOOL,
+									permissions: [PermissionType.READ_ONLY],
+									value: false,
+								},
+							],
+						},
+					],
+				},
+			})
+			.expect(201);
+		const physical = (source.body as { data: DeviceBody }).data;
+		const sourceProperty = physical.channels
+			.flatMap((channel) => channel.properties)
+			.find((property) => property.category === PropertyCategory.ON);
+		const platform = moduleRef.get(SimulatorDevicePlatform);
+		const original = Object.getOwnPropertyDescriptor(platform, 'captureNativeClimateUnit');
+		let active = true;
+		const sends: object[] = [];
+		// AppModule component port only. Separate HA/zigbee protocol suites exercise actual provider payloads.
+		const unit: NativeClimateUnit = {
+			contractVersion: 1,
+			provider: 'home-assistant',
+			deviceId: physical.id,
+			physicalIdentity: `fixture:${physical.id}`,
+			fingerprint: 'fixture-v1',
+			ownedPropertyIds: [sourceProperty.id],
+			capabilities: {
+				modes: ['off', 'heat'],
+				heating: { minimum: 5, maximum: 30, step: 0.5 },
+				cooling: null,
+				supportsCompound: true,
+			},
+			isCurrent: () => active,
+			observe: () => ({
+				available: false,
+				temperature: null,
+				mode: null,
+				heatingSetpoint: null,
+				coolingSetpoint: null,
+				activity: null,
+				observedAt: null,
+				reasons: ['no_provider_feedback'],
+			}),
+			prepare: (patch) => ({
+				isCurrent: () => active,
+				dispatch: (admitted) => {
+					if (!active || !admitted())
+						return Promise.resolve([{ operation: 'request', outcome: 'refused', confirmed: false }]);
+					sends.push({ ...patch });
+					return Promise.resolve([{ operation: 'request', outcome: 'accepted', confirmed: false }]);
+				},
+			}),
+		};
+		Object.defineProperty(platform, 'captureNativeClimateUnit', {
+			configurable: true,
+			value: (device: DeviceEntity) => Promise.resolve(device.id === physical.id ? unit : null),
+		});
+		let native: NativeThermostatModel | undefined;
+		const nativePath = '/plugins/devices-virtual/producers/thermostats/native';
+		const jwt = Reflect.get(moduleRef.get(AuthService), 'jwtService') as JwtService;
+		const displayId = uuid();
+		const displayBearer = jwt.sign({ sub: displayId, type: TokenOwnerType.DISPLAY });
+		const credentials = moduleRef.get(TokensService);
+		const credential = await credentials.createLongLiveToken({
+			token: displayBearer,
+			ownerType: TokenOwnerType.DISPLAY,
+			ownerId: displayId,
+			name: 'Native thermostat display fixture',
+			description: null,
+			expiresAt: null,
+		});
+		let fixtureFailure: { cause: unknown } | undefined;
+		try {
+			await request(app.getHttpServer())
+				.post(nativePath)
+				.send({ name: 'Unauthorized', source_device: physical.id })
+				.expect(401);
+			await request(app.getHttpServer())
+				.post(nativePath)
+				.set('Authorization', `Bearer ${displayBearer}`)
+				.send({ name: 'Display cannot author', source_device: physical.id })
+				.expect(403);
+			const created = await authPost(nativePath)
+				.send({ name: 'Native HTTP controller', source_device: physical.id })
+				.expect(201);
+			native = (created.body as { data: NativeThermostatModel }).data;
+			expect(native.requested).toEqual({});
+			expect(sends).toHaveLength(0);
+			const ordinary = await authGet(`/modules/devices/devices/${native.controller}`).expect(200);
+			const setpoint = (ordinary.body as { data: DeviceBody }).data.channels
+				.flatMap((channel) => channel.properties)
+				.find((property) => property.id === native?.properties.heating_setpoint);
+			expect(setpoint).toMatchObject({ data_type: DataTypeType.FLOAT, format: [5, 30], step: 0.5, unit: '°C' });
+			await request(app.getHttpServer())
+				.post(`${nativePath}/${native.controller}/requests`)
+				.send({ request_id: uuid(), expected_revision: 1, mode: 'heat' })
+				.expect(401);
+			// A genuine display token has USER role: ordinary operation is allowed, authoring remains forbidden.
+			const sent = await request(app.getHttpServer())
+				.post(`${nativePath}/${native.controller}/requests`)
+				.set('Authorization', `Bearer ${displayBearer}`)
+				.send({ request_id: uuid(), expected_revision: 1, mode: 'heat' })
+				.expect(201);
+			expect((sent.body as { data: NativeThermostatModel }).data.latest_request?.operations[0]).toMatchObject({
+				outcome: 'accepted',
+				confirmed: false,
+			});
+			const commands = moduleRef.get(PropertyCommandService);
+			const target = native.properties.heating_setpoint;
+			const command = await commands.executePropertyCommandById(target, 21);
+			expect(command.success).toBe(true);
+			expect(sends).toEqual([{ mode: 'heat' }, { heatingSetpoint: 21 }]);
+			const direct = await commands.executePropertyCommandById(sourceProperty.id, true);
+			expect(direct.success).toBe(false);
+			expect(sends).toHaveLength(2);
+			const current = await authGet(`${nativePath}/${native.controller}`).expect(200);
+			const snapshot = (current.body as { data: NativeThermostatModel }).data;
+			expect(snapshot.requested).toEqual({ mode: 'heat', heatingSetpoint: 21 });
+			expect(snapshot.observed.temperature).toBeNull();
+			expect(snapshot.observed.activity).toBeNull();
+		} catch (cause: unknown) {
+			fixtureFailure = { cause };
+		} finally {
+			const joinCleanup = async (work: () => Promise<unknown>) => {
+				try {
+					await work();
+				} catch (cause: unknown) {
+					fixtureFailure ??= { cause };
+				}
+			};
+			await joinCleanup(() => credentials.remove(credential.id));
+			if (native?.controller) {
+				const id = native.controller;
+				await joinCleanup(async () => {
+					const current = await authGet(`${nativePath}/${id}`).expect(200);
+					await authPost(`${nativePath}/${id}/release`)
+						.send({ expected_revision: (current.body as { data: NativeThermostatModel }).data.revision })
+						.expect(201);
+				});
+				await joinCleanup(async () => {
+					await authDelete(`/modules/devices/devices/${id}`)
+						.expect((response) => {
+							if (response.status !== 204)
+								console.error('Native fixture controller deletion failure', response.body as unknown);
+						})
+						.expect(204);
+				});
+			}
+			// Always retire and restore the original component port, even when a deletion assertion fails.
+			active = false;
+			if (original) Object.defineProperty(platform, 'captureNativeClimateUnit', original);
+			else Reflect.deleteProperty(platform, 'captureNativeClimateUnit');
+			await joinCleanup(async () => {
+				await authDelete(`/modules/devices/devices/${physical.id}`)
+					.expect((response) => {
+						if (response.status !== 204)
+							console.error('Native fixture source deletion failure', response.body as unknown);
+					})
+					.expect(204);
+			});
+		}
+		if (fixtureFailure) throw fixtureFailure.cause;
+	});
 
 	// ─── Full lifecycle, against a real simulator device as the source ─────────────────
 
@@ -4773,10 +4972,11 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		});
 		try {
 			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
-			expect(expectedNames).toHaveLength(52);
+			expect(expectedNames).toHaveLength(53);
 			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
 			expect(expectedNames).toContain('AddSpaceModeSchedules1000000000050');
 			expect(expectedNames).toContain('AddSpaceOccupancy1000000000051');
+			expect(expectedNames).toContain('AddNativeThermostats1000000000052');
 			const applied = await prepared.runMigrations({ transaction: 'each' });
 			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {

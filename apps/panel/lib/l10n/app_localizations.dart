@@ -8763,6 +8763,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Occupancy automation enabled'**
   String get space_occupancy_automatic;
+
+  /// No description provided for @native_thermostat_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Native thermostat'**
+  String get native_thermostat_title;
+
+  /// No description provided for @native_thermostat_explanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The physical unit regulates temperature. External sensor substitution and protective guards are not provided by this strategy. Temperatures are in °C.'**
+  String get native_thermostat_explanation;
+
+  /// No description provided for @native_thermostat_binding.
+  ///
+  /// In en, this message translates to:
+  /// **'Binding'**
+  String get native_thermostat_binding;
+
+  /// No description provided for @native_thermostat_requested_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested mode'**
+  String get native_thermostat_requested_mode;
+
+  /// No description provided for @native_thermostat_requested_heat.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested heating target'**
+  String get native_thermostat_requested_heat;
+
+  /// No description provided for @native_thermostat_requested_cool.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested cooling target'**
+  String get native_thermostat_requested_cool;
+
+  /// No description provided for @native_thermostat_observed_temperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed temperature'**
+  String get native_thermostat_observed_temperature;
+
+  /// No description provided for @native_thermostat_observed_mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed mode'**
+  String get native_thermostat_observed_mode;
+
+  /// No description provided for @native_thermostat_observed_heat.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed heating target'**
+  String get native_thermostat_observed_heat;
+
+  /// No description provided for @native_thermostat_observed_cool.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed cooling target'**
+  String get native_thermostat_observed_cool;
+
+  /// No description provided for @native_thermostat_activity.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed activity'**
+  String get native_thermostat_activity;
+
+  /// No description provided for @native_thermostat_observed_at.
+  ///
+  /// In en, this message translates to:
+  /// **'Observation time'**
+  String get native_thermostat_observed_at;
+
+  /// No description provided for @native_thermostat_drift.
+  ///
+  /// In en, this message translates to:
+  /// **'External changes'**
+  String get native_thermostat_drift;
+
+  /// No description provided for @native_thermostat_accepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted / unconfirmed'**
+  String get native_thermostat_accepted;
+
+  /// No description provided for @native_thermostat_refused.
+  ///
+  /// In en, this message translates to:
+  /// **'Refused'**
+  String get native_thermostat_refused;
+
+  /// No description provided for @native_thermostat_unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown outcome — refresh before another request'**
+  String get native_thermostat_unknown;
+
+  /// No description provided for @native_thermostat_stale.
+  ///
+  /// In en, this message translates to:
+  /// **'Current state unavailable — controls disabled'**
+  String get native_thermostat_stale;
+
+  /// No description provided for @native_thermostat_auto.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply auto with both entered targets'**
+  String get native_thermostat_auto;
+
+  /// No description provided for @native_thermostat_refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh state'**
+  String get native_thermostat_refresh;
+
+  /// No description provided for @native_thermostat_decrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease target'**
+  String get native_thermostat_decrease;
+
+  /// No description provided for @native_thermostat_increase.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase target'**
+  String get native_thermostat_increase;
+
+  /// No description provided for @native_thermostat_draft.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter target (°C)'**
+  String get native_thermostat_draft;
+
+  /// No description provided for @native_thermostat_apply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply target'**
+  String get native_thermostat_apply;
+
+  /// No description provided for @native_thermostat_request_state.
+  ///
+  /// In en, this message translates to:
+  /// **'Request state'**
+  String get native_thermostat_request_state;
 }
 
 class _AppLocalizationsDelegate

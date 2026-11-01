@@ -4881,4 +4881,84 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get space_occupancy_automatic =>
       'Automatización de ocupación activada';
+
+  @override
+  String get native_thermostat_title => 'Termostato nativo';
+
+  @override
+  String get native_thermostat_explanation =>
+      'La unidad física regula la temperatura. Esta estrategia no proporciona sustitución de sensor externo ni protecciones. Las temperaturas se muestran en °C.';
+
+  @override
+  String get native_thermostat_binding => 'Vinculación';
+
+  @override
+  String get native_thermostat_requested_mode => 'Modo solicitado';
+
+  @override
+  String get native_thermostat_requested_heat =>
+      'Objetivo de calefacción solicitado';
+
+  @override
+  String get native_thermostat_requested_cool =>
+      'Objetivo de refrigeración solicitado';
+
+  @override
+  String get native_thermostat_observed_temperature => 'Temperatura observada';
+
+  @override
+  String get native_thermostat_observed_mode => 'Modo observado';
+
+  @override
+  String get native_thermostat_observed_heat =>
+      'Objetivo de calefacción observado';
+
+  @override
+  String get native_thermostat_observed_cool =>
+      'Objetivo de refrigeración observado';
+
+  @override
+  String get native_thermostat_activity => 'Actividad observada';
+
+  @override
+  String get native_thermostat_observed_at => 'Hora de observación';
+
+  @override
+  String get native_thermostat_drift => 'Cambios externos';
+
+  @override
+  String get native_thermostat_accepted => 'Aceptado / sin confirmar';
+
+  @override
+  String get native_thermostat_refused => 'Rechazado';
+
+  @override
+  String get native_thermostat_unknown =>
+      'Resultado desconocido — actualice antes de otra solicitud';
+
+  @override
+  String get native_thermostat_stale =>
+      'Estado actual no disponible — controles desactivados';
+
+  @override
+  String get native_thermostat_auto =>
+      'Aplicar automático con ambos objetivos introducidos';
+
+  @override
+  String get native_thermostat_refresh => 'Actualizar estado';
+
+  @override
+  String get native_thermostat_decrease => 'Disminuir objetivo';
+
+  @override
+  String get native_thermostat_increase => 'Aumentar objetivo';
+
+  @override
+  String get native_thermostat_draft => 'Introduzca objetivo (°C)';
+
+  @override
+  String get native_thermostat_apply => 'Aplicar objetivo';
+
+  @override
+  String get native_thermostat_request_state => 'Estado de la solicitud';
 }
