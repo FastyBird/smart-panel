@@ -43,3 +43,10 @@ export function hsvToHex(h: number, s: number, v: number): string {
 
 	return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
 }
+
+/**
+ * Convert a brightness level (0-255) to a percentage (0-100).
+ */
+export function brightnessToPercent(level: number): number {
+	return Math.round(level / 255) * 100;
+}
