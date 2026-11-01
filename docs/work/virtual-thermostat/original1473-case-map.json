@@ -14,13 +14,13 @@
   },
   "current": {
     "baseCommit": "54e2c92c57d4aa2a906cd7744e3d60294c203377",
-    "fileSha256": "1003d564606d6833105cc9a684b5c0031013af1f3653f794745d2d6dd3fadb27",
-    "qualification": "Complete-runtime rerun and negative controls are recorded in final-software-alpha-validation.md. This ledger never diagnoses historical failures.",
+    "fileSha256": "c28fd52717cc59f1116dbe94b98452281cf4a1831c1d126b3a5332535222a11f",
+    "qualification": "Latest complete runtime fixture: 157 passed with all 94 existing literal bodies token-identical. Earlier full-backend/E2E report hashes remain historical receipts; this follow-up requires fresh exact-head CI and source review. See final-software-alpha-validation.md.",
     "fullBackendRuntimeFileSha256": "df910cf5982456b0b40d33d362bb1ad46c9be14da33922526deffcd1dcc2bdd3",
     "fullBackendReportSha256": "8b41eb4a2fa1fe1d5a988fc412080064962b904619b6518696d3663233cb22e6",
-    "runtimeReportSha256": "d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25",
+    "runtimeReportSha256": "74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f",
     "runtimeResult": {
-      "passed": 155,
+      "passed": 157,
       "failed": 0,
       "pending": 0
     },
@@ -41,12 +41,21 @@
       "retainedOtherPassed": 310,
       "freshCorrectedFilePassed": 114,
       "correctedReportSha256": "3723055bcc43b7772ee5e8cafcc06ced93917053f0a11f3673d1e66d5d7dfc4e"
+    },
+    "runtimeQualificationBeforeFailedOffFollowup": {
+      "fileSha256": "1003d564606d6833105cc9a684b5c0031013af1f3653f794745d2d6dd3fadb27",
+      "reportSha256": "d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25",
+      "result": {
+        "passed": 155,
+        "failed": 0,
+        "pending": 0
+      }
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 138,
+    "residual_no_current_case_bound": 136,
     "scoped_current_invariant_bound": 109,
-    "replacement_current_invariant_bound": 8,
+    "replacement_current_invariant_bound": 10,
     "ported_descriptor_control_qualified": 6
   },
   "rows": [
@@ -4043,11 +4052,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retires only committed journal identities and retains the same pending identity after a real SQLite rollback",
-        "line": 5082,
+        "line": 5189,
         "bodySha256": "5861cf152c3b09c10fb7771cebde4f6c546ea3954d0b712a6b26312a6aa72487",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
       },
       "originalBodySha256": "bae5bf871f10f659dd31add8fe1d1fbe63155fc0be59702cc67724f2182cfba0",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Actual SQLite rollback preserves every original row and both K statuses, no retirement occurs, and an explicit fresh public retry confirms the same K. The exact transcript is P0,K,K and one retirement contains exactly K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4069,11 +4078,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "does not let optional retirement failure alter committed journal confirmation",
-        "line": 5117,
+        "line": 5224,
         "bodySha256": "13e670db6b4c453553d93e3da2cd01264270024f36f691d1a68d22d376e03316",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
       },
       "originalBodySha256": "6c5a81caa26d71327fd3b518645b4fdbe405e47347b08546e34bd7d88a3f0db3",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Optional provider retirement throws only after acknowledged native confirmation. Every original row remains or receives only the allowed confirmation fields; the transcript is exactly P0,K and retirement occurs once with the complete K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4095,7 +4104,7 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "uses the later cooling/member release barrier by default without changing heating or explicit zero",
-        "line": 5132,
+        "line": 5239,
         "bodySha256": "441db9e76c3fe5f02db4e01c8530f795ab1cccbd589a7b44996ebe8fb8fd7efc",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
@@ -4116,7 +4125,7 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "takes a new qualified fence for an idle OFF cooling claim after a later cooling trip barrier",
-        "line": 5162,
+        "line": 5269,
         "bodySha256": "52f486239528def5e61ca15cbc6203266c7ac384bcd1b30a58ca1cf6c035be03",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
@@ -4137,11 +4146,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
-        "line": 5195,
+        "line": 5302,
         "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
       },
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is already confirmed while the genuine COMMIT acknowledgement is held, but retirement remains absent. Only releasing that ACK allows exactly one complete K retirement. The transcript is P0,K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4163,11 +4172,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
-        "line": 5195,
+        "line": 5302,
         "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
       },
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is confirmed but loss of COMMIT acknowledgement preserves the original error and performs no retirement. The exact transcript remains P0,K; a confirmed row alone is not an acknowledged retirement. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4192,10 +4201,10 @@
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
         "parameter": "held acknowledgement",
-        "line": 5195,
+        "line": 5302,
         "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
       },
       "helperBinding": {
         "name": "prepareIssuedOffJournalSettlement",
@@ -4213,9 +4222,34 @@
       ],
       "originalLine": 18597,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): rejects the test receipt without S1 while preserving exact native effects after the actual OFF is refused. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6f692130225935389a3b559d113d5ac69ef97a288aac44f4a0d0988cbdcd3890"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6f692130225935389a3b559d113d5ac69ef97a288aac44f4a0d0988cbdcd3890",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "rejects a non-accepted original OFF before a second settlement while retaining exact native effects: %s",
+        "parameter": "refused",
+        "expandedTitle": "rejects a non-accepted original OFF before a second settlement while retaining exact native effects: refused",
+        "line": 5096,
+        "bodySha256": "6efbdf082c974873b292424db13d93aced62b63c06ddad1ccba134cfb18750eb",
+        "fileSha256": "c28fd52717cc59f1116dbe94b98452281cf4a1831c1d126b3a5332535222a11f",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
+      },
+      "helper": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4889,
+        "bodySha256": "573f44e38559df717496dcc17ed4dedede7a4eaf2ee6b101ca2f4a7249f1db15",
+        "initializerSha256": "1d37d686cd415471fe6e6ddb55cc3f5ce497fab2c9703eb0617d8608d6158936",
+        "declarationSha256": "93245c921cc4fddc38f5457d5ae3a0eba4b357447eaa7b91d5e1eaf4d365236d"
+      },
+      "semanticComparison": "The original R68 case used controlled claims/value/transport ports with real SQLite and a private named S0/S1 test receipt. Current preparation observes the exact original public requestInstalled call, the seeded accepted ON row and actual runtime-issued OFF INSERT/send identity, original send Promise/result and saved journal outcome. A refused original OFF rejects that shared test preparation before any explicit second settlement call. This is test-oracle rejection, not a new product requestInstalled error contract. Complete baseline rows, two-ID K, original P0 prefix/order/multiplicity, retirement callbacks, exact journal identity/claim/action/status and no-ON attempts remain checked against the two predeclared no-settlement/known-ACK grammars. K comes from native INSERTs and the helper independently matches the actual send command ID; callbacks never choose K. The original private receipt/child-frame and cross-fixture observer protocol is not adopted. This is a supported-current replacement of the scoped failed-OFF native-effect invariant, not whole fixture/provider/SDK custody or installed-equipment equivalence.",
+      "negativeControl": {
+        "mutation": "Persist refused/unknown OFF as accepted",
+        "expectedFailures": 2,
+        "assertion": "Both variants fail exact native journal status equality: expected unknown, received accepted",
+        "productionRestoredSha256": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+      }
     },
     {
       "id": 242,
@@ -4226,9 +4260,34 @@
       ],
       "originalLine": 18597,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): rejects the test receipt without S1 while preserving exact native effects after the actual OFF is unknown. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6f692130225935389a3b559d113d5ac69ef97a288aac44f4a0d0988cbdcd3890"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6f692130225935389a3b559d113d5ac69ef97a288aac44f4a0d0988cbdcd3890",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "rejects a non-accepted original OFF before a second settlement while retaining exact native effects: %s",
+        "parameter": "unknown",
+        "expandedTitle": "rejects a non-accepted original OFF before a second settlement while retaining exact native effects: unknown",
+        "line": 5096,
+        "bodySha256": "6efbdf082c974873b292424db13d93aced62b63c06ddad1ccba134cfb18750eb",
+        "fileSha256": "c28fd52717cc59f1116dbe94b98452281cf4a1831c1d126b3a5332535222a11f",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
+      },
+      "helper": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4889,
+        "bodySha256": "573f44e38559df717496dcc17ed4dedede7a4eaf2ee6b101ca2f4a7249f1db15",
+        "initializerSha256": "1d37d686cd415471fe6e6ddb55cc3f5ce497fab2c9703eb0617d8608d6158936",
+        "declarationSha256": "93245c921cc4fddc38f5457d5ae3a0eba4b357447eaa7b91d5e1eaf4d365236d"
+      },
+      "semanticComparison": "The original R68 case used controlled claims/value/transport ports with real SQLite and a private named S0/S1 test receipt. Current preparation observes the exact original public requestInstalled call, the seeded accepted ON row and actual runtime-issued OFF INSERT/send identity, original send Promise/result and saved journal outcome. A unknown original OFF rejects that shared test preparation before any explicit second settlement call. This is test-oracle rejection, not a new product requestInstalled error contract. Complete baseline rows, two-ID K, original P0 prefix/order/multiplicity, retirement callbacks, exact journal identity/claim/action/status and no-ON attempts remain checked against the two predeclared no-settlement/known-ACK grammars. K comes from native INSERTs and the helper independently matches the actual send command ID; callbacks never choose K. The original private receipt/child-frame and cross-fixture observer protocol is not adopted. This is a supported-current replacement of the scoped failed-OFF native-effect invariant, not whole fixture/provider/SDK custody or installed-equipment equivalence.",
+      "negativeControl": {
+        "mutation": "Persist refused/unknown OFF as accepted",
+        "expectedFailures": 2,
+        "assertion": "Both variants fail exact native journal status equality: expected unknown, received accepted",
+        "productionRestoredSha256": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+      }
     },
     {
       "id": 243,
@@ -4614,11 +4673,19 @@
       "helper": {
         "name": "prepareIssuedOffJournalSettlement",
         "line": 4889,
-        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+        "bodySha256": "573f44e38559df717496dcc17ed4dedede7a4eaf2ee6b101ca2f4a7249f1db15",
+        "initializerSha256": "1d37d686cd415471fe6e6ddb55cc3f5ce497fab2c9703eb0617d8608d6158936",
+        "declarationSha256": "93245c921cc4fddc38f5457d5ae3a0eba4b357447eaa7b91d5e1eaf4d365236d"
       },
       "sourceComparison": "Full original rollback, optional-retirement, held/unknown ACK and R68 held-OFF case bodies were read; the former seeded companion is replaced by original public OFF dispatch and fixed native identity/transcript observations.",
       "runtime": "Eight expanded current journal variants pass, followed by complete 147/147 runtime.",
-      "negativeControl": "Truncating actual retirement to one ID fails seven complete-K assertions; unknown ACK correctly remains passing with zero retirement. Production restored byte-for-byte."
+      "negativeControl": "Truncating actual retirement to one ID fails seven complete-K assertions; unknown ACK correctly remains passing with zero retirement. Production restored byte-for-byte.",
+      "previousHelper": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4889,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      },
+      "latestQualification": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f"
     },
     "lifecycleFollowup": {
       "rows": [
@@ -4648,6 +4715,35 @@
         "productionRestored": true,
         "nonDiscriminatingAttempt": "Removing one early assert leaves a later assert before SQL in this no-automation-predecessor fixture. Both variants still pass; no defect/clearance inferred from that run."
       }
+    },
+    "failedOffFollowup": {
+      "rows": [
+        241,
+        242
+      ],
+      "sourceComparison": "Original expanded case bodies, prepareCase, named reconciliation S0/S1 observer/retirement path and controlled claim/send/proof ports inspected. Both old/current R68 runtime lanes use controlled claims/value/transport outcomes; the old separate mutation-provider pipeline is outside these journal cases. The current shared helper now accepts an explicit outcome while keeping accepted as default; eight existing positive journal variants and all other original runtime cases pass unchanged. Its original bound send receiver/arguments/Promise/result are retained; observation never replaces the application Promise.",
+      "helper": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4889,
+        "bodySha256": "573f44e38559df717496dcc17ed4dedede7a4eaf2ee6b101ca2f4a7249f1db15",
+        "initializerSha256": "1d37d686cd415471fe6e6ddb55cc3f5ce497fab2c9703eb0617d8608d6158936",
+        "declarationSha256": "93245c921cc4fddc38f5457d5ae3a0eba4b357447eaa7b91d5e1eaf4d365236d"
+      },
+      "validation": "Complete current runtime fixture: 157 passed, zero failed/pending; report SHA-256 74c66ad1c5b469865518caa0be47c00c517f4aa2b5ac24e1e844d9790d7ff50f",
+      "existingLiteralBodiesUnchanged": 94,
+      "negativeControl": {
+        "mutation": "Persist refused/unknown OFF as accepted",
+        "expectedFailures": 2,
+        "assertion": "Both variants fail exact native journal status equality: expected unknown, received accepted",
+        "productionRestoredSha256": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+      },
+      "notGranted": [
+        "original private named receipt/child-frame protocol equivalence",
+        "retired-A/foreign-descriptor case243 closure",
+        "whole original fixture/provider/SDK custody",
+        "alpha or installed-equipment clearance"
+      ],
+      "date": "2026-11-02"
     }
   }
 }

@@ -6,7 +6,7 @@ including 13,306 backend tests and all 424 E2E cases. CodeRabbit reported no act
 The separate local 362 PASS / 62 FAIL E2E result and unattributed SQLite ownership timeouts remain
 recorded in #1508; hosted success does not establish their cause.
 
-**Status: draft; 1 of the original 139 residuals has a tested current binding, and 138 remain unbound.**
+**Status: draft; 3 of the original 139 residuals have tested current bindings, and 136 remain unbound.**
 This list grants no complete original-fixture, provider/SDK, installed-equipment or alpha clearance.
 The branch-entry 109 scoped invariant bindings, seven replacement bindings and six ported descriptor rows
 are retained with their existing limits. They are outside this residual work inventory.
@@ -84,6 +84,33 @@ is retained and grants no stronger coverage.
 
 Exact-head hosted CI and source review for this follow-up remain required. No other original row is
 closed by these method controls.
+
+### Rows 241–242: refused or unknown original OFF completion
+
+The two variants in `virtual-thermostat-runtime.service.spec.ts` reuse the same
+`prepareIssuedOffJournalSettlement` helper as the existing positive rollback/ACK cases. Accepted
+remains its default. The helper preserves the original send receiver, arguments, Promise and result;
+it observes the actual OFF outcome and its saved SQLite row. A refused or unknown outcome rejects
+**test preparation**, before any explicit second settlement request. The product public method's
+return contract is unchanged.
+
+The tests fix the two-ID K from actual native INSERTs: a seeded accepted ON, matching the original
+case, plus an actual runtime-issued OFF. They independently match the original OFF send ID and retain
+full baseline rows. They declare both permitted no-settlement/known-ACK grammars before
+callbacks and check exact journal membership/claim/action/status, the complete P0 transcript,
+retirement call arguments/order/multiplicity and one additional OFF attempt with no ON. The selected
+grammar comes from the independently read native ON status, never a callback-chosen expected result.
+Ordinary feedback is suppressed in this controlled schedule, and only one explicit installed request
+is issued. This does not certify the former private named S0/S1 receipt/child-frame protocol or the
+retired-A/foreign-descriptor case 243. Both old and current R68 lanes use controlled claim, value and
+transport ports; real SQLite effects do not grant installed-provider/SDK authority.
+
+The complete runtime fixture passes **157/157, zero failed/skipped**. All **94 existing literal test
+bodies** are token-identical; the shared helper is extended with an explicit outcome and observation
+of the original result. The accepted default and existing positive journal cases remain green. Types
+and strict lint pass. A production counterfactual which saves refused/unknown OFF as accepted causes
+both new variants to fail the exact native journal assertion. Production is restored byte-for-byte.
+Body/source/helper hashes and the semantic difference are recorded in the canonical rows.
 
 ## Case checklist
 
@@ -225,8 +252,8 @@ canonical ledger. Original-source links retain full ancestry and body identity f
 
 ### Named original OFF completion
 
-- [ ] `1473-241` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is refused ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597)).
-- [ ] `1473-242` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is unknown ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597)).
+- [x] `1473-241` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is refused ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597)).
+- [x] `1473-242` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is unknown ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597)).
 - [ ] `1473-243` — cannot let a retired A completion settle B or restore a foreign descriptor ([original line 18663](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18663)).
 
 ### Issued setup and cleanup ownership

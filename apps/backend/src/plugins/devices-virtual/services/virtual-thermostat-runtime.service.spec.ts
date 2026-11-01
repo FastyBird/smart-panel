@@ -4886,7 +4886,10 @@ describe('virtual thermostat durable runtime', () => {
 		expect(samples.get(relayId)?.value).toBe(false);
 	});
 	// Establish the original baseline and K from a real runtime-issued OFF, not a seeded companion row.
-	const prepareIssuedOffJournalSettlement = async (retire: (ids: readonly string[]) => void) => {
+	const prepareIssuedOffJournalSettlement = async (
+		retire: (ids: readonly string[]) => void,
+		offResult: 'accepted' | 'refused' | 'unknown' = 'accepted',
+	) => {
 		await settle();
 		const owner = runtime,
 			source = database,
@@ -4936,6 +4939,7 @@ describe('virtual thermostat durable runtime', () => {
 		offGate = ownedGate((resolve) => (release = resolve));
 		const get = transport.get.bind(transport) as VirtualThermostatTransportService['get'];
 		const delivered: string[] = [];
+		const deliveredOutcomes: Array<Awaited<ReturnType<ThermostatActuationAdapter['send']>>> = [];
 		const observer = jest.spyOn(transport, 'get').mockImplementation((...args) => {
 			const adapter = get(...args);
 			if (!adapter) return null;
@@ -4946,6 +4950,12 @@ describe('virtual thermostat durable runtime', () => {
 					const original = send(...sendArgs);
 					if (sendArgs[0].value === false && sendArgs[1].id === claim.id) {
 						delivered.push(sendArgs[4].commandId);
+						void original.then(
+							(result) => {
+								deliveredOutcomes.push(result);
+							},
+							() => undefined,
+						);
 						enter();
 					}
 					return original;
@@ -4954,6 +4964,7 @@ describe('virtual thermostat durable runtime', () => {
 		});
 		let preparation: Promise<void> | undefined;
 		try {
+			offOutcome = offResult;
 			preparation = owner.requestInstalled(id);
 			await Promise.race([
 				entered,
@@ -4992,6 +5003,9 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		const pendingIds = Object.freeze([command.id, delivered[0]].sort());
 		const originalJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+		expect(deliveredOutcomes).toHaveLength(1);
+		if (deliveredOutcomes[0].outcome !== 'accepted')
+			throw new Error('Original OFF did not finish an accepted saved native outcome');
 		for (const pending of pendingIds)
 			expect(originalJournal.find((row) => row.id === pending)).toMatchObject({ status: 'accepted' });
 		expect(reconciledCommandIds).toEqual(P0);
@@ -5078,6 +5092,99 @@ describe('virtual thermostat durable runtime', () => {
 			},
 		};
 	};
+
+	it.each(['refused', 'unknown'] as const)(
+		'rejects a non-accepted original OFF before a second settlement while retaining exact native effects: %s',
+		async (outcome) => {
+			await settle();
+			const source = database,
+				id = controllerId;
+			clearInterval(runtime['timer']);
+			const baseline = Object.freeze(
+				(await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id })).map((row) =>
+					Object.freeze({ ...row }),
+				),
+			);
+			const claim = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
+			const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+			const beforeAttempts = Object.freeze([...actuationAttempts]);
+			type NativeRow = { id: string; claimId: string; action: string; status: string };
+			const grammars = (K: readonly string[]) => ({
+				noSettlement: {
+					proof: P0,
+					retirement: [] as readonly (readonly (readonly string[])[])[],
+					journal: [
+						...baseline.map(({ id, claimId, action, status }) => ({ id, claimId, action, status })),
+						{ id: K[0], claimId: claim.id, action: 'on', status: 'accepted' },
+						{ id: K[1], claimId: claim.id, action: 'off', status: 'unknown' },
+					],
+				},
+				knownAcknowledgement: {
+					proof: [...P0, K],
+					retirement: [[K]],
+					journal: [
+						...baseline.map(({ id, claimId, action, status }) => ({ id, claimId, action, status })),
+						{ id: K[0], claimId: claim.id, action: 'on', status: 'confirmed' },
+						{ id: K[1], claimId: claim.id, action: 'off', status: 'confirmed' },
+					],
+				},
+			});
+			// Fix K from native INSERTs independently of proof/retirement callbacks.
+			const inserted: VirtualThermostatCommandEntity[] = [];
+			const native = {
+				listenTo: () => VirtualThermostatCommandEntity,
+				afterInsert: (event: InsertEvent<VirtualThermostatCommandEntity>) => {
+					if (event.entity.controllerId === id) inserted.push({ ...event.entity });
+				},
+			};
+			source.subscribers.push(native);
+			const retire = jest.fn<void, [readonly string[]]>();
+			const requests = jest.spyOn(runtime, 'requestInstalled');
+			try {
+				await expect(prepareIssuedOffJournalSettlement(retire, outcome)).rejects.toThrow(
+					'Original OFF did not finish an accepted saved native outcome',
+				);
+				expect(requests).toHaveBeenCalledTimes(1);
+				expect(requests).toHaveBeenCalledWith(id);
+				expect(inserted).toHaveLength(2);
+				const on = inserted.find((row) => row.action === 'on');
+				const off = inserted.find((row) => row.action === 'off');
+				expect(on).toBeDefined();
+				expect(off).toBeDefined();
+				if (!on || !off) throw new Error('Original ON and issued OFF native identities missing');
+				const K = Object.freeze([on.id, off.id]);
+				expect(new Set(K).size).toBe(2);
+				const journal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+				const originalOn = journal.find((row) => row.id === on.id);
+				const declared = grammars(K);
+				const grammar =
+					originalOn?.status === 'accepted'
+						? declared.noSettlement
+						: originalOn?.status === 'confirmed'
+							? declared.knownAcknowledgement
+							: undefined;
+				if (!grammar) throw new Error('Failed OFF had an undeclared native journal result');
+				expect(journal.map((row) => row.id).sort()).toEqual([...baseline.map((row) => row.id), ...K].sort());
+				for (const row of baseline) expect(journal.find((entry) => entry.id === row.id)).toEqual(row);
+				expect(
+					journal
+						.map(({ id, claimId, action, status }): NativeRow => ({ id, claimId, action, status }))
+						.sort((a, b) => a.id.localeCompare(b.id)),
+				).toEqual([...grammar.journal].sort((a, b) => a.id.localeCompare(b.id)));
+				for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
+				expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(grammar.proof.map((ids) => [...ids].sort()));
+				expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual(
+					grammar.retirement.map((call) => call.map((ids) => [...ids].sort())),
+				);
+				expect(actuationAttempts).toEqual([...beforeAttempts, false]);
+				expect(actuationAttempts.every((on) => !on)).toBe(true);
+			} finally {
+				requests.mockRestore();
+				const index = source.subscribers.indexOf(native);
+				if (index >= 0) source.subscribers.splice(index, 1);
+			}
+		},
+	);
 
 	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
 		const retire = jest.fn<void, [readonly string[]]>();
