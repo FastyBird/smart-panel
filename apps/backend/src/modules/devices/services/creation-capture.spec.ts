@@ -85,4 +85,30 @@ describe('original method currentness through function-valued prototypes', () =>
 		expect(getterCalls).toBe(0);
 		expect(captured.values.read).toBe(original);
 	});
+
+	it('refuses a captured property whose enumerable flag changes without changing its function', () => {
+		class Original {
+			static read = (): string => 'original';
+		}
+		class Leaf extends Original {}
+		const original = Original.read;
+		const captured = captureCreation(Leaf, ['read']);
+		Object.defineProperty(Original, 'read', { enumerable: false });
+		expect(captured.current()).toBe(false);
+		expect(captured.values.read).toBe(original);
+		expect(Original.read).toBe(original);
+	});
+
+	it('refuses an own shadow holding the original function without recapturing it', () => {
+		class Original {
+			static read = (): string => 'original';
+		}
+		class Leaf extends Original {}
+		const original = Original.read;
+		const captured = captureCreation(Leaf, ['read']);
+		Leaf.read = original;
+		expect(captured.current()).toBe(false);
+		expect(captured.values.read).toBe(original);
+		expect(Leaf.read).toBe(original);
+	});
 });

@@ -81,6 +81,9 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		const originalDevices = await database.query<unknown[]>(
 			'SELECT id,identifier,name,type,category,roomId FROM devices_module_devices ORDER BY id',
 		);
+		const channelIdentitySql =
+			'SELECT id,identifier,name,type,category,deviceId FROM devices_module_channels ORDER BY id';
+		const originalChannels = await database.query<unknown[]>(channelIdentitySql);
 		const originalProperties = await database.query<unknown[]>(
 			'SELECT id,identifier,name,permissions,dataType,type,category,channelId,sourcePropertyId FROM devices_module_channels_properties ORDER BY id',
 		);
@@ -95,6 +98,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		expect(
 			await database.query('SELECT id,identifier,name,type,category,roomId FROM devices_module_devices ORDER BY id'),
 		).toEqual(originalDevices);
+		expect(await database.query(channelIdentitySql)).toEqual(originalChannels);
 		expect(
 			await database.query(
 				'SELECT id,identifier,name,permissions,dataType,type,category,channelId,sourcePropertyId FROM devices_module_channels_properties ORDER BY id',
@@ -124,6 +128,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		await database.destroy();
 		database = await createSqliteDataSource({ ...options, migrations });
 		expect(await database.runMigrations({ transaction: 'each' })).toEqual([]);
+		expect(await database.query(channelIdentitySql)).toEqual(originalChannels);
 		expect(
 			await database.query(
 				'SELECT id,identifier,name,permissions,dataType,type,category,channelId,sourcePropertyId FROM devices_module_channels_properties ORDER BY id',

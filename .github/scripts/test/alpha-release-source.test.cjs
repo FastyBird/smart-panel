@@ -16,7 +16,9 @@ test('every alpha publisher and builder consumes the immutable post-version-sync
 	assert.equal(workflow.jobs['sync-versions'].outputs.buildNumber, '${{ steps.set-version.outputs.buildNumber }}');
 	const sync = workflow.jobs['sync-versions'].steps.find((step) => step.id === 'version-commit');
 	assert.match(sync.run, /sha=\$\(git rev-parse HEAD\)/);
-	assert.ok(sync.run.indexOf('git push') < sync.run.indexOf('git rev-parse HEAD'));
+	const pushIndex = sync.run.indexOf('git push');
+	assert.ok(pushIndex >= 0, 'version-commit must push before capturing the SHA');
+	assert.ok(pushIndex < sync.run.indexOf('git rev-parse HEAD'));
 	const checkouts = [];
 	for (const [name, job] of Object.entries(workflow.jobs)) {
 		if (name === 'sync-versions') continue;
