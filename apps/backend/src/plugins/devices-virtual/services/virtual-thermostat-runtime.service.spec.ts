@@ -2787,6 +2787,75 @@ describe('virtual thermostat durable runtime', () => {
 		}
 	});
 
+	it('an actual interval retires the original held native ON decision without renewing its guard', async () => {
+		const { fixture } = await useNativeClaimsGuard();
+		await settleReal(fixture);
+		const owner = runtime;
+		const get = fixture.transport.get.bind(fixture.transport) as VirtualThermostatTransportService['get'];
+		let originalGuard: (() => boolean) | undefined;
+		jest.spyOn(fixture.transport, 'get').mockImplementation((...args) => {
+			const adapter = get(...args);
+			if (!adapter) return null;
+			const send = adapter.send.bind(adapter) as ThermostatActuationAdapter['send'];
+			return {
+				...adapter,
+				send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
+					if (sendArgs[0].value === true && originalGuard === undefined) originalGuard = sendArgs[3];
+					return send(...sendArgs);
+				},
+			};
+		});
+		let enterOn!: () => void, enterPoll!: () => void, release!: () => void;
+		const onEntered = ownedGate((resolve) => (enterOn = resolve));
+		const pollEntered = ownedGate((resolve) => (enterPoll = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		let armed = false;
+		let admittedAtEntry: boolean | undefined;
+		let priorContext: unknown;
+		let priorSequence: number;
+		fixture.controls.beforeOn = () => {
+			admittedAtEntry = originalGuard?.();
+			priorContext = owner['contexts'].get(controllerId);
+			priorSequence = owner.readDiagnostics(controllerId).sequence;
+			armed = true;
+			enterOn();
+			return held;
+		};
+		const request = owner.request.bind(owner) as VirtualThermostatRuntimeService['request'];
+		let poll: Promise<void> | undefined;
+		const observer = jest.spyOn(owner, 'request').mockImplementation(function (
+			this: VirtualThermostatRuntimeService,
+			...args: Parameters<VirtualThermostatRuntimeService['request']>
+		) {
+			const original = request(...args);
+			if (armed && this === owner && args[0] === controllerId && args[1] === false && poll === undefined) {
+				poll = original;
+				enterPoll();
+			}
+			return original;
+		});
+		try {
+			await fixture.report(sensorId, 18);
+			await onEntered;
+			expect(admittedAtEntry).toBe(true);
+			// No inspect(), explicit request(false), fake timer advance or replacement interval.
+			await pollEntered;
+			expect(poll).toBeDefined();
+			await poll;
+			expect(owner['contexts'].get(controllerId)).not.toBe(priorContext);
+			expect(owner.readDiagnostics(controllerId).sequence).toBeGreaterThan(priorSequence);
+			expect(originalGuard()).toBe(false);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+		} finally {
+			owner.onModuleDestroy();
+			release();
+			fixture.controls.beforeOn = null;
+			observer.mockRestore();
+			if (poll !== undefined) await poll;
+			await fixture.flushTelemetry();
+		}
+	});
+
 	it.each(['builtin', 'custom', 'on', 'missing-qualification', 'accessor-packet'] as const)(
 		'refuses an unregistered %s completion packet before any original transport or sample callback',
 		async (kind) => {

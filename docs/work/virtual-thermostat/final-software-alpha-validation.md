@@ -22,16 +22,16 @@ are unchanged by this test/release preparation; no generated API/spec files are 
 
 ## Measured local validation
 
-| Run                                                                               | Result                                                                                                                                       |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Complete ordinary E2E after adding the four cases                                 | **29 suites / 424 tests PASS**, zero skips, natural exit 0. The final prefix-hash/cleanup strengthening also passes separately (1/1). The final exact physical-command cardinality also passes separately (2/2). |
-| Complete durable thermostat runtime including the restored multi-command controls | **146/146 PASS**, zero skips, natural exit 0.                                                                                                |
-| Ported inherited-method descriptor controls                                       | **6/6 PASS**, zero skips.                                                                                                                    |
-| Backend types                                                                     | Final combined noEmit/incremental-false gate PASS, including the six descriptor controls.                                                    |
-| Strict lint                                                                       | Changed runtime/HTTP/upgrade/descriptor tests PASS with zero warnings.                                                                       |
-| Release version selection + immutable source contract                             | Final **3/3 PASS**; actionlint workflow syntax/dependency/expression checks PASS.                                                            |
-| Generated API/spec and Admin/Panel clients                                        | All generators PASS; **5,671 actual files** reproduce byte-for-byte, with zero new or changed outputs on the verified repeat.                |
-| Complete backend before adding six descriptor controls, two workers               | **725 suites / 13,287 tests PASS**, zero failures; one existing pending agricultural/device-temperature Zigbee mapper test. Natural exit 0.  |
+| Run                                                                                                  | Result                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Complete ordinary E2E after adding the four cases                                                    | **29 suites / 424 tests PASS**, zero skips, natural exit 0. The final prefix-hash/cleanup strengthening also passes separately (1/1). The final exact physical-command cardinality also passes separately (2/2). |
+| Complete durable thermostat runtime including the multi-command controls and actual-interval held ON | **147/147 PASS**, zero skips, natural exit 0.                                                                                                                                                                    |
+| Ported inherited-method descriptor controls                                                          | **6/6 PASS**, zero skips.                                                                                                                                                                                        |
+| Backend types                                                                                        | Final combined noEmit/incremental-false gate PASS, including the six descriptor controls and actual-interval held ON test.                                                                                       |
+| Strict lint                                                                                          | Changed runtime/HTTP/upgrade/descriptor tests PASS with zero warnings.                                                                                                                                           |
+| Release version selection + immutable source contract                                                | Final **3/3 PASS**; actionlint workflow syntax/dependency/expression checks PASS.                                                                                                                                |
+| Generated API/spec and Admin/Panel clients                                                           | All generators PASS; **5,671 actual files** reproduce byte-for-byte, with zero new or changed outputs on the verified repeat.                                                                                    |
+| Complete backend before adding six descriptor controls, two workers                                  | **725 suites / 13,287 tests PASS**, zero failures; one existing pending agricultural/device-temperature Zigbee mapper test. Natural exit 0.                                                                      |
 
 The initial generated-output inventory used Git-tracked paths and found zero files because these outputs are ignored. It grants no comparison credit. The corrected filesystem inventory captured all 5,671 files before and after a complete generator repeat; those hashes match.
 
@@ -50,21 +50,26 @@ original runtime SHA-256 is `150ab6a15587b93358c84f6ab1889e43617e3906f05f548d3e1
 The saved R265 raw-result SHA-256 is `d183276fbfc7ea319898eb01034f13d22ef867246402c91606e5c3a5d9c9d77e`.
 Its **200 PASS / 61 FAIL** describes that historical source, not a current-main defect count.
 
-This inventory is **not completed semantic acceptance**:
+The current reconciliation distinguishes scoped business outcomes from complete original-case acceptance:
 
-- 103 rows have a same-title current source witness. Setup, controlled order and complete assertions still need reconciliation; only two complete test bodies are token-identical.
-- Six further rows have named replacement witnesses for retained native OFF facts, same-value config/slot writes, qualification loss, old held ON and the actual interval.
-- Six original inherited-method descriptor rows (255–260) are ported to the current shared capture API and pass directly. Their original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- 146 rows have no current case bound yet. Each row names its concrete original requirement and remains open. Many use removed packet/fixture APIs, but API retirement alone does not discharge the underlying business invariant.
+- **99 rows** now bind to current observable invariants after comparing every one of the 68 distinct same-title test-body pairs, their setup, controlled order and full assertion differences. Per-row notes state changed ports and limits. Current basic mutation fixtures control claims/value ports; these bindings do not certify the former full mutation-provider or SDK custody pipeline.
+- **Four journal rows (234, 235, 238, 239)** remain partial. Both pending ON/OFF IDs, complete rows, exact retirement and rollback/ACK assertions pass, but the companion OFF is seeded. The original real issued OFF and independent baseline P0 transcript, identity, order and multiplicity remain required.
+- **Six replacement rows (105–109, 111)** bind the current native OFF, protected-write, qualification, held ON and actual-interval boundaries. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule.
+- **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
+- **146 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+
+The history oracle was independently challenged with three controlled production mutants: oldest prepared command first, duplicate returned rows and a corrupted proof ID. Each caused both history cases to fail at the intended predicate, uniqueness or complete-row assertion (six expected failures total). The production file was restored byte-for-byte before the complete **147/147** runtime rerun passed.
 
 Original row 261 remains open: the old helper rejected missing required methods, while the current shared helper also supports optional absence. That difference needs a required-callsite binding; a `current()` result alone must not be presented as the original missing-method refusal.
 
-A direct row-111 adaptation requiring the old `context.admission` to expire on an ordinary poll failed and was withdrawn. In the current code that field is a claims-membership snapshot, intentionally retained across neutral rotations; ON additionally requires exact current context identity and epoch. The original held-ON guard case is a separate witness. The original interval-to-decision binding remains open; production was not changed to invalidate legitimate OFF facts, and the test source was restored to the exact fully qualified hash.
+A direct row-111 adaptation requiring the old `context.admission` to expire on an ordinary poll failed and was withdrawn. That current field is a claims-membership snapshot retained across neutral rotations; ON separately requires the exact current context and epoch. Two executable witnesses now bind those boundaries: the idle original interval publishes a fresh decision without ON, and an actual original interval invalidates a held native ON guard that was true at entry. The latter uses no explicit poll, fake timer advance or replacement interval. The original owner stops before the held gate opens, and the complete runtime rerun passes. Legitimate retained OFF facts were not weakened.
 
 The journal comparison already exposed incomplete single-identity checks and led to the multi-identity
 strengthening above. That correction does not clear unrelated original controlled SDK, startup, clock, negative
 observer or fixture-ownership schedules. #1473 remains frozen and is not superseded. #1462 and alpha clearance
 remain open until required residuals are resolved or explicitly dispositioned with evidence.
+
+Hosted CI on preparation head `5ea33aad6f11c4339b4d15ed162f2af73c935687` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41307231798) succeeded. This predates the additional interval case and revised map above; their next exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
 
 ## Release preparation
 
