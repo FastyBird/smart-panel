@@ -101,8 +101,19 @@ describe('thermostat catalog original reader and finite observations', () => {
 		// A Jest hook timeout does not cancel initialize or seeding. Join that exact work before closing its handle.
 		await originalSetup.catch(() => undefined); // The beforeEach promise retains the original setup rejection.
 		jest.restoreAllMocks();
-		if (original?.isInitialized) await original.destroy();
-		if (originalDirectory) rmSync(originalDirectory, { recursive: true, force: true });
+		let failure: { cause: unknown } | undefined;
+		try {
+			if (original?.isInitialized) await original.destroy();
+		} catch (cause: unknown) {
+			failure = { cause };
+		} finally {
+			try {
+				if (originalDirectory) rmSync(originalDirectory, { recursive: true, force: true });
+			} catch (cause: unknown) {
+				failure ??= { cause };
+			}
+		}
+		if (failure) throw failure.cause;
 	}, 30_000);
 	it('captures V0 on the exact original depth-one manager and finals on the original ordinary manager', async () => {
 		await ready();

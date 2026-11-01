@@ -86,18 +86,21 @@ describe('original method currentness through function-valued prototypes', () =>
 		expect(captured.values.read).toBe(original);
 	});
 
-	it('refuses a captured property whose enumerable flag changes without changing its function', () => {
-		class Original {
-			static read = (): string => 'original';
-		}
-		class Leaf extends Original {}
-		const original = Original.read;
-		const captured = captureCreation(Leaf, ['read']);
-		Object.defineProperty(Original, 'read', { enumerable: false });
-		expect(captured.current()).toBe(false);
-		expect(captured.values.read).toBe(original);
-		expect(Original.read).toBe(original);
-	});
+	it.each(['enumerable', 'writable', 'configurable'] as const)(
+		'refuses a captured property whose %s flag changes without changing its function',
+		(flag) => {
+			class Original {
+				static read = (): string => 'original';
+			}
+			class Leaf extends Original {}
+			const original = Original.read;
+			const captured = captureCreation(Leaf, ['read']);
+			Object.defineProperty(Original, 'read', { [flag]: false });
+			expect(captured.current()).toBe(false);
+			expect(captured.values.read).toBe(original);
+			expect(Original.read).toBe(original);
+		},
+	);
 
 	it('refuses an own shadow holding the original function without recapturing it', () => {
 		class Original {
