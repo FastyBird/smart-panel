@@ -8,7 +8,7 @@ import {
 	StorageService,
 } from '../../storage/services/storage.service';
 import { StoragePoint } from '../../storage/storage.types';
-import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DataTypeType, EventType, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
 	AcceptedPropertySample,
@@ -24,6 +24,7 @@ import {
 	clonePropertyValueState,
 } from '../models/property-value-state.model';
 import { validatePropertyCommandValue } from '../utils/property-command-value.utils';
+import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import { ControllerPublicationContext, ownControllerEffectValue } from './controller-publication-context';
 import {
@@ -273,7 +274,14 @@ export class PropertyValueService {
 					Number.isFinite(receivedAt) &&
 					sampledAt <= receivedAt &&
 					receivedAt <= Date.now();
-				if (!validClock || !this.isSampleValueValid(property, value)) {
+				// A delayed native slat sample cannot acquire angular meaning after a metadata change.
+				const validSemantic =
+					evidence.semanticOrigin !== 'native_cover_tilt_percentage' ||
+					(property.category === PropertyCategory.TILT &&
+						property.identifier === 'slat_pos' &&
+						property.dataType === DataTypeType.UCHAR &&
+						resolvePropertyUnit(property) === '%');
+				if (!validClock || !validSemantic || !this.isSampleValueValid(property, value)) {
 					if (live) {
 						this.liveEpochs.add(key);
 						// An invalid clock revokes eligibility, but supplies no trusted ordering evidence.

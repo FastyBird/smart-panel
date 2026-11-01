@@ -179,6 +179,39 @@ describe('light group actual state and command detail', () => {
 		expect(mocks.POST.mock.calls[0][1].body.request_id).toEqual(expect.any(String));
 		wrapper.unmount();
 	});
+	it('uses native percent units and separate explicit targets for qualified cover position and tilt', async () => {
+		const controls = ['position', 'tilt'];
+		mocks.controls = controls;
+		mocks.GET.mockResolvedValue({
+			data: {
+				data: {
+					...configuration,
+					profile: 'cover',
+					common_capabilities: controls.map((category) => ({ category, data_type: 'uchar', unit: '%', access: 'rw', format: [0, 100], step: 1 })),
+					members: configuration.members.map((member) => ({
+						...member,
+						bindings: controls.map((quantity) => ({ quantity, output_property: `group-channel-${quantity}` })),
+					})),
+					operations: controls.map((operation) => ({ operation, commandable: true, members: [] })),
+				},
+			},
+		});
+		mocks.POST.mockResolvedValue({ data: { data: { success: true, composites: [] } } });
+		const wrapper = await mountDetail();
+		const inputs = controls.map((category) => wrapper.find(`[data-test-id="light-group-control-${category}"] input`));
+		expect(inputs.every((input) => input.exists())).toBe(true);
+		const apply = wrapper.findAll('button').filter((button) => button.text() === 'devicesVirtualPlugin.lightGroup.apply');
+		expect(apply.every((button) => button.attributes('disabled') !== undefined)).toBe(true);
+		await inputs[1]!.setValue('70');
+		await apply[1]!.trigger('click');
+		await flushPromises();
+		expect(mocks.POST).toHaveBeenCalledTimes(1);
+		expect(mocks.POST.mock.calls[0][1].body.properties).toEqual([
+			{ device: 'group', channel: 'group-channel', property: 'group-channel-tilt', value: 70 },
+		]);
+		expect(wrapper.text()).toContain('tilt %');
+		wrapper.unmount();
+	});
 	it('offers qualified cover COMMAND operations and shows refusals without position/tilt inputs', async () => {
 		mocks.controls = ['type', 'status', 'position', 'command'];
 		mocks.GET.mockResolvedValue({

@@ -17,6 +17,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
+import { nativeCoverPercentage } from '../contracts/cover-action.contract';
 import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import {
 	ComponentType,
@@ -500,6 +501,37 @@ export class DeviceManagerService {
 								undefined,
 								positionPropertyMapping,
 							);
+
+							// A native slat percentage is a distinct contract, never a guessed angle.
+							const slat = (coverStatus as unknown as { slat_pos?: unknown }).slat_pos;
+							const tiltMapping = this.findPropertyMapping(coverChannelDef, PropertyCategory.TILT);
+							const existingTilt = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+								'category',
+								PropertyCategory.TILT,
+								chan.id,
+							);
+							const slatConfig = (coverConfig as unknown as { slat?: { enable?: unknown } }).slat;
+							const validSlat = typeof slat === 'number' && Number.isFinite(slat) && slat >= 0 && slat <= 100;
+							// An absent/bad measurement cannot delete identity or cancel commands. Only an
+							// explicit disabled configuration with no contradictory live position withdraws it.
+							if (existingTilt && nativeCoverPercentage(existingTilt) && slatConfig?.enable === false && !validSlat) {
+								await this.channelsPropertiesService.remove(existingTilt.id);
+							} else if (
+								(!existingTilt ||
+									(existingTilt.dataType === DataTypeType.UCHAR && existingTilt.identifier === 'slat_pos')) &&
+								tiltMapping &&
+								validSlat
+							) {
+								await this.ensureProperty(
+									chan,
+									PropertyCategory.TILT,
+									'identifier',
+									'slat_pos',
+									slat,
+									{ data_type: DataTypeType.UCHAR, format: [0, 100], step: 1 },
+									tiltMapping,
+								);
+							}
 
 							// Handle static properties
 							if (coverChannelDef.staticProperties) {

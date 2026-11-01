@@ -1,10 +1,12 @@
 import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 
 export interface NativeCoverStatus {
 	readonly id: number;
 	readonly state: 'open' | 'closed' | 'opening' | 'closing' | 'stopped';
 	readonly current_pos: number;
+	readonly slat_pos?: number | null;
 	readonly pos_control: true;
 	readonly tag?: unknown;
 }
@@ -53,4 +55,18 @@ export function configuredCoverType(properties: readonly ChannelPropertyEntity[]
 		property.permissions.includes(PermissionType.READ_ONLY)
 		? String(property.format[0])
 		: null;
+}
+
+/** Exact native percentage metadata; an existing degree-valued slat alias cannot opt in. */
+export function nativeCoverPercentage(property: ChannelPropertyEntity | undefined): boolean {
+	return (
+		!!property &&
+		[PropertyCategory.POSITION, PropertyCategory.TILT].includes(property.category) &&
+		property.identifier === (property.category === PropertyCategory.POSITION ? 'current_pos' : 'slat_pos') &&
+		property.dataType === DataTypeType.UCHAR &&
+		resolvePropertyUnit(property) === '%' &&
+		JSON.stringify(property.format) === '[0,100]' &&
+		(property.step == null || property.step === 1) &&
+		property.permissions.includes(PermissionType.READ_WRITE)
+	);
 }

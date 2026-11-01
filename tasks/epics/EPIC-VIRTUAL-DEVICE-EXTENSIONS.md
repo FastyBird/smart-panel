@@ -38,16 +38,16 @@ CodeRabbit completed that review and confirmed the older follow-up corrections.
 - [x] VD3-2 / #1449: additional numeric and binary profiles, #1465.
 - [x] VD3-3 / #1450: aggregate authoring and quality, #1465.
 - [x] VD3-4 / #1451: switch/outlet group foundation, #1464.
-- [ ] VD3-5 / #1452: fan and qualified cover COMMAND support is merged in #1467; POSITION/TILT completion remains.
+- [ ] VD3-5 / #1452: fan and qualified cover COMMAND support is merged in #1467; qualified native percentage POSITION/TILT are implemented in the cover/HomeKit follow-up; delivery gates remain.
 - [x] VD3-6 / #1453: group authoring/repair, Panel, scenes and supported room paths, #1466/#1467.
 - [x] VD3-7 / #1455: presets, durable overrides, effective arbitration and clients, #1469/#1470 and later native-intent fixes.
 - [ ] VD3-8 / #1458: configured activity climate bridge is merged in #1498; schedule/presence acceptance remains.
 - [x] VD3-9 / #1459: typed dew point and cooling cutoff software, #1471.
 - [x] VD3-10 / #1454: provider-neutral guarded parallel branches, #1469/#1470/#1471.
-- [ ] VD3-11 / #1456: Home Assistant native-unit adapter and ordinary virtual authoring are implemented in the native follow-up; delivery gates remain.
-- [ ] VD3-12 / #1457: Zigbee2MQTT capability-qualified native adapter is implemented in the native follow-up; delivery gates remain.
+- [x] VD3-11 / #1456: Home Assistant native-unit adapter and ordinary virtual authoring, merged #1504.
+- [x] VD3-12 / #1457: Zigbee2MQTT capability-qualified native adapter, merged #1504.
 - [x] VD3-13 / #1460: SDK numeric operators, #1468.
-- [ ] VD3-14 / #1461: standard mappings are merged; native/composed HomeKit acceptance remains.
+- [ ] VD3-14 / #1461: standard mappings are merged; native/composed HomeKit follow-up is implemented with fresh delivery gates remaining.
 - [ ] VD3-15 / #1462: final composed/upgrade/reference-scenario acceptance, docs and actual alpha publication remain.
 
 Reused definitions #1292 are already closed. Activity API #1294, Admin #1295 and Panel #1296 have complete scoped

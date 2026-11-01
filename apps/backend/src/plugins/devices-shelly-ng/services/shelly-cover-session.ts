@@ -56,7 +56,7 @@ export class ShellyCoverSession {
 		}
 	}
 	private async dispatchAction(
-		action: 'open' | 'close' | 'stop',
+		action: 'open' | 'close' | 'stop' | { position: number } | { tilt: number },
 		context: CoverActionDispatchContext,
 		admit: (raw: NativeCoverStatus, observedAt: Date, preflightState: string) => Promise<boolean>,
 		invalid?: (raw: Readonly<Record<string, unknown>>, observedAt: Date) => Promise<void>,
@@ -72,7 +72,13 @@ export class ShellyCoverSession {
 				!preflight ||
 				!Object.hasOwn(preflight.raw, 'tag') ||
 				!(preflight.raw.tag === null || typeof preflight.raw.tag === 'string') ||
-				!context.isCurrent()
+				!context.isCurrent() ||
+				(typeof action === 'object' &&
+					'tilt' in action &&
+					(typeof preflight.raw.slat_pos !== 'number' ||
+						!Number.isFinite(preflight.raw.slat_pos) ||
+						preflight.raw.slat_pos < 0 ||
+						preflight.raw.slat_pos > 100))
 			)
 				return false;
 			// Latch before submission; a timeout/rejection does not prove the device did not execute.
@@ -87,10 +93,18 @@ export class ShellyCoverSession {
 			const result = await this.rpc.withSendGuard(
 				() => context.isCurrent() && this.identityIsCurrent(),
 				() =>
-					this.rpc.request<unknown>(`Cover.${action === 'open' ? 'Open' : action === 'close' ? 'Close' : 'Stop'}`, {
-						id: this.componentId,
-						tag: context.tag,
-					}),
+					this.rpc.request<unknown>(
+						`Cover.${typeof action === 'object' ? 'GoToPosition' : action === 'open' ? 'Open' : action === 'close' ? 'Close' : 'Stop'}`,
+						{
+							id: this.componentId,
+							...(typeof action === 'object'
+								? 'position' in action
+									? { pos: action.position }
+									: { slat_pos: action.tilt }
+								: {}),
+							tag: context.tag,
+						},
+					),
 				() => {
 					possiblySent = true;
 				},

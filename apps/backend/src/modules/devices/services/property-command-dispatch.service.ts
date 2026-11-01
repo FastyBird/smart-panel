@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { PermissionType } from '../devices.constants';
+import { PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePropertyData, PreparedCompositeDeviceBatch, PreparedCoverAction } from '../platforms/device.platform';
@@ -632,7 +632,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						channel: channel[0].update.channel,
 						property,
 						kind: 'cover_action',
-						action: channel[0].update.value as 'open' | 'close' | 'stop',
+						action:
+							channel[0].update.property.category === PropertyCategory.COMMAND
+								? (channel[0].update.value as 'open' | 'close' | 'stop')
+								: (channel[0].update.property.category as 'position' | 'tilt'),
 					}));
 					for (const effect of effects) {
 						await options.commandEntry?.assertEffectAllowed(effect);

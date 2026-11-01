@@ -113,6 +113,10 @@ export class HomeKitEventListener implements OnModuleDestroy {
 			ChannelCategory.FAN,
 		);
 	}
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
+	async handleThermostatMetadataChanged(property: ChannelPropertyEntity): Promise<void> {
+		await this.handleMetadataChanged(property, [PropertyCategory.MODE], ChannelCategory.THERMOSTAT);
+	}
 	/** Rebuild on contract drift or uncertain lookup, while a missing channel remains a no-op. */
 	private async handleMetadataChanged(
 		property: ChannelPropertyEntity,

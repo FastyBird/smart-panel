@@ -5,6 +5,7 @@ import {
 	IDevicePropertyData,
 	PreparedCoverAction,
 } from '../platforms/device.platform';
+import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import {
 	PropertyCommandWindow,
@@ -17,7 +18,7 @@ export const isCoverControl = (update: IDevicePropertyData): boolean =>
 	update.channel.category === ChannelCategory.WINDOW_COVERING &&
 	[PropertyCategory.COMMAND, PropertyCategory.POSITION, PropertyCategory.TILT].includes(update.property.category);
 
-/** Core validates the provider's exact same-component sibling observation footprint before WO admission. */
+/** Core validates the provider's exact same-component sibling observation footprint before motor command admission. */
 export function validCoverAction(
 	action: PreparedCoverAction | undefined,
 	updates: readonly IDevicePropertyData[],
@@ -28,10 +29,20 @@ export function validCoverAction(
 		(typeof property.channel === 'string' ? property.channel : property.channel?.id) === update.channel.id;
 	return (
 		isCoverControl(update) &&
-		update.property.category === PropertyCategory.COMMAND &&
-		update.property.dataType === DataTypeType.ENUM &&
-		update.property.permissions.includes(PermissionType.WRITE_ONLY) &&
-		['open', 'close', 'stop'].includes(String(update.value)) &&
+		((update.property.category === PropertyCategory.COMMAND &&
+			update.property.dataType === DataTypeType.ENUM &&
+			update.property.permissions.includes(PermissionType.WRITE_ONLY) &&
+			['open', 'close', 'stop'].includes(String(update.value))) ||
+			([PropertyCategory.POSITION, PropertyCategory.TILT].includes(update.property.category) &&
+				update.property.dataType === DataTypeType.UCHAR &&
+				update.property.permissions.includes(PermissionType.READ_WRITE) &&
+				typeof update.value === 'number' &&
+				Number.isInteger(update.value) &&
+				update.value >= 0 &&
+				update.value <= 100 &&
+				(update.property.category === PropertyCategory.POSITION
+					? action.position.id === update.property.id
+					: action.tilt?.id === update.property.id))) &&
 		action.commandPropertyId === update.property.id &&
 		action.status.id !== action.position.id &&
 		action.status.id !== update.property.id &&
@@ -41,8 +52,15 @@ export function validCoverAction(
 		action.position.dataType === DataTypeType.UCHAR &&
 		sameChannel(action.status) &&
 		sameChannel(action.position) &&
+		(!action.tilt ||
+			(sameChannel(action.tilt) &&
+				action.tilt.category === PropertyCategory.TILT &&
+				action.tilt.dataType === DataTypeType.UCHAR &&
+				resolvePropertyUnit(action.tilt) === '%' &&
+				action.tilt.permissions.includes(PermissionType.READ_WRITE))) &&
 		!!action.effects &&
 		action.effects.some((property) => property.id === action.position.id) &&
+		(!action.tilt || action.effects.some((property) => property.id === action.tilt.id)) &&
 		new Set(action.effects.map((property) => property.id)).size === action.effects.length &&
 		action.effects.every(
 			(property) =>
@@ -56,7 +74,7 @@ export function validCoverAction(
 	);
 }
 
-/** A process-local capability tied to one admitted COMMAND generation, never a provider-supplied handle. */
+/** A process-local capability tied to one admitted motor command generation, never a provider-supplied handle. */
 export function coverActionContext(
 	action: PreparedCoverAction,
 	update: IDevicePropertyData,
@@ -111,6 +129,24 @@ export function coverActionContext(
 				observation.position > 100
 			)
 				return false;
+			if (update.property.category === PropertyCategory.TILT) {
+				const tilt = action.tilt && values.readQualifiedSample(action.tilt, 30_000);
+				if (
+					!tilt ||
+					tilt.semanticOrigin !== 'native_cover_tilt_percentage' ||
+					tilt.commandObservation !== observationToken ||
+					tilt.acceptanceGeneration <= observation.acceptanceBoundary ||
+					tilt.acceptanceGeneration !== observation.tiltAcceptance ||
+					tilt.sampledAt.getTime() !== observation.observedAt.getTime() ||
+					tilt.receivedAt.getTime() < acceptedAt ||
+					tilt.value !== observation.tilt ||
+					typeof observation.tilt !== 'number' ||
+					!Number.isFinite(observation.tilt) ||
+					observation.tilt < 0 ||
+					observation.tilt > 100
+				)
+					return false;
+			}
 			const tagMatches = observation.tag === handle.generation.replaceAll('-', '').slice(0, 20);
 			const idle = ['open', 'closed', 'stopped'].includes(observation.state);
 			const noopStop = update.value === 'stop' && idle && observation.preflightState === observation.state;
@@ -121,15 +157,27 @@ export function coverActionContext(
 				tagMatches &&
 				((update.value === 'open' && observation.state === 'opening') ||
 					(update.value === 'close' && observation.state === 'closing'));
-			if (!(endpoint || begun || (update.value === 'stop' && idle && (tagMatches || noopStop)))) return false;
+			const numericTarget = [PropertyCategory.POSITION, PropertyCategory.TILT].includes(update.property.category);
+			const targetObserved =
+				idle &&
+				(update.property.category === PropertyCategory.POSITION ? observation.position : observation.tilt) ===
+					update.value;
+			if (
+				numericTarget
+					? !targetObserved
+					: !(endpoint || begun || (update.value === 'stop' && idle && (tagMatches || noopStop)))
+			)
+				return false;
 			if (!isCurrent()) return false;
 			// Receipt records the actual observation; no COMMAND sample or optimistic physical state is written.
-			return windows.confirm(handle, { value: nativeStatus, receivedAt: Date.now() }) !== null;
+			return (
+				windows.confirm(handle, { value: numericTarget ? update.value : nativeStatus, receivedAt: Date.now() }) !== null
+			);
 		},
 	});
 }
 
-/** Completion means action begun/target observed for OPEN/CLOSE, explicit nonmoving state for STOP. */
+/** Completion means exact target-at-rest for percentages, action begun/endpoint for OPEN/CLOSE, nonmoving for STOP. */
 export const coverConfirmationReason = (window: PropertyCommandWindow | null): string | undefined =>
 	window?.proofKind !== 'cover_action'
 		? undefined

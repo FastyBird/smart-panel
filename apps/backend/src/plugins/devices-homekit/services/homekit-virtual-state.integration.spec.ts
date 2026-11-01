@@ -233,6 +233,62 @@ describe('HomeKit managed virtual state', () => {
 		expect(service.testCharacteristic(Characteristic.StatusFault)).toBe(false);
 	});
 
+	it('refuses an AUTO midpoint command with missing managed setpoints instead of inventing a range', async () => {
+		const parent = device(DeviceCategory.THERMOSTAT);
+		parent.mode = VirtualDeviceMode.CLIMATE_CONTROLLER;
+		const ambient = property(parent, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+		const mode = property(parent, ChannelCategory.THERMOSTAT, PropertyCategory.MODE, true, 'auto');
+		mode.format = ['off', 'heat', 'cool', 'auto'];
+		for (const channel of [ChannelCategory.HEATER, ChannelCategory.COOLER]) {
+			property(parent, channel, PropertyCategory.ON, true, true);
+			property(parent, channel, PropertyCategory.TEMPERATURE, true, null);
+			const status = property(parent, channel, PropertyCategory.STATUS);
+			status.valueOrigin = VirtualValueOrigin.LOCAL;
+			publish(status, false);
+		}
+		publish(ambient, 20);
+		const send = jest.spyOn(dispatcher, 'dispatchBatch');
+		const target = build(parent).getService(Service.Thermostat).getCharacteristic(Characteristic.TargetTemperature);
+		await expect(target.handleSetRequest(22)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect(send).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		[null, 24],
+		[22, null],
+		[NaN, 24],
+		[25, 24],
+		[24, 24],
+	])('refuses atomic AUTO mode for invalid managed setpoints %p/%p', async (heatValue, coolValue) => {
+		const parent = device(DeviceCategory.THERMOSTAT);
+		parent.mode = VirtualDeviceMode.CLIMATE_CONTROLLER;
+		const ambient = property(parent, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+		const mode = property(parent, ChannelCategory.THERMOSTAT, PropertyCategory.MODE, true, 'heat');
+		mode.format = ['off', 'heat', 'cool', 'auto'];
+		for (const [category, value] of [
+			[ChannelCategory.HEATER, heatValue],
+			[ChannelCategory.COOLER, coolValue],
+		] as const) {
+			property(parent, category, PropertyCategory.ON, true, category === ChannelCategory.HEATER);
+			property(parent, category, PropertyCategory.TEMPERATURE, true, value);
+			const status = property(parent, category, PropertyCategory.STATUS);
+			status.valueOrigin = VirtualValueOrigin.LOCAL;
+			publish(status, false);
+		}
+		publish(ambient, 20);
+		const send = jest.spyOn(dispatcher, 'dispatch').mockResolvedValue(undefined);
+		const target = build(parent)
+			.getService(Service.Thermostat)
+			.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+		await expect(target.handleSetRequest(Characteristic.TargetHeatingCoolingState.AUTO)).rejects.toBe(
+			HAPStatus.SERVICE_COMMUNICATION_FAILURE,
+		);
+		expect(send).not.toHaveBeenCalled();
+		// The same incomplete AUTO range must not block an independent OFF request.
+		await target.handleSetRequest(Characteristic.TargetHeatingCoolingState.OFF);
+		expect(send).toHaveBeenCalledWith(mode.id, 'off');
+	});
+
 	it('never publishes clamped AUTO thresholds for managed out-of-range or unknown settings, and recovers', async () => {
 		const parent = device(DeviceCategory.THERMOSTAT);
 		parent.mode = VirtualDeviceMode.CLIMATE_CONTROLLER;

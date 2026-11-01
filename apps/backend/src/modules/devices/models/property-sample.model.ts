@@ -6,7 +6,7 @@ export interface PropertySampleEvidence {
 	readonly receivedAt: Date;
 	readonly provenance: 'live' | 'cached' | 'retained';
 	/** Internal semantic classification; generic imperative cover mappings do not establish native movement state. */
-	readonly semanticOrigin?: 'native_cover_status';
+	readonly semanticOrigin?: 'native_cover_status' | 'native_cover_tilt_percentage';
 	/** Factual API field presence in a native status, not hardware qualification. */
 	readonly nativeCoverTagPresent?: boolean;
 	/** Opaque process-local command observation capability; never serialized or persisted. */

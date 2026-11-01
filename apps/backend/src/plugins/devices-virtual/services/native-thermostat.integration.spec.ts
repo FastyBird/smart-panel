@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
@@ -12,6 +13,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import type { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import type {
 	NativeClimateRequest,
@@ -22,7 +24,12 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { HomeKitEventListener } from '../../devices-homekit/listeners/homekit-event.listener';
+import { HomeKitCommandDispatcher } from '../../devices-homekit/services/homekit-command.dispatcher';
+import { HomeKitMapperRegistryService } from '../../devices-homekit/services/homekit-mapper-registry.service';
+import { HomeKitPropertyStateService } from '../../devices-homekit/services/homekit-property-state.service';
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
@@ -173,6 +180,198 @@ describe('native thermostat durable request lifecycle', () => {
 	afterEach(async () => {
 		await service.onModuleDestroy();
 		await database.destroy();
+	});
+
+	it('composes real HAP mode writes with the durable native journal and expiring producer feedback', async () => {
+		const producers = service['producers'];
+		const homekit = new HomeKitMapperRegistryService(
+			new HomeKitPropertyStateService(producers, new PropertyValueSourceRegistryService()),
+		);
+		const listener = new HomeKitEventListener(homekit);
+		const owner = await database.manager.findOneByOrFail(DeviceEntity, { id: controller });
+		owner.status = { online: true } as DeviceEntity['status'];
+		owner.channels = [];
+		const ids: Record<string, string> = {};
+		const add = async (category: ChannelCategory, fields: [string, PropertyCategory, boolean, unknown][]) => {
+			const channel = Object.assign(new VirtualChannelEntity(), {
+				id: uuid(),
+				device: owner,
+				category,
+				name: category,
+				properties: [],
+			});
+			await database.manager.insert(VirtualChannelEntity, {
+				id: channel.id,
+				device: controller,
+				category,
+				name: category,
+			} as never);
+			owner.channels.push(channel);
+			for (const [key, quantity, writable, value] of fields) {
+				const property = Object.assign(new VirtualChannelPropertyEntity(), {
+					id: uuid(),
+					channel,
+					category: quantity,
+					permissions: [writable ? PermissionType.READ_WRITE : PermissionType.READ_ONLY],
+					valueOrigin: VirtualValueOrigin.LOCAL,
+					format: key === 'mode' ? ['off', 'heat', 'cool', 'auto'] : null,
+					dataType:
+						key === 'mode' ? DataTypeType.ENUM : typeof value === 'boolean' ? DataTypeType.BOOL : DataTypeType.FLOAT,
+					value: new PropertyValueState(value as number),
+				});
+				await database.manager.insert(VirtualChannelPropertyEntity, {
+					id: property.id,
+					channel: channel.id,
+					category: quantity,
+					permissions: property.permissions,
+					valueOrigin: VirtualValueOrigin.LOCAL,
+					format: property.format,
+					dataType: property.dataType,
+				} as never);
+				channel.properties.push(property);
+				ids[key] = property.id;
+			}
+		};
+		await add(ChannelCategory.THERMOSTAT, [['mode', PropertyCategory.MODE, true, 'off']]);
+		await add(ChannelCategory.TEMPERATURE, [['temperature', PropertyCategory.TEMPERATURE, false, 19]]);
+		await add(ChannelCategory.HEATER, [
+			['heating_enabled', PropertyCategory.ON, true, false],
+			['heating_setpoint', PropertyCategory.TEMPERATURE, true, 22],
+			['heating_activity', PropertyCategory.STATUS, false, false],
+		]);
+		await add(ChannelCategory.COOLER, [
+			['cooling_enabled', PropertyCategory.ON, true, false],
+			['cooling_setpoint', PropertyCategory.TEMPERATURE, true, 25],
+			['cooling_activity', PropertyCategory.STATUS, false, false],
+		]);
+		jest.spyOn(unit, 'isCurrent').mockReturnValue(false);
+		unit = {
+			...unit,
+			isCurrent: () => true,
+			observe: () => ({
+				available: true,
+				temperature: 19,
+				mode: 'heat',
+				heatingSetpoint: 22,
+				coolingSetpoint: 25,
+				activity: 'heating',
+				observedAt: new Date().toISOString(),
+				reasons: [],
+				isCurrent: () => true,
+			}),
+			capabilities: {
+				...unit.capabilities,
+				modes: ['off', 'heat', 'cool', 'auto'],
+				cooling: { minimum: 5, maximum: 30, step: 0.5 },
+			},
+		};
+		await database.manager.update(
+			NativeThermostatEntity,
+			{ controllerId: controller },
+			{ propertyIds: ids, requested: { mode: 'off', heatingSetpoint: 22, coolingSetpoint: 25 } },
+		);
+		const properties = owner.channels.flatMap((channel) => channel.properties);
+		const leases = new Map<string, ReturnType<PropertyProducerRegistryService['register']>>();
+		const publish = (key: string, value: number | boolean) => {
+			const property = properties.find((property) => property.id === ids[key]);
+			let lease = leases.get(key);
+			if (!lease || !producers.isAvailable(lease)) {
+				lease = producers.register(property, 1);
+				leases.set(key, lease);
+			}
+			const now = Date.now();
+			expect(
+				producers.commit(
+					lease,
+					new PropertyValueState(value),
+					{
+						quality: 'good',
+						reasons: [],
+						sampledAt: new Date(now),
+						evaluatedAt: new Date(now),
+						expiresAt: new Date(now + 1000),
+					},
+					producers.version(lease),
+				),
+			).toBe(true);
+			listener.handlePropertyValueSet(property);
+		};
+		valueWriter.write.mockImplementation((property: ChannelPropertyEntity, value: number | boolean) => {
+			property.value = new PropertyValueState(value);
+			listener.handlePropertyValueSet(property);
+			return Promise.resolve(true);
+		});
+		valueWriter.publishDerived.mockImplementation(
+			(
+				property: ChannelPropertyEntity,
+				lease: Parameters<PropertyProducerRegistryService['commit']>[0],
+				value: number | boolean,
+				publication: Parameters<PropertyProducerRegistryService['commit']>[2],
+			) => {
+				const state = new PropertyValueState(value);
+				const accepted = producers.commit(lease, state, publication, producers.version(lease));
+				if (accepted) listener.handlePropertyValueSet(property);
+				return Promise.resolve({ state: accepted ? state : null });
+			},
+		);
+		const dispatcher = new HomeKitCommandDispatcher({
+			executePropertyCommandById: async (propertyId: string, value: string) => ({
+				success: await service.commandSettings([{ deviceId: controller, propertyId, value }]),
+			}),
+			executePropertyCommands: async (commands: { propertyId: string; value: string | boolean | number }[]) => {
+				const success = await service.commandSettings(
+					commands.map((command) => ({ deviceId: controller, ...command })),
+				);
+				return { success, results: [{ success }] };
+			},
+			canExecuteCompositeProperty: () => false,
+		} as never);
+		publish('temperature', 19);
+		publish('heating_activity', true);
+		publish('cooling_activity', false);
+		const staged = homekit.buildAccessory(owner, dispatcher);
+		homekit.commitStaged(staged);
+		const hap = staged.accessory.getService(Service.Thermostat);
+		const target = hap.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+		const actual = hap.getCharacteristic(Characteristic.CurrentHeatingCoolingState);
+		await expect(target.handleGetRequest()).resolves.toBe(0);
+		await expect(actual.handleGetRequest()).resolves.toBe(1);
+		for (const [requested, mode] of [
+			[1, 'heat'],
+			[2, 'cool'],
+			[3, 'auto'],
+			[0, 'off'],
+		] as const) {
+			await expect(target.handleSetRequest(requested)).resolves.toBeDefined();
+			expect(prepare).toHaveBeenLastCalledWith({ mode });
+			expect((await service.get(controller)).requested.mode).toBe(mode);
+			expect(await target.handleGetRequest()).toBe(requested);
+			await expect(actual.handleGetRequest()).resolves.toBe(1);
+		}
+		dispatch.mockResolvedValueOnce([{ operation: 'mode', outcome: 'unknown', confirmed: false }]);
+		await expect(target.handleSetRequest(2)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect((await service.get(controller)).latest_request.operations[0].outcome).toBe('unknown');
+		await expect(actual.handleGetRequest()).resolves.toBe(1);
+		const expired = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 30_001);
+		try {
+			await expect(actual.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		} finally {
+			expired.mockRestore();
+		}
+		publish('heating_activity', false);
+		publish('cooling_activity', false);
+		expect(await actual.handleGetRequest()).toBe(0);
+		const rebuilt = homekit.buildAccessory(owner, dispatcher);
+		homekit.commitStaged(rebuilt);
+		expect(rebuilt.accessory.UUID).toBe(staged.accessory.UUID);
+		await expect(target.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		producers.unregister(leases.get('heating_activity'));
+		await expect(
+			rebuilt.accessory
+				.getService(Service.Thermostat)
+				.getCharacteristic(Characteristic.CurrentHeatingCoolingState)
+				.handleGetRequest(),
+		).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
 	});
 
 	it.each(['source', 'aliases'] as const)(

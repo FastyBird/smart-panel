@@ -63,6 +63,12 @@ mappings:
               data_type: UCHAR
               format: [0, 100]
               unit: '%'
+          - shelly_property: slat_pos
+            panel:
+              identifier: TILT
+              data_type: UCHAR
+              format: [0, 100]
+              unit: '%'
         static_properties:
           - identifier: COMMAND
             data_type: ENUM
