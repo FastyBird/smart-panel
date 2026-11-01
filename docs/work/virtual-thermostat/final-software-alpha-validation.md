@@ -26,6 +26,7 @@ are unchanged by this runtime/test/release preparation; no generated API/spec fi
 | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Complete ordinary E2E after adding the four cases                                                    | **29 suites / 424 passing cases, composed**: 28 suites / 310 PASS in the complete run, then the entire corrected virtual-device file / 114 PASS. Both have zero skips and natural exits. The initial full run remains RED (423 PASS / 1 FAIL). Earlier strengthened upgrade (1/1) and composition (2/2) remain retained. |
 | Complete durable thermostat runtime including the multi-command controls and actual-interval held ON | **155/155 PASS**, zero skips, natural exit 0. Includes six startup/lifetime cases and two original-row refusal controls.                                                                                                                                                                                                 |
+| Remote dew-point compiled protocol and runtime renewal                                               | **39/39 PASS**, zero skips, after replacing the manual active flag with actual bootstrap/admission and stop. Original journal/packet assertions remain; stopped-context ON additionally refuses without history or output changes.                                                                                       |
 | Ported inherited-method descriptor controls                                                          | **6/6 PASS**, zero skips.                                                                                                                                                                                                                                                                                                |
 | Backend types                                                                                        | Final noEmit/incremental-false gate PASS, including the production lifecycle/journal changes and eight new cases.                                                                                                                                                                                                        |
 | Strict lint                                                                                          | All three changed runtime/journal TypeScript files and the corrected E2E setup PASS with zero warnings; prior HTTP/upgrade/descriptor checks retained.                                                                                                                                                                   |
@@ -81,6 +82,23 @@ wrong climate enum; and a sample timestamp was accidentally in the future relati
 The fixture was corrected without weakening production input-age, command or authorization rules. Earlier
 historical runtime/timeouts and worker warnings remain source-specific; later passing results do not diagnose them.
 
+### Hosted failure follow-up: remote-provider continuity fixture
+
+[The backend job on 46468ac](https://github.com/FastyBird/smart-panel/actions/runs/41321547287/job/124892690032)
+passed 725 suites and failed one case in `remote-dew-point-protocol.spec.ts` (13,301 passes, one failure and one
+existing skip). E2E and the following qualification spikes were skipped by that failure. The identical complete
+39-case file reproduces the single failure locally: its private dispatch fixture assigned `active = true` without
+starting a lifecycle, so the new native lifetime guard correctly refused it.
+
+The fixture now awaits real bootstrap, native recovery and runtime admission; real stop owns cleanup. Its existing
+controlled cooling frame is installed through the actual transport registration/disposer during startup. Decision
+scheduling and demand stay controlled because this case isolates renewal/transport, rather than full evaluation.
+The permissive standalone runtime-admission callback is removed. All existing two-command, native packet identity,
+threshold/sequence and finite-lease assertions remain, followed by a real stopped-context refusal with unchanged
+journal and native ON count. The complete file passes 39/39. Production source is unchanged; the original failed
+hosted and local runs are retained. This test correction requires fresh exact-head CI and does not close any of
+the 139 original residual bindings or grant installed-equipment qualification.
+
 ## Original #1473 reconciliation
 
 [The complete row inventory](original1473-case-map.json) preserves every one of the original 261 expanded cases,
@@ -109,7 +127,7 @@ strengthening above. That correction does not clear unrelated original controlle
 observer or fixture-ownership schedules. #1473 remains frozen and is not superseded. #1462 and alpha clearance
 remain open until required residuals are resolved or explicitly dispositioned with evidence.
 
-Hosted CI on preparation head `dd9b9b8549c72d0796aa618648730e145d287337` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41314503661) succeeded. It includes the real issued-OFF enhancement but predates the lifecycle correction; exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
+Hosted CI on preparation head `dd9b9b8549c72d0796aa618648730e145d287337` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41314503661) succeeded. It includes the real issued-OFF enhancement but predates the lifecycle correction. The later 46468ac backend failure and fixture correction are recorded above; fresh exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
 
 ## Release preparation
 
