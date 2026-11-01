@@ -14,11 +14,11 @@
   },
   "current": {
     "baseCommit": "54e2c92c57d4aa2a906cd7744e3d60294c203377",
-    "fileSha256": "9ed8fe2e38bafe9342d1ab7bd4c7b7137b44afde308fcfae94f0d20ae0a3efcb",
+    "fileSha256": "c87e4399ddd18fc4b36254bacda0f09d96b72ca018cb46a4c41274c525235d7a",
     "qualification": "Complete-runtime rerun and negative controls are recorded in final-software-alpha-validation.md. This ledger never diagnoses historical failures.",
     "fullBackendRuntimeFileSha256": "df910cf5982456b0b40d33d362bb1ad46c9be14da33922526deffcd1dcc2bdd3",
     "fullBackendReportSha256": "8b41eb4a2fa1fe1d5a988fc412080064962b904619b6518696d3663233cb22e6",
-    "runtimeReportSha256": "dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9",
+    "runtimeReportSha256": "d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa",
     "runtimeResult": {
       "passed": 147,
       "failed": 0,
@@ -26,10 +26,9 @@
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 146,
-    "scoped_current_invariant_bound": 99,
-    "replacement_current_invariant_bound": 6,
-    "partial_journal_invariant_bound_original_off_transcript_open": 4,
+    "residual_no_current_case_bound": 145,
+    "scoped_current_invariant_bound": 103,
+    "replacement_current_invariant_bound": 7,
     "ported_descriptor_control_qualified": 6
   },
   "rows": [
@@ -141,7 +140,7 @@
         "bodySha256": "284fff4cf0f6818dfc38f6aa7c41ebb63e39d6f5a07a6d6ddb6b9adc83d64e42",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "c49a4d5f1d3dc7bad6b1393316e76ff2431c79f44a367178b4e1e8f9434d9315",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -163,7 +162,7 @@
         "bodySha256": "fc132485c31878e06977dfdc1c9d87b223d9dc39c3e16c16715cf0ea1c9deafa",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "d6f811a18c0d14090d0c9a2bae73539b2814542ab522ed20b4b8709a17368387",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -185,7 +184,7 @@
         "bodySha256": "bec764ae6d270f344677db8c23a425e51e85a8bd91eb5a0d9bc683c59c54b83a",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "bec764ae6d270f344677db8c23a425e51e85a8bd91eb5a0d9bc683c59c54b83a",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -207,7 +206,7 @@
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -229,7 +228,7 @@
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -251,7 +250,7 @@
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -273,7 +272,7 @@
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -295,7 +294,7 @@
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -317,7 +316,7 @@
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -339,7 +338,7 @@
         "bodySha256": "29546b8ab482e3e1959b662f42a19d7bb6a71ec6c1ae942fe509eae9990b0aa5",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6144033e307aa7367ea2d2acc0e4e5069ac35c3adfb30762eb4577655f4b1ba1",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -361,7 +360,7 @@
         "bodySha256": "29546b8ab482e3e1959b662f42a19d7bb6a71ec6c1ae942fe509eae9990b0aa5",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6144033e307aa7367ea2d2acc0e4e5069ac35c3adfb30762eb4577655f4b1ba1",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -382,7 +381,7 @@
         "bodySha256": "40ab25baca572fb9cd9f6fdaf871918fa0fe3ad1d77120105db09a485e1c3193",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6491676a6062fc7bef23ad99c7c577eb16ff9cd99e54d5c3bc443806e24c6545",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -403,7 +402,7 @@
         "bodySha256": "3805d32518638911c4918c70bff08609419689c2e9259b07687e35dfe9b7709c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "d5bcc6292a10245822aaa4c817f41c38cfa4453a2cc31f3d634bff173c6413fa",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -424,7 +423,7 @@
         "bodySha256": "7b7e8a6f4d83e43e3568c41711535296b5de5eb70e49ef8413042bd2344d4236",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "472c866b383d897feff5875b97052a09553a0be50b2a62758b1085f5dd078447",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -445,7 +444,7 @@
         "bodySha256": "f4cc4419a598a32290647b8d1a1124c7220720b7a037d1ab907fecef0a710775",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "04fb8d1dc0cc482b348381ebfff6fb5e4ec859f90e6e45fb0adb15733c57dde4",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -466,7 +465,7 @@
         "bodySha256": "806706106aae5201995eb18e485b0fccf2408a52fbfcb28cf1cf60406885b42c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "1a3a425a7d724b5905152614acebbe10ad3f8fb8219e2f7dae7bd2e1a803bafa",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -487,7 +486,7 @@
         "bodySha256": "ba75ab27301c1be5d83807ea3550794a328da12d940a6d39c9ff10dcb33ea532",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "645bdf1c46f7d62cc3af1467164ca3516be60fb56951dd9afb249bf1aaa9835a",
       "semanticComparison": "Detached freshness snapshots retain the matching HTTP/event stamp and cannot rewrite the original published result. This is the service/controlled-port boundary, not a network subscriber acknowledgement."
@@ -508,7 +507,7 @@
         "bodySha256": "1b6b1baf2466d29509d65994584bfb856ddb2c920e8e91472e9fdc18725c5aa3",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "dbd70a77b6219be33a04bad3fd954a5154819eca9ecd8299b9f5046421f4d5ad",
       "semanticComparison": "The original before-send refusal versus potentially-sent ON versus refused OFF outcomes remain distinct. Journal status, mandatory OFF attempts, claim retention and eventual qualified release assertions remain; transport outcomes are controlled."
@@ -529,7 +528,7 @@
         "bodySha256": "2ec2a92af63119fd60f8d08fdccaf15b87724b700a0b5107ae3c7379268c7dc9",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "c7682c75409901ba2d7303241ced23d58b8fd5f830485a29d48b468d71d9a4cb",
       "semanticComparison": "The original before-send refusal versus potentially-sent ON versus refused OFF outcomes remain distinct. Journal status, mandatory OFF attempts, claim retention and eventual qualified release assertions remain; transport outcomes are controlled."
@@ -550,7 +549,7 @@
         "bodySha256": "626d8fe81a701104c7f4269af8dd9e625db101f84aff0149fc0334fa496cdd8c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "fd42e185ad1c18011313bc32d44994b1d2f0cb2acc0ac1d17a41aa0e6da46ef0",
       "semanticComparison": "The original before-send refusal versus potentially-sent ON versus refused OFF outcomes remain distinct. Journal status, mandatory OFF attempts, claim retention and eventual qualified release assertions remain; transport outcomes are controlled."
@@ -571,7 +570,7 @@
         "bodySha256": "2a58418c61eb4517893398ff7adde401a06329143356cfa3437a38fa0669efd5",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "15de930f51adaf92d29c686356d8747fcff4a07ba9d9139189e79219152b438b",
       "semanticComparison": "The helper reads independent complete journal facts before public inspect, observes the original loadDecisionCommands result without replacing it, and verifies all six witness predicates, latest ordering, uniqueness, scope, whole-row equality and cardinality. Lazy drainage still requires every unresolved identity. Oldest-prepared, duplicate-row and corrupt-proofId negative controls each fail both cases at these exact oracle assertions."
@@ -592,7 +591,7 @@
         "bodySha256": "537ea46cc0aea5e3b13949c8619336a7faf8de8803328d184c0f67080c40a4e4",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e7b9fe3a2d5b6c1dddbfb560a3cddf96898ea5d2752ca3007e1de145004a7c07",
       "semanticComparison": "The helper reads independent complete journal facts before public inspect, observes the original loadDecisionCommands result without replacing it, and verifies all six witness predicates, latest ordering, uniqueness, scope, whole-row equality and cardinality. Lazy drainage still requires every unresolved identity. Oldest-prepared, duplicate-row and corrupt-proofId negative controls each fail both cases at these exact oracle assertions."
@@ -613,7 +612,7 @@
         "bodySha256": "460d4102cf448fb8813ec2886100c674e200ff6666524a77c55abf14ecc4873d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "b10cb257d10a9d982f8a4a6dd8abe7ff8c7871920c66f58e6f8bae4cd34f1300",
       "semanticComparison": "The current public requestInstalled issues and joins the remedial OFF before the proof gate. A new ON inserted while proof I/O is held prevents settlement of both original accepted identities until a fresh complete proof. The original omit-new-identity refusal is retained without private-entry-only credit."
@@ -634,7 +633,7 @@
         "bodySha256": "0ac9f42455ae03c5bcbf6a68a7f260cde360591d9646df2498ab8c32772106a6",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "374a1c90a7a8ae5f1969b08e989072a9b2ff3307331c3229686a7369474fb9d4",
       "semanticComparison": "Retained latest-ON timestamp still controls the lease renewal boundary; the same complete timestamp/dispatch assertions were compared rather than inferred from the title."
@@ -655,7 +654,7 @@
         "bodySha256": "0700e900e1d99e2005a9776fa778cadb79bf7499bf9dba94883252a3cd37436d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "78f0286137bbbf8aa2b6e0ce9a401a178a3f6ef84d4d220f09aa6c72002aa46f",
       "semanticComparison": "The hook moved from inFlightCommands.set to dispatch entry. Production order remains insert ACK, context append, inFlight set, dispatch: both hooks are after prepared ACK and before transport. The accepted sample cancels the original unsent identity, while a fresh different identity is accepted exactly once. This does not qualify original Promise-observer custody."
@@ -676,7 +675,7 @@
         "bodySha256": "19508a18856f74cf3725e9195c1aa72501ebd28655e585a0190804eb28808e35",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "40dbd6d3fea47e5cd6e8b475052143b75848f4f10f3d34758fee239bcf46a5b7",
       "semanticComparison": "Restart still ignores the newer cancelled ON while retaining the earlier confirmed ON, with persisted original identities and timestamps; fixture field ownership changed to per-case locals."
@@ -697,7 +696,7 @@
         "bodySha256": "0063d88a452e701ab6637e549630b29e88b1124ac984db44c264361282fb4884",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "49d3a4c36eca650b33017838a7b32c70a86ff3c245375882136a82d4e1929d51",
       "semanticComparison": "Unavailable graph validation still closes output and diagnostic authority, including publication held across failure/retry. Current request suppression allows one original inspection and only a fresh post-retry inspection republishes. This binds the business publication rule, not retired cross-case fixture ABA controls."
@@ -718,7 +717,7 @@
         "bodySha256": "f2a562b655f81259cf63d130590c248cbb6c5ed98c36d3969f4c07d28b1dd34b",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4131d5f1c02551232b487eaad0023c64d3254c7184dc42503361d4e349f966db",
       "semanticComparison": "Unavailable graph validation still closes output and diagnostic authority, including publication held across failure/retry. Current request suppression allows one original inspection and only a fresh post-retry inspection republishes. This binds the business publication rule, not retired cross-case fixture ABA controls."
@@ -739,7 +738,7 @@
         "bodySha256": "e0b8148a41acf335df075d1b85d42650d88eeea6c5c5ee3d4687693ca4818918",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "068c4a384e0d6b1703593032ef16f763fe16fa0770075dc74f39d208f0c11711",
       "semanticComparison": "Unavailable graph validation still closes output and diagnostic authority, including publication held across failure/retry. Current request suppression allows one original inspection and only a fresh post-retry inspection republishes. This binds the business publication rule, not retired cross-case fixture ABA controls."
@@ -760,7 +759,7 @@
         "bodySha256": "4ba00de3d7a7788f68de3a4a030e7c4865fe07e4c2a05b3008b1c69168e192dc",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "dab1dd68bb537ec4ce329e10a75751a3ee91f4950f9900c8719248ede248eb91",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -781,7 +780,7 @@
         "bodySha256": "62604274dbd42d1b325df0717d14bcd2eaa887089aee09f29b118f119c3d475a",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4593b87008e49c85da6a2aa6941950b2dad13fb5c441649667273e9eff1e8a76",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -802,7 +801,7 @@
         "bodySha256": "fe5b7dd9795d3b2f337ed1cb3560849d5a640a6cd7a416ea532f56727ca99742",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ba2c4298c99a0f67f9233ab335a7d4eeecc484f6cec4e535b66cccf660531d1",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -823,7 +822,7 @@
         "bodySha256": "44c1055fa35151d08c1b2958f6f47cf7654062f062426aee4d97994149a71b70",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "cb572fc2d4faa228dd64cf5c99881b639a04e8bf854ab859efa95797e9143bcf",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -844,7 +843,7 @@
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -865,7 +864,7 @@
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -886,7 +885,7 @@
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -907,7 +906,7 @@
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -928,7 +927,7 @@
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -949,7 +948,7 @@
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -970,7 +969,7 @@
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -991,7 +990,7 @@
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1012,7 +1011,7 @@
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1033,7 +1032,7 @@
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1054,7 +1053,7 @@
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1075,7 +1074,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1096,7 +1095,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1117,7 +1116,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1138,7 +1137,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1159,7 +1158,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1180,7 +1179,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1201,7 +1200,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1222,7 +1221,7 @@
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1243,7 +1242,7 @@
         "bodySha256": "6d578232c6b83c1a48b6fc54a5b133b9c1a1d5aa1809e6099779faff7a7d6e19",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "d63fdf34567480566dad11a8e0d2be41a95cd84ae28e00cfea79a9e949742ba0",
       "semanticComparison": "The actual restart or held-authentication boundary preserves the prepared/accepted unresolved ON and refuses a stale or undrained successor. Original command identities and source-loss assertions remain; physical acceptance is controlled."
@@ -1264,7 +1263,7 @@
         "bodySha256": "51d3362ce80bed6395c17cf448cdf4413116fa30c8368c4295cd990651a69fe8",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "b44e41b960b79aa2920e116c909885ecb8f15c09e134eee5ce709759c146cda8",
       "semanticComparison": "The actual restart or held-authentication boundary preserves the prepared/accepted unresolved ON and refuses a stale or undrained successor. Original command identities and source-loss assertions remain; physical acceptance is controlled."
@@ -1285,7 +1284,7 @@
         "bodySha256": "10606c1bd5fd189e6fde713c87fe21a5ade02bbf60e619516f691261ecfffe28",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "903ef2b7144838971e247a658719612fd9120bd3fd7917f3d15b14bc7788621c",
       "semanticComparison": "The actual restart or held-authentication boundary preserves the prepared/accepted unresolved ON and refuses a stale or undrained successor. Original command identities and source-loss assertions remain; physical acceptance is controlled."
@@ -1306,7 +1305,7 @@
         "bodySha256": "18a4f55a0bfa9739f0e0f33cfe6b8f4d1e11a80236aea055d2ef01614bdf7914",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "f2ff7fd176d636328e117415b40a6ad527efad4b0da70ff61db161dae14ae392",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1327,7 +1326,7 @@
         "bodySha256": "18a4f55a0bfa9739f0e0f33cfe6b8f4d1e11a80236aea055d2ef01614bdf7914",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "f2ff7fd176d636328e117415b40a6ad527efad4b0da70ff61db161dae14ae392",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1348,7 +1347,7 @@
         "bodySha256": "94c6831174ba08ce64137cfbbe3d4ec3c1122f6e82ba17fedfb7cafd0a37f04c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "66d413899ad42c10ee1ff593a654d3c46ae6d561000c5e23b1a81d072daf2891",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1369,7 +1368,7 @@
         "bodySha256": "cef812a24f829c8327b32fa349732fa1b65ab93936164f449f3d5318dfec8d25",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "fdac85d4e3e50347924d08d74f376bbecb2a8a0d6f8e338d8cc9ad5cff8a791f",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1390,7 +1389,7 @@
         "bodySha256": "9015e2c4e0c7e5ede9522d540ef6a6020fbe9779607185bcd59dfcc3cffd1f5b",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "601af1f0eced980f5c6009df9960567251fda211e2c68aa113584a3342f5f9e4",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1411,7 +1410,7 @@
         "bodySha256": "804098bba8041593d9a8495f8acbf0890c7f3b0447aab8496e33534b94fe8740",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4410f240b817bcb3f3c51a498664d9e12733637e8dc18da0b815b884b30a8ba1",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1432,7 +1431,7 @@
         "bodySha256": "804098bba8041593d9a8495f8acbf0890c7f3b0447aab8496e33534b94fe8740",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "4410f240b817bcb3f3c51a498664d9e12733637e8dc18da0b815b884b30a8ba1",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1453,7 +1452,7 @@
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1474,7 +1473,7 @@
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1495,7 +1494,7 @@
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1516,7 +1515,7 @@
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1537,7 +1536,7 @@
         "bodySha256": "90bcf8d524a983a0dbbde29cdb914b97d1aae87ed664d1dc784bc0f85a985a15",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "b9bda76f16962bde582c7788d67889d52043b298495bad47bb28d7515b48fb95",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1558,7 +1557,7 @@
         "bodySha256": "719566f070c331d3c6ae6d6c1ab7872a814dc73a962bc73b18e0ab2930063486",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "1e660fa11e258dad8126bdb9fd88a863ae958fa5a9e07e4ec8815eb125af4d30",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1579,7 +1578,7 @@
         "bodySha256": "900dd08653bad62d23b07134681adeb000c7bfa57c64139f0a436569e20c0574",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "8b6384692aea43e242e6a7c80c03cd08a594779d82f3de9600c058a42a5cfaf0",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1600,7 +1599,7 @@
         "bodySha256": "900dd08653bad62d23b07134681adeb000c7bfa57c64139f0a436569e20c0574",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "8b6384692aea43e242e6a7c80c03cd08a594779d82f3de9600c058a42a5cfaf0",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1621,7 +1620,7 @@
         "bodySha256": "900dd08653bad62d23b07134681adeb000c7bfa57c64139f0a436569e20c0574",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "8b6384692aea43e242e6a7c80c03cd08a594779d82f3de9600c058a42a5cfaf0",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1642,7 +1641,7 @@
         "bodySha256": "8e7c4c458187604c9d2714198b2deda6c4cab407e8f27f6035cf51167717d103",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "9b781cf80b4ab3f91698f5788c015a0718610cad700dd9a6dd125e6134776014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1663,7 +1662,7 @@
         "bodySha256": "8e7c4c458187604c9d2714198b2deda6c4cab407e8f27f6035cf51167717d103",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "9b781cf80b4ab3f91698f5788c015a0718610cad700dd9a6dd125e6134776014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1684,7 +1683,7 @@
         "bodySha256": "8e7c4c458187604c9d2714198b2deda6c4cab407e8f27f6035cf51167717d103",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "9b781cf80b4ab3f91698f5788c015a0718610cad700dd9a6dd125e6134776014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1705,7 +1704,7 @@
         "bodySha256": "4c74493f7b4e88cfa543957f3d4f6e2af197579f65aecb64d7e4d05382d545dd",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "1a8b0694c25f0f93be1794d2751ab3e9cfab58bc45defe1c3cca16e1573d2baf",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1726,7 +1725,7 @@
         "bodySha256": "6f9110d8722ed6629645c0a36c58f9473158cdfef35a436d40ca6e132f108707",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "db92f6af25b33ab493f52a039a0c6f35c69331eee558181d68a0be5afa1df014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1747,7 +1746,7 @@
         "bodySha256": "6f9110d8722ed6629645c0a36c58f9473158cdfef35a436d40ca6e132f108707",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "db92f6af25b33ab493f52a039a0c6f35c69331eee558181d68a0be5afa1df014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1768,7 +1767,7 @@
         "bodySha256": "00568bd6c653dacb21bdab218719964afe4e1a6fb7c8fbbe59b5bcc951bc8349",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "465d3c1e11ba82046498d91ab7253a54a2f8daf88244d394708dcceb5ec20183",
       "semanticComparison": "All 24 original branch assertions remain. The current fixture observes the same two original ON dispatches, one held and one accepted without proof, before the actual mutation/expiry. It checks queued cancellation, sibling confirmation, the same IDs, OFF proof and branch drainage. A coherent fake Date/performance timeline is used; real SQLite awaits remain. Basic claims/value ports are controlled."
@@ -1789,7 +1788,7 @@
         "bodySha256": "00568bd6c653dacb21bdab218719964afe4e1a6fb7c8fbbe59b5bcc951bc8349",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "465d3c1e11ba82046498d91ab7253a54a2f8daf88244d394708dcceb5ec20183",
       "semanticComparison": "All 24 original branch assertions remain. The current fixture observes the same two original ON dispatches, one held and one accepted without proof, before the actual mutation/expiry. It checks queued cancellation, sibling confirmation, the same IDs, OFF proof and branch drainage. A coherent fake Date/performance timeline is used; real SQLite awaits remain. Basic claims/value ports are controlled."
@@ -1810,7 +1809,7 @@
         "bodySha256": "00568bd6c653dacb21bdab218719964afe4e1a6fb7c8fbbe59b5bcc951bc8349",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "465d3c1e11ba82046498d91ab7253a54a2f8daf88244d394708dcceb5ec20183",
       "semanticComparison": "All 24 original branch assertions remain. The current fixture observes the same two original ON dispatches, one held and one accepted without proof, before the actual mutation/expiry. It checks queued cancellation, sibling confirmation, the same IDs, OFF proof and branch drainage. A coherent fake Date/performance timeline is used; real SQLite awaits remain. Basic claims/value ports are controlled."
@@ -1831,7 +1830,7 @@
         "bodySha256": "9fc9a639bff62a38ee352c5c6730e4af9f299a280a507b51710c408153ed4a08",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "8e1c9d3e7065c350bb9106a3a97fc175f2503d1fd8969e00770b80a2ed2f30a3",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1852,7 +1851,7 @@
         "bodySha256": "959abd8587767617bd4a0dcbf5ce504541cc7374af9a640aeefb812105613f56",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "82cf52544efaff25d375b0caee8b3e0436ab05bad597e73dc9b13584abd3f5cd",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1873,7 +1872,7 @@
         "bodySha256": "25dde25256c1323f8570d786990848d34a680faaeb391995636854210cc9326d",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "0cdef6c00ae92a1a846b623c29018309bc70ce1e9528fd6cbc1028f77d026ed9",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1894,7 +1893,7 @@
         "bodySha256": "21d3d234e55430c17ca608e3bc25582cfd05aad4518d481fe8308d2f2243af22",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "2878e364db80d4811bc4c1fffa5b6d03eeee17b2fed4315c2d565ff7e84719f9",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1915,7 +1914,7 @@
         "bodySha256": "0f6a2919bac7689d90168af0f807c5943fefa5aaefc52d69414b043646f08152",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "e8eef4e25431f4bcc755734647a0a7c84c72021dd2480fb70428632984dc75dd",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1936,7 +1935,7 @@
         "bodySha256": "b4ec8e525fcfe97b326d48e239966c1e1bde4fc1f287d7d998e00c72191fca04",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "10ee379d6107c6718937eec491386618f6ee45d0aacd5c94530d1b9503563236",
       "semanticComparison": "allowLateOn permits the already-issued controlled adapter to return the configured known refusal after context replacement; an earlier fixture guard no longer masks that intended outcome. The same mandatory-failure fence and running-sibling release assertions remain. This is controlled adapter evidence, not actual downstream SDK authority."
@@ -1957,7 +1956,7 @@
         "bodySha256": "458f614925c9021103aa1232b2a4a288cc7b3c9e00dba9cbd18c3cddf5e89949",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "b8624456f58dee337578a4dbeb2bfebfb594e3a07591078dc15711815192d395",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -1978,7 +1977,7 @@
         "bodySha256": "df5f15a688765ab54a4c27ebfaefe54fcf823abe7d7bafb81dd6627b81d46e0d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "382e46fc30f5f91f6cadffc255d5fbb9d828c64648ebeef63d506ea102b9a068",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -1999,7 +1998,7 @@
         "bodySha256": "2dffe9c7ecdf1a34c0f78b959013353d1abb4fbc4a268f61ab75be3ad795fe8e",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "687c94886dd11607fb678e562f8d0fa1257c17929b7548a64202cb08b21691b8",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2020,7 +2019,7 @@
         "bodySha256": "e0020929bf02ddb5e9b208f732d04579b836d5f0071b6d052dc0f1a978f4ef66",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "1875f37204d4d3f4bfb5ba50418f89b75224156c97ee8516665d4187cf2f3b98",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2041,7 +2040,7 @@
         "bodySha256": "a957f2e200e293e53eb0d0aad015728fd32addfbc1c928ee1c87314739f8f27d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "c0d3e494042e62b0e920528d7ecfec62ccf268701af7fecc791fb3c29d06d1d2",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2062,7 +2061,7 @@
         "bodySha256": "f32ddedd9a9b2ead0226230e20b77b89b007e63cfede64f320d3920e23284654",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "06701a8a9b3e65565610b84c45325732c9d68c51afad7f46b965c0ed4eb9fcb5",
       "semanticComparison": "The find spy is installed after bootstrap, so its absolute retry count replaces the old bootstrap-relative delta. The first claims.reload query is the actual claim-entity read; one-shot failure, recovery fence, held closed admission and nonrevival of earlier captures remain."
@@ -2083,7 +2082,7 @@
         "bodySha256": "ce67404ed69a8c606ec7141cb6650ddd44d9fb375b4eb4436596fad61d9634b0",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "63d6d3a79baf65c2a11dfa13a512354be0e4382e3358c0a34c930537ae0faeb4",
       "semanticComparison": "Three real physical-temperature reports feed the actual aggregate quorum and runtime. Floor trip, stale inhibition and strict recovery assertions remain. Aggregate state initializes before seeding rather than afterward; relay feedback is controlled, ambient value/aggregate services are real."
@@ -2104,7 +2103,7 @@
         "bodySha256": "8a0587d03ce5134549b6cbc70a39170de80858be7d562fa7431f2a0e5bc8ed18",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "67e95c0d1f1021fd22a024e2192b056b39f891531418e25433ce38cf17791a7d",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2125,7 +2124,7 @@
         "bodySha256": "b70c094f9b68865b354211581a22871dd6560e6ab3d9fad46c3df1830d6a437b",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "f5f2934074b57f83a6b856776a6f9b5a1ef623ea66eb7b2d2d0f732b44dfd4fc",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2146,7 +2145,7 @@
         "bodySha256": "72f955b76aaf5ec170b6f12034d7c53e24c3577086b5b760cc4fd10e7b5699b8",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "c3fba9c723824b9405a24e6b63d517d47b2da086d49f3ec22e5281005cb7fe43",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2167,7 +2166,7 @@
         "bodySha256": "393c58f7f6eec164e202e23015dfbba0d5468f32419041292d5cd50692da26f0",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "c51ab83100be321731a74cf8cdeb723add2c570c5c7257cf77e18ca7a798df08",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2188,7 +2187,7 @@
         "line": 2617,
         "bodySha256": "d7ab89e755248e09cebfbe1fd116d39ddeec2402dd15529fc87a0d9af098300f",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "aa5904390b7459a78ca67f38f6a38e41894645577b29f56691ccd3b2cc605c2e",
       "semanticComparison": "Real native-claims bootstrap completes with exactly two fences, then three ordinary decisions retain settled OFF facts, no ON, bounded subscribers and complete stop cleanup. Original terminal-completion observer machinery is not adopted by this outcome binding."
@@ -2209,7 +2208,7 @@
         "line": 2640,
         "bodySha256": "85209cdb6d1a49c05f7915bcde38e1ec8c2f78e94a960fb9223f264d4d99d11f",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "21951068502a4eef301a1afd4bcb4e7ed135c928a4d909184b42e241b43b8ac8",
       "semanticComparison": "An actual same-value config SQL write invalidates old drain facts and additionally withdraws installed qualification in the current model. Refresh alone cannot requalify; a fresh explicit qualification and drain produce a new proof/sample without changing minimum-off baseline. This is an explicitly stricter raw-write boundary, not a validated no-op or proof of the former refresh-only recovery schedule."
@@ -2230,7 +2229,7 @@
         "line": 2640,
         "bodySha256": "85209cdb6d1a49c05f7915bcde38e1ec8c2f78e94a960fb9223f264d4d99d11f",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "21951068502a4eef301a1afd4bcb4e7ed135c928a4d909184b42e241b43b8ac8",
       "semanticComparison": "An actual same-value slot SQL write invalidates old drain facts while retaining qualification. A fresh native drain yields a new proof/newer unchanged OFF sample without changing the original minimum-off baseline."
@@ -2251,7 +2250,7 @@
         "line": 2689,
         "bodySha256": "2e1d3cb14771938a09ab4f9c0158040aac05d602d6496c7c285e5a2c95a73080",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "95ff45b9c593a8dcf892049d1434e45412b6e43da51d21b45d6346336631b902",
       "semanticComparison": "Loss of real claims qualification preserves the fence count and refuses ON; only explicit new qualification and a fresh drain increase it. Original saved evidence is not revived. No installed qualification is certified."
@@ -2272,7 +2271,7 @@
         "line": 2704,
         "bodySha256": "a8e3890f78ec6b7eec1da8b8a47d3f31e412b75f9aede8788926d0cdbed694e6",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "01992413cd66a5146c924fa54b00172b7f5f2de10674d397a5fc3c85cbd0d12b",
       "semanticComparison": "The observer returns the original send Promise with its original receiver/arguments. An actual managed ON held in beforeOn admits initially and its original guard refuses after an ordinary decision rotation; stop precedes gate release."
@@ -2308,7 +2307,7 @@
         "line": 2748,
         "bodySha256": "078e83632fec1cc75232d0a66f87117d0ca26725e0c2889bb2b5e89a3c946578",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "526418ba0e95f3d4aa5ff2eff4c1893a814029226393babbcb4a30f9b803d9c6",
       "additionalCurrent": {
@@ -2317,7 +2316,7 @@
         "line": 2790,
         "bodySha256": "ee5484bfdf11f97bca3ff75cbf87a94fb38480a0d33243651f6cce0ad72a51f4",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "semanticComparison": "The idle actual-interval case publishes a newer context/sequence without ON. The additional actual-interval case holds the original native managed ON, proves its exact guard true at entry then false after the original timer calls request(false), with no explicit poll, fake advance, replacement timer or ON send. Claims-membership snapshots intentionally remain valid for legitimate OFF work; exact decision/context/epoch authority is the ON boundary. The failed membership-snapshot adaptation is retained as withdrawn evidence, not a current failure."
     },
@@ -3968,19 +3967,23 @@
       ],
       "originalLine": 17831,
       "historicalR265": "passed",
-      "disposition": "partial_journal_invariant_bound_original_off_transcript_open",
+      "disposition": "scoped_current_invariant_bound",
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retires only committed journal identities and retains the same pending identity after a real SQLite rollback",
-        "line": 4506,
-        "bodySha256": "164e3784ed81fa0c9250dbb10a76054e89ac1cc6c37c28cf25f9f33278de8648",
+        "line": 4700,
+        "bodySha256": "5861cf152c3b09c10fb7771cebde4f6c546ea3954d0b712a6b26312a6aa72487",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
-      "residualRequirement": "Reproduce the original real issued OFF and independent baseline P0 transcript, including named identity, order and multiplicity. A manually inserted OFF plus complete-set assertions does not establish that original schedule.",
       "originalBodySha256": "bae5bf871f10f659dd31add8fe1d1fbe63155fc0be59702cc67724f2182cfba0",
-      "semanticComparison": "Both pending ON and OFF identities, all prior rows, exact retirement arguments, actual rollback and held/unknown ACK outcomes are now asserted. The current OFF companion is seeded directly and runtime request is suppressed before private reconciliation."
+      "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Actual SQLite rollback preserves every original row and both K statuses, no retirement occurs, and an explicit fresh public retry confirms the same K. The exact transcript is P0,K,K and one retirement contains exactly K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
+      "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4507,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      }
     },
     {
       "id": 235,
@@ -3990,19 +3993,23 @@
       ],
       "originalLine": 18004,
       "historicalR265": "passed",
-      "disposition": "partial_journal_invariant_bound_original_off_transcript_open",
+      "disposition": "scoped_current_invariant_bound",
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "does not let optional retirement failure alter committed journal confirmation",
-        "line": 4588,
-        "bodySha256": "0e5bb8c6907d965fcc3ba1a4aad64895085556e4e77468d7ac5077f8fc6b2141",
+        "line": 4735,
+        "bodySha256": "13e670db6b4c453553d93e3da2cd01264270024f36f691d1a68d22d376e03316",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
-      "residualRequirement": "Reproduce the original real issued OFF and independent baseline P0 transcript, including named identity, order and multiplicity. A manually inserted OFF plus complete-set assertions does not establish that original schedule.",
       "originalBodySha256": "6c5a81caa26d71327fd3b518645b4fdbe405e47347b08546e34bd7d88a3f0db3",
-      "semanticComparison": "Both pending ON and OFF identities, all prior rows, exact retirement arguments, actual rollback and held/unknown ACK outcomes are now asserted. The current OFF companion is seeded directly and runtime request is suppressed before private reconciliation."
+      "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Optional provider retirement throws only after acknowledged native confirmation. Every original row remains or receives only the allowed confirmation fields; the transcript is exactly P0,K and retirement occurs once with the complete K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
+      "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4507,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      }
     },
     {
       "id": 236,
@@ -4016,11 +4023,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "uses the later cooling/member release barrier by default without changing heating or explicit zero",
-        "line": 4649,
+        "line": 4750,
         "bodySha256": "441db9e76c3fe5f02db4e01c8530f795ab1cccbd589a7b44996ebe8fb8fd7efc",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "441db9e76c3fe5f02db4e01c8530f795ab1cccbd589a7b44996ebe8fb8fd7efc",
       "semanticComparison": "The complete body is token-identical: later cooling/member release barriers remain distinct from heating and explicit zero. This is a barrier calculation control."
@@ -4037,11 +4044,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "takes a new qualified fence for an idle OFF cooling claim after a later cooling trip barrier",
-        "line": 4679,
+        "line": 4780,
         "bodySha256": "52f486239528def5e61ca15cbc6203266c7ac384bcd1b30a58ca1cf6c035be03",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
       "originalBodySha256": "8863be1f1668dec75984f64236427f7b14f209ec7a3ab2e33c304c38aff62b8f",
       "semanticComparison": "The same later cooling-trip barrier forces a fresh qualified fence for an idle OFF claim, with the prior/fresh barrier and proof-count assertions retained."
@@ -4054,19 +4061,23 @@
       ],
       "originalLine": 18157,
       "historicalR265": "passed",
-      "disposition": "partial_journal_invariant_bound_original_off_transcript_open",
+      "disposition": "scoped_current_invariant_bound",
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
-        "line": 4712,
-        "bodySha256": "9c4a56cc22ed05157a79ea6e78b951761587e4409b3e44f42c8bf2230a48c4d9",
+        "line": 4813,
+        "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
-      "residualRequirement": "Reproduce the original real issued OFF and independent baseline P0 transcript, including named identity, order and multiplicity. A manually inserted OFF plus complete-set assertions does not establish that original schedule.",
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
-      "semanticComparison": "Both pending ON and OFF identities, all prior rows, exact retirement arguments, actual rollback and held/unknown ACK outcomes are now asserted. The current OFF companion is seeded directly and runtime request is suppressed before private reconciliation."
+      "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is already confirmed while the genuine COMMIT acknowledgement is held, but retirement remains absent. Only releasing that ACK allows exactly one complete K retirement. The transcript is P0,K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
+      "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4507,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      }
     },
     {
       "id": 239,
@@ -4076,19 +4087,23 @@
       ],
       "originalLine": 18157,
       "historicalR265": "passed",
-      "disposition": "partial_journal_invariant_bound_original_off_transcript_open",
+      "disposition": "scoped_current_invariant_bound",
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
-        "line": 4712,
-        "bodySha256": "9c4a56cc22ed05157a79ea6e78b951761587e4409b3e44f42c8bf2230a48c4d9",
+        "line": 4813,
+        "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 dfb1f6c4fa4792a5e591ad79603a55224b89e76b49ae147db516b22e53a598a9"
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
       },
-      "residualRequirement": "Reproduce the original real issued OFF and independent baseline P0 transcript, including named identity, order and multiplicity. A manually inserted OFF plus complete-set assertions does not establish that original schedule.",
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
-      "semanticComparison": "Both pending ON and OFF identities, all prior rows, exact retirement arguments, actual rollback and held/unknown ACK outcomes are now asserted. The current OFF companion is seeded directly and runtime request is suppressed before private reconciliation."
+      "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is confirmed but loss of COMMIT acknowledgement preserves the original error and performs no retirement. The exact transcript remains P0,K; a confirmed row alone is not an acknowledged retirement. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
+      "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4507,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      }
     },
     {
       "id": 240,
@@ -4099,9 +4114,23 @@
       ],
       "originalLine": 18512,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): holds the actual named OFF before confirmation and retires the complete K only after known ACK. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "3acbf95d3e9a0821d2f779cbd5d5f5cf49cbd799f456f603493554a0a58c3161"
+      "disposition": "replacement_current_invariant_bound",
+      "originalBodySha256": "3acbf95d3e9a0821d2f779cbd5d5f5cf49cbd799f456f603493554a0a58c3161",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
+        "parameter": "held acknowledgement",
+        "line": 4813,
+        "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
+        "measuredStatus": "passed",
+        "measurement": "complete current runtime: 147 passed, zero failed/pending; report SHA-256 d15bdbfc1f8d78fbaa5e00945ff350438bca695a61073a9ee79eb33a40b0a2aa"
+      },
+      "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4507,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      },
+      "semanticComparison": "The shared issued-OFF setup and held-ACK row jointly retain the original named K schedule. Exactly one actual OFF send is held with its native row dispatching and seed ON still accepted; all baseline rows and P0 are unchanged and the already-installed retirement callback has not run. Two explicit public installation requests cover OFF preparation/outcome and the one native settlement. While COMMIT ACK is held the whole journal is confirmed without retirement; known ACK then retires exactly K once. P0,K order/multiplicity and the complete row set are asserted; every actuation attempt is OFF. The old test receipt implementation, cross-case descriptor restoration and installed hardware are outside this replacement binding."
     },
     {
       "id": 241,
@@ -4437,6 +4466,24 @@
       "all 261 case acceptance",
       "hardware qualification",
       "alpha publication clearance"
-    ]
+    ],
+    "issuedOffFollowup": {
+      "date": "2026-11-01",
+      "rows": [
+        234,
+        235,
+        238,
+        239,
+        240
+      ],
+      "helper": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 4507,
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+      },
+      "sourceComparison": "Full original rollback, optional-retirement, held/unknown ACK and R68 held-OFF case bodies were read; the former seeded companion is replaced by original public OFF dispatch and fixed native identity/transcript observations.",
+      "runtime": "Eight expanded current journal variants pass, followed by complete 147/147 runtime.",
+      "negativeControl": "Truncating actual retirement to one ID fails seven complete-K assertions; unknown ACK correctly remains passing with zero retirement. Production restored byte-for-byte."
+    }
   }
 }

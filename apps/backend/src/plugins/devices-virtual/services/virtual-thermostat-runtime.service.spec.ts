@@ -4503,13 +4503,28 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
 		expect(samples.get(relayId)?.value).toBe(false);
 	});
-	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
+	// Establish the original baseline and K from a real runtime-issued OFF, not a seeded companion row.
+	const prepareIssuedOffJournalSettlement = async (retire: (ids: readonly string[]) => void) => {
 		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
+		const owner = runtime,
+			source = database,
+			id = controllerId;
+		clearInterval(owner['timer']);
+		packetTick = useThermostatPacketClock();
+		const claim = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
+		const baseline = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+		expect(baseline.length).toBeGreaterThan(0);
+		for (const row of baseline) expect(row).toMatchObject({ claimId: claim.id, action: 'off', status: 'confirmed' });
+		const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+		for (const ids of P0) {
+			expect(new Set(ids).size).toBe(ids.length);
+			expect(ids.every((entry) => baseline.some((row) => row.id === entry))).toBe(true);
+		}
+		// Isolate explicit public requests from feedback. The actual OFF dispatch still runs and is joined.
+		jest.spyOn(owner, 'request').mockImplementation(() => Promise.resolve());
+		const command = source.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
-			controllerId,
+			controllerId: id,
 			claimId: claim.id,
 			claimRevision: claim.revision,
 			configurationRevision: 1,
@@ -4522,126 +4537,212 @@ describe('virtual thermostat durable runtime', () => {
 			proofId: null,
 			fault: null,
 		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		// Preserve the original multi-identity retirement boundary: both pending ON and OFF
-		// must survive refusal together, then be retired only as their exact committed set.
-		const companion = database.manager.create(VirtualThermostatCommandEntity, {
-			...command,
-			id: uuid(),
-			action: 'off',
+		await source.manager.insert(VirtualThermostatCommandEntity, command);
+		const inserted: VirtualThermostatCommandEntity[] = [];
+		const insertion = {
+			listenTo: () => VirtualThermostatCommandEntity,
+			afterInsert: (event: InsertEvent<VirtualThermostatCommandEntity>) => {
+				if (event.entity.controllerId === id && event.entity.claimId === claim.id && event.entity.action === 'off')
+					inserted.push({ ...event.entity });
+			},
+		};
+		source.subscribers.push(insertion);
+		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+		const attemptsBefore = Object.freeze([...actuationAttempts]);
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		offGate = ownedGate((resolve) => (release = resolve));
+		const get = transport.get.bind(transport) as VirtualThermostatTransportService['get'];
+		const delivered: string[] = [];
+		const observer = jest.spyOn(transport, 'get').mockImplementation((...args) => {
+			const adapter = get(...args);
+			if (!adapter) return null;
+			const send = adapter.send.bind(adapter) as ThermostatActuationAdapter['send'];
+			return {
+				...adapter,
+				send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
+					const original = send(...sendArgs);
+					if (sendArgs[0].value === false && sendArgs[1].id === claim.id) {
+						delivered.push(sendArgs[4].commandId);
+						enter();
+					}
+					return original;
+				},
+			};
 		});
-		await database.manager.insert(VirtualThermostatCommandEntity, companion);
-		const pendingIds = [command.id, companion.id].sort();
-		const originalJournal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
-		const assertCompleteConfirmation = async () => {
-			const current = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		let preparation: Promise<void> | undefined;
+		try {
+			preparation = owner.requestInstalled(id);
+			await Promise.race([
+				entered,
+				preparation.then(() => {
+					throw new Error('Original OFF send was not reached');
+				}),
+			]);
+			expect(inserted).toHaveLength(1);
+			expect(delivered).toEqual([inserted[0].id]);
+			expect(actuationAttempts).toEqual([...attemptsBefore, false]);
+			expect(retire).not.toHaveBeenCalled();
+			const held = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			expect(held.map((row) => row.id).sort()).toEqual(
+				[...baseline.map((row) => row.id), command.id, delivered[0]].sort(),
+			);
+			for (const row of baseline) expect(held.find((entry) => entry.id === row.id)).toEqual(row);
+			expect(held.find((row) => row.id === command.id)).toEqual(command);
+			expect(held.find((row) => row.id === delivered[0])).toMatchObject({
+				claimId: claim.id,
+				action: 'off',
+				status: 'dispatching',
+				dispatchedAt: expect.any(Date) as Date,
+			});
+			expect(reconciledCommandIds).toEqual(P0);
+			release();
+			await preparation;
+		} catch (cause) {
+			owner.onModuleDestroy();
+			throw cause;
+		} finally {
+			release();
+			offGate = null;
+			if (preparation !== undefined) await preparation.catch(() => undefined);
+			observer.mockRestore();
+			source.subscribers.splice(source.subscribers.indexOf(insertion), 1);
+		}
+		const pendingIds = Object.freeze([command.id, delivered[0]].sort());
+		const originalJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+		for (const pending of pendingIds)
+			expect(originalJournal.find((row) => row.id === pending)).toMatchObject({ status: 'accepted' });
+		expect(reconciledCommandIds).toEqual(P0);
+		expect(retire).not.toHaveBeenCalled();
+		const assertTranscript = (settlements: number) => {
+			for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
+			expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+				[...P0, ...Array.from({ length: settlements }, () => pendingIds)].map((ids) => [...ids].sort()),
+			);
+		};
+		const assertCompleteConfirmation = async (observed?: VirtualThermostatCommandEntity[]) => {
+			expect(actuationAttempts).toEqual([...attemptsBefore, false]);
+			expect(actuationAttempts.every((on) => !on)).toBe(true);
+			const current = observed ?? (await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id }));
 			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
 			for (const row of current) {
 				const before = originalJournal.find((original) => original.id === row.id);
-				if (pendingIds.includes(row.id)) {
+				if (pendingIds.includes(row.id))
 					expect(row).toMatchObject({
 						...before,
 						status: 'confirmed',
 						settledAt: expect.any(Date) as Date,
 						proofId: expect.any(String) as string,
 					});
-				} else expect(row).toEqual(before);
+				else expect(row).toEqual(before);
 			}
 		};
+		const target = owner as unknown as {
+			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
+		};
+		const reconcile = target.reconcile.bind(target) as typeof target.reconcile;
+		let armed = false;
+		const entries: Promise<void>[] = [];
+		const runners = new Set<object>();
+		const nativeObserver = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (
+					armed &&
+					entries.length === 1 &&
+					event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+					event.parameters?.includes('confirmed') &&
+					pendingIds.every((entry) => event.parameters.includes(entry))
+				)
+					runners.add(event.queryRunner);
+			},
+		};
+		source.subscribers.push(nativeObserver);
+		const native = jest.spyOn(target, 'reconcile').mockImplementation(function (this: typeof target, ...args) {
+			const original = reconcile(...args);
+			if (armed && this === target && args[1].id === claim.id) {
+				entries.push(original);
+				void original.catch(() => undefined);
+			}
+			return original;
+		});
+		issuedProviders.push(() => {
+			native.mockRestore();
+			source.subscribers.splice(source.subscribers.indexOf(nativeObserver), 1);
+		});
+		return {
+			claim,
+			command,
+			pendingIds,
+			originalJournal,
+			assertCompleteConfirmation,
+			assertTranscript,
+			isSettlementRunner: (runner: object) => armed && runners.has(runner),
+			start: async () => {
+				expect(armed).toBe(false);
+				entries.length = 0;
+				runners.clear();
+				armed = true;
+				try {
+					const result = await owner.requestInstalled(id).then(
+						() => ({ fulfilled: true as const }),
+						(cause: unknown) => ({ fulfilled: false as const, cause }),
+					);
+					expect(entries).toHaveLength(1);
+					await entries[0];
+					if (result.fulfilled === false) throw result.cause;
+				} finally {
+					armed = false;
+				}
+			},
+		};
+	};
+
+	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
 		const retire = jest.fn<void, [readonly string[]]>();
-		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+		const entry = await prepareIssuedOffJournalSettlement(retire);
+		const { command, pendingIds, originalJournal, assertCompleteConfirmation } = entry;
 		let rollback = true;
 		const subscriber = {
 			listenTo: () => VirtualThermostatBranchRuntimeEntity,
-			afterUpdate: () => {
-				if (rollback) {
+			afterUpdate: (event: import('typeorm').UpdateEvent<VirtualThermostatBranchRuntimeEntity>) => {
+				if (rollback && entry.isSettlementRunner(event.queryRunner)) {
 					rollback = false;
 					throw new Error('fixture settlement rollback');
 				}
 			},
 		};
 		database.subscribers.push(subscriber);
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
 		try {
-			const context = await internal.load(controllerId);
-			await expect(internal.reconcile(context, claim)).rejects.toThrow('fixture settlement rollback');
+			await expect(entry.start()).rejects.toThrow('fixture settlement rollback');
 			expect(retire).not.toHaveBeenCalled();
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'accepted',
 			);
 			expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).toEqual(originalJournal);
-			await internal.reconcile(context, claim);
+			entry.assertTranscript(1);
+			await entry.start();
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'confirmed',
 			);
 			expect(retire).toHaveBeenCalledTimes(1);
 			expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
 			await assertCompleteConfirmation();
-			expect(reconciledCommandIds.slice(-2).map((ids) => [...ids].sort())).toEqual([pendingIds, pendingIds]);
+			entry.assertTranscript(2);
 		} finally {
 			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
 		}
 	});
 	it('does not let optional retirement failure alter committed journal confirmation', async () => {
-		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(),
-			controllerId,
-			claimId: claim.id,
-			claimRevision: claim.revision,
-			configurationRevision: 1,
-			decisionRevision: 1,
-			action: 'on',
-			status: 'accepted',
-			preparedAt: new Date(),
-			dispatchedAt: null,
-			settledAt: null,
-			proofId: null,
-			fault: null,
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		// Preserve the original multi-identity retirement boundary: both pending ON and OFF
-		// must survive refusal together, then be retired only as their exact committed set.
-		const companion = database.manager.create(VirtualThermostatCommandEntity, {
-			...command,
-			id: uuid(),
-			action: 'off',
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, companion);
-		const pendingIds = [command.id, companion.id].sort();
-		const originalJournal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
-		const assertCompleteConfirmation = async () => {
-			const current = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
-			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
-			for (const row of current) {
-				const before = originalJournal.find((original) => original.id === row.id);
-				if (pendingIds.includes(row.id)) {
-					expect(row).toMatchObject({
-						...before,
-						status: 'confirmed',
-						settledAt: expect.any(Date) as Date,
-						proofId: expect.any(String) as string,
-					});
-				} else expect(row).toEqual(before);
-			}
-		};
 		const retire = jest.fn<void, [readonly string[]]>(() => {
 			throw new Error('optional metadata only');
 		});
-		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
-		await internal.reconcile(await internal.load(controllerId), claim);
+		const entry = await prepareIssuedOffJournalSettlement(retire);
+		const { command, pendingIds, assertCompleteConfirmation } = entry;
+		await entry.start();
 		expect(retire).toHaveBeenCalledTimes(1);
 		expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
 		await assertCompleteConfirmation();
+		entry.assertTranscript(1);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 			'confirmed',
 		);
@@ -4717,51 +4818,9 @@ describe('virtual thermostat durable runtime', () => {
 		'callback call replacement',
 		'callback call getter',
 	] as const)('waits for a known SQLite commit acknowledgement before retirement: %s', async (mode) => {
-		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(),
-			controllerId,
-			claimId: claim.id,
-			claimRevision: claim.revision,
-			configurationRevision: 1,
-			decisionRevision: 1,
-			action: 'on',
-			status: 'accepted',
-			preparedAt: new Date(),
-			dispatchedAt: null,
-			settledAt: null,
-			proofId: null,
-			fault: null,
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		// Preserve the original multi-identity retirement boundary: both pending ON and OFF
-		// must survive refusal together, then be retired only as their exact committed set.
-		const companion = database.manager.create(VirtualThermostatCommandEntity, {
-			...command,
-			id: uuid(),
-			action: 'off',
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, companion);
-		const pendingIds = [command.id, companion.id].sort();
-		const originalJournal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
-		const assertCompleteConfirmation = async () => {
-			const current = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
-			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
-			for (const row of current) {
-				const before = originalJournal.find((original) => original.id === row.id);
-				if (pendingIds.includes(row.id)) {
-					expect(row).toMatchObject({
-						...before,
-						status: 'confirmed',
-						settledAt: expect.any(Date) as Date,
-						proofId: expect.any(String) as string,
-					});
-				} else expect(row).toEqual(before);
-			}
-		};
 		const retire = jest.fn<void, [readonly string[]]>();
+		const entry = await prepareIssuedOffJournalSettlement(retire);
+		const { pendingIds, assertCompleteConfirmation } = entry;
 		const originalCallDescriptor = Object.getOwnPropertyDescriptor(retire, 'call');
 		let callAccesses = 0;
 		let originalProof: { retireConfirmedCommandIds?: (ids: readonly string[]) => void };
@@ -4772,7 +4831,7 @@ describe('virtual thermostat durable runtime', () => {
 		};
 		let enter: () => void = () => undefined;
 		let rejectObservation: (error: unknown) => void = () => undefined;
-		let committedStatuses: VirtualThermostatCommandEntity['status'][] | undefined;
+		let committedJournal: VirtualThermostatCommandEntity[] | undefined;
 		let release: () => void = () => undefined;
 		const entered = new Promise<void>((resolve, reject) => {
 			enter = resolve;
@@ -4784,12 +4843,10 @@ describe('virtual thermostat durable runtime', () => {
 		let once = true;
 		const subscriber = {
 			afterTransactionCommit: async (event: TransactionCommitEvent) => {
-				if (!once) return;
+				if (!once || !entry.isSettlementRunner(event.queryRunner)) return;
 				once = false;
 				try {
-					committedStatuses = (await event.queryRunner.manager.findBy(VirtualThermostatCommandEntity, { controllerId }))
-						.filter((row) => pendingIds.includes(row.id))
-						.map((row) => row.status);
+					committedJournal = await event.queryRunner.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 				} catch (error: unknown) {
 					rejectObservation(error);
 					throw error;
@@ -4800,21 +4857,24 @@ describe('virtual thermostat durable runtime', () => {
 			},
 		};
 		database.subscribers.push(subscriber);
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
 		let outcome: Promise<unknown> | undefined;
 		try {
-			const pending = internal.reconcile(await internal.load(controllerId), claim);
+			const pending = entry.start();
 			// Attach both outcomes before releasing the controlled commit gate.
 			outcome = pending.then<unknown, unknown>(
 				() => null,
 				(error: unknown) => error,
 			);
-			await entered;
+			await Promise.race([
+				entered,
+				outcome.then((error) => {
+					throw error === null ? new Error('Original settlement did not reach its commit ACK') : error;
+				}),
+			]);
 			expect(retire).not.toHaveBeenCalled();
-			expect(committedStatuses).toEqual(['confirmed', 'confirmed']);
+			expect(committedJournal).toBeDefined();
+			await assertCompleteConfirmation(committedJournal);
+			entry.assertTranscript(1);
 			if (mode === 'callback replacement') originalProof.retireConfirmedCommandIds = successor;
 			if (mode === 'callback deletion') delete originalProof.retireConfirmedCommandIds;
 			if (mode === 'callback call replacement') {
@@ -4843,6 +4903,7 @@ describe('virtual thermostat durable runtime', () => {
 				expect(retire).not.toHaveBeenCalled();
 			}
 			await assertCompleteConfirmation();
+			entry.assertTranscript(1);
 			expect(successor).not.toHaveBeenCalled();
 			expect(callAccesses).toBe(0);
 		} finally {
