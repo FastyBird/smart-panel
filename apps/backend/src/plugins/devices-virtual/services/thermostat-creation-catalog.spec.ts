@@ -36,6 +36,7 @@ const pause = () => {
 describe('thermostat catalog original reader and finite observations', () => {
 	let database: SqliteDataSource;
 	let directory: string;
+	let setupCompletion: Promise<void> = Promise.resolve();
 	let root: string, temperature: string, policy: string, reading: string, locked: string;
 	const expected = () =>
 		thermostatCreationCatalog.expected({
@@ -46,50 +47,63 @@ describe('thermostat catalog original reader and finite observations', () => {
 			],
 		});
 	const ready = () => database.transaction((manager) => initializeThermostatCreationCatalog(manager, true));
-	beforeEach(async () => {
+	const setupFixture = async () => {
 		directory = mkdtempSync(path.join(tmpdir(), 'catalog-reader-'));
-		database = await new SqliteDataSource({
+		const original = new SqliteDataSource({
 			type: 'sqlite',
 			database: path.join(directory, 'catalog.sqlite'),
 			synchronize: true,
 			entities: [sourceRoot + '/**/*.entity.ts'],
 			subscribers: [sourceRoot + '/**/*.subscriber.ts'],
-		}).initialize();
-		[root, temperature, policy, reading, locked] = Array.from({ length: 5 }, () => randomUUID());
-		await database.manager.insert(VirtualDeviceEntity, {
-			id: root,
+		});
+		database = original;
+		const [deviceId, temperatureId, policyId, readingId, lockedId] = Array.from({ length: 5 }, () => randomUUID());
+		[root, temperature, policy, reading, locked] = [deviceId, temperatureId, policyId, readingId, lockedId];
+		await original.initialize();
+		await original.manager.insert(VirtualDeviceEntity, {
+			id: deviceId,
 			name: 'Reader fixture',
 			category: DeviceCategory.THERMOSTAT,
 			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
 		});
-		await database.manager.insert(VirtualChannelEntity, [
-			{ id: temperature, name: 'Temperature', category: ChannelCategory.TEMPERATURE, device: root },
-			{ id: policy, name: 'Policy', category: ChannelCategory.THERMOSTAT, device: root },
+		await original.manager.insert(VirtualChannelEntity, [
+			{ id: temperatureId, name: 'Temperature', category: ChannelCategory.TEMPERATURE, device: deviceId },
+			{ id: policyId, name: 'Policy', category: ChannelCategory.THERMOSTAT, device: deviceId },
 		]);
-		await database.manager.insert(VirtualChannelPropertyEntity, [
+		await original.manager.insert(VirtualChannelPropertyEntity, [
 			{
-				id: reading,
+				id: readingId,
 				category: PropertyCategory.TEMPERATURE,
-				channel: temperature,
+				channel: temperatureId,
 				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_ONLY],
 				valueOrigin: VirtualValueOrigin.LOCAL,
 			},
 			{
-				id: locked,
+				id: lockedId,
 				category: PropertyCategory.LOCKED,
-				channel: policy,
+				channel: policyId,
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 				valueOrigin: VirtualValueOrigin.LOCAL,
 			},
 		]);
-	});
+	};
+	// Full real schema/metadata preparation has its own budget; test bodies retain Jest's 5-second default.
+	beforeEach(() => {
+		setupCompletion = setupFixture();
+		return setupCompletion;
+	}, 30_000);
 	afterEach(async () => {
+		const original = database,
+			originalDirectory = directory,
+			originalSetup = setupCompletion;
+		// A Jest hook timeout does not cancel initialize or seeding. Join that exact work before closing its handle.
+		await originalSetup.catch(() => undefined); // The beforeEach promise retains the original setup rejection.
 		jest.restoreAllMocks();
-		if (database?.isInitialized) await database.destroy();
-		if (directory) rmSync(directory, { recursive: true, force: true });
-	});
+		if (original?.isInitialized) await original.destroy();
+		if (originalDirectory) rmSync(originalDirectory, { recursive: true, force: true });
+	}, 30_000);
 	it('captures V0 on the exact original depth-one manager and finals on the original ordinary manager', async () => {
 		await ready();
 		const query = jest.spyOn(database.manager, 'query');
