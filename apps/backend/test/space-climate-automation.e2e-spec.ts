@@ -63,6 +63,8 @@ import {
 import { defaultActivityConfiguration } from '../src/plugins/spaces-home-control/activity/space-activity.defaults';
 import { RoomSpaceEntity } from '../src/plugins/spaces-home-control/entities/room-space.entity';
 import { SpaceActivityStateEntity } from '../src/plugins/spaces-home-control/entities/space-activity-state.entity';
+import { SpaceMediaActivityBindingEntity } from '../src/plugins/spaces-home-control/entities/space-media-activity-binding.entity';
+import { DerivedMediaEndpointService } from '../src/plugins/spaces-home-control/services/derived-media-endpoint.service';
 import { SpaceActivityConfigService } from '../src/plugins/spaces-home-control/services/space-activity-config.service';
 import { SpaceActivityDomainsService } from '../src/plugins/spaces-home-control/services/space-activity-domains.service';
 import { SpaceActivationIdentity } from '../src/plugins/spaces-home-control/services/space-climate-automation.port';
@@ -72,6 +74,12 @@ import { SpaceModeService } from '../src/plugins/spaces-home-control/services/sp
 import { SpaceOccupancyConfigService } from '../src/plugins/spaces-home-control/services/space-occupancy-config.service';
 import { SpaceOccupancyInputsService } from '../src/plugins/spaces-home-control/services/space-occupancy-inputs.service';
 import { SpaceOccupancyService } from '../src/plugins/spaces-home-control/services/space-occupancy.service';
+import {
+	ClimateMode,
+	LightingMode,
+	MediaActivityKey,
+	MediaEndpointType,
+} from '../src/plugins/spaces-home-control/spaces-home-control.constants';
 
 // Real AppModule, migrations, authentication, authoring and activation. Physical qualification is a separate software fixture gate.
 describe('Group A default-migrated authenticated activity climate automation', () => {
@@ -259,6 +267,176 @@ describe('Group A default-migrated authenticated activity climate automation', (
 		}
 	});
 
+	it.each([false, true])(
+		'composes all configured activity domains through ordinary HTTP and real adapters; media fails=%s',
+		async (failMedia) => {
+			const { roomId, controllerId } = await seed();
+			await enable(controllerId);
+			const createControl = async (
+				category: DeviceCategory,
+				channelCategory: ChannelCategory,
+				quantity: PropertyCategory,
+				dataType: DataTypeType,
+				format: string[] | number[] | null = null,
+			) => {
+				const id = randomUUID(),
+					channelId = randomUUID(),
+					propertyId = randomUUID();
+				await database.manager.insert(DeviceEntity, {
+					id,
+					name: category,
+					roomId,
+					category,
+					enabled: true,
+					hidden: false,
+				});
+				await database.manager.insert(ChannelEntity, {
+					id: channelId,
+					device: id,
+					name: channelCategory,
+					identifier: channelCategory,
+					category: channelCategory,
+				} as never);
+				await database.manager.insert(ChannelPropertyEntity, {
+					id: propertyId,
+					channel: channelId,
+					identifier: quantity,
+					category: quantity,
+					dataType,
+					format,
+					permissions: [PermissionType.READ_WRITE],
+				} as never);
+				const device = await database.manager.findOneByOrFail(DeviceEntity, { id });
+				await module
+					.get(DeviceConnectionStateService)
+					.write(
+						device,
+						Object.assign(new ChannelPropertyEntity(), { id: randomUUID(), category: PropertyCategory.STATUS }),
+						ConnectionState.CONNECTED,
+					);
+				return { device, propertyId };
+			};
+			const light = await createControl(
+				DeviceCategory.LIGHTING,
+				ChannelCategory.LIGHT,
+				PropertyCategory.ON,
+				DataTypeType.BOOL,
+			);
+			const cover = await createControl(
+				DeviceCategory.WINDOW_COVERING,
+				ChannelCategory.WINDOW_COVERING,
+				PropertyCategory.POSITION,
+				DataTypeType.UCHAR,
+				[0, 100],
+			);
+			const television = await createControl(
+				DeviceCategory.TELEVISION,
+				ChannelCategory.TELEVISION,
+				PropertyCategory.ON,
+				DataTypeType.BOOL,
+			);
+			const issued: Array<{ id: string; value: unknown }> = [];
+			const apply = (updates: Parameters<IDevicePlatform['processBatch']>[0]) => {
+				for (const update of updates) issued.push({ id: update.property.id, value: update.value });
+				return Promise.resolve(!updates.some((update) => failMedia && update.device.id === television.device.id));
+			};
+			const endpoint: IDevicePlatform = {
+				getType: () => light.device.type,
+				process: (update) => apply([update]),
+				processBatch: apply,
+				prepareCompositeBatch: (updates) =>
+					Promise.resolve({
+						updates,
+						isCurrent: () => true,
+						dispatch: (current) => (current() ? apply(updates) : Promise.resolve(false)),
+					}),
+			};
+			const registration = module.get(PlatformRegistryService).registerOwned(endpoint);
+			expect(registration).not.toBeNull();
+			try {
+				const endpoints = await module.get(DerivedMediaEndpointService).buildEndpointsForSpace(roomId);
+				const display = endpoints.endpoints.find(
+					(item) => item.deviceId === television.device.id && item.type === MediaEndpointType.DISPLAY,
+				);
+				expect(display?.capabilities.power).toBe(true);
+				await database.manager.save(SpaceMediaActivityBindingEntity, {
+					id: randomUUID(),
+					spaceId: roomId,
+					activityKey: MediaActivityKey.WATCH,
+					displayEndpointId: display.endpointId,
+				});
+				const configuration = defaultActivityConfiguration(ActivityMode.WORK);
+				for (const domain of Object.values(ActivityDomain)) configuration[domain].enabled = true;
+				configuration.lighting.mode = LightingMode.OFF;
+				configuration.climate = { enabled: true, thermostat_preset: 'eco' };
+				configuration.covers.position = 37;
+				configuration.media.activity = MediaActivityKey.WATCH;
+				await http()
+					.put(activityPath(roomId) + '/work/config')
+					.set('Authorization', `Bearer ${token}`)
+					.send({ data: { expected_revision: 1, enabled: true, display_order: 0, configuration } })
+					.expect(200);
+				const preview = await http()
+					.post(activityPath(roomId) + '/work/preview')
+					.set('Authorization', `Bearer ${token}`)
+					.send({ data: { expected_revision: 2 } })
+					.expect(200);
+				for (const domain of ['lighting', 'climate', 'covers', 'media']) {
+					expect((preview.body as { data: object[] }).data).toContainEqual(
+						expect.objectContaining({ domain, status: 'ready' }),
+					);
+				}
+				expect((preview.body as { data: object[] }).data).toContainEqual(
+					expect.objectContaining({ domain: 'security', status: 'unsupported' }),
+				);
+				expect(issued).toEqual([]);
+				expect(await database.manager.count(ClimateAutomationSourceEntity)).toBe(0);
+				await http()
+					.post(activityPath(roomId) + '/work/activate')
+					.set('Authorization', `Bearer ${token}`)
+					.send({ data: { expected_revision: 2 } })
+					.expect(200);
+				const state = await module.get(SpaceModeService).getActiveMode(roomId);
+				expect(state.activityStatus).toBe(ActivityActivationStatus.PARTIAL);
+				for (const domain of ['lighting', 'climate', 'covers']) {
+					expect(state.activityResults).toContainEqual(expect.objectContaining({ domain, status: 'succeeded' }));
+				}
+				expect(state.activityResults).toContainEqual(
+					expect.objectContaining({ domain: 'media', status: failMedia ? 'failed' : 'succeeded' }),
+				);
+				expect(state.activityResults).toContainEqual(
+					expect.objectContaining({
+						domain: 'security',
+						status: 'unsupported',
+						reason: 'security_actuation_unavailable',
+					}),
+				);
+				expect(issued).toHaveLength(3);
+				expect(issued).toEqual(
+					expect.arrayContaining([
+						{ id: light.propertyId, value: false },
+						{ id: cover.propertyId, value: 37 },
+						{ id: television.propertyId, value: true },
+					]),
+				);
+				expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+					state: 'LIVE',
+				});
+				expect((await module.get(VirtualThermostatComfortService).get(controllerId)).effective).toMatchObject({
+					source: 'automation',
+					heating_setpoint: 17,
+				});
+				const read = await http()
+					.get(activityPath(roomId) + '/active')
+					.set('Authorization', `Bearer ${token}`);
+				expect(read.status).toBe(200);
+				expect(JSON.stringify(read.body)).not.toMatch(/controllerIncarnation|installEvidence|baselineId|candidateId/);
+			} finally {
+				registration?.dispose();
+			}
+		},
+	);
+
 	it('persists a validated authenticated schedule without side effects and hides internal occurrence custody', async () => {
 		const { roomId } = await seed();
 		const url = `/modules/spaces/spaces/${roomId}/schedules`;
@@ -372,6 +550,177 @@ describe('Group A default-migrated authenticated activity climate automation', (
 			.expect(403);
 		expect(await database.manager.count(SpaceActivityStateEntity)).toBe(0);
 		expect(await database.manager.count(ClimateAutomationSourceEntity)).toBe(0);
+	});
+
+	it('composes scheduled and observed activity with independent room and thermostat manual precedence', async () => {
+		const { roomId, controllerId } = await seed();
+		await enable(controllerId);
+		await author(roomId, { thermostat_preset: 'eco' });
+		const relax = defaultActivityConfiguration(ActivityMode.RELAX);
+		for (const domain of Object.values(ActivityDomain)) relax[domain].enabled = false;
+		relax.climate = { enabled: true, mode: ClimateMode.HEAT, setpoint: 22 };
+		await http()
+			.put(activityPath(roomId) + '/relax/config')
+			.set('Authorization', `Bearer ${token}`)
+			.send({ data: { expected_revision: 1, enabled: true, display_order: 1, configuration: relax } })
+			.expect(200);
+		const deviceId = randomUUID(),
+			channelId = randomUUID(),
+			propertyId = randomUUID();
+		await database.manager.insert(DeviceEntity, {
+			id: deviceId,
+			name: 'Composed live motion',
+			roomId,
+			category: DeviceCategory.SENSOR,
+			enabled: true,
+		});
+		await database.manager.insert(ChannelEntity, {
+			id: channelId,
+			device: deviceId,
+			identifier: 'motion',
+			name: 'Motion',
+			category: ChannelCategory.MOTION,
+		} as never);
+		await database.manager.insert(ChannelPropertyEntity, {
+			id: propertyId,
+			channel: channelId,
+			identifier: 'detected',
+			category: PropertyCategory.DETECTED,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		const device = await database.manager.findOneByOrFail(DeviceEntity, { id: deviceId });
+		const input = await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: propertyId });
+		const connected = (state: ConnectionState) =>
+			module
+				.get(DeviceConnectionStateService)
+				.write(
+					device,
+					Object.assign(new ChannelPropertyEntity(), { id: randomUUID(), category: PropertyCategory.STATUS }),
+					state,
+				);
+		await connected(ConnectionState.CONNECTED);
+		const occupancyPath = `/modules/spaces/spaces/${roomId}/occupancy`;
+		await http()
+			.put(occupancyPath)
+			.set('Authorization', `Bearer ${token}`)
+			.send({
+				data: {
+					expected_revision: 1,
+					enabled: true,
+					vacancy_timeout_seconds: 900,
+					maximum_age_seconds: 3600,
+					sensor_property_ids: [propertyId],
+					occupied_mode: 'relax',
+					vacant_mode: 'away',
+				},
+			})
+			.expect(200);
+		const occupancy = module.get(SpaceOccupancyService),
+			scheduler = module.get(SpaceModeSchedulerService),
+			modes = module.get(SpaceModeService);
+		await occupancy.start();
+		const initial = Date.now(),
+			first = Math.floor(initial / 60_000) * 60_000 + 60_000,
+			second = first + 60_000;
+		const now = jest.spyOn(Date, 'now').mockReturnValue(initial);
+		const effective = async () => (await module.get(VirtualThermostatComfortService).get(controllerId)).effective;
+		try {
+			await http()
+				.put(`/modules/spaces/spaces/${roomId}/schedules`)
+				.set('Authorization', `Bearer ${token}`)
+				.send({
+					data: {
+						expected_revision: 1,
+						enabled: true,
+						timezone: 'UTC',
+						entries: [
+							{
+								id: randomUUID(),
+								mode: 'work',
+								time: new Date(first).toISOString().slice(11, 16),
+								days_of_week: [0, 1, 2, 3, 4, 5, 6],
+								enabled: true,
+							},
+							{
+								id: randomUUID(),
+								mode: 'relax',
+								time: new Date(second).toISOString().slice(11, 16),
+								days_of_week: [0, 1, 2, 3, 4, 5, 6],
+								enabled: true,
+							},
+						],
+					},
+				})
+				.expect(200);
+			await occupancy.runCycle();
+			expect(await modes.getActiveMode(roomId)).toBeNull();
+			now.mockReturnValue(first + 1000);
+			await scheduler.runCycle();
+			expect((await modes.getActiveMode(roomId)).activityActor).toMatch(/^schedule:/);
+			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 17 });
+			const at = new Date();
+			await module
+				.get(PropertyValueService)
+				.writeSampleWithState(input, true, { sampledAt: at, receivedAt: at, provenance: 'live' });
+			await occupancy.runCycle();
+			expect(await modes.getActiveMode(roomId)).toMatchObject({
+				selectedActivityMode: ActivityMode.RELAX,
+				activityActor: 'occupancy',
+			});
+			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 22 });
+			await connected(ConnectionState.DISCONNECTED);
+			await occupancy.runCycle();
+			expect((await occupancy.stateFor(roomId)).status).toBe('unknown');
+			expect((await modes.getActiveMode(roomId)).selectedActivityMode).toBe(ActivityMode.RELAX);
+			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 22 });
+			await http()
+				.post(activityPath(roomId) + '/work/activate')
+				.set('Authorization', `Bearer ${token}`)
+				.send({ data: { expected_revision: 2 } })
+				.expect(200);
+			expect((await module.get(SpaceOccupancyConfigService).get(roomId)).manualOverride).toBe(true);
+			expect(await effective()).toMatchObject({ source: 'automation', heating_setpoint: 17 });
+			const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			await http()
+				.post(comfortPath(controllerId) + '/selection')
+				.set('Authorization', `Bearer ${token}`)
+				.send({
+					expected_revision: configuration.revision,
+					expected_graph_revision: await module.get(VirtualDependencyGraphService).revision(),
+					preset: null,
+					clear_user_off: false,
+				})
+				.expect(201);
+			now.mockReturnValue(second + 1000);
+			await scheduler.runCycle();
+			expect(await modes.getActiveMode(roomId)).toMatchObject({
+				selectedActivityMode: ActivityMode.RELAX,
+				activityStatus: ActivityActivationStatus.FAILED,
+			});
+			expect((await modes.getActiveMode(roomId)).activityActor).toMatch(/^schedule:/);
+			expect(await effective()).toMatchObject({ source: 'manual', heating_setpoint: 20 });
+			const held = await module.get(SpaceOccupancyConfigService).get(roomId);
+			expect(held.manualOverride).toBe(true);
+			await http()
+				.post(occupancyPath + '/resume')
+				.set('Authorization', `Bearer ${token}`)
+				.send({ data: { expected_revision: held.revision } })
+				.expect(200);
+			await connected(ConnectionState.CONNECTED);
+			const fresh = new Date();
+			await module
+				.get(PropertyValueService)
+				.writeSampleWithState(input, true, { sampledAt: fresh, receivedAt: fresh, provenance: 'live' });
+			await occupancy.runCycle();
+			expect((await module.get(SpaceOccupancyConfigService).get(roomId)).manualOverride).toBe(false);
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId })).toMatchObject({
+				manualHold: true,
+			});
+			expect(await effective()).toMatchObject({ source: 'manual', heating_setpoint: 20 });
+		} finally {
+			now.mockRestore();
+		}
 	});
 
 	it.each([false, true])(

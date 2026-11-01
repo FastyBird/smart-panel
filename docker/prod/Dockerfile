@@ -16,7 +16,8 @@
 # ============================================================
 FROM node:24-alpine AS admin-builder
 
-RUN apk add --no-cache g++ make python3 \
+# sqlite3 falls back to node-gyp 8, which needs setuptools-provided distutils on current Alpine Python.
+RUN apk add --no-cache g++ make python3 py3-setuptools \
 	&& corepack enable \
 	&& corepack prepare pnpm@10.30.3 --activate
 
@@ -52,7 +53,8 @@ RUN pnpm run generate:spec && \
 # ============================================================
 FROM node:24-alpine AS backend-builder
 
-RUN apk add --no-cache g++ make python3 \
+# sqlite3 falls back to node-gyp 8, which needs setuptools-provided distutils on current Alpine Python.
+RUN apk add --no-cache g++ make python3 py3-setuptools \
 	&& corepack enable \
 	&& corepack prepare pnpm@10.30.3 --activate
 

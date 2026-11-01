@@ -3,7 +3,7 @@
 ID: FEATURE-VIRTUAL-COVER-HOMEKIT
 Type: feature
 Scope: backend, spec, Admin/Panel regression tests, docs
-Status: in review
+Status: done
 Issues: #1452, #1461
 Parent: #1447
 
@@ -20,7 +20,11 @@ Use the existing group identity, composite dispatch, ownership, deadlines and pr
 - [x] Managed native/guarded MODE is one atomic command; HomeKit current activity remains qualified feedback.
 - [x] Real HAP/native journal tests and existing expiry/restart/remap/legacy/partial component tests pass.
 - [x] Backend/client types, generated specs, strict lint and integration checks pass.
-- [ ] Exact-head hosted CI and completed nonblocking main CodeRabbit review pass before merge.
+- [x] Exact-head hosted CI and completed nonblocking main CodeRabbit review pass before merge.
+
+Merged in [#1505](https://github.com/FastyBird/smart-panel/pull/1505), squash `54e2c92c57d4aa2a906cd7744e3d60294c203377`.
+All 14 checks and completed nonblocking CodeRabbit review passed at `825391883e3102e446e547796398be1ff58db71d`.
+#1452 and #1461 are closed.
 
 ## Local validation
 

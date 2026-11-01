@@ -378,6 +378,9 @@ jobs:
       - name: "Install validation dependencies"
         run: "npm install ajv yaml"
 
+      - name: "Test alpha release source identity"
+        run: "node --test .github/scripts/test/alpha-release-source.test.cjs"
+
       - name: "Validate device/channel specifications (YAML)"
         run: "node spec/devices/validate.mjs"
 

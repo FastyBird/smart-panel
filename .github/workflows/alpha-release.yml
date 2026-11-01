@@ -49,6 +49,8 @@ jobs:
 
     outputs:
       version: ${{ steps.set-version.outputs.version }}
+      buildNumber: ${{ steps.set-version.outputs.buildNumber }}
+      source_sha: ${{ steps.version-commit.outputs.sha }}
 
     steps:
       - name: "Checkout"
@@ -69,17 +71,19 @@ jobs:
         run: 'node .github/scripts/monorepo-version-sync.js "${INPUT_VERSION:-$RELEASE_REF}" alpha'
 
       - name: "Commit Version Changes"
+        id: version-commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           if [ -n "$(git status --porcelain)" ]; then
             git add .
-            git commit -m "chore: sync versions [ci skip]"
+            git commit -m "chore(cross): sync alpha release versions [ci skip]"
             git push
           else
             echo "No version changes to commit."
           fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   publish-extension-sdk:
     needs: "sync-versions"
@@ -100,12 +104,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -157,12 +156,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -214,12 +208,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -270,12 +259,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Setup Node"
         uses: "actions/setup-node@v7"
@@ -331,12 +315,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -389,12 +368,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -451,12 +425,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Install Linux Build Dependencies"
         run: |
@@ -511,12 +480,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Remove Monorepo Configuration"
         run: |
@@ -625,12 +589,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Summary"
         run: |
@@ -667,12 +626,14 @@ jobs:
           cp scripts/install-display.sh install-display.sh
 
       - name: "Generate version.json"
+        env:
+          RELEASE_SOURCE_SHA: ${{ needs.sync-versions.outputs.source_sha }}
         run: |
           cat > version.json << VEOF
           {
             "version": "${{ needs.sync-versions.outputs.version }}",
             "build": "$(date -u +%Y-%m-%d)",
-            "commit": "${GITHUB_SHA:0:7}",
+            "commit": "${RELEASE_SOURCE_SHA:0:7}",
             "channel": "alpha"
           }
           VEOF
@@ -681,6 +642,7 @@ jobs:
         uses: "softprops/action-gh-release@v3"
         with:
           tag_name: v${{ needs.sync-versions.outputs.version }}
+          target_commitish: ${{ needs.sync-versions.outputs.source_sha }}
           name: v${{ needs.sync-versions.outputs.version }}
           body: |
             Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
@@ -745,12 +707,7 @@ jobs:
         uses: "actions/checkout@v7"
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
-
-      - name: "Pull Updated Branch"
-        env:
-          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
-        run: git pull origin "$PULL_REF"
+          ref: ${{ needs.sync-versions.outputs.source_sha }}
 
       - name: "Send Discord Notification"
         uses: "./.github/actions/send-discord-notification"

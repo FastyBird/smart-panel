@@ -49,6 +49,7 @@ import type { NativeClimateUnit } from '../src/modules/devices/platforms/native-
 import { ChannelsPropertiesTypeMapperService } from '../src/modules/devices/services/channels.properties-type-mapper.service';
 import { ClimateAutomationLedgerService } from '../src/modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
+import { ControllerPublicationContext } from '../src/modules/devices/services/controller-publication-context';
 import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { DeviceStructureLockService } from '../src/modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
@@ -668,8 +669,31 @@ async function verifyThermostatWire(
 			});
 		}
 
-		const emitted = jest.spyOn(moduleRef.get(EventEmitter2), 'emit');
+		const emitter = moduleRef.get(EventEmitter2);
+		const originalEmit = emitter.emit.bind(emitter) as EventEmitter2['emit'];
+		const emitted = jest.spyOn(emitter, 'emit');
 		restore.push(() => emitted.mockRestore());
+		const healthyPublication = !replaceBeforeCreate && !duplicateKind && failure === 'none' && !interleave;
+		const synthesis: Promise<unknown>[] = [];
+		if (healthyPublication) {
+			const delivered = new AsyncLocalStorage<boolean>();
+			const originalEffect = ControllerPublicationContext.effect.bind(
+				ControllerPublicationContext,
+			) as typeof ControllerPublicationContext.effect;
+			const effects = jest.spyOn(ControllerPublicationContext, 'effect');
+			restore.push(() => effects.mockRestore());
+			effects.mockImplementation(function <T>(name: string, work: () => Promise<T>): Promise<T> {
+				const original = originalEffect(name, work);
+				if (delivered.getStore() && name === 'virtual-device-information.synthesis') synthesis.push(original);
+				return original;
+			});
+			emitted.mockImplementation((event, ...args: unknown[]) => {
+				const emit = () => originalEmit(event, ...args);
+				return event === EventType.DEVICE_CREATED && (args[0] as DeviceEntity | undefined)?.id === device.id
+					? delivered.run(true, emit)
+					: emit();
+			});
+		}
 		const originalAfterCreate = mapping.afterCreate;
 		restore.push(() => {
 			mapping.beforeCreate = originalHook;
@@ -727,6 +751,11 @@ async function verifyThermostatWire(
 		restore.push(() => configSpy.mockRestore());
 		configSpy.mockImplementation(async (...args) => {
 			const result = await afterCommit(...args);
+			// The healthy-wire fixture snapshots after this root's original DEVICE_CREATED synthesis.
+			if (healthyPublication) {
+				expect(synthesis).toHaveLength(1);
+				await synthesis[0];
+			}
 			configured = true;
 			await interleave?.afterPublication?.(device.id);
 			if (failure === 'configuration') {
@@ -1069,8 +1098,12 @@ async function verifyThermostatWire(
 	return { publicRequest, device, settings };
 }
 
-/** Retain this app's original index/status setup work; never start a replacement rebuild or refresh. */
-function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, status: VirtualStatusListener) {
+/** Retain this app's original synthesis/index/status work; never start a replacement rebuild or refresh. */
+function captureLinkSetupCompletion(
+	index: VirtualIndexMaintenanceListener,
+	status: VirtualStatusListener,
+	information: VirtualDeviceInformationListener,
+) {
 	type Receipt = { done: Promise<void>; failure?: { cause: unknown } };
 	const pending = new Set<Receipt>();
 	const restore: (() => void)[] = [];
@@ -1098,11 +1131,12 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 		const own = Object.getOwnPropertyDescriptor(target, key);
 		const original = Reflect.get(target, key) as (...args: unknown[]) => unknown;
 		if (own || typeof original !== 'function') throw new Error(`Unsupported setup completion method: ${key}`);
-		Object.defineProperty(target, key, {
-			configurable: true,
-			writable: true,
-			value: (...args: unknown[]) => invoke(original.bind(target), args),
-		});
+		const observed = (...args: unknown[]) => invoke(original.bind(target), args);
+		// Nest discovers decorated event handlers after this fixture installs its passive wrapper.
+		for (const metadataKey of Reflect.getMetadataKeys(original) as unknown[]) {
+			Reflect.defineMetadata(metadataKey, Reflect.getMetadata(metadataKey, original) as unknown, observed);
+		}
+		Object.defineProperty(target, key, { configurable: true, writable: true, value: observed });
 		restore.push(() => {
 			if (!Reflect.deleteProperty(target, key)) throw new Error(`Cannot restore setup completion method: ${key}`);
 		});
@@ -1135,6 +1169,13 @@ function captureLinkSetupCompletion(index: VirtualIndexMaintenanceListener, stat
 			return result;
 		});
 		wrap(status, 'recompute', (original, args) => {
+			const work = original(...args) as Promise<void>;
+			retain(work);
+			return work;
+		});
+		// Status may settle before the same DEVICE_CREATED handler writes its remaining owned properties.
+		// Keep that original finite synthesis and its descendants ahead of an explicit graph recovery.
+		wrap(information, 'handleDeviceCreated', (original, args) => {
 			const work = original(...args) as Promise<void>;
 			retain(work);
 			return work;
@@ -1215,6 +1256,7 @@ describe('devices-virtual plugin (e2e)', () => {
 		linkSetupCompletion = captureLinkSetupCompletion(
 			moduleFixture.get(VirtualIndexMaintenanceListener),
 			moduleFixture.get(VirtualStatusListener),
+			moduleFixture.get(VirtualDeviceInformationListener),
 		);
 
 		app.useGlobalPipes(

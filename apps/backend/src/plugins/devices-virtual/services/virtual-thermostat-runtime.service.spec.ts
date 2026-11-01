@@ -2614,6 +2614,388 @@ describe('virtual thermostat durable runtime', () => {
 		return { fixture, claims };
 	};
 
+	it.each(['success', 'failure'] as const)(
+		'joins the original pending bootstrap %s completion and exact rejection identity',
+		async (mode) => {
+			const { fixture, claims } = await useNativeClaimsGuard();
+			await settleReal(fixture);
+			const owner = runtime;
+			owner.onModuleDestroy();
+			const listeners = events.eventNames().map((event) => [event, events.listenerCount(event)]);
+			let enter!: () => void, release!: () => void;
+			const entered = ownedGate((resolve) => (enter = resolve));
+			const held = ownedGate((resolve) => (release = resolve));
+			const failure = new Error('original concurrent native recovery');
+			let armed = true;
+			let injectFailure = mode === 'failure';
+			const subscriber = {
+				beforeTransactionStart: async () => {
+					if (!armed) return;
+					armed = false;
+					enter();
+					await held;
+				},
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (injectFailure && event.query.startsWith('UPDATE "devices_virtual_thermostat_branch_runtime"'))
+						throw failure;
+				},
+			};
+			database.subscribers.push(subscriber);
+			const first = owner.onApplicationBootstrap();
+			void first.catch(() => undefined);
+			let second: Promise<void> | undefined;
+			try {
+				await Promise.race([
+					entered,
+					first.then(() => {
+						throw new Error('Original bootstrap gate was not reached');
+					}),
+				]);
+				second = owner.onApplicationBootstrap();
+				void second.catch(() => undefined);
+				let secondSettled = false;
+				void second.then(
+					() => {
+						secondSettled = true;
+					},
+					() => {
+						secondSettled = true;
+					},
+				);
+				expect(second).toBe(first);
+				await Promise.resolve();
+				expect(secondSettled).toBe(false);
+				release();
+				if (mode === 'failure') {
+					await expect(first).rejects.toBe(failure);
+					await expect(second).rejects.toBe(failure);
+					expect(owner['active']).toBe(false);
+					expect(events.eventNames().map((event) => [event, events.listenerCount(event)])).toEqual(listeners);
+					injectFailure = false;
+					await owner.onApplicationBootstrap();
+					await settleReal(fixture);
+				} else {
+					await first;
+					await second;
+				}
+				expect(claims.capture().isCurrent()).toBe(true);
+				expect(owner['timer']).toBeDefined();
+			} finally {
+				owner.onModuleDestroy();
+				release();
+				await Promise.allSettled(second === undefined ? [first] : [first, second]);
+				database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+			}
+		},
+	);
+
+	it('keeps a destroyed pending A bootstrap completion from clearing the fresh same-instance B attempt', async () => {
+		const { fixture, claims } = await useNativeClaimsGuard();
+		await settleReal(fixture);
+		const owner = runtime;
+		owner.onModuleDestroy();
+		let enterA!: () => void, releaseA!: () => void, enterB!: () => void, releaseB!: () => void;
+		const enteredA = ownedGate((resolve) => (enterA = resolve));
+		const heldA = ownedGate((resolve) => (releaseA = resolve));
+		const enteredB = ownedGate((resolve) => (enterB = resolve));
+		const heldB = ownedGate((resolve) => (releaseB = resolve));
+		let entries = 0;
+		const subscriber = {
+			beforeTransactionStart: async () => {
+				entries++;
+				if (entries === 1) {
+					enterA();
+					await heldA;
+				} else if (entries === 2) {
+					enterB();
+					await heldB;
+				}
+			},
+		};
+		database.subscribers.push(subscriber);
+		const a = owner.onApplicationBootstrap();
+		void a.catch(() => undefined);
+		let b: Promise<void> | undefined;
+		try {
+			await Promise.race([
+				enteredA,
+				a.then(() => {
+					throw new Error('Original A bootstrap gate was not reached');
+				}),
+			]);
+			owner.onModuleDestroy();
+			b = owner.onApplicationBootstrap();
+			void b.catch(() => undefined);
+			expect(b).not.toBe(a);
+			expect(owner.onApplicationBootstrap()).toBe(b);
+			releaseA();
+			await Promise.race([
+				enteredB,
+				b.then(() => {
+					throw new Error('Original B bootstrap gate was not reached');
+				}),
+			]);
+			await expect(a).rejects.toThrow('Original runtime lifecycle ended');
+			// A is genuinely finished while B remains inside its original native recovery.
+			expect(owner.onApplicationBootstrap()).toBe(b);
+			expect(owner['timer']).toBeUndefined();
+			releaseB();
+			await b;
+			await settleReal(fixture);
+			expect(claims.capture().isCurrent()).toBe(true);
+			expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBeGreaterThan(0);
+			expect(owner['timer']).toBeDefined();
+		} finally {
+			owner.onModuleDestroy();
+			releaseA();
+			releaseB();
+			await Promise.allSettled(b === undefined ? [a] : [a, b]);
+			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+		}
+	});
+
+	it('stops A at an actual late native load read and admits fresh B only through its own structural ticket', async () => {
+		const { fixture, claims } = await useNativeClaimsGuard();
+		await settleReal(fixture);
+		const owner = runtime;
+		let enter!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		let armed = true;
+		let callbackFailure: { cause: unknown } | undefined;
+		const subscriber = {
+			afterQuery: (event: AfterQueryEvent<unknown>) => {
+				if (
+					!armed ||
+					!event.query.startsWith('SELECT ') ||
+					!event.query.includes('devices_virtual_thermostat_branch_runtime')
+				)
+					return;
+				armed = false;
+				try {
+					owner.onModuleDestroy();
+				} catch (cause) {
+					callbackFailure = { cause };
+				} finally {
+					enter();
+				}
+			},
+		};
+		database.subscribers.push(subscriber);
+		const a = owner.requestInstalled(controllerId);
+		void a.catch(() => undefined);
+		try {
+			await Promise.race([
+				entered,
+				a.then(() => {
+					throw new Error('Original native load read was not reached');
+				}),
+			]);
+			if (callbackFailure !== undefined) throw callbackFailure.cause;
+			expect(owner['structure'].hasCurrentStructuralLease()).toBe(false);
+			await owner.onApplicationBootstrap();
+			await a;
+			await settleReal(fixture);
+			expect(armed).toBe(false);
+			expect(claims.capture().isCurrent()).toBe(true);
+			const state = await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId });
+			expect(owner.readDiagnostics(controllerId)?.decision_revision).toBe(state.decisionRevision);
+			await owner.requestInstalled(controllerId);
+			expect(owner.readDiagnostics(controllerId)?.decision_revision).toBeGreaterThan(state.decisionRevision);
+		} finally {
+			owner.onModuleDestroy();
+			await a;
+			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+		}
+	});
+
+	it('drops a real completed A native load held after original shared release without closing B context or persisting A work', async () => {
+		const { fixture, claims } = await useNativeClaimsGuard();
+		await settleReal(fixture);
+		const owner = runtime,
+			structure = owner['structure'];
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		let armed = true,
+			nativeLoaded = false;
+		const observer = {
+			afterQuery: (event: AfterQueryEvent<unknown>) => {
+				if (
+					armed &&
+					event.query.startsWith('SELECT ') &&
+					event.query.includes('devices_virtual_thermostat_branch_runtime')
+				)
+					nativeLoaded = true;
+			},
+		};
+		database.subscribers.push(observer);
+		const shared = structure.runShared.bind(structure) as DeviceStructureLockService['runShared'];
+		const spy = jest.spyOn(structure, 'runShared').mockImplementation(async <T>(work: () => Promise<T>): Promise<T> => {
+			const result = await shared(work);
+			if (armed && nativeLoaded) {
+				armed = false;
+				// A real exclusive ticket proves that the old shared SQL owner has released.
+				await structure.runExclusiveReleased(() => Promise.resolve());
+				enter();
+				await held;
+			}
+			return result;
+		});
+		const a = owner.requestInstalled(controllerId);
+		void a.catch(() => undefined);
+		let b: Promise<void> | undefined, retirement: Promise<void> | undefined;
+		let retirementSettled = false;
+		const writes: string[] = [];
+		const watch = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (/^(INSERT|UPDATE|DELETE) /.test(event.query)) writes.push(event.query);
+			},
+		};
+		try {
+			await Promise.race([
+				entered,
+				a.then(() => {
+					throw new Error('Original completed load gate was not reached');
+				}),
+			]);
+			owner.onModuleDestroy();
+			retirement = owner.flush();
+			void retirement.then(() => {
+				retirementSettled = true;
+			});
+			b = owner.onApplicationBootstrap();
+			await b; // B must progress while the original, already-read A result remains held.
+			await settleReal(fixture);
+			clearInterval(owner['timer']);
+			expect(retirementSettled).toBe(false);
+			const context = owner['contexts'].get(controllerId);
+			const diagnostic = owner.readDiagnostics(controllerId);
+			const state = await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId });
+			const capture = claims.capture();
+			expect(context).toBeDefined();
+			expect(capture.isCurrent()).toBe(true);
+			database.subscribers.push(watch);
+			release();
+			await a;
+			await retirement;
+			expect(retirementSettled).toBe(true);
+			expect(writes).toEqual([]);
+			expect(owner['contexts'].get(controllerId)).toBe(context);
+			expect(owner.readDiagnostics(controllerId)).toEqual(diagnostic);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId })).toEqual(state);
+			expect(capture.isCurrent()).toBe(true);
+			await owner.requestInstalled(controllerId);
+			expect(owner.readDiagnostics(controllerId)?.decision_revision).toBeGreaterThan(state.decisionRevision);
+		} finally {
+			owner.onModuleDestroy();
+			release();
+			await Promise.allSettled([a, b, retirement].filter((pending) => pending !== undefined));
+			spy.mockRestore();
+			for (const subscriber of [watch, observer]) {
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+			}
+		}
+	});
+
+	it.each(['clone', 'foreign-write'] as const)(
+		'refuses %s live-command retention at restart without changing native history',
+		async (variant) => {
+			await settle();
+			runtime.onModuleDestroy();
+			await runtime.flush();
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+			const branch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+				claimId: claim.id,
+			});
+			const journal = new ThermostatRuntimeJournal(database, new DeviceStructureLockService());
+			await journal.captureRuntimeRow(database.manager, branch);
+			const command = database.manager.create(VirtualThermostatCommandEntity, {
+				id: uuid(),
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: 1,
+				decisionRevision: 900,
+				action: 'on',
+				status: 'prepared',
+				preparedAt: new Date(),
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			});
+			await journal.insert(command, branch);
+			command.status = 'dispatching';
+			command.dispatchedAt = new Date();
+			await journal.write(command);
+			if (variant === 'foreign-write')
+				await database.manager.update(VirtualThermostatCommandEntity, command.id, { fault: 'foreign actual write' });
+			const rows = async () => ({
+				commands: await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId }),
+				branches: await database.manager.findBy(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id }),
+			});
+			const before = await rows();
+			const transaction = jest.spyOn(database, 'transaction');
+			await expect(journal.restart([variant === 'clone' ? { ...command } : command])).rejects.toThrow(
+				'Original thermostat command journal image required',
+			);
+			if (variant === 'clone') expect(transaction).not.toHaveBeenCalled();
+			expect(await rows()).toEqual(before);
+		},
+	);
+
+	it('persists a genuinely possibly-sent A outcome after same-instance B startup without borrowing B admission or scheduling A work', async () => {
+		const { fixture, claims } = await useNativeClaimsGuard();
+		await settleReal(fixture);
+		const owner = runtime;
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		fixture.controls.afterOn = async (property) => {
+			if (property === relayId) {
+				enter();
+				await held;
+			}
+		};
+		let original: Promise<void> | undefined;
+		try {
+			await fixture.report(sensorId, 18);
+			await entered;
+			await owner.flush();
+			const command = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+				controllerId,
+				action: 'on',
+				status: 'dispatching',
+			});
+			original = owner['inFlight'].get(command.id);
+			expect(original).toBeDefined();
+			expect(fixture.controls.sends.filter((send) => send.property === relayId && send.on)).toHaveLength(1);
+			owner.onModuleDestroy();
+			await owner.onApplicationBootstrap();
+			clearInterval(owner['timer']);
+			expect(claims.capture().isCurrent()).toBe(true);
+			release();
+			await original;
+			await fixture.flushTelemetry();
+			await settleReal(fixture);
+			const late = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id });
+			expect(late.status).toBe('unknown');
+			expect(late.settledAt).not.toBeNull();
+			expect(fixture.controls.sends.filter((send) => send.property === relayId && send.on)).toHaveLength(1);
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId }))
+					.releaseEvidence,
+			).toBeNull();
+		} finally {
+			owner.onModuleDestroy();
+			release();
+			if (original !== undefined) await original;
+			fixture.controls.afterOn = null;
+			await fixture.flushTelemetry();
+		}
+	});
+
 	it('retains genuine native-claims OFF settlement across three ordinary decision rotations', async () => {
 		const { fixture } = await useNativeClaimsGuard();
 		const before = database.subscribers.length;
@@ -2784,6 +3166,75 @@ describe('virtual thermostat durable runtime', () => {
 			owner.onModuleDestroy();
 			observer.mockRestore();
 			if (poll !== undefined) await poll;
+		}
+	});
+
+	it('an actual interval retires the original held native ON decision without renewing its guard', async () => {
+		const { fixture } = await useNativeClaimsGuard();
+		await settleReal(fixture);
+		const owner = runtime;
+		const get = fixture.transport.get.bind(fixture.transport) as VirtualThermostatTransportService['get'];
+		let originalGuard: (() => boolean) | undefined;
+		jest.spyOn(fixture.transport, 'get').mockImplementation((...args) => {
+			const adapter = get(...args);
+			if (!adapter) return null;
+			const send = adapter.send.bind(adapter) as ThermostatActuationAdapter['send'];
+			return {
+				...adapter,
+				send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
+					if (sendArgs[0].value === true && originalGuard === undefined) originalGuard = sendArgs[3];
+					return send(...sendArgs);
+				},
+			};
+		});
+		let enterOn!: () => void, enterPoll!: () => void, release!: () => void;
+		const onEntered = ownedGate((resolve) => (enterOn = resolve));
+		const pollEntered = ownedGate((resolve) => (enterPoll = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		let armed = false;
+		let admittedAtEntry: boolean | undefined;
+		let priorContext: unknown;
+		let priorSequence: number;
+		fixture.controls.beforeOn = () => {
+			admittedAtEntry = originalGuard?.();
+			priorContext = owner['contexts'].get(controllerId);
+			priorSequence = owner.readDiagnostics(controllerId).sequence;
+			armed = true;
+			enterOn();
+			return held;
+		};
+		const request = owner.request.bind(owner) as VirtualThermostatRuntimeService['request'];
+		let poll: Promise<void> | undefined;
+		const observer = jest.spyOn(owner, 'request').mockImplementation(function (
+			this: VirtualThermostatRuntimeService,
+			...args: Parameters<VirtualThermostatRuntimeService['request']>
+		) {
+			const original = request(...args);
+			if (armed && this === owner && args[0] === controllerId && args[1] === false && poll === undefined) {
+				poll = original;
+				enterPoll();
+			}
+			return original;
+		});
+		try {
+			await fixture.report(sensorId, 18);
+			await onEntered;
+			expect(admittedAtEntry).toBe(true);
+			// No inspect(), explicit request(false), fake timer advance or replacement interval.
+			await pollEntered;
+			expect(poll).toBeDefined();
+			await poll;
+			expect(owner['contexts'].get(controllerId)).not.toBe(priorContext);
+			expect(owner.readDiagnostics(controllerId).sequence).toBeGreaterThan(priorSequence);
+			expect(originalGuard()).toBe(false);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+		} finally {
+			owner.onModuleDestroy();
+			release();
+			fixture.controls.beforeOn = null;
+			observer.mockRestore();
+			if (poll !== undefined) await poll;
+			await fixture.flushTelemetry();
 		}
 	});
 
@@ -4434,13 +4885,28 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
 		expect(samples.get(relayId)?.value).toBe(false);
 	});
-	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
+	// Establish the original baseline and K from a real runtime-issued OFF, not a seeded companion row.
+	const prepareIssuedOffJournalSettlement = async (retire: (ids: readonly string[]) => void) => {
 		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
+		const owner = runtime,
+			source = database,
+			id = controllerId;
+		clearInterval(owner['timer']);
+		packetTick = useThermostatPacketClock();
+		const claim = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
+		const baseline = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+		expect(baseline.length).toBeGreaterThan(0);
+		for (const row of baseline) expect(row).toMatchObject({ claimId: claim.id, action: 'off', status: 'confirmed' });
+		const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+		for (const ids of P0) {
+			expect(new Set(ids).size).toBe(ids.length);
+			expect(ids.every((entry) => baseline.some((row) => row.id === entry))).toBe(true);
+		}
+		// Isolate explicit public requests from feedback. The actual OFF dispatch still runs and is joined.
+		jest.spyOn(owner, 'request').mockImplementation(() => Promise.resolve());
+		const command = source.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
-			controllerId,
+			controllerId: id,
 			claimId: claim.id,
 			claimRevision: claim.revision,
 			configurationRevision: 1,
@@ -4453,71 +4919,212 @@ describe('virtual thermostat durable runtime', () => {
 			proofId: null,
 			fault: null,
 		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		const retire = jest.fn<void, [readonly string[]]>();
+		await source.manager.insert(VirtualThermostatCommandEntity, command);
+		const inserted: VirtualThermostatCommandEntity[] = [];
+		const insertion = {
+			listenTo: () => VirtualThermostatCommandEntity,
+			afterInsert: (event: InsertEvent<VirtualThermostatCommandEntity>) => {
+				if (event.entity.controllerId === id && event.entity.claimId === claim.id && event.entity.action === 'off')
+					inserted.push({ ...event.entity });
+			},
+		};
+		source.subscribers.push(insertion);
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+		const attemptsBefore = Object.freeze([...actuationAttempts]);
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		offGate = ownedGate((resolve) => (release = resolve));
+		const get = transport.get.bind(transport) as VirtualThermostatTransportService['get'];
+		const delivered: string[] = [];
+		const observer = jest.spyOn(transport, 'get').mockImplementation((...args) => {
+			const adapter = get(...args);
+			if (!adapter) return null;
+			const send = adapter.send.bind(adapter) as ThermostatActuationAdapter['send'];
+			return {
+				...adapter,
+				send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
+					const original = send(...sendArgs);
+					if (sendArgs[0].value === false && sendArgs[1].id === claim.id) {
+						delivered.push(sendArgs[4].commandId);
+						enter();
+					}
+					return original;
+				},
+			};
+		});
+		let preparation: Promise<void> | undefined;
+		try {
+			preparation = owner.requestInstalled(id);
+			await Promise.race([
+				entered,
+				preparation.then(() => {
+					throw new Error('Original OFF send was not reached');
+				}),
+			]);
+			expect(inserted).toHaveLength(1);
+			expect(delivered).toEqual([inserted[0].id]);
+			expect(actuationAttempts).toEqual([...attemptsBefore, false]);
+			expect(retire).not.toHaveBeenCalled();
+			const held = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			expect(held.map((row) => row.id).sort()).toEqual(
+				[...baseline.map((row) => row.id), command.id, delivered[0]].sort(),
+			);
+			for (const row of baseline) expect(held.find((entry) => entry.id === row.id)).toEqual(row);
+			expect(held.find((row) => row.id === command.id)).toEqual(command);
+			expect(held.find((row) => row.id === delivered[0])).toMatchObject({
+				claimId: claim.id,
+				action: 'off',
+				status: 'dispatching',
+				dispatchedAt: expect.any(Date) as Date,
+			});
+			expect(reconciledCommandIds).toEqual(P0);
+			release();
+			await preparation;
+		} catch (cause) {
+			owner.onModuleDestroy();
+			throw cause;
+		} finally {
+			release();
+			offGate = null;
+			if (preparation !== undefined) await preparation.catch(() => undefined);
+			observer.mockRestore();
+			source.subscribers.splice(source.subscribers.indexOf(insertion), 1);
+		}
+		const pendingIds = Object.freeze([command.id, delivered[0]].sort());
+		const originalJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+		for (const pending of pendingIds)
+			expect(originalJournal.find((row) => row.id === pending)).toMatchObject({ status: 'accepted' });
+		expect(reconciledCommandIds).toEqual(P0);
+		expect(retire).not.toHaveBeenCalled();
+		const assertTranscript = (settlements: number) => {
+			for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
+			expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+				[...P0, ...Array.from({ length: settlements }, () => pendingIds)].map((ids) => [...ids].sort()),
+			);
+		};
+		const assertCompleteConfirmation = async (observed?: VirtualThermostatCommandEntity[]) => {
+			expect(actuationAttempts).toEqual([...attemptsBefore, false]);
+			expect(actuationAttempts.every((on) => !on)).toBe(true);
+			const current = observed ?? (await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id }));
+			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
+			for (const row of current) {
+				const before = originalJournal.find((original) => original.id === row.id);
+				if (pendingIds.includes(row.id))
+					expect(row).toMatchObject({
+						...before,
+						status: 'confirmed',
+						settledAt: expect.any(Date) as Date,
+						proofId: expect.any(String) as string,
+					});
+				else expect(row).toEqual(before);
+			}
+		};
+		const target = owner as unknown as {
+			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
+		};
+		const reconcile = target.reconcile.bind(target) as typeof target.reconcile;
+		let armed = false;
+		const entries: Promise<void>[] = [];
+		const runners = new Set<object>();
+		const nativeObserver = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (
+					armed &&
+					entries.length === 1 &&
+					event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+					event.parameters?.includes('confirmed') &&
+					pendingIds.every((entry) => event.parameters.includes(entry))
+				)
+					runners.add(event.queryRunner);
+			},
+		};
+		source.subscribers.push(nativeObserver);
+		const native = jest.spyOn(target, 'reconcile').mockImplementation(function (this: typeof target, ...args) {
+			const original = reconcile(...args);
+			if (armed && this === target && args[1].id === claim.id) {
+				entries.push(original);
+				void original.catch(() => undefined);
+			}
+			return original;
+		});
+		issuedProviders.push(() => {
+			native.mockRestore();
+			source.subscribers.splice(source.subscribers.indexOf(nativeObserver), 1);
+		});
+		return {
+			claim,
+			command,
+			pendingIds,
+			originalJournal,
+			assertCompleteConfirmation,
+			assertTranscript,
+			isSettlementRunner: (runner: object) => armed && runners.has(runner),
+			start: async () => {
+				expect(armed).toBe(false);
+				entries.length = 0;
+				runners.clear();
+				armed = true;
+				try {
+					const result = await owner.requestInstalled(id).then(
+						() => ({ fulfilled: true as const }),
+						(cause: unknown) => ({ fulfilled: false as const, cause }),
+					);
+					expect(entries).toHaveLength(1);
+					await entries[0];
+					if (result.fulfilled === false) throw result.cause;
+				} finally {
+					armed = false;
+				}
+			},
+		};
+	};
+
+	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
+		const retire = jest.fn<void, [readonly string[]]>();
+		const entry = await prepareIssuedOffJournalSettlement(retire);
+		const { command, pendingIds, originalJournal, assertCompleteConfirmation } = entry;
 		let rollback = true;
 		const subscriber = {
 			listenTo: () => VirtualThermostatBranchRuntimeEntity,
-			afterUpdate: () => {
-				if (rollback) {
+			afterUpdate: (event: import('typeorm').UpdateEvent<VirtualThermostatBranchRuntimeEntity>) => {
+				if (rollback && entry.isSettlementRunner(event.queryRunner)) {
 					rollback = false;
 					throw new Error('fixture settlement rollback');
 				}
 			},
 		};
 		database.subscribers.push(subscriber);
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
 		try {
-			const context = await internal.load(controllerId);
-			await expect(internal.reconcile(context, claim)).rejects.toThrow('fixture settlement rollback');
+			await expect(entry.start()).rejects.toThrow('fixture settlement rollback');
 			expect(retire).not.toHaveBeenCalled();
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'accepted',
 			);
-			await internal.reconcile(context, claim);
+			expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).toEqual(originalJournal);
+			entry.assertTranscript(1);
+			await entry.start();
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'confirmed',
 			);
-			expect(retire).toHaveBeenCalledWith([command.id]);
-			expect(reconciledCommandIds.slice(-2)).toEqual([[command.id], [command.id]]);
+			expect(retire).toHaveBeenCalledTimes(1);
+			expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
+			await assertCompleteConfirmation();
+			entry.assertTranscript(2);
 		} finally {
 			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
 		}
 	});
 	it('does not let optional retirement failure alter committed journal confirmation', async () => {
-		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(),
-			controllerId,
-			claimId: claim.id,
-			claimRevision: claim.revision,
-			configurationRevision: 1,
-			decisionRevision: 1,
-			action: 'on',
-			status: 'accepted',
-			preparedAt: new Date(),
-			dispatchedAt: null,
-			settledAt: null,
-			proofId: null,
-			fault: null,
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		const retire = jest.fn(() => {
+		const retire = jest.fn<void, [readonly string[]]>(() => {
 			throw new Error('optional metadata only');
 		});
-		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
-		await internal.reconcile(await internal.load(controllerId), claim);
-		expect(retire).toHaveBeenCalledWith([command.id]);
+		const entry = await prepareIssuedOffJournalSettlement(retire);
+		const { command, pendingIds, assertCompleteConfirmation } = entry;
+		await entry.start();
+		expect(retire).toHaveBeenCalledTimes(1);
+		expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
+		await assertCompleteConfirmation();
+		entry.assertTranscript(1);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 			'confirmed',
 		);
@@ -4593,26 +5200,9 @@ describe('virtual thermostat durable runtime', () => {
 		'callback call replacement',
 		'callback call getter',
 	] as const)('waits for a known SQLite commit acknowledgement before retirement: %s', async (mode) => {
-		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(),
-			controllerId,
-			claimId: claim.id,
-			claimRevision: claim.revision,
-			configurationRevision: 1,
-			decisionRevision: 1,
-			action: 'on',
-			status: 'accepted',
-			preparedAt: new Date(),
-			dispatchedAt: null,
-			settledAt: null,
-			proofId: null,
-			fault: null,
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
 		const retire = jest.fn<void, [readonly string[]]>();
+		const entry = await prepareIssuedOffJournalSettlement(retire);
+		const { pendingIds, assertCompleteConfirmation } = entry;
 		const originalCallDescriptor = Object.getOwnPropertyDescriptor(retire, 'call');
 		let callAccesses = 0;
 		let originalProof: { retireConfirmedCommandIds?: (ids: readonly string[]) => void };
@@ -4623,7 +5213,7 @@ describe('virtual thermostat durable runtime', () => {
 		};
 		let enter: () => void = () => undefined;
 		let rejectObservation: (error: unknown) => void = () => undefined;
-		let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
+		let committedJournal: VirtualThermostatCommandEntity[] | undefined;
 		let release: () => void = () => undefined;
 		const entered = new Promise<void>((resolve, reject) => {
 			enter = resolve;
@@ -4635,12 +5225,10 @@ describe('virtual thermostat durable runtime', () => {
 		let once = true;
 		const subscriber = {
 			afterTransactionCommit: async (event: TransactionCommitEvent) => {
-				if (!once) return;
+				if (!once || !entry.isSettlementRunner(event.queryRunner)) return;
 				once = false;
 				try {
-					committedStatus = (
-						await event.queryRunner.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })
-					).status;
+					committedJournal = await event.queryRunner.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 				} catch (error: unknown) {
 					rejectObservation(error);
 					throw error;
@@ -4651,21 +5239,24 @@ describe('virtual thermostat durable runtime', () => {
 			},
 		};
 		database.subscribers.push(subscriber);
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
 		let outcome: Promise<unknown> | undefined;
 		try {
-			const pending = internal.reconcile(await internal.load(controllerId), claim);
+			const pending = entry.start();
 			// Attach both outcomes before releasing the controlled commit gate.
 			outcome = pending.then<unknown, unknown>(
 				() => null,
 				(error: unknown) => error,
 			);
-			await entered;
+			await Promise.race([
+				entered,
+				outcome.then((error) => {
+					throw error === null ? new Error('Original settlement did not reach its commit ACK') : error;
+				}),
+			]);
 			expect(retire).not.toHaveBeenCalled();
-			expect(committedStatus).toBe('confirmed');
+			expect(committedJournal).toBeDefined();
+			await assertCompleteConfirmation(committedJournal);
+			entry.assertTranscript(1);
 			if (mode === 'callback replacement') originalProof.retireConfirmedCommandIds = successor;
 			if (mode === 'callback deletion') delete originalProof.retireConfirmedCommandIds;
 			if (mode === 'callback call replacement') {
@@ -4686,13 +5277,15 @@ describe('virtual thermostat durable runtime', () => {
 			const error = await outcome;
 			if (mode !== 'unknown acknowledgement') {
 				expect(error).toBeNull();
-				expect(retire).toHaveBeenCalledWith([command.id]);
+				expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
 				expect(retire).toHaveBeenCalledTimes(1);
 				expect(retire.mock.contexts[0]).toBe(originalProof);
 			} else {
 				expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
 				expect(retire).not.toHaveBeenCalled();
 			}
+			await assertCompleteConfirmation();
+			entry.assertTranscript(1);
 			expect(successor).not.toHaveBeenCalled();
 			expect(callAccesses).toBe(0);
 		} finally {

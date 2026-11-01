@@ -1128,7 +1128,6 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 			cleanup.push(() => registry.onModuleDestroy());
 			await registry.onApplicationBootstrap();
 			registry.recordQualification(f.qualification);
-			registry.registerRuntimeAdmission(() => true);
 			let generation = 1,
 				threshold = 12;
 			const adapter = new ThermostatRemoteCoolingAdapter(
@@ -1153,16 +1152,22 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 				{} as PropertyValueService,
 			);
 			Object.assign(transport, { remoteCooling: adapter });
-			transport.registerCoolingFrameReader(() => {
-				const captured = generation;
-				return {
-					threshold,
-					expiresAt: Date.now() + 5000,
-					controllerRevision: 3,
-					protectionFingerprint: binding.protectionFingerprint,
-					isCurrent: () => captured === generation,
-				};
-			});
+			const registerFrame = transport.registerCoolingFrameReader.bind(
+				transport,
+			) as VirtualThermostatTransportService['registerCoolingFrameReader'];
+			// Keep the controlled frame input, but let real startup own its actual registration/disposer.
+			jest.spyOn(transport, 'registerCoolingFrameReader').mockImplementation(() =>
+				registerFrame(() => {
+					const captured = generation;
+					return {
+						threshold,
+						expiresAt: Date.now() + 5000,
+						controllerRevision: 3,
+						protectionFingerprint: binding.protectionFingerprint,
+						isCurrent: () => captured === generation,
+					};
+				}),
+			);
 			const runtime = new VirtualThermostatRuntimeService(
 				db,
 				structure,
@@ -1178,7 +1183,6 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 			// Isolate renewed-command continuity: the full decision evaluator has separate runtime suites.
 			// Actual prepare/dispatch, final ownership authority, installed registry, source guard, adapter, session and compiled protocol execute here.
 			const internal = runtime as unknown as {
-				active: boolean;
 				contexts: Map<string, unknown>;
 				epochs: Map<string, number>;
 				decide: (...args: unknown[]) => { desiredCooling: boolean };
@@ -1188,17 +1192,18 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 				ownership: ThermostatRuntimeOwnership;
 			};
 			cleanup.push(async () => {
-				internal.active = false;
+				runtime.onModuleDestroy();
 				await runtime.capturePredecessors(claim.controllerId);
 			});
+			// Only decision scheduling is isolated; native recovery and the real lifetime/admission install execute.
+			jest.spyOn(runtime, 'request').mockResolvedValue(undefined);
+			await runtime.onApplicationBootstrap();
 			internal.epochs.set(claim.controllerId, 1);
 			const context = await internal.load(claim.controllerId);
 			claim = context.claims[0];
-			internal.active = true;
 			internal.contexts.set(claim.controllerId, context);
 			internal.epochs.set(claim.controllerId, 1);
 			jest.spyOn(internal, 'decide').mockReturnValue({ desiredCooling: true });
-			jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
 			const prepare = async () => {
 				const owned = internal.ownership.admit(claim.controllerId);
 				const completion = internal.ownership.completion(owned);
@@ -1232,8 +1237,14 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 				const nativeOns = component.switches.filter((s) => s.on);
 				expect(nativeOns).toHaveLength(2);
 				expect(nativeOns.every((s) => s.toggle_after > 0 && s.toggle_after <= 5)).toBe(true);
+				runtime.onModuleDestroy();
+				await expect(internal.prepare(context, claim, 'on')).rejects.toThrow('Original runtime lifecycle ended');
+				expect(await db.manager.find(VirtualThermostatCommandEntity, { order: { preparedAt: 'ASC' } })).toEqual(
+					journals,
+				);
+				expect(component.switches.filter((s) => s.on)).toHaveLength(2);
 			} finally {
-				internal.active = false;
+				runtime.onModuleDestroy();
 				await runtime.capturePredecessors(claim.controllerId);
 			}
 		} finally {
