@@ -68,6 +68,32 @@ const failed = (): never => {
 	throw new Error('native_request_failed');
 };
 
+export function nativeTargetValid(range: NativeRange | null | undefined, value: number | undefined): value is number {
+	if (
+		!range ||
+		value === undefined ||
+		![value, range.minimum, range.maximum, range.step].every(Number.isFinite) ||
+		range.step <= 0 ||
+		range.minimum >= range.maximum ||
+		value < range.minimum ||
+		value > range.maximum
+	)
+		return false;
+	const steps = (value - range.minimum) / range.step;
+	return Math.abs(steps - Math.round(steps)) < 1e-6;
+}
+export function nativeAutoAction(capabilities: NativeCapabilities | null, targets: { heating?: number; cooling?: number }): NativeAction | null {
+	if (
+		!capabilities?.supportsCompound ||
+		!capabilities.modes.includes('auto') ||
+		!nativeTargetValid(capabilities.heating, targets.heating) ||
+		!nativeTargetValid(capabilities.cooling, targets.cooling) ||
+		targets.heating >= targets.cooling
+	)
+		return null;
+	return { mode: 'auto', heating_setpoint: targets.heating, cooling_setpoint: targets.cooling };
+}
+
 /** HA dual-target commands require an explicit mode; Zigbee never receives an invented compound request. */
 export function nativeTargetAction(
 	state: NativeSnapshot,
@@ -76,13 +102,12 @@ export function nativeTargetAction(
 ): NativeAction | null {
 	const value = targets[branch];
 	const capabilities = state.capabilities;
-	if (!capabilities || value === undefined || !Number.isFinite(value)) return null;
+	if (!capabilities || !nativeTargetValid(capabilities[branch], value)) return null;
 	const action: NativeAction = branch === 'heating' ? { heating_setpoint: value } : { cooling_setpoint: value };
 	if (state.provider !== 'home-assistant' || !capabilities.heating || !capabilities.cooling) return action;
 	const mode = branch === 'heating' ? 'heat' : 'cool';
 	if (capabilities.modes.includes(mode)) return { ...action, mode };
-	if (capabilities.modes.includes('auto') && targets.heating !== undefined && targets.cooling !== undefined)
-		return { mode: 'auto', heating_setpoint: targets.heating, cooling_setpoint: targets.cooling };
+	if (capabilities.modes.includes('auto')) return nativeAutoAction(capabilities, targets);
 	return null;
 }
 

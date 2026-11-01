@@ -52,7 +52,14 @@ export class ZigbeeNativeClimateAdapterService {
 		const route = device.identifier;
 		const registered = adapter.getDevice(route);
 		const identity = adapter.getSourceIdentity(route);
-		if (!registered || !identity || !registered.definition?.model || !registered.definition.vendor) return null;
+		if (
+			!registered ||
+			!identity ||
+			!registered.definition?.model ||
+			!registered.definition.vendor ||
+			!Array.isArray(registered.definition.exposes)
+		)
+			return null;
 		const climates = registered.definition.exposes.filter((field) => field.type === 'climate');
 		if (climates.length !== 1) return null;
 		const climate = climates[0];
@@ -75,8 +82,6 @@ export class ZigbeeNativeClimateAdapterService {
 				value === 'off' || (value === 'heat' && heating !== null) || (value === 'cool' && cooling !== null),
 		);
 		if (!modes.length) return null;
-		const source = await this.sources.prepareDispatch(device.id, route);
-		if (!source.bound || !source.allowed || !source.observedAfter) return null;
 		const ownedPropertyIds: string[] = [];
 		for (const channel of await this.channels.findAll(device.id, DEVICES_ZIGBEE2MQTT_TYPE)) {
 			if (![ChannelCategory.THERMOSTAT, ChannelCategory.HEATER, ChannelCategory.COOLER].includes(channel.category))
@@ -85,6 +90,8 @@ export class ZigbeeNativeClimateAdapterService {
 				ownedPropertyIds.push(property.id);
 		}
 		if (!ownedPropertyIds.length) return null;
+		const source = await this.sources.prepareDispatch(device.id, route, ownedPropertyIds);
+		if (!source.bound || !source.allowed || !source.observedAfter) return null;
 		const contract = sourceFingerprint(modelContract(registered));
 		const fingerprint = sourceFingerprint({
 			profile: 'zigbee2mqtt.native-single-operation.v1',
@@ -154,6 +161,7 @@ export class ZigbeeNativeClimateAdapterService {
 					!Number.isFinite(observedAt) ||
 					observedAt <= source.observedAfter.getTime() ||
 					!Number.isFinite(sampledAt) ||
+					sampledAt <= source.observedAfter.getTime() ||
 					Date.now() - sampledAt > ZIGBEE_NATIVE_CLIMATE_MAX_AGE_MS ||
 					sampledAt > Date.now() ||
 					Date.now() - observedAt > ZIGBEE_NATIVE_CLIMATE_MAX_AGE_MS

@@ -30,8 +30,10 @@ Map<String, dynamic> snapshot(
   String id, {
   bool compound = false,
   String mode = 'off',
+  String provider = 'zigbee2mqtt',
 }) => {
   'controller': id,
+  'provider': provider,
   'control_strategy': 'native_unit',
   'revision': 7,
   'binding_state': 'bound',
@@ -276,6 +278,99 @@ void main() {
       expect(writes.single, containsPair('mode', 'auto'));
       expect(writes.single, containsPair('heating_setpoint', 24.0));
       expect(writes.single, containsPair('cooling_setpoint', 26.0));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'auto-only HA target controls send a complete range and wait for both drafts',
+    (tester) async {
+      await size(tester);
+      final writes = <Map>[];
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.method == 'POST') writes.add(options.data as Map);
+            final data = snapshot(
+              'one',
+              compound: true,
+              provider: 'home-assistant',
+            );
+            (data['capabilities'] as Map)['modes'] = ['off', 'auto'];
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'data': data},
+              ),
+            );
+          },
+        ),
+      );
+      await tester.pumpWidget(detail('one'));
+      await settle(tester);
+      final apply = find.byKey(const ValueKey('native-heating-apply'));
+      final increase = find.byKey(const ValueKey('native-heating-1'));
+      expect(tester.widget<OutlinedButton>(apply).onPressed, isNull);
+      expect(tester.widget<IconButton>(increase).onPressed, isNull);
+      await tester.enterText(
+        find.byKey(const ValueKey('native-heating-draft')),
+        '21.5',
+      );
+      await tester.pump();
+      expect(tester.widget<OutlinedButton>(apply).onPressed, isNull);
+      await tester.enterText(
+        find.byKey(const ValueKey('native-cooling-draft')),
+        '25',
+      );
+      await tester.pump();
+      await tester.tap(apply);
+      await settle(tester);
+      expect(writes, hasLength(1));
+      expect(writes.single, containsPair('mode', 'auto'));
+      expect(writes.single, containsPair('heating_setpoint', 21.5));
+      expect(writes.single, containsPair('cooling_setpoint', 25.0));
+      await tester.tap(increase);
+      await settle(tester);
+      expect(writes, hasLength(2));
+      expect(writes.last, containsPair('mode', 'auto'));
+      expect(writes.last, containsPair('heating_setpoint', 20.5));
+      expect(writes.last, containsPair('cooling_setpoint', 25.0));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'provider-unavailable observations stay unavailable despite a fresh successful HTTP response',
+    (tester) async {
+      await size(tester);
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            final data = snapshot('one');
+            (data['observed'] as Map).addAll(<String, Object?>{
+              'available': false,
+              'temperature': 19.0,
+              'activity': 'heating',
+              'reasons': ['provider_offline'],
+            });
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'data': data},
+              ),
+            );
+          },
+        ),
+      );
+      await tester.pumpWidget(detail('one'));
+      await settle(tester);
+      expect(find.text('Observed temperature: N/A'), findsOneWidget);
+      expect(find.text('Observed activity: N/A'), findsOneWidget);
+      expect(find.textContaining('Observed temperature: 19'), findsNothing);
+      expect(find.text('Binding: bound'), findsOneWidget);
+      expect(find.text('provider_offline'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );

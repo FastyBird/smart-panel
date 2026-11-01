@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import type { NativeSnapshot } from '../services/native-thermostat';
+import { type NativeSnapshot, nativeTargetValid } from '../services/native-thermostat';
 
 import NativeThermostatEditor from './NativeThermostatEditor.vue';
 
@@ -84,6 +84,64 @@ describe('native thermostat authoring and commands', () => {
 		expect(mocks.request).toHaveBeenCalledWith('controller', 3, expect.any(String), { heating_setpoint: 21.5 }, expect.any(AbortSignal));
 		expect(mocks.request.mock.calls[0][2]).toMatch(/^[0-9a-f-]{36}$/);
 	});
+	it.each([
+		[26, 22],
+		[NaN, 25],
+		[31, 25],
+		[20.25, 25],
+		[20, 4],
+		[20, 25.25],
+	])('prevents invalid HA auto targets %s/%s before submitting', async (heat, cool) => {
+		const state = snapshot();
+		state.provider = 'home-assistant';
+		state.capabilities = {
+			modes: ['off', 'auto'],
+			heating: { minimum: 5, maximum: 30, step: 0.5 },
+			cooling: { minimum: 5, maximum: 30, step: 0.5 },
+			supportsCompound: true,
+		};
+		mocks.read.mockResolvedValue(state);
+		const page = await open();
+		page.findComponent(ElSelect).vm.$emit('update:modelValue', 'auto');
+		const inputs = page.findAllComponents(ElInputNumber);
+		inputs[0].vm.$emit('update:modelValue', heat);
+		inputs[1].vm.$emit('update:modelValue', cool);
+		await flushPromises();
+		expect(page.get('[data-test-id="native-mode"]').attributes('disabled')).toBeDefined();
+		await page.get('[data-test-id="native-mode"]').trigger('click');
+		await flushPromises();
+		expect(mocks.request).not.toHaveBeenCalled();
+	});
+	it('refuses non-finite targets at the action boundary before input normalization', () => {
+		expect(nativeTargetValid({ minimum: 5, maximum: 30, step: 0.5 }, Infinity)).toBe(false);
+	});
+	it('submits one validated complete HA auto range', async () => {
+		const state = snapshot();
+		state.provider = 'home-assistant';
+		state.capabilities = {
+			modes: ['off', 'auto'],
+			heating: { minimum: 5, maximum: 30, step: 0.5 },
+			cooling: { minimum: 5, maximum: 30, step: 0.5 },
+			supportsCompound: true,
+		};
+		mocks.read.mockResolvedValue(state);
+		const page = await open();
+		page.findComponent(ElSelect).vm.$emit('update:modelValue', 'auto');
+		const inputs = page.findAllComponents(ElInputNumber);
+		inputs[0].vm.$emit('update:modelValue', 20.5);
+		inputs[1].vm.$emit('update:modelValue', 25);
+		await flushPromises();
+		await page.get('[data-test-id="native-mode"]').trigger('click');
+		await flushPromises();
+		expect(mocks.request).toHaveBeenCalledWith(
+			'controller',
+			3,
+			expect.any(String),
+			{ mode: 'auto', heating_setpoint: 20.5, cooling_setpoint: 25 },
+			expect.any(AbortSignal)
+		);
+	});
+
 	it('requires a new authoritative read after an uncertain mutation', async () => {
 		mocks.request.mockRejectedValueOnce(new Error('lost response'));
 		const page = await open();

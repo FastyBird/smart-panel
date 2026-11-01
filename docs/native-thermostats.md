@@ -14,7 +14,7 @@ or opposed-output protection. Those features retain their separately qualified g
 Home Assistant units require exactly one registry-backed climate entity on the adopted device, explicit temperature
 units, finite bounds and a positive step. When a stable HA climate state omits `temperature_unit`, the adapter reads
 the same connection's explicit `get_config.unit_system.temperature`; missing or unsupported units are refused.
-Core configuration changes revoke old captures. Celsius and Fahrenheit are converted at the boundary; the virtual API uses
+Core configuration changes revoke old captures. Native control also requires accepted state, entity-registry and core-configuration event subscriptions. A rejected subscription leaves native control unavailable while ordinary HA integration can remain connected. Celsius and Fahrenheit are converted at the boundary; the virtual API uses
 Celsius. Explicit `heat` and `cool` require single-target support. Virtual `auto` means the provider's advertised
 `heat_cool` range capability with both ordered targets; Home Assistant's separate `auto` program is not substituted.
 Mode plus targets use one `climate.set_temperature` call with `hvac_mode`; mode-only uses `climate.set_hvac_mode`.
@@ -43,14 +43,15 @@ authoritative refresh before another request. Automatic background work never re
 upstream drift. HA automations, local controls and other external writers remain outside Smart Panel's reservation.
 
 HA discovery snapshots are capability metadata, not new measurement evidence. Observations require current raw
-events and preserve measurement age. Zigbee observations require qualified live raw packets after binding; retained,
+events and preserve measurement age. Zigbee observations require qualified live raw packets whose receipt and measurement both postdate binding; retained,
 cached, duplicate, offline and stale packets cannot supply current activity. Restart retains interrupted work as
 uncertain, reacquires observations and sends no automatic replay.
 
 Capability changes with the same unit and branch topology can be explicitly revalidated. This updates the existing
 mode choices and target ranges/steps together, preserving property identity and history. Moved or replaced local
-controls are refused. Physical remapping and changed branch topology require a new controller. Explicit release relinquishes the Smart Panel reservation after
-joining its issued work; it sends no OFF command and makes no statement about the physical unit's current regulation.
+controls are refused. Physical remapping and changed branch topology require a new controller. Explicit release validates its revision before withdrawing request authority. Requests still waiting for admission
+wait for that decision; a stale release leaves them unaffected. An admitted release relinquishes the Smart Panel
+reservation after joining its issued work; it sends no OFF command and makes no statement about the physical unit's current regulation.
 Deletion retains the binding and request ledger so it cannot silently free an unresolved reservation. Changing an
 upstream identity or moving existing command aliases does not free their reservation; the original binding must be
 explicitly released first.

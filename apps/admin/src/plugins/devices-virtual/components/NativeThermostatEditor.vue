@@ -187,6 +187,7 @@ import {
 	type NativeCandidate,
 	type NativeMode,
 	type NativeSnapshot,
+	nativeAutoAction,
 	nativeTargetAction,
 	nativeThermostatTransport,
 } from '../services/native-thermostat';
@@ -209,8 +210,7 @@ const targets = ref<{ heating: number | undefined; cooling: number | undefined }
 const modeAction = computed<NativeAction | null>(() => {
 	if (!mode.value || !snapshot.value?.capabilities) return null;
 	if (mode.value !== 'auto') return { mode: mode.value };
-	if (targets.value.heating === undefined || targets.value.cooling === undefined) return null;
-	return { mode: 'auto', heating_setpoint: targets.value.heating, cooling_setpoint: targets.value.cooling };
+	return nativeAutoAction(snapshot.value.capabilities, targets.value);
 });
 const busy = ref(false);
 const ready = ref(false);

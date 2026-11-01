@@ -73,6 +73,10 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 	private readonly observations = new Map<string, string>();
 	private readonly attempts = new Map<string, Set<Promise<void>>>();
 	private readonly releaseOwners = new Map<string, object>();
+	private readonly pendingReleaseAdmissions = new Map<
+		string,
+		{ decision: Promise<void>; isOriginalOwner?: () => boolean }
+	>();
 	private readonly originalRequests = new Map<
 		string,
 		{ controller: string; intent: string; result: Promise<NativeThermostatModel | null> }
@@ -363,10 +367,12 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 			const row = await this.database.manager.findOneBy(NativeThermostatEntity, { controllerId: id });
 			if (!row) return null;
 			let unit: NativeClimateUnit | null = null;
-			try {
-				unit = await this.capture(row.sourceDeviceId);
-			} catch {
-				/* Saved binding remains repairable. */
+			if (row.bindingState === 'bound') {
+				try {
+					unit = await this.capture(row.sourceDeviceId);
+				} catch {
+					/* Saved binding remains repairable. */
+				}
 			}
 			if (unit?.fingerprint !== row.fingerprint || unit?.physicalIdentity !== row.physicalIdentity) unit = null;
 			const observed = unit?.observe() ?? {
@@ -559,9 +565,16 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 		this.originalRequests.set(dto.requestId, { controller: id, intent, result: issued });
 		return issued;
 	}
-	private async requestOwned(id: string, dto: RequestNativeThermostatDto) {
-		if (!this.ready || this.destroyed || this.releaseOwners.has(id))
-			fail('Native runtime is not ready or binding is releasing.');
+	private async requestOwned(id: string, dto: RequestNativeThermostatDto): Promise<NativeThermostatModel | null> {
+		if (!this.ready || this.destroyed) fail('Native runtime is not ready.');
+		if (this.releaseOwners.has(id)) fail('Native binding is not bound.');
+		const pendingRelease = this.pendingReleaseAdmissions.get(id);
+		if (pendingRelease !== undefined) {
+			if (pendingRelease.isOriginalOwner?.()) fail('Native release admission is still being decided.');
+			await pendingRelease.decision;
+		}
+		if (!this.ready || this.destroyed) fail('Native runtime is not ready.');
+		if (this.releaseOwners.has(id)) fail('Native binding is not bound.');
 		const request: NativeClimateRequest = Object.fromEntries(
 			Object.entries({
 				mode: dto.mode,
@@ -570,7 +583,13 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 			}).filter(([, value]) => value !== undefined),
 		);
 		let execute: (() => Promise<void>) | undefined;
+		let releaseAdmission: Promise<void> | undefined;
 		await this.lock.runExclusive(async () => {
+			// Give a pending release its CAS decision without holding structure or discarding this request.
+			const pending = this.pendingReleaseAdmissions.get(id);
+			if (pending?.isOriginalOwner?.()) fail('Native release admission is still being decided.');
+			releaseAdmission = pending?.decision;
+			if (releaseAdmission !== undefined) return;
 			const previous = await this.database.manager.findOneBy(NativeThermostatRequestEntity, { id: dto.requestId });
 			if (previous) {
 				if (previous.controllerId !== id || JSON.stringify(previous.request) !== JSON.stringify(request))
@@ -663,6 +682,10 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 				);
 			};
 		});
+		if (releaseAdmission !== undefined) {
+			await releaseAdmission;
+			return this.requestOwned(id, dto);
+		}
 		if (execute) {
 			const issued = execute();
 			this.work.add(issued);
@@ -677,11 +700,20 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 	}
 	async release(id: string, dto: ReleaseNativeThermostatDto) {
 		if (this.destroyed || !this.ready) fail('Native runtime is stopped.');
-		if (this.releaseOwners.has(id)) fail('Native binding release is already in progress.');
+		if (this.releaseOwners.has(id) || this.pendingReleaseAdmissions.has(id))
+			fail('Native binding release is already in progress.');
+		const expectedRevision = dto.expectedRevision;
 		const token = Object.freeze({});
-		this.releaseOwners.set(id, token);
-		this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
-		this.epoch++;
+		let decide!: () => void;
+		const admission = new Promise<void>((resolve) => {
+			decide = resolve;
+		});
+		const pending: { decision: Promise<void>; isOriginalOwner?: () => boolean } = { decision: admission };
+		this.pendingReleaseAdmissions.set(id, pending);
+		const completeAdmission = () => {
+			if (this.pendingReleaseAdmissions.get(id) === pending) this.pendingReleaseAdmissions.delete(id);
+			decide();
+		};
 		const originalAttempts = [...(this.attempts.get(id) ?? [])];
 		let settle!: () => void;
 		const completion = new Promise<void>((resolve) => {
@@ -689,20 +721,31 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 		});
 		this.work.add(completion);
 		try {
-			const revision = await this.lock.runExclusive(() =>
-				this.graph.withStructuralWrite(async (manager) => {
-					const row = await manager.findOneByOrFail(NativeThermostatEntity, { controllerId: id });
-					if (row.revision !== dto.expectedRevision) fail('Native thermostat revision changed.');
-					if (row.bindingState === 'released') return null;
-					const next = row.revision + 1;
-					await manager.update(
-						NativeThermostatEntity,
-						{ controllerId: id, revision: row.revision, bindingState: row.bindingState },
-						{ bindingState: 'releasing', revision: next },
-					);
-					return next;
-				}),
-			);
+			const revision = await this.lock.runExclusive(() => {
+				pending.isOriginalOwner = this.lock.captureExclusiveOwner();
+				return this.graph.withStructuralWrite(async (manager) => {
+					try {
+						const row = await manager.findOneByOrFail(NativeThermostatEntity, { controllerId: id });
+						if (row.revision !== expectedRevision) fail('Native thermostat revision changed.');
+						if (row.bindingState === 'released') return null;
+						this.releaseOwners.set(id, token);
+						this.generations.set(id, (this.generations.get(id) ?? 0) + 1);
+						this.epoch++;
+						const next = row.revision + 1;
+						await manager.update(
+							NativeThermostatEntity,
+							{ controllerId: id, revision: row.revision, bindingState: row.bindingState },
+							{ bindingState: 'releasing', revision: next },
+						);
+						return next;
+					} finally {
+						// Publication and rollback completion can await requests from this writer.
+						// Settle every decision before those callbacks, including refusal and no-op.
+						completeAdmission();
+					}
+				});
+			});
+			completeAdmission();
 			// No structural or SQLite lock is held while original issued attempts drain.
 			await Promise.allSettled(originalAttempts);
 			if (revision !== null)
@@ -728,6 +771,7 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 				});
 			return this.get(id);
 		} finally {
+			completeAdmission();
 			if (this.releaseOwners.get(id) === token) this.releaseOwners.delete(id);
 			settle();
 			this.work.delete(completion);
@@ -769,20 +813,29 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 		request.requestId = uuid();
 		request.expectedRevision = row.revision;
 		const seen = new Set<string>();
+		let modeControl = false;
 		for (const update of updates) {
 			const key = Object.keys(row.propertyIds).find((key) => row.propertyIds[key] === update.propertyId);
 			if (!key || seen.has(key)) return false;
 			seen.add(key);
 			if (key === 'mode') {
-				if (request.mode !== undefined) return false;
+				if (modeControl) return false;
+				modeControl = true;
 				request.mode = update.value as RequestNativeThermostatDto['mode'];
 			} else if (key === 'heating_enabled' || key === 'cooling_enabled') {
-				if (typeof update.value !== 'boolean' || request.mode !== undefined) return false;
-				request.mode = update.value ? (key === 'heating_enabled' ? 'heat' : 'cool') : 'off';
+				if (typeof update.value !== 'boolean' || modeControl) return false;
+				modeControl = true;
+				const branch = key === 'heating_enabled' ? 'heat' : 'cool';
+				const opposite = branch === 'heat' ? 'cool' : 'heat';
+				if (update.value) request.mode = branch;
+				else if (row.requested.mode === opposite) continue;
+				else request.mode = row.requested.mode === 'auto' ? opposite : 'off';
 			} else if (key === 'heating_setpoint') request.heatingSetpoint = update.value as number;
 			else if (key === 'cooling_setpoint') request.coolingSetpoint = update.value as number;
 			else return false;
 		}
+		if (request.mode === undefined && request.heatingSetpoint === undefined && request.coolingSetpoint === undefined)
+			return true;
 		try {
 			await this.request(id, request);
 			const original = await this.database.manager.findOneBy(NativeThermostatRequestEntity, { id: request.requestId });
@@ -873,8 +926,14 @@ export class NativeThermostatService implements OnApplicationBootstrap, OnModule
 								(this.generations.get(row.controllerId) ?? 0) === generation &&
 								this.requestedPublications.get(propertyId) !== row.revision
 							) {
-								await this.values.write(property, value);
+								let written = false;
+								try {
+									written = await this.values.write(property, value);
+								} catch {
+									/* A local mirror failure must not starve other properties or retry physical transport. */
+								}
 								if (
+									written &&
 									this.ready &&
 									!this.releaseOwners.has(row.controllerId) &&
 									(this.generations.get(row.controllerId) ?? 0) === generation

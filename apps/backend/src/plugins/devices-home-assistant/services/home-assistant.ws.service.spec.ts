@@ -134,6 +134,50 @@ describe('HomeAssistantWsService', () => {
 		expect(() => service.registerEventsHandler('test', handler)).toThrow(DevicesHomeAssistantException);
 	});
 
+	it.each(['state_changed', 'entity_registry_updated', 'core_config_updated'])(
+		'keeps native capture unavailable if HA rejects the %s subscription',
+		async (rejected) => {
+			const starting = service.start();
+			await flush();
+			await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+			await starting;
+			expect(service.captureNativeClimateConnection()).toBeNull();
+			const packets = (mockWs.send.mock.calls as [string][])
+				.map(([payload]) => JSON.parse(payload) as { id: number; type: string; event_type: string })
+				.filter((packet) => packet.type === 'subscribe_events');
+			for (const packet of packets)
+				await service['handleMessage'](
+					JSON.stringify({ id: packet.id, type: 'result', success: packet.event_type !== rejected }),
+				);
+			expect(service.captureNativeClimateConnection()).toBeNull();
+			expect(await service.isHealthy()).toBe(true);
+		},
+	);
+
+	it('revokes original native captures during re-subscription and never revives them on the same socket', async () => {
+		const starting = service.start();
+		await flush();
+		await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+		await starting;
+		const accept = async () => {
+			const packets = (mockWs.send.mock.calls as [string][])
+				.map(([payload]) => JSON.parse(payload) as { id: number; type: string })
+				.filter((packet) => packet.type === 'subscribe_events');
+			for (const packet of packets)
+				await service['handleMessage'](JSON.stringify({ id: packet.id, type: 'result', success: true }));
+		};
+		await accept();
+		const original = service.captureNativeClimateConnection();
+		expect(original?.isCurrent()).toBe(true);
+		mockWs.send.mockClear();
+		service['subscribeToEvents']();
+		expect(original?.isCurrent()).toBe(false);
+		expect(service.captureNativeClimateConnection()).toBeNull();
+		await accept();
+		expect(service.captureNativeClimateConnection()?.isCurrent()).toBe(true);
+		expect(original?.isCurrent()).toBe(false);
+	});
+
 	it('should reject send if not connected', async () => {
 		service['ws'] = { readyState: WebSocket.CLOSED } as unknown as WebSocket;
 

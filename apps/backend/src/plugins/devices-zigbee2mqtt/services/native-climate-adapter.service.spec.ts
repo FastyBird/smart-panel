@@ -77,9 +77,25 @@ describe('Zigbee native climate production profile', () => {
 	let service: ZigbeeNativeClimateAdapterService;
 	let device: Zigbee2mqttDeviceEntity;
 	let unit: NativeClimateUnit;
+	let boundProperties: Set<string>;
+	let bindingTime: Date;
+	let prepareDispatch: jest.Mock;
 	beforeEach(async () => {
 		jest.useFakeTimers();
 		jest.setSystemTime(new Date('2026-10-31T12:00:00Z'));
+		boundProperties = new Set(['heater-on', 'heater-setpoint', 'thermostat-on', 'thermostat-setpoint']);
+		bindingTime = new Date(Date.now() - 60_000);
+		prepareDispatch = jest.fn((id: string, route: string, required: readonly string[] = []) => {
+			const current = () =>
+				id === 'device' && route === 'trv' && required.length > 0 && required.every((key) => boundProperties.has(key));
+			return Promise.resolve({
+				bound: boundProperties.size > 0,
+				allowed: current(),
+				observedAfter: bindingTime,
+				isCurrent: current,
+			});
+		});
+
 		adapter = new PacketAdapter();
 		await adapter.connect();
 		adapter.feed('bridge/state', { state: 'online' });
@@ -88,15 +104,7 @@ describe('Zigbee native climate production profile', () => {
 		device = Object.assign(new Zigbee2mqttDeviceEntity(), { id: 'device', identifier: 'trv', enabled: true });
 		service = new ZigbeeNativeClimateAdapterService(
 			{ getActiveAdapter: () => adapter } as unknown as Zigbee2mqttService,
-			{
-				prepareDispatch: () =>
-					Promise.resolve({
-						bound: true,
-						allowed: true,
-						observedAfter: new Date(Date.now() - 1000),
-						isCurrent: () => true,
-					}),
-			} as unknown as ZigbeeSampleSourcesService,
+			{ prepareDispatch } as unknown as ZigbeeSampleSourcesService,
 			{
 				findAll: () =>
 					Promise.resolve([
@@ -111,6 +119,34 @@ describe('Zigbee native climate production profile', () => {
 		unit = (await service.capture(device))!;
 	});
 	afterEach(() => jest.useRealTimers());
+
+	it('requires deliberate binding of every climate control instead of an unrelated leaf', async () => {
+		expect(prepareDispatch).toHaveBeenLastCalledWith('device', 'trv', [
+			'heater-on',
+			'heater-setpoint',
+			'thermostat-on',
+			'thermostat-setpoint',
+		]);
+		boundProperties.delete('heater-setpoint');
+		boundProperties.add('unrelated-light');
+		expect(await service.capture(device)).toBeNull();
+	});
+
+	it.each([undefined, null, 'not-an-array', {}])(
+		'keeps ordinary packet delivery when the registered expose list is %p',
+		(exposes) => {
+			const received = jest.fn();
+			adapter.setCallbacks({ onDeviceStateChanged: received });
+			Object.assign(adapter.getDevice('trv').definition, { exposes });
+			adapter.feed('trv', { local_temperature: 20 });
+			expect(received).toHaveBeenCalledWith('trv', { local_temperature: 20 }, expect.any(Object));
+		},
+	);
+
+	it.each([-1, 0, 1])('requires measurement time strictly after its binding (offset=%s)', (offset) => {
+		adapter.feed('trv', { local_temperature: 20, last_seen: new Date(bindingTime.getTime() + offset).toISOString() });
+		expect(unit.observe().available).toBe(offset > 0);
+	});
 
 	it('dispatches exact native settings and snapshots the original request', async () => {
 		expect(unit.physicalIdentity).toBe('zigbee2mqtt:0x00124b0000000001:default');
@@ -222,8 +258,10 @@ it('native unit reaches the production MQTT publisher with exact nonretained QoS
 	const service = new ZigbeeNativeClimateAdapterService(
 		{ getActiveAdapter: () => mqtt } as unknown as Zigbee2mqttService,
 		{
-			prepareDispatch: () =>
-				Promise.resolve({ bound: true, allowed: true, observedAfter: new Date(0), isCurrent: () => true }),
+			prepareDispatch: (id: string, route: string, required: readonly string[]) => {
+				expect([id, route, required]).toEqual(['device', 'trv', ['mode', 'setpoint']]);
+				return Promise.resolve({ bound: true, allowed: true, observedAfter: new Date(0), isCurrent: () => true });
+			},
 		} as unknown as ZigbeeSampleSourcesService,
 		{
 			findAll: () => Promise.resolve([{ id: 'heater', category: ChannelCategory.HEATER }]),

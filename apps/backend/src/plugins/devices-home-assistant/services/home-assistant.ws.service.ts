@@ -107,6 +107,22 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	private socketGeneration = 0;
 
 	private readonly nativeClimateListeners = new Set<(event: Record<string, unknown>) => void>();
+	private readonly nativeSubscriptionEvents = new Set([
+		'state_changed',
+		'entity_registry_updated',
+		'core_config_updated',
+	]);
+	private readonly subscriptionRequests = new Map<number, { event: string; generation: number }>();
+	private readonly acceptedNativeSubscriptions = new Set<string>();
+	private nativeSubscriptionGeneration = 0;
+	private nativeSubscriptionsReady(): boolean {
+		return [...this.nativeSubscriptionEvents].every((event) => this.acceptedNativeSubscriptions.has(event));
+	}
+	private invalidateNativeSubscriptions(): void {
+		this.nativeSubscriptionGeneration++;
+		this.subscriptionRequests.clear();
+		this.acceptedNativeSubscriptions.clear();
+	}
 
 	registerNativeClimateListener(listener: (event: Record<string, unknown>) => void): () => void {
 		this.nativeClimateListeners.add(listener);
@@ -119,15 +135,21 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		isCurrent: () => boolean;
 		send: (data: Record<string, unknown>) => Promise<string>;
 	} | null {
-		if (this.state !== 'started' || !this.isConnected()) return null;
+		if (this.state !== 'started' || !this.isConnected() || !this.nativeSubscriptionsReady()) return null;
 		const generation = this.socketGeneration;
+		const subscriptions = this.nativeSubscriptionGeneration;
 		const socket = this.ws;
 		const send = this.send.bind(this) as (data: Record<string, unknown>) => Promise<string>;
 		return {
-			identity: String(generation),
+			identity: `${generation}:${subscriptions}`,
 			serverIdentity: new URL(this.baseUrl).origin + new URL(this.baseUrl).pathname,
 			isCurrent: () =>
-				this.state === 'started' && this.socketGeneration === generation && this.ws === socket && this.isConnected(),
+				this.state === 'started' &&
+				this.socketGeneration === generation &&
+				this.ws === socket &&
+				this.isConnected() &&
+				this.nativeSubscriptionGeneration === subscriptions &&
+				this.nativeSubscriptionsReady(),
 			send,
 		};
 	}
@@ -346,6 +368,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private connect() {
+		this.invalidateNativeSubscriptions();
 		// Clear the intentional disconnect flag when starting a new connection
 		this.intentionalDisconnect = false;
 
@@ -417,6 +440,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private disconnect() {
+		this.invalidateNativeSubscriptions();
 		this.intentionalDisconnect = true;
 
 		this.stopPing();
@@ -723,6 +747,22 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			return;
 		}
 
+		if (msg.type === 'result' && typeof msg.id === 'number') {
+			const subscription = this.subscriptionRequests.get(msg.id);
+			if (subscription) {
+				this.subscriptionRequests.delete(msg.id);
+				if (subscription.generation === this.nativeSubscriptionGeneration) {
+					if (msg.success === true) {
+						if (this.nativeSubscriptionEvents.has(subscription.event))
+							this.acceptedNativeSubscriptions.add(subscription.event);
+					} else {
+						this.logger.warn(`Home Assistant event subscription rejected: ${subscription.event}`);
+						if (this.nativeSubscriptionEvents.has(subscription.event)) this.invalidateNativeSubscriptions();
+					}
+				}
+			}
+		}
+
 		if ('id' in msg && msg.id && typeof msg.id === 'number' && this.responses.has(msg.id)) {
 			const { resolve, timeout } = this.responses.get(msg.id);
 
@@ -810,7 +850,8 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	}
 
 	private subscribeToEvents() {
-		const subscribedEvents = new Set<string>(['state_changed', 'entity_registry_updated', 'core_config_updated']);
+		this.invalidateNativeSubscriptions();
+		const subscribedEvents = new Set<string>(this.nativeSubscriptionEvents);
 		for (const eventType of this.eventsHandlers.keys()) {
 			if (eventType !== '*') {
 				subscribedEvents.add(eventType);
@@ -818,9 +859,11 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		}
 
 		for (const eventType of subscribedEvents) {
+			const id = this.nextId++;
+			this.subscriptionRequests.set(id, { event: eventType, generation: this.nativeSubscriptionGeneration });
 			this.ws?.send(
 				JSON.stringify({
-					id: this.nextId++,
+					id,
 					type: 'subscribe_events',
 					event_type: eventType,
 				}),

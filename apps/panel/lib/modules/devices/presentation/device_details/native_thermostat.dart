@@ -428,6 +428,37 @@ class _NativeThermostatDeviceDetailState
     return (steps - steps.round()).abs() < 0.000001;
   }
 
+  Map<String, dynamic>? _targetAction(
+    String branch,
+    double? target,
+    Map<String, dynamic> capabilities,
+  ) {
+    if (!_validTarget(capabilities[branch], target)) return null;
+    final action = <String, dynamic>{'${branch}_setpoint': target};
+    if (_snapshot?['provider'] != 'home-assistant' ||
+        capabilities['heating'] is! Map ||
+        capabilities['cooling'] is! Map) {
+      return action;
+    }
+    final modes = capabilities['modes'] as List? ?? const [];
+    final mode = branch == 'heating' ? 'heat' : 'cool';
+    if (modes.contains(mode)) return {'mode': mode, ...action};
+    final heat = branch == 'heating'
+        ? target
+        : double.tryParse(_heatingDraft.text);
+    final cool = branch == 'cooling'
+        ? target
+        : double.tryParse(_coolingDraft.text);
+    if (capabilities['supportsCompound'] != true ||
+        !modes.contains('auto') ||
+        !_validTarget(capabilities['heating'], heat) ||
+        !_validTarget(capabilities['cooling'], cool) ||
+        heat! >= cool!) {
+      return null;
+    }
+    return {'mode': 'auto', 'heating_setpoint': heat, 'cooling_setpoint': cool};
+  }
+
   Widget _targetControls(
     String branch,
     Map<String, dynamic> capabilities,
@@ -450,7 +481,8 @@ class _NativeThermostatDeviceDetailState
         current != null;
     final draft = branch == 'heating' ? _heatingDraft : _coolingDraft;
     final target = double.tryParse(draft.text);
-    final canApply = enabled && _validTarget(range, target);
+    final action = _targetAction(branch, target, capabilities);
+    final canApply = enabled && action != null;
     final mode = branch == 'heating' ? 'heat' : 'cool';
     final modes = capabilities['modes'] as List? ?? const [];
     return Column(
@@ -474,12 +506,21 @@ class _NativeThermostatDeviceDetailState
                     enabled &&
                         valid &&
                         current + direction * step >= minimum &&
-                        current + direction * step <= maximum
-                    ? () => unawaited(
-                        _request({
-                          '${branch}_setpoint': current + direction * step,
-                        }),
-                      )
+                        current + direction * step <= maximum &&
+                        _targetAction(
+                              branch,
+                              current + direction * step,
+                              capabilities,
+                            ) !=
+                            null
+                    ? () {
+                        final action = _targetAction(
+                          branch,
+                          current + direction * step,
+                          capabilities,
+                        );
+                        if (action != null) unawaited(_request(action));
+                      }
                     : null,
                 icon: Icon(direction < 0 ? Icons.remove : Icons.add),
               ),
@@ -501,9 +542,7 @@ class _NativeThermostatDeviceDetailState
           children: [
             OutlinedButton(
               key: ValueKey('native-$branch-apply'),
-              onPressed: canApply
-                  ? () => unawaited(_request({'${branch}_setpoint': target}))
-                  : null,
+              onPressed: canApply ? () => unawaited(_request(action)) : null,
               child: Text(l.native_thermostat_apply),
             ),
             if (capabilities['supportsCompound'] == true &&

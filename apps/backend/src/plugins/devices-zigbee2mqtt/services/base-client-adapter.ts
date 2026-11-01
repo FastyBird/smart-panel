@@ -577,7 +577,11 @@ export abstract class Z2mBaseClientAdapter {
 				isDup: options?.isDup,
 				packetId: options?.packetId,
 			};
-			if (identity && device?.definition?.exposes.some((expose) => expose.type === 'climate'))
+			if (
+				identity &&
+				Array.isArray(device?.definition?.exposes) &&
+				device.definition.exposes.some((expose) => expose.type === 'climate')
+			)
 				this.nativeSamples.set(friendlyName, { state: Object.freeze({ ...state }), metadata });
 			void this.callbacks.onDeviceStateChanged?.(friendlyName, state, metadata);
 		} catch (error) {

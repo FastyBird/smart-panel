@@ -47,20 +47,46 @@ describe('native thermostat durable request lifecycle', () => {
 	let lock: DeviceStructureLockService;
 	let guardedDispatch: () => boolean;
 	let valueWriter: { write: jest.Mock; publishDerived: jest.Mock };
+	let extraUnits: Map<string, NativeClimateUnit>;
+	let structuralCompletion: (() => Promise<void>) | undefined;
+	let structuralPreflightFailure = false;
+	let failingMirror: { id: string; reject: boolean } | undefined;
 
 	const start = async () => {
-		valueWriter = { write: jest.fn(), publishDerived: jest.fn().mockResolvedValue({ state: null }) };
+		valueWriter = {
+			write: jest.fn((property: VirtualChannelPropertyEntity) => {
+				if (failingMirror && property.id === failingMirror.id)
+					return failingMirror.reject ? Promise.reject(new Error('local mirror failed')) : Promise.resolve(false);
+				return Promise.resolve(true);
+			}),
+			publishDerived: jest.fn().mockResolvedValue({ state: null }),
+		};
 		registry = new PropertyCommandAdmissionRegistryService();
 		lock = new DeviceStructureLockService();
 		const graph = {
-			withStructuralWrite: <T>(work: (manager: EntityManager) => Promise<T>) => database.transaction(work),
+			withStructuralWrite: async <T>(work: (manager: EntityManager) => Promise<T>) => {
+				const complete = structuralCompletion;
+				const preflightFailure = structuralPreflightFailure;
+				structuralCompletion = undefined;
+				structuralPreflightFailure = false;
+				try {
+					if (preflightFailure) throw new Error('graph preflight refused');
+					return await database.transaction(work);
+				} finally {
+					await complete?.();
+				}
+			},
 		};
 		service = new NativeThermostatService(
 			database,
 			lock,
 			graph as unknown as VirtualDependencyGraphService,
 			{} as DevicesService,
-			{ get: () => ({ captureNativeClimateUnit: () => Promise.resolve(unit) }) } as unknown as PlatformRegistryService,
+			{
+				get: () => ({
+					captureNativeClimateUnit: (device: DeviceEntity) => Promise.resolve(extraUnits.get(device.id) ?? unit),
+				}),
+			} as unknown as PlatformRegistryService,
 			registry,
 			valueWriter as unknown as PropertyValueService,
 			new PropertyProducerRegistryService(new EventEmitter2()),
@@ -68,6 +94,10 @@ describe('native thermostat durable request lifecycle', () => {
 		await service.onApplicationBootstrap();
 	};
 	beforeEach(async () => {
+		extraUnits = new Map();
+		failingMirror = undefined;
+		structuralCompletion = undefined;
+		structuralPreflightFailure = false;
 		database = await new SqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -603,6 +633,260 @@ describe('native thermostat durable request lifecycle', () => {
 		expect((await service.get(controller))?.latest_request?.state).toBe('interrupted');
 		expect(dispatch).not.toHaveBeenCalled();
 	});
+	it.each(['releasing', 'released'] as const)(
+		'does not read live source observations from a %s binding',
+		async (bindingState) => {
+			await service.onModuleDestroy();
+			await database.manager.update(
+				NativeThermostatEntity,
+				{ controllerId: controller },
+				{ bindingState, requested: { mode: 'heat' } },
+			);
+			const observe = jest.fn(
+				(): ReturnType<NativeClimateUnit['observe']> => ({
+					available: true,
+					temperature: 23,
+					mode: 'heat',
+					heatingSetpoint: 24,
+					coolingSetpoint: null,
+					activity: 'heating' as const,
+					observedAt: new Date().toISOString(),
+					reasons: [],
+					isCurrent: () => true,
+				}),
+			);
+			unit = { ...unit, observe };
+			await start();
+			observe.mockClear();
+			const result = await service.get(controller);
+			expect(result).toMatchObject({
+				binding_state: bindingState,
+				requested: { mode: 'heat' },
+				capabilities: null,
+				observed: { available: false, temperature: null, activity: null },
+			});
+			expect(observe).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([false, true])(
+		'isolates failed local mirrors from later feedback and other controllers (reject=%s)',
+		async (reject) => {
+			await service.onModuleDestroy();
+			const other = uuid(),
+				otherSource = uuid();
+			await database.manager.insert(DeviceEntity, [
+				{ id: other, name: 'Other native owner', category: DeviceCategory.THERMOSTAT, enabled: true },
+				{ id: otherSource, name: 'Other native source', category: DeviceCategory.THERMOSTAT, enabled: true },
+			]);
+			const property = async (owner: string, category: ChannelCategory, permissions: PermissionType[]) => {
+				const channel = await database.manager.save(VirtualChannelEntity, {
+					id: uuid(),
+					device: { id: owner },
+					category,
+					name: category,
+				});
+				return database.manager.save(VirtualChannelPropertyEntity, {
+					id: uuid(),
+					channel,
+					name: 'Temperature',
+					category: PropertyCategory.TEMPERATURE,
+					dataType: DataTypeType.FLOAT,
+					permissions,
+					valueOrigin: VirtualValueOrigin.LOCAL,
+					sourcePropertyId: null,
+				});
+			};
+			const target = await property(controller, ChannelCategory.HEATER, [PermissionType.READ_WRITE]);
+			const ambient = await property(controller, ChannelCategory.TEMPERATURE, [PermissionType.READ_ONLY]);
+			const otherAmbient = await property(other, ChannelCategory.TEMPERATURE, [PermissionType.READ_ONLY]);
+			await database.manager.update(
+				NativeThermostatEntity,
+				{ controllerId: controller },
+				{ propertyIds: { heating_setpoint: target.id, temperature: ambient.id }, requested: { heatingSetpoint: 20 } },
+			);
+			unit = {
+				...unit,
+				observe: () => ({
+					available: true,
+					temperature: 20,
+					mode: null,
+					heatingSetpoint: null,
+					coolingSetpoint: null,
+					activity: null,
+					observedAt: new Date().toISOString(),
+					reasons: [],
+					isCurrent: () => true,
+				}),
+			};
+			extraUnits.set(otherSource, {
+				...unit,
+				deviceId: otherSource,
+				physicalIdentity: 'z2m:other',
+				ownedPropertyIds: ['other-mode'],
+			});
+			await database.manager.insert(NativeThermostatEntity, {
+				controllerId: other,
+				sourceDeviceId: otherSource,
+				physicalIdentity: 'z2m:other',
+				fingerprint: 'v1',
+				provider: unit.provider,
+				revision: 1,
+				requested: {},
+				propertyIds: { temperature: otherAmbient.id },
+				ownedPropertyIds: ['other-mode'],
+				latestRequestId: null,
+			});
+			failingMirror = { id: target.id, reject };
+			await start();
+			const published = (valueWriter.publishDerived.mock.calls as [VirtualChannelPropertyEntity][]).map(
+				([entry]) => entry.id,
+			);
+			expect(published).toEqual(expect.arrayContaining([ambient.id, otherAmbient.id]));
+			valueWriter.write.mockResolvedValue(true);
+			await service['refresh']();
+			expect(valueWriter.write).toHaveBeenCalledTimes(2);
+			expect(dispatch).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		['cool', 'heating_enabled', 'cool', false],
+		['heat', 'cooling_enabled', 'heat', false],
+		['auto', 'heating_enabled', 'cool', true],
+		['auto', 'cooling_enabled', 'heat', true],
+		['heat', 'heating_enabled', 'off', true],
+		['cool', 'cooling_enabled', 'off', true],
+	] as const)('disables only the selected branch from %s using %s', async (mode, key, expected, sent) => {
+		const propertyId = uuid();
+		await database.manager.update(
+			NativeThermostatEntity,
+			{ controllerId: controller },
+			{ propertyIds: { [key]: propertyId }, requested: { mode } },
+		);
+		unit = {
+			...unit,
+			capabilities: {
+				...unit.capabilities,
+				modes: ['off', 'heat', 'cool', 'auto'],
+				cooling: { minimum: 5, maximum: 30, step: 0.5 },
+			},
+		};
+		expect(await service.commandSettings([{ deviceId: controller, propertyId, value: false }])).toBe(true);
+		expect((await service.get(controller))?.requested.mode).toBe(expected);
+		expect(dispatch).toHaveBeenCalledTimes(sent ? 1 : 0);
+	});
+
+	it('refuses unsupported branch separation on an auto-only unit without stopping its other branch', async () => {
+		const propertyId = uuid();
+		await database.manager.update(
+			NativeThermostatEntity,
+			{ controllerId: controller },
+			{ propertyIds: { heating_enabled: propertyId }, requested: { mode: 'auto' } },
+		);
+		prepare.mockImplementation(() => null);
+		expect(await service.commandSettings([{ deviceId: controller, propertyId, value: false }])).toBe(false);
+		expect((await service.get(controller))?.requested.mode).toBe('auto');
+		expect(dispatch).not.toHaveBeenCalled();
+	});
+
+	it('a stale release does not revoke an already admitted request before its original publication', async () => {
+		let enter!: () => void, finish!: () => void;
+		const entered = new Promise<void>((resolve) => {
+			enter = resolve;
+		});
+		const gate = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		dispatch.mockImplementationOnce(async (current: () => boolean) => {
+			enter();
+			await gate;
+			return [{ operation: 'mode', outcome: current() ? 'accepted' : 'refused', confirmed: false }];
+		});
+		const attempt = service.request(controller, { requestId: uuid(), expectedRevision: 1, mode: 'heat' });
+		await entered;
+		try {
+			await expect(service.release(controller, { expectedRevision: 1 })).rejects.toThrow('revision changed');
+		} finally {
+			finish();
+		}
+		const result = await attempt;
+		expect(result?.binding_state).toBe('bound');
+		expect(result?.latest_request?.operations[0].outcome).toBe('accepted');
+		expect(dispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('a stale release does not discard a request already waiting for structural admission', async () => {
+		let enter!: () => void, finish!: () => void;
+		const entered = new Promise<void>((resolve) => {
+			enter = resolve;
+		});
+		const gate = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		const holder = lock.runExclusive(async () => {
+			enter();
+			await gate;
+		});
+		await entered;
+		const attempt = service.request(controller, { requestId: uuid(), expectedRevision: 1, mode: 'heat' }).then(
+			(value) => ({ value }),
+			(cause: unknown) => ({ cause }),
+		);
+		const rejected = expect(service.release(controller, { expectedRevision: 0 })).rejects.toThrow('revision changed');
+		finish();
+		await holder;
+		await rejected;
+		const outcome = await attempt;
+		expect(outcome).toHaveProperty('value.latest_request.operations.0.outcome', 'accepted');
+		expect((await service.get(controller))?.binding_state).toBe('bound');
+		expect(dispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['stale', 'released', 'preflight'] as const)(
+		'release %s completion cannot wait on its own provisional request admission',
+		async (boundary) => {
+			await database.manager.update(
+				NativeThermostatEntity,
+				{ controllerId: controller },
+				{
+					revision: 2,
+					bindingState: boundary === 'released' ? 'released' : 'bound',
+				},
+			);
+			let request!: Promise<unknown>;
+			let settledBeforeRescue = false;
+			let rescue: ReturnType<typeof setTimeout> | undefined;
+			structuralPreflightFailure = boundary === 'preflight';
+			// Model the awaited publication/rollback completion boundary after the original writer.
+			// The rescue only lets a broken implementation unwind so teardown joins all work.
+			structuralCompletion = async () => {
+				request = service.request(controller, { requestId: uuid(), expectedRevision: 2, mode: 'heat' }).then(
+					(value) => ({ value }),
+					(cause: unknown) => ({ cause }),
+				);
+				settledBeforeRescue = await Promise.race([
+					request.then(() => true),
+					new Promise<false>((resolve) => {
+						rescue = setTimeout(() => resolve(false), 2000);
+					}),
+				]);
+				clearTimeout(rescue);
+			};
+			const release = service.release(controller, { expectedRevision: boundary === 'stale' ? 1 : 2 });
+			if (boundary === 'released') expect((await release)?.binding_state).toBe('released');
+			else await expect(release).rejects.toThrow(boundary === 'stale' ? 'revision changed' : 'preflight refused');
+			const result = await request;
+			expect(settledBeforeRescue).toBe(true);
+			if (boundary === 'stale') expect(result).toHaveProperty('value.latest_request.operations.0.outcome', 'accepted');
+			else {
+				expect(result).toHaveProperty('cause');
+				expect(dispatch).not.toHaveBeenCalled();
+				expect(await database.manager.count(NativeThermostatRequestEntity)).toBe(0);
+			}
+		},
+	);
+
 	it('release entered before queued request admission prevents its first transport', async () => {
 		let enter!: () => void, unlock!: () => void;
 		const entered = new Promise<void>((resolve) => {
@@ -649,9 +933,10 @@ describe('native thermostat durable request lifecycle', () => {
 			settled = true;
 			return value;
 		});
-		expect(originalCurrent()).toBe(false);
 		const snapshot = await service.get(controller);
 		expect(snapshot?.binding_state).toBe('releasing');
+		// Only a revision-validated release owns revocation; it still fences before original work settles.
+		expect(originalCurrent()).toBe(false);
 		expect(settled).toBe(false);
 		await expect(
 			service.request(controller, { requestId: uuid(), expectedRevision: 3, mode: 'off' }),
