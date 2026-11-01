@@ -1,0 +1,118 @@
+{
+	"version": "v1.1.0-alpha.64",
+	"commit": "8744ae49ff392a592950ce4faa8f1007768eadec",
+	"migrations": [
+		{
+			"file": "1000000000000-InitialSetup.ts",
+			"sha256": "be9c75cd1cc7984f306e9cab4de8f75cb9050c19f5b2abd240b9db96b9e42409"
+		},
+		{
+			"file": "1000000000001-AddSceneIcon.ts",
+			"sha256": "5f236c08585196c4ef652eaaf6fe6e1eaed7a2f84863142825e2a93370f5dfa3"
+		},
+		{
+			"file": "1000000000002-AddTokenLastUsedAt.ts",
+			"sha256": "838b79c224d47404017ed8036bf1ff8ba6d47c4c96df4dd702f98c8017c9fc18"
+		},
+		{
+			"file": "1000000000003-UnifySpaceRoleTables.ts",
+			"sha256": "cc62262ee4467543b60ae148338f6c004a3f86d7ae92a3c2421b7855e1d83ed3"
+		},
+		{
+			"file": "1000000000004-DisplaysSpaceOnly.ts",
+			"sha256": "537cf57a0a6f5034faafd8e163a697e679dacf6222cf59f1e7a11a1f53e41981"
+		},
+		{
+			"file": "1000000000005-SpacesSignageInfoPanel.ts",
+			"sha256": "2aa30641eb9e85051c63190efa783a315a47965579bbdd155a7fd78b522f4902"
+		},
+		{
+			"file": "1000000000006-DropLegacyRoleTables.ts",
+			"sha256": "6c0a79f9cbf7f95fbc0820f0d4490f4fd59a8aea35526565edd8e011cddb2f5a"
+		},
+		{
+			"file": "1000000000007-AddVirtualDevicesSupport.ts",
+			"sha256": "0372bc063f32184280c36d238a787506a91aca52db4c0ab2481100512745538b"
+		},
+		{
+			"file": "1000000000008-AddMcpClients.ts",
+			"sha256": "2510e97e616c89b6b6c06d4e598c24a23f11f39ae9b06fa4822c08b1e92efc4e"
+		},
+		{
+			"file": "1000000000009-AddDeviceHiddenBy.ts",
+			"sha256": "d027fab0935ba1cf5e96d463fef184baf29a32d719a8b1f6bf90a44d975c2113"
+		},
+		{
+			"file": "1000000000010-AddEnergyClaimToProjections.ts",
+			"sha256": "675cee62d2814f5b0ea230bcdcf38a3cce1e8159ae9345a3d8634df88b4ce5cb"
+		},
+		{
+			"file": "1000000000010-AddMcpOAuthFoundation.ts",
+			"sha256": "a9261c6af73dc990fc8b0c7d3d15cf73ba34ec46019bd6284f01cf79113a9da1"
+		},
+		{
+			"file": "1000000000011-AddMcpOAuthProviderArtifacts.ts",
+			"sha256": "ff1b8b8edb1e0156b549bb4f1fe82256edc7eb32b8b1f6ec80375fc2a6aa2f2d"
+		},
+		{
+			"file": "1000000000012-LinkMcpOAuthProviderGrants.ts",
+			"sha256": "31b63387e8dd477bbb31e85d236df26b27856cae45069e2ba650943db37dda8b"
+		},
+		{
+			"file": "1000000000013-AddMcpOAuthProviderManagementIds.ts",
+			"sha256": "d93cecdf9fb3255a4dd5e0e9f1e582d8aa7e757599a0eac6b2fed88bec94ca43"
+		},
+		{
+			"file": "1000000000014-AddMcpOAuthProviderRefreshFamilyRevocations.ts",
+			"sha256": "1824ce6847d9c4dd927eda3add9c562c9a89df6fa7c2a32046db9268c33f571d"
+		},
+		{
+			"file": "1000000000015-AddMcpOAuthProviderRefreshFamilyLineage.ts",
+			"sha256": "2e24981331c2e4ae9467d492fc8f3ba534b56ba460c5836d03dfe659dbb33af2"
+		},
+		{
+			"file": "1000000000016-AddMcpOAuthApproverAuthorities.ts",
+			"sha256": "df8906394851c8b57ac4548ded9d22e1d3177dfa3caf91e4690c6d010f4c5687"
+		},
+		{
+			"file": "1000000000017-AddMcpOAuthAuthorizationSnapshots.ts",
+			"sha256": "84d2c7aa9d3de7eb8f0522483fa60b9182dc0e598d32d4d8d5faeeb15be238fe"
+		},
+		{
+			"file": "1000000000018-AddWledHardwareIdentity.ts",
+			"sha256": "7f11392699a706403b55d0d1f7beb261c8d2d903a3ae1c9d542c009c9365cde3"
+		},
+		{
+			"file": "1000000000019-EnforceUniqueWledHardwareIdentity.ts",
+			"sha256": "3248ddaf3ce43cfed9b522011d5a2d7cd74497fd9637c2429dd2a6acee120519"
+		},
+		{
+			"file": "1000000000020-AddHomeEntitySearchIndex.ts",
+			"sha256": "5eb847eaa5f965ac92999d52d136feb642aec35985e4d34478e0e84e833301c8"
+		},
+		{
+			"file": "1000000000021-AddHomeyCapabilityIdentity.ts",
+			"sha256": "88bbf71482ea9a67fcf176c5bf065fb3c8b3ed0739a7c62bf686d60d9a10e745"
+		},
+		{
+			"file": "1000000000022-AddHomeyAdoptionLocks.ts",
+			"sha256": "9ff2e6f72557756701e3af5ac4bc8dacd914c234f785c0cce366393265d66d12"
+		},
+		{
+			"file": "1000000000023-AddPropertyValueLocks.ts",
+			"sha256": "eaac7bf8f2fee2c0e247008bddb24919523cef3a57ca9436643df8e53659b928"
+		},
+		{
+			"file": "1000000000024-MigrateHomeyDiscriminators.ts",
+			"sha256": "bdcfeab99ce30d7c8badb2f700fcdf184f7330f17f1d72bc3e19a0c9233920db"
+		},
+		{
+			"file": "1000000000025-AddNotifications.ts",
+			"sha256": "214961cf04cec8613f4c7d79a408f9e314fe796ef5ca145887348abcc1f0639a"
+		},
+		{
+			"file": "1000000000026-AddHardwareInputCategories.ts",
+			"sha256": "88208e8c3bfcfeb662215f79e8ec4728f053944b2b3c0337d77cb8e364e53719"
+		}
+	]
+}

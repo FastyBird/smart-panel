@@ -26,28 +26,28 @@ where dependency, compatibility or the actual reviewer file limit requires a sep
 Checkboxes mean merged, tested software, not candidate code or installed qualification. A child closes only after its
 entire acceptance is satisfied, even when its PR also closes other issues.
 
-### Reconciled software progress — 2026-10-30
+### Reconciled software progress — 2026-11-01
 
-Current main is `b0bfd429ae9f015911d1baad37583652b62d3995`, the squash merge of
-[PR #1498](https://github.com/FastyBird/smart-panel/pull/1498). The
-[acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) maps completed child criteria
-and concrete remaining work to merged PRs and named tests. All 14 checks passed on the exact qualified #1498 head;
-CodeRabbit completed that review and confirmed the older follow-up corrections.
+Current main is `54e2c92c57d4aa2a906cd7744e3d60294c203377`, the squash merge of
+[PR #1505](https://github.com/FastyBird/smart-panel/pull/1505). The
+[acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) maps merged child software and
+remaining gates. Plans (#1501), occupancy (#1502), native thermostats (#1504) and cover/HomeKit (#1505) each
+passed their exact-head CI and main review. Final composition, original-reference reconciliation and alpha remain #1462.
 
 - [x] VD3-1 / #1448: weighted/filtering numeric policies, #1464.
 - [x] VD3-2 / #1449: additional numeric and binary profiles, #1465.
 - [x] VD3-3 / #1450: aggregate authoring and quality, #1465.
 - [x] VD3-4 / #1451: switch/outlet group foundation, #1464.
-- [ ] VD3-5 / #1452: fan and qualified cover COMMAND support is merged in #1467; qualified native percentage POSITION/TILT are implemented in the cover/HomeKit follow-up; delivery gates remain.
+- [x] VD3-5 / #1452: fan/cover COMMAND and qualified native percentage POSITION/TILT, #1467/#1505.
 - [x] VD3-6 / #1453: group authoring/repair, Panel, scenes and supported room paths, #1466/#1467.
 - [x] VD3-7 / #1455: presets, durable overrides, effective arbitration and clients, #1469/#1470 and later native-intent fixes.
-- [ ] VD3-8 / #1458: configured activity climate bridge is merged in #1498; schedule/presence acceptance remains.
+- [ ] VD3-8 / #1458: bridge, schedules and occupancy are merged in #1498/#1501/#1502; final combined acceptance remains #1462.
 - [x] VD3-9 / #1459: typed dew point and cooling cutoff software, #1471.
 - [x] VD3-10 / #1454: provider-neutral guarded parallel branches, #1469/#1470/#1471.
 - [x] VD3-11 / #1456: Home Assistant native-unit adapter and ordinary virtual authoring, merged #1504.
 - [x] VD3-12 / #1457: Zigbee2MQTT capability-qualified native adapter, merged #1504.
 - [x] VD3-13 / #1460: SDK numeric operators, #1468.
-- [ ] VD3-14 / #1461: standard mappings are merged; native/composed HomeKit follow-up is implemented with fresh delivery gates remaining.
+- [x] VD3-14 / #1461: standard and native/composed HomeKit mappings, #1466/#1505.
 - [ ] VD3-15 / #1462: final composed/upgrade/reference-scenario acceptance, docs and actual alpha publication remain.
 
 Reused definitions #1292 are already closed. Activity API #1294, Admin #1295 and Panel #1296 have complete scoped
@@ -94,16 +94,16 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
 
 - [ ] Existing virtual devices migrate without identity/history changes, claim release/reacquisition or changed defaults.
 - [x] Weighted/filtering/numeric/binary profiles have shared preview/persistence/runtime policies and truthful quality.
-- [ ] Every new group profile is authorable and has feedback-based mixed/unknown/member outcomes across ordinary controls.
+- [x] Every new group profile is authorable and has feedback-based mixed/unknown/member outcomes across ordinary controls.
 - [x] Presets and overrides persist, expire/recover correctly, preserve explicit OFF and never bypass protective admission.
 - [ ] Existing space schedules/presence drive configured climate actions, with defined DST/restart/manual precedence.
 - [x] Dew point preserves both input identities/age and cannot masquerade as ambient/floor temperature.
 - [x] Cooling cutoff has exact trip/recovery/fault semantics and refuses unqualified protective activation.
 - [x] Parallel actuator groups retain per-member ownership/journals and all-member release/opposed exclusion across restart.
-- [ ] HA and Zigbee `native_unit` strategies bind one canonical physical unit, preserve requested/observed distinctions,
+- [x] HA and Zigbee `native_unit` strategies bind one canonical physical unit, preserve requested/observed distinctions,
       fence request revisions and diagnose upstream drift without claiming ownership of external writers.
 - [x] SDK operators have version/owner lifecycle, validation, failure containment and a working test extension.
-- [ ] Standard HomeKit exports, API/spec generation, admin/panel flows, repair and diagnostics cover the delivered profiles.
+- [x] Standard HomeKit exports, API/spec generation, admin/panel flows, repair and diagnostics cover the delivered profiles.
 - [ ] Named composed acceptance/upgrade tests pass; old documentation and closed-issue checklists reflect actual evidence.
 - [ ] Every PR met exact-head CI/review gates; the next alpha is published with recorded version/tag/source/artifacts
       and release notes that identify remaining HW checks. A release draft alone does not complete this gate.

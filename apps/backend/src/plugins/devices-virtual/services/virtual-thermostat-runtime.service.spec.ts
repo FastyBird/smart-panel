@@ -4454,6 +4454,31 @@ describe('virtual thermostat durable runtime', () => {
 			fault: null,
 		});
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
+		// Preserve the original multi-identity retirement boundary: both pending ON and OFF
+		// must survive refusal together, then be retired only as their exact committed set.
+		const companion = database.manager.create(VirtualThermostatCommandEntity, {
+			...command,
+			id: uuid(),
+			action: 'off',
+		});
+		await database.manager.insert(VirtualThermostatCommandEntity, companion);
+		const pendingIds = [command.id, companion.id].sort();
+		const originalJournal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		const assertCompleteConfirmation = async () => {
+			const current = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
+			for (const row of current) {
+				const before = originalJournal.find((original) => original.id === row.id);
+				if (pendingIds.includes(row.id)) {
+					expect(row).toMatchObject({
+						...before,
+						status: 'confirmed',
+						settledAt: expect.any(Date) as Date,
+						proofId: expect.any(String) as string,
+					});
+				} else expect(row).toEqual(before);
+			}
+		};
 		const retire = jest.fn<void, [readonly string[]]>();
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 		let rollback = true;
@@ -4478,12 +4503,15 @@ describe('virtual thermostat durable runtime', () => {
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'accepted',
 			);
+			expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).toEqual(originalJournal);
 			await internal.reconcile(context, claim);
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'confirmed',
 			);
-			expect(retire).toHaveBeenCalledWith([command.id]);
-			expect(reconciledCommandIds.slice(-2)).toEqual([[command.id], [command.id]]);
+			expect(retire).toHaveBeenCalledTimes(1);
+			expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
+			await assertCompleteConfirmation();
+			expect(reconciledCommandIds.slice(-2).map((ids) => [...ids].sort())).toEqual([pendingIds, pendingIds]);
 		} finally {
 			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
 		}
@@ -4508,7 +4536,32 @@ describe('virtual thermostat durable runtime', () => {
 			fault: null,
 		});
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		const retire = jest.fn(() => {
+		// Preserve the original multi-identity retirement boundary: both pending ON and OFF
+		// must survive refusal together, then be retired only as their exact committed set.
+		const companion = database.manager.create(VirtualThermostatCommandEntity, {
+			...command,
+			id: uuid(),
+			action: 'off',
+		});
+		await database.manager.insert(VirtualThermostatCommandEntity, companion);
+		const pendingIds = [command.id, companion.id].sort();
+		const originalJournal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		const assertCompleteConfirmation = async () => {
+			const current = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
+			for (const row of current) {
+				const before = originalJournal.find((original) => original.id === row.id);
+				if (pendingIds.includes(row.id)) {
+					expect(row).toMatchObject({
+						...before,
+						status: 'confirmed',
+						settledAt: expect.any(Date) as Date,
+						proofId: expect.any(String) as string,
+					});
+				} else expect(row).toEqual(before);
+			}
+		};
+		const retire = jest.fn<void, [readonly string[]]>(() => {
 			throw new Error('optional metadata only');
 		});
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
@@ -4517,7 +4570,9 @@ describe('virtual thermostat durable runtime', () => {
 			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
 		};
 		await internal.reconcile(await internal.load(controllerId), claim);
-		expect(retire).toHaveBeenCalledWith([command.id]);
+		expect(retire).toHaveBeenCalledTimes(1);
+		expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
+		await assertCompleteConfirmation();
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 			'confirmed',
 		);
@@ -4612,6 +4667,31 @@ describe('virtual thermostat durable runtime', () => {
 			fault: null,
 		});
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
+		// Preserve the original multi-identity retirement boundary: both pending ON and OFF
+		// must survive refusal together, then be retired only as their exact committed set.
+		const companion = database.manager.create(VirtualThermostatCommandEntity, {
+			...command,
+			id: uuid(),
+			action: 'off',
+		});
+		await database.manager.insert(VirtualThermostatCommandEntity, companion);
+		const pendingIds = [command.id, companion.id].sort();
+		const originalJournal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		const assertCompleteConfirmation = async () => {
+			const current = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(current.map((row) => row.id).sort()).toEqual(originalJournal.map((row) => row.id).sort());
+			for (const row of current) {
+				const before = originalJournal.find((original) => original.id === row.id);
+				if (pendingIds.includes(row.id)) {
+					expect(row).toMatchObject({
+						...before,
+						status: 'confirmed',
+						settledAt: expect.any(Date) as Date,
+						proofId: expect.any(String) as string,
+					});
+				} else expect(row).toEqual(before);
+			}
+		};
 		const retire = jest.fn<void, [readonly string[]]>();
 		const originalCallDescriptor = Object.getOwnPropertyDescriptor(retire, 'call');
 		let callAccesses = 0;
@@ -4623,7 +4703,7 @@ describe('virtual thermostat durable runtime', () => {
 		};
 		let enter: () => void = () => undefined;
 		let rejectObservation: (error: unknown) => void = () => undefined;
-		let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
+		let committedStatuses: VirtualThermostatCommandEntity['status'][] | undefined;
 		let release: () => void = () => undefined;
 		const entered = new Promise<void>((resolve, reject) => {
 			enter = resolve;
@@ -4638,9 +4718,9 @@ describe('virtual thermostat durable runtime', () => {
 				if (!once) return;
 				once = false;
 				try {
-					committedStatus = (
-						await event.queryRunner.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })
-					).status;
+					committedStatuses = (await event.queryRunner.manager.findBy(VirtualThermostatCommandEntity, { controllerId }))
+						.filter((row) => pendingIds.includes(row.id))
+						.map((row) => row.status);
 				} catch (error: unknown) {
 					rejectObservation(error);
 					throw error;
@@ -4665,7 +4745,7 @@ describe('virtual thermostat durable runtime', () => {
 			);
 			await entered;
 			expect(retire).not.toHaveBeenCalled();
-			expect(committedStatus).toBe('confirmed');
+			expect(committedStatuses).toEqual(['confirmed', 'confirmed']);
 			if (mode === 'callback replacement') originalProof.retireConfirmedCommandIds = successor;
 			if (mode === 'callback deletion') delete originalProof.retireConfirmedCommandIds;
 			if (mode === 'callback call replacement') {
@@ -4686,13 +4766,14 @@ describe('virtual thermostat durable runtime', () => {
 			const error = await outcome;
 			if (mode !== 'unknown acknowledgement') {
 				expect(error).toBeNull();
-				expect(retire).toHaveBeenCalledWith([command.id]);
+				expect([...retire.mock.calls[0][0]].sort()).toEqual(pendingIds);
 				expect(retire).toHaveBeenCalledTimes(1);
 				expect(retire.mock.contexts[0]).toBe(originalProof);
 			} else {
 				expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
 				expect(retire).not.toHaveBeenCalled();
 			}
+			await assertCompleteConfirmation();
 			expect(successor).not.toHaveBeenCalled();
 			expect(callAccesses).toBe(0);
 		} finally {

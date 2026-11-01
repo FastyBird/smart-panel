@@ -1,12 +1,14 @@
 # Virtual device extensions: software acceptance reconciliation
 
-Reconciled on 2026-10-30 against main `b0bfd429ae9f015911d1baad37583652b62d3995`.
-PR [#1498](https://github.com/FastyBird/smart-panel/pull/1498) merged the governed activity climate bridge;
-its qualified head `a68f76d` and the squash commit have the same tree `ebf3c05f`.
-[All 14 checks passed](https://github.com/FastyBird/smart-panel/actions/runs/41079491039), including backend,
-Admin, Panel and ordinary E2E. The [completed current-source review reconciliation](https://github.com/FastyBird/smart-panel/pull/1498#issuecomment-6527804523)
-confirmed the corrections and repeated-conflict regression. These are software results, not installed qualification.
-The initial reconciliation used existing evidence without rerunning tests. The time-scheduling and occupancy follow-ups described below add implementation and executable verification; each PR owns fresh CI/review gates.
+Reconciled on 2026-11-01 against merged main `54e2c92c57d4aa2a906cd7744e3d60294c203377`.
+The governed bridge (#1498), weekly schedules (#1501), occupancy (#1502), native HA/Zigbee thermostats (#1504)
+and cover/HomeKit completion (#1505) are merged. #1505 passed all 14 checks and completed nonblocking main review
+at `825391883e3102e446e547796398be1ff58db71d`; its squash commit is the main above.
+
+The [final software/alpha validation record](work/virtual-thermostat/final-software-alpha-validation.md) tracks
+new composed HTTP and published-alpha upgrade cases, release-source identity, current execution and remaining gates.
+A passing software fixture does not qualify installed equipment or publish an alpha. The original #1473 reconciliation
+is still explicit work; neither green delivery PRs nor a title match alone discharge its historical scenarios.
 
 ## Software delivery state
 
@@ -14,16 +16,16 @@ The initial reconciliation used existing evidence without rerunning tests. The t
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Numeric policy, numeric/binary aggregates and authoring (#1448–#1450) | Complete; #1464/#1465, child issues already closed                            | Preserve through final composition                                                                                                      |
 | Switch/outlet group foundation (#1451)                                | Complete; #1464, child already closed                                         | No new room intent domain is implied                                                                                                    |
-| Fan/cover backend (#1452)                                             | Partial; #1467                                                                | Cover/HomeKit follow-up implements qualified native percentage POSITION/TILT; fresh delivery gates remain                               |
-| Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | #1452's unsupported commands and full native HomeKit acceptance remain separate                                                         |
-| Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | HA/Zigbee native units and installed equipment are separate                                                                             |
-| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Presence/composed automation acceptance remains #1458; time schedules are delivered below                                               |
-| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Time schedules and the occupancy follow-up reuse that path; the occupancy PR owns fresh CI/review gates; final composition remains open |
+| Fan/cover backend (#1452)                                             | Software complete; #1467/#1505                                                | Qualified percentage POSITION/TILT merged; installed motors remain #1463                                                                |
+| Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | Unsupported profiles retain refusals; installed equipment remains separate                                                              |
+| Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | Installed HA/Zigbee/Shelly qualification remains separate                                                                               |
+| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Final composed automation acceptance remains #1458/#1462; schedules and occupancy are merged                                            |
+| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Schedules and occupancy merged; final composition and original-reference reconciliation remain #1462                                    |
 | Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                                                                |
 | Home Assistant native units (#1456)                                   | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
 | Zigbee2MQTT native units (#1457)                                      | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
 | SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                                                            |
-| HomeKit (#1461)                                                       | Standard sensor/fan/group mappings delivered by #1466; partial overall        | Cover/HomeKit follow-up adds atomic native modes and HAP composite target/partial tests; fresh delivery gates remain                    |
+| HomeKit (#1461)                                                       | Software complete; #1466/#1505                                                | Atomic native modes and HAP composition merged; actual Apple pairing remains #1463                                                      |
 | Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts                                     |
 | Parent epic (#1447)                                                   | Open                                                                          | All remaining software and actual alpha publication                                                                                     |
 | Installed acceptance (#1463)                                          | Open, after the published alpha                                               | Named equipment/firmware and separately reviewed actual procedure, including Apple Home pairing                                         |
@@ -38,15 +40,15 @@ security epic or require the optional camera input.
 | Issue | Disposition                                 | Evidence or exact remainder                                                                                                                                                     |
 | ----- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | #1292 | Already closed; preserve                    | Definitions, per-space configuration and disabled/unset climate defaults, #1472                                                                                                 |
-| #1293 | Keep open                                   | Actual climate is delivered. The shared task's combined all-domains-present orchestration acceptance remains to be demonstrated; separate green domain suites are not that case |
+| #1293 | Keep open                                   | The final acceptance batch adds the single actual all-available-domain HTTP operation and its failed-media variant; delivery gates remain                                       |
 | #1294 | Software complete                           | Authenticated activation/configuration endpoints, revision/identity events and generated contracts, #1472                                                                       |
 | #1295 | Software complete                           | Mounted Admin configuration, reset/preview/conflict handling and six locales, #1472/#1498                                                                                       |
 | #1296 | Software complete                           | Panel selection, loading, truthful results, manual clear, reconnect and localization, #1472                                                                                     |
-| #1297 | Software implementation                     | Persisted weekly schedules, timezone/DST gap/fold, durable watermark/dedup and manual selection/clear until the next trigger; see scheduling evidence below                     |
-| #1298 | Software implementation                     | Mounted weekly Admin editor with entry CRUD, per-space enablement/timezone, six locales, validation, CAS conflicts and space rebinding                                          |
-| #1362 | Software implementation                     | Read-only Panel current/next plan and manual indication, transitions, unknown/unavailable states and owned refresh/disposal; no Panel editor                                    |
-| #1299 | Delivered in occupancy follow-up (on merge) | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
-| #1300 | Delivered in occupancy follow-up (on merge) | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
+| #1297 | Software complete; merged #1501             | Persisted weekly schedules, timezone/DST gap/fold, durable watermark/dedup and manual selection/clear until the next trigger; see scheduling evidence below                     |
+| #1298 | Software complete; merged #1501             | Mounted weekly Admin editor with entry CRUD, per-space enablement/timezone, six locales, validation, CAS conflicts and space rebinding                                          |
+| #1362 | Software complete; merged #1501             | Read-only Panel current/next plan and manual indication, transitions, unknown/unavailable states and owned refresh/disposal; no Panel editor                                    |
+| #1299 | Software complete; merged #1502             | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
+| #1300 | Software complete; merged #1502             | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
 
 #1293 is not a reason to rebuild the delivered bridge. Its remaining acceptance must use the existing adapters
 and their explicit availability outcomes. Schedules and presence stay with their own issues.
@@ -56,7 +58,7 @@ and their explicit availability outcomes. Schedules and presence stay with their
 The scheduler reuses `SpaceModeService` and the existing governed climate adapter. It creates no second thermostat
 or presence engine. Default schedules are disabled/empty; climate mode names still imply no presets or temperatures.
 The configured preset and thermostat manual-hold cases execute through the real migrated AppModule and native ledger.
-#1458 remains open for presence/occupancy, unavailable-presence semantics and remaining final composition.
+#1458 remains open for final combined acceptance; presence/occupancy and unavailable-input semantics merged in #1502.
 
 | Acceptance boundary                                                                                     | Current source/test witnesses                                                                                              |
 | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -73,9 +75,9 @@ remain separate. Historical RED/UNKNOWN evidence remains attached to its origina
 
 ## Occupancy follow-up (#1299, #1300)
 
-The occupancy implementation has passed local software qualification and is ready for its PR delivery gates. These issues remain open until the
-occupancy PR passes CI/review and merges. Parent #1458 still owns remaining combined-domain acceptance;
-this implementation does not close that parent or grant installed-equipment qualification.
+The occupancy implementation merged in #1502 after all 14 checks and completed main review at `95a191b`.
+Its scoped child issues are closed. Parent #1458 still owns final combined acceptance; this does not grant
+installed-equipment qualification.
 
 | Acceptance boundary                                                                                                | Current source/test witnesses                                                                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -127,14 +129,15 @@ Named witnesses: [real RPC/SQLite/core/HAP covering tests](../apps/backend/src/p
 [Admin controls](../apps/admin/src/plugins/devices-virtual/components/virtual-light-group-detail.spec.ts) and
 [Panel controls](../apps/panel/test/modules/devices/presentation/actuator_group_flow_test.dart).
 
-Fresh local/hosted qualification and completed main review belong to this follow-up. These source witnesses do not
-claim physical actuation, real Apple pairing, complete original-scenario reconciliation or alpha publication.
+Delivered in [#1505](https://github.com/FastyBird/smart-panel/pull/1505), squash `54e2c92c57d4aa2a906cd7744e3d60294c203377`,
+after exact-head green CI and completed main review. #1452/#1461 are closed. These witnesses do not claim physical
+actuation, real Apple pairing, complete original-scenario reconciliation or alpha publication.
 
 ## Complete child acceptance and named evidence
 
-The following original criteria have merged implementations and named source/test witnesses. Links pin the
-reconciled main commit, rather than a moving branch. The corresponding issues can close as software-complete;
-closing them neither closes #1447 nor grants installed qualification.
+The following criterion-level mappings retain the initial reconciliation pinned at `b0bfd429ae9f015911d1baad37583652b62d3995`.
+Later delivery and final composition evidence is recorded above; those earlier links do not certify the new final batch.
+Closed child software criteria neither close #1447 nor grant installed qualification.
 
 ### #1453: feat(cross): expose actuator group profiles in device and room controls
 
@@ -229,10 +232,10 @@ witness is the actual native opt-in/manual-hold path, alongside explicit OFF, ov
 
 ## Parent acceptance and original PR #1473
 
-Completed software rows: shared aggregate policies/quality, comfort/override semantics, dew-point identity/age,
-cooling cutoff policy, guarded parallel ownership/release and SDK operator lifecycle. Overall migration,
-all new group controls, schedule/presence, both native units, full HomeKit, final composed acceptance and alpha
-remain unchecked where their complete scope is still missing. A green PR is not the entire milestone.
+Merged software includes aggregates, groups, comfort/overrides, dew point/cooling guards, guarded parallel branches,
+SDK operators, schedules, occupancy, native HA/Zigbee units and HomeKit composition. Final composed/upgrade validation,
+the original reference-case map and actual alpha publication remain #1462. Installed equipment remains #1463.
+A green PR is not the entire milestone.
 
 PR [#1473](https://github.com/FastyBird/smart-panel/pull/1473) stays a frozen draft reference at `2c19907`;
 its historical 200 PASS / 61 FAIL / 261 control is not a current-main failing-test count. Its source and historical
@@ -251,7 +254,7 @@ its evidence, or a concrete residual requirement. This issue reconciliation is n
 - Historical timeout/worker-warning causes remain unknown. Later passing results do not diagnose them.
 - No next alpha has been certified by this reconciliation, and no equipment was operated or commissioned.
 
-## Pinned source and test links
+## Pinned source and test links from the initial reconciliation
 
 [activityAPI]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/spaces-home-control/controllers/space-modes.controller.ts#L23
 [activityAPITest]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/spaces-home-control/controllers/space-modes.controller.spec.ts#L24
