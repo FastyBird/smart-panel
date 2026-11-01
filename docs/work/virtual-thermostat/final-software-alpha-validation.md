@@ -129,6 +129,20 @@ remain open until required residuals are resolved or explicitly dispositioned wi
 
 Hosted CI on preparation head `dd9b9b8549c72d0796aa618648730e145d287337` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41314503661) succeeded. It includes the real issued-OFF enhancement but predates the lifecycle correction. The later 46468ac backend failure and fixture correction are recorded above; fresh exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
 
+## Follow-up after #1508 merge
+
+PR #1508 was squash-merged as `4a3033e1d6050252a5b45fc9972b6f958e463a22`. Its exact reviewed
+head `3af1c1be7f8bb21a757b60feefa935331c3fe0c7` passed all 14 checks in
+[CI Tests 41354064958](https://github.com/FastyBird/smart-panel/actions/runs/41354064958):
+726 backend suites / 13,306 tests (one existing skip), 29 E2E suites / 424 tests, OAuth 32/32,
+Homey 250/250 and the test-only thermostat simulator 30/30. CodeRabbit completed exact-head review
+without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and unattributed SQLite
+ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
+
+[The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
+still-unbound rows and the evidence required to close each. Creating that checklist changes no
+canonical row disposition and grants no alpha or installed-equipment clearance.
+
 ## Release preparation
 
 The existing `alpha-release.yml` remains the publisher. Preparation fixes two demonstrated release issues:
@@ -149,7 +163,7 @@ already existed despite that failed downstream job. A release object alone there
 
 - [ ] Finish original #1473 semantic case bindings and any required executable residuals.
 - [ ] Complete current software/static/generated-contract and source-review gates; reconcile #1293/#1458 against their entire criteria.
-- [ ] Merge the delivery PR after exact-head green CI and completed nonblocking main review.
+- [x] Merge delivery PR #1508 after exact-head green CI and completed nonblocking main review. The residual acceptance follow-up still requires its own checks and review.
 - [ ] Dispatch the existing alpha workflow from the accepted source; record the actual selected version and version-sync commit.
 - [ ] Verify tag/source/package metadata and completed package, application, Panel, Raspbian, native Docker architecture and manifest jobs.
 - [ ] Record published assets/checksums and release notes with explicit remaining installed Shelly/HA/Zigbee/Apple Home qualification.
