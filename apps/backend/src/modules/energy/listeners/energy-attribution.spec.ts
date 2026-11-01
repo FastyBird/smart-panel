@@ -51,6 +51,7 @@ import { EnergyIngestionListener } from './energy-ingestion.listener';
  */
 describe('energy attribution across a split device', () => {
 	let dataSource: DataSource;
+	let setupCompletion: Promise<void>;
 	let listener: EnergyIngestionListener;
 	let energyData: EnergyDataService;
 	let deltas: Repository<EnergyDeltaEntity>;
@@ -58,15 +59,16 @@ describe('energy attribution across a split device', () => {
 	const RANGE_START = new Date('2026-08-01T00:00:00.000Z');
 	const RANGE_END = new Date('2026-08-02T00:00:00.000Z');
 
-	beforeEach(async () => {
-		dataSource = new DataSource({
+	const setupFixture = async (): Promise<void> => {
+		const original = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 			synchronize: true,
 		});
 
-		await dataSource.initialize();
+		dataSource = original;
+		await original.initialize();
 
 		const metrics = new EnergyMetricsService();
 		const valueSources = new PropertyValueSourceRegistryService();
@@ -75,33 +77,42 @@ describe('energy attribution across a split device', () => {
 		valueSources.register(new VirtualValueSourceService());
 		claims.register(
 			new VirtualEnergyClaimService(
-				new VirtualPropertyIndexService(dataSource.getRepository(VirtualChannelPropertyEntity)),
+				new VirtualPropertyIndexService(original.getRepository(VirtualChannelPropertyEntity)),
 			),
 		);
 
-		deltas = dataSource.getRepository(EnergyDeltaEntity);
+		deltas = original.getRepository(EnergyDeltaEntity);
 		energyData = new EnergyDataService(deltas);
 
 		// Rooms are real rows: `roomId` is a foreign key, and the point of the whole exercise is which
 		// room a delta lands in.
 		for (const room of ['kitchen', 'office', 'utility']) {
-			await dataSource.getRepository(RoomSpaceEntity).insert({ id: room, name: room } as never);
+			await original.getRepository(RoomSpaceEntity).insert({ id: room, name: room } as never);
 		}
 
 		listener = new EnergyIngestionListener(
-			dataSource.getRepository(ChannelEntity),
-			dataSource.getRepository(ChannelPropertyEntity),
+			original.getRepository(ChannelEntity),
+			original.getRepository(ChannelPropertyEntity),
 			new DeltaComputationService(metrics),
 			energyData,
 			metrics,
 			valueSources,
 			claims,
 		);
-	});
+	};
+	// Full schema preparation has its own budget; test bodies keep Jest's default timeout.
+	beforeEach(() => {
+		setupCompletion = setupFixture();
+		return setupCompletion;
+	}, 30_000);
 
 	afterEach(async () => {
-		await dataSource.destroy();
-	});
+		const original = dataSource,
+			originalSetup = setupCompletion;
+		// A hook timeout does not cancel initialization or seeding; join it before closing its database.
+		await originalSetup.catch(() => undefined); // beforeEach retains the original setup rejection.
+		if (original?.isInitialized) await original.destroy();
+	}, 30_000);
 
 	/** A physical device, its energy channel and the cumulative meter on it. */
 	const givenMeter = async (
