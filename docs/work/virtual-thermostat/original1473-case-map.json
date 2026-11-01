@@ -44,9 +44,9 @@
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 139,
+    "residual_no_current_case_bound": 138,
     "scoped_current_invariant_bound": 109,
-    "replacement_current_invariant_bound": 7,
+    "replacement_current_invariant_bound": 8,
     "ported_descriptor_control_qualified": 6
   },
   "rows": [
@@ -4398,9 +4398,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "accepts the original inherited Date.parse on a local Date subclass",
-        "line": 6,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 33,
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "bodySha256": "40b15d66a7fcd76a2f16077f406271c55a0ac905beea14ba7999c9c01e130f37",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "0ce1f9d17bc654331545177dd3e6e08f96465efda9cd38eb5a8ca6888772fbc6"
@@ -4418,9 +4420,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "preserves original identity through multiple function-valued parents",
-        "line": 14,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 41,
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "bodySha256": "46b9485650962c657d2ff07898191cc64fb03d515bbf82771fa73f1ae64ebfe4",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "2a1e0f11f35f01345d8a42364eccc78497e2c7d657558ececc263809f7cd35ea"
@@ -4438,9 +4442,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses an own static replacement without recapturing the original",
-        "line": 25,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 52,
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "bodySha256": "27ed2597a59780393ca7538a1c3bade9d97916eb18e5b66c10b4dc6f98e3dd79",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "ab317ab270977d67a1f30dbdc7953e348c9b31f9431e66bbd976a9296e9bcb31"
@@ -4458,9 +4464,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses a nearer inherited static replacement",
-        "line": 37,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 64,
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "bodySha256": "2c02a21dafa9a700b9e545a73edf389eab54f816f70a6ed856dcdfe501138dc5",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "c212c34b6bf48a0f1e92c57f4d92148574f2043c4225a602257e652f4df89741"
@@ -4478,9 +4486,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses an own accessor returning the original without invoking its getter",
-        "line": 50,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 77,
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "bodySha256": "6bbaf8ac93bac2089c13f8598c6f6eb3a0f8c4c2959271e82e11ba408a8119b9",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "a59f6f6143b18c9c860818b296dc7cdabd57d504280a28a897c2a9a178196d51"
@@ -4498,9 +4508,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses a nearer inherited accessor without invoking it or falling through",
-        "line": 69,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 96,
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "bodySha256": "a436ad460a6b586b68cf6a8f5fc48dc4a9f336f3bc450c65312fef89c5ea94e0",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "c0edb6c48a85312a314479710738f4faddf10c0d73d8b0f49933870b5853aad5"
@@ -4513,9 +4525,60 @@
       ],
       "originalLine": 19304,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Reconcile the original required-method missing/changed refusal with current optional-absence capture semantics. Bind actual required-callsite checks and preserve ordinary prototype identity cases; capture.current() alone accepts original optional absence and is not this old refusal.",
-      "originalBodySha256": "61f76bd16e962d309788c89ab02a350a010848719103555e0d1e4cae8ee2335f"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "61f76bd16e962d309788c89ab02a350a010848719103555e0d1e4cae8ee2335f",
+      "current": {
+        "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
+        "title": "preserves ordinary prototype identity checks and refuses changed or missing captured methods",
+        "line": 7,
+        "bodySha256": "425a47c3c1e0b64e049aba252b6d4c2ee31ecf1fabcb391fba7f45a127336196",
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
+      },
+      "requiredCallsites": [
+        {
+          "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-authoring.integration.spec.ts",
+          "title": "refuses a missing required catalog capture before reading input or issuing SQL",
+          "line": 1048,
+          "bodySha256": "a45435e5c9446615e5c5abd4ee6775d61d96130611e9d1c2b0c31071e756bb84",
+          "fileSha256": "8e26f3f7ea93a0694cabe156a71042b44c661dcfafc5683fbaf5d749e7938178",
+          "measuredStatus": "passed",
+          "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
+        },
+        {
+          "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-authoring.integration.spec.ts",
+          "title": "refuses a required catalog method %s after entry capture before issuing SQL",
+          "line": 1085,
+          "bodySha256": "6729bf1c0b7eb450ad373374c3b7e9a86af8f07e619d21ced19257c91faf756c",
+          "fileSha256": "8e26f3f7ea93a0694cabe156a71042b44c661dcfafc5683fbaf5d749e7938178",
+          "measuredStatus": "passed",
+          "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
+        }
+      ],
+      "optionalAbsenceControl": {
+        "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
+        "title": "retains optional absence without treating it as required-callsite admission",
+        "line": 24,
+        "bodySha256": "6ef883192c2aaa4f06820c8fcf0be6ab264ba7d19d1d982be4feb01b83747405",
+        "fileSha256": "4188361aff27ae5a615b0e82601975160b0a3804d2df5c85955b104a55a158e2",
+        "measuredStatus": "passed",
+        "measurement": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8"
+      },
+      "semanticComparison": "Ordinary object prototype inheritance retains the original function. Replacement or removal after capture invalidates currentness without recapture. The current generic helper intentionally retains original optional absence; unlike the historical boolean helper, it does not itself reject all absent fields. At the real required thermostat-authoring catalog callsite, entry absence rejects before caller getters, SQL or publication; replacement/removal from a caller getter after capture also rejects before SQL/publication and never invokes a replacement. The original required-method refusal is bound through that callsite, not inferred from optional capture.current(). These are method/admission controls, not whole runtime/provider/SDK or installed transport evidence.",
+      "negativeControls": {
+        "descriptorAlwaysCurrent": "New ordinary-prototype case fails currentness assertion.",
+        "inputBeforeRequiredMethod": "New entry-absence case fails inputReads=0 assertion.",
+        "requiredMethodPinIgnored": "Both real-callsite replacement/removal variants fail.",
+        "expectedAssertionFailures": 4,
+        "productionRestored": true,
+        "nonDiscriminatingAttempt": "Removing one early assert leaves a later assert before SQL in this no-automation-predecessor fixture. Both variants still pass; no defect/clearance inferred from that run."
+      },
+      "productionBindings": {
+        "apps/backend/src/modules/devices/services/creation-capture.ts": "c0372ab2952177b2834362f6118aca70b31d6603cad49f1331e032ac2cc9cb49",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-authoring.service.ts": "863065a5f29c50fb8dfd91d9007169667bd006c10cfc0bd5ed1761bceaa8a77f"
+      }
     }
   ],
   "semanticReconciliation": {
@@ -4571,6 +4634,20 @@
       "controls": "Six original lifecycle scenarios plus two new native live-retention refusal controls execute. Removing the exact post-load lifetime check fails the held completed-A-load case; source was restored exactly.",
       "qualification": "22 other consumer suites / 1,035 cases passed on this production. The initial complete runtime had one invalid test-only callback-context assertion, now corrected; the fresh complete runtime has 155 passes. Ordinary E2E qualification composes 28 green suites / 310 cases with the corrected complete 114-case file; the initial 423 PASS / 1 FAIL full run remains red. The fixture now joins its original complete information synthesis with original Nest metadata before explicit graph recovery. The exact initial failing interleaving remains UNKNOWN. The 23-suite native pack is composed evidence, not a rewritten green initial run.",
       "unadopted": "The 18 old fixture-ownership/setup-cleanup control rows were inspected, but no test-harness-only waiver was granted. They remain among the 139 unbound rows."
+    },
+    "requiredMethodFollowup": {
+      "row": 261,
+      "scope": "Ordinary object prototype inheritance retains the original function. Replacement or removal after capture invalidates currentness without recapture. The current generic helper intentionally retains original optional absence; unlike the historical boolean helper, it does not itself reject all absent fields. At the real required thermostat-authoring catalog callsite, entry absence rejects before caller getters, SQL or publication; replacement/removal from a caller getter after capture also rejects before SQL/publication and never invokes a replacement. The original required-method refusal is bound through that callsite, not inferred from optional capture.current(). These are method/admission controls, not whole runtime/provider/SDK or installed transport evidence.",
+      "validation": "Complete affected files: 2 suites / 113 passes, zero failed/pending. Report SHA-256 5dfd2f28420185cc34dd97f5406ad904a40c476e3abae846d222ad510362a1a8",
+      "bodyHashAlgorithm": "SHA256(JSON.stringify(TypeScript scanner [kind, string-value-or-token-text] body tokens; skipTrivia=true))",
+      "negativeControls": {
+        "descriptorAlwaysCurrent": "New ordinary-prototype case fails currentness assertion.",
+        "inputBeforeRequiredMethod": "New entry-absence case fails inputReads=0 assertion.",
+        "requiredMethodPinIgnored": "Both real-callsite replacement/removal variants fail.",
+        "expectedAssertionFailures": 4,
+        "productionRestored": true,
+        "nonDiscriminatingAttempt": "Removing one early assert leaves a later assert before SQL in this no-automation-predecessor fixture. Both variants still pass; no defect/clearance inferred from that run."
+      }
     }
   }
 }

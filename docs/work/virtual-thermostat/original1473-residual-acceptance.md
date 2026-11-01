@@ -6,15 +6,16 @@ including 13,306 backend tests and all 424 E2E cases. CodeRabbit reported no act
 The separate local 362 PASS / 62 FAIL E2E result and unattributed SQLite ownership timeouts remain
 recorded in #1508; hosted success does not establish their cause.
 
-**Status: draft work inventory; 0 of these 139 residuals accepted in this follow-up.**
+**Status: draft; 1 of the original 139 residuals has a tested current binding, and 138 remain unbound.**
 This list grants no complete original-fixture, provider/SDK, installed-equipment or alpha clearance.
-The existing 109 scoped invariant bindings, seven replacement bindings and six ported descriptor rows
+The branch-entry 109 scoped invariant bindings, seven replacement bindings and six ported descriptor rows
 are retained with their existing limits. They are outside this residual work inventory.
 
 ## Fixed inventory
 
 [The existing 261-row ledger](original1473-case-map.json) remains the identity and disposition source.
-Exactly the rows with `disposition: residual_no_current_case_bound` are listed below.
+At branch entry, exactly the 139 rows with `disposition: residual_no_current_case_bound` were listed below.
+The fixed inventory remains intact as individual current bindings are added to the canonical ledger.
 Historical 200 PASS / 61 FAIL results are not current defect counts.
 
 - Source ledger SHA-256 at branch entry: `fa221e19d5bc1cd4ee5168b4e3357c38a4342fa641d22f22dd62702dfe52c9be`.
@@ -23,17 +24,17 @@ Historical 200 PASS / 61 FAIL results are not current defect counts.
 - Per-row original body hashes and expanded-case parameters remain in the source ledger.
 - #1473 remains frozen; #1462 and parent #1447 remain open.
 
-| Area                                         | Residual cases |
-| -------------------------------------------- | -------------: |
-| Retired fixture ownership                    |              7 |
-| OFF settlement and native safety debt        |             54 |
-| Comfort, claims and original SDK send guards |             63 |
-| Named original OFF completion                |              3 |
-| Issued setup and cleanup ownership           |              8 |
-| Cleanup observer ordering                    |              1 |
-| Held body gate with real SQLite consumers    |              2 |
-| Required-method refusal                      |              1 |
-| **Total**                                    |        **139** |
+| Area                                         | Cases at follow-up entry |
+| -------------------------------------------- | -----------------------: |
+| Retired fixture ownership                    |                        7 |
+| OFF settlement and native safety debt        |                       54 |
+| Comfort, claims and original SDK send guards |                       63 |
+| Named original OFF completion                |                        3 |
+| Issued setup and cleanup ownership           |                        8 |
+| Cleanup observer ordering                    |                        1 |
+| Held body gate with real SQLite consumers    |                        2 |
+| Required-method refusal                      |                        1 |
+| **Total**                                    |                  **139** |
 
 ## Evidence required before closing a row
 
@@ -50,17 +51,44 @@ Historical 200 PASS / 61 FAIL results are not current defect counts.
 5. Update only the evidenced row disposition and recomputed counts in the canonical ledger, then
    check its box here with a link to that binding. Leave unresolved rows open.
 
-Row 261 specifically needs a required-callsite missing-method refusal; the shared helper's optional
-absence behavior and a standalone `current()` result do not satisfy it.
+Row 261 binds required-callsite missing-method refusal as detailed below. The shared helper's optional
+absence behavior remains distinct; a standalone `current()` result does not satisfy that refusal.
 
 Before this draft becomes ready, reconcile all 139 rows, preserve the already scoped 122 dispositions,
 run required exact-head checks, and obtain completed nonblocking source review. Actual alpha publication
 and installed-equipment qualification remain separate gates in #1462.
 
+## Current binding evidence
+
+### Row 261: ordinary prototype identity and required methods
+
+[The canonical row binding](original1473-case-map.json) retains the frozen original body identity and
+records current test-body and production hashes. The ordinary-prototype case in
+`creation-capture.spec.ts` preserves the captured function and refuses later replacement or removal.
+A separate control keeps the generic helper's deliberate optional-absence behavior explicit.
+
+The real `VirtualThermostatAuthoringService.create` callsite is exercised by
+`virtual-thermostat-authoring.integration.spec.ts`: removing its required catalog method before entry
+refuses before reading caller input, SQL or publication. Replacing/removing that method from a caller
+getter after capture likewise refuses before SQL/publication without invoking the replacement.
+Descriptors are restored exactly after each case. This is a replacement binding for the original
+required-method invariant, not whole-helper or runtime/provider/SDK equivalence.
+
+Both complete affected files pass: **113 tests, zero failures or skips**. All **47 pre-existing literal
+test bodies** are token-identical; four new literal bodies expand to five cases. Types, strict lint
+and formatting pass. Three controlled production mutations cause four expected assertion failures:
+always-current descriptors, input read before the required method, and ignoring the required-method
+pin. Original production bytes are restored. Removing one redundant early assertion alone did not
+break these cases because a later assertion still runs before SQL in this fixture; that observation
+is retained and grants no stronger coverage.
+
+Exact-head hosted CI and source review for this follow-up remain required. No other original row is
+closed by these method controls.
+
 ## Case checklist
 
-Every entry starts unbound. Links point to the frozen original source; the canonical ledger carries
-full ancestry and body identity for parameterized cases.
+All entries were unbound at branch entry. A checked entry has a tested current binding in the
+canonical ledger. Original-source links retain full ancestry and body identity for parameterized cases.
 
 ### Retired fixture ownership
 
@@ -223,4 +251,4 @@ full ancestry and body identity for parameterized cases.
 
 ### Required-method refusal
 
-- [ ] `1473-261` — preserves ordinary prototype identity checks and refuses changed or missing methods ([original line 19304](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L19304)).
+- [x] `1473-261` — preserves ordinary prototype identity checks and refuses changed or missing methods ([original line 19304](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L19304)).

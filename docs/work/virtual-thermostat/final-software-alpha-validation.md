@@ -97,7 +97,7 @@ The permissive standalone runtime-admission callback is removed. All existing tw
 threshold/sequence and finite-lease assertions remain, followed by a real stopped-context refusal with unchanged
 journal and native ON count. The complete file passes 39/39. Production source is unchanged; the original failed
 hosted and local runs are retained. This test correction requires fresh exact-head CI and does not close any of
-the 139 original residual bindings or grant installed-equipment qualification.
+the remaining original residual bindings or grant installed-equipment qualification.
 
 ## Original #1473 reconciliation
 
@@ -114,11 +114,11 @@ The current reconciliation distinguishes scoped business outcomes from complete 
 - **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
 - **Seven replacement rows (105–109, 111, 240)** bind the current native OFF, protected-write, qualification, held ON and actual-interval boundaries. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **139 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **138 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
 
 The history oracle was independently challenged with three controlled production mutants: oldest prepared command first, duplicate returned rows and a corrupted proof ID. Each caused both history cases to fail at the intended predicate, uniqueness or complete-row assertion (six expected failures total). The production file was restored byte-for-byte before the complete **147/147** runtime rerun passed.
 
-Original row 261 remains open: the old helper rejected missing required methods, while the current shared helper also supports optional absence. That difference needs a required-callsite binding; a `current()` result alone must not be presented as the original missing-method refusal.
+**The eighth replacement binding is row 261.** Ordinary object-prototype identity, replacement and removal are tested in `creation-capture.spec.ts`. Actual thermostat authoring refuses a missing required catalog method before caller input/SQL and refuses replacement/removal after entry capture before SQL/publication. The generic helper intentionally retains optional absence; that behavior is tested separately and is not called required-method admission. Both complete affected files pass 113/113 with all 47 existing literal bodies unchanged. Three counterfactual mutations cause four expected assertion failures; production is restored byte-for-byte. [The follow-up](original1473-residual-acceptance.md) and canonical ledger retain body/source hashes and limits. These method controls grant no additional runtime/provider/SDK acceptance.
 
 A direct row-111 adaptation requiring the old `context.admission` to expire on an ordinary poll failed and was withdrawn. That current field is a claims-membership snapshot retained across neutral rotations; ON separately requires the exact current context and epoch. Two executable witnesses now bind those boundaries: the idle original interval publishes a fresh decision without ON, and an actual original interval invalidates a held native ON guard that was true at entry. The latter uses no explicit poll, fake timer advance or replacement interval. The original owner stops before the held gate opens, and the complete runtime rerun passes. Legitimate retained OFF facts were not weakened.
 
@@ -140,8 +140,9 @@ without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and u
 ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
 
 [The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
-still-unbound rows and the evidence required to close each. Creating that checklist changes no
-canonical row disposition and grants no alpha or installed-equipment clearance.
+rows that were unbound at branch entry and the evidence required to close each. Row 261 now has a
+tested required-method replacement binding; 138 remain unbound. The initial 122 dispositions retain
+their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
 ## Release preparation
 
