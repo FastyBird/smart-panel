@@ -171,6 +171,11 @@ describe('thermostat creation catalog: actual full SQLite schema lifetime', () =
 		const committed = await snapshot(target);
 		const normal = await open('missing48.sqlite', { synchronize: false, migrationsRun: false });
 		await new VirtualThermostatOwnershipSubscriber(normal, claims).onApplicationBootstrap();
+		expect(
+			await normal.query(
+				"SELECT name FROM sqlite_master WHERE name = 'devices_virtual_thermostat_override_clocks' OR name LIKE 'thermostat_override_clock_%'",
+			),
+		).toEqual([]);
 		expect(await snapshot(normal)).toEqual(committed);
 		expect(await publicCatalog(normal)).toEqual(publicRows);
 	});

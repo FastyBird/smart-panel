@@ -37,6 +37,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatOverrideClockEntity } from '../entities/thermostat-override-clock.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -1026,7 +1027,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			)
 		)
 			.map(({ name }) => name)
-			.filter((name) => name !== 'devices_virtual_thermostat_configs');
+			.filter(
+				(name) => !['devices_virtual_thermostat_configs', 'devices_virtual_thermostat_override_clocks'].includes(name),
+			);
 		return async (manager: Pick<EntityManager, 'query'>): Promise<Record<string, unknown>> => {
 			const records: Record<string, unknown> = {};
 			for (const table of tables)
@@ -1106,6 +1109,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			expect(event.queryRunner).toBe(runner);
 		};
 		const configQuery = (query: string) => query.startsWith('UPDATE "devices_virtual_thermostat_configs" ');
+		const clockRunners = new WeakSet<QueryRunner>();
 		const observer = semantic
 			? {
 					beforeUpdate: (event: UpdateEvent<object>) => {
@@ -1176,7 +1180,10 @@ describe('manual thermostat selection: reserved native intent', () => {
 				}
 			: {
 					beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
-						if (event.query === 'COMMIT') seam = await snapshot(event.manager);
+						if (event.query.startsWith('INSERT INTO "devices_virtual_thermostat_override_clocks"'))
+							clockRunners.add(event.queryRunner);
+						// Capture the authoring commit; later clock-only settlement seals its own final native reads.
+						if (event.query === 'COMMIT' && !clockRunners.has(event.queryRunner)) seam = await snapshot(event.manager);
 					},
 				};
 		database.subscribers.push(observer);
@@ -1438,6 +1445,13 @@ describe('manual thermostat selection: reserved native intent', () => {
 								? await comfort.override(id, input, requestOverride(), 'operator')
 								: await comfort.cancel(id, input, beforeConfig.comfort.temporary_override.id),
 			);
+			if (kind === 'override')
+				expect(
+					await database.manager.findOneByOrFail(ThermostatOverrideClockEntity, {
+						controllerId: id,
+						overrideId: result.configuration.temporary_override.id,
+					}),
+				).toMatchObject({ watermark: wall });
 			expect(seam).toEqual(before);
 			expect(await snapshot(database.manager)).toEqual(before);
 			expect(invalidated).toHaveBeenCalled();
@@ -1489,7 +1503,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			if (kind === 'active') {
 				expect(comfort.isCurrent(current)).toBe(true);
 				expect(current.revision).toBe(result.revision);
-				expect(current.comfort.temporary_override.wall_watermark_ms).toBe(wall);
+				expect(
+					(await database.manager.findOneByOrFail(ThermostatOverrideClockEntity, { controllerId: id })).watermark,
+				).toBe(wall);
 			} else {
 				expect(current.revision).toBe(result.revision + 1);
 				expect(current.comfort.temporary_override.status).toBe(kind === 'expire' ? 'expired' : 'clock_uncertain');
@@ -2366,7 +2382,9 @@ describe('manual thermostat selection: reserved native intent', () => {
 			expect(comfort.isCurrent(await row())).toBe(true);
 			expect(localMap().get(id).watermark).toBe(wall);
 			await comfort.settle(id);
-			expect((await row()).comfort.temporary_override.wall_watermark_ms).toBe(wall);
+			expect(
+				(await database.manager.findOneByOrFail(ThermostatOverrideClockEntity, { controllerId: id })).watermark,
+			).toBe(wall);
 		} finally {
 			acknowledge?.();
 			await Promise.allSettled([a]);

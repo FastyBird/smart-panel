@@ -91,7 +91,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		database = await createSqliteDataSource({ ...options, migrations });
 		const upgraded = await database.runMigrations({ transaction: 'each' });
 		expect(upgraded.length).toBe(migrations.length - baseline.length);
-		expect(upgraded.at(-1).name).toBe('AddNativeThermostats1000000000052');
+		expect(upgraded.at(-1).name).toBe('AddThermostatOverrideClocks1000000000053');
 		expect(await database.query('SELECT id,name,type,displayOrder,statusWidgets FROM spaces_module_spaces')).toEqual(
 			originalRooms,
 		);
@@ -119,6 +119,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		for (const table of [
 			'devices_virtual_native_thermostats',
 			'devices_virtual_native_requests',
+			'devices_virtual_thermostat_override_clocks',
 			'devices_virtual_thermostat_actuator_claims',
 		]) {
 			expect(await database.query(`SELECT count(*) AS count FROM ${table}`)).toEqual([{ count: 0 }]);
@@ -128,6 +129,9 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		await database.destroy();
 		database = await createSqliteDataSource({ ...options, migrations });
 		expect(await database.runMigrations({ transaction: 'each' })).toEqual([]);
+		expect(await database.query('SELECT count(*) AS count FROM devices_virtual_thermostat_override_clocks')).toEqual([
+			{ count: 0 },
+		]);
 		expect(await database.query(channelIdentitySql)).toEqual(originalChannels);
 		expect(
 			await database.query(

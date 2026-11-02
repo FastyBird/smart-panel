@@ -45,6 +45,7 @@ import { PollPlacementDiagnosticsService } from '../../src/plugins/devices-shell
 import { ShellyNgService } from '../../src/plugins/devices-shelly-ng/services/shelly-ng.service';
 import { ShellyWsServerService } from '../../src/plugins/devices-shelly-ng/services/shelly-ws-server.service';
 import { VirtualThermostatActuatorClaimEntity } from '../../src/plugins/devices-virtual/entities/virtual-thermostat.entity';
+import type { thermostatInstallationArtifact } from '../../src/plugins/devices-virtual/services/thermostat-installation-artifact';
 import { ThermostatInstalledQualification } from '../../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatTransportService } from '../../src/plugins/devices-virtual/services/virtual-thermostat-transport.service';
 
@@ -83,6 +84,7 @@ export async function realThermostatGuardFixture(
 	qualifications: Map<string, ThermostatInstalledQualification>,
 	mode: 'managed' | 'closed' | 'unmanaged' = 'managed',
 	valueLocks?: PropertyValueLockService,
+	installationArtifacts?: ReadonlyMap<string, ReturnType<typeof thermostatInstallationArtifact>>,
 ) {
 	const tick = useThermostatPacketClock();
 	const sources = new PropertyValueSourceRegistryService();
@@ -134,6 +136,9 @@ export async function realThermostatGuardFixture(
 		});
 	};
 	const claims = await db.manager.find(VirtualThermostatActuatorClaimEntity);
+	const artifactProperties = new Set(
+		claims.filter((claim) => installationArtifacts?.has(claim.id)).map((claim) => claim.sourcePropertyId),
+	);
 	const members = new Map<
 		string,
 		{ property: string; epoch: number; output: boolean; profile: ThermostatInstalledQualification['profile'] }
@@ -265,7 +270,37 @@ export async function realThermostatGuardFixture(
 		for (const [index, claim] of claims.entries()) {
 			const device = await db.manager.findOneByOrFail(ShellyNgDeviceEntity, { id: claim.sourceDeviceId });
 			const hostname = `127.0.0.${index + 2}`;
-			const profile: ThermostatInstalledQualification['profile'] = {
+			const installation = installationArtifacts?.get(claim.id);
+			const metadata = installation?.qualification.guardScript?.installationMetadata;
+			const metadataReplies: Record<string, unknown> = metadata
+				? {
+						'Temperature.GetConfig': JSON.parse(metadata.configurationJson) as unknown,
+						'SensorAddon.GetPeripherals': JSON.parse(metadata.peripheralsJson) as unknown,
+						'Switch.GetConfig': JSON.parse(metadata.switchConfigurationJson) as unknown,
+					}
+				: {};
+			const readInstalledChunk = (params: unknown) => {
+				if (
+					!params ||
+					typeof params !== 'object' ||
+					!('offset' in params) ||
+					!('len' in params) ||
+					typeof params.offset !== 'number' ||
+					!Number.isSafeInteger(params.offset) ||
+					params.offset < 0 ||
+					typeof params.len !== 'number' ||
+					!Number.isSafeInteger(params.len) ||
+					params.len < 1 ||
+					params.len > 1024
+				)
+					throw new Error('Expected bounded original Script.GetCode chunk');
+				const bytes = Buffer.from(installation.source, 'utf8');
+				if (params.offset > bytes.length) throw new Error('Script chunk offset exceeds original source');
+				let end = Math.min(bytes.length, params.offset + params.len);
+				while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--;
+				return { data: bytes.subarray(params.offset, end).toString('utf8'), left: bytes.length - end };
+			};
+			const profile: ThermostatInstalledQualification['profile'] = installation?.qualification ?? {
 				deviceId: device.identifier,
 				model: 'SNSW-001P16EU',
 				firmware: 'fixture-only',
@@ -311,14 +346,20 @@ export async function realThermostatGuardFixture(
 							!('id' in frame) ||
 							typeof frame.id !== 'number' ||
 							!('method' in frame) ||
-							(frame.method !== 'Shelly.GetDeviceInfo' && frame.method !== 'Script.GetCode')
+							(frame.method !== 'Shelly.GetDeviceInfo' &&
+								frame.method !== 'Script.GetCode' &&
+								!(typeof frame.method === 'string' && Object.hasOwn(metadataReplies, frame.method)))
 						)
 							throw new Error('Unexpected offline SDK request');
 						const id = frame.id;
 						const result =
 							frame.method === 'Shelly.GetDeviceInfo'
 								? { id: profile.deviceId, model: profile.model, fw_id: profile.firmware, mac: device.canonicalMac }
-								: { data: code, left: 0 };
+								: frame.method === 'Script.GetCode'
+									? installation
+										? readInstalledChunk('params' in frame ? frame.params : undefined)
+										: { data: code, left: 0 }
+									: metadataReplies[frame.method];
 						if (typeof options === 'function') (options as (error?: Error) => void)();
 						else callback?.();
 						queueMicrotask(() => this.client.receive({ jsonrpc: '2.0', id, result }));
@@ -391,7 +432,9 @@ export async function realThermostatGuardFixture(
 					deviceId: member.profile.deviceId,
 					firmware: member.profile.firmware,
 					componentId: 0,
-					evidenceId: 'offline-only',
+					evidenceId: artifactProperties.has(member.property)
+						? (member.profile.guardScript?.evidenceId ?? 'offline-only')
+						: 'offline-only',
 					epoch: member.epoch,
 					nowMs: 1000,
 					ready: true,
@@ -425,7 +468,9 @@ export async function realThermostatGuardFixture(
 				epoch: ++member.epoch,
 				deviceId: member.profile.deviceId,
 				componentId: 0,
-				evidenceId: 'offline-only',
+				evidenceId: artifactProperties.has(member.property)
+					? (member.profile.guardScript?.evidenceId ?? 'offline-only')
+					: 'offline-only',
 				output: false,
 				localOnDrained: true,
 			} as never;
