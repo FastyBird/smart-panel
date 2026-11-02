@@ -1045,6 +1045,90 @@ describe('atomic virtual thermostat authoring', () => {
 		});
 	};
 
+	it('refuses a missing required catalog capture before reading input or issuing SQL', async () => {
+		const input = request(relayId);
+		const original = Object.getOwnPropertyDescriptor(DevicesService.prototype, 'captureCreationCatalog');
+		expect(original?.value).toEqual(expect.any(Function));
+		if (!original) throw new Error('Original required catalog method missing');
+		const inputFailure = new Error('Caller input must not run without the required catalog method');
+		let inputReads = 0;
+		Object.defineProperty(input, 'device', {
+			configurable: true,
+			enumerable: true,
+			get: () => {
+				inputReads++;
+				throw inputFailure;
+			},
+		});
+		const queries: string[] = [];
+		const observer = {
+			beforeQuery: (event: { query: string }): void => {
+				queries.push(event.query);
+			},
+		};
+		database.subscribers.push(observer);
+		try {
+			expect(Reflect.deleteProperty(DevicesService.prototype, 'captureCreationCatalog')).toBe(true);
+			expect('captureCreationCatalog' in devices).toBe(false);
+			await expect(authoring.create(input)).rejects.toThrow();
+			expect(inputReads).toBe(0);
+			expect(queries).toEqual([]);
+			expect(publications).toEqual([]);
+		} finally {
+			Object.defineProperty(DevicesService.prototype, 'captureCreationCatalog', original);
+			const index = database.subscribers.indexOf(observer);
+			if (index >= 0) database.subscribers.splice(index, 1);
+		}
+		expect(Object.getOwnPropertyDescriptor(DevicesService.prototype, 'captureCreationCatalog')).toEqual(original);
+	});
+
+	it.each(['replace', 'remove'] as const)(
+		'refuses a required catalog method %s after entry capture before issuing SQL',
+		async (change) => {
+			const input = request(relayId),
+				device = input.device;
+			const original = Object.getOwnPropertyDescriptor(DevicesService.prototype, 'captureCreationCatalog');
+			if (!original) throw new Error('Original required catalog method missing');
+			const replacement = jest.fn(() => {
+				throw new Error('Replacement catalog method must not run');
+			});
+			let inputReads = 0;
+			Object.defineProperty(input, 'device', {
+				configurable: true,
+				enumerable: true,
+				get: () => {
+					inputReads++;
+					if (change === 'remove') Reflect.deleteProperty(DevicesService.prototype, 'captureCreationCatalog');
+					else
+						Object.defineProperty(DevicesService.prototype, 'captureCreationCatalog', {
+							...original,
+							value: replacement,
+						});
+					return device;
+				},
+			});
+			const queries: string[] = [];
+			const observer = {
+				beforeQuery: (event: { query: string }): void => {
+					queries.push(event.query);
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				await expect(authoring.create(input)).rejects.toThrow('Original creation registration or method expired');
+				expect(inputReads).toBe(1);
+				expect(replacement).not.toHaveBeenCalled();
+				expect(queries).toEqual([]);
+				expect(publications).toEqual([]);
+			} finally {
+				Object.defineProperty(DevicesService.prototype, 'captureCreationCatalog', original);
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+			}
+			expect(Object.getOwnPropertyDescriptor(DevicesService.prototype, 'captureCreationCatalog')).toEqual(original);
+		},
+	);
+
 	it.each([
 		{ collision: false, enabled: true },
 		{ collision: false, enabled: false },

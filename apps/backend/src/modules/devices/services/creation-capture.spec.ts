@@ -1,8 +1,35 @@
 import { captureCreation } from './creation-capture';
 
-// Original #1473 cases 255–260, bound to the current shared capture API. These
-// are descriptor controls, not native SQL/transport or installed-device evidence.
+// Original #1473 cases 255–261. Row 261 also needs the real required-method
+// callsite controls in virtual-thermostat-authoring.integration.spec.ts;
+// optional absence alone is not required-method admission or transport evidence.
 describe('original method currentness through function-valued prototypes', () => {
+	it('preserves ordinary prototype identity checks and refuses changed or missing captured methods', () => {
+		const original = (): string => 'original';
+		const prototype: { read?: () => string } = { read: original };
+		const receiver: { read?: () => string } = {};
+		Object.setPrototypeOf(receiver, prototype);
+		const captured = captureCreation(receiver, ['read']);
+
+		expect(captured.values.read).toBe(original);
+		expect(captured.current()).toBe(true);
+		prototype.read = (): string => 'replacement';
+		expect(captured.current()).toBe(false);
+		expect(captured.values.read).toBe(original);
+		delete prototype.read;
+		expect(captured.current()).toBe(false);
+		expect(captured.values.read).toBe(original);
+	});
+
+	it('retains optional absence without treating it as required-callsite admission', () => {
+		const receiver: { optional?: () => void } = {};
+		const captured = captureCreation(receiver, ['optional']);
+		expect(captured.values.optional).toBeUndefined();
+		expect(captured.current()).toBe(true);
+		receiver.optional = (): void => undefined;
+		expect(captured.current()).toBe(false);
+	});
+
 	it('accepts the original inherited Date.parse on a local Date subclass', () => {
 		class LocalDate extends Date {}
 		const original = Date.parse;
