@@ -1074,7 +1074,10 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 			const clock = frozenClock(),
 				id = await seed(),
 				comfort = module.get(VirtualThermostatComfortService),
+				runtime = module.get(VirtualThermostatRuntimeService),
 				actor = module.get(JwtService).decode<{ sub: string }>(token).sub;
+			// This case orders A and the independent B explicitly, without unrelated periodic maintenance.
+			clearInterval(runtime['timer']);
 			jest.spyOn(crypto, 'randomUUID').mockReturnValue(aId);
 			const body = { preset: 'comfort', setpoints: null, expires_at: '2026-10-25T00:01:00Z' };
 			if (kind === 'cancel') {
@@ -1121,6 +1124,8 @@ describe('P06a default-migrated authenticated manual selection HTTP', () => {
 				const original = comfort.get.bind(comfort) as VirtualThermostatComfortService['get'];
 				let bSuccess = 0;
 				const final = jest.spyOn(comfort, 'get').mockImplementationOnce(async (controller, settle) => {
+					// Join A's real post-ACK maintenance before B uses its separate SQLite writer.
+					await runtime.flush();
 					independentDiagnostic.stage = 'B-final-get';
 					jest.spyOn(crypto, 'randomUUID').mockReturnValue(bId);
 					await other
