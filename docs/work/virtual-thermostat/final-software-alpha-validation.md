@@ -97,7 +97,7 @@ The permissive standalone runtime-admission callback is removed. All existing tw
 threshold/sequence and finite-lease assertions remain, followed by a real stopped-context refusal with unchanged
 journal and native ON count. The complete file passes 39/39. Production source is unchanged; the original failed
 hosted and local runs are retained. This test correction requires fresh exact-head CI and does not close any of
-the 139 original residual bindings or grant installed-equipment qualification.
+the remaining original residual bindings or grant installed-equipment qualification.
 
 ## Original #1473 reconciliation
 
@@ -112,13 +112,27 @@ The current reconciliation distinguishes scoped business outcomes from complete 
 - **109 rows** now bind to current observable invariants. The preceding 103 bindings retain comparison of all 68 distinct same-title test-body pairs, their setup, controlled order and full assertion differences; six further startup/lifetime bindings are detailed below. Per-row notes state changed ports and limits. Current basic mutation fixtures control claims/value ports; these bindings do not certify the former full mutation-provider or SDK custody pipeline.
 - **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
 - **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
-- **Seven replacement rows (105–109, 111, 240)** bind the current native OFF, protected-write, qualification, held ON and actual-interval boundaries. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
+- **Eleven replacement rows (105–109, 111, 240–243, 261)** bind current native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **139 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **135 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+
+**Rows 241–242 bind failed original OFF completion.** The current shared public-OFF helper retains its accepted default and observes the original transport result plus saved native journal before allowing an explicit next settlement phase. Refused/unknown outcomes reject test preparation; this does not change the product public method contract. Native INSERT/send identities fix K, and both predeclared effect grammars retain complete baseline rows, P0, retirement arguments/order/multiplicity, exact journal membership/status and no ON attempts. The old private S0/S1 receipt/child-frame protocol is not adopted; controlled claims/value/transport ports remain explicit. Complete runtime **157/157** and all 94 previous literal bodies pass unchanged. Persisting failed OFF as accepted causes both new variants to fail their native journal equality assertions; production is restored. Row 243 is bound separately below; other fixture-custody boundaries remain open.
+
+**Row 243 binds retired A completion against a distinct held B.** A's actual OFF remains held while
+B restarts, issues its own OFF and enters its original next proof. B inspection is queued before A
+resumes. Original enrolled and public A completions reject with identical native journal-image error;
+B's entire native journal image, context, lifecycle, command image and listener descriptor remain
+unchanged, with no premature retirement or ON. B subsequently confirms and retires exactly all three
+pending IDs once. A transparent owned enrollment observer refuses foreign descriptor restoration.
+The public journal failure and current listener descriptor replace removed private receipt and
+serviceFeedback mechanisms; dispatch feedback is controlled while bootstrap/inspection forward.
+Complete runtime **158/158**, all **95 previous literal bodies**, unchanged accepted-OFF helper, types,
+strict lint, formatting and two discriminating mutations pass. No whole fixture/provider/SDK clearance.
+Initial type/preparation errors and the native bootstrap-versus-proof ordering witness remain recorded.
 
 The history oracle was independently challenged with three controlled production mutants: oldest prepared command first, duplicate returned rows and a corrupted proof ID. Each caused both history cases to fail at the intended predicate, uniqueness or complete-row assertion (six expected failures total). The production file was restored byte-for-byte before the complete **147/147** runtime rerun passed.
 
-Original row 261 remains open: the old helper rejected missing required methods, while the current shared helper also supports optional absence. That difference needs a required-callsite binding; a `current()` result alone must not be presented as the original missing-method refusal.
+**Row 261 binds the required-method invariant.** Ordinary object-prototype identity, replacement and removal are tested in `creation-capture.spec.ts`. Actual thermostat authoring refuses a missing required catalog method before caller input/SQL and refuses replacement/removal after entry capture before SQL/publication. The generic helper intentionally retains optional absence; that behavior is tested separately and is not called required-method admission. Both complete affected files pass 113/113 with all 47 existing literal bodies unchanged. Three counterfactual mutations cause four expected assertion failures; production is restored byte-for-byte. [The follow-up](original1473-residual-acceptance.md) and canonical ledger retain body/source hashes and limits. These method controls grant no additional runtime/provider/SDK acceptance.
 
 A direct row-111 adaptation requiring the old `context.admission` to expire on an ordinary poll failed and was withdrawn. That current field is a claims-membership snapshot retained across neutral rotations; ON separately requires the exact current context and epoch. Two executable witnesses now bind those boundaries: the idle original interval publishes a fresh decision without ON, and an actual original interval invalidates a held native ON guard that was true at entry. The latter uses no explicit poll, fake timer advance or replacement interval. The original owner stops before the held gate opens, and the complete runtime rerun passes. Legitimate retained OFF facts were not weakened.
 
@@ -128,6 +142,21 @@ observer or fixture-ownership schedules. #1473 remains frozen and is not superse
 remain open until required residuals are resolved or explicitly dispositioned with evidence.
 
 Hosted CI on preparation head `dd9b9b8549c72d0796aa618648730e145d287337` passed all 14 checks; [the CI Tests run](https://github.com/FastyBird/smart-panel/actions/runs/41314503661) succeeded. It includes the real issued-OFF enhancement but predates the lifecycle correction. The later 46468ac backend failure and fixture correction are recorded above; fresh exact-head CI remains a gate. CodeRabbit skipped the draft, and that skip grants no review approval.
+
+## Follow-up after #1508 merge
+
+PR #1508 was squash-merged as `4a3033e1d6050252a5b45fc9972b6f958e463a22`. Its exact reviewed
+head `3af1c1be7f8bb21a757b60feefa935331c3fe0c7` passed all 14 checks in
+[CI Tests 41354064958](https://github.com/FastyBird/smart-panel/actions/runs/41354064958):
+726 backend suites / 13,306 tests (one existing skip), 29 E2E suites / 424 tests, OAuth 32/32,
+Homey 250/250 and the test-only thermostat simulator 30/30. CodeRabbit completed exact-head review
+without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and unattributed SQLite
+ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
+
+[The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
+rows that were unbound at branch entry and the evidence required to close each. Rows 241–243 and 261 now have
+tested replacement bindings; 135 remain unbound. The initial 122 dispositions retain
+their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
 ## Release preparation
 
@@ -149,7 +178,7 @@ already existed despite that failed downstream job. A release object alone there
 
 - [ ] Finish original #1473 semantic case bindings and any required executable residuals.
 - [ ] Complete current software/static/generated-contract and source-review gates; reconcile #1293/#1458 against their entire criteria.
-- [ ] Merge the delivery PR after exact-head green CI and completed nonblocking main review.
+- [x] Merge delivery PR #1508 after exact-head green CI and completed nonblocking main review. The residual acceptance follow-up still requires its own checks and review.
 - [ ] Dispatch the existing alpha workflow from the accepted source; record the actual selected version and version-sync commit.
 - [ ] Verify tag/source/package metadata and completed package, application, Panel, Raspbian, native Docker architecture and manifest jobs.
 - [ ] Record published assets/checksums and release notes with explicit remaining installed Shelly/HA/Zigbee/Apple Home qualification.
