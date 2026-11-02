@@ -186,6 +186,9 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			structure,
 		);
 		await runtime.onModuleInit();
+		// This fixture drives each feedback snapshot explicitly. A timer refresh can
+		// otherwise make the next refresh join a snapshot started before the mutation.
+		clearInterval(runtime['timer']);
 		events.on(EventType.CHANNEL_PROPERTY_UPDATED, () => runtime.changed());
 		const configs = new VirtualProducerConfigService(database, structure, graph, events, producerState);
 		const configuration = Object.assign(new ConfigureVirtualLightGroupDto(), {
