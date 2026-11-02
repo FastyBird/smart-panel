@@ -6,7 +6,7 @@ including 13,306 backend tests and all 424 E2E cases. CodeRabbit reported no act
 The separate local 362 PASS / 62 FAIL E2E result and unattributed SQLite ownership timeouts remain
 recorded in #1508; hosted success does not establish their cause.
 
-**Status: draft; 3 of the original 139 residuals have tested current bindings, and 136 remain unbound.**
+**Status: draft; 4 of the original 139 residuals have tested current bindings, and 135 remain unbound.**
 This list grants no complete original-fixture, provider/SDK, installed-equipment or alpha clearance.
 The branch-entry 109 scoped invariant bindings, seven replacement bindings and six ported descriptor rows
 are retained with their existing limits. They are outside this residual work inventory.
@@ -112,6 +112,33 @@ of the original result. The accepted default and existing positive journal cases
 and strict lint pass. A production counterfactual which saves refused/unknown OFF as accepted causes
 both new variants to fail the exact native journal assertion. Production is restored byte-for-byte.
 Body/source/helper hashes and the semantic difference are recorded in the canonical rows.
+
+### Row 243: retired A completion and distinct B observer custody
+
+The current runtime test holds an actual issued OFF of A, retires A, starts a distinct B and
+waits for B's own actual OFF completion before holding its original proof. A public inspection of B
+is proven queued before A resumes. The test keeps a seeded accepted ON, as in the original case;
+it does not claim an actual ON send. Full baseline rows, all native IDs, P0 and the single B proof
+transcript are checked. A's late transport refuses; its enrolled original operation and public
+request reject with the same original journal-image error. B's restart image, context, lifecycle,
+command image, listener descriptor and pending public inspection remain unchanged. Only after B's
+proof is released can the three pending identities confirm and retire once. No ON is attempted.
+
+A transparent, instance-owned Map enrollment observer forwards the original call and Promise.
+Its cleanup reports a foreign enumerable-flag rewrite and leaves it intact. The deliberate rewrite
+is relinquished only after both owners and their consumers retire. The current public journal
+failure replaces the removed private named S0/S1 receipt, and the current listener descriptor is
+checked instead of removed serviceFeedback infrastructure. B's extra actual OFF is explicit.
+Dispatch feedback is isolated; bootstrap and public inspection still forward their original work.
+These are supported-current invariant bindings, not whole fixture/provider/SDK equivalence.
+
+The complete runtime fixture passes **158/158**, with all **95 previous literal bodies** and the
+accepted-OFF helper token-identical. Removing the production lifecycle guard makes the new test fail
+on forbidden late A feedback. Ignoring foreign descriptor enumerability makes its cleanup refusal
+assertion fail. Both mutations are restored byte-for-byte. Initial preparation failures are retained:
+a TypeScript narrowing error, new-helper lint errors corrected without suppressions, then a native witness showing that B bootstrap can complete before its
+subsequent proof. The final test joins B's original OFF and explicitly requests its next settlement.
+Types, strict lint, formatting and ledger checks pass. No production change or broader clearance.
 
 ## Case checklist
 
@@ -255,7 +282,7 @@ canonical ledger. Original-source links retain full ancestry and body identity f
 
 - [x] `1473-241` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is refused ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597)).
 - [x] `1473-242` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is unknown ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597)).
-- [ ] `1473-243` — cannot let a retired A completion settle B or restore a foreign descriptor ([original line 18663](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18663)).
+- [x] `1473-243` — cannot let a retired A completion settle B or restore a foreign descriptor ([original line 18663](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18663)).
 
 ### Issued setup and cleanup ownership
 

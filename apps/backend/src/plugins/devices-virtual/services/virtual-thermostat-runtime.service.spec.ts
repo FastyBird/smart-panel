@@ -5094,6 +5094,282 @@ describe('virtual thermostat durable runtime', () => {
 		};
 	};
 
+	// Observe the original Map enrollment without replacing its operation or fabricating a completion receipt.
+	const observeOriginalCommandEnrollment = (owner: VirtualThermostatRuntimeService) => {
+		const map = owner['inFlight'];
+		const previous = Object.getOwnPropertyDescriptor(map, 'set');
+		const set = map.set.bind(map) as typeof map.set;
+		const enrolled = new Map<string, Promise<void>>();
+		const installed = {
+			configurable: true,
+			enumerable: false,
+			writable: true,
+			value: (...args: Parameters<typeof set>) => {
+				const result = set(...args);
+				enrolled.set(...args);
+				return result;
+			},
+		};
+		Object.defineProperty(map, 'set', installed);
+		let restored = false;
+		return {
+			map,
+			enrolled,
+			installed,
+			cleanup: () => {
+				if (restored) return;
+				const current = Object.getOwnPropertyDescriptor(map, 'set');
+				if (
+					current?.value !== installed.value ||
+					current.get !== undefined ||
+					current.set !== undefined ||
+					current.configurable !== installed.configurable ||
+					current.enumerable !== installed.enumerable ||
+					current.writable !== installed.writable
+				)
+					throw new Error('Original command enrollment observer replaced by foreign owner');
+				if (previous === undefined) Reflect.deleteProperty(map, 'set');
+				else Object.defineProperty(map, 'set', previous);
+				restored = true;
+			},
+		};
+	};
+
+	it('keeps a retired A OFF completion separate from held distinct B proof and foreign observer custody', async () => {
+		await settle();
+		const A = runtime,
+			source = database,
+			id = controllerId;
+		clearInterval(A['timer']);
+		packetTick = useThermostatPacketClock();
+		const feedbackA = jest.spyOn(A, 'request').mockResolvedValue(undefined);
+		const claim = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
+		const baseline = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+		expect(baseline.length).toBeGreaterThan(0);
+		for (const row of baseline) expect(row).toMatchObject({ claimId: claim.id, action: 'off', status: 'confirmed' });
+		const P0 = reconciledCommandIds.map((ids) => [...ids]);
+		const attemptsBefore = [...actuationAttempts];
+		const command = source.manager.create(VirtualThermostatCommandEntity, {
+			id: uuid(),
+			controllerId: id,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: 1,
+			decisionRevision: 1,
+			action: 'on',
+			status: 'accepted',
+			preparedAt: new Date(),
+			dispatchedAt: null,
+			settledAt: null,
+			proofId: null,
+			fault: null,
+		});
+		await source.manager.insert(VirtualThermostatCommandEntity, command);
+		const enrollment = observeOriginalCommandEnrollment(A);
+		const retire = jest.fn<void, [readonly string[]]>();
+		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+		let enterA!: () => void, releaseA!: () => void, enterB!: () => void, releaseB!: () => void;
+		const enteredA = ownedGate((resolve) => (enterA = resolve));
+		const heldA = ownedGate((resolve) => (releaseA = resolve));
+		const enteredB = ownedGate((resolve) => (enterB = resolve));
+		const heldB = ownedGate((resolve) => (releaseB = resolve));
+		offGate = heldA;
+		const get = transport.get.bind(transport) as VirtualThermostatTransportService['get'];
+		const delivered: string[] = [];
+		const outcomes: Array<Awaited<ReturnType<ThermostatActuationAdapter['send']>>> = [];
+		const sendObserver = jest.spyOn(transport, 'get').mockImplementation((...args) => {
+			const adapter = get(...args);
+			if (!adapter) return null;
+			const send = adapter.send.bind(adapter) as ThermostatActuationAdapter['send'];
+			return {
+				...adapter,
+				send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
+					const original = send(...sendArgs);
+					if (delivered.length === 0 && sendArgs[0].value === false && sendArgs[1].id === claim.id) {
+						delivered.push(sendArgs[4].commandId);
+						void original.then(
+							(result) => outcomes.push(result),
+							() => undefined,
+						);
+						enterA();
+					}
+					return original;
+				},
+			};
+		});
+		const pendingA = A.requestInstalled(id);
+		void pendingA.catch(() => undefined);
+		let B: VirtualThermostatRuntimeService | undefined;
+		let startingB: Promise<void> | undefined;
+		let settlementB: Promise<void> | undefined;
+		let publicB: Promise<unknown> | undefined;
+		const foreign = { ...enrollment.installed, enumerable: !enrollment.installed.enumerable };
+		try {
+			await Promise.race([
+				enteredA,
+				pendingA.then(() => {
+					throw new Error('Original A OFF gate not reached');
+				}),
+			]);
+			expect(delivered).toHaveLength(1);
+			const offId = delivered[0];
+			const original = enrollment.enrolled.get(offId);
+			expect(original).toBe(A['inFlight'].get(offId));
+			expect(original).toBeDefined();
+			if (original === undefined) throw new Error('Original A command was not enrolled');
+			const heldJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			expect(heldJournal.map((row) => row.id).sort()).toEqual(
+				[...baseline.map((row) => row.id), command.id, offId].sort(),
+			);
+			for (const row of baseline) expect(heldJournal.find((entry) => entry.id === row.id)).toEqual(row);
+			expect(heldJournal.find((row) => row.id === command.id)).toEqual(command);
+			expect(heldJournal.find((row) => row.id === offId)).toMatchObject({ action: 'off', status: 'dispatching' });
+			expect(reconciledCommandIds).toEqual(P0);
+			expect(actuationAttempts).toEqual([...attemptsBefore, false]);
+			A.onModuleDestroy();
+			// Keep the transport method pin intact: A's final guard must observe actual lifecycle retirement.
+			offGate = null; // Original A still awaits heldA; B uses its own transport call.
+			beforeProof = async () => {
+				enterB();
+				await heldB;
+			};
+			B = makeRuntime();
+			runtime = B;
+			const requestB = B.request.bind(B) as VirtualThermostatRuntimeService['request'];
+			let enterInspectionB!: () => void;
+			const enteredInspectionB = ownedGate((resolve) => (enterInspectionB = resolve));
+			const inspectionsB: Promise<void>[] = [];
+			// Isolate explicit requests from dispatch feedback, while forwarding bootstrap and public inspection.
+			jest.spyOn(B, 'request').mockImplementation((...args) => {
+				if (args[1] === true) return Promise.resolve();
+				const original = requestB(...args);
+				if (args[1] === false) {
+					inspectionsB.push(original);
+					enterInspectionB();
+				}
+				return original;
+			});
+			startingB = B.onApplicationBootstrap();
+			void startingB.catch(() => undefined);
+			await startingB;
+			clearInterval(B['timer']);
+			await Promise.all([...B['inFlight'].values()]);
+			const issuedB = (await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id })).filter(
+				(row) => !heldJournal.some((held) => held.id === row.id),
+			);
+			expect(issuedB).toHaveLength(1);
+			expect(issuedB[0]).toMatchObject({ claimId: claim.id, action: 'off', status: 'accepted' });
+			const pendingIds = [command.id, offId, issuedB[0].id].sort();
+			settlementB = B.requestInstalled(id);
+			void settlementB.catch(() => undefined);
+			await Promise.race([
+				enteredB,
+				settlementB.then(() => {
+					throw new Error('Original B proof gate not reached');
+				}),
+			]);
+			const lifecycleB = B['lifecycle'],
+				contextB = B['contexts'].get(id);
+			expect(contextB).toBeDefined();
+			const descriptorB = Object.getOwnPropertyDescriptor(B, 'listener');
+			const commandsB = contextB?.commands.map((row) => ({ ...row }));
+			const journalB = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			expect(journalB.find((row) => row.id === offId)).toMatchObject({
+				...heldJournal.find((row) => row.id === offId),
+				status: 'unknown',
+				fault: 'restart_requires_release_reconciliation',
+			});
+			const transcriptB = reconciledCommandIds.map((ids) => [...ids]);
+			expect(transcriptB.map((ids) => [...ids].sort())).toEqual([...P0.map((ids) => [...ids].sort()), pendingIds]);
+			let publicBCompleted = false;
+			publicB = B.inspect(id);
+			void publicB.then(
+				() => {
+					publicBCompleted = true;
+				},
+				() => {
+					publicBCompleted = true;
+				},
+			);
+			await enteredInspectionB;
+			expect(inspectionsB).toHaveLength(1);
+			Object.defineProperty(enrollment.map, 'set', foreign);
+			expect(() => enrollment.cleanup()).toThrow('Original command enrollment observer replaced by foreign owner');
+			expect(Object.getOwnPropertyDescriptor(enrollment.map, 'set')).toEqual(foreign);
+			releaseA();
+			const outcomeA = await original.then(
+				() => ({ fulfilled: true as const }),
+				(cause: unknown) => ({ fulfilled: false as const, cause }),
+			);
+			expect(outcomeA.fulfilled).toBe(false);
+			if (outcomeA.fulfilled !== false) throw new Error('A overwrote B restart journal image');
+			expect(outcomeA.cause).toEqual(new Error('Original thermostat command journal image required'));
+			await expect(pendingA).rejects.toBe(outcomeA.cause);
+			expect(outcomes).toEqual([{ outcome: 'refused', reasons: ['revoked'] }]);
+			expect(feedbackA).not.toHaveBeenCalled();
+			expect(enrollment.enrolled.size).toBe(1);
+			expect(A['inFlight'].size).toBe(0);
+			expect(retire).not.toHaveBeenCalled();
+			expect(publicBCompleted).toBe(false);
+			expect(B['lifecycle']).toBe(lifecycleB);
+			expect(B['contexts'].get(id)).toBe(contextB);
+			expect(contextB?.commands).toEqual(commandsB);
+			expect(Object.getOwnPropertyDescriptor(B, 'listener')).toEqual(descriptorB);
+			expect(Object.getOwnPropertyDescriptor(enrollment.map, 'set')).toEqual(foreign);
+			expect(reconciledCommandIds).toEqual(transcriptB);
+			const afterA = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			expect(afterA).toEqual(journalB);
+			expect(afterA.map((row) => row.id).sort()).toEqual([...heldJournal.map((row) => row.id), issuedB[0].id].sort());
+			for (const row of baseline) expect(afterA.find((entry) => entry.id === row.id)).toEqual(row);
+			expect(afterA.find((row) => row.id === command.id)).toEqual(command);
+			releaseB();
+			await settlementB;
+			await publicB;
+			clearInterval(B['timer']);
+			const afterB = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			expect(afterB.map((row) => row.id).sort()).toEqual(afterA.map((row) => row.id).sort());
+			for (const row of baseline) expect(afterB.find((entry) => entry.id === row.id)).toEqual(row);
+			for (const pendingId of pendingIds)
+				expect(afterB.find((row) => row.id === pendingId)).toMatchObject({
+					...afterA.find((row) => row.id === pendingId),
+					status: 'confirmed',
+					settledAt: expect.any(Date) as Date,
+					proofId: expect.any(String) as string,
+				});
+			expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual([[pendingIds]]);
+			expect(reconciledCommandIds).toEqual(transcriptB);
+			expect(actuationAttempts).toEqual([...attemptsBefore, false, false]);
+			expect(actuationAttempts.every((on) => !on)).toBe(true);
+		} finally {
+			A.onModuleDestroy();
+			B?.onModuleDestroy();
+			releaseA();
+			releaseB();
+			beforeProof = null;
+			offGate = null;
+			await Promise.allSettled([
+				pendingA,
+				...enrollment.enrolled.values(),
+				...(startingB !== undefined ? [startingB] : []),
+				...(settlementB !== undefined ? [settlementB] : []),
+				...(publicB !== undefined ? [publicB] : []),
+			]);
+			sendObserver.mockRestore();
+			// Relinquish only our deliberate foreign rewrite after both originals and consumers retired.
+			const current = Object.getOwnPropertyDescriptor(enrollment.map, 'set');
+			if (
+				current?.value === foreign.value &&
+				current.enumerable === foreign.enumerable &&
+				current.configurable === foreign.configurable &&
+				current.writable === foreign.writable &&
+				current.get === undefined &&
+				current.set === undefined
+			)
+				Object.defineProperty(enrollment.map, 'set', enrollment.installed);
+			enrollment.cleanup();
+		}
+	});
+
 	it.each(['refused', 'unknown'] as const)(
 		'rejects a non-accepted original OFF before a second settlement while retaining exact native effects: %s',
 		async (outcome) => {

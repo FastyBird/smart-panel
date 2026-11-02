@@ -112,11 +112,23 @@ The current reconciliation distinguishes scoped business outcomes from complete 
 - **109 rows** now bind to current observable invariants. The preceding 103 bindings retain comparison of all 68 distinct same-title test-body pairs, their setup, controlled order and full assertion differences; six further startup/lifetime bindings are detailed below. Per-row notes state changed ports and limits. Current basic mutation fixtures control claims/value ports; these bindings do not certify the former full mutation-provider or SDK custody pipeline.
 - **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
 - **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
-- **Ten replacement rows (105–109, 111, 240–242, 261)** bind current native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
+- **Eleven replacement rows (105–109, 111, 240–243, 261)** bind current native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **136 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **135 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
 
-**Rows 241–242 bind failed original OFF completion.** The current shared public-OFF helper retains its accepted default and observes the original transport result plus saved native journal before allowing an explicit next settlement phase. Refused/unknown outcomes reject test preparation; this does not change the product public method contract. Native INSERT/send identities fix K, and both predeclared effect grammars retain complete baseline rows, P0, retirement arguments/order/multiplicity, exact journal membership/status and no ON attempts. The old private S0/S1 receipt/child-frame protocol is not adopted; controlled claims/value/transport ports remain explicit. Complete runtime **157/157** and all 94 previous literal bodies pass unchanged. Persisting failed OFF as accepted causes both new variants to fail their native journal equality assertions; production is restored. Row 243 and all other fixture-custody boundaries remain open.
+**Rows 241–242 bind failed original OFF completion.** The current shared public-OFF helper retains its accepted default and observes the original transport result plus saved native journal before allowing an explicit next settlement phase. Refused/unknown outcomes reject test preparation; this does not change the product public method contract. Native INSERT/send identities fix K, and both predeclared effect grammars retain complete baseline rows, P0, retirement arguments/order/multiplicity, exact journal membership/status and no ON attempts. The old private S0/S1 receipt/child-frame protocol is not adopted; controlled claims/value/transport ports remain explicit. Complete runtime **157/157** and all 94 previous literal bodies pass unchanged. Persisting failed OFF as accepted causes both new variants to fail their native journal equality assertions; production is restored. Row 243 is bound separately below; other fixture-custody boundaries remain open.
+
+**Row 243 binds retired A completion against a distinct held B.** A's actual OFF remains held while
+B restarts, issues its own OFF and enters its original next proof. B inspection is queued before A
+resumes. Original enrolled and public A completions reject with identical native journal-image error;
+B's entire native journal image, context, lifecycle, command image and listener descriptor remain
+unchanged, with no premature retirement or ON. B subsequently confirms and retires exactly all three
+pending IDs once. A transparent owned enrollment observer refuses foreign descriptor restoration.
+The public journal failure and current listener descriptor replace removed private receipt and
+serviceFeedback mechanisms; dispatch feedback is controlled while bootstrap/inspection forward.
+Complete runtime **158/158**, all **95 previous literal bodies**, unchanged accepted-OFF helper, types,
+strict lint, formatting and two discriminating mutations pass. No whole fixture/provider/SDK clearance.
+Initial type/preparation errors and the native bootstrap-versus-proof ordering witness remain recorded.
 
 The history oracle was independently challenged with three controlled production mutants: oldest prepared command first, duplicate returned rows and a corrupted proof ID. Each caused both history cases to fail at the intended predicate, uniqueness or complete-row assertion (six expected failures total). The production file was restored byte-for-byte before the complete **147/147** runtime rerun passed.
 
@@ -142,8 +154,8 @@ without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and u
 ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
 
 [The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
-rows that were unbound at branch entry and the evidence required to close each. Rows 241–242 and 261 now have
-tested replacement bindings; 136 remain unbound. The initial 122 dispositions retain
+rows that were unbound at branch entry and the evidence required to close each. Rows 241–243 and 261 now have
+tested replacement bindings; 135 remain unbound. The initial 122 dispositions retain
 their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
 ## Release preparation
