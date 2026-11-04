@@ -82,6 +82,7 @@ export async function realThermostatGuardFixture(
 	producers: PropertyProducerRegistryService,
 	qualifications: Map<string, ThermostatInstalledQualification>,
 	mode: 'managed' | 'closed' | 'unmanaged' = 'managed',
+	valueLocks?: PropertyValueLockService,
 ) {
 	const tick = useThermostatPacketClock();
 	const sources = new PropertyValueSourceRegistryService();
@@ -93,7 +94,7 @@ export async function realThermostatGuardFixture(
 			queryStrict: () => Promise.resolve([]),
 		} as unknown as StorageService,
 		sources,
-		new PropertyValueLockService({} as never),
+		valueLocks ?? new PropertyValueLockService({} as never),
 		producers,
 		events,
 	);
