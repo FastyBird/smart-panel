@@ -3016,11 +3016,15 @@ describe('virtual thermostat durable runtime', () => {
 			});
 			await source.manager.insert(VirtualThermostatCommandEntity, command);
 			const before = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			const runtimeState = await source.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId: id });
 			const branches = await source.manager.findBy(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id });
 			expect(branches.length).toBeGreaterThan(0);
 			const sends = [...fixture.controls.sends],
 				fences = [...fixture.controls.fences];
 			const listeners = events.eventNames().map((event) => [event, events.listenerCount(event)]);
+			const automation = comfort['automation'];
+			if (automation === undefined) throw new Error('Original comfort automation provider missing');
+			expect(automation['runtime']).toBeUndefined();
 			const owner = new VirtualThermostatRuntimeService(
 				source,
 				previous['structure'],
@@ -3033,6 +3037,8 @@ describe('virtual thermostat durable runtime', () => {
 				previous['graph'],
 				comfort,
 				new ConfigService({ FB_CLI: 'off' }),
+				undefined,
+				automation,
 			);
 			issuedRuntimes.push(owner);
 			runtime = owner;
@@ -3053,6 +3059,7 @@ describe('virtual thermostat durable runtime', () => {
 				},
 				beforeTransactionCommit: (event: TransactionCommitEvent) => {
 					if (!runners.has(event.queryRunner)) return;
+					expect(automation['runtime']).toBeDefined();
 					commitChecks++;
 					if (stage === 'before-commit') throw failure;
 				},
@@ -3081,6 +3088,9 @@ describe('virtual thermostat durable runtime', () => {
 						? branches
 						: branches.map((row) => ({ ...row, activity: 'unknown', releaseAttempts: 0, nextReleaseAt: null })),
 				);
+				expect(await source.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId: id })).toEqual(
+					runtimeState,
+				);
 				expect(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(
 					config,
 				);
@@ -3095,6 +3105,7 @@ describe('virtual thermostat durable runtime', () => {
 				expect(owner['outputs'].size).toBe(0);
 				expect(owner['inFlight'].size).toBe(0);
 				expect(claims['runtimeAdmission']).toBeUndefined();
+				expect(automation['runtime']).toBeUndefined();
 				const queryCount = queries.length;
 				await expect(owner.requestInstalled(id)).rejects.toThrow('Original thermostat runtime unavailable');
 				expect(queries).toHaveLength(queryCount);
