@@ -1422,6 +1422,7 @@ describe('manual thermostat selection: reserved native intent', () => {
 			const snapshot = await retainedSnapshot();
 			const before = await snapshot(database.manager);
 			const beforeConfig = await row();
+			const clocksBefore = await database.manager.find(ThermostatOverrideClockEntity, { where: { controllerId: id } });
 			const invalidated = jest.spyOn(claims, 'invalidate'),
 				revoked = jest.spyOn(claims, 'revokeAllQualifications');
 			const realRefresh = claims.refresh.bind(claims) as VirtualThermostatClaimsService['refresh'];
@@ -1454,6 +1455,10 @@ describe('manual thermostat selection: reserved native intent', () => {
 				).toMatchObject({ watermark: wall });
 			expect(seam).toEqual(before);
 			expect(await snapshot(database.manager)).toEqual(before);
+			if (kind !== 'override')
+				expect(await database.manager.find(ThermostatOverrideClockEntity, { where: { controllerId: id } })).toEqual(
+					clocksBefore,
+				);
 			expect(invalidated).toHaveBeenCalled();
 			expect(revoked).toHaveBeenCalled();
 			expect(claims.qualification(claim, false)).toBeNull();

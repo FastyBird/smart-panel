@@ -137,6 +137,8 @@ the configuration and installed-intent image, keyed by controller and override i
 lower bound, never a new intent or qualification: ordinary clock maintenance preserves existing claims while foreign
 configuration writes still revoke them. Recovery uses the maximum of legacy JSON and this clock store. SQL prevents
 decreasing or deleting the bound while its controller remains; historical override rows live until controller deletion.
+Catalogs explicitly opened without migration 53 retain the original JSON watermark writes and their existing
+configuration/installed-evidence invalidation; reads do not create the clock schema or suppress other database errors.
 Downgrade copies the current override's maximum back into legacy JSON without normalizing invalid legacy evidence. A persisted watermark detects observable rollback;
 invalid lifetime evidence or clock uncertainty holds the override as `clock_uncertain` and inhibits output until an
 explicit cancellation/replacement, rather than falling through to a potentially higher-demand baseline. No method can

@@ -492,6 +492,73 @@ describe('thermostat durable comfort lifecycle', () => {
 		},
 	);
 
+	it.each([
+		{ state: 'active', providerEnabled: false },
+		{ state: 'active', providerEnabled: true },
+		{ state: 'cancelled', providerEnabled: false },
+		{ state: 'cancelled', providerEnabled: true },
+	] as const)(
+		'reads legacy $state overrides without the clock table (automation: $providerEnabled)',
+		async ({ state, providerEnabled }) => {
+			await database.query('DROP TABLE "devices_virtual_thermostat_override_clocks"');
+			const registry = new ClimateAutomationRegistryService();
+			const ledger = new ClimateAutomationLedgerService(database, structure, registry);
+			const graph = new VirtualDependencyGraphService(database, undefined, ledger);
+			const automation = providerEnabled
+				? new VirtualThermostatAutomationService(database, registry, ledger, graph, structure)
+				: undefined;
+			automation?.onModuleInit();
+			const claims = comfort['claims'];
+			makeService = () => new VirtualThermostatComfortService(database, structure, graph, claims, events, automation);
+			comfort = makeService();
+			try {
+				await configured();
+				const original = await overridden(2000);
+				wall += 500;
+				elapsed += 500;
+				const advanced = await comfort.get(id);
+				expect(advanced.revision).toBe(original.revision);
+				expect(advanced.configuration.temporary_override).toMatchObject({
+					id: original.configuration.temporary_override.id,
+					expires_at: original.configuration.temporary_override.expires_at,
+					wall_watermark_ms: wall,
+					status: 'active',
+				});
+				if (state === 'cancelled')
+					await comfort.cancel(id, await fence(), original.configuration.temporary_override.id);
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				comfort = makeService();
+				expect((await comfort.get(id)).configuration.temporary_override.status).toBe(state);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(
+					before,
+				);
+				wall--;
+				comfort = makeService();
+				expect((await comfort.get(id)).configuration.temporary_override.status).toBe(
+					state === 'active' ? 'clock_uncertain' : 'cancelled',
+				);
+				expect(
+					await database.query(
+						"SELECT name FROM sqlite_master WHERE name = 'devices_virtual_thermostat_override_clocks' OR name LIKE 'thermostat_override_clock_%'",
+					),
+				).toEqual([]);
+			} finally {
+				automation?.onModuleDestroy();
+				registry.onModuleDestroy();
+			}
+		},
+	);
+
+	it('propagates clock schema errors other than the missing legacy table', async () => {
+		await configured();
+		await overridden();
+		await database.query(
+			'ALTER TABLE "devices_virtual_thermostat_override_clocks" RENAME COLUMN "watermark" TO "broken_watermark"',
+		);
+		comfort = makeService();
+		await expect(comfort.get(id)).rejects.toThrow('no such column');
+	});
+
 	it('persists every advancing active watermark without an intent revision or expiry renewal', async () => {
 		await configured();
 		const original = await overridden();
