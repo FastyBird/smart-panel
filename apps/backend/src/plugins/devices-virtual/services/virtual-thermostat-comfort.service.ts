@@ -19,6 +19,7 @@ import { ControllerPublicationContext } from '../../../modules/devices/services/
 import { captureCreation, invokeCreation } from '../../../modules/devices/services/creation-capture';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { VirtualDeviceEntity } from '../entities/devices-virtual.entity';
+import { ThermostatOverrideClockEntity } from '../entities/thermostat-override-clock.entity';
 import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
 
 import { thermostatComfortSelection } from './thermostat-comfort-selection';
@@ -114,7 +115,13 @@ export class VirtualThermostatComfortService {
 						expiry = Date.parse(override.expires_at);
 					const duration =
 						override.original_duration_ms === undefined ? expiry - created : override.original_duration_ms;
-					const watermark = override.wall_watermark_ms === undefined ? created : override.wall_watermark_ms;
+					const recordedClock = await this.readOverrideClock(controllerId, override.id);
+					const legacyWatermark = override.wall_watermark_ms === undefined ? created : override.wall_watermark_ms;
+					const watermark = !Number.isFinite(legacyWatermark)
+						? Number.NaN
+						: recordedClock
+							? Math.max(legacyWatermark, recordedClock.watermark)
+							: legacyWatermark;
 					let lease = this.leases.get(controllerId);
 					if (!lease || lease.id !== override.id) {
 						const valid =
@@ -138,6 +145,8 @@ export class VirtualThermostatComfortService {
 						};
 						this.leases.set(controllerId, lease);
 					}
+					if (!Number.isFinite(watermark)) lease.status = 'clock_uncertain';
+					lease.watermark = Math.max(lease.watermark, watermark);
 					lease.revision = row.revision;
 					this.isCurrent(row);
 					if (lease.status) {
@@ -187,35 +196,71 @@ export class VirtualThermostatComfortService {
 						// Persist every observed watermark: batching would weaken rollback detection after a crash/restart.
 						// This is evidence only, not an intent revision, expiry renewal or sample refresh.
 						lease.watermark = Math.max(lease.watermark, now);
-						if (override.wall_watermark_ms !== lease.watermark) {
-							const observedComfort = JSON.stringify(row.comfort);
-							override.wall_watermark_ms = lease.watermark;
-							if (this.automation) {
-								this.automation.revoke(controllerId);
-								const refreshed = await this.automation.withEvidenceWrite(async (manager) => {
-									const before = await readControllerMutationImage(manager, controllerId);
-									const installed = await this.automation.captureInstalledIntent(manager, controllerId);
-									const current = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-									if (current.revision !== row.revision || JSON.stringify(current.comfort) !== observedComfort)
-										throw new DevicesValidationException('Thermostat revision changed during watermark settlement.');
-									current.comfort.temporary_override.wall_watermark_ms = lease.watermark;
-									const configuration = await writeControllerPartition(manager, 'configuration', before.configuration, [
-										current,
-									]);
-									await assertControllerMutationImage(manager, controllerId, { ...before, configuration });
-									return this.automation.refreshIntent(manager, installed, 'watermark');
+						if (recordedClock === undefined) {
+							if (override.wall_watermark_ms !== lease.watermark) {
+								const observedComfort = JSON.stringify(row.comfort);
+								override.wall_watermark_ms = lease.watermark;
+								if (this.automation) {
+									this.automation.revoke(controllerId);
+									const refreshed = await this.automation.withEvidenceWrite(async (manager) => {
+										const before = await readControllerMutationImage(manager, controllerId);
+										const installed = await this.automation.captureInstalledIntent(manager, controllerId);
+										const current = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+										if (current.revision !== row.revision || JSON.stringify(current.comfort) !== observedComfort)
+											throw new DevicesValidationException('Thermostat revision changed during watermark settlement.');
+										current.comfort.temporary_override.wall_watermark_ms = lease.watermark;
+										const configuration = await writeControllerPartition(
+											manager,
+											'configuration',
+											before.configuration,
+											[current],
+										);
+										await assertControllerMutationImage(manager, controllerId, { ...before, configuration });
+										return this.automation.refreshIntent(manager, installed, 'watermark');
+									});
+									if (refreshed) await this.automation.activateLocal(this.database.manager, refreshed);
+								} else
+									await this.database.transaction(async (manager) => {
+										const updated = await manager.update(
+											VirtualThermostatConfigEntity,
+											{ controllerId, revision: row.revision },
+											{ comfort: row.comfort },
+										);
+										if (updated.affected !== 1)
+											throw new DevicesValidationException('Thermostat revision changed during watermark settlement.');
+									});
+							}
+						} else if (!recordedClock || recordedClock.watermark !== lease.watermark) {
+							const owner = this.structure.captureExclusiveOwner();
+							let receipt: SqliteCommitGuardReceipt;
+							await this.database.transaction(async (manager) => {
+								receipt = observeSqliteOuterOutcome(manager);
+								const window = captureSqliteNoMutationWindow(manager, owner);
+								const before = await readControllerMutationImage(manager, controllerId);
+								const current = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+								if (
+									current.revision !== row.revision ||
+									JSON.stringify(current.comfort) !== JSON.stringify(row.comfort)
+								)
+									throw new DevicesValidationException('Thermostat revision changed during watermark settlement.');
+								await manager.query(
+									`INSERT INTO "devices_virtual_thermostat_override_clocks" ("controllerId", "overrideId", "watermark") VALUES (?, ?, ?)
+									ON CONFLICT ("controllerId", "overrideId") DO UPDATE SET "watermark" = max("watermark", excluded."watermark")`,
+									[controllerId, override.id, lease.watermark],
+								);
+								window.beginFinalValidation();
+								const persisted = await manager.findOneBy(ThermostatOverrideClockEntity, {
+									controllerId,
+									overrideId: override.id,
 								});
-								if (refreshed) await this.automation.activateLocal(this.database.manager, refreshed);
-							} else
-								await this.database.transaction(async (manager) => {
-									const updated = await manager.update(
-										VirtualThermostatConfigEntity,
-										{ controllerId, revision: row.revision },
-										{ comfort: row.comfort },
-									);
-									if (updated.affected !== 1)
-										throw new DevicesValidationException('Thermostat revision changed during watermark settlement.');
-								});
+								if (persisted?.watermark !== lease.watermark)
+									throw new DevicesValidationException('Thermostat clock changed during watermark settlement.');
+								await assertControllerMutationImage(manager, controllerId, before);
+								registerSqliteCommitGuard(manager, owner);
+								window.applied();
+							});
+							if (receipt.outcome !== 'committed')
+								throw new Error('Missing original watermark settlement acknowledgement');
 						}
 						if (this.pendingNotifications.has(controllerId)) await this.changed(controllerId);
 					}
@@ -229,11 +274,25 @@ export class VirtualThermostatComfortService {
 		return this.structure.runShared(async () => {
 			const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			if (!row) throw new NotFoundException('Thermostat configuration does not exist.');
+			const override = row.comfort?.temporary_override;
+			const clock = override && (await this.readOverrideClock(controllerId, override.id));
+			const configuration = clock
+				? {
+						...row.comfort,
+						temporary_override: {
+							...override,
+							wall_watermark_ms: Math.max(
+								override.wall_watermark_ms ?? Date.parse(override.created_at),
+								clock.watermark,
+							),
+						},
+					}
+				: row.comfort;
 			return {
 				controller: controllerId,
 				revision: row.revision,
 				graph_revision: await this.graph.revision(),
-				configuration: row.comfort,
+				configuration,
 				effective: effectiveThermostatComfort(
 					row.policy,
 					row.comfort,
@@ -242,6 +301,17 @@ export class VirtualThermostatComfortService {
 				clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit' as const,
 			};
 		});
+	}
+
+	/** Undefined denotes the legacy schema; an absent row in the migrated store is null. */
+	private async readOverrideClock(controllerId: string, overrideId: string) {
+		const runner = this.database.createQueryRunner();
+		try {
+			if (!(await runner.hasTable('devices_virtual_thermostat_override_clocks'))) return undefined;
+			return await runner.manager.findOneBy(ThermostatOverrideClockEntity, { controllerId, overrideId });
+		} finally {
+			await runner.release();
+		}
 	}
 
 	async configure(

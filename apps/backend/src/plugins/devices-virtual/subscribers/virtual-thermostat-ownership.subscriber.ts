@@ -25,6 +25,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { captureCreation } from '../../../modules/devices/services/creation-capture';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { initializeThermostatCreationCatalog } from '../services/thermostat-creation-catalog';
+import { THERMOSTAT_OVERRIDE_CLOCK_TRIGGERS } from '../services/thermostat-override-clock.sql';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
 import {
 	THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
@@ -118,8 +119,16 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 			);
 		}
 		if (!(await this.dataSource.createQueryRunner().hasTable('devices_virtual_thermostat_actuator_claims'))) return;
+		// Older explicitly migrated catalogs may be opened without the later clock store.
+		// Only migration53/synchronize creates that store; bootstrap never repairs its schema.
+		const clockTriggers = (await this.dataSource
+			.createQueryRunner()
+			.hasTable('devices_virtual_thermostat_override_clocks'))
+			? THERMOSTAT_OVERRIDE_CLOCK_TRIGGERS
+			: {};
 		for (const [name, sql] of Object.entries({
 			...THERMOSTAT_OWNERSHIP_TRIGGERS,
+			...clockTriggers,
 			...THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
 		}))
 			await this.dataSource.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);

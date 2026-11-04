@@ -77,6 +77,7 @@ import {
 	ThermostatInstallationEntity,
 } from './entities/thermostat-installation.entity';
 import { ThermostatMemberProtectionEntity } from './entities/thermostat-member-protection.entity';
+import { ThermostatOverrideClockEntity } from './entities/thermostat-override-clock.entity';
 import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
 import {
 	VirtualThermostatBranchRuntimeEntity,
@@ -166,6 +167,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			VirtualThermostatRecoveryEntity,
 			VirtualThermostatSourceEntity,
 			VirtualThermostatSettingEntity,
+			ThermostatOverrideClockEntity,
 			VirtualThermostatRuntimeEntity,
 			VirtualThermostatBranchRuntimeEntity,
 			VirtualThermostatCommandEntity,

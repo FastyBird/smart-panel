@@ -34,8 +34,10 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatOverrideClockEntity } from '../entities/thermostat-override-clock.entity';
 import { VirtualThermostatConfigEntity, VirtualThermostatSettingEntity } from '../entities/virtual-thermostat.entity';
 
+import { THERMOSTAT_OVERRIDE_CLOCK_TRIGGERS } from './thermostat-override-clock.sql';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	THERMOSTAT_AUTOMATION_PROVIDER,
@@ -113,6 +115,8 @@ describe('thermostat durable comfort lifecycle', () => {
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 			synchronize: true,
 		}).initialize();
+		for (const [name, sql] of Object.entries(THERMOSTAT_OVERRIDE_CLOCK_TRIGGERS))
+			await database.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);
 		structure = new DeviceStructureLockService();
 		const graph = new VirtualDependencyGraphService(database);
 		events = new EventEmitter2();
@@ -488,6 +492,74 @@ describe('thermostat durable comfort lifecycle', () => {
 		},
 	);
 
+	it.each([
+		{ state: 'active', providerEnabled: false },
+		{ state: 'active', providerEnabled: true },
+		{ state: 'cancelled', providerEnabled: false },
+		{ state: 'cancelled', providerEnabled: true },
+	] as const)(
+		'reads legacy $state overrides without the clock table (automation: $providerEnabled)',
+		async ({ state, providerEnabled }) => {
+			await database.query('DROP TABLE "devices_virtual_thermostat_override_clocks"');
+			const registry = new ClimateAutomationRegistryService();
+			const ledger = new ClimateAutomationLedgerService(database, structure, registry);
+			const graph = new VirtualDependencyGraphService(database, undefined, ledger);
+			const automation = providerEnabled
+				? new VirtualThermostatAutomationService(database, registry, ledger, graph, structure)
+				: undefined;
+			automation?.onModuleInit();
+			const claims = comfort['claims'];
+			makeService = () => new VirtualThermostatComfortService(database, structure, graph, claims, events, automation);
+			comfort = makeService();
+			try {
+				await configured();
+				const original = await overridden(2000);
+				wall += 500;
+				elapsed += 500;
+				const advanced = await comfort.get(id);
+				expect(advanced.revision).toBe(original.revision);
+				expect(advanced.configuration.temporary_override).toMatchObject({
+					id: original.configuration.temporary_override.id,
+					expires_at: original.configuration.temporary_override.expires_at,
+					wall_watermark_ms: wall,
+					status: 'active',
+				});
+				if (state === 'cancelled')
+					await comfort.cancel(id, await fence(), original.configuration.temporary_override.id);
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				comfort = makeService();
+				expect((await comfort.get(id)).configuration.temporary_override.status).toBe(state);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(
+					before,
+				);
+				wall--;
+				comfort = makeService();
+				expect((await comfort.get(id)).configuration.temporary_override.status).toBe(
+					state === 'active' ? 'clock_uncertain' : 'cancelled',
+				);
+				expect(
+					await database.query(
+						"SELECT name FROM sqlite_master WHERE name = 'devices_virtual_thermostat_override_clocks' OR name LIKE 'thermostat_override_clock_%'",
+					),
+				).toEqual([]);
+			} finally {
+				automation?.onModuleDestroy();
+				registry.onModuleDestroy();
+			}
+		},
+	);
+
+	it.each(['active', 'cancelled'] as const)('propagates clock schema errors for %s overrides', async (state) => {
+		await configured();
+		const original = await overridden();
+		if (state === 'cancelled') await comfort.cancel(id, await fence(), original.configuration.temporary_override.id);
+		await database.query(
+			'ALTER TABLE "devices_virtual_thermostat_override_clocks" RENAME COLUMN "watermark" TO "broken_watermark"',
+		);
+		comfort = makeService();
+		await expect(comfort.get(id)).rejects.toThrow('no such column');
+	});
+
 	it('persists every advancing active watermark without an intent revision or expiry renewal', async () => {
 		await configured();
 		const original = await overridden();
@@ -500,8 +572,15 @@ describe('thermostat durable comfort lifecycle', () => {
 			expect(row.comfort.temporary_override).toMatchObject({
 				id: original.configuration.temporary_override.id,
 				expires_at: original.configuration.temporary_override.expires_at,
-				wall_watermark_ms: wall,
+				wall_watermark_ms: original.configuration.temporary_override.wall_watermark_ms,
 			});
+			expect(await database.manager.findOneByOrFail(ThermostatOverrideClockEntity, { controllerId: id })).toMatchObject(
+				{
+					overrideId: original.configuration.temporary_override.id,
+					watermark: wall,
+				},
+			);
+			expect((await comfort.get(id)).configuration.temporary_override.wall_watermark_ms).toBe(wall);
 		}
 	});
 
@@ -511,9 +590,9 @@ describe('thermostat durable comfort lifecycle', () => {
 		wall += 500;
 		elapsed += 500;
 		await database.query(
-			'CREATE TRIGGER ignore_watermark BEFORE UPDATE ON devices_virtual_thermostat_configs BEGIN SELECT RAISE(IGNORE); END',
+			'CREATE TRIGGER ignore_watermark BEFORE INSERT ON devices_virtual_thermostat_override_clocks BEGIN SELECT RAISE(IGNORE); END',
 		);
-		await expect(comfort.settle(id)).rejects.toThrow('revision changed during watermark settlement');
+		await expect(comfort.settle(id)).rejects.toThrow('clock changed during watermark settlement');
 		const unchanged = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
 		expect(unchanged.comfort.temporary_override.wall_watermark_ms).toBe(
 			original.configuration.temporary_override.wall_watermark_ms,
@@ -522,7 +601,36 @@ describe('thermostat durable comfort lifecycle', () => {
 		await comfort.settle(id);
 		const current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
 		expect(current.revision).toBe(original.revision);
-		expect(current.comfort.temporary_override.wall_watermark_ms).toBe(wall);
+		expect(current.comfort).toEqual(unchanged.comfort);
+		expect(await database.manager.findOneByOrFail(ThermostatOverrideClockEntity, { controllerId: id })).toMatchObject({
+			watermark: wall,
+		});
+	});
+
+	it('retains the legacy lower bound and inhibits a foreign future clock after restart without extending expiry', async () => {
+		await configured();
+		const original = await overridden();
+		await database.manager.update(ThermostatOverrideClockEntity, { controllerId: id }, { watermark: wall + 400 });
+		comfort = makeService();
+		const result = await comfort.get(id);
+		expect(result.configuration.temporary_override).toMatchObject({
+			id: original.configuration.temporary_override.id,
+			expires_at: original.configuration.temporary_override.expires_at,
+			status: 'clock_uncertain',
+		});
+		expect(
+			comfort.isCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
+		).toBe(false);
+	});
+
+	it('does not let a separate valid clock normalize explicit null legacy evidence', async () => {
+		await configured();
+		await overridden();
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		row.comfort.temporary_override.wall_watermark_ms = null;
+		await database.manager.save(row);
+		comfort = makeService();
+		expect((await comfort.get(id)).configuration.temporary_override.status).toBe('clock_uncertain');
 	});
 
 	it('retries pending notifications exclusively even without an active override, then returns to shared reads', async () => {

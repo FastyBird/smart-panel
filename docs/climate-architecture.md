@@ -132,7 +132,14 @@ qualification and unresolved-output barriers remain dominant and are checked aga
 
 Override expiry uses both an absolute wall-clock deadline and a process-local monotonic budget. Equality expires.
 Committed terminal expiry cannot revive on rollback or restart. A restart recovers remaining absolute lifetime capped
-by the original duration, retaining identity and setpoints. A persisted wall watermark detects observable rollback;
+by the original duration, retaining identity and setpoints. Each observed wall watermark persists separately from
+the configuration and installed-intent image, keyed by controller and override identity. It is a monotone recovery
+lower bound, never a new intent or qualification: ordinary clock maintenance preserves existing claims while foreign
+configuration writes still revoke them. Recovery uses the maximum of legacy JSON and this clock store. SQL prevents
+decreasing or deleting the bound while its controller remains; historical override rows live until controller deletion.
+Catalogs explicitly opened without migration 53 retain the original JSON watermark writes and their existing
+configuration/installed-evidence invalidation; reads do not create the clock schema or suppress other database errors.
+Downgrade copies the current override's maximum back into legacy JSON without normalizing invalid legacy evidence. A persisted watermark detects observable rollback;
 invalid lifetime evidence or clock uncertainty holds the override as `clock_uncertain` and inhibits output until an
 explicit cancellation/replacement, rather than falling through to a potentially higher-demand baseline. No method can
 prove unobservable wall-clock shifts across downtime without an independent trusted clock. The API reports

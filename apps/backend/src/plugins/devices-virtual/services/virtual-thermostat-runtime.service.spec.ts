@@ -72,7 +72,10 @@ import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-the
 
 import { thermostatInstallationArtifact } from './thermostat-installation-artifact';
 import { ThermostatInstallationBindingsService } from './thermostat-installation-bindings.service';
+import { ThermostatInstallationLoaderService } from './thermostat-installation-loader.service';
+import { ThermostatInstallationService } from './thermostat-installation.service';
 import { resolveInstallationSetup } from './thermostat-installation.service';
+import { THERMOSTAT_ATTESTATION_KINDS } from './thermostat-installation.types';
 import { ThermostatMemberProtectionService } from './thermostat-member-protection.service';
 import { resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
@@ -3031,6 +3034,381 @@ describe('virtual thermostat durable runtime', () => {
 		expect(native.claims.capture().isCurrent()).toBe(true);
 		return { fixture, claims: native.claims, locks, temperatureOutput };
 	};
+
+	const useInstalledLockedNativeClaimsGuard = async () => {
+		await settle();
+		runtime.onModuleDestroy();
+		const temperatureOutput = await createTemperatureOutput();
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.policy.floor = { limit: 30, recoveryHysteresis: 2 };
+		config.comfort = {
+			heating_range: { minimum: 15, maximum: 25 },
+			cooling_range: null,
+			presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+			selected_preset: null,
+			user_off: false,
+			automation_enabled: false,
+			temporary_override: null,
+		};
+		await database.manager.save(config);
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		const probe = await createProtectionProbe(database, relayId);
+		const source = await resolveThermostatProtectionSource(database.manager, probe.sourceId, claim.physicalIdentity);
+		await database.manager.insert(ThermostatMemberProtectionEntity, {
+			claimId: claim.id,
+			schemaVersion: 1,
+			kind: 'local_floor',
+			revision: 1,
+			sourcePropertyId: probe.sourceId,
+			sourcePropertyIdentity: probe.sourceId,
+			physicalPropertyIdentity: probe.physicalId,
+			contractFingerprint: source.fingerprint,
+			maximumAgeSeconds: 5,
+		});
+		protectionProbes.add(probe.sourceId);
+		sample(probe.sourceId, 20);
+		const structure = new DeviceStructureLockService();
+		const registry = new ClimateAutomationRegistryService();
+		const ledger = new ClimateAutomationLedgerService(database, structure, registry);
+		const graph = new VirtualDependencyGraphService(database, undefined, ledger);
+		const provider = new VirtualThermostatAutomationService(database, registry, ledger, graph, structure);
+		issuedProviders.push(() => {
+			provider.onModuleDestroy();
+			registry.onModuleDestroy();
+		});
+		provider.onModuleInit();
+		await graph.onApplicationBootstrap();
+		const claims = new VirtualThermostatClaimsService(
+			database,
+			structure,
+			graph,
+			new PropertyCommandAdmissionRegistryService(),
+			events,
+			new ConfigService({ FB_CLI: 'off' }),
+		);
+		issuedClaims.push(claims);
+		await claims.onApplicationBootstrap();
+		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		comfort = new VirtualThermostatComfortService(database, structure, graph, claims, events, provider);
+		const bindings = new ThermostatInstallationBindingsService();
+		const binding = await bindings.resolve(database.manager, claim.id);
+		const authoredSetup = {
+			...memberInstallationSetup(),
+			endpointHostname: '127.0.0.2',
+			deviceHardwareId: binding.target.device.identifier,
+		};
+		const setup = resolveInstallationSetup(authoredSetup, binding);
+		// Test attestations model a staged offline installation; they certify no installed equipment.
+		const attestations = THERMOSTAT_ATTESTATION_KINDS.filter((kind) => kind !== 'opposed_interlock').map((kind) => ({
+			kind,
+			equipment: 'offline synthetic fixture',
+			procedure: 'software composition only',
+			evidenceReference: 'fixture:' + kind,
+			testedAt: '2026-01-01T00:00:00Z',
+			...(kind === 'local_execution_bounds' ? { maximumObservedMs: 50 } : {}),
+		}));
+		const artifact = thermostatInstallationArtifact(
+			database.manager.create(ThermostatInstallationEntity, {
+				claimId: claim.id,
+				revision: 1,
+				controllerId,
+				physicalIdentity: claim.physicalIdentity,
+				claimRevision: claim.revision,
+				configurationRevision: config.revision,
+				bindingFingerprint: binding.fingerprint,
+				setup,
+				attestations,
+			}),
+			binding,
+		);
+		const locks = new PropertyValueLockService(database, new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }));
+		const fixture = await realThermostatGuardFixture(
+			database,
+			events,
+			producers,
+			installedQualifications,
+			'managed',
+			locks,
+			new Map([[claim.id, artifact]]),
+		);
+		for (const [id, sample] of samples) await fixture.report(id, sample.value as number | boolean);
+		values = fixture.values;
+		runtime = new VirtualThermostatRuntimeService(
+			database,
+			structure,
+			claims,
+			new VirtualThermostatInputsService(database, values),
+			fixture.transport,
+			values,
+			producers,
+			events,
+			graph,
+			comfort,
+			new ConfigService({ FB_CLI: 'off' }),
+			undefined,
+			provider,
+		);
+		issuedRuntimes.push(runtime);
+		const profiles = new ThermostatInstallationService(database, structure, bindings, claims, runtime);
+		await profiles.stage(claim.id, 0, authoredSetup, attestations, 'offline-fixture-operator');
+		const staged = await database.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+		expect(staged.artifactSource).toBe(artifact.source);
+		expect(staged.expectedScriptHash).toBe(artifact.sourceHash);
+		const loader = new ThermostatInstallationLoaderService(
+			database,
+			bindings,
+			profiles,
+			claims,
+			fixture.platforms,
+			structure,
+			runtime,
+			events,
+			new ConfigService({ FB_CLI: 'off' }),
+		);
+		try {
+			await loader.verify(claim.id, 1, 'offline-fixture-operator');
+			expect(
+				(await database.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id }))
+					.lastMachineObservation,
+			).toMatchObject({ state: 'verified_metadata', reasons: [] });
+			await loader.onApplicationBootstrap();
+			clearInterval(loader['timer']);
+			await runtime.onApplicationBootstrap();
+			await settleReal(fixture);
+			expect(claims.qualification(claim, false)).not.toBeNull();
+			return { fixture, claims, temperatureOutput, loader, claim, artifact, floorSourceId: probe.sourceId };
+		} catch (cause) {
+			try {
+				loader.onModuleDestroy();
+				await loader['queue'];
+			} catch (cleanup) {
+				fixture.controls.errors.push(cleanup);
+			}
+			throw cause;
+		}
+	};
+
+	it('keeps actual installed-loader bookkeeping and enabled derived locks claims-current through managed ON and a no-op decision', async () => {
+		const { fixture, claims, temperatureOutput, loader, claim, artifact, floorSourceId } =
+			await useInstalledLockedNativeClaimsGuard();
+		const owner = runtime,
+			source = database,
+			id = controllerId,
+			output = relayId;
+		clearInterval(owner['timer']);
+		const writes: Array<{ query: string; parameters: readonly unknown[] }> = [];
+		const subscriber = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (/^(INSERT|UPDATE|DELETE) /.test(event.query)) {
+					const parameters: readonly unknown[] = event.parameters ?? [];
+					writes.push({ query: event.query, parameters: [...parameters] });
+				}
+			},
+		};
+		source.subscribers.push(subscriber);
+
+		let onAdmission: ReturnType<VirtualThermostatClaimsService['capture']> | undefined;
+		let entries = 0,
+			onAdmissionWasCurrent = false;
+		let onCommandId: string | undefined;
+		const previousGate = fixture.controls.beforeOn;
+		const gate = (property: string) => {
+			if (property === output) {
+				entries++;
+				onAdmission = claims.capture();
+				onAdmissionWasCurrent = onAdmission.isCurrent();
+				onCommandId = [...owner['inFlightCommands'].values()].find((command) => command.action === 'on')?.id;
+			}
+			return Promise.resolve();
+		};
+		fixture.controls.beforeOn = gate;
+		let primary: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+		const attempt = (action: () => void) => {
+			try {
+				action();
+			} catch (cause) {
+				cleanupFailure ??= { cause };
+			}
+		};
+		try {
+			const initial = await comfort.get(id);
+			await comfort.override(
+				id,
+				{ expected_revision: initial.revision, expected_graph_revision: initial.graph_revision },
+				{
+					preset: null,
+					setpoints: { heating_setpoint: 23, cooling_setpoint: null },
+					expires_at: new Date(Date.now() + 30_000).toISOString(),
+				},
+				'native-bookkeeping',
+			);
+			await loader['queue'];
+			await fixture.report(floorSourceId, 20);
+			await settleReal(fixture);
+			// Recovery consumes only a new packet AFTER the original branch OFF/drain acknowledgement.
+			await fixture.report(floorSourceId, 20);
+			await settleReal(fixture);
+			expect(fixture.values).toBe(values);
+			expect(owner.readDiagnostics(id)).toMatchObject({ comfort_demand: 'heat', headline_reason: null });
+			expect(entries).toBe(1);
+			const installation = await source.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			expect(installation.armedAt).toBeInstanceOf(Date);
+			expect(installation.expectedScriptHash).toBe(artifact.sourceHash);
+			expect(installation.lastMachineObservation).toMatchObject({
+				state: 'verified_metadata',
+				physicalSafetyCertified: false,
+				reasons: [],
+				configurationRevision: owner.readDiagnostics(id).configuration_revision,
+			});
+			expect(onAdmission).toBeDefined();
+			expect(onAdmissionWasCurrent).toBe(true);
+			expect(onAdmission.isCurrent()).toBe(true);
+			expect(fixture.controls.sends.filter((send) => send.property === output && send.on)).toHaveLength(1);
+			const commands = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
+			const on = commands.filter((row) => row.action === 'on');
+			expect(on).toHaveLength(1);
+			expect(on[0].id).toBe(onCommandId);
+			expect(on[0]).toMatchObject({ status: 'accepted', fault: null, settledAt: expect.any(Date) as Date });
+			expect(
+				writes.some(
+					(entry) =>
+						entry.query.startsWith('INSERT INTO "devices_virtual_thermostat_command_journal"') &&
+						entry.parameters.includes(on[0].id),
+				),
+			).toBe(true);
+			expect(writes.some((entry) => entry.query.startsWith('UPDATE "devices_virtual_thermostat_runtime"'))).toBe(true);
+			expect(writes.some((entry) => entry.query.startsWith('UPDATE "devices_virtual_thermostat_branch_runtime"'))).toBe(
+				true,
+			);
+			const locks = writes.filter((entry) => entry.parameters.includes(temperatureOutput));
+			expect(locks.some((entry) => entry.query.startsWith('INSERT INTO "devices_module_property_value_locks"'))).toBe(
+				true,
+			);
+			expect(locks.some((entry) => entry.query.startsWith('DELETE FROM "devices_module_property_value_locks"'))).toBe(
+				true,
+			);
+			const sends = [...fixture.controls.sends],
+				fences = [...fixture.controls.fences];
+			const beforeNoop = writes.length;
+			await owner.request(id, false);
+			await settleReal(fixture);
+			expect(
+				writes.slice(beforeNoop).some((entry) => entry.query.startsWith('UPDATE "devices_virtual_thermostat_runtime"')),
+			).toBe(true);
+			expect(onAdmission.isCurrent()).toBe(true);
+			expect(await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id })).toEqual(commands);
+			expect(fixture.controls.sends).toEqual(sends);
+			expect(fixture.controls.fences).toEqual(fences);
+			expect(
+				(await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id }))
+					.releaseEvidence,
+			).toBeNull();
+			expect(await source.query('SELECT * FROM "devices_module_property_value_locks"')).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			primary = { cause };
+		} finally {
+			const originals = [...owner['inFlight'].values()];
+			attempt(() => owner.onModuleDestroy());
+			attempt(() => loader.onModuleDestroy());
+			const index = source.subscribers.indexOf(subscriber);
+			if (index >= 0) source.subscribers.splice(index, 1);
+			attempt(() => {
+				if (fixture.controls.beforeOn !== gate) throw new Error('Foreign bookkeeping gate retained');
+				fixture.controls.beforeOn = previousGate;
+			});
+			const completions = await Promise.allSettled([
+				owner.flush(),
+				fixture.flushTelemetry(),
+				loader['queue'],
+				...originals,
+			]);
+			for (const result of completions) if (result.status === 'rejected') cleanupFailure ??= { cause: result.reason };
+		}
+		if (primary !== undefined) throw primary.cause;
+		if (cleanupFailure !== undefined) throw cleanupFailure.cause;
+	});
+
+	it.each(['identical-clock-callback', 'config-callback', 'same-value-config', 'rolled-back-config'] as const)(
+		'keeps monotone clock evidence separate from foreign authority loss: %s',
+		async (kind) => {
+			const { fixture, claims, loader, claim, floorSourceId } = await useInstalledLockedNativeClaimsGuard();
+			clearInterval(runtime['timer']);
+			let fired = false;
+			const observer = {
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (fired || !event.query.startsWith('INSERT INTO "devices_virtual_thermostat_override_clocks"')) return;
+					fired = true;
+					if (kind === 'identical-clock-callback')
+						await event.manager.query(event.query, [...(event.parameters as readonly unknown[])]);
+					if (kind === 'config-callback')
+						await event.manager.query(
+							'UPDATE "devices_virtual_thermostat_configs" SET "comfort" = "comfort" WHERE "controllerId" = ?',
+							[controllerId],
+						);
+				},
+			};
+			let primary: { cause: unknown } | undefined;
+			try {
+				const initial = await comfort.get(controllerId);
+				await comfort.override(
+					controllerId,
+					{ expected_revision: initial.revision, expected_graph_revision: initial.graph_revision },
+					{
+						preset: null,
+						setpoints: { heating_setpoint: 23, cooling_setpoint: null },
+						expires_at: new Date(Date.now() + 30_000).toISOString(),
+					},
+					'clock-counter-control',
+				);
+				await loader['queue'];
+				await settleReal(fixture);
+				expect(claims.qualification(claim, false)).not.toBeNull();
+				const capture = claims.capture();
+				expect(capture.isCurrent()).toBe(true);
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const write = (manager: import('typeorm').EntityManager) =>
+					manager.query(
+						'UPDATE "devices_virtual_thermostat_configs" SET "comfort" = "comfort" WHERE "controllerId" = ?',
+						[controllerId],
+					);
+				if (kind === 'same-value-config') await write(database.manager);
+				if (kind === 'rolled-back-config') {
+					const sentinel = new Error('original rolled-back configuration control');
+					await expect(
+						database.transaction(async (manager) => {
+							await write(manager);
+							throw sentinel;
+						}),
+					).rejects.toBe(sentinel);
+				}
+				database.subscribers.push(observer);
+				await fixture.report(floorSourceId, 20);
+				await comfort.settle(controllerId);
+				await settleReal(fixture);
+				expect(fired).toBe(true);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(config);
+				if (kind === 'identical-clock-callback') {
+					expect(capture.isCurrent()).toBe(true);
+					expect(claims.qualification(claim, false)).not.toBeNull();
+				} else {
+					expect(capture.isCurrent()).toBe(false);
+					expect(claims.qualification(claim, false)).toBeNull();
+				}
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				runtime.onModuleDestroy();
+				loader.onModuleDestroy();
+				const completions = await Promise.allSettled([runtime.flush(), loader['queue'], fixture.flushTelemetry()]);
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				if (!primary)
+					for (const result of completions) if (result.status === 'rejected') primary ??= { cause: result.reason };
+			}
+			if (primary) throw primary.cause;
+		},
+	);
 
 	it('refuses the original held managed ON after an actual foreign claim revision write with unchanged physical source and journal', async () => {
 		const { fixture, claims } = await useNativeClaimsGuard();
