@@ -549,9 +549,10 @@ describe('thermostat durable comfort lifecycle', () => {
 		},
 	);
 
-	it('propagates clock schema errors other than the missing legacy table', async () => {
+	it.each(['active', 'cancelled'] as const)('propagates clock schema errors for %s overrides', async (state) => {
 		await configured();
-		await overridden();
+		const original = await overridden();
+		if (state === 'cancelled') await comfort.cancel(id, await fence(), original.configuration.temporary_override.id);
 		await database.query(
 			'ALTER TABLE "devices_virtual_thermostat_override_clocks" RENAME COLUMN "watermark" TO "broken_watermark"',
 		);
