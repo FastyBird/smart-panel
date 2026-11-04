@@ -5007,6 +5007,15 @@ describe('virtual thermostat durable runtime', () => {
 		const originalJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 		expect(deliveredOutcomes).toHaveLength(1);
 		expect(deliveredOutcomes[0].outcome).toBe(offResult);
+		const originalOff = originalJournal.find((row) => row.id === delivered[0]);
+		expect(originalOff?.settledAt).toEqual(expect.any(Date));
+		const deliveredOutcome = deliveredOutcomes[0];
+		if (deliveredOutcome.outcome === 'refused') {
+			expect(deliveredOutcome.reasons.length).toBeGreaterThan(0);
+			expect(originalOff?.fault).toBe(deliveredOutcome.reasons.join(','));
+		} else if (deliveredOutcome.outcome === 'unknown') {
+			expect(originalOff?.fault).toBe('command_execution_unknown');
+		}
 		if (deliveredOutcomes[0].outcome !== 'accepted')
 			throw new Error('Original OFF did not finish an accepted saved native outcome');
 		for (const pending of pendingIds)
