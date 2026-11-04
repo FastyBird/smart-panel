@@ -3213,7 +3213,19 @@ describe('virtual thermostat durable runtime', () => {
 				parameters?: readonly unknown[];
 			};
 			const transactions = new Map<import('typeorm').QueryRunner, NativeTransaction>();
-			const qualifiedWrites: { query: string; parameters: readonly unknown[]; transaction: NativeTransaction }[] = [];
+			const qualifiedWrites: {
+				query: string;
+				parameters: readonly unknown[];
+				transaction: NativeTransaction;
+				drain: {
+					activity: string;
+					proofId: string | null;
+					freshFence: boolean;
+					inFlight: string[];
+					unresolved: string[];
+				};
+			}[] = [];
+			let fencesBefore = fixture.controls.fences.length;
 			let acknowledgements = 0;
 			const observer = {
 				beforeQuery: (event: NativeQueryEvent) => {
@@ -3227,10 +3239,26 @@ describe('virtual thermostat durable runtime', () => {
 					)
 						return;
 					if (!transaction) throw new Error('Original release transaction was not observed');
+					const context = owner['contexts'].get(id),
+						branch = context?.branches.get(claim.id);
+					if (!context || !branch) throw new Error('Original release runtime branch missing');
 					qualifiedWrites.push({
 						query: event.query,
 						parameters: [...event.parameters],
 						transaction,
+						drain: {
+							activity: branch.activity,
+							proofId: branch.releaseProofId,
+							freshFence: fixture.controls.fences.slice(fencesBefore).includes(claim.sourcePropertyId),
+							inFlight: [...owner['inFlightCommands'].values()]
+								.filter((command) => command.claimId === claim.id)
+								.map((command) => command.id),
+							unresolved: context.commands
+								.filter(
+									(command) => command.claimId === claim.id && !['confirmed', 'cancelled'].includes(command.status),
+								)
+								.map((command) => command.id),
+						},
 					});
 					if (mode === 'qualification-loss') claims.revokeAllQualifications();
 				},
@@ -3260,7 +3288,7 @@ describe('virtual thermostat durable runtime', () => {
 				const ordinaryOn = { device: property.channel.device, channel: property.channel, property, value: true };
 				await expect(async () => claims.assertAllowed(ordinaryOn)).rejects.toThrow('Actuator is reserved');
 				const sendsBefore = fixture.controls.sends.length;
-				const fencesBefore = fixture.controls.fences.length;
+				fencesBefore = fixture.controls.fences.length;
 				source.subscribers.push(observer);
 				await actualConfigs.requestRelease(id, before.revision);
 				const requested = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id });
@@ -3275,6 +3303,14 @@ describe('virtual thermostat durable runtime', () => {
 					id: claim.id,
 				});
 				expect(qualifiedWrites).toHaveLength(1);
+				const { proofId, ...drain } = qualifiedWrites[0].drain;
+				expect(proofId).toBeTruthy();
+				expect(drain).toEqual({
+					activity: 'off',
+					freshFence: true,
+					inFlight: [],
+					unresolved: [],
+				});
 				expect(acknowledgements).toBe(qualifiedWrites.length);
 				expect(fixture.controls.fences.length).toBeGreaterThan(fencesBefore);
 				expect(fixture.controls.sends.slice(sendsBefore).filter((send) => send.on)).toEqual([]);
@@ -3408,11 +3444,18 @@ describe('virtual thermostat durable runtime', () => {
 			const sends = [...fixture.controls.sends],
 				fences = [...fixture.controls.fences];
 			source.subscribers.push(observer);
+			jest.setSystemTime(Date.now() + 1);
 			await source.query(counterSql);
 			expect(original.isCurrent()).toBe(true);
 			expect(comfort.isCurrent(active)).toBe(true);
 			expect(comfort['leases'].get(id)).toBe(lease);
-			expect(comfort['leases'].get(id)).toEqual(savedLease);
+			expect(comfort['leases'].get(id)).toMatchObject({
+				id: savedLease.id,
+				revision: savedLease.revision,
+				deadline: savedLease.deadline,
+				status: savedLease.status,
+			});
+			expect(comfort['leases'].get(id)?.watermark).toBeGreaterThanOrEqual(savedLease.watermark);
 			expect(owner['contexts'].get(id)).toBe(context);
 			expect(owner['epochs'].get(id)).toBe(epoch);
 			expect(claims.qualification(claim, false)).toBe(qualification);
@@ -4152,13 +4195,37 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('retires failed actual recovery before same-instance retry and keeps fresh B admission independent of stopped A', async () => {
-		const { fixture, claims } = await useNativeClaimsGuard();
+		const { fixture, claims } = await useNativeClaimsGuard(true);
 		await settleReal(fixture);
 		const previous = runtime,
 			source = database,
 			structure = previous['structure'],
 			id = controllerId;
 		previous.onModuleDestroy();
+		const beforeOverride = await comfort.get(id);
+		await comfort.override(
+			id,
+			{ expected_revision: beforeOverride.revision, expected_graph_revision: beforeOverride.graph_revision },
+			{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+			'failed-recovery-original-budget',
+		);
+		await comfort.settle(id);
+		const activeOverride = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		const lease = comfort['leases'].get(id),
+			savedLease = { ...lease };
+		if (!lease || activeOverride.comfort?.temporary_override?.status !== 'active')
+			throw new Error('Original active override budget missing before failed recovery');
+		const expectOriginalLease = () => {
+			expect(comfort['leases'].get(id)).toBe(lease);
+			expect(lease).toMatchObject({
+				id: savedLease.id,
+				revision: savedLease.revision,
+				deadline: savedLease.deadline,
+				status: savedLease.status,
+			});
+			expect(lease.watermark).toBeGreaterThanOrEqual(savedLease.watermark);
+			expect(comfort.isCurrent(activeOverride)).toBe(true);
+		};
 		const make = () => {
 			const owner = new VirtualThermostatRuntimeService(
 				source,
@@ -4247,6 +4314,7 @@ describe('virtual thermostat durable runtime', () => {
 		let primary: { cause: unknown } | undefined;
 		try {
 			await expect(a.onApplicationBootstrap()).rejects.toBe(failure);
+			expectOriginalLease();
 			expect(recoveries).toHaveLength(1);
 			expect(recoveries[0]).toMatchObject({ attempt: 1, acknowledged: false, outcome: 'ROLLBACK' });
 			expect(recoveries[0].originalLeaseCurrent()).toBe(false);
@@ -4264,6 +4332,7 @@ describe('virtual thermostat durable runtime', () => {
 			await a.onApplicationBootstrap();
 			clearInterval(a['timer']);
 			await settleReal(fixture);
+			expectOriginalLease();
 			expect(claims.capture().isCurrent()).toBe(true);
 			expect(recoveries.filter((entry) => entry.attempt === 2)).toHaveLength(1);
 			expect(recoveries[1]).toMatchObject({ acknowledged: true, outcome: 'COMMIT' });
