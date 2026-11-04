@@ -28,6 +28,16 @@ describe('original method currentness through function-valued prototypes', () =>
 		expect(captured.current()).toBe(true);
 		receiver.optional = (): void => undefined;
 		expect(captured.current()).toBe(false);
+
+		const undefinedReceiver: { optional?: () => void } = {};
+		const undefinedCapture = captureCreation(undefinedReceiver, ['optional']);
+		Object.defineProperty(undefinedReceiver, 'optional', {
+			value: undefined,
+			configurable: true,
+			enumerable: true,
+			writable: true,
+		});
+		expect(undefinedCapture.current()).toBe(false);
 	});
 
 	it('accepts the original inherited Date.parse on a local Date subclass', () => {

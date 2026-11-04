@@ -5139,17 +5139,17 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('keeps a retired A OFF completion separate from held distinct B proof and foreign observer custody', async () => {
 		await settle();
-		const A = runtime,
+		const runtimeA = runtime,
 			source = database,
 			id = controllerId;
-		clearInterval(A['timer']);
+		clearInterval(runtimeA['timer']);
 		packetTick = useThermostatPacketClock();
-		const feedbackA = jest.spyOn(A, 'request').mockResolvedValue(undefined);
+		const feedbackA = jest.spyOn(runtimeA, 'request').mockResolvedValue(undefined);
 		const claim = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
 		const baseline = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 		expect(baseline.length).toBeGreaterThan(0);
 		for (const row of baseline) expect(row).toMatchObject({ claimId: claim.id, action: 'off', status: 'confirmed' });
-		const P0 = reconciledCommandIds.map((ids) => [...ids]);
+		const initialProofCalls = reconciledCommandIds.map((ids) => [...ids]);
 		const attemptsBefore = [...actuationAttempts];
 		const command = source.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
@@ -5167,7 +5167,7 @@ describe('virtual thermostat durable runtime', () => {
 			fault: null,
 		});
 		await source.manager.insert(VirtualThermostatCommandEntity, command);
-		const enrollment = observeOriginalCommandEnrollment(A);
+		const enrollment = observeOriginalCommandEnrollment(runtimeA);
 		const retire = jest.fn<void, [readonly string[]]>();
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 		let enterA!: () => void, releaseA!: () => void, enterB!: () => void, releaseB!: () => void;
@@ -5199,9 +5199,9 @@ describe('virtual thermostat durable runtime', () => {
 				},
 			};
 		});
-		const pendingA = A.requestInstalled(id);
+		const pendingA = runtimeA.requestInstalled(id);
 		void pendingA.catch(() => undefined);
-		let B: VirtualThermostatRuntimeService | undefined;
+		let runtimeB: VirtualThermostatRuntimeService | undefined;
 		let startingB: Promise<void> | undefined;
 		let settlementB: Promise<void> | undefined;
 		let publicB: Promise<unknown> | undefined;
@@ -5216,7 +5216,7 @@ describe('virtual thermostat durable runtime', () => {
 			expect(delivered).toHaveLength(1);
 			const offId = delivered[0];
 			const original = enrollment.enrolled.get(offId);
-			expect(original).toBe(A['inFlight'].get(offId));
+			expect(original).toBe(runtimeA['inFlight'].get(offId));
 			expect(original).toBeDefined();
 			if (original === undefined) throw new Error('Original A command was not enrolled');
 			const heldJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
@@ -5226,23 +5226,23 @@ describe('virtual thermostat durable runtime', () => {
 			for (const row of baseline) expect(heldJournal.find((entry) => entry.id === row.id)).toEqual(row);
 			expect(heldJournal.find((row) => row.id === command.id)).toEqual(command);
 			expect(heldJournal.find((row) => row.id === offId)).toMatchObject({ action: 'off', status: 'dispatching' });
-			expect(reconciledCommandIds).toEqual(P0);
+			expect(reconciledCommandIds).toEqual(initialProofCalls);
 			expect(actuationAttempts).toEqual([...attemptsBefore, false]);
-			A.onModuleDestroy();
+			runtimeA.onModuleDestroy();
 			// Keep the transport method pin intact: A's final guard must observe actual lifecycle retirement.
 			offGate = null; // Original A still awaits heldA; B uses its own transport call.
 			beforeProof = async () => {
 				enterB();
 				await heldB;
 			};
-			B = makeRuntime();
-			runtime = B;
-			const requestB = B.request.bind(B) as VirtualThermostatRuntimeService['request'];
+			runtimeB = makeRuntime();
+			runtime = runtimeB;
+			const requestB = runtimeB.request.bind(runtimeB) as VirtualThermostatRuntimeService['request'];
 			let enterInspectionB!: () => void;
 			const enteredInspectionB = ownedGate((resolve) => (enterInspectionB = resolve));
 			const inspectionsB: Promise<void>[] = [];
 			// Isolate explicit requests from dispatch feedback, while forwarding bootstrap and public inspection.
-			jest.spyOn(B, 'request').mockImplementation((...args) => {
+			jest.spyOn(runtimeB, 'request').mockImplementation((...args) => {
 				if (args[1] === true) return Promise.resolve();
 				const original = requestB(...args);
 				if (args[1] === false) {
@@ -5251,18 +5251,18 @@ describe('virtual thermostat durable runtime', () => {
 				}
 				return original;
 			});
-			startingB = B.onApplicationBootstrap();
+			startingB = runtimeB.onApplicationBootstrap();
 			void startingB.catch(() => undefined);
 			await startingB;
-			clearInterval(B['timer']);
-			await Promise.all([...B['inFlight'].values()]);
+			clearInterval(runtimeB['timer']);
+			await Promise.all([...runtimeB['inFlight'].values()]);
 			const issuedB = (await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id })).filter(
 				(row) => !heldJournal.some((held) => held.id === row.id),
 			);
 			expect(issuedB).toHaveLength(1);
 			expect(issuedB[0]).toMatchObject({ claimId: claim.id, action: 'off', status: 'accepted' });
 			const pendingIds = [command.id, offId, issuedB[0].id].sort();
-			settlementB = B.requestInstalled(id);
+			settlementB = runtimeB.requestInstalled(id);
 			void settlementB.catch(() => undefined);
 			await Promise.race([
 				enteredB,
@@ -5270,10 +5270,10 @@ describe('virtual thermostat durable runtime', () => {
 					throw new Error('Original B proof gate not reached');
 				}),
 			]);
-			const lifecycleB = B['lifecycle'],
-				contextB = B['contexts'].get(id);
+			const lifecycleB = runtimeB['lifecycle'],
+				contextB = runtimeB['contexts'].get(id);
 			expect(contextB).toBeDefined();
-			const descriptorB = Object.getOwnPropertyDescriptor(B, 'listener');
+			const descriptorB = Object.getOwnPropertyDescriptor(runtimeB, 'listener');
 			const commandsB = contextB?.commands.map((row) => ({ ...row }));
 			const journalB = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 			expect(journalB.find((row) => row.id === offId)).toMatchObject({
@@ -5282,9 +5282,12 @@ describe('virtual thermostat durable runtime', () => {
 				fault: 'restart_requires_release_reconciliation',
 			});
 			const transcriptB = reconciledCommandIds.map((ids) => [...ids]);
-			expect(transcriptB.map((ids) => [...ids].sort())).toEqual([...P0.map((ids) => [...ids].sort()), pendingIds]);
+			expect(transcriptB.map((ids) => [...ids].sort())).toEqual([
+				...initialProofCalls.map((ids) => [...ids].sort()),
+				pendingIds,
+			]);
 			let publicBCompleted = false;
-			publicB = B.inspect(id);
+			publicB = runtimeB.inspect(id);
 			void publicB.then(
 				() => {
 					publicBCompleted = true;
@@ -5310,13 +5313,13 @@ describe('virtual thermostat durable runtime', () => {
 			expect(outcomes).toEqual([{ outcome: 'refused', reasons: ['revoked'] }]);
 			expect(feedbackA).not.toHaveBeenCalled();
 			expect(enrollment.enrolled.size).toBe(1);
-			expect(A['inFlight'].size).toBe(0);
+			expect(runtimeA['inFlight'].size).toBe(0);
 			expect(retire).not.toHaveBeenCalled();
 			expect(publicBCompleted).toBe(false);
-			expect(B['lifecycle']).toBe(lifecycleB);
-			expect(B['contexts'].get(id)).toBe(contextB);
+			expect(runtimeB['lifecycle']).toBe(lifecycleB);
+			expect(runtimeB['contexts'].get(id)).toBe(contextB);
 			expect(contextB?.commands).toEqual(commandsB);
-			expect(Object.getOwnPropertyDescriptor(B, 'listener')).toEqual(descriptorB);
+			expect(Object.getOwnPropertyDescriptor(runtimeB, 'listener')).toEqual(descriptorB);
 			expect(Object.getOwnPropertyDescriptor(enrollment.map, 'set')).toEqual(foreign);
 			expect(reconciledCommandIds).toEqual(transcriptB);
 			const afterA = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
@@ -5327,7 +5330,7 @@ describe('virtual thermostat durable runtime', () => {
 			releaseB();
 			await settlementB;
 			await publicB;
-			clearInterval(B['timer']);
+			clearInterval(runtimeB['timer']);
 			const afterB = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 			expect(afterB.map((row) => row.id).sort()).toEqual(afterA.map((row) => row.id).sort());
 			for (const row of baseline) expect(afterB.find((entry) => entry.id === row.id)).toEqual(row);
@@ -5343,8 +5346,8 @@ describe('virtual thermostat durable runtime', () => {
 			expect(actuationAttempts).toEqual([...attemptsBefore, false, false]);
 			expect(actuationAttempts.every((on) => !on)).toBe(true);
 		} finally {
-			A.onModuleDestroy();
-			B?.onModuleDestroy();
+			runtimeA.onModuleDestroy();
+			runtimeB?.onModuleDestroy();
 			releaseA();
 			releaseB();
 			beforeProof = null;
@@ -5385,26 +5388,26 @@ describe('virtual thermostat durable runtime', () => {
 				),
 			);
 			const claim = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: id });
-			const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+			const initialProofCalls = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
 			const beforeAttempts = Object.freeze([...actuationAttempts]);
 			type NativeRow = { id: string; claimId: string; action: string; status: string };
-			const grammars = (K: readonly string[]) => ({
+			const grammars = (commandIds: readonly string[]) => ({
 				noSettlement: {
-					proof: P0,
+					proof: initialProofCalls,
 					retirement: [] as readonly (readonly (readonly string[])[])[],
 					journal: [
 						...baseline.map(({ id, claimId, action, status }) => ({ id, claimId, action, status })),
-						{ id: K[0], claimId: claim.id, action: 'on', status: 'accepted' },
-						{ id: K[1], claimId: claim.id, action: 'off', status: 'unknown' },
+						{ id: commandIds[0], claimId: claim.id, action: 'on', status: 'accepted' },
+						{ id: commandIds[1], claimId: claim.id, action: 'off', status: 'unknown' },
 					],
 				},
 				knownAcknowledgement: {
-					proof: [...P0, K],
-					retirement: [[K]],
+					proof: [...initialProofCalls, commandIds],
+					retirement: [[commandIds]],
 					journal: [
 						...baseline.map(({ id, claimId, action, status }) => ({ id, claimId, action, status })),
-						{ id: K[0], claimId: claim.id, action: 'on', status: 'confirmed' },
-						{ id: K[1], claimId: claim.id, action: 'off', status: 'confirmed' },
+						{ id: commandIds[0], claimId: claim.id, action: 'on', status: 'confirmed' },
+						{ id: commandIds[1], claimId: claim.id, action: 'off', status: 'confirmed' },
 					],
 				},
 			});
@@ -5431,11 +5434,11 @@ describe('virtual thermostat durable runtime', () => {
 				expect(on).toBeDefined();
 				expect(off).toBeDefined();
 				if (!on || !off) throw new Error('Original ON and issued OFF native identities missing');
-				const K = Object.freeze([on.id, off.id]);
-				expect(new Set(K).size).toBe(2);
+				const commandIds = Object.freeze([on.id, off.id]);
+				expect(new Set(commandIds).size).toBe(2);
 				const journal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 				const originalOn = journal.find((row) => row.id === on.id);
-				const declared = grammars(K);
+				const declared = grammars(commandIds);
 				const grammar =
 					originalOn?.status === 'accepted'
 						? declared.noSettlement
@@ -5443,14 +5446,14 @@ describe('virtual thermostat durable runtime', () => {
 							? declared.knownAcknowledgement
 							: undefined;
 				if (!grammar) throw new Error('Failed OFF had an undeclared native journal result');
-				expect(journal.map((row) => row.id).sort()).toEqual([...baseline.map((row) => row.id), ...K].sort());
+				expect(journal.map((row) => row.id).sort()).toEqual([...baseline.map((row) => row.id), ...commandIds].sort());
 				for (const row of baseline) expect(journal.find((entry) => entry.id === row.id)).toEqual(row);
 				expect(
 					journal
 						.map(({ id, claimId, action, status }): NativeRow => ({ id, claimId, action, status }))
 						.sort((a, b) => a.id.localeCompare(b.id)),
 				).toEqual([...grammar.journal].sort((a, b) => a.id.localeCompare(b.id)));
-				for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
+				for (const [index, ids] of initialProofCalls.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
 				expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(grammar.proof.map((ids) => [...ids].sort()));
 				expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual(
 					grammar.retirement.map((call) => call.map((ids) => [...ids].sort())),

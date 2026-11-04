@@ -1052,6 +1052,16 @@ describe('atomic virtual thermostat authoring', () => {
 		if (!original) throw new Error('Original required catalog method missing');
 		const inputFailure = new Error('Caller input must not run without the required catalog method');
 		let inputReads = 0;
+		const configuration = input.configuration;
+		let configurationReads = 0;
+		Object.defineProperty(input, 'configuration', {
+			configurable: true,
+			enumerable: true,
+			get: () => {
+				configurationReads++;
+				return configuration;
+			},
+		});
 		Object.defineProperty(input, 'device', {
 			configurable: true,
 			enumerable: true,
@@ -1072,6 +1082,7 @@ describe('atomic virtual thermostat authoring', () => {
 			expect('captureCreationCatalog' in devices).toBe(false);
 			await expect(authoring.create(input)).rejects.toThrow();
 			expect(inputReads).toBe(0);
+			expect(configurationReads).toBe(0);
 			expect(queries).toEqual([]);
 			expect(publications).toEqual([]);
 		} finally {
