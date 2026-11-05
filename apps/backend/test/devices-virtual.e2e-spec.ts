@@ -4225,6 +4225,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 		continuationEntered = false,
 		continuationCompleted = false;
 	let continuationAtPatchCompletion: boolean | undefined;
+	let selectedEvaluation: Promise<unknown>;
 	const jobs: Promise<unknown>[] = [],
 		callbacks: Promise<void>[] = [],
 		restore: (() => void)[] = [];
@@ -4358,7 +4359,10 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 					if (first) finished.release();
 				}
 			})();
-			if (first) jobs.push(job);
+			if (first) {
+				selectedEvaluation = job;
+				jobs.push(job);
+			}
 			return job;
 		};
 		Object.defineProperty(runtime, 'evaluate', { configurable: true, writable: true, value: wrappedEvaluate });
@@ -4451,7 +4455,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 		async afterPatch() {
 			await Promise.race([persisted.promise, finished.promise]);
 			if (!continuationEntered) {
-				await jobs[0];
+				await selectedEvaluation;
 				throw new Error('Selected A persistence did not reach its post-commit boundary');
 			}
 			continuationAtPatchCompletion = continuationCompleted;
@@ -4567,7 +4571,7 @@ function withChannelWriterCleanup<Args extends unknown[]>(
 }
 
 function createChannelWriterCleanupModel(
-	faults: { restore?: ChannelWriterFailure; install?: ChannelWriterFailure } = {},
+	faults: { restore?: ChannelWriterFailure; install?: ChannelWriterFailure; persistence?: ChannelWriterFailure } = {},
 	capture = captureChannelWriterProgress,
 ) {
 	const restores: string[] = [];
@@ -4605,8 +4609,15 @@ function createChannelWriterCleanupModel(
 		subscribers: [] as import('typeorm').EntitySubscriberInterface[],
 	};
 	const structure = { context: { getStore: () => ({ active: true, accepting: true, mode: 'exclusive' }) } };
-	const evaluate = () => Promise.resolve('original evaluation');
-	const runtime = { evaluate, journal: { persistRuntimeRows: () => Promise.resolve() } };
+	const journal = {
+		persistRuntimeRows: jest.fn(() => Promise.resolve()),
+	};
+	if (faults.persistence !== undefined) journal.persistRuntimeRows.mockRejectedValue(faults.persistence.cause);
+	const evaluate = async () => {
+		await journal.persistRuntimeRows();
+		return 'original evaluation';
+	};
+	const runtime = { evaluate, journal };
 	const a = {
 		get: (type: unknown) => (type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime),
 	};
@@ -4648,6 +4659,46 @@ function expectCleanupModelFailure(result: Awaited<ReturnType<typeof cleanupMode
 }
 
 describe('channel writer cleanup failure controls (no native credit)', () => {
+	it.each([undefined, new Error('original A persistence failure')])(
+		'reports selected persistence failure %p without awaiting the earlier owned wire',
+		async (cause) => {
+			const model = createChannelWriterCleanupModel({ persistence: { cause } }),
+				progress = model.capture(),
+				wire = cleanupModelJob();
+			// The real HTTP wire is owned before A's evaluation is registered, and awaits afterPatch.
+			progress.own(wire.promise);
+			const evaluation = cleanupModelResult(
+				Reflect.apply(model.runtime.evaluate, model.runtime, ['model-controller']) as Promise<unknown>,
+			);
+			// Release the model's admission gate while retaining the earlier pending wire in cleanup.
+			const closing = progress.close();
+			let patch: ReturnType<typeof cleanupModelResult> | undefined;
+			try {
+				expectCleanupModelFailure(await evaluation, cause);
+				let settled = false;
+				patch = cleanupModelResult(progress.afterPatch());
+				void patch.then(() => {
+					settled = true;
+				});
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(settled).toBe(true);
+				expectCleanupModelFailure(await patch, cause);
+			} finally {
+				// Even a regressed self-wait is opened and joined after its bounded assertion fails.
+				wire.release();
+				await patch;
+				const outcome = await closing;
+				expect(outcome.failure).toBeDefined();
+				expect(outcome.failure?.cause).toBe(cause);
+				expect(Object.hasOwn(outcome.failure, 'cause')).toBe(true);
+				expect(model.restores).toEqual(['B:run', 'B:all', 'A:run', 'A:all']);
+				expect(model.sourceA.subscribers).toEqual([]);
+				expect(model.sourceB.subscribers).toEqual([]);
+				expect(model.runtime.evaluate).toBe(model.evaluate);
+			}
+		},
+	);
+
 	it.each(['job', 'callback', 'restore'] as const)(
 		'exposes the exact %s failure only after joining and attempting every undo',
 		async (kind) => {
