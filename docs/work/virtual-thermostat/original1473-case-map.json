@@ -1323,11 +1323,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "restarts a prepared ON before transport as unresolved and refuses energizing without drainage proof",
-        "line": 2355,
+        "line": 2361,
         "bodySha256": "6d578232c6b83c1a48b6fc54a5b133b9c1a1d5aa1809e6099779faff7a7d6e19",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "d63fdf34567480566dad11a8e0d2be41a95cd84ae28e00cfea79a9e949742ba0",
       "semanticComparison": "The actual restart or held-authentication boundary preserves the prepared/accepted unresolved ON and refuses a stale or undrained successor. Original command identities and source-loss assertions remain; physical acceptance is controlled."
@@ -1344,11 +1345,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "restarts after physical ON acceptance but before journal settlement without treating OFF as drainage",
-        "line": 2374,
+        "line": 2380,
         "bodySha256": "51d3362ce80bed6395c17cf448cdf4413116fa30c8368c4295cd990651a69fe8",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "b44e41b960b79aa2920e116c909885ecb8f15c09e134eee5ce709759c146cda8",
       "semanticComparison": "The actual restart or held-authentication boundary preserves the prepared/accepted unresolved ON and refuses a stale or undrained successor. Original command identities and source-loss assertions remain; physical acceptance is controlled."
@@ -1365,11 +1367,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "revokes a queued ON when its ambient source disappears during transport authentication",
-        "line": 2390,
+        "line": 2396,
         "bodySha256": "10606c1bd5fd189e6fde713c87fe21a5ade02bbf60e619516f691261ecfffe28",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "903ef2b7144838971e247a658719612fd9120bd3fd7917f3d15b14bc7788621c",
       "semanticComparison": "The actual restart or held-authentication boundary preserves the prepared/accepted unresolved ON and refuses a stale or undrained successor. Original command identities and source-loss assertions remain; physical acceptance is controlled."
@@ -1386,11 +1389,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "keeps actual %s delegate sessions closed without an original managed runtime admission",
-        "line": 3282,
+        "line": 5187,
         "bodySha256": "18a4f55a0bfa9739f0e0f33cfe6b8f4d1e11a80236aea055d2ef01614bdf7914",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "f2ff7fd176d636328e117415b40a6ad527efad4b0da70ff61db161dae14ae392",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1407,11 +1411,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "keeps actual %s delegate sessions closed without an original managed runtime admission",
-        "line": 3282,
+        "line": 5187,
         "bodySha256": "18a4f55a0bfa9739f0e0f33cfe6b8f4d1e11a80236aea055d2ef01614bdf7914",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "f2ff7fd176d636328e117415b40a6ad527efad4b0da70ff61db161dae14ae392",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1428,11 +1433,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "requires an actual stopped-to-managed start and permanently revokes its original session at stop entry",
-        "line": 3296,
+        "line": 5201,
         "bodySha256": "94c6831174ba08ce64137cfbbe3d4ec3c1122f6e82ba17fedfb7cafd0a37f04c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "66d413899ad42c10ee1ff593a654d3c46ae6d561000c5e23b1a81d072daf2891",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1449,11 +1455,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "recovers startup, trip and restart through real guard-session OFF admission events including unchanged OFF",
-        "line": 3324,
+        "line": 5229,
         "bodySha256": "cef812a24f829c8327b32fa349732fa1b65ab93936164f449f3d5318dfec8d25",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "fdac85d4e3e50347924d08d74f376bbecb2a8a0d6f8e338d8cc9ad5cff8a791f",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1470,11 +1477,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "withholds real guard-session recovery without a fence feedback loop while graph validation is unavailable",
-        "line": 3371,
+        "line": 5276,
         "bodySha256": "9015e2c4e0c7e5ede9522d540ef6a6020fbe9779607185bcd59dfcc3cffd1f5b",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "601af1f0eced980f5c6009df9960567251fda211e2c68aa113584a3342f5f9e4",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1491,11 +1499,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains real guard-session %s ON until all-leaf post-trip drain and new recovery",
-        "line": 3398,
+        "line": 5303,
         "bodySha256": "804098bba8041593d9a8495f8acbf0890c7f3b0447aab8496e33534b94fe8740",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4410f240b817bcb3f3c51a498664d9e12733637e8dc18da0b815b884b30a8ba1",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1512,11 +1521,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains real guard-session %s ON until all-leaf post-trip drain and new recovery",
-        "line": 3398,
+        "line": 5303,
         "bodySha256": "804098bba8041593d9a8495f8acbf0890c7f3b0447aab8496e33534b94fe8740",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4410f240b817bcb3f3c51a498664d9e12733637e8dc18da0b815b884b30a8ba1",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1533,11 +1543,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects stale scope after external %s mutation while real guard-session proof awaits",
-        "line": 3458,
+        "line": 5363,
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1554,11 +1565,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects stale scope after external %s mutation while real guard-session proof awaits",
-        "line": 3458,
+        "line": 5363,
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1575,11 +1587,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects stale scope after external %s mutation while real guard-session proof awaits",
-        "line": 3458,
+        "line": 5363,
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1596,11 +1609,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects stale scope after external %s mutation while real guard-session proof awaits",
-        "line": 3458,
+        "line": 5363,
         "bodySha256": "3ffc965f298dabb5b4153451e7a831c65c2818f42c3f1e20772faedc0457f648",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "7c06279ea3ebd5037e5b27c85c8b49f1a1cb1e6d1b0ef4d7a355897f4acb0b16",
       "semanticComparison": "The real guard-session fixture preserves managed lifecycle admission, genuine command/delegate/sample/event calls, release fencing and the assigned queued/late/mutation variant. Native SQLite and actual service methods run with simulated endpoint responses and synthetic installed qualification. No installed equipment, universal SDK custody or removed packet API clearance is inferred."
@@ -1617,11 +1631,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "releases the whole demanded branch when any actual member floor trips and keeps individual evidence",
-        "line": 3526,
+        "line": 5431,
         "bodySha256": "90bcf8d524a983a0dbbde29cdb914b97d1aae87ed664d1dc784bc0f85a985a15",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "b9bda76f16962bde582c7788d67889d52043b298495bad47bb28d7515b48fb95",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1638,11 +1653,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains a synchronous input fault across rapid recovery inside hysteresis before evaluation",
-        "line": 3554,
+        "line": 5459,
         "bodySha256": "719566f070c331d3c6ae6d6c1ab7872a814dc73a962bc73b18e0ab2930063486",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "1e660fa11e258dad8126bdb9fd88a863ae958fa5a9e07e4ec8815eb125af4d30",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1659,11 +1675,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains the whole-branch trip barrier across immediate recovery and %s with an energized sibling and queued ON",
-        "line": 3578,
+        "line": 5483,
         "bodySha256": "900dd08653bad62d23b07134681adeb000c7bfa57c64139f0a436569e20c0574",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "8b6384692aea43e242e6a7c80c03cd08a594779d82f3de9600c058a42a5cfaf0",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1680,11 +1697,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains the whole-branch trip barrier across immediate recovery and %s with an energized sibling and queued ON",
-        "line": 3578,
+        "line": 5483,
         "bodySha256": "900dd08653bad62d23b07134681adeb000c7bfa57c64139f0a436569e20c0574",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "8b6384692aea43e242e6a7c80c03cd08a594779d82f3de9600c058a42a5cfaf0",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1701,11 +1719,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains the whole-branch trip barrier across immediate recovery and %s with an energized sibling and queued ON",
-        "line": 3578,
+        "line": 5483,
         "bodySha256": "900dd08653bad62d23b07134681adeb000c7bfa57c64139f0a436569e20c0574",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "8b6384692aea43e242e6a7c80c03cd08a594779d82f3de9600c058a42a5cfaf0",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1722,11 +1741,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks every member protection at final queued ON after %s without a new evaluation request",
-        "line": 3635,
+        "line": 5540,
         "bodySha256": "8e7c4c458187604c9d2714198b2deda6c4cab407e8f27f6035cf51167717d103",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "9b781cf80b4ab3f91698f5788c015a0718610cad700dd9a6dd125e6134776014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1743,11 +1763,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks every member protection at final queued ON after %s without a new evaluation request",
-        "line": 3635,
+        "line": 5540,
         "bodySha256": "8e7c4c458187604c9d2714198b2deda6c4cab407e8f27f6035cf51167717d103",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "9b781cf80b4ab3f91698f5788c015a0718610cad700dd9a6dd125e6134776014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1764,11 +1785,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks every member protection at final queued ON after %s without a new evaluation request",
-        "line": 3635,
+        "line": 5540,
         "bodySha256": "8e7c4c458187604c9d2714198b2deda6c4cab407e8f27f6035cf51167717d103",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "9b781cf80b4ab3f91698f5788c015a0718610cad700dd9a6dd125e6134776014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1785,11 +1807,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "dispatches same-mode mandatory leaves with shared decision identity and retains each journal",
-        "line": 3660,
+        "line": 5565,
         "bodySha256": "4c74493f7b4e88cfa543957f3d4f6e2af197579f65aecb64d7e4d05382d545dd",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "1a8b0694c25f0f93be1794d2751ab3e9cfab58bc45defe1c3cca16e1573d2baf",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1806,11 +1829,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "inhibits and releases every sibling when a mandatory member is %s instead of shrinking capacity",
-        "line": 3680,
+        "line": 5585,
         "bodySha256": "6f9110d8722ed6629645c0a36c58f9473158cdfef35a436d40ca6e132f108707",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "db92f6af25b33ab493f52a039a0c6f35c69331eee558181d68a0be5afa1df014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1827,11 +1851,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "inhibits and releases every sibling when a mandatory member is %s instead of shrinking capacity",
-        "line": 3680,
+        "line": 5585,
         "bodySha256": "6f9110d8722ed6629645c0a36c58f9473158cdfef35a436d40ca6e132f108707",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "db92f6af25b33ab493f52a039a0c6f35c69331eee558181d68a0be5afa1df014",
       "semanticComparison": "The same mandatory-member trip/recovery or missing/offline variant still releases the complete demanded branch, rechecks every member at final queued send and retains each journal. Controlled held sends and concrete sibling/branch assertions are retained; shared fixtureState fields became local values."
@@ -1848,11 +1873,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "fences a queued parallel leaf and drains every journal after %s",
-        "line": 3739,
+        "line": 5644,
         "bodySha256": "00568bd6c653dacb21bdab218719964afe4e1a6fb7c8fbbe59b5bcc951bc8349",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "465d3c1e11ba82046498d91ab7253a54a2f8daf88244d394708dcceb5ec20183",
       "semanticComparison": "All 24 original branch assertions remain. The current fixture observes the same two original ON dispatches, one held and one accepted without proof, before the actual mutation/expiry. It checks queued cancellation, sibling confirmation, the same IDs, OFF proof and branch drainage. A coherent fake Date/performance timeline is used; real SQLite awaits remain. Basic claims/value ports are controlled."
@@ -1869,11 +1895,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "fences a queued parallel leaf and drains every journal after %s",
-        "line": 3739,
+        "line": 5644,
         "bodySha256": "00568bd6c653dacb21bdab218719964afe4e1a6fb7c8fbbe59b5bcc951bc8349",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "465d3c1e11ba82046498d91ab7253a54a2f8daf88244d394708dcceb5ec20183",
       "semanticComparison": "All 24 original branch assertions remain. The current fixture observes the same two original ON dispatches, one held and one accepted without proof, before the actual mutation/expiry. It checks queued cancellation, sibling confirmation, the same IDs, OFF proof and branch drainage. A coherent fake Date/performance timeline is used; real SQLite awaits remain. Basic claims/value ports are controlled."
@@ -1890,11 +1917,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "fences a queued parallel leaf and drains every journal after %s",
-        "line": 3739,
+        "line": 5644,
         "bodySha256": "00568bd6c653dacb21bdab218719964afe4e1a6fb7c8fbbe59b5bcc951bc8349",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "465d3c1e11ba82046498d91ab7253a54a2f8daf88244d394708dcceb5ec20183",
       "semanticComparison": "All 24 original branch assertions remain. The current fixture observes the same two original ON dispatches, one held and one accepted without proof, before the actual mutation/expiry. It checks queued cancellation, sibling confirmation, the same IDs, OFF proof and branch drainage. A coherent fake Date/performance timeline is used; real SQLite awaits remain. Basic claims/value ports are controlled."
@@ -1911,11 +1939,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "keeps a partial late ON unresolved per leaf while releasing the rest of its group",
-        "line": 3890,
+        "line": 5795,
         "bodySha256": "9fc9a639bff62a38ee352c5c6730e4af9f299a280a507b51710c408153ed4a08",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "8e1c9d3e7065c350bb9106a3a97fc175f2503d1fd8969e00770b80a2ed2f30a3",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1932,11 +1961,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for every opposed member to drain and measures changeover from the last qualified OFF",
-        "line": 3918,
+        "line": 5823,
         "bodySha256": "959abd8587767617bd4a0dcbf5ce504541cc7374af9a640aeefb812105613f56",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "82cf52544efaff25d375b0caee8b3e0436ab05bad597e73dc9b13584abd3f5cd",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1953,11 +1983,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains each parallel pending ON across restart and drains siblings independently before resuming",
-        "line": 3966,
+        "line": 5871,
         "bodySha256": "25dde25256c1323f8570d786990848d34a680faaeb391995636854210cc9326d",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "0cdef6c00ae92a1a846b623c29018309bc70ce1e9528fd6cbc1028f77d026ed9",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1974,11 +2005,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks a parallel member generation before final send and cancels its stale queued ON",
-        "line": 4003,
+        "line": 5908,
         "bodySha256": "21d3d234e55430c17ca608e3bc25582cfd05aad4518d481fe8308d2f2243af22",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "2878e364db80d4811bc4c1fffa5b6d03eeee17b2fed4315c2d565ff7e84719f9",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -1995,11 +2027,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "treats an accepted but unobserved parallel member as incomplete capacity and releases its siblings",
-        "line": 4032,
+        "line": 5937,
         "bodySha256": "0f6a2919bac7689d90168af0f807c5943fefa5aaefc52d69414b043646f08152",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e8eef4e25431f4bcc755734647a0a7c84c72021dd2480fb70428632984dc75dd",
       "semanticComparison": "The original per-leaf late/restart/generation or unobserved-acceptance boundary remains, with complete sibling drainage/opposed-branch timing assertions. Current locals and owned gates replace shared fixture fields; endpoint outcomes are controlled and confer no hardware authority."
@@ -2016,11 +2049,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "fences a mandatory refusal across a newly loaded context and releases the already-running sibling",
-        "line": 4048,
+        "line": 5953,
         "bodySha256": "b4ec8e525fcfe97b326d48e239966c1e1bde4fc1f287d7d998e00c72191fca04",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "10ee379d6107c6718937eec491386618f6ee45d0aacd5c94530d1b9503563236",
       "semanticComparison": "allowLateOn permits the already-issued controlled adapter to return the configured known refusal after context replacement; an earlier fixture guard no longer masks that intended outcome. The same mandatory-failure fence and running-sibling release assertions remain. This is controlled adapter evidence, not actual downstream SDK authority."
@@ -2037,11 +2071,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "blocks an opposed cooling branch across restart until the pending heating ON is drained",
-        "line": 4081,
+        "line": 5986,
         "bodySha256": "458f614925c9021103aa1232b2a4a288cc7b3c9e00dba9cbd18c3cddf5e89949",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "b8624456f58dee337578a4dbeb2bfebfb594e3a07591078dc15711815192d395",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2058,11 +2093,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains a disabled controller claim and its pending ON until qualified release evidence exists",
-        "line": 4167,
+        "line": 6072,
         "bodySha256": "df5f15a688765ab54a4c27ebfaefe54fcf823abe7d7bafb81dd6627b81d46e0d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "382e46fc30f5f91f6cadffc255d5fbb9d828c64648ebeef63d506ea102b9a068",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2079,11 +2115,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "revokes ON admission on reconnect until a new ordered release proof is established",
-        "line": 4199,
+        "line": 6104,
         "bodySha256": "2dffe9c7ecdf1a34c0f78b959013353d1abb4fbc4a268f61ab75be3ad795fe8e",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "687c94886dd11607fb678e562f8d0fa1257c17929b7548a64202cb08b21691b8",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2100,11 +2137,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "persists release and ON before transport, then releases at the comfort boundary",
-        "line": 4225,
+        "line": 6130,
         "bodySha256": "e0020929bf02ddb5e9b208f732d04579b836d5f0071b6d052dc0f1a978f4ef66",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "1875f37204d4d3f4bfb5ba50418f89b75224156c97ee8516665d4187cf2f3b98",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2121,11 +2159,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains pending ON and withholds release proof when a delayed ON arrives after OFF",
-        "line": 4261,
+        "line": 6166,
         "bodySha256": "a957f2e200e293e53eb0d0aad015728fd32addfbc1c928ee1c87314739f8f27d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "c0d3e494042e62b0e920528d7ecfec62ccf268701af7fecc791fb3c29d06d1d2",
       "semanticComparison": "The original restart, disabled controller, reconnect, persist-before-send or delayed-ON schedule retains pending identities and requires a new ordered qualified release before energizing. Actual SQLite order and observable outcomes are retained; the endpoint is simulated."
@@ -2142,11 +2181,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "keeps idle SQLite claim retries closed through a recovery fence and revokes earlier admission",
-        "line": 4290,
+        "line": 6195,
         "bodySha256": "f32ddedd9a9b2ead0226230e20b77b89b007e63cfede64f320d3920e23284654",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "06701a8a9b3e65565610b84c45325732c9d68c51afad7f46b965c0ed4eb9fcb5",
       "semanticComparison": "The find spy is installed after bootstrap, so its absolute retry count replaces the old bootstrap-relative delta. The first claims.reload query is the actual claim-entity read; one-shot failure, recovery fence, held closed admission and nonrevival of earlier captures remain."
@@ -2163,11 +2203,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "composes three physical temperatures, aggregate quorum, floor release, stale inhibition and strict recovery",
-        "line": 4333,
+        "line": 6238,
         "bodySha256": "ce67404ed69a8c606ec7141cb6650ddd44d9fb375b4eb4436596fad61d9634b0",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "63d6d3a79baf65c2a11dfa13a512354be0e4382e3358c0a34c930537ae0faeb4",
       "semanticComparison": "Three real physical-temperature reports feed the actual aggregate quorum and runtime. Floor trip, stale inhibition and strict recovery assertions remain. Aggregate state initializes before seeding rather than afterward; relay feedback is controlled, ambient value/aggregate services are real."
@@ -2184,11 +2225,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "latches a floor-limit release and resumes only below the strict recovery threshold",
-        "line": 4539,
+        "line": 6444,
         "bodySha256": "8a0587d03ce5134549b6cbc70a39170de80858be7d562fa7431f2a0e5bc8ed18",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "67e95c0d1f1021fd22a024e2192b056b39f891531418e25433ce38cf17791a7d",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2205,11 +2247,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "revokes a queued ON when the floor reaches its boundary during transport authentication",
-        "line": 4608,
+        "line": 6513,
         "bodySha256": "b70c094f9b68865b354211581a22871dd6560e6ab3d9fad46c3df1830d6a437b",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "f5f2934074b57f83a6b856776a6f9b5a1ef623ea66eb7b2d2d0f732b44dfd4fc",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2226,11 +2269,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "keeps a contact unknown until debounced closed and releases immediately on opening",
-        "line": 4674,
+        "line": 6579,
         "bodySha256": "72f955b76aaf5ec170b6f12034d7c53e24c3577086b5b760cc4fd10e7b5699b8",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "c3fba9c723824b9405a24e6b63d517d47b2da086d49f3ec22e5281005cb7fe43",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2247,11 +2291,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains a heuristic hold but rebaselines trend evidence across quality and user configuration changes",
-        "line": 4825,
+        "line": 6730,
         "bodySha256": "393c58f7f6eec164e202e23015dfbba0d5468f32419041292d5cd50692da26f0",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "c51ab83100be321731a74cf8cdeb723add2c570c5c7257cf77e18ca7a798df08",
       "semanticComparison": "The original protection boundary and recovery sequence remains: strict floor hysteresis, final-authentication floor recheck, contact debounce/open release, or trend rebaseline after quality/configuration. Concrete before/after and queued-send assertions were retained; sensors/transport are fixture controlled."
@@ -2269,10 +2314,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains genuine native-claims OFF settlement across three ordinary decision rotations",
-        "line": 2999,
+        "line": 4904,
         "bodySha256": "d7ab89e755248e09cebfbe1fd116d39ddeec2402dd15529fc87a0d9af098300f",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "aa5904390b7459a78ca67f38f6a38e41894645577b29f56691ccd3b2cc605c2e",
       "semanticComparison": "Real native-claims bootstrap completes with exactly two fences, then three ordinary decisions retain settled OFF facts, no ON, bounded subscribers and complete stop cleanup. Original terminal-completion observer machinery is not adopted by this outcome binding."
@@ -2290,10 +2336,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "requires a fresh native-claims drain after a same-value protected %s write",
-        "line": 3022,
+        "line": 4927,
         "bodySha256": "85209cdb6d1a49c05f7915bcde38e1ec8c2f78e94a960fb9223f264d4d99d11f",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "21951068502a4eef301a1afd4bcb4e7ed135c928a4d909184b42e241b43b8ac8",
       "semanticComparison": "An actual same-value config SQL write invalidates old drain facts and additionally withdraws installed qualification in the current model. Refresh alone cannot requalify; a fresh explicit qualification and drain produce a new proof/sample without changing minimum-off baseline. This is an explicitly stricter raw-write boundary, not a validated no-op or proof of the former refresh-only recovery schedule."
@@ -2311,10 +2358,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "requires a fresh native-claims drain after a same-value protected %s write",
-        "line": 3022,
+        "line": 4927,
         "bodySha256": "85209cdb6d1a49c05f7915bcde38e1ec8c2f78e94a960fb9223f264d4d99d11f",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "21951068502a4eef301a1afd4bcb4e7ed135c928a4d909184b42e241b43b8ac8",
       "semanticComparison": "An actual same-value slot SQL write invalidates old drain facts while retaining qualification. A fresh native drain yields a new proof/newer unchanged OFF sample without changing the original minimum-off baseline."
@@ -2332,10 +2380,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "requires fresh native-claims qualification after loss without reusing saved OFF evidence",
-        "line": 3071,
+        "line": 4976,
         "bodySha256": "2e1d3cb14771938a09ab4f9c0158040aac05d602d6496c7c285e5a2c95a73080",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "95ff45b9c593a8dcf892049d1434e45412b6e43da51d21b45d6346336631b902",
       "semanticComparison": "Loss of real claims qualification preserves the fence count and refuses ON; only explicit new qualification and a fresh drain increase it. Original saved evidence is not revived. No installed qualification is certified."
@@ -2353,10 +2402,11 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never lends an original held managed ON guard the native drain after an ordinary decision rotation",
-        "line": 3086,
+        "line": 4991,
         "bodySha256": "a8e3890f78ec6b7eec1da8b8a47d3f31e412b75f9aede8788926d0cdbed694e6",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "01992413cd66a5146c924fa54b00172b7f5f2de10674d397a5fc3c85cbd0d12b",
       "semanticComparison": "The observer returns the original send Promise with its original receiver/arguments. An actual managed ON held in beforeOn admits initially and its original guard refuses after an ordinary decision rotation; stop precedes gate release."
@@ -2389,19 +2439,21 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "publishes a fresh native decision from the actual original interval without requesting an ON",
-        "line": 3130,
+        "line": 5035,
         "bodySha256": "078e83632fec1cc75232d0a66f87117d0ca26725e0c2889bb2b5e89a3c946578",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "526418ba0e95f3d4aa5ff2eff4c1893a814029226393babbcb4a30f9b803d9c6",
       "additionalCurrent": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "an actual interval retires the original held native ON decision without renewing its guard",
-        "line": 3172,
+        "line": 5077,
         "bodySha256": "ee5484bfdf11f97bca3ff75cbf87a94fb38480a0d33243651f6cce0ad72a51f4",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "The idle actual-interval case publishes a newer context/sequence without ON. The additional actual-interval case holds the original native managed ON, proves its exact guard true at entry then false after the original timer calls request(false), with no explicit poll, fake advance, replacement timer or ON send. Claims-membership snapshots intentionally remain valid for legitimate OFF work; exact decision/context/epoch authority is the ON boundary. The failed membership-snapshot adaptation is retained as withdrawn evidence, not a current failure."
     },
