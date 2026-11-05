@@ -44,9 +44,9 @@
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 135,
-    "scoped_current_invariant_bound": 113,
-    "replacement_current_invariant_bound": 7,
+    "residual_no_current_case_bound": 129,
+    "scoped_current_invariant_bound": 118,
+    "replacement_current_invariant_bound": 8,
     "ported_descriptor_control_qualified": 6
   },
   "rows": [
@@ -4178,9 +4178,130 @@
       ],
       "originalLine": 14821,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): refreshes genuine claims after recovery TX AND original structure release, and cleans a failed original bootstrap before same-instance restart. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "f33ba56eb019f6fb8efa16b1abe584ec3b764c249b66832fd42a2e63c7691c96"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "f33ba56eb019f6fb8efa16b1abe584ec3b764c249b66832fd42a2e63c7691c96",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "retires failed actual recovery before same-instance retry and keeps fresh B admission independent of stopped A",
+        "line": 4197,
+        "bodySha256": "cd7a057cd6ccf23806cf6d34b2e28bb7cf8162e285ce076e47cd16061aa3cbc5",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db"
+      },
+      "helpers": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "becde16d1baa4d69ef2fbabb0778ae9da4e64049cec4f3295a10c575c3616e1c",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866"
+      },
+      "semanticComparison": "Original203 complete body and synthetic-qualification setup, recovery update, claims refresh observation, failed bootstrap, same-instance retry, fresh-instance B and repeated stopped-A cleanup were compared. Current recovery is deliberately diagnostic and claims-neutral; its native journal/branch writes do not dirty claims and no claims refresh is required. The replacement therefore observes the actual original claims capture after recovery instead of inventing a refresh call. Actual shared-guard runtime/claims/SQLite/SDK composition starts fresh A. An original beforeQuery subscriber throws the exact original Error at the conditional recovery branch UPDATE. The original transaction rolls back without UPDATE acknowledgement; complete saved branches/journal stay equal, and A retires its lifecycle/bootstrap/timer/contexts/runtime admission/listeners. Same A then retries successfully with one original recovery UPDATE ACK and COMMIT. Every observed original claims capture occurs after the native transaction is inactive and the exact recovery structural lease, captured via AsyncLocalStorage.bind in its original callback, is inactive. The observer forwards the same original capture receiver/result and never supplies a new admission result. After A stops, distinct B bootstraps/settles with its own acknowledged recovery and live context/lifecycle. Repeating stale A stop cannot invalidate the exact B claims capture or replace B context/lifecycle. Actual claims and configuration rows remain completely equal, no claims refresh or ON occurs, and fixture errors stay empty. The current claims-neutral recovery boundary replaces the old released-refresh trace; it does not certify that removed callback or private caller/descriptor/cross-case/global-drain protocol. Native constructor/registration, complete bootstrap failure identity and original SQLite outcome remain actual. Qualification, network, storage and metadata inputs are explicitly offline software boundaries, not physical equipment qualification. The current witness also starts a genuine active comfort override before failed recovery and requires the same lease identity, revision, deadline and status plus a monotone watermark after failure and same-instance retry; it does not grant a new budget.",
+      "negativeControl": {
+        "controls": [
+          {
+            "name": "bootstrap-retirement",
+            "reportSha256": "0c830c0e5530af1896278dd742aaedcc5d22b6ea642a22f7adccb61debdbf66e",
+            "failed": 3,
+            "passed": 0,
+            "unrun": 174
+          }
+        ],
+        "scope": "Counts refer to each selected invocation, including paired/control variants; all failures inspected at the exact original assertion. Production restored byte-for-byte.",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+        }
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "retires failed actual recovery before same-instance retry and keeps fresh B admission independent of stopped A",
+        "line": 4154,
+        "bodySha256": "454dd0548aae617bc4371998d9a6a39fad04994eecf29dbe5dc0af904f63e7cc",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "45287bfd522ae02c30168257991fff259dc766a1f136404399426a0aa218724b",
+        "mutation": "Omit only original failed-bootstrap onModuleDestroy retirement",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "unrun": 175,
+        "verifiedBoundary": "After exact original bootstrap rejection and native rollback, A active remains true instead of false when failed-start retirement is omitted",
+        "productionRestoredSha256": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+      },
+      "helpersBeforeRevalidation": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindingsBeforeRevalidation": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "9ddd94e4ca7afedfdddd0fb36739923f0424f012df7c60841d412c8b58ac4fab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866"
+      },
+      "currentRevalidation": {
+        "sourceCommit": "62fe6e6359621381f7ff6080a6bc45760492c2b3",
+        "appsTree": "0d724bff5a855ef9c027e1e21a2d31dfde52b1dd",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db",
+        "scope": "Current scoped/replacement native invariant only; BeforeRevalidation and sourceBindingRefresh retain their measured historical identities. No private caller/TIME/observer/global-drain or equipment adoption."
+      },
+      "semanticComparisonBeforeRevalidation": "Original203 complete body and synthetic-qualification setup, recovery update, claims refresh observation, failed bootstrap, same-instance retry, fresh-instance B and repeated stopped-A cleanup were compared. Current recovery is deliberately diagnostic and claims-neutral; its native journal/branch writes do not dirty claims and no claims refresh is required. The replacement therefore observes the actual original claims capture after recovery instead of inventing a refresh call. Actual shared-guard runtime/claims/SQLite/SDK composition starts fresh A. An original beforeQuery subscriber throws the exact original Error at the conditional recovery branch UPDATE. The original transaction rolls back without UPDATE acknowledgement; complete saved branches/journal stay equal, and A retires its lifecycle/bootstrap/timer/contexts/runtime admission/listeners. Same A then retries successfully with one original recovery UPDATE ACK and COMMIT. Every observed original claims capture occurs after the native transaction is inactive and the exact recovery structural lease, captured via AsyncLocalStorage.bind in its original callback, is inactive. The observer forwards the same original capture receiver/result and never supplies a new admission result. After A stops, distinct B bootstraps/settles with its own acknowledged recovery and live context/lifecycle. Repeating stale A stop cannot invalidate the exact B claims capture or replace B context/lifecycle. Actual claims and configuration rows remain completely equal, no claims refresh or ON occurs, and fixture errors stay empty. The current claims-neutral recovery boundary replaces the old released-refresh trace; it does not certify that removed callback or private caller/descriptor/cross-case/global-drain protocol. Native constructor/registration, complete bootstrap failure identity and original SQLite outcome remain actual. Qualification, network, storage and metadata inputs are explicitly offline software boundaries, not physical equipment qualification."
     },
     {
       "id": 204,
@@ -4204,9 +4325,127 @@
       ],
       "originalLine": 15261,
       "historicalR265": "failed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps real enabled publication locks neutral while managed ON is pending before-send, then preserves actual refusal/UNKNOWN on original claims loss. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "2c472279e6d7b69ff2bde5485dc7a2df4c4b35dca17060728aa1b6a8486c642b"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "2c472279e6d7b69ff2bde5485dc7a2df4c4b35dca17060728aa1b6a8486c642b",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps enabled native publication locks neutral during managed ON %s and preserves genuine claims-loss outcome",
+        "line": 3877,
+        "bodySha256": "3f2959268ee8f578a3463bab3bd6f7cdcd887b472f2a1131f61e55c991ca16ff",
+        "parameter": "before-send",
+        "expandedTitle": "keeps enabled native publication locks neutral during managed ON before-send and preserves genuine claims-loss outcome",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db"
+      },
+      "helpers": [
+        {
+          "name": "useLockedNativeClaimsGuard",
+          "line": 2994,
+          "bodySha256": "47355dde54355c113137677245d66283152919923d765fe7f5c8512620e10a9c",
+          "initializerSha256": "966aaac7fb78a8d20864ccc1703dc7b1b49f0e084a423889d3591e9f611bfe11",
+          "declarationSha256": "e9f2bfb84d998d64aa23bab3ba70adb0779af3fa7c33848b7ab3397adffe97c0"
+        },
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "semanticComparison": "Actual enabled PropertyValueLockService is injected at creation into the managed fixture PropertyValueService, exercising real native SQL/socket locks on the virtual temperature output. Exact output-ID correlated INSERT and DELETE occur, the output lock is released, and the same pre-report native claims capture plus original held command guard remain current. Actual claims.invalidate then closes both. Real managed SDK before/after onSend returns refused with zero ON sends or exact UNKNOWN with one send while the owner remains active. The exact original command operation joins; its complete sole ON row changes only status, settlement time and fault, preserving identity/configuration/decision/claim fields. Claim release evidence remains null. Retirement precedes cleanup queue joining; no lock rows remain afterward. Current schedule adopts the narrow publication-neutrality and genuine claims-loss outcome invariant. It joins the original SDK/journal operation and telemetry, not the retired global settle loop or full private captureActualCaller/TIME/writer ownership protocol. Initial global-drain preparations timed out; the failing await phase is recorded, causal completeness is not established. Qualification is explicit synthetic data, and transport/storage are controlled; no installed equipment or whole-provider clearance.",
+      "negativeControl": {
+        "controls": [
+          {
+            "name": "enabled-lock-bypass",
+            "reportSha256": "e031567925fa141a9f14fdf44d138da529892dcb16e19a5d55003f024457fb8d",
+            "failed": 2,
+            "passed": 0,
+            "unrun": 175
+          },
+          {
+            "name": "claims-invalidation-noop",
+            "reportSha256": "408458ae6c5a796f03553878dcc89625d83575dcee216f175a010896f27f70ba",
+            "failed": 2,
+            "passed": 0,
+            "unrun": 175
+          },
+          {
+            "name": "sdk-unknown-promotion",
+            "reportSha256": "96e7a464dfd4828e44736804f2f64f2c755c7214d64cfd211b4617c9164d9564",
+            "failed": 1,
+            "passed": 1,
+            "unrun": 175
+          }
+        ],
+        "scope": "Counts refer to each selected invocation, including paired/control variants; all failures inspected at the exact original assertion. Production restored byte-for-byte.",
+        "productionRestored": {
+          "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+          "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab"
+        }
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps enabled native publication locks neutral during managed ON %s and preserves genuine claims-loss outcome",
+        "line": 3834,
+        "bodySha256": "3f2959268ee8f578a3463bab3bd6f7cdcd887b472f2a1131f61e55c991ca16ff",
+        "parameter": "before-send",
+        "expandedTitle": "keeps enabled native publication locks neutral during managed ON before-send and preserves genuine claims-loss outcome",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "2f3283e15a8f3f85de0eb16d68edbd3e44594eaa273671f671005221b7d2fd3d",
+        "enabledLockBypass": "Actual SQL lock bypass must fail both variants even while isEnabled remains true",
+        "claimsInvalidationNoop": "Both original capture and command guard must expire on the actual invalidation",
+        "sdkUnknownPromotion": "After-send UNKNOWN cannot be promoted to accepted; before-send remains refused",
+        "productionRestored": {
+          "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+          "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab"
+        }
+      },
+      "helpersBeforeRevalidation": [
+        {
+          "name": "useLockedNativeClaimsGuard",
+          "line": 2994,
+          "bodySha256": "47355dde54355c113137677245d66283152919923d765fe7f5c8512620e10a9c",
+          "initializerSha256": "966aaac7fb78a8d20864ccc1703dc7b1b49f0e084a423889d3591e9f611bfe11",
+          "declarationSha256": "e9f2bfb84d998d64aa23bab3ba70adb0779af3fa7c33848b7ab3397adffe97c0"
+        },
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "currentRevalidation": {
+        "sourceCommit": "62fe6e6359621381f7ff6080a6bc45760492c2b3",
+        "appsTree": "0d724bff5a855ef9c027e1e21a2d31dfde52b1dd",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db",
+        "scope": "Current scoped/replacement native invariant only; BeforeRevalidation and sourceBindingRefresh retain their measured historical identities. No private caller/TIME/observer/global-drain or equipment adoption."
+      }
     },
     {
       "id": 206,
@@ -4217,9 +4456,127 @@
       ],
       "originalLine": 15261,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps real enabled publication locks neutral while managed ON is pending after-send, then preserves actual refusal/UNKNOWN on original claims loss. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "2c472279e6d7b69ff2bde5485dc7a2df4c4b35dca17060728aa1b6a8486c642b"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "2c472279e6d7b69ff2bde5485dc7a2df4c4b35dca17060728aa1b6a8486c642b",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps enabled native publication locks neutral during managed ON %s and preserves genuine claims-loss outcome",
+        "line": 3877,
+        "bodySha256": "3f2959268ee8f578a3463bab3bd6f7cdcd887b472f2a1131f61e55c991ca16ff",
+        "parameter": "after-send",
+        "expandedTitle": "keeps enabled native publication locks neutral during managed ON after-send and preserves genuine claims-loss outcome",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db"
+      },
+      "helpers": [
+        {
+          "name": "useLockedNativeClaimsGuard",
+          "line": 2994,
+          "bodySha256": "47355dde54355c113137677245d66283152919923d765fe7f5c8512620e10a9c",
+          "initializerSha256": "966aaac7fb78a8d20864ccc1703dc7b1b49f0e084a423889d3591e9f611bfe11",
+          "declarationSha256": "e9f2bfb84d998d64aa23bab3ba70adb0779af3fa7c33848b7ab3397adffe97c0"
+        },
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "semanticComparison": "Actual enabled PropertyValueLockService is injected at creation into the managed fixture PropertyValueService, exercising real native SQL/socket locks on the virtual temperature output. Exact output-ID correlated INSERT and DELETE occur, the output lock is released, and the same pre-report native claims capture plus original held command guard remain current. Actual claims.invalidate then closes both. Real managed SDK before/after onSend returns refused with zero ON sends or exact UNKNOWN with one send while the owner remains active. The exact original command operation joins; its complete sole ON row changes only status, settlement time and fault, preserving identity/configuration/decision/claim fields. Claim release evidence remains null. Retirement precedes cleanup queue joining; no lock rows remain afterward. Current schedule adopts the narrow publication-neutrality and genuine claims-loss outcome invariant. It joins the original SDK/journal operation and telemetry, not the retired global settle loop or full private captureActualCaller/TIME/writer ownership protocol. Initial global-drain preparations timed out; the failing await phase is recorded, causal completeness is not established. Qualification is explicit synthetic data, and transport/storage are controlled; no installed equipment or whole-provider clearance.",
+      "negativeControl": {
+        "controls": [
+          {
+            "name": "enabled-lock-bypass",
+            "reportSha256": "e031567925fa141a9f14fdf44d138da529892dcb16e19a5d55003f024457fb8d",
+            "failed": 2,
+            "passed": 0,
+            "unrun": 175
+          },
+          {
+            "name": "claims-invalidation-noop",
+            "reportSha256": "408458ae6c5a796f03553878dcc89625d83575dcee216f175a010896f27f70ba",
+            "failed": 2,
+            "passed": 0,
+            "unrun": 175
+          },
+          {
+            "name": "sdk-unknown-promotion",
+            "reportSha256": "96e7a464dfd4828e44736804f2f64f2c755c7214d64cfd211b4617c9164d9564",
+            "failed": 1,
+            "passed": 1,
+            "unrun": 175
+          }
+        ],
+        "scope": "Counts refer to each selected invocation, including paired/control variants; all failures inspected at the exact original assertion. Production restored byte-for-byte.",
+        "productionRestored": {
+          "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+          "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab"
+        }
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps enabled native publication locks neutral during managed ON %s and preserves genuine claims-loss outcome",
+        "line": 3834,
+        "bodySha256": "3f2959268ee8f578a3463bab3bd6f7cdcd887b472f2a1131f61e55c991ca16ff",
+        "parameter": "after-send",
+        "expandedTitle": "keeps enabled native publication locks neutral during managed ON after-send and preserves genuine claims-loss outcome",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "2f3283e15a8f3f85de0eb16d68edbd3e44594eaa273671f671005221b7d2fd3d",
+        "enabledLockBypass": "Actual SQL lock bypass must fail both variants even while isEnabled remains true",
+        "claimsInvalidationNoop": "Both original capture and command guard must expire on the actual invalidation",
+        "sdkUnknownPromotion": "After-send UNKNOWN cannot be promoted to accepted; before-send remains refused",
+        "productionRestored": {
+          "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+          "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab"
+        }
+      },
+      "helpersBeforeRevalidation": [
+        {
+          "name": "useLockedNativeClaimsGuard",
+          "line": 2994,
+          "bodySha256": "47355dde54355c113137677245d66283152919923d765fe7f5c8512620e10a9c",
+          "initializerSha256": "966aaac7fb78a8d20864ccc1703dc7b1b49f0e084a423889d3591e9f611bfe11",
+          "declarationSha256": "e9f2bfb84d998d64aa23bab3ba70adb0779af3fa7c33848b7ab3397adffe97c0"
+        },
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "currentRevalidation": {
+        "sourceCommit": "62fe6e6359621381f7ff6080a6bc45760492c2b3",
+        "appsTree": "0d724bff5a855ef9c027e1e21a2d31dfde52b1dd",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db",
+        "scope": "Current scoped/replacement native invariant only; BeforeRevalidation and sourceBindingRefresh retain their measured historical identities. No private caller/TIME/observer/global-drain or equipment adoption."
+      }
     },
     {
       "id": 207,
@@ -4230,9 +4587,112 @@
       ],
       "originalLine": 15374,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves an original native bootstrap before-commit error and exact persisted outcome without first context/admission leakage. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "9aec410d59c2cb44bbc5c96ac3b937813d4553c0debe2d3e03b471333f3fe02d"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "9aec410d59c2cb44bbc5c96ac3b937813d4553c0debe2d3e03b471333f3fe02d",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "preserves the original native bootstrap %s failure, complete persisted image and retired first admission",
+        "line": 4388,
+        "bodySha256": "99d8572212c3465f440d0e3de325f8e0ea042e0faabaec86213d718770b3a75d",
+        "parameter": "before-commit",
+        "expandedTitle": "preserves the original native bootstrap before-commit failure, complete persisted image and retired first admission",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db"
+      },
+      "helpers": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "semanticComparison": "Original native bootstrap before-commit injected one Error at the transaction commit hook, required exact original rejection identity, prepared versus committed unknown journal state and no ON. Current scoped binding uses actual native SQLite/claims/graph and the managed test fixture, retires its prior runtime, then creates a fresh actual runtime. Its prepared ON seed matches the original persisted-history boundary; no actual ON is fabricated. The injection is pinned to the original recovery QueryRunner observed from the real journal UPDATE containing the seeded command ID. Exact hook counts prove before-COMMIT versus after-ACK reachability. Original Error identity is preserved. Complete command membership/full rows, all branch rows, configuration and claim images are equal to the initial image on rollback; after ACK only the expected journal status/fault and branch suspension fields change. The failed first lifecycle, bootstrap, timer, contexts, outputs, in-flight set and runtime admission are retired; event listener counts return to baseline. A subsequent public requestInstalled rejects before any SQL; send and fence transcripts remain equal and no ON occurs. The observer is removed after cleanup. This adopts the narrow public startup/native outcome and no-first-admission-leak invariant, not the former full private TIME/mutation-writer/callback-Q or equipment protocol. The current owner is constructed with the real comfort automation provider; that provider is registered at the observed native commit boundary and removed after failed startup. The complete persisted controller runtime row is also compared with its original image.",
+      "negativeControl": {
+        "controls": [
+          {
+            "name": "bootstrap-error-identity",
+            "reportSha256": "fa55584372436f62a5eab643e23144c029f972c022647ab1fdd3b5d1d384f7dd",
+            "failed": 2,
+            "passed": 0,
+            "unrun": 175
+          },
+          {
+            "name": "bootstrap-native-image",
+            "reportSha256": "fe5db319620e687803a7d128468ac737771727ba3a3bfe3d24f4da6a98821418",
+            "failed": 1,
+            "passed": 1,
+            "unrun": 175
+          },
+          {
+            "name": "bootstrap-retirement",
+            "reportSha256": "0c830c0e5530af1896278dd742aaedcc5d22b6ea642a22f7adccb61debdbf66e",
+            "failed": 3,
+            "passed": 0,
+            "unrun": 174
+          }
+        ],
+        "scope": "Counts refer to each selected invocation, including paired/control variants; all failures inspected at the exact original assertion. Production restored byte-for-byte.",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9"
+        }
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "preserves the original native bootstrap %s failure, complete persisted image and retired first admission",
+        "line": 4319,
+        "bodySha256": "fa131c07e2f3fefb99c5b34fdef69a84057deb2c07daf02f3737046d7c862f35",
+        "parameter": "before-commit",
+        "expandedTitle": "preserves the original native bootstrap before-commit failure, complete persisted image and retired first admission",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "8ab09f2c8f70bd81c0e3effbf496b3ece3bdfa3d33f76cb4b1ef39ca2854b6bb",
+        "wrapperMutation": "Same-message bootstrap wrapper breaks exact identity in both stages",
+        "nativeImageMutation": "Coherently marking recovered pending ON cancelled instead of unknown fails after-ACK full-row equality; rollback stage remains unchanged",
+        "retirementMutation": "Omitting failed-lifecycle retirement fails both stages",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9"
+        }
+      },
+      "helpersBeforeRevalidation": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "currentRevalidation": {
+        "sourceCommit": "62fe6e6359621381f7ff6080a6bc45760492c2b3",
+        "appsTree": "0d724bff5a855ef9c027e1e21a2d31dfde52b1dd",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db",
+        "scope": "Current scoped/replacement native invariant only; BeforeRevalidation and sourceBindingRefresh retain their measured historical identities. No private caller/TIME/observer/global-drain or equipment adoption."
+      },
+      "semanticComparisonBeforeRevalidation": "Original native bootstrap before-commit injected one Error at the transaction commit hook, required exact original rejection identity, prepared versus committed unknown journal state and no ON. Current scoped binding uses actual native SQLite/claims/graph and the managed test fixture, retires its prior runtime, then creates a fresh actual runtime. Its prepared ON seed matches the original persisted-history boundary; no actual ON is fabricated. The injection is pinned to the original recovery QueryRunner observed from the real journal UPDATE containing the seeded command ID. Exact hook counts prove before-COMMIT versus after-ACK reachability. Original Error identity is preserved. Complete command membership/full rows, all branch rows, configuration and claim images are equal to the initial image on rollback; after ACK only the expected journal status/fault and branch suspension fields change. The failed first lifecycle, bootstrap, timer, contexts, outputs, in-flight set and runtime admission are retired; event listener counts return to baseline. A subsequent public requestInstalled rejects before any SQL; send and fence transcripts remain equal and no ON occurs. The observer is removed after cleanup. This adopts the narrow public startup/native outcome and no-first-admission-leak invariant, not the former full private TIME/mutation-writer/callback-Q or equipment protocol."
     },
     {
       "id": 208,
@@ -4243,9 +4703,112 @@
       ],
       "originalLine": 15374,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves an original native bootstrap after-ack error and exact persisted outcome without first context/admission leakage. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "9aec410d59c2cb44bbc5c96ac3b937813d4553c0debe2d3e03b471333f3fe02d"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "9aec410d59c2cb44bbc5c96ac3b937813d4553c0debe2d3e03b471333f3fe02d",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "preserves the original native bootstrap %s failure, complete persisted image and retired first admission",
+        "line": 4388,
+        "bodySha256": "99d8572212c3465f440d0e3de325f8e0ea042e0faabaec86213d718770b3a75d",
+        "parameter": "after-ack",
+        "expandedTitle": "preserves the original native bootstrap after-ack failure, complete persisted image and retired first admission",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db"
+      },
+      "helpers": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "semanticComparison": "Original native bootstrap after-ack injected one Error at the transaction commit hook, required exact original rejection identity, prepared versus committed unknown journal state and no ON. Current scoped binding uses actual native SQLite/claims/graph and the managed test fixture, retires its prior runtime, then creates a fresh actual runtime. Its prepared ON seed matches the original persisted-history boundary; no actual ON is fabricated. The injection is pinned to the original recovery QueryRunner observed from the real journal UPDATE containing the seeded command ID. Exact hook counts prove before-COMMIT versus after-ACK reachability. Original Error identity is preserved. Complete command membership/full rows, all branch rows, configuration and claim images are equal to the initial image on rollback; after ACK only the expected journal status/fault and branch suspension fields change. The failed first lifecycle, bootstrap, timer, contexts, outputs, in-flight set and runtime admission are retired; event listener counts return to baseline. A subsequent public requestInstalled rejects before any SQL; send and fence transcripts remain equal and no ON occurs. The observer is removed after cleanup. This adopts the narrow public startup/native outcome and no-first-admission-leak invariant, not the former full private TIME/mutation-writer/callback-Q or equipment protocol. The current owner is constructed with the real comfort automation provider; that provider is registered at the observed native commit boundary and removed after failed startup. The complete persisted controller runtime row is also compared with its original image.",
+      "negativeControl": {
+        "controls": [
+          {
+            "name": "bootstrap-error-identity",
+            "reportSha256": "fa55584372436f62a5eab643e23144c029f972c022647ab1fdd3b5d1d384f7dd",
+            "failed": 2,
+            "passed": 0,
+            "unrun": 175
+          },
+          {
+            "name": "bootstrap-native-image",
+            "reportSha256": "fe5db319620e687803a7d128468ac737771727ba3a3bfe3d24f4da6a98821418",
+            "failed": 1,
+            "passed": 1,
+            "unrun": 175
+          },
+          {
+            "name": "bootstrap-retirement",
+            "reportSha256": "0c830c0e5530af1896278dd742aaedcc5d22b6ea642a22f7adccb61debdbf66e",
+            "failed": 3,
+            "passed": 0,
+            "unrun": 174
+          }
+        ],
+        "scope": "Counts refer to each selected invocation, including paired/control variants; all failures inspected at the exact original assertion. Production restored byte-for-byte.",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9"
+        }
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "preserves the original native bootstrap %s failure, complete persisted image and retired first admission",
+        "line": 4319,
+        "bodySha256": "fa131c07e2f3fefb99c5b34fdef69a84057deb2c07daf02f3737046d7c862f35",
+        "parameter": "after-ack",
+        "expandedTitle": "preserves the original native bootstrap after-ack failure, complete persisted image and retired first admission",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "8ab09f2c8f70bd81c0e3effbf496b3ece3bdfa3d33f76cb4b1ef39ca2854b6bb",
+        "wrapperMutation": "Same-message bootstrap wrapper breaks exact identity in both stages",
+        "nativeImageMutation": "Coherently marking recovered pending ON cancelled instead of unknown fails after-ACK full-row equality; rollback stage remains unchanged",
+        "retirementMutation": "Omitting failed-lifecycle retirement fails both stages",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9"
+        }
+      },
+      "helpersBeforeRevalidation": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "currentRevalidation": {
+        "sourceCommit": "62fe6e6359621381f7ff6080a6bc45760492c2b3",
+        "appsTree": "0d724bff5a855ef9c027e1e21a2d31dfde52b1dd",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db",
+        "scope": "Current scoped/replacement native invariant only; BeforeRevalidation and sourceBindingRefresh retain their measured historical identities. No private caller/TIME/observer/global-drain or equipment adoption."
+      },
+      "semanticComparisonBeforeRevalidation": "Original native bootstrap after-ack injected one Error at the transaction commit hook, required exact original rejection identity, prepared versus committed unknown journal state and no ON. Current scoped binding uses actual native SQLite/claims/graph and the managed test fixture, retires its prior runtime, then creates a fresh actual runtime. Its prepared ON seed matches the original persisted-history boundary; no actual ON is fabricated. The injection is pinned to the original recovery QueryRunner observed from the real journal UPDATE containing the seeded command ID. Exact hook counts prove before-COMMIT versus after-ACK reachability. Original Error identity is preserved. Complete command membership/full rows, all branch rows, configuration and claim images are equal to the initial image on rollback; after ACK only the expected journal status/fault and branch suspension fields change. The failed first lifecycle, bootstrap, timer, contexts, outputs, in-flight set and runtime admission are retired; event listener counts return to baseline. A subsequent public requestInstalled rejects before any SQL; send and fence transcripts remain equal and no ON occurs. The observer is removed after cleanup. This adopts the narrow public startup/native outcome and no-first-admission-leak invariant, not the former full private TIME/mutation-writer/callback-Q or equipment protocol."
     },
     {
       "id": 209,
@@ -4321,9 +4884,120 @@
       ],
       "originalLine": 16268,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): denies original command claims after a foreign actual claim revision mutation even with matching source and unchanged journal. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "f12b4d332032f63eb6045725d9e1d30861d349be4d08baa71e8c37e5f7d6b918"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "f12b4d332032f63eb6045725d9e1d30861d349be4d08baa71e8c37e5f7d6b918",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "refuses the original held managed ON after an actual foreign claim revision write with unchanged physical source and journal",
+        "line": 3711,
+        "bodySha256": "2d9c1bcfe930324b37ec6047d562aa6462bbbec71c2b39f0bb19d8139e33b7b8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db"
+      },
+      "helpers": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+      },
+      "semanticComparison": "Original held managed ON is reached through actual native runtime/claims/guard SDK. The actual raw optimistic claim revision UPDATE retains its original SQL and all three bindings. The same captured claims permission and original send guard become false. Full physical property/channel/device image and complete native journal remain equal immediately across the foreign write; the claim row changes only revision +1. The original managed SDK Promise returns refused before any ON send while owner remains active. The exact original enrolled command operation joins and complete journal membership/full rows remain equal except that sole original ON receives cancelled, its settlement time and refusal fault. The new claim revision remains persisted and release evidence remains null. Cleanup retires before joining its queues and retains foreign observer descriptors/gates. This scopes the original public claims-loss/native refusal invariant; the retired captureActualCaller/TIME/writer custody machinery and global settle drain are not adopted. Explicit synthetic qualification and simulated transport/storage grant no installed-equipment, whole-provider or alpha clearance.",
+      "negativeControl": {
+        "controls": [
+          {
+            "name": "foreign-revision-ignored",
+            "reportSha256": "a9e5e347e9ed25c53f83a43d0cf79670dc51090f014d53af58b078bbd83082fa",
+            "failed": 1,
+            "passed": 0,
+            "unrun": 176
+          },
+          {
+            "name": "refused-on-promoted",
+            "reportSha256": "94445d28dcb14f9eb3edd36c87e5acbe0285008eef15e83ac80d6b43754c7755",
+            "failed": 1,
+            "passed": 0,
+            "unrun": 176
+          }
+        ],
+        "scope": "Counts refer to each selected invocation, including paired/control variants; all failures inspected at the exact original assertion. Production restored byte-for-byte.",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+        }
+      },
+      "sourceBindingRefresh": {
+        "scope": "Bootstrap installs clock triggers only when its later table exists; all other class members, including catalog mutation/revocation methods, remain token-identical",
+        "proofSha256": "44e8b68621133c9a079b8fefe747a3b48bc9c7815baae008ef73ce0adbe36068",
+        "validation": "Four complete ownership consumer tests and all 424 current E2E cases pass; preceding runtime 172/501 consumer measurement remains attributed to the clock repair head, not a new runtime rerun"
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "refuses the original held managed ON after an actual foreign claim revision write with unchanged physical source and journal",
+        "line": 3668,
+        "bodySha256": "2d9c1bcfe930324b37ec6047d562aa6462bbbec71c2b39f0bb19d8139e33b7b8",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "15ffb9611ae53572af5c9f45ef779bc03e1f4b6ce89e071b2535189da7f2b365",
+        "ignoreActualRevisionWrite": "Ignoring the exact native revision UPDATE in the ownership subscriber leaves the original capture current and fails the test",
+        "promoteRefusedNativeOn": "Persisting actual refused ON as accepted fails complete native row equality",
+        "productionRestored": {
+          "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+          "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "a7ba8b095b59497673b7e38b6437c471af530995b18c413343eae9e7d6c576d0"
+        }
+      },
+      "helpersBeforeRevalidation": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindingsBeforeRevalidation": {
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576"
+      },
+      "currentRevalidation": {
+        "sourceCommit": "62fe6e6359621381f7ff6080a6bc45760492c2b3",
+        "appsTree": "0d724bff5a855ef9c027e1e21a2d31dfde52b1dd",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "b2f1fd830a0139e9380e45b9265eba25fcd172470c51a05457446283d5da01db",
+        "scope": "Current scoped/replacement native invariant only; BeforeRevalidation and sourceBindingRefresh retain their measured historical identities. No private caller/TIME/observer/global-drain or equipment adoption."
+      }
     },
     {
       "id": 215,
