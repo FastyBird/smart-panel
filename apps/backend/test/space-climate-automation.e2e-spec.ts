@@ -1,4 +1,5 @@
 import { useContainer } from 'class-validator';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1047,9 +1048,17 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				identityA ??= identity;
 				return capture(identity);
 			});
+			const successorReads = new AsyncLocalStorage<symbol>();
+			const successorReadOwner = Symbol('successor-B');
 			const read = provider.readController.bind(provider) as VirtualThermostatAutomationService['readController'];
 			jest.spyOn(provider, 'readController').mockImplementation(async (...args) => {
-				if (holdRead) {
+				const localAdmissions = Reflect.get(provider, 'localAdmissions') as Map<string, { generationId: string }>;
+				if (
+					holdRead &&
+					successorReads.getStore() === successorReadOwner &&
+					args[1] === controllerId &&
+					localAdmissions.has(controllerId)
+				) {
 					holdRead = false;
 					readEntered();
 					await readGate;
@@ -1113,7 +1122,23 @@ describe('Group A default-migrated authenticated activity climate automation', (
 					const identityB = { ...identityA };
 					const completeB = producer.captureCompletion(identityB);
 					holdRead = phase === 'pending';
-					const successor = producer.apply(identityB, config.activityConfiguration.climate);
+					if (phase === 'pending') {
+						// An unrelated read must not consume B's pending-admission gate.
+						let unrelatedReadCompleted = false;
+						const unrelatedRead = provider.readController(database.manager, controllerId);
+						issued.push(unrelatedRead);
+						await Promise.race([
+							unrelatedRead.then(() => {
+								unrelatedReadCompleted = true;
+							}),
+							readReady,
+						]);
+						expect({ unrelatedReadCompleted }).toEqual({ unrelatedReadCompleted: true });
+						await unrelatedRead;
+					}
+					const successor = successorReads.run(successorReadOwner, () =>
+						producer.apply(identityB, config.activityConfiguration.climate),
+					);
 					issued.push(successor);
 					if (phase === 'pending') {
 						await Promise.race([
@@ -1181,6 +1206,7 @@ describe('Group A default-migrated authenticated activity climate automation', (
 				releasePhysical();
 				releaseRead();
 				await Promise.allSettled(issued);
+				successorReads.disable();
 				events.off(ACTIVITY_STATE_CHANGED, published);
 				registration?.dispose();
 			}
