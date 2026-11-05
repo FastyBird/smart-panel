@@ -4179,6 +4179,12 @@
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Actual SQLite rollback preserves every original row and both K statuses, no retirement occurs, and an explicit fresh public retry confirms the same K. The exact transcript is P0,K,K and one retirement contains exactly K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
       "helperBinding": {
         "name": "prepareIssuedOffJournalSettlement",
+        "line": 6794,
+        "bodySha256": "86dbcdcc91f620d868a2800b88b0d09542fdf660fb641d682628b43b6e8531aa",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
+      },
+      "helperBindingBeforeCurrentSourceRefresh": {
+        "name": "prepareIssuedOffJournalSettlement",
         "line": 4507,
         "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
       }
@@ -4205,6 +4211,12 @@
       "originalBodySha256": "6c5a81caa26d71327fd3b518645b4fdbe405e47347b08546e34bd7d88a3f0db3",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Optional provider retirement throws only after acknowledged native confirmation. Every original row remains or receives only the allowed confirmation fields; the transcript is exactly P0,K and retirement occurs once with the complete K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
       "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 6794,
+        "bodySha256": "86dbcdcc91f620d868a2800b88b0d09542fdf660fb641d682628b43b6e8531aa",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
+      },
+      "helperBindingBeforeCurrentSourceRefresh": {
         "name": "prepareIssuedOffJournalSettlement",
         "line": 4507,
         "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
@@ -4277,6 +4289,12 @@
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is already confirmed while the genuine COMMIT acknowledgement is held, but retirement remains absent. Only releasing that ACK allows exactly one complete K retirement. The transcript is P0,K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
       "helperBinding": {
         "name": "prepareIssuedOffJournalSettlement",
+        "line": 6794,
+        "bodySha256": "86dbcdcc91f620d868a2800b88b0d09542fdf660fb641d682628b43b6e8531aa",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
+      },
+      "helperBindingBeforeCurrentSourceRefresh": {
+        "name": "prepareIssuedOffJournalSettlement",
         "line": 4507,
         "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
       }
@@ -4303,6 +4321,12 @@
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is confirmed but loss of COMMIT acknowledgement preserves the original error and performs no retirement. The exact transcript remains P0,K; a confirmed row alone is not an acknowledged retirement. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
       "helperBinding": {
+        "name": "prepareIssuedOffJournalSettlement",
+        "line": 6794,
+        "bodySha256": "86dbcdcc91f620d868a2800b88b0d09542fdf660fb641d682628b43b6e8531aa",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
+      },
+      "helperBindingBeforeCurrentSourceRefresh": {
         "name": "prepareIssuedOffJournalSettlement",
         "line": 4507,
         "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
@@ -4331,10 +4355,16 @@
       },
       "helperBinding": {
         "name": "prepareIssuedOffJournalSettlement",
+        "line": 6794,
+        "bodySha256": "86dbcdcc91f620d868a2800b88b0d09542fdf660fb641d682628b43b6e8531aa",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
+      },
+      "semanticComparison": "The shared issued-OFF setup and held-ACK row jointly retain the original named K schedule. Exactly one actual OFF send is held with its native row dispatching and seed ON still accepted; all baseline rows and P0 are unchanged and the already-installed retirement callback has not run. Two explicit public installation requests cover OFF preparation/outcome and the one native settlement. While COMMIT ACK is held the whole journal is confirmed without retirement; known ACK then retires exactly K once. P0,K order/multiplicity and the complete row set are asserted; every actuation attempt is OFF. The old test receipt implementation, cross-case descriptor restoration and installed hardware are outside this replacement binding.",
+      "helperBindingBeforeCurrentSourceRefresh": {
+        "name": "prepareIssuedOffJournalSettlement",
         "line": 4507,
         "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
-      },
-      "semanticComparison": "The shared issued-OFF setup and held-ACK row jointly retain the original named K schedule. Exactly one actual OFF send is held with its native row dispatching and seed ON still accepted; all baseline rows and P0 are unchanged and the already-installed retirement callback has not run. Two explicit public installation requests cover OFF preparation/outcome and the one native settlement. While COMMIT ACK is held the whole journal is confirmed without retirement; known ACK then retires exactly K once. P0,K order/multiplicity and the complete row set are asserted; every actuation attempt is OFF. The old test receipt implementation, cross-case descriptor restoration and installed hardware are outside this replacement binding."
+      }
     },
     {
       "id": 241,
@@ -4695,7 +4725,8 @@
       "helper": {
         "name": "prepareIssuedOffJournalSettlement",
         "line": 4889,
-        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20"
+        "bodySha256": "77cd1beb9a4acf78331b18677ca8982ac4b6e0d0087f1e5bef63c1eeb66f0d20",
+        "sourceCommit": "4a3033e1d6050252a5b45fc9972b6f958e463a22"
       },
       "sourceComparison": "Full original rollback, optional-retirement, held/unknown ACK and R68 held-OFF case bodies were read; the former seeded companion is replaced by original public OFF dispatch and fixed native identity/transcript observations.",
       "runtime": "Eight expanded current journal variants pass, followed by complete 147/147 runtime.",
