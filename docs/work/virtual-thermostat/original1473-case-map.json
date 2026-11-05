@@ -44,8 +44,8 @@
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 139,
-    "scoped_current_invariant_bound": 109,
+    "residual_no_current_case_bound": 135,
+    "scoped_current_invariant_bound": 113,
     "replacement_current_invariant_bound": 7,
     "ported_descriptor_control_qualified": 6
   },
@@ -3598,9 +3598,109 @@
       ],
       "originalLine": 13761,
       "historicalR265": "failed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps counter-only effects claims-neutral and the original joined override time current without minting send authority. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "cdfa4d39fe36962d861bf0a5c5d1e8e509483644b904af01e81d64cf9b406f48"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "cdfa4d39fe36962d861bf0a5c5d1e8e509483644b904af01e81d64cf9b406f48",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps a native graph-counter advance claims-neutral and the original active override current without send authority",
+        "line": 3356,
+        "bodySha256": "39577c240bf2e86a96a420f186ff06f13e2fbc273e688083186476d67aa0541f",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977"
+      },
+      "helpers": [
+        {
+          "name": "useInstalledLockedNativeClaimsGuard",
+          "line": 3038,
+          "bodySha256": "6df60d143bebda4aacaeaa919eddbf32f4d646a808a1529f6f3df046565b2dc4",
+          "initializerSha256": "8868dabf084100536f4009612337b44036676dc5ec5f610bffbc56df7f8dc341",
+          "declarationSha256": "863cbb1e1328fa85c04fbcad7e529d5de93dda9c0c484a2f1d85185614ae74b9"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "becde16d1baa4d69ef2fbabb0778ae9da4e64049cec4f3295a10c575c3616e1c",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866"
+      },
+      "semanticComparison": "Original195 full body and current claims capture/refresh, graph revision, comfort currentness, installed native pipeline and cleanup dependencies were compared. The same native raw graph-counter UPDATE is awaited after a real eco 17 override with 30s absolute expiry, actual installation-loader qualification and qualified OFF/drain followed by newer safe floor observations. Original claims capture stays current, the same active override lease retains its identity/deadline/status and a monotone watermark; the test advances the packet wall clock by 1 ms and does not treat watermark advancement as a renewed budget, and the same runtime context/epoch, installed qualification and SDK session are retained. The counter advances exactly once after an acknowledged original native UPDATE; every other physical table (including complete command/state/branch/lock/installation/clock/automation records) and complete SQLite schema remain equal, preserving rows and multiplicity. All SDK send/fence transcripts stay equal with zero ON. Ordinary ON to the reserved real hydrated actuator is refused both before and after, so the counter supplies no ordinary send permission. Current public comfort.isCurrent(active) plus the exact original in-process lease/budget replaces the retired joined intent isOverrideCurrent/close API only for this counter-only invariant. No original private TIME/caller/writer/observer/cross-case cleanup, foreign-write/ABA or global-drain adoption is granted. Fixture transport/storage/metadata and attestations remain offline software inputs, not physical equipment qualification.",
+      "negativeControl": {
+        "reportSha256": "0cc788817ec5165127e81e87abd1a530a6b4d158f1e6c6649ceed0f6993fae34",
+        "mutation": "Classify the exact native counter UPDATE as catalog mutation",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "unrun": 176,
+        "verifiedBoundary": "The original claims capture becomes false immediately after awaited native counter UPDATE, while setup and pre-counter original currentness passed",
+        "productionRestoredSha256": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db"
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps a native graph-counter advance claims-neutral and the original active override current without send authority",
+        "line": 3320,
+        "bodySha256": "4ceed740fc075a089b29be3eddd2936d6f6d760db8454961f35a2cfbd1fce8fe",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "b91bd27a774d96a598f555e4a85f3374911178436cec08fdb8b13085ab9186ae",
+        "mutation": "Classify the exact native counter UPDATE as catalog mutation",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "unrun": 172,
+        "verifiedBoundary": "The original claims capture becomes false immediately after awaited native counter UPDATE, while setup and pre-counter original currentness passed",
+        "productionRestoredSha256": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db"
+      },
+      "productionBindingsBeforeRevalidation": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "9ddd94e4ca7afedfdddd0fb36739923f0424f012df7c60841d412c8b58ac4fab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866"
+      },
+      "currentRevalidation": {
+        "sourceCommit": "be075bed65778eadd83dcf6ef1ac90e61ef4bdf9",
+        "appsTree": "79b27546452e8047136d1e76d1eda66221e30f6a",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977",
+        "negativeReportSha256": "0cc788817ec5165127e81e87abd1a530a6b4d158f1e6c6649ceed0f6993fae34",
+        "scope": "Current scoped native invariant only; earlier clockRepair, sourceBindingRefresh and BeforeRevalidation records retain their historical measured identities. No private caller/TIME/observer/global-drain or installed-equipment adoption."
+      },
+      "semanticComparisonBeforeRevalidation": "Original195 full body and current claims capture/refresh, graph revision, comfort currentness, installed native pipeline and cleanup dependencies were compared. The same native raw graph-counter UPDATE is awaited after a real eco 17 override with 30s absolute expiry, actual installation-loader qualification and qualified OFF/drain followed by newer safe floor observations. Original claims capture stays current, the same active override lease retains identical identity/deadline/watermark/status, and the same runtime context/epoch, installed qualification and SDK session are retained. The counter advances exactly once after an acknowledged original native UPDATE; every other physical table (including complete command/state/branch/lock/installation/clock/automation records) and complete SQLite schema remain equal, preserving rows and multiplicity. All SDK send/fence transcripts stay equal with zero ON. Ordinary ON to the reserved real hydrated actuator is refused both before and after, so the counter supplies no ordinary send permission. Current public comfort.isCurrent(active) plus the exact original in-process lease/budget replaces the retired joined intent isOverrideCurrent/close API only for this counter-only invariant. No original private TIME/caller/writer/observer/cross-case cleanup, foreign-write/ABA or global-drain adoption is granted. Fixture transport/storage/metadata and attestations remain offline software inputs, not physical equipment qualification."
     },
     {
       "id": 196,
@@ -3611,9 +3711,131 @@
       ],
       "originalLine": 13836,
       "historicalR265": "failed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): uses the real runtime OFF/drain release through graph prelude and awaited claim UPDATE:clean. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "455ff1ff013a3e12610d83fd7913491c7613f48b8c9391813aa4017a52551931"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "455ff1ff013a3e12610d83fd7913491c7613f48b8c9391813aa4017a52551931",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: clean",
+        "line": 3191,
+        "bodySha256": "98b9aea295ee7132a06491552d385ddf00030344dfeafa86f3932150bade3a70",
+        "literalTitle": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: %s",
+        "parameters": [
+          "clean"
+        ],
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977"
+      },
+      "helpers": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "useLockedNativeClaimsGuard",
+          "line": 2994,
+          "bodySha256": "47355dde54355c113137677245d66283152919923d765fe7f5c8512620e10a9c",
+          "initializerSha256": "966aaac7fb78a8d20864ccc1703dc7b1b49f0e084a423889d3591e9f611bfe11",
+          "declarationSha256": "e9f2bfb84d998d64aa23bab3ba70adb0779af3fa7c33848b7ab3397adffe97c0"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "becde16d1baa4d69ef2fbabb0778ae9da4e64049cec4f3295a10c575c3616e1c",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.service.ts": "820bae8711459d872b3737dbfdbe2328a268f0575467c21a007ea7562a7ab666",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-dependency-graph.service.ts": "c17d31c03dbaff22d2e3239e10717391a4328373d1a403d0cedb90af3efd08dd",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-comfort-selection.ts": "4ca7f6aff3c81de38bf7d8af40787557842fcb13949ac5099582e5eaab8ea985"
+      },
+      "semanticComparison": "Original196/197 complete parameterized body, original synthetic-qualification setup and retired caller issue/observe/cleanup were compared with current actual runtime/claims/config/graph/provider/SQLite/managed SDK and enabled value-lock composition. Current requestRelease still revokes prior qualification; this test explicitly reinstalls only the shared fixture offline qualification input after its native request transaction, without restoring an old epoch or overriding any currentness/proof method. No native release proof is fabricated: actual SDK OFF/fence response, qualified live OFF sample, journal drain, runtime proof minting and completeRelease execute normally. A passive native query observer records each release transaction graph prelude, exact qualified claim UPDATE acknowledgement and final original COMMIT/ROLLBACK. Exactly one final release UPDATE is reached. Clean mode commits state released, revision+1, releasedAt and outputConfirmedOff/pendingOnDrained evidence; ordinary reserved-actuator admission changes from refusal to allowed, without sending ON. Loss mode invokes original revokeAllQualifications synchronously at that final UPDATE; the native UPDATE is acknowledged, then the post-write proof recheck rolls back the transaction, preserving the entire releasing claim object/revision/evidence/date and refusing ordinary ON. New OFF fences occur in both modes, and zero ON is sent. All105 prior literal bodies and seven helpers are unchanged. Current explicit offline qualification renewal is a bounded setup adaptation to the current release-entry contract, not automatic installed-loader renewal. Removed caller/private continuation, observer-custody substitution, cross-case lifecycle and global-drain protocols are not adopted. Network, storage, metadata and qualification are controlled offline software inputs, not physical installation evidence. Immediately before the qualified native release UPDATE, the passive observer also records OFF activity, a nonempty release proof ID, a fresh fence, no in-flight command and no unresolved identity. This bounds OFF/drain ordering at that UPDATE; an actual held ON during release remains separate coverage.",
+      "negativeControl": {
+        "reportSha256": "858dea50bf66c3b3cfc9d2ba78931e3fb3ef54d936d177d3a33bc049469a7ab6",
+        "mutation": "Omit only the original proof recheck after the awaited qualified release UPDATE",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "passedCleanControl": 1,
+        "unrun": 175,
+        "verifiedBoundary": "Expected ROLLBACK, received COMMIT for qualification-loss after original native UPDATE acknowledgement",
+        "productionRestoredSha256": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc"
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: clean",
+        "line": 3191,
+        "bodySha256": "0024d08101edd89970a018e4dc4d10a98b32a8c11ca66b38a52ffdb0c719f484",
+        "literalTitle": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: %s",
+        "parameters": [
+          "clean"
+        ],
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "3f2df9cafc549a5ba0761ff5c470dbeba671ba697bf4ded9540ebad19a7c8498",
+        "mutation": "Omit only the original proof recheck after the awaited qualified release UPDATE",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "passedCleanControl": 1,
+        "unrun": 173,
+        "verifiedBoundary": "Expected ROLLBACK, received COMMIT for qualification-loss after original native UPDATE acknowledgement",
+        "productionRestoredSha256": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc"
+      },
+      "productionBindingsBeforeRevalidation": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "9ddd94e4ca7afedfdddd0fb36739923f0424f012df7c60841d412c8b58ac4fab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.service.ts": "820bae8711459d872b3737dbfdbe2328a268f0575467c21a007ea7562a7ab666",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-dependency-graph.service.ts": "c17d31c03dbaff22d2e3239e10717391a4328373d1a403d0cedb90af3efd08dd",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-comfort-selection.ts": "4ca7f6aff3c81de38bf7d8af40787557842fcb13949ac5099582e5eaab8ea985"
+      },
+      "currentRevalidation": {
+        "sourceCommit": "be075bed65778eadd83dcf6ef1ac90e61ef4bdf9",
+        "appsTree": "79b27546452e8047136d1e76d1eda66221e30f6a",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977",
+        "negativeReportSha256": "858dea50bf66c3b3cfc9d2ba78931e3fb3ef54d936d177d3a33bc049469a7ab6",
+        "scope": "Current scoped native invariant only; earlier clockRepair, sourceBindingRefresh and BeforeRevalidation records retain their historical measured identities. No private caller/TIME/observer/global-drain or installed-equipment adoption."
+      }
     },
     {
       "id": 197,
@@ -3624,9 +3846,131 @@
       ],
       "originalLine": 13836,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): uses the real runtime OFF/drain release through graph prelude and awaited claim UPDATE:qualification-loss. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "455ff1ff013a3e12610d83fd7913491c7613f48b8c9391813aa4017a52551931"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "455ff1ff013a3e12610d83fd7913491c7613f48b8c9391813aa4017a52551931",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: qualification-loss",
+        "line": 3191,
+        "bodySha256": "98b9aea295ee7132a06491552d385ddf00030344dfeafa86f3932150bade3a70",
+        "literalTitle": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: %s",
+        "parameters": [
+          "qualification-loss"
+        ],
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977"
+      },
+      "helpers": [
+        {
+          "name": "useNativeClaimsGuard",
+          "line": 2562,
+          "bodySha256": "9642336e51580367f23347d8dd3c55e43c2367947e3c89ae3c207b8981bb5b65",
+          "initializerSha256": "a800e3a37878b224930c9936de1fb87c39660af0c06924e17fd3aebfc94debef",
+          "declarationSha256": "6a7870a393572afa354af11a1dedcac5b889cae952080a500483b7df5a73239e"
+        },
+        {
+          "name": "useLockedNativeClaimsGuard",
+          "line": 2994,
+          "bodySha256": "47355dde54355c113137677245d66283152919923d765fe7f5c8512620e10a9c",
+          "initializerSha256": "966aaac7fb78a8d20864ccc1703dc7b1b49f0e084a423889d3591e9f611bfe11",
+          "declarationSha256": "e9f2bfb84d998d64aa23bab3ba70adb0779af3fa7c33848b7ab3397adffe97c0"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "becde16d1baa4d69ef2fbabb0778ae9da4e64049cec4f3295a10c575c3616e1c",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.service.ts": "820bae8711459d872b3737dbfdbe2328a268f0575467c21a007ea7562a7ab666",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-dependency-graph.service.ts": "c17d31c03dbaff22d2e3239e10717391a4328373d1a403d0cedb90af3efd08dd",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-comfort-selection.ts": "4ca7f6aff3c81de38bf7d8af40787557842fcb13949ac5099582e5eaab8ea985"
+      },
+      "semanticComparison": "Original196/197 complete parameterized body, original synthetic-qualification setup and retired caller issue/observe/cleanup were compared with current actual runtime/claims/config/graph/provider/SQLite/managed SDK and enabled value-lock composition. Current requestRelease still revokes prior qualification; this test explicitly reinstalls only the shared fixture offline qualification input after its native request transaction, without restoring an old epoch or overriding any currentness/proof method. No native release proof is fabricated: actual SDK OFF/fence response, qualified live OFF sample, journal drain, runtime proof minting and completeRelease execute normally. A passive native query observer records each release transaction graph prelude, exact qualified claim UPDATE acknowledgement and final original COMMIT/ROLLBACK. Exactly one final release UPDATE is reached. Clean mode commits state released, revision+1, releasedAt and outputConfirmedOff/pendingOnDrained evidence; ordinary reserved-actuator admission changes from refusal to allowed, without sending ON. Loss mode invokes original revokeAllQualifications synchronously at that final UPDATE; the native UPDATE is acknowledged, then the post-write proof recheck rolls back the transaction, preserving the entire releasing claim object/revision/evidence/date and refusing ordinary ON. New OFF fences occur in both modes, and zero ON is sent. All105 prior literal bodies and seven helpers are unchanged. Current explicit offline qualification renewal is a bounded setup adaptation to the current release-entry contract, not automatic installed-loader renewal. Removed caller/private continuation, observer-custody substitution, cross-case lifecycle and global-drain protocols are not adopted. Network, storage, metadata and qualification are controlled offline software inputs, not physical installation evidence. Immediately before the qualified native release UPDATE, the passive observer also records OFF activity, a nonempty release proof ID, a fresh fence, no in-flight command and no unresolved identity. This bounds OFF/drain ordering at that UPDATE; an actual held ON during release remains separate coverage.",
+      "negativeControl": {
+        "reportSha256": "858dea50bf66c3b3cfc9d2ba78931e3fb3ef54d936d177d3a33bc049469a7ab6",
+        "mutation": "Omit only the original proof recheck after the awaited qualified release UPDATE",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "passedCleanControl": 1,
+        "unrun": 175,
+        "verifiedBoundary": "Expected ROLLBACK, received COMMIT for qualification-loss after original native UPDATE acknowledgement",
+        "productionRestoredSha256": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc"
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: qualification-loss",
+        "line": 3191,
+        "bodySha256": "0024d08101edd89970a018e4dc4d10a98b32a8c11ca66b38a52ffdb0c719f484",
+        "literalTitle": "releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: %s",
+        "parameters": [
+          "qualification-loss"
+        ],
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "3f2df9cafc549a5ba0761ff5c470dbeba671ba697bf4ded9540ebad19a7c8498",
+        "mutation": "Omit only the original proof recheck after the awaited qualified release UPDATE",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "passedCleanControl": 1,
+        "unrun": 173,
+        "verifiedBoundary": "Expected ROLLBACK, received COMMIT for qualification-loss after original native UPDATE acknowledgement",
+        "productionRestoredSha256": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc"
+      },
+      "productionBindingsBeforeRevalidation": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "9ddd94e4ca7afedfdddd0fb36739923f0424f012df7c60841d412c8b58ac4fab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.service.ts": "820bae8711459d872b3737dbfdbe2328a268f0575467c21a007ea7562a7ab666",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-dependency-graph.service.ts": "c17d31c03dbaff22d2e3239e10717391a4328373d1a403d0cedb90af3efd08dd",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-comfort-selection.ts": "4ca7f6aff3c81de38bf7d8af40787557842fcb13949ac5099582e5eaab8ea985"
+      },
+      "currentRevalidation": {
+        "sourceCommit": "be075bed65778eadd83dcf6ef1ac90e61ef4bdf9",
+        "appsTree": "79b27546452e8047136d1e76d1eda66221e30f6a",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977",
+        "negativeReportSha256": "858dea50bf66c3b3cfc9d2ba78931e3fb3ef54d936d177d3a33bc049469a7ab6",
+        "scope": "Current scoped native invariant only; earlier clockRepair, sourceBindingRefresh and BeforeRevalidation records retain their historical measured identities. No private caller/TIME/observer/global-drain or installed-equipment adoption."
+      }
     },
     {
       "id": 198,
@@ -3637,9 +3981,141 @@
       ],
       "originalLine": 14515,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps actual state, branch/noop, command journal and enabled derived lock writes command-current through managed ON. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "bfb7799c39023c65afcf7068a4ce0f402a1ed8ee96d7d1330d4041193bd2f7fd"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "bfb7799c39023c65afcf7068a4ce0f402a1ed8ee96d7d1330d4041193bd2f7fd",
+      "followupObservation": {
+        "status": "UNQUALIFIED_REMAINS_UNBOUND",
+        "sourceHead": "0013539779ce2e35dd74bb78c1b81663d31a5b98",
+        "reportSha256": "3525611e0595740b5d868dbfef0f5e87d8ac245878df76f659cd9838acdacbf8",
+        "candidateSourceSha256": "42e2b6c13ea7e7b2a5abf92e7293ec953dac35601ab1364bb9662e7d343e0031",
+        "observation": "Corrected explicit comfort definition plus fresh synthetic qualification before override still yields zero ON entries after the actual setpoint-23 override. Actual ambient is 21, claims capture and SDK session remain current, but qualification is absent, diagnostic suspended/release_ordering_unreconciled, and the latest OFF is UNKNOWN. Existing retained proof source stays current while qualification identity differs. Complete cause and fixture/product attribution remain unresolved. The diagnostic and failing positive candidate are retained off-source; no case198 acceptance credit.",
+        "productionChanged": false
+      },
+      "causalFollowup": {
+        "status": "SUPPORTED_REVOCATION_PATH_COMPLETE_ON_UNRESOLVED",
+        "finding": "ACCEPTANCE-198-WATERMARK-QUALIFICATION",
+        "severity": "P2",
+        "sourceHead": "19c0bf9d16ecc8143b28aab83c56869e85b54b57",
+        "dispositionReportSha256": "d29ad04a826a115b7e84a604e57c374d608cf2e26ad8030edbe85df36b4620c9",
+        "defaultReportSha256": "794c443379cbba8778bddc623baa2a4ca73685ded53f930d60061b5bb2cc8935",
+        "counterfactualReportSha256": "11d0ad624c7419a6c680549264946f3bb0ec5065b6df836473efa1192c17bab5",
+        "observation": "Actual installation-loader/SDK composition renews metadata qualification at revision2, then an internal watermark-only config write clears it in the ownership subscriber. Consecutive comfort values differ only at temporary_override.wall_watermark_ms. Suppressing watermark persistence preserves qualification, but independent member-floor recovery still blocks ON. Both selected candidates remain RED. This is a supported revocation path, not a complete root cause or accepted fix. Candidate sources are retained off-tree; all project sources restored.",
+        "acceptanceCredit": false,
+        "productionChanged": false
+      },
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps actual installed-loader bookkeeping and enabled derived locks claims-current through managed ON and a no-op decision",
+        "line": 3489,
+        "bodySha256": "d1eb8eb6b7139beb2edb3ebc8f18f77ff63d1b16ae7859a0938adcf06ad655c5",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "measuredStatus": "passed",
+        "measurement": "Complete current runtime invocation: 177 passed, zero failed/pending; exact source captured before/after execution. Report SHA-256 45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977"
+      },
+      "helpers": [
+        {
+          "name": "useInstalledLockedNativeClaimsGuard",
+          "line": 3038,
+          "bodySha256": "6df60d143bebda4aacaeaa919eddbf32f4d646a808a1529f6f3df046565b2dc4",
+          "initializerSha256": "8868dabf084100536f4009612337b44036676dc5ec5f610bffbc56df7f8dc341",
+          "declarationSha256": "863cbb1e1328fa85c04fbcad7e529d5de93dda9c0c484a2f1d85185614ae74b9"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        }
+      ],
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "becde16d1baa4d69ef2fbabb0778ae9da4e64049cec4f3295a10c575c3616e1c",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866"
+      },
+      "semanticComparison": "Original198 full body, actual runtime constructor, enabled-lock shared native pipeline, derived-output creation and settle/cleanup dependencies were compared. Current actual runtime/claims/provider/SQLite/managed SDK composition retains the setpoint-23 override and same value service, actual ON, original claims currentness, command INSERT identity, runtime/branch UPDATEs, enabled derived-property lock INSERT/DELETE, and a no-op decision with unchanged journal and send/fence transcripts. It adds actual installation service/loader verification of a generated script through bounded SDK chunks and synthetic floor/switch metadata, then the required qualified OFF/drain followed by a newer safe floor packet. It never clears the floor latch directly. The original ON command ID is independently observed at SDK admission and matched to the native journal INSERT/full outcome. Current monotone clocks persist every observation outside the configuration and installed-slot image, retaining legacy recovery and expiry/rollback checks. No SQL authority exception, old epoch restoration or qualification recapture is lent to foreign writes. Raw same-value, rolled-back and callback config writes lose qualification; identical monotone clock callback writes remain non-authorizing. Current controlled storage/HTTP/SDK responses and software attestations grant no physical safety certification. Retired captureActualCaller, named writer/TIME/private cross-case cleanup protocol and global drain are not adopted; this is scoped observable business behavior, not whole original fixture equivalence.",
+      "negativeControl": {
+        "reportSha256": "8f8f1080d61adc6e5b2e98b29752abe5712fbf8d09f9a99e9f911c221770f209",
+        "mutation": "Route active-lease watermark persistence through the existing legacy JSON writer rather than the dedicated clock writer; preserve every other current class member.",
+        "expectedFailures": 1,
+        "actualFailures": 1,
+        "unrun": 176,
+        "verifiedBoundary": "Expected heat with no headline reason; received release_ordering_unreconciled when the legacy JSON writer invalidates original qualification.",
+        "candidateRestoredSha256": "becde16d1baa4d69ef2fbabb0778ae9da4e64049cec4f3295a10c575c3616e1c"
+      },
+      "clockRepair": {
+        "finding": "ACCEPTANCE-198-WATERMARK-QUALIFICATION",
+        "sourceStatus": "LOCALLY_QUALIFIED_EXACT_HEAD_CI_AND_SOURCE_REVIEW_PENDING",
+        "migration": 53,
+        "store": "devices_virtual_thermostat_override_clocks",
+        "bound": [
+          "controllerId",
+          "overrideId"
+        ],
+        "semantics": "Monotone recovery lower bound only; cannot renew original expiry, intent, sample or SDK authority. INSERT OR REPLACE cannot lower it; UPDATE cannot change identity; DELETE is refused while its controller remains. Downgrade restores current identity watermark into legacy JSON. Historical rows retain evidence until controller deletion.",
+        "defaultFixtureProofSha256": "e6844f60879d6e64139bc55ca1309985086a246dbca8a8c461915c230e5075cf"
+      },
+      "sourceBindingRefresh": {
+        "scope": "Bootstrap installs clock triggers only when its later table exists; all other class members, including catalog mutation/revocation methods, remain token-identical",
+        "proofSha256": "44e8b68621133c9a079b8fefe747a3b48bc9c7815baae008ef73ce0adbe36068",
+        "validation": "Four complete ownership consumer tests and all 424 current E2E cases pass; preceding runtime 172/501 consumer measurement remains attributed to the clock repair head, not a new runtime rerun"
+      },
+      "currentBeforeRevalidation": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "keeps actual installed-loader bookkeeping and enabled derived locks claims-current through managed ON and a no-op decision",
+        "line": 3446,
+        "bodySha256": "d1eb8eb6b7139beb2edb3ebc8f18f77ff63d1b16ae7859a0938adcf06ad655c5",
+        "fileSha256": "8cf9958be54091c97cd2f21dcf893913d37f2801a7960b1b3253f54537a0be16",
+        "measuredStatus": "passed",
+        "measurement": "Complete six-file native-consumer invocation: 266 passed, zero failed/pending; runtime 177, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 91e8546c24059ef4748347307b2d26ed684cbbe42877042186f01b2d66aaaea0"
+      },
+      "negativeControlBeforeRevalidation": {
+        "reportSha256": "354310ce5ed50d8d0288d7212e297ffafc48678dc639b3935cbecc00de6551ce",
+        "restoredOriginalWriter": "Restoring only the entry JSON-watermark writer fails the positive at release_ordering_unreconciled; 0 passed, 1 failed, 171 unrun. Candidate source restored exactly.",
+        "candidateRestoredSha256": "9ddd94e4ca7afedfdddd0fb36739923f0424f012df7c60841d412c8b58ac4fab"
+      },
+      "productionBindingsBeforeRevalidation": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-claims.service.ts": "6671991c2e906f0f3dfb7b7101de05b66ce93e78c5f1f182781788eb6d4cd5dc",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.service.ts": "9ddd94e4ca7afedfdddd0fb36739923f0424f012df7c60841d412c8b58ac4fab",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-automation.service.ts": "a3c4bc5228be55c2e49bfd5d5dae08811daee84452a77caccd87417559b07483",
+        "apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-rpc-session.ts": "73f6d261a46dc503ae63808aaaab1dd52644052d16afec8a312125943f5412ab",
+        "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.ts": "484e9f62e8ca65e3cba3cf51023b3f213986f197d49b86ed235d1347216928db",
+        "apps/backend/src/plugins/devices-virtual/entities/thermostat-override-clock.entity.ts": "ce724503d53aa0aaaf2da130a2803f184d7329e5b0660f9b916ceae1635285ef",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-override-clock.sql.ts": "96365a05a18f85f144f693155ba4cb523a3541421fc789248b15b5b61224232d",
+        "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
+        "apps/backend/src/plugins/devices-virtual/devices-virtual.plugin.ts": "da7e2ac07747ed406d5cbdfbb70795cd5988829e411fa6d1035891acdeed412b",
+        "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
+        "apps/backend/src/modules/devices/services/property-value-lock.service.ts": "2bdf27a8e443d46f56025516f4b17a6ece9006002a2c1b65048f4b197cee2928",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-loader.service.ts": "d89c1ba0e49dc6416abd1f2af3be3ea1913e5102020579248eb7e27d82d1b116",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation.service.ts": "f8a11aed6c39cfb439d50866177a9d5dd5b33f98a259e1926e9d9ae8b5855d5a",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-installation-artifact.ts": "bec5dcd05c66a287fd1461ce23e404c7d96b50bc45ae2f4271456209dfb55c8d",
+        "apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts": "6fd7a3f7d5e7b2a5aeda5bc7a088c0773b10df7f14010e6cebeb4fa864cd7866"
+      },
+      "currentRevalidation": {
+        "sourceCommit": "be075bed65778eadd83dcf6ef1ac90e61ef4bdf9",
+        "appsTree": "79b27546452e8047136d1e76d1eda66221e30f6a",
+        "runtimeFileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680",
+        "positiveReportSha256": "45d743f280be6147e1483e897cdaf2766fd8bc5bb9535080b7ce41539df23977",
+        "negativeReportSha256": "8f8f1080d61adc6e5b2e98b29752abe5712fbf8d09f9a99e9f911c221770f209",
+        "scope": "Current scoped native invariant only; earlier clockRepair, sourceBindingRefresh and BeforeRevalidation records retain their historical measured identities. No private caller/TIME/observer/global-drain or installed-equipment adoption."
+      }
     },
     {
       "id": 199,
