@@ -4207,7 +4207,9 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 	const evaluation = gate(),
 		written = gate(),
 		finished = gate(),
-		writer = gate();
+		writer = gate(),
+		persisted = gate(),
+		continuation = gate();
 	const selected = new AsyncLocalStorage<boolean>();
 	const sourceA = a.get(DataSource),
 		sourceB = b.get(DataSource);
@@ -4216,6 +4218,13 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 	const runtime = a.get(VirtualThermostatRuntimeService);
 	const originalEvaluate = Reflect.get(runtime, 'evaluate') as NativeMethod;
 	const ownEvaluate = Object.getOwnPropertyDescriptor(runtime, 'evaluate');
+	const journal = Reflect.get(runtime, 'journal') as object;
+	const persist = Reflect.get(journal, 'persistRuntimeRows') as NativeMethod;
+	const ownPersist = Object.getOwnPropertyDescriptor(journal, 'persistRuntimeRows');
+	let persistenceSelected = false,
+		continuationEntered = false,
+		continuationCompleted = false;
+	let continuationAtPatchCompletion: boolean | undefined;
 	const jobs: Promise<unknown>[] = [],
 		callbacks: Promise<void>[] = [],
 		restore: (() => void)[] = [];
@@ -4359,6 +4368,26 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 			if (ownEvaluate) Object.defineProperty(runtime, 'evaluate', ownEvaluate);
 			else Reflect.deleteProperty(runtime, 'evaluate');
 		});
+		// Keep the selected A transaction/B BEGIN overlap, then defer A's later work until B's PATCH finishes.
+		const wrappedPersist: NativeMethod = function (...args) {
+			const work = persist.apply(this, args) as Promise<unknown>;
+			if (selected.getStore() !== true || persistenceSelected) return work;
+			persistenceSelected = true;
+			return work.then(async (result) => {
+				continuationEntered = true;
+				persisted.release();
+				await continuation.promise;
+				continuationCompleted = true;
+				return result;
+			});
+		};
+		Object.defineProperty(journal, 'persistRuntimeRows', { configurable: true, writable: true, value: wrappedPersist });
+		restore.push(() => {
+			if (Reflect.get(journal, 'persistRuntimeRows') !== wrappedPersist)
+				throw new Error('Progress persistence observer replaced');
+			if (ownPersist) Object.defineProperty(journal, 'persistRuntimeRows', ownPersist);
+			else Reflect.deleteProperty(journal, 'persistRuntimeRows');
+		});
 		const after = async (
 			event:
 				| import('typeorm').InsertEvent<VirtualThermostatRuntimeEntity>
@@ -4419,10 +4448,20 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 			expect(held).toBe(true);
 			window = true;
 		},
+		async afterPatch() {
+			await Promise.race([persisted.promise, finished.promise]);
+			if (!continuationEntered) {
+				await jobs[0];
+				throw new Error('Selected A persistence did not reach its post-commit boundary');
+			}
+			continuationAtPatchCompletion = continuationCompleted;
+			continuation.release();
+		},
 		own(promise: Promise<unknown>) {
 			jobs.push(promise);
 		},
 		verify() {
+			expect({ continuationAtPatchCompletion }).toEqual({ continuationAtPatchCompletion: false });
 			if (unknown) {
 				try {
 					console.info('channel-progress-unknown', JSON.stringify({ unknownBits, writerWitness }));
@@ -4473,6 +4512,7 @@ function captureChannelWriterProgress(a: TestingModule, b: TestingModule) {
 		close() {
 			evaluation.release();
 			writer.release();
+			continuation.release();
 			return (closing ??= (async () => {
 				let issuedJobs = 0,
 					issuedCallbacks = 0;
@@ -4566,7 +4606,7 @@ function createChannelWriterCleanupModel(
 	};
 	const structure = { context: { getStore: () => ({ active: true, accepting: true, mode: 'exclusive' }) } };
 	const evaluate = () => Promise.resolve('original evaluation');
-	const runtime = { evaluate };
+	const runtime = { evaluate, journal: { persistRuntimeRows: () => Promise.resolve() } };
 	const a = {
 		get: (type: unknown) => (type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime),
 	};
@@ -4857,7 +4897,7 @@ describe('channel writer observation forwarding model (no native credit)', () =>
 				expect(id).toBe('model-controller');
 				return Promise.resolve(false);
 			});
-			const runtime = { evaluate };
+			const runtime = { evaluate, journal: { persistRuntimeRows: () => Promise.resolve() } };
 			const moduleA = {
 				get: (type: unknown) =>
 					type === DataSource ? sourceA : type === DeviceStructureLockService ? structure : runtime,
@@ -5508,6 +5548,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 							expect(after.name).toBe(value);
 						}
 						successes.push({ id: info.id, birth: after.birth, value });
+						await progress?.afterPatch();
 					}
 				} finally {
 					useContainer(moduleRef, { fallbackOnErrors: true });
