@@ -1279,11 +1279,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1300,11 +1301,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
