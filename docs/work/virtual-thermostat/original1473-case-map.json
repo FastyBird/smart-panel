@@ -3954,11 +3954,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "joins the original pending bootstrap %s completion and exact rejection identity",
-        "line": 2617,
+        "line": 4522,
         "bodySha256": "50b819aa0267fc04141bb91a77341bbb89a101687a16757be8c8eb1b76b62f33",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "Two callers meet the same genuinely held native recovery transaction and receive the exact same pending bootstrap Promise. Neither settles before the original gate; successful recovery establishes a current real-claims capture and its own timer. The native SQLite/claims/guard/delegate paths execute with the existing simulated HTTP/SDK/storage endpoint and synthetic installed qualification. Current fixture cleanup differs from the retired caller-scope/observer API. No installed-equipment, full old harness or unrelated original-case clearance is inferred."
     },
@@ -3976,11 +3977,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "joins the original pending bootstrap %s completion and exact rejection identity",
-        "line": 2617,
+        "line": 4522,
         "bodySha256": "50b819aa0267fc04141bb91a77341bbb89a101687a16757be8c8eb1b76b62f33",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "The same pending Promise rejects both callers with the identical injected native SQL Error. Failed startup closes its own registrations and active lifetime, restores the listener set, and permits an explicitly fresh successful startup. The first failure is not replaced by cleanup or a resolved duplicate call. The native SQLite/claims/guard/delegate paths execute with the existing simulated HTTP/SDK/storage endpoint and synthetic installed qualification. Current fixture cleanup differs from the retired caller-scope/observer API. No installed-equipment, full old harness or unrelated original-case clearance is inferred."
     },
@@ -3998,11 +4000,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "keeps a destroyed pending A bootstrap completion from clearing the fresh same-instance B attempt",
-        "line": 2692,
+        "line": 4597,
         "bodySha256": "73f78d9c6d01ef50f3de361f9522be14013deb1c20888e80af0d278426323b29",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "A is stopped while its real native recovery is held; B starts on the same instance and is separately held at its original recovery. A finishes with the lifecycle-ended refusal while B is still pending. A cannot clear B's published bootstrap Promise or install a timer; B then completes through its own current claims/admission. The native SQLite/claims/guard/delegate paths execute with the existing simulated HTTP/SDK/storage endpoint and synthetic installed qualification. Current fixture cleanup differs from the retired caller-scope/observer API. No installed-equipment, full old harness or unrelated original-case clearance is inferred."
     },
@@ -4020,11 +4023,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "stops A at an actual late native load read and admits fresh B only through its own structural ticket",
-        "line": 2757,
+        "line": 4662,
         "bodySha256": "ea46c27ff1dceda75b83383d0ef37661dad40a899e46ae0b82bee0aad8a8b45a",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "A is synchronously stopped at an actual AfterQuery of the native branch load. B is started from the external test continuation, outside a structural lease, and must obtain genuine native recovery/admission. Its persisted decision and diagnostic agree and a subsequent ordinary request advances them. The native callback's AsyncLocalStorage state is deliberately not treated as an ownership receipt. The native SQLite/claims/guard/delegate paths execute with the existing simulated HTTP/SDK/storage endpoint and synthetic installed qualification. Current fixture cleanup differs from the retired caller-scope/observer API. No installed-equipment, full old harness or unrelated original-case clearance is inferred."
     },
@@ -4042,11 +4046,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "drops a real completed A native load held after original shared release without closing B context or persisting A work",
-        "line": 2811,
+        "line": 4716,
         "bodySha256": "25f901537d4bce4c77f8193ef0c4a6439646d8af8a4b309d6b647cc8ca7645a0",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "A's completed native shared load is held only after a real exclusive ticket proves the original shared owner released. Stopped flush retains its exact pending A evaluation, but B reaches fresh bootstrap and native context before A is released. A then completes without writes, B context replacement, diagnostic/state changes or lost claims. A negative control restoring the former post-load active-only check fails this exact scenario. The native SQLite/claims/guard/delegate paths execute with the existing simulated HTTP/SDK/storage endpoint and synthetic installed qualification. Current fixture cleanup differs from the retired caller-scope/observer API. No installed-equipment, full old harness or unrelated original-case clearance is inferred."
     },
@@ -4064,11 +4069,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "persists a genuinely possibly-sent A outcome after same-instance B startup without borrowing B admission or scheduling A work",
-        "line": 2948,
+        "line": 4853,
         "bodySha256": "da58ea08bdf6bec23d4c64aeb3aa46c1732142cf11d668f752bc291e95864c39",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "semanticComparison": "The real managed SDK/HTTP path records exactly one ON before its response is held. A is stopped and B starts on the same instance; the original A operation later persists the same ID as unknown with a settled timestamp, no second ON and no fabricated release evidence. Restart retains only this journal's original in-flight object at its complete acknowledged row, so late history can be written without lending A the B guard or dispatch feedback request. The native SQLite/claims/guard/delegate paths execute with the existing simulated HTTP/SDK/storage endpoint and synthetic installed qualification. Current fixture cleanup differs from the retired caller-scope/observer API. No installed-equipment, full old harness or unrelated original-case clearance is inferred."
     },
@@ -4162,11 +4168,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retires only committed journal identities and retains the same pending identity after a real SQLite rollback",
-        "line": 5082,
+        "line": 7383,
         "bodySha256": "5861cf152c3b09c10fb7771cebde4f6c546ea3954d0b712a6b26312a6aa72487",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "bae5bf871f10f659dd31add8fe1d1fbe63155fc0be59702cc67724f2182cfba0",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Actual SQLite rollback preserves every original row and both K statuses, no retirement occurs, and an explicit fresh public retry confirms the same K. The exact transcript is P0,K,K and one retirement contains exactly K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4188,11 +4195,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "does not let optional retirement failure alter committed journal confirmation",
-        "line": 5117,
+        "line": 7418,
         "bodySha256": "13e670db6b4c453553d93e3da2cd01264270024f36f691d1a68d22d376e03316",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6c5a81caa26d71327fd3b518645b4fdbe405e47347b08546e34bd7d88a3f0db3",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. Optional provider retirement throws only after acknowledged native confirmation. Every original row remains or receives only the allowed confirmation fields; the transcript is exactly P0,K and retirement occurs once with the complete K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4214,11 +4222,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "uses the later cooling/member release barrier by default without changing heating or explicit zero",
-        "line": 5132,
+        "line": 7433,
         "bodySha256": "441db9e76c3fe5f02db4e01c8530f795ab1cccbd589a7b44996ebe8fb8fd7efc",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "441db9e76c3fe5f02db4e01c8530f795ab1cccbd589a7b44996ebe8fb8fd7efc",
       "semanticComparison": "The complete body is token-identical: later cooling/member release barriers remain distinct from heating and explicit zero. This is a barrier calculation control."
@@ -4235,11 +4244,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "takes a new qualified fence for an idle OFF cooling claim after a later cooling trip barrier",
-        "line": 5162,
+        "line": 7463,
         "bodySha256": "52f486239528def5e61ca15cbc6203266c7ac384bcd1b30a58ca1cf6c035be03",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "8863be1f1668dec75984f64236427f7b14f209ec7a3ab2e33c304c38aff62b8f",
       "semanticComparison": "The same later cooling-trip barrier forces a fresh qualified fence for an idle OFF claim, with the prior/fresh barrier and proof-count assertions retained."
@@ -4256,11 +4266,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
-        "line": 5195,
+        "line": 7496,
         "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is already confirmed while the genuine COMMIT acknowledgement is held, but retirement remains absent. Only releasing that ACK allows exactly one complete K retirement. The transcript is P0,K. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4282,11 +4293,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
-        "line": 5195,
+        "line": 7496,
         "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6e2e75edef69a6aed89239e8501576de3c89b3ad7389e35977e2d4509feb65bc",
       "semanticComparison": "The former seeded-OFF gap is closed: a real public requestInstalled inserts and dispatches the original OFF. An independent AfterInsert observation and the exact send packet bind its ID before a held send completes. The complete original baseline rows and P0 transcript (including empty calls, order and multiplicity) remain unchanged while held. The fixed two-ID K contains the accepted seed ON and the actual OFF; no companion OFF is inserted by the test. A second public request invokes one original reconcile Promise. The settlement observer binds the original journal UPDATE runner and both K IDs, so earlier runtime-state commits cannot satisfy the ACK gate. The same-runner committed complete journal is confirmed but loss of COMMIT acknowledgement preserves the original error and performs no retirement. The exact transcript remains P0,K; a confirmed row alone is not an acknowledged retirement. Logical packet time prevents retry deadlines from introducing unrelated work; SQLite and async scheduling are real. Feedback-triggered requests are suppressed and explicit public calls are counted. The adapter/qualification are controlled, so this is not installed hardware or the retired original observer API equivalence.",
@@ -4311,10 +4323,11 @@
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "waits for a known SQLite commit acknowledgement before retirement: %s",
         "parameter": "held acknowledgement",
-        "line": 5195,
+        "line": 7496,
         "bodySha256": "de33cfda3b09ac3bce05d945e6f6294659e5ba1e9939db5e15656cf7ab69e704",
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "helperBinding": {
         "name": "prepareIssuedOffJournalSettlement",
@@ -4517,9 +4530,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "accepts the original inherited Date.parse on a local Date subclass",
-        "line": 6,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 43,
+        "fileSha256": "995ba4a1fad0d2e866700d6e7b1d6597d21267d99f6848b009a596f79d997606",
+        "measuredStatus": "passed",
+        "bodySha256": "40b15d66a7fcd76a2f16077f406271c55a0ac905beea14ba7999c9c01e130f37",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "0ce1f9d17bc654331545177dd3e6e08f96465efda9cd38eb5a8ca6888772fbc6"
@@ -4537,9 +4552,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "preserves original identity through multiple function-valued parents",
-        "line": 14,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 51,
+        "fileSha256": "995ba4a1fad0d2e866700d6e7b1d6597d21267d99f6848b009a596f79d997606",
+        "measuredStatus": "passed",
+        "bodySha256": "46b9485650962c657d2ff07898191cc64fb03d515bbf82771fa73f1ae64ebfe4",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "2a1e0f11f35f01345d8a42364eccc78497e2c7d657558ececc263809f7cd35ea"
@@ -4557,9 +4574,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses an own static replacement without recapturing the original",
-        "line": 25,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 62,
+        "fileSha256": "995ba4a1fad0d2e866700d6e7b1d6597d21267d99f6848b009a596f79d997606",
+        "measuredStatus": "passed",
+        "bodySha256": "27ed2597a59780393ca7538a1c3bade9d97916eb18e5b66c10b4dc6f98e3dd79",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "ab317ab270977d67a1f30dbdc7953e348c9b31f9431e66bbd976a9296e9bcb31"
@@ -4577,9 +4596,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses a nearer inherited static replacement",
-        "line": 37,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 74,
+        "fileSha256": "995ba4a1fad0d2e866700d6e7b1d6597d21267d99f6848b009a596f79d997606",
+        "measuredStatus": "passed",
+        "bodySha256": "2c02a21dafa9a700b9e545a73edf389eab54f816f70a6ed856dcdfe501138dc5",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "c212c34b6bf48a0f1e92c57f4d92148574f2043c4225a602257e652f4df89741"
@@ -4597,9 +4618,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses an own accessor returning the original without invoking its getter",
-        "line": 50,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 87,
+        "fileSha256": "995ba4a1fad0d2e866700d6e7b1d6597d21267d99f6848b009a596f79d997606",
+        "measuredStatus": "passed",
+        "bodySha256": "6bbaf8ac93bac2089c13f8598c6f6eb3a0f8c4c2959271e82e11ba408a8119b9",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "a59f6f6143b18c9c860818b296dc7cdabd57d504280a28a897c2a9a178196d51"
@@ -4617,9 +4640,11 @@
       "current": {
         "file": "apps/backend/src/modules/devices/services/creation-capture.spec.ts",
         "title": "refuses a nearer inherited accessor without invoking it or falling through",
-        "line": 69,
-        "fileSha256": "4cc70e44fab606d17b5a0dc61719c74e5b0d0902d1b7f10889e7220f6c3eac8b",
-        "measuredStatus": "passed"
+        "line": 106,
+        "fileSha256": "995ba4a1fad0d2e866700d6e7b1d6597d21267d99f6848b009a596f79d997606",
+        "measuredStatus": "passed",
+        "bodySha256": "a436ad460a6b586b68cf6a8f5fc48dc4a9f336f3bc450c65312fef89c5ea94e0",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8"
       },
       "scope": "Original pure inherited-method control, adapted from original-function argument to a capture made before mutation. Preserves retained function identity and zero getter invocation; grants no native/runtime/transport authority.",
       "originalBodySha256": "c0edb6c48a85312a314479710738f4faddf10c0d73d8b0f49933870b5853aad5"
