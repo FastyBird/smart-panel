@@ -3188,6 +3188,304 @@ describe('virtual thermostat durable runtime', () => {
 		}
 	};
 
+	it.each(['clean', 'qualification-loss'] as const)(
+		'releases the actual native reservation only after runtime OFF/drain and the original qualified claim UPDATE: %s',
+		async (mode) => {
+			const { fixture, claims } = await useLockedNativeClaimsGuard();
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+			const owner = runtime,
+				source = database,
+				id = controllerId;
+			clearInterval(owner['timer']);
+			const actualConfigs = new VirtualThermostatConfigService(
+				source,
+				comfort['structure'],
+				comfort['graph'],
+				claims,
+				events,
+				fixture.values,
+				undefined,
+				comfort['automation'],
+			);
+			actualConfigs.onModuleInit();
+			type NativeTransaction = { queries: string[]; outcome: string | null };
+			type NativeQueryEvent = Omit<import('typeorm').BeforeQueryEvent<unknown>, 'parameters'> & {
+				parameters?: readonly unknown[];
+			};
+			const transactions = new Map<import('typeorm').QueryRunner, NativeTransaction>();
+			const qualifiedWrites: {
+				query: string;
+				parameters: readonly unknown[];
+				transaction: NativeTransaction;
+				drain: {
+					activity: string;
+					proofId: string | null;
+					freshFence: boolean;
+					inFlight: string[];
+					unresolved: string[];
+				};
+			}[] = [];
+			let fencesBefore = fixture.controls.fences.length;
+			let acknowledgements = 0;
+			const observer = {
+				beforeQuery: (event: NativeQueryEvent) => {
+					if (event.query === 'BEGIN TRANSACTION') transactions.set(event.queryRunner, { queries: [], outcome: null });
+					const transaction = transactions.get(event.queryRunner);
+					transaction?.queries.push(event.query);
+					if (
+						!event.query.startsWith('UPDATE "devices_virtual_thermostat_actuator_claims"') ||
+						!event.query.includes('releaseEvidence') ||
+						!event.parameters?.includes('released')
+					)
+						return;
+					if (!transaction) throw new Error('Original release transaction was not observed');
+					const context = owner['contexts'].get(id),
+						branch = context?.branches.get(claim.id);
+					if (!context || !branch) throw new Error('Original release runtime branch missing');
+					qualifiedWrites.push({
+						query: event.query,
+						parameters: [...event.parameters],
+						transaction,
+						drain: {
+							activity: branch.activity,
+							proofId: branch.releaseProofId,
+							freshFence: fixture.controls.fences.slice(fencesBefore).includes(claim.sourcePropertyId),
+							inFlight: [...owner['inFlightCommands'].values()]
+								.filter((command) => command.claimId === claim.id)
+								.map((command) => command.id),
+							unresolved: context.commands
+								.filter(
+									(command) => command.claimId === claim.id && !['confirmed', 'cancelled'].includes(command.status),
+								)
+								.map((command) => command.id),
+						},
+					});
+					if (mode === 'qualification-loss') claims.revokeAllQualifications();
+				},
+				afterQuery: (event: AfterQueryEvent<unknown>) => {
+					if (event.success && (event.query === 'COMMIT' || event.query === 'ROLLBACK')) {
+						const transaction = transactions.get(event.queryRunner);
+						if (transaction) transaction.outcome = event.query;
+					}
+					if (
+						event.success &&
+						event.query.startsWith('UPDATE "devices_virtual_thermostat_actuator_claims"') &&
+						event.query.includes('releaseEvidence') &&
+						event.parameters?.includes('released')
+					)
+						acknowledgements++;
+				},
+			};
+			let primary: { cause: unknown } | undefined;
+			try {
+				const before = await actualConfigs.get(id);
+				const property = await source.manager.findOneOrFail(ShellyNgChannelPropertyEntity, {
+					where: { id: relayId },
+					relations: ['channel', 'channel.device'],
+				});
+				if (!(property.channel instanceof ChannelEntity) || !(property.channel.device instanceof DeviceEntity))
+					throw new Error('Original release actuator parents were not hydrated');
+				const ordinaryOn = { device: property.channel.device, channel: property.channel, property, value: true };
+				await expect(async () => claims.assertAllowed(ordinaryOn)).rejects.toThrow('Actuator is reserved');
+				const sendsBefore = fixture.controls.sends.length;
+				fencesBefore = fixture.controls.fences.length;
+				source.subscribers.push(observer);
+				await actualConfigs.requestRelease(id, before.revision);
+				const requested = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id });
+				expect(requested.state).toBe('releasing');
+				expect(requested.revision).toBe(claim.revision + 1);
+				expect(requested.releaseEvidence).toBeNull();
+				// Explicit offline qualification input is renewed after requestRelease revokes the previous scope.
+				// This fixture certifies no physical installation or loader renewal.
+				for (const evidence of installedQualifications.values()) claims.recordQualification(evidence);
+				await settleReal(fixture);
+				const released = await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+					id: claim.id,
+				});
+				expect(qualifiedWrites).toHaveLength(1);
+				const { proofId, ...drain } = qualifiedWrites[0].drain;
+				expect(proofId).toBeTruthy();
+				expect(drain).toEqual({
+					activity: 'off',
+					freshFence: true,
+					inFlight: [],
+					unresolved: [],
+				});
+				expect(acknowledgements).toBe(qualifiedWrites.length);
+				expect(fixture.controls.fences.length).toBeGreaterThan(fencesBefore);
+				expect(fixture.controls.sends.slice(sendsBefore).filter((send) => send.on)).toEqual([]);
+				const transaction = qualifiedWrites[0].transaction;
+				const updateIndex = transaction.queries.indexOf(qualifiedWrites[0].query);
+				expect(
+					transaction.queries
+						.slice(0, updateIndex)
+						.some((query) => query.startsWith('INSERT OR IGNORE INTO "devices_virtual_graph_revision"')),
+				).toBe(true);
+				expect(
+					transaction.queries
+						.slice(0, updateIndex)
+						.some((query) => query.startsWith('UPDATE "devices_virtual_graph_revision"')),
+				).toBe(true);
+				expect(transaction.outcome).toBe(mode === 'clean' ? 'COMMIT' : 'ROLLBACK');
+				if (mode === 'clean') {
+					expect(released.state).toBe('released');
+					expect(released.revision).toBe(requested.revision + 1);
+					expect(released.releaseEvidence).toMatchObject({ outputConfirmedOff: true, pendingOnDrained: true });
+					expect(released.releasedAt).not.toBeNull();
+					await expect(claims.assertAllowed(ordinaryOn)).resolves.toBeUndefined();
+				} else {
+					expect(released).toEqual(requested);
+					await expect(async () => claims.assertAllowed(ordinaryOn)).rejects.toThrow('Actuator is reserved');
+				}
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				actualConfigs.onModuleDestroy();
+				const completions = await Promise.allSettled([owner.flush(), fixture.flushTelemetry()]);
+				const index = source.subscribers.indexOf(observer);
+				if (index >= 0) source.subscribers.splice(index, 1);
+				if (!primary)
+					for (const result of completions) if (result.status === 'rejected') primary ??= { cause: result.reason };
+			}
+			if (primary) throw primary.cause;
+		},
+	);
+
+	it('keeps a native graph-counter advance claims-neutral and the original active override current without send authority', async () => {
+		const { fixture, claims, loader, claim, floorSourceId } = await useInstalledLockedNativeClaimsGuard();
+		const owner = runtime,
+			source = database,
+			id = controllerId;
+		clearInterval(owner['timer']);
+		const counterSql = 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1';
+		const writes: { query: string; parameters: readonly unknown[] }[] = [];
+		let acknowledgements = 0;
+		const observer = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (/^(INSERT|UPDATE|DELETE) /.test(event.query)) {
+					const parameters: readonly unknown[] = event.parameters ?? [];
+					writes.push({ query: event.query, parameters: [...parameters] });
+				}
+			},
+			afterQuery: (event: AfterQueryEvent<unknown>) => {
+				if (event.query === counterSql && event.success) acknowledgements++;
+			},
+		};
+		let primary: { cause: unknown } | undefined;
+		try {
+			const before = await comfort.get(id);
+			await comfort.override(
+				id,
+				{ expected_revision: before.revision, expected_graph_revision: before.graph_revision },
+				{
+					preset: 'eco',
+					setpoints: null,
+					expires_at: new Date(Date.now() + 30_000).toISOString(),
+				},
+				'counter-only-clock',
+			);
+			await loader['queue'];
+			await settleReal(fixture);
+			await fixture.report(floorSourceId, 20);
+			await settleReal(fixture);
+			await fixture.report(floorSourceId, 20);
+			await settleReal(fixture);
+			await claims.refresh();
+			const active = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			const original = claims.capture();
+			const context = owner['contexts'].get(id),
+				epoch = owner['epochs'].get(id);
+			const lease = comfort['leases'].get(id),
+				savedLease = { ...lease };
+			const qualification = claims.qualification(claim, false);
+			const session = fixture.captureSession(relayId);
+			const property = await source.manager.findOneOrFail(ShellyNgChannelPropertyEntity, {
+				where: { id: relayId },
+				relations: ['channel', 'channel.device'],
+			});
+			if (!(property.channel instanceof ChannelEntity) || !(property.channel.device instanceof DeviceEntity))
+				throw new Error('Original physical actuator parents were not hydrated');
+			const ordinaryOn = { device: property.channel.device, channel: property.channel, property, value: true };
+			expect(owner.readDiagnostics(id)).toMatchObject({ comfort_demand: 'off', headline_reason: null });
+			expect(context).toBeDefined();
+			expect(lease).toBeDefined();
+			expect(original.isCurrent()).toBe(true);
+			expect(comfort.isCurrent(active)).toBe(true);
+			expect(active.comfort.temporary_override).toMatchObject({ status: 'active', preset: 'eco' });
+			expect(qualification).not.toBeNull();
+			expect(session?.isCurrent()).toBe(true);
+			await expect(async () => claims.assertAllowed(ordinaryOn)).rejects.toThrow('Actuator is reserved');
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			const tables = (
+				await source.query<{ name: string }[]>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+			)
+				.map(({ name }) => name)
+				.filter((name) => name !== 'devices_virtual_graph_revision');
+			const snapshot = async () => {
+				const rows: Record<string, string[]> = {};
+				for (const table of tables)
+					rows[table] = (
+						await source.query<Record<string, unknown>[]>(`SELECT * FROM "${table.replaceAll('"', '""')}"`)
+					)
+						.map((row) => JSON.stringify(row))
+						.sort();
+				return rows;
+			};
+			const schema = () => source.query<unknown[]>('SELECT name, type, sql FROM sqlite_master ORDER BY type, name');
+			const image = await snapshot(),
+				schemaBefore = await schema();
+			const graphBefore = await source.query<{ id: number; revision: number }[]>(
+				'SELECT * FROM devices_virtual_graph_revision ORDER BY id',
+			);
+			expect(graphBefore).toHaveLength(1);
+			expect(graphBefore[0].id).toBe(1);
+			const sends = [...fixture.controls.sends],
+				fences = [...fixture.controls.fences];
+			source.subscribers.push(observer);
+			jest.setSystemTime(Date.now() + 1);
+			await source.query(counterSql);
+			expect(original.isCurrent()).toBe(true);
+			expect(comfort.isCurrent(active)).toBe(true);
+			expect(comfort['leases'].get(id)).toBe(lease);
+			expect(comfort['leases'].get(id)).toMatchObject({
+				id: savedLease.id,
+				revision: savedLease.revision,
+				deadline: savedLease.deadline,
+				status: savedLease.status,
+			});
+			expect(comfort['leases'].get(id)?.watermark).toBeGreaterThanOrEqual(savedLease.watermark);
+			expect(owner['contexts'].get(id)).toBe(context);
+			expect(owner['epochs'].get(id)).toBe(epoch);
+			expect(claims.qualification(claim, false)).toBe(qualification);
+			expect(session?.isCurrent()).toBe(true);
+			await expect(async () => claims.assertAllowed(ordinaryOn)).rejects.toThrow('Actuator is reserved');
+			expect(await source.query('SELECT * FROM devices_virtual_graph_revision ORDER BY id')).toEqual([
+				{ ...graphBefore[0], revision: graphBefore[0].revision + 1 },
+			]);
+			expect(await snapshot()).toEqual(image);
+			expect(await schema()).toEqual(schemaBefore);
+			expect(writes).toEqual([{ query: counterSql, parameters: [] }]);
+			expect(acknowledgements).toBe(1);
+			expect(fixture.controls.sends).toEqual(sends);
+			expect(fixture.controls.fences).toEqual(fences);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			primary = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			loader.onModuleDestroy();
+			const completions = await Promise.allSettled([owner.flush(), loader['queue'], fixture.flushTelemetry()]);
+			const index = source.subscribers.indexOf(observer);
+			if (index >= 0) source.subscribers.splice(index, 1);
+			if (!primary)
+				for (const result of completions) if (result.status === 'rejected') primary ??= { cause: result.reason };
+		}
+		if (primary) throw primary.cause;
+	});
+
 	it('keeps actual installed-loader bookkeeping and enabled derived locks claims-current through managed ON and a no-op decision', async () => {
 		const { fixture, claims, temperatureOutput, loader, claim, artifact, floorSourceId } =
 			await useInstalledLockedNativeClaimsGuard();
@@ -3747,6 +4045,345 @@ describe('virtual thermostat durable runtime', () => {
 			expect(await source.query('SELECT * FROM "devices_module_property_value_locks"')).toEqual([]);
 		},
 	);
+
+	it('preserves the original override budget through both native recovery writes and fresh claims admission', async () => {
+		const { fixture, claims, loader, claim } = await useInstalledLockedNativeClaimsGuard();
+		const owner = runtime,
+			source = database,
+			id = controllerId,
+			structure = owner['structure'];
+		await settleReal(fixture);
+		owner.onModuleDestroy();
+		const initialMono = performance.now();
+		let mono = initialMono;
+		const monotonic = jest.spyOn(performance, 'now').mockImplementation(() => mono);
+		const native: {
+			kind: 'journal' | 'branch';
+			parameters: readonly unknown[];
+			transactionActive: boolean;
+			originalLeaseCurrent: () => boolean;
+			overrideCurrent: boolean;
+			oldClaimsCurrent: boolean;
+			sameLease: boolean;
+			deadline: number | undefined;
+		}[] = [];
+		const journalSql = 'UPDATE "devices_virtual_thermostat_command_journal" SET "status" = ?, "fault" = ? WHERE ';
+		const branchSql =
+			'UPDATE "devices_virtual_thermostat_branch_runtime" SET "activity" = ?, "releaseAttempts" = 0, "nextReleaseAt" = ? WHERE ';
+		let primary: { cause: unknown } | undefined;
+		let observer: { afterQuery: (event: AfterQueryEvent<unknown>) => void } | undefined;
+		try {
+			const before = await comfort.get(id);
+			await comfort.override(
+				id,
+				{ expected_revision: before.revision, expected_graph_revision: before.graph_revision },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+				'recovery-original-budget',
+			);
+			await loader['queue'];
+			await comfort.settle(id);
+			const active = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			const override = active.comfort?.temporary_override,
+				lease = comfort['leases'].get(id);
+			if (!override || override.status !== 'active' || !lease)
+				throw new Error('Original active override budget missing');
+			const deadline = lease.deadline,
+				watermark = lease.watermark;
+			const slot = await source.query<unknown[]>(
+				'SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?',
+				[id],
+			);
+			const recovery = source.manager.create(VirtualThermostatCommandEntity, {
+				id: uuid(),
+				controllerId: id,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: active.revision,
+				decisionRevision: 0,
+				action: 'on',
+				status: 'prepared',
+				preparedAt: new Date(),
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			});
+			await source.manager.insert(VirtualThermostatCommandEntity, recovery);
+			await claims.refresh();
+			const original = claims.capture();
+			expect(original.isCurrent()).toBe(true);
+			expect(comfort.isCurrent(active)).toBe(true);
+			observer = {
+				afterQuery: (event) => {
+					const kind = event.query.startsWith(journalSql)
+						? 'journal'
+						: event.query.startsWith(branchSql)
+							? 'branch'
+							: null;
+					if (!kind || !event.success || event.parameters?.[0] !== 'unknown') return;
+					const parameters: readonly unknown[] = event.parameters ?? [];
+					native.push({
+						kind,
+						parameters: [...parameters],
+						transactionActive: event.queryRunner.isTransactionActive,
+						originalLeaseCurrent: AsyncLocalStorage.bind(() => structure.hasCurrentStructuralLease()),
+						overrideCurrent: comfort.isCurrent(active),
+						oldClaimsCurrent: original.isCurrent(),
+						sameLease: comfort['leases'].get(id) === lease,
+						deadline: comfort['leases'].get(id)?.deadline,
+					});
+				},
+			};
+			source.subscribers.push(observer);
+			mono = initialMono + 500;
+			await owner.onApplicationBootstrap();
+			clearInterval(owner['timer']);
+			await settleReal(fixture);
+			expect(native.map((entry) => entry.kind)).toEqual(['journal', 'branch']);
+			for (const entry of native) {
+				expect(entry).toMatchObject({
+					transactionActive: true,
+					overrideCurrent: true,
+					oldClaimsCurrent: false,
+					sameLease: true,
+					deadline,
+				});
+				expect(entry.originalLeaseCurrent()).toBe(false);
+			}
+			expect(native[0].parameters.slice(0, 2)).toEqual(['unknown', 'restart_requires_release_reconciliation']);
+			expect(native[0].parameters).toContain(recovery.id);
+			expect(native[1].parameters.slice(0, 2)).toEqual(['unknown', null]);
+			expect(native[1].parameters).toContain(claim.id);
+			expect(original.isCurrent()).toBe(false);
+			expect(claims.capture().isCurrent()).toBe(true);
+			expect(comfort['leases'].get(id)).toBe(lease);
+			expect(lease.deadline).toBe(deadline);
+			expect(lease.watermark).toBeGreaterThanOrEqual(watermark);
+			const recovered = await source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: recovery.id });
+			expect(['unknown', 'confirmed']).toContain(recovered.status);
+			expect(recovered.fault).toBe('restart_requires_release_reconciliation');
+			const after = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			expect(after).toEqual(active);
+			expect(
+				await source.query('SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?', [id]),
+			).toEqual(slot);
+			expect(comfort.isCurrent(after)).toBe(true);
+			mono = initialMono + 30_100;
+			expect(Date.now()).toBeLessThan(Date.parse(override.expires_at));
+			expect(comfort.isCurrent(after)).toBe(false);
+			expect(comfort.isCurrent(active)).toBe(false);
+			expect(comfort.isCurrent(after)).toBe(false);
+			expect(lease.deadline).toBe(deadline);
+			expect(lease.status).toBe('expired');
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			primary = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			loader.onModuleDestroy();
+			monotonic.mockRestore();
+			const completions = await Promise.allSettled([owner.flush(), loader['queue'], fixture.flushTelemetry()]);
+			if (observer) {
+				const index = source.subscribers.indexOf(observer);
+				if (index >= 0) source.subscribers.splice(index, 1);
+			}
+			if (!primary)
+				for (const result of completions) if (result.status === 'rejected') primary ??= { cause: result.reason };
+		}
+		if (primary) throw primary.cause;
+	});
+
+	it('retires failed actual recovery before same-instance retry and keeps fresh B admission independent of stopped A', async () => {
+		const { fixture, claims } = await useNativeClaimsGuard(true);
+		await settleReal(fixture);
+		const previous = runtime,
+			source = database,
+			structure = previous['structure'],
+			id = controllerId;
+		previous.onModuleDestroy();
+		const beforeOverride = await comfort.get(id);
+		await comfort.override(
+			id,
+			{ expected_revision: beforeOverride.revision, expected_graph_revision: beforeOverride.graph_revision },
+			{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+			'failed-recovery-original-budget',
+		);
+		await comfort.settle(id);
+		const activeOverride = await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		const lease = comfort['leases'].get(id),
+			savedLease = { ...lease };
+		if (!lease || activeOverride.comfort?.temporary_override?.status !== 'active')
+			throw new Error('Original active override budget missing before failed recovery');
+		const expectOriginalLease = () => {
+			expect(comfort['leases'].get(id)).toBe(lease);
+			expect(lease).toMatchObject({
+				id: savedLease.id,
+				revision: savedLease.revision,
+				deadline: savedLease.deadline,
+				status: savedLease.status,
+			});
+			expect(lease.watermark).toBeGreaterThanOrEqual(savedLease.watermark);
+			expect(comfort.isCurrent(activeOverride)).toBe(true);
+		};
+		const make = () => {
+			const owner = new VirtualThermostatRuntimeService(
+				source,
+				structure,
+				claims,
+				previous['inputs'],
+				fixture.transport,
+				fixture.values,
+				producers,
+				events,
+				previous['graph'],
+				comfort,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+			issuedRuntimes.push(owner);
+			return owner;
+		};
+		const a = make();
+		runtime = a;
+		let b: VirtualThermostatRuntimeService | undefined;
+		const before = {
+			claims: await source.manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId: id }),
+			config: await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }),
+			branches: await source.manager.find(VirtualThermostatBranchRuntimeEntity),
+			journal: await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id }),
+			listeners: events.eventNames().map((event) => [event, events.listenerCount(event)]),
+		};
+		const failure = new Error('original native recovery subscriber');
+		let attempt = 1,
+			fail = true;
+		const recoveries: {
+			attempt: number;
+			runner: import('typeorm').QueryRunner;
+			originalLeaseCurrent: () => boolean;
+			acknowledged: boolean;
+			outcome: string | null;
+		}[] = [];
+		const captures: { attempt: number; transactionActive: boolean; originalLeaseCurrent: boolean }[] = [];
+		const originalPort: Readonly<{
+			capture: {
+				call: (receiver: VirtualThermostatClaimsService) => ReturnType<VirtualThermostatClaimsService['capture']>;
+			};
+		}> = claims;
+		const originalCapture = originalPort.capture;
+		const capture = jest.spyOn(claims, 'capture').mockImplementation(() => {
+			const recovery = recoveries.at(-1);
+			if (recovery)
+				captures.push({
+					attempt,
+					transactionActive: recovery.runner.isTransactionActive,
+					originalLeaseCurrent: recovery.originalLeaseCurrent(),
+				});
+			return originalCapture.call(claims);
+		});
+		const refresh = jest.spyOn(claims, 'refresh');
+		const recoverySql =
+			'UPDATE "devices_virtual_thermostat_branch_runtime" SET "activity" = ?, "releaseAttempts" = 0, "nextReleaseAt" = ? WHERE ';
+		const observer = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (
+					!event.query.startsWith(recoverySql) ||
+					event.parameters?.[0] !== 'unknown' ||
+					event.parameters?.[1] !== null
+				)
+					return;
+				recoveries.push({
+					attempt,
+					runner: event.queryRunner,
+					originalLeaseCurrent: AsyncLocalStorage.bind(() => structure.hasCurrentStructuralLease()),
+					acknowledged: false,
+					outcome: null,
+				});
+				if (fail) {
+					fail = false;
+					throw failure;
+				}
+			},
+			afterQuery: (event: AfterQueryEvent<unknown>) => {
+				const recovery = recoveries.at(-1);
+				if (!recovery || recovery.outcome || recovery.runner !== event.queryRunner || !event.success) return;
+				if (event.query.startsWith(recoverySql)) recovery.acknowledged = true;
+				if (event.query === 'COMMIT' || event.query === 'ROLLBACK') recovery.outcome = event.query;
+			},
+		};
+		source.subscribers.push(observer);
+		let primary: { cause: unknown } | undefined;
+		try {
+			await expect(a.onApplicationBootstrap()).rejects.toBe(failure);
+			expectOriginalLease();
+			expect(recoveries).toHaveLength(1);
+			expect(recoveries[0]).toMatchObject({ attempt: 1, acknowledged: false, outcome: 'ROLLBACK' });
+			expect(recoveries[0].originalLeaseCurrent()).toBe(false);
+			expect(captures).toEqual([]);
+			expect(a['active']).toBe(false);
+			expect(a['lifecycle']).toBeUndefined();
+			expect(a['bootstrap']).toBeUndefined();
+			expect(a['timer']).toBeUndefined();
+			expect(a['contexts'].size).toBe(0);
+			expect(claims['runtimeAdmission']).toBeUndefined();
+			expect(events.eventNames().map((event) => [event, events.listenerCount(event)])).toEqual(before.listeners);
+			expect(await source.manager.find(VirtualThermostatBranchRuntimeEntity)).toEqual(before.branches);
+			expect(await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id })).toEqual(before.journal);
+			attempt = 2;
+			await a.onApplicationBootstrap();
+			clearInterval(a['timer']);
+			await settleReal(fixture);
+			expectOriginalLease();
+			expect(claims.capture().isCurrent()).toBe(true);
+			expect(recoveries.filter((entry) => entry.attempt === 2)).toHaveLength(1);
+			expect(recoveries[1]).toMatchObject({ acknowledged: true, outcome: 'COMMIT' });
+			expect(captures.filter((entry) => entry.attempt === 2).length).toBeGreaterThan(0);
+			expect(captures.every((entry) => !entry.transactionActive && !entry.originalLeaseCurrent)).toBe(true);
+			a.onModuleDestroy();
+			b = make();
+			runtime = b;
+			attempt = 3;
+			await b.onApplicationBootstrap();
+			clearInterval(b['timer']);
+			await settleReal(fixture);
+			expect(recoveries.filter((entry) => entry.attempt === 3)).toHaveLength(1);
+			expect(recoveries[2]).toMatchObject({ acknowledged: true, outcome: 'COMMIT' });
+			const fresh = claims.capture(),
+				context = b['contexts'].get(id),
+				lifecycle = b['lifecycle'];
+			expect(context).toBeDefined();
+			expect(lifecycle).toBeDefined();
+			expect(b['active']).toBe(true);
+			expect(fresh.isCurrent()).toBe(true);
+			a.onModuleDestroy();
+			expect(fresh.isCurrent()).toBe(true);
+			expect(b['contexts'].get(id)).toBe(context);
+			expect(b['lifecycle']).toBe(lifecycle);
+			expect(captures.every((entry) => !entry.transactionActive && !entry.originalLeaseCurrent)).toBe(true);
+			// Diagnostic recovery is claims-neutral in the current contract and does not need a claims refresh.
+			expect(refresh).not.toHaveBeenCalled();
+			expect(await source.manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId: id })).toEqual(
+				before.claims,
+			);
+			expect(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(
+				before.config,
+			);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			primary = { cause };
+		} finally {
+			a.onModuleDestroy();
+			b?.onModuleDestroy();
+			const completions = await Promise.allSettled([a.flush(), ...(b ? [b.flush()] : []), fixture.flushTelemetry()]);
+			const index = source.subscribers.indexOf(observer);
+			if (index >= 0) source.subscribers.splice(index, 1);
+			capture.mockRestore();
+			refresh.mockRestore();
+			if (!primary)
+				for (const result of completions) if (result.status === 'rejected') primary ??= { cause: result.reason };
+		}
+		if (primary) throw primary.cause;
+	});
 
 	it.each(['before-commit', 'after-ack'] as const)(
 		'preserves the original native bootstrap %s failure, complete persisted image and retired first admission',
