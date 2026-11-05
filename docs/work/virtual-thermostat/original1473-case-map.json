@@ -154,11 +154,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "uses the original physical boolean sample and withdraws it at expiry without evaluation or renewed evidence",
-        "line": 598,
+        "line": 602,
         "bodySha256": "284fff4cf0f6818dfc38f6aa7c41ebb63e39d6f5a07a6d6ddb6b9adc83d64e42",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "c49a4d5f1d3dc7bad6b1393316e76ff2431c79f44a367178b4e1e8f9434d9315",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -176,11 +177,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "withdraws qualification and activity when target source lease or graph scope is revoked",
-        "line": 626,
+        "line": 630,
         "bodySha256": "fc132485c31878e06977dfdc1c9d87b223d9dc39c3e16c16715cf0ea1c9deafa",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "d6f811a18c0d14090d0c9a2bae73539b2814542ab522ed20b4b8709a17368387",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -198,11 +200,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "withdraws cached qualification when its captured registry scope is revoked",
-        "line": 646,
+        "line": 650,
         "bodySha256": "bec764ae6d270f344677db8c23a425e51e85a8bd91eb5a0d9bc683c59c54b83a",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "bec764ae6d270f344677db8c23a425e51e85a8bd91eb5a0d9bc683c59c54b83a",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -220,11 +223,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never promotes %s physical feedback to current activity",
-        "line": 660,
+        "line": 664,
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -242,11 +246,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never promotes %s physical feedback to current activity",
-        "line": 660,
+        "line": 664,
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -264,11 +269,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never promotes %s physical feedback to current activity",
-        "line": 660,
+        "line": 664,
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -286,11 +292,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never promotes %s physical feedback to current activity",
-        "line": 660,
+        "line": 664,
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -308,11 +315,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never promotes %s physical feedback to current activity",
-        "line": 660,
+        "line": 664,
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -330,11 +338,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "never promotes %s physical feedback to current activity",
-        "line": 660,
+        "line": 664,
         "bodySha256": "3abe1623ebd6e8aeb824c4c88e1a4b347f281a5ed5ea7850b5c3c8f2d75a4315",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e4e7f26026a5a7f125f5f72e7db6f76a451b59381201a8f743855debcc927db3",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -352,11 +361,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "withholds older OFF feedback after newer %s ON dispatch until actual newer physical feedback",
-        "line": 684,
+        "line": 688,
         "bodySha256": "29546b8ab482e3e1959b662f42a19d7bb6a71ec6c1ae942fe509eae9990b0aa5",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6144033e307aa7367ea2d2acc0e4e5069ac35c3adfb30762eb4577655f4b1ba1",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -374,11 +384,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "withholds older OFF feedback after newer %s ON dispatch until actual newer physical feedback",
-        "line": 684,
+        "line": 688,
         "bodySha256": "29546b8ab482e3e1959b662f42a19d7bb6a71ec6c1ae942fe509eae9990b0aa5",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6144033e307aa7367ea2d2acc0e4e5069ac35c3adfb30762eb4577655f4b1ba1",
       "semanticComparison": "The original physical-sample identity, expiry, qualification withdrawal, invalid-sample variants and newer-ON ordering assertions are retained. Per-case locals replace fixtureState fields; no sample is promoted by evaluation. The sample/claims boundary is controlled in this basic fixture."
@@ -395,11 +406,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "reconciles and refreshes runtime after a committed comfort mutation whose leading listener threw",
-        "line": 723,
+        "line": 727,
         "bodySha256": "40ab25baca572fb9cd9f6fdaf871918fa0fe3ad1d77120105db09a485e1c3193",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6491676a6062fc7bef23ad99c7c577eb16ff9cd99e54d5c3bc443806e24c6545",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -416,11 +428,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "inhibits a lower-demand override on observable rollback instead of resuming a higher baseline",
-        "line": 744,
+        "line": 748,
         "bodySha256": "3805d32518638911c4918c70bff08609419689c2e9259b07687e35dfe9b7709c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "d5bcc6292a10245822aaa4c817f41c38cfa4453a2cc31f3d634bff173c6413fa",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -437,11 +450,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "uses effective preset demand without changing requested settings or bypassing a final ambient guard",
-        "line": 775,
+        "line": 779,
         "bodySha256": "7b7e8a6f4d83e43e3568c41711535296b5de5eb70e49ef8413042bd2344d4236",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "472c866b383d897feff5875b97052a09553a0be50b2a62758b1085f5dd078447",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -458,14 +472,30 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects queued ON at exact override expiry even before a poll recomputes the baseline",
-        "line": 798,
+        "line": 802,
+        "bodySha256": "0300e2ff3fb1f51f3bd12e79ee1bee80f5037e4f09610dcba8a599dffa2137b3",
+        "expectationsIdentical": false,
+        "measuredStatus": "passed",
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
+      },
+      "originalBodySha256": "04fb8d1dc0cc482b348381ebfff6fb5e4ec859f90e6e45fb0adb15733c57dde4",
+      "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline. The wall-clock expiry fixture now holds monotonic time during preparation; erasing that one statement restores its complete original body tokens. A controlled original 1200ms native preparation delay crosses its monotonic deadline and prevents queued ON; the coherent-clock control passes all original assertions and changes only wall time at exact expiry. Historical full-run cause remains UNKNOWN.",
+      "currentBeforeExpiryPreparationCorrection": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "rejects queued ON at exact override expiry even before a poll recomputes the baseline",
+        "line": 802,
         "bodySha256": "f4cc4419a598a32290647b8d1a1124c7220720b7a037d1ab907fecef0a710775",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete six-file native-consumer invocation: 265 passed, zero failed/pending; runtime 176, claims 14, comfort 39, SDK 24, value locks 8, ownership 4. Report SHA-256 e61e2e3611bd5b1cb0364da509190c4709bb51414e25176e2de5b8165c7bd9ca",
+        "fileSha256": "10041339009e185c3ea7854e0d96310003283e4a458d1beb5c49b5e5ee2e8a64"
       },
-      "originalBodySha256": "04fb8d1dc0cc482b348381ebfff6fb5e4ec859f90e6e45fb0adb15733c57dde4",
-      "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
+      "expiryPreparationCorrection": {
+        "scope": "Freeze monotonic input during preparation of the wall-clock-only exact-expiry case; all original assertions/order retained",
+        "erasureProofSha256": "fb87ed46123463627740776322e7a1a3c743bb969fd3b69aa02054f4c53ab7b9",
+        "controlReportSha256": "28bfb887d6f0d9461dd024b3b3b25345bee4083b28b92e0ced748ce2151fae9b"
+      }
     },
     {
       "id": 23,
@@ -479,11 +509,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "fences a queued preset ON when a newer user OFF revision commits",
-        "line": 831,
+        "line": 837,
         "bodySha256": "806706106aae5201995eb18e485b0fccf2408a52fbfcb28cf1cf60406885b42c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "1a3a425a7d724b5905152614acebbe10ad3f8fb8219e2f7dae7bd2e1a803bafa",
       "semanticComparison": "Real persisted comfort/configuration mutation and held dispatch order retain the original effective-demand, rollback, exact-expiry or revision refusal assertions. The current basic fixture controls claims/value ports; it is a runtime business-outcome witness, not replacement evidence for the original full mutation-provider custody pipeline."
@@ -500,11 +531,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "publishes detached binding freshness with the same HTTP and event stamp",
-        "line": 855,
+        "line": 861,
         "bodySha256": "ba75ab27301c1be5d83807ea3550794a328da12d940a6d39c9ff10dcb33ea532",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "645bdf1c46f7d62cc3af1467164ca3516be60fb56951dd9afb249bf1aaa9835a",
       "semanticComparison": "Detached freshness snapshots retain the matching HTTP/event stamp and cannot rewrite the original published result. This is the service/controlled-port boundary, not a network subscriber acknowledgement."
@@ -521,11 +553,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "cancels known-unsent ON without a command loop and retries on the poll and a fresh sample",
-        "line": 1320,
+        "line": 1326,
         "bodySha256": "1b6b1baf2466d29509d65994584bfb856ddb2c920e8e91472e9fdc18725c5aa3",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "dbd70a77b6219be33a04bad3fd954a5154819eca9ecd8299b9f5046421f4d5ad",
       "semanticComparison": "The original before-send refusal versus potentially-sent ON versus refused OFF outcomes remain distinct. Journal status, mandatory OFF attempts, claim retention and eventual qualified release assertions remain; transport outcomes are controlled."
@@ -542,11 +575,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains a potentially sent ON as unknown and immediately attempts mandatory OFF",
-        "line": 1361,
+        "line": 1367,
         "bodySha256": "2ec2a92af63119fd60f8d08fdccaf15b87724b700a0b5107ae3c7379268c7dc9",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "c7682c75409901ba2d7303241ced23d58b8fd5f830485a29d48b468d71d9a4cb",
       "semanticComparison": "The original before-send refusal versus potentially-sent ON versus refused OFF outcomes remain distinct. Journal status, mandatory OFF attempts, claim retention and eventual qualified release assertions remain; transport outcomes are controlled."
@@ -563,11 +597,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "retains a refused OFF and its releasing claim until qualified release proof exists",
-        "line": 1380,
+        "line": 1386,
         "bodySha256": "626d8fe81a701104c7f4269af8dd9e625db101f84aff0149fc0334fa496cdd8c",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "fd42e185ad1c18011313bc32d44994b1d2f0cb2acc0ac1d17a41aa0e6da46ef0",
       "semanticComparison": "The original before-send refusal versus potentially-sent ON versus refused OFF outcomes remain distinct. Journal status, mandatory OFF attempts, claim retention and eventual qualified release assertions remain; transport outcomes are controlled."
@@ -584,11 +619,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "loads bounded settled-history witnesses and retains all unresolved identities for lazy drainage",
-        "line": 1472,
+        "line": 1478,
         "bodySha256": "2a58418c61eb4517893398ff7adde401a06329143356cfa3437a38fa0669efd5",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "15de930f51adaf92d29c686356d8747fcff4a07ba9d9139189e79219152b438b",
       "semanticComparison": "The helper reads independent complete journal facts before public inspect, observes the original loadDecisionCommands result without replacing it, and verifies all six witness predicates, latest ordering, uniqueness, scope, whole-row equality and cardinality. Lazy drainage still requires every unresolved identity. Oldest-prepared, duplicate-row and corrupt-proofId negative controls each fail both cases at these exact oracle assertions."
@@ -605,11 +641,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "bounds continuous accepted ON history and drains every identity only on qualified OFF",
-        "line": 1580,
+        "line": 1586,
         "bodySha256": "537ea46cc0aea5e3b13949c8619336a7faf8de8803328d184c0f67080c40a4e4",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "e7b9fe3a2d5b6c1dddbfb560a3cddf96898ea5d2752ca3007e1de145004a7c07",
       "semanticComparison": "The helper reads independent complete journal facts before public inspect, observes the original loadDecisionCommands result without replacing it, and verifies all six witness predicates, latest ordering, uniqueness, scope, whole-row equality and cardinality. Lazy drainage still requires every unresolved identity. Oldest-prepared, duplicate-row and corrupt-proofId negative controls each fail both cases at these exact oracle assertions."
@@ -626,11 +663,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects drainage proof that omits a command added while proof I/O is pending",
-        "line": 1693,
+        "line": 1699,
         "bodySha256": "460d4102cf448fb8813ec2886100c674e200ff6666524a77c55abf14ecc4873d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "b10cb257d10a9d982f8a4a6dd8abe7ff8c7871920c66f58e6f8bae4cd34f1300",
       "semanticComparison": "The current public requestInstalled issues and joins the remedial OFF before the proof gate. A new ON inserted while proof I/O is held prevents settlement of both original accepted identities until a fresh complete proof. The original omit-new-identity refusal is retained without private-entry-only credit."
@@ -647,11 +685,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "uses the retained latest ON timestamp for the lease renewal boundary",
-        "line": 1749,
+        "line": 1755,
         "bodySha256": "0ac9f42455ae03c5bcbf6a68a7f260cde360591d9646df2498ab8c32772106a6",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "374a1c90a7a8ae5f1969b08e989072a9b2ff3307331c3229686a7369474fb9d4",
       "semanticComparison": "Retained latest-ON timestamp still controls the lease renewal boundary; the same complete timestamp/dispatch assertions were compared rather than inferred from the title."
@@ -668,11 +707,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "cancels ON on an accepted sample between preparation and dispatch then sends ON from a fresh evaluation",
-        "line": 1784,
+        "line": 1790,
         "bodySha256": "0700e900e1d99e2005a9776fa778cadb79bf7499bf9dba94883252a3cd37436d",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "78f0286137bbbf8aa2b6e0ce9a401a178a3f6ef84d4d220f09aa6c72002aa46f",
       "semanticComparison": "The hook moved from inFlightCommands.set to dispatch entry. Production order remains insert ACK, context append, inFlight set, dispatch: both hooks are after prepared ACK and before transport. The accepted sample cancels the original unsent identity, while a fresh different identity is accepted exactly once. This does not qualify original Promise-observer custody."
@@ -689,11 +729,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "ignores a newer cancelled ON after restart while retaining the earlier confirmed ON",
-        "line": 1814,
+        "line": 1820,
         "bodySha256": "19508a18856f74cf3725e9195c1aa72501ebd28655e585a0190804eb28808e35",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "40dbd6d3fea47e5cd6e8b475052143b75848f4f10f3d34758fee239bcf46a5b7",
       "semanticComparison": "Restart still ignores the newer cancelled ON while retaining the earlier confirmed ON, with persisted original identities and timestamps; fixture field ownership changed to per-case locals."
@@ -710,11 +751,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "closes local output and diagnostic authority until a fresh evaluation after graph validation retry",
-        "line": 1845,
+        "line": 1851,
         "bodySha256": "0063d88a452e701ab6637e549630b29e88b1124ac984db44c264361282fb4884",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "49d3a4c36eca650b33017838a7b32c70a86ff3c245375882136a82d4e1929d51",
       "semanticComparison": "Unavailable graph validation still closes output and diagnostic authority, including publication held across failure/retry. Current request suppression allows one original inspection and only a fresh post-retry inspection republishes. This binds the business publication rule, not retired cross-case fixture ABA controls."
@@ -731,11 +773,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects a pending output publication captured before a failed graph validation and retry",
-        "line": 1861,
+        "line": 1867,
         "bodySha256": "f2a562b655f81259cf63d130590c248cbb6c5ed98c36d3969f4c07d28b1dd34b",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4131d5f1c02551232b487eaad0023c64d3254c7184dc42503361d4e349f966db",
       "semanticComparison": "Unavailable graph validation still closes output and diagnostic authority, including publication held across failure/retry. Current request suppression allows one original inspection and only a fresh post-retry inspection republishes. This binds the business publication rule, not retired cross-case fixture ABA controls."
@@ -752,11 +795,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "refuses thermostat energizing while graph validation is unavailable",
-        "line": 1884,
+        "line": 1890,
         "bodySha256": "e0b8148a41acf335df075d1b85d42650d88eeea6c5c5ee3d4687693ca4818918",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "068c4a384e0d6b1703593032ef16f763fe16fa0770075dc74f39d208f0c11711",
       "semanticComparison": "Unavailable graph validation still closes output and diagnostic authority, including publication held across failure/retry. Current request suppression allows one original inspection and only a fresh post-retry inspection republishes. This binds the business publication rule, not retired cross-case fixture ABA controls."
@@ -773,11 +817,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "requires new drainage when installed qualification changes under the same claim identity and revision",
-        "line": 1902,
+        "line": 1908,
         "bodySha256": "4ba00de3d7a7788f68de3a4a030e7c4865fe07e4c2a05b3008b1c69168e192dc",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "dab1dd68bb537ec4ce329e10a75751a3ee91f4950f9900c8719248ede248eb91",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -794,11 +839,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "revokes a queued ON after qualification replacement and retains its reservation",
-        "line": 1920,
+        "line": 1926,
         "bodySha256": "62604274dbd42d1b325df0717d14bcd2eaa887089aee09f29b118f119c3d475a",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4593b87008e49c85da6a2aa6941950b2dad13fb5c441649667273e9eff1e8a76",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -815,11 +861,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "revokes the stored release barrier when its stable provider connection lease changes",
-        "line": 1941,
+        "line": 1947,
         "bodySha256": "fe5b7dd9795d3b2f337ed1cb3560849d5a640a6cd7a416ea532f56727ca99742",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ba2c4298c99a0f67f9233ab335a7d4eeecc484f6cec4e535b66cccf660531d1",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -836,11 +883,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "accepts a newly admitted provider OFF sample instead of reusing pre-reconciliation timestamps",
-        "line": 1952,
+        "line": 1958,
         "bodySha256": "44c1055fa35151d08c1b2958f6f47cf7654062f062426aee4d97994149a71b70",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "cb572fc2d4faa228dd64cf5c99881b639a04e8bf854ab859efa95797e9143bcf",
       "semanticComparison": "Qualification/provider lease or source changes invalidate the old barrier or held ON; only newly admitted OFF evidence establishes release. Original claim identity, queued refusal and timestamp/proof assertions remain; provider I/O is controlled."
@@ -857,11 +905,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks %s evidence at the exclusive journal settlement boundary",
-        "line": 1963,
+        "line": 1969,
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -878,11 +927,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks %s evidence at the exclusive journal settlement boundary",
-        "line": 1963,
+        "line": 1969,
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -899,11 +949,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks %s evidence at the exclusive journal settlement boundary",
-        "line": 1963,
+        "line": 1969,
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -920,11 +971,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks %s evidence at the exclusive journal settlement boundary",
-        "line": 1963,
+        "line": 1969,
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -941,11 +993,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rechecks %s evidence at the exclusive journal settlement boundary",
-        "line": 1963,
+        "line": 1969,
         "bodySha256": "80b5f30fd1e933c251c8d2b1f4ee39b18519c15da0b5287ef8a7037f1fbfd9bf",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "afc07bba1e0985b2b5ffae71c6653375d2c35e9d2279feefa2874c8a52bbd278",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -962,11 +1015,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rolls back %s settlement if %s changes during its awaited write",
-        "line": 2013,
+        "line": 2019,
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -983,11 +1037,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rolls back %s settlement if %s changes during its awaited write",
-        "line": 2013,
+        "line": 2019,
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1004,11 +1059,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rolls back %s settlement if %s changes during its awaited write",
-        "line": 2013,
+        "line": 2019,
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1025,11 +1081,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rolls back %s settlement if %s changes during its awaited write",
-        "line": 2013,
+        "line": 2019,
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1046,11 +1103,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rolls back %s settlement if %s changes during its awaited write",
-        "line": 2013,
+        "line": 2019,
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1067,11 +1125,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rolls back %s settlement if %s changes during its awaited write",
-        "line": 2013,
+        "line": 2019,
         "bodySha256": "5248c5037f140a586358b751a615f113d177b322f818f78abd20c17a514e42ba",
         "expectationsIdentical": true,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "4ee16ad826288928ec03e2914852c7d734b5f49507cb59f4e260d332ada4dfbe",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1088,11 +1147,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1109,11 +1169,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1130,11 +1191,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1151,11 +1213,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1172,11 +1235,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
@@ -1193,11 +1257,12 @@
       "current": {
         "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
         "title": "rejects %s provider proof and retains the actuator reservation",
-        "line": 2109,
+        "line": 2115,
         "bodySha256": "8e7d751ada5f705632ebbe751e0deca4099bcd9a3977e4ae54a4a53a9bc27229",
         "expectationsIdentical": false,
         "measuredStatus": "passed",
-        "measurement": "complete current runtime: 155 passed, zero failed/pending; report SHA-256 d11c99a1f84d8cffdb22aa6fe5eca018bcf90d2ea7a1176cf3225f64faf67f25"
+        "measurement": "Complete seven-file current-source invocation: 284 passed, zero failed/pending; runtime 177, claims 14, comfort 45, SDK 24, value locks 8, ownership 4, creation-capture 12. Report SHA-256 a206044068f983ed90e86db94241038e9d356c6081bfd2c11ccb811babf762c8",
+        "fileSha256": "a8bfe09d843d4b4bf364a6aeb9f5fb78481358a5c5364cab13b848af08ce9680"
       },
       "originalBodySha256": "6ab9c8cfa7abde1252c1b75f30207eaafd000fa8a4968ce15b886a7688db8240",
       "semanticComparison": "The original changed-evidence variant is preserved at the exclusive settlement boundary or during its awaited SQL write. The current case rechecks evidence, rejects stale proof or rolls back, and retains the reservation/original pending identity. SQLite is real; proof/provider outcomes are fixture controlled. This is not an exact COMMIT-time universal raw-handle guarantee."
