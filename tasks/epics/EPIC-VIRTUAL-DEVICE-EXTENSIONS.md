@@ -16,23 +16,23 @@ The user explicitly selected both Home Assistant climate and Zigbee2MQTT native-
 
 ## Delivery tasks
 
-Rows track independently verifiable acceptance, not one PR per issue. The user prefers fewer, larger cohesive PRs
-because CodeRabbit provides one review per hour. Assemble related issue work and its tests/documentation into a shared
-delivery PR after local implementation and independent review. The first combined delivery, [PR #1464](https://github.com/FastyBird/smart-panel/pull/1464), merged the
-plan plus VD3-1 and VD3-4 after composed checks and current-head review passed. Keep subsequent PRs draft until their
-complete implementations and composed checks are ready. Split later work only
-where dependency, compatibility or the actual reviewer file limit requires a separate batch.
+Rows track independently verifiable acceptance, not one PR per issue. Keep each PR small and independently
+reviewable, following the user's current preference. Separate implementation, evidence and summaries when their
+combined diff becomes large; retain explicit dependencies and exact-head CI/review for every layer. Review limits
+do not justify growing an already reviewable batch. The first combined delivery,
+[PR #1464](https://github.com/FastyBird/smart-panel/pull/1464), merged the plan plus VD3-1 and VD3-4.
 
 Checkboxes mean merged, tested software, not candidate code or installed qualification. A child closes only after its
 entire acceptance is satisfied, even when its PR also closes other issues.
 
-### Reconciled software progress — 2026-11-01
+### Reconciled software progress — 2026-11-06
 
-Current main is `54e2c92c57d4aa2a906cd7744e3d60294c203377`, the squash merge of
-[PR #1505](https://github.com/FastyBird/smart-panel/pull/1505). The
-[acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) maps merged child software and
-remaining gates. Plans (#1501), occupancy (#1502), native thermostats (#1504) and cover/HomeKit (#1505) each
-passed their exact-head CI and main review. Final composition, original-reference reconciliation and alpha remain #1462.
+Summary base is merged main `1213149b8960a55536dfd6cd4687aaaea96a701d` (#1509).
+The [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) now adopts the named combined
+activity and schedule/occupancy/manual-precedence witnesses delivered by #1508, with the later #1517 fixture
+correction. The current all-available-domain unit variants complement that actual HTTP operation. Plans (#1501),
+occupancy (#1502), native thermostats (#1504) and cover/HomeKit (#1505) retain their reviewed delivery evidence.
+Original-reference reconciliation, remaining final acceptance and alpha remain #1462.
 
 - [x] VD3-1 / #1448: weighted/filtering numeric policies, #1464.
 - [x] VD3-2 / #1449: additional numeric and binary profiles, #1465.
@@ -41,7 +41,7 @@ passed their exact-head CI and main review. Final composition, original-referenc
 - [x] VD3-5 / #1452: fan/cover COMMAND and qualified native percentage POSITION/TILT, #1467/#1505.
 - [x] VD3-6 / #1453: group authoring/repair, Panel, scenes and supported room paths, #1466/#1467.
 - [x] VD3-7 / #1455: presets, durable overrides, effective arbitration and clients, #1469/#1470 and later native-intent fixes.
-- [ ] VD3-8 / #1458: bridge, schedules and occupancy are merged in #1498/#1501/#1502; final combined acceptance remains #1462.
+- [x] VD3-8 / #1458: existing bridge/scheduler/occupancy composition, explicit presets and independent manual priorities; criterion evidence adopted below.
 - [x] VD3-9 / #1459: typed dew point and cooling cutoff software, #1471.
 - [x] VD3-10 / #1454: provider-neutral guarded parallel branches, #1469/#1470/#1471.
 - [x] VD3-11 / #1456: Home Assistant native-unit adapter and ordinary virtual authoring, merged #1504.
@@ -50,10 +50,13 @@ passed their exact-head CI and main review. Final composition, original-referenc
 - [x] VD3-14 / #1461: standard and native/composed HomeKit mappings, #1466/#1505.
 - [ ] VD3-15 / #1462: final composed/upgrade/reference-scenario acceptance, docs and actual alpha publication remain.
 
-Reused definitions #1292 are already closed. Activity API #1294, Admin #1295 and Panel #1296 have complete scoped
-software evidence. #1293 remains open for the original combined all-domains-present orchestration acceptance;
-separate domain suites are not that single case. Optional unavailable domains keep their explicit result contract.
-Time scheduling #1297/#1298/#1362 merged in #1501; occupancy #1299/#1300 merged in #1502. Final combined-domain acceptance remains separate.
+Reused definitions #1292, activity API #1294, Admin #1295 and Panel #1296 retain their scoped software evidence.
+The original all-available-domain requirement of #1293 is now covered by the actual combined HTTP operation,
+its failed-media variant and the explicit unit fan-out/failure variants. Time scheduling #1297/#1298/#1362 and
+occupancy #1299/#1300 are reused, with the combined schedule/motion/manual-priority case covering #1458.
+[The criterion map](../../docs/virtual-device-extensions-acceptance.md#composed-activity-and-automation-criteria)
+identifies source, execution and limits. Closure of #1293/#1458 follows this reconciliation's own CI/review/merge;
+optional security actuation remains UNSUPPORTED and the unrelated #1287 epic remains outside this milestone.
 
 [PR #1473](https://github.com/FastyBird/smart-panel/pull/1473) remains a frozen draft reference. Its historical
 200/61/261 result is not a current-main failure count. #1462 still owns the exact original-scenario reconciliation
@@ -96,7 +99,7 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
 - [x] Weighted/filtering/numeric/binary profiles have shared preview/persistence/runtime policies and truthful quality.
 - [x] Every new group profile is authorable and has feedback-based mixed/unknown/member outcomes across ordinary controls.
 - [x] Presets and overrides persist, expire/recover correctly, preserve explicit OFF and never bypass protective admission.
-- [ ] Existing space schedules/presence drive configured climate actions, with defined DST/restart/manual precedence.
+- [x] Existing space schedules/presence drive explicitly configured climate actions, with tested DST/restart/dedup, UNKNOWN input and independent room/thermostat manual precedence.
 - [x] Dew point preserves both input identities/age and cannot masquerade as ambient/floor temperature.
 - [x] Cooling cutoff has exact trip/recovery/fault semantics and refuses unqualified protective activation.
 - [x] Parallel actuator groups retain per-member ownership/journals and all-member release/opposed exclusion across restart.

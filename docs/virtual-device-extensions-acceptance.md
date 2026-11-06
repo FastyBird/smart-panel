@@ -1,9 +1,10 @@
 # Virtual device extensions: software acceptance reconciliation
 
-Reconciled on 2026-11-01 against merged main `54e2c92c57d4aa2a906cd7744e3d60294c203377`.
+Reconciled on 2026-11-06 against merged main `1213149b8960a55536dfd6cd4687aaaea96a701d` (#1509).
 The governed bridge (#1498), weekly schedules (#1501), occupancy (#1502), native HA/Zigbee thermostats (#1504)
-and cover/HomeKit completion (#1505) are merged. #1505 passed all 14 checks and completed nonblocking main review
-at `825391883e3102e446e547796398be1ff58db71d`; its squash commit is the main above.
+and cover/HomeKit completion (#1505) are merged. Combined activity HTTP and schedule/motion/manual-priority
+witnesses were delivered by #1508 and retained through the later #1517 fixture correction. This reconciliation
+adds the explicit all-available-domain unit variants and adopts the criterion map below.
 
 The [final software/alpha validation record](work/virtual-thermostat/final-software-alpha-validation.md) tracks
 new composed HTTP and published-alpha upgrade cases, release-source identity, current execution and remaining gates.
@@ -19,8 +20,8 @@ is still explicit work; neither green delivery PRs nor a title match alone disch
 | Fan/cover backend (#1452)                                             | Software complete; #1467/#1505                                                | Qualified percentage POSITION/TILT merged; installed motors remain #1463                                                                |
 | Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | Unsupported profiles retain refusals; installed equipment remains separate                                                              |
 | Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | Installed HA/Zigbee/Shelly qualification remains separate                                                                               |
-| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Final composed automation acceptance remains #1458/#1462; schedules and occupancy are merged                                            |
-| Activity climate bridge (#1458)                                       | Configured activity-to-climate path delivered by #1498                        | Schedules and occupancy merged; final composition and original-reference reconciliation remain #1462                                    |
+| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Schedule/occupancy composition is adopted under #1458; original-reference and alpha gates remain #1462                                            |
+| Activity climate bridge (#1458)                                       | Software complete; #1498/#1501/#1502 and composed criterion map below                        | Independent manual priorities and UNKNOWN input are covered; original-reference and alpha gates remain #1462                                    |
 | Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                                                                |
 | Home Assistant native units (#1456)                                   | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
 | Zigbee2MQTT native units (#1457)                                      | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
@@ -40,7 +41,7 @@ security epic or require the optional camera input.
 | Issue | Disposition                                 | Evidence or exact remainder                                                                                                                                                     |
 | ----- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | #1292 | Already closed; preserve                    | Definitions, per-space configuration and disabled/unset climate defaults, #1472                                                                                                 |
-| #1293 | Keep open                                   | The final acceptance batch adds the single actual all-available-domain HTTP operation and its failed-media variant; delivery gates remain                                       |
+| #1293 | Software complete; closure on reconciliation merge | Combined all-available-domain HTTP and unit witnesses, including failed-media and rejected-climate variants; see criterion map below |
 | #1294 | Software complete                           | Authenticated activation/configuration endpoints, revision/identity events and generated contracts, #1472                                                                       |
 | #1295 | Software complete                           | Mounted Admin configuration, reset/preview/conflict handling and six locales, #1472/#1498                                                                                       |
 | #1296 | Software complete                           | Panel selection, loading, truthful results, manual clear, reconnect and localization, #1472                                                                                     |
@@ -50,15 +51,55 @@ security epic or require the optional camera input.
 | #1299 | Software complete; merged #1502             | Occupancy state machine, selected/multiple sensors, vacancy timeout, manual priority and truthful unavailable state                                                             |
 | #1300 | Software complete; merged #1502             | Admin sensor selection, timeout and occupied/vacant mode mapping                                                                                                                |
 
-#1293 is not a reason to rebuild the delivered bridge. Its remaining acceptance must use the existing adapters
-and their explicit availability outcomes. Schedules and presence stay with their own issues.
+The original #1293 combined-domain requirement is now exercised by one actual HTTP operation, not inferred from
+separate domain suites. #1458 reuses the delivered scheduler and occupancy engine. The closed issues listed above
+retain their full software scope and the approved disabled/unset climate-default amendment.
+
+## Composed activity and automation criteria
+
+| Issue and criterion | Named current witness | Acceptance boundary |
+| --- | --- | --- |
+| #1293: all available domains in one activation | [combined HTTP][activityCombinedHttp]: `composes all configured activity domains through ordinary HTTP and real adapters; media fails=%s` | Authenticated migrated AppModule; lighting/climate/covers/media execute together; failed media preserves the other outcomes; security stays UNSUPPORTED. |
+| #1293: unit fan-out, results and partial failure | [mode service unit][activityCombinedUnit]: `orchestrates every available domain and persists each result when climate rejects=%s` | Real mode/domain services and SQLite, controlled domain I/O; preview preserves the complete saved configuration and creates no activity-state row, events or commands; rejecting climate still dispatches the other three domains and persists all five results. |
+| #1458: reuse existing features and dormant climate defaults | [authored defaults][activityCurrentDefaults], existing #1292/#1294–#1300/#1362 evidence above | No duplicate scheduling/presence engine; no preset or numeric setpoint is inferred from a mode name. |
+| #1458: explicit configured preset mapping | [configured HTTP][activityConfiguredHttp]: `previews without native writes, activates %j through HTTP and deactivates the exact installation` | Separate configured eco and numeric heat variants; preview is write-free and activation installs the actual private source/slot. |
+| #1458: room/thermostat precedence and UNKNOWN | [manual-priority HTTP][activityPriorityHttp]: `composes scheduled and observed activity with independent room and thermostat manual precedence` | Due schedule selects eco, fresh motion selects heat, disconnected input becomes UNKNOWN without vacancy; room hold and thermostat hold remain independent after occupancy Resume. |
+| #1458: DST/restart/dedup | [schedule clock][activityCurrentClock] and [scheduler integration][activityCurrentScheduler] | Missing spring time, first autumn fold, half-hour fold, durable occurrence claims, backward clock, manual-until-next-trigger and restart without replay. |
+| #1458: current baseline/preset and manual-hold guard | [schedule HTTP][activityScheduleHttp] and [motion HTTP][activityMotionHttp], each with `thermostat manual hold=%s` | Both routes use the governed climate bridge and refuse to overwrite the independent thermostat manual baseline. Protective ON/floor/expiry guards retain their separate [runtime witnesses][activityCurrentRuntime]. |
+
+The complete seven-file local invocation passed **67/67**, zero failures/skips: mode service 12, domain adapters 9,
+schedule clock 9, scheduler integration 20, occupancy state 5, occupancy inputs 4 and occupancy integration 8.
+Report SHA-256 `1a5cf00ed36fa63f682157613222a6145dce15a28d8a8de6fa503ab902fdb4a3`.
+The retained preceding fan-out control makes only the rejected-climate variant fail (five expected
+results versus two); the success control passes, with ten other file cases unrun. Production was restored
+byte-for-byte. Control report SHA-256 `7d3faa2d9b45d1c118ec028c459b986863d77f783ae3bcb532230353d6ec033f`.
+
+The current variants additionally compare the entire saved configuration before and after preview, including
+fields such as display order that could change without a revision update. A production control increments
+`activityOrder` inside preview without changing the revision: both strengthened variants fail, with ten other
+cases unrun (report SHA-256 `69b8da1d7593f012e0406ad5e6cb316e11b68cb0d43f9138fde0336374ef90e9`).
+The same mutation passes both variants when only the new snapshot assertions are removed (report SHA-256
+`23d90401864daae62e77cadd9f5991142d89a98895c2d4c34c42a013e0261779`). Production and the strengthened
+tests are restored byte-for-byte before the complete positive invocation above. The fan-out control retained
+above predates this snapshot strengthening; it was not replayed in this invocation.
+
+The already merged HTTP and scheduler/occupancy witnesses also passed in
+[ordinary hosted backend CI](https://github.com/FastyBird/smart-panel/actions/runs/42205235236/job/127850109421)
+at sibling test-only head `d1018936dc786a788f11811da0c791e45b37482a`: 727 unit suites / 13,345 passes, one existing
+unrelated skipped mapper case, then all 29 ordinary E2E suites / 426 passes without skips. The hosted HTTP, scheduler and occupancy files
+match the summary base; these hosted counts precede the two unit variants added here. This reconciliation
+still requires its own exact-head CI and completed review before merge/issue closure.
+
+This accepts the supported software scope of #1293/#1458. The physical qualification boundary in the HTTP fixture
+is controlled separately; these criteria do not grant installed protective qualification. The original #1473
+case ledger is unchanged, and #1462/#1447, actual alpha publication and installed #1463 remain open.
 
 ## Time-scheduling follow-up (#1297, #1298, #1362)
 
 The scheduler reuses `SpaceModeService` and the existing governed climate adapter. It creates no second thermostat
 or presence engine. Default schedules are disabled/empty; climate mode names still imply no presets or temperatures.
 The configured preset and thermostat manual-hold cases execute through the real migrated AppModule and native ledger.
-#1458 remains open for final combined acceptance; presence/occupancy and unavailable-input semantics merged in #1502.
+#1458 combined acceptance is adopted in the criterion map above; presence/occupancy and unavailable-input semantics merged in #1502.
 
 | Acceptance boundary                                                                                     | Current source/test witnesses                                                                                              |
 | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -76,8 +117,8 @@ remain separate. Historical RED/UNKNOWN evidence remains attached to its origina
 ## Occupancy follow-up (#1299, #1300)
 
 The occupancy implementation merged in #1502 after all 14 checks and completed main review at `95a191b`.
-Its scoped child issues are closed. Parent #1458 still owns final combined acceptance; this does not grant
-installed-equipment qualification.
+Its scoped child issues are closed. The criterion map above adopts the combined #1458 acceptance; installed-equipment
+qualification remains separate.
 
 | Acceptance boundary                                                                                                | Current source/test witnesses                                                                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -233,8 +274,9 @@ witness is the actual native opt-in/manual-hold path, alongside explicit OFF, ov
 ## Parent acceptance and original PR #1473
 
 Merged software includes aggregates, groups, comfort/overrides, dew point/cooling guards, guarded parallel branches,
-SDK operators, schedules, occupancy, native HA/Zigbee units and HomeKit composition. Final composed/upgrade validation,
-the original reference-case map and actual alpha publication remain #1462. Installed equipment remains #1463.
+SDK operators, schedules, occupancy, native HA/Zigbee units and HomeKit composition. Named combined activity and
+alpha64-upgrade fixtures are delivered. The original reference-case map, remaining final acceptance/documentation
+and actual alpha publication remain #1462. Installed equipment remains #1463.
 A green PR is not the entire milestone.
 
 PR [#1473](https://github.com/FastyBird/smart-panel/pull/1473) stays a frozen draft reference at `2c19907`;
@@ -313,3 +355,14 @@ its evidence, or a concrete residual requirement. This issue reconciliation is n
 [validation]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts#L263
 [vectors]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/backend/src/plugins/devices-virtual/services/virtual-dew-point.utils.spec.ts#L11
 [wizard]: https://github.com/FastyBird/smart-panel/blob/b0bfd429ae9f015911d1baad37583652b62d3995/apps/admin/src/plugins/devices-virtual/views/view-light-group-wizard.spec.ts#L68
+
+[activityCombinedUnit]: ../apps/backend/src/plugins/spaces-home-control/services/space-mode.service.spec.ts
+[activityCombinedHttp]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/test/space-climate-automation.e2e-spec.ts#L271
+[activityConfiguredHttp]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/test/space-climate-automation.e2e-spec.ts#L1278
+[activityPriorityHttp]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/test/space-climate-automation.e2e-spec.ts#L556
+[activityScheduleHttp]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/test/space-climate-automation.e2e-spec.ts#L851
+[activityMotionHttp]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/test/space-climate-automation.e2e-spec.ts#L727
+[activityCurrentDefaults]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/src/plugins/spaces-home-control/activity/space-activity.defaults.spec.ts#L7
+[activityCurrentClock]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/src/plugins/spaces-home-control/schedule/schedule-time.spec.ts#L15
+[activityCurrentScheduler]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/src/plugins/spaces-home-control/services/space-mode-scheduler.integration.spec.ts#L126
+[activityCurrentRuntime]: https://github.com/FastyBird/smart-panel/blob/1213149b8960a55536dfd6cd4687aaaea96a701d/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L779
