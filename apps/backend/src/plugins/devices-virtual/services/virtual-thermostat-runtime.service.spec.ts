@@ -7731,4 +7731,205 @@ describe('virtual thermostat durable runtime', () => {
 			if (primary !== undefined) throw primary.cause;
 		},
 	);
+	it.each(['new-id', 'same-id-risk'] as const)(
+		'reconciles independently committed %s ON debt across successive held OFF fences',
+		async (kind) => {
+			const { fixture, loader, claim } = await useInstalledLockedNativeClaimsGuard();
+			const owner = runtime;
+			const source = database;
+			const peer = new SqliteDataSource({
+				type: 'sqlite',
+				database: join(directory, 'runtime.sqlite'),
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+				synchronize: false,
+				migrationsRun: false,
+			});
+			let enterFirst!: () => void, releaseFirst!: () => void;
+			let enterSecond!: () => void, releaseSecond!: () => void;
+			const firstEntered = ownedGate((resolve) => (enterFirst = resolve));
+			const firstHeld = ownedGate((resolve) => (releaseFirst = resolve));
+			const secondEntered = ownedGate((resolve) => (enterSecond = resolve));
+			const secondHeld = ownedGate((resolve) => (releaseSecond = resolve));
+			const previousGate = fixture.controls.beforeFence;
+			let entries = 0;
+			const gate = async (property: string) => {
+				if (property !== relayId) return;
+				entries++;
+				if (entries === 1) {
+					enterFirst();
+					await firstHeld;
+				} else if (entries === 2) {
+					enterSecond();
+					await secondHeld;
+				}
+			};
+			// Observe the original provider result and Promise; never obtain the expected proof ID from SQLite.
+			const proofs: { fence: number; proofId: string; coveredCommandIds: string[] }[] = [];
+			const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+			const proofObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+				const adapter = capture(...args);
+				if (!adapter) return adapter;
+				return Object.freeze({
+					...adapter,
+					reconcile: (...parameters: Parameters<typeof adapter.reconcile>) => {
+						const original = adapter.reconcile(...parameters);
+						void original.then(
+							(proof) => {
+								if (proof)
+									proofs.push({
+										fence: entries,
+										proofId: proof.proofId,
+										coveredCommandIds: [...proof.coveredCommandIds],
+									});
+							},
+							() => undefined,
+						);
+						return original;
+					},
+				});
+			});
+			const requested: Promise<void>[] = [];
+			let starting: Promise<void> | undefined;
+			let primary: { cause: unknown } | undefined;
+			try {
+				owner.onModuleDestroy();
+				await loader['queue'];
+				await peer.initialize();
+				const configuration = await peer.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const baseline = await peer.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				const firstId = uuid();
+				const secondId = uuid();
+				const insertOn = (id: string) =>
+					peer.manager.insert(VirtualThermostatCommandEntity, {
+						id,
+						controllerId,
+						claimId: claim.id,
+						claimRevision: claim.revision,
+						configurationRevision: configuration.revision,
+						decisionRevision: 1,
+						action: 'on',
+						status: 'unknown',
+						preparedAt: new Date(),
+						dispatchedAt: new Date(),
+						settledAt: null,
+						proofId: null,
+						fault: 'independent-peer-obligation',
+					});
+				fixture.controls.beforeFence = gate;
+				const sendsBefore = [...fixture.controls.sends];
+				starting = owner.onApplicationBootstrap();
+				void starting.catch(() => undefined);
+				await Promise.race([
+					firstEntered,
+					starting.then(async () => {
+						await owner.flush();
+						if (entries === 0) throw new Error('First original OFF fence was not reached');
+					}),
+				]);
+				clearInterval(owner['timer']);
+				await insertOn(firstId);
+				const firstImage = await peer.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: firstId });
+				expect(firstImage).toMatchObject({ status: 'unknown', decisionRevision: 1, settledAt: null, proofId: null });
+				// A real subsequent poll supplies new entry; it borrows no earlier feedback receipt.
+				requested.push(owner.request(controllerId, false));
+				releaseFirst();
+				await Promise.race([
+					secondEntered,
+					starting.then(async () => {
+						await owner.flush();
+						if (entries < 2) throw new Error('Independent ON debt did not reach a new OFF fence');
+					}),
+				]);
+				clearInterval(owner['timer']);
+				expect(await peer.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: firstId })).toEqual(firstImage);
+				if (kind === 'new-id') await insertOn(secondId);
+				else
+					await peer.manager.update(
+						VirtualThermostatCommandEntity,
+						{ id: firstId },
+						{ decisionRevision: 2, dispatchedAt: new Date(), status: 'unknown' },
+					);
+				const obligations = await peer.manager.findBy(VirtualThermostatCommandEntity, {
+					controllerId,
+					action: 'on',
+				});
+				expect(obligations.map((row) => row.id).sort()).toEqual(
+					(kind === 'new-id' ? [firstId, secondId] : [firstId]).sort(),
+				);
+				expect(obligations.find((row) => row.id === firstId).decisionRevision).toBe(kind === 'new-id' ? 1 : 2);
+				expect(
+					obligations.every((row) => row.status === 'unknown' && row.settledAt === null && row.proofId === null),
+				).toBe(true);
+				requested.push(owner.request(controllerId, false));
+				releaseSecond();
+				await starting;
+				await Promise.all(requested);
+				clearInterval(owner['timer']);
+				await settleReal(fixture);
+				const after = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				for (const original of baseline) expect(after.find((row) => row.id === original.id)).toEqual(original);
+				const covering = proofs.filter(
+					(proof) => proof.fence >= 3 && obligations.every((row) => proof.coveredCommandIds.includes(row.id)),
+				);
+				expect(covering).toHaveLength(1);
+				const earlier = proofs.find((proof) => proof.fence === 2);
+				expect(earlier).toBeDefined();
+				expect(covering[0].proofId).not.toBe(earlier.proofId);
+				for (const original of obligations) {
+					const settled = after.find((row) => row.id === original.id);
+					expect(settled).toEqual({
+						...original,
+						status: 'confirmed',
+						settledAt: settled.settledAt,
+						proofId: covering[0].proofId,
+					});
+					expect(settled.settledAt).toBeInstanceOf(Date);
+					expect(typeof settled.proofId).toBe('string');
+					expect(settled.proofId.length).toBeGreaterThan(0);
+				}
+				expect(
+					after
+						.filter((row) => row.action === 'on')
+						.map((row) => row.id)
+						.sort(),
+				).toEqual(obligations.map((row) => row.id).sort());
+				expect(entries).toBeGreaterThanOrEqual(3);
+				expect(entries).toBeLessThan(5);
+				expect(fixture.controls.sends).toEqual(sendsBefore);
+				expect(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+					configuration,
+				);
+				expect(
+					(await source.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id })).revision,
+				).toBe(claim.revision);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				loader.onModuleDestroy();
+				releaseFirst();
+				releaseSecond();
+				const outcomes = await Promise.allSettled([
+					...(starting !== undefined ? [starting] : []),
+					...requested,
+					owner.flush(),
+					...owner['inFlight'].values(),
+					loader['queue'],
+				]);
+				const cleanup = outcomes.find((result) => result.status === 'rejected');
+				proofObserver.mockRestore();
+				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
+				else if (fixture.controls.beforeFence !== previousGate)
+					primary ??= { cause: new Error('Foreign held OFF fence gate retained') };
+				try {
+					if (peer.isInitialized) await peer.destroy();
+				} catch (cause) {
+					primary ??= { cause };
+				}
+				if (cleanup?.status === 'rejected') primary ??= { cause: cleanup.reason };
+			}
+			if (primary !== undefined) throw primary.cause;
+		},
+	);
 });
