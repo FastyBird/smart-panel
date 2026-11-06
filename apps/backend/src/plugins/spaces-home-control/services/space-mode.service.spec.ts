@@ -14,6 +14,7 @@ import {
 } from '../activity/space-activity.constants';
 import { defaultActivityConfiguration } from '../activity/space-activity.defaults';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
+import { LightingMode, MediaActivationState, MediaActivityKey } from '../spaces-home-control.constants';
 
 import { activityTestDatabase, deferred } from './activity-test-support';
 import { SpaceActivityDomainsService } from './space-activity-domains.service';
@@ -256,4 +257,104 @@ describe('SQLite activity orchestration persistence and fencing', () => {
 		);
 		expect((await orchestrator.getActiveMode(room.id)).activityStatus).toBe(State.PARTIAL);
 	});
+
+	it.each([false, true])(
+		'orchestrates every available domain and persists each result when climate rejects=%s',
+		async (climateRejects) => {
+			const { database, configs, room, events } = harness;
+			const configuration = defaultActivityConfiguration(ActivityMode.WORK);
+			for (const domain of Object.values(Domain)) configuration[domain].enabled = true;
+			configuration.lighting.mode = LightingMode.OFF;
+			configuration.climate = { enabled: true, thermostat_preset: 'eco' };
+			configuration.covers.position = 37;
+			configuration.media.activity = MediaActivityKey.WATCH;
+			await configs.update(room.id, ActivityMode.WORK, {
+				expected_revision: 1,
+				enabled: true,
+				display_order: 0,
+				configuration,
+			});
+			const successfulIntent = { success: true, affectedDevices: 1, failedDevices: 0 };
+			const lighting = {
+				getLightsInSpace: jest.fn().mockResolvedValue([{}]),
+				executeLightingIntent: jest.fn().mockResolvedValue(successfulIntent),
+			};
+			const covers = {
+				supportsExactActivityPosition: jest.fn().mockReturnValue(true),
+				executeCoversIntent: jest.fn().mockResolvedValue(successfulIntent),
+			};
+			const media = {
+				preview: jest.fn().mockResolvedValue({ plan: [{}], warnings: [] }),
+				activate: jest.fn().mockResolvedValue({ state: MediaActivationState.ACTIVE, summary: { stepsFailed: 0 } }),
+			};
+			const climate = {
+				preview: jest.fn().mockResolvedValue(domainResult(Domain.CLIMATE, Status.READY, 'configured_preset')),
+				apply: jest.fn((_identity: SpaceActivationIdentity) =>
+					climateRejects
+						? Promise.reject(new Error('climate transport unavailable'))
+						: Promise.resolve(domainResult(Domain.CLIMATE, Status.SUCCEEDED, 'configured_preset')),
+				),
+				withdraw: jest.fn(),
+			};
+			const domains = new SpaceActivityDomainsService(
+				lighting as never,
+				covers as never,
+				{ getCoversInSpace: jest.fn().mockResolvedValue([{ device: { type: 'test', enabled: true } }]) } as never,
+				{ buildEndpointsForSpace: jest.fn().mockResolvedValue({ endpoints: [{}] }) } as never,
+				media as never,
+				{ get: jest.fn().mockReturnValue({}) } as never,
+				climate,
+			);
+			const orchestrator = new SpaceModeService(database, configs, domains, events);
+			const emit = jest.spyOn(events, 'emit');
+			const preview = await orchestrator.preview(room.id, ActivityMode.WORK, 2);
+			for (const domain of [Domain.LIGHTING, Domain.CLIMATE, Domain.COVERS, Domain.MEDIA])
+				expect(preview).toContainEqual(expect.objectContaining({ domain, status: Status.READY }));
+			expect(await database.getRepository(SpaceActivityStateEntity).count()).toBe(0);
+			expect(emit).not.toHaveBeenCalled();
+			for (const dispatch of [
+				lighting.executeLightingIntent,
+				covers.executeCoversIntent,
+				media.activate,
+				climate.apply,
+			])
+				expect(dispatch).not.toHaveBeenCalled();
+			const result = await orchestrator.activateMode(room.id, ActivityMode.WORK, 2, 'user:trusted');
+			expect(result).toMatchObject({ selectedActivityMode: ActivityMode.WORK, activityStatus: State.PARTIAL });
+			expect(result.activityResults).toHaveLength(5);
+			expect(new Set(result.activityResults.map((entry) => entry.domain))).toEqual(new Set(Object.values(Domain)));
+			for (const domain of [Domain.LIGHTING, Domain.COVERS, Domain.MEDIA])
+				expect(result.activityResults).toContainEqual(expect.objectContaining({ domain, status: Status.SUCCEEDED }));
+			expect(result.activityResults).toContainEqual(
+				expect.objectContaining({ domain: Domain.CLIMATE, status: climateRejects ? Status.FAILED : Status.SUCCEEDED }),
+			);
+			expect(result.activityResults).toContainEqual(
+				expect.objectContaining({
+					domain: Domain.SECURITY,
+					status: Status.UNSUPPORTED,
+					reason: 'security_actuation_unavailable',
+				}),
+			);
+			for (const dispatch of [
+				lighting.executeLightingIntent,
+				covers.executeCoversIntent,
+				media.activate,
+				climate.apply,
+			])
+				expect(dispatch).toHaveBeenCalledTimes(1);
+			const identity = climate.apply.mock.calls[0][0];
+			expect(identity).toMatchObject({ spaceId: room.id, activationId: result.activationId, configurationRevision: 2 });
+			expect(covers.executeCoversIntent).toHaveBeenCalledWith(
+				room.id,
+				expect.objectContaining({ position: 37 }),
+				identity.isCurrent,
+			);
+			expect(media.activate).toHaveBeenCalledWith(room.id, MediaActivityKey.WATCH, identity.isCurrent);
+			expect(await orchestrator.getActiveMode(room.id)).toMatchObject({
+				activationId: result.activationId,
+				activityActor: 'user:trusted',
+				activityResults: result.activityResults,
+			});
+		},
+	);
 });

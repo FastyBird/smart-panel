@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in_progress (foundation, clients and climate bridge merged; combined all-domains acceptance remains)
+Status: done (supported domain orchestration; explicit unavailable-domain outcomes retained)
 Tracking: #1287
 Issues: #1292 (definitions and config), #1293 (orchestration), #1294 (activation endpoints and events)
 
@@ -87,7 +87,7 @@ Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`
 
 - [x] `ActivityMode` enum exists with at least: WORK, RELAX, SLEEP, ENTERTAINMENT, AWAY
 - [x] Each mode has a default configuration specifying per-domain intents; climate defaults disabled/unset until an operator configures a validated setpoint or thermostat preset reference
-- [ ] `SpaceModeService.activateMode()` executes appropriate intents for all domains
+- [x] `SpaceModeService.activateMode()` executes appropriate intents for all available domains; unavailable security returns explicit UNSUPPORTED
 - [x] Mode activation returns aggregated results from all domain intents
 - [x] Active mode is persisted per space
 - [x] Admin can customize mode behavior per space
@@ -95,8 +95,8 @@ Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`
 - [x] Panel shows available modes and allows one-tap activation
 - [x] Panel shows active mode indicator
 - [x] Modes only affect domains that have devices in the space
-- [ ] Unit tests cover:
-  - [ ] Mode activation with all domains present
+- [x] Unit tests cover:
+  - [x] Mode activation with all available domains present, including rejected climate with other domains still executing
   - [x] Mode activation with partial domains (e.g., no media)
   - [x] Mode customization override
   - [x] Partial failure handling (some domains fail)
@@ -308,4 +308,16 @@ the selected mode. Per-space overlap is rejected without a queue. Revision/ident
 and stop later physical steps; a command already admitted to a provider cannot be undone. Deactivation clears manual
 selection and does not restore prior device state. Restart marks unfinished activation interrupted without replay.
 
-Admin/Panel UI (#1295/#1296) merged in #1472 and the configured climate adapter merged in #1498. The shared all-domains-present orchestration criterion and its combined test remain unchecked: separate lighting/cover/media/climate and partial-result suites do not supply that original case. Preserve explicit unavailable optional-domain outcomes when completing it. Scheduling, presence, custom mode authoring and installed qualification remain separate. See `docs/space-activity-modes.md` and the [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md).
+Admin/Panel UI (#1295/#1296) merged in #1472 and the configured climate adapter merged in #1498.
+The shared all-available-domain criterion now has both unit and composed HTTP witnesses. The unit case
+`orchestrates every available domain and persists each result when climate rejects=%s` uses the real mode/domain
+services and SQLite with controlled domain I/O. Both variants require all four available dispatches and persist
+all five explicit domain results; the rejecting variant still executes lighting, covers and media. Preview issues
+no commands, state writes or events. The HTTP case `composes all configured activity domains through ordinary HTTP
+and real adapters; media fails=%s` additionally exercises migrated AppModule wiring, authentication, authoring,
+physical property dispatch and the real climate installation path. Security remains explicitly UNSUPPORTED.
+
+The [criterion reconciliation](../../docs/virtual-device-extensions-acceptance.md#composed-activity-and-automation-criteria)
+records the exact boundaries, current execution and remaining gates. Separate domain suites do not substitute for
+that combined HTTP operation. Scheduling/presence integration is accepted under #1458; custom mode authoring,
+original #1473 residual scenarios, alpha publication and installed qualification remain separate.
