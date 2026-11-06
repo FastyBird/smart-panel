@@ -7597,4 +7597,138 @@ describe('virtual thermostat durable runtime', () => {
 			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
 		}
 	});
+
+	it.each(['unchanged', 'member', 'source'] as const)(
+		'reconciles an independent same-revision %s image while the original native OFF fence is held',
+		async (kind) => {
+			const { fixture, loader, claim } = await useInstalledLockedNativeClaimsGuard();
+			const owner = runtime;
+			const source = database;
+			const peer = new SqliteDataSource({
+				type: 'sqlite',
+				database: join(directory, 'runtime.sqlite'),
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+				synchronize: false,
+				migrationsRun: false,
+			});
+			let enter!: () => void, release!: () => void;
+			const entered = ownedGate((resolve) => (enter = resolve));
+			const held = ownedGate((resolve) => (release = resolve));
+			const previousGate = fixture.controls.beforeFence;
+			let entries = 0;
+			const gate = async (property: string) => {
+				if (property !== relayId) return;
+				entries++;
+				if (entries === 1) {
+					enter();
+					await held;
+				}
+			};
+			let starting: Promise<void> | undefined;
+			let primary: { cause: unknown } | undefined;
+			try {
+				owner.onModuleDestroy();
+				await loader['queue'];
+				await peer.initialize();
+				const configuration = await peer.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const member = await peer.manager.findOneByOrFail(ThermostatMemberProtectionEntity, { claimId: claim.id });
+				const inputs = await peer.manager.findBy(VirtualThermostatSourceEntity, { controllerId });
+				expect(inputs).toHaveLength(1);
+				fixture.controls.beforeFence = gate;
+				const fences = [...fixture.controls.fences];
+				const sendsBefore = [...fixture.controls.sends];
+				starting = owner.onApplicationBootstrap();
+				void starting.catch(() => undefined);
+				await Promise.race([
+					entered,
+					starting.then(async () => {
+						await owner.flush();
+						if (entries === 0) throw new Error('Original native OFF fence was not reached');
+					}),
+				]);
+				clearInterval(owner['timer']);
+				expect(entries).toBe(1);
+				expect(fixture.controls.fences).toEqual(fences);
+				const heldScope = owner['releaseScope'](owner['contexts'].get(controllerId));
+				if (kind === 'member')
+					await peer.query(
+						'UPDATE "devices_virtual_thermostat_member_protection" SET "revision" = "revision" + 1 WHERE "claimId" = ?',
+						[claim.id],
+					);
+				else if (kind === 'source')
+					await peer.query(
+						'UPDATE "devices_virtual_thermostat_sources" SET "maximumAgeSeconds" = "maximumAgeSeconds" + 1 WHERE "controllerId" = ?',
+						[controllerId],
+					);
+				if (kind !== 'unchanged') expect(await peer.query('SELECT changes() AS affected')).toEqual([{ affected: 1 }]);
+				expect(await peer.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+					configuration,
+				);
+				expect(
+					(await peer.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id })).revision,
+				).toBe(claim.revision);
+				expect(await peer.manager.findOneByOrFail(ThermostatMemberProtectionEntity, { claimId: claim.id })).toEqual({
+					...member,
+					revision: member.revision + (kind === 'member' ? 1 : 0),
+				});
+				expect(await peer.manager.findBy(VirtualThermostatSourceEntity, { controllerId })).toEqual(
+					inputs.map((input) => ({
+						...input,
+						maximumAgeSeconds: input.maximumAgeSeconds + (kind === 'source' ? 1 : 0),
+					})),
+				);
+				release();
+				await starting;
+				clearInterval(owner['timer']);
+				await settleReal(fixture);
+				expect(fixture.controls.sends).toEqual(sendsBefore);
+				expect(
+					fixture.controls.fences.slice(fences.length).filter((property) => property === relayId).length,
+				).toBeGreaterThanOrEqual(kind === 'unchanged' ? 1 : 2);
+				expect(owner.readDiagnostics(controllerId).configuration_revision).toBe(configuration.revision);
+				const context = owner['contexts'].get(controllerId);
+				expect(context).toBeDefined();
+				expect(context.bindings.map((entry) => entry.binding)).toEqual(
+					inputs.map((input) => ({
+						...input,
+						maximumAgeSeconds: input.maximumAgeSeconds + (kind === 'source' ? 1 : 0),
+					})),
+				);
+				expect(context.memberBindings[0].binding.revision).toBe(member.revision + (kind === 'member' ? 1 : 0));
+				const freshScope = owner['releaseScope'](context);
+				const settledProof = owner['reconciled'].get(`${claim.id}:${claim.revision}`);
+				expect(settledProof).toBeDefined();
+				expect(settledProof.scope).toBe(freshScope);
+				expect(settledProof.scopeIsCurrent()).toBe(true);
+				if (kind !== 'unchanged') expect(freshScope).not.toBe(heldScope);
+				expect(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+					configuration,
+				);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				loader.onModuleDestroy();
+				release();
+				const outcomes = await Promise.allSettled([
+					...(starting !== undefined ? [starting] : []),
+					owner.flush(),
+					...owner['inFlight'].values(),
+					loader['queue'],
+				]);
+				const cleanup = outcomes.find((result) => result.status === 'rejected');
+				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
+				else if (fixture.controls.beforeFence !== previousGate)
+					primary ??= { cause: new Error('Foreign original OFF fence gate retained') };
+				try {
+					if (peer.isInitialized) await peer.destroy();
+				} catch (cause) {
+					primary ??= { cause };
+				}
+				if (cleanup?.status === 'rejected') primary ??= { cause: cleanup.reason };
+			}
+			if (primary !== undefined) throw primary.cause;
+		},
+	);
 });
