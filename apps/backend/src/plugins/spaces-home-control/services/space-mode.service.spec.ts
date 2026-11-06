@@ -307,9 +307,11 @@ describe('SQLite activity orchestration persistence and fencing', () => {
 			);
 			const orchestrator = new SpaceModeService(database, configs, domains, events);
 			const emit = jest.spyOn(events, 'emit');
+			const configurationsBeforePreview = await configs.list(room.id);
 			const preview = await orchestrator.preview(room.id, ActivityMode.WORK, 2);
 			for (const domain of [Domain.LIGHTING, Domain.CLIMATE, Domain.COVERS, Domain.MEDIA])
 				expect(preview).toContainEqual(expect.objectContaining({ domain, status: Status.READY }));
+			expect(await configs.list(room.id)).toEqual(configurationsBeforePreview);
 			expect(await database.getRepository(SpaceActivityStateEntity).count()).toBe(0);
 			expect(emit).not.toHaveBeenCalled();
 			for (const dispatch of [

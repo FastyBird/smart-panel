@@ -60,7 +60,7 @@ retain their full software scope and the approved disabled/unset climate-default
 | Issue and criterion | Named current witness | Acceptance boundary |
 | --- | --- | --- |
 | #1293: all available domains in one activation | [combined HTTP][activityCombinedHttp]: `composes all configured activity domains through ordinary HTTP and real adapters; media fails=%s` | Authenticated migrated AppModule; lighting/climate/covers/media execute together; failed media preserves the other outcomes; security stays UNSUPPORTED. |
-| #1293: unit fan-out, results and partial failure | [mode service unit][activityCombinedUnit]: `orchestrates every available domain and persists each result when climate rejects=%s` | Real mode/domain services and SQLite, controlled domain I/O; preview creates no activity-state row, events or commands; rejecting climate still dispatches the other three domains and persists all five results. |
+| #1293: unit fan-out, results and partial failure | [mode service unit][activityCombinedUnit]: `orchestrates every available domain and persists each result when climate rejects=%s` | Real mode/domain services and SQLite, controlled domain I/O; preview preserves the complete saved configuration and creates no activity-state row, events or commands; rejecting climate still dispatches the other three domains and persists all five results. |
 | #1458: reuse existing features and dormant climate defaults | [authored defaults][activityCurrentDefaults], existing #1292/#1294–#1300/#1362 evidence above | No duplicate scheduling/presence engine; no preset or numeric setpoint is inferred from a mode name. |
 | #1458: explicit configured preset mapping | [configured HTTP][activityConfiguredHttp]: `previews without native writes, activates %j through HTTP and deactivates the exact installation` | Separate configured eco and numeric heat variants; preview is write-free and activation installs the actual private source/slot. |
 | #1458: room/thermostat precedence and UNKNOWN | [manual-priority HTTP][activityPriorityHttp]: `composes scheduled and observed activity with independent room and thermostat manual precedence` | Due schedule selects eco, fresh motion selects heat, disconnected input becomes UNKNOWN without vacancy; room hold and thermostat hold remain independent after occupancy Resume. |
@@ -69,10 +69,19 @@ retain their full software scope and the approved disabled/unset climate-default
 
 The complete seven-file local invocation passed **67/67**, zero failures/skips: mode service 12, domain adapters 9,
 schedule clock 9, scheduler integration 20, occupancy state 5, occupancy inputs 4 and occupancy integration 8.
-Report SHA-256 `6bb40a68cc77499034d51f5233ec215bd90af03ec896c913900d1cae18b02fbf`.
-A deliberate fail-fast fan-out after a failed domain makes only the rejected-climate variant fail (five expected
+Report SHA-256 `1a5cf00ed36fa63f682157613222a6145dce15a28d8a8de6fa503ab902fdb4a3`.
+The retained preceding fan-out control makes only the rejected-climate variant fail (five expected
 results versus two); the success control passes, with ten other file cases unrun. Production was restored
 byte-for-byte. Control report SHA-256 `7d3faa2d9b45d1c118ec028c459b986863d77f783ae3bcb532230353d6ec033f`.
+
+The current variants additionally compare the entire saved configuration before and after preview, including
+fields such as display order that could change without a revision update. A production control increments
+`activityOrder` inside preview without changing the revision: both strengthened variants fail, with ten other
+cases unrun (report SHA-256 `69b8da1d7593f012e0406ad5e6cb316e11b68cb0d43f9138fde0336374ef90e9`).
+The same mutation passes both variants when only the new snapshot assertions are removed (report SHA-256
+`23d90401864daae62e77cadd9f5991142d89a98895c2d4c34c42a013e0261779`). Production and the strengthened
+tests are restored byte-for-byte before the complete positive invocation above. The fan-out control retained
+above predates this snapshot strengthening; it was not replayed in this invocation.
 
 The already merged HTTP and scheduler/occupancy witnesses also passed in
 [ordinary hosted backend CI](https://github.com/FastyBird/smart-panel/actions/runs/42205235236/job/127850109421)
