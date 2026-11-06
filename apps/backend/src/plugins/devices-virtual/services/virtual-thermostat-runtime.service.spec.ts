@@ -7649,6 +7649,7 @@ describe('virtual thermostat durable runtime', () => {
 				clearInterval(owner['timer']);
 				expect(entries).toBe(1);
 				expect(fixture.controls.fences).toEqual(fences);
+				const heldScope = owner['releaseScope'](owner['contexts'].get(controllerId));
 				if (kind === 'member')
 					await peer.query(
 						'UPDATE "devices_virtual_thermostat_member_protection" SET "revision" = "revision" + 1 WHERE "claimId" = ?',
@@ -7681,7 +7682,9 @@ describe('virtual thermostat durable runtime', () => {
 				clearInterval(owner['timer']);
 				await settleReal(fixture);
 				expect(fixture.controls.sends).toEqual(sendsBefore);
-				expect(fixture.controls.fences.length).toBeGreaterThan(fences.length);
+				expect(
+					fixture.controls.fences.slice(fences.length).filter((property) => property === relayId).length,
+				).toBeGreaterThanOrEqual(kind === 'unchanged' ? 1 : 2);
 				expect(owner.readDiagnostics(controllerId).configuration_revision).toBe(configuration.revision);
 				const context = owner['contexts'].get(controllerId);
 				expect(context).toBeDefined();
@@ -7692,6 +7695,12 @@ describe('virtual thermostat durable runtime', () => {
 					})),
 				);
 				expect(context.memberBindings[0].binding.revision).toBe(member.revision + (kind === 'member' ? 1 : 0));
+				const freshScope = owner['releaseScope'](context);
+				const settledProof = owner['reconciled'].get(`${claim.id}:${claim.revision}`);
+				expect(settledProof).toBeDefined();
+				expect(settledProof.scope).toBe(freshScope);
+				expect(settledProof.scopeIsCurrent()).toBe(true);
+				if (kind !== 'unchanged') expect(freshScope).not.toBe(heldScope);
 				expect(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
 					configuration,
 				);
