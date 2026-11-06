@@ -1,34 +1,52 @@
 # Final software acceptance and next alpha
 
-Status: partial software acceptance, 2026-11-06. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
-Current summary base: merged main `1196f43688ef8f578e21c6ab5a352f9934096cef` (#1524).
+Status: partial software acceptance, 2026-11-07. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
+Current summary base: merged main `1823db1a8ef5bce16db81545374ecb7c38d4ceac` (#1529).
 Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
 No alpha was dispatched or published by this preparation. No installed equipment was operated.
 
 ## Current qualification and remaining scope
 
-[The canonical ledger](original1473-case-map.json) records 141 bound original rows: 118 scoped invariants,
-17 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **19 have current
-bindings and 120 remain unbound**. The nineteen comprise nine scoped and ten replacement bindings;
+[The canonical ledger](original1473-case-map.json) records **143 bound original rows: 120 scoped invariants**,
+17 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **21 have current
+bindings and 118 remain unbound**. The twenty-one comprise eleven scoped and ten replacement bindings;
 the initial 122 dispositions retain their existing limits. No complete original-case or equipment acceptance
 follows from a scoped binding.
 
-The current source, helper and report reconciliation was merged in #1524. Its exact reviewed head
-`790ac920c0d2dd2308ac2a74da8dc73df38a4bec` passed all 14 checks and completed CodeRabbit review
-without actionable findings; its complete tree equals the summary base above.
+The current held-fence tests were merged in #1525. Its exact reviewed head
+`d1018936dc786a788f11811da0c791e45b37482a` passed all 14 checks and completed CodeRabbit review
+without actionable findings. The current summary source includes #1529; its complete tree equals reviewed
+head `711ef0231a134ecc9a4f9cf385c464ab4beac256`. All CI checks passed and CodeRabbit completed review
+without actionable findings. Original rows 116–117 remain unbound pending separate semantic adoption. The earlier #1524
+source/helper/report aggregate remains historical evidence at its recorded source.
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current native consumers | **385/385**, zero failures/skips, in eight complete files: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
-| Ordinary E2E | **426/426**, zero failures/skips, 29 suites, at reviewed #1517 head `1cb6c71dc4d0a4727759e565cfa92f9c0c9c664d`. Report SHA-256 `6a62159531b7fbb25c13efbb42955d5d7e8329c13277696bd9f4a668c7d8999b`. Its application tree equals the current summary base; this documentation update does not claim a new E2E run. |
-| Evidence bindings | All 142 witness bindings across 141 rows match current files, body tokens and passed executions. Helper body/initializer/declaration hashes and locations match; 19 production and nine consumer/shared-fixture source bindings are recorded. |
-| Retained controls | All 52 referenced reports are hash-verified. Twenty distinct per-row negative reports retain 29 expected failures and five passing selected controls, with relevant restored source identities unchanged. These controls were audited, not replayed in the aggregate invocation. |
+| Current complete runtime | **182/182**, zero failures/skips, one complete local file on the exact merged #1529 source. Report SHA-256 `a45f18eb83a3420f36fe2de16d8dcbbc947fee0a962e70daf09b19b9bf9ecb73`. This is not a fresh local eight-file invocation. |
+| Current hosted backend | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
+| Current ordinary E2E | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
+| Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
+| Evidence bindings | All **144 witness bindings across 143 rows** match current files, body tokens and passed executions. The held-fence shared body and its entry gate are strengthened; 109 other literal runtime bodies and 62 other helpers remain token-identical; 19 production and nine consumer/shared-fixture source bindings are recorded. |
+| Retained controls | The prior 52 reports remain hash-verified historical evidence. Twenty per-row negative reports retain 29 expected failures and five passing selected controls; they were audited, not replayed after the additive test change. Two #1525 scope-omission controls, not replayed after #1529, each fail only the corresponding changed-image variant, pass two controls and leave 177 cases unrun. A new premature-admission control fails both changed-image variants while unchanged passes (179 unrun); prior assertions pass all three under the same mutation. Production is restored byte-for-byte. |
 
 The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalidation` and
-`semanticReconciliationBeforeAggregateRevalidation`. Their older test counts and source identities remain
-historical. This summary needs its own exact-head CI and completed source review. The 120 residuals,
+`semanticReconciliationBeforeAggregateRevalidation`. The preceding semantic reconciliation is retained under
+`semanticReconciliationBeforeHeldFenceAdoption`; `priorQualificationLedger` indexes its immutable full ledger,
+including the prior per-row measurements. `heldFenceOrderingFollowup` records the reviewed #1529 strengthening and its immutable prior ledger.
+Older test-file identities remain historical after the test changes.
+This evidence update requires its own exact-head CI and completed source review. The 118 residuals,
 retired private TIME/caller/observer/global-drain and complete provider/SDK protocols, installed equipment,
 and alpha publication remain separate open gates.
+
+Rows 118–119 now bind independent member/source changes committed through a peer SQLite connection while
+the first post-restart OFF fence is held. They require complete unchanged configuration, actual fresh binding
+reload, at least two completed relay fences and a stored current proof with a new scope, without ON.
+An unchanged-image variant passes; separate member/source scope-omission controls discriminate the two changes.
+The #1529 timeline also requires a matching-scope completed OFF fence before each fresh-scope proof admission;
+a premature-admission mutation fails the two changed-image variants while their former assertions pass.
+The original second-fence/ceiling schedule is replaced only for this scoped invariant. No private fixture-protocol
+or installed-equipment equivalence is inferred. [The residual evidence](original1473-residual-acceptance.md#rows-118119-independent-bindings-during-a-held-off-fence)
+records the full boundary and report identities.
 
 ## Composed acceptance
 
@@ -138,12 +156,12 @@ Its **200 PASS / 61 FAIL** describes that historical source, not a current-main 
 
 The current reconciliation distinguishes scoped business outcomes from complete original-case acceptance:
 
-- **118 rows** bind current observable invariants: the initial 109 scoped bindings plus nine from the residual inventory. The historical comparison of 68 distinct same-title body pairs and each row's changed ports and limits remain recorded in the ledger. Controlled claims/value ports do not certify the former complete mutation-provider or SDK custody pipeline.
+- **120 rows** bind current observable invariants: the initial 109 scoped bindings plus eleven from the residual inventory. The historical comparison of 68 distinct same-title body pairs and each row's changed ports and limits remain recorded in the ledger. Controlled claims/value ports do not certify the former complete mutation-provider or SDK custody pipeline.
 - **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
 - **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
 - **Seventeen replacement rows (105–109, 111, 203, 221, 228–229, 232–233, 240–243, 261)** bind current native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **120 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **118 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
 
 ### Historical binding sequence
 
@@ -288,8 +306,8 @@ without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and u
 ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
 
 [The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
-rows that were unbound at branch entry and the evidence required to close each. Rows 195–198, 203, 205–208, 214, 221, 228–229, 232–233, 241–243 and 261 now have
-tested current bindings (nine scoped and ten replacements); 120 remain unbound. The initial 122 dispositions retain
+rows that were unbound at branch entry and the evidence required to close each. Rows 118–119, 195–198, 203, 205–208, 214, 221, 228–229, 232–233, 241–243 and 261 now have
+tested current bindings (eleven scoped and ten replacements); 118 remain unbound. The initial 122 dispositions retain
 their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
 ### Hosted migration-compatibility follow-up
@@ -406,7 +424,7 @@ already existed despite that failed downstream job. A release object alone there
 
 ## Remaining gates
 
-- [x] Reconcile the 19 scoped/replacement residual bindings and their aggregate source/report evidence through merged #1524; retain the other 120 entries as open.
+- [x] Reconcile 21 scoped/replacement residual bindings, including rows 118–119 through merged #1525; retain the other 118 entries as open.
 - [ ] Finish original #1473 semantic case bindings and any required executable residuals.
 - [ ] Complete current software/static/generated-contract and source-review gates; reconcile #1293/#1458 against their entire criteria.
 - [x] Merge delivery PR #1508 after exact-head green CI and completed nonblocking main review. The residual acceptance follow-up still requires its own checks and review.
