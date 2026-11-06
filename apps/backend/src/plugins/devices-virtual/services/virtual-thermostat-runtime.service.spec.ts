@@ -7763,6 +7763,31 @@ describe('virtual thermostat durable runtime', () => {
 					await secondHeld;
 				}
 			};
+			// Observe the original provider result and Promise; never obtain the expected proof ID from SQLite.
+			const proofs: { fence: number; proofId: string; coveredCommandIds: string[] }[] = [];
+			const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+			const proofObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+				const adapter = capture(...args);
+				if (!adapter) return adapter;
+				return Object.freeze({
+					...adapter,
+					reconcile: (...parameters: Parameters<typeof adapter.reconcile>) => {
+						const original = adapter.reconcile(...parameters);
+						void original.then(
+							(proof) => {
+								if (proof)
+									proofs.push({
+										fence: entries,
+										proofId: proof.proofId,
+										coveredCommandIds: [...proof.coveredCommandIds],
+									});
+							},
+							() => undefined,
+						);
+						return original;
+					},
+				});
+			});
 			const requested: Promise<void>[] = [];
 			let starting: Promise<void> | undefined;
 			let primary: { cause: unknown } | undefined;
@@ -7843,13 +7868,20 @@ describe('virtual thermostat durable runtime', () => {
 				await settleReal(fixture);
 				const after = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 				for (const original of baseline) expect(after.find((row) => row.id === original.id)).toEqual(original);
+				const covering = proofs.filter(
+					(proof) => proof.fence >= 3 && obligations.every((row) => proof.coveredCommandIds.includes(row.id)),
+				);
+				expect(covering).toHaveLength(1);
+				const earlier = proofs.find((proof) => proof.fence === 2);
+				expect(earlier).toBeDefined();
+				expect(covering[0].proofId).not.toBe(earlier.proofId);
 				for (const original of obligations) {
 					const settled = after.find((row) => row.id === original.id);
 					expect(settled).toEqual({
 						...original,
 						status: 'confirmed',
 						settledAt: settled.settledAt,
-						proofId: settled.proofId,
+						proofId: covering[0].proofId,
 					});
 					expect(settled.settledAt).toBeInstanceOf(Date);
 					expect(typeof settled.proofId).toBe('string');
@@ -7886,6 +7918,7 @@ describe('virtual thermostat durable runtime', () => {
 					loader['queue'],
 				]);
 				const cleanup = outcomes.find((result) => result.status === 'rejected');
+				proofObserver.mockRestore();
 				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
 				else if (fixture.controls.beforeFence !== previousGate)
 					primary ??= { cause: new Error('Foreign held OFF fence gate retained') };
