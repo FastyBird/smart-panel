@@ -16,7 +16,7 @@
     "baseCommit": "1823db1a8ef5bce16db81545374ecb7c38d4ceac",
     "appsTree": "84f88193dd93d89fb65d1f3e7cbfe7dc2eb4ee7c",
     "fileSha256": "61bc26efeadee5153bc277c27819a2b53d3202e2d173668b03fa1c8b306fce85",
-    "qualification": "Merged #1529 source equals reviewed 711ef02. Local complete runtime: 182 passed, zero failed/pending. Hosted ordinary unit CI: 727 suites, 13,349 passes and one unrelated existing Zigbee mapper skip; all eight native-consumer files and both bound witness files show PASS without name filters. All 144 witness bindings across 143 rows match current body tokens. #1529 strengthens only the held-fence shared body and its entry gate; 109 other literal runtime bodies, 62 other helper declarations and all 142 previously merged ledger bindings remain unchanged. Only rows 118–119 are adopted here; original rows 116–117 remain unbound pending separate semantic adoption.",
+    "qualification": "Merged #1529 source equals reviewed 711ef02. Local complete runtime: 182 passed, zero failed/pending. Hosted ordinary unit CI: 727 suites, 13,349 passes and one unrelated existing Zigbee mapper skip; all eight native-consumer files and both bound witness files show PASS without name filters. All 146 witness bindings across 145 rows match current body tokens. #1529 strengthens only the held-fence shared body and its entry gate; 109 other literal runtime bodies, 62 other helper declarations and all 144 previously bound witness bodies remain unchanged during this documentation-only adoption. Rows 116–117 now additionally bind scoped independent native ON-debt settlement under explicit ordinary public polls; automatic consumed dirty-frontier/private receipt continuation is not adopted.",
     "runtimeReportSha256": "a45f18eb83a3420f36fe2de16d8dcbbc947fee0a962e70daf09b19b9bf9ecb73",
     "runtimeResult": {
       "passed": 182,
@@ -495,8 +495,8 @@
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 118,
-    "scoped_current_invariant_bound": 120,
+    "residual_no_current_case_bound": 116,
+    "scoped_current_invariant_bound": 122,
     "replacement_current_invariant_bound": 17,
     "ported_descriptor_control_qualified": 6
   },
@@ -2974,9 +2974,72 @@
       ],
       "originalLine": 8472,
       "historicalR265": "failed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): detects independently committed new-id native ON debt despite the first consumed dirty frontier. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "4d8acf6f45161e568a816487c460184894512794652aa896f2c0722f035e99f5"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "4d8acf6f45161e568a816487c460184894512794652aa896f2c0722f035e99f5",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "reconciles independently committed %s ON debt across successive held OFF fences",
+        "line": 7759,
+        "bodySha256": "65a3176c11a5c6e92526952e08f199748746571aef8afcce1a3671f3ee5ae45b",
+        "parameter": "new-id",
+        "expandedTitle": "reconciles independently committed new-id ON debt across successive held OFF fences",
+        "fileSha256": "61bc26efeadee5153bc277c27819a2b53d3202e2d173668b03fa1c8b306fce85",
+        "measuredStatus": "passed",
+        "measurement": "Complete runtime file: 182 passed, zero failed/pending; report SHA-256 a45f18eb83a3420f36fe2de16d8dcbbc947fee0a962e70daf09b19b9bf9ecb73. Exact same source passed ordinary hosted unit CI at 711ef02 (13,349 passes, one unrelated mapper skip); job log SHA-256 0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714."
+      },
+      "helpers": [
+        {
+          "name": "ownedGate",
+          "line": 125,
+          "bodySha256": "59cd7fe53584a026da120c94c690eb382ccaef0de6903c992d2b2d7f9f21e893",
+          "initializerSha256": "9da7323451421dd44b4c3c278c99c03c31605e07cac0876ad6235bfe6ffb909b",
+          "declarationSha256": "9647f79ed72265c41d91d003a2a764a4eb6996e126fbc7cfc3d91c107dd73e86"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        },
+        {
+          "name": "useInstalledLockedNativeClaimsGuard",
+          "line": 3038,
+          "bodySha256": "6df60d143bebda4aacaeaa919eddbf32f4d646a808a1529f6f3df046565b2dc4",
+          "initializerSha256": "8868dabf084100536f4009612337b44036676dc5ec5f610bffbc56df7f8dc341",
+          "declarationSha256": "863cbb1e1328fa85c04fbcad7e529d5de93dda9c0c484a2f1d85185614ae74b9"
+        }
+      ],
+      "semanticComparison": "Original shared body inserts an unknown native ON through a peer SQLite connection during its second held OFF fence, then inserts another ID or advances the same decision revision during its third fence, requires startup to finish before the fifth gate, preserves the final native identities and sends no ON. It relies on the original consumed dirty-frontier continuation without explicit request(false). The current scoped adaptation uses the actual offline installed-loader, enabled locks, native claims, runtime, graph, SQLite and managed SDK composition. After settling and stopping the same runtime it holds the first and second post-restart fences. Independent peer writes preserve complete configuration and claim revision; genuine subsequent public poll requests provide new ordinary entry. The first unknown image stays exact through entry to the second held fence. The current unknown ON ID set and complete images are checked before release; all baseline journal rows and the exact final ON ID set remain equal. Each obligation changes only status, settledAt and proofId, using the original provider proof ID from a later fence covering all current IDs, distinct from the earlier fence proof. A passive observer preserves the original adapter result and Promise, never deriving the expected proof from SQLite. Three or four fence entries complete without ON or fixture errors, and all runtime/loader/request work is joined before cleanup. This adopts observable independent debt visibility, bounded settlement and covering-proof identity under explicit ordinary polls. It does not adopt automatic consumed dirty-frontier/receipt continuation, the original second/third/fifth scheduling or full private fixture/observer/global-drain/provider protocols. Controlled endpoint and qualification evidence grant no installed-equipment acceptance.",
+      "negativeControl": {
+        "mutation": "Persist a remembered earlier provider proof ID instead of the actual later covering proof ID in native journal confirmation.",
+        "measuredSourceHead": "e8f8ff7241ab6868e57278c16d2e3e7bdf03cc53",
+        "testFileSha256": "50e7be49d24244a0c0da957ad7260aae8a86726349ede5677da2121d7a9e6f6f",
+        "reportSha256": "bafbb39f47dfcfb6744953402581acbdab959cfac8d7c13aa9897cfc749e94c8",
+        "failed": 2,
+        "passed": 0,
+        "unrun": 180,
+        "assertion": "Both peer-debt variants fail full native row equality at proofId; both prior-assertion variants pass under the same production mutation.",
+        "priorAssertionControlSha256": "7aee913f059cfccea336bae354479167f50241ffb1588b9e03aa5a92421e3edc",
+        "productionRestoredSha256": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "scope": "Measured before #1529 changed a different held-fence case. This peer-debt body is token-identical to that reviewed source; the negative control is retained without claiming a fresh replay."
+      },
+      "historicalDebtOmissionControl": {
+        "mutation": "Omit unknown ON rows from the complete unresolved journal query.",
+        "testFileSha256": "2801f3bcc92a8b328f84b05f9fbd9234a2bde2ad771cf2e26f921811c7d4e99a",
+        "reportSha256": "9d85c8d8142bd9053e6f4a2e1b895f48a86a06cdf4e8eb2de7561400790d7dd0",
+        "failed": 2,
+        "passed": 0,
+        "unrun": 180,
+        "failure": "Both variants fail to reach the next OFF fence for the new peer debt.",
+        "scope": "Earlier assertion version before the covering-proof-ID strengthening. Historical debt-discovery discrimination only; not replayed on the current whole test file."
+      },
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-transport.service.ts": "99b9784d246e805b600e2fbecd570db3bfd7155bd812df87ec3c3fea2ff07fcd"
+      }
     },
     {
       "id": 117,
@@ -2988,9 +3051,72 @@
       ],
       "originalLine": 8472,
       "historicalR265": "failed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): detects independently committed same-id-risk native ON debt despite the first consumed dirty frontier. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "4d8acf6f45161e568a816487c460184894512794652aa896f2c0722f035e99f5"
+      "disposition": "scoped_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "4d8acf6f45161e568a816487c460184894512794652aa896f2c0722f035e99f5",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts",
+        "title": "reconciles independently committed %s ON debt across successive held OFF fences",
+        "line": 7759,
+        "bodySha256": "65a3176c11a5c6e92526952e08f199748746571aef8afcce1a3671f3ee5ae45b",
+        "parameter": "same-id-risk",
+        "expandedTitle": "reconciles independently committed same-id-risk ON debt across successive held OFF fences",
+        "fileSha256": "61bc26efeadee5153bc277c27819a2b53d3202e2d173668b03fa1c8b306fce85",
+        "measuredStatus": "passed",
+        "measurement": "Complete runtime file: 182 passed, zero failed/pending; report SHA-256 a45f18eb83a3420f36fe2de16d8dcbbc947fee0a962e70daf09b19b9bf9ecb73. Exact same source passed ordinary hosted unit CI at 711ef02 (13,349 passes, one unrelated mapper skip); job log SHA-256 0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714."
+      },
+      "helpers": [
+        {
+          "name": "ownedGate",
+          "line": 125,
+          "bodySha256": "59cd7fe53584a026da120c94c690eb382ccaef0de6903c992d2b2d7f9f21e893",
+          "initializerSha256": "9da7323451421dd44b4c3c278c99c03c31605e07cac0876ad6235bfe6ffb909b",
+          "declarationSha256": "9647f79ed72265c41d91d003a2a764a4eb6996e126fbc7cfc3d91c107dd73e86"
+        },
+        {
+          "name": "settleReal",
+          "line": 2539,
+          "bodySha256": "ea86cca13ef87bd90a12a899925f215ecbb9a42953099a4e48a2f042c50c9789",
+          "initializerSha256": "112396f7736dbed347b9d79e34b3d2713780f2b3ef22de4db662c18794ef1274",
+          "declarationSha256": "d3e4725e449972e2bf3d82fd8eb71b99bbae24fc682acc356714c4151acd4a07"
+        },
+        {
+          "name": "useInstalledLockedNativeClaimsGuard",
+          "line": 3038,
+          "bodySha256": "6df60d143bebda4aacaeaa919eddbf32f4d646a808a1529f6f3df046565b2dc4",
+          "initializerSha256": "8868dabf084100536f4009612337b44036676dc5ec5f610bffbc56df7f8dc341",
+          "declarationSha256": "863cbb1e1328fa85c04fbcad7e529d5de93dda9c0c484a2f1d85185614ae74b9"
+        }
+      ],
+      "semanticComparison": "Original shared body inserts an unknown native ON through a peer SQLite connection during its second held OFF fence, then inserts another ID or advances the same decision revision during its third fence, requires startup to finish before the fifth gate, preserves the final native identities and sends no ON. It relies on the original consumed dirty-frontier continuation without explicit request(false). The current scoped adaptation uses the actual offline installed-loader, enabled locks, native claims, runtime, graph, SQLite and managed SDK composition. After settling and stopping the same runtime it holds the first and second post-restart fences. Independent peer writes preserve complete configuration and claim revision; genuine subsequent public poll requests provide new ordinary entry. The first unknown image stays exact through entry to the second held fence. The current unknown ON ID set and complete images are checked before release; all baseline journal rows and the exact final ON ID set remain equal. Each obligation changes only status, settledAt and proofId, using the original provider proof ID from a later fence covering all current IDs, distinct from the earlier fence proof. A passive observer preserves the original adapter result and Promise, never deriving the expected proof from SQLite. Three or four fence entries complete without ON or fixture errors, and all runtime/loader/request work is joined before cleanup. This adopts observable independent debt visibility, bounded settlement and covering-proof identity under explicit ordinary polls. It does not adopt automatic consumed dirty-frontier/receipt continuation, the original second/third/fifth scheduling or full private fixture/observer/global-drain/provider protocols. Controlled endpoint and qualification evidence grant no installed-equipment acceptance.",
+      "negativeControl": {
+        "mutation": "Persist a remembered earlier provider proof ID instead of the actual later covering proof ID in native journal confirmation.",
+        "measuredSourceHead": "e8f8ff7241ab6868e57278c16d2e3e7bdf03cc53",
+        "testFileSha256": "50e7be49d24244a0c0da957ad7260aae8a86726349ede5677da2121d7a9e6f6f",
+        "reportSha256": "bafbb39f47dfcfb6744953402581acbdab959cfac8d7c13aa9897cfc749e94c8",
+        "failed": 2,
+        "passed": 0,
+        "unrun": 180,
+        "assertion": "Both peer-debt variants fail full native row equality at proofId; both prior-assertion variants pass under the same production mutation.",
+        "priorAssertionControlSha256": "7aee913f059cfccea336bae354479167f50241ffb1588b9e03aa5a92421e3edc",
+        "productionRestoredSha256": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "scope": "Measured before #1529 changed a different held-fence case. This peer-debt body is token-identical to that reviewed source; the negative control is retained without claiming a fresh replay."
+      },
+      "historicalDebtOmissionControl": {
+        "mutation": "Omit unknown ON rows from the complete unresolved journal query.",
+        "testFileSha256": "2801f3bcc92a8b328f84b05f9fbd9234a2bde2ad771cf2e26f921811c7d4e99a",
+        "reportSha256": "9d85c8d8142bd9053e6f4a2e1b895f48a86a06cdf4e8eb2de7561400790d7dd0",
+        "failed": 2,
+        "passed": 0,
+        "unrun": 180,
+        "failure": "Both variants fail to reach the next OFF fence for the new peer debt.",
+        "scope": "Earlier assertion version before the covering-proof-ID strengthening. Historical debt-discovery discrimination only; not replayed on the current whole test file."
+      },
+      "productionBindings": {
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts": "5737e90bd6343ed742ca6a91146ed4b4dfbb6feac9a0fe23641842c5f2592576",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime-ownership.ts": "f3580bda286e04a46ed2faed20a9ef9ee190ac982df30e15d9f63320391d6be9",
+        "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-transport.service.ts": "99b9784d246e805b600e2fbecd570db3bfd7155bd812df87ec3c3fea2ff07fcd"
+      }
     },
     {
       "id": 118,
@@ -7288,18 +7414,18 @@
   ],
   "semanticReconciliation": {
     "date": "2026-11-07",
-    "sourceCommit": "1823db1a8ef5bce16db81545374ecb7c38d4ceac",
+    "sourceCommit": "9b7392ec28d6586ef678bab7e819c48519e3e13e",
     "scope": "Current scoped/replacement observable bindings only; no whole original private-protocol, alpha or equipment acceptance. Prior semantic reconciliation and aggregate snapshots are retained explicitly.",
     "bindingExecutionReportSha256": "0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714",
-    "sourceHelperProductionAuditSha256": "d8aa3a87d8cc94586464041aa3b7d66b180f5f5055da5b40fc990a7a477c9627",
+    "sourceHelperProductionAuditSha256": "ea5a58df0ca6ec0b3aaa66b154bc4f83c67b7b0143ee5d3323b86b1ab8b36975",
     "historicalReportAuditSha256": "31c69dd44ec1c77460377db5db910d5c60971154ecc726c80b389f3ffbe4cea8",
     "originalResidualPlan": {
       "originalResiduals": 139,
-      "currentScopedBindings": 11,
+      "currentScopedBindings": 13,
       "currentReplacementBindings": 10,
-      "remainingOutsidePlan": 118
+      "remainingOutsidePlan": 116
     },
-    "negativeControlScope": "The twenty prior reports retain their historical measured test-file identities and were not rerun. Two #1525 scope-omission controls remain attributed to the earlier 180-case source and were not replayed after #1529. A new premature-admission control fails both strengthened changed-image variants while unchanged passes, with 179 unrun; all three prior-assertion variants pass under the same mutation. Production is restored byte-for-byte.",
+    "negativeControlScope": "The twenty prior reports retain their historical measured test-file identities and were not rerun. Two #1525 scope-omission controls remain attributed to the earlier 180-case source and were not replayed after #1529. A new premature-admission control fails both strengthened changed-image variants while unchanged passes, with 179 unrun; all three prior-assertion variants pass under the same mutation. Production is restored byte-for-byte. Peer-debt cached-proof and prior-assertion controls retain their e8f8ff7 measured source and token-identical peer-debt body; the earlier unknown-ON omission control predates that assertion strengthening. Neither is claimed as newly replayed.",
     "notGranted": [
       "whole original fixture/provider/SDK/private TIME/caller/observer/global-drain equivalence",
       "all 261 case acceptance",
@@ -7912,5 +8038,53 @@
     "previouslyMergedBindingBodiesUnchanged": 142,
     "productionSourceUnchanged": true,
     "scope": "Explicit same-scope simulated OFF completion before each final fresh-scope runtime proof admission, retaining all prior binding/revision/fence-count/zero-ON assertions. No wider private-protocol or installed-equipment acceptance."
+  },
+  "semanticReconciliationBeforePeerDebtAdoption": {
+    "date": "2026-11-07",
+    "sourceCommit": "1823db1a8ef5bce16db81545374ecb7c38d4ceac",
+    "scope": "Current scoped/replacement observable bindings only; no whole original private-protocol, alpha or equipment acceptance. Prior semantic reconciliation and aggregate snapshots are retained explicitly.",
+    "bindingExecutionReportSha256": "0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714",
+    "sourceHelperProductionAuditSha256": "d8aa3a87d8cc94586464041aa3b7d66b180f5f5055da5b40fc990a7a477c9627",
+    "historicalReportAuditSha256": "31c69dd44ec1c77460377db5db910d5c60971154ecc726c80b389f3ffbe4cea8",
+    "originalResidualPlan": {
+      "originalResiduals": 139,
+      "currentScopedBindings": 11,
+      "currentReplacementBindings": 10,
+      "remainingOutsidePlan": 118
+    },
+    "negativeControlScope": "The twenty prior reports retain their historical measured test-file identities and were not rerun. Two #1525 scope-omission controls remain attributed to the earlier 180-case source and were not replayed after #1529. A new premature-admission control fails both strengthened changed-image variants while unchanged passes, with 179 unrun; all three prior-assertion variants pass under the same mutation. Production is restored byte-for-byte.",
+    "notGranted": [
+      "whole original fixture/provider/SDK/private TIME/caller/observer/global-drain equivalence",
+      "all 261 case acceptance",
+      "installed-equipment qualification",
+      "alpha publication clearance"
+    ]
+  },
+  "peerOnDebtAdoption": {
+    "mergedTestPullRequest": 1528,
+    "reviewedHead": "e8f8ff7241ab6868e57278c16d2e3e7bdf03cc53",
+    "mergedTestCommit": "9701fb89bd67b85ddfa6ad632b210db29ed0de3a",
+    "currentLedgerBase": "9b7392ec28d6586ef678bab7e819c48519e3e13e",
+    "priorLedgerSha256": "f59fc0c98e1a6c2d47a4a7dcf6d0b4887d8025c3328eecb0ce1e0295974c6d85",
+    "currentAppsEqualReviewed1529Apps": true,
+    "sourceAuditSha256": "ea5a58df0ca6ec0b3aaa66b154bc4f83c67b7b0143ee5d3323b86b1ab8b36975",
+    "originalBodyAuditSha256": "24d3eabe0952e62ab42ac614c01b619ffab3e057030634ef97f07b6850d62227",
+    "scopedRows": [
+      116,
+      117
+    ],
+    "newWitnessBodiesMatchReviewed1528": true,
+    "previousBindingsUnchanged": 144,
+    "positiveRuntimeReportSha256": "a45f18eb83a3420f36fe2de16d8dcbbc947fee0a962e70daf09b19b9bf9ecb73",
+    "runtimeResult": {
+      "passed": 182,
+      "failed": 0,
+      "pending": 0
+    },
+    "hostedBackendLogSha256": "0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714",
+    "negativeProofControlSha256": "bafbb39f47dfcfb6744953402581acbdab959cfac8d7c13aa9897cfc749e94c8",
+    "priorAssertionControlSha256": "7aee913f059cfccea336bae354479167f50241ffb1588b9e03aa5a92421e3edc",
+    "historicalDebtOmissionSha256": "9d85c8d8142bd9053e6f4a2e1b895f48a86a06cdf4e8eb2de7561400790d7dd0",
+    "scope": "First/second post-restart held fences with explicit ordinary public polls; bounded exact native ON-image settlement by later original covering proof. Original automatic consumed dirty-frontier/receipt continuation and second/third/fifth schedule remain outside this scoped adoption."
   }
 }

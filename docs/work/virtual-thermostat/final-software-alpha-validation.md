@@ -1,23 +1,23 @@
 # Final software acceptance and next alpha
 
 Status: partial software acceptance, 2026-11-07. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
-Current summary base: merged main `1823db1a8ef5bce16db81545374ecb7c38d4ceac` (#1529).
+Current summary base: merged main `9b7392ec28d6586ef678bab7e819c48519e3e13e` (#1527).
 Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
 No alpha was dispatched or published by this preparation. No installed equipment was operated.
 
 ## Current qualification and remaining scope
 
-[The canonical ledger](original1473-case-map.json) records **143 bound original rows: 120 scoped invariants**,
-17 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **21 have current
-bindings and 118 remain unbound**. The twenty-one comprise eleven scoped and ten replacement bindings;
+[The canonical ledger](original1473-case-map.json) records **145 bound original rows: 122 scoped invariants**,
+17 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **23 have current
+bindings and 116 remain unbound**. The twenty-three comprise thirteen scoped and ten replacement bindings;
 the initial 122 dispositions retain their existing limits. No complete original-case or equipment acceptance
 follows from a scoped binding.
 
 The current held-fence tests were merged in #1525. Its exact reviewed head
 `d1018936dc786a788f11811da0c791e45b37482a` passed all 14 checks and completed CodeRabbit review
-without actionable findings. The current summary source includes #1529; its complete tree equals reviewed
-head `711ef0231a134ecc9a4f9cf385c464ab4beac256`. All CI checks passed and CodeRabbit completed review
-without actionable findings. Original rows 116–117 remain unbound pending separate semantic adoption. The earlier #1524
+without actionable findings. The measurements below use #1529
+(`1823db1a8ef5bce16db81545374ecb7c38d4ceac`), whose tree equals reviewed head `711ef0231a134ecc9a4f9cf385c464ab4beac256`. All CI checks passed and CodeRabbit completed review
+without actionable findings. Original rows 116–117 now have scoped public-poll debt bindings detailed below. The earlier #1524
 source/helper/report aggregate remains historical evidence at its recorded source.
 
 | Measurement | Result and exact source scope |
@@ -26,7 +26,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 | Current hosted backend | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Current ordinary E2E | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
-| Evidence bindings | All **144 witness bindings across 143 rows** match current files, body tokens and passed executions. The held-fence shared body and its entry gate are strengthened; 109 other literal runtime bodies and 62 other helpers remain token-identical; 19 production and nine consumer/shared-fixture source bindings are recorded. |
+| Evidence bindings | All **146 witness bindings across 145 rows** match current files, body tokens and passed executions. The held-fence shared body and its entry gate are strengthened; 109 other literal runtime bodies and 62 other helpers remain token-identical; 19 production and nine consumer/shared-fixture source bindings are recorded. |
 | Retained controls | The prior 52 reports remain hash-verified historical evidence. Twenty per-row negative reports retain 29 expected failures and five passing selected controls; they were audited, not replayed after the additive test change. Two #1525 scope-omission controls, not replayed after #1529, each fail only the corresponding changed-image variant, pass two controls and leave 177 cases unrun. A new premature-admission control fails both changed-image variants while unchanged passes (179 unrun); prior assertions pass all three under the same mutation. Production is restored byte-for-byte. |
 
 The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalidation` and
@@ -34,7 +34,7 @@ The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalid
 `semanticReconciliationBeforeHeldFenceAdoption`; `priorQualificationLedger` indexes its immutable full ledger,
 including the prior per-row measurements. `heldFenceOrderingFollowup` records the reviewed #1529 strengthening and its immutable prior ledger.
 Older test-file identities remain historical after the test changes.
-This evidence update requires its own exact-head CI and completed source review. The 118 residuals,
+This evidence update requires its own exact-head CI and completed source review. The 116 residuals,
 retired private TIME/caller/observer/global-drain and complete provider/SDK protocols, installed equipment,
 and alpha publication remain separate open gates.
 
@@ -47,6 +47,16 @@ a premature-admission mutation fails the two changed-image variants while their 
 The original second-fence/ceiling schedule is replaced only for this scoped invariant. No private fixture-protocol
 or installed-equipment equivalence is inferred. [The residual evidence](original1473-residual-acceptance.md#rows-118119-independent-bindings-during-a-held-off-fence)
 records the full boundary and report identities.
+
+Rows 116–117 additionally bind peer-committed native ON insertion or same-ID revision changes during
+successive held OFF fences. Explicit public polls replace the original automatic dirty-frontier continuation;
+first/second post-restart gates replace its second/third/fifth schedule. Complete baseline/current ON images,
+exact ID sets and unchanged configuration/claim revision are retained. Every obligation must use the original
+later provider proof covering all current IDs, distinct from the earlier proof; three or four entries finish
+without ON. Historical omission and stale-proof controls retain their measured source and assertion versions.
+[The scoped peer-debt boundary](original1473-residual-acceptance.md#rows-116117-independent-native-on-debt-during-successive-off-fences)
+grants no retired receipt/private-protocol or equipment equivalence. No new local runtime run is claimed:
+the existing 182/182 #1529 report covers both unchanged peer-debt bodies and source dependencies.
 
 ## Composed acceptance
 
