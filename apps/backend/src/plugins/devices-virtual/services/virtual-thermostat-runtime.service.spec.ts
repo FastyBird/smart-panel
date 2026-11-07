@@ -7957,4 +7957,242 @@ describe('virtual thermostat durable runtime', () => {
 			if (primary !== undefined) throw primary.cause;
 		},
 	);
+
+	it.each([
+		{ kind: 'Error', primary: new Error('post-OFF publication P') },
+		{ kind: 'string', primary: 'post-OFF publication P' },
+		{ kind: 'undefined', primary: undefined },
+		{ kind: 'null', primary: null },
+	])(
+		'preserves post-OFF publication $kind across a failing public poll and a successful successor',
+		async ({ primary }) => {
+			const { fixture, loader, claim } = await useInstalledLockedNativeClaimsGuard();
+			const owner = runtime;
+			clearInterval(owner['timer']);
+			await fixture.report(sensorId, 21);
+			await settleReal(fixture);
+			const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const baseline = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			const sendsBefore = [...fixture.controls.sends];
+			const baselineReadiness = owner.readDiagnostics(controllerId)?.readiness;
+			const obligationId = uuid();
+			await database.manager.insert(VirtualThermostatCommandEntity, {
+				id: obligationId,
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: configuration.revision,
+				decisionRevision: 1,
+				action: 'on',
+				status: 'unknown',
+				preparedAt: new Date(),
+				dispatchedAt: new Date(),
+				settledAt: null,
+				proofId: null,
+				fault: 'independent-publication-test-obligation',
+			});
+			const obligation = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: obligationId });
+			type Evaluation = {
+				context?: object;
+				committed: boolean;
+				reconciled: boolean;
+				publication: boolean;
+				original?: Promise<void>;
+				proofId?: string;
+				covered?: string[];
+			};
+			const evaluations = new AsyncLocalStorage<Evaluation>();
+			const entered: Evaluation[] = [];
+			const originalEvaluate = owner['evaluate'].bind(owner) as (typeof owner)['evaluate'];
+			const originalReconcile = owner['reconcile'].bind(owner) as (typeof owner)['reconcile'];
+			const originalPublish = owner['publish'].bind(owner) as (typeof owner)['publish'];
+			const evaluate = jest
+				.spyOn(owner as unknown as { evaluate: typeof originalEvaluate }, 'evaluate')
+				.mockImplementation((...args: Parameters<typeof originalEvaluate>) => {
+					const entry: Evaluation = { committed: false, reconciled: false, publication: false };
+					entered.push(entry);
+					const original = evaluations.run(entry, () => originalEvaluate(...args));
+					entry.original = original;
+					void original.catch(() => undefined);
+					return original;
+				});
+			const reconcile = jest
+				.spyOn(owner as unknown as { reconcile: typeof originalReconcile }, 'reconcile')
+				.mockImplementation((...args: Parameters<typeof originalReconcile>) => {
+					const entry = evaluations.getStore();
+					if (entry) entry.context = args[0];
+					const original = originalReconcile(...args);
+					void original.then(
+						() => {
+							if (entry) entry.reconciled = true;
+						},
+						() => undefined,
+					);
+					return original;
+				});
+			const publish = jest
+				.spyOn(owner as unknown as { publish: typeof originalPublish }, 'publish')
+				.mockImplementation((...args: Parameters<typeof originalPublish>) => {
+					const entry = evaluations.getStore();
+					if (entry) {
+						expect(entry.context).toBe(args[0]);
+						entry.publication = true;
+					}
+					return originalPublish(...args);
+				});
+			const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+			const proofObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+				const adapter = capture(...args);
+				if (!adapter) return adapter;
+				return Object.freeze({
+					...adapter,
+					reconcile: (...parameters: Parameters<typeof adapter.reconcile>) => {
+						const entry = evaluations.getStore();
+						const original = adapter.reconcile(...parameters);
+						void original.then(
+							(proof) => {
+								if (entry && proof) {
+									entry.proofId = proof.proofId;
+									entry.covered = [...proof.coveredCommandIds];
+								}
+							},
+							() => undefined,
+						);
+						return original;
+					},
+				});
+			});
+			const secondary = new Error('successor native read Q');
+			let publicationFault: Evaluation | undefined;
+			let secondaryFault: Evaluation | undefined;
+			let successor: Promise<void> | undefined;
+			let first: Promise<void> | undefined;
+			let allowRecovery = false;
+			const confirmations = new Set<import('typeorm').QueryRunner>();
+			const observer = {
+				afterQuery: (event: AfterQueryEvent<unknown>) => {
+					if (
+						event.success &&
+						event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+						event.parameters?.includes('confirmed') &&
+						event.parameters.includes(obligationId)
+					)
+						confirmations.add(event.queryRunner);
+					if (event.success && event.query === 'COMMIT' && confirmations.delete(event.queryRunner)) {
+						const entry = evaluations.getStore();
+						if (entry) entry.committed = true;
+					}
+					if (event.query === 'ROLLBACK') confirmations.delete(event.queryRunner);
+				},
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					const entry = evaluations.getStore();
+					if (!entry || allowRecovery) return;
+					if (
+						!publicationFault &&
+						entry.committed &&
+						entry.reconciled &&
+						entry.publication &&
+						event.query.includes('FROM "devices_module_channels_properties"')
+					) {
+						publicationFault = entry;
+						successor = owner.requestInstalled(controllerId);
+						void successor.catch(() => undefined);
+						// eslint-disable-next-line @typescript-eslint/only-throw-error -- Preserve the deliberately falsy native cause.
+						throw primary;
+					}
+					if (
+						publicationFault &&
+						entry !== publicationFault &&
+						event.query.includes('FROM "devices_virtual_thermostat_configs"')
+					) {
+						secondaryFault = entry;
+						throw secondary;
+					}
+				},
+			};
+			database.subscribers.push(observer);
+			let failure: { cause: unknown } | undefined;
+			try {
+				first = owner.requestInstalled(controllerId);
+				const trigger = await Promise.allSettled([first]);
+				if (trigger[0].status === 'rejected') expect(trigger[0].reason).toBe(primary);
+				await owner.flush();
+				expect(publicationFault).toBeDefined();
+				if (publicationFault?.original === undefined) throw new Error('Native post-OFF publication was not reached');
+				const outcome = await Promise.allSettled([publicationFault.original]);
+				expect(outcome[0].status).toBe('rejected');
+				if (outcome[0].status === 'rejected') expect(outcome[0].reason).toBe(primary);
+				expect(publicationFault).toMatchObject({ committed: true, reconciled: true, publication: true });
+				expect(publicationFault.covered).toContain(obligationId);
+				expect(successor).toBeDefined();
+				if (successor === undefined) throw new Error('Original public successor was not issued');
+				const followup = await Promise.allSettled([successor]);
+				expect(followup[0].status).toBe('rejected');
+				if (followup[0].status === 'rejected') expect(followup[0].reason).toBe(secondary);
+				expect(secondaryFault).toBeDefined();
+				expect(secondaryFault).not.toBe(publicationFault);
+				await owner.flush();
+				expect(owner.readDiagnostics(controllerId)).toMatchObject({
+					readiness: 'unavailable',
+					reasons: ['runtime_error'],
+				});
+				const settled = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				const confirmed = settled.find((row) => row.id === obligationId);
+				expect(confirmed).toEqual({
+					...obligation,
+					status: 'confirmed',
+					settledAt: expect.any(Date) as Date,
+					proofId: publicationFault.proofId,
+				});
+				expect(publicationFault.proofId).toEqual(expect.any(String));
+				for (const row of baseline) expect(settled.find((saved) => saved.id === row.id)).toEqual(row);
+				expect(settled).toHaveLength(baseline.length + 2);
+				const remedialOff = settled.filter(
+					(row) => row.id !== obligationId && !baseline.some((old) => old.id === row.id),
+				);
+				expect(remedialOff).toEqual([
+					expect.objectContaining({ action: 'off', status: 'confirmed', proofId: publicationFault.proofId }),
+				]);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual(sendsBefore.filter((send) => send.on));
+				const countAtFailure = entered.length;
+				await fixture.flushTelemetry();
+				await owner.flush();
+				expect(entered).toHaveLength(countAtFailure); // No self-scheduled failure/probe loop.
+				allowRecovery = true;
+				await expect(owner.requestInstalled(controllerId)).resolves.toBeUndefined();
+				await owner.flush();
+				expect(entered.length).toBeGreaterThan(countAtFailure);
+				expect(owner.readDiagnostics(controllerId)).toMatchObject({
+					readiness: baselineReadiness,
+					configuration_revision: configuration.revision,
+					branches: [expect.objectContaining({ release_proven: true, activity: 'off', pending_on: false })],
+				});
+				expect(owner.readDiagnostics(controllerId)?.reasons).not.toContain('runtime_error');
+				expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).toEqual(settled);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+					configuration,
+				);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual(sendsBefore.filter((send) => send.on));
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				loader.onModuleDestroy();
+				const cleanup = await Promise.allSettled([owner.flush(), ...owner['inFlight'].values(), loader['queue']]);
+				await Promise.allSettled([
+					...(first !== undefined ? [first] : []),
+					...(successor !== undefined ? [successor] : []),
+				]);
+				for (const result of cleanup) if (result.status === 'rejected') failure ??= { cause: result.reason };
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				proofObserver.mockRestore();
+				publish.mockRestore();
+				reconcile.mockRestore();
+				evaluate.mockRestore();
+			}
+			if (failure) throw failure.cause;
+		},
+	);
 });
