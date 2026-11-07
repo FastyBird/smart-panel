@@ -247,12 +247,15 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			const snapshot = () =>
 				thermostatFingerprint({ contract: thermostatPropertyContract(property, channel, device), local });
 			const image = snapshot();
+			let open = true;
 			const isCurrent = () => {
+				if (!open) return false;
 				try {
-					return !this.destroyed && typeCurrent() && pins.every((pin) => pin.current()) && snapshot() === image;
+					open = !this.destroyed && typeCurrent() && pins.every((pin) => pin.current()) && snapshot() === image;
 				} catch {
-					return false;
+					open = false;
 				}
+				return open;
 			};
 			return { device, profile, local, generation, legacy, physicalIdentity, machine, isCurrent };
 		} catch {
@@ -409,13 +412,22 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			'contractVersion',
 		]);
 		const profile = captureCreation(methods.values.providerProfile, ['id', 'version']);
-		const isCurrent = () =>
-			dispatch.current() &&
-			methods.current() &&
-			profile.current() &&
-			(owner?.() ?? true) &&
-			this.adapters === registrations &&
-			registrations.get(type) === registration;
+		let current = true;
+		const isCurrent = () => {
+			if (!current) return false;
+			try {
+				current =
+					dispatch.current() &&
+					methods.current() &&
+					profile.current() &&
+					(owner?.() ?? true) &&
+					this.adapters === registrations &&
+					registrations.get(type) === registration;
+			} catch {
+				current = false;
+			}
+			return current;
+		};
 		return Object.freeze({
 			isCurrent,
 			send: (...args: Parameters<ThermostatActuationAdapter['send']>) =>
