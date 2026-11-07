@@ -7615,9 +7615,27 @@ describe('virtual thermostat durable runtime', () => {
 			const entered = ownedGate((resolve) => (enter = resolve));
 			const held = ownedGate((resolve) => (release = resolve));
 			const previousGate = fixture.controls.beforeFence;
+			const events: { kind: 'fence' | 'proof'; scope: string | undefined }[] = [];
+			const pendingScopes: string[] = [];
+			const pushFence = fixture.controls.fences.push.bind(
+				fixture.controls.fences,
+			) as typeof fixture.controls.fences.push;
+			const fenceObserver = jest.spyOn(fixture.controls.fences, 'push').mockImplementation((...properties) => {
+				const result = pushFence(...properties);
+				for (const property of properties)
+					if (property === relayId) events.push({ kind: 'fence', scope: pendingScopes.shift() });
+				return result;
+			});
+			Object.defineProperty(fixture.controls.fences, 'push', { enumerable: false });
+			const admit = owner['reconciled'].set.bind(owner['reconciled']) as (typeof owner)['reconciled']['set'];
+			const admissionObserver = jest.spyOn(owner['reconciled'], 'set').mockImplementation((key, proof) => {
+				if (key === `${claim.id}:${claim.revision}`) events.push({ kind: 'proof', scope: proof.scope });
+				return admit(key, proof);
+			});
 			let entries = 0;
 			const gate = async (property: string) => {
 				if (property !== relayId) return;
+				pendingScopes.push(owner['releaseScope'](owner['contexts'].get(controllerId)));
 				entries++;
 				if (entries === 1) {
 					enter();
@@ -7701,6 +7719,11 @@ describe('virtual thermostat durable runtime', () => {
 				expect(settledProof.scope).toBe(freshScope);
 				expect(settledProof.scopeIsCurrent()).toBe(true);
 				if (kind !== 'unchanged') expect(freshScope).not.toBe(heldScope);
+				const freshAdmissions = events.filter((event) => event.kind === 'proof' && event.scope === freshScope);
+				expect(freshAdmissions.length).toBeGreaterThan(0);
+				for (const admission of freshAdmissions)
+					expect(events.slice(0, events.indexOf(admission))).toContainEqual({ kind: 'fence', scope: freshScope });
+				expect(pendingScopes).toEqual([]);
 				expect(await source.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
 					configuration,
 				);
@@ -7718,6 +7741,8 @@ describe('virtual thermostat durable runtime', () => {
 					loader['queue'],
 				]);
 				const cleanup = outcomes.find((result) => result.status === 'rejected');
+				admissionObserver.mockRestore();
+				fenceObserver.mockRestore();
 				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
 				else if (fixture.controls.beforeFence !== previousGate)
 					primary ??= { cause: new Error('Foreign original OFF fence gate retained') };
