@@ -70,6 +70,13 @@ its local structural owner; A's original mirrors can subsequently run after B. T
 veto, replay or compensation. Runtime ID notifications retain their existing current-state reads. Effect ownership,
 manualHold, automatic bridge installation and hardware qualification remain separate work.
 
+A joined native command preserves the original unexpected dispatch or outcome-write failure, including a falsy
+cause. Saving a diagnostic `unknown`/`cancelled` row afterwards does not turn that original operation into success.
+If the diagnostic repair also fails, that secondary cause is logged while the original cause remains authoritative
+for captured predecessor joins and installation requests. A known-unsent retired decision remains an ordinary
+cancellation. Failed writes never mint OFF/drain evidence; later reconciliation still requires its own complete
+native proof. Background request containment and the distinction between commanded and observed state remain intact.
+
 ## Thermostat comfort intent
 
 The controller stores optional comfort configuration alongside its version-1 requested settings. A null comfort

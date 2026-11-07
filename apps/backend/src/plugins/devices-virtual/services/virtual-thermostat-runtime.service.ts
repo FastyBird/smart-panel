@@ -1402,8 +1402,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const retiredBeforeSend = !enteredTransport && error instanceof ThermostatDecisionRetiredError;
 			command.fault = retiredBeforeSend ? null : error instanceof Error ? error.message : 'dispatch_error';
 			if (command.action === 'on' && !retiredBeforeSend) this.recordMemberFault(context, claim, command.fault);
-			await this.write(command);
-			if (!enteredTransport) await this.retryOffImmediately(command, context);
+			try {
+				await this.write(command);
+				if (!enteredTransport) await this.retryOffImmediately(command, context);
+			} catch (cleanup: unknown) {
+				if (retiredBeforeSend) throw cleanup;
+				this.logger.error('Failed to persist original thermostat command failure', cleanup);
+			}
+			// Diagnostic repair cannot turn the original failed command into a successful completion.
+			// Known-unsent retirement remains an ordinary cancellation; unexpected native failures retain identity.
+			if (!retiredBeforeSend) throw error;
 		} finally {
 			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
 			if (this.isCurrentLifecycle(context.lifecycle) && !refusedOn && !expiredTransport)
