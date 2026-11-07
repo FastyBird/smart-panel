@@ -166,12 +166,12 @@ Its **200 PASS / 61 FAIL** describes that historical source, not a current-main 
 
 The current reconciliation distinguishes scoped business outcomes from complete original-case acceptance:
 
-- **120 rows** bind current observable invariants: the initial 109 scoped bindings plus eleven from the residual inventory. The historical comparison of 68 distinct same-title body pairs and each row's changed ports and limits remain recorded in the ledger. Controlled claims/value ports do not certify the former complete mutation-provider or SDK custody pipeline.
+- **122 rows** bind current observable invariants: the initial 109 scoped bindings plus thirteen from the residual inventory. The historical comparison of 68 distinct same-title body pairs and each row's changed ports and limits remain recorded in the ledger. Controlled claims/value ports do not certify the former complete mutation-provider or SDK custody pipeline.
 - **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
 - **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
 - **Seventeen replacement rows (105–109, 111, 203, 221, 228–229, 232–233, 240–243, 261)** bind current native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **118 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **116 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
 
 ### Historical binding sequence
 
@@ -316,8 +316,8 @@ without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and u
 ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
 
 [The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
-rows that were unbound at branch entry and the evidence required to close each. Rows 118–119, 195–198, 203, 205–208, 214, 221, 228–229, 232–233, 241–243 and 261 now have
-tested current bindings (eleven scoped and ten replacements); 118 remain unbound. The initial 122 dispositions retain
+rows that were unbound at branch entry and the evidence required to close each. Rows 116–119, 195–198, 203, 205–208, 214, 221, 228–229, 232–233, 241–243 and 261 now have
+tested current bindings (thirteen scoped and ten replacements); 116 remain unbound. The initial 122 dispositions retain
 their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
 ### Hosted migration-compatibility follow-up
@@ -434,7 +434,7 @@ already existed despite that failed downstream job. A release object alone there
 
 ## Remaining gates
 
-- [x] Reconcile 21 scoped/replacement residual bindings, including rows 118–119 through merged #1525; retain the other 118 entries as open.
+- [x] Reconcile 23 scoped/replacement residual bindings, including rows 116–117 through merged #1528 and rows 118–119 through merged #1525; retain the other 116 entries as open.
 - [ ] Finish original #1473 semantic case bindings and any required executable residuals.
 - [ ] Complete current software/static/generated-contract and source-review gates; reconcile #1293/#1458 against their entire criteria.
 - [x] Merge delivery PR #1508 after exact-head green CI and completed nonblocking main review. The residual acceptance follow-up still requires its own checks and review.

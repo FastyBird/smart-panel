@@ -56,7 +56,7 @@ Row 261 binds required-callsite missing-method refusal as detailed below. The sh
 absence behavior remains distinct; a standalone `current()` result does not satisfy that refusal.
 
 Before this inventory summary becomes ready, reconcile every one of its 139 entries against the ledger,
-preserve the initial 122 dispositions, and distinguish the 21 bound entries from the 118 still open.
+preserve the initial 122 dispositions, and distinguish the 23 bound entries from the 116 still open.
 Run required exact-head checks and obtain completed nonblocking source review. Further executable residuals
 belong in separate small PRs; this summary does not close them. Actual alpha publication and installed-equipment
 qualification remain separate gates in #1462.
