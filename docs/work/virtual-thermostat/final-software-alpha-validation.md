@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **409/409**, zero failures/skips, one complete local eight-file invocation on main `31cfa95` plus the native-outcome fix and three appended cases/tables. Includes **201/201** runtime cases. Report SHA-256 `9455e57ba3e1e58ea9241a170448090cf7647603df1aaa7d31fa6c6d5b27b3dc`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **409/409**, zero failures/skips, one complete local eight-file invocation on main `31cfa95` plus the native-outcome fix and three appended cases/tables. Includes **201/201** runtime cases. Report SHA-256 `c7d40ea74868fb55736064d27e2e87c7ec1335cf73f19d1041a251b6063d2176`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -77,6 +77,11 @@ details the removed private-protocol boundaries and the intentional change from 
 failed original completion. Complete consumers pass **409/409**, runtime **201/201**, zero skips; original-production
 control fails thirteen variants and passes two controls. Source/static/ledger checks pass; fresh hosted CI and review
 remain merge gates. No alpha or equipment qualification is granted.
+
+Row 153 now isolates the detached command after its issuing evaluation finishes and before feedback can
+create another evaluation. Omitting command waits passes the former test but fails the strengthened test;
+`detachedOffJoinFollowup` records both source-bound controls. All production files remain unchanged by this
+review correction. The complete 409-case invocation above includes the strengthened body.
 
 ## Composed acceptance
 

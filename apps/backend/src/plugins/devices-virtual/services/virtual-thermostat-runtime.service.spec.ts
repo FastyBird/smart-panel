@@ -8531,6 +8531,20 @@ describe('virtual thermostat durable runtime', () => {
 		let enter!: () => void, release!: () => void;
 		const entered = ownedGate((resolve) => (enter = resolve));
 		const held = ownedGate((resolve) => (release = resolve));
+		let enterBeforeOutcome!: () => void, releaseBeforeOutcome!: () => void;
+		const beforeOutcomeEntered = ownedGate((resolve) => (enterBeforeOutcome = resolve));
+		const beforeOutcomeHeld = ownedGate((resolve) => (releaseBeforeOutcome = resolve));
+		const previousFence = fixture.controls.beforeFence;
+		let heldBeforeOutcome = false;
+		const beforeOutcome = async (property: string) => {
+			if (property === relayId && !heldBeforeOutcome) {
+				heldBeforeOutcome = true;
+				enterBeforeOutcome();
+				await beforeOutcomeHeld;
+			}
+			await previousFence?.(property);
+		};
+		fixture.controls.beforeFence = beforeOutcome;
 		const commands: string[] = [];
 		const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
 		const transportObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
@@ -8569,10 +8583,16 @@ describe('virtual thermostat durable runtime', () => {
 		try {
 			starting = owner.onApplicationBootstrap();
 			void starting.catch(() => undefined);
-			await entered;
-			expect(heldId).toBeDefined();
-			if (heldId === undefined) throw new Error('Native OFF outcome was not held');
-			const original = owner['inFlight'].get(heldId);
+			// Hold the physical OFF before outcome SQL, so its issuing evaluation can finish without contention.
+			await beforeOutcomeEntered;
+			await starting;
+			clearInterval(owner['timer']);
+			await owner.flush();
+			expect(owner['queues'].size).toBe(0);
+			expect(owner['inFlight'].size).toBe(1);
+			expect(commands).toHaveLength(1);
+			const originalId = commands[0];
+			const original = owner['inFlight'].get(originalId);
 			expect(original).toBeDefined();
 			let completed = false;
 			joined = owner.capturePredecessors(controllerId);
@@ -8587,7 +8607,13 @@ describe('virtual thermostat durable runtime', () => {
 			await Promise.resolve();
 			await Promise.resolve();
 			expect(completed).toBe(false);
-			expect(owner['inFlight'].get(heldId)).toBe(original);
+			expect(owner['inFlight'].get(originalId)).toBe(original);
+			// Capture only the already-detached original command; later feedback evaluations cannot prolong this snapshot.
+			releaseBeforeOutcome();
+			await entered;
+			expect(heldId).toBe(originalId);
+			expect(completed).toBe(false);
+			expect(owner['inFlight'].get(originalId)).toBe(original);
 			release();
 			await Promise.all([starting, joined, ...(original !== undefined ? [original] : [])]);
 			clearInterval(owner['timer']);
@@ -8608,6 +8634,7 @@ describe('virtual thermostat durable runtime', () => {
 			failure = { cause };
 		} finally {
 			owner.onModuleDestroy();
+			releaseBeforeOutcome();
 			release();
 			const results = await Promise.allSettled([
 				owner.flush(),
@@ -8619,6 +8646,8 @@ describe('virtual thermostat durable runtime', () => {
 			const index = database.subscribers.indexOf(subscriber);
 			if (index >= 0) database.subscribers.splice(index, 1);
 			transportObserver.mockRestore();
+			if (fixture.controls.beforeFence === beforeOutcome) fixture.controls.beforeFence = previousFence;
+			else failure ??= { cause: new Error('Foreign detached OFF gate retained') };
 		}
 		if (failure !== undefined) throw failure.cause;
 	});
