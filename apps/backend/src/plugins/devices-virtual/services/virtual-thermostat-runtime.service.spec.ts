@@ -8195,4 +8195,431 @@ describe('virtual thermostat durable runtime', () => {
 			if (failure) throw failure.cause;
 		},
 	);
+
+	it.each(
+		[
+			{ kind: 'undefined', primary: undefined },
+			{ kind: 'null', primary: null },
+			{ kind: 'false', primary: false },
+			{ kind: 'string', primary: 'first native save P' },
+			{ kind: 'Error', primary: new Error('first native save P') },
+		].flatMap((row) => ['succeeds', 'fails'].map((repair) => ({ ...row, repair }))),
+	)('preserves original $kind outcome-save failure when the diagnostic repair $repair', async ({ primary, repair }) => {
+		const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime;
+		clearInterval(owner['timer']);
+		const expected = await comfortFence();
+		const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		let enterOn!: () => void, releaseOn!: () => void, enterRead!: () => void, releaseRead!: () => void;
+		const onEntered = ownedGate((resolve) => (enterOn = resolve));
+		const onResume = ownedGate((resolve) => (releaseOn = resolve));
+		const readEntered = ownedGate((resolve) => (enterRead = resolve));
+		const readResume = ownedGate((resolve) => (releaseRead = resolve));
+		const previousGate = fixture.controls.beforeOn;
+		const gate = async (property: string) => {
+			if (property === relayId) {
+				enterOn();
+				await onResume;
+			}
+		};
+		fixture.controls.beforeOn = gate;
+		const sends: Array<Parameters<ThermostatActuationAdapter['send']>> = [];
+		const outcomes: Array<Awaited<ReturnType<ThermostatActuationAdapter['send']>>> = [];
+		const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+		const transportObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+			const adapter = capture(...args);
+			if (!adapter) return adapter;
+			return Object.freeze({
+				...adapter,
+				send: (...parameters: Parameters<typeof adapter.send>) => {
+					const original = adapter.send(...parameters);
+					if (parameters[0].value === true && parameters[0].property.id === relayId) {
+						sends.push(parameters);
+						void original.then(
+							(result) => {
+								outcomes.push(result);
+							},
+							() => undefined,
+						);
+					}
+					return original;
+				},
+			});
+		});
+		const roots = new AsyncLocalStorage<object>();
+		const root = Object.freeze({ owner });
+		const secondary = new Error('diagnostic repair Q');
+		const logged = jest.spyOn(owner['logger'], 'error').mockImplementation(() => undefined);
+		let readHeld = false,
+			saves = 0;
+		let commandId: string | undefined;
+		const subscriber = {
+			beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (
+					!readHeld &&
+					roots.getStore() === root &&
+					event.query.startsWith('SELECT') &&
+					event.query.includes('devices_virtual_thermostat_configs') &&
+					event.parameters?.includes(controllerId)
+				) {
+					readHeld = true;
+					enterRead();
+					await readResume;
+				}
+				if (
+					commandId !== undefined &&
+					event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+					event.parameters?.includes(commandId) &&
+					event.parameters.includes('cancelled')
+				) {
+					saves++;
+					if (saves === 1) {
+						// eslint-disable-next-line @typescript-eslint/only-throw-error -- Deliberately preserve falsy native failures.
+						throw primary;
+					}
+					if (saves === 2 && repair === 'fails') throw secondary;
+				}
+			},
+		};
+		let operation: Promise<void> | undefined;
+		let mutation: ReturnType<typeof comfort.select> | undefined;
+		let failure: { cause: unknown } | undefined;
+		try {
+			await fixture.report(sensorId, 18);
+			let timeout: ReturnType<typeof setTimeout> | undefined;
+			try {
+				await Promise.race([
+					onEntered,
+					new Promise<never>((_, reject) => {
+						timeout = setTimeout(
+							() =>
+								reject(
+									new Error('Native ON entry not reached: ' + JSON.stringify(owner.readDiagnostics(controllerId))),
+								),
+							5_000,
+						);
+					}),
+				]);
+			} finally {
+				clearTimeout(timeout);
+			}
+			await owner.flush();
+			expect(sends).toHaveLength(1);
+			commandId = sends[0][4].commandId;
+			expect(sends[0][3]()).toBe(true);
+			expect(claims.capture().isCurrent()).toBe(true);
+			const before = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			const held = before.find((row) => row.id === commandId);
+			expect(held).toMatchObject({ action: 'on', status: 'dispatching', settledAt: null, proofId: null });
+			operation = owner['inFlight'].get(commandId);
+			if (operation === undefined) throw new Error('Original native ON command missing');
+			void operation.catch(() => undefined);
+			database.subscribers.push(subscriber);
+			mutation = roots.run(root, () => comfort.select(controllerId, expected, 'eco', false));
+			void mutation.catch(() => undefined);
+			await readEntered;
+			expect(sends[0][3]()).toBe(false);
+			releaseOn();
+			await fixture.flushTelemetry();
+			owner.onModuleDestroy();
+			releaseRead();
+			const result = await Promise.allSettled([mutation, operation]);
+			for (const outcome of result) {
+				expect(outcome.status).toBe('rejected');
+				if (outcome.status === 'rejected') expect(outcome.reason).toBe(primary);
+			}
+			expect(saves).toBe(2);
+			if (repair === 'fails') {
+				expect(logged).toHaveBeenCalledTimes(1);
+				expect(logged).toHaveBeenCalledWith('Failed to persist original thermostat command failure', secondary);
+			} else expect(logged).not.toHaveBeenCalled();
+			expect(outcomes).toEqual([expect.objectContaining({ outcome: 'refused' })]);
+			const after = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(after.map((row) => row.id).sort()).toEqual(before.map((row) => row.id).sort());
+			for (const row of before)
+				expect(after.find((saved) => saved.id === row.id)).toEqual(
+					row.id !== commandId || repair === 'fails'
+						? row
+						: {
+								...row,
+								status: 'cancelled',
+								settledAt: expect.any(Date) as Date,
+								fault: primary instanceof Error ? primary.message : 'dispatch_error',
+							},
+				);
+			expect(after.find((row) => row.id === commandId)?.proofId).toBeNull();
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+				configuration,
+			);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			releaseOn();
+			releaseRead();
+			const cleanup = await Promise.allSettled([owner.flush()]);
+			await Promise.allSettled([
+				...(mutation !== undefined ? [mutation] : []),
+				...(operation !== undefined ? [operation] : []),
+			]);
+			for (const outcome of cleanup) if (outcome.status === 'rejected') failure ??= { cause: outcome.reason };
+			const index = database.subscribers.indexOf(subscriber);
+			if (index >= 0) database.subscribers.splice(index, 1);
+			transportObserver.mockRestore();
+			logged.mockRestore();
+			if (fixture.controls.beforeOn === gate) fixture.controls.beforeOn = previousGate;
+			else failure ??= { cause: new Error('Foreign native ON gate retained') };
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
+
+	it.each([
+		{ kind: 'Error', primary: new Error('ordinary native outcome P'), fail: true },
+		{ kind: 'undefined', primary: undefined, fail: true },
+		{ kind: 'null', primary: null, fail: true },
+		{ kind: 'returned-safety', primary: undefined, fail: false },
+	])('allows guarded OFF with unavailable optional baseline and preserves $kind outcome', async ({ primary, fail }) => {
+		const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime;
+		clearInterval(owner['timer']);
+		await fixture.report(sensorId, 21);
+		await settleReal(fixture);
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		const before = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		const debtId = uuid();
+		await database.manager.insert(VirtualThermostatCommandEntity, {
+			id: debtId,
+			controllerId,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: config.revision,
+			decisionRevision: 1,
+			action: 'on',
+			status: 'unknown',
+			preparedAt: new Date(),
+			dispatchedAt: new Date(),
+			settledAt: null,
+			proofId: null,
+			fault: 'controlled-native-debt',
+		});
+		const debt = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: debtId });
+		const loads = new AsyncLocalStorage<boolean>();
+		const originalLoad = owner['load'].bind(owner) as (typeof owner)['load'];
+		const load = jest
+			.spyOn(owner as unknown as { load: typeof originalLoad }, 'load')
+			.mockImplementation((...args) => loads.run(true, () => originalLoad(...args)));
+		const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+		const issued: Array<Parameters<ThermostatActuationAdapter['send']>> = [];
+		const results: Array<Awaited<ReturnType<ThermostatActuationAdapter['send']>>> = [];
+		const proofs: { proofId: string; ids: string[] }[] = [];
+		const observer = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+			const adapter = capture(...args);
+			if (!adapter) return adapter;
+			return Object.freeze({
+				...adapter,
+				reconcile: (...parameters: Parameters<typeof adapter.reconcile>) => {
+					const original = adapter.reconcile(...parameters);
+					void original.then(
+						(proof) => {
+							if (proof) proofs.push({ proofId: proof.proofId, ids: [...proof.coveredCommandIds] });
+						},
+						() => undefined,
+					);
+					return original;
+				},
+				send: (...parameters: Parameters<typeof adapter.send>) => {
+					const original = adapter.send(...parameters);
+					if (parameters[0].property.id === relayId && parameters[0].value === false) {
+						issued.push(parameters);
+						void original.then(
+							(result) => {
+								results.push(result);
+							},
+							() => undefined,
+						);
+					}
+					return original;
+				},
+			});
+		});
+		const secondary = new Error('optional ON-baseline Q');
+		let baselines = 0,
+			faults = 0;
+		const subscriber = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (
+					loads.getStore() === true &&
+					event.query.startsWith('SELECT "owned".') &&
+					event.query.includes('FROM "devices_virtual_thermostat_configs" "owned"')
+				) {
+					baselines++;
+					throw secondary;
+				}
+				if (
+					fail &&
+					faults === 0 &&
+					issued.length > 0 &&
+					event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+					event.parameters?.includes(issued[0][4].commandId) &&
+					event.parameters.includes('accepted')
+				) {
+					faults++;
+					throw primary;
+				}
+			},
+		};
+		database.subscribers.push(subscriber);
+		let requested: Promise<void> | undefined;
+		let failure: { cause: unknown } | undefined;
+		try {
+			requested = owner.requestInstalled(controllerId);
+			const outcome = (await Promise.allSettled([requested]))[0];
+			expect(outcome.status).toBe(fail ? 'rejected' : 'fulfilled');
+			if (outcome.status === 'rejected') expect(outcome.reason).toBe(primary);
+			expect(baselines).toBeGreaterThan(0);
+			expect(faults).toBe(fail ? 1 : 0);
+			expect(issued).toHaveLength(1);
+			expect(results).toMatchObject([{ outcome: 'accepted' }]);
+			expect(claims.capture().isCurrent()).toBe(true);
+			await owner.flush();
+			const after = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(after.map((row) => row.id).sort()).toEqual(
+				[...before.map((row) => row.id), debtId, issued[0][4].commandId].sort(),
+			);
+			for (const row of before) expect(after.find((saved) => saved.id === row.id)).toEqual(row);
+			const debtAfter = after.find((row) => row.id === debtId);
+			const covering = proofs.find((proof) => proof.ids.includes(debtId) && proof.ids.includes(issued[0][4].commandId));
+			expect(debtAfter).toEqual(
+				covering
+					? { ...debt, status: 'confirmed', settledAt: expect.any(Date) as Date, proofId: covering.proofId }
+					: debt,
+			);
+			expect(after.find((row) => row.id === issued[0][4].commandId)).toMatchObject({
+				action: 'off',
+				status: covering ? 'confirmed' : fail ? 'unknown' : 'accepted',
+				proofId: covering?.proofId ?? null,
+				fault: fail ? (primary instanceof Error ? primary.message : 'dispatch_error') : null,
+			});
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(config);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			const cleanup = await Promise.allSettled([owner.flush(), ...owner['inFlight'].values()]);
+			await Promise.allSettled([...(requested !== undefined ? [requested] : [])]);
+			for (const result of cleanup)
+				if (result.status === 'rejected' && !Object.is(result.reason, primary)) failure ??= { cause: result.reason };
+			const index = database.subscribers.indexOf(subscriber);
+			if (index >= 0) database.subscribers.splice(index, 1);
+			observer.mockRestore();
+			load.mockRestore();
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
+
+	it('joins the original native OFF command while its outcome UPDATE is held', async () => {
+		const { fixture } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime;
+		owner.onModuleDestroy();
+		await owner.flush();
+		const before = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		const commands: string[] = [];
+		const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+		const transportObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+			const adapter = capture(...args);
+			if (!adapter) return adapter;
+			return Object.freeze({
+				...adapter,
+				send: (...parameters: Parameters<typeof adapter.send>) => {
+					const original = adapter.send(...parameters);
+					if (parameters[0].property.id === relayId && parameters[0].value === false)
+						commands.push(parameters[4].commandId);
+					return original;
+				},
+			});
+		});
+		let heldId: string | undefined;
+		const subscriber = {
+			beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (
+					heldId === undefined &&
+					event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+					event.parameters?.includes('accepted')
+				) {
+					const selected = commands.find((id) => event.parameters?.includes(id));
+					if (selected !== undefined) {
+						heldId = selected;
+						enter();
+						await held;
+					}
+				}
+			},
+		};
+		database.subscribers.push(subscriber);
+		let starting: Promise<void> | undefined, joined: Promise<void> | undefined;
+		let failure: { cause: unknown } | undefined;
+		try {
+			starting = owner.onApplicationBootstrap();
+			void starting.catch(() => undefined);
+			await entered;
+			expect(heldId).toBeDefined();
+			if (heldId === undefined) throw new Error('Native OFF outcome was not held');
+			const original = owner['inFlight'].get(heldId);
+			expect(original).toBeDefined();
+			let completed = false;
+			joined = owner.capturePredecessors(controllerId);
+			void joined.then(
+				() => {
+					completed = true;
+				},
+				() => {
+					completed = true;
+				},
+			);
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(completed).toBe(false);
+			expect(owner['inFlight'].get(heldId)).toBe(original);
+			release();
+			await Promise.all([starting, joined, ...(original !== undefined ? [original] : [])]);
+			clearInterval(owner['timer']);
+			await settleReal(fixture);
+			expect(completed).toBe(true);
+			const after = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(after.map((row) => row.id).sort()).toEqual([...before.map((row) => row.id), ...commands].sort());
+			for (const row of before) expect(after.find((saved) => saved.id === row.id)).toEqual(row);
+			expect(after.find((row) => row.id === heldId)).toMatchObject({
+				action: 'off',
+				status: 'confirmed',
+				proofId: expect.any(String) as string,
+			});
+			expect(owner.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			release();
+			const results = await Promise.allSettled([
+				owner.flush(),
+				...owner['inFlight'].values(),
+				...(starting !== undefined ? [starting] : []),
+				...(joined !== undefined ? [joined] : []),
+			]);
+			for (const result of results) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			const index = database.subscribers.indexOf(subscriber);
+			if (index >= 0) database.subscribers.splice(index, 1);
+			transportObserver.mockRestore();
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
 });
