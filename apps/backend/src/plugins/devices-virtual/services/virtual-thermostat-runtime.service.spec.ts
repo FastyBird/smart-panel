@@ -8928,7 +8928,10 @@ describe('virtual thermostat durable runtime', () => {
 		'chain-link',
 		'generation-restored',
 		'get-restored',
-	] as const)('keeps original managed OFF metadata closed after observed %s restoration', async (change) => {
+		'active-own-shadow',
+	] as const)('keeps original managed OFF metadata closed after observed %s restoration', async (variant) => {
+		const activeOwner = variant === 'active-own-shadow';
+		const change = activeOwner ? 'own-shadow' : variant;
 		const { fixture, claims } = await useRegisteredNativeClaimsGuard();
 		const owner = runtime;
 		const provider = comfort['automation'];
@@ -9026,6 +9029,20 @@ describe('virtual thermostat durable runtime', () => {
 				},
 			});
 		});
+		const observedNativeProofIds: Array<string | null> = [];
+		const nativeProofObserver = {
+			afterQuery: async (event: import('typeorm').AfterQueryEvent<unknown>) => {
+				if (
+					!activeOwner ||
+					!/^UPDATE /i.test(event.query) ||
+					!event.query.includes('devices_virtual_thermostat_branch_runtime')
+				)
+					return;
+				const rows = await event.queryRunner.manager.find(VirtualThermostatBranchRuntimeEntity);
+				observedNativeProofIds.push(...rows.map((row) => row.releaseProofId));
+			},
+		};
+		database.subscribers.push(nativeProofObserver);
 		let selected: (typeof captures)[number] | undefined;
 		const previousFence = fixture.controls.beforeFence;
 		const fence = async (property: string) => {
@@ -9135,12 +9152,29 @@ describe('virtual thermostat durable runtime', () => {
 						? captureMethod(target, claim, qualification)
 						: metadataMethod(target, claim, qualification);
 				expect(fresh?.isCurrent()).toBe(true);
-				owner.onModuleDestroy();
+				if (!activeOwner) owner.onModuleDestroy();
 			}
 			release();
 			await driving;
 			await starting;
 			await fixture.flushTelemetry();
+			if (activeOwner) {
+				expect(owner['active']).toBe(true);
+				await owner.flush();
+				const originalProof = proofs[0];
+				if (!originalProof) throw new Error('Original SDK did not return its actual proof');
+				expect(originalProof.isCurrent()).toBe(true);
+				expect(selected.metadata.isCurrent()).toBe(false);
+				expect(observedNativeProofIds).not.toContain(originalProof.proofId);
+				await settleReal(fixture);
+				const branch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+					claimId: claim.id,
+				});
+				expect(branch.releaseProofId).not.toBe(originalProof.proofId);
+				expect(proofs.slice(1).some((proof) => proof?.proofId === branch.releaseProofId)).toBe(true);
+				expect(observedNativeProofIds).not.toContain(originalProof.proofId);
+				expect(owner.readDiagnostics(controllerId).branches.every((entry) => entry.release_proven)).toBe(true);
+			}
 			if (change === 'none') {
 				await settleReal(fixture);
 				expect(owner.readDiagnostics(controllerId).branches.every((branch) => branch.release_proven)).toBe(true);
@@ -9153,7 +9187,7 @@ describe('virtual thermostat durable runtime', () => {
 			expect(after.map((row) => row.id).sort()).toEqual(before.map((row) => row.id).sort());
 			for (const row of before) {
 				const current = after.find((entry) => entry.id === row.id);
-				if (change !== 'none' || row.status === 'confirmed') expect(current).toEqual(row);
+				if ((change !== 'none' && !activeOwner) || row.status === 'confirmed') expect(current).toEqual(row);
 				else {
 					expect(current).toMatchObject({
 						...row,
@@ -9183,6 +9217,8 @@ describe('virtual thermostat durable runtime', () => {
 				...(driving !== undefined ? [driving] : []),
 			]);
 			for (const result of results) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			const observerIndex = database.subscribers.indexOf(nativeProofObserver);
+			if (observerIndex >= 0) database.subscribers.splice(observerIndex, 1);
 			metadataObserver.mockRestore();
 			adapterObserver.mockRestore();
 			if (fixture.controls.beforeFence === fence) fixture.controls.beforeFence = previousFence;

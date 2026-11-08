@@ -1,7 +1,7 @@
 # Final software acceptance and next alpha
 
 Status: partial software acceptance, 2026-11-08. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
-Current software base: merged main `666fb47092a337398cbf2f6f26bf5587727f96a8` (#1533), plus the OFF metadata lifetime correction below.
+Current software base: merged main `666fb47092a337398cbf2f6f26bf5587727f96a8` (#1533), plus the OFF metadata and readiness lifetime corrections below.
 Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
 No alpha was dispatched or published by this preparation. No installed equipment was operated.
 
@@ -22,11 +22,11 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **518/518**, zero failures/skips, one complete local nine-file invocation on main `666fb47` plus the OFF capture correction and nine-variant table. Includes **219/219** runtime cases and the complete transport unit suite. Report SHA-256 `0ea4507cc67756dc9e4d997678f1cfafd8e3fdf4f99f466020414c79d44b0c1b`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **527/527**, zero failures/skips, one complete local nine-file invocation on main `666fb47` plus the OFF capture/readiness correction and ten-variant runtime table. Includes **220/220** runtime cases and the complete transport unit suite. Report SHA-256 `471d3562dd29bf1e2d204930482ab7ef1ae17e2151e7d58842e1ffafb3cf3651`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
-| Evidence bindings | All **194 witness bindings across 188 rows** match current files, body tokens and passed executions. Ten new scoped bindings share nine expanded executions; rows 143 and 145 share the same positive execution. All 184 prior witness bodies, 115 prior literal runtime bodies and 67 helper declarations remain token-identical. One of twenty-seven bound production files changes; the other twenty-six and the shared fixture remain unchanged. |
+| Evidence bindings | All **194 witness bindings across 188 rows** match current files, body tokens and passed executions. Ten new scoped bindings share nine bound expanded executions; a tenth runtime execution checks active-owner admission. Rows 143 and 145 share the same positive execution. All 184 prior witness bodies, 115 prior literal runtime bodies and 67 helper declarations remain token-identical. One of twenty-seven bound production files changes; the other twenty-six and the shared fixture remain unchanged. |
 | Retained controls | The prior 52 reports remain hash-verified historical evidence. Twenty per-row negative reports retain 29 expected failures and five passing selected controls; they were audited, not replayed after the additive test change. Two #1525 scope-omission controls, not replayed after #1529, each fail only the corresponding changed-image variant, pass two controls and leave 177 cases unrun. A new premature-admission control fails both changed-image variants while unchanged passes (179 unrun); prior assertions pass all three under the same mutation. Production is restored byte-for-byte. |
 
 The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalidation` and
@@ -94,10 +94,11 @@ pass **418/418**, including **210/210** runtime cases. [The scoped boundary](ori
 Rows 143–151 and 182 now bind permanent observed loss of original pure OFF metadata or command-adapter
 capture continuity during a genuine managed reconciliation fence. The positive variant retains SQL-null/omitted
 generation and the actual canonical hydrated Shelly getter through the original stored release proof. Eight
-restoration variants cannot revive their original capture, while fresh captures work. Negatives directly observe
-false before owner stop; complete negative dispatch/drain and retired receipt protocols remain unadopted.
-Original production fails all eight restoration cases and passes the positive control. The corrected source passes
-**518/518** complete consumers, including **219/219** runtime cases. [The scoped boundary](original1473-residual-acceptance.md#rows-143151-and-182-original-off-capture-lifetime) records the exact differences.
+restoration variants cannot revive their original capture, while fresh captures work. The eight original negatives directly observe
+false before owner stop; an additional active-owner control observes actual native branch writes and rejects the
+original still-current SDK proof before a distinct fresh proof settles. Complete retired dispatch/drain and receipt
+protocols remain unadopted. Original production fails seventeen selected runtime/unit cases and passes the unchanged control. The corrected source passes
+**527/527** complete consumers, including **220/220** runtime cases. [The scoped boundary](original1473-residual-acceptance.md#rows-143151-and-182-original-off-capture-lifetime) records the exact differences.
 
 ## Composed acceptance
 

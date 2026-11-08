@@ -1397,4 +1397,86 @@ describe('captured thermostat transport readiness continuity', () => {
 			await f.module.close();
 		}
 	});
+	it.each([
+		['machine', 'false'],
+		['machine', 'throw'],
+		['provider', 'false'],
+		['provider', 'throw'],
+		['canReconcile', 'false'],
+		['canReconcile', 'throw'],
+	] as const)('permanently closes readiness after observed %s %s then recovery', async (predicate, failure) => {
+		const f = await fixture(),
+			p = f.custom();
+		let failing = false;
+		const observe = jest.fn(() => {
+			if (failing && failure === 'throw') throw new Error('original readiness observation');
+			return !failing;
+		});
+		if (predicate === 'machine') Object.assign(f.qualification, { machineLeaseIsCurrent: observe });
+		else if (predicate === 'provider')
+			p.captureReadiness.mockReturnValue(Object.freeze({ ...p.original, isCurrent: observe }));
+		else p.canReconcile.mockImplementation(observe);
+		f.transport.register(f.target.device.type, p.adapter);
+		try {
+			const original = f.requiredCapture();
+			expect(original.isCurrent()).toBe(true);
+			failing = true;
+			expect(original.isCurrent()).toBe(false);
+			const calls = observe.mock.calls.length;
+			failing = false;
+			expect(original.isCurrent()).toBe(false);
+			expect(observe).toHaveBeenCalledTimes(calls);
+			expect(f.requiredCapture().isCurrent()).toBe(true);
+			expect(original.isCurrent()).toBe(false);
+			expect(p.send).not.toHaveBeenCalled();
+			expect(p.reconcile).not.toHaveBeenCalled();
+			expect(f.readSample).not.toHaveBeenCalled();
+		} finally {
+			await f.module.close();
+		}
+	});
+	it.each(['metadata', 'adapter'] as const)(
+		'keeps an original %s capture closed after a throw-once observation',
+		async (kind) => {
+			const f = await fixture(),
+				p = f.custom();
+			let trip = false;
+			const failure = new Error('original capture observation');
+			const observe = () => {
+				if (trip) {
+					trip = false;
+					throw failure;
+				}
+				return true;
+			};
+			if (kind === 'metadata') {
+				f.target.device = new Proxy(f.target.device, {
+					getPrototypeOf: (target) => {
+						observe();
+						return Reflect.getPrototypeOf(target);
+					},
+				});
+			} else f.transport['adapterOwners'].set(p.adapter, observe);
+			f.transport.register(f.target.device.type, p.adapter);
+			const capture = () =>
+				kind === 'metadata'
+					? f.transport.captureOffMetadata(f.target, f.claim, f.qualification)
+					: f.transport.capture(f.target, f.claim, f.qualification);
+			try {
+				const original = capture();
+				expect(original?.isCurrent()).toBe(true);
+				trip = true;
+				expect(original?.isCurrent()).toBe(false);
+				expect(trip).toBe(false);
+				expect(original?.isCurrent()).toBe(false);
+				expect(capture()?.isCurrent()).toBe(true);
+				expect(original?.isCurrent()).toBe(false);
+				expect(p.send).not.toHaveBeenCalled();
+				expect(p.reconcile).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+			} finally {
+				await f.module.close();
+			}
+		},
+	);
 });

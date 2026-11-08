@@ -64,14 +64,14 @@ qualification remain separate gates in #1462.
 ## Current binding qualification
 
 The current base is merged #1533 (`666fb47092a337398cbf2f6f26bf5587727f96a8`) plus the OFF metadata/adapter correction and
-one nine-variant runtime table. One complete local nine-file invocation passes **518/518**, including **219/219** runtime
-cases and the complete transport unit suite, zero failures/skips; report SHA-256 `0ea4507cc67756dc9e4d997678f1cfafd8e3fdf4f99f466020414c79d44b0c1b`.
+one ten-variant runtime table plus eight pure transport observation cases. One complete local nine-file invocation passes **527/527**, including **220/220** runtime
+cases and the complete transport unit suite, zero failures/skips; report SHA-256 `471d3562dd29bf1e2d204930482ab7ef1ae17e2151e7d58842e1ffafb3cf3651`.
 Fresh exact-head hosted CI and completed nonblocking source review remain merge gates. All **194 witness bindings
 across 188 bound original rows** match current source/body/report bindings. The residual inventory has **66 bindings
 (56 scoped, ten replacements)** and **73 open entries**. All 184 preceding witness bodies, 115 prior literal runtime bodies
 and 67 helper declarations remain unchanged. One of twenty-seven bound production files changes; the other twenty-six
-and the shared fixture are unchanged. Original production fails eight restored-capture variants and passes the positive
-control (210 unrun); corrected production passes all nine and the complete consumers.
+and the shared fixture are unchanged. Original pre-PR production fails seventeen selected runtime/unit cases and passes the positive
+control (301 unrun); corrected production passes all eighteen and the complete consumers.
 
 ### Prior qualification checkpoints
 
@@ -753,7 +753,7 @@ No alpha publication, physical operation or installed-equipment acceptance occur
 
 ## Rows 143–151 and 182: original OFF capture lifetime
 
-Ten scoped bindings share nine variants through the actual registered runtime, provider/ledger, SQLite and managed
+Ten scoped bindings share nine bound variants through the actual registered runtime, provider/ledger, SQLite and managed
 SDK. The native automation provider installs and activates an eco baseline in the genuine transaction/ledger.
 Controlled installed evidence supplies the original managed machine-session predicate. Public qualification
 revoke/re-record and public installed polls reach a held actual SDK reconciliation fence. The captures retain
@@ -766,7 +766,7 @@ the actual hydrated device, claim and qualification; observers forward the origi
 | 146–151 | Own shadow, nearer getter, canonical getter/setter/flag or prototype-chain change invalidates original pure metadata. Restoring the exact original descriptor/chain cannot revive the capture; replacement getters execute zero times. |
 | 182 | Replacing transport get invalidates the original actual command-adapter capture. Restoring the exact function cannot revive it. |
 
-Each negative directly observes false before and after restoration **before owner stop**, and a fresh capture is
+Each of the eight original negatives directly observes false before and after restoration **before owner stop**, and a fresh capture is
 valid after restoration. The owner then stops and all issued work joins. Complete original journal IDs and rows
 and configuration remain unchanged in the negatives. The positive permits only genuine original reconciliation
 settlement and retains its observed provider proof; already confirmed rows remain unchanged. No ON is sent.
@@ -775,14 +775,15 @@ exceptions as permanent loss. Merely restoring metadata permits a fresh capture;
 
 This scope replaces the retired RuntimeOffDispatchWork/captureRuntimeFeedbackDelivery and PropertyValueService
 emit-receipt boundary. The original exact two-fence schedule, receipt identities and full negative dispatch/drain
-protocol are **unadopted**; negative variants stop after the direct guard assertions. Row 144 covers captured
+protocol are **unadopted**; the eight bound negative variants stop after the direct guard assertions. Row 144 covers captured
 metadata continuity rather than the old dispatch-work identity. Rows 143 and 145 share one execution, not two
 independent positive runs. Controlled machine evidence is not installed-equipment certification.
 
-Complete local consumers pass **518/518**, including **219/219** runtime cases, zero failures/skips; raw report
-SHA-256 `0ea4507cc67756dc9e4d997678f1cfafd8e3fdf4f99f466020414c79d44b0c1b`. Exact original transport production on this final test source produces **8 FAIL / 1 PASS /
-210 unrun**; raw report SHA-256 `63f7c20b08510f7fe8e438bfb729694549c166f6e3adb5ffecbe966a87fcd35d`. Every negative fails specifically because the original guard
-incorrectly becomes true after restoration; the unchanged control passes. The corrected source passes all nine.
+Complete local consumers pass **527/527**, including **220/220** runtime cases, zero failures/skips; raw report
+SHA-256 `471d3562dd29bf1e2d204930482ab7ef1ae17e2151e7d58842e1ffafb3cf3651`. Exact original pre-PR transport production on the final runtime/unit source produces **17 FAIL / 1 PASS /
+301 unrun**; raw report SHA-256 `2c3eb043c3ff2d4e44bf8f4b1b79e6614a04c34edeac70efc373f946a4f75a65`. All eight bound restoration negatives fail because the original guard
+incorrectly becomes true after restoration; the additional active-owner and eight pure observation cases also fail.
+The unchanged runtime control passes. The corrected source passes all eighteen selected executions.
 All 184 previous witness bodies, 115 literal runtime bodies and 67 helper declarations are retained. Full source,
 helper, production, original-identity, report, checklist and link audits plus backend types, lint and formatting pass.
 
@@ -791,6 +792,28 @@ predicate did not reach the intended native gate. A seeded-ON preparation also n
 no ON-ordering qualification. A temporary diagnostic identified the missing real session predicate and was removed.
 Only the final activated native baseline and original session qualify the reports above. No alpha publication or
 installed-equipment acceptance occurs.
+
+### Readiness continuity and active-owner review follow-up
+
+The same readiness capture now permanently closes after its original machine predicate, provider readiness
+predicate or canReconcile predicate returns false or throws. Six pure false/throw recovery cases require the old
+capture remain false without invoking recovered predicates again; a fresh capture succeeds. Two throw-once cases
+exercise metadata and command-adapter exception paths. These synthetic unit controls grant no installed authority
+and add no original-row bindings. All 33 prior transport-unit literal bodies and all shared fixture declarations
+remain unchanged.
+
+One additional active-own-shadow runtime variant keeps the owner active after restoring the exact descriptor.
+The original genuine SDK proof is still current, but expired metadata prevents that proof from appearing in any
+observed actual native branch UPDATE. A later fresh reconciliation stores a different proof observed from the
+original provider; complete journal IDs/configuration remain equal, and only genuine pending-row settlement is
+allowed. No ON occurs. Omitting runtime metadata admission checks makes this variant fail specifically because
+the original expired-capture proof is observed in an actual native branch write (**1 FAIL / 219 unrun**); report
+SHA-256 `d08abc646399bee2b1af6c6eda87ca95762099fad108eb4d8d205b9a0ac2d26d`. Corrected runtime production is restored byte-for-byte before the complete positive run.
+This strengthens current admission coverage; complete retired receipt/dispatch protocols remain unadopted.
+
+The complete follow-up invocation passes **527/527**, including **220 runtime** and **99 transport** cases.
+Initial preparation failures were a branch-filter TypeScript error, an unnecessary assertion caught by lint,
+and an overstrict active-owner pending-row equality after genuine fresh settlement; they are retained separately.
 
 ## Case checklist
 

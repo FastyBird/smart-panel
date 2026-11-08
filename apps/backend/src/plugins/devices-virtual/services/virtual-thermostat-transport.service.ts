@@ -355,19 +355,21 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					sessionPin.current() &&
 					sessionPin.values.isCurrent.call(session) === true;
 			}
+			let current = true;
 			const isCurrent = () => {
+				if (!current) return false;
 				try {
-					return (
+					current =
 						!this.destroyed &&
 						metadata.isCurrent() &&
 						this.registrationEpochs.get(type) === epoch &&
 						this.adapters.get(type) === registration &&
 						invokeCreation(machine, qualification) === true &&
-						providerCurrent()
-					);
+						providerCurrent();
 				} catch {
-					return false;
+					current = false;
 				}
+				return current;
 			};
 			if (!isCurrent()) return null;
 			if (legacy)
