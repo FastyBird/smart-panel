@@ -1,15 +1,15 @@
 # Final software acceptance and next alpha
 
 Status: partial software acceptance, 2026-11-08. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
-Current software base: merged main `17724b50e6e95fc1c6820d523ce9f53a5488c4f6` (#1534), plus the finite OFF failure/public retry batch below.
+Current software base: merged main `a602503e9de0a0fbbe103c157fe740037d6acfb1` (#1535), plus the clock-lifetime replacement batch below.
 Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
 No alpha was dispatched or published by this preparation. No installed equipment was operated.
 
 ## Current qualification and remaining scope
 
-[The canonical ledger](original1473-case-map.json) records **196 bound original rows: 173 scoped invariants**,
-17 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **74 have current
-bindings and 65 remain unbound**. The seventy-four comprise sixty-four scoped and ten replacement bindings;
+[The canonical ledger](original1473-case-map.json) records **203 bound original rows: 173 scoped invariants**,
+24 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **81 have current
+bindings and 58 remain unbound**. The eighty-one comprise sixty-four scoped and seventeen replacement bindings;
 the initial 122 dispositions retain their existing limits. No complete original-case or equipment acceptance
 follows from a scoped binding.
 
@@ -22,11 +22,11 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **569/569**, zero failures/skips, one complete local ten-file invocation on main `17724b5` plus seven expanded runtime executions (six bound and one additional stress). Includes **227/227** runtime cases and the full structural-lock suite. Report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **576/576**, zero failures/skips, one complete local ten-file invocation on main `a602503` plus seven clock-lifetime executions. Includes **234/234** runtime cases. Report SHA-256 `0c3ea25b2ab402a439f0387ccc30dc6a590b4d2b626966f8c613773ee0fd9834`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
-| Evidence bindings | All **202 witness bindings across 196 rows** match current files, body tokens and passed executions. Eight new scoped bindings share six expanded executions: rows 112/120 share the poll and rows 113/122 share proof-query. All 194 prior witness bodies, 116 prior literal runtime bodies and 69 helper declarations remain token-identical. All twenty-eight bound production files and shared fixture code are unchanged. |
+| Evidence bindings | All **209 witness bindings across 203 original rows** match current files, body tokens and passed executions. Seven new explicit replacements use seven executions through three literal bodies. All 202 prior witness bodies, 119 prior literal runtime bodies and 72 helper declarations remain token-identical. All 28 bound production files and shared fixture are unchanged. |
 | Retained controls | The prior 52 reports remain hash-verified historical evidence. Twenty per-row negative reports retain 29 expected failures and five passing selected controls; they were audited, not replayed after the additive test change. Two #1525 scope-omission controls, not replayed after #1529, each fail only the corresponding changed-image variant, pass two controls and leave 177 cases unrun. A new premature-admission control fails both changed-image variants while unchanged passes (179 unrun); prior assertions pass all three under the same mutation. Production is restored byte-for-byte. |
 
 The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalidation` and
@@ -34,7 +34,7 @@ The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalid
 `semanticReconciliationBeforeHeldFenceAdoption`; `priorQualificationLedger` indexes its immutable full ledger,
 including the prior per-row measurements. `heldFenceOrderingFollowup` records the reviewed #1529 strengthening and its immutable prior ledger.
 Older test-file identities remain historical after the test changes.
-This evidence update requires its own exact-head CI and completed source review. The 65 residuals,
+This evidence update requires its own exact-head CI and completed source review. The 58 residuals,
 retired private TIME/caller/observer/global-drain and complete provider/SDK protocols, installed equipment,
 and alpha publication remain separate open gates.
 
@@ -108,7 +108,7 @@ failure; recovery additionally requires no rejected successor evaluation, no run
 published branch diagnostics containing the recovered claim. An ordinary poll closes its original held ON guard without globally invalidating claims. A real queued
 graph writer completes before waiting runtime reader SQL, while an independent native read remains possible.
 The current boundaries replace retired inverse-probe/frontier/permit, synchronous-settle/global-claims and private
-observer-installation protocols, which remain unadopted. [The exact batch scope](original1473-residual-acceptance.md#rows-112115-120122-and-125-finite-off-failure-and-public-retry) records the context/writer controls measured only at `cb98b3c`, not replayed on this source. Current complete consumers pass **569/569**, including **227/227** runtime cases.
+observer-installation protocols, which remain unadopted. [The exact batch scope](original1473-residual-acceptance.md#rows-112115-120122-and-125-finite-off-failure-and-public-retry) records the context/writer controls measured only at `cb98b3c`, not replayed on this source. At merged #1535, complete consumers passed **569/569**, including **227/227** runtime cases.
 
 At historical source `fe30697`, the first-retry follow-up removes a helper that could issue a second public request before recovery assertions.
 With the first retry omitted, the former four variants still pass; all four strengthened variants fail
@@ -119,12 +119,19 @@ The current review follow-up repeatedly joins feedback work and verifies success
 A new delayed-retry stress holds two actual OFF commands across separate snapshots; it adds one execution and no
 original case. The former post-ACK test accepts a deliberately rejected successor Promise; current assertions
 reject it. A single-snapshot drain leaves an actual follow-up OFF running; the repeated drain completes it.
-[Current reports and precise control scope](original1473-residual-acceptance.md#quiescent-retry-and-successful-recovery-review-follow-up) bind **569/569** to the corrected source.
+[Historical #1535 reports and precise control scope](original1473-residual-acceptance.md#quiescent-retry-and-successful-recovery-review-follow-up) bind **569/569** to the corrected source.
 
 The published-recovery follow-up also requires the actual recovered claim ID in diagnostics; an empty branch list
 cannot pass through every(). Erasing only returned diagnostic branches passes the former five assertions but
-fails all five strengthened variants (222 unrun each). Current complete consumers remain **569/569**, including
+fails all five strengthened variants (222 unrun each). At merged #1535, complete consumers passed **569/569**, including
 **227 runtime cases**; the source-bound comparison is recorded in the residual acceptance document.
+
+Seven new explicit replacements bind rows 200–202, 209–210 and 212–213. Actual native catalog attempts revoke
+old dispatch admission while the same time-only lease keeps its original budget; journal diagnostic bookkeeping
+is neutral. Public reads/settlement and ordinary runtime polling do not renew expiry, and a genuine replacement
+B remains independent of late A snapshots. These current contracts deliberately replace retired combined TIME/
+readIntent/close/native-loss-latching and held-ON protocols; they do not reproduce those private capabilities.
+[The complete replacement scope](original1473-residual-acceptance.md#rows-200202-209210-and-212213-bounded-time-and-dispatch-admission) records each difference and the three discriminatory controls.
 
 ## Composed acceptance
 
@@ -237,9 +244,9 @@ The current reconciliation distinguishes scoped business outcomes from complete 
 - **173 rows** bind current observable invariants: the initial 109 scoped bindings plus sixty-four from the residual inventory. The historical comparison of 68 distinct same-title body pairs and each row's changed ports and limits remain recorded in the ledger. Controlled claims/value ports do not certify the former complete mutation-provider or SDK custody pipeline.
 - **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
 - **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
-- **Seventeen replacement rows (105–109, 111, 203, 221, 228–229, 232–233, 240–243, 261)** bind current native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
+- **Twenty-four replacement rows (105–109, 111, 200–203, 209–210, 212–213, 221, 228–229, 232–233, 240–243, 261)** bind current bounded-time/identity, native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
 - **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **65 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+- **58 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
 
 ### Historical binding sequence
 
@@ -384,8 +391,8 @@ without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and u
 ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
 
 [The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
-rows that were unbound at branch entry and the evidence required to close each. Rows 112–122, 125–129, 131–151, 153, 160, 165–178, 182, 189, 195–198, 203, 205–208, 214, 221, 228–229, 232–233, 241–243 and 261 now have
-tested current bindings (sixty-four scoped and ten replacements); 65 remain unbound. The initial 122 dispositions retain
+rows that were unbound at branch entry and the evidence required to close each. Rows 112–122, 125–129, 131–151, 153, 160, 165–178, 182, 189, 195–198, 200–203, 205–210, 212–214, 221, 228–229, 232–233, 241–243 and 261 now have
+tested current bindings (sixty-four scoped and seventeen replacements); 58 remain unbound. The initial 122 dispositions retain
 their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
 ### Hosted migration-compatibility follow-up
@@ -502,7 +509,7 @@ already existed despite that failed downstream job. A release object alone there
 
 ## Remaining gates
 
-- [x] Reconcile 74 scoped/replacement residual bindings, including finite OFF failure/public retry and queued graph-writer admission; retain the other 65 entries as open.
+- [x] Reconcile 81 scoped/replacement residual bindings, including bounded override time and separate dispatch admission; retain the other 58 entries as open.
 - [ ] Finish original #1473 semantic case bindings and any required executable residuals.
 - [ ] Complete current software/static/generated-contract and source-review gates; reconcile #1293/#1458 against their entire criteria.
 - [x] Merge delivery PR #1508 after exact-head green CI and completed nonblocking main review. The residual acceptance follow-up still requires its own checks and review.

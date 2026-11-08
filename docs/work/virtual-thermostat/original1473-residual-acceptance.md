@@ -6,8 +6,8 @@ including 13,306 backend tests and all 424 E2E cases. CodeRabbit reported no act
 The separate local 362 PASS / 62 FAIL E2E result and unattributed SQLite ownership timeouts remain
 recorded in #1508; hosted success does not establish their cause.
 
-**Status: partial inventory on main `17724b50e6e95fc1c6820d523ce9f53a5488c4f6` plus the current finite OFF failure/public retry batch, 2026-11-08;
-74 of the original 139 residuals have tested current bindings, and 65 remain unbound.**
+**Status: partial inventory on main `a602503e9de0a0fbbe103c157fe740037d6acfb1` plus the current clock-lifetime replacement batch, 2026-11-08;
+81 of the original 139 residuals have tested current bindings, and 58 remain unbound.**
 This list grants no complete original-fixture, provider/SDK, installed-equipment or alpha clearance.
 The branch-entry 109 scoped invariant bindings, seven replacement bindings and six ported descriptor rows
 are retained with their existing limits. They are outside this residual work inventory.
@@ -56,24 +56,31 @@ Row 261 binds required-callsite missing-method refusal as detailed below. The sh
 absence behavior remains distinct; a standalone `current()` result does not satisfy that refusal.
 
 Before this inventory summary becomes ready, reconcile every one of its 139 entries against the ledger,
-preserve the initial 122 dispositions, and distinguish the 74 bound entries from the 65 still open.
+preserve the initial 122 dispositions, and distinguish the 81 bound entries from the 58 still open.
 Run required exact-head checks and obtain completed nonblocking source review. Further executable residuals
 belong in separate small PRs; this summary does not close them. Actual alpha publication and installed-equipment
 qualification remain separate gates in #1462.
 
 ## Current binding qualification
 
-The current base is merged #1534 (`17724b50e6e95fc1c6820d523ce9f53a5488c4f6`) plus three literal runtime bodies / seven
-expanded executions (six bound and one additional stress). One complete local ten-file invocation passes **569/569**, including **227/227** runtime cases,
-zero failures/skips; report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`. Fresh exact-head hosted CI and completed source review
-remain merge gates. All **202 witness bindings across 196 original rows** match source/body/report bindings.
-The residual inventory has **74 bindings (64 scoped, ten replacements)** and **65 open entries**. All 194 prior
-witness bodies, 116 literal runtime bodies and 69 helper declarations remain unchanged, as do all twenty-eight
-bound production files and the shared fixture. The two context/writer controls were measured only at `cb98b3c`, each one failure with
-225 unrun; they were not replayed on `fe30697` or this current source. Production was restored before the
-`cb98b3c` positive invocation. Current review controls and their separate source attribution are recorded below.
+The current base is merged #1535 (`a602503e9de0a0fbbe103c157fe740037d6acfb1`) plus three literal runtime bodies/seven expanded
+clock-lifetime executions. One complete local ten-file invocation passes **576/576**, including **234 runtime cases**,
+zero failures/skips; report SHA-256 `0c3ea25b2ab402a439f0387ccc30dc6a590b4d2b626966f8c613773ee0fd9834`. Fresh exact-head hosted CI and completed source review
+remain merge gates. All **209 witness bindings across 203 original rows** match source/body/report bindings.
+The residual inventory has **81 bindings (64 scoped, seventeen replacements)** and **58 open entries**. All 202
+prior witness bodies, 119 literal runtime bodies, 72 helper declarations, 28 production files and fixture code
+remain unchanged. The three new controls select all seven executions: original-budget renewal gives six failures
+and one passing B control, stale-ID bypass gives one failure and six passes, and catalog omission gives four
+failures and three passes; each has 227 unrun. Production is restored before full positive qualification.
+Older controls and their reports remain historical at their measured sources and were not replayed here.
 
 ### Prior qualification checkpoints
+
+Merged #1535 reviewed `7ef3760d4e85a8fbd8c3e9919d64f8a312ab41c4` and squash `a602503e9de0a0fbbe103c157fe740037d6acfb1` have the
+same complete tree. All hosted checks and completed CodeRabbit review passed; all inline threads are resolved.
+Its **569/569** local consumers (227 runtime, ten suites), report SHA-256
+`345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`, retain that exact source attribution.
+JSON bot coverage was incomplete; independent complete ledger/source/body/helper/report/link audits passed.
 
 Merged #1534 corrected observed OFF capture/readiness lifetime loss. Its complete nine-file follow-up passed
 **527/527**, including **220 runtime** and **99 transport** cases, report SHA-256
@@ -824,6 +831,9 @@ and an overstrict active-owner pending-row equality after genuine fresh settleme
 
 ## Rows 112–115, 120–122 and 125: finite OFF failure and public retry
 
+This section and its review follow-ups record merged #1535. Their 74/65 inventory checkpoint and reports are
+historical; the current clock-lifetime batch qualification is above and below.
+
 Eight scoped bindings share six expanded executions, plus one delayed-retry stress with no new original binding, through registered provider/runtime/native claims,
 SQLite and the managed SDK, with controlled offline installation evidence. Three literal test bodies retain all
 194 previous witness bodies, 116 prior runtime bodies and 69 helper declarations unchanged. Production is unchanged.
@@ -854,7 +864,7 @@ identity. Retired mutation-writer roots, inverse negative probes, dirty frontier
 exact two/three-fence ceilings remain unadopted. These are scoped current business bindings, not whole original
 private-protocol or equipment acceptance.
 
-Current complete local consumers pass **569/569**, ten complete files including **227 runtime cases** and the entire
+At merged #1535, complete local consumers passed **569/569**, ten complete files including **227 runtime cases** and the entire
 structural-lock suite; raw report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`. The following two controls were measured
 only at `cb98b3c` and were not replayed on the later full-file source. Omitting original runtime-context fencing
 makes the original held ON guard incorrectly stay true (**1 FAIL / 225 unrun**); report SHA-256
@@ -932,6 +942,41 @@ This is assertion discrimination after actual runtime work; installed branch row
 publication-failure schedule is qualified. Final test source is restored before **569/569** complete consumers,
 including **227 runtime cases**, report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`. Production, fixture, counts and all
 prior original identities are unchanged; both historical title differences are explicit beside entries 114/115.
+
+## Rows 200–202, 209–210 and 212–213: bounded time and dispatch admission
+
+Seven executions in three appended literal bodies bind seven explicit **replacement** contracts. Actual
+installation-loader/provider/runtime/native claims, SQLite and managed SDK are used with controlled offline
+installation evidence. No currentness or SQL result is substituted. The process-local monotonic clock is
+controlled, while actual public override/configure/get/settle and native writes supply the original evidence.
+
+| Historical rows | Current replacement and explicit difference |
+| --- | --- |
+| 200, 201, 202, 210 | Native same-value configuration, changed/restored configuration, existing-slot same-value and rolled-back configuration writes preserve complete config/slot/journal images and close original dispatch admission. Public settle/get retains the exact original time-only lease/deadline, which expires at its original monotonic boundary while wall time is before absolute expiry. The retired combined TIME owner instead became false; this budget/admission separation intentionally replaces that combined capability. |
+| 209 | A genuine same-row journal fault=fault UPDATE remains diagnostic bookkeeping: both claims and time budget stay current, complete rows remain equal. The old claims-DIRTY assertion, held native ON schedule and enclosed ORM effect are not adopted. |
+| 212 | Repeated public reads persist monotone watermark, a cloned row and ordinary runtime poll retain original lease/deadline, and original monotonic expiry closes old reads. No retired read-view close, same-token clone or nativeCurrent identity is claimed. |
+| 213 | A real public override B obtains a distinct lease ID. Late old/cloned A reads after A deadline, under a callthrough hydration spy, remain false and invoke no hydration; B lease/deadline and fresh claims stay current. The old native-loss-latch/read-close mechanism is replaced by public override identity isolation, not reproduced. |
+
+The automation slot is created through actual public configure(automation_enabled=true), not fabricated. A real
+transaction throws the exact sentinel after the native write and rolls back. All native update acknowledgements
+are observed; equal complete row images do not turn catalog attempts into current old dispatch admission.
+The budget itself deliberately remains current until its original deadline, and never acts as send authority.
+All seven executions finish without ON sends or fixture errors. Row 211 remains among the 58 open entries.
+
+Three production controls select all seven executions, each with 227 unrun. Re-registering the time budget on
+every settlement fails six cases and passes B: five fail original-lease/deadline identity, and neutral reads fail
+original watermark progress (**6 FAIL / 1 PASS**; report `ee5d691dd74d1804d7ceab2c143f814da860b5654930c4263e0cac93a53778a6`).
+Ignoring original lease ID/revision fails only B at a late original-A read (**1 FAIL / 6 PASS**; report
+`02024cde9766369aeb869681ea457ab876adfaf21b8baeebd5cfb75f348f2e9a`). Disabling catalog mutation classification fails the four
+catalog variants while journal, neutral and B controls pass (**4 FAIL / 3 PASS**; report
+`447e2a4190b2793d1c5694f75e5fcd97ff788086f147fe6d100fc01424e89963`). Original production is restored byte-for-byte before **576/576**,
+ten complete files, **234 runtime cases**, report SHA-256 `0c3ea25b2ab402a439f0387ccc30dc6a590b4d2b626966f8c613773ee0fd9834`. All 202 prior witness bodies,
+119 literal runtime bodies and 72 helpers remain unchanged; current 209 bindings, counts and all links verify.
+
+Initial preparation passed neutral/B but five native variants failed because the disabled-automation fixture had
+no installed slot. The public configure call now establishes that prerequisite; the raw failed source/report is
+retained and is not a product failure or waiver. Earlier unqualified synchronous SQLite AfterQuery/native-finalizer
+preparation remains unresolved. No whole retired private protocol, installed-equipment or alpha clearance follows.
 
 ## Case checklist
 
@@ -1043,40 +1088,40 @@ describe qualified replacement behavior. Original-source links retain full ances
 - [x] `1473-197` — uses the real runtime OFF/drain release through graph prelude and awaited claim UPDATE:qualification-loss ([original line 13836](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L13836); [current binding](original1473-case-map.json#L5803)).
 - [x] `1473-198` — keeps actual state, branch/noop, command journal and enabled derived lock writes command-current through managed ON ([original line 14515](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14515); [current binding](original1473-case-map.json#L5938)).
 - [ ] `1473-199` — rejects identical native journal SQL and ALL bindings from an actual same-runner subscriber without borrowing its enclosing ORM effect ([original line 14611](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14611)).
-- [ ] `1473-200` — keeps an original time owner closed after relevant native same-value and same-lifetime rejoin ([original line 14695](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14695)).
-- [ ] `1473-201` — keeps an original time owner closed after relevant native restore and same-lifetime rejoin ([original line 14695](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14695)).
-- [ ] `1473-202` — keeps an original time owner closed after relevant native slot and same-lifetime rejoin ([original line 14695](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14695)).
-- [x] `1473-203` — refreshes genuine claims after recovery TX AND original structure release, and cleans a failed original bootstrap before same-instance restart ([original line 14821](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14821); [current binding](original1473-case-map.json#L6135)).
+- [x] `1473-200` — Historical scenario: keeps an original time owner closed after relevant native same-value and same-lifetime rejoin ([original line 14695](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14695); [current replacement](original1473-case-map.json#L6096)). Current replacement: Actual native same-value configuration UPDATE closes the original claims admission; the original time-only lease remains current with unchanged deadline until its original monotonic expiry. This replaces the retired readIntent time-owner veto, not its false clock-currentness result.
+- [x] `1473-201` — Historical scenario: keeps an original time owner closed after relevant native restore and same-lifetime rejoin ([original line 14695](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14695); [current replacement](original1473-case-map.json#L6163)). Current replacement: Native locked-value change then restoration leaves the complete configuration equal. Original dispatch admission stays closed; public settlement/read retains the exact original time-only lease/deadline without budget renewal. No invisible-write ABA detection is claimed.
+- [x] `1473-202` — Historical scenario: keeps an original time owner closed after relevant native slot and same-lifetime rejoin ([original line 14695](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14695); [current replacement](original1473-case-map.json#L6230)). Current replacement: An existing automation slot is created through public configure(automation_enabled=true); a real manualCounter=manualCounter UPDATE preserves all slot rows but closes original dispatch admission. The time-only lease/deadline is retained. This replaces the removed combined TIME/slot capability.
+- [x] `1473-203` — refreshes genuine claims after recovery TX AND original structure release, and cleans a failed original bootstrap before same-instance restart ([original line 14821](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14821); [current binding](original1473-case-map.json#L6297)).
 - [ ] `1473-204` — preserves only C original remaining TIME across D complete requestRelease, native slot/config effects, qualified drain and new graph generation ([original line 14916](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L14916)).
-- [x] `1473-205` — keeps real enabled publication locks neutral while managed ON is pending before-send, then preserves actual refusal/UNKNOWN on original claims loss ([original line 15261](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15261); [current binding](original1473-case-map.json#L6282)).
-- [x] `1473-206` — keeps real enabled publication locks neutral while managed ON is pending after-send, then preserves actual refusal/UNKNOWN on original claims loss ([original line 15261](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15261); [current binding](original1473-case-map.json#L6413)).
-- [x] `1473-207` — preserves an original native bootstrap before-commit error and exact persisted outcome without first context/admission leakage ([original line 15374](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15374); [current binding](original1473-case-map.json#L6544)).
-- [x] `1473-208` — preserves an original native bootstrap after-ack error and exact persisted outcome without first context/admission leakage ([original line 15374](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15374); [current binding](original1473-case-map.json#L6660)).
-- [ ] `1473-209` — treats a foreign same-row journal write as claims-DIRTY even when its finite native effect preserves original TIME ([original line 15419](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15419)).
-- [ ] `1473-210` — keeps an original clock closed after a rolled-back same-value C write without resetting the restored lifetime ([original line 15869](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15869)).
+- [x] `1473-205` — keeps real enabled publication locks neutral while managed ON is pending before-send, then preserves actual refusal/UNKNOWN on original claims loss ([original line 15261](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15261); [current binding](original1473-case-map.json#L6444)).
+- [x] `1473-206` — keeps real enabled publication locks neutral while managed ON is pending after-send, then preserves actual refusal/UNKNOWN on original claims loss ([original line 15261](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15261); [current binding](original1473-case-map.json#L6575)).
+- [x] `1473-207` — preserves an original native bootstrap before-commit error and exact persisted outcome without first context/admission leakage ([original line 15374](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15374); [current binding](original1473-case-map.json#L6706)).
+- [x] `1473-208` — preserves an original native bootstrap after-ack error and exact persisted outcome without first context/admission leakage ([original line 15374](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15374); [current binding](original1473-case-map.json#L6822)).
+- [x] `1473-209` — Historical scenario: treats a foreign same-row journal write as claims-DIRTY even when its finite native effect preserves original TIME ([original line 15419](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15419); [current replacement](original1473-case-map.json#L6938)). Current replacement: A real same-row fault=fault journal UPDATE is observed and preserves complete original journal/config/slot images. Current diagnostic journal bookkeeping is claims-neutral as well as budget-neutral. This intentionally replaces the old claims-DIRTY/held-native-ON schedule; that precise dirty assertion and private enclosing ORM effect remain unadopted.
+- [x] `1473-210` — Historical scenario: keeps an original clock closed after a rolled-back same-value C write without resetting the restored lifetime ([original line 15869](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15869); [current replacement](original1473-case-map.json#L7005)). Current replacement: An actual same-value configuration UPDATE succeeds inside a transaction that rejects with the original sentinel and rolls back. Complete configuration/slot/journal images are restored, old dispatch admission stays closed, and public settle/get retains the exact original time-only lease/deadline. This replaces the old readIntent false clock result.
 - [ ] `1473-211` — pins the original native hydration method and never revives a clock after its observed replacement restores ([original line 15973](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L15973)).
-- [ ] `1473-212` — R53 keeps original TIME through read close, same-token watermark clones and genuine ordinary neutral recovery ([original line 16069](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16069)).
-- [ ] `1473-213` — R53 latches only observed original native A loss and never lets delayed A observation or close veto genuine B ([original line 16161](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16161)).
-- [x] `1473-214` — denies original command claims after a foreign actual claim revision mutation even with matching source and unchanged journal ([original line 16268](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16268); [current binding](original1473-case-map.json#L6841)).
+- [x] `1473-212` — Historical scenario: R53 keeps original TIME through read close, same-token watermark clones and genuine ordinary neutral recovery ([original line 16069](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16069); [current replacement](original1473-case-map.json#L7085)). Current replacement: Two real public get calls persist advancing watermark without intent/configuration mutation or original deadline renewal; a cloned active row and ordinary runtime poll retain the same time lease. Final monotonic expiry closes old/cloned reads while wall time remains before absolute expiry. Retired read-view close and same-token nativeCurrent/watermark-clone identities are not claimed.
+- [x] `1473-213` — Historical scenario: R53 latches only observed original native A loss and never lets delayed A observation or close veto genuine B ([original line 16161](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16161); [current replacement](original1473-case-map.json#L7150)). Current replacement: A real public replacement override obtains a distinct lease ID. After original A deadline but before B deadline, late A/cloned-A currentness reads under a callthrough hydration spy stay false without invoking hydration; B lease, deadline and fresh claims admission are unchanged. This replaces retired native-loss-latching and read-view-close APIs; hydration replacement alone is not claimed to invalidate an active current time-only lease.
+- [x] `1473-214` — denies original command claims after a foreign actual claim revision mutation even with matching source and unchanged journal ([original line 16268](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16268); [current binding](original1473-case-map.json#L7215)).
 - [ ] `1473-215` — never lends a closed ORM effect to a held AfterQuery descendant issuing the identical native write later ([original line 16344](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16344)).
 - [ ] `1473-216` — keeps mapped UUID native journal work distinct from uuid scalar/protected rejection ([original line 16432](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16432)).
 - [ ] `1473-217` — keeps mapped UUID native journal work distinct from malformed scalar/protected rejection ([original line 16432](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16432)).
 - [ ] `1473-218` — keeps mapped UUID native journal work distinct from protected scalar/protected rejection ([original line 16432](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16432)).
 - [ ] `1473-219` — reports a genuine recovery callback Q-only without changing bootstrap primary identity ([original line 16524](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16524)).
 - [ ] `1473-220` — reports a genuine recovery callback P+Q without changing bootstrap primary identity ([original line 16524](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16524)).
-- [x] `1473-221` — retains only the original C deadline through BOTH actual recovery effects and a fresh post-release claims generation ([original line 16644](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16644); [current binding](original1473-case-map.json#L7043)).
-- [x] `1473-228` — observes original qualification data without installation or events and refuses a subsequent revoke without recapture ([original line 17357](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17357); [current binding](original1473-case-map.json#L7314)).
-- [x] `1473-229` — keeps missing qualification unavailable and remembers actual absence ABA across an admitted finite capture ([original line 17376](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17376); [current binding](original1473-case-map.json#L7417)).
+- [x] `1473-221` — retains only the original C deadline through BOTH actual recovery effects and a fresh post-release claims generation ([original line 16644](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L16644); [current binding](original1473-case-map.json#L7417)).
+- [x] `1473-228` — observes original qualification data without installation or events and refuses a subsequent revoke without recapture ([original line 17357](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17357); [current binding](original1473-case-map.json#L7688)).
+- [x] `1473-229` — keeps missing qualification unavailable and remembers actual absence ABA across an admitted finite capture ([original line 17376](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17376); [current binding](original1473-case-map.json#L7791)).
 - [ ] `1473-230` — R87 public settle fences a held first read and preserves actual managed before-send native outcome without a response recapture ([original line 17393](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17393)).
 - [ ] `1473-231` — R87 public settle fences a held first read and preserves actual managed after-send native outcome without a response recapture ([original line 17393](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17393)).
-- [x] `1473-232` — keeps original actual SDK before-send outcome truthful when comfort entry waits on its first real read ([original line 17579](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17579); [current binding](original1473-case-map.json#L7546)).
-- [x] `1473-233` — keeps original actual SDK after-send outcome truthful when comfort entry waits on its first real read ([original line 17579](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17579); [current binding](original1473-case-map.json#L7667)).
+- [x] `1473-232` — keeps original actual SDK before-send outcome truthful when comfort entry waits on its first real read ([original line 17579](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17579); [current binding](original1473-case-map.json#L7920)).
+- [x] `1473-233` — keeps original actual SDK after-send outcome truthful when comfort entry waits on its first real read ([original line 17579](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L17579); [current binding](original1473-case-map.json#L8041)).
 
 ### Named original OFF completion
 
-- [x] `1473-241` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is refused ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597); [current binding](original1473-case-map.json#L7998)).
-- [x] `1473-242` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is unknown ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597); [current binding](original1473-case-map.json#L8087)).
-- [x] `1473-243` — cannot let a retired A completion settle B or restore a foreign descriptor ([original line 18663](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18663); [current binding](original1473-case-map.json#L8176)).
+- [x] `1473-241` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is refused ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597); [current binding](original1473-case-map.json#L8372)).
+- [x] `1473-242` — rejects the test receipt without S1 while preserving exact native effects after the actual OFF is unknown ([original line 18597](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18597); [current binding](original1473-case-map.json#L8461)).
+- [x] `1473-243` — cannot let a retired A completion settle B or restore a foreign descriptor ([original line 18663](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L18663); [current binding](original1473-case-map.json#L8550)).
 
 ### Issued setup and cleanup ownership
 
@@ -1100,4 +1145,4 @@ describe qualified replacement behavior. Original-source links retain full ances
 
 ### Required-method refusal
 
-- [x] `1473-261` — preserves ordinary prototype identity checks and refuses changed or missing methods ([original line 19304](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L19304); [current binding](original1473-case-map.json#L8535)).
+- [x] `1473-261` — preserves ordinary prototype identity checks and refuses changed or missing methods ([original line 19304](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L19304); [current binding](original1473-case-map.json#L8909)).
