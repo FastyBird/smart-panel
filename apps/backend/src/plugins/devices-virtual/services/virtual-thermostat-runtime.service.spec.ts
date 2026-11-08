@@ -9439,6 +9439,7 @@ describe('virtual thermostat durable runtime', () => {
 				expect(failures.slice(failureCount)).toEqual([]);
 				const diagnostic = owner.readDiagnostics(controllerId);
 				expect(diagnostic.reasons).not.toContain('runtime_error');
+				expect(diagnostic.branches.some((branch) => branch.claim === claim.id)).toBe(true);
 				expect(diagnostic.branches.every((branch) => branch.release_proven)).toBe(true);
 				const recovered = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 				if (delayedRetry) {

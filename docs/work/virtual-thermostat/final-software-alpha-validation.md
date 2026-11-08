@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **569/569**, zero failures/skips, one complete local ten-file invocation on main `17724b5` plus seven expanded runtime executions (six bound and one additional stress). Includes **227/227** runtime cases and the full structural-lock suite. Report SHA-256 `167c28b54ea3836e51596b9b93c6cbc55fd7a507acef20e6b14c878f3ba9979e`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **569/569**, zero failures/skips, one complete local ten-file invocation on main `17724b5` plus seven expanded runtime executions (six bound and one additional stress). Includes **227/227** runtime cases and the full structural-lock suite. Report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -105,7 +105,7 @@ failure variants finish without self-sustaining work and recover through the fir
 actual issued work/telemetry joined repeatedly to empty queues and in-flight work, before any second public request; actual claims
 refresh follows deliberate invalidation. Known native COMMIT confirmation is retained despite a later callback
 failure; recovery additionally requires no rejected successor evaluation, no runtime_error and release-proven
-published branch diagnostics. An ordinary poll closes its original held ON guard without globally invalidating claims. A real queued
+published branch diagnostics containing the recovered claim. An ordinary poll closes its original held ON guard without globally invalidating claims. A real queued
 graph writer completes before waiting runtime reader SQL, while an independent native read remains possible.
 The current boundaries replace retired inverse-probe/frontier/permit, synchronous-settle/global-claims and private
 observer-installation protocols, which remain unadopted. [The exact batch scope](original1473-residual-acceptance.md#rows-112115-120122-and-125-finite-off-failure-and-public-retry) records the context/writer controls measured only at `cb98b3c`, not replayed on this source. Current complete consumers pass **569/569**, including **227/227** runtime cases.
@@ -120,6 +120,11 @@ A new delayed-retry stress holds two actual OFF commands across separate snapsho
 original case. The former post-ACK test accepts a deliberately rejected successor Promise; current assertions
 reject it. A single-snapshot drain leaves an actual follow-up OFF running; the repeated drain completes it.
 [Current reports and precise control scope](original1473-residual-acceptance.md#quiescent-retry-and-successful-recovery-review-follow-up) bind **569/569** to the corrected source.
+
+The published-recovery follow-up also requires the actual recovered claim ID in diagnostics; an empty branch list
+cannot pass through every(). Erasing only returned diagnostic branches passes the former five assertions but
+fails all five strengthened variants (222 unrun each). Current complete consumers remain **569/569**, including
+**227 runtime cases**; the source-bound comparison is recorded in the residual acceptance document.
 
 ## Composed acceptance
 

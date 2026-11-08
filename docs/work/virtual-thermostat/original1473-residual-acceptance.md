@@ -65,7 +65,7 @@ qualification remain separate gates in #1462.
 
 The current base is merged #1534 (`17724b50e6e95fc1c6820d523ce9f53a5488c4f6`) plus three literal runtime bodies / seven
 expanded executions (six bound and one additional stress). One complete local ten-file invocation passes **569/569**, including **227/227** runtime cases,
-zero failures/skips; report SHA-256 `167c28b54ea3836e51596b9b93c6cbc55fd7a507acef20e6b14c878f3ba9979e`. Fresh exact-head hosted CI and completed source review
+zero failures/skips; report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`. Fresh exact-head hosted CI and completed source review
 remain merge gates. All **202 witness bindings across 196 original rows** match source/body/report bindings.
 The residual inventory has **74 bindings (64 scoped, ten replacements)** and **65 open entries**. All 194 prior
 witness bodies, 116 literal runtime bodies and 69 helper declarations remain unchanged, as do all twenty-eight
@@ -896,13 +896,16 @@ in the ledger and the follow-up pins the reviewed source plus current bodies, he
 The first independent public retry now repeatedly joins actual telemetry, queued evaluations and issued commands
 until both queues and in-flight work are empty. No second public request is issued. The post-ACK variant retains
 its known confirmation and additionally requires no rejected successor evaluation, no runtime_error and
-release_proven on every published branch; context replacement alone cannot qualify recovery. All five failure/
+the recovered claim ID in published branches and release_proven on every branch; context replacement or an
+empty branch list cannot qualify recovery. All five failure/
 retry variants enforce those assertions. The additional delayed proof-query stress expires existing retry delays
 while the first actual OFF is held at its SDK fence, then holds a second actual OFF until a later snapshot. The
 second command ID is absent from the first snapshot and both actual commands finish confirmed. This is one
 extra execution, not an additional original row; the eight scoped bindings still share six original executions.
 
-A test-only observer rejects the returned successor evaluation Promise after its original body completes.
+The following four controls and positive report belong to the historical `2e771e0` qualification; the former
+successor comparison explicitly uses `fe30697`. None of these controls was replayed by the published-claim
+follow-up below. A test-only observer rejects the returned successor evaluation Promise after its original body completes.
 The former `fe30697` post-ACK test accepts this (**1 PASS / 225 unrun**; report `d52e9a74a260dd7b2485fb1f2fa374715a37ba59c02da2b6b67c0af4b2dbaad6`).
 Current assertions reject it (**1 FAIL / 226 unrun**; report `6c025559bd24d840685171c53a8016a42b5583ca5f23b4dcb7b7533fb8da2d75`).
 This control proves assertion discrimination, not a native SQL fault or installed-provider failure schedule.
@@ -920,10 +923,21 @@ historical source attribution and are not claimed as replayed here. Both prior b
 in the ledger. Counts stay **74/139 bound, 65 unbound**, pending merge. The unresolved synchronous AfterQuery/
 native finalizer preparation above remains unresolved; no alpha or installed-equipment clearance is granted.
 
+The published-claim review follow-up adds one assertion that the actual recovered claim ID is present before
+checking every release_proven. A test-local observer that replaces only returned diagnostic branches with an
+empty array passes all five former `2e771e0` variants (**5 PASS / 222 unrun**; report
+`cfd8d8664819f54bbf55d409e41888dd859dcb27aa23922ecfcbdb10b36edeb8`) and fails all five strengthened variants
+(**5 FAIL / 222 unrun**; report `827163f3793c3d6d0831201f1792d574f19fc53676075bc69d0bbfc9e88689b0`).
+This is assertion discrimination after actual runtime work; installed branch rows are not erased and no native
+publication-failure schedule is qualified. Final test source is restored before **569/569** complete consumers,
+including **227 runtime cases**, report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`. Production, fixture, counts and all
+prior original identities are unchanged; both historical title differences are explicit beside entries 114/115.
+
 ## Case checklist
 
 All entries were unbound at branch entry. A checked entry has a tested current binding in the
-canonical ledger. Original-source links retain full ancestry and body identity for parameterized cases.
+canonical ledger. Titles identify historical original scenarios; adjacent current-scope notes and ledger bindings
+describe qualified replacement behavior. Original-source links retain full ancestry and body identity for parameterized cases.
 
 ### Retired fixture ownership
 
@@ -940,8 +954,8 @@ canonical ledger. Original-source links retain full ancestry and body identity f
 - [ ] `1473-110` — shares an actual active-C settlement across its native OFF report and closes event provenance after emit ([original line 8186](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8186)).
 - [x] `1473-112` — a genuine later poll retains ordinary entry fencing instead of being labeled an owned report ([original line 8404](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8404); [current binding](original1473-case-map.json#L2930)).
 - [x] `1473-113` — finite failed OFF service retains native debt through actual proof-query failure without rearming its own unknown permit ([original line 8413](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8413); [current binding](original1473-case-map.json#L2964)).
-- [x] `1473-114` — finite failed OFF service retains native debt through actual probe-query failure without rearming its own unknown permit ([original line 8413](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8413); [current binding](original1473-case-map.json#L2992)).
-- [x] `1473-115` — finite failed OFF service retains native debt through actual post-ACK failure without rearming its own unknown permit ([original line 8413](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8413); [current binding](original1473-case-map.json#L3020)).
+- [x] `1473-114` — Historical scenario: finite failed OFF service retains native debt through actual probe-query failure without rearming its own unknown permit ([original line 8413](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8413); [current binding](original1473-case-map.json#L2992)). Current scope: original native P followed by Q during awaited ORM entity hydration after the SQL read; the retired inverse probe-query/frontier protocol is not adopted.
+- [x] `1473-115` — Historical scenario: finite failed OFF service retains native debt through actual post-ACK failure without rearming its own unknown permit ([original line 8413](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8413); [current binding](original1473-case-map.json#L3020)). Current scope: post-COMMIT callback P leaves known confirmed settlement and its covering proof acknowledged; successful independent retry is verified without converting that outcome to unresolved debt.
 - [x] `1473-116` — detects independently committed new-id native ON debt despite the first consumed dirty frontier ([original line 8472](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8472); [current binding](original1473-case-map.json#L3048)).
 - [x] `1473-117` — detects independently committed same-id-risk native ON debt despite the first consumed dirty frontier ([original line 8472](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8472); [current binding](original1473-case-map.json#L3125)).
 - [x] `1473-118` — a real same-revision member change while the original fence is held remains ordinary safety work ([original line 8564](https://github.com/FastyBird/smart-panel/blob/2c19907c361ca66540e8f5d05fe24a5ff9cab0c2/apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts#L8564); [current binding](original1473-case-map.json#L3202)).
