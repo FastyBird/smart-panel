@@ -9226,9 +9226,11 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		if (failure !== undefined) throw failure.cause;
 	});
-	it.each(['proof-query', 'later-query', 'post-ACK', 'returned-safety'] as const)(
+	it.each(['proof-query', 'later-query', 'post-ACK', 'returned-safety', 'delayed-proof-query'] as const)(
 		'keeps actual managed OFF failure finite until an independent public retry: %s',
-		async (mode) => {
+		async (variant) => {
+			const delayedRetry = variant === 'delayed-proof-query';
+			const mode = delayedRetry ? 'proof-query' : variant;
 			const { fixture, claims } = await useRegisteredNativeClaimsGuard();
 			const owner = runtime;
 			clearInterval(owner['timer']);
@@ -9294,12 +9296,34 @@ describe('virtual thermostat durable runtime', () => {
 			let enterExcess!: () => void, releaseExcess!: () => void;
 			const excess = ownedGate((resolve) => (enterExcess = resolve));
 			const resume = ownedGate((resolve) => (releaseExcess = resolve));
+			let releaseRecovery!: () => void, releaseFollowup!: () => void;
+			const recoveryResume = ownedGate((resolve) => (releaseRecovery = resolve));
+			const followupResume = ownedGate((resolve) => (releaseFollowup = resolve));
+			let recoveryDelayed = false;
+			let firstDelayedId: string | undefined, secondDelayedId: string | undefined;
+			const firstSnapshotIds = new Set<string>();
+			const ceiling = delayedRetry ? 6 : 4;
 			let fences = 0;
 			const previousFence = fixture.controls.beforeFence;
 			const gate = async (property: string) => {
-				if (property === relayId && ++fences > 4) {
+				if (property === relayId && ++fences > ceiling) {
 					enterExcess();
 					await resume;
+				}
+				if (property === relayId && delayedRetry && !armed) {
+					const currentOff = [...owner['inFlightCommands'].values()].find(
+						(command) => command.claimId === claim.id && command.action === 'off',
+					);
+					if (currentOff && firstDelayedId === undefined) {
+						firstDelayedId = currentOff.id;
+						recoveryDelayed = true;
+						// Its retry delay expires while this actual OFF command remains held in the SDK.
+						jest.setSystemTime(Date.now() + 2001);
+						await recoveryResume;
+					} else if (currentOff && currentOff.id !== firstDelayedId && secondDelayedId === undefined) {
+						secondDelayedId = currentOff.id;
+						await followupResume;
+					}
 				}
 				await previousFence?.(property);
 			};
@@ -9343,7 +9367,7 @@ describe('virtual thermostat durable runtime', () => {
 			};
 			events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, invalidate);
 			database.subscribers.push(observer);
-			let first: Promise<void> | undefined, draining: Promise<void> | undefined;
+			let first: Promise<void> | undefined, draining: Promise<void> | undefined, recovery: Promise<void> | undefined;
 			let failure: { cause: unknown } | undefined;
 			try {
 				first = owner.request(controllerId, false);
@@ -9360,7 +9384,7 @@ describe('virtual thermostat durable runtime', () => {
 					expect(failures).toContain(secondary);
 				} else expect(failures).toContain(primary);
 				expect(fences).toBeGreaterThan(0);
-				expect(fences).toBeLessThanOrEqual(4);
+				expect(fences).toBeLessThanOrEqual(ceiling);
 				armed = false;
 				const failed = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 				expect(failed.map((row) => row.id)).toEqual(expect.arrayContaining(before.map((row) => row.id)));
@@ -9385,16 +9409,54 @@ describe('virtual thermostat durable runtime', () => {
 						expect(failed.find((entry) => entry.id === row.id)).toEqual(row);
 				}
 				if (mode === 'returned-safety') await claims.refresh();
+				if (delayedRetry) jest.setSystemTime(Date.now() + 1001);
+				const failureCount = failures.length;
 				const count = evaluations;
 				const previousContext = owner['contexts'].get(controllerId);
 				await owner.request(controllerId, false);
-				// Join the first retry's actual issued work and native feedback; issue no second public request.
-				await fixture.flushTelemetry();
-				await owner.flush();
-				await Promise.all([...owner['inFlight'].values()]);
-				await fixture.flushTelemetry();
-				await owner.flush();
+				// Join follow-up commands started by the first retry's own feedback; issue no second public request.
+				let firstSnapshot = true;
+				recovery = (async () => {
+					while (true) {
+						await fixture.flushTelemetry();
+						await owner.flush();
+						const issued = [...owner['inFlight'].entries()];
+						if (firstSnapshot) {
+							for (const [id] of issued) firstSnapshotIds.add(id);
+							firstSnapshot = false;
+							releaseRecovery();
+						} else releaseFollowup();
+						await Promise.all(issued.map(([, command]) => command));
+						await fixture.flushTelemetry();
+						await owner.flush();
+						if (!owner['inFlight'].size && !owner['queues'].size) break;
+					}
+				})();
+				void recovery.catch(() => undefined);
+				expect(await Promise.race([recovery.then(() => 'complete'), excess.then(() => 'excess')])).toBe('complete');
+				expect(owner['inFlight'].size).toBe(0);
+				expect(owner['queues'].size).toBe(0);
+				expect(failures.slice(failureCount)).toEqual([]);
+				const diagnostic = owner.readDiagnostics(controllerId);
+				expect(diagnostic.reasons).not.toContain('runtime_error');
+				expect(diagnostic.branches.every((branch) => branch.release_proven)).toBe(true);
 				const recovered = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				if (delayedRetry) {
+					const recoveryOffs = recovered.filter(
+						(row) => row.action === 'off' && !failed.some((old) => old.id === row.id),
+					);
+					expect(recoveryDelayed).toBe(true);
+					expect(firstSnapshotIds.size).toBeGreaterThan(0);
+					expect(firstDelayedId).toBeDefined();
+					expect(secondDelayedId).toBeDefined();
+					if (firstDelayedId === undefined || secondDelayedId === undefined)
+						throw new Error('Actual delayed OFF IDs missing');
+					expect(firstSnapshotIds.has(firstDelayedId)).toBe(true);
+					expect(firstSnapshotIds.has(secondDelayedId)).toBe(false);
+					expect(recoveryOffs.length).toBeGreaterThanOrEqual(2);
+					expect(recoveryOffs.some((row) => !firstSnapshotIds.has(row.id))).toBe(true);
+					expect(recoveryOffs.every((row) => row.status === 'confirmed')).toBe(true);
+				}
 				const original = recovered.find((row) => row.id === debtId);
 				const debt = before.find((row) => row.id === debtId);
 				expect(original).toEqual({
@@ -9420,11 +9482,14 @@ describe('virtual thermostat durable runtime', () => {
 				events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, invalidate);
 				owner.onModuleDestroy();
 				releaseExcess();
+				releaseRecovery();
+				releaseFollowup();
 				const joined = await Promise.allSettled([
 					owner.flush(),
 					fixture.flushTelemetry(),
 					...(first !== undefined ? [first] : []),
 					...(draining !== undefined ? [draining] : []),
+					...(recovery !== undefined ? [recovery] : []),
 				]);
 				for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
 				const index = database.subscribers.indexOf(observer);
