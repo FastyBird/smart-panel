@@ -9698,4 +9698,250 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		if (failure !== undefined) throw failure.cause;
 	});
+	it.each(['same-value', 'restore', 'slot', 'rollback', 'journal'] as const)(
+		'preserves the original override budget across actual native %s while fencing ownership separately',
+		async (mode) => {
+			const { fixture, claims, loader } = await useInstalledLockedNativeClaimsGuard();
+			const owner = runtime;
+			clearInterval(owner['timer']);
+			const start = performance.now();
+			let mono = start;
+			const monotonic = jest.spyOn(performance, 'now').mockImplementation(() => mono);
+			let failure: { cause: unknown } | undefined;
+			const writes: string[] = [];
+			const observer = {
+				afterQuery: (event: AfterQueryEvent<unknown>) => {
+					if (event.success && event.query.startsWith('UPDATE ')) writes.push(event.query);
+				},
+			};
+			try {
+				const entry = await comfort.get(controllerId);
+				await comfort.configure(
+					controllerId,
+					{ expected_revision: entry.revision, expected_graph_revision: entry.graph_revision },
+					{
+						automation_enabled: true,
+						heating_range: { minimum: 15, maximum: 25 },
+						cooling_range: null,
+						presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+					},
+				);
+				await loader['queue'];
+				const before = await comfort.get(controllerId);
+				await comfort.override(
+					controllerId,
+					{ expected_revision: before.revision, expected_graph_revision: before.graph_revision },
+					{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+					'native-clock-lifetime',
+				);
+				await loader['queue'];
+				await settleReal(fixture);
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const lease = comfort['leases'].get(controllerId);
+				if (!lease || !row.comfort?.temporary_override) throw new Error('Original bounded override missing');
+				const deadline = lease.deadline;
+				const original = claims.capture();
+				expect(original.isCurrent()).toBe(true);
+				expect(comfort.isCurrent(row)).toBe(true);
+				const slots = await database.query<unknown[]>(
+					'SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?',
+					[controllerId],
+				);
+				const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				expect(slots.length).toBeGreaterThan(0);
+				expect(journal.length).toBeGreaterThan(0);
+				database.subscribers.push(observer);
+				const query =
+					mode === 'slot'
+						? 'UPDATE "devices_module_climate_automation_slots" SET "manualCounter" = "manualCounter" WHERE "controllerId" = ?'
+						: mode === 'journal'
+							? 'UPDATE "devices_virtual_thermostat_command_journal" SET "fault" = "fault" WHERE "id" = ?'
+							: 'UPDATE "devices_virtual_thermostat_configs" SET "locked" = ? WHERE "controllerId" = ?';
+				const parameters =
+					mode === 'slot' ? [controllerId] : mode === 'journal' ? [journal[0].id] : [Number(row.locked), controllerId];
+				if (mode === 'rollback') {
+					const primary = new Error('actual rolled-back clock configuration');
+					await expect(
+						database.transaction(async (manager) => {
+							await manager.query(query, parameters);
+							throw primary;
+						}),
+					).rejects.toBe(primary);
+				} else if (mode === 'restore') {
+					await database.query(query, [Number(!row.locked), controllerId]);
+					await database.query(query, parameters);
+				} else await database.query(query, parameters);
+				expect(writes.filter((write) => write === query)).toHaveLength(mode === 'restore' ? 2 : 1);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(row);
+				expect(
+					await database.query<unknown[]>(
+						'SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?',
+						[controllerId],
+					),
+				).toEqual(slots);
+				expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).toEqual(journal);
+				// Diagnostic journal bookkeeping is neutral; catalog attempts close the old dispatch admission even on rollback.
+				expect(original.isCurrent()).toBe(mode === 'journal');
+				expect(comfort.isCurrent(row)).toBe(true);
+				mono = start + 10_000;
+				await comfort.settle(controllerId);
+				const fresh = await comfort.get(controllerId);
+				expect(fresh.configuration.temporary_override.id).toBe(row.comfort.temporary_override.id);
+				expect(fresh.configuration.temporary_override.expires_at).toBe(row.comfort.temporary_override.expires_at);
+				expect(comfort['leases'].get(controllerId)).toBe(lease);
+				expect(lease.deadline).toBe(deadline);
+				expect(comfort.isCurrent(row)).toBe(true);
+				expect(original.isCurrent()).toBe(mode === 'journal');
+				mono = deadline + 1;
+				expect(Date.now()).toBeLessThan(Date.parse(row.comfort.temporary_override.expires_at));
+				expect(comfort.isCurrent(row)).toBe(false);
+				expect(comfort.isCurrent(structuredClone(row))).toBe(false);
+				expect(lease.deadline).toBe(deadline);
+				expect(lease.status).toBe('expired');
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				loader.onModuleDestroy();
+				const joined = await Promise.allSettled([owner.flush(), loader['queue'], fixture.flushTelemetry()]);
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				monotonic.mockRestore();
+				for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			}
+			if (failure !== undefined) throw failure.cause;
+		},
+	);
+	it('preserves one original override budget through public reads, watermark progress and an ordinary runtime poll', async () => {
+		const { fixture, claims, loader } = await useInstalledLockedNativeClaimsGuard();
+		const owner = runtime;
+		clearInterval(owner['timer']);
+		const start = performance.now();
+		let mono = start;
+		const monotonic = jest.spyOn(performance, 'now').mockImplementation(() => mono);
+		let failure: { cause: unknown } | undefined;
+		try {
+			const before = await comfort.get(controllerId);
+			await comfort.override(
+				controllerId,
+				{ expected_revision: before.revision, expected_graph_revision: before.graph_revision },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+				'public-neutral-clock',
+			);
+			await loader['queue'];
+			await settleReal(fixture);
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const lease = comfort['leases'].get(controllerId);
+			if (!lease || !row.comfort?.temporary_override) throw new Error('Original public-read budget missing');
+			const deadline = lease.deadline,
+				watermark = lease.watermark;
+			const original = claims.capture();
+			expect(original.isCurrent()).toBe(true);
+			jest.setSystemTime(Date.now() + 1);
+			mono = start + 10_000;
+			const first = await comfort.get(controllerId);
+			const second = await comfort.get(controllerId);
+			expect(first).toEqual(second);
+			expect(comfort.isCurrent(structuredClone(row))).toBe(true);
+			expect(lease.watermark).toBeGreaterThan(watermark);
+			expect(comfort['leases'].get(controllerId)).toBe(lease);
+			await owner.request(controllerId, false);
+			await settleReal(fixture);
+			const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			expect(after).toEqual(row);
+			expect(comfort['leases'].get(controllerId)).toBe(lease);
+			expect(lease.deadline).toBe(deadline);
+			expect(original.isCurrent()).toBe(true);
+			expect(comfort.isCurrent(after)).toBe(true);
+			mono = deadline + 1;
+			expect(Date.now()).toBeLessThan(Date.parse(row.comfort.temporary_override.expires_at));
+			expect(comfort.isCurrent(row)).toBe(false);
+			expect(comfort.isCurrent(after)).toBe(false);
+			expect(lease.deadline).toBe(deadline);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			loader.onModuleDestroy();
+			const joined = await Promise.allSettled([owner.flush(), loader['queue'], fixture.flushTelemetry()]);
+			monotonic.mockRestore();
+			for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
+	it('keeps a genuine replacement override independent of late reads of the original expired identity', async () => {
+		const { fixture, claims, loader } = await useInstalledLockedNativeClaimsGuard();
+		const owner = runtime;
+		clearInterval(owner['timer']);
+		const start = performance.now();
+		let mono = start;
+		const monotonic = jest.spyOn(performance, 'now').mockImplementation(() => mono);
+		let failure: { cause: unknown } | undefined;
+		try {
+			const before = await comfort.get(controllerId);
+			await comfort.override(
+				controllerId,
+				{ expected_revision: before.revision, expected_graph_revision: before.graph_revision },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+				'original-clock-A',
+			);
+			await loader['queue'];
+			await settleReal(fixture);
+			const a = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const leaseA = comfort['leases'].get(controllerId);
+			if (!leaseA) throw new Error('Original A budget missing');
+			const originalClaims = claims.capture();
+			expect(originalClaims.isCurrent()).toBe(true);
+			expect(comfort.isCurrent(a)).toBe(true);
+			mono = start + 1000;
+			const current = await comfort.get(controllerId);
+			await comfort.override(
+				controllerId,
+				{ expected_revision: current.revision, expected_graph_revision: current.graph_revision },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 60_000).toISOString() },
+				'replacement-clock-B',
+			);
+			await loader['queue'];
+			await settleReal(fixture);
+			const b = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const leaseB = comfort['leases'].get(controllerId);
+			if (!leaseB) throw new Error('Replacement B budget missing');
+			const saved = { ...leaseB };
+			const freshClaims = claims.capture();
+			expect(leaseB).not.toBe(leaseA);
+			expect(leaseB.id).not.toBe(leaseA.id);
+			expect(originalClaims.isCurrent()).toBe(false);
+			expect(freshClaims.isCurrent()).toBe(true);
+			mono = leaseA.deadline + 1;
+			expect(mono).toBeLessThan(leaseB.deadline);
+			const hydrate = jest.spyOn(database.driver, 'prepareHydratedValue');
+			try {
+				expect(comfort.isCurrent(a)).toBe(false);
+				expect(comfort.isCurrent(structuredClone(a))).toBe(false);
+				expect(hydrate).not.toHaveBeenCalled();
+			} finally {
+				hydrate.mockRestore();
+			}
+			expect(comfort['leases'].get(controllerId)).toBe(leaseB);
+			expect(leaseB).toEqual(saved);
+			expect(freshClaims.isCurrent()).toBe(true);
+			expect(comfort.isCurrent(b)).toBe(true);
+			expect(leaseB.deadline).toBe(saved.deadline);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			loader.onModuleDestroy();
+			const joined = await Promise.allSettled([owner.flush(), loader['queue'], fixture.flushTelemetry()]);
+			monotonic.mockRestore();
+			for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
 });
