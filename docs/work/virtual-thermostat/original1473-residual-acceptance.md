@@ -855,7 +855,7 @@ exact two/three-fence ceilings remain unadopted. These are scoped current busine
 private-protocol or equipment acceptance.
 
 Current complete local consumers pass **569/569**, ten complete files including **227 runtime cases** and the entire
-structural-lock suite; raw report SHA-256 `167c28b54ea3836e51596b9b93c6cbc55fd7a507acef20e6b14c878f3ba9979e`. The following two controls were measured
+structural-lock suite; raw report SHA-256 `345aea2d23b083c2debf48558c2063d3f95c3d65f54e4b88cbda5fd142adbc82`. The following two controls were measured
 only at `cb98b3c` and were not replayed on the later full-file source. Omitting original runtime-context fencing
 makes the original held ON guard incorrectly stay true (**1 FAIL / 225 unrun**); report SHA-256
 `d80591aafd44599f7b8a57f4eb95b3bdbc5418e32ea3a32dd6d6249caedd75ba`. Allowing shared-reader admission to bypass an active writer causes two actual root
@@ -912,7 +912,7 @@ This control proves assertion discrimination, not a native SQL fault or installe
 Replacing the repeated drain with a single snapshot leaves an actual OFF in flight (**1 FAIL / 226 unrun**;
 report `56405b8c106ae9940c4ebddaa88796da24fb56011d27a7c155331bc35cb15094`). Omitting the sole public retry fails all five variants
 (**5 FAIL / 222 unrun**; report `d814b3aba82846d7318df42b1f6834f29205b8d737e10c031bca285dfa0bc217`): four retain runtime_error,
-and known post-ACK lacks a successor evaluation. Correct final test source is restored before complete positive
+and known post-ACK lacks a successor evaluation. At `2e771e0`, corrected test source was restored before positive
 qualification: **569/569**, ten complete files, **227 runtime cases**, report SHA-256 `167c28b54ea3836e51596b9b93c6cbc55fd7a507acef20e6b14c878f3ba9979e`.
 
 An initial one-gate delayed preparation let the single-snapshot control pass; its raw reports and sources are
