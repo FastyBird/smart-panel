@@ -212,6 +212,11 @@ physical identity, protective inputs and OFF/drain evidence remain mandatory. An
 renewed by capturing a successor. Standalone readiness cannot observe a qualification-map replacement; runtime retains
 its original qualification and native-image fences.
 
+An observed loss of the canonical Shelly getter chain or captured metadata ends that original capture permanently.
+Restoring the descriptor or value permits a fresh capture, but never revives the old one. The same lifetime applies
+to the captured command adapter: observed method loss or an observation exception permanently closes that capture.
+The original readiness capture also closes permanently when a provider or machine continuity predicate refuses or throws.
+
 Pure OFF metadata performs no machine predicate, provider/session preparation or sample work. The existing qualifier
 may already have checked its trusted machine predicate before this boundary. Owned readiness refusal reports suspended
 transport readiness independently from effective comfort selection. Once an original OFF fence/send is admitted, its

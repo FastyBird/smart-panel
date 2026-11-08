@@ -15,7 +15,7 @@ import {
 	realThermostatGuardFixture,
 	useThermostatPacketClock,
 } from '../../../../test/support/thermostat-real-guard-fixture';
-import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { SqliteDataSource, observeSqliteOuterOutcome } from '../../../common/database/sqlite-data-source';
 import { IndexVirtualThermostatCommands1000000000035 } from '../../../migrations/1000000000035-IndexVirtualThermostatCommands';
 import {
 	ChannelCategory,
@@ -8915,6 +8915,314 @@ describe('virtual thermostat durable runtime', () => {
 			transport.mockRestore();
 			if (fixture.controls.beforeOn === gate) fixture.controls.beforeOn = previousGate;
 			else failure ??= { cause: new Error('Foreign native ON gate retained') };
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
+	it.each([
+		'none',
+		'own-shadow',
+		'nearer-getter',
+		'canonical-getter',
+		'canonical-setter',
+		'canonical-flags',
+		'chain-link',
+		'generation-restored',
+		'get-restored',
+		'active-own-shadow',
+	] as const)('keeps original managed OFF metadata closed after observed %s restoration', async (variant) => {
+		const activeOwner = variant === 'active-own-shadow';
+		const change = activeOwner ? 'own-shadow' : variant;
+		const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime;
+		const provider = comfort['automation'];
+		if (provider === undefined) throw new Error('Registered automation provider missing');
+		const ledger = provider['ledger'];
+		provider['registry'].registerProducerOwned('test-off-metadata:v1', {
+			validateInManager: () => Promise.resolve({ selection: 'eco' }),
+		});
+		let receipt: ReturnType<typeof observeSqliteOuterOutcome> | undefined;
+		let installed: Awaited<ReturnType<typeof ledger.installBundle>>[number]['facts'] | undefined;
+		await owner['structure'].runExclusiveReleased(() =>
+			owner['graph'].withControllerMutationWrite(
+				async (manager) => {
+					await provider.explicitOptIn(manager, controllerId);
+					const scope = ledger.currentScope(manager);
+					const previous = await ledger.readSource(manager, scope, 'test-off-metadata:v1', 'room');
+					const source = await ledger.stageSource(manager, scope, {
+						producerKey: 'test-off-metadata:v1',
+						subjectId: 'room',
+						expected: previous,
+						evidence: { selection: 'eco' },
+					});
+					const slot = await ledger.readSlot(manager, scope, controllerId, true, 'virtual-thermostat:v1');
+					const candidate = await ledger.stageSlot(manager, scope, {
+						expectedSlot: slot,
+						expectedSource: source,
+						selection: { preset: 'eco', setpoints: null },
+						bundleId: uuid(),
+					});
+					const [installedSlot] = await ledger.installBundle(manager, scope, source, [candidate]);
+					installed = installedSlot.facts;
+					await owner['graph'].sealControllerLedger(manager);
+				},
+				undefined,
+				(manager) => {
+					receipt = observeSqliteOuterOutcome(manager);
+				},
+				() => {
+					expect(receipt?.outcome).toBe('committed');
+				},
+			),
+		);
+		if (installed === undefined) throw new Error('Installed baseline absent');
+		expect(await provider.activateLocal(database.manager, installed)).toBe(true);
+		const machineSession = fixture.captureSession(relayId);
+		if (!machineSession?.isCurrent()) throw new Error('Original native machine session absent');
+		for (const qualification of installedQualifications.values())
+			claims.recordQualification({ ...qualification, machineLeaseIsCurrent: () => machineSession.isCurrent() });
+		await claims.refresh();
+		await settleReal(fixture);
+		expect(owner['contexts'].get(controllerId)?.automation?.baseline?.preset).toBe('eco');
+		clearInterval(owner['timer']);
+		await owner.flush();
+		const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		type Metadata = NonNullable<ReturnType<typeof fixture.transport.captureOffMetadata>>;
+		const captures: Array<{ args: Parameters<typeof fixture.transport.captureOffMetadata>; metadata: Metadata }> = [];
+		const metadataMethod = fixture.transport.captureOffMetadata.bind(
+			fixture.transport,
+		) as typeof fixture.transport.captureOffMetadata;
+		const metadataObserver = jest.spyOn(fixture.transport, 'captureOffMetadata').mockImplementation((...args) => {
+			const metadata = metadataMethod(...args);
+			if (metadata && args[0].property.id === relayId) captures.push({ args, metadata });
+			return metadata;
+		});
+		let adapter: ReturnType<typeof fixture.transport.capture>;
+		let reconciling: object | undefined;
+		const proofs: Array<Awaited<ReturnType<ThermostatActuationAdapter['reconcile']>>> = [];
+		const captureMethod = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+		const adapterObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+			const original = captureMethod(...args);
+			if (!original) return original;
+			if (args[0].property.id === relayId) adapter = original;
+			return Object.freeze({
+				...original,
+				reconcile: (...parameters: Parameters<typeof original.reconcile>) => {
+					const ticket = Object.freeze({});
+					reconciling = ticket;
+					const result = original.reconcile(...parameters);
+					void result.then(
+						() => {
+							if (reconciling === ticket) reconciling = undefined;
+						},
+						() => {
+							if (reconciling === ticket) reconciling = undefined;
+						},
+					);
+					void result.then(
+						(proof) => proofs.push(proof),
+						() => undefined,
+					);
+					return result;
+				},
+			});
+		});
+		const observedNativeProofIds: Array<string | null> = [];
+		const nativeProofObserver = {
+			afterQuery: async (event: import('typeorm').AfterQueryEvent<unknown>) => {
+				if (
+					!activeOwner ||
+					!/^UPDATE /i.test(event.query) ||
+					!event.query.includes('devices_virtual_thermostat_branch_runtime')
+				)
+					return;
+				const rows = await event.queryRunner.manager.find(VirtualThermostatBranchRuntimeEntity);
+				observedNativeProofIds.push(...rows.map((row) => row.releaseProofId));
+			},
+		};
+		database.subscribers.push(nativeProofObserver);
+		let selected: (typeof captures)[number] | undefined;
+		const previousFence = fixture.controls.beforeFence;
+		const fence = async (property: string) => {
+			if (!selected && reconciling !== undefined && property === relayId && captures.length > 0) {
+				selected = captures[captures.length - 1];
+				enter();
+				await held;
+			}
+			await previousFence?.(property);
+		};
+		fixture.controls.beforeFence = fence;
+		const canonical = Object.getOwnPropertyDescriptor(ShellyNgDeviceEntity.prototype, 'type');
+		const getDescriptor = Object.getOwnPropertyDescriptor(fixture.transport, 'get');
+		let restore: (() => void) | undefined;
+		let starting: Promise<void> | undefined, driving: Promise<void> | undefined;
+		let failure: { cause: unknown } | undefined;
+		let getters = 0;
+		try {
+			const claimRow = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+			const evidence = claims.qualification(claimRow, false);
+			if (!evidence) throw new Error('Original managed evidence absent');
+			claims.revokeQualification(claimRow.physicalIdentity);
+			claims.recordQualification(evidence);
+			await claims.refresh();
+			starting = owner.requestInstalled(controllerId);
+			void starting.catch(() => undefined);
+			driving = starting.then(async () => {
+				for (let phase = 0; phase < 5; phase++) {
+					await fixture.flushTelemetry();
+					await owner.requestInstalled(controllerId);
+					if (selected !== undefined) return;
+				}
+			});
+			void driving.catch(() => undefined);
+			await Promise.race([
+				entered,
+				driving.then(() => {
+					throw new Error(
+						'Original OFF metadata fence not reached: ' +
+							JSON.stringify({
+								captures: captures.length,
+								proofs: proofs.length,
+								baseline: owner['contexts'].get(controllerId)?.automation?.baseline,
+								diagnostics: owner.readDiagnostics(controllerId),
+							}),
+					);
+				}),
+			]);
+			if (!selected || !canonical || !adapter) throw new Error('Original OFF capture unavailable');
+			const [target, claim, qualification] = selected.args;
+			const device = target.device;
+			const prototype = Object.getPrototypeOf(device) as object;
+			const generation = claim.qualificationGeneration;
+			expect(device).toBeInstanceOf(ShellyNgDeviceEntity);
+			expect(prototype).toBe(ShellyNgDeviceEntity.prototype);
+			expect(Object.getOwnPropertyDescriptor(device, 'type')).toBeUndefined();
+			expect(generation).toBeNull();
+			expect(Object.getOwnPropertyDescriptor(qualification, 'qualificationGeneration')).toBeUndefined();
+			expect(
+				await database.manager.query(
+					'SELECT "qualificationGeneration" FROM "devices_virtual_thermostat_actuator_claims" WHERE "id" = ?',
+					[claim.id],
+				),
+			).toEqual([{ qualificationGeneration: null }]);
+			const before = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(before.some((row) => row.action === 'off' && row.status === 'confirmed')).toBe(true);
+			const originalCurrent = change === 'get-restored' ? adapter.isCurrent : selected.metadata.isCurrent;
+			expect(originalCurrent()).toBe(true);
+			const getter = () => {
+				getters++;
+				return DEVICES_SHELLY_NG_TYPE;
+			};
+			restore = () => {
+				Reflect.deleteProperty(device, 'type');
+				Object.setPrototypeOf(device, prototype);
+				Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', canonical);
+				claim.qualificationGeneration = generation;
+				if (getDescriptor) Object.defineProperty(fixture.transport, 'get', getDescriptor);
+				else Reflect.deleteProperty(fixture.transport, 'get');
+			};
+			if (change === 'own-shadow')
+				Object.defineProperty(device, 'type', { value: DEVICES_SHELLY_NG_TYPE, configurable: true });
+			else if (change === 'nearer-getter' || change === 'chain-link') {
+				const nearer = Object.create(prototype) as object;
+				if (change === 'nearer-getter') Object.defineProperty(nearer, 'type', { get: getter, configurable: true });
+				Object.setPrototypeOf(device, nearer);
+			} else if (change === 'canonical-getter')
+				Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
+			else if (change === 'canonical-setter')
+				Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
+			else if (change === 'canonical-flags')
+				Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', {
+					...canonical,
+					enumerable: !canonical.enumerable,
+				});
+			else if (change === 'generation-restored') claim.qualificationGeneration = 'observed-foreign-generation';
+			else if (change === 'get-restored')
+				Object.defineProperty(fixture.transport, 'get', { configurable: true, writable: true, value: () => null });
+			if (change !== 'none') {
+				expect(originalCurrent()).toBe(false);
+				expect(getters).toBe(0);
+				restore();
+				expect(originalCurrent()).toBe(false);
+				expect(getters).toBe(0);
+				const fresh =
+					change === 'get-restored'
+						? captureMethod(target, claim, qualification)
+						: metadataMethod(target, claim, qualification);
+				expect(fresh?.isCurrent()).toBe(true);
+				if (!activeOwner) owner.onModuleDestroy();
+			}
+			release();
+			await driving;
+			await starting;
+			await fixture.flushTelemetry();
+			if (activeOwner) {
+				expect(owner['active']).toBe(true);
+				await owner.flush();
+				const originalProof = proofs[0];
+				if (!originalProof) throw new Error('Original SDK did not return its actual proof');
+				expect(originalProof.isCurrent()).toBe(true);
+				expect(selected.metadata.isCurrent()).toBe(false);
+				expect(observedNativeProofIds).not.toContain(originalProof.proofId);
+				await settleReal(fixture);
+				const branch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+					claimId: claim.id,
+				});
+				expect(branch.releaseProofId).not.toBe(originalProof.proofId);
+				expect(proofs.slice(1).some((proof) => proof?.proofId === branch.releaseProofId)).toBe(true);
+				expect(observedNativeProofIds).not.toContain(originalProof.proofId);
+				expect(owner.readDiagnostics(controllerId).branches.every((entry) => entry.release_proven)).toBe(true);
+			}
+			if (change === 'none') {
+				await settleReal(fixture);
+				expect(owner.readDiagnostics(controllerId).branches.every((branch) => branch.release_proven)).toBe(true);
+				const branch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+					claimId: claim.id,
+				});
+				expect(proofs.some((proof) => proof?.proofId === branch.releaseProofId)).toBe(true);
+			}
+			const after = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(after.map((row) => row.id).sort()).toEqual(before.map((row) => row.id).sort());
+			for (const row of before) {
+				const current = after.find((entry) => entry.id === row.id);
+				if ((change !== 'none' && !activeOwner) || row.status === 'confirmed') expect(current).toEqual(row);
+				else {
+					expect(current).toMatchObject({
+						...row,
+						status: 'confirmed',
+						fault: null,
+						settledAt: expect.any(Date) as Date,
+						proofId: expect.any(String) as string,
+					});
+					expect(proofs.some((proof) => proof?.proofId === current?.proofId)).toBe(true);
+				}
+			}
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+				configuration,
+			);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			restore?.();
+			owner.onModuleDestroy();
+			release();
+			const results = await Promise.allSettled([
+				owner.flush(),
+				fixture.flushTelemetry(),
+				...(starting !== undefined ? [starting] : []),
+				...(driving !== undefined ? [driving] : []),
+			]);
+			for (const result of results) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			const observerIndex = database.subscribers.indexOf(nativeProofObserver);
+			if (observerIndex >= 0) database.subscribers.splice(observerIndex, 1);
+			metadataObserver.mockRestore();
+			adapterObserver.mockRestore();
+			if (fixture.controls.beforeFence === fence) fixture.controls.beforeFence = previousFence;
+			else failure ??= { cause: new Error('Foreign OFF fence gate retained') };
 		}
 		if (failure !== undefined) throw failure.cause;
 	});
