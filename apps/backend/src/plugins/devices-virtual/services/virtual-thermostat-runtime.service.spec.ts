@@ -9226,4 +9226,476 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		if (failure !== undefined) throw failure.cause;
 	});
+	it.each(['proof-query', 'later-query', 'post-ACK', 'returned-safety', 'delayed-proof-query'] as const)(
+		'keeps actual managed OFF failure finite until an independent public retry: %s',
+		async (variant) => {
+			const delayedRetry = variant === 'delayed-proof-query';
+			const mode = delayedRetry ? 'proof-query' : variant;
+			const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+			const owner = runtime;
+			clearInterval(owner['timer']);
+			const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+			const debtId = uuid();
+			await database.manager.insert(VirtualThermostatCommandEntity, {
+				id: debtId,
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: config.revision,
+				decisionRevision: 1,
+				action: 'on',
+				status: 'unknown',
+				preparedAt: new Date(),
+				dispatchedAt: new Date(),
+				settledAt: null,
+				proofId: null,
+				fault: 'independent-native-test-obligation',
+			});
+			const before = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			const primary = new Error('original native OFF settlement P');
+			const secondary = new Error('subsequent native journal projection Q');
+			let armed = true,
+				proofReturned = false,
+				resultReturned = false,
+				invalidations = 0,
+				primaryHits = 0,
+				secondaryHits = 0,
+				evaluations = 0;
+			const failures: unknown[] = [];
+			const proofs: Array<Awaited<ReturnType<ThermostatActuationAdapter['reconcile']>>> = [];
+			const originalEvaluate = owner['evaluate'].bind(owner) as (typeof owner)['evaluate'];
+			const evaluation = jest
+				.spyOn(owner as unknown as { evaluate: typeof originalEvaluate }, 'evaluate')
+				.mockImplementation((...args) => {
+					evaluations++;
+					const result = originalEvaluate(...args);
+					void result.catch((cause: unknown) => failures.push(cause));
+					return result;
+				});
+			const originalCapture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+			const captures = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+				const captured = originalCapture(...args);
+				if (!captured) return captured;
+				return Object.freeze({
+					...captured,
+					reconcile: (...parameters: Parameters<typeof captured.reconcile>) => {
+						const result = captured.reconcile(...parameters);
+						void result.then(
+							(proof) => {
+								proofs.push(proof);
+								resultReturned = true;
+								if (proof) proofReturned = true;
+							},
+							() => undefined,
+						);
+						return result;
+					},
+				});
+			});
+			let enterExcess!: () => void, releaseExcess!: () => void;
+			const excess = ownedGate((resolve) => (enterExcess = resolve));
+			const resume = ownedGate((resolve) => (releaseExcess = resolve));
+			let releaseRecovery!: () => void, releaseFollowup!: () => void;
+			const recoveryResume = ownedGate((resolve) => (releaseRecovery = resolve));
+			const followupResume = ownedGate((resolve) => (releaseFollowup = resolve));
+			let recoveryDelayed = false;
+			let firstDelayedId: string | undefined, secondDelayedId: string | undefined;
+			const firstSnapshotIds = new Set<string>();
+			const ceiling = delayedRetry ? 6 : 4;
+			let fences = 0;
+			const previousFence = fixture.controls.beforeFence;
+			const gate = async (property: string) => {
+				if (property === relayId && ++fences > ceiling) {
+					enterExcess();
+					await resume;
+				}
+				if (property === relayId && delayedRetry && !armed) {
+					const currentOff = [...owner['inFlightCommands'].values()].find(
+						(command) => command.claimId === claim.id && command.action === 'off',
+					);
+					if (currentOff && firstDelayedId === undefined) {
+						firstDelayedId = currentOff.id;
+						recoveryDelayed = true;
+						// Its retry delay expires while this actual OFF command remains held in the SDK.
+						jest.setSystemTime(Date.now() + 2001);
+						await recoveryResume;
+					} else if (currentOff && currentOff.id !== firstDelayedId && secondDelayedId === undefined) {
+						secondDelayedId = currentOff.id;
+						await followupResume;
+					}
+				}
+				await previousFence?.(property);
+			};
+			fixture.controls.beforeFence = gate;
+			const observer = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (
+						!armed ||
+						!(mode === 'returned-safety' ? resultReturned : proofReturned) ||
+						!event.query.startsWith('SELECT') ||
+						!event.query.includes('devices_virtual_thermostat_command_journal')
+					)
+						return;
+					if (mode !== 'post-ACK' && mode !== 'returned-safety' && primaryHits === 0) {
+						primaryHits++;
+						throw primary;
+					}
+					if (mode === 'proof-query' || mode === 'returned-safety') {
+						secondaryHits++;
+						throw secondary;
+					}
+				},
+				afterLoad: (entity: unknown) => {
+					if (armed && mode === 'later-query' && primaryHits > 0 && entity instanceof VirtualThermostatCommandEntity) {
+						secondaryHits++;
+						throw secondary;
+					}
+				},
+				afterTransactionCommit: () => {
+					if (armed && proofReturned && mode === 'post-ACK' && primaryHits === 0) {
+						primaryHits++;
+						throw primary;
+					}
+				},
+			};
+			const invalidate = (payload: { propertyId?: string }) => {
+				if (armed && mode === 'returned-safety' && fences > 0 && payload.propertyId === relayId) {
+					invalidations++;
+					claims.invalidate();
+				}
+			};
+			events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, invalidate);
+			database.subscribers.push(observer);
+			let first: Promise<void> | undefined, draining: Promise<void> | undefined, recovery: Promise<void> | undefined;
+			let failure: { cause: unknown } | undefined;
+			try {
+				first = owner.request(controllerId, false);
+				draining = first.then(async () => {
+					await fixture.flushTelemetry();
+					await owner.flush();
+				});
+				void draining.catch(() => undefined);
+				expect(await Promise.race([draining.then(() => 'complete'), excess.then(() => 'excess')])).toBe('complete');
+				expect(primaryHits).toBe(mode === 'returned-safety' ? 0 : 1);
+				if (mode === 'returned-safety') {
+					expect(invalidations).toBeGreaterThan(0);
+					expect(proofs).toContain(null);
+					expect(failures).toContain(secondary);
+				} else expect(failures).toContain(primary);
+				expect(fences).toBeGreaterThan(0);
+				expect(fences).toBeLessThanOrEqual(ceiling);
+				armed = false;
+				const failed = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				expect(failed.map((row) => row.id)).toEqual(expect.arrayContaining(before.map((row) => row.id)));
+				const retained = failed.find((row) => row.id === debtId);
+				expect(retained?.action).toBe('on');
+				if (mode !== 'post-ACK') {
+					expect(retained?.status).toBe('unknown');
+					expect(retained?.proofId).toBeNull();
+					expect(secondaryHits).toBeGreaterThan(0);
+				} else {
+					expect(retained).toMatchObject({
+						status: 'confirmed',
+						proofId: expect.any(String) as string,
+						settledAt: expect.any(Date) as Date,
+					});
+					expect(
+						proofs.some((proof) => proof?.proofId === retained?.proofId && proof.coveredCommandIds.includes(debtId)),
+					).toBe(true);
+				}
+				for (const row of before) {
+					if (row.id !== debtId || mode !== 'post-ACK')
+						expect(failed.find((entry) => entry.id === row.id)).toEqual(row);
+				}
+				if (mode === 'returned-safety') await claims.refresh();
+				if (delayedRetry) jest.setSystemTime(Date.now() + 1001);
+				const failureCount = failures.length;
+				const count = evaluations;
+				const previousContext = owner['contexts'].get(controllerId);
+				await owner.request(controllerId, false);
+				// Join follow-up commands started by the first retry's own feedback; issue no second public request.
+				let firstSnapshot = true;
+				recovery = (async () => {
+					while (true) {
+						await fixture.flushTelemetry();
+						await owner.flush();
+						const issued = [...owner['inFlight'].entries()];
+						if (firstSnapshot) {
+							for (const [id] of issued) firstSnapshotIds.add(id);
+							firstSnapshot = false;
+							releaseRecovery();
+						} else releaseFollowup();
+						await Promise.all(issued.map(([, command]) => command));
+						await fixture.flushTelemetry();
+						await owner.flush();
+						if (!owner['inFlight'].size && !owner['queues'].size) break;
+					}
+				})();
+				void recovery.catch(() => undefined);
+				expect(await Promise.race([recovery.then(() => 'complete'), excess.then(() => 'excess')])).toBe('complete');
+				expect(owner['inFlight'].size).toBe(0);
+				expect(owner['queues'].size).toBe(0);
+				expect(failures.slice(failureCount)).toEqual([]);
+				const diagnostic = owner.readDiagnostics(controllerId);
+				expect(diagnostic.reasons).not.toContain('runtime_error');
+				expect(diagnostic.branches.some((branch) => branch.claim === claim.id)).toBe(true);
+				expect(diagnostic.branches.every((branch) => branch.release_proven)).toBe(true);
+				const recovered = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+				if (delayedRetry) {
+					const recoveryOffs = recovered.filter(
+						(row) => row.action === 'off' && !failed.some((old) => old.id === row.id),
+					);
+					expect(recoveryDelayed).toBe(true);
+					expect(firstSnapshotIds.size).toBeGreaterThan(0);
+					expect(firstDelayedId).toBeDefined();
+					expect(secondDelayedId).toBeDefined();
+					if (firstDelayedId === undefined || secondDelayedId === undefined)
+						throw new Error('Actual delayed OFF IDs missing');
+					expect(firstSnapshotIds.has(firstDelayedId)).toBe(true);
+					expect(firstSnapshotIds.has(secondDelayedId)).toBe(false);
+					expect(recoveryOffs.length).toBeGreaterThanOrEqual(2);
+					expect(recoveryOffs.some((row) => !firstSnapshotIds.has(row.id))).toBe(true);
+					expect(recoveryOffs.every((row) => row.status === 'confirmed')).toBe(true);
+				}
+				const original = recovered.find((row) => row.id === debtId);
+				const debt = before.find((row) => row.id === debtId);
+				expect(original).toEqual({
+					...debt,
+					status: 'confirmed',
+					proofId: expect.any(String) as string,
+					settledAt: expect.any(Date) as Date,
+				});
+				for (const row of before.filter((entry) => entry.id !== debtId))
+					expect(recovered.find((entry) => entry.id === row.id)).toEqual(row);
+				expect(
+					proofs.some((proof) => proof?.proofId === original?.proofId && proof.coveredCommandIds.includes(debtId)),
+				).toBe(true);
+				expect(evaluations).toBeGreaterThan(count);
+				expect(owner['contexts'].get(controllerId)).not.toBe(previousContext);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(config);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				armed = false;
+				events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, invalidate);
+				owner.onModuleDestroy();
+				releaseExcess();
+				releaseRecovery();
+				releaseFollowup();
+				const joined = await Promise.allSettled([
+					owner.flush(),
+					fixture.flushTelemetry(),
+					...(first !== undefined ? [first] : []),
+					...(draining !== undefined ? [draining] : []),
+					...(recovery !== undefined ? [recovery] : []),
+				]);
+				for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				captures.mockRestore();
+				evaluation.mockRestore();
+				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousFence;
+				else failure ??= { cause: new Error('Foreign OFF retry fence gate') };
+			}
+			if (failure !== undefined) throw failure.cause;
+		},
+	);
+	it('an actual ordinary public poll fences its original held managed ON before SDK delivery', async () => {
+		const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime;
+		clearInterval(owner['timer']);
+		const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const resume = ownedGate((resolve) => (release = resolve));
+		const beforeOn = fixture.controls.beforeOn;
+		const gate = async (property: string) => {
+			if (property === relayId) {
+				enter();
+				await resume;
+			}
+			await beforeOn?.(property);
+		};
+		fixture.controls.beforeOn = gate;
+		const sends: Array<Parameters<ThermostatActuationAdapter['send']>> = [];
+		const results: Array<Awaited<ReturnType<ThermostatActuationAdapter['send']>>> = [];
+		const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+		const observer = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+			const original = capture(...args);
+			if (!original) return original;
+			return Object.freeze({
+				...original,
+				send: (...parameters: Parameters<typeof original.send>) => {
+					const result = original.send(...parameters);
+					if (parameters[0].property.id === relayId && parameters[0].value === true) {
+						sends.push(parameters);
+						void result.then(
+							(outcome) => results.push(outcome),
+							() => undefined,
+						);
+					}
+					return result;
+				},
+			});
+		});
+		let operation: Promise<void> | undefined;
+		let failure: { cause: unknown } | undefined;
+		try {
+			await fixture.report(sensorId, 18);
+			await entered;
+			await owner.flush();
+			expect(sends).toHaveLength(1);
+			const original = sends[0];
+			const commandId = original[4].commandId;
+			operation = owner['inFlight'].get(commandId);
+			if (operation === undefined) throw new Error('Original native ON completion absent');
+			expect(original[3]()).toBe(true);
+			const oldContext = owner['contexts'].get(controllerId);
+			const claimCapture = claims.capture();
+			const before = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: commandId });
+			expect(before).toMatchObject({ action: 'on', status: 'dispatching', settledAt: null });
+			await owner.request(controllerId, false);
+			await owner.flush();
+			expect(owner['contexts'].get(controllerId)).not.toBe(oldContext);
+			expect(original[3]()).toBe(false);
+			// Current ordinary controller fencing does not invalidate unrelated claims globally.
+			expect(claimCapture.isCurrent()).toBe(true);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			// Guard refusal was observed before this independent demand change, with the SDK still held.
+			await fixture.report(sensorId, 25);
+			release();
+			await operation;
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({ outcome: 'refused' });
+			await settleReal(fixture);
+			const after = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: commandId });
+			expect(after).toMatchObject({
+				...before,
+				status: 'cancelled',
+				settledAt: expect.any(Date) as Date,
+				fault: expect.any(String) as string,
+			});
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+				configuration,
+			);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			release();
+			const joined = await Promise.allSettled([
+				owner.flush(),
+				fixture.flushTelemetry(),
+				...(operation !== undefined ? [operation] : []),
+			]);
+			for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			observer.mockRestore();
+			if (fixture.controls.beforeOn === gate) fixture.controls.beforeOn = beforeOn;
+			else failure ??= { cause: new Error('Foreign ordinary poll ON gate') };
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
+	it('a real queued graph writer completes before the next runtime native admission reads', async () => {
+		const { fixture } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime,
+			structure = owner['structure'];
+		clearInterval(owner['timer']);
+		const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const graphBefore = await owner['graph'].revision();
+		let enterReader!: () => void;
+		const readerEntered = ownedGate((resolve) => (enterReader = resolve));
+		let enterLoad!: () => void, releaseLoad!: () => void, enterWriter!: () => void, releaseWriter!: () => void;
+		const loadEntered = ownedGate((resolve) => (enterLoad = resolve));
+		const loadResume = ownedGate((resolve) => (releaseLoad = resolve));
+		const writerEntered = ownedGate((resolve) => (enterWriter = resolve));
+		const writerResume = ownedGate((resolve) => (releaseWriter = resolve));
+		let selected = false,
+			holdingWriter = false,
+			writerCompleted = false,
+			readsDuringWriter = 0,
+			readsAfterWriter = 0;
+		const originalShared = structure.runShared.bind(structure) as typeof structure.runShared;
+		const shared = jest.spyOn(structure, 'runShared').mockImplementation(<T>(work: () => Promise<T>) => {
+			if (holdingWriter) enterReader();
+			return originalShared(work);
+		});
+		const roots = new AsyncLocalStorage<object>();
+		const root = Object.freeze({ owner });
+		const observer = {
+			beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (roots.getStore() !== root || !event.query.startsWith('SELECT')) return;
+				if (
+					!selected &&
+					event.query.includes('devices_virtual_thermostat_configs') &&
+					structure.hasCurrentStructuralLease()
+				) {
+					selected = true;
+					enterLoad();
+					await loadResume;
+				}
+				if (holdingWriter) readsDuringWriter++;
+				if (event.query.includes('devices_virtual_thermostat_command_journal')) {
+					if (writerCompleted) readsAfterWriter++;
+				}
+			},
+		};
+		database.subscribers.push(observer);
+		let starting: Promise<void> | undefined, writing: Promise<void> | undefined;
+		let failure: { cause: unknown } | undefined;
+		try {
+			starting = roots.run(root, () => owner.requestInstalled(controllerId));
+			void starting.catch(() => undefined);
+			expect(await Promise.race([loadEntered.then(() => 'load'), starting.then(() => 'early')])).toBe('load');
+			writing = structure.runExclusive(async () => {
+				holdingWriter = true;
+				enterWriter();
+				await writerResume;
+				await database.manager.query(
+					'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1',
+				);
+				holdingWriter = false;
+				writerCompleted = true;
+			});
+			void writing.catch(() => undefined);
+			releaseLoad();
+			await writerEntered;
+			await readerEntered;
+			// A real independent native read completes while the queued runtime reader still waits on the graph writer.
+			await database.manager.query('SELECT 1');
+			expect(readsDuringWriter).toBe(0);
+			releaseWriter();
+			await writing;
+			await starting;
+			await owner.flush();
+			expect(writerCompleted).toBe(true);
+			expect(readsDuringWriter).toBe(0);
+			expect(readsAfterWriter).toBeGreaterThan(0);
+			expect(await owner['graph'].revision()).toBe(graphBefore + 1);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+				configuration,
+			);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			owner.onModuleDestroy();
+			releaseLoad();
+			releaseWriter();
+			const joined = await Promise.allSettled([
+				owner.flush(),
+				...(starting !== undefined ? [starting] : []),
+				...(writing !== undefined ? [writing] : []),
+			]);
+			for (const result of joined) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			shared.mockRestore();
+			const index = database.subscribers.indexOf(observer);
+			if (index >= 0) database.subscribers.splice(index, 1);
+		}
+		if (failure !== undefined) throw failure.cause;
+	});
 });
