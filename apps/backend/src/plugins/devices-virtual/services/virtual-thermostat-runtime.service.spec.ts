@@ -10115,6 +10115,7 @@ describe('virtual thermostat durable runtime', () => {
 			let operation: Promise<void> | undefined;
 			let mutation: ReturnType<typeof comfort.configure> | undefined;
 			let failure: { cause: unknown } | undefined;
+			let readWaitExpired = false;
 			try {
 				await fixture.report(sensorId, 18);
 				let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -10158,7 +10159,22 @@ describe('virtual thermostat durable runtime', () => {
 				);
 				void mutation.catch(() => undefined);
 				expect(sends[0][3]()).toBe(false);
-				await readEntered;
+				let readTimeout: ReturnType<typeof setTimeout> | undefined;
+				try {
+					await Promise.race([
+						readEntered,
+						mutation,
+						new Promise<never>((_, reject) => {
+							readTimeout = setTimeout(() => {
+								readWaitExpired = true;
+								reject(new Error('Comfort read entry not reached'));
+							}, 5000);
+						}),
+					]);
+					if (firstRead) throw new Error('Comfort mutation completed before read entry');
+				} finally {
+					clearTimeout(readTimeout);
+				}
 				releaseOn();
 				await fixture.flushTelemetry();
 				owner.onModuleDestroy();
@@ -10195,10 +10211,20 @@ describe('virtual thermostat durable runtime', () => {
 				releaseOn();
 				releaseRead();
 				const cleanup = await Promise.allSettled([owner.flush()]);
-				await Promise.allSettled([
+				const completions = await Promise.allSettled([
 					...(mutation !== undefined ? [mutation] : []),
 					...(operation !== undefined ? [operation] : []),
 				]);
+				if (readWaitExpired && mutation !== undefined && completions[0].status === 'rejected') {
+					const originalCause: unknown = completions[0].reason;
+					failure = {
+						cause: new AggregateError(
+							[originalCause, failure?.cause],
+							'Comfort read entry timed out; mutation rejected during cleanup',
+							{ cause: originalCause },
+						),
+					};
+				}
 				for (const observed of await Promise.allSettled(observerTasks))
 					if (observed.status === 'rejected') failure ??= { cause: observed.reason };
 				for (const outcome of cleanup) if (outcome.status === 'rejected') failure ??= { cause: outcome.reason };

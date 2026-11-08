@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **581/581**, zero failures/skips, one complete local ten-file invocation on main `e38a05d` plus five native replay/rollback executions. Includes **239/239** runtime cases. Report SHA-256 `baa844e933eddd18b06be2f28efaf69dc015624a54a2de89b7ce8f1e7d622fd1`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **581/581**, zero failures/skips, one complete local ten-file invocation after the bounded read-wait correction. Includes **239/239** runtime cases. Report SHA-256 `fada39c160f46cdf2a85c5cebe291ee21a1fb44f2602e87754e450a4aab142bf`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -142,6 +142,12 @@ runner/global claims-DIRTY and independent pre-O transaction schedules are not r
 [The batch scope and controls](original1473-residual-acceptance.md#rows-179-191192-and-199-native-replay-and-nested-rollback)
 record these differences. Counter omission fails only replay (1 FAIL / 4 PASS / 234 unrun), restored before 581/581.
 The attempted late old-runner descendant does not qualify row 215, which remains open.
+
+The read-wait review correction races entry against the original mutation and a five-second local deadline,
+then clears its timer. A rejected first read may intentionally wait for the original held native command; local
+cleanup releases gates and joins original mutation/command/subscriber work before retaining both the original
+mutation cause and timeout diagnostic. Two controlled error probes verify original P identity and bounded
+missing readiness. No original-case count changes; [the exact review qualification](original1473-residual-acceptance.md#read-wait-review-correction) retains all reports and preparation limits.
 
 ## Composed acceptance
 
