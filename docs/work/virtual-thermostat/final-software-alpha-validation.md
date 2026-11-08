@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **568/568**, zero failures/skips, one complete local ten-file invocation on main `17724b5` plus six expanded runtime executions. Includes **226/226** runtime cases and the full structural-lock suite. Report SHA-256 `0b6127ec8dad0b4ec23ca07b643c7e344182d4a92d7dfea33a44029a6ebedb0e`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **568/568**, zero failures/skips, one complete local ten-file invocation on main `17724b5` plus six expanded runtime executions. Includes **226/226** runtime cases and the full structural-lock suite. Report SHA-256 `0ddfa5660b8a22ccda4aae3063feddafb04e39051796681fb736ff902b9f6593`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -101,12 +101,18 @@ protocols remain unadopted. Original production fails seventeen selected runtime
 **527/527** complete consumers, including **220/220** runtime cases. [The scoped boundary](original1473-residual-acceptance.md#rows-143151-and-182-original-off-capture-lifetime) records the exact differences.
 
 Rows 112–115, 120–122 and 125 now have eight scoped bindings through six new executions. Four native OFF
-failure variants finish without self-sustaining work and recover through an independent public poll; actual claims
+failure variants finish without self-sustaining work and recover through the first independent public poll and its
+actual issued work/telemetry, before any second public request; actual claims
 refresh follows deliberate invalidation. Known native COMMIT confirmation is retained despite a later callback
 failure. An ordinary poll closes its original held ON guard without globally invalidating claims. A real queued
 graph writer completes before waiting runtime reader SQL, while an independent native read remains possible.
 The current boundaries replace retired inverse-probe/frontier/permit, synchronous-settle/global-claims and private
 observer-installation protocols, which remain unadopted. [The exact batch scope](original1473-residual-acceptance.md#rows-112115-120122-and-125-finite-off-failure-and-public-retry) records both discriminating controls. Complete consumers pass **568/568**, including **226/226** runtime cases.
+
+The first-retry follow-up removes a helper that could issue a second public request before recovery assertions.
+With the first retry omitted, the former four variants still pass; all four strengthened variants fail
+(222 unrun in each control). The corrected source passes **568/568**, including **226 runtime cases**.
+[The source-bound comparison](original1473-residual-acceptance.md#first-public-retry-review-follow-up) records both reports and unchanged production.
 
 ## Composed acceptance
 

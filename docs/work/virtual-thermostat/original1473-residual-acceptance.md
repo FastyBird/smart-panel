@@ -65,7 +65,7 @@ qualification remain separate gates in #1462.
 
 The current base is merged #1534 (`17724b50e6e95fc1c6820d523ce9f53a5488c4f6`) plus three literal runtime bodies / six
 expanded executions. One complete local ten-file invocation passes **568/568**, including **226/226** runtime cases,
-zero failures/skips; report SHA-256 `0b6127ec8dad0b4ec23ca07b643c7e344182d4a92d7dfea33a44029a6ebedb0e`. Fresh exact-head hosted CI and completed source review
+zero failures/skips; report SHA-256 `0ddfa5660b8a22ccda4aae3063feddafb04e39051796681fb736ff902b9f6593`. Fresh exact-head hosted CI and completed source review
 remain merge gates. All **202 witness bindings across 196 original rows** match source/body/report bindings.
 The residual inventory has **74 bindings (64 scoped, ten replacements)** and **65 open entries**. All 194 prior
 witness bodies, 116 literal runtime bodies and 69 helper declarations remain unchanged, as do all twenty-eight
@@ -852,7 +852,7 @@ exact two/three-fence ceilings remain unadopted. These are scoped current busine
 private-protocol or equipment acceptance.
 
 Complete local consumers pass **568/568**, ten complete files including **226 runtime cases** and the entire
-structural-lock suite; raw report SHA-256 `0b6127ec8dad0b4ec23ca07b643c7e344182d4a92d7dfea33a44029a6ebedb0e`. Omitting only original runtime-context fencing
+structural-lock suite; raw report SHA-256 `0ddfa5660b8a22ccda4aae3063feddafb04e39051796681fb736ff902b9f6593`. Omitting only original runtime-context fencing
 makes the original held ON guard incorrectly stay true (**1 FAIL / 225 unrun**); report SHA-256
 `d80591aafd44599f7b8a57f4eb95b3bdbc5418e32ea3a32dd6d6249caedd75ba`. Allowing shared-reader admission to bypass an active writer causes two actual root
 SELECTs while the writer owns the lock (**1 FAIL / 225 unrun**); report SHA-256
@@ -866,6 +866,24 @@ missing-refresh preparation failed recovery and now uses actual refresh after de
 writer-bypass control passed a weak test; adding an observed waiting reader and completed independent native read
 makes the final control fail on actual reader SQL. Its weak raw counter report was overwritten before archival;
 only its tool result is retained, and it grants no qualification. No alpha or physical equipment operation occurs.
+
+### First public retry review follow-up
+
+The first public retry now completes its actual telemetry, queued evaluation and issued commands before recovery
+is asserted. This phase calls no helper that issues a second independent public request. Three unresolved-debt
+variants require their original complete ON row to be confirmed with an observed provider proof covering its ID;
+the known post-ACK variant retains its acknowledged confirmation and verifies the first public successor context.
+
+Omitting the first retry from the former source still passes all four variants because settleReal could supply
+another public request (**4 PASS / 222 unrun**); report SHA-256 `681a0591e4652639ad878a7a416689b9bc9c75c87a99eb605e8170bae1efcec7`.
+Omitting it from the strengthened source fails all four (**4 FAIL / 222 unrun**); report SHA-256
+`cf60bccc147c04ce45cf5fd13b37a482d9b64bc981a4ce1dd6708d3de7471f53`. Correct final test source is restored before complete positive qualification:
+**568/568**, ten complete files, **226 runtime cases**, report SHA-256 `0ddfa5660b8a22ccda4aae3063feddafb04e39051796681fb736ff902b9f6593`.
+The prior context-fence and writer-bypass controls retain their cb98b3c file attribution and unchanged individual
+bodies; they were not replayed on this full-file follow-up source. All production files, 194 pre-PR witness bodies,
+116 pre-PR runtime literal bodies and 69 helper declarations remain unchanged. Counts stay **74/139 bound,
+65 unbound**, pending merge; no additional original row is adopted. The initial batch record is retained verbatim
+in the ledger and the follow-up pins the reviewed source plus current bodies, helpers, reports and line anchors.
 
 ## Case checklist
 

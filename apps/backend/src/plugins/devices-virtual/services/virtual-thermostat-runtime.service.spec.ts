@@ -9388,9 +9388,12 @@ describe('virtual thermostat durable runtime', () => {
 				const count = evaluations;
 				const previousContext = owner['contexts'].get(controllerId);
 				await owner.request(controllerId, false);
-				await settleReal(fixture);
-				expect(evaluations).toBeGreaterThan(count);
-				expect(owner['contexts'].get(controllerId)).not.toBe(previousContext);
+				// Join the first retry's actual issued work and native feedback; issue no second public request.
+				await fixture.flushTelemetry();
+				await owner.flush();
+				await Promise.all([...owner['inFlight'].values()]);
+				await fixture.flushTelemetry();
+				await owner.flush();
 				const recovered = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 				const original = recovered.find((row) => row.id === debtId);
 				const debt = before.find((row) => row.id === debtId);
@@ -9405,6 +9408,8 @@ describe('virtual thermostat durable runtime', () => {
 				expect(
 					proofs.some((proof) => proof?.proofId === original?.proofId && proof.coveredCommandIds.includes(debtId)),
 				).toBe(true);
+				expect(evaluations).toBeGreaterThan(count);
+				expect(owner['contexts'].get(controllerId)).not.toBe(previousContext);
 				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(config);
 				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
 				expect(fixture.controls.errors).toEqual([]);
