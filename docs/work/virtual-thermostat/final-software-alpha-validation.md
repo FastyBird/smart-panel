@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **587/587**, zero failures/skips, one complete local ten-file invocation on merged #1537 plus six native-origin executions. Includes **245/245** runtime cases. Report SHA-256 `e76a4ac675722dbdd0273186b3983ffbae4d0243eacff39c7b880d08b632b918`; exact source hashes and apps tree are in the ledger. |
+| Current complete consumers | **587/587**, zero failures/skips, one complete local ten-file invocation on merged #1537 plus six native-origin executions. Includes **245/245** runtime cases. Report SHA-256 `58890c6fbe9e331fa2f90021fe21cb7329e6eaccf1cc83f165d9d47a186f2dd4`; exact source hashes and apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -158,6 +158,14 @@ schedules are not reproduced. [The replacement scopes and five controls](origina
 record the shared executions and exact differences. This setup directly records offline qualification and
 does not invoke the installation loader; earlier loader wording for 179/191/192/199 is corrected without
 changing their bodies or dispositions. No equipment or complete retired private-protocol equivalence follows.
+
+Original relay-event review follow-up adds no cases or dispositions. A call-through observer now checks
+requests inside each exact original ON/OFF accepted event, independently of later settlement. Separate
+in-flight-only ON/OFF omission controls pass the former test and fail the strengthened test at its respective
+original-event assertion (each 1 PASS before / 1 FAIL after, 244 unrun). The original five batch controls retain
+their historical pre-review source; fresh complete qualification remains 587/587 including 245 runtime cases.
+[The source-bound review record](original1473-residual-acceptance.md#original-relay-event-request-review-follow-up)
+records controls, unchanged bodies/helpers, bot coverage limits and interrupted preparations.
 
 ## Composed acceptance
 

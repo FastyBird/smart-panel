@@ -10321,6 +10321,18 @@ describe('virtual thermostat durable runtime', () => {
 		const observed = await observeNativeDispatchOrigin();
 		const { fixture, owner, calls, reports } = observed;
 		const request = jest.spyOn(owner, 'request');
+		const relayRequests: Array<{ event: (typeof reports)[number]['event']; targets: string[] }> = [];
+		const emit = events.emit.bind(events) as typeof events.emit;
+		const emissions = jest.spyOn(events, 'emit').mockImplementation((event, ...values) => {
+			const before = request.mock.calls.length;
+			const result = emit(event, ...(values as unknown[]));
+			if (event === EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED) {
+				const sample = values[0] as (typeof reports)[number]['event'];
+				if (sample.propertyId === relayId)
+					relayRequests.push({ event: sample, targets: request.mock.calls.slice(before).map(([target]) => target) });
+			}
+			return result;
+		});
 		let failure: { cause: unknown } | undefined;
 		try {
 			const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
@@ -10333,6 +10345,8 @@ describe('virtual thermostat durable runtime', () => {
 				(entry) => entry.origin === on.args[4].commandId && entry.event.sample.value === true,
 			);
 			expect(onReports.length).toBeGreaterThan(0);
+			for (const entry of onReports)
+				expect(relayRequests.find(({ event }) => event === entry.event)?.targets).toEqual([controllerId]);
 			const onRow = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
 				id: on.args[4].commandId,
 			});
@@ -10351,6 +10365,8 @@ describe('virtual thermostat durable runtime', () => {
 				(entry) => entry.origin === off.args[4].commandId && entry.event.sample.value === false,
 			);
 			expect(offReports.length).toBeGreaterThan(0);
+			for (const entry of offReports)
+				expect(relayRequests.find(({ event }) => event === entry.event)?.targets).toEqual([controllerId]);
 			const originalA = offReports[0].event;
 			await owner.request(controllerId, false);
 			await owner.flush();
@@ -10382,6 +10398,7 @@ describe('virtual thermostat durable runtime', () => {
 			} catch (cause) {
 				failure ??= { cause };
 			}
+			emissions.mockRestore();
 			request.mockRestore();
 		}
 		if (failure) throw failure.cause;

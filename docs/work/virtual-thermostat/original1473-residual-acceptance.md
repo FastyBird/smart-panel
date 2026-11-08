@@ -65,7 +65,7 @@ qualification remain separate gates in #1462.
 
 The current base is merged #1537 (`41ec33a93a37ffe4b8217bff633ebadc20a9625a`), plus one shared observation helper and three literal
 bodies/six expanded executions. Complete local ten-file consumers pass **587/587**, including **245 runtime cases**,
-zero failures/skips; report SHA-256 `e76a4ac675722dbdd0273186b3983ffbae4d0243eacff39c7b880d08b632b918`. All 220 witness bindings across 214 original rows verify.
+zero failures/skips; report SHA-256 `58890c6fbe9e331fa2f90021fe21cb7329e6eaccf1cc83f165d9d47a186f2dd4`. All 220 witness bindings across 214 original rows verify.
 The fixed residual plan has **92 bindings (64 scoped, 28 replacements)** and **47 open entries**. Seven rows share
 five bound executions; a no-loss variant is an additional control. All 213 prior witness bodies, 123 literal
 runtime bodies, 74 helper declarations,32 production files and the fixture remain unchanged. Five focused
@@ -1092,7 +1092,9 @@ The immutable prior ledger and historical nativeReplayRollbackBatch.scope are re
 correction; their bodies, assertions and dispositions are unchanged. Loader-backed tests elsewhere keep their
 individual evidence, but this helper grants no loader execution or equipment acceptance.
 
-| Current-source control | Measured selection and exact failure | Report SHA-256 |
+The following five controls retain the original pre-review `beae28f` test source and report; they were not rerun after the routing assertion follow-up below.
+
+| Original batch-source control | Measured selection and exact failure | Report SHA-256 |
 | --- | --- | --- |
 |Omit ordinary value-state listener|0 PASS / 1 FAIL / 244 unrun; manual request count stops advancing.|`a37af74648359a0de0125862ab786a1c48d22b26c2ac3c4534caa357e457168e`|
 |Consume event objects only once|0 PASS / 1 FAIL / 244 unrun; original OFF replay no longer requests.|`99ab7b4fff34661414111b8ee970f757704ac33f8f6f506180e222d9cd9026ef`|
@@ -1101,7 +1103,7 @@ individual evidence, but this helper grants no loader execution or equipment acc
 |Reinsert old A after outcome write|0 PASS / 1 FAIL / 244 unrun; immediate context identity after original completion fails.|`265dbb625a0d9f5a3fdb2ff11a799f7132d8447d69680a628a1e537252a018da`|
 
 All temporary sources are restored byte-for-byte before **587/587**, including **245 runtime cases**, ten
-complete files, zero skips; report SHA-256 `e76a4ac675722dbdd0273186b3983ffbae4d0243eacff39c7b880d08b632b918`. The no-loss variant delivers a genuine original OFF
+complete files, zero skips; report SHA-256 `58890c6fbe9e331fa2f90021fe21cb7329e6eaccf1cc83f165d9d47a186f2dd4`. The no-loss variant delivers a genuine original OFF
 sample and later qualified proof. Types, strict lint, formatting, all 220 witness bindings/139 checklist entries
 and source/body/helper/production/link audits pass. All 213 preceding witness bodies, 123 literal bodies and 74
 helper declarations remain unchanged; 32 production files and the shared fixture are unchanged.
@@ -1112,6 +1114,31 @@ failures and a claims feedback-loop Jest timeout and is unqualified. Checking or
 after original completion, before feedback flush, now makes all three focused losses fail functionally with joined
 cleanup. Raw failed preparations are retained. Earlier delayed-old-runner and synchronous AfterQuery/native-
 finalizer preparations remain unqualified. None of these failures is silently reclassified as a product defect.
+
+## Original relay-event request review follow-up
+
+Review [5819926719](https://github.com/FastyBird/smart-panel/pull/1538#pullrequestreview-5819926719)
+identified that original ON/OFF sample emission alone did not prove that either event requested evaluation.
+A call-through emission observer now records the exact requests made synchronously inside each original
+accepted relay event. Both original ON and original OFF must request exactly the current controllerId; later
+settleReal or settlement work cannot satisfy those checks. Original emit/request return values, event objects,
+dispatch/sample/manual/replay assertions and joined cleanup are retained. No production behavior changes.
+
+Separate current-production controls suppress only ON or OFF sample requests while an actual command is in
+flight, allowing later explicit replay. The former routing test passes each control (1 PASS,244 unrun); the
+strengthened body fails each at its own original-event target assertion (1 FAIL,244 unrun), without Jest timeout.
+All temporary sources are restored before the complete **587/587**, **245 runtime**, ten-file invocation, report
+`58890c6fbe9e331fa2f90021fe21cb7329e6eaccf1cc83f165d9d47a186f2dd4`. Other 125 literal runtime bodies and all preceding helper declarations are unchanged. The prior five
+batch controls and their report `e76a4ac675722dbdd0273186b3983ffbae4d0243eacff39c7b880d08b632b918` remain source-attributed historical evidence. Counts stay 92/139
+bound, 47 unbound within this pending PR; merged main stays 85/139 until merge. Fresh exact-head CI and completed
+nonblocking review remain required.
+
+An initial broader OFF-omission preparation also blocked explicit replay, making the former test fail later;
+it is not counted as a previously missed original-event defect. Final in-flight-only controls isolate the
+original event. An initial whole-consumer run was interrupted before qualification to correct a strict-lint
+argument type; the final fresh positive run uses unknown[] forwarding. The bot could not fully review this
+checklist or the JSON ledger and lacked an ESLint sandbox dependency; complete independent ledger/body/helper/
+source/production/report/link audits and actual local lint supplement its completed available-file review.
 
 ## Case checklist
 
