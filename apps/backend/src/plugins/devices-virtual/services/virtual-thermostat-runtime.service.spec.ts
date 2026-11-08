@@ -9944,4 +9944,271 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		if (failure !== undefined) throw failure.cause;
 	});
+	it.each(['none', 'empty-rollback', 'slot-rollback', 'config-rollback', 'captured-sql-replay'] as const)(
+		'rejects native replay and rolled-back effects inside an admitted comfort repeat: %s',
+		async (effect) => {
+			const { fixture } = await useRegisteredNativeClaimsGuard();
+			const owner = runtime;
+			clearInterval(owner['timer']);
+			const expected = await comfortFence();
+			let enterOn!: () => void, releaseOn!: () => void, enterRead!: () => void, releaseRead!: () => void;
+			const onEntered = ownedGate((resolve) => (enterOn = resolve));
+			const onHeld = ownedGate((resolve) => (releaseOn = resolve));
+			const readEntered = ownedGate((resolve) => (enterRead = resolve));
+			const readHeld = ownedGate((resolve) => (releaseRead = resolve));
+			const previousGate = fixture.controls.beforeOn;
+			const gate = async (property: string) => {
+				if (property !== relayId) return;
+				enterOn();
+				await onHeld;
+			};
+			fixture.controls.beforeOn = gate;
+			const sends: Array<Parameters<ThermostatActuationAdapter['send']>> = [];
+			const outcomes: Array<Awaited<ReturnType<ThermostatActuationAdapter['send']>>> = [];
+			const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+			const transport = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+				const adapter = capture(...args);
+				if (!adapter) return adapter;
+				return Object.freeze({
+					...adapter,
+					send: (...parameters: Parameters<typeof adapter.send>) => {
+						const original = adapter.send(...parameters);
+						if (parameters[0].property.id === relayId && parameters[0].value === true) {
+							sends.push(parameters);
+							void original.then(
+								(result) => outcomes.push(result),
+								() => undefined,
+							);
+						}
+						return original;
+					},
+				});
+			});
+			const roots = new AsyncLocalStorage<object>();
+			const root = Object.freeze({ owner });
+			const tables = [
+				'devices_virtual_thermostat_configs',
+				'devices_virtual_thermostat_actuator_claims',
+				'devices_virtual_thermostat_sources',
+				'devices_module_climate_automation_slots',
+				'devices_virtual_thermostat_command_journal',
+				'devices_virtual_thermostat_branch_runtime',
+				'devices_virtual_graph_revision',
+			];
+			const snapshot = async (manager: EntityManager) => {
+				const image: Record<string, Array<Record<string, unknown>>> = {};
+				for (const table of tables)
+					image[table] = await manager.query<Array<Record<string, unknown>>>(`SELECT * FROM "${table}" ORDER BY rowid`);
+				return image;
+			};
+			let commandId: string | undefined, claimId: string | undefined;
+			let firstRead = true,
+				nativeRead = false,
+				originalSettled = false,
+				injected = false;
+			let before: Awaited<ReturnType<typeof snapshot>> | undefined;
+			const extraId = uuid();
+			let originalWrite:
+				| { runner: import('typeorm').QueryRunner; query: string; parameters: readonly unknown[] }
+				| undefined;
+			const observerTasks: Promise<void>[] = [];
+			let rolledBack = false;
+
+			const observer = {
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (
+						firstRead &&
+						roots.getStore() === root &&
+						event.query.startsWith('SELECT') &&
+						event.query.includes('devices_virtual_thermostat_configs') &&
+						event.parameters?.includes(controllerId)
+					) {
+						firstRead = false;
+						enterRead();
+						await readHeld;
+					}
+				},
+				afterQuery: (event: AfterQueryEvent<unknown>) => {
+					const task = (async () => {
+						if (
+							!originalWrite &&
+							commandId &&
+							event.success &&
+							event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+							event.parameters?.includes(commandId) &&
+							event.parameters.includes('cancelled')
+						) {
+							originalWrite = {
+								runner: event.queryRunner,
+								query: event.query,
+								parameters: [...(event.parameters as readonly unknown[])],
+							};
+						}
+
+						if (
+							nativeRead ||
+							roots.getStore() !== root ||
+							!event.queryRunner.isTransactionActive ||
+							!event.query.startsWith('SELECT') ||
+							!event.query.includes('devices_virtual_thermostat_configs')
+						)
+							return;
+						nativeRead = true;
+						expect(originalSettled).toBe(true);
+						expect(commandId).toBeDefined();
+						before = await snapshot(event.queryRunner.manager);
+						const journal = 'devices_virtual_thermostat_command_journal';
+						expect(before[journal].find((row) => row.id === commandId)).toMatchObject({
+							id: commandId,
+							claimId,
+							status: 'cancelled',
+							proofId: null,
+						});
+						expect(
+							before.devices_module_climate_automation_slots.filter((row) => row.controllerId === controllerId),
+						).toHaveLength(1);
+						expect(
+							before.devices_virtual_thermostat_configs.filter((row) => row.controllerId === controllerId),
+						).toHaveLength(1);
+						expect(before.devices_virtual_thermostat_actuator_claims.filter((row) => row.id === claimId)).toHaveLength(
+							1,
+						);
+
+						if (effect === 'empty-rollback' || effect === 'slot-rollback' || effect === 'config-rollback') {
+							const table =
+								effect === 'slot-rollback'
+									? 'devices_module_climate_automation_slots'
+									: 'devices_virtual_thermostat_configs';
+							const column = effect === 'slot-rollback' ? 'manualCounter' : 'revision';
+							const primary = new Error('original nested native rollback');
+							await expect(
+								event.queryRunner.manager.transaction(async (manager) => {
+									injected = true;
+									if (effect !== 'empty-rollback') {
+										await manager.query(
+											`UPDATE "${table}" SET "${column}" = "${column}" + 1 WHERE "controllerId" = ?`,
+											[controllerId],
+										);
+										const during = await snapshot(manager);
+										expect(during[table]).not.toEqual(before[table]);
+									} else expect(await snapshot(manager)).toEqual(before);
+									throw primary;
+								}),
+							).rejects.toBe(primary);
+							rolledBack = true;
+						} else if (effect === 'captured-sql-replay') {
+							expect(originalWrite).toBeDefined();
+							if (!originalWrite) throw new Error('Original acknowledged cancellation UPDATE missing');
+							expect(originalWrite.runner === event.queryRunner).toBe(false);
+							expect(originalWrite.parameters).toContain(commandId);
+							expect(originalWrite.parameters).toContain('cancelled');
+							injected = true;
+							await event.queryRunner.query(originalWrite.query, [...originalWrite.parameters]);
+						}
+						expect(await snapshot(event.queryRunner.manager)).toEqual(before);
+					})();
+					observerTasks.push(task);
+					void task.catch(() => undefined);
+					return task;
+				},
+			};
+			let operation: Promise<void> | undefined;
+			let mutation: ReturnType<typeof comfort.configure> | undefined;
+			let failure: { cause: unknown } | undefined;
+			try {
+				await fixture.report(sensorId, 18);
+				let timeout: ReturnType<typeof setTimeout> | undefined;
+				try {
+					await Promise.race([
+						onEntered,
+						new Promise<never>((_, reject) => {
+							timeout = setTimeout(
+								() =>
+									reject(
+										new Error('Native ON entry not reached: ' + JSON.stringify(owner.readDiagnostics(controllerId))),
+									),
+								5000,
+							);
+						}),
+					]);
+				} finally {
+					clearTimeout(timeout);
+				}
+				await owner.flush();
+				expect(sends).toHaveLength(1);
+				commandId = sends[0][4].commandId;
+				claimId = sends[0][1].id;
+				expect(sends[0][3]()).toBe(true);
+				operation = owner['inFlight'].get(commandId);
+				if (operation === undefined) throw new Error('Original managed command unavailable');
+				void operation.then(
+					() => {
+						originalSettled = true;
+					},
+					() => undefined,
+				);
+				database.subscribers.push(observer);
+				mutation = roots.run(root, () =>
+					comfort.configure(controllerId, expected, {
+						automation_enabled: true,
+						heating_range: { minimum: 10, maximum: 30 },
+						cooling_range: null,
+						presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+					}),
+				);
+				void mutation.catch(() => undefined);
+				expect(sends[0][3]()).toBe(false);
+				await readEntered;
+				releaseOn();
+				await fixture.flushTelemetry();
+				owner.onModuleDestroy();
+				releaseRead();
+				const [selection, command] = await Promise.allSettled([mutation, operation]);
+				for (const observed of await Promise.allSettled(observerTasks))
+					if (observed.status === 'rejected') throw observed.reason;
+				expect(command.status).toBe('fulfilled');
+				expect(nativeRead).toBe(true);
+				expect(injected).toBe(effect !== 'none');
+				expect(rolledBack).toBe(
+					effect === 'empty-rollback' || effect === 'slot-rollback' || effect === 'config-rollback',
+				);
+				if (effect === 'none') {
+					expect(selection.status).toBe('fulfilled');
+					if (selection.status === 'fulfilled') expect(selection.value.revision).toBe(expected.expected_revision);
+				} else expect(selection.status).toBe('rejected');
+				expect(before).toBeDefined();
+				expect(await snapshot(database.manager)).toEqual(before);
+				expect(await database.manager.countBy(VirtualThermostatCommandEntity, { id: extraId })).toBe(0);
+				expect(outcomes).toEqual([expect.objectContaining({ outcome: 'refused' })]);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: commandId })).toMatchObject(
+					{
+						status: 'cancelled',
+						proofId: null,
+					},
+				);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				releaseOn();
+				releaseRead();
+				const cleanup = await Promise.allSettled([owner.flush()]);
+				await Promise.allSettled([
+					...(mutation !== undefined ? [mutation] : []),
+					...(operation !== undefined ? [operation] : []),
+				]);
+				for (const observed of await Promise.allSettled(observerTasks))
+					if (observed.status === 'rejected') failure ??= { cause: observed.reason };
+				for (const outcome of cleanup) if (outcome.status === 'rejected') failure ??= { cause: outcome.reason };
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				transport.mockRestore();
+				if (fixture.controls.beforeOn === gate) fixture.controls.beforeOn = previousGate;
+				else failure ??= { cause: new Error('Foreign native ON gate retained') };
+			}
+			if (failure !== undefined) throw failure.cause;
+		},
+	);
 });
