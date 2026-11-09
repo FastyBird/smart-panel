@@ -378,6 +378,9 @@ jobs:
       - name: "Test delayed package registry visibility"
         run: "node --test .github/actions/publish-npm-package/test/wait-for-visibility.test.cjs"
 
+      - name: "Test Raspbian release artifact names and checksums"
+        run: "node --test .github/scripts/test/raspbian-artifacts.test.cjs"
+
       - name: "Install validation dependencies"
         run: "npm install ajv yaml"
 
