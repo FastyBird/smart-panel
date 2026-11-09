@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **598/598**, zero failures/skips, one complete local ten-file invocation on merged #1538 plus eleven native-lifetime executions. Includes **256/256** runtime cases. Report SHA-256 `b3e3f216923db617c356142693533b3c2d7e782af1380586e3b555402d9c0cc3`; exact source hashes/apps tree are in the ledger. |
+| Current complete consumers | **598/598**, zero failures/skips, one complete local ten-file invocation on merged #1538 plus eleven native-lifetime executions. Includes **256/256** runtime cases. Report SHA-256 `7a7e7e472a9682f523d71afffa1e9e0e90de078731cd1326965e118aa520ca63`; exact source hashes/apps tree are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -171,12 +171,15 @@ Twelve native-lifetime replacements bind 180–181, 183–188, 193–194 and 219
 old command cannot borrow successor admission or wait on its later released-owner native read. Fresh B can
 confirm old history with its own actual OFF proof before A returns; A then rejects its stale native image rather
 than rewriting B history. Same-instance B retains the original in-flight object until known-unsent cancellation.
-A terminal original is absent from fresh live predecessor work; unchanged comfort preserves complete native
-images. Cloned/oversized decision identities cannot run callbacks or SQL. Actual native recovery-before-write
+A call-through observer retains the genuine completed ON decision Promise: fresh B public capture must
+not subscribe to that exact original completion. An intentional fulfilled-history capture mutation passes the
+previous witness and fails this strengthened assertion; unchanged comfort preserves complete native images. Cloned/oversized decision identities cannot run callbacks or SQL. Actual native recovery-before-write
 errors retain exact P, including falsy values, through real registration cleanup Q and release SQLite while
 the original possibly-sent command remains held. [The exact replacement boundaries and controls](original1473-residual-acceptance.md#rows-180181-183188-193194-and-219220-native-lifecycle-and-original-completion)
 retain the removed R132 seed/receipt/private-capability/TIME, AfterQuery and foreign-descriptor limits. This
-adds no production behavior or installed qualification.
+adds no production behavior or installed qualification. The [membership and claims-neutral review follow-up](original1473-residual-acceptance.md#completed-history-membership-and-claims-neutral-recovery-review-follow-up)
+records the fresh598-case report, source audit and unchanged counts. Row203 now explicitly distinguishes its
+historical refresh title from the existing claims-neutral capture replacement; no retired refresh callback is granted.
 
 ## Composed acceptance
 

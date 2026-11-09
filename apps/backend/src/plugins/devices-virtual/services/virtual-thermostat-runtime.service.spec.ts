@@ -10814,6 +10814,20 @@ describe('virtual thermostat durable runtime', () => {
 		const observed = await observeNativeDispatchOrigin();
 		const { fixture, claims, owner: a, calls } = observed;
 		let b: VirtualThermostatRuntimeService | undefined;
+		let originalCompletion: Promise<void> | undefined;
+		const previousOn = fixture.controls.afterOn;
+		const observeCompletion = async (property: string) => {
+			if (property === relayId) {
+				const on = calls.find((call) => call.args[0].value === true);
+				const decisions = [...(a['ownership']['pending'].get(controllerId) ?? [])].filter(
+					(decision) => on !== undefined && decision.commands.has(on.args[4].commandId),
+				);
+				if (decisions.length !== 1) throw new Error('Original issued ON completion unavailable');
+				originalCompletion = decisions[0].completion;
+			}
+			await previousOn?.(property);
+		};
+		fixture.controls.afterOn = observeCompletion;
 		let failure: { cause: unknown } | undefined;
 		try {
 			await fixture.report(sensorId, 18);
@@ -10826,6 +10840,8 @@ describe('virtual thermostat durable runtime', () => {
 			await comfort.select(controllerId, expected, 'eco', false);
 			await settleReal(fixture);
 			expect(a['inFlight'].size).toBe(0);
+			if (originalCompletion === undefined) throw new Error('Original settled ON completion missing');
+			await originalCompletion;
 			const original = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
 				id: on.args[4].commandId,
 			});
@@ -10854,10 +10870,16 @@ describe('virtual thermostat durable runtime', () => {
 			await settleReal(fixture);
 			expect(b['inFlight'].size).toBe(0);
 			const before = await nativeLifetimeImage();
-			await waitNativeLifetime(
-				b.capturePredecessors(controllerId),
-				'Fresh predecessor capture retained completed history',
-			);
+			const subscriptions = jest.spyOn(originalCompletion, 'then');
+			try {
+				await waitNativeLifetime(
+					b.capturePredecessors(controllerId),
+					'Fresh predecessor capture retained completed history',
+				);
+				expect(subscriptions).not.toHaveBeenCalled();
+			} finally {
+				subscriptions.mockRestore();
+			}
 			const current = await comfortFence();
 			await comfort.select(controllerId, current, 'eco', false);
 			await settleReal(fixture);
@@ -10876,6 +10898,8 @@ describe('virtual thermostat durable runtime', () => {
 			} catch (cause) {
 				failure ??= { cause };
 			}
+			if (fixture.controls.afterOn === observeCompletion) fixture.controls.afterOn = previousOn;
+			else failure ??= { cause: new Error('Foreign original-completion observer retained') };
 		}
 		if (failure) throw failure.cause;
 	});
@@ -11039,6 +11063,9 @@ describe('virtual thermostat durable runtime', () => {
 				);
 				owner.onModuleDestroy();
 				const before = await nativeLifetimeImage();
+				const runtimeBefore = await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, {
+					controllerId,
+				});
 				database.subscribers.push(subscriber);
 				armed = true;
 				starting = owner.onApplicationBootstrap();
@@ -11060,6 +11087,9 @@ describe('virtual thermostat durable runtime', () => {
 				expect(owner['contexts'].size).toBe(0);
 				expect(claims['runtimeAdmission']).toBeUndefined();
 				expect(await nativeLifetimeImage()).toEqual(before);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId })).toEqual(
+					runtimeBefore,
+				);
 				expect(logger.mock.calls).toEqual(
 					kind === 'Q-only' ? [] : [['Failed to retire original thermostat runtime', secondary]],
 				);
