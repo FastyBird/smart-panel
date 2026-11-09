@@ -3,7 +3,8 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { MODBUS_DEFAULTS, ModbusFraming } from '../devices-modbus.constants';
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODBUS_PLUGIN_NAME, MODBUS_DEFAULTS, ModbusFraming } from '../devices-modbus.constants';
 import { ModbusValidationException } from '../devices-modbus.exceptions';
 import { CreateModbusEndpointDto } from '../dto/create-endpoint.dto';
 import { UpdateModbusEndpointDto } from '../dto/update-endpoint.dto';
@@ -18,10 +19,12 @@ const defaultInterRequestDelayMs = (framing: ModbusFraming): number =>
 		: MODBUS_DEFAULTS.INTER_REQUEST_DELAY_MS_TCP;
 
 const validationError = (field: string, reason: string): ModbusValidationException =>
-	new ModbusValidationException(JSON.stringify([{ field, reason }]));
+	new ModbusValidationException([JSON.stringify({ field, reason })]);
 
 @Injectable()
 export class ModbusEndpointsService {
+	private readonly logger = createExtensionLogger(DEVICES_MODBUS_PLUGIN_NAME, 'ModbusEndpointsService');
+
 	constructor(
 		@InjectRepository(ModbusEndpointEntity)
 		private readonly repository: Repository<ModbusEndpointEntity>,
@@ -68,7 +71,7 @@ export class ModbusEndpointsService {
 
 		const saved = await this.repository.save(endpoint);
 
-		await this.connections.reconcile();
+		await this.reconcile(saved.id);
 
 		return saved;
 	}
@@ -100,7 +103,7 @@ export class ModbusEndpointsService {
 
 		const saved = await this.repository.save(endpoint);
 
-		await this.connections.reconcile();
+		await this.reconcile(id);
 
 		return saved;
 	}
@@ -120,7 +123,24 @@ export class ModbusEndpointsService {
 
 		await this.repository.remove(endpoint);
 
-		await this.connections.reconcile();
+		await this.reconcile(id);
+	}
+
+	/**
+	 * The change is already committed, so a reconcile failure must not turn it into an error response. The runtime
+	 * re-reconciles on start and on the next change.
+	 */
+	private async reconcile(endpointId: string): Promise<void> {
+		try {
+			await this.connections.reconcile();
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to reconcile connections after change to endpoint id=${endpointId}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
 	}
 
 	private async assertUniqueAddress(host: string, port: number, ignoreId?: string): Promise<void> {

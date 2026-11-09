@@ -1,7 +1,9 @@
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { Repository } from 'typeorm';
 
-import { NotFoundException } from '@nestjs/common';
+import { ArgumentsHost, NotFoundException } from '@nestjs/common';
 
+import { BadRequestExceptionFilter } from '../../../common/filters/bad-request-exception.filter';
 import { ModbusFraming } from '../devices-modbus.constants';
 import { ModbusValidationException } from '../devices-modbus.exceptions';
 import { ModbusDeviceEntity } from '../entities/devices-modbus.entity';
@@ -84,7 +86,10 @@ describe('ModbusEndpointsService', () => {
 
 		devices.push({ name: 'Boiler meter', modbusEndpointId: endpoint.id });
 
-		await expect(service.remove(endpoint.id)).rejects.toThrow(/Boiler meter/);
+		await expect(service.remove(endpoint.id)).rejects.toThrow(ModbusValidationException);
+		await expect(service.remove(endpoint.id)).rejects.toMatchObject({
+			response: { message: [expect.stringContaining('Boiler meter')] },
+		});
 		expect(endpoints).toHaveLength(1);
 	});
 
@@ -123,5 +128,43 @@ describe('ModbusEndpointsService', () => {
 		await expect(service.update(other.id, { host: '10.10.0.10' })).rejects.toBeInstanceOf(ModbusValidationException);
 		await expect(service.update(other.id, { host: '10.10.0.11', name: 'B2' })).resolves.toBeDefined();
 		await expect(service.getOneOrThrow('missing')).rejects.toBeInstanceOf(NotFoundException);
+	});
+
+	it('keeps the specific reason through BadRequestExceptionFilter', async () => {
+		await service.create({ name: 'A', host: '10.10.0.10' });
+
+		const error = await service.create({ name: 'B', host: '10.10.0.10' }).catch((e: unknown) => e);
+
+		const send = jest.fn();
+		const reply = { code: jest.fn().mockReturnThis(), type: jest.fn().mockReturnThis(), send };
+		const host = {
+			switchToHttp: () => ({
+				getRequest: () => ({ originalUrl: '/x', method: 'POST' }) as unknown as FastifyRequest,
+				getResponse: () => reply as unknown as FastifyReply,
+			}),
+		} as unknown as ArgumentsHost;
+
+		new BadRequestExceptionFilter().catch(error as ModbusValidationException, host);
+
+		expect((send.mock.calls[0] as [{ error: { details: unknown } }])[0].error.details).toEqual([
+			{ field: 'host', reason: 'Another endpoint already uses 10.10.0.10:502.' },
+		]);
+	});
+
+	it('still succeeds and logs when reconcile fails after commit', async () => {
+		connections.reconcile.mockRejectedValue(new Error('boom'));
+		const logError = jest.spyOn(Object.getPrototypeOf((service as unknown as { logger: object }).logger), 'error');
+		logError.mockImplementation(() => undefined);
+
+		const saved = await service.create({ name: 'A', host: '10.10.0.10' });
+
+		expect(saved.id).toBeDefined();
+		expect(endpoints).toHaveLength(1);
+		expect(logError).toHaveBeenCalledWith(expect.stringContaining(saved.id), expect.anything());
+
+		await expect(service.update(saved.id, { name: 'A2' })).resolves.toBeDefined();
+		await expect(service.remove(saved.id)).resolves.toBeUndefined();
+
+		logError.mockRestore();
 	});
 });
