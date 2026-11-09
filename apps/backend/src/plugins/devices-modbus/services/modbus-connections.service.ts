@@ -54,6 +54,8 @@ const fingerprint = (endpoint: ModbusEndpointEntity): string =>
 interface RunningConnection {
 	connection: EndpointConnection;
 	fingerprint: string;
+	requestTimeoutMs: number;
+	interRequestDelayMs: number;
 }
 
 /**
@@ -105,6 +107,20 @@ export class ModbusConnectionsService {
 
 	get(endpointId: string): EndpointConnection | null {
 		return this.connections.get(endpointId)?.connection ?? null;
+	}
+
+	/** The slowest request timeout and inter-request delay over the loaded endpoints, or `null` when none is loaded. */
+	getTimingEnvelope(): { requestTimeoutMs: number; interRequestDelayMs: number } | null {
+		const running = [...this.connections.values()];
+
+		if (running.length === 0) {
+			return null;
+		}
+
+		return {
+			requestTimeoutMs: Math.max(...running.map((entry) => entry.requestTimeoutMs)),
+			interRequestDelayMs: Math.max(...running.map((entry) => entry.interRequestDelayMs)),
+		};
 	}
 
 	/** Returns the live health of an endpoint, or `null` when it is not running. */
@@ -159,7 +175,12 @@ export class ModbusConnectionsService {
 
 			const connection = this.createConnection(endpoint);
 
-			this.connections.set(endpointId, { connection, fingerprint: fingerprint(endpoint) });
+			this.connections.set(endpointId, {
+				connection,
+				fingerprint: fingerprint(endpoint),
+				requestTimeoutMs: endpoint.requestTimeoutMs,
+				interRequestDelayMs: endpoint.interRequestDelayMs,
+			});
 			changed.add(endpointId);
 
 			connection.start();

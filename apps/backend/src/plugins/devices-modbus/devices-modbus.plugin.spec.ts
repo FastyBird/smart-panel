@@ -27,7 +27,7 @@ describe('DevicesModbusPlugin', () => {
 	const discriminatorRegistry = { register: jest.fn() };
 	const extensionsService = { registerPluginMetadata: jest.fn() };
 	const managedServiceManager = { register: jest.fn() };
-	const platform = new ModbusDevicePlatform();
+	const platform = Object.create(ModbusDevicePlatform.prototype) as ModbusDevicePlatform;
 	// Constructed by Nest in production; the plugin only registers it, so its dependencies are never used here
 	const runtime = Object.create(ModbusRuntimeService.prototype) as ModbusRuntimeService;
 
