@@ -116,7 +116,6 @@ jobs:
 
       - name: "Rename output"
         run: |
-          cd build/raspbian/output
           if [ -n "$VERSION_OVERRIDE" ]; then
             VERSION="$VERSION_OVERRIDE"
           else
@@ -126,17 +125,12 @@ jobs:
           if [ -n "$IMAGE_SUFFIX" ]; then
             VERSION="${VERSION}-${IMAGE_SUFFIX}"
           fi
-          for f in smart-panel-raspbian-*; do
-            # Replace the version segment (last part before -arm64) with the release version
-            NEW_NAME=$(echo "$f" | sed "s/-[^-]*-arm64/-${VERSION}-arm64/")
-            if [ "$f" != "$NEW_NAME" ]; then
-              mv "$f" "$NEW_NAME"
-            fi
-          done
-          ls -lh
+          node .github/scripts/prepare-raspbian-artifacts.cjs build/raspbian/output "$VERSION" "$IMAGE_VARIANT"
+          ls -lh build/raspbian/output
         env:
           IMAGE_SUFFIX: "${{ github.event.inputs.image_name || '' }}"
           VERSION_OVERRIDE: "${{ inputs.version || '' }}"
+          IMAGE_VARIANT: "${{ matrix.variant }}"
 
       - name: "Upload image artifact"
         uses: "actions/upload-artifact@v7"
