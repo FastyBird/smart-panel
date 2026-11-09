@@ -408,7 +408,23 @@ describe('DevicePoller', () => {
 
 		expect(callbacks.report).toHaveBeenCalledTimes(1);
 		expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date));
-		expect(callbacks.setConnectionState.mock.calls.filter(([state]) => state === ConnectionState.LOST)).toHaveLength(1);
+		// Lost at the third of six failed polls, then re-asserted by each later one (the runtime deduplicates).
+		expect(callbacks.setConnectionState.mock.calls.filter(([state]) => state === ConnectionState.LOST)).toHaveLength(4);
+	});
+
+	it('re-asserts connected after every successful poll, so a state the store missed is stored later', async () => {
+		connection.read.mockResolvedValue([7]);
+
+		create(snapshot([read('p1')])).start();
+		await jest.advanceTimersByTimeAsync(0);
+		await jest.advanceTimersByTimeAsync(2000);
+
+		expect(callbacks.setConnectionState.mock.calls).toEqual([
+			[ConnectionState.INIT, undefined],
+			[ConnectionState.CONNECTED, undefined],
+			[ConnectionState.CONNECTED, undefined],
+			[ConnectionState.CONNECTED, undefined],
+		]);
 	});
 
 	it('skips ticks while a poll is running and flags overload', async () => {

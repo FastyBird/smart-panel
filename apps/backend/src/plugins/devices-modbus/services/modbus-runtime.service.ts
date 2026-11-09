@@ -70,7 +70,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 	/** Latest load ticket per device; an older load that resolves later is dropped. */
 	private readonly loads = new Map<string, number>();
 	private loadSequence = 0;
-	/** Last connection state stored for each device by this runtime. */
+	/** Last connection state the connectivity service confirmed it stored for each device. */
 	private readonly lastStates = new Map<string, ConnectionState>();
 	private readonly overloadedEndpoints = new Set<string>();
 
@@ -246,7 +246,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 
 		const device = preloaded ?? (await this.devicesService.findOne<ModbusDeviceEntity>(deviceId, DEVICES_MODBUS_TYPE));
 		const bindings = device ? await this.bindingsService.findByDevice(deviceId) : [];
-		const endpoint = device?.modbusEndpointId ? await this.endpointsService.findOne(device.modbusEndpointId) : null;
+		const endpoint = device?.endpointId ? await this.endpointsService.findOne(device.endpointId) : null;
 
 		if (this.loads.get(deviceId) !== ticket || !this.isRunning()) {
 			return;
@@ -265,7 +265,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 			.filter((binding) => binding.role === ModbusBindingRole.READ)
 			.map((binding) => ({ propertyId: binding.propertyId, binding }));
 		const entry: LoadedDevice = {
-			endpointId: device.modbusEndpointId,
+			endpointId: device.endpointId,
 			readPropertyIds: reads.map((read) => read.propertyId),
 			poller: null,
 			commandable: false,
@@ -332,14 +332,14 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		return {
 			deviceId: device.id,
 			endpointId: endpoint.id,
-			unitId: device.modbusUnitId ?? MODBUS_DEFAULTS.UNIT_ID,
-			pollIntervalMs: device.modbusPollIntervalMs ?? MODBUS_DEFAULTS.POLL_INTERVAL_MS,
-			byteOrder: device.modbusByteOrder ?? MODBUS_DEFAULTS.BYTE_ORDER,
-			wordOrder: device.modbusWordOrder ?? MODBUS_DEFAULTS.WORD_ORDER,
+			unitId: device.unitId ?? MODBUS_DEFAULTS.UNIT_ID,
+			pollIntervalMs: device.pollIntervalMs ?? MODBUS_DEFAULTS.POLL_INTERVAL_MS,
+			byteOrder: device.byteOrder ?? MODBUS_DEFAULTS.BYTE_ORDER,
+			wordOrder: device.wordOrder ?? MODBUS_DEFAULTS.WORD_ORDER,
 			limits: {
-				maxRegisters: device.modbusMaxReadRegisters ?? MODBUS_DEFAULTS.MAX_READ_REGISTERS,
-				maxBits: device.modbusMaxReadBits ?? MODBUS_DEFAULTS.MAX_READ_BITS,
-				maxGap: device.modbusMaxReadGap ?? MODBUS_DEFAULTS.MAX_READ_GAP,
+				maxRegisters: device.maxReadRegisters ?? MODBUS_DEFAULTS.MAX_READ_REGISTERS,
+				maxBits: device.maxReadBits ?? MODBUS_DEFAULTS.MAX_READ_BITS,
+				maxGap: device.maxReadGap ?? MODBUS_DEFAULTS.MAX_READ_GAP,
 			},
 			reads,
 		};
@@ -459,14 +459,23 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		}
 	}
 
+	/**
+	 * Stores a device's connection state unless it is the one last stored. Only a state the connectivity service
+	 * confirms is remembered: one it could not store (e.g. the status property does not exist yet) is retried by the
+	 * next identical request, which the poller repeats after every poll.
+	 */
 	private async setDeviceState(deviceId: string, state: ConnectionState, reason?: string): Promise<void> {
 		if (this.lastStates.get(deviceId) === state) {
 			return;
 		}
 
-		await this.deviceConnectivityService.setConnectionState(deviceId, { state, reason });
+		const stored = await this.deviceConnectivityService.trySetConnectionState(deviceId, { state, reason });
 
-		this.lastStates.set(deviceId, state);
+		if (stored) {
+			this.lastStates.set(deviceId, state);
+		} else {
+			this.lastStates.delete(deviceId);
+		}
 	}
 
 	private async report(

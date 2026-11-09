@@ -7,6 +7,11 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_MODBUS_TYPE, ModbusByteOrder } from '../devices-modbus.constants';
 
+/**
+ * Each Modbus property is named the camelCase of its wire name (`unitId` <- `unit_id`): the core `PATCH /devices/:id`
+ * keeps only entity fields whose snake_case name the request carried, so a `modbusUnitId` property would be silently
+ * dropped from every update. The columns keep their `modbus` prefix on the shared STI table.
+ */
 @ApiSchema({ name: 'DevicesModbusPluginDataDevice' })
 @ChildEntity()
 export class ModbusDeviceEntity extends DeviceEntity {
@@ -22,12 +27,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsOptional()
 	@IsUUID()
 	@Transform(
-		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['endpoint_id'] ?? obj['modbusEndpointId'] ?? null) as string | null,
+		({ obj }: { obj: Record<string, unknown> }) => (obj['endpoint_id'] ?? obj['endpointId'] ?? null) as string | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'varchar', nullable: true })
-	modbusEndpointId: string | null;
+	@Column({ name: 'modbusEndpointId', type: 'varchar', nullable: true })
+	endpointId: string | null;
 
 	@ApiPropertyOptional({
 		name: 'unit_id',
@@ -40,11 +44,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsOptional()
 	@IsInt()
 	@Transform(
-		({ obj }: { obj: Record<string, unknown> }) => (obj['unit_id'] ?? obj['modbusUnitId'] ?? null) as number | null,
+		({ obj }: { obj: Record<string, unknown> }) => (obj['unit_id'] ?? obj['unitId'] ?? null) as number | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'integer', nullable: true })
-	modbusUnitId: number | null;
+	@Column({ name: 'modbusUnitId', type: 'integer', nullable: true })
+	unitId: number | null;
 
 	@ApiPropertyOptional({
 		name: 'poll_interval_ms',
@@ -58,11 +62,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsInt()
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['poll_interval_ms'] ?? obj['modbusPollIntervalMs'] ?? null) as number | null,
+			(obj['poll_interval_ms'] ?? obj['pollIntervalMs'] ?? null) as number | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'integer', nullable: true })
-	modbusPollIntervalMs: number | null;
+	@Column({ name: 'modbusPollIntervalMs', type: 'integer', nullable: true })
+	pollIntervalMs: number | null;
 
 	@ApiPropertyOptional({
 		name: 'byte_order',
@@ -76,11 +80,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsEnum(ModbusByteOrder)
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['byte_order'] ?? obj['modbusByteOrder'] ?? null) as ModbusByteOrder | null,
+			(obj['byte_order'] ?? obj['byteOrder'] ?? null) as ModbusByteOrder | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'varchar', nullable: true })
-	modbusByteOrder: ModbusByteOrder | null;
+	@Column({ name: 'modbusByteOrder', type: 'varchar', nullable: true })
+	byteOrder: ModbusByteOrder | null;
 
 	@ApiPropertyOptional({
 		name: 'word_order',
@@ -94,11 +98,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsEnum(ModbusByteOrder)
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['word_order'] ?? obj['modbusWordOrder'] ?? null) as ModbusByteOrder | null,
+			(obj['word_order'] ?? obj['wordOrder'] ?? null) as ModbusByteOrder | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'varchar', nullable: true })
-	modbusWordOrder: ModbusByteOrder | null;
+	@Column({ name: 'modbusWordOrder', type: 'varchar', nullable: true })
+	wordOrder: ModbusByteOrder | null;
 
 	@ApiPropertyOptional({
 		name: 'max_read_registers',
@@ -112,11 +116,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsInt()
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['max_read_registers'] ?? obj['modbusMaxReadRegisters'] ?? null) as number | null,
+			(obj['max_read_registers'] ?? obj['maxReadRegisters'] ?? null) as number | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'integer', nullable: true })
-	modbusMaxReadRegisters: number | null;
+	@Column({ name: 'modbusMaxReadRegisters', type: 'integer', nullable: true })
+	maxReadRegisters: number | null;
 
 	@ApiPropertyOptional({
 		name: 'max_read_bits',
@@ -130,11 +134,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsInt()
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['max_read_bits'] ?? obj['modbusMaxReadBits'] ?? null) as number | null,
+			(obj['max_read_bits'] ?? obj['maxReadBits'] ?? null) as number | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'integer', nullable: true })
-	modbusMaxReadBits: number | null;
+	@Column({ name: 'modbusMaxReadBits', type: 'integer', nullable: true })
+	maxReadBits: number | null;
 
 	@ApiPropertyOptional({
 		name: 'max_read_gap',
@@ -147,12 +151,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsOptional()
 	@IsInt()
 	@Transform(
-		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['max_read_gap'] ?? obj['modbusMaxReadGap'] ?? null) as number | null,
+		({ obj }: { obj: Record<string, unknown> }) => (obj['max_read_gap'] ?? obj['maxReadGap'] ?? null) as number | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'integer', nullable: true })
-	modbusMaxReadGap: number | null;
+	@Column({ name: 'modbusMaxReadGap', type: 'integer', nullable: true })
+	maxReadGap: number | null;
 
 	@ApiPropertyOptional({
 		name: 'template_id',
@@ -165,12 +168,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsOptional()
 	@IsString()
 	@Transform(
-		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['template_id'] ?? obj['modbusTemplateId'] ?? null) as string | null,
+		({ obj }: { obj: Record<string, unknown> }) => (obj['template_id'] ?? obj['templateId'] ?? null) as string | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'varchar', nullable: true })
-	modbusTemplateId: string | null;
+	@Column({ name: 'modbusTemplateId', type: 'varchar', nullable: true })
+	templateId: string | null;
 
 	@ApiPropertyOptional({
 		name: 'template_revision',
@@ -184,11 +186,11 @@ export class ModbusDeviceEntity extends DeviceEntity {
 	@IsString()
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['template_revision'] ?? obj['modbusTemplateRevision'] ?? null) as string | null,
+			(obj['template_revision'] ?? obj['templateRevision'] ?? null) as string | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'varchar', nullable: true })
-	modbusTemplateRevision: string | null;
+	@Column({ name: 'modbusTemplateRevision', type: 'varchar', nullable: true })
+	templateRevision: string | null;
 
 	@ApiProperty({
 		description: 'Device type',

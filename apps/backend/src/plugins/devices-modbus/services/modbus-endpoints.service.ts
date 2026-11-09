@@ -112,7 +112,7 @@ export class ModbusEndpointsService {
 		const endpoint = await this.getOneOrThrow(id);
 
 		const devices = await this.devicesRepository.find({
-			where: { modbusEndpointId: id } as FindOptionsWhere<ModbusDeviceEntity>,
+			where: { endpointId: id } as FindOptionsWhere<ModbusDeviceEntity>,
 		});
 
 		if (devices.length > 0) {

@@ -114,7 +114,7 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 			return false;
 		}
 
-		const unitId = (updates[0].device as ModbusDeviceEntity).modbusUnitId ?? MODBUS_DEFAULTS.UNIT_ID;
+		const unitId = (updates[0].device as ModbusDeviceEntity).unitId ?? MODBUS_DEFAULTS.UNIT_ID;
 		const written: string[] = [];
 		let ok = true;
 
@@ -194,8 +194,8 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 	private valueOptions(device: ModbusDeviceEntity, binding: ModbusBindingEntity): ModbusValueOptions {
 		return {
 			dataType: binding.dataType,
-			byteOrder: binding.byteOrder ?? device.modbusByteOrder ?? MODBUS_DEFAULTS.BYTE_ORDER,
-			wordOrder: binding.wordOrder ?? device.modbusWordOrder ?? MODBUS_DEFAULTS.WORD_ORDER,
+			byteOrder: binding.byteOrder ?? device.byteOrder ?? MODBUS_DEFAULTS.BYTE_ORDER,
+			wordOrder: binding.wordOrder ?? device.wordOrder ?? MODBUS_DEFAULTS.WORD_ORDER,
 			bit: binding.bit,
 			invert: binding.invert,
 			scale: binding.scale,

@@ -224,6 +224,8 @@ describe('devices-modbus plugin (e2e)', () => {
 		request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${accessToken}`);
 	const authPost = (path: string) =>
 		request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${accessToken}`);
+	const authPatch = (path: string) =>
+		request(app.getHttpServer()).patch(path).set('Authorization', `Bearer ${accessToken}`);
 	const authDelete = (path: string) =>
 		request(app.getHttpServer()).delete(path).set('Authorization', `Bearer ${accessToken}`);
 
@@ -488,6 +490,24 @@ describe('devices-modbus plugin (e2e)', () => {
 		expect(recoveredBody.status.status).toBe(ConnectionState.CONNECTED);
 		expect(httpValueOf(recoveredBody, relayProperty(3).id)).toBe(true);
 	}, 40_000);
+
+	it('applies and validates Modbus fields of a core device PATCH', async () => {
+		const updated = await authPatch(`/modules/devices/devices/${device.id}`)
+			.send({ data: { type: DEVICES_MODBUS_TYPE, max_read_registers: 100, template_revision: '1.0.0+abc123' } })
+			.expect(200);
+
+		expect((updated.body as { data: Record<string, unknown> }).data).toMatchObject({
+			max_read_registers: 100,
+			template_revision: '1.0.0+abc123',
+		});
+
+		const refused = await authPatch(`/modules/devices/devices/${device.id}`)
+			.send({ data: { type: DEVICES_MODBUS_TYPE, endpoint_id: uuid() } })
+			.expect(400);
+
+		expect(JSON.stringify(refused.body)).toContain('endpoint_id');
+		expect((await fetchDevice()) as unknown as Record<string, unknown>).toMatchObject({ endpoint_id: endpointId });
+	});
 
 	it('refuses deleting the endpoint while the device exists', async () => {
 		await authDelete(`/plugins/devices-modbus/endpoints/${endpointId}`).expect(400);

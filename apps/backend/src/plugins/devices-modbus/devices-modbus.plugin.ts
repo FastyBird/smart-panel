@@ -93,6 +93,7 @@ export class DevicesModbusPlugin {
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
+		private readonly deviceStructure: ModbusDeviceStructureService,
 	) {}
 
 	onModuleInit() {
@@ -109,6 +110,9 @@ export class DevicesModbusPlugin {
 			createDto: CreateModbusDeviceDto,
 			updateDto: UpdateModbusDeviceDto,
 			class: ModbusDeviceEntity,
+			// A core PATCH may move the device to another endpoint or unit, or lower its read limit: judged on the merged
+			// row like a creation, and refused with the plugin's 400 validation error.
+			beforeUpdate: (device, previous) => this.deviceStructure.validateUpdate(device, previous),
 		});
 
 		// Register channel type mapper

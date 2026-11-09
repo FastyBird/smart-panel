@@ -63,6 +63,8 @@ type ReadOutcome = { kind: 'ok' } | { kind: 'stale' } | { kind: 'failed'; error:
  *   exception (busy, acknowledge, server failure, gateway, unknown) is transient: like timeouts, connection errors
  *   and an unavailable endpoint it fails the poll without splitting, so a single busy reply never multiplies traffic;
  *   `FAILED_POLLS_UNTIL_LOST` failed polls in a row report `lost` and invalidate every read property once.
+ * - `connected` is passed to `callbacks.setConnectionState` after every successful poll and `lost` after every failed
+ *   poll while lost; the owner deduplicates, so a state its store missed once is stored by a later poll.
  * - Nothing is reported once `stop()` was called or `callbacks.isCurrent()` turned `false`. Callback failures are
  *   logged and never stop the loop.
  */
@@ -213,9 +215,8 @@ export class DevicePoller {
 		} else {
 			this.consecutiveFailures = 0;
 
-			if (this.state !== ConnectionState.CONNECTED) {
-				await this.setState(ConnectionState.CONNECTED);
-			}
+			// Repeated after every successful poll: the owner deduplicates, and a state its store missed is stored now.
+			await this.setState(ConnectionState.CONNECTED);
 		}
 	}
 
@@ -336,7 +337,16 @@ export class DevicePoller {
 			`Poll of device id=${this.device.deviceId} failed (${this.consecutiveFailures} in a row): ${error.message}`,
 		);
 
-		if (this.consecutiveFailures < FAILED_POLLS_UNTIL_LOST || this.state === ConnectionState.LOST) {
+		if (this.consecutiveFailures < FAILED_POLLS_UNTIL_LOST) {
+			return;
+		}
+
+		const reason = `No answer for ${this.consecutiveFailures} consecutive polls: ${error.message}`;
+
+		// Already lost: the properties were invalidated once; the state is repeated for the same reason as `connected`.
+		if (this.state === ConnectionState.LOST) {
+			await this.setState(ConnectionState.LOST, reason);
+
 			return;
 		}
 
@@ -346,10 +356,7 @@ export class DevicePoller {
 			await this.publish(point.key, null, now, false);
 		}
 
-		await this.setState(
-			ConnectionState.LOST,
-			`No answer for ${this.consecutiveFailures} consecutive polls: ${error.message}`,
-		);
+		await this.setState(ConnectionState.LOST, reason);
 	}
 
 	private async publish(

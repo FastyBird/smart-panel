@@ -94,14 +94,14 @@ const deviceEntity = (id: string, overrides: Partial<ModbusDeviceEntity> = {}): 
 		id,
 		name: id,
 		enabled: true,
-		modbusEndpointId: 'endpoint-a',
-		modbusUnitId: 1,
-		modbusPollIntervalMs: 1000,
-		modbusByteOrder: ModbusByteOrder.BIG,
-		modbusWordOrder: ModbusByteOrder.BIG,
-		modbusMaxReadRegisters: 125,
-		modbusMaxReadBits: 2000,
-		modbusMaxReadGap: 0,
+		endpointId: 'endpoint-a',
+		unitId: 1,
+		pollIntervalMs: 1000,
+		byteOrder: ModbusByteOrder.BIG,
+		wordOrder: ModbusByteOrder.BIG,
+		maxReadRegisters: 125,
+		maxReadBits: 2000,
+		maxReadGap: 0,
 		...overrides,
 	});
 
@@ -136,7 +136,7 @@ describe('ModbusRuntimeService', () => {
 	let bindings: ModbusBindingEntity[];
 	let connections: FakeConnection[];
 	let properties: { reportSample: jest.Mock };
-	let connectivity: { setConnectionState: jest.Mock };
+	let connectivity: { trySetConnectionState: jest.Mock };
 	let bindingsService: { findByDevice: jest.Mock };
 	let devicesService: { findOne: jest.Mock; findAll: jest.Mock };
 	let connectionsService: ModbusConnectionsService;
@@ -146,7 +146,7 @@ describe('ModbusRuntimeService', () => {
 		connections.filter((connection) => connection.endpoint.id === endpointId);
 
 	const states = (deviceId: string): ConnectionState[] =>
-		connectivity.setConnectionState.mock.calls
+		connectivity.trySetConnectionState.mock.calls
 			.filter(([id]) => id === deviceId)
 			.map(([, state]) => (state as { state: ConnectionState }).state);
 
@@ -165,7 +165,7 @@ describe('ModbusRuntimeService', () => {
 		connections = [];
 
 		properties = { reportSample: jest.fn(() => Promise.resolve({})) };
-		connectivity = { setConnectionState: jest.fn(() => Promise.resolve()) };
+		connectivity = { trySetConnectionState: jest.fn(() => Promise.resolve(true)) };
 
 		const endpointsRepository = {
 			find: jest.fn(() => Promise.resolve(endpoints.map((e) => Object.assign(new ModbusEndpointEntity(), e)))),
@@ -236,6 +236,26 @@ describe('ModbusRuntimeService', () => {
 		expect(options).toEqual({ skipUnchangedMetadata: true });
 	});
 
+	it('stores connected on a later poll when the store did not take it', async () => {
+		connectivity.trySetConnectionState
+			.mockResolvedValueOnce(true) // init
+			.mockResolvedValueOnce(false); // connected, e.g. the status property did not exist yet
+
+		await runtime.start();
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(states('device-1')).toEqual([ConnectionState.INIT, ConnectionState.CONNECTED]);
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(states('device-1')).toEqual([ConnectionState.INIT, ConnectionState.CONNECTED, ConnectionState.CONNECTED]);
+
+		// Stored now: identical states of later polls are deduplicated.
+		await jest.advanceTimersByTimeAsync(3000);
+
+		expect(states('device-1')).toEqual([ConnectionState.INIT, ConnectionState.CONNECTED, ConnectionState.CONNECTED]);
+	});
+
 	it('marks a device without read bindings as alert', async () => {
 		bindings = [bindingEntity('device-1', 'p1', { role: ModbusBindingRole.WRITE })];
 
@@ -243,7 +263,7 @@ describe('ModbusRuntimeService', () => {
 		await jest.advanceTimersByTimeAsync(5000);
 
 		expect(states('device-1')).toEqual([ConnectionState.ALERT]);
-		expect(connectivity.setConnectionState.mock.calls[0]).toEqual([
+		expect(connectivity.trySetConnectionState.mock.calls[0]).toEqual([
 			'device-1',
 			{ state: ConnectionState.ALERT, reason: 'Device has no read bindings' },
 		]);
@@ -254,7 +274,7 @@ describe('ModbusRuntimeService', () => {
 	});
 
 	it('marks a device whose endpoint is missing as alert and invalidates its read properties', async () => {
-		devices = [deviceEntity('device-1', { modbusEndpointId: 'gone' })];
+		devices = [deviceEntity('device-1', { endpointId: 'gone' })];
 
 		await runtime.start();
 
@@ -328,7 +348,7 @@ describe('ModbusRuntimeService', () => {
 		const loading = runtime.loadDevice('device-1');
 
 		await runtime.onDeviceDeleted(devices[0]);
-		connectivity.setConnectionState.mockClear();
+		connectivity.trySetConnectionState.mockClear();
 		connections[0].read.mockClear();
 
 		release();
@@ -336,7 +356,7 @@ describe('ModbusRuntimeService', () => {
 		await jest.advanceTimersByTimeAsync(3000);
 
 		expect(connections[0].read).not.toHaveBeenCalled();
-		expect(connectivity.setConnectionState).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
 		expect(runtime.getConnection('device-1')).toBeNull();
 	});
 
@@ -349,7 +369,7 @@ describe('ModbusRuntimeService', () => {
 		devicesService.findOne.mockImplementationOnce(
 			() =>
 				new Promise((resolve) => {
-					releaseOld = () => resolve(deviceEntity('device-1', { modbusUnitId: 9 }));
+					releaseOld = () => resolve(deviceEntity('device-1', { unitId: 9 }));
 				}),
 		);
 
@@ -395,7 +415,7 @@ describe('ModbusRuntimeService', () => {
 		expect(connections[0].pending).toHaveLength(1);
 
 		properties.reportSample.mockClear();
-		connectivity.setConnectionState.mockClear();
+		connectivity.trySetConnectionState.mockClear();
 
 		const deleted = devices[0];
 
@@ -406,7 +426,7 @@ describe('ModbusRuntimeService', () => {
 		await jest.advanceTimersByTimeAsync(5000);
 
 		expect(properties.reportSample).not.toHaveBeenCalled();
-		expect(connectivity.setConnectionState).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
 		expect(runtime.getConnection('device-1')).toBeNull();
 	});
 
@@ -443,18 +463,18 @@ describe('ModbusRuntimeService', () => {
 		await jest.advanceTimersByTimeAsync(1000);
 
 		properties.reportSample.mockClear();
-		connectivity.setConnectionState.mockClear();
+		connectivity.trySetConnectionState.mockClear();
 
 		await runtime.onDeviceDeleted(devices[0]);
 		connections[0].pending[0].reject(new ModbusConnectionError('socket closed'));
 		await jest.advanceTimersByTimeAsync(5000);
 
 		expect(properties.reportSample).not.toHaveBeenCalled();
-		expect(connectivity.setConnectionState).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
 	});
 
 	it('rebuilds the connection when an endpoint is edited while requests are in flight', async () => {
-		devices.push(deviceEntity('device-2', { modbusUnitId: 2 }));
+		devices.push(deviceEntity('device-2', { unitId: 2 }));
 		bindings.push(bindingEntity('device-2', 'p2'));
 
 		await runtime.start();
@@ -483,7 +503,7 @@ describe('ModbusRuntimeService', () => {
 		});
 
 		properties.reportSample.mockClear();
-		connectivity.setConnectionState.mockClear();
+		connectivity.trySetConnectionState.mockClear();
 
 		endpoints[0].host = '10.0.0.2';
 		await connectionsService.reconcile();
@@ -532,8 +552,8 @@ describe('ModbusRuntimeService', () => {
 		expect(reports()[1]).toEqual(['p1', 2]);
 	});
 
-	it('keeps polling when setConnectionState rejects', async () => {
-		connectivity.setConnectionState.mockRejectedValue(new Error('Device not found'));
+	it('keeps polling when trySetConnectionState rejects', async () => {
+		connectivity.trySetConnectionState.mockRejectedValue(new Error('Device not found'));
 
 		await runtime.start();
 		await jest.advanceTimersByTimeAsync(0);
@@ -548,7 +568,7 @@ describe('ModbusRuntimeService', () => {
 	});
 
 	it('flags the endpoint overloaded while any of its devices is', async () => {
-		devices.push(deviceEntity('device-2', { modbusUnitId: 2 }));
+		devices.push(deviceEntity('device-2', { unitId: 2 }));
 		bindings.push(bindingEntity('device-2', 'p2'));
 
 		await runtime.start();
@@ -617,11 +637,11 @@ describe('ModbusRuntimeService', () => {
 		await connectionsService.reconcile();
 
 		expect(connections).toHaveLength(0);
-		expect(connectivity.setConnectionState).not.toHaveBeenCalled();
+		expect(connectivity.trySetConnectionState).not.toHaveBeenCalled();
 	});
 
 	it('survives a device that fails to load on start', async () => {
-		devices.push(deviceEntity('device-2', { modbusUnitId: 2 }));
+		devices.push(deviceEntity('device-2', { unitId: 2 }));
 		bindings.push(bindingEntity('device-2', 'p2'));
 		bindingsService.findByDevice.mockImplementation((id: string) =>
 			id === 'device-1'

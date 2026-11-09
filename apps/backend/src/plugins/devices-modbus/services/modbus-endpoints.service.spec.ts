@@ -49,8 +49,8 @@ describe('ModbusEndpointsService', () => {
 			}),
 		};
 		const devicesRepository = {
-			find: jest.fn(({ where }: { where: { modbusEndpointId: string } }) =>
-				Promise.resolve(devices.filter((d) => d.modbusEndpointId === where.modbusEndpointId)),
+			find: jest.fn(({ where }: { where: { endpointId: string } }) =>
+				Promise.resolve(devices.filter((d) => d.endpointId === where.endpointId)),
 			),
 		};
 
@@ -84,7 +84,7 @@ describe('ModbusEndpointsService', () => {
 	it('refuses to delete an endpoint in use', async () => {
 		const endpoint = await service.create({ name: 'A', host: '10.10.0.10' });
 
-		devices.push({ name: 'Boiler meter', modbusEndpointId: endpoint.id });
+		devices.push({ name: 'Boiler meter', endpointId: endpoint.id });
 
 		await expect(service.remove(endpoint.id)).rejects.toThrow(ModbusValidationException);
 		await expect(service.remove(endpoint.id)).rejects.toMatchObject({

@@ -167,6 +167,8 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			class: ModbusDeviceEntity,
 			createDto: CreateModbusDeviceDto,
 			updateDto: UpdateModbusDeviceDto,
+			// As registered by DevicesModbusPlugin
+			beforeUpdate: (device, previous) => service.validateUpdate(device, previous),
 		});
 		channelsMapper.registerMapping({
 			type: DEVICES_MODBUS_TYPE,
@@ -271,7 +273,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		const device = await service.create(toDto(relayBoard(endpoint.id)));
 
 		expect(device).toBeInstanceOf(ModbusDeviceEntity);
-		expect(device).toMatchObject({ modbusEndpointId: endpoint.id, modbusUnitId: 1, category: DeviceCategory.SWITCHER });
+		expect(device).toMatchObject({ endpointId: endpoint.id, unitId: 1, category: DeviceCategory.SWITCHER });
 		expect(device.channels).toHaveLength(9);
 		expect(device.channels.filter((channel) => channel.category === ChannelCategory.SWITCHER)).toHaveLength(8);
 		expect(await counts()).toEqual({ devices: 1, channels: 9, properties: 11, bindings: 16 });
@@ -313,7 +315,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			toDto({ ...relayBoard(endpoint.id), template_id: 'eletechsup-n4d8b08', template_revision: '1.2.0+3f2a9c1b' }),
 		);
 
-		expect(device).toMatchObject({ modbusTemplateId: 'eletechsup-n4d8b08', modbusTemplateRevision: '1.2.0+3f2a9c1b' });
+		expect(device).toMatchObject({ templateId: 'eletechsup-n4d8b08', templateRevision: '1.2.0+3f2a9c1b' });
 	});
 
 	it('rolls back everything when a binding fails', async () => {
@@ -331,6 +333,87 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		await expect(service.create(toDto(relayBoard(endpoint.id)))).rejects.toThrow('binding insert failed');
 		expect(await counts()).toEqual({ devices: 0, channels: 0, properties: 0, bindings: 0 });
 		expect(runtime.loadDevice).not.toHaveBeenCalled();
+	});
+
+	/** A relay whose read binding spans two registers (uint32). */
+	const wideRelay = (endpointId: string, unitId = 1): Plain =>
+		singleRelay(
+			endpointId,
+			(base) => ({ ...base, read: { ...(base.read as Plain), data_type: ModbusDataType.UINT32 } }),
+			unitId,
+		);
+
+	it('refuses max_read_registers below 2 when a read binding spans two registers', async () => {
+		expect(await reasonsOf(service.create(toDto({ ...wideRelay(endpoint.id), max_read_registers: 1 })))).toEqual([
+			{ field: 'max_read_registers', reason: expect.stringContaining('two registers') as string },
+		]);
+		expect((await counts()).devices).toBe(0);
+
+		await expect(service.create(toDto({ ...relayBoard(endpoint.id), max_read_registers: 1 }))).resolves.toBeInstanceOf(
+			ModbusDeviceEntity,
+		);
+	});
+
+	describe('device updates through the core devices service', () => {
+		const patch = (id: string, fields: Plain) => devices.update(id, { type: DEVICES_MODBUS_TYPE, ...fields } as never);
+
+		const stored = async (id: string) => await database.getRepository(ModbusDeviceEntity).findOneByOrFail({ id });
+
+		it('refuses a unit another device uses on the endpoint and leaves the row untouched', async () => {
+			await service.create(toDto(relayBoard(endpoint.id, 2)));
+			const device = await service.create(toDto(relayBoard(endpoint.id, 3)));
+
+			expect(await reasonsOf(patch(device.id, { unit_id: 2 }))).toEqual([
+				{ field: 'unit_id', reason: expect.stringContaining('already used') as string },
+			]);
+			expect((await stored(device.id)).unitId).toBe(3);
+		});
+
+		it('refuses moving a device to an endpoint where its unit is taken', async () => {
+			await service.create(toDto(relayBoard(otherEndpoint.id, 2)));
+			const device = await service.create(toDto(relayBoard(endpoint.id, 2)));
+
+			expect(await reasonsOf(patch(device.id, { endpoint_id: otherEndpoint.id }))).toEqual([
+				{ field: 'unit_id', reason: expect.stringContaining('already used') as string },
+			]);
+			expect((await stored(device.id)).endpointId).toBe(endpoint.id);
+		});
+
+		it('refuses an unknown endpoint', async () => {
+			const device = await service.create(toDto(relayBoard(endpoint.id)));
+
+			expect(await reasonsOf(patch(device.id, { endpoint_id: uuid() }))).toEqual([
+				{ field: 'endpoint_id', reason: 'Endpoint does not exist.' },
+			]);
+			expect((await stored(device.id)).endpointId).toBe(endpoint.id);
+		});
+
+		it('accepts a free unit, another endpoint and a plain rename', async () => {
+			await service.create(toDto(relayBoard(endpoint.id, 2)));
+			const device = await service.create(toDto(relayBoard(endpoint.id, 3)));
+
+			await expect(patch(device.id, { unit_id: 4 })).resolves.toBeDefined();
+			await expect(patch(device.id, { endpoint_id: otherEndpoint.id, unit_id: 2 })).resolves.toBeDefined();
+			await expect(patch(device.id, { name: 'Renamed' })).resolves.toBeDefined();
+
+			expect(await stored(device.id)).toMatchObject({
+				endpointId: otherEndpoint.id,
+				unitId: 2,
+				name: 'Renamed',
+			});
+		});
+
+		it('refuses max_read_registers below 2 when a read binding spans two registers', async () => {
+			const wide = await service.create(toDto(wideRelay(endpoint.id, 2)));
+			const narrow = await service.create(toDto(relayBoard(endpoint.id, 3)));
+
+			expect(await reasonsOf(patch(wide.id, { max_read_registers: 1 }))).toEqual([
+				{ field: 'max_read_registers', reason: expect.stringContaining('two registers') as string },
+			]);
+			expect((await stored(wide.id)).maxReadRegisters).not.toBe(1);
+
+			await expect(patch(narrow.id, { max_read_registers: 1 })).resolves.toBeDefined();
+		});
 	});
 
 	it('refuses a duplicate unit on the same endpoint', async () => {

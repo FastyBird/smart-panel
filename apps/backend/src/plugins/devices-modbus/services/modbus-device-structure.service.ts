@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { DataSource, EntityManager, FindOptionsWhere, In } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
@@ -26,6 +26,7 @@ import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils
 import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	DEVICES_MODBUS_TYPE,
+	MODBUS_DEFAULTS,
 	ModbusBindingRole,
 	ModbusDataType,
 	ModbusRegisterType,
@@ -147,6 +148,74 @@ export class ModbusDeviceStructureService {
 
 			return (await this.devicesService.getOneOrThrow(deviceId)) as ModbusDeviceEntity;
 		});
+	}
+
+	/**
+	 * `beforeUpdate` hook of the Modbus device type mapping: judges a core `PATCH /devices/:id` on the merged row before
+	 * it is written. Only fields the PATCH changed are judged, so a device can always be renamed. It runs under the
+	 * core's structure lock, which `create()` takes as well, so the endpoint and unit check cannot race a creation.
+	 */
+	async validateUpdate(device: ModbusDeviceEntity, previous: Readonly<Partial<ModbusDeviceEntity>>): Promise<void> {
+		const issues: Issue[] = [];
+
+		if (device.endpointId !== previous.endpointId || device.unitId !== previous.unitId) {
+			const endpoint = device.endpointId ? await this.endpoints.findOne(device.endpointId) : null;
+
+			if (!endpoint) {
+				issues.push({ field: 'endpoint_id', reason: 'Endpoint does not exist.' });
+			} else {
+				const existing = await this.dataSource.getRepository(ModbusDeviceEntity).findOne({
+					where: {
+						id: Not(device.id),
+						endpointId: device.endpointId,
+						unitId: device.unitId,
+					} as FindOptionsWhere<ModbusDeviceEntity>,
+				});
+
+				if (existing) {
+					issues.push(this.unitTaken(device.unitId, existing));
+				}
+			}
+		}
+
+		if (device.maxReadRegisters !== previous.maxReadRegisters) {
+			const reads = await this.dataSource
+				.getRepository(ModbusBindingEntity)
+				.find({ where: { deviceId: device.id, role: ModbusBindingRole.READ } });
+			const issue = this.readLimitIssue(
+				device.maxReadRegisters ?? MODBUS_DEFAULTS.MAX_READ_REGISTERS,
+				reads.map((binding) => ({ registerType: binding.registerType, dataType: binding.dataType })),
+			);
+
+			if (issue) {
+				issues.push(issue);
+			}
+		}
+
+		if (issues.length > 0) {
+			throw new ModbusValidationException(issues.map((issue) => JSON.stringify(issue)));
+		}
+	}
+
+	/**
+	 * The read planner never splits a value, so every register read binding must fit into one request: a 32-bit value
+	 * needs `max_read_registers` of at least 2.
+	 */
+	private readLimitIssue(
+		maxReadRegisters: number,
+		reads: Array<{ registerType: ModbusRegisterType; dataType: ModbusDataType }>,
+	): Issue | null {
+		const widest = Math.max(
+			0,
+			...reads.filter((read) => !BIT_TABLES.has(read.registerType)).map((read) => registerSpan(read.dataType)),
+		);
+
+		return widest > maxReadRegisters
+			? {
+					field: 'max_read_registers',
+					reason: `A read binding spans two registers, so max_read_registers must be at least ${widest}.`,
+				}
+			: null;
 	}
 
 	/**
@@ -347,6 +416,13 @@ export class ModbusDeviceStructureService {
 		]);
 	}
 
+	private unitTaken(unitId: number | null, existing: ModbusDeviceEntity): Issue {
+		return {
+			field: 'unit_id',
+			reason: `Unit ${unitId} is already used by device "${existing.name}" on this endpoint.`,
+		};
+	}
+
 	private async validateAgainstDatabase(
 		dto: CreateModbusDeviceStructureDto,
 		endpoint: ModbusEndpointEntity | null,
@@ -357,14 +433,11 @@ export class ModbusDeviceStructureService {
 			issues.push({ field: 'endpoint_id', reason: 'Endpoint does not exist.' });
 		} else {
 			const existing = await this.dataSource.getRepository(ModbusDeviceEntity).findOne({
-				where: { modbusEndpointId: dto.endpoint_id, modbusUnitId: dto.unit_id } as FindOptionsWhere<ModbusDeviceEntity>,
+				where: { endpointId: dto.endpoint_id, unitId: dto.unit_id } as FindOptionsWhere<ModbusDeviceEntity>,
 			});
 
 			if (existing) {
-				issues.push({
-					field: 'unit_id',
-					reason: `Unit ${dto.unit_id} is already used by device "${existing.name}" on this endpoint.`,
-				});
+				issues.push(this.unitTaken(dto.unit_id, existing));
 			}
 		}
 
@@ -405,7 +478,7 @@ export class ModbusDeviceStructureService {
 		const writes: { binding: ModbusBindingDto; field: string }[] = [];
 		const ids = new Set<string>();
 		const channelIdentifiers = new Set<string>();
-		let reads = 0;
+		const readBindings: ModbusBindingDto[] = [];
 
 		const claimId = (id: string | undefined, field: string) => {
 			if (id === undefined) return;
@@ -452,7 +525,7 @@ export class ModbusDeviceStructureService {
 				issues.push(...this.validateProperty(property, field));
 
 				if (property.read) {
-					reads++;
+					readBindings.push(property.read);
 					issues.push(...this.validateBinding(property.read, ModbusBindingRole.READ, `${field}.read`));
 				}
 
@@ -463,7 +536,16 @@ export class ModbusDeviceStructureService {
 			});
 		});
 
-		if (reads === 0) {
+		const readLimit = this.readLimitIssue(
+			dto.max_read_registers ?? MODBUS_DEFAULTS.MAX_READ_REGISTERS,
+			readBindings.map((binding) => ({ registerType: binding.register_type, dataType: binding.data_type })),
+		);
+
+		if (readLimit) {
+			issues.push(readLimit);
+		}
+
+		if (readBindings.length === 0) {
 			issues.push({
 				field: 'channels',
 				reason: 'A device needs at least one read binding, so its connection state reflects the device.',

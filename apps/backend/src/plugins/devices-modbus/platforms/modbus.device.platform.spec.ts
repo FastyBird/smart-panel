@@ -25,7 +25,7 @@ const binding = (overrides: Partial<ModbusBindingEntity> = {}): ModbusBindingEnt
 	}) as unknown as ModbusBindingEntity;
 
 const update = (propertyId: string, value: string | number | boolean, deviceId = 'dev-1') => ({
-	device: { id: deviceId, modbusUnitId: 7, modbusByteOrder: null, modbusWordOrder: null },
+	device: { id: deviceId, unitId: 7, byteOrder: null, wordOrder: null },
 	channel: { id: 'ch' },
 	property: { id: propertyId },
 	value,
@@ -115,7 +115,7 @@ describe('ModbusDevicePlatform', () => {
 	it('applies the device word order unless the binding overrides it', async () => {
 		writes.set('p1', binding({ dataType: ModbusDataType.UINT32, writeFunction: ModbusWriteFunction.MULTIPLE }));
 		const u = update('p1', 65536);
-		(u.device as { modbusWordOrder: ModbusByteOrder | null }).modbusWordOrder = ModbusByteOrder.LITTLE;
+		(u.device as { wordOrder: ModbusByteOrder | null }).wordOrder = ModbusByteOrder.LITTLE;
 
 		await platform.process(u as never);
 

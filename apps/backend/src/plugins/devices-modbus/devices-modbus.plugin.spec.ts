@@ -13,6 +13,7 @@ import { DevicesModbusPlugin } from './devices-modbus.plugin';
 import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
 import { ModbusConfigModel } from './models/config.model';
 import { ModbusDevicePlatform } from './platforms/modbus.device.platform';
+import { ModbusDeviceStructureService } from './services/modbus-device-structure.service';
 import { ModbusRuntimeService } from './services/modbus-runtime.service';
 
 describe('DevicesModbusPlugin', () => {
@@ -30,6 +31,7 @@ describe('DevicesModbusPlugin', () => {
 	const platform = Object.create(ModbusDevicePlatform.prototype) as ModbusDevicePlatform;
 	// Constructed by Nest in production; the plugin only registers it, so its dependencies are never used here
 	const runtime = Object.create(ModbusRuntimeService.prototype) as ModbusRuntimeService;
+	const deviceStructure = { validateUpdate: jest.fn().mockResolvedValue(undefined) };
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -46,6 +48,7 @@ describe('DevicesModbusPlugin', () => {
 			discriminatorRegistry as unknown as ExtendedDiscriminatorService,
 			extensionsService as unknown as ExtensionsService,
 			managedServiceManager as unknown as ManagedServiceManagerService,
+			deviceStructure as unknown as ModbusDeviceStructureService,
 		).onModuleInit();
 	});
 
@@ -64,6 +67,20 @@ describe('DevicesModbusPlugin', () => {
 			expect(mapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_MODBUS_TYPE }));
 		}
 		expect(DEVICES_MODBUS_TYPE).toBe('devices-modbus');
+	});
+
+	it('validates device updates with the device structure service', async () => {
+		const [[mapping]] = devicesMapper.registerMapping.mock.calls as Array<
+			[{ beforeUpdate?: (device: unknown, previous: unknown) => Promise<void> }]
+		>;
+		const device = { id: 'device-1' };
+		const previous = { id: 'device-1', unitId: 1 };
+
+		expect(mapping.beforeUpdate).toEqual(expect.any(Function));
+
+		await mapping.beforeUpdate?.(device, previous);
+
+		expect(deviceStructure.validateUpdate).toHaveBeenCalledWith(device, previous);
 	});
 
 	it('registers the platform', () => {
