@@ -53,7 +53,15 @@ const activeFixtureCleanups = new Set<() => Promise<void>>();
 
 /** Join test-owned managed lifecycles before the runtime suite tears down SQLite. */
 export async function disposeRealThermostatGuardFixtures(): Promise<void> {
-	for (const dispose of [...activeFixtureCleanups]) await dispose();
+	let failure: { cause: unknown } | undefined;
+	for (const dispose of [...activeFixtureCleanups]) {
+		try {
+			await dispose();
+		} catch (cause) {
+			failure ??= { cause };
+		}
+	}
+	if (failure) throw failure.cause;
 }
 
 /** Keep packet age independent of SQLite/host latency, while retaining real asynchronous scheduling. */
@@ -86,7 +94,11 @@ export async function realThermostatGuardFixture(
 	valueLocks?: PropertyValueLockService,
 	installationArtifacts?: ReadonlyMap<string, ReturnType<typeof thermostatInstallationArtifact>>,
 ) {
-	const tick = useThermostatPacketClock();
+	let retired = false;
+	const advancePacket = useThermostatPacketClock();
+	const tick = () => {
+		if (!retired) advancePacket();
+	};
 	const sources = new PropertyValueSourceRegistryService();
 	const values = new PropertyValueService(
 		{
@@ -231,8 +243,13 @@ export async function realThermostatGuardFixture(
 	let disposing: Promise<void> | undefined;
 	const dispose = (): Promise<void> => {
 		if (disposing !== undefined) return disposing;
-		connector.revokeCurrentAuthority();
-		disposing = (async () => {
+		let resolve!: () => void, reject!: (cause: unknown) => void;
+		disposing = new Promise<void>((yes, no) => {
+			resolve = yes;
+			reject = no;
+		});
+		retired = true;
+		void (async () => {
 			let failure: { cause: unknown } | undefined;
 			const attempt = async (operation: () => void | PromiseLike<void>) => {
 				try {
@@ -241,6 +258,7 @@ export async function realThermostatGuardFixture(
 					failure ??= { cause };
 				}
 			};
+			await attempt(() => connector.revokeCurrentAuthority());
 			await attempt(() => connector.stop());
 			for (const pending of [...telemetry]) await attempt(() => pending);
 			await attempt(() => manager.detach());
@@ -253,7 +271,7 @@ export async function realThermostatGuardFixture(
 			await attempt(() => module.close());
 			activeFixtureCleanups.delete(dispose);
 			if (failure) throw failure.cause;
-		})();
+		})().then(resolve, reject);
 		return disposing;
 	};
 	activeFixtureCleanups.add(dispose);

@@ -13,17 +13,17 @@
     }
   },
   "current": {
-    "baseCommit": "2fd4d7f523759be1a92392f7455763bc4e7c3b86",
-    "appsTree": "d7cc4a0b005a18544bdec6d2b8d7fe95277b3b0d",
+    "baseCommit": "aef7f0d92541ec4af5cc8235c202876593f779f4",
+    "appsTree": "5824945c23867636acbbcf96db0b625993b9793a",
     "fileSha256": "37beb10548b2124cb546ea0f94c288929bb60105c81129b42012d7d3226827d2",
-    "qualification": "Merged #1541 plus seven current native-effects replacement executions in four bodies; three carried nonblocking review enhancements strengthen prior settlement witnesses. Actual native clocks/ORM/FK/catalog/managed SDK completions with simulated SDK/network/storage; installation-loader fixture used for clock setup, direct offline D renewal is not installed equipment. Exact replacement differences and preparation limits are in nativeEffectsBatch. Review5826105316 labels earlier104/row215-open statements historical and strengthens two literal bodies without new cases; the before/after in-place-renewal counterfactual and fresh complete615 report qualify current source. Review5826822983 separates historical five-variant control/source64046b6 from the one-case hydration-renewal/source70e5069 checkpoint,and labels main114/proposed121 as #1542 pre-merge counts. The latest exact-deadline control and full615 result bind this source.",
-    "runtimeReportSha256": "64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca",
+    "qualification": "All139 residuals have current bindings at this proposed source:64 scoped and75 replacements. All261 original identities remain;269 witness bindings across261 rows. Real managed module/SDK authority and native SQLite ownership replace retired setup/cleanup APIs at explicit limits. Binding counts grant no whole-original private-protocol,composed final acceptance,alpha or equipment clearance.",
+    "runtimeReportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
     "runtimeResult": {
       "passed": 273,
       "failed": 0,
       "pending": 0
     },
-    "runtimeReportScope": "273 runtime executions in a complete615-case ten-file invocation after #1542 review5826822983. No new cases or dispositions. One existing hydration-clock body now asserts false at the exact original deadline and again one tick later,with wall expiry still future.",
+    "runtimeReportScope": "273 unchanged runtime executions and18 new managed fixture lifetime executions in one complete633-case eleven-file invocation. Shared test fixture retires packet clocks,memoizes disposal before reentry,and attempts all snapshot disposers. No production changes.",
     "productionBindings": {
       "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
       "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
@@ -67,9 +67,10 @@
       "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts": "602cc5f402737ddf0d56b893cba732417859a3222c5af8f543798c2731796e32",
       "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts": "37beb10548b2124cb546ea0f94c288929bb60105c81129b42012d7d3226827d2",
       "apps/backend/src/plugins/devices-virtual/subscribers/virtual-thermostat-ownership.subscriber.spec.ts": "09a406ef82feaff1b83597b869b5dea98eeb3b022c0257992b9b1f6ba132dd09",
-      "apps/backend/test/support/thermostat-real-guard-fixture.ts": "b1780fea9841f90334d7ed631999392b001a0306a12b2cc1868bf775891a1f18",
+      "apps/backend/test/support/thermostat-real-guard-fixture.ts": "8a10cb5b08d825fe5e737c04643ced7b8cdb60cd244c67f140a1caba93a60091",
       "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-transport.service.spec.ts": "99d221cf533b73fc4b58f0075093cd99c527b85a616b812d899b85813c7a602a",
-      "apps/backend/src/modules/devices/services/device-structure-lock.service.spec.ts": "00ccefa2693b4ba3d6c54dd8260b7bff9d872cb2eae3927bf849952ab492f9d5"
+      "apps/backend/src/modules/devices/services/device-structure-lock.service.spec.ts": "00ccefa2693b4ba3d6c54dd8260b7bff9d872cb2eae3927bf849952ab492f9d5",
+      "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0"
     },
     "e2eQualification": {
       "sourceHead": "711ef0231a134ecc9a4f9cf385c464ab4beac256",
@@ -85,9 +86,9 @@
       "scope": "Complete ordinary hosted E2E on the exact reviewed/squashed source. Historical local and hosted failures retain their recorded unknown causes; this success does not diagnose them."
     },
     "nativeConsumerAggregate": {
-      "reportSha256": "64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca",
-      "suitesPassed": 10,
-      "passed": 615,
+      "reportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
+      "suitesPassed": 11,
+      "passed": 633,
       "failed": 0,
       "pending": 0
     }
@@ -517,10 +518,10 @@
     }
   },
   "counts": {
-    "residual_no_current_case_bound": 18,
+    "replacement_current_invariant_bound": 82,
     "scoped_current_invariant_bound": 173,
-    "replacement_current_invariant_bound": 64,
-    "ported_descriptor_control_qualified": 6
+    "ported_descriptor_control_qualified": 6,
+    "residual_no_current_case_bound": 0
   },
   "rows": [
     {
@@ -532,9 +533,27 @@
       ],
       "originalLine": 2967,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): retires a genuinely held unadopted setup A before B adopts and never lets late A completion reclaim or close B. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "b592b54f1b2110885c84614e68caa32d578e2029f0e82b842cc6ff2500084828"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "b592b54f1b2110885c84614e68caa32d578e2029f0e82b842cc6ff2500084828",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "retires an unadopted held setup and closes only its original SQLite resources",
+        "line": 435,
+        "bodySha256": "2d173a4a97750d51b3d6b26fef4d1864f86fbe7d0c6361517151e16d1798a016",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+      },
+      "semanticComparison": "A is held in an actual initial native SQLite configuration SELECT before managed module adoption. The ordinary owner memoizes cleanup, retires A, and joins the original setup only after genuine B adopts and holds its own native SELECT. A rejects the same retirement cause and closes only its exact database/directory. B retains byte-identical SQLite, qualified sample, current SDK session, clock/timer identities, local spy and no sends; its original read and next packet progress. Per-scope resources replace retired global aliases/setup ownership; no old runtime bootstrap/graph-read protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 2,
@@ -545,9 +564,27 @@
       ],
       "originalLine": 3219,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps an issued A read and publication on A while its resumed body cannot change a genuine held B inspection. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "ff20f783a408f247e5e9c6a5d9898d5c0221a24b8435f3c5011550d738e11caf"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "ff20f783a408f247e5e9c6a5d9898d5c0221a24b8435f3c5011550d738e11caf",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "joins original native SQL and derived publication after retirement without advancing another fixture",
+        "line": 461,
+        "bodySha256": "b72b13cdff50c20a10f29f786fa06d0321054b41d9c49114e1498e2584e7c231",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+      },
+      "semanticComparison": "Original native A SELECT and actual core publishDerived Promise issue before retirement, with publication queued behind the real property-value mutex. Managed A authority closes while original work remains A-owned and completes before source close. Resumed A issue refuses; a late A packet cannot advance B time. Genuine B retains its held native inspection, exact database bytes/sample/session/resources before progressing. Actual SDK authority/core publication replace the old controlled-adapter accepted held-ON schedule; no accepted original ON or retired global-drain equivalence is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 3,
@@ -558,9 +595,29 @@
       ],
       "originalLine": 3466,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves issued A SQL primary undefined before cleanup Q and leaves a foreign A descriptor and fresh B intact. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
+        "line": 515,
+        "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "undefined",
+        "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: undefined"
+      },
+      "semanticComparison": "Actual original A BeforeQuery throws exact present undefined P after a held native SELECT. Actual module.close completes and foreign replacement E2 then throws Q; ordinary cleanup retains P by presence, records Q separately, preserves the exact E2 descriptor and closes A SQLite/directory. Genuine B retains its original held native inspection, bytes/qualified sample/current SDK session/clock/timers/spy/sends before progressing. Lifecycle-entry Q replaces retired restoration-Q; no global aliases or accepted-ON protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 4,
@@ -571,9 +628,29 @@
       ],
       "originalLine": 3466,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves issued A SQL primary null before cleanup Q and leaves a foreign A descriptor and fresh B intact. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
+        "line": 515,
+        "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "null",
+        "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: null"
+      },
+      "semanticComparison": "Actual original A BeforeQuery throws exact present null P after a held native SELECT. Actual module.close completes and foreign replacement E2 then throws Q; ordinary cleanup retains P by presence, records Q separately, preserves the exact E2 descriptor and closes A SQLite/directory. Genuine B retains its original held native inspection, bytes/qualified sample/current SDK session/clock/timers/spy/sends before progressing. Lifecycle-entry Q replaces retired restoration-Q; no global aliases or accepted-ON protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 5,
@@ -584,9 +661,29 @@
       ],
       "originalLine": 3466,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves issued A SQL primary false before cleanup Q and leaves a foreign A descriptor and fresh B intact. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
+        "line": 515,
+        "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "false",
+        "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: false"
+      },
+      "semanticComparison": "Actual original A BeforeQuery throws exact present false P after a held native SELECT. Actual module.close completes and foreign replacement E2 then throws Q; ordinary cleanup retains P by presence, records Q separately, preserves the exact E2 descriptor and closes A SQLite/directory. Genuine B retains its original held native inspection, bytes/qualified sample/current SDK session/clock/timers/spy/sends before progressing. Lifecycle-entry Q replaces retired restoration-Q; no global aliases or accepted-ON protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 6,
@@ -597,9 +694,29 @@
       ],
       "originalLine": 3466,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves issued A SQL primary \"native A primary\" before cleanup Q and leaves a foreign A descriptor and fresh B intact. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
+        "line": 515,
+        "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "string",
+        "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: string"
+      },
+      "semanticComparison": "Actual original A BeforeQuery throws exact present string P after a held native SELECT. Actual module.close completes and foreign replacement E2 then throws Q; ordinary cleanup retains P by presence, records Q separately, preserves the exact E2 descriptor and closes A SQLite/directory. Genuine B retains its original held native inspection, bytes/qualified sample/current SDK session/clock/timers/spy/sends before progressing. Lifecycle-entry Q replaces retired restoration-Q; no global aliases or accepted-ON protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 7,
@@ -610,9 +727,29 @@
       ],
       "originalLine": 3466,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): preserves issued A SQL primary [Error: native A primary] before cleanup Q and leaves a foreign A descriptor and fresh B intact. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "6889235ac48d7ee800a3c7c0119ca2cb8dc2c8323ea2d01f0b628c592a199855",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
+        "line": 515,
+        "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "Error",
+        "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: Error"
+      },
+      "semanticComparison": "Actual original A BeforeQuery throws exact present Error P after a held native SELECT. Actual module.close completes and foreign replacement E2 then throws Q; ordinary cleanup retains P by presence, records Q separately, preserves the exact E2 descriptor and closes A SQLite/directory. Genuine B retains its original held native inspection, bytes/qualified sample/current SDK session/clock/timers/spy/sends before progressing. Lifecycle-entry Q replaces retired restoration-Q; no global aliases or accepted-ON protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 8,
@@ -9668,9 +9805,27 @@
       ],
       "originalLine": 18832,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): retains issued A setup and orphan cleanup while genuine B adopts before A resumes. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "7113fb0eb2950f7b55e0d5d9e13fe7ff86a1a55cc3a960eaa6ba4a4cef5cacca"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "7113fb0eb2950f7b55e0d5d9e13fe7ff86a1a55cc3a960eaa6ba4a4cef5cacca",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "retires an unadopted held setup and closes only its original SQLite resources",
+        "line": 435,
+        "bodySha256": "2d173a4a97750d51b3d6b26fef4d1864f86fbe7d0c6361517151e16d1798a016",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+      },
+      "semanticComparison": "A is held in an actual initial native SQLite configuration SELECT before managed module adoption. The ordinary owner memoizes cleanup, retires A, and joins the original setup only after genuine B adopts and holds its own native SELECT. A rejects the same retirement cause and closes only its exact database/directory. B retains byte-identical SQLite, qualified sample, current SDK session, clock/timer identities, local spy and no sends; its original read and next packet progress. Per-scope resources replace retired global aliases/setup ownership; no old runtime bootstrap/graph-read protocol is claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 245,
@@ -9681,9 +9836,29 @@
       ],
       "originalLine": 18900,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): closes exact partial resources after original initialize rejection without adopting its result. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "684fc7a162ffe973baab6d220cedd71632c6976a56c6fab6fa6c9198e3d08ef9"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "684fc7a162ffe973baab6d220cedd71632c6976a56c6fab6fa6c9198e3d08ef9",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "closes partial real setup resources and retains the setup cause: %s",
+        "line": 571,
+        "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "initialize",
+        "expandedTitle": "closes partial real setup resources and retains the setup cause: initialize"
+      },
+      "semanticComparison": "Real SQLite initialize attempts to open its allocated directory as the database and rejects SQLITE_CANTOPEN. Ordinary setup cleanup retains that native cause, closes partial resources/removes the exact directory, never adopts a managed fixture, and repeats the same cleanup Promise/cause. Per-scope ownership replaces the retired global setup record; initialize success/failure is not fabricated.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 246,
@@ -9694,9 +9869,29 @@
       ],
       "originalLine": 18900,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): closes exact partial resources after original compile rejection without adopting its result. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "684fc7a162ffe973baab6d220cedd71632c6976a56c6fab6fa6c9198e3d08ef9"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "684fc7a162ffe973baab6d220cedd71632c6976a56c6fab6fa6c9198e3d08ef9",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "closes partial real setup resources and retains the setup cause: %s",
+        "line": 571,
+        "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "compile",
+        "expandedTitle": "closes partial real setup resources and retains the setup cause: compile"
+      },
+      "semanticComparison": "The actual Nest builder overrides ManagedServiceManagerService with a factory throwing original P. Real compilation rejects that P; captured actual ChannelsPropertiesService cleanup runs once, initialized SQLite/directory close, no fixture adopts, and repeated cleanup retains P. This replaces the old StorageService failure placement with an actual managed-provider compile failure, not a mocked compile result.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 247,
@@ -9707,9 +9902,40 @@
       ],
       "originalLine": 18940,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): publishes the same cleanup before original module close can reenter. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "3fafefd7bc9ee5a1a9a9f20919522d693b6048deac1c41511b7d98f14ccb1c9c"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "3fafefd7bc9ee5a1a9a9f20919522d693b6048deac1c41511b7d98f14ccb1c9c",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "publishes the original managed cleanup promise before synchronous reentry: %s",
+        "line": 617,
+        "bodySha256": "acec9e0e2bc3e0686dd298042454ad3e166678d41f68804c3f0c4b1580e093f9",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "module-close",
+        "expandedTitle": "publishes the original managed cleanup promise before synchronous reentry: module-close"
+      },
+      "semanticComparison": "Actual fixture.dispose memoizes before synchronous lifecycle reentry. Real module.close reentry returns the identical original Promise, closes once and revokes original SDK authority. SQLite stays open until the ordinary owning scope closes it. A separate execution reenters earlier through actual authority revocation and discriminates the former helper defect. Separate module/database owners replace the old all-in-one runtime closer.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      },
+      "additionalCurrent": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "publishes the original managed cleanup promise before synchronous reentry: %s",
+        "line": 617,
+        "bodySha256": "acec9e0e2bc3e0686dd298042454ad3e166678d41f68804c3f0c4b1580e093f9",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "authority-revoke",
+        "expandedTitle": "publishes the original managed cleanup promise before synchronous reentry: authority-revoke"
+      }
     },
     {
       "id": 248,
@@ -9720,9 +9946,29 @@
       ],
       "originalLine": 18958,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): retains a foreign E2 descriptor and reports restoration Q after E1 consumers retire. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "c115c1c87240eee49206171ebef8aa8d89bef2addfd1a3cf69472e367f009236"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "c115c1c87240eee49206171ebef8aa8d89bef2addfd1a3cf69472e367f009236",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
+        "line": 515,
+        "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "cleanup only",
+        "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: cleanup only"
+      },
+      "semanticComparison": "With successful original native A SQL and no P, real module.close completes and foreign E2 throws exact Q. Ordinary cleanup rejects Q, retains that exact foreign lifecycle descriptor, closes A database/directory and leaves genuine B native inspection/resources/current SDK session unchanged before progress. The old E1-retirement/restoration-Q registry is replaced by lifecycle-entry Q with no restoration; its private observer protocol is not claimed.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 249,
@@ -9733,9 +9979,29 @@
       ],
       "originalLine": 18988,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps present setup undefined P ahead of cleanup Q and still closes partial resources. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "94c765a83ec2f91285ff6921fb731db78f9c39f40b6401bc1f8c5fe384e1d9ba"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "94c765a83ec2f91285ff6921fb731db78f9c39f40b6401bc1f8c5fe384e1d9ba",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "closes partial real setup resources and retains the setup cause: %s",
+        "line": 571,
+        "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "undefined",
+        "expandedTitle": "closes partial real setup resources and retains the setup cause: undefined"
+      },
+      "semanticComparison": "The allocated-source setup hook synchronously throws present undefined P before initialize. An ordinary cleanup observer throws Q; P remains the exact setup/repeated-cleanup cause, Q is recorded, and the exact partial directory is removed without adopting a fixture. This is setup-hook P, not native SQL/ACK; current per-scope observers replace the retired global completion registry.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 250,
@@ -9746,9 +10012,29 @@
       ],
       "originalLine": 18988,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps present setup null P ahead of cleanup Q and still closes partial resources. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "94c765a83ec2f91285ff6921fb731db78f9c39f40b6401bc1f8c5fe384e1d9ba"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "94c765a83ec2f91285ff6921fb731db78f9c39f40b6401bc1f8c5fe384e1d9ba",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "closes partial real setup resources and retains the setup cause: %s",
+        "line": 571,
+        "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "null",
+        "expandedTitle": "closes partial real setup resources and retains the setup cause: null"
+      },
+      "semanticComparison": "The allocated-source setup hook synchronously throws present null P before initialize. An ordinary cleanup observer throws Q; P remains the exact setup/repeated-cleanup cause, Q is recorded, and the exact partial directory is removed without adopting a fixture. This is setup-hook P, not native SQL/ACK; current per-scope observers replace the retired global completion registry.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 251,
@@ -9759,9 +10045,29 @@
       ],
       "originalLine": 18988,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): keeps present setup false P ahead of cleanup Q and still closes partial resources. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "94c765a83ec2f91285ff6921fb731db78f9c39f40b6401bc1f8c5fe384e1d9ba"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "94c765a83ec2f91285ff6921fb731db78f9c39f40b6401bc1f8c5fe384e1d9ba",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "closes partial real setup resources and retains the setup cause: %s",
+        "line": 571,
+        "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "false",
+        "expandedTitle": "closes partial real setup resources and retains the setup cause: false"
+      },
+      "semanticComparison": "The allocated-source setup hook synchronously throws present false P before initialize. An ordinary cleanup observer throws Q; P remains the exact setup/repeated-cleanup cause, Q is recorded, and the exact partial directory is removed without adopting a fixture. This is setup-hook P, not native SQL/ACK; current per-scope observers replace the retired global completion registry.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 252,
@@ -9771,9 +10077,27 @@
       ],
       "originalLine": 19029,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): R241 attempts both original owner cleanup observers before SQLite closes when the first removes itself. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "da5d690a26698c4825cfcd1ca818e71389350916cc8311d17b40d199e2d97376"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "da5d690a26698c4825cfcd1ca818e71389350916cc8311d17b40d199e2d97376",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "attempts every snapshotted real disposer even when the first removes itself and rejects",
+        "line": 657,
+        "bodySha256": "68be5d148f574ab963cfdabb6e0b57428f7421b72c5366fd580f5586e90958f4",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+      },
+      "semanticComparison": "Two actual managed fixtures enter the shared disposer snapshot. The first completes its real module close, removes itself from the live cleanup set and rejects Q; the second module still closes once. Both captured SDK sessions close while both SQLite sources remain open until their separate owners close them. Per-fixture disposal replaces the old one-runtime two-pass retire: first/retire: second/cleanup: first/cleanup: second ordering; that exact old callback sequence is not asserted.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 253,
@@ -9784,9 +10108,29 @@
       ],
       "originalLine": 19063,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): retires and opens an incomplete body gate before joining its original SQLite transaction and closing A. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "b085e427630afc4a6ed4b55f337ef9a2285a4090e33099e5a569ee054f9beca7"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "b085e427630afc4a6ed4b55f337ef9a2285a4090e33099e5a569ee054f9beca7",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "joins the same real SQLite body before source close and preserves successful ownership: %s",
+        "line": 685,
+        "bodySha256": "716dbf1127a69eb6ab9d088aa832caad7ae2c75aa129a49a9613abdec1cbb0b4",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "unfinished",
+        "expandedTitle": "joins the same real SQLite body before source close and preserves successful ownership: unfinished"
+      },
+      "semanticComparison": "The ordinary owner retains the exact original real SQLite transaction Promise. Incomplete body cleanup memoizes before synchronous opener reentry, revokes actual SDK authority before opening the gate, joins the original manager read while SQLite is open, and removes the original pending record before independent result assertions. Module/source close occur only through later ordinary cleanup. No old observer/global gate layout or product native-admission success is inferred.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 254,
@@ -9797,9 +10141,29 @@
       ],
       "originalLine": 19141,
       "historicalR265": "passed",
-      "disposition": "residual_no_current_case_bound",
-      "residualRequirement": "Bind a current executable case retaining the original controlled ordering, failures and assertions (or document why only a removed test harness/internal API is involved): memoizes successful body cleanup through opener reentry without retiring or closing its original fixture. No waiver or current defect attribution is implied.",
-      "originalBodySha256": "d86e78dea51d2b0315a23cac79b9f2d5b528a67bebafbcddd00643fcebd70234"
+      "disposition": "replacement_current_invariant_bound",
+      "residualRequirement": null,
+      "originalBodySha256": "d86e78dea51d2b0315a23cac79b9f2d5b528a67bebafbcddd00643fcebd70234",
+      "sharedBoundary": "fixtureLifetimeBatch",
+      "current": {
+        "file": "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts",
+        "title": "joins the same real SQLite body before source close and preserves successful ownership: %s",
+        "line": 685,
+        "bodySha256": "716dbf1127a69eb6ab9d088aa832caad7ae2c75aa129a49a9613abdec1cbb0b4",
+        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "measuredStatus": "passed",
+        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "parameter": "complete",
+        "expandedTitle": "joins the same real SQLite body before source close and preserves successful ownership: complete"
+      },
+      "semanticComparison": "Successful-body status follows the actual original held transaction result with SQLite open. Memoized cleanup survives synchronous opener reentry, joins/removes that exact pending Promise, and leaves actual SDK authority, module and database live; a subsequent genuine packet still works. Only later ordinary scope cleanup disposes/closes resources. Local body/resource ownership replaces the old held-leaf API/global observer sets.",
+      "helper": {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      }
     },
     {
       "id": 255,
@@ -10079,18 +10443,18 @@
   ],
   "semanticReconciliation": {
     "date": "2026-11-09",
-    "sourceCommit": "2fd4d7f523759be1a92392f7455763bc4e7c3b86",
+    "sourceCommit": "aef7f0d92541ec4af5cc8235c202876593f779f4",
     "scope": "Current scoped/replacement observable bindings only; no whole original private-protocol, alpha or equipment acceptance. Prior semantic reconciliation and aggregate snapshots are retained explicitly.",
-    "bindingExecutionReportSha256": "64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca",
-    "sourceHelperProductionAuditSha256": "52a5c9b027d30eab58155674abddd2fee5bdd6c3d63dcae13d70db58d183d5cc",
+    "bindingExecutionReportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
+    "sourceHelperProductionAuditSha256": "a40e3294b966e17d8d825c8e4ce746e2e4102b07227333953f2a1c1f5de3d49e",
     "historicalReportAuditSha256": "31c69dd44ec1c77460377db5db910d5c60971154ecc726c80b389f3ffbe4cea8",
     "originalResidualPlan": {
       "originalResiduals": 139,
       "currentScopedBindings": 64,
-      "currentReplacementBindings": 57,
-      "remainingOutsidePlan": 18
+      "currentReplacementBindings": 75,
+      "remainingOutsidePlan": 0
     },
-    "negativeControlScope": "Changing only monotonic >= original deadline to > passes the70e5069 witness1/1 and fails the strengthened exact-deadline assertion1/1,272unrun each. Sources restore before fresh complete615 qualification. The five-variant control/615 report at64046b6 and one-case in-place renewal/615 report at70e5069 are separate historical checkpoints,not reruns on this source.",
+    "negativeControlScope": "Original shared fixture fails three selected concrete assertions:late A clock tick,different reentrant cleanup Promise,second module skipped;15unrun. A truthiness-only mutation in the test resource owner fails three present-falsy original SQL P variants and passes string/Error/Q-only,12unrun. All sources restore before complete633 qualification. No production defect attribution.",
     "notGranted": [
       "whole original fixture/provider/SDK/private TIME/caller/observer/global-drain equivalence",
       "all 261 case acceptance",
@@ -12497,5 +12861,136 @@
       }
     },
     "historicalCorrection": "The five-failure deadline control and earlier615 report belong to64046b6; the one-case in-place renewal and its own615 report belong to70e5069. Neither was rerun on this new source. Both human acceptance documents label main114/proposed121 as the #1542 pre-merge checkpoint,not permanent live delivery status."
+  },
+  "fixtureLifetimeBatch": {
+    "baseCommit": "aef7f0d92541ec4af5cc8235c202876593f779f4",
+    "priorLedgerSha256": "7ccbd6d464b964b042bd59fa66272ac77da290dbee52c2382396e6722c21491b",
+    "replacementRows": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      244,
+      245,
+      246,
+      247,
+      248,
+      249,
+      250,
+      251,
+      252,
+      253,
+      254
+    ],
+    "newLiteralBodies": 7,
+    "newExpandedExecutions": 18,
+    "newWitnessBindings": 19,
+    "boundOriginalRows": 261,
+    "witnessBindings": 269,
+    "checkpointCounts": {
+      "baseMainBound": 121,
+      "baseMainOpen": 18,
+      "proposedBound": 139,
+      "proposedOpen": 0
+    },
+    "fullReportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
+    "sourceAuditSha256": "a40e3294b966e17d8d825c8e4ce746e2e4102b07227333953f2a1c1f5de3d49e",
+    "sharedHelpers": [
+      {
+        "name": "gate",
+        "line": 80,
+        "bodySha256": "8c5736b939025e2f5590e7a84606db2dd1dc65d811ea5d301e66b2caeba6016d",
+        "initializerSha256": "139b3974bddb2982839d34787ce488ba20e2a078679f669a151b1bd3690b6c17",
+        "declarationSha256": "a7df677caaa6fa7be8462f95f7ec8136d76364d82150d8eecd528cfef5c555d0"
+      },
+      {
+        "name": "wait",
+        "line": 88,
+        "bodySha256": "c8340389a514bc399c7e9fc866d6ef88d0ce5754a1eb522ca39c5b5df3a175b1",
+        "initializerSha256": "f866f9541f8bd235fe04dcd4abb45d5a0f5b439e390d9cc212446f2a861aec55",
+        "declarationSha256": "ab74e6521955c3093487cf0726fb8d3139cd857ba291f7319e9955babeeef8eb"
+      },
+      {
+        "name": "seed",
+        "line": 101,
+        "bodySha256": "90f39381eac253f605ee657d24eba54c16e009182fb23a74b267d3bcd52cde45",
+        "initializerSha256": "f82f9f1596df4cd49958633f9da8381bc08c0c51eaf3611bee682b7c6aefb497",
+        "declarationSha256": "b96a1b742bb28a51124ccee05f0ef1fdcd27ad15c1eb029d7819c6853a27384e"
+      },
+      {
+        "name": "begin",
+        "line": 185,
+        "bodySha256": "66a1b9026cf9b7b704e0a99810c05dd50168e04dd5e56dd10f16c235e2c914dd",
+        "initializerSha256": "c9006a40d1728c8b0add8e9f425a679d4a8aa6d5bcd8d0d3bc912dbdee091ada",
+        "declarationSha256": "87af27abe616b73d4b80b8f5f7578c1fee71d7a39082b67e4dfa7f43b6ae2e92"
+      },
+      {
+        "name": "inspect",
+        "line": 362,
+        "bodySha256": "9b5a425128d91ccfe01b1acac268344dea57e0a66cde0fe8851a471846600e29",
+        "initializerSha256": "3e3296aaea3a652a0c6e6d77e8150d7b44d949b708df77fd07d6b521e734a1b3",
+        "declarationSha256": "5ccd56d104886a0a9d26b7ab0c2a7af949bc0bb4e98d79d40c6ca9dae366245f"
+      },
+      {
+        "name": "closed",
+        "line": 424,
+        "bodySha256": "79375de7e0083717299314b4ab362e771deceb8ad059f08634d991408a00baaa",
+        "initializerSha256": "c585d0f2be2efce7073a3bbaefef21f65b3067a1d0d39746195dbb44fee4af3f",
+        "declarationSha256": "7070f34494990db60746085b4498a78abfb095fbd8a79f6019a41c5afe56efea"
+      },
+      {
+        "name": "rejects",
+        "line": 429,
+        "bodySha256": "453ea44f188dca8cba3b8f06b4990bc4d14fe5e1ee84e0172246d3801fd37005",
+        "initializerSha256": "d480c464787bfd4ad5a6187e89585b92b284bc34050b0fc54fd7624cfcd6f70f",
+        "declarationSha256": "a49d81fd77e0ff68f88264e62ac71795155a71de66c6d44d1820cf1139129358"
+      },
+      {
+        "name": "closeBody",
+        "line": 708,
+        "bodySha256": "a5d04d1f75b8f79c7f1c3875db66693f8aec81f4e6019f622be769c2fd34b122",
+        "initializerSha256": "1a6dc1256297b282c4dbc96af54604da5563ef91af3e757bb2d245fb6aedc59c",
+        "declarationSha256": "99d594f2e51600f2276c4cd9b75048132def6591307bb78d37b402d2e1f55ca9"
+      }
+    ],
+    "sharedFixtureBeforeSha256": "b1780fea9841f90334d7ed631999392b001a0306a12b2cc1868bf775891a1f18",
+    "sharedFixtureAfterSha256": "8a10cb5b08d825fe5e737c04643ced7b8cdb60cd244c67f140a1caba93a60091",
+    "unchangedPriorWitnessBodies": 250,
+    "unchangedRuntimeBodies": 138,
+    "unchangedRuntimeHelpers": 89,
+    "productionFilesUnchanged": 32,
+    "controls": {
+      "original-shared-fixture": {
+        "sourceSha256": "b1780fea9841f90334d7ed631999392b001a0306a12b2cc1868bf775891a1f18",
+        "testSourceSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "reportSha256": "32ef5bfe14f936c3a968ddb279a1e84add7923a04c7162c0b1533d4b5f073159",
+        "passed": 0,
+        "failed": 3,
+        "unrun": 15,
+        "failedTitles": [
+          "joins original native SQL and derived publication after retirement without advancing another fixture",
+          "publishes the original managed cleanup promise before synchronous reentry: authority-revoke",
+          "attempts every snapshotted real disposer even when the first removes itself and rejects"
+        ]
+      },
+      "truthy-test-owner-primary": {
+        "sourceSha256": "9e94d28760b19ea9cf1ae34f86ea72ab7e546e3965f866205f2ee2ab2a61fcba",
+        "testSourceSha256": "9e94d28760b19ea9cf1ae34f86ea72ab7e546e3965f866205f2ee2ab2a61fcba",
+        "reportSha256": "2a2e4ad92697bb514e116a95b05726f422d6bb51910acb25b785acca7f946a67",
+        "passed": 3,
+        "failed": 3,
+        "unrun": 12,
+        "failedTitles": [
+          "preserves native P ahead of actual module-close Q with B inspecting: undefined",
+          "preserves native P ahead of actual module-close Q with B inspecting: null",
+          "preserves native P ahead of actual module-close Q with B inspecting: false"
+        ]
+      }
+    },
+    "scope": "Actual Nest builder/provider/module,managed Shelly SDK authority,real SQLite initialize/transaction/held SELECT/core publication and directory ownership. SDK/network/storage hardware are simulated. The resource owner is also normal afterEach cleanup. Retired global aliases,accepted-ON schedule,restoration-Q and two-pass observers are explicit replacements. Rows1/244 share one execution;247 has an additional earlier-reentry witness;counts do not inflate executions.",
+    "preparationLimits": "Early imports/types/lint and wrapper-recursion drafts are unqualified preparation. An earlier original-helper control had three functional failures and one5s timeout;only final three-assertion control qualifies. Two incomplete full invocations stopped before final assertions are not qualification. Final633 report binds restored source. Prior records/control reports remain unchanged and were audited,not replayed."
   }
 }
