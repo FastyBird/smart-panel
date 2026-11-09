@@ -400,6 +400,7 @@ describe('ViewVirtualDeviceWizard', () => {
 
 	it.each([
 		[DevicesVirtualPluginDeviceMode.actuator_group, 'devices_virtual-light_group_wizard'],
+		[DevicesVirtualPluginDeviceMode.climate_controller, 'devices_virtual-thermostat_wizard'],
 		[DevicesVirtualPluginDeviceMode.sensor_aggregate, 'devices_virtual-measurement_wizard'],
 		[DevicesVirtualPluginDeviceMode.sensor_transform, 'devices_virtual-measurement_wizard'],
 	])('routes mode %s to its authoring wizard', async (mode, name) => {
@@ -408,7 +409,20 @@ describe('ViewVirtualDeviceWizard', () => {
 		wrapper.findComponent({ name: 'ElRadioGroup' }).vm.$emit('change', mode);
 		await nextTick();
 
-		expect(mocks.routerPush).toHaveBeenCalledWith(mode === DevicesVirtualPluginDeviceMode.actuator_group ? { name } : { name, query: { mode } });
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			mode === DevicesVirtualPluginDeviceMode.sensor_aggregate || mode === DevicesVirtualPluginDeviceMode.sensor_transform
+				? { name, query: { mode } }
+				: { name }
+		);
+	});
+
+	it('keeps the mode selector inside the wizard card below the page header', () => {
+		const wrapper = mount(ViewVirtualDeviceWizard);
+		const selector = wrapper.findComponent({ name: 'ElRadioGroup' }).element;
+		const card = wrapper.findComponent({ name: 'ElCard' }).element;
+		const header = wrapper.findComponent({ name: 'ViewHeader' }).element;
+		expect(card.contains(selector)).toBe(true);
+		expect(header.compareDocumentPosition(selector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 	});
 
 	it('sets the page title via useMeta', () => {

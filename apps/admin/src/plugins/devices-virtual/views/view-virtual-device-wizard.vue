@@ -34,26 +34,6 @@
 	</app-bar-button>
 
 	<app-breadcrumbs :items="breadcrumbs" />
-	<div
-		v-if="activeStep === 0"
-		class="mx-4 my-2"
-	>
-		<el-radio-group
-			:model-value="DevicesVirtualPluginDeviceMode.projection"
-			:aria-label="t('devicesVirtualPlugin.measurement.mode')"
-			@change="onMode"
-		>
-			<el-radio-button :value="DevicesVirtualPluginDeviceMode.projection">{{ t('devicesVirtualPlugin.measurement.projection') }}</el-radio-button>
-			<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_aggregate">
-				{{ t('devicesVirtualPlugin.measurement.aggregate') }}
-			</el-radio-button>
-			<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_transform">
-				{{ t('devicesVirtualPlugin.measurement.transform') }}
-			</el-radio-button>
-			<el-radio-button :value="DevicesVirtualPluginDeviceMode.actuator_group">{{ t('devicesVirtualPlugin.measurement.group') }}</el-radio-button>
-			<el-radio-button :value="DevicesVirtualPluginDeviceMode.climate_controller">Thermostat controller</el-radio-button>
-		</el-radio-group>
-	</div>
 
 	<view-header
 		:heading="t('devicesVirtualPlugin.wizard.title')"
@@ -146,6 +126,31 @@
 					review step mounts, the details step has always mounted at least once first.
 				-->
 				<div class="p-4">
+					<div
+						v-if="activeStep === 0"
+						class="mb-4 overflow-x-auto"
+					>
+						<el-radio-group
+							class="flex-nowrap!"
+							:model-value="DevicesVirtualPluginDeviceMode.projection"
+							:aria-label="t('devicesVirtualPlugin.measurement.mode')"
+							@change="onMode"
+						>
+							<el-radio-button :value="DevicesVirtualPluginDeviceMode.projection">
+								{{ t('devicesVirtualPlugin.measurement.projection') }}
+							</el-radio-button>
+							<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_aggregate">
+								{{ t('devicesVirtualPlugin.measurement.aggregate') }}
+							</el-radio-button>
+							<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_transform">
+								{{ t('devicesVirtualPlugin.measurement.transform') }}
+							</el-radio-button>
+							<el-radio-button :value="DevicesVirtualPluginDeviceMode.actuator_group">
+								{{ t('devicesVirtualPlugin.measurement.group') }}
+							</el-radio-button>
+							<el-radio-button :value="DevicesVirtualPluginDeviceMode.climate_controller">Thermostat controller</el-radio-button>
+						</el-radio-group>
+					</div>
 					<virtual-wizard-category-step
 						v-if="activeStep === 0"
 						v-model="state.category"

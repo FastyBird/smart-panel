@@ -9,6 +9,7 @@ export const PluginRoutes: RouteRecordRaw[] = [
 		name: RouteNames.LIGHT_GROUP_WIZARD,
 		component: () => import('../views/view-light-group-wizard.vue'),
 		meta: {
+			devicesWizard: true,
 			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 			title: 'Create light group',
 			icon: 'mdi:lightbulb-group',
@@ -21,6 +22,7 @@ export const PluginRoutes: RouteRecordRaw[] = [
 		component: () => import('../views/view-virtual-device-wizard.vue'),
 		props: true,
 		meta: {
+			devicesWizard: true,
 			guards: {
 				authenticated: true,
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
@@ -34,6 +36,7 @@ export const PluginRoutes: RouteRecordRaw[] = [
 		name: RouteNames.MEASUREMENT_WIZARD,
 		component: () => import('../views/view-virtual-measurement-wizard.vue'),
 		meta: {
+			devicesWizard: true,
 			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 			title: 'Create virtual measurement',
 			icon: 'mdi:function-variant',
@@ -44,6 +47,7 @@ export const PluginRoutes: RouteRecordRaw[] = [
 		name: RouteNames.THERMOSTAT_WIZARD,
 		component: () => import('../views/view-virtual-thermostat-wizard.vue'),
 		meta: {
+			devicesWizard: true,
 			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 			title: 'Create virtual thermostat',
 			icon: 'mdi:thermostat',

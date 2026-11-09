@@ -1,15 +1,20 @@
 /* eslint-disable vue/one-component-per-file */
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
+import { type Router, RouterView, createMemoryHistory, createRouter } from 'vue-router';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
+import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
+import { RouteNames as VirtualRouteNames } from '../../../plugins/devices-virtual/devices-virtual.constants';
+import { PluginRoutes } from '../../../plugins/devices-virtual/router';
 import { ListDevices } from '../components/components';
 
 import ViewDevices from './view-devices.vue';
 
 const mocks = vi.hoisted(() => ({
+	useRealRouter: false,
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
 	routerResolve: vi.fn((route) => route),
@@ -35,6 +40,7 @@ const mocks = vi.hoisted(() => ({
 	route: {
 		path: '/devices',
 		name: 'devices',
+		meta: {},
 		matched: [],
 	},
 }));
@@ -51,12 +57,29 @@ vi.mock('vue-meta', () => ({
 	}),
 }));
 
-vi.mock('vue-router', () => ({
-	useRoute: () => mocks.route,
-	useRouter: () => ({
-		push: mocks.routerPush,
-		replace: mocks.routerReplace,
-		resolve: mocks.routerResolve,
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('vue-router')>();
+
+	return {
+		...actual,
+		useRoute: () => (mocks.useRealRouter ? actual.useRoute() : mocks.route),
+		useRouter: () =>
+			mocks.useRealRouter
+				? actual.useRouter()
+				: {
+						push: mocks.routerPush,
+						replace: mocks.routerReplace,
+						resolve: mocks.routerResolve,
+					},
+	};
+});
+
+vi.mock('../../../modules/devices', () => ({ RouteNames: { DEVICE: 'device' } }));
+vi.mock('../../../plugins/devices-virtual/components/virtual-measurement-editor.vue', () => ({
+	default: defineComponent({
+		name: 'VirtualMeasurementEditor',
+		props: { mode: { type: String, required: true } },
+		template: '<div data-test-id="measurement-editor">{{ mode }}</div>',
 	}),
 }));
 
@@ -154,10 +177,11 @@ vi.mock('../devices.exceptions', () => ({
 	DevicesException: Error,
 }));
 
-const mountView = (props: Record<string, unknown> = {}) =>
-	mount(ViewDevices, {
-		props,
+const mountView = (props: Record<string, unknown> = {}, router?: Router) =>
+	mount(router ? defineComponent({ render: () => h(RouterView) }) : ViewDevices, {
+		props: router ? {} : props,
 		global: {
+			plugins: router ? [router] : [],
 			stubs: {
 				ElButton: defineComponent({
 					template: '<button type="button" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
@@ -171,12 +195,17 @@ const mountView = (props: Record<string, unknown> = {}) =>
 					},
 					template: '<div v-if="modelValue"><slot /><slot name="footer" /></div>',
 				}),
-				ElDrawer: true,
+				ElDrawer: router
+					? defineComponent({
+							props: { modelValue: Boolean },
+							template: '<div v-if="modelValue" data-test-id="edit-drawer"><slot /></div>',
+						})
+					: true,
 				ElIcon: defineComponent({
 					template: '<span><slot /></span>',
 				}),
 				Icon: true,
-				RouterView: true,
+				RouterView: !router,
 				Suspense: false,
 				teleport: true,
 			},
@@ -186,6 +215,7 @@ const mountView = (props: Record<string, unknown> = {}) =>
 describe('ViewDevices', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.useRealRouter = false;
 		mocks.fetchDevices.mockResolvedValue(undefined);
 		mocks.fetchValidation.mockResolvedValue(undefined);
 		mocks.wizardOptions = [];
@@ -204,6 +234,7 @@ describe('ViewDevices', () => {
 		mocks.route = {
 			path: '/devices',
 			name: 'devices',
+			meta: {},
 			matched: [],
 		};
 	});
@@ -312,6 +343,7 @@ describe('ViewDevices', () => {
 		mocks.route = {
 			path: '/devices/devices-virtual/wizard',
 			name: 'devices_virtual-wizard',
+			meta: {},
 			matched: [],
 		};
 
@@ -320,6 +352,69 @@ describe('ViewDevices', () => {
 
 		expect(wrapper.find('router-view-stub').exists()).toBe(true);
 		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
+	});
+
+	it.each([true, false])('renders secondary virtual wizards through the real router (desktop: %s)', async (desktop) => {
+		mocks.useRealRouter = true;
+		mocks.isLGDevice = desktop;
+		const wizardPage = defineComponent({ template: '<div data-test-id="wizard-page" />' });
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{
+					path: '/devices',
+					name: 'devices',
+					component: ViewDevices,
+					children: [
+						{ path: ':id', name: 'devices-edit', component: defineComponent({ template: '<div data-test-id="device-editor" />' }) },
+						...PluginRoutes.map((route) =>
+							route.name === VirtualRouteNames.MEASUREMENT_WIZARD
+								? route
+								: {
+										path: route.path,
+										name: route.name,
+										meta: route.meta,
+										component: wizardPage,
+									}
+						),
+					],
+				},
+			],
+		});
+		// A direct URL (including a browser refresh) must render the actual measurement shell.
+		await router.push('/devices/devices-virtual/measurements/new?mode=sensor_aggregate');
+		await router.isReady();
+		const wrapper = mountView({}, router);
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="measurement-editor"]').text()).toBe('sensor_aggregate');
+		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
+
+		// Back and selecting either measurement mode must also work while the parent stays mounted.
+		for (const mode of [DevicesVirtualPluginDeviceMode.sensor_aggregate, DevicesVirtualPluginDeviceMode.sensor_transform]) {
+			await wrapper.get('button').trigger('click');
+			await flushPromises();
+			expect(router.currentRoute.value.name).toBe(VirtualRouteNames.WIZARD);
+			await router.push({ name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode } });
+			await flushPromises();
+			expect(wrapper.get('[data-test-id="measurement-editor"]').text()).toBe(mode);
+			expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
+		}
+		for (const name of [VirtualRouteNames.LIGHT_GROUP_WIZARD, VirtualRouteNames.THERMOSTAT_WIZARD]) {
+			await router.push({ name });
+			await flushPromises();
+			expect(wrapper.find('[data-test-id="wizard-page"]').exists()).toBe(true);
+			expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
+		}
+		await router.push('/devices/existing-device');
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="device-editor"]').exists()).toBe(true);
+		expect(wrapper.findComponent(ListDevices).exists()).toBe(desktop);
+		expect(wrapper.find('[data-test-id="edit-drawer"] [data-test-id="device-editor"]').exists()).toBe(desktop);
+		await router.push('/devices');
+		await flushPromises();
+		expect(wrapper.findComponent(ListDevices).exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="wizard-page"]').exists()).toBe(false);
+		wrapper.unmount();
 	});
 
 	// `ViewHeader` is gated on `isMDDevice`, so on a small screen it renders nothing — and the app bar's
