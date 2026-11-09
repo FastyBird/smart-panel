@@ -146,7 +146,7 @@
     "lodash.isundefined": "^3.0.1",
     "lodash.omitby": "^4.6.0",
     "mime-types": "^3.0.2",
-    "modbus-serial": "^8.0.25",
+    "modbus-serial": "8.0.25",
     "mqtt": "^5.15.0",
     "nest-commander": "^3.20.1",
     "nestjs-cls": "^6.2.0",

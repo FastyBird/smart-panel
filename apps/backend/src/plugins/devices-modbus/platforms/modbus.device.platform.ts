@@ -6,6 +6,7 @@ import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	DEVICES_MODBUS_TYPE,
 	MODBUS_DEFAULTS,
+	MODBUS_WRITE_LIMITS,
 	ModbusFraming,
 	ModbusRegisterType,
 	ModbusWriteFunction,
@@ -214,7 +215,10 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 		};
 	}
 
-	/** Merges only neighbours (in the caller's order) of one register type whose bindings all say `multiple`. */
+	/**
+	 * Merges only neighbours (in the caller's order) of one register type whose bindings all say `multiple`, and only up
+	 * to the protocol maximum of one FC15/FC16 request; a longer stretch continues in a new run.
+	 */
 	private buildRuns(planned: PlannedWrite[]): WriteRun[] {
 		const runs: WriteRun[] = [];
 		let mergeable = false;
@@ -227,7 +231,8 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 				mergeable &&
 				item.multiple &&
 				last.registerType === item.registerType &&
-				last.address + last.values.length === item.address
+				last.address + last.values.length === item.address &&
+				last.values.length + item.values.length <= this.maxWriteLength(item.registerType)
 			) {
 				last.values.push(...item.values);
 				last.propertyIds.push(item.propertyId);
@@ -259,6 +264,12 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 		}
 
 		return runs;
+	}
+
+	private maxWriteLength(registerType: WriteRegisterType): number {
+		return registerType === ModbusRegisterType.COIL
+			? MODBUS_WRITE_LIMITS.MAX_WRITE_COILS
+			: MODBUS_WRITE_LIMITS.MAX_WRITE_REGISTERS;
 	}
 
 	/** Fire and forget: the next regular poll settles the value when the read-back fails. */

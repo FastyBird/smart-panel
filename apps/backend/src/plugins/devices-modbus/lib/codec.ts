@@ -134,7 +134,11 @@ export function decodeRegisters(words: readonly number[], options: ModbusValueOp
 		return lookupRaw(raw, options.valueMap);
 	}
 
-	return raw * options.scale + options.offset;
+	const value = raw * options.scale + options.offset;
+
+	// A FLOAT32 register pair can carry NaN or ±Infinity (and scaling can overflow): neither is a reading, and NaN,
+	// never equal to itself, would be re-reported on every poll. Reported as invalid instead.
+	return Number.isFinite(value) ? value : null;
 }
 
 export function encodeValue(

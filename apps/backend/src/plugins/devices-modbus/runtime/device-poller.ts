@@ -306,10 +306,12 @@ export class DevicePoller {
 
 		this.decodeErrors.delete(point.key);
 
+		// Once per change into the invalid state: an unmapped raw value, or a reading that is not a finite number.
 		if (value === null && this.lastReported.get(point.key) !== null) {
 			this.logger.warn(
 				`Raw value ${JSON.stringify(raw)} of property id=${point.key} (device id=${this.device.deviceId}, ` +
-					`address=${point.address}) is not in its value map; reporting it as invalid`,
+					`address=${point.address}) ${binding.valueMap ? 'is not in its value map' : 'does not decode to a finite number'}; ` +
+					'reporting it as invalid',
 			);
 		}
 

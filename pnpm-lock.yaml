@@ -482,7 +482,7 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
       modbus-serial:
-        specifier: ^8.0.25
+        specifier: 8.0.25
         version: 8.0.25
       mqtt:
         specifier: ^5.15.0

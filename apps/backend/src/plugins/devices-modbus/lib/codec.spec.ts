@@ -88,6 +88,19 @@ describe('modbus codec', () => {
 		expect(decodeRegisters([10], opts({ scale: 2, offset: 1 }))).toBe(21);
 	});
 
+	it.each([
+		['NaN', [0x7fc0, 0x0000]],
+		['+Infinity', [0x7f80, 0x0000]],
+		['-Infinity', [0xff80, 0x0000]],
+	])('decodes a float32 %s as null', (_case, words) => {
+		expect(decodeRegisters(words, opts({ dataType: ModbusDataType.FLOAT32 }))).toBeNull();
+	});
+
+	it('decodes a reading that scaling overflows as null', () => {
+		// The largest finite float32 times 1e300 exceeds Number.MAX_VALUE.
+		expect(decodeRegisters([0x7f7f, 0xffff], opts({ dataType: ModbusDataType.FLOAT32, scale: 1e300 }))).toBeNull();
+	});
+
 	it('encodes relay write values', () => {
 		const valueMap = [
 			{ raw: 256, value: true },

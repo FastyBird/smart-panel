@@ -62,6 +62,14 @@ export const MODBUS_DEFAULTS = {
 	MAX_READ_GAP: 0,
 } as const;
 
+/** Protocol maxima of one multiple-write request (Modbus Application Protocol v1.1b3, 6.11 and 6.12). */
+export const MODBUS_WRITE_LIMITS = {
+	/** FC16 Write Multiple Registers. */
+	MAX_WRITE_REGISTERS: 123,
+	/** FC15 Write Multiple Coils. */
+	MAX_WRITE_COILS: 1968,
+} as const;
+
 /** Upper bounds of user-supplied settings. Timer delays stay far below 2^31-1 ms, above which Node fires after 1 ms. */
 export const MODBUS_LIMITS = {
 	/** Connect timeout, request timeout and inter-request delay. */

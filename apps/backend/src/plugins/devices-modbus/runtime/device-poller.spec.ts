@@ -650,6 +650,34 @@ describe('DevicePoller', () => {
 		});
 	});
 
+	describe('non-finite readings', () => {
+		let warn: jest.SpyInstance;
+
+		beforeEach(() => {
+			warn = jest.spyOn(ExtensionLoggerService.prototype, 'warn').mockImplementation(() => undefined);
+		});
+
+		afterEach(() => {
+			warn.mockRestore();
+		});
+
+		it('reports a NaN float once as null and warns once', async () => {
+			// 0x7fc00000 is a quiet NaN.
+			connection.read.mockResolvedValue([0x7fc0, 0x0000]);
+
+			create(snapshot([read('p1', { dataType: ModbusDataType.FLOAT32 })])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(1000);
+
+			expect(connection.read).toHaveBeenCalledTimes(2);
+			expect(callbacks.report).toHaveBeenCalledTimes(1);
+			expect(callbacks.report).toHaveBeenCalledWith('p1', null, expect.any(Date));
+			expect(
+				warn.mock.calls.filter(([message]) => String(message).includes('does not decode to a finite number')),
+			).toHaveLength(1);
+		});
+	});
+
 	it('does not keep the process alive with its poll timers', () => {
 		const setIntervalSpy = jest.spyOn(global, 'setInterval');
 

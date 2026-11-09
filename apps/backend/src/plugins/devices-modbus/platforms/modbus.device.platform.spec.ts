@@ -193,6 +193,41 @@ describe('ModbusDevicePlatform', () => {
 		expect(write).toHaveBeenCalledWith(expect.objectContaining({ address: 0, values: [true, false] }));
 	});
 
+	it('splits a merged register run at the FC16 maximum of 123 registers', async () => {
+		const updates = Array.from({ length: 124 }, (_, index) => {
+			writes.set(`p${index}`, binding({ address: 100 + index, writeFunction: ModbusWriteFunction.MULTIPLE }));
+
+			return update(`p${index}`, index);
+		});
+
+		await expect(platform.processBatch(updates as never)).resolves.toBe(true);
+
+		const requests = (write.mock.calls as Array<[{ address: number; values: number[] }]>).map(([r]) => r);
+
+		expect(requests.map((r) => [r.address, r.values.length])).toEqual([
+			[100, 123],
+			[223, 1],
+		]);
+	});
+
+	it('splits a merged coil run at the FC15 maximum of 1968 coils', async () => {
+		const coil = { registerType: ModbusRegisterType.COIL, dataType: ModbusDataType.BOOL };
+		const updates = Array.from({ length: 1969 }, (_, index) => {
+			writes.set(`c${index}`, binding({ ...coil, address: index, writeFunction: ModbusWriteFunction.MULTIPLE }));
+
+			return update(`c${index}`, index % 2 === 0);
+		});
+
+		await expect(platform.processBatch(updates as never)).resolves.toBe(true);
+
+		const requests = (write.mock.calls as Array<[{ address: number; values: boolean[] }]>).map(([r]) => r);
+
+		expect(requests.map((r) => [r.address, r.values.length])).toEqual([
+			[0, 1968],
+			[1968, 1],
+		]);
+	});
+
 	it('does not merge single-function writes', async () => {
 		writes.set('a', binding({ address: 10 }));
 		writes.set('b', binding({ address: 11 }));
