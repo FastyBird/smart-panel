@@ -5,6 +5,8 @@ Final software and alpha delivery reconciled on 2026-11-09 against merged #1544,
 All fourteen prerequisite software children are closed; #1462/#1447 close with this final record.
 All 139 fixed original residuals now have current scoped/replacement bindings; all 261 identities and their
 per-row semantic limits remain in [the canonical ledger](work/virtual-thermostat/original1473-case-map.json).
+The ledger's `status` and `current.qualification` describe a historical pre-alpha checkpoint;
+see the final software/alpha record below for completed release status.
 The governed bridge, schedules, occupancy, native HA/Zigbee and cover/HomeKit implementations remain delivered.
 
 The [final software/alpha record](work/virtual-thermostat/final-software-alpha-validation.md) records

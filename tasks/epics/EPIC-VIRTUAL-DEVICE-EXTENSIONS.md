@@ -123,7 +123,7 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
 
 Tracking: [#1463](https://github.com/FastyBird/smart-panel/issues/1463). This issue follows the published alpha and stays separate from software delivery.
 
-Perform final tests on real equipment only after the next alpha and a separately authorized concrete procedure.
+Perform final tests on real equipment against published alpha.66 and only with a separately authorized concrete procedure.
 Track calibration/limits, equipment protection, writer isolation, local release/watchdog, disconnect/restart/late commands,
 supported native HA/Zigbee devices and real HomeKit pairing. The existing
 [Shelly commissioning record](../../docs/work/virtual-thermostat/shelly-commissioning.md) stays unqualified until evidence
