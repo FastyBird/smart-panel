@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { AsyncLocalStorage, createHook } from 'node:async_hooks';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10815,6 +10815,18 @@ describe('virtual thermostat durable runtime', () => {
 		const { fixture, claims, owner: a, calls } = observed;
 		let b: VirtualThermostatRuntimeService | undefined;
 		let originalCompletion: Promise<void> | undefined;
+		const promiseIds = new WeakMap<object, number>();
+		const capturedContinuations: number[] = [];
+		let originalAsyncId: number | undefined;
+		let observingCapture = false;
+		const hook = createHook({
+			init(asyncId, type, triggerAsyncId, resource: object) {
+				if (type !== 'PROMISE') return;
+				promiseIds.set(resource, asyncId);
+				if (observingCapture && triggerAsyncId === originalAsyncId) capturedContinuations.push(asyncId);
+			},
+		});
+		hook.enable();
 		const previousOn = fixture.controls.afterOn;
 		const observeCompletion = async (property: string) => {
 			if (property === relayId) {
@@ -10842,6 +10854,11 @@ describe('virtual thermostat durable runtime', () => {
 			expect(a['inFlight'].size).toBe(0);
 			if (originalCompletion === undefined) throw new Error('Original settled ON completion missing');
 			await originalCompletion;
+			expect(
+				[...(a['ownership']['pending'].get(controllerId) ?? [])].map((decision) => decision.completion),
+			).not.toContain(originalCompletion);
+			originalAsyncId = promiseIds.get(originalCompletion);
+			expect(originalAsyncId).toBeDefined();
 			const original = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
 				id: on.args[4].commandId,
 			});
@@ -10870,15 +10887,15 @@ describe('virtual thermostat durable runtime', () => {
 			await settleReal(fixture);
 			expect(b['inFlight'].size).toBe(0);
 			const before = await nativeLifetimeImage();
-			const subscriptions = jest.spyOn(originalCompletion, 'then');
+			observingCapture = true;
 			try {
 				await waitNativeLifetime(
 					b.capturePredecessors(controllerId),
 					'Fresh predecessor capture retained completed history',
 				);
-				expect(subscriptions).not.toHaveBeenCalled();
+				expect(capturedContinuations).toEqual([]);
 			} finally {
-				subscriptions.mockRestore();
+				observingCapture = false;
 			}
 			const current = await comfortFence();
 			await comfort.select(controllerId, current, 'eco', false);
@@ -10892,6 +10909,7 @@ describe('virtual thermostat durable runtime', () => {
 		} catch (cause) {
 			failure = { cause };
 		} finally {
+			hook.disable();
 			b?.onModuleDestroy();
 			try {
 				await observed.cleanup();
