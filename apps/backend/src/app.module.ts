@@ -97,6 +97,8 @@ import { DEVICES_HOMEKIT_PLUGIN_PREFIX } from './plugins/devices-homekit/devices
 import { DevicesHomeKitPlugin } from './plugins/devices-homekit/devices-homekit.plugin';
 import { DEVICES_HOMEY_PLUGIN_PREFIX } from './plugins/devices-homey/devices-homey.constants';
 import { DevicesHomeyPlugin } from './plugins/devices-homey/devices-homey.plugin';
+import { DEVICES_MODBUS_PLUGIN_PREFIX } from './plugins/devices-modbus/devices-modbus.constants';
+import { DevicesModbusPlugin } from './plugins/devices-modbus/devices-modbus.plugin';
 import { DEVICES_RETERMINAL_PLUGIN_PREFIX } from './plugins/devices-reterminal/devices-reterminal.constants';
 import { DevicesReTerminalPlugin } from './plugins/devices-reterminal/devices-reterminal.plugin';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/devices-shelly-ng.constants';
@@ -377,6 +379,10 @@ export class AppModule {
 								module: DevicesShellyV1Plugin,
 							},
 							{
+								path: DEVICES_MODBUS_PLUGIN_PREFIX,
+								module: DevicesModbusPlugin,
+							},
+							{
 								path: DEVICES_WLED_PLUGIN_PREFIX,
 								module: DevicesWledPlugin,
 							},
@@ -496,6 +502,7 @@ export class AppModule {
 				DevicesHomeyPlugin,
 				DevicesShellyNgPlugin,
 				DevicesShellyV1Plugin,
+				DevicesModbusPlugin,
 				DevicesWledPlugin,
 				DevicesZigbee2mqttPlugin,
 				DevicesVirtualPlugin,

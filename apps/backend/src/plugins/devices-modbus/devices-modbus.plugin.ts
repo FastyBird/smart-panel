@@ -1,0 +1,222 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { DevicesModule } from '../../modules/devices/devices.module';
+import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
+import { CreateChannelDto } from '../../modules/devices/dto/create-channel.dto';
+import { CreateDeviceDto } from '../../modules/devices/dto/create-device.dto';
+import { UpdateChannelPropertyDto } from '../../modules/devices/dto/update-channel-property.dto';
+import { UpdateChannelDto } from '../../modules/devices/dto/update-channel.dto';
+import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
+import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
+import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
+import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
+import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
+
+import {
+	DEVICES_MODBUS_API_TAG_DESCRIPTION,
+	DEVICES_MODBUS_API_TAG_NAME,
+	DEVICES_MODBUS_PLUGIN_NAME,
+	DEVICES_MODBUS_TYPE,
+} from './devices-modbus.constants';
+import { DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-modbus.openapi';
+import { CreateModbusChannelPropertyDto } from './dto/create-channel-property.dto';
+import { CreateModbusChannelDto } from './dto/create-channel.dto';
+import { CreateModbusDeviceDto } from './dto/create-device.dto';
+import { UpdateModbusChannelPropertyDto } from './dto/update-channel-property.dto';
+import { UpdateModbusChannelDto } from './dto/update-channel.dto';
+import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
+import { UpdateModbusDeviceDto } from './dto/update-device.dto';
+import { ModbusChannelEntity, ModbusChannelPropertyEntity, ModbusDeviceEntity } from './entities/devices-modbus.entity';
+import { ModbusConfigModel } from './models/config.model';
+import { ModbusDevicePlatform } from './platforms/modbus.device.platform';
+import { ModbusRuntimeService } from './services/modbus-runtime.service';
+
+@ApiTag({
+	tagName: DEVICES_MODBUS_PLUGIN_NAME,
+	displayName: DEVICES_MODBUS_API_TAG_NAME,
+	description: DEVICES_MODBUS_API_TAG_DESCRIPTION,
+})
+@Module({
+	imports: [
+		TypeOrmModule.forFeature([ModbusDeviceEntity, ModbusChannelEntity, ModbusChannelPropertyEntity]),
+		DevicesModule,
+		ConfigModule,
+		SwaggerModule,
+		ExtensionsModule,
+	],
+	providers: [ModbusDevicePlatform, ModbusRuntimeService],
+})
+export class DevicesModbusPlugin {
+	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
+		private readonly runtime: ModbusRuntimeService,
+		private readonly devicesMapper: DevicesTypeMapperService,
+		private readonly channelsMapper: ChannelsTypeMapperService,
+		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
+		private readonly modbusDevicePlatform: ModbusDevicePlatform,
+		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
+	) {}
+
+	onModuleInit() {
+		// Register plugin config mapper
+		this.configMapper.registerMapping<ModbusConfigModel, ModbusUpdatePluginConfigDto>({
+			type: DEVICES_MODBUS_PLUGIN_NAME,
+			class: ModbusConfigModel,
+			configDto: ModbusUpdatePluginConfigDto,
+		});
+
+		// Register device type mapper
+		this.devicesMapper.registerMapping<ModbusDeviceEntity, CreateModbusDeviceDto, UpdateModbusDeviceDto>({
+			type: DEVICES_MODBUS_TYPE,
+			createDto: CreateModbusDeviceDto,
+			updateDto: UpdateModbusDeviceDto,
+			class: ModbusDeviceEntity,
+		});
+
+		// Register channel type mapper
+		this.channelsMapper.registerMapping<ModbusChannelEntity, CreateModbusChannelDto, UpdateModbusChannelDto>({
+			type: DEVICES_MODBUS_TYPE,
+			createDto: CreateModbusChannelDto,
+			updateDto: UpdateModbusChannelDto,
+			class: ModbusChannelEntity,
+		});
+
+		// Register channel property type mapper
+		this.channelsPropertiesMapper.registerMapping<
+			ModbusChannelPropertyEntity,
+			CreateModbusChannelPropertyDto,
+			UpdateModbusChannelPropertyDto
+		>({
+			type: DEVICES_MODBUS_TYPE,
+			createDto: CreateModbusChannelPropertyDto,
+			updateDto: UpdateModbusChannelPropertyDto,
+			class: ModbusChannelPropertyEntity,
+		});
+
+		// Register device platform
+		this.platformRegistryService.register(this.modbusDevicePlatform);
+
+		// Register Swagger models
+		for (const model of DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
+		// Register discriminators for polymorphic serialization
+		this.discriminatorRegistry.register({
+			parentClass: DeviceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: ModbusDeviceEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: CreateModbusDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: UpdateModbusDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: ChannelEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: ModbusChannelEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateChannelDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: CreateModbusChannelDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateChannelDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: UpdateModbusChannelDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: ChannelPropertyEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: ModbusChannelPropertyEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateChannelPropertyDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: CreateModbusChannelPropertyDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateChannelPropertyDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_MODBUS_TYPE,
+			modelClass: UpdateModbusChannelPropertyDto,
+		});
+
+		// Register plugin metadata for extension discovery
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_MODBUS_PLUGIN_NAME,
+			name: 'Modbus',
+			description: 'Support for Modbus TCP and RTU over TCP devices',
+			author: 'FastyBird',
+			readme: `# Modbus
+
+> Plugin · by FastyBird · platform: devices
+
+Integration for Modbus devices reachable over the network. Supports **Modbus TCP** and **RTU over TCP** (serial gateways that tunnel RTU frames through a TCP socket).
+
+## What you get
+
+- Poll coils, discrete inputs, input registers and holding registers of any Modbus device and expose them as Smart Panel properties
+- Write coils and holding registers from the panel and dashboards
+
+## Features
+
+- **Modbus TCP** — standard MBAP framing on port 502
+- **RTU over TCP** — RTU frames (with CRC) through transparent serial-to-Ethernet gateways
+- **Typed registers** — bool, int16, uint16, int32, uint32 and float32 with configurable byte and word order
+- **Resilient connections** — automatic reconnect with backoff and per-device health tracking
+
+## Configuration
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`enabled\` | Enable the Modbus plugin | \`true\` |`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
+
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.managedServiceManager.register(this.runtime);
+	}
+}
