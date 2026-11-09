@@ -11849,6 +11849,9 @@ describe('virtual thermostat durable runtime', () => {
 			expect(comfort.isCurrent(row)).toBe(true);
 			expect(comfort['leases'].get(controllerId)).toBe(lease);
 			expect(lease.deadline).toBe(deadline);
+			scope.advance(deadline);
+			expect(Date.now()).toBeLessThan(Date.parse(row.comfort.temporary_override.expires_at));
+			expect(comfort.isCurrent(row)).toBe(false);
 			scope.advance(deadline + 1);
 			expect(Date.now()).toBeLessThan(Date.parse(row.comfort.temporary_override.expires_at));
 			expect(comfort.isCurrent(row)).toBe(false);

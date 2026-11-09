@@ -1,7 +1,9 @@
 # Final software acceptance and next alpha
 
-Status: partial software acceptance, 2026-11-09. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
-Current software base: merged main `2fd4d7f523759be1a92392f7455763bc4e7c3b86` (#1541),plus the native-effects batch below.
+Status at the #1542 source checkpoint: partial software acceptance, 2026-11-09. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
+#1542 pre-merge source checkpoint: base main was `2fd4d7f523759be1a92392f7455763bc4e7c3b86` (#1541),
+with114/139 residuals bound and25 open;the proposed source below has121/139 bound and18 open.
+These counts describe this source checkpoint;live delivery status is tracked in #1462.
 Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
 No alpha was dispatched or published by this preparation. No installed equipment was operated.
 
@@ -22,7 +24,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **615/615**,zero failures/skips,one complete ten-file invocation on merged#1541 plus seven native-effects executions. Includes **273 runtime cases**. Report SHA-256 `3635ae13d4a9908b550a6351d5a92f16ee9d0cd2803a1160b218120119893529`; exact apps/source identities are in the ledger. |
+| Current complete consumers | **615/615**,zero failures/skips,one complete ten-file invocation after the exact-deadline review follow-up. Includes **273 runtime cases**. Report SHA-256 `64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca`; exact apps/source identities are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -199,16 +201,27 @@ preserve the original deadline across hydration-neutral reads,native UUID/FK/cat
 release; exact late native descendants cannot revive original SDK guards. The retired method-pinned TIME,
 global journal-DIRTY and hereditary O/T protocols remain explicitly distinct.
 [Exact replacements,carried review assertions,controls and preparation limits](original1473-residual-acceptance.md#native-effects-original-budget-and-closed-descendants)
-retain the boundaries. Actual main114/139 bound25open;pending batch121/139 bound18open.
+retain the boundaries. #1542 pre-merge checkpoint: base main had114/139 bound25open;
+the proposed source has121/139 bound18open.
 
-#1542 review follow-up labels the earlier104-main and row215-open statements as historical. A real
+#1542 historical review checkpoint at `70e5069`: the earlier104-main and row215-open statements are historical. A real
 Date baseline precedes the retained-OFF comparison. The hydration-neutral witness advances monotonic
 time before replacement and restoration and keeps the exact original deadline at both points. A deliberate
 in-place renewal passes the former test1/1 and fails the strengthened deadline1/1 (272unrun each),before
 Jest timeout. Sources restore before fresh **615/615**,runtime273,zero skips;report `3635ae13d4a9908b550a6351d5a92f16ee9d0cd2803a1160b218120119893529`.
-No new cases or disposition changes:121/139 pending,18open. All136 other literal bodies,89 helpers,
+#1542 pre-merge checkpoint:no new cases or disposition changes;the proposed source has121/139 bound,18open. All136 other literal bodies,89 helpers,
 32 production files and shared fixture remain unchanged;complete independent audits cover250 bindings.
 [The review evidence](original1473-residual-acceptance.md#native-effects-review-historical-status-and-advanced-clock) retains exact source/control limits.
+
+#1542 exact-deadline review checkpoint separates the historical five-variant control/source64046b6
+from the later one-case hydration-renewal control/source70e5069. Their615-case reports remain historical
+at those exact sources. The current test additionally expires at the exact original monotonic deadline and
+one tick later,with wall time still before expiry. A `>=`→`>` counterfactual passes the former witness1/1
+and fails the new exact-boundary assertion1/1,272unrun each;production restores before fresh615/615,
+runtime273,zero skips,report `64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca`. No new cases/dispositions. The **#1542 pre-merge checkpoint**
+remains base main114/139 bound25open and proposed source121/139 bound18open;live delivery is in #1462.
+[Exact source/control/report limits](original1473-residual-acceptance.md#exact-deadline-review-and-source-checkpoint)
+retain all prior historical records and the unchanged18 residual requirements.
 
 ## Composed acceptance
 
