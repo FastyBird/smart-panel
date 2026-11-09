@@ -751,4 +751,92 @@ describe('actual managed fixture setup and cleanup ownership', () => {
 			await closed(scope);
 		},
 	);
+
+	it.each(
+		[
+			{ name: 'undefined', cause: undefined },
+			{ name: 'null', cause: null },
+			{ name: 'false', cause: false },
+		].flatMap((entry) => [
+			{ ...entry, later: false },
+			{ ...entry, later: true },
+		]),
+	)(
+		'retains the first cleanup cause in real fixture and aggregate disposal: $name; later failures=$later',
+		async ({ cause, later }) => {
+			const a = begin(),
+				af = await a.ready,
+				b = begin(),
+				bf = await b.ready;
+			const as = af.captureSession(a.relay),
+				bs = bf.captureSession(b.relay);
+			const stop = a.connector.stop.bind(a.connector) as typeof a.connector.stop;
+			jest.spyOn(a.connector, 'stop').mockImplementationOnce(async () => {
+				await stop();
+				// eslint-disable-next-line @typescript-eslint/only-throw-error -- Deliberate present falsy cleanup cause.
+				throw cause;
+			});
+			const secondA = new Error('later fixture cleanup'),
+				secondB = new Error('later aggregate cleanup');
+			const closeA = a.moduleDispose,
+				closeB = b.moduleDispose;
+			const ac = jest.spyOn(a.module, 'close').mockImplementation(async () => {
+				await closeA();
+				if (later) throw secondA;
+			});
+			const bc = jest.spyOn(b.module, 'close').mockImplementation(async () => {
+				await closeB();
+				if (later) throw secondB;
+			});
+			await rejects(disposeRealThermostatGuardFixtures(), cause);
+			await rejects(af.dispose(), cause); // The actual fixture itself retained the first cause.
+			expect(ac).toHaveBeenCalledTimes(1);
+			expect(bc).toHaveBeenCalledTimes(1);
+			expect(as?.isCurrent()).toBe(false);
+			expect(bs?.isCurrent()).toBe(false);
+			expect(a.db.isInitialized).toBe(true);
+			expect(b.db.isInitialized).toBe(true);
+			await expect(disposeRealThermostatGuardFixtures()).resolves.toBeUndefined(); // Both rejected owners left the registry.
+			await rejects(a.close(), cause);
+			if (later) {
+				await rejects(bf.dispose(), secondB);
+				await rejects(b.close(), secondB);
+			} else await b.close();
+			await closed(a);
+			await closed(b);
+		},
+	);
+
+	it('continues real managed cleanup after the original authority revocation throws', async () => {
+		const a = begin(),
+			fixture = await a.ready,
+			session = fixture.captureSession(a.relay);
+		const p = new Error('original authority revocation failure');
+		const revoke = a.connector.revokeCurrentAuthority.bind(a.connector) as typeof a.connector.revokeCurrentAuthority;
+		const revocation = jest.spyOn(a.connector, 'revokeCurrentAuthority').mockImplementationOnce(() => {
+			revoke();
+			throw p;
+		});
+		const close = jest.spyOn(a.module, 'close');
+		try {
+			const original = fixture.dispose();
+			await rejects(original, p);
+			expect(fixture.dispose()).toBe(original);
+			expect(close).toHaveBeenCalledTimes(1);
+			expect(a.reportClose).toHaveBeenCalled();
+			expect(session?.isCurrent()).toBe(false);
+			expect(a.db.isInitialized).toBe(true);
+			await expect(disposeRealThermostatGuardFixtures()).resolves.toBeUndefined();
+			await rejects(a.close(), p);
+			await closed(a);
+		} finally {
+			revocation.mockRestore();
+			// Also close real resources when a deliberate negative probe aborts disposal before module.close.
+			if (close.mock.calls.length === 0) {
+				await a.connector.stop();
+				a.reports.onModuleDestroy();
+				await a.moduleDispose();
+			}
+		}
+	});
 });
