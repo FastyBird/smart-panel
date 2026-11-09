@@ -293,6 +293,13 @@ export class DevicesController {
 
 			return response;
 		} catch (error) {
+			// A refusal with a reason (a type that must be created through its plugin's own route, a
+			// climate controller outside its producer writer) is not transient: carry the reason through
+			// rather than advising a retry that can never succeed.
+			if (error instanceof DevicesValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device could not be created. Please try again later');
 			}

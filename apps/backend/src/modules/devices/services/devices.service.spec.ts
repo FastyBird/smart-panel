@@ -707,6 +707,36 @@ describe('DevicesService', () => {
 			expect(inserted?.hiddenBy).toBeNull();
 		});
 
+		// A type owner that installs its devices atomically through its own route (Modbus) opts out of the
+		// generic create: a context-free creation is refused before validation or any write, naming the route.
+		it('refuses a context-free create of a type that requires a creation context', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockDevice,
+				createDto: CreateMockDeviceDto,
+				updateDto: UpdateMockDeviceDto,
+				requiresCreationContext: true,
+				creationRoute: 'POST /plugins/mock/devices',
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			const validate = jest.spyOn(service as unknown as { validateDto: () => Promise<unknown> }, 'validateDto');
+
+			const attempt = service.create({
+				type: 'mock',
+				category: DeviceCategory.GENERIC,
+				name: 'Plugin-owned device',
+				mock_value: 'Random text',
+			} as never);
+
+			await expect(attempt).rejects.toThrow(DevicesValidationException);
+			await expect(attempt).rejects.toThrow(
+				"Devices of type 'mock' can only be created through POST /plugins/mock/devices.",
+			);
+			expect(validate).not.toHaveBeenCalled();
+			expect(repository.insert).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
+
 		it('refuses a create naming an id that already exists, before anything is written', async () => {
 			const takenId = uuid().toString();
 

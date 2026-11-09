@@ -382,6 +382,25 @@ describe('devices-modbus plugin (e2e)', () => {
 		expect((await fetchDevice()).status.status).toBe(ConnectionState.CONNECTED);
 	});
 
+	it('refuses creating a Modbus device through the core devices route', async () => {
+		const id = uuid();
+		const refused = await authPost('/modules/devices/devices')
+			.send({
+				data: {
+					id,
+					type: DEVICES_MODBUS_TYPE,
+					name: 'Bypass',
+					category: DeviceCategory.SWITCHER,
+					endpoint_id: uuid(),
+					unit_id: 1,
+				},
+			})
+			.expect(422);
+
+		expect(JSON.stringify(refused.body)).toContain('/plugins/devices-modbus/devices');
+		await authGet(`/modules/devices/devices/${id}`).expect(404);
+	});
+
 	it('polls relay state', async () => {
 		const relay3 = relayProperty(3);
 
@@ -506,7 +525,16 @@ describe('devices-modbus plugin (e2e)', () => {
 			.expect(400);
 
 		expect(JSON.stringify(refused.body)).toContain('endpoint_id');
-		expect((await fetchDevice()) as unknown as Record<string, unknown>).toMatchObject({ endpoint_id: endpointId });
+
+		const nullUnit = await authPatch(`/modules/devices/devices/${device.id}`)
+			.send({ data: { type: DEVICES_MODBUS_TYPE, unit_id: null } })
+			.expect(400);
+
+		expect(JSON.stringify(nullUnit.body)).toContain('unit_id');
+		expect((await fetchDevice()) as unknown as Record<string, unknown>).toMatchObject({
+			endpoint_id: endpointId,
+			unit_id: 1,
+		});
 	});
 
 	it('refuses deleting the endpoint while the device exists', async () => {

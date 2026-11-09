@@ -1,5 +1,16 @@
 import { Expose } from 'class-transformer';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import {
+	IsEnum,
+	IsInt,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Max,
+	MaxLength,
+	Min,
+	ValidateIf,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -26,7 +37,8 @@ export class UpdateModbusDeviceDto extends UpdateDeviceDto {
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
 	@Expose()
-	@IsOptional()
+	// Omitted keeps the current endpoint; a Modbus device always has one, so `null` must fail validation here.
+	@ValidateIf((_, value) => value !== undefined)
 	@IsUUID('4', { message: '[{"field":"endpoint_id","reason":"Value must be a valid UUID."}]' })
 	endpoint_id?: string;
 
@@ -39,7 +51,8 @@ export class UpdateModbusDeviceDto extends UpdateDeviceDto {
 		maximum: 255,
 	})
 	@Expose()
-	@IsOptional()
+	// Omitted keeps the current unit; a Modbus device always has one, so `null` must fail validation here.
+	@ValidateIf((_, value) => value !== undefined)
 	@IsInt({ message: '[{"field":"unit_id","reason":"Value must be an integer."}]' })
 	@Min(0, { message: '[{"field":"unit_id","reason":"Value must be at least 0."}]' })
 	@Max(255, { message: '[{"field":"unit_id","reason":"Value must be at most 255."}]' })

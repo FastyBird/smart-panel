@@ -83,6 +83,15 @@ describe('DevicesModbusPlugin', () => {
 		expect(deviceStructure.validateUpdate).toHaveBeenCalledWith(device, previous);
 	});
 
+	it('keeps device creation off the generic core route', () => {
+		expect(devicesMapper.registerMapping).toHaveBeenCalledWith(
+			expect.objectContaining({
+				requiresCreationContext: true,
+				creationRoute: 'POST /plugins/devices-modbus/devices',
+			}),
+		);
+	});
+
 	it('registers the platform', () => {
 		expect(platformRegistryService.register).toHaveBeenCalledWith(platform);
 	});

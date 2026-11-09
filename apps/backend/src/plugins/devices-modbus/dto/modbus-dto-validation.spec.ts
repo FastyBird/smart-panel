@@ -48,6 +48,23 @@ describe('Modbus DTO validation', () => {
 		});
 	});
 
+	describe('UpdateModbusDeviceDto', () => {
+		it.each(['endpoint_id', 'unit_id'])('accepts an omitted %s', async (field) => {
+			expect(await fieldErrors(UpdateModbusDeviceDto, field, undefined)).toEqual([]);
+		});
+
+		it.each(['endpoint_id', 'unit_id'])('refuses a null %s', async (field) => {
+			expect(await fieldErrors(UpdateModbusDeviceDto, field, null)).not.toEqual([]);
+		});
+
+		it('accepts a valid endpoint and unit', async () => {
+			expect(await fieldErrors(UpdateModbusDeviceDto, 'endpoint_id', 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6')).toEqual(
+				[],
+			);
+			expect(await fieldErrors(UpdateModbusDeviceDto, 'unit_id', 0)).toEqual([]);
+		});
+	});
+
 	describe.each(ENDPOINT_DTOS)('%s', (_name, dto) => {
 		it.each(['connect_timeout_ms', 'request_timeout_ms', 'inter_request_delay_ms'])(
 			'caps %s at 60000 ms',

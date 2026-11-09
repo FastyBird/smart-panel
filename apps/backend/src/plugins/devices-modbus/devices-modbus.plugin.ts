@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { PLUGINS_PREFIX } from '../../app.constants';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -29,6 +30,7 @@ import {
 	DEVICES_MODBUS_API_TAG_DESCRIPTION,
 	DEVICES_MODBUS_API_TAG_NAME,
 	DEVICES_MODBUS_PLUGIN_NAME,
+	DEVICES_MODBUS_PLUGIN_PREFIX,
 	DEVICES_MODBUS_TYPE,
 } from './devices-modbus.constants';
 import { DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-modbus.openapi';
@@ -113,6 +115,10 @@ export class DevicesModbusPlugin {
 			// A core PATCH may move the device to another endpoint or unit, or lower its read limit: judged on the merged
 			// row like a creation, and refused with the plugin's 400 validation error.
 			beforeUpdate: (device, previous) => this.deviceStructure.validateUpdate(device, previous),
+			// The generic core create cannot check the endpoint, the unit or the bindings: a Modbus device is only
+			// installed atomically, with its structure, by the plugin's own route.
+			requiresCreationContext: true,
+			creationRoute: `POST /${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices`,
 		});
 
 		// Register channel type mapper

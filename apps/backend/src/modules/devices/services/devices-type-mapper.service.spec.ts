@@ -133,5 +133,17 @@ describe('DevicesTypeMapperService', () => {
 			Reflect.set(absent.receiver, 'afterCreate', successor);
 			expect(absent.current()).toBe(false);
 		});
+
+		it('carries the creation-context requirement and route into a capture', () => {
+			service.registerMapping({
+				...mapping(),
+				requiresCreationContext: true,
+				creationRoute: 'POST /plugins/mock/devices',
+			});
+			const captured = service.captureMapping('mock');
+			expect(captured.values.requiresCreationContext).toBe(true);
+			expect(captured.values.creationRoute).toBe('POST /plugins/mock/devices');
+			expect(captured.current()).toBe(true);
+		});
 	});
 });

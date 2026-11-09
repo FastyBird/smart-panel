@@ -618,6 +618,13 @@ export class DevicesService {
 			? (creationMapping(creation.mapping('device')) as DeviceTypeMapping<TDevice, TCreateDTO, any>)
 			: this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
 
+		// A type owner that validates and installs its devices atomically through its own route opts out of
+		// the generic, context-free creation path entirely, before anything is validated or written.
+		if (mapping.requiresCreationContext && !creation)
+			throw new DevicesValidationException(
+				`Devices of type '${type}' can only be created through ${mapping.creationRoute ?? "the owning plugin's create endpoint"}.`,
+			);
+
 		const dtoInstance = await DeviceCreationContext.check(creation, () =>
 			this.validateDto<TCreateDTO>(mapping.createDto, createDto),
 		);
