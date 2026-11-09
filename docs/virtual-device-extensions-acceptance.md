@@ -1,15 +1,18 @@
 # Virtual device extensions: software acceptance reconciliation
 
-Reconciled on 2026-11-06 against merged main `1213149b8960a55536dfd6cd4687aaaea96a701d` (#1509).
-The governed bridge (#1498), weekly schedules (#1501), occupancy (#1502), native HA/Zigbee thermostats (#1504)
-and cover/HomeKit completion (#1505) are merged. Combined activity HTTP and schedule/motion/manual-priority
-witnesses were delivered by #1508 and retained through the later #1517 fixture correction. This reconciliation
-adds the explicit all-available-domain unit variants and adopts the criterion map below.
+Reconciled on 2026-11-09 against reviewed/merged #1543,
+`7dccbf5eaa339957fe23e0d3b4ac112a9df78432`. All fourteen prerequisite software children are closed.
+All 139 fixed original residuals now have current scoped/replacement bindings; all 261 identities and their
+per-row semantic limits remain in [the canonical ledger](work/virtual-thermostat/original1473-case-map.json).
+The governed bridge, schedules, occupancy, native HA/Zigbee and cover/HomeKit implementations remain delivered.
 
-The [final software/alpha validation record](work/virtual-thermostat/final-software-alpha-validation.md) tracks
-new composed HTTP and published-alpha upgrade cases, release-source identity, current execution and remaining gates.
-A passing software fixture does not qualify installed equipment or publish an alpha. The original #1473 reconciliation
-is still explicit work; neither green delivery PRs nor a title match alone discharge its historical scenarios.
+The [final software/alpha record](work/virtual-thermostat/final-software-alpha-validation.md) binds current
+native consumers, named combined HTTP/manual-priority and published-alpha64 upgrade evidence. The exact
+#1543 backend job passed 728 ordinary unit suites/13,466 tests (one unrelated existing mapper skip), then
+all 29 ordinary E2E suites/**426/426 without skips**. The E2E and production sources are unchanged by the
+final cleanup-test/documentation proposal; that proposal still requires its own CI/review before release.
+Software composition and the original-reference inventory are complete. Actual alpha publication remains
+#1462; parent #1447 stays open until delivery. Installed #1463 is separate and no hardware was operated.
 
 ## Software delivery state
 
@@ -20,15 +23,15 @@ is still explicit work; neither green delivery PRs nor a title match alone disch
 | Fan/cover backend (#1452)                                             | Software complete; #1467/#1505                                                | Qualified percentage POSITION/TILT merged; installed motors remain #1463                                                                |
 | Group authoring and controls (#1453)                                  | Software complete; #1466/#1467                                                | Unsupported profiles retain refusals; installed equipment remains separate                                                              |
 | Provider-neutral parallel branches (#1454)                            | Software complete; #1469/#1470/#1471                                          | Installed HA/Zigbee/Shelly qualification remains separate                                                                               |
-| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Schedule/occupancy composition is adopted under #1458; original-reference and alpha gates remain #1462                                            |
-| Activity climate bridge (#1458)                                       | Software complete; #1498/#1501/#1502 and composed criterion map below                        | Independent manual priorities and UNKNOWN input are covered; original-reference and alpha gates remain #1462                                    |
+| Presets and durable overrides (#1455)                                 | Software complete; #1469/#1470 and native intent follow-ups #1488–#1493/#1498 | Schedule/occupancy composition is adopted under #1458; original-reference bindings are delivered; alpha remains #1462                                            |
+| Activity climate bridge (#1458)                                       | Software complete; #1498/#1501/#1502 and composed criterion map below                        | Independent manual priorities and UNKNOWN input are covered; original-reference bindings are delivered; alpha remains #1462                                    |
 | Dew point and cooling protection (#1459)                              | Software complete; #1471                                                      | Installed cooling qualification is #1463                                                                                                |
-| Home Assistant native units (#1456)                                   | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
-| Zigbee2MQTT native units (#1457)                                      | Software complete; merged #1504                                               | Installed-unit qualification and final composition remain separate                                                                      |
+| Home Assistant native units (#1456)                                   | Software complete; merged #1504                                               | Installed-unit qualification remains #1463; named software composition is qualified below                                                                      |
+| Zigbee2MQTT native units (#1457)                                      | Software complete; merged #1504                                               | Installed-unit qualification remains #1463; named software composition is qualified below                                                                      |
 | SDK operators (#1460)                                                 | Complete; #1468, child already closed                                         | Preserve version/lifecycle/failure contracts                                                                                            |
 | HomeKit (#1461)                                                       | Software complete; #1466/#1505                                                | Atomic native modes and HAP composition merged; actual Apple pairing remains #1463                                                      |
-| Final software and alpha (#1462)                                      | Open                                                                          | Named composed/upgrade/reference scenarios, remaining docs and published version/tag/jobs/artifacts                                     |
-| Parent epic (#1447)                                                   | Open                                                                          | All remaining software and actual alpha publication                                                                                     |
+| Final software and alpha (#1462)                                      | Software inventory and named composition delivered; release pending | Final record CI/review, then actual version/tag/jobs/artifacts                                     |
+| Parent epic (#1447)                                                   | Open                                                                          | Final source/release gates and actual alpha publication                                                                                     |
 | Installed acceptance (#1463)                                          | Open, after the published alpha                                               | Named equipment/firmware and separately reviewed actual procedure, including Apple Home pairing                                         |
 
 A dependency remaining open does not revoke a completed child's supported-software scope. In particular,
@@ -91,8 +94,8 @@ match the summary base; these hosted counts precede the two unit variants added 
 still requires its own exact-head CI and completed review before merge/issue closure.
 
 This accepts the supported software scope of #1293/#1458. The physical qualification boundary in the HTTP fixture
-is controlled separately; these criteria do not grant installed protective qualification. The original #1473
-case ledger is unchanged, and #1462/#1447, actual alpha publication and installed #1463 remain open.
+is controlled separately; these criteria do not grant installed protective qualification. At that historical checkpoint the original ledger was unchanged; #1543 subsequently completed its current bindings.
+#1462/#1447 remain open for final delivery and actual alpha; installed #1463 remains separate.
 
 ## Time-scheduling follow-up (#1297, #1298, #1362)
 
@@ -274,16 +277,19 @@ witness is the actual native opt-in/manual-hold path, alongside explicit OFF, ov
 ## Parent acceptance and original PR #1473
 
 Merged software includes aggregates, groups, comfort/overrides, dew point/cooling guards, guarded parallel branches,
-SDK operators, schedules, occupancy, native HA/Zigbee units and HomeKit composition. Named combined activity and
-alpha64-upgrade fixtures are delivered. The original reference-case map, remaining final acceptance/documentation
-and actual alpha publication remain #1462. Installed equipment remains #1463.
-A green PR is not the entire milestone.
+SDK operators, schedules, occupancy, native HA/Zigbee units and HomeKit composition. The named combined activity,
+schedule/motion/independent-manual-priority and published-alpha64 upgrade files pass in #1543's complete
+ordinary E2E job. The final reference inventory is **139/139 residuals bound, zero unbound**, with 269
+witnesses across all 261 original rows: 173 scoped invariants, 82 replacements and six descriptor controls.
+The [per-row source/semantic map](work/virtual-thermostat/original1473-case-map.json) preserves every
+original hash and supported current replacement boundary. Whole retired private-protocol equivalence
+and installed safety are not claimed.
 
-PR [#1473](https://github.com/FastyBird/smart-panel/pull/1473) stays a frozen draft reference at `2c19907`;
-its historical 200 PASS / 61 FAIL / 261 control is not a current-main failing-test count. Its source and historical
-records remain preserved. The current bridge was delivered through scoped PRs ending in #1498.
-Before superseding that reference, #1462 must map every required original scenario to a named current case and
-its evidence, or a concrete residual requirement. This issue reconciliation is not that exhaustive scenario map.
+Frozen [#1473](https://github.com/FastyBird/smart-panel/pull/1473) at `2c19907` is a historical reference,
+not a remaining patch to rebase/merge. Its200 PASS/61 FAIL describes that old source only. Preserve the
+source/history when superseding the draft after final software acceptance. The replacement implementation
+and current witnesses are merged through #1543; final record review and actual alpha publishing remain #1462.
+#1447 stays open until those delivery gates complete. Hardware remains #1463.
 
 ## Boundaries retained
 

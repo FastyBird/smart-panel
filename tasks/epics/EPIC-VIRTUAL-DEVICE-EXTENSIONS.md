@@ -25,14 +25,16 @@ do not justify growing an already reviewable batch. The first combined delivery,
 Checkboxes mean merged, tested software, not candidate code or installed qualification. A child closes only after its
 entire acceptance is satisfied, even when its PR also closes other issues.
 
-### Reconciled software progress — 2026-11-06
+### Reconciled software progress — 2026-11-09
 
-Summary base is merged main `1213149b8960a55536dfd6cd4687aaaea96a701d` (#1509).
+Summary base is merged main `7dccbf5eaa339957fe23e0d3b4ac112a9df78432` (#1543).
 The [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) now adopts the named combined
 activity and schedule/occupancy/manual-precedence witnesses delivered by #1508, with the later #1517 fixture
 correction. The current all-available-domain unit variants complement that actual HTTP operation. Plans (#1501),
 occupancy (#1502), native thermostats (#1504) and cover/HomeKit (#1505) retain their reviewed delivery evidence.
-Original-reference reconciliation, remaining final acceptance and alpha remain #1462.
+All 139 original residuals are now bound through #1543, with 269 witnesses across 261 original identities.
+Current scoped/replacement limits are explicit in the canonical ledger. The complete hosted 426-case E2E
+run includes combined HTTP/manual priorities and the alpha64 upgrade. Final record review and actual alpha remain #1462.
 
 - [x] VD3-1 / #1448: weighted/filtering numeric policies, #1464.
 - [x] VD3-2 / #1449: additional numeric and binary profiles, #1465.
@@ -48,19 +50,20 @@ Original-reference reconciliation, remaining final acceptance and alpha remain #
 - [x] VD3-12 / #1457: Zigbee2MQTT capability-qualified native adapter, merged #1504.
 - [x] VD3-13 / #1460: SDK numeric operators, #1468.
 - [x] VD3-14 / #1461: standard and native/composed HomeKit mappings, #1466/#1505.
-- [ ] VD3-15 / #1462: final composed/upgrade/reference-scenario acceptance, docs and actual alpha publication remain.
+- [ ] VD3-15 / #1462: composed/upgrade/reference bindings delivered; final record review and actual alpha publication remain.
 
 Reused definitions #1292, activity API #1294, Admin #1295 and Panel #1296 retain their scoped software evidence.
 The original all-available-domain requirement of #1293 is now covered by the actual combined HTTP operation,
 its failed-media variant and the explicit unit fan-out/failure variants. Time scheduling #1297/#1298/#1362 and
 occupancy #1299/#1300 are reused, with the combined schedule/motion/manual-priority case covering #1458.
 [The criterion map](../../docs/virtual-device-extensions-acceptance.md#composed-activity-and-automation-criteria)
-identifies source, execution and limits. Closure of #1293/#1458 follows this reconciliation's own CI/review/merge;
+identifies source, execution and limits. Closure of #1293/#1458 followed reviewed/merged #1526;
 optional security actuation remains UNSUPPORTED and the unrelated #1287 epic remains outside this milestone.
 
 [PR #1473](https://github.com/FastyBird/smart-panel/pull/1473) remains a frozen draft reference. Its historical
-200/61/261 result is not a current-main failure count. #1462 still owns the exact original-scenario reconciliation
-before that draft is superseded. Installed qualification and #1447 remain open.
+200/61/261 result is not a current-main failure count. #1543 completes the supported current reference map: 139/139 residual bindings, zero unbound.
+The draft must not be rebased or merged; preserve its frozen source/history when superseding it after
+final software acceptance. Actual alpha delivery and #1447 remain open; installed qualification stays #1463.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -95,7 +98,7 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
 
 ## Acceptance
 
-- [ ] Existing virtual devices migrate without identity/history changes, claim release/reacquisition or changed defaults.
+- [x] Existing virtual devices migrate without identity/history changes, claim release/reacquisition or changed defaults.
 - [x] Weighted/filtering/numeric/binary profiles have shared preview/persistence/runtime policies and truthful quality.
 - [x] Every new group profile is authorable and has feedback-based mixed/unknown/member outcomes across ordinary controls.
 - [x] Presets and overrides persist, expire/recover correctly, preserve explicit OFF and never bypass protective admission.
@@ -107,7 +110,7 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
       fence request revisions and diagnose upstream drift without claiming ownership of external writers.
 - [x] SDK operators have version/owner lifecycle, validation, failure containment and a working test extension.
 - [x] Standard HomeKit exports, API/spec generation, admin/panel flows, repair and diagnostics cover the delivered profiles.
-- [ ] Named composed acceptance/upgrade tests pass; old documentation and closed-issue checklists reflect actual evidence.
+- [x] Named composed acceptance/upgrade tests pass; old documentation and closed-issue checklists reflect actual evidence.
 - [ ] Every PR met exact-head CI/review gates; the next alpha is published with recorded version/tag/source/artifacts
       and release notes that identify remaining HW checks. A release draft alone does not complete this gate.
 
