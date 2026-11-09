@@ -56,6 +56,25 @@ describe('AddModbusDevices1000000000054', () => {
 		expect(await names('index')).toContain('IDX_devices_modbus_binding_device');
 	});
 
+	it('stores the template revision as text', async () => {
+		const columns = (await queryRunner.query(`PRAGMA table_info("devices_module_devices")`)) as Array<{
+			name: string;
+			type: string;
+		}>;
+
+		expect(columns.find((column) => column.name === 'modbusTemplateRevision')?.type).toBe('varchar');
+
+		await queryRunner.query(
+			`INSERT INTO "devices_module_devices" ("id", "type", "modbusTemplateRevision") VALUES ('d1', 'ModbusDeviceEntity', '1.2.0+3f2a9c1b')`,
+		);
+
+		const [row] = (await queryRunner.query(
+			`SELECT "modbusTemplateRevision" FROM "devices_module_devices" WHERE "id" = 'd1'`,
+		)) as Array<{ modbusTemplateRevision: unknown }>;
+
+		expect(row.modbusTemplateRevision).toBe('1.2.0+3f2a9c1b');
+	});
+
 	it('rejects a second endpoint with the same host and port', async () => {
 		await insertEndpoint('e1', '10.10.0.230', 8080);
 

@@ -61,3 +61,13 @@ export const MODBUS_DEFAULTS = {
 	MAX_READ_BITS: 2000,
 	MAX_READ_GAP: 0,
 } as const;
+
+/** Upper bounds of user-supplied settings. Timer delays stay far below 2^31-1 ms, above which Node fires after 1 ms. */
+export const MODBUS_LIMITS = {
+	/** Connect timeout, request timeout and inter-request delay. */
+	MAX_TIMING_MS: 60_000,
+	/** One day. */
+	MAX_POLL_INTERVAL_MS: 86_400_000,
+	MAX_IN_FLIGHT: 16,
+	TEMPLATE_REVISION_MAX_LENGTH: 128,
+} as const;

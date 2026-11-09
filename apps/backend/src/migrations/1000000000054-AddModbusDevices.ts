@@ -10,7 +10,7 @@ const DEVICE_COLUMNS: Array<[string, string]> = [
 	['modbusMaxReadBits', 'integer'],
 	['modbusMaxReadGap', 'integer'],
 	['modbusTemplateId', 'varchar'],
-	['modbusTemplateRevision', 'integer'],
+	['modbusTemplateRevision', 'varchar'],
 ];
 
 export class AddModbusDevices1000000000054 implements MigrationInterface {

@@ -174,21 +174,21 @@ export class ModbusDeviceEntity extends DeviceEntity {
 
 	@ApiPropertyOptional({
 		name: 'template_revision',
-		description: 'Template revision applied',
-		type: 'integer',
+		description: 'Template revision applied: the template version and a hash of its content',
+		type: 'string',
 		nullable: true,
 		example: null,
 	})
 	@Expose({ name: 'template_revision' })
 	@IsOptional()
-	@IsInt()
+	@IsString()
 	@Transform(
 		({ obj }: { obj: Record<string, unknown> }) =>
-			(obj['template_revision'] ?? obj['modbusTemplateRevision'] ?? null) as number | null,
+			(obj['template_revision'] ?? obj['modbusTemplateRevision'] ?? null) as string | null,
 		{ toClassOnly: true },
 	)
-	@Column({ type: 'integer', nullable: true })
-	modbusTemplateRevision: number | null;
+	@Column({ type: 'varchar', nullable: true })
+	modbusTemplateRevision: string | null;
 
 	@ApiProperty({
 		description: 'Device type',

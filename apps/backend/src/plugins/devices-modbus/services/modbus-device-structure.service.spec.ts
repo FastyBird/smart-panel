@@ -308,6 +308,14 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		expect(runtime.loadDevice).toHaveBeenCalledWith(device.id);
 	});
 
+	it('stores the template the device came from with its text revision', async () => {
+		const device = await service.create(
+			toDto({ ...relayBoard(endpoint.id), template_id: 'eletechsup-n4d8b08', template_revision: '1.2.0+3f2a9c1b' }),
+		);
+
+		expect(device).toMatchObject({ modbusTemplateId: 'eletechsup-n4d8b08', modbusTemplateRevision: '1.2.0+3f2a9c1b' });
+	});
+
 	it('rolls back everything when a binding fails', async () => {
 		let inserts = 0;
 

@@ -14,7 +14,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { MODBUS_DEFAULTS, ModbusFraming } from '../devices-modbus.constants';
+import { MODBUS_DEFAULTS, MODBUS_LIMITS, ModbusFraming } from '../devices-modbus.constants';
 
 @ApiSchema({ name: 'DevicesModbusPluginCreateEndpoint' })
 export class CreateModbusEndpointDto {
@@ -58,11 +58,15 @@ export class CreateModbusEndpointDto {
 		type: 'integer',
 		example: MODBUS_DEFAULTS.CONNECT_TIMEOUT_MS,
 		minimum: 1,
+		maximum: MODBUS_LIMITS.MAX_TIMING_MS,
 	})
 	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"connect_timeout_ms","reason":"Value must be an integer."}]' })
 	@Min(1, { message: '[{"field":"connect_timeout_ms","reason":"Value must be at least 1."}]' })
+	@Max(MODBUS_LIMITS.MAX_TIMING_MS, {
+		message: '[{"field":"connect_timeout_ms","reason":"Value must be at most 60000."}]',
+	})
 	connect_timeout_ms?: number;
 
 	@ApiPropertyOptional({
@@ -71,11 +75,15 @@ export class CreateModbusEndpointDto {
 		type: 'integer',
 		example: MODBUS_DEFAULTS.REQUEST_TIMEOUT_MS,
 		minimum: 1,
+		maximum: MODBUS_LIMITS.MAX_TIMING_MS,
 	})
 	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"request_timeout_ms","reason":"Value must be an integer."}]' })
 	@Min(1, { message: '[{"field":"request_timeout_ms","reason":"Value must be at least 1."}]' })
+	@Max(MODBUS_LIMITS.MAX_TIMING_MS, {
+		message: '[{"field":"request_timeout_ms","reason":"Value must be at most 60000."}]',
+	})
 	request_timeout_ms?: number;
 
 	@ApiPropertyOptional({
@@ -85,11 +93,15 @@ export class CreateModbusEndpointDto {
 		type: 'integer',
 		example: MODBUS_DEFAULTS.INTER_REQUEST_DELAY_MS_TCP,
 		minimum: 0,
+		maximum: MODBUS_LIMITS.MAX_TIMING_MS,
 	})
 	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"inter_request_delay_ms","reason":"Value must be an integer."}]' })
 	@Min(0, { message: '[{"field":"inter_request_delay_ms","reason":"Value must be at least 0."}]' })
+	@Max(MODBUS_LIMITS.MAX_TIMING_MS, {
+		message: '[{"field":"inter_request_delay_ms","reason":"Value must be at most 60000."}]',
+	})
 	inter_request_delay_ms?: number;
 
 	@ApiPropertyOptional({
@@ -98,11 +110,13 @@ export class CreateModbusEndpointDto {
 		type: 'integer',
 		example: MODBUS_DEFAULTS.MAX_IN_FLIGHT,
 		minimum: 1,
+		maximum: MODBUS_LIMITS.MAX_IN_FLIGHT,
 	})
 	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"max_in_flight","reason":"Value must be an integer."}]' })
 	@Min(1, { message: '[{"field":"max_in_flight","reason":"Value must be at least 1."}]' })
+	@Max(MODBUS_LIMITS.MAX_IN_FLIGHT, { message: '[{"field":"max_in_flight","reason":"Value must be at most 16."}]' })
 	max_in_flight?: number;
 
 	@ApiPropertyOptional({ description: 'Whether the endpoint is polled', type: 'boolean', example: true })

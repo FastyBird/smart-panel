@@ -17,6 +17,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import {
 	MODBUS_DEFAULTS,
+	MODBUS_LIMITS,
 	ModbusByteOrder,
 	ModbusDataType,
 	ModbusRegisterType,
@@ -159,6 +160,7 @@ export class ModbusBindingDto {
 		description: 'Per-binding poll interval override in milliseconds',
 		type: 'integer',
 		minimum: MODBUS_DEFAULTS.MIN_POLL_INTERVAL_MS,
+		maximum: MODBUS_LIMITS.MAX_POLL_INTERVAL_MS,
 		example: MODBUS_DEFAULTS.POLL_INTERVAL_MS,
 	})
 	@Expose()
@@ -166,6 +168,9 @@ export class ModbusBindingDto {
 	@IsInt({ message: '[{"field":"poll_interval_ms","reason":"Value must be an integer."}]' })
 	@Min(MODBUS_DEFAULTS.MIN_POLL_INTERVAL_MS, {
 		message: '[{"field":"poll_interval_ms","reason":"Poll interval must be at least 100 ms."}]',
+	})
+	@Max(MODBUS_LIMITS.MAX_POLL_INTERVAL_MS, {
+		message: '[{"field":"poll_interval_ms","reason":"Poll interval must be at most 86400000 ms (one day)."}]',
 	})
 	poll_interval_ms?: number;
 }
