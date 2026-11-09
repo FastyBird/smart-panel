@@ -11141,4 +11141,538 @@ describe('virtual thermostat durable runtime', () => {
 			if (failure) throw failure.cause;
 		},
 	);
+	it.each(['before-send', 'after-send'] as const)(
+		'keeps public comfort settle read-only across original managed %s SDK admission',
+		async (boundary) => {
+			const observed = await observeNativeDispatchOrigin();
+			const { fixture, claims, owner, calls } = observed;
+			let enterOn!: () => void, releaseOn!: () => void, enterRead!: () => void, releaseRead!: () => void;
+			const onEntered = ownedGate((resolve) => (enterOn = resolve));
+			const onHeld = ownedGate((resolve) => (releaseOn = resolve));
+			const readEntered = ownedGate((resolve) => (enterRead = resolve));
+			const readHeld = ownedGate((resolve) => (releaseRead = resolve));
+			observed.releaseOnCleanup(releaseOn);
+			observed.releaseOnCleanup(releaseRead);
+			const key = boundary === 'before-send' ? 'beforeOn' : 'afterOn';
+			const previousGate = fixture.controls[key];
+			const gate = async (property: string) => {
+				if (property !== relayId) return;
+				enterOn();
+				await onHeld;
+			};
+			fixture.controls[key] = gate;
+			let originalSdk: ReturnType<ThermostatActuationAdapter['send']> | undefined;
+			const get = fixture.transport.get.bind(fixture.transport) as typeof fixture.transport.get;
+			const getObserver = jest.spyOn(fixture.transport, 'get').mockImplementation((...args) => {
+				const adapter = get(...args);
+				if (!adapter) return adapter;
+				return {
+					...adapter,
+					send: (...parameters: Parameters<ThermostatActuationAdapter['send']>) => {
+						const original = adapter.send(...parameters);
+						if (parameters[0].property.id === relayId && parameters[0].value === true) originalSdk = original;
+						return original;
+					},
+				};
+			});
+			const roots = new AsyncLocalStorage<object>();
+			const root = Object.freeze({ boundary });
+			let armed = true;
+			const subscriber = {
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (
+						!armed ||
+						roots.getStore() !== root ||
+						!event.query.startsWith('SELECT ') ||
+						!event.query.includes('devices_virtual_thermostat_configs') ||
+						!event.parameters?.includes(controllerId)
+					)
+						return;
+					armed = false;
+					enterRead();
+					await readHeld;
+				},
+			};
+			let settling: Promise<void> | undefined, original: Promise<void> | undefined;
+			let failure: { cause: unknown } | undefined;
+			try {
+				await fixture.report(sensorId, 18);
+				await waitNativeLifetime(onEntered, 'Public settle original ON unavailable');
+				await owner.flush();
+				const on = calls.find((call) => call.args[0].value === true);
+				if (!on || originalSdk === undefined) throw new Error('Original SDK completion missing');
+				original = owner['inFlight'].get(on.args[4].commandId);
+				if (original === undefined) throw new Error('Original managed runtime completion missing');
+				const admission = claims.capture();
+				const lifecycle = owner['lifecycle'];
+				const context = owner['contexts'].get(controllerId);
+				const before = await nativeLifetimeImage();
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				expect(config.comfort?.temporary_override?.status).not.toBe('active');
+				expect(comfort['pendingNotifications'].has(controllerId)).toBe(false);
+				expect(admission.isCurrent()).toBe(true);
+				expect(on.args[3]()).toBe(true);
+				database.subscribers.push(subscriber);
+				settling = roots.run(root, () => comfort.settle(controllerId));
+				void settling.catch(() => undefined);
+				await waitNativeLifetime(readEntered, 'Public settle did not reach original first read');
+				expect(admission.isCurrent()).toBe(true);
+				expect(on.args[3]()).toBe(true);
+				expect(owner['lifecycle']).toBe(lifecycle);
+				expect(owner['contexts'].get(controllerId)).toBe(context);
+				releaseOn();
+				expect(await waitNativeLifetime(originalSdk, 'Public read blocked actual SDK outcome')).toMatchObject({
+					outcome: 'accepted',
+				});
+				expect(fixture.controls.sends.filter((send) => send.on)).toHaveLength(1);
+				releaseRead();
+				await settling;
+				await waitNativeLifetime(original, 'Original native completion did not leave public read');
+				await settleReal(fixture);
+				const after = await nativeLifetimeImage();
+				for (const table of [
+					'devices_virtual_thermostat_configs',
+					'devices_virtual_thermostat_actuator_claims',
+					'devices_virtual_thermostat_sources',
+					'devices_module_climate_automation_slots',
+					'devices_virtual_graph_revision',
+				])
+					expect(after[table]).toEqual(before[table]);
+				const journal = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+					id: on.args[4].commandId,
+				});
+				expect(journal).toMatchObject({ action: 'on', status: 'accepted', fault: null });
+				expect(owner['lifecycle']).toBe(lifecycle);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				releaseRead();
+				releaseOn();
+				const results = await Promise.allSettled([settling, original].filter((p) => p !== undefined));
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				try {
+					await observed.cleanup();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				getObserver.mockRestore();
+				if (fixture.controls[key] === gate) fixture.controls[key] = previousGate;
+				else failure ??= { cause: new Error('Foreign public-settle native gate retained') };
+				for (const result of results) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			}
+			if (failure) throw failure.cause;
+		},
+	);
+	it.each(['profile-copy', 'send-wrapper', 'contract-change', 'reconcile-wrapper'] as const)(
+		'refuses a captured native OFF proof after %s without reviving its original binding',
+		async (change) => {
+			const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+			const owner = runtime;
+			clearInterval(owner['timer']);
+			owner.onModuleDestroy();
+			type Captured = NonNullable<ReturnType<typeof fixture.transport.capture>>;
+			const roots = new AsyncLocalStorage<{ adapter?: ThermostatActuationAdapter }>();
+			const get = fixture.transport.get.bind(fixture.transport) as typeof fixture.transport.get;
+			const getObserver = jest.spyOn(fixture.transport, 'get').mockImplementation((...args) => {
+				const adapter = get(...args);
+				const root = roots.getStore();
+				if (root && adapter) root.adapter = adapter;
+				return adapter;
+			});
+			const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+			let selected:
+				| { captured: Captured; adapter: ThermostatActuationAdapter; completion: ReturnType<Captured['reconcile']> }
+				| undefined;
+			const proofs: string[] = [];
+			const captureObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+				const root: { adapter?: ThermostatActuationAdapter } = {};
+				const captured = roots.run(root, () => capture(...args));
+				if (!captured) return captured;
+				return Object.freeze({
+					...captured,
+					reconcile: (...parameters: Parameters<Captured['reconcile']>) => {
+						const original = captured.reconcile(...parameters);
+						if (parameters[0].property.id === relayId && selected === undefined) {
+							if (!root.adapter) throw new Error('Original native adapter missing');
+							selected = { captured, adapter: root.adapter, completion: original };
+						}
+						void original.then(
+							(proof) => {
+								if (proof) proofs.push(proof.proofId);
+							},
+							() => undefined,
+						);
+						return original;
+					},
+				});
+			});
+			let enter!: () => void, release!: () => void;
+			const entered = ownedGate((resolve) => (enter = resolve));
+			const held = ownedGate((resolve) => (release = resolve));
+			const previousGate = fixture.controls.beforeFence;
+			let gated = false;
+			const gate = async (property: string) => {
+				if (property !== relayId || selected === undefined || gated) return;
+				gated = true;
+				enter();
+				await held;
+			};
+			fixture.controls.beforeFence = gate;
+			let starting: Promise<void> | undefined;
+			let restore: (() => void) | undefined;
+			let replacementCalls = 0;
+			let failure: { cause: unknown } | undefined;
+			try {
+				starting = owner.onApplicationBootstrap();
+				void starting.catch(() => undefined);
+				await waitNativeLifetime(
+					Promise.race([
+						entered,
+						starting.then(() => {
+							if (!gated) throw new Error('Original native reconciliation fence unavailable');
+						}),
+					]),
+					'Original captured OFF fence not reached',
+				);
+				if (selected === undefined) throw new Error('Original captured reconciliation missing');
+				const original = selected;
+				const before = await nativeLifetimeImage();
+				expect(original.captured.isCurrent()).toBe(true);
+				const key =
+					change === 'profile-copy'
+						? 'providerProfile'
+						: change === 'send-wrapper'
+							? 'send'
+							: change === 'contract-change'
+								? 'contractVersion'
+								: 'reconcile';
+				const descriptor = Object.getOwnPropertyDescriptor(original.adapter, key);
+				if (!descriptor || !('value' in descriptor)) throw new Error('Original adapter descriptor missing');
+				const send = original.adapter.send.bind(original.adapter) as ThermostatActuationAdapter['send'];
+				const reconcile = original.adapter.reconcile.bind(original.adapter) as ThermostatActuationAdapter['reconcile'];
+				const value =
+					change === 'profile-copy'
+						? { ...original.adapter.providerProfile }
+						: change === 'contract-change'
+							? 2
+							: change === 'send-wrapper'
+								? (...args: Parameters<ThermostatActuationAdapter['send']>) => {
+										replacementCalls++;
+										return send(...args);
+									}
+								: (...args: Parameters<ThermostatActuationAdapter['reconcile']>) => {
+										replacementCalls++;
+										return reconcile(...args);
+									};
+				Object.defineProperty(original.adapter, key, { ...descriptor, value });
+				restore = () => Object.defineProperty(original.adapter, key, descriptor);
+				expect(original.captured.isCurrent()).toBe(false);
+				release();
+				expect(await waitNativeLifetime(original.completion, 'Replaced native binding did not complete')).toBeNull();
+				restore();
+				restore = undefined;
+				expect(original.captured.isCurrent()).toBe(false);
+				await starting;
+				clearInterval(owner['timer']);
+				await owner.requestInstalled(controllerId);
+				await settleReal(fixture);
+				expect(replacementCalls).toBe(0);
+				expect(claims.capture().isCurrent()).toBe(true);
+				const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+				const branch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+					claimId: claim.id,
+				});
+				expect(branch.activity).toBe('off');
+				expect(proofs).toContain(branch.releaseProofId);
+				expect(owner.readDiagnostics(controllerId).branches.every((branch) => branch.release_proven)).toBe(true);
+				const after = await nativeLifetimeImage();
+				for (const table of [
+					'devices_virtual_thermostat_configs',
+					'devices_virtual_thermostat_actuator_claims',
+					'devices_virtual_thermostat_sources',
+					'devices_module_climate_automation_slots',
+					'devices_virtual_graph_revision',
+				])
+					expect(after[table]).toEqual(before[table]);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				release();
+				restore?.();
+				const results = await Promise.allSettled(
+					[starting, owner.flush(), ...owner['inFlight'].values()].filter((p) => p !== undefined),
+				);
+				captureObserver.mockRestore();
+				getObserver.mockRestore();
+				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
+				else failure ??= { cause: new Error('Foreign native binding gate retained') };
+				for (const result of results) if (result.status === 'rejected') failure ??= { cause: result.reason };
+			}
+			if (failure) throw failure.cause;
+		},
+	);
+	it('retains original native OFF failure after actual sample emit and requires fresh qualified settlement', async () => {
+		const observed = await observeNativeDispatchOrigin();
+		const { fixture, owner, calls, reports, deliveries } = observed;
+		let enter!: () => void, release!: () => void, enterFresh!: () => void, releaseFresh!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const held = ownedGate((resolve) => (release = resolve));
+		const freshEntered = ownedGate((resolve) => (enterFresh = resolve));
+		const freshHeld = ownedGate((resolve) => (releaseFresh = resolve));
+		observed.releaseOnCleanup(release);
+		observed.releaseOnCleanup(releaseFresh);
+		const primary = new Error('Actual native OFF sample listener P');
+		let phase = 0,
+			emitted = false,
+			joined = false;
+		const previousGate = fixture.controls.beforeFence;
+		const gate = async (property: string) => {
+			if (property !== relayId) return;
+			if (phase++ === 0) {
+				enter();
+				await held;
+			} else if (phase === 2) {
+				enterFresh();
+				await freshHeld;
+			}
+		};
+		const fail = (event: (typeof reports)[number]['event']) => {
+			if (!emitted && event.propertyId === relayId && event.sample.value === false) {
+				emitted = true;
+				throw primary;
+			}
+		};
+		let failure: { cause: unknown } | undefined;
+		try {
+			await fixture.report(sensorId, 18);
+			await settleReal(fixture);
+			expect(fixture.controls.sends.filter((send) => send.on)).toHaveLength(1);
+			const deliveriesBefore = [...deliveries];
+			fixture.controls.beforeFence = gate;
+			events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, fail);
+			await fixture.report(sensorId, 21);
+			await waitNativeLifetime(entered, 'Original OFF delivery did not reach its native fence');
+			await owner.flush();
+			const off = [...calls].reverse().find((call) => call.args[0].value === false);
+			if (!off) throw new Error('Original native OFF command missing');
+			const original = owner['inFlight'].get(off.args[4].commandId);
+			if (original === undefined) throw new Error('Original native OFF completion missing');
+			void original.catch(() => undefined);
+			release();
+			await expect(waitNativeLifetime(original, 'Original native OFF error was lost')).rejects.toBe(primary);
+			joined = true;
+			await waitNativeLifetime(freshEntered, 'Fresh native proof did not remain independently pending');
+			expect(emitted).toBe(true);
+			expect(
+				reports.some((report) => report.origin === off.args[4].commandId && report.event.sample.value === false),
+			).toBe(true);
+			expect(deliveries).toEqual(deliveriesBefore);
+			const unknown = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+				id: off.args[4].commandId,
+			});
+			expect(unknown).toMatchObject({ action: 'off', status: 'unknown', fault: primary.message, proofId: null });
+			expect(owner.readDiagnostics(controllerId).branches.some((branch) => branch.release_proven)).toBe(false);
+			releaseFresh();
+			await settleReal(fixture);
+			const confirmed = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: unknown.id });
+			expect(confirmed).toMatchObject({ id: unknown.id, status: 'confirmed', proofId: expect.any(String) as string });
+			expect(deliveries.slice(deliveriesBefore.length).map((delivery) => delivery.proofId)).toContain(
+				confirmed.proofId,
+			);
+			expect(fixture.controls.sends.filter((send) => send.on)).toHaveLength(1);
+			expect(fixture.controls.errors).toHaveLength(1);
+			expect(fixture.controls.errors[0]).toBe(primary);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, fail);
+			release();
+			releaseFresh();
+			try {
+				await observed.cleanup();
+			} catch (cause) {
+				if (!joined || cause !== primary) failure ??= { cause };
+			}
+			if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
+			else failure ??= { cause: new Error('Foreign original sample failure gate retained') };
+		}
+		if (failure) throw failure.cause;
+	});
+	it.each(['complete', 'before-write-error', 'commit-ack-error'] as const)(
+		'retains a lower member barrier through actual all-leaf native settlement: %s',
+		async (mode) => {
+			const sibling = await addMandatoryMember();
+			const { fixture } = await useRegisteredNativeClaimsGuard();
+			const owner = runtime;
+			clearInterval(owner['timer']);
+			const protection = owner['memberProtection'];
+			const context = owner['contexts'].get(controllerId);
+			if (!context || context.memberBindings.length !== 2) throw new Error('Actual two-member context missing');
+			const bindings = context.memberBindings;
+			const first = bindings.find(
+				(binding) => context.claims.find((claim) => claim.id === binding.claimId)?.sourcePropertyId === relayId,
+			);
+			const second = bindings.find(
+				(binding) => context.claims.find((claim) => claim.id === binding.claimId)?.sourcePropertyId === sibling,
+			);
+			if (!first || !second?.binding) throw new Error('Actual member protection bindings missing');
+			const secondClaim = context.claims.find((claim) => claim.id === second.claimId);
+			if (!secondClaim) throw new Error('Original second claim missing');
+			const secondKey = `${secondClaim.id}:${secondClaim.revision}`;
+			const priorProof = owner['reconciled'].get(secondKey);
+			const priorNative = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+				claimId: second.claimId,
+			});
+			// A conservative future observation creates unavailable debt; it grants no fresh input or native proof.
+			const now = Date.now();
+			protection.read([first], now + 10_000);
+			protection.read([second], now);
+			const wholeBefore = protection.requiredReleaseAfter(bindings);
+			const lowerBefore = protection.requiredReleaseAfter([second]);
+			protection.invalidateSource(second.binding.sourcePropertyId);
+			const lowerAfter = protection.requiredReleaseAfter([second]);
+			expect(lowerAfter).not.toBeNull();
+			expect(lowerAfter).not.toBe(lowerBefore);
+			expect(lowerAfter).toBeLessThan(wholeBefore);
+			expect(protection.requiredReleaseAfter(bindings)).toBe(wholeBefore);
+			if (wholeBefore === null) throw new Error('Original all-member barrier unavailable');
+			// Advance only the fixture's logical receiver time. SDK/SQLite scheduling remains real.
+			jest.setSystemTime(wholeBefore + 1);
+			let enter!: () => void, release!: () => void, enterRetry!: () => void, releaseRetry!: () => void;
+			const entered = ownedGate((resolve) => (enter = resolve));
+			const held = ownedGate((resolve) => (release = resolve));
+			const retryEntered = ownedGate((resolve) => (enterRetry = resolve));
+			const retryHeld = ownedGate((resolve) => (releaseRetry = resolve));
+			let firstHeld = false,
+				retryGated = false,
+				faulted = false;
+			const previousGate = fixture.controls.beforeFence;
+			const gate = async (property: string) => {
+				if (property !== sibling) return;
+				if (!firstHeld) {
+					firstHeld = true;
+					enter();
+					await held;
+				} else if (faulted && !retryGated) {
+					retryGated = true;
+					enterRetry();
+					await retryHeld;
+				}
+			};
+			fixture.controls.beforeFence = gate;
+			const primary = new Error('Original second-member native settlement P');
+			let runner: import('typeorm').QueryRunner | undefined;
+			const subscriber = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (
+						faulted ||
+						mode === 'complete' ||
+						!event.query.startsWith('UPDATE "devices_virtual_thermostat_branch_runtime"') ||
+						!event.parameters?.includes(second.claimId)
+					)
+						return;
+					if (mode === 'before-write-error') {
+						faulted = true;
+						throw primary;
+					}
+					runner = event.queryRunner;
+				},
+				afterTransactionCommit: (event: TransactionCommitEvent) => {
+					if (mode === 'commit-ack-error' && !faulted && runner !== undefined && event.queryRunner === runner) {
+						faulted = true;
+						throw primary;
+					}
+				},
+			};
+			const acknowledgements: Array<{ barrier: number | null; leaves: Array<number | undefined> }> = [];
+			const acknowledge = protection.acknowledgeRelease.bind(protection) as typeof protection.acknowledgeRelease;
+			const acknowledgement = jest.spyOn(protection, 'acknowledgeRelease').mockImplementation((members, at) => {
+				acknowledgements.push({
+					barrier: protection.requiredReleaseAfter(members),
+					leaves: members.map((member) => {
+						const claim = owner['contexts'].get(controllerId)?.claims.find((claim) => claim.id === member.claimId);
+						return claim && owner['reconciled'].get(`${claim.id}:${claim.revision}`)?.observedAt;
+					}),
+				});
+				return acknowledge(members, at);
+			});
+			database.subscribers.push(subscriber);
+			let original: Promise<void> | undefined;
+			let joined = false;
+			let failure: { cause: unknown } | undefined;
+			try {
+				original = owner.requestInstalled(controllerId);
+				void original.catch(() => undefined);
+				await waitNativeLifetime(
+					Promise.race([
+						entered,
+						original.then(() => {
+							if (!firstHeld) throw new Error('All-leaf barrier consumed before new native second-member fence');
+						}),
+					]),
+					'Original second-member fence unavailable',
+				);
+				expect(acknowledgements).toEqual([]);
+				expect(protection.requiredReleaseAfter([second])).toBe(lowerAfter);
+				expect(protection.requiredReleaseAfter(bindings)).toBe(wholeBefore);
+				expect(owner['reconciled'].get(secondKey)).toBe(priorProof);
+				release();
+				if (mode !== 'complete') {
+					await expect(waitNativeLifetime(original, 'Original native settlement failure lost')).rejects.toBe(primary);
+					joined = true;
+					await waitNativeLifetime(retryEntered, 'Fresh second-member retry did not remain independent');
+					expect(faulted).toBe(true);
+					expect(acknowledgements).toEqual([]);
+					expect(protection.requiredReleaseAfter([second])).toBe(lowerAfter);
+					expect(protection.requiredReleaseAfter(bindings)).toBe(wholeBefore);
+					expect(owner['reconciled'].get(secondKey)).toBe(priorProof);
+					const native = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+						claimId: second.claimId,
+					});
+					if (mode === 'before-write-error') expect(native).toEqual(priorNative);
+					else expect(native.releaseProofId).not.toBe(priorNative.releaseProofId);
+					releaseRetry();
+				} else {
+					await original;
+					joined = true;
+				}
+				await settleReal(fixture);
+				expect(acknowledgements.length).toBeGreaterThan(0);
+				for (const ack of acknowledgements) {
+					expect(ack.leaves).toHaveLength(2);
+					expect(ack.barrier).not.toBeNull();
+					for (const leaf of ack.leaves) expect(leaf).toBeGreaterThan(ack.barrier);
+				}
+				expect(protection.requiredReleaseAfter(bindings)).toBeNull();
+				expect(
+					owner.readDiagnostics(controllerId).branches.every((branch) => branch.release_proven && !branch.pending_on),
+				).toBe(true);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				owner.onModuleDestroy();
+				release();
+				releaseRetry();
+				const results = await Promise.allSettled(
+					[original, owner.flush(), ...owner['inFlight'].values()].filter((p) => p !== undefined),
+				);
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				acknowledgement.mockRestore();
+				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
+				else failure ??= { cause: new Error('Foreign second-member native gate retained') };
+				for (const result of results)
+					if (result.status === 'rejected' && (!joined || result.reason !== primary))
+						failure ??= { cause: result.reason };
+			}
+			if (failure) throw failure.cause;
+		},
+	);
 });
