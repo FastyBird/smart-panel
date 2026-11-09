@@ -28,7 +28,8 @@ describe('DevicesModbusPlugin', () => {
 	const extensionsService = { registerPluginMetadata: jest.fn() };
 	const managedServiceManager = { register: jest.fn() };
 	const platform = new ModbusDevicePlatform();
-	const runtime = new ModbusRuntimeService();
+	// Constructed by Nest in production; the plugin only registers it, so its dependencies are never used here
+	const runtime = Object.create(ModbusRuntimeService.prototype) as ModbusRuntimeService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
