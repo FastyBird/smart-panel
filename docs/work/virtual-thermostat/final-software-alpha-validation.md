@@ -1,15 +1,21 @@
-# Final software acceptance and next alpha
+# Final software acceptance and alpha.66
 
-Final software acceptance source checkpoint, 2026-11-09. Base main is merged #1543
-(`7dccbf5eaa339957fe23e0d3b4ac112a9df78432`): all 139 fixed residuals are bound, zero remain unbound.
-The named software composition and alpha64-upgrade witnesses pass on that reviewed/merged source.
-This final proposal reconciles the records and adds seven supplemental cleanup cases. Its own exact-head
-CI/review and actual alpha publication remain gates in #1462. Parent #1447 remains open until delivery;
-installed qualification stays separate in #1463.
-Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
-No alpha was dispatched or published by this preparation. No installed equipment was operated.
+Software delivery is merged through [#1544](https://github.com/FastyBird/smart-panel/pull/1544),
+`976fa55aa803cc0472abab6f00d7da5826d50200`. All 139 original residuals are bound; zero remain unbound.
+The final focused consumers pass 640/640. Hosted CI passes 13,473 unit tests (one unrelated existing mapper
+skip) and all 426 ordinary E2E tests without skips, including combined activity/manual priorities and
+upgrade from alpha.64. The seven final cleanup cases add no original-reference bindings.
 
-## Current qualification and remaining scope
+[Alpha.66](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.66) is delivered from
+`54090f341d16235e65ce1a1b4bbce2da571ad4fa`; the complete release and artifact checks are recorded below.
+#1462 and parent #1447 close with this documentation record. Installed qualification remains open in #1463;
+no installed equipment was operated by this work.
+
+Earlier source checkpoints and their measurements remain historical below. Their pending-review/release
+statements describe those checkpoints; the current delivery status is this opening record and the alpha.66
+section. Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505).
+
+## Software qualification and scope
 
 [The canonical ledger](original1473-case-map.json) binds all **261 original rows: 173 scoped invariants**,
 82 replacements and six descriptor controls, through 269 witness bindings. All **139 fixed residuals**
@@ -27,7 +33,8 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 | Measurement | Result and exact source scope |
 | --- | --- |
 | Current complete consumers | **640/640**, zero failures/skips, eleven complete consumer files. Includes 273 unchanged runtime and 25 fixture-lifetime executions. Report SHA-256 `a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24`; the seven new cases strengthen cleanup only and add no original bindings. |
-| Merged #1543 hosted baseline | [Reviewed-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42649333644/job/129271155976): 728 ordinary unit suites, 13,466 passes and one existing agricultural/device-temperature Zigbee mapper skip; then **426/426 ordinary E2E, 29 suites, zero skips**. Combined activity HTTP and alpha64-upgrade files explicitly PASS. Log SHA-256 `95606d93b19c48c204b57307159218e57d5cd20b769c97d9e8e9f9369b53d139`. These counts bind #1543, not the new proposal. |
+| Final merged #1544 hosted software | [Reviewed-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42660807502/job/129311591717): 728 ordinary unit suites, **13,473 passes**, one existing unrelated mapper skip; then **426/426 ordinary E2E, 29 suites, zero skips**. Combined activity HTTP and alpha64-upgrade files explicitly PASS. Log SHA-256 `1c76aa49eadfb49b04b08e2ef0e4c793c71f95cde3ef796cdee891c5a2314fba`. |
+| Merged #1543 hosted baseline | [Reviewed-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42649333644/job/129271155976): 728 ordinary unit suites, 13,466 passes and one existing agricultural/device-temperature Zigbee mapper skip; then **426/426 ordinary E2E, 29 suites, zero skips**. Combined activity HTTP and alpha64-upgrade files explicitly PASS. Log SHA-256 `95606d93b19c48c204b57307159218e57d5cd20b769c97d9e8e9f9369b53d139`. These counts bind #1543; final #1544 counts are recorded separately above. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -39,9 +46,9 @@ The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalid
 `semanticReconciliationBeforeHeldFenceAdoption`; `priorQualificationLedger` indexes its immutable full ledger,
 including the prior per-row measurements. `heldFenceOrderingFollowup` records the reviewed #1529 strengthening and its immutable prior ledger.
 Older test-file identities remain historical after the test changes.
-This evidence update requires exact-head CI and completed source review. The 18 former residuals now have
+This software evidence was accepted through #1544. The 18 former residuals now have
 current replacements below. Retired private TIME/caller/observer/global-drain and complete provider/SDK
-equivalence is not granted; composed acceptance, installed equipment and alpha remain separate gates.
+equivalence is not granted; named composed software and alpha outcomes are recorded separately below, while installed qualification remains #1463.
 
 Rows 118–119 now bind independent member/source changes committed through a peer SQLite connection while
 the first post-restart OFF fence is held. They require complete unchanged configuration, actual fresh binding
@@ -630,19 +637,68 @@ and ordinary physical controls remain complementary named suites in the acceptan
 for the actual all-domain HTTP operation. No API/spec or generated-client source changes. Four release-contract
 tests pass, covering maximum published-version selection and immutable version-sync/tag/asset source.
 
-This final pre-merge source still needs its own green CI/completed review. After that merge, use the existing
-Alpha Release workflow on accepted main with base version1.1.0. Its registry selection determines the actual
-next alpha; do not treat an expected alpha.65 or a release object as success. Record full version-sync SHA,
-tag target, package versions, all required publishing/build/Docker/Raspbian outcomes and published asset hashes.
-Only then update #1462/#1447 delivery state. #1463 remains the separately authorized hardware procedure.
+## Alpha.66 delivery — 2026-11-09
 
-## Release preparation
+[Alpha Release run 42688627609](https://github.com/FastyBird/smart-panel/actions/runs/42688627609)
+completed successfully: **19/19 jobs**, including four package publishers, three Panel builds, ARM64
+server packaging, all three Raspbian variants, both native Docker builds/runtime checks and their manifest.
+The tag `v1.1.0-alpha.66` resolves to full source `54090f341d16235e65ce1a1b4bbce2da571ad4fa`.
+`version.json` records version `1.1.0-alpha.66`, channel `alpha` and commit `54090f3`.
+The workflow's version-sync commit is a direct child of accepted #1545 (`4772210`), changing only the eight
+release version files. Checkout/pull logs bind all three Raspbian builds to that same source.
+
+All four public NPM packages (`smart-panel`, `smart-panel-admin`, `smart-panel-backend`,
+`smart-panel-extension-sdk` under `@fastybird`) expose `1.1.0-alpha.66` and their `alpha` tags point to it; all four
+GitHub Packages publication jobs also succeeded. The downloaded main NPM archive matches registry SHA-512
+integrity and contains both declared CLI entry files.
+
+The [ARM64 server job](https://github.com/FastyBird/smart-panel/actions/runs/42688627609/job/129408998717)
+passed on Ubuntu 24.04 after #1545 repaired the demonstrated Ubuntu 26.04/QEMU dependency failure.
+Its downloaded archive has backend/SDK `.66`, the local SDK dependency and backend/admin/display layout.
+Both native [AMD64](https://github.com/FastyBird/smart-panel/actions/runs/42688627609/job/129416235272)
+and [ARM64](https://github.com/FastyBird/smart-panel/actions/runs/42688627609/job/129416235294) Docker jobs
+passed their actual container runtime checks. An anonymous public GHCR read confirms both
+`ghcr.io/fastybird/smart-panel:1.1.0-alpha.66` and `:alpha` resolve to manifest
+`sha256:a6255b59c7a78cc407ed16ae417043984a47baf9b25d4d17ec83d3260cfd3924`, containing linux/amd64 and linux/arm64.
+
+The original successful run produced duplicated Raspbian version names and checksum contents pointing at
+former absolute paths. [#1546](https://github.com/FastyBird/smart-panel/pull/1546), merged as `95c81e2`,
+fixes subsequent workflows. Its accepted helper was also run on the three downloaded `.66` ZIPs: payload
+SHA-256 and ZIP CRC checks pass, and the final basename/checksum pairs pass the native checksum utility.
+Published image names and checksum companions were normalized after the run; the ZIP payload bytes,
+source commit and tag were preserved. This is release artifact finalization, not an additional image build.
+
+| Published payload | SHA-256 |
+| --- | --- |
+| `smart-panel-server-1.1.0-alpha.66-arm64.tar.gz` | `7b059933a78044074d1891e67981f0dea9cff16c47eb07e34a54210530c2e7b4` |
+| `smart-panel-display-flutterpi-1.1.0-alpha.66-arm64.tar.gz` | `f56fae3eb6e18f5766cefe9223f6b6ccb8a5acdae653768cde689cc6dd211684` |
+| `smart-panel-display-android-1.1.0-alpha.66.apk` | `91e5780ac8c41a582d13f93cdb3dae601e94093446161a3d65f12f8fb65aaa78` |
+| `smart-panel-display-linux-1.1.0-alpha.66-x64.tar.gz` | `0c8eb6cbb5e35350270fe312d558ef850c68a1992407ed8ceee2ea95581d2797` |
+| `smart-panel-raspbian-server-1.1.0-alpha.66-arm64.zip` | `a7b72703fdd66432e676a3576896b0bf304cc8585212848ff3debae352d9ad3d` |
+| `smart-panel-raspbian-aio-1.1.0-alpha.66-arm64.zip` | `2ed9583a4100c6fec4c4d415fdf46d3dd37fcd121c50b068550c4ce5c3580651` |
+| `smart-panel-raspbian-display-1.1.0-alpha.66-arm64.zip` | `866f17a90651b9945800e3f168a844b4d237bd134669cc9524d40fbf02dd9fee` |
+
+All seven companions match the final payload basenames and GitHub asset digests. The server archive and
+three Raspbian ZIP payloads were downloaded and hashed; the other Panel companion hashes were checked
+against GitHub asset digests. Downloaded installer scripts and `version.json` also match their asset digests.
+Release notes explicitly retain installed Shelly calibration/protection/fault/OFF/restart/network/late-command
+and writer-isolation tests, supported native HA/Zigbee qualification and actual Apple Home pairing in #1463.
+
+#1544 passed all 12 checks with completed review of its accepted source. #1545 passed all 14 checks; its completed
+five-file review plus exact-head two-file follow-up covers the final code. #1546 passed all 14 checks;
+review 5832374010 covered all four changed files, and the only follow-up adds the requested seven-line
+JSDoc, with an audit proving executable bytes unchanged. Quota-skipped NEUTRAL auto-checks are not approvals.
+Each merge preserves the complete tree of its final PR head. Earlier alpha.65 failures remain historical;
+they do not invalidate this complete `.66` delivery. Installed equipment remains untested in #1463.
+
+## Historical release preparation
 
 The existing `alpha-release.yml` remains the publisher. Historical preparation addressed two demonstrated release issues:
 
-1. Downstream builders/publishers check out the immutable commit returned after version synchronization. The
+1. Direct alpha builders/publishers check out the immutable commit returned after version synchronization. The
    release tag and `version.json` use that same SHA; the Flutter build number is propagated from the version job.
-   They no longer pull a changing branch after checkout. A workflow contract test runs in CI.
+   A direct-job workflow contract test runs in CI. The reusable Raspbian jobs still pull main; their actual
+   checkout/pull logs were verified against the `.66` source above.
 2. The alpha.64 ARM64 Docker build failed in sqlite3/node-gyp because Python lacked `distutils`. Both existing
    Alpine build stages now install `py3-setuptools`. A native ARM64 container smoke compiled sqlite3 5.1.7 from
    source and opened a real database (`sqlite_version()` 3.44.2), using node:24-alpine digest
@@ -652,15 +708,15 @@ The existing `alpha-release.yml` remains the publisher. Historical preparation a
 The historical failed alpha workflow was run `38247149857`, ARM64 job `114813262193`; a GitHub release object
 already existed despite that failed downstream job. A release object alone therefore cannot close #1462.
 
-## Remaining gates
+## Completed software and release gates
 
-- [x] Merge all 139 original residual bindings through #1543, retaining261 original identities and explicit current replacement limits.
+- [x] Merge all 139 original residual bindings through #1543, retaining 261 original identities and explicit current replacement limits.
 - [x] Verify named combined software and published-alpha64 upgrade acceptance: 426/426 ordinary E2E on reviewed/merged #1543.
 - [x] Reconcile #1293/#1458 criteria and all fourteen software children with their delivered source/evidence; the records above distinguish historical checkpoints.
-- [ ] Merge this final acceptance source after its own exact-head CI and completed nonblocking review. The preceding checkmarks cite merged baseline evidence, not a future approval.
-- [ ] Dispatch the existing alpha workflow from accepted main; record the selected version and version-sync commit.
-- [ ] Verify tag/source/package metadata and every required package/application/Panel/Raspbian/native Docker architecture/manifest job.
-- [ ] Record published assets/checksums and release notes with remaining installed Shelly/HA/Zigbee/Apple Home qualification.
+- [x] Merge final software acceptance #1544 after green CI and completed nonblocking review, followed by the reviewed #1545/#1546 CI repairs.
+- [x] Dispatch the existing alpha workflow from accepted main; selected `1.1.0-alpha.66`, source `54090f341d16235e65ce1a1b4bbce2da571ad4fa`.
+- [x] Verify tag/source/package metadata and all 19 required package/application/Panel/Raspbian/native Docker architecture/manifest jobs.
+- [x] Record final published assets/checksums and release notes retaining installed Shelly/HA/Zigbee/Apple Home qualification.
 
-No next alpha is certified by this pre-merge source checkpoint. Live completion is recorded in #1462.
-Parent #1447 stays open until software and actual alpha delivery are complete; installed #1463 stays separate.
+Software and alpha delivery are complete. This record closes #1462 and parent #1447 when merged;
+installed acceptance remains open in #1463. Frozen #1473 is superseded with its source/history preserved.

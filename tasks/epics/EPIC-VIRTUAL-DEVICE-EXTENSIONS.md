@@ -3,7 +3,7 @@
 ID: EPIC-VIRTUAL-DEVICE-EXTENSIONS
 Type: epic
 Scope: backend, admin, panel, spec, sdk
-Status: in_progress
+Status: done
 Tracking: [#1447](https://github.com/FastyBird/smart-panel/issues/1447)
 
 ## Objective
@@ -27,14 +27,18 @@ entire acceptance is satisfied, even when its PR also closes other issues.
 
 ### Reconciled software progress — 2026-11-09
 
-Summary base is merged main `7dccbf5eaa339957fe23e0d3b4ac112a9df78432` (#1543).
+Final software source is merged #1544 (`976fa55aa803cc0472abab6f00d7da5826d50200`).
+Published [alpha.66](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.66) uses source
+`54090f341d16235e65ce1a1b4bbce2da571ad4fa`; all 19 release jobs, final assets/checksums and both native Docker
+runtime tests are verified in the [final delivery record](../../docs/work/virtual-thermostat/final-software-alpha-validation.md).
 The [acceptance reconciliation](../../docs/virtual-device-extensions-acceptance.md) now adopts the named combined
 activity and schedule/occupancy/manual-precedence witnesses delivered by #1508, with the later #1517 fixture
 correction. The current all-available-domain unit variants complement that actual HTTP operation. Plans (#1501),
 occupancy (#1502), native thermostats (#1504) and cover/HomeKit (#1505) retain their reviewed delivery evidence.
 All 139 original residuals are now bound through #1543, with 269 witnesses across 261 original identities.
 Current scoped/replacement limits are explicit in the canonical ledger. The complete hosted 426-case E2E
-run includes combined HTTP/manual priorities and the alpha64 upgrade. Final record review and actual alpha remain #1462.
+run includes combined HTTP/manual priorities and the alpha64 upgrade. Final consumers pass 640/640; #1462
+and parent #1447 close with this record. Installed qualification remains open in #1463.
 
 - [x] VD3-1 / #1448: weighted/filtering numeric policies, #1464.
 - [x] VD3-2 / #1449: additional numeric and binary profiles, #1465.
@@ -50,7 +54,7 @@ run includes combined HTTP/manual priorities and the alpha64 upgrade. Final reco
 - [x] VD3-12 / #1457: Zigbee2MQTT capability-qualified native adapter, merged #1504.
 - [x] VD3-13 / #1460: SDK numeric operators, #1468.
 - [x] VD3-14 / #1461: standard and native/composed HomeKit mappings, #1466/#1505.
-- [ ] VD3-15 / #1462: composed/upgrade/reference bindings delivered; final record review and actual alpha publication remain.
+- [x] VD3-15 / #1462: composed/upgrade/reference bindings, final accepted software and complete alpha.66 publication delivered.
 
 Reused definitions #1292, activity API #1294, Admin #1295 and Panel #1296 retain their scoped software evidence.
 The original all-available-domain requirement of #1293 is now covered by the actual combined HTTP operation,
@@ -62,8 +66,8 @@ optional security actuation remains UNSUPPORTED and the unrelated #1287 epic rem
 
 [PR #1473](https://github.com/FastyBird/smart-panel/pull/1473) remains a frozen draft reference. Its historical
 200/61/261 result is not a current-main failure count. #1543 completes the supported current reference map: 139/139 residual bindings, zero unbound.
-The draft must not be rebased or merged; preserve its frozen source/history when superseding it after
-final software acceptance. Actual alpha delivery and #1447 remain open; installed qualification stays #1463.
+The draft must not be rebased or merged; close it as superseded while preserving its frozen source/history.
+Software and alpha delivery complete #1447; installed qualification stays open in #1463.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -111,8 +115,9 @@ skip/partial-failure contract; do not implement a second thermostat scheduler or
 - [x] SDK operators have version/owner lifecycle, validation, failure containment and a working test extension.
 - [x] Standard HomeKit exports, API/spec generation, admin/panel flows, repair and diagnostics cover the delivered profiles.
 - [x] Named composed acceptance/upgrade tests pass; old documentation and closed-issue checklists reflect actual evidence.
-- [ ] Every PR met exact-head CI/review gates; the next alpha is published with recorded version/tag/source/artifacts
-      and release notes that identify remaining HW checks. A release draft alone does not complete this gate.
+- [x] Delivery PRs passed CI on accepted heads and completed nonblocking source reviews; alpha.66 is published with
+      recorded version/tag/source/artifacts and release notes identifying remaining HW checks. All 19 release jobs and
+      final image/checksum pairs are verified, including the post-run artifact normalization fixed by #1546.
 
 ## Post-alpha installed acceptance
 
