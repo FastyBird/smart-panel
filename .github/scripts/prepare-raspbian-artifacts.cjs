@@ -3,6 +3,13 @@ const { createReadStream } = require('node:fs');
 const { readdir, rename, rm, writeFile } = require('node:fs/promises');
 const path = require('node:path');
 
+/**
+ * Normalize one Raspbian image name and stream a fresh checksum naming its final basename.
+ * @param {string} directory Directory containing the image and its old checksum.
+ * @param {string} version Filename-safe release version or manual build name.
+ * @param {'server' | 'aio' | 'display'} variant Expected image variant.
+ * @returns {Promise<string>} The normalized image filename.
+ */
 async function prepareArtifacts(directory, version, variant) {
 	if (
 		typeof version !== 'string' ||
