@@ -1,20 +1,27 @@
-# Final software acceptance and next alpha
+# Final software acceptance and alpha.66
 
-Status at the fixture-lifetime source checkpoint: residual binding inventory complete; composed acceptance
-and alpha delivery remain open, 2026-11-09. Tracking: #1462; parent #1447 and installed acceptance #1463 stay open.
-Base main is merged #1542 (`aef7f0d92541ec4af5cc8235c202876593f779f4`), with 121/139 residuals bound
-and 18 open. The proposed source binds 139/139 with 0 unbound. These are pre-merge counts;
-live delivery status is tracked in #1462.
-Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
-No alpha was dispatched or published by this preparation. No installed equipment was operated.
+Software delivery is merged through [#1544](https://github.com/FastyBird/smart-panel/pull/1544),
+`976fa55aa803cc0472abab6f00d7da5826d50200`. All 139 original residuals are bound; zero remain unbound.
+The final focused consumers pass 640/640. Hosted CI passes 13,473 unit tests (one unrelated existing mapper
+skip) and all 426 ordinary E2E tests without skips, including combined activity/manual priorities and
+upgrade from alpha.64. The seven final cleanup cases add no original-reference bindings.
 
-## Current qualification and remaining scope
+[Alpha.66](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.66) is delivered from
+`54090f341d16235e65ce1a1b4bbce2da571ad4fa`; the complete release and artifact checks are recorded below.
+#1462 and parent #1447 close with this documentation record. Installed qualification remains open in #1463;
+no installed equipment was operated by this work.
+
+Earlier source checkpoints and their measurements remain historical below. Their pending-review/release
+statements describe those checkpoints; the current delivery status is this opening record and the alpha.66
+section. Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505).
+
+## Software qualification and scope
 
 [The canonical ledger](original1473-case-map.json) binds all **261 original rows: 173 scoped invariants**,
 82 replacements and six descriptor controls, through 269 witness bindings. All **139 fixed residuals**
 have current bindings (64 scoped, 75 replacements). The initial 122 dispositions retain their existing limits.
-This completes the proposed binding inventory; it does not grant whole-original private-protocol equivalence,
-composed acceptance, alpha publication or hardware qualification.
+The binding inventory is merged through #1543. Those counts alone grant no whole-original private-protocol,
+composed or hardware equivalence;the named composed software witnesses are qualified separately below.
 
 The current held-fence tests were merged in #1525. Its exact reviewed head
 `d1018936dc786a788f11811da0c791e45b37482a` passed all 14 checks and completed CodeRabbit review
@@ -25,11 +32,13 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **633/633**, zero failures/skips, one complete eleven-file invocation. Includes 273 unchanged runtime and 18 fixture-lifetime executions. Report SHA-256 `7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495`; exact apps/source identities are in the ledger. |
+| Current complete consumers | **640/640**, zero failures/skips, eleven complete consumer files. Includes 273 unchanged runtime and 25 fixture-lifetime executions. Report SHA-256 `a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24`; the seven new cases strengthen cleanup only and add no original bindings. |
+| Final merged #1544 hosted software | [Reviewed-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42660807502/job/129311591717): 728 ordinary unit suites, **13,473 passes**, one existing unrelated mapper skip; then **426/426 ordinary E2E, 29 suites, zero skips**. Combined activity HTTP and alpha64-upgrade files explicitly PASS. Log SHA-256 `1c76aa49eadfb49b04b08e2ef0e4c793c71f95cde3ef796cdee891c5a2314fba`. |
+| Merged #1543 hosted baseline | [Reviewed-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42649333644/job/129271155976): 728 ordinary unit suites, 13,466 passes and one existing agricultural/device-temperature Zigbee mapper skip; then **426/426 ordinary E2E, 29 suites, zero skips**. Combined activity HTTP and alpha64-upgrade files explicitly PASS. Log SHA-256 `95606d93b19c48c204b57307159218e57d5cd20b769c97d9e8e9f9369b53d139`. These counts bind #1543; final #1544 counts are recorded separately above. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
-| Evidence bindings | All **269 witness bindings across 261 original rows** verify. Last 18 facets use 18 executions/seven bodies; 1/244 share one execution and 247 has an additional earlier-reentry witness. All 250 prior binding bodies, 138 runtime bodies, 89 runtime helpers and 32 production files remain unchanged. Shared test fixture changes are bound to the complete rerun. |
+| Evidence bindings | All **269 bindings across 261 original rows** verify; 139/139 fixed residuals are merged. All 269 prior binding bodies, 138 runtime bodies, 89 runtime helpers, seven prior lifetime bodies and 32 production files remain unchanged. Current source/file identities are bound to the640-case report. |
 | Retained controls | The prior 52 reports remain hash-verified historical evidence. Twenty per-row negative reports retain 29 expected failures and five passing selected controls; they were audited, not replayed after the additive test change. Two #1525 scope-omission controls, not replayed after #1529, each fail only the corresponding changed-image variant, pass two controls and leave 177 cases unrun. A new premature-admission control fails both changed-image variants while unchanged passes (179 unrun); prior assertions pass all three under the same mutation. Production is restored byte-for-byte. |
 
 The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalidation` and
@@ -37,9 +46,9 @@ The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalid
 `semanticReconciliationBeforeHeldFenceAdoption`; `priorQualificationLedger` indexes its immutable full ledger,
 including the prior per-row measurements. `heldFenceOrderingFollowup` records the reviewed #1529 strengthening and its immutable prior ledger.
 Older test-file identities remain historical after the test changes.
-This evidence update requires exact-head CI and completed source review. The 18 former residuals now have
+This software evidence was accepted through #1544. The 18 former residuals now have
 current replacements below. Retired private TIME/caller/observer/global-drain and complete provider/SDK
-equivalence is not granted; composed acceptance, installed equipment and alpha remain separate gates.
+equivalence is not granted; named composed software and alpha outcomes are recorded separately below, while installed qualification remains #1463.
 
 Rows 118–119 now bind independent member/source changes committed through a peer SQLite connection while
 the first post-restart OFF fence is held. They require complete unchanged configuration, actual fresh binding
@@ -71,7 +80,7 @@ records the shared four executions, source hashes and four-failure swallow contr
 no production code and passed **394/394** across eight complete consumer files;
 older hosted unit/E2E measurements retain their historical source and fresh CI/review remain delivery gates.
 
-The native-outcome batch binds rows 126–129, 153, 160 and 165–171. It corrects false success and replacement
+The native-outcome batch binds rows 126–129,153,160 and 165–171. It corrects false success and replacement
 of an original dispatch/outcome-write failure after diagnostic repair. Five causes crossed with repair success/failure
 preserve the original P for the command and waiting comfort mutation, with Q logged separately. Known-unsent retirement
 keeps ordinary cancellation. Actual optional-baseline failures still permit guarded OFF; original held SAVE joins and
@@ -103,7 +112,7 @@ original still-current SDK proof before a distinct fresh proof settles. Complete
 protocols remain unadopted. Original production fails seventeen selected runtime/unit cases and passes the unchanged control. The corrected source passes
 **527/527** complete consumers, including **220/220** runtime cases. [The scoped boundary](original1473-residual-acceptance.md#rows-143151-and-182-original-off-capture-lifetime) records the exact differences.
 
-Rows 112–115, 120–122 and 125 now have eight scoped bindings through six new executions. Four native OFF
+Rows 112–115,120–122 and 125 now have eight scoped bindings through six new executions. Four native OFF
 failure variants finish without self-sustaining work and recover through the first independent public poll and its
 actual issued work/telemetry joined repeatedly to empty queues and in-flight work, before any second public request; actual claims
 refresh follows deliberate invalidation. Known native COMMIT confirmation is retained despite a later callback
@@ -129,14 +138,14 @@ cannot pass through every(). Erasing only returned diagnostic branches passes th
 fails all five strengthened variants (222 unrun each). At merged #1535, complete consumers passed **569/569**, including
 **227 runtime cases**; the source-bound comparison is recorded in the residual acceptance document.
 
-At merged #1536, seven explicit replacements bound rows 200–202, 209–210 and 212–213. Actual native catalog attempts revoke
+At merged #1536, seven explicit replacements bound rows 200–202,209–210 and 212–213. Actual native catalog attempts revoke
 old dispatch admission while the same time-only lease keeps its original budget; journal diagnostic bookkeeping
 is neutral. Public reads/settlement and ordinary runtime polling do not renew expiry, and a genuine replacement
 B remains independent of late A snapshots. These current contracts deliberately replace retired combined TIME/
 readIntent/close/native-loss-latching and held-ON protocols; they do not reproduce those private capabilities.
 [The complete replacement scope](original1473-residual-acceptance.md#rows-200202-209210-and-212213-bounded-time-and-dispatch-admission) records each difference and the three discriminatory controls.
 
-At merged #1537, four explicit replacements bound rows 179, 191–192 and 199. A completed original native cancellation supplies
+At merged #1537, four explicit replacements bound rows 179,191–192 and 199. A completed original native cancellation supplies
 the exact SQL and all bindings replayed on the new admitted comfort runner; the repeated definition rejects
 despite identical complete seven-table images. Real nested slot/configuration writes prove changed native
 images, roll back with the exact original sentinel, and reject the enclosing repeat. Empty nested rollback also
@@ -171,7 +180,7 @@ their historical pre-review source; fresh complete qualification remains 587/587
 [The source-bound review record](original1473-residual-acceptance.md#original-relay-event-request-review-follow-up)
 records controls, unchanged bodies/helpers, bot coverage limits and interrupted preparations.
 
-Twelve native-lifetime replacements bind 180–181, 183–188, 193–194 and 219–220 through eleven executions. A genuine
+Twelve native-lifetime replacements bind 180–181,183–188,193–194 and 219–220 through eleven executions. A genuine
 old command cannot borrow successor admission or wait on its later released-owner native read. Fresh B can
 confirm old history with its own actual OFF proof before A returns; A then rejects its stale native image rather
 than rewriting B history. Same-instance B retains the original in-flight object until known-unsent cancellation.
@@ -225,7 +234,7 @@ remains base main114/139 bound25open and proposed source121/139 bound18open;live
 retain the historical source records and the18 requirements still open at that checkpoint.
 The fixture-lifetime batch below now supplies their current replacements.
 
-The final fixture-lifetime batch binds rows 1–7 and 244–254 through real SQLite setup/transactions,
+The historical #1543 fixture-lifetime batch binds rows 1–7 and 244–254 through real SQLite setup/transactions,
 actual Nest provider/module lifecycles, managed SDK session authority and core derived publication.
 Original P outranks cleanup Q (including present falsy causes); original work joins, foreign lifecycle
 descriptors remain intact, and genuine B retains its native inspection/resources. Body cleanup leaves
@@ -343,14 +352,20 @@ original runtime SHA-256 is `150ab6a15587b93358c84f6ab1889e43617e3906f05f548d3e1
 The saved R265 raw-result SHA-256 is `d183276fbfc7ea319898eb01034f13d22ef867246402c91606e5c3a5d9c9d77e`.
 Its **200 PASS / 61 FAIL** describes that historical source, not a current-main defect count.
 
-The current reconciliation distinguishes scoped business outcomes from complete original-case acceptance:
+The merged reconciliation records **173 scoped invariants, 82 current replacements and six descriptor
+controls** across all 261 original identities, with 269 witnesses. All 139 fixed residuals are bound
+(64 scoped, 75 replacements); zero remain unbound. Original title/ancestry/line/body hashes remain in
+[the canonical inventory](original1473-case-map.json). Scoped bindings retain the exact per-row semantic
+differences; this is current software acceptance, not complete reproduction of the retired private harness.
 
-- **173 rows** bind current observable invariants: the initial 109 scoped bindings plus sixty-four from the residual inventory. The historical comparison of 68 distinct same-title body pairs and each row's changed ports and limits remain recorded in the ledger. Controlled claims/value ports do not certify the former complete mutation-provider or SDK custody pipeline.
-- **Four formerly partial journal rows (234, 235, 238, 239)** now bind through a real runtime-issued OFF. Independent native INSERT and original send-packet observations fix its ID while held. The complete baseline/P0 transcript, two-ID K, actual rollback, optional callback failure and held/unknown COMMIT ACK all retain their full row and call-order/multiplicity assertions. There is no seeded companion OFF.
-- **Six startup/lifetime rows (222–227)** now bind exact pending success/failure, stopped-A/fresh-B bootstrap, actual native-read stop, held completed load and late possibly-sent outcome. These execute against native SQLite/claims with controlled endpoint responses; they do not adopt the retired fixture-owner/observer API. Eighteen old setup/cleanup controls were inspected without granting any harness-only waiver; they remain open.
-- **Sixty-four replacement rows (105, 106, 107, 108, 109, 110, 111, 123, 124, 130, 152, 154, 155, 156, 157, 158, 159, 161, 162, 163, 164, 179, 180, 181, 183, 184, 185, 186, 187, 188, 190, 191, 192, 193, 194, 199, 200, 201, 202, 203, 204, 209, 210, 211, 212, 213, 215, 216, 217, 218, 219, 220, 221, 228, 229, 230, 231, 232, 233, 240, 241, 242, 243, 261)** bind current bounded-time/identity, native OFF, protected-write, qualification, held ON, actual-interval and required-method boundaries. Rows 241–242 and 261 are detailed below. A raw config SQL write now additionally withdraws installed qualification; a fresh explicit qualification is required before drainage. This stricter raw-write contract is recorded rather than presented as the old refresh-only recovery schedule. Row 240 also binds the original held OFF plus known COMMIT ACK through the shared real-OFF helper and held-ACK case; retired receipt/descriptor infrastructure is not adopted.
-- **Six descriptor rows (255–260)** are ported to the current shared capture API and pass directly. Original static inheritance, replacement and getter-no-invocation assertions remain; these are pure controls with no native/transport authority.
-- **18 rows** still have no current case bound. Each retains its concrete original requirement. API retirement alone does not discharge the underlying business invariant.
+The real runtime-issued OFF facets234/235/238/239 retain complete baseline/P0, K IDs, rollback and original
+ACK order/multiplicity. The startup/lifetime facets222–227 retain original pending outcomes, stopped-A/fresh-B,
+native-read/result and late possibly-sent boundaries. These are subsets of the scoped/replacement counts,
+not extra original rows. The last 18 setup/cleanup facets1–7,244–254 are merged in #1543 using actual
+managed modules/SDK authority and SQLite, with explicit replacements for old fixture aliases, held accepted-ON,
+restoration-Q and two-pass observer ordering. Six descriptor controls255–260 remain pure API controls.
+The historical200/61 result is not a current defect count; whole original private-protocol or equipment
+equivalence is not granted. #1473 must not be rebased or merged into this replacement implementation.
 
 ### Historical binding sequence
 
@@ -495,7 +510,7 @@ without actionable comments. The separate local 362 PASS / 62 FAIL E2E run and u
 ownership timeouts remain retained in #1508; green hosted CI does not explain those failures.
 
 [The residual acceptance follow-up](original1473-residual-acceptance.md) enumerates exactly the 139
-rows that were unbound at branch entry and the evidence required to close each. Rows 110, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 228, 229, 230, 231, 232, 233, 241, 242, 243, 261 now have
+rows that were unbound at branch entry and the evidence required to close each. Rows 110,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,228,229,230,231,232,233,241,242,243,261 now have
 tested current bindings (64 scoped and57 replacements);18 remain unbound. The initial 122 dispositions retain
 their limits. Neither the checklist nor this narrow binding grants alpha or installed-equipment clearance.
 
@@ -595,13 +610,95 @@ proof), and the delayed coherent-clock control passes. No production timeout or 
 
 Later green runs preserve these original failures and do not establish their causes.
 
-## Release preparation
+## Final software checkpoint and cleanup review follow-up
+
+Merged #1543 passed all 15 checks including completed nonblocking CodeRabbit review 5829163286.
+Reviewed head `da8b086a378cdb81e3c888c004877af8189b466d` and squash
+`7dccbf5eaa339957fe23e0d3b4ac112a9df78432` share full tree
+`76499c7b6c95651cf403beaebdee41c5a30456bd`. One human document was unavailable to the bot;
+the complete independent audit and actual local/hosted analysis passed. No blocking finding remains.
+
+Both optional cleanup suggestions are now executed against real managed modules. Six variants require
+undefined/null/false cleanup-only causes to remain exact, with and without later distinct fixture and
+aggregate failures; both modules still close and rejected fixtures leave the cleanup registry. A seventh
+case makes actual authority revocation throw after revoking, requires later module/report cleanup, and
+checks the same original rejection, registry removal and exact SQLite ownership. No production behavior changes.
+
+Separate fixture and aggregate truthiness mutations each fail six variants (19 unrun each); removing only
+the revocation attempt fails the continuation/module-close assertion (24 unrun). All 13 expected failures
+are functional before timeout. Source bytes restore before **640/640**, including 273 runtime and 25 lifetime
+cases, eleven complete files, zero skips; report `a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24`. All 269 prior witness bodies and dispositions
+remain unchanged. One initial control setup matched two indentation depths; that duplicate invocation is
+unqualified. The qualifying aggregate mutation is separately line-anchored and source-hashed.
+
+The existing published-alpha64 migration-prefix fixture and combined HTTP/schedule/occupancy/manual-priority
+sources are byte-identical to #1543's complete426-case E2E source. Supported HomeKit/native/energy/provenance
+and ordinary physical controls remain complementary named suites in the acceptance map; they do not substitute
+for the actual all-domain HTTP operation. No API/spec or generated-client source changes. Four release-contract
+tests pass, covering maximum published-version selection and immutable version-sync/tag/asset source.
+
+## Alpha.66 delivery — 2026-11-09
+
+[Alpha Release run 42688627609](https://github.com/FastyBird/smart-panel/actions/runs/42688627609)
+completed successfully: **19/19 jobs**, including four package publishers, three Panel builds, ARM64
+server packaging, all three Raspbian variants, both native Docker builds/runtime checks and their manifest.
+The tag `v1.1.0-alpha.66` resolves to full source `54090f341d16235e65ce1a1b4bbce2da571ad4fa`.
+`version.json` records version `1.1.0-alpha.66`, channel `alpha` and commit `54090f3`.
+The workflow's version-sync commit is a direct child of accepted #1545 (`4772210`), changing only the eight
+release version files. Checkout/pull logs bind all three Raspbian builds to that same source.
+
+All four public NPM packages (`smart-panel`, `smart-panel-admin`, `smart-panel-backend`,
+`smart-panel-extension-sdk` under `@fastybird`) expose `1.1.0-alpha.66` and their `alpha` tags point to it; all four
+GitHub Packages publication jobs also succeeded. The downloaded main NPM archive matches registry SHA-512
+integrity and contains both declared CLI entry files.
+
+The [ARM64 server job](https://github.com/FastyBird/smart-panel/actions/runs/42688627609/job/129408998717)
+passed on Ubuntu 24.04 after #1545 repaired the demonstrated Ubuntu 26.04/QEMU dependency failure.
+Its downloaded archive has backend/SDK `.66`, the local SDK dependency and backend/admin/display layout.
+Both native [AMD64](https://github.com/FastyBird/smart-panel/actions/runs/42688627609/job/129416235272)
+and [ARM64](https://github.com/FastyBird/smart-panel/actions/runs/42688627609/job/129416235294) Docker jobs
+passed their actual container runtime checks. An anonymous public GHCR read confirms both
+`ghcr.io/fastybird/smart-panel:1.1.0-alpha.66` and `:alpha` resolve to manifest
+`sha256:a6255b59c7a78cc407ed16ae417043984a47baf9b25d4d17ec83d3260cfd3924`, containing linux/amd64 and linux/arm64.
+
+The original successful run produced duplicated Raspbian version names and checksum contents pointing at
+former absolute paths. [#1546](https://github.com/FastyBird/smart-panel/pull/1546), merged as `95c81e2`,
+fixes subsequent workflows. Its accepted helper was also run on the three downloaded `.66` ZIPs: payload
+SHA-256 and ZIP CRC checks pass, and the final basename/checksum pairs pass the native checksum utility.
+Published image names and checksum companions were normalized after the run; the ZIP payload bytes,
+source commit and tag were preserved. This is release artifact finalization, not an additional image build.
+
+| Published payload | SHA-256 |
+| --- | --- |
+| `smart-panel-server-1.1.0-alpha.66-arm64.tar.gz` | `7b059933a78044074d1891e67981f0dea9cff16c47eb07e34a54210530c2e7b4` |
+| `smart-panel-display-flutterpi-1.1.0-alpha.66-arm64.tar.gz` | `f56fae3eb6e18f5766cefe9223f6b6ccb8a5acdae653768cde689cc6dd211684` |
+| `smart-panel-display-android-1.1.0-alpha.66.apk` | `91e5780ac8c41a582d13f93cdb3dae601e94093446161a3d65f12f8fb65aaa78` |
+| `smart-panel-display-linux-1.1.0-alpha.66-x64.tar.gz` | `0c8eb6cbb5e35350270fe312d558ef850c68a1992407ed8ceee2ea95581d2797` |
+| `smart-panel-raspbian-server-1.1.0-alpha.66-arm64.zip` | `a7b72703fdd66432e676a3576896b0bf304cc8585212848ff3debae352d9ad3d` |
+| `smart-panel-raspbian-aio-1.1.0-alpha.66-arm64.zip` | `2ed9583a4100c6fec4c4d415fdf46d3dd37fcd121c50b068550c4ce5c3580651` |
+| `smart-panel-raspbian-display-1.1.0-alpha.66-arm64.zip` | `866f17a90651b9945800e3f168a844b4d237bd134669cc9524d40fbf02dd9fee` |
+
+All seven companions match the final payload basenames and GitHub asset digests. The server archive and
+three Raspbian ZIP payloads were downloaded and hashed; the other Panel companion hashes were checked
+against GitHub asset digests. Downloaded installer scripts and `version.json` also match their asset digests.
+Release notes explicitly retain installed Shelly calibration/protection/fault/OFF/restart/network/late-command
+and writer-isolation tests, supported native HA/Zigbee qualification and actual Apple Home pairing in #1463.
+
+#1544 passed all 12 checks with completed review of its accepted source. #1545 passed all 14 checks; its completed
+five-file review plus exact-head two-file follow-up covers the final code. #1546 passed all 14 checks;
+review 5832374010 covered all four changed files, and the only follow-up adds the requested seven-line
+JSDoc, with an audit proving executable bytes unchanged. Quota-skipped NEUTRAL auto-checks are not approvals.
+Each merge preserves the complete tree of its final PR head. Earlier alpha.65 failures remain historical;
+they do not invalidate this complete `.66` delivery. Installed equipment remains untested in #1463.
+
+## Historical release preparation
 
 The existing `alpha-release.yml` remains the publisher. Historical preparation addressed two demonstrated release issues:
 
-1. Downstream builders/publishers check out the immutable commit returned after version synchronization. The
+1. Direct alpha builders/publishers check out the immutable commit returned after version synchronization. The
    release tag and `version.json` use that same SHA; the Flutter build number is propagated from the version job.
-   They no longer pull a changing branch after checkout. A workflow contract test runs in CI.
+   A direct-job workflow contract test runs in CI. The reusable Raspbian jobs still pull main; their actual
+   checkout/pull logs were verified against the `.66` source above.
 2. The alpha.64 ARM64 Docker build failed in sqlite3/node-gyp because Python lacked `distutils`. Both existing
    Alpine build stages now install `py3-setuptools`. A native ARM64 container smoke compiled sqlite3 5.1.7 from
    source and opened a real database (`sqlite_version()` 3.44.2), using node:24-alpine digest
@@ -611,14 +708,15 @@ The existing `alpha-release.yml` remains the publisher. Historical preparation a
 The historical failed alpha workflow was run `38247149857`, ARM64 job `114813262193`; a GitHub release object
 already existed despite that failed downstream job. A release object alone therefore cannot close #1462.
 
-## Remaining gates
+## Completed software and release gates
 
-- [x] Reconcile121 scoped/replacement residual bindings,including native clock/FK/closed-descendant and independent-controller release; retain18 setup/cleanup entries as open.
-- [ ] Finish original #1473 semantic case bindings and any required executable residuals.
-- [ ] Complete current software/static/generated-contract and source-review gates; reconcile #1293/#1458 against their entire criteria.
-- [x] Merge delivery PR #1508 after exact-head green CI and completed nonblocking main review. The residual acceptance follow-up still requires its own checks and review.
-- [ ] Dispatch the existing alpha workflow from the accepted source; record the actual selected version and version-sync commit.
-- [ ] Verify tag/source/package metadata and completed package, application, Panel, Raspbian, native Docker architecture and manifest jobs.
-- [ ] Record published assets/checksums and release notes with explicit remaining installed Shelly/HA/Zigbee/Apple Home qualification.
+- [x] Merge all 139 original residual bindings through #1543, retaining 261 original identities and explicit current replacement limits.
+- [x] Verify named combined software and published-alpha64 upgrade acceptance: 426/426 ordinary E2E on reviewed/merged #1543.
+- [x] Reconcile #1293/#1458 criteria and all fourteen software children with their delivered source/evidence; the records above distinguish historical checkpoints.
+- [x] Merge final software acceptance #1544 after green CI and completed nonblocking review, followed by the reviewed #1545/#1546 CI repairs.
+- [x] Dispatch the existing alpha workflow from accepted main; selected `1.1.0-alpha.66`, source `54090f341d16235e65ce1a1b4bbce2da571ad4fa`.
+- [x] Verify tag/source/package metadata and all 19 required package/application/Panel/Raspbian/native Docker architecture/manifest jobs.
+- [x] Record final published assets/checksums and release notes retaining installed Shelly/HA/Zigbee/Apple Home qualification.
 
-No next alpha version is certified here. #1447 is not closed by a child software or release checkmark.
+Software and alpha delivery are complete. This record closes #1462 and parent #1447 when merged;
+installed acceptance remains open in #1463. Frozen #1473 is superseded with its source/history preserved.

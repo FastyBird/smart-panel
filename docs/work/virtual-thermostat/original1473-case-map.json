@@ -13,17 +13,17 @@
     }
   },
   "current": {
-    "baseCommit": "aef7f0d92541ec4af5cc8235c202876593f779f4",
-    "appsTree": "5824945c23867636acbbcf96db0b625993b9793a",
+    "baseCommit": "7dccbf5eaa339957fe23e0d3b4ac112a9df78432",
+    "appsTree": "c53c946fe6a11d3be787aac47332b93abaa62903",
     "fileSha256": "37beb10548b2124cb546ea0f94c288929bb60105c81129b42012d7d3226827d2",
-    "qualification": "All139 residuals have current bindings at this proposed source:64 scoped and75 replacements. All261 original identities remain;269 witness bindings across261 rows. Real managed module/SDK authority and native SQLite ownership replace retired setup/cleanup APIs at explicit limits. Binding counts grant no whole-original private-protocol,composed final acceptance,alpha or equipment clearance.",
-    "runtimeReportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
+    "qualification": "All139 original residual bindings are merged through #1543;269 bindings across all261 original identities retain their documented current scoped/replacement limits. The final software acceptance proposal adds seven real managed cleanup failure controls and reconciles composed/upgrade evidence. Exact-head CI/review and actual alpha publishing remain delivery gates;installed acceptance is #1463.",
+    "runtimeReportSha256": "a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24",
     "runtimeResult": {
       "passed": 273,
       "failed": 0,
       "pending": 0
     },
-    "runtimeReportScope": "273 unchanged runtime executions and18 new managed fixture lifetime executions in one complete633-case eleven-file invocation. Shared test fixture retires packet clocks,memoizes disposal before reentry,and attempts all snapshot disposers. No production changes.",
+    "runtimeReportScope": "273 unchanged runtime cases plus25 managed fixture lifetime executions in a complete640-case eleven-file invocation. Seven new supplemental cleanup cases,two bodies;no new original binding/disposition.",
     "productionBindings": {
       "apps/backend/src/common/database/sqlite-data-source.ts": "5b116697a22257b3ddcc316df3ee58d79daeb78d9debefe63fbcf739e44607c2",
       "apps/backend/src/migrations/1000000000053-AddThermostatOverrideClocks.ts": "4a0b4b1b8e95fdfb078dc168a8532a74e37087f8b0d41c53b19838ee2f53367b",
@@ -70,25 +70,25 @@
       "apps/backend/test/support/thermostat-real-guard-fixture.ts": "8a10cb5b08d825fe5e737c04643ced7b8cdb60cd244c67f140a1caba93a60091",
       "apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-transport.service.spec.ts": "99d221cf533b73fc4b58f0075093cd99c527b85a616b812d899b85813c7a602a",
       "apps/backend/src/modules/devices/services/device-structure-lock.service.spec.ts": "00ccefa2693b4ba3d6c54dd8260b7bff9d872cb2eae3927bf849952ab492f9d5",
-      "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0"
+      "apps/backend/src/plugins/devices-virtual/services/thermostat-fixture-lifetime.integration.spec.ts": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6"
     },
     "e2eQualification": {
-      "sourceHead": "711ef0231a134ecc9a4f9cf385c464ab4beac256",
-      "mergedSource": "1823db1a8ef5bce16db81545374ecb7c38d4ceac",
-      "sourceAppsTree": "84f88193dd93d89fb65d1f3e7cbfe7dc2eb4ee7c",
-      "reportSha256": "0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714",
+      "sourceHead": "da8b086a378cdb81e3c888c004877af8189b466d",
+      "mergedSource": "7dccbf5eaa339957fe23e0d3b4ac112a9df78432",
+      "sourceAppsTree": "5824945c23867636acbbcf96db0b625993b9793a",
+      "reportSha256": "95606d93b19c48c204b57307159218e57d5cd20b769c97d9e8e9f9369b53d139",
       "reportKind": "GitHub Actions job log",
-      "jobUrl": "https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238",
+      "jobUrl": "https://github.com/FastyBird/smart-panel/actions/runs/42649333644/job/129271155976",
       "passed": 426,
       "failed": 0,
       "pending": 0,
       "suitesPassed": 29,
-      "scope": "Complete ordinary hosted E2E on the exact reviewed/squashed source. Historical local and hosted failures retain their recorded unknown causes; this success does not diagnose them."
+      "scope": "Complete ordinary hosted E2E on the exact reviewed/merged #1543 source,including combined activity HTTP and alpha64 upgrade. Current proposal changes no E2E/production/generated-contract source;fresh own CI remains required. Historical failures retain their source and unknown causes."
     },
     "nativeConsumerAggregate": {
-      "reportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
+      "reportSha256": "a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24",
       "suitesPassed": 11,
-      "passed": 633,
+      "passed": 640,
       "failed": 0,
       "pending": 0
     }
@@ -542,9 +542,9 @@
         "title": "retires an unadopted held setup and closes only its original SQLite resources",
         "line": 435,
         "bodySha256": "2d173a4a97750d51b3d6b26fef4d1864f86fbe7d0c6361517151e16d1798a016",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24."
       },
       "semanticComparison": "A is held in an actual initial native SQLite configuration SELECT before managed module adoption. The ordinary owner memoizes cleanup, retires A, and joins the original setup only after genuine B adopts and holds its own native SELECT. A rejects the same retirement cause and closes only its exact database/directory. B retains byte-identical SQLite, qualified sample, current SDK session, clock/timer identities, local spy and no sends; its original read and next packet progress. Per-scope resources replace retired global aliases/setup ownership; no old runtime bootstrap/graph-read protocol is claimed.",
       "helper": {
@@ -573,9 +573,9 @@
         "title": "joins original native SQL and derived publication after retirement without advancing another fixture",
         "line": 461,
         "bodySha256": "b72b13cdff50c20a10f29f786fa06d0321054b41d9c49114e1498e2584e7c231",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24."
       },
       "semanticComparison": "Original native A SELECT and actual core publishDerived Promise issue before retirement, with publication queued behind the real property-value mutex. Managed A authority closes while original work remains A-owned and completes before source close. Resumed A issue refuses; a late A packet cannot advance B time. Genuine B retains its held native inspection, exact database bytes/sample/session/resources before progressing. Actual SDK authority/core publication replace the old controlled-adapter accepted held-ON schedule; no accepted original ON or retired global-drain equivalence is claimed.",
       "helper": {
@@ -604,9 +604,9 @@
         "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
         "line": 515,
         "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "undefined",
         "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: undefined"
       },
@@ -637,9 +637,9 @@
         "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
         "line": 515,
         "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "null",
         "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: null"
       },
@@ -670,9 +670,9 @@
         "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
         "line": 515,
         "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "false",
         "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: false"
       },
@@ -703,9 +703,9 @@
         "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
         "line": 515,
         "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "string",
         "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: string"
       },
@@ -736,9 +736,9 @@
         "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
         "line": 515,
         "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "Error",
         "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: Error"
       },
@@ -9814,9 +9814,9 @@
         "title": "retires an unadopted held setup and closes only its original SQLite resources",
         "line": 435,
         "bodySha256": "2d173a4a97750d51b3d6b26fef4d1864f86fbe7d0c6361517151e16d1798a016",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24."
       },
       "semanticComparison": "A is held in an actual initial native SQLite configuration SELECT before managed module adoption. The ordinary owner memoizes cleanup, retires A, and joins the original setup only after genuine B adopts and holds its own native SELECT. A rejects the same retirement cause and closes only its exact database/directory. B retains byte-identical SQLite, qualified sample, current SDK session, clock/timer identities, local spy and no sends; its original read and next packet progress. Per-scope resources replace retired global aliases/setup ownership; no old runtime bootstrap/graph-read protocol is claimed.",
       "helper": {
@@ -9845,9 +9845,9 @@
         "title": "closes partial real setup resources and retains the setup cause: %s",
         "line": 571,
         "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "initialize",
         "expandedTitle": "closes partial real setup resources and retains the setup cause: initialize"
       },
@@ -9878,9 +9878,9 @@
         "title": "closes partial real setup resources and retains the setup cause: %s",
         "line": 571,
         "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "compile",
         "expandedTitle": "closes partial real setup resources and retains the setup cause: compile"
       },
@@ -9911,9 +9911,9 @@
         "title": "publishes the original managed cleanup promise before synchronous reentry: %s",
         "line": 617,
         "bodySha256": "acec9e0e2bc3e0686dd298042454ad3e166678d41f68804c3f0c4b1580e093f9",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "module-close",
         "expandedTitle": "publishes the original managed cleanup promise before synchronous reentry: module-close"
       },
@@ -9930,9 +9930,9 @@
         "title": "publishes the original managed cleanup promise before synchronous reentry: %s",
         "line": 617,
         "bodySha256": "acec9e0e2bc3e0686dd298042454ad3e166678d41f68804c3f0c4b1580e093f9",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "authority-revoke",
         "expandedTitle": "publishes the original managed cleanup promise before synchronous reentry: authority-revoke"
       }
@@ -9955,9 +9955,9 @@
         "title": "preserves native P ahead of actual module-close Q with B inspecting: $name",
         "line": 515,
         "bodySha256": "2e0083f521ee741b2b98480ab19f2a68e8ba8e7abe7b04fc7b7cb8a97b82bd13",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "cleanup only",
         "expandedTitle": "preserves native P ahead of actual module-close Q with B inspecting: cleanup only"
       },
@@ -9988,9 +9988,9 @@
         "title": "closes partial real setup resources and retains the setup cause: %s",
         "line": 571,
         "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "undefined",
         "expandedTitle": "closes partial real setup resources and retains the setup cause: undefined"
       },
@@ -10021,9 +10021,9 @@
         "title": "closes partial real setup resources and retains the setup cause: %s",
         "line": 571,
         "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "null",
         "expandedTitle": "closes partial real setup resources and retains the setup cause: null"
       },
@@ -10054,9 +10054,9 @@
         "title": "closes partial real setup resources and retains the setup cause: %s",
         "line": 571,
         "bodySha256": "076a23b231824340590744a93b07aec15449842839e5a4356ebaebdaad606dbe",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "false",
         "expandedTitle": "closes partial real setup resources and retains the setup cause: false"
       },
@@ -10086,9 +10086,9 @@
         "title": "attempts every snapshotted real disposer even when the first removes itself and rejects",
         "line": 657,
         "bodySha256": "68be5d148f574ab963cfdabb6e0b57428f7421b72c5366fd580f5586e90958f4",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495."
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24."
       },
       "semanticComparison": "Two actual managed fixtures enter the shared disposer snapshot. The first completes its real module close, removes itself from the live cleanup set and rejects Q; the second module still closes once. Both captured SDK sessions close while both SQLite sources remain open until their separate owners close them. Per-fixture disposal replaces the old one-runtime two-pass retire: first/retire: second/cleanup: first/cleanup: second ordering; that exact old callback sequence is not asserted.",
       "helper": {
@@ -10117,9 +10117,9 @@
         "title": "joins the same real SQLite body before source close and preserves successful ownership: %s",
         "line": 685,
         "bodySha256": "716dbf1127a69eb6ab9d088aa832caad7ae2c75aa129a49a9613abdec1cbb0b4",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "unfinished",
         "expandedTitle": "joins the same real SQLite body before source close and preserves successful ownership: unfinished"
       },
@@ -10150,9 +10150,9 @@
         "title": "joins the same real SQLite body before source close and preserves successful ownership: %s",
         "line": 685,
         "bodySha256": "716dbf1127a69eb6ab9d088aa832caad7ae2c75aa129a49a9613abdec1cbb0b4",
-        "fileSha256": "787f3a966b62efabf338e9b58546b1ca5156067429eb84497effa709f2ce6ee0",
+        "fileSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
         "measuredStatus": "passed",
-        "measurement": "Complete fixture-lifetime batch:633 passed,zero failed/pending in eleven files;runtime273,lifetime18;report SHA-256 7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495.",
+        "measurement": "Complete final software acceptance:640 passed,zero failed/pending in eleven files;runtime273,lifetime25;unchanged original body;report SHA-256 a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24.",
         "parameter": "complete",
         "expandedTitle": "joins the same real SQLite body before source close and preserves successful ownership: complete"
       },
@@ -10443,10 +10443,10 @@
   ],
   "semanticReconciliation": {
     "date": "2026-11-09",
-    "sourceCommit": "aef7f0d92541ec4af5cc8235c202876593f779f4",
+    "sourceCommit": "7dccbf5eaa339957fe23e0d3b4ac112a9df78432",
     "scope": "Current scoped/replacement observable bindings only; no whole original private-protocol, alpha or equipment acceptance. Prior semantic reconciliation and aggregate snapshots are retained explicitly.",
-    "bindingExecutionReportSha256": "7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495",
-    "sourceHelperProductionAuditSha256": "a40e3294b966e17d8d825c8e4ce746e2e4102b07227333953f2a1c1f5de3d49e",
+    "bindingExecutionReportSha256": "a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24",
+    "sourceHelperProductionAuditSha256": "c7482016c1d24150b3556914e6af88fc63211d42030b1c4c97f25a79ab83e862",
     "historicalReportAuditSha256": "31c69dd44ec1c77460377db5db910d5c60971154ecc726c80b389f3ffbe4cea8",
     "originalResidualPlan": {
       "originalResiduals": 139,
@@ -10454,7 +10454,7 @@
       "currentReplacementBindings": 75,
       "remainingOutsidePlan": 0
     },
-    "negativeControlScope": "Original shared fixture fails three selected concrete assertions:late A clock tick,different reentrant cleanup Promise,second module skipped;15unrun. A truthiness-only mutation in the test resource owner fails three present-falsy original SQL P variants and passes string/Error/Q-only,12unrun. All sources restore before complete633 qualification. No production defect attribution.",
+    "negativeControlScope": "Independent fixture and aggregate truthiness-only mutations each fail six falsy first-cleanup cases,19unrun each. Removing only the revocation attempt fails the continuation/module-close assertion1/1,24unrun. All sources restore before640-case qualification;test-helper changes only,no production defect attribution.",
     "notGranted": [
       "whole original fixture/provider/SDK/private TIME/caller/observer/global-drain equivalence",
       "all 261 case acceptance",
@@ -12992,5 +12992,96 @@
     },
     "scope": "Actual Nest builder/provider/module,managed Shelly SDK authority,real SQLite initialize/transaction/held SELECT/core publication and directory ownership. SDK/network/storage hardware are simulated. The resource owner is also normal afterEach cleanup. Retired global aliases,accepted-ON schedule,restoration-Q and two-pass observers are explicit replacements. Rows1/244 share one execution;247 has an additional earlier-reentry witness;counts do not inflate executions.",
     "preparationLimits": "Early imports/types/lint and wrapper-recursion drafts are unqualified preparation. An earlier original-helper control had three functional failures and one5s timeout;only final three-assertion control qualifies. Two incomplete full invocations stopped before final assertions are not qualification. Final633 report binds restored source. Prior records/control reports remain unchanged and were audited,not replayed."
+  },
+  "finalSoftwareAcceptance": {
+    "baseCommit": "7dccbf5eaa339957fe23e0d3b4ac112a9df78432",
+    "priorLedgerSha256": "46b4e0bb92289ebf284a33d4674de3be423c0b4dbe4eb5cee3b1463d9ecb9b59",
+    "reviewUrl": "https://github.com/FastyBird/smart-panel/pull/1543#pullrequestreview-5829163286",
+    "newSupplementalExecutions": 7,
+    "newLiteralBodies": 2,
+    "originalBindingsChanged": false,
+    "newOriginalBindings": 0,
+    "witnessBindings": 269,
+    "residualBindings": 139,
+    "remainingResiduals": 0,
+    "fullReportSha256": "a3841ba2a52685df415f5893061094d4200a00035db4692ae8500b6edc4a5b24",
+    "sourceAuditSha256": "c7482016c1d24150b3556914e6af88fc63211d42030b1c4c97f25a79ab83e862",
+    "unchangedPriorWitnessBodies": 269,
+    "unchangedRuntimeBodies": 138,
+    "unchangedRuntimeHelpers": 89,
+    "unchangedLifetimeBodies": 7,
+    "productionFilesUnchanged": 32,
+    "controls": {
+      "fixture-truthiness": {
+        "mutationSourceSha256": "8664441f9cedaf3f32386a01bb0e5c7c6e89a73753bc8019cbb26ea26dcfcc15",
+        "testSourceSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
+        "reportSha256": "479d7dbcf47a42eb060f6ffd4c033748a71e4b9e4ab79d0dca3a141f5a723a10",
+        "failed": 6,
+        "unrun": 19,
+        "failedTitles": [
+          "retains the first cleanup cause in real fixture and aggregate disposal: undefined; later failures=false",
+          "retains the first cleanup cause in real fixture and aggregate disposal: undefined; later failures=true",
+          "retains the first cleanup cause in real fixture and aggregate disposal: null; later failures=false",
+          "retains the first cleanup cause in real fixture and aggregate disposal: null; later failures=true",
+          "retains the first cleanup cause in real fixture and aggregate disposal: false; later failures=false",
+          "retains the first cleanup cause in real fixture and aggregate disposal: false; later failures=true"
+        ]
+      },
+      "aggregate-truthiness": {
+        "mutationSourceSha256": "bd651c3fdddd7f2f1ff5eb9acc3d7ba73de9a3ce25369fb77266b718e58eb58c",
+        "testSourceSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
+        "reportSha256": "281c55f93413e95d50438d70deaecabfaa038024dbd3be965f241384e61d2cbb",
+        "failed": 6,
+        "unrun": 19,
+        "failedTitles": [
+          "retains the first cleanup cause in real fixture and aggregate disposal: undefined; later failures=false",
+          "retains the first cleanup cause in real fixture and aggregate disposal: undefined; later failures=true",
+          "retains the first cleanup cause in real fixture and aggregate disposal: null; later failures=false",
+          "retains the first cleanup cause in real fixture and aggregate disposal: null; later failures=true",
+          "retains the first cleanup cause in real fixture and aggregate disposal: false; later failures=false",
+          "retains the first cleanup cause in real fixture and aggregate disposal: false; later failures=true"
+        ]
+      },
+      "unjoined-revocation": {
+        "mutationSourceSha256": "16cfa51e97511feaa10267da92e140146b3fa988c0164786f266f90bcc814abd",
+        "testSourceSha256": "c3074730d42b3de4f4b42844bbb110e5c1cee92a036902a96bf7ebdb1316c4c6",
+        "reportSha256": "5665d8714e388097eb1e3e4602a889f137800ef730ba403dad55ab7e9558812f",
+        "failed": 1,
+        "unrun": 24,
+        "failedTitles": [
+          "continues real managed cleanup after the original authority revocation throws"
+        ]
+      }
+    },
+    "composedSourceBindings": {
+      "apps/backend/test/space-climate-automation.e2e-spec.ts": "b7f5229d0ce34ab2e9d1dec5bfd226960389264f2bb58a0c1bec903456163542",
+      "apps/backend/test/virtual-extensions-upgrade.e2e-spec.ts": "fbdbd29fbdec521c87517e923083410eae2cd55e39318e8745a2d20abb4bda12",
+      "apps/backend/test/fixtures/virtual-extensions-alpha64-migrations.json": "386c7da5a5cb96e2ffd9e6c0739f752c8a87a765885871e38f365986f979df8f",
+      ".github/workflows/alpha-release.yml": "f133659ce6f15cbea8a3aaef5dcec0306cf56e9549e758e2d4b811296a3c45ae",
+      ".github/scripts/monorepo-version-sync.js": "22d3f9594319e991849d55e74e1d99ddef5d5bc261fe37af149eeaa9932ca08f"
+    },
+    "previousHostedE2E": {
+      "sourceHead": "711ef0231a134ecc9a4f9cf385c464ab4beac256",
+      "mergedSource": "1823db1a8ef5bce16db81545374ecb7c38d4ceac",
+      "sourceAppsTree": "84f88193dd93d89fb65d1f3e7cbfe7dc2eb4ee7c",
+      "reportSha256": "0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714",
+      "reportKind": "GitHub Actions job log",
+      "jobUrl": "https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238",
+      "passed": 426,
+      "failed": 0,
+      "pending": 0,
+      "suitesPassed": 29,
+      "scope": "Complete ordinary hosted E2E on the exact reviewed/squashed source. Historical local and hosted failures retain their recorded unknown causes; this success does not diagnose them."
+    },
+    "hostedUnitBaseline": {
+      "head": "da8b086a378cdb81e3c888c004877af8189b466d",
+      "suites": 728,
+      "passed": 13466,
+      "skipped": 1,
+      "skip": "existing agricultural/device-temperature Zigbee mapper",
+      "reportSha256": "95606d93b19c48c204b57307159218e57d5cd20b769c97d9e8e9f9369b53d139"
+    },
+    "scope": "Real managed cleanup only:three present-falsy first causes,with/without later distinct fixture/aggregate failure;actual revoke failure still completes remaining teardown and removes registry entry. No production/runtime/E2E/generated-source changes. All prior original-row semantics and historical records retain their limits. Software composition is the existing real HTTP/upgrade boundary;no hardware or alpha publication is inferred.",
+    "preparationLimits": "One control-setup assertion matched two indentation depths;that duplicate invocation is unqualified. The final aggregate mutation is line-anchored and separately source-hashed;all final controls fail functionally before timeout. Existing #1543 preparation/history remains verbatim."
   }
 }
