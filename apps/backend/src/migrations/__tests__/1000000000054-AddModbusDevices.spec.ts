@@ -1,6 +1,10 @@
 import { DataSource, QueryRunner } from 'typeorm';
 
+import { FenceClimateAutomationLifecycle1000000000049 } from '../1000000000049-FenceClimateAutomationLifecycle';
 import { AddModbusDevices1000000000054 } from '../1000000000054-AddModbusDevices';
+import { climateDeletionCaptureSql } from '../../plugins/devices-virtual/services/virtual-thermostat-ownership.sql';
+
+const DELETION_CAPTURE_TRIGGER = 'virtual_thermostat_capture_admitted_deletion';
 
 describe('AddModbusDevices1000000000054', () => {
 	let dataSource: DataSource;
@@ -119,5 +123,101 @@ describe('AddModbusDevices1000000000054', () => {
 		expect(await names('index')).not.toContain('IDX_devices_modbus_endpoint_unit');
 		expect(await names('index')).not.toContain('IDX_devices_modbus_binding_device');
 		expect(await deviceColumns()).toEqual(['id', 'type']);
+	});
+
+	it('does not create the thermostat deletion trigger when migration 49 has not installed it', async () => {
+		const triggers = (await queryRunner.query(
+			`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = '${DELETION_CAPTURE_TRIGGER}'`,
+		)) as unknown[];
+
+		expect(triggers).toHaveLength(0);
+	});
+});
+
+describe('AddModbusDevices1000000000054 thermostat deletion trigger', () => {
+	let dataSource: DataSource;
+	let queryRunner: QueryRunner;
+	let installedBefore: string;
+
+	const migration = new AddModbusDevices1000000000054();
+
+	const triggerSql = async (): Promise<string[]> =>
+		(
+			(await queryRunner.query(`SELECT "sql" FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [
+				DELETION_CAPTURE_TRIGGER,
+			])) as Array<{ sql: string }>
+		).map((row) => row.sql);
+
+	const deviceColumns = async (): Promise<string[]> =>
+		((await queryRunner.query(`PRAGMA table_info("devices_module_devices")`)) as Array<{ name: string }>).map(
+			(row) => row.name,
+		);
+
+	beforeEach(async () => {
+		dataSource = new DataSource({ type: 'sqlite', database: ':memory:', entities: [], synchronize: false });
+		await dataSource.initialize();
+		queryRunner = dataSource.createQueryRunner();
+		await queryRunner.query('PRAGMA foreign_keys = ON');
+		await queryRunner.query(
+			`CREATE TABLE "devices_module_devices" ("id" varchar PRIMARY KEY NOT NULL, "type" varchar NOT NULL, "name" varchar)`,
+		);
+		await queryRunner.query(`CREATE TABLE "devices_module_channels_properties" ("id" varchar PRIMARY KEY NOT NULL)`);
+		await queryRunner.query(
+			`CREATE TABLE "devices_virtual_thermostat_configs" ("controllerId" varchar PRIMARY KEY NOT NULL, "revision" integer)`,
+		);
+		await new FenceClimateAutomationLifecycle1000000000049().up(queryRunner);
+		[installedBefore] = await triggerSql();
+	});
+
+	afterEach(async () => {
+		await queryRunner.release();
+		await dataSource.destroy();
+	});
+
+	it('rebuilds the trigger with the modbus columns exactly as the runtime expects', async () => {
+		expect(installedBefore).toBe(await climateDeletionCaptureSql(queryRunner.manager));
+
+		await migration.up(queryRunner);
+
+		const expected = await climateDeletionCaptureSql(queryRunner.manager);
+
+		expect(await triggerSql()).toEqual([expected]);
+		expect(expected).not.toBe(installedBefore);
+
+		for (const column of ['modbusEndpointId', 'modbusUnitId', 'modbusTemplateRevision']) {
+			expect(expected).toContain(`'${column}', OLD."${column}"`);
+		}
+	});
+
+	it('captures the modbus columns when an admitted controller is deleted', async () => {
+		await migration.up(queryRunner);
+
+		await queryRunner.query(
+			`INSERT INTO "devices_module_devices" ("id", "type", "name", "modbusUnitId") VALUES ('controller', 'VirtualDeviceEntity', 'Hall', 4)`,
+		);
+		await queryRunner.query(`INSERT INTO "devices_virtual_thermostat_configs" VALUES ('controller', 3)`);
+		await queryRunner.query(
+			`INSERT INTO "devices_module_climate_automation_deletions"
+			 ("deletionId", "controllerId", "controllerIncarnation", "providerKey", "slotRevision", "manualCounter",
+			  "slotEvidence", "controllerEvidence", "deviceEvidence", "configurationEvidence")
+			 VALUES ('deletion', 'controller', 'incarnation', 'provider', 1, 1, '{}', '{}', '{}', '{}')`,
+		);
+
+		await queryRunner.query(`DELETE FROM "devices_module_devices" WHERE "id" = 'controller'`);
+
+		const [row] = (await queryRunner.query(
+			`SELECT "nativeDeviceEvidence" FROM "devices_module_climate_automation_deletions" WHERE "deletionId" = 'deletion'`,
+		)) as Array<{ nativeDeviceEvidence: string }>;
+
+		expect(JSON.parse(row.nativeDeviceEvidence)).toMatchObject({ id: 'controller', name: 'Hall', modbusUnitId: 4 });
+	});
+
+	it('down drops the modbus columns and restores the original trigger', async () => {
+		await migration.up(queryRunner);
+		await migration.down(queryRunner);
+
+		expect(await deviceColumns()).toEqual(['id', 'type', 'name']);
+		expect(await triggerSql()).toEqual([await climateDeletionCaptureSql(queryRunner.manager)]);
+		expect(await triggerSql()).toEqual([installedBefore]);
 	});
 });
