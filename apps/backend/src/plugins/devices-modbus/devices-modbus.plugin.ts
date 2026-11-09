@@ -38,6 +38,8 @@ import { UpdateModbusChannelDto } from './dto/update-channel.dto';
 import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateModbusDeviceDto } from './dto/update-device.dto';
 import { ModbusChannelEntity, ModbusChannelPropertyEntity, ModbusDeviceEntity } from './entities/devices-modbus.entity';
+import { ModbusBindingEntity } from './entities/modbus-binding.entity';
+import { ModbusEndpointEntity } from './entities/modbus-endpoint.entity';
 import { ModbusConfigModel } from './models/config.model';
 import { ModbusDevicePlatform } from './platforms/modbus.device.platform';
 import { ModbusRuntimeService } from './services/modbus-runtime.service';
@@ -49,7 +51,13 @@ import { ModbusRuntimeService } from './services/modbus-runtime.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([ModbusDeviceEntity, ModbusChannelEntity, ModbusChannelPropertyEntity]),
+		TypeOrmModule.forFeature([
+			ModbusDeviceEntity,
+			ModbusChannelEntity,
+			ModbusChannelPropertyEntity,
+			ModbusEndpointEntity,
+			ModbusBindingEntity,
+		]),
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,

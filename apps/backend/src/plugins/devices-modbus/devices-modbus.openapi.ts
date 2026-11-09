@@ -9,6 +9,8 @@ import { UpdateModbusChannelDto } from './dto/update-channel.dto';
 import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateModbusDeviceDto } from './dto/update-device.dto';
 import { ModbusChannelEntity, ModbusChannelPropertyEntity, ModbusDeviceEntity } from './entities/devices-modbus.entity';
+import { ModbusBindingEntity } from './entities/modbus-binding.entity';
+import { ModbusEndpointEntity } from './entities/modbus-endpoint.entity';
 import { ModbusConfigModel } from './models/config.model';
 
 export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
@@ -26,4 +28,6 @@ export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ModbusDeviceEntity,
 	ModbusChannelEntity,
 	ModbusChannelPropertyEntity,
+	ModbusEndpointEntity,
+	ModbusBindingEntity,
 ];
