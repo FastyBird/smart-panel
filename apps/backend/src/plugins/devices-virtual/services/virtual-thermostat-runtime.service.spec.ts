@@ -11640,6 +11640,7 @@ describe('virtual thermostat durable runtime', () => {
 					if (mode === 'before-write-error') expect(native).toEqual(priorNative);
 					else {
 						expect(native.releaseProofId).not.toBe(priorNative.releaseProofId);
+						expect(priorNative.lastVerifiedOffAt).toBeInstanceOf(Date);
 						expect(native.lastVerifiedOffAt).toEqual(priorNative.lastVerifiedOffAt);
 					}
 					releaseRetry();
@@ -11833,6 +11834,7 @@ describe('virtual thermostat durable runtime', () => {
 			database.driver,
 		) as typeof database.driver.prepareHydratedValue;
 		let failure: { cause: unknown } | undefined;
+		scope.advance((performance.now() + deadline) / 2);
 		const hydrate = jest
 			.spyOn(database.driver, 'prepareHydratedValue')
 			.mockImplementation((...args) => native(...args) as unknown);
@@ -11841,6 +11843,8 @@ describe('virtual thermostat durable runtime', () => {
 			expect(comfort.isCurrent(structuredClone(row))).toBe(true);
 			expect(hydrate).not.toHaveBeenCalled();
 			expect(original.isCurrent()).toBe(true);
+			expect(lease.deadline).toBe(deadline);
+			scope.advance((performance.now() + deadline) / 2);
 			hydrate.mockRestore();
 			expect(comfort.isCurrent(row)).toBe(true);
 			expect(comfort['leases'].get(controllerId)).toBe(lease);

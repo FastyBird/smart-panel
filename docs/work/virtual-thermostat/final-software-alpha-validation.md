@@ -22,7 +22,7 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **615/615**,zero failures/skips,one complete ten-file invocation on merged#1541 plus seven native-effects executions. Includes **273 runtime cases**. Report SHA-256 `dff5c16a4e1837543b38c73ae6e9a5130e2108e25646bb1cb0551d65d47c1d5e`; exact apps/source identities are in the ledger. |
+| Current complete consumers | **615/615**,zero failures/skips,one complete ten-file invocation on merged#1541 plus seven native-effects executions. Includes **273 runtime cases**. Report SHA-256 `3635ae13d4a9908b550a6351d5a92f16ee9d0cd2803a1160b218120119893529`; exact apps/source identities are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
@@ -141,7 +141,8 @@ rejects, so no isolated write-attempt discrimination is claimed for those two ro
 runner/global claims-DIRTY and independent pre-O transaction schedules are not reproduced.
 [The batch scope and controls](original1473-residual-acceptance.md#rows-179-191192-and-199-native-replay-and-nested-rollback)
 record these differences. Counter omission fails only replay (1 FAIL / 4 PASS / 234 unrun), restored before 581/581.
-The attempted late old-runner descendant does not qualify row 215, which remains open.
+Historical #1537 checkpoint: the attempted late old-runner descendant did not qualify row 215,
+which was open at that checkpoint. The current explicit replacement for215 is in the native-effects batch below.
 
 The read-wait review correction races entry against the original mutation and a five-second local deadline,
 then clears its timer. A rejected first read may intentionally wait for the original held native command; local
@@ -190,7 +191,8 @@ acknowledges failed process-local proof. Captured adapter changes cannot revive 
 sample-listener P remains the original failure until a fresh proof settles its row, and read-only public settle
 preserves original SDK admission/outcome. [The member-settlement scope](original1473-residual-acceptance.md#member-settlement-captured-native-identity-and-read-only-settle)
 records the exact retired-protocol differences, four controls and earlier unqualified event-observation drafts.
-Actual main is104/139 bound35open; this pending batch would deliver114/139 bound25open.
+Historical #1541 pre-merge checkpoint: main then had104/139 bound35open; that pending batch
+subsequently delivered114/139 bound25open. The current native-effects status follows below.
 
 Seven native-effects replacements bind190,204,211,215–218 in four bodies/seven executions. Current clocks
 preserve the original deadline across hydration-neutral reads,native UUID/FK/catalog effects and D qualified
@@ -198,6 +200,15 @@ release; exact late native descendants cannot revive original SDK guards. The re
 global journal-DIRTY and hereditary O/T protocols remain explicitly distinct.
 [Exact replacements,carried review assertions,controls and preparation limits](original1473-residual-acceptance.md#native-effects-original-budget-and-closed-descendants)
 retain the boundaries. Actual main114/139 bound25open;pending batch121/139 bound18open.
+
+#1542 review follow-up labels the earlier104-main and row215-open statements as historical. A real
+Date baseline precedes the retained-OFF comparison. The hydration-neutral witness advances monotonic
+time before replacement and restoration and keeps the exact original deadline at both points. A deliberate
+in-place renewal passes the former test1/1 and fails the strengthened deadline1/1 (272unrun each),before
+Jest timeout. Sources restore before fresh **615/615**,runtime273,zero skips;report `3635ae13d4a9908b550a6351d5a92f16ee9d0cd2803a1160b218120119893529`.
+No new cases or disposition changes:121/139 pending,18open. All136 other literal bodies,89 helpers,
+32 production files and shared fixture remain unchanged;complete independent audits cover250 bindings.
+[The review evidence](original1473-residual-acceptance.md#native-effects-review-historical-status-and-advanced-clock) retains exact source/control limits.
 
 ## Composed acceptance
 
