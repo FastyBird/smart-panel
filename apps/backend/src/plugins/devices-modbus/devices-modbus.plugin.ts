@@ -23,6 +23,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { ModbusEndpointsController } from './controllers/modbus-endpoints.controller';
 import {
 	DEVICES_MODBUS_API_TAG_DESCRIPTION,
 	DEVICES_MODBUS_API_TAG_NAME,
@@ -42,6 +43,8 @@ import { ModbusBindingEntity } from './entities/modbus-binding.entity';
 import { ModbusEndpointEntity } from './entities/modbus-endpoint.entity';
 import { ModbusConfigModel } from './models/config.model';
 import { ModbusDevicePlatform } from './platforms/modbus.device.platform';
+import { ModbusConnectionsService } from './services/modbus-connections.service';
+import { ModbusEndpointsService } from './services/modbus-endpoints.service';
 import { ModbusRuntimeService } from './services/modbus-runtime.service';
 
 @ApiTag({
@@ -63,7 +66,9 @@ import { ModbusRuntimeService } from './services/modbus-runtime.service';
 		SwaggerModule,
 		ExtensionsModule,
 	],
-	providers: [ModbusDevicePlatform, ModbusRuntimeService],
+	providers: [ModbusDevicePlatform, ModbusRuntimeService, ModbusConnectionsService, ModbusEndpointsService],
+	controllers: [ModbusEndpointsController],
+	exports: [ModbusEndpointsService, ModbusConnectionsService],
 })
 export class DevicesModbusPlugin {
 	constructor(
