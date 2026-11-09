@@ -317,6 +317,45 @@ export class CreateModbusDeviceStructureDto {
 	@Min(1, { message: '[{"field":"template_revision","reason":"Value must be at least 1."}]' })
 	template_revision?: number;
 
+	@ApiPropertyOptional({
+		name: 'manufacturer',
+		description:
+			'Manufacturer stored in the device_information channel when the request carries none; defaults to Generic',
+		type: 'string',
+		example: 'Eletechsup',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"manufacturer","reason":"Value must be a non-empty string."}]' })
+	@IsNotEmpty({ message: '[{"field":"manufacturer","reason":"Value must be a non-empty string."}]' })
+	manufacturer?: string;
+
+	@ApiPropertyOptional({
+		name: 'model',
+		description:
+			'Model stored in the device_information channel when the request carries none; defaults to Modbus device',
+		type: 'string',
+		example: 'N4D8B08',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"model","reason":"Value must be a non-empty string."}]' })
+	@IsNotEmpty({ message: '[{"field":"model","reason":"Value must be a non-empty string."}]' })
+	model?: string;
+
+	@ApiPropertyOptional({
+		name: 'serial_number',
+		description:
+			'Serial number stored in the device_information channel when the request carries none; defaults to <host>:<port>#<unit>',
+		type: 'string',
+		example: '10.10.0.230:502#1',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"serial_number","reason":"Value must be a non-empty string."}]' })
+	@IsNotEmpty({ message: '[{"field":"serial_number","reason":"Value must be a non-empty string."}]' })
+	serial_number?: string;
+
 	@ApiProperty({ description: 'Device channels', type: () => [CreateModbusDeviceStructureChannelDto] })
 	@Expose()
 	@IsArray({ message: '[{"field":"channels","reason":"Channels must be an array."}]' })

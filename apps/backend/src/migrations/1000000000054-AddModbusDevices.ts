@@ -38,8 +38,10 @@ export class AddModbusDevices1000000000054 implements MigrationInterface {
 			await queryRunner.query(`ALTER TABLE "devices_module_devices" ADD COLUMN "${column}" ${type}`);
 		}
 
+		// Single-table inheritance stores the child entity class name as the discriminator (`@ChildEntity()` without a
+		// value), not the plugin type, so the condition names `ModbusDeviceEntity`.
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_devices_modbus_endpoint_unit" ON "devices_module_devices" ("modbusEndpointId", "modbusUnitId") WHERE "type" = 'devices-modbus'`,
+			`CREATE UNIQUE INDEX "IDX_devices_modbus_endpoint_unit" ON "devices_module_devices" ("modbusEndpointId", "modbusUnitId") WHERE "type" = 'ModbusDeviceEntity'`,
 		);
 
 		await queryRunner.query(`CREATE TABLE "devices_modbus_bindings" (

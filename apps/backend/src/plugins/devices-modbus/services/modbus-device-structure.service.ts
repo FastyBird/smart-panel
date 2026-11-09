@@ -5,7 +5,12 @@ import { v4 as uuid } from 'uuid';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DataTypeType, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
@@ -17,7 +22,7 @@ import {
 } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
+import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	DEVICES_MODBUS_TYPE,
@@ -40,6 +45,7 @@ import {
 	ModbusDeviceEntity,
 } from '../entities/devices-modbus.entity';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
+import { ModbusEndpointEntity } from '../entities/modbus-endpoint.entity';
 import { registerSpan } from '../lib/codec';
 
 import { ModbusEndpointsService } from './modbus-endpoints.service';
@@ -64,8 +70,11 @@ const NUMERIC_DATA_TYPES = new Set([
 	DataTypeType.FLOAT,
 ]);
 
-/** Synthetic channel id for the validation-only `device_information` stand-in. */
-const DEVICE_INFORMATION_ID = 'device_information';
+/** Defaults of the `device_information` channel the service adds when the request carries none. */
+const DEVICE_INFORMATION_DEFAULTS = {
+	MANUFACTURER: 'Generic',
+	MODEL: 'Modbus device',
+} as const;
 
 const span = (binding: ModbusBindingDto): number =>
 	BIT_TABLES.has(binding.register_type) ? 1 : registerSpan(binding.data_type);
@@ -99,7 +108,12 @@ export class ModbusDeviceStructureService {
 
 	async create(dto: CreateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
 		return this.lock.runExclusive(async () => {
-			const issues = [...this.validateStructure(dto), ...(await this.validateAgainstDatabase(dto))];
+			const endpoint = await this.endpoints.findOne(dto.endpoint_id);
+			const structure = this.withDeviceInformation(dto, endpoint);
+			const issues = [
+				...this.validateStructure(structure),
+				...(await this.validateAgainstDatabase(structure, endpoint)),
+			];
 
 			if (issues.length > 0) {
 				throw new ModbusValidationException(issues.map((issue) => JSON.stringify(issue)));
@@ -115,7 +129,7 @@ export class ModbusDeviceStructureService {
 					async (context) => {
 						await this.devicesService.create(this.toDeviceDto(dto, deviceId), context);
 
-						for (const channel of dto.channels) {
+						for (const channel of structure.channels) {
 							await this.insertChannel(context.manager, deviceId, channel, statics);
 						}
 
@@ -133,6 +147,48 @@ export class ModbusDeviceStructureService {
 
 			return (await this.devicesService.getOneOrThrow(deviceId)) as ModbusDeviceEntity;
 		});
+	}
+
+	/**
+	 * The core requires a `device_information` channel with `manufacturer`, `model` and `serial_number` on every
+	 * device, and its connectivity service only adds the connection `status` property to whatever channel of that
+	 * category exists. Unless the request brings its own, a real channel is created here with the three required
+	 * properties as static values, so the stored device passes the core validation. The serial number defaults to the
+	 * endpoint address and unit, which is the device's identity on the bus.
+	 */
+	private withDeviceInformation(
+		dto: CreateModbusDeviceStructureDto,
+		endpoint: ModbusEndpointEntity | null,
+	): CreateModbusDeviceStructureDto {
+		if (dto.channels.some((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION)) {
+			return dto;
+		}
+
+		const serialNumber = endpoint ? `${endpoint.host}:${endpoint.port}#${dto.unit_id}` : `#${dto.unit_id}`;
+		const values: [PropertyCategory, string][] = [
+			[PropertyCategory.MANUFACTURER, dto.manufacturer ?? DEVICE_INFORMATION_DEFAULTS.MANUFACTURER],
+			[PropertyCategory.MODEL, dto.model ?? DEVICE_INFORMATION_DEFAULTS.MODEL],
+			[PropertyCategory.SERIAL_NUMBER, dto.serial_number ?? serialNumber],
+		];
+
+		const channel = plainToInstance(CreateModbusDeviceStructureChannelDto, {
+			identifier: 'device_information',
+			name: 'Device Information',
+			category: ChannelCategory.DEVICE_INFORMATION,
+			properties: values.map(([category, value]) => {
+				const metadata = getPropertyMetadata(ChannelCategory.DEVICE_INFORMATION, category);
+
+				return {
+					identifier: category,
+					category,
+					data_type: metadata?.data_type ?? DataTypeType.STRING,
+					permissions: metadata?.permissions ?? [PermissionType.READ_ONLY],
+					static_value: value,
+				};
+			}),
+		});
+
+		return { ...dto, channels: [...dto.channels, channel] };
 	}
 
 	private toDeviceDto(dto: CreateModbusDeviceStructureDto, deviceId: string): CreateModbusDeviceDto {
@@ -291,10 +347,11 @@ export class ModbusDeviceStructureService {
 		]);
 	}
 
-	private async validateAgainstDatabase(dto: CreateModbusDeviceStructureDto): Promise<Issue[]> {
+	private async validateAgainstDatabase(
+		dto: CreateModbusDeviceStructureDto,
+		endpoint: ModbusEndpointEntity | null,
+	): Promise<Issue[]> {
 		const issues: Issue[] = [];
-
-		const endpoint = await this.endpoints.findOne(dto.endpoint_id);
 
 		if (!endpoint) {
 			issues.push({ field: 'endpoint_id', reason: 'Endpoint does not exist.' });
@@ -574,10 +631,8 @@ export class ModbusDeviceStructureService {
 	}
 
 	/**
-	 * Checks the structure against the device specification. The core requires a `device_information` channel for
-	 * every category, but its connection `status` property is created by the core itself and its descriptive
-	 * properties have no Modbus source in general. When the request carries no such channel, a complete stand-in is
-	 * validated in its place and nothing is persisted for it; when it does carry one, that channel is judged as sent.
+	 * Checks the structure, including the `device_information` channel `withDeviceInformation` may have added, against
+	 * the device specification. Only error-severity issues reject the request.
 	 */
 	private validateSpecification(dto: CreateModbusDeviceStructureDto): Issue[] {
 		const channels: ChannelDataInput[] = dto.channels.map((channel, index) => ({
@@ -590,18 +645,6 @@ export class ModbusDeviceStructureService {
 			})),
 		}));
 
-		if (!dto.channels.some((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION)) {
-			channels.push({
-				id: DEVICE_INFORMATION_ID,
-				category: ChannelCategory.DEVICE_INFORMATION,
-				properties: getRequiredProperties(ChannelCategory.DEVICE_INFORMATION).map((category) => {
-					const metadata = getPropertyMetadata(ChannelCategory.DEVICE_INFORMATION, category);
-
-					return { category, dataType: metadata?.data_type, permissions: metadata?.permissions };
-				}),
-			});
-		}
-
 		const result = this.deviceValidation.validateDeviceStructure({ category: dto.category, channels });
 
 		return result.issues
@@ -610,7 +653,7 @@ export class ModbusDeviceStructureService {
 	}
 
 	private specificationField(dto: CreateModbusDeviceStructureDto, issue: ValidationIssue): string {
-		if (issue.channelId === undefined || issue.channelId === DEVICE_INFORMATION_ID) {
+		if (issue.channelId === undefined) {
 			return 'channels';
 		}
 

@@ -64,15 +64,15 @@ describe('AddModbusDevices1000000000054', () => {
 	});
 
 	it('rejects two modbus devices with the same endpoint and unit', async () => {
-		await insertDevice('d1', 'devices-modbus', 'e1', 2);
+		await insertDevice('d1', 'ModbusDeviceEntity', 'e1', 2);
 
-		await expect(insertDevice('d2', 'devices-modbus', 'e1', 2)).rejects.toThrow(/UNIQUE constraint failed/);
-		await expect(insertDevice('d3', 'devices-modbus', 'e1', 3)).resolves.toBeDefined();
+		await expect(insertDevice('d2', 'ModbusDeviceEntity', 'e1', 2)).rejects.toThrow(/UNIQUE constraint failed/);
+		await expect(insertDevice('d3', 'ModbusDeviceEntity', 'e1', 3)).resolves.toBeDefined();
 		await expect(insertDevice('d4', 'other', 'e1', 2)).resolves.toBeDefined();
 	});
 
 	it('deletes bindings with their property', async () => {
-		await queryRunner.query(`INSERT INTO "devices_module_devices" ("id", "type") VALUES ('d1', 'devices-modbus')`);
+		await queryRunner.query(`INSERT INTO "devices_module_devices" ("id", "type") VALUES ('d1', 'ModbusDeviceEntity')`);
 		await queryRunner.query(`INSERT INTO "devices_module_channels_properties" ("id") VALUES ('p1')`);
 		await queryRunner.query(
 			`INSERT INTO "devices_modbus_bindings" ("id", "propertyId", "deviceId", "role", "registerType", "address", "dataType")

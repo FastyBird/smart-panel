@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	PermissionType,
@@ -18,8 +19,13 @@ import { ChannelsTypeMapperService } from '../../../modules/devices/services/cha
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
-import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
+import {
+	DeviceValidationService,
+	ValidationIssueType,
+} from '../../../modules/devices/services/device-validation.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -132,6 +138,10 @@ jest.setTimeout(30000);
 describe('ModbusDeviceStructureService with real SQLite and core creation services', () => {
 	let database: SqliteDataSource;
 	let service: ModbusDeviceStructureService;
+	let devices: DevicesService;
+	let channels: ChannelsService;
+	let properties: ChannelsPropertiesService;
+	let events: EventEmitter2;
 	let bindings: ModbusBindingsService;
 	let runtime: { loadDevice: jest.Mock };
 	let values: { write: jest.Mock };
@@ -146,7 +156,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 		}).initialize();
 
-		const events = new EventEmitter2();
+		events = new EventEmitter2();
 		const lock = new DeviceStructureLockService();
 		const devicesMapper = new DevicesTypeMapperService();
 		const channelsMapper = new ChannelsTypeMapperService();
@@ -171,7 +181,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			updateDto: UpdateModbusChannelPropertyDto,
 		});
 
-		const properties = new ChannelsPropertiesService(
+		properties = new ChannelsPropertiesService(
 			database.getRepository(ChannelPropertyEntity),
 			propertiesMapper,
 			{} as never,
@@ -182,7 +192,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			database,
 			events,
 		);
-		const channels = new ChannelsService(
+		channels = new ChannelsService(
 			database.getRepository(ChannelEntity),
 			channelsMapper,
 			properties,
@@ -197,7 +207,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			database.getRepository(SpaceEntity),
 			events,
 		);
-		const devices = new DevicesService(
+		devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
 			devicesMapper,
@@ -262,8 +272,9 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 
 		expect(device).toBeInstanceOf(ModbusDeviceEntity);
 		expect(device).toMatchObject({ modbusEndpointId: endpoint.id, modbusUnitId: 1, category: DeviceCategory.SWITCHER });
-		expect(device.channels).toHaveLength(8);
-		expect(await counts()).toEqual({ devices: 1, channels: 8, properties: 8, bindings: 16 });
+		expect(device.channels).toHaveLength(9);
+		expect(device.channels.filter((channel) => channel.category === ChannelCategory.SWITCHER)).toHaveLength(8);
+		expect(await counts()).toEqual({ devices: 1, channels: 9, properties: 11, bindings: 16 });
 
 		const rows = await bindings.findByDevice(device.id);
 
@@ -573,7 +584,8 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		it('writes static values after commit', async () => {
 			const device = await service.create(toDto(withStatic(staticName)));
 
-			const property = device.channels[0].properties.find((p) => p.category === PropertyCategory.GENERIC);
+			const relay = device.channels.find((channel) => channel.identifier === 'relay_1');
+			const property = relay.properties.find((p) => p.category === PropertyCategory.GENERIC);
 
 			expect(values.write).toHaveBeenCalledWith(expect.objectContaining({ id: property.id }), 'relay');
 			expect((await bindings.findByProperty(property.id)).read).toBeNull();
@@ -608,5 +620,147 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 
 		expect(device.id).toBeDefined();
 		expect((await counts()).bindings).toBe(16);
+	});
+
+	describe('device information', () => {
+		const informationOf = (device: ModbusDeviceEntity) =>
+			device.channels.filter((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
+
+		const staticValueOf = (device: ModbusDeviceEntity, category: PropertyCategory): unknown => {
+			const property = informationOf(device)[0].properties.find((p) => p.category === category);
+			const calls = values.write.mock.calls as [ChannelPropertyEntity, unknown][];
+			const call = calls.find(([written]) => written.id === property.id);
+
+			return call?.[1];
+		};
+
+		it('stores a device_information channel with static defaults', async () => {
+			const device = await service.create(toDto(relayBoard(endpoint.id, 7)));
+
+			const [information] = informationOf(device);
+
+			expect(informationOf(device)).toHaveLength(1);
+			expect(information).toMatchObject({ identifier: 'device_information', name: 'Device Information' });
+			expect(information.properties.map((p) => p.category).sort()).toEqual([
+				PropertyCategory.MANUFACTURER,
+				PropertyCategory.MODEL,
+				PropertyCategory.SERIAL_NUMBER,
+			]);
+			expect(
+				information.properties.every(
+					(p) =>
+						p.dataType === DataTypeType.STRING &&
+						p.permissions.length === 1 &&
+						p.permissions[0] === PermissionType.READ_ONLY,
+				),
+			).toBe(true);
+			expect(staticValueOf(device, PropertyCategory.MANUFACTURER)).toBe('Generic');
+			expect(staticValueOf(device, PropertyCategory.MODEL)).toBe('Modbus device');
+			expect(staticValueOf(device, PropertyCategory.SERIAL_NUMBER)).toBe('10.10.0.230:502#7');
+		});
+
+		it('takes manufacturer, model and serial number from the request', async () => {
+			const device = await service.create(
+				toDto({ ...relayBoard(endpoint.id), manufacturer: 'Eletechsup', model: 'N4D8B08', serial_number: 'SN-1' }),
+			);
+
+			expect(staticValueOf(device, PropertyCategory.MANUFACTURER)).toBe('Eletechsup');
+			expect(staticValueOf(device, PropertyCategory.MODEL)).toBe('N4D8B08');
+			expect(staticValueOf(device, PropertyCategory.SERIAL_NUMBER)).toBe('SN-1');
+		});
+
+		it('keeps a device_information channel the request brings', async () => {
+			const board = relayBoard(endpoint.id);
+			const information = {
+				identifier: 'info',
+				name: 'Info',
+				category: ChannelCategory.DEVICE_INFORMATION,
+				properties: [PropertyCategory.MANUFACTURER, PropertyCategory.MODEL, PropertyCategory.SERIAL_NUMBER].map(
+					(category) => ({
+						category,
+						data_type: DataTypeType.STRING,
+						permissions: [PermissionType.READ_ONLY],
+						static_value: `custom ${category}`,
+					}),
+				),
+			};
+
+			const device = await service.create(toDto({ ...board, channels: [...(board.channels as Plain[]), information] }));
+
+			expect(informationOf(device)).toHaveLength(1);
+			expect(informationOf(device)[0].identifier).toBe('info');
+			expect(staticValueOf(device, PropertyCategory.MODEL)).toBe('custom model');
+		});
+
+		it('creates a device that passes the core validation', async () => {
+			const device = await service.create(toDto(relayBoard(endpoint.id)));
+
+			const result = await new DeviceValidationService(devices).validateDeviceById(device.id);
+
+			expect(
+				result.issues.filter(
+					(issue) =>
+						issue.type === ValidationIssueType.MISSING_CHANNEL || issue.type === ValidationIssueType.MISSING_PROPERTY,
+				),
+			).toEqual([]);
+			expect(result.isValid).toBe(true);
+		});
+
+		it('lets the core connectivity service add status to the same channel', async () => {
+			const device = await service.create(toDto(relayBoard(endpoint.id)));
+			const state = {
+				readLatest: jest.fn().mockResolvedValue({ status: ConnectionState.UNKNOWN }),
+				write: jest.fn().mockResolvedValue(undefined),
+			};
+
+			await new DeviceConnectivityService(
+				devices,
+				channels,
+				properties,
+				state as unknown as DeviceConnectionStateService,
+				events,
+			).setConnectionState(device.id, { state: ConnectionState.CONNECTED });
+
+			const reloaded = (await devices.getOneOrThrow(device.id)) as ModbusDeviceEntity;
+			const information = informationOf(reloaded);
+
+			expect(information).toHaveLength(1);
+			expect(information[0].properties.map((p) => p.category).sort()).toEqual([
+				PropertyCategory.MANUFACTURER,
+				PropertyCategory.MODEL,
+				PropertyCategory.SERIAL_NUMBER,
+				PropertyCategory.STATUS,
+			]);
+		});
+	});
+
+	describe('endpoint and unit uniqueness in the database', () => {
+		beforeEach(async () => {
+			// `synchronize` does not build the migration's partial index; this is its statement from
+			// 1000000000054-AddModbusDevices, whose own spec covers the migration.
+			await database.query(
+				`CREATE UNIQUE INDEX "IDX_devices_modbus_endpoint_unit" ON "devices_module_devices" ("modbusEndpointId", "modbusUnitId") WHERE "type" = 'ModbusDeviceEntity'`,
+			);
+		});
+
+		it('stores the discriminator the index condition names', async () => {
+			const device = await service.create(toDto(relayBoard(endpoint.id, 4)));
+
+			expect(await database.query(`SELECT "type" FROM "devices_module_devices" WHERE "id" = ?`, [device.id])).toEqual([
+				{ type: 'ModbusDeviceEntity' },
+			]);
+		});
+
+		it('maps a duplicate the service check missed to a unit_id error and keeps nothing', async () => {
+			await service.create(toDto(relayBoard(endpoint.id, 4)));
+
+			// Simulate a concurrent writer that slipped past the service check.
+			jest.spyOn(database.getRepository(ModbusDeviceEntity), 'findOne').mockResolvedValueOnce(null);
+
+			expect(await reasonsOf(service.create(toDto(relayBoard(endpoint.id, 4))))).toEqual([
+				{ field: 'unit_id', reason: expect.stringContaining('already used') as string },
+			]);
+			expect(await counts()).toEqual({ devices: 1, channels: 9, properties: 11, bindings: 16 });
+		});
 	});
 });
