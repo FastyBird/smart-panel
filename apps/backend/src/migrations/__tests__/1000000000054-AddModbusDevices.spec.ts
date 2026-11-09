@@ -53,6 +53,7 @@ describe('AddModbusDevices1000000000054', () => {
 
 		expect(tables).toContain('devices_modbus_endpoints');
 		expect(tables).toContain('devices_modbus_bindings');
+		expect(await names('index')).toContain('IDX_devices_modbus_binding_device');
 	});
 
 	it('rejects a second endpoint with the same host and port', async () => {
@@ -97,6 +98,7 @@ describe('AddModbusDevices1000000000054', () => {
 		expect(tables).not.toContain('devices_modbus_endpoints');
 		expect(tables).not.toContain('devices_modbus_bindings');
 		expect(await names('index')).not.toContain('IDX_devices_modbus_endpoint_unit');
+		expect(await names('index')).not.toContain('IDX_devices_modbus_binding_device');
 		expect(await deviceColumns()).toEqual(['id', 'type']);
 	});
 });

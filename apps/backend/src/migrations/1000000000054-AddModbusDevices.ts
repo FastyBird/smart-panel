@@ -67,9 +67,14 @@ export class AddModbusDevices1000000000054 implements MigrationInterface {
 			CONSTRAINT "FK_devices_modbus_binding_device" FOREIGN KEY ("deviceId")
 				REFERENCES "devices_module_devices" ("id") ON DELETE CASCADE
 		)`);
+
+		await queryRunner.query(
+			`CREATE INDEX "IDX_devices_modbus_binding_device" ON "devices_modbus_bindings" ("deviceId")`,
+		);
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_devices_modbus_binding_device"`);
 		await queryRunner.query(`DROP TABLE "devices_modbus_bindings"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS "IDX_devices_modbus_endpoint_unit"`);
 

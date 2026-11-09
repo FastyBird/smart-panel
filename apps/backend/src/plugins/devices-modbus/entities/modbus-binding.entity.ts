@@ -43,7 +43,7 @@ export class ModbusBindingEntity extends BaseEntity {
 	@Expose({ name: 'device_id' })
 	@IsString()
 	@Transform(fromEither<string>('device_id', 'deviceId'), { toClassOnly: true })
-	@Index()
+	@Index('IDX_devices_modbus_binding_device')
 	@Column({ type: 'varchar' })
 	deviceId: string;
 
