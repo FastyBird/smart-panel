@@ -383,6 +383,65 @@ describe('EndpointConnection', () => {
 		expect(connection.getHealth().state).toBe('connected');
 	});
 
+	it('backs off after three consecutive timeouts on a tcp socket that never answered', async () => {
+		const { connection, transports } = setup();
+
+		connection.start();
+		await flush();
+
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const pending = settle(connection.read(readRequest(1)));
+
+			await flush();
+			transports[0].outstanding()[0].reject(new ModbusTimeoutError());
+			await flush();
+			await expect(pending).rejects.toBeInstanceOf(ModbusTimeoutError);
+		}
+
+		expect(transports[0].closeCalls).toBe(1);
+		expect(transports).toHaveLength(1);
+		expect(connection.getHealth().state).toBe('backoff');
+
+		await expect(connection.read(readRequest(2))).rejects.toBeInstanceOf(ModbusEndpointUnavailableError);
+
+		// First backoff step: 1000 ms scaled by 0.8 + 0.4 * 0.5.
+		await jest.advanceTimersByTimeAsync(999);
+
+		expect(transports).toHaveLength(1);
+
+		await jest.advanceTimersByTimeAsync(1);
+
+		expect(transports).toHaveLength(2);
+		expect(connection.getHealth().state).toBe('connected');
+	});
+
+	it('does not keep the process alive with its reconnect and delay timers', async () => {
+		const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+		const { connection, transports, modes } = setup({ interRequestDelayMs: 20 });
+
+		modes.push('succeed', 'fail');
+		connection.start();
+		await flush();
+
+		// Inter-request delay timer
+		await answerOnce(connection, transports[0]);
+
+		// Reconnect timer: the socket drops and the reconnect attempt fails.
+		transports[0].remoteClose();
+		await flush();
+		await jest.advanceTimersByTimeAsync(1000);
+
+		const timers = (setTimeoutSpy.mock.results as Array<{ value: NodeJS.Timeout }>).map(({ value }) => value);
+
+		setTimeoutSpy.mockRestore();
+
+		expect(timers.length).toBeGreaterThanOrEqual(3);
+
+		for (const timer of timers) {
+			expect(timer.hasRef()).toBe(false);
+		}
+	});
+
 	it('rejects pending requests when the socket closes', async () => {
 		const { connection, transports } = setup();
 

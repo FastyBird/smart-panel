@@ -15,9 +15,11 @@ export interface EndpointConnectionConfig {
 	interRequestDelayMs: number;
 }
 
+/** `stopped` covers both a disabled endpoint and a stopped plugin (no connection is running in either case). */
 export type EndpointConnectionState = 'connecting' | 'connected' | 'backoff' | 'stopped';
 
 export interface EndpointHealth {
+	/** `stopped` covers both a disabled endpoint and a stopped plugin. */
 	state: EndpointConnectionState;
 	lastError: string | null;
 	lastErrorAt: Date | null;
@@ -52,7 +54,8 @@ interface QueuedRequest {
  * - `interRequestDelayMs` is kept between a response and the next send, and before the first send on a socket
  *   opened by a reset (quiet time on the bus while a slow slave may still be answering).
  * - A request timeout resets the socket on `rtu_over_tcp` (a late answer would be read as the next response) and
- *   after 3 consecutive timeouts on `tcp`; such a reset reconnects at once and queued requests wait for it.
+ *   after 3 consecutive timeouts on `tcp`. The `rtu_over_tcp` reset reconnects at once and queued requests wait for
+ *   it; the `tcp` reset does so only when the socket has answered before, otherwise it backs off (see below).
  *   A `ModbusConnectionError` from a request (lost socket, CRC or length error) resets the socket on both framings:
  *   at once when the socket has already answered, otherwise as a failed attempt (see backoff).
  *   A `ModbusExceptionError` is a regular device answer and counts like a success.
@@ -62,6 +65,7 @@ interface QueuedRequest {
  *   (a success or a Modbus exception) restarts the sequence, not a bare successful connect: a gateway that accepts
  *   and then drops, or a link that only produces garbage, is never hammered.
  * - Each transport is used once. Callbacks from a replaced transport are ignored by identity.
+ * - Timers are unreferenced, so they never keep the process alive; `stop()` clears them.
  */
 export class EndpointConnection {
 	private readonly logger = createExtensionLogger(DEVICES_MODBUS_PLUGIN_NAME, 'EndpointConnection');
@@ -140,6 +144,10 @@ export class EndpointConnection {
 
 	write(request: ModbusWriteRequest): Promise<void> {
 		return this.enqueue(this.writeQueue, (transport) => transport.write(request));
+	}
+
+	get framing(): ModbusFraming {
+		return this.config.framing;
 	}
 
 	markOverloaded(overloaded: boolean): void {
@@ -252,11 +260,11 @@ export class EndpointConnection {
 			this.consecutiveTimeouts++;
 			this.recordError(error.message);
 
-			if (
-				this.config.framing === ModbusFraming.RTU_OVER_TCP ||
-				this.consecutiveTimeouts >= TCP_CONSECUTIVE_TIMEOUT_LIMIT
-			) {
+			if (this.config.framing === ModbusFraming.RTU_OVER_TCP) {
 				this.resetTransport(transport, `${this.consecutiveTimeouts} consecutive timeout(s)`, true);
+			} else if (this.consecutiveTimeouts >= TCP_CONSECUTIVE_TIMEOUT_LIMIT) {
+				// A socket that never answered is unproven, like one that failed with a connection error.
+				this.resetTransport(transport, `${this.consecutiveTimeouts} consecutive timeout(s)`, this.answered);
 			} else {
 				this.afterResponse();
 			}
@@ -293,6 +301,7 @@ export class EndpointConnection {
 				this.delayTimer = null;
 				this.pump();
 			}, this.config.interRequestDelayMs);
+			this.delayTimer.unref?.();
 
 			return;
 		}
@@ -438,6 +447,7 @@ export class EndpointConnection {
 				this.openTransport();
 			}
 		}, delay);
+		this.reconnectTimer.unref?.();
 	}
 
 	private rejectInFlight(error: Error): void {

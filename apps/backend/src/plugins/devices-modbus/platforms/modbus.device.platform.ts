@@ -6,6 +6,7 @@ import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	DEVICES_MODBUS_TYPE,
 	MODBUS_DEFAULTS,
+	ModbusFraming,
 	ModbusRegisterType,
 	ModbusWriteFunction,
 } from '../devices-modbus.constants';
@@ -115,6 +116,15 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 		}
 
 		const unitId = (updates[0].device as ModbusDeviceEntity).unitId ?? MODBUS_DEFAULTS.UNIT_ID;
+
+		// Unit 0 on an RTU bus is a broadcast: every slave executes the write and none answers.
+		if (unitId === 0 && connection.framing === ModbusFraming.RTU_OVER_TCP) {
+			this.logger.warn(
+				`Modbus device id=${deviceId} uses unit 0 on an rtu_over_tcp endpoint; refusing a write that would be broadcast`,
+			);
+
+			return false;
+		}
 		const written: string[] = [];
 		let ok = true;
 

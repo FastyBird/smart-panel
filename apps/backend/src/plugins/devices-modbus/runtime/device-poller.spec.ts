@@ -1,3 +1,4 @@
+import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ModbusBindingRole, ModbusByteOrder, ModbusDataType, ModbusRegisterType } from '../devices-modbus.constants';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
@@ -585,6 +586,84 @@ describe('DevicePoller', () => {
 		await jest.advanceTimersByTimeAsync(0);
 
 		await expect(poller?.pollNow(['p1'])).rejects.toBeInstanceOf(ModbusTimeoutError);
+	});
+
+	describe('warnings', () => {
+		let warn: jest.SpyInstance;
+
+		beforeEach(() => {
+			warn = jest.spyOn(ExtensionLoggerService.prototype, 'warn').mockImplementation(() => undefined);
+		});
+
+		afterEach(() => {
+			warn.mockRestore();
+		});
+
+		const warnings = (text: string): number =>
+			warn.mock.calls.filter(([message]) => String(message).includes(text)).length;
+
+		it('logs a permanently illegal address once until it answers again', async () => {
+			connection.read.mockRejectedValue(new ModbusExceptionError(0x02));
+
+			create(snapshot([read('p1', { address: 10 })])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(4000);
+
+			expect(connection.read).toHaveBeenCalledTimes(5);
+			expect(warnings('Modbus exception 2')).toBe(1);
+
+			connection.read.mockResolvedValueOnce([1]);
+			await jest.advanceTimersByTimeAsync(1000);
+			await jest.advanceTimersByTimeAsync(2000);
+
+			// Answered once in between, so the second outage is a new condition.
+			expect(warnings('Modbus exception 2')).toBe(2);
+		});
+
+		it('logs again when the exception code of a point changes', async () => {
+			connection.read.mockRejectedValueOnce(new ModbusExceptionError(0x02));
+			connection.read.mockRejectedValue(new ModbusExceptionError(0x03));
+
+			create(snapshot([read('p1', { address: 10 })])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(3000);
+
+			expect(warnings('Modbus exception 2')).toBe(1);
+			expect(warnings('Modbus exception 3')).toBe(1);
+		});
+
+		it('logs a decode failure once per property until it decodes again', async () => {
+			// A uint32 needs two registers; a short answer cannot be decoded.
+			connection.read.mockResolvedValue([1]);
+
+			create(snapshot([read('p1', { dataType: ModbusDataType.UINT32 })])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(3000);
+
+			expect(warnings('Failed to decode property id=p1')).toBe(1);
+
+			connection.read.mockResolvedValueOnce([0, 1]);
+			await jest.advanceTimersByTimeAsync(1000);
+			await jest.advanceTimersByTimeAsync(1000);
+
+			expect(warnings('Failed to decode property id=p1')).toBe(2);
+		});
+	});
+
+	it('does not keep the process alive with its poll timers', () => {
+		const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+		connection.read.mockResolvedValue([1]);
+
+		create(snapshot([read('p1'), read('p2', { address: 4, pollIntervalMs: 3000 })])).start();
+
+		expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+
+		for (const { value } of setIntervalSpy.mock.results as Array<{ value: NodeJS.Timeout }>) {
+			expect(value.hasRef()).toBe(false);
+		}
+
+		setIntervalSpy.mockRestore();
 	});
 
 	it('leaves no timers behind after stop', () => {

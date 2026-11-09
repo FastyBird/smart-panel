@@ -1,4 +1,10 @@
-import { ModbusByteOrder, ModbusDataType, ModbusRegisterType, ModbusWriteFunction } from '../devices-modbus.constants';
+import {
+	ModbusByteOrder,
+	ModbusDataType,
+	ModbusFraming,
+	ModbusRegisterType,
+	ModbusWriteFunction,
+} from '../devices-modbus.constants';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusEndpointUnavailableError, ModbusExceptionError } from '../lib/errors';
 import { ModbusBindingsService } from '../services/modbus-bindings.service';
@@ -57,6 +63,27 @@ describe('ModbusDevicePlatform', () => {
 		const connections = { getTimingEnvelope: envelope } as unknown as ModbusConnectionsService;
 
 		platform = new ModbusDevicePlatform(bindings, runtime, connections);
+	});
+
+	it('refuses a write to unit 0 on rtu_over_tcp, which would be an RTU broadcast', async () => {
+		writes.set('p1', binding());
+		getConnection.mockReturnValue({ write, framing: ModbusFraming.RTU_OVER_TCP });
+
+		const broadcast = { ...update('p1', 1), device: { ...update('p1', 1).device, unitId: 0 } };
+
+		await expect(platform.process(broadcast as never)).resolves.toBe(false);
+		expect(write).not.toHaveBeenCalled();
+		expect(readBack).not.toHaveBeenCalled();
+	});
+
+	it('writes to unit 0 on tcp, where the gateway addresses it like any unit', async () => {
+		writes.set('p1', binding());
+		getConnection.mockReturnValue({ write, framing: ModbusFraming.TCP });
+
+		const unitZero = { ...update('p1', 1), device: { ...update('p1', 1).device, unitId: 0 } };
+
+		await expect(platform.process(unitZero as never)).resolves.toBe(true);
+		expect(write).toHaveBeenCalledWith(expect.objectContaining({ unitId: 0 }));
 	});
 
 	it('reports its type', () => {

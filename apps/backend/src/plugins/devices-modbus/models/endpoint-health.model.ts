@@ -9,6 +9,7 @@ const STATES: EndpointConnectionState[] = ['connecting', 'connected', 'backoff',
 
 @ApiSchema({ name: 'DevicesModbusPluginDataEndpointHealth' })
 export class ModbusEndpointHealthModel implements EndpointHealth {
+	/** `stopped` covers both a disabled endpoint and a stopped plugin. */
 	@ApiProperty({ description: 'Connection state', enum: STATES, example: 'connected' })
 	@Expose()
 	state: EndpointConnectionState;

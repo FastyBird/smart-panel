@@ -63,6 +63,8 @@ type ReadOutcome = { kind: 'ok' } | { kind: 'stale' } | { kind: 'failed'; error:
  *   exception (busy, acknowledge, server failure, gateway, unknown) is transient: like timeouts, connection errors
  *   and an unavailable endpoint it fails the poll without splitting, so a single busy reply never multiplies traffic;
  *   `FAILED_POLLS_UNTIL_LOST` failed polls in a row report `lost` and invalidate every read property once.
+ * - An illegal-request exception and a decode failure are logged once per property and condition, not on every poll,
+ *   until the property reads (or decodes) again.
  * - `connected` is passed to `callbacks.setConnectionState` after every successful poll and `lost` after every failed
  *   poll while lost; the owner deduplicates, so a state its store missed once is stored by a later poll.
  * - Nothing is reported once `stop()` was called or `callbacks.isCurrent()` turned `false`. Callback failures are
@@ -78,6 +80,10 @@ export class DevicePoller {
 	private readonly lastReported = new Map<string, ModbusPropertyValue | null>();
 	/** Properties whose last report failed; the failure is logged once until a report succeeds again. */
 	private readonly failingReports = new Set<string>();
+	/** Exception code (0x01-0x03) each property's last read answered with; logged once per code until it reads again. */
+	private readonly requestErrors = new Map<string, number>();
+	/** Properties whose last value failed to decode; logged once per message until one decodes again. */
+	private readonly decodeErrors = new Map<string, string>();
 
 	private active = false;
 	private state: ConnectionState | null = null;
@@ -255,6 +261,8 @@ export class DevicePoller {
 			}
 
 			for (const point of block.points) {
+				this.requestErrors.delete(point.key);
+
 				await this.publish(point.key, this.decode(point, sliceForPoint(block, values, point)), sampledAt, force);
 			}
 		}
@@ -285,12 +293,18 @@ export class DevicePoller {
 						valueMap: binding.valueMap,
 					});
 		} catch (error) {
-			this.logger.warn(
-				`Failed to decode property id=${point.key} of device id=${this.device.deviceId}: ${(error as Error).message}`,
-			);
+			const message = (error as Error).message;
+
+			if (this.decodeErrors.get(point.key) !== message) {
+				this.decodeErrors.set(point.key, message);
+
+				this.logger.warn(`Failed to decode property id=${point.key} of device id=${this.device.deviceId}: ${message}`);
+			}
 
 			return null;
 		}
+
+		this.decodeErrors.delete(point.key);
 
 		if (value === null && this.lastReported.get(point.key) !== null) {
 			this.logger.warn(
@@ -309,11 +323,20 @@ export class DevicePoller {
 		schedule: Schedule | null,
 		force: boolean,
 	): Promise<void> {
-		this.logger.warn(
-			`Modbus exception ${error.code} on endpoint id=${this.device.endpointId} unit=${this.device.unitId} ` +
-				`function=${FUNCTION_CODES[block.registerType]} address=${block.address} count=${block.count}: ` +
-				`${error.message}; invalidating ${block.points.length} propert(ies)`,
-		);
+		// A permanently bad address answers the same exception on every poll: logged once until it reads again.
+		const changed = block.points.filter((point) => this.requestErrors.get(point.key) !== error.code);
+
+		if (changed.length > 0) {
+			this.logger.warn(
+				`Modbus exception ${error.code} on endpoint id=${this.device.endpointId} unit=${this.device.unitId} ` +
+					`function=${FUNCTION_CODES[block.registerType]} address=${block.address} count=${block.count}: ` +
+					`${error.message}; invalidating ${block.points.length} propert(ies)`,
+			);
+		}
+
+		for (const point of block.points) {
+			this.requestErrors.set(point.key, error.code);
+		}
 
 		for (const point of block.points) {
 			await this.publish(point.key, null, sampledAt, force);
