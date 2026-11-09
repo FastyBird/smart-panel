@@ -505,7 +505,8 @@ jobs:
 
     strategy:
       matrix:
-        operating-system: [ "ubuntu-latest" ]
+        # arm-runner-action requires the static QEMU binaries absent from Ubuntu 26.04.
+        operating-system: [ "ubuntu-24.04" ]
 
     steps:
       - name: "Checkout"

@@ -5,7 +5,8 @@ set -euo pipefail
 PACKAGE_NAME=${1:?package name is required}
 VERSION=${2:?package version is required}
 REGISTRY_URL=${3:?registry URL is required}
-MAX_ATTEMPTS=${MAX_ATTEMPTS:-240}
+# NPM publish-time processing can exceed 15 minutes; a successful upload is not yet installable.
+MAX_ATTEMPTS=${MAX_ATTEMPTS:-900}
 SLEEP_SECONDS=${SLEEP_SECONDS:-2}
 
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
