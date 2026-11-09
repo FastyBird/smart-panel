@@ -54,7 +54,8 @@ jobs:
   build:
     name: "Build ${{ matrix.variant }}"
     needs: "matrix-setup"
-    runs-on: "ubuntu-latest"
+    # pi-gen needs qemu-user-static, which is available on Ubuntu 24.04.
+    runs-on: "ubuntu-24.04"
     strategy:
       fail-fast: false
       matrix:
