@@ -99,7 +99,7 @@ export class ModbusBindingEntity extends BaseEntity {
 		description: 'Byte order override',
 		enum: ModbusByteOrder,
 		nullable: true,
-		example: null,
+		example: ModbusByteOrder.BIG,
 	})
 	@Expose({ name: 'byte_order' })
 	@IsOptional()
@@ -113,7 +113,7 @@ export class ModbusBindingEntity extends BaseEntity {
 		description: 'Word order override',
 		enum: ModbusByteOrder,
 		nullable: true,
-		example: null,
+		example: ModbusByteOrder.BIG,
 	})
 	@Expose({ name: 'word_order' })
 	@IsOptional()
@@ -166,7 +166,7 @@ export class ModbusBindingEntity extends BaseEntity {
 		description: 'Write function code selection',
 		enum: ModbusWriteFunction,
 		nullable: true,
-		example: null,
+		example: ModbusWriteFunction.SINGLE,
 	})
 	@Expose({ name: 'write_function' })
 	@IsOptional()

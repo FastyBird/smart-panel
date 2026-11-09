@@ -73,7 +73,7 @@ export class ModbusDeviceEntity extends DeviceEntity {
 		description: 'Default byte order',
 		enum: ModbusByteOrder,
 		nullable: true,
-		example: null,
+		example: ModbusByteOrder.BIG,
 	})
 	@Expose({ name: 'byte_order' })
 	@IsOptional()
@@ -91,7 +91,7 @@ export class ModbusDeviceEntity extends DeviceEntity {
 		description: 'Default word order',
 		enum: ModbusByteOrder,
 		nullable: true,
-		example: null,
+		example: ModbusByteOrder.BIG,
 	})
 	@Expose({ name: 'word_order' })
 	@IsOptional()
