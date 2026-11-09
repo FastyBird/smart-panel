@@ -1,10 +1,17 @@
 import ModbusRTU from 'modbus-serial';
 import { Socket } from 'net';
 
-import { ModbusFraming, ModbusRegisterType, ModbusWriteFunction } from '../devices-modbus.constants';
+import { createExtensionLogger } from '../../../common/logger';
+import {
+	DEVICES_MODBUS_PLUGIN_NAME,
+	ModbusFraming,
+	ModbusRegisterType,
+	ModbusWriteFunction,
+} from '../devices-modbus.constants';
 import { ModbusConnectionError, ModbusExceptionError, ModbusTimeoutError } from '../lib/errors';
 
 import { ModbusReadRequest, ModbusTransport, ModbusTransportOptions, ModbusWriteRequest } from './modbus-transport';
+import { telnetReceiveBuffer } from './telnet-receive-buffer';
 
 type LibraryCallback<T> = (error: unknown, result: T) => void;
 
@@ -22,9 +29,15 @@ interface PendingRequest {
  *   precedes the close, and it never rejects the requests still waiting for an answer, so we track and reject them.
  * - Requests go through the `writeFC*` callback API, which takes the unit ID as an argument, so no shared `setID`
  *   state can be changed by a concurrent request in between.
+ * - On `rtu_over_tcp` every byte still buffered when a request is sent is discarded first (see
+ *   `telnetReceiveBuffer`): a duplicated or late reply would otherwise be taken as the answer to the next request.
  */
 class ModbusSerialTransport implements ModbusTransport {
+	private readonly logger = createExtensionLogger(DEVICES_MODBUS_PLUGIN_NAME, 'ModbusSerialTransport');
+
 	private client: ModbusRTU | null = null;
+	/** Receive buffer of the RTU-over-TCP port; `null` on `tcp` framing, whose MBAP header carries a transaction ID. */
+	private rtuReceiveBuffer: { discard(): number } | null = null;
 	private socket: Socket | null = null;
 	private connecting: Promise<void> | null = null;
 	private abortConnect: ((error: Error) => Promise<void>) | null = null;
@@ -206,8 +219,11 @@ class ModbusSerialTransport implements ModbusTransport {
 			}
 		};
 
+		let rtuReceiveBuffer: { discard(): number } | null = null;
+
 		if (this.options.framing === ModbusFraming.RTU_OVER_TCP) {
 			client.linkTelnet(socket, {}, linked);
+			rtuReceiveBuffer = telnetReceiveBuffer(client);
 		} else {
 			client.linkTCP(socket, { port: this.options.port }, linked);
 		}
@@ -227,6 +243,7 @@ class ModbusSerialTransport implements ModbusTransport {
 
 		this.socket = socket;
 		this.client = client;
+		this.rtuReceiveBuffer = rtuReceiveBuffer;
 	}
 
 	private handleClosed(socket: Socket, client: ModbusRTU, error?: Error): void {
@@ -236,6 +253,7 @@ class ModbusSerialTransport implements ModbusTransport {
 
 		this.socket = null;
 		this.client = null;
+		this.rtuReceiveBuffer = null;
 
 		// Cancels the library's request timers; their callbacks would otherwise fire long after the socket is gone.
 		client.destroy(() => undefined);
@@ -264,6 +282,14 @@ class ModbusSerialTransport implements ModbusTransport {
 		// RTU frames carry no transaction ID; the library's telnet port tracks a single expected answer.
 		if (this.options.framing === ModbusFraming.RTU_OVER_TCP && this.pending.size > 0) {
 			return Promise.reject(new Error('RTU over TCP carries one request at a time; serialise requests'));
+		}
+
+		const stale = this.rtuReceiveBuffer?.discard() ?? 0;
+
+		if (stale > 0) {
+			this.logger.debug(
+				`Discarded ${stale} unsolicited byte(s) from ${this.options.host}:${this.options.port} before an RTU request`,
+			);
 		}
 
 		return new Promise<T>((resolve, reject) => {

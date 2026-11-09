@@ -84,7 +84,13 @@ describe('ModbusSerialTransport', () => {
 	};
 
 	/** A raw TCP server speaking RTU frames (with CRC, no MBAP header); answers each 8-byte request. */
-	const startRtuServer = async (respond: (request: RtuRequest) => number[]): Promise<number> => {
+	const startRtuServer = (respond: (request: RtuRequest) => number[]): Promise<number> =>
+		startRawRtuServer((request, socket) => {
+			socket.write(withCrc(respond(request)));
+		});
+
+	/** Like `startRtuServer`, but the handler writes the raw answer bytes itself (or nothing). */
+	const startRawRtuServer = async (answer: (request: RtuRequest, socket: Socket) => void): Promise<number> => {
 		const server = createServer((socket) => {
 			rawSockets.push(socket);
 
@@ -104,15 +110,14 @@ describe('ModbusSerialTransport', () => {
 						return;
 					}
 
-					socket.write(
-						withCrc(
-							respond({
-								unitId: frame[0],
-								functionCode: frame[1],
-								address: frame.readUInt16BE(2),
-								count: frame.readUInt16BE(4),
-							}),
-						),
+					answer(
+						{
+							unitId: frame[0],
+							functionCode: frame[1],
+							address: frame.readUInt16BE(2),
+							count: frame.readUInt16BE(4),
+						},
+						socket,
 					);
 				}
 			});
@@ -514,6 +519,96 @@ describe('ModbusSerialTransport', () => {
 
 			await expect(second).rejects.toThrow('one request at a time');
 			await expect(first).resolves.toEqual([5]);
+		});
+
+		/** FC03 answer whose registers all hold `address * 10 + index`, so every block is recognisable. */
+		const holdingAnswer = (request: RtuRequest): Buffer =>
+			withCrc([
+				request.unitId,
+				request.functionCode,
+				request.count * 2,
+				...Array.from({ length: request.count }, (_, index) => [0, request.address * 10 + index]).flat(),
+			]);
+
+		const readHolding = (client: ModbusTransport, address: number) =>
+			client.read({ unitId: 1, registerType: ModbusRegisterType.HOLDING_REGISTER, address, count: 2 });
+
+		it('keeps answering each request with its own reply after a duplicated reply in the same segment', async () => {
+			let answered = 0;
+			const port = await startRawRtuServer((request, socket) => {
+				const reply = holdingAnswer(request);
+
+				// The gateway repeats its first reply: both copies arrive in one TCP segment.
+				socket.write(answered++ === 0 ? Buffer.concat([reply, reply]) : reply);
+			});
+			const client = transport(port, { framing: ModbusFraming.RTU_OVER_TCP });
+
+			await client.connect();
+
+			await expect(readHolding(client, 0)).resolves.toEqual([0, 1]);
+			// Same unit, function and length as the duplicate: without discarding it, this read would get [0, 1].
+			await expect(readHolding(client, 5)).resolves.toEqual([50, 51]);
+			await expect(readHolding(client, 7)).resolves.toEqual([70, 71]);
+		});
+
+		it('keeps answering each request with its own reply after a late duplicated reply', async () => {
+			let answered = 0;
+			const port = await startRawRtuServer((request, socket) => {
+				const reply = holdingAnswer(request);
+
+				socket.write(reply);
+
+				if (answered++ === 0) {
+					setTimeout(() => socket.write(reply), 10);
+				}
+			});
+			const client = transport(port, { framing: ModbusFraming.RTU_OVER_TCP });
+
+			await client.connect();
+
+			await expect(readHolding(client, 0)).resolves.toEqual([0, 1]);
+
+			// Let the duplicate arrive while no request is outstanding.
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			await expect(readHolding(client, 5)).resolves.toEqual([50, 51]);
+		});
+
+		it('reassembles a reply split across TCP writes', async () => {
+			const port = await startRawRtuServer((request, socket) => {
+				const reply = holdingAnswer(request);
+
+				socket.write(reply.subarray(0, 3));
+				setTimeout(() => socket.write(reply.subarray(3)), 20);
+			});
+			const client = transport(port, { framing: ModbusFraming.RTU_OVER_TCP });
+
+			await client.connect();
+
+			await expect(readHolding(client, 4)).resolves.toEqual([40, 41]);
+		});
+
+		it('maps a CRC error to ModbusConnectionError', async () => {
+			const port = await startRawRtuServer((request, socket) => {
+				const reply = holdingAnswer(request);
+
+				reply[reply.length - 1] ^= 0xff;
+				socket.write(reply);
+			});
+			const client = transport(port, { framing: ModbusFraming.RTU_OVER_TCP });
+
+			await client.connect();
+
+			await expect(readHolding(client, 0)).rejects.toBeInstanceOf(ModbusConnectionError);
+		});
+
+		it('maps a missing reply to ModbusTimeoutError', async () => {
+			const port = await startRawRtuServer(() => undefined);
+			const client = transport(port, { framing: ModbusFraming.RTU_OVER_TCP, requestTimeoutMs: 100 });
+
+			await client.connect();
+
+			await expect(readHolding(client, 0)).rejects.toBeInstanceOf(ModbusTimeoutError);
 		});
 	});
 });
