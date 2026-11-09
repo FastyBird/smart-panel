@@ -10237,4 +10237,385 @@ describe('virtual thermostat durable runtime', () => {
 			if (failure !== undefined) throw failure.cause;
 		},
 	);
+	const observeNativeDispatchOrigin = async () => {
+		const { fixture, claims } = await useRegisteredNativeClaimsGuard();
+		const owner = runtime;
+		clearInterval(owner['timer']);
+		const trace = new AsyncLocalStorage<string>();
+		type SendArgs = Parameters<ThermostatActuationAdapter['send']>;
+		type Outcome = Awaited<ReturnType<ThermostatActuationAdapter['send']>>;
+		const currentContext = () => owner['contexts'].get(controllerId);
+		const calls: Array<{ args: SendArgs; context: ReturnType<typeof currentContext>; outcome?: Outcome }> = [];
+		const reports: Array<{
+			origin: string | undefined;
+			event: Readonly<{ propertyId: string; property: ChannelPropertyEntity; sample: QualifiedPropertySample }>;
+		}> = [];
+		const deliveries: Array<{ origin: string | undefined; proofId: string; current: () => boolean }> = [];
+		const heldReleases: Array<() => void> = [];
+		let afterDelivery: (() => Promise<void>) | undefined;
+		const capture = fixture.transport.capture.bind(fixture.transport) as typeof fixture.transport.capture;
+		const transportObserver = jest.spyOn(fixture.transport, 'capture').mockImplementation((...args) => {
+			const adapter = capture(...args);
+			if (!adapter) return adapter;
+			return Object.freeze({
+				...adapter,
+				send: (...parameters: SendArgs) => {
+					const call: (typeof calls)[number] = { args: parameters, context: currentContext() };
+					calls.push(call);
+					const original = trace.run(parameters[4].commandId, () => adapter.send(...parameters));
+					void original.then(
+						(outcome) => {
+							call.outcome = outcome;
+						},
+						() => undefined,
+					);
+					return original;
+				},
+			});
+		});
+		const captureDelivery = fixture.platform.captureOwnedGuardFenceSample.bind(
+			fixture.platform,
+		) as typeof fixture.platform.captureOwnedGuardFenceSample;
+		const deliveryObserver = jest
+			.spyOn(fixture.platform, 'captureOwnedGuardFenceSample')
+			.mockImplementation((target) => {
+				const deliver = captureDelivery(target);
+				return Object.freeze(async (readback: Parameters<typeof deliver>[0]) => {
+					await deliver(readback);
+					if (target.property.id !== relayId) return;
+					deliveries.push({ origin: trace.getStore(), proofId: readback.proofId, current: readback.isCurrent });
+					await afterDelivery?.();
+				});
+			});
+		const observe = (event: (typeof reports)[number]['event']) => {
+			if (event.propertyId === relayId) reports.push({ origin: trace.getStore(), event });
+		};
+		events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+		return {
+			fixture,
+			claims,
+			owner,
+			calls,
+			reports,
+			deliveries,
+			trace,
+			setAfterDelivery: (callback: (() => Promise<void>) | undefined) => {
+				afterDelivery = callback;
+			},
+			releaseOnCleanup: (release: () => void) => heldReleases.push(release),
+			cleanup: async () => {
+				const originals = [...owner['inFlight'].values()];
+				owner.onModuleDestroy();
+				for (const release of heldReleases) release();
+				const joined = await Promise.allSettled([owner.flush(), ...originals]);
+				await fixture.flushTelemetry();
+				events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+				deliveryObserver.mockRestore();
+				transportObserver.mockRestore();
+				for (const result of joined) if (result.status === 'rejected') throw result.reason;
+			},
+		};
+	};
+
+	it('routes genuine ON, replayed original OFF and manual producer notifications through ordinary current admission', async () => {
+		const observed = await observeNativeDispatchOrigin();
+		const { fixture, owner, calls, reports } = observed;
+		const request = jest.spyOn(owner, 'request');
+		const relayRequests: Array<{ event: (typeof reports)[number]['event']; targets: string[] }> = [];
+		const emit = events.emit.bind(events) as typeof events.emit;
+		const emissions = jest.spyOn(events, 'emit').mockImplementation((event, ...values) => {
+			const before = request.mock.calls.length;
+			const result = emit(event, ...(values as unknown[]));
+			if (event === EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED) {
+				const sample = values[0] as (typeof reports)[number]['event'];
+				if (sample.propertyId === relayId)
+					relayRequests.push({ event: sample, targets: request.mock.calls.slice(before).map(([target]) => target) });
+			}
+			return result;
+		});
+		let failure: { cause: unknown } | undefined;
+		try {
+			const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			await fixture.report(sensorId, 18);
+			await settleReal(fixture);
+			const on = calls.find((call) => call.args[0].value === true);
+			if (!on) throw new Error('Original managed ON dispatch missing');
+			expect(on.outcome?.outcome).toBe('accepted');
+			const onReports = reports.filter(
+				(entry) => entry.origin === on.args[4].commandId && entry.event.sample.value === true,
+			);
+			expect(onReports.length).toBeGreaterThan(0);
+			for (const entry of onReports)
+				expect(relayRequests.find(({ event }) => event === entry.event)?.targets).toEqual([controllerId]);
+			const onRow = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+				id: on.args[4].commandId,
+			});
+			expect(onRow).toMatchObject({ action: 'on', status: 'accepted', proofId: null });
+			expect(owner.readDiagnostics(controllerId).branches.every((branch) => !branch.release_proven)).toBe(true);
+			const manualBefore = request.mock.calls.length;
+			events.emit(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, { id: sensorId });
+			expect(request.mock.calls.length).toBe(manualBefore + 1);
+			expect(request.mock.calls.at(-1)[0]).toBe(controllerId);
+			await settleReal(fixture);
+			await fixture.report(sensorId, 21);
+			await settleReal(fixture);
+			const off = calls.find((call) => call.args[0].value === false);
+			if (!off) throw new Error('Original managed OFF dispatch missing');
+			const offReports = reports.filter(
+				(entry) => entry.origin === off.args[4].commandId && entry.event.sample.value === false,
+			);
+			expect(offReports.length).toBeGreaterThan(0);
+			for (const entry of offReports)
+				expect(relayRequests.find(({ event }) => event === entry.event)?.targets).toEqual([controllerId]);
+			const originalA = offReports[0].event;
+			await owner.request(controllerId, false);
+			await owner.flush();
+			const b = owner['contexts'].get(controllerId);
+			expect(b).not.toBe(off.context);
+			const physical = originalA.property;
+			const acceptedBefore = fixture.values.readQualifiedSample(physical, 30_000);
+			expect(acceptedBefore?.value).toBe(false);
+			const commands = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			const sends = [...fixture.controls.sends];
+			const replayBefore = request.mock.calls.length;
+			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, originalA);
+			expect(request.mock.calls.length).toBe(replayBefore + 1);
+			expect(request.mock.calls.at(-1)[0]).toBe(controllerId);
+			expect(fixture.values.readQualifiedSample(physical, 30_000)).toEqual(acceptedBefore);
+			expect(fixture.controls.sends).toEqual(sends);
+			await settleReal(fixture);
+			expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).toEqual(commands);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+				configuration,
+			);
+			expect(fixture.controls.sends).toEqual(sends);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			try {
+				await observed.cleanup();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			emissions.mockRestore();
+			request.mockRestore();
+		}
+		if (failure) throw failure.cause;
+	});
+
+	it('allows ordinary successor progress after actual OFF sample admission while its original dispatch is held', async () => {
+		const observed = await observeNativeDispatchOrigin();
+		const { fixture, owner, calls, reports, deliveries, trace } = observed;
+		let enter!: () => void, release!: () => void;
+		const entered = ownedGate((resolve) => (enter = resolve));
+		const resume = ownedGate((resolve) => (release = resolve));
+		observed.releaseOnCleanup(release);
+		let heldId: string | undefined;
+		let original: Promise<void> | undefined;
+		let inspecting: ReturnType<typeof owner.inspect> | undefined;
+		let failure: { cause: unknown } | undefined;
+		try {
+			await fixture.report(sensorId, 18);
+			await settleReal(fixture);
+			const sendsBefore = [...fixture.controls.sends];
+			observed.setAfterDelivery(async () => {
+				const id = trace.getStore();
+				if (
+					heldId !== undefined ||
+					id === undefined ||
+					!calls.some((call) => call.args[4].commandId === id && call.args[0].value === false)
+				)
+					return;
+				heldId = id;
+				enter();
+				await resume;
+			});
+			await fixture.report(sensorId, 21);
+			let deadline: ReturnType<typeof setTimeout> | undefined;
+			try {
+				await Promise.race([
+					entered,
+					new Promise<never>((_, reject) => {
+						deadline = setTimeout(() => reject(new Error('Original OFF native sample admission not reached')), 5000);
+					}),
+				]);
+			} finally {
+				clearTimeout(deadline);
+			}
+			const a = calls.find((call) => call.args[4].commandId === heldId);
+			if (!a?.context) throw new Error('Original OFF context missing');
+			original = owner['inFlight'].get(heldId);
+			if (original === undefined) throw new Error('Original detached OFF completion missing');
+			let completed = false;
+			void original.then(
+				() => {
+					completed = true;
+				},
+				() => undefined,
+			);
+			expect(reports.some((entry) => entry.origin === heldId && entry.event.sample.value === false)).toBe(true);
+			const oldProof = deliveries.find((entry) => entry.origin === heldId);
+			expect(oldProof).toBeDefined();
+			const before = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: heldId });
+			expect(before).toMatchObject({ action: 'off', status: 'dispatching', proofId: null });
+			inspecting = owner.inspect(controllerId);
+			let inspectionTimeout: ReturnType<typeof setTimeout> | undefined;
+			let b: Awaited<ReturnType<typeof owner.inspect>>;
+			try {
+				b = await Promise.race([
+					inspecting,
+					original.then(() => {
+						throw new Error('Original held OFF completed before its successor');
+					}),
+					new Promise<never>((_, reject) => {
+						inspectionTimeout = setTimeout(
+							() => reject(new Error('Ordinary successor inspection did not progress')),
+							5000,
+						);
+					}),
+				]);
+			} finally {
+				clearTimeout(inspectionTimeout);
+			}
+			expect(completed).toBe(false);
+			expect(b.configuration_revision).toBeGreaterThan(0);
+			expect(owner['contexts'].get(controllerId)).not.toBe(a.context);
+			expect(owner.readDiagnostics(controllerId).branches.every((branch) => !branch.release_proven)).toBe(true);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: heldId })).toEqual(before);
+			release();
+			await original;
+			expect(owner['contexts'].get(controllerId)).not.toBe(a.context);
+			await settleReal(fixture);
+			expect(owner['contexts'].get(controllerId)).not.toBe(a.context);
+			expect(owner.readDiagnostics(controllerId).configuration_revision).toBe(b.configuration_revision);
+			expect(owner.readDiagnostics(controllerId).sequence).toBeGreaterThanOrEqual(b.sequence);
+			const after = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: heldId });
+			expect(after.status).toBe('confirmed');
+			expect(after.proofId).not.toBe(oldProof.proofId);
+			expect(deliveries.some((entry) => entry.proofId === after.proofId)).toBe(true);
+			expect(fixture.controls.sends).toEqual(sendsBefore);
+			expect(fixture.controls.errors).toEqual([]);
+		} catch (cause) {
+			failure = { cause };
+		} finally {
+			try {
+				await observed.cleanup();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			if (inspecting !== undefined) {
+				const [completion] = await Promise.allSettled([inspecting]);
+				if (completion.status === 'rejected') failure ??= { cause: completion.reason };
+			}
+		}
+		if (failure) throw failure.cause;
+	});
+	it.each(['none', 'claims', 'native-registration', 'destroy'] as const)(
+		'withdraws an original managed OFF readback after actual %s admission loss',
+		async (loss) => {
+			const observed = await observeNativeDispatchOrigin();
+			const { fixture, claims, owner, calls, deliveries, trace } = observed;
+			let enter!: () => void, release!: () => void;
+			const entered = ownedGate((resolve) => (enter = resolve));
+			const resume = ownedGate((resolve) => (release = resolve));
+			observed.releaseOnCleanup(release);
+			const previousGate = fixture.controls.beforeFence;
+			let heldId: string | undefined;
+			const gate = async (property: string) => {
+				const id = trace.getStore();
+				if (
+					property !== relayId ||
+					heldId !== undefined ||
+					id === undefined ||
+					!calls.some((call) => call.args[4].commandId === id && call.args[0].value === false)
+				)
+					return;
+				heldId = id;
+				enter();
+				await resume;
+			};
+			let original: Promise<void> | undefined;
+			let failure: { cause: unknown } | undefined;
+			try {
+				const configuration = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				await fixture.report(sensorId, 18);
+				await settleReal(fixture);
+				const initialOn = fixture.controls.sends.filter((send) => send.on);
+				expect(initialOn).toHaveLength(1);
+				fixture.controls.beforeFence = gate;
+				await fixture.report(sensorId, 21);
+				let timeout: ReturnType<typeof setTimeout> | undefined;
+				try {
+					await Promise.race([
+						entered,
+						new Promise<never>((_, reject) => {
+							timeout = setTimeout(() => reject(new Error('Original OFF fence entry missing')), 5000);
+						}),
+					]);
+				} finally {
+					clearTimeout(timeout);
+				}
+				const a = calls.find((call) => call.args[4].commandId === heldId);
+				if (!a) throw new Error('Original managed OFF arguments missing');
+				original = owner['inFlight'].get(heldId);
+				if (original === undefined) throw new Error('Original managed OFF promise missing');
+				const before = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: heldId });
+				expect(before).toMatchObject({ action: 'off', status: 'dispatching', proofId: null });
+				expect(a.args[3]()).toBe(true);
+				const admitted = claims.capture();
+				expect(admitted.isCurrent()).toBe(true);
+				if (loss === 'claims') claims.invalidate();
+				else if (loss === 'native-registration') fixture.platforms.onModuleDestroy();
+				else if (loss === 'destroy') owner.onModuleDestroy();
+				if (loss !== 'none') expect(a.args[3]()).toBe(false);
+				expect(deliveries.filter((entry) => entry.origin === heldId)).toEqual([]);
+				release();
+				await original;
+				if (loss !== 'none') expect(deliveries.filter((entry) => entry.origin === heldId)).toEqual([]);
+				await fixture.flushTelemetry();
+				await owner.flush();
+				if (loss === 'none') await settleReal(fixture);
+				const after = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: heldId });
+				if (loss === 'none') {
+					expect(a.outcome?.outcome).toBe('accepted');
+					expect(deliveries.some((entry) => entry.origin === heldId)).toBe(true);
+					expect(after).toEqual({
+						...before,
+						status: 'confirmed',
+						settledAt: expect.any(Date) as Date,
+						proofId: expect.any(String) as string,
+					});
+					expect(deliveries.some((entry) => entry.proofId === after.proofId)).toBe(true);
+				} else {
+					expect(a.args[3]()).toBe(false);
+					expect(deliveries.filter((entry) => entry.origin === heldId)).toEqual([]);
+					expect(after).toEqual({
+						...before,
+						status: 'unknown',
+						settledAt: expect.any(Date) as Date,
+						fault: expect.any(String) as string,
+					});
+					expect(owner.readDiagnostics(controllerId)?.branches.some((branch) => branch.release_proven)).toBe(false);
+				}
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+					configuration,
+				);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual(initialOn);
+				expect(fixture.controls.errors).toEqual([]);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				try {
+					await observed.cleanup();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				if (fixture.controls.beforeFence === gate) fixture.controls.beforeFence = previousGate;
+				else if (fixture.controls.beforeFence !== previousGate)
+					failure ??= { cause: new Error('Foreign OFF fence observer retained') };
+			}
+			if (failure) throw failure.cause;
+		},
+	);
 });
