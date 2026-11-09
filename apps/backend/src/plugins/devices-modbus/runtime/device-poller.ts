@@ -58,8 +58,10 @@ type ReadOutcome = { kind: 'ok' } | { kind: 'stale' } | { kind: 'failed'; error:
  *   plan and timer, and at most one poll in flight. A tick that finds its poll still running is skipped and flags
  *   the poller overloaded until a poll of that group completes within its interval.
  * - A value is reported only when it differs from the last value reported for the property.
- * - A non-gateway Modbus exception invalidates the block's properties and splits the block into single points for
- *   the next poll. Timeouts, connection errors, an unavailable endpoint and gateway exceptions fail the poll;
+ * - An illegal function / data address / data value exception (0x01-0x03) invalidates the block's properties and
+ *   splits the block into single points for the next poll, so one bad point cannot hide its neighbours. Every other
+ *   exception (busy, acknowledge, server failure, gateway, unknown) is transient: like timeouts, connection errors
+ *   and an unavailable endpoint it fails the poll without splitting, so a single busy reply never multiplies traffic;
  *   `FAILED_POLLS_UNTIL_LOST` failed polls in a row report `lost` and invalidate every read property once.
  * - Nothing is reported once `stop()` was called or `callbacks.isCurrent()` turned `false`. Callback failures are
  *   logged and never stop the loop.
@@ -238,7 +240,7 @@ export class DevicePoller {
 					return { kind: 'stale' };
 				}
 
-				if (error instanceof ModbusExceptionError && !error.isGatewayError) {
+				if (error instanceof ModbusExceptionError && error.isRequestError) {
 					await this.invalidateBlock(block, error, sampledAt, schedule, force);
 
 					continue;

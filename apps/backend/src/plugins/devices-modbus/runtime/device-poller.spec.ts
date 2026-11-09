@@ -236,6 +236,102 @@ describe('DevicePoller', () => {
 		expect(reported().get('p2')).toBe(5);
 	});
 
+	it.each([0x01, 0x03])('splits a block on request exception code %d', async (code) => {
+		connection.read.mockRejectedValueOnce(new ModbusExceptionError(code));
+		connection.read.mockResolvedValue([5]);
+
+		create(snapshot([read('p1', { address: 10 }), read('p2', { address: 11 })])).start();
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(reported()).toEqual(
+			new Map([
+				['p1', null],
+				['p2', null],
+			]),
+		);
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		expect(connection.read.mock.calls.slice(1).map(([request]) => [request.address, request.count])).toEqual([
+			[10, 1],
+			[11, 1],
+		]);
+	});
+
+	it('treats server busy 0x06 as a failed poll without splitting or invalidating the block', async () => {
+		connection.read.mockResolvedValueOnce([1, 2]);
+		connection.read.mockRejectedValue(new ModbusExceptionError(0x06));
+
+		create(snapshot([read('p1', { address: 10 }), read('p2', { address: 11 })])).start();
+		await jest.advanceTimersByTimeAsync(0);
+
+		callbacks.report.mockClear();
+		await jest.advanceTimersByTimeAsync(2000);
+
+		// Two failed polls: values kept, not lost yet, and the block is still read whole
+		expect(callbacks.report).not.toHaveBeenCalled();
+		expect(callbacks.setConnectionState).not.toHaveBeenCalledWith(ConnectionState.LOST, expect.anything());
+
+		await jest.advanceTimersByTimeAsync(1000);
+
+		// The third failed poll in a row reports lost and invalidates through the lost path
+		expect(callbacks.setConnectionState).toHaveBeenLastCalledWith(ConnectionState.LOST, expect.any(String));
+		expect(reported()).toEqual(
+			new Map([
+				['p1', null],
+				['p2', null],
+			]),
+		);
+		expect(connection.read).toHaveBeenCalledTimes(4);
+
+		for (const [request] of connection.read.mock.calls) {
+			expect(request).toMatchObject({ address: 10, count: 2 });
+		}
+	});
+
+	it('resets the failed-poll count when a poll succeeds between busy replies', async () => {
+		const busy = new ModbusExceptionError(0x06);
+
+		connection.read
+			.mockRejectedValueOnce(busy)
+			.mockRejectedValueOnce(busy)
+			.mockResolvedValueOnce([1])
+			.mockRejectedValueOnce(busy)
+			.mockRejectedValueOnce(busy)
+			.mockResolvedValue([1]);
+
+		create(snapshot([read('p1')])).start();
+		await jest.advanceTimersByTimeAsync(0);
+		await jest.advanceTimersByTimeAsync(5000);
+
+		expect(callbacks.setConnectionState).not.toHaveBeenCalledWith(ConnectionState.LOST, expect.anything());
+	});
+
+	it.each([0x04, 0x05, 0x08, 0x7f])(
+		'does not split or invalidate a block on transient exception code %d',
+		async (code) => {
+			connection.read.mockRejectedValueOnce(new ModbusExceptionError(code));
+			connection.read.mockResolvedValue([5, 6]);
+
+			create(snapshot([read('p1', { address: 10 }), read('p2', { address: 11 })])).start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(callbacks.report).not.toHaveBeenCalled();
+			expect(callbacks.setConnectionState).not.toHaveBeenCalledWith(ConnectionState.CONNECTED, undefined);
+
+			await jest.advanceTimersByTimeAsync(1000);
+
+			expect(connection.read).toHaveBeenCalledTimes(2);
+			expect(connection.read).toHaveBeenLastCalledWith(expect.objectContaining({ address: 10, count: 2 }));
+			expect(reported()).toEqual(
+				new Map([
+					['p1', 5],
+					['p2', 6],
+				]),
+			);
+		},
+	);
+
 	it('treats gateway exception 0x0B as a failed poll', async () => {
 		connection.read.mockRejectedValue(new ModbusExceptionError(0x0b));
 

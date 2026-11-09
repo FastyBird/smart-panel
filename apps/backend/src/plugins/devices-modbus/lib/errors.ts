@@ -22,6 +22,14 @@ export class ModbusExceptionError extends Error {
 	get isGatewayError(): boolean {
 		return this.code === 0x0a || this.code === 0x0b;
 	}
+
+	/**
+	 * 0x01-0x03: the request itself is wrong for this unit (function, address range or value), so retrying the same
+	 * request cannot succeed. Every other code describes a transient condition of the unit or the path to it.
+	 */
+	get isRequestError(): boolean {
+		return this.code === 0x01 || this.code === 0x02 || this.code === 0x03;
+	}
 }
 
 /** No response arrived within the request timeout. */
