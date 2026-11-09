@@ -23,6 +23,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { ModbusDevicesController } from './controllers/modbus-devices.controller';
 import { ModbusEndpointsController } from './controllers/modbus-endpoints.controller';
 import {
 	DEVICES_MODBUS_API_TAG_DESCRIPTION,
@@ -43,7 +44,9 @@ import { ModbusBindingEntity } from './entities/modbus-binding.entity';
 import { ModbusEndpointEntity } from './entities/modbus-endpoint.entity';
 import { ModbusConfigModel } from './models/config.model';
 import { ModbusDevicePlatform } from './platforms/modbus.device.platform';
+import { ModbusBindingsService } from './services/modbus-bindings.service';
 import { ModbusConnectionsService } from './services/modbus-connections.service';
+import { ModbusDeviceStructureService } from './services/modbus-device-structure.service';
 import { ModbusEndpointsService } from './services/modbus-endpoints.service';
 import { ModbusRuntimeService } from './services/modbus-runtime.service';
 
@@ -66,9 +69,16 @@ import { ModbusRuntimeService } from './services/modbus-runtime.service';
 		SwaggerModule,
 		ExtensionsModule,
 	],
-	providers: [ModbusDevicePlatform, ModbusRuntimeService, ModbusConnectionsService, ModbusEndpointsService],
-	controllers: [ModbusEndpointsController],
-	exports: [ModbusEndpointsService, ModbusConnectionsService],
+	providers: [
+		ModbusDevicePlatform,
+		ModbusRuntimeService,
+		ModbusConnectionsService,
+		ModbusEndpointsService,
+		ModbusBindingsService,
+		ModbusDeviceStructureService,
+	],
+	controllers: [ModbusEndpointsController, ModbusDevicesController],
+	exports: [ModbusEndpointsService, ModbusConnectionsService, ModbusBindingsService, ModbusDeviceStructureService],
 })
 export class DevicesModbusPlugin {
 	constructor(
