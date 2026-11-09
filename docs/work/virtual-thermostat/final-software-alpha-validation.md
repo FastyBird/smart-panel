@@ -1,19 +1,20 @@
 # Final software acceptance and next alpha
 
-Status at the #1542 source checkpoint: partial software acceptance, 2026-11-09. Tracking: #1462; parent #1447 and installed acceptance #1463 remain open.
-#1542 pre-merge source checkpoint: base main was `2fd4d7f523759be1a92392f7455763bc4e7c3b86` (#1541),
-with114/139 residuals bound and25 open;the proposed source below has121/139 bound and18 open.
-These counts describe this source checkpoint;live delivery status is tracked in #1462.
+Status at the fixture-lifetime source checkpoint: residual binding inventory complete; composed acceptance
+and alpha delivery remain open, 2026-11-09. Tracking: #1462; parent #1447 and installed acceptance #1463 stay open.
+Base main is merged #1542 (`aef7f0d92541ec4af5cc8235c202876593f779f4`), with 121/139 residuals bound
+and 18 open. The proposed source binds 139/139 with 0 unbound. These are pre-merge counts;
+live delivery status is tracked in #1462.
 Initial preparation began at `54e2c92c57d4aa2a906cd7744e3d60294c203377` (#1505); its measurements remain historical below.
 No alpha was dispatched or published by this preparation. No installed equipment was operated.
 
 ## Current qualification and remaining scope
 
-[The canonical ledger](original1473-case-map.json) records **243 bound original rows: 173 scoped invariants**,
-64 replacements and six descriptor controls. Of the fixed 139-row residual inventory, **121 have current
-bindings and18 remain unbound**. The121 comprise64 scoped and57 replacement bindings;
-the initial 122 dispositions retain their existing limits. No complete original-case or equipment acceptance
-follows from a scoped binding.
+[The canonical ledger](original1473-case-map.json) binds all **261 original rows: 173 scoped invariants**,
+82 replacements and six descriptor controls, through 269 witness bindings. All **139 fixed residuals**
+have current bindings (64 scoped, 75 replacements). The initial 122 dispositions retain their existing limits.
+This completes the proposed binding inventory; it does not grant whole-original private-protocol equivalence,
+composed acceptance, alpha publication or hardware qualification.
 
 The current held-fence tests were merged in #1525. Its exact reviewed head
 `d1018936dc786a788f11811da0c791e45b37482a` passed all 14 checks and completed CodeRabbit review
@@ -24,11 +25,11 @@ source/helper/report aggregate remains historical evidence at its recorded sourc
 
 | Measurement | Result and exact source scope |
 | --- | --- |
-| Current complete consumers | **615/615**,zero failures/skips,one complete ten-file invocation after the exact-deadline review follow-up. Includes **273 runtime cases**. Report SHA-256 `64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca`; exact apps/source identities are in the ledger. |
+| Current complete consumers | **633/633**, zero failures/skips, one complete eleven-file invocation. Includes 273 unchanged runtime and 18 fixture-lifetime executions. Report SHA-256 `7abead4b784d494332c39b8615f874e4fd51c31c775d1c3fb532a33eebb7a495`; exact apps/source identities are in the ledger. |
 | Prior hosted backend (#1529 source) | [Exact-head backend job](https://github.com/FastyBird/smart-panel/actions/runs/42307639627/job/128200949238): 727 ordinary unit suites, **13,349 passes**, one existing unrelated agricultural/device-temperature Zigbee mapper skip. All eight native-consumer files explicitly PASS. Job-log SHA-256 `0e1b61c37c69e9ac767d855a8073401ca03572e1f5cc0174a42782ea0908c714`. |
 | Prior ordinary E2E (#1529 source) | **426/426**, zero failures/skips, 29 suites in that same exact-head hosted job. The job log above is the report artifact; earlier raw JSON E2E reports retain their historical attribution in the prior ledger. |
 | Prior native-consumer aggregate (historical) | **385/385**, zero failures/skips, eight complete files at #1524: runtime 177, comfort 45, SDK 24, claims 14, value locks 8, creation capture 12, ownership 4 and authoring 101. Report SHA-256 `2c304761e3d5aa28bbdab39af4728e5d90f11fa437691168c9057c136a3e9488`. |
-| Evidence bindings | All **250 witness bindings across243 original rows** verify. Seven replacements use seven executions/four bodies. Three preceding bodies adopt nonblocking review assertions; all other131 bodies,88 prior helpers,32 production files and shared fixture remain unchanged. |
+| Evidence bindings | All **269 witness bindings across 261 original rows** verify. Last 18 facets use 18 executions/seven bodies; 1/244 share one execution and 247 has an additional earlier-reentry witness. All 250 prior binding bodies, 138 runtime bodies, 89 runtime helpers and 32 production files remain unchanged. Shared test fixture changes are bound to the complete rerun. |
 | Retained controls | The prior 52 reports remain hash-verified historical evidence. Twenty per-row negative reports retain 29 expected failures and five passing selected controls; they were audited, not replayed after the additive test change. Two #1525 scope-omission controls, not replayed after #1529, each fail only the corresponding changed-image variant, pass two controls and leave 177 cases unrun. A new premature-admission control fails both changed-image variants while unchanged passes (179 unrun); prior assertions pass all three under the same mutation. Production is restored byte-for-byte. |
 
 The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalidation` and
@@ -36,9 +37,9 @@ The prior aggregate objects remain verbatim under `currentBeforeAggregateRevalid
 `semanticReconciliationBeforeHeldFenceAdoption`; `priorQualificationLedger` indexes its immutable full ledger,
 including the prior per-row measurements. `heldFenceOrderingFollowup` records the reviewed #1529 strengthening and its immutable prior ledger.
 Older test-file identities remain historical after the test changes.
-This evidence update requires its own exact-head CI and completed source review. The18 residuals,
-retired private TIME/caller/observer/global-drain and complete provider/SDK protocols, installed equipment,
-and alpha publication remain separate open gates.
+This evidence update requires exact-head CI and completed source review. The 18 former residuals now have
+current replacements below. Retired private TIME/caller/observer/global-drain and complete provider/SDK
+equivalence is not granted; composed acceptance, installed equipment and alpha remain separate gates.
 
 Rows 118–119 now bind independent member/source changes committed through a peer SQLite connection while
 the first post-restart OFF fence is held. They require complete unchanged configuration, actual fresh binding
@@ -213,7 +214,7 @@ Jest timeout. Sources restore before fresh **615/615**,runtime273,zero skips;rep
 32 production files and shared fixture remain unchanged;complete independent audits cover250 bindings.
 [The review evidence](original1473-residual-acceptance.md#native-effects-review-historical-status-and-advanced-clock) retains exact source/control limits.
 
-#1542 exact-deadline review checkpoint separates the historical five-variant control/source64046b6
+#1542 historical exact-deadline review checkpoint separates the historical five-variant control/source64046b6
 from the later one-case hydration-renewal control/source70e5069. Their615-case reports remain historical
 at those exact sources. The current test additionally expires at the exact original monotonic deadline and
 one tick later,with wall time still before expiry. A `>=`→`>` counterfactual passes the former witness1/1
@@ -221,7 +222,20 @@ and fails the new exact-boundary assertion1/1,272unrun each;production restores 
 runtime273,zero skips,report `64d288819f97c9b3dd7dda0bc2c73a796c26cd603a78b53f7ea0c655f36713ca`. No new cases/dispositions. The **#1542 pre-merge checkpoint**
 remains base main114/139 bound25open and proposed source121/139 bound18open;live delivery is in #1462.
 [Exact source/control/report limits](original1473-residual-acceptance.md#exact-deadline-review-and-source-checkpoint)
-retain all prior historical records and the unchanged18 residual requirements.
+retain the historical source records and the18 requirements still open at that checkpoint.
+The fixture-lifetime batch below now supplies their current replacements.
+
+The final fixture-lifetime batch binds rows 1–7 and 244–254 through real SQLite setup/transactions,
+actual Nest provider/module lifecycles, managed SDK session authority and core derived publication.
+Original P outranks cleanup Q (including present falsy causes); original work joins, foreign lifecycle
+descriptors remain intact, and genuine B retains its native inspection/resources. Body cleanup leaves
+successful module/session/database ownership intact until later scope close. Retired global aliases,
+held accepted-ON/restoration-Q schedules and two-pass observer ordering are explicit replacements.
+Three original-helper functional failures and three present-falsy test-owner failures discriminate the
+new assertions; all sources restore before 633/633. No production changes or equipment actions.
+[Exact boundaries, controls and preparation limits](original1473-residual-acceptance.md#rows-17-and-244254-managed-fixture-setup-and-cleanup)
+retain the scope. The pre-merge checkpoint is base 121/139 with 18 open versus proposed 139/139 with 0 open;
+#1462 tracks merged delivery. Whole-feature acceptance and next alpha still require their named records.
 
 ## Composed acceptance
 
