@@ -164,6 +164,16 @@ const settle = <T>(promise: Promise<T>): Promise<T> => {
 	return promise;
 };
 
+/** Send one read on the current socket and let the device answer it, proving the link works. */
+const answerOnce = async (connection: EndpointConnection, transport: FakeTransport): Promise<void> => {
+	const pending = connection.read(readRequest(0));
+
+	await flush();
+	transport.outstanding()[0].resolve([0]);
+	await pending;
+	await flush();
+};
+
 describe('EndpointConnection', () => {
 	let connections: EndpointConnection[] = [];
 
@@ -481,7 +491,7 @@ describe('EndpointConnection', () => {
 		expect(high.transports).toHaveLength(2);
 	});
 
-	it('restarts the backoff sequence after a successful connect', async () => {
+	it('restarts the backoff sequence after the first answer on a socket', async () => {
 		const { connection, transports, modes } = setup();
 
 		modes.push('fail', 'fail', 'succeed');
@@ -493,11 +503,158 @@ describe('EndpointConnection', () => {
 		expect(transports).toHaveLength(3);
 		expect(connection.getHealth().state).toBe('connected');
 
+		await answerOnce(connection, transports[2]);
+
 		transports[2].remoteClose();
 		await flush();
-		await jest.advanceTimersByTimeAsync(1000);
+		await jest.advanceTimersByTimeAsync(999);
+
+		expect(transports).toHaveLength(3);
+
+		await jest.advanceTimersByTimeAsync(1);
 
 		expect(transports).toHaveLength(4);
+	});
+
+	it('does not restart the backoff sequence on a connect alone', async () => {
+		const { connection, transports, modes } = setup();
+
+		modes.push('fail', 'fail', 'succeed');
+		connection.start();
+		await flush();
+		await jest.advanceTimersByTimeAsync(1000);
+		await jest.advanceTimersByTimeAsync(2000);
+
+		expect(connection.getHealth().state).toBe('connected');
+
+		transports[2].remoteClose();
+		await flush();
+		await jest.advanceTimersByTimeAsync(3999);
+
+		expect(transports).toHaveLength(3);
+
+		await jest.advanceTimersByTimeAsync(1);
+
+		expect(transports).toHaveLength(4);
+	});
+
+	it('backs off exponentially when a gateway accepts and immediately drops', async () => {
+		const { connection, transports } = setup();
+
+		connection.start();
+		await flush();
+
+		for (const [index, delay] of [1000, 2000, 4000, 8000, 16000].entries()) {
+			expect(connection.getHealth().state).toBe('connected');
+
+			transports[index].remoteClose();
+			await flush();
+
+			expect(connection.getHealth().state).toBe('backoff');
+
+			await jest.advanceTimersByTimeAsync(delay - 1);
+
+			expect(transports).toHaveLength(index + 1);
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(transports).toHaveLength(index + 2);
+		}
+	});
+
+	it('backs off exponentially on connection errors before any answer', async () => {
+		const { connection, transports, states } = setup({ framing: ModbusFraming.RTU_OVER_TCP });
+
+		connection.start();
+		await flush();
+
+		for (const [index, delay] of [1000, 2000, 4000, 8000].entries()) {
+			const failed = settle(connection.read(readRequest(1)));
+			const queued = settle(connection.read(readRequest(2)));
+
+			await flush();
+			transports[index].sent[0].reject(new ModbusConnectionError('Modbus request failed: CRC error'));
+			await flush();
+
+			await expect(failed).rejects.toBeInstanceOf(ModbusConnectionError);
+			await expect(queued).rejects.toBeInstanceOf(ModbusEndpointUnavailableError);
+			expect(transports[index].closeCalls).toBe(1);
+			expect(transports[index].addresses()).toEqual([1]);
+			expect(connection.getHealth().state).toBe('backoff');
+			await expect(connection.read(readRequest(3))).rejects.toBeInstanceOf(ModbusEndpointUnavailableError);
+
+			await jest.advanceTimersByTimeAsync(delay - 1);
+
+			expect(transports).toHaveLength(index + 1);
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(transports).toHaveLength(index + 2);
+		}
+
+		expect(states.filter((state) => state === 'backoff')).toHaveLength(4);
+	});
+
+	it('treats a Modbus exception as an answer that proves the link', async () => {
+		const { connection, transports, states } = setup();
+
+		connection.start();
+		await flush();
+
+		const exception = settle(connection.read(readRequest(1)));
+
+		await flush();
+		transports[0].sent[0].reject(new ModbusExceptionError(0x02));
+		await expect(exception).rejects.toBeInstanceOf(ModbusExceptionError);
+
+		const failed = settle(connection.read(readRequest(2)));
+
+		await flush();
+		transports[0].sent[1].reject(new ModbusConnectionError('Modbus request failed: CRC error'));
+		await flush();
+
+		await expect(failed).rejects.toBeInstanceOf(ModbusConnectionError);
+		expect(transports).toHaveLength(2);
+		expect(states).not.toContain('backoff');
+		expect(connection.getHealth().state).toBe('connected');
+	});
+
+	it('waits interRequestDelayMs before the first request on a socket opened by a reset', async () => {
+		const { connection, transports } = setup({ framing: ModbusFraming.RTU_OVER_TCP, interRequestDelayMs: 20 });
+
+		connection.start();
+		await flush();
+
+		void settle(connection.read(readRequest(1)));
+		void settle(connection.read(readRequest(2)));
+		await flush();
+
+		transports[0].sent[0].reject(new ModbusTimeoutError());
+		await flush();
+
+		expect(transports).toHaveLength(2);
+		expect(connection.getHealth().state).toBe('connected');
+		expect(transports[1].sent).toHaveLength(0);
+
+		await jest.advanceTimersByTimeAsync(19);
+
+		expect(transports[1].sent).toHaveLength(0);
+
+		await jest.advanceTimersByTimeAsync(1);
+
+		expect(transports[1].addresses()).toEqual([2]);
+	});
+
+	it('sends at once on the first socket after start', async () => {
+		const { connection, transports } = setup({ framing: ModbusFraming.RTU_OVER_TCP, interRequestDelayMs: 20 });
+
+		connection.start();
+		await flush();
+
+		void settle(connection.read(readRequest(1)));
+		await flush();
+
+		expect(transports[0].addresses()).toEqual([1]);
 	});
 
 	it('reports health', async () => {
@@ -592,18 +749,19 @@ describe('EndpointConnection', () => {
 	});
 
 	it.each([ModbusFraming.TCP, ModbusFraming.RTU_OVER_TCP])(
-		'resets the socket immediately after a connection error on %s',
+		'resets the socket immediately after a connection error on %s once the socket has answered',
 		async (framing) => {
 			const { connection, transports, states } = setup({ framing });
 
 			connection.start();
 			await flush();
+			await answerOnce(connection, transports[0]);
 
 			const failed = settle(connection.read(readRequest(1)));
 			const next = connection.read(readRequest(2));
 
 			await flush();
-			transports[0].sent[0].reject(new ModbusConnectionError('Modbus request failed: CRC error'));
+			transports[0].sent[1].reject(new ModbusConnectionError('Modbus request failed: CRC error'));
 			await flush();
 
 			await expect(failed).rejects.toBeInstanceOf(ModbusConnectionError);
@@ -624,18 +782,19 @@ describe('EndpointConnection', () => {
 
 		connection.start();
 		await flush();
+		await answerOnce(connection, transports[0]);
 
 		const failed = settle(connection.read(readRequest(1)));
 		const sibling = settle(connection.read(readRequest(2)));
 		const queued = connection.read(readRequest(3));
 
 		await flush();
-		transports[0].sent[0].reject(new ModbusConnectionError('Modbus request failed: length mismatch'));
+		transports[0].sent[1].reject(new ModbusConnectionError('Modbus request failed: length mismatch'));
 		await flush();
 
 		await expect(failed).rejects.toBeInstanceOf(ModbusConnectionError);
 		await expect(sibling).rejects.toBeInstanceOf(ModbusConnectionError);
-		expect(transports[0].addresses()).toEqual([1, 2]);
+		expect(transports[0].addresses()).toEqual([0, 1, 2]);
 		expect(transports[1].addresses()).toEqual([3]);
 
 		transports[1].sent[0].resolve([3]);

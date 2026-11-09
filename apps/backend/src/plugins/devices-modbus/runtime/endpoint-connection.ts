@@ -49,14 +49,18 @@ interface QueuedRequest {
  *
  * - At most `maxInFlight` requests are on the wire (always 1 for `rtu_over_tcp`, whose frames carry no transaction
  *   ID). Writes are queued ahead of reads but never pre-empt a request already sent.
- * - `interRequestDelayMs` is kept between a response and the next send.
+ * - `interRequestDelayMs` is kept between a response and the next send, and before the first send on a socket
+ *   opened by a reset (quiet time on the bus while a slow slave may still be answering).
  * - A request timeout resets the socket on `rtu_over_tcp` (a late answer would be read as the next response) and
- *   after 3 consecutive timeouts on `tcp`. A `ModbusConnectionError` from a request (lost socket, CRC or length
- *   error) resets the socket on both framings. A reset reconnects at once; requests still queued wait for it.
+ *   after 3 consecutive timeouts on `tcp`; such a reset reconnects at once and queued requests wait for it.
+ *   A `ModbusConnectionError` from a request (lost socket, CRC or length error) resets the socket on both framings:
+ *   at once when the socket has already answered, otherwise as a failed attempt (see backoff).
  *   A `ModbusExceptionError` is a regular device answer and counts like a success.
- * - A failed connect or an unexpected socket close enters `backoff`: new requests fail fast with
- *   `ModbusEndpointUnavailableError` until the next attempt, delayed `min(1000 * 2^(n-1), 60000)` ms scaled by
- *   `0.8 + 0.4 * random()`. A successful connect restarts the sequence.
+ * - A failed connect, an unexpected socket close, or a connection error before the socket's first answer enters
+ *   `backoff`: queued and new requests fail fast with `ModbusEndpointUnavailableError` until the next attempt,
+ *   delayed `min(1000 * 2^(n-1), 60000)` ms scaled by `0.8 + 0.4 * random()`. Only the first answer on a socket
+ *   (a success or a Modbus exception) restarts the sequence, not a bare successful connect: a gateway that accepts
+ *   and then drops, or a link that only produces garbage, is never hammered.
  * - Each transport is used once. Callbacks from a replaced transport are ignored by identity.
  */
 export class EndpointConnection {
@@ -76,6 +80,10 @@ export class EndpointConnection {
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private backoffAttempt = 0;
 	private consecutiveTimeouts = 0;
+	/** The current socket has produced at least one answer (a success or a Modbus exception). */
+	private answered = false;
+	/** The next socket was opened by a reset and keeps `interRequestDelayMs` before its first send. */
+	private quietAfterReset = false;
 
 	private lastError: string | null = null;
 	private lastErrorAt: Date | null = null;
@@ -102,6 +110,7 @@ export class EndpointConnection {
 		this.generation++;
 		this.backoffAttempt = 0;
 		this.consecutiveTimeouts = 0;
+		this.quietAfterReset = false;
 		this.openTransport();
 	}
 
@@ -212,7 +221,7 @@ export class EndpointConnection {
 					return;
 				}
 
-				this.consecutiveTimeouts = 0;
+				this.markAnswered();
 				this.recordLatency(Date.now() - startedAt);
 				entry.resolve(result);
 				this.afterResponse();
@@ -232,7 +241,7 @@ export class EndpointConnection {
 
 	private handleRequestError(transport: ModbusTransport, error: Error): void {
 		if (error instanceof ModbusExceptionError) {
-			this.consecutiveTimeouts = 0;
+			this.markAnswered();
 			this.afterResponse();
 
 			return;
@@ -247,7 +256,7 @@ export class EndpointConnection {
 				this.config.framing === ModbusFraming.RTU_OVER_TCP ||
 				this.consecutiveTimeouts >= TCP_CONSECUTIVE_TIMEOUT_LIMIT
 			) {
-				this.resetTransport(transport, `${this.consecutiveTimeouts} consecutive timeout(s)`);
+				this.resetTransport(transport, `${this.consecutiveTimeouts} consecutive timeout(s)`, true);
 			} else {
 				this.afterResponse();
 			}
@@ -257,13 +266,21 @@ export class EndpointConnection {
 
 		if (error instanceof ModbusConnectionError) {
 			this.recordError(error.message);
-			this.resetTransport(transport, error.message);
+			// Without an answer on this socket the link is unproven: count it as a failed attempt and back off.
+			this.resetTransport(transport, error.message, this.answered);
 
 			return;
 		}
 
 		// Anything else (e.g. a request rejected by the transport's validation) never reached the wire as a frame.
 		this.afterResponse();
+	}
+
+	/** An answer proves the link works: it ends a timeout streak and restarts the backoff sequence. */
+	private markAnswered(): void {
+		this.answered = true;
+		this.consecutiveTimeouts = 0;
+		this.backoffAttempt = 0;
 	}
 
 	private afterResponse(): void {
@@ -298,6 +315,7 @@ export class EndpointConnection {
 		}
 
 		this.transport = transport;
+		this.answered = false;
 
 		transport.onClose((error) => this.handleTransportClosed(transport, error));
 
@@ -307,10 +325,16 @@ export class EndpointConnection {
 					return;
 				}
 
-				this.backoffAttempt = 0;
+				// The backoff sequence is not restarted here: only an answer proves the link works.
 				this.consecutiveTimeouts = 0;
 				this.setState('connected');
-				this.pump();
+
+				if (this.quietAfterReset) {
+					this.quietAfterReset = false;
+					this.afterResponse();
+				} else {
+					this.pump();
+				}
 			},
 			(reason: unknown) => {
 				if (this.transport !== transport || this.generation !== generation) {
@@ -355,21 +379,40 @@ export class EndpointConnection {
 		this.scheduleReconnect();
 	}
 
-	/** Drops a socket that can no longer be trusted and reconnects at once; queued requests wait for the new one. */
-	private resetTransport(transport: ModbusTransport, reason: string): void {
+	/**
+	 * Drops a socket that can no longer be trusted. With `immediate`, it reconnects at once and queued requests wait
+	 * for the new socket; otherwise the reset counts as a failed attempt: queued requests reject and backoff follows.
+	 */
+	private resetTransport(transport: ModbusTransport, reason: string, immediate: boolean): void {
 		if (this.transport !== transport) {
 			return;
 		}
 
-		this.logger.warn(`Resetting connection to endpoint ${this.config.endpointId}: ${reason}`);
+		this.logger.warn(
+			`Resetting connection to endpoint ${this.config.endpointId}${immediate ? '' : ' (backing off)'}: ${reason}`,
+		);
 
 		this.transport = null;
 		this.consecutiveTimeouts = 0;
+		this.quietAfterReset = true;
 		this.clearDelayTimer();
 		this.rejectInFlight(new ModbusConnectionError(`Modbus connection reset: ${reason}`));
-		this.setState('connecting');
 
 		const generation = ++this.generation;
+
+		if (!immediate) {
+			void this.closeQuietly(transport);
+			this.rejectQueued(
+				new ModbusEndpointUnavailableError(
+					`Modbus endpoint ${this.config.endpointId} failed before answering: ${reason}`,
+				),
+			);
+			this.scheduleReconnect();
+
+			return;
+		}
+
+		this.setState('connecting');
 
 		// Wait for the old socket to go away: some gateways accept a single client connection.
 		void this.closeQuietly(transport).then(() => {
