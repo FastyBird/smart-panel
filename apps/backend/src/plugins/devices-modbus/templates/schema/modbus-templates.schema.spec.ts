@@ -85,6 +85,34 @@ describe('modbus-templates.schema.json', () => {
 		expect(validate(doc)).toBe(false);
 	});
 
+	it('accepts 64 channel entries and rejects 65', () => {
+		const doc = qingjun();
+		const channel = doc.templates[0].channels[0];
+
+		doc.templates[0].channels = Array.from({ length: 64 }, () => channel);
+		expect(validate(doc)).toBe(true);
+
+		doc.templates[0].channels.push(channel);
+		expect(validate(doc)).toBe(false);
+	});
+
+	it('rejects 33 properties on a channel', () => {
+		const doc = qingjun();
+		const property = doc.templates[0].channels[0].properties[0];
+
+		doc.templates[0].channels[0].properties = Array.from({ length: 33 }, () => property);
+
+		expect(validate(doc)).toBe(false);
+	});
+
+	it('rejects 65 templates in a file', () => {
+		const doc = qingjun();
+
+		doc.templates = Array.from({ length: 65 }, () => doc.templates[0]);
+
+		expect(validate(doc)).toBe(false);
+	});
+
 	it('rejects a malformed id', () => {
 		const doc = qingjun();
 		doc.templates[0].id = 'Bad Id';

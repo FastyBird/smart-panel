@@ -212,4 +212,41 @@ describe('ModbusTemplatesService', () => {
 
 		expect(JSON.stringify(service.get('qingjun-32di').template)).toBe(before);
 	});
+
+	it('reports a template whose validation throws and keeps loading the others', () => {
+		const other = replaceIn(replaceIn(QINGJUN, 'id: qingjun-32di', 'id: other'), 'name: Qingjun', 'name: Other');
+
+		write(builtin, 'both.yaml', file(QINGJUN, other));
+
+		const spy = jest
+			.spyOn(DeviceValidationService.prototype, 'validateDeviceStructure')
+			.mockImplementationOnce(() => {
+				throw new Error('boom');
+			})
+			.mockReturnValue({ issues: [] } as never);
+
+		jest.spyOn(Object.getPrototypeOf((service as unknown as { logger: object }).logger), 'error').mockImplementation();
+
+		const catalog = service.reload();
+
+		expect(spy).toHaveBeenCalled();
+		expect(catalog.templates.map((entry) => entry.template.id)).toEqual(['other']);
+		expect(catalog.files.flatMap((entry) => entry.errors)).toEqual(['template qingjun-32di: validation failed: boom']);
+	});
+
+	it('does not throw on module init when the schema cannot be read', () => {
+		const config = { get: (key: string) => values[key] } as unknown as NestConfigService;
+		const broken = new ModbusTemplatesService(config, new DeviceValidationService({} as never), {
+			builtinDirectory: builtin,
+			schemaPath: join(root, 'missing.schema.json'),
+		});
+
+		jest.spyOn(Object.getPrototypeOf((broken as unknown as { logger: object }).logger), 'error').mockImplementation();
+
+		expect(() => broken.onModuleInit()).not.toThrow();
+		expect(broken.catalog().templates).toEqual([]);
+		expect(broken.catalog().files).toEqual([
+			{ source: 'builtin', path: '.', loaded: 0, errors: [expect.stringContaining('ENOENT')], warnings: [] },
+		]);
+	});
 });

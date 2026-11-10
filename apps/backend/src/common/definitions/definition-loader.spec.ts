@@ -1,3 +1,4 @@
+import { execFileSync } from 'child_process';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
@@ -161,6 +162,64 @@ describe('DefinitionLoader', () => {
 
 		expect(result.definitions).toEqual([]);
 		expect(result.files[0].errors).toEqual(['outside the definitions directory']);
+	});
+
+	it('reports a symlink to a directory instead of reading it', () => {
+		const target = join(userDir, 'inner');
+
+		mkdirSync(target);
+		symlinkSync(target, join(userDir, 'plugin.test.dir.yaml'));
+
+		const result = loader().load();
+
+		expect(result.definitions).toEqual([]);
+		expect(result.files[0].errors).toEqual(['not a regular file']);
+	});
+
+	it('reports a symlink to a FIFO instead of blocking on it', () => {
+		const fifo = join(userDir, 'pipe');
+
+		try {
+			execFileSync('mkfifo', [fifo]);
+		} catch {
+			return;
+		}
+
+		symlinkSync(fifo, join(userDir, 'plugin.test.fifo.yaml'));
+
+		const result = loader().load();
+
+		expect(result.definitions).toEqual([]);
+		expect(result.files[0].errors).toEqual(['not a regular file']);
+	});
+
+	it('reports a symlinked subdirectory in recursive mode', () => {
+		const target = join(root, 'elsewhere');
+
+		write(join(target, 'x.yaml'), file('x'));
+		symlinkSync(target, join(builtinDir, 'linked'));
+
+		const result = loader().load();
+
+		expect(result.definitions).toEqual([]);
+		expect(result.files).toEqual([
+			{
+				source: 'builtin',
+				path: 'linked',
+				loaded: 0,
+				errors: ['symbolic link to a directory is not followed'],
+				warnings: [],
+			},
+		]);
+	});
+
+	it('loads a file whose name starts with two dots', () => {
+		write(join(builtinDir, '..foo.yaml'), file('dots'));
+
+		const result = loader().load();
+
+		expect(result.definitions.map((definition) => definition.id)).toEqual(['dots']);
+		expect(result.files[0].errors).toEqual([]);
 	});
 
 	it('rejects a file with a duplicate id', () => {

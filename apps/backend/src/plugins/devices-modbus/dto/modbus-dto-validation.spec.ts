@@ -30,8 +30,8 @@ const ENDPOINT_DTOS: Array<[string, DtoClass]> = [
 
 describe('Modbus DTO validation', () => {
 	describe.each(DEVICE_DTOS)('%s', (_name, dto) => {
-		it('accepts a template revision string (template version + content hash)', async () => {
-			expect(await fieldErrors(dto, 'template_revision', '1.2.0+3f2a9c1b')).toEqual([]);
+		it('accepts a template revision (16 hex characters)', async () => {
+			expect(await fieldErrors(dto, 'template_revision', '3f2a9c1b7d4e6a05')).toEqual([]);
 		});
 
 		it.each([

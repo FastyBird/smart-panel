@@ -1,6 +1,16 @@
 import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
-import { Dirent, existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'fs';
-import { isAbsolute, join, relative, resolve } from 'path';
+import {
+	Dirent,
+	closeSync,
+	existsSync,
+	fstatSync,
+	openSync,
+	readFileSync,
+	readdirSync,
+	realpathSync,
+	statSync,
+} from 'fs';
+import { isAbsolute, join, relative, resolve, sep } from 'path';
 import { parse as parseYaml } from 'yaml';
 
 export type DefinitionSource = 'builtin' | 'user';
@@ -177,6 +187,18 @@ export class DefinitionLoader<T> {
 					continue;
 				}
 
+				if (entry.isSymbolicLink() && recursive && isDirectoryLink(join(directory, entry.name))) {
+					files.push({
+						source,
+						path: relative(root, join(directory, entry.name)),
+						loaded: 0,
+						errors: ['symbolic link to a directory is not followed'],
+						warnings: [],
+					});
+
+					continue;
+				}
+
 				if (!entry.isFile() && !entry.isSymbolicLink()) {
 					continue;
 				}
@@ -219,13 +241,34 @@ export class DefinitionLoader<T> {
 		let text: string;
 
 		try {
-			if (statSync(real).size > this.maxFileBytes) {
-				result.errors.push(`file exceeds ${this.maxFileBytes} bytes`);
+			if (!statSync(real).isFile()) {
+				result.errors.push('not a regular file');
 
 				return null;
 			}
 
-			text = readFileSync(real, 'utf8');
+			// Open first and check the descriptor, so the size limit applies to what is actually read.
+			const descriptor = openSync(real, 'r');
+
+			try {
+				const stat = fstatSync(descriptor);
+
+				if (!stat.isFile()) {
+					result.errors.push('not a regular file');
+
+					return null;
+				}
+
+				if (stat.size > this.maxFileBytes) {
+					result.errors.push(`file exceeds ${this.maxFileBytes} bytes`);
+
+					return null;
+				}
+
+				text = readFileSync(descriptor, 'utf8');
+			} finally {
+				closeSync(descriptor);
+			}
 		} catch (error) {
 			result.errors.push(`cannot read file: ${errorMessage(error)}`);
 
@@ -282,7 +325,15 @@ export class DefinitionLoader<T> {
 function isInside(root: string, file: string): boolean {
 	const fromRoot = relative(root, file);
 
-	return fromRoot !== '' && !fromRoot.startsWith('..') && !isAbsolute(fromRoot);
+	return fromRoot !== '' && fromRoot !== '..' && !fromRoot.startsWith('..' + sep) && !isAbsolute(fromRoot);
+}
+
+function isDirectoryLink(path: string): boolean {
+	try {
+		return statSync(path).isDirectory();
+	} catch {
+		return false;
+	}
 }
 
 function formatSchemaErrors(errors: ErrorObject[] | null | undefined): string[] {

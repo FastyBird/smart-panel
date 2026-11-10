@@ -15,7 +15,8 @@ The format is validated by `schema/modbus-templates.schema.json`; the TypeScript
 1. **Built-in:** `apps/backend/src/plugins/devices-modbus/templates/definitions/**/*.yaml` (shipped with the app).
 2. **User definitions directory** (`FB_CONFIG_PATH`, falling back to `var/data`): flat files named
    `plugin.devices-modbus.*.yaml`.
-3. **`FB_MODBUS_TEMPLATES_PATH`**, when set: every `*.yaml` and `*.yml` file, recursively.
+3. **`FB_MODBUS_TEMPLATES_PATH`**, when set, **instead of** the user definitions directory (the `plugin.devices-modbus.*.yaml`
+   files in `FB_CONFIG_PATH` are then not read): every `*.yaml` and `*.yml` file, recursively.
 
 Priority: a user definition with the same `id` overrides the built-in one. A file or template that fails validation is
 reported with its load errors and is not offered. Templates are read at startup; call the reload endpoint
@@ -71,6 +72,10 @@ A channel with `repeat: { count: N }` (1 to 256) is expanded into N channels. Fo
 `{i}` is `i` and `{n}` is `i + 1`. Placeholders are substituted in the `identifier` and `name` of the channel and of
 its properties. Any other `{word}` is an error (`unknown placeholder {word}`). Without `repeat` there is one item
 with `i = 0`.
+
+**Limits.** A file holds at most 64 templates, a template at most 64 channel entries, a channel at most 32 properties,
+and a template may expand to at most 512 channels in total (the sum of every `repeat.count`, 1 for a channel without
+`repeat`). A template over a limit is rejected with a load error.
 
 - **Address**: an integer, or `{ base, step = 1, every = 1 }`, which gives `base + step * floor(i / every)`.
 - **Bit**: an integer, or `{ base = 0, step = 1, modulo = 16 }`, which gives `(base + step * i) mod modulo`.

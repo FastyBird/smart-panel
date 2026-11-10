@@ -87,6 +87,7 @@ export class ModbusTemplatesService implements OnModuleInit {
 
 	private current: ModbusTemplateCatalog = { templates: [], files: [] };
 	private byId = new Map<string, LoadedModbusTemplate>();
+	private readonly counts = new WeakMap<ModbusTemplate, { channelCount: number; pointCount: number }>();
 
 	constructor(
 		private readonly config: NestConfigService,
@@ -95,7 +96,22 @@ export class ModbusTemplatesService implements OnModuleInit {
 	) {}
 
 	onModuleInit(): void {
-		this.reload();
+		try {
+			this.reload();
+		} catch (error) {
+			const message = errorMessage(error);
+
+			this.logger.error(
+				`Modbus templates could not be loaded: ${message}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+
+			this.current = {
+				templates: [],
+				files: [{ source: 'builtin', path: '.', loaded: 0, errors: [message], warnings: [] }],
+			};
+			this.byId = new Map();
+		}
 	}
 
 	reload(): ModbusTemplateCatalog {
@@ -115,7 +131,7 @@ export class ModbusTemplatesService implements OnModuleInit {
 		const result = loader.load();
 
 		const templates = result.definitions.map((definition): LoadedModbusTemplate => {
-			const expansion = expandModbusTemplate(definition.item, '');
+			const counts = this.counts.get(definition.item) ?? { channelCount: 0, pointCount: 0 };
 
 			return {
 				template: definition.item,
@@ -123,11 +139,7 @@ export class ModbusTemplatesService implements OnModuleInit {
 				source: definition.source,
 				path: definition.path,
 				overridesBuiltin: definition.overridesBuiltin,
-				channelCount: expansion.channels.length,
-				pointCount: expansion.channels.reduce(
-					(total, channel) => total + channel.properties.filter((property) => property.read || property.write).length,
-					0,
-				),
+				...counts,
 			};
 		});
 
@@ -187,6 +199,14 @@ export class ModbusTemplatesService implements OnModuleInit {
 				endpoint_id: PLACEHOLDER_ENDPOINT_ID,
 			});
 
+			this.counts.set(template, {
+				channelCount: expansion.channels.length,
+				pointCount: expansion.channels.reduce(
+					(total, channel) => total + channel.properties.filter((property) => property.read || property.write).length,
+					0,
+				),
+			});
+
 			const dtoIssues = flattenValidationErrors(validateSync(dto));
 
 			if (dtoIssues.length > 0) {
@@ -202,7 +222,18 @@ export class ModbusTemplatesService implements OnModuleInit {
 				return error.issues.map((issue) => `${prefix}${issue.field}: ${issue.reason}`);
 			}
 
-			throw error;
+			this.logger.error(
+				`Validation of template ${template.id} failed: ${errorMessage(error)}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+
+			return [`${prefix}validation failed: ${errorMessage(error)}`];
 		}
 	}
+}
+
+function errorMessage(error: unknown): string {
+	const message = (error as { message?: unknown } | null)?.message;
+
+	return typeof message === 'string' ? message : 'unknown error';
 }

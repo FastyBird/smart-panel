@@ -1,6 +1,10 @@
 import { ModbusTemplate } from '../templates/modbus-template.types';
 
-import { ModbusTemplateExpansionError, expandModbusTemplate } from './template-expander';
+import {
+	MAX_TEMPLATE_EXPANDED_CHANNELS,
+	ModbusTemplateExpansionError,
+	expandModbusTemplate,
+} from './template-expander';
 
 const qingjun = (): ModbusTemplate => ({
 	id: 'qingjun-32di',
@@ -190,5 +194,38 @@ describe('expandModbusTemplate', () => {
 		expect(property.read.value_map).toEqual(valueMap);
 		expect(property.write).toMatchObject({ write_function: 'single', value_map: valueMap, address: 1 });
 		expect(property).toMatchObject({ data_type: 'bool', permissions: ['rw'] });
+	});
+
+	describe('expansion limit', () => {
+		const repeated = (counts: number[]): ModbusTemplate => ({
+			...qingjun(),
+			channels: counts.map((count, index) => ({
+				...(qingjun().channels[0] as unknown as Record<string, unknown>),
+				identifier: `c${index}_{n}`,
+				repeat: { count },
+			})) as never,
+		});
+
+		it('exports the limit', () => {
+			expect(MAX_TEMPLATE_EXPANDED_CHANNELS).toBe(512);
+		});
+
+		it('rejects a template expanding to more than 512 channels before expanding any', () => {
+			expect(issuesOf(() => expandModbusTemplate(repeated([256, 256, 1]), 'rev'))).toEqual([
+				{ field: 'channels', reason: 'expands to 513 channels; the limit is 512' },
+			]);
+		});
+
+		it('counts an unrepeated channel as one', () => {
+			const template = repeated([256, 256]);
+
+			template.channels.push({ ...template.channels[0], identifier: 'plain', repeat: undefined });
+
+			expect(issuesOf(() => expandModbusTemplate(template, 'rev'))[0].reason).toContain('513 channels');
+		});
+
+		it('accepts exactly 512 channels', () => {
+			expect(expandModbusTemplate(repeated([256, 256]), 'rev').channels).toHaveLength(512);
+		});
 	});
 });

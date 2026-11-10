@@ -250,7 +250,7 @@ Integration for Modbus devices reachable over the network. Supports **Modbus TCP
 - **RTU over TCP** — RTU frames (with CRC) through transparent serial-to-Ethernet gateways
 - **Typed registers** — bool, int16, uint16, int32, uint32 and float32 with configurable byte and word order
 - **Resilient connections** — automatic reconnect with backoff and per-device health tracking
-- **Device templates** — built-in templates (Qingjun 32 channel input board, Eletechsup N4D8B08) create a complete device from a unit ID. Your own templates are YAML files named \`plugin.devices-modbus.*.yaml\` in the configuration directory, or any \`*.yaml\` file under the directory set in \`FB_MODBUS_TEMPLATES_PATH\`; a template with the same ID replaces the built-in one. Reload them from the API without restarting. Devices keep the structure they were created with when a template changes.
+- **Device templates** — built-in templates (Qingjun 32 channel input board, Eletechsup N4D8B08) create a complete device from a unit ID. Your own templates are YAML files named \`plugin.devices-modbus.*.yaml\` in the configuration directory; when \`FB_MODBUS_TEMPLATES_PATH\` is set, every \`*.yaml\` file under that directory is read instead of those; a template with the same ID replaces the built-in one. Reload them from the API without restarting. Devices keep the structure they were created with when a template changes.
 
 ## Configuration
 

@@ -41,6 +41,9 @@ export class ModbusTemplateExpansionError extends Error {
 	}
 }
 
+/** Upper bound on the channels one template may expand to (sum of every `repeat.count`). */
+export const MAX_TEMPLATE_EXPANDED_CHANNELS = 512;
+
 const MAX_ADDRESS = 65535;
 const MAX_BIT = 15;
 
@@ -66,6 +69,18 @@ export function expandModbusTemplate(
 
 	if (unitId < minUnit || unitId > maxUnit) {
 		issues.push({ field: 'unit_id', reason: `must be between ${minUnit} and ${maxUnit}` });
+	}
+
+	const expandedCount = template.channels.reduce((total, channel) => total + (channel.repeat?.count ?? 1), 0);
+
+	if (expandedCount > MAX_TEMPLATE_EXPANDED_CHANNELS) {
+		throw new ModbusTemplateExpansionError([
+			...issues,
+			{
+				field: 'channels',
+				reason: `expands to ${expandedCount} channels; the limit is ${MAX_TEMPLATE_EXPANDED_CHANNELS}`,
+			},
+		]);
 	}
 
 	const channels: CreateModbusDeviceStructureChannelDto[] = [];

@@ -155,9 +155,10 @@ export class UpdateModbusDeviceDto extends UpdateDeviceDto {
 
 	@ApiPropertyOptional({
 		name: 'template_revision',
-		description: 'Template revision applied: the template version and a hash of its content',
+		description:
+			'Template revision applied: the first 16 lowercase hex characters of the SHA-256 of the template content',
 		type: 'string',
-		example: '1.2.0+3f2a9c1b',
+		example: '3f2a9c1b7d4e6a05',
 		minLength: 1,
 		maxLength: MODBUS_LIMITS.TEMPLATE_REVISION_MAX_LENGTH,
 	})
