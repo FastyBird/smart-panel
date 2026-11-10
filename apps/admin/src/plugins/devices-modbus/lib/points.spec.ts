@@ -29,6 +29,7 @@ const binding = (over: Partial<ModbusPointBinding> = {}): ModbusPointBinding => 
 	invert: false,
 	valueMap: null,
 	writeFunction: null,
+	pollIntervalMs: null,
 	...over,
 });
 
@@ -37,6 +38,9 @@ const base = (
 ): Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'> => ({
 	channelCategory: 'switcher',
 	propertyCategory: 'on',
+	propertyIdentifier: null,
+	propertyName: null,
+	format: null,
 	dataType: 'bool',
 	permissions: ['rw'],
 	staticValue: null,
@@ -308,6 +312,89 @@ describe('toCreateRequest', () => {
 		expect(dropped.template_revision).toBeUndefined();
 
 		expect(toCreateRequest(input(templatePoints.slice(1), template)).data.template_id).toBeUndefined();
+	});
+
+	it('keeps property identifier, name, format, binding poll interval and device fields from a template', () => {
+		const rich: IModbusTemplatePreview = {
+			...preview,
+			maxReadRegisters: 50,
+			maxReadBits: 800,
+			maxReadGap: 2,
+			channels: [
+				{
+					identifier: 'level',
+					name: 'Level',
+					category: 'humidity',
+					properties: [
+						{
+							category: 'humidity',
+							identifier: 'level_pct',
+							name: 'Level %',
+							dataType: 'uchar',
+							permissions: ['ro'],
+							unit: '%',
+							format: [0, 100],
+							read: { registerType: RT.input_register, address: 7, dataType: DT.uint16, pollIntervalMs: 5000 },
+						},
+					],
+				},
+			],
+		};
+		const points = pointsFromPreview(rich);
+		const template = { id: 'rich', revision: 'r1', points };
+		const { data } = toCreateRequest({
+			...input(pointsFromPreview(rich), template),
+			manufacturer: 'Acme',
+			model: 'R8',
+			maxReadRegisters: 50,
+			maxReadBits: 800,
+			maxReadGap: 2,
+		});
+
+		expect(data).toEqual({
+			name: 'Board',
+			category: 'switcher',
+			endpoint_id: 'ep-1',
+			unit_id: 3,
+			poll_interval_ms: 500,
+			byte_order: 'big',
+			word_order: 'little',
+			max_read_registers: 50,
+			max_read_bits: 800,
+			max_read_gap: 2,
+			manufacturer: 'Acme',
+			model: 'R8',
+			template_id: 'rich',
+			template_revision: 'r1',
+			channels: [
+				{
+					identifier: 'level',
+					name: 'Level',
+					category: 'humidity',
+					properties: [
+						{
+							identifier: 'level_pct',
+							name: 'Level %',
+							category: 'humidity',
+							data_type: 'uchar',
+							permissions: ['ro'],
+							unit: '%',
+							format: [0, 100],
+							read: { register_type: 'input_register', address: 7, data_type: 'uint16', poll_interval_ms: 5000 },
+						},
+					],
+				},
+			],
+		});
+		expect(samePoints(points, [{ ...points[0], format: [0, 99] }])).toBe(false);
+		expect(samePoints(points, [{ ...points[0], propertyName: null }])).toBe(false);
+	});
+
+	it('throws when points sharing a channel disagree on its name or category', () => {
+		const [a] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A');
+
+		expect(() => toCreateRequest(input([a, { ...a, key: 'x', name: 'Other' }]))).toThrow(/disagree/);
+		expect(() => toCreateRequest(input([a, { ...a, key: 'x', channelCategory: 'outlet' }]))).toThrow(/disagree/);
 	});
 
 	it('merges points sharing a channel identifier into one channel', () => {

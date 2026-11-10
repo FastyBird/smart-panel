@@ -34,6 +34,7 @@ describe('parseAddressInput', () => {
 		['2001', 'modicon', 'modiconFormat'],
 		['40000', 'modicon', 'zeroNotAllowed'],
 		['20001', 'modicon', 'modiconFormat'],
+		['465537', 'modicon', 'outOfRange'],
 		['30001-40002', 'modicon', 'modiconMixed'],
 	])('rejects %s (%s) with %s', (input, notation, key) => {
 		let error: unknown;

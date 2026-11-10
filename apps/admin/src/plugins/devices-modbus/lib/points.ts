@@ -23,6 +23,7 @@ export interface ModbusPointBinding {
 	invert: boolean;
 	valueMap: { raw: number; value: string | number | boolean }[] | null;
 	writeFunction: DevicesModbusPluginWriteFunction | null;
+	pollIntervalMs: number | null;
 }
 
 export interface ModbusPoint {
@@ -32,6 +33,9 @@ export interface ModbusPoint {
 	channelCategory: string;
 	channelIdentifier: string;
 	propertyCategory: string;
+	propertyIdentifier: string | null;
+	propertyName: string | null;
+	format: (string | number)[] | null;
 	dataType: string;
 	permissions: string[];
 	staticValue: string | number | boolean | null;
@@ -88,6 +92,9 @@ export function pointsFromRange(base: PointBase, parsed: ParsedAddress, namePref
 			read: shift(base.read),
 			write: shift(base.write),
 			key: nextKey(),
+			propertyIdentifier: base.propertyIdentifier ?? null,
+			propertyName: base.propertyName ?? null,
+			format: base.format ? [...base.format] : null,
 			name: `${namePrefix} ${i + 1}`,
 			channelIdentifier: uniqueIdentifier(slug(`${namePrefix} ${i + 1}`), taken),
 		});
@@ -111,6 +118,7 @@ const bindingFromPreview = (binding: IModbusTemplatePreviewBinding | undefined):
 				invert: binding.invert ?? false,
 				valueMap: binding.valueMap ? binding.valueMap.map((entry) => ({ raw: entry.raw, value: entry.value })) : null,
 				writeFunction: binding.writeFunction ?? null,
+				pollIntervalMs: binding.pollIntervalMs ?? null,
 			};
 
 export function pointsFromPreview(preview: IModbusTemplatePreview): ModbusPoint[] {
@@ -121,6 +129,9 @@ export function pointsFromPreview(preview: IModbusTemplatePreview): ModbusPoint[
 			channelCategory: channel.category,
 			channelIdentifier: channel.identifier,
 			propertyCategory: property.category,
+			propertyIdentifier: property.identifier ?? null,
+			propertyName: property.name ?? null,
+			format: property.format ? [...property.format] : null,
 			dataType: property.dataType,
 			permissions: [...property.permissions],
 			staticValue: property.staticValue ?? null,
@@ -185,13 +196,17 @@ const toRequestBinding = (binding: ModbusPointBinding): RequestBinding => ({
 			}),
 	...(binding.invert ? { invert: true } : {}),
 	...(binding.writeFunction !== null ? { write_function: binding.writeFunction } : {}),
+	...(binding.pollIntervalMs !== null ? { poll_interval_ms: binding.pollIntervalMs } : {}),
 });
 
 const toRequestProperty = (point: ModbusPoint): Property => ({
+	...(point.propertyIdentifier !== null ? { identifier: point.propertyIdentifier } : {}),
+	...(point.propertyName !== null ? { name: point.propertyName } : {}),
 	category: point.propertyCategory as Property['category'],
 	data_type: point.dataType as Property['data_type'],
 	permissions: point.permissions as Property['permissions'],
 	...(point.unit !== null ? { unit: point.unit } : {}),
+	...(point.format !== null ? { format: point.format } : {}),
 	...(point.staticValue !== null ? { static_value: point.staticValue } : {}),
 	...(point.read !== null ? { read: toRequestBinding(point.read) } : {}),
 	...(point.write !== null ? { write: toRequestBinding(point.write) } : {}),
@@ -208,6 +223,11 @@ export interface ModbusCreateInput {
 	wordOrder: DevicesModbusPluginByteOrder;
 	points: ModbusPoint[];
 	template: { id: string; revision: string; points: ModbusPoint[] } | null;
+	manufacturer?: string;
+	model?: string;
+	maxReadRegisters?: number | null;
+	maxReadBits?: number | null;
+	maxReadGap?: number | null;
 }
 
 export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDeviceStructure {
@@ -217,6 +237,10 @@ export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDevice
 		const existing = channels.get(point.channelIdentifier);
 
 		if (existing) {
+			if (existing.name !== point.name || existing.category !== point.channelCategory) {
+				throw new Error(`Points of channel "${point.channelIdentifier}" disagree on the channel name or category`);
+			}
+
 			existing.properties.push(toRequestProperty(point));
 		} else {
 			channels.set(point.channelIdentifier, {
@@ -240,6 +264,11 @@ export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDevice
 			poll_interval_ms: input.pollIntervalMs,
 			byte_order: input.byteOrder,
 			word_order: input.wordOrder,
+			...(input.maxReadRegisters != null ? { max_read_registers: input.maxReadRegisters } : {}),
+			...(input.maxReadBits != null ? { max_read_bits: input.maxReadBits } : {}),
+			...(input.maxReadGap != null ? { max_read_gap: input.maxReadGap } : {}),
+			...(input.manufacturer !== undefined ? { manufacturer: input.manufacturer } : {}),
+			...(input.model !== undefined ? { model: input.model } : {}),
 			...(fromTemplate && input.template ? { template_id: input.template.id, template_revision: input.template.revision } : {}),
 			channels: [...channels.values()],
 		},
