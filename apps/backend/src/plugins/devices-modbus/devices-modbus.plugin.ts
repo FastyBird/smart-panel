@@ -261,7 +261,10 @@ Integration for Modbus devices reachable over the network. Supports **Modbus TCP
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| \`enabled\` | Enable the Modbus plugin | \`true\` |`,
+| \`enabled\` | Enable the Modbus plugin | \`true\` |
+| \`default_connect_timeout_ms\` | Connect timeout for new endpoints that do not set one | \`2000\` |
+| \`default_request_timeout_ms\` | Request timeout for new endpoints that do not set one | \`1000\` |
+| \`default_poll_interval_ms\` | Poll interval suggested for new devices | \`1000\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

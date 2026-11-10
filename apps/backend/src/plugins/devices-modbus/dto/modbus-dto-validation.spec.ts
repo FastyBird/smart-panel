@@ -5,6 +5,7 @@ import { ModbusBindingDto } from './binding.dto';
 import { CreateModbusDeviceStructureDto } from './create-device-structure.dto';
 import { CreateModbusDeviceDto } from './create-device.dto';
 import { CreateModbusEndpointDto } from './create-endpoint.dto';
+import { ModbusUpdatePluginConfigDto } from './update-config.dto';
 import { UpdateModbusDeviceDto } from './update-device.dto';
 import { UpdateModbusEndpointDto } from './update-endpoint.dto';
 
@@ -87,5 +88,35 @@ describe('Modbus DTO validation', () => {
 			expect(await fieldErrors(ModbusBindingDto, 'poll_interval_ms', 86_400_000)).toEqual([]);
 			expect(await fieldErrors(ModbusBindingDto, 'poll_interval_ms', 86_400_001)).not.toEqual([]);
 		});
+	});
+});
+
+describe('ModbusUpdatePluginConfigDto', () => {
+	/** The DTO exposes snake_case names; the validation errors name the camelCase property. */
+	const configErrors = async (field: string, value: unknown): Promise<ValidationError[]> => {
+		const errors = await validate(plainToInstance(ModbusUpdatePluginConfigDto, { [field]: value }));
+		const property = field.replace(/_([a-z])/g, (_match, char: string) => char.toUpperCase());
+
+		return errors.filter((error) => error.property === property);
+	};
+
+	it.each([
+		['default_connect_timeout_ms', 0],
+		['default_connect_timeout_ms', 60_001],
+		['default_request_timeout_ms', 0],
+		['default_request_timeout_ms', 1.5],
+		['default_poll_interval_ms', 50],
+		['default_poll_interval_ms', 86_400_001],
+	])('rejects %s = %s', async (field, value) => {
+		expect((await configErrors(field, value)).length).toBeGreaterThan(0);
+	});
+
+	it.each([
+		['default_connect_timeout_ms', 1],
+		['default_request_timeout_ms', 60_000],
+		['default_poll_interval_ms', 100],
+		['default_poll_interval_ms', undefined],
+	])('accepts %s = %s', async (field, value) => {
+		expect(await configErrors(field, value)).toEqual([]);
 	});
 });

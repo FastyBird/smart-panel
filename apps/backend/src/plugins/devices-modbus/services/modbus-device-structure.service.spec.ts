@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -55,6 +56,7 @@ import {
 } from '../entities/devices-modbus.entity';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusEndpointEntity } from '../entities/modbus-endpoint.entity';
+import { ModbusConfigModel } from '../models/config.model';
 
 import { ModbusBindingsService } from './modbus-bindings.service';
 import { ModbusConnectionsService } from './modbus-connections.service';
@@ -240,6 +242,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			database.getRepository(ModbusEndpointEntity),
 			database.getRepository(ModbusDeviceEntity),
 			{ reconcile: jest.fn().mockResolvedValue(undefined) } as unknown as ModbusConnectionsService,
+			{ getPluginConfig: jest.fn(() => new ModbusConfigModel()) } as unknown as ConfigService,
 		);
 
 		endpoint = await endpoints.create({ name: 'Gateway', host: '10.10.0.230' });

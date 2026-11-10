@@ -4,12 +4,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { DEVICES_MODBUS_PLUGIN_NAME, MODBUS_DEFAULTS, ModbusFraming } from '../devices-modbus.constants';
 import { ModbusValidationException } from '../devices-modbus.exceptions';
 import { CreateModbusEndpointDto } from '../dto/create-endpoint.dto';
 import { UpdateModbusEndpointDto } from '../dto/update-endpoint.dto';
 import { ModbusDeviceEntity } from '../entities/devices-modbus.entity';
 import { ModbusEndpointEntity } from '../entities/modbus-endpoint.entity';
+import { ModbusConfigModel } from '../models/config.model';
 
 import { ModbusConnectionsService } from './modbus-connections.service';
 
@@ -31,6 +33,7 @@ export class ModbusEndpointsService {
 		@InjectRepository(ModbusDeviceEntity)
 		private readonly devicesRepository: Repository<ModbusDeviceEntity>,
 		private readonly connections: ModbusConnectionsService,
+		private readonly configService: ConfigService,
 	) {}
 
 	async findAll(): Promise<ModbusEndpointEntity[]> {
@@ -65,13 +68,15 @@ export class ModbusEndpointsService {
 
 		await this.assertUniqueAddress(dto.host, port);
 
+		const defaults = this.timeoutDefaults();
+
 		const endpoint = this.repository.create({
 			name: dto.name,
 			host: dto.host,
 			port,
 			framing,
-			connectTimeoutMs: dto.connect_timeout_ms ?? MODBUS_DEFAULTS.CONNECT_TIMEOUT_MS,
-			requestTimeoutMs: dto.request_timeout_ms ?? MODBUS_DEFAULTS.REQUEST_TIMEOUT_MS,
+			connectTimeoutMs: dto.connect_timeout_ms ?? defaults.connectTimeoutMs,
+			requestTimeoutMs: dto.request_timeout_ms ?? defaults.requestTimeoutMs,
 			interRequestDelayMs: dto.inter_request_delay_ms ?? defaultInterRequestDelayMs(framing),
 			maxInFlight: framing === ModbusFraming.RTU_OVER_TCP ? 1 : (dto.max_in_flight ?? MODBUS_DEFAULTS.MAX_IN_FLIGHT),
 			enabled: dto.enabled ?? true,
@@ -132,6 +137,23 @@ export class ModbusEndpointsService {
 		await this.repository.remove(endpoint);
 
 		await this.reconcile(id);
+	}
+
+	/** Plugin config timeouts; the built-in defaults when the config is unavailable (early startup, tests). */
+	private timeoutDefaults(): { connectTimeoutMs: number; requestTimeoutMs: number } {
+		try {
+			const config = this.configService.getPluginConfig<ModbusConfigModel>(DEVICES_MODBUS_PLUGIN_NAME);
+
+			return {
+				connectTimeoutMs: config?.defaultConnectTimeoutMs ?? MODBUS_DEFAULTS.CONNECT_TIMEOUT_MS,
+				requestTimeoutMs: config?.defaultRequestTimeoutMs ?? MODBUS_DEFAULTS.REQUEST_TIMEOUT_MS,
+			};
+		} catch {
+			return {
+				connectTimeoutMs: MODBUS_DEFAULTS.CONNECT_TIMEOUT_MS,
+				requestTimeoutMs: MODBUS_DEFAULTS.REQUEST_TIMEOUT_MS,
+			};
+		}
 	}
 
 	/**
