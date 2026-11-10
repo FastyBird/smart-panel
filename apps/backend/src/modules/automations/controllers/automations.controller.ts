@@ -280,11 +280,13 @@ export class AutomationsController {
 	 * into `error.details` of the error envelope.
 	 */
 	private createGraphRejection(error: AutomationsGraphValidationException): UnprocessableEntityException {
-		return new UnprocessableEntityException({
+		const rejection = new UnprocessableEntityException({
 			code: AUTOMATION_GRAPH_INVALID_ERROR_CODE,
 			message: error.message,
 			issues: error.issues,
 		});
+
+		return rejection;
 	}
 
 	private async getOneOrThrow(id: string): Promise<AutomationEntity> {
