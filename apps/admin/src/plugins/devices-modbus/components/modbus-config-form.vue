@@ -86,7 +86,7 @@ import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElLink, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
 
 import { useLogger } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
