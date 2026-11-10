@@ -23,7 +23,10 @@ export type ModbusProbeTarget =
 	  };
 
 export interface IModbusProbeError {
-	/** Backend kinds (timeout, connection, unavailable, exception, encode) plus `busy` (HTTP 429) and `request` (any other HTTP failure). */
+	/**
+	 * Backend kinds (timeout, connection, unavailable, exception, encode) plus `busy` (the single-flight 429), `rate_limited`
+	 * (the throttler's 429) and `request` (any other HTTP or network failure).
+	 */
 	kind: string;
 	exceptionCode: number | null;
 	message: string;
@@ -61,6 +64,13 @@ export interface IModbusProbeOrders {
 	wordOrder: DevicesModbusPluginByteOrder;
 }
 
+/** Read batching limits; a null or missing value leaves the backend default in place. */
+export interface IModbusProbeReadLimits {
+	maxReadRegisters?: number | null;
+	maxReadBits?: number | null;
+	maxReadGap?: number | null;
+}
+
 export interface IModbusProbePointInput {
 	key: string;
 	read: ModbusPointBinding;
@@ -78,7 +88,8 @@ export interface IUseModbusProbe {
 		target: ModbusProbeTarget,
 		unitId: number,
 		points: IModbusProbePointInput[],
-		orders: IModbusProbeOrders
+		orders: IModbusProbeOrders,
+		limits?: IModbusProbeReadLimits
 	) => Promise<IModbusProbePointsResult>;
 	write: (
 		target: ModbusProbeTarget,
@@ -90,6 +101,7 @@ export interface IUseModbusProbe {
 }
 
 const BUSY_MESSAGE = 'Another probe to this endpoint is still running.';
+const RATE_LIMITED_MESSAGE = 'Too many probe requests.';
 
 const failure = (kind: string, message: string): { ok: false; error: IModbusProbeError; durationMs: number } => ({
 	ok: false,
@@ -108,23 +120,29 @@ export const useModbusProbe = (): IUseModbusProbe => {
 		fallback: string,
 		onFailure: (kind: string, message: string) => T
 	): Promise<T> => {
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await (
-			backend.client.POST as unknown as (
-				path: string,
-				options: { body: unknown }
-			) => Promise<{ data?: { data: unknown }; error?: unknown; response: Response }>
-		)(`${BASE}/${path}`, { body: { data } });
+		let outcome: { data?: { data: unknown }; error?: unknown; response: Response };
+
+		try {
+			outcome = await (
+				backend.client.POST as unknown as (
+					path: string,
+					options: { body: unknown }
+				) => Promise<{ data?: { data: unknown }; error?: unknown; response: Response }>
+			)(`${BASE}/${path}`, { body: { data } });
+		} catch (caught: unknown) {
+			// A network failure must not escape: an unhandled rejection would leave the caller without a result.
+			return onFailure('request', caught instanceof Error && caught.message !== '' ? caught.message : fallback);
+		}
+
+		const { data: responseData, error, response } = outcome;
 
 		if (responseData) {
 			return snakeToCamel(responseData.data as Record<string, unknown>) as T;
 		}
 
 		if (response.status === 429) {
-			return onFailure('busy', BUSY_MESSAGE);
+			// The single-flight guard names itself in the body; any other 429 comes from the rate limiter.
+			return JSON.stringify(error ?? '').includes(BUSY_MESSAGE) ? onFailure('busy', BUSY_MESSAGE) : onFailure('rate_limited', RATE_LIMITED_MESSAGE);
 		}
 
 		return onFailure('request', getErrorReason(error as never, fallback));
@@ -138,7 +156,7 @@ export const useModbusProbe = (): IUseModbusProbe => {
 			(kind, message) => ({ ...failure(kind, message), values: null })
 		);
 
-	const readPoints: IUseModbusProbe['readPoints'] = (target, unitId, points, orders) =>
+	const readPoints: IUseModbusProbe['readPoints'] = (target, unitId, points, orders, limits) =>
 		post<IModbusProbePointsResult>(
 			'points',
 			{
@@ -146,6 +164,9 @@ export const useModbusProbe = (): IUseModbusProbe => {
 				unit_id: unitId,
 				byte_order: orders.byteOrder,
 				word_order: orders.wordOrder,
+				...(limits?.maxReadRegisters != null ? { max_read_registers: limits.maxReadRegisters } : {}),
+				...(limits?.maxReadBits != null ? { max_read_bits: limits.maxReadBits } : {}),
+				...(limits?.maxReadGap != null ? { max_read_gap: limits.maxReadGap } : {}),
 				points: points.map((point) => ({ key: point.key, binding: toRequestBinding(point.read) })),
 			},
 			'The probe request failed.',

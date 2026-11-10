@@ -89,6 +89,56 @@ describe('useModbusLiveValues', () => {
 		expect(live.error.value).toBeNull();
 	});
 
+	it('keeps per-point results when nothing decoded and no top-level error is set', async () => {
+		const readFn = vi.fn().mockResolvedValue({
+			ok: false,
+			points: [{ key: 'a', raw: null, value: null, error: { kind: 'exception', exceptionCode: 2, message: 'Illegal address' } }],
+			error: null,
+			durationMs: 1,
+		});
+		const { live } = host([point('a', binding(0))], readFn);
+
+		await live.readNow();
+
+		expect(live.error.value).toBeNull();
+		expect(live.results.value.a.error).toMatchObject({ exceptionCode: 2 });
+	});
+
+	it('holds the timer and waits for a read in flight while paused', async () => {
+		let release!: (value: IModbusProbePointsResult) => void;
+		const readFn = vi
+			.fn()
+			.mockImplementationOnce(() => new Promise<IModbusProbePointsResult>((resolve) => (release = resolve)))
+			.mockResolvedValue(okResult());
+		const { live } = host([point('a', binding(0))], readFn);
+		const order: string[] = [];
+
+		live.autoRefresh.value = true;
+
+		const paused = live.whilePaused(async () => {
+			order.push('work');
+		});
+
+		await vi.advanceTimersByTimeAsync(10);
+		expect(order).toEqual([]);
+
+		release(okResult());
+		await paused;
+		expect(order).toEqual(['work']);
+
+		const callsBefore = readFn.mock.calls.length;
+		let release2!: () => void;
+		const held = live.whilePaused(() => new Promise<void>((resolve) => (release2 = resolve)));
+
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(readFn.mock.calls.length).toBe(callsBefore);
+
+		release2();
+		await held;
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(readFn.mock.calls.length).toBeGreaterThan(callsBefore);
+	});
+
 	it('does not call the reader when no point has a read binding', async () => {
 		const readFn = vi.fn();
 		const { live } = host([point('c', null)], readFn);

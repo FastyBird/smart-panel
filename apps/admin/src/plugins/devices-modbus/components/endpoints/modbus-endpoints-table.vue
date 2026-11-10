@@ -54,7 +54,13 @@
 				>
 					{{ t(`devicesModbusPlugin.endpoints.state.${health[row.id]!.state}`) }}
 				</el-tag>
-				<span v-else>-</span>
+				<el-tag
+					v-else
+					type="info"
+					data-test-id="modbus-endpoint-state-unknown"
+				>
+					{{ t('devicesModbusPlugin.endpoints.state.unknown') }}
+				</el-tag>
 			</template>
 		</el-table-column>
 

@@ -9,6 +9,7 @@ describe('explainProbeError', () => {
 		['connection', null, 'connection'],
 		['timeout', null, 'timeout'],
 		['busy', null, 'busy'],
+		['rate_limited', null, 'rateLimited'],
 		['unavailable', null, 'unavailable'],
 		['exception', 2, 'illegalAddress'],
 		['exception', 1, 'illegalFunction'],

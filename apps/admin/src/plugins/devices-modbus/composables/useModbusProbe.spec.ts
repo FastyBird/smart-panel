@@ -34,13 +34,68 @@ describe('useModbusProbe', () => {
 		vi.clearAllMocks();
 	});
 
-	it('maps a 429 to a busy result', async () => {
-		post.mockResolvedValue({ data: undefined, error: { error: {} }, response: { status: 429 } });
+	it('maps the single-flight 429 to a busy result', async () => {
+		post.mockResolvedValue({
+			data: undefined,
+			error: { error: { message: 'Another probe to this endpoint is still running.' } },
+			response: { status: 429 },
+		});
 
 		const result = await useModbusProbe().read({ endpoint_id: 'e1' }, 1, DevicesModbusPluginRegisterType.holding_register, 0, 1);
 
 		expect(result.ok).toBe(false);
 		expect(result.error?.kind).toBe('busy');
+	});
+
+	it('maps the throttler 429 to a rate_limited result', async () => {
+		post.mockResolvedValue({ data: undefined, error: { message: 'ThrottlerException: Too Many Requests' }, response: { status: 429 } });
+
+		const result = await useModbusProbe().read({ endpoint_id: 'e1' }, 1, DevicesModbusPluginRegisterType.holding_register, 0, 1);
+
+		expect(result.error?.kind).toBe('rate_limited');
+	});
+
+	it('maps a network error during a write to a failed request result', async () => {
+		post.mockRejectedValue(new Error('Network down'));
+
+		const binding = {
+			registerType: DevicesModbusPluginRegisterType.coil,
+			address: 1,
+			dataType: DevicesModbusPluginDataType.bool,
+			bit: null,
+			byteOrder: null,
+			wordOrder: null,
+			scale: 1,
+			offset: 0,
+			invert: false,
+			valueMap: null,
+			writeFunction: null,
+			pollIntervalMs: null,
+		} satisfies ModbusPointBinding;
+
+		const result = await useModbusProbe().write({ endpoint_id: 'e1' }, 1, binding, true, {
+			byteOrder: DevicesModbusPluginByteOrder.big,
+			wordOrder: DevicesModbusPluginByteOrder.big,
+		});
+
+		expect(result).toMatchObject({ ok: false, error: { kind: 'request', message: 'Network down' } });
+	});
+
+	it('passes the read limits to the points probe only when set', async () => {
+		post.mockResolvedValue({ data: { data: { ok: true, points: [], error: null, duration_ms: 1 } }, response: { status: 200 } });
+
+		await useModbusProbe().readPoints(
+			{ endpoint_id: 'e1' },
+			1,
+			[],
+			{ byteOrder: DevicesModbusPluginByteOrder.big, wordOrder: DevicesModbusPluginByteOrder.big },
+			{ maxReadRegisters: 60, maxReadBits: null, maxReadGap: 0 }
+		);
+
+		const body = post.mock.calls[0][1].body.data;
+
+		expect(body).toMatchObject({ max_read_registers: 60, max_read_gap: 0 });
+		expect(body).not.toHaveProperty('max_read_bits');
 	});
 
 	it('sends endpoint_id for a saved endpoint and details for an unsaved one', async () => {

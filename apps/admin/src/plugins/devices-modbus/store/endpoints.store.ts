@@ -133,12 +133,27 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		delete health.value[id];
 	};
 
+	const requestHealth = async (id: string) => backend.client.GET(`${BASE}/{id}/health`, { params: { path: { id } } });
+
 	const fetchHealth = async (id: string): Promise<IModbusEndpointHealth> => {
-		const { data: responseData, error, response } = await backend.client.GET(`${BASE}/{id}/health`, { params: { path: { id } } });
+		let result: Awaited<ReturnType<typeof requestHealth>>;
+
+		try {
+			result = await requestHealth(id);
+		} catch (caught: unknown) {
+			// The last known state is no longer live; the table renders a missing entry as unknown.
+			delete health.value[id];
+
+			throw caught;
+		}
+
+		const { data: responseData, error, response } = result;
 
 		if (responseData) {
 			return (health.value[id] = transformModbusEndpointHealth(responseData.data));
 		}
+
+		delete health.value[id];
 
 		throw new DevicesModbusApiException(
 			getErrorReason<DevicesModbusPluginGetEndpointHealthOperation>(error, 'Failed to load the Modbus endpoint health.'),

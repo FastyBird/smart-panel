@@ -17,6 +17,11 @@ export interface IUseModbusLiveValues {
 	reading: Ref<boolean>;
 	autoRefresh: Ref<boolean>;
 	readNow: () => Promise<void>;
+	/**
+	 * Runs `work` (e.g. a test write and its read-back) with the timer paused, once any read in flight has finished, so
+	 * the work never collides with an automatic read.
+	 */
+	whilePaused: <T>(work: () => Promise<T>) => Promise<T>;
 }
 
 /**
@@ -37,6 +42,7 @@ export const useModbusLiveValues = (
 	let inFlight: Promise<void> | null = null;
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let disposed = false;
+	let pauseDepth = 0;
 
 	const run = async (): Promise<void> => {
 		const inputs = toValue(points).flatMap((point) => (point.read === null ? [] : [{ key: point.key, read: point.read }]));
@@ -57,8 +63,10 @@ export const useModbusLiveValues = (
 				return;
 			}
 
+			// Per-point raw values and errors are kept even when nothing decoded (illegal address, value map miss);
+			// only a top-level error (the whole read failed) is an alert.
 			error.value = response.error;
-			results.value = response.ok ? Object.fromEntries(response.points.map((result) => [result.key, result])) : {};
+			results.value = Object.fromEntries(response.points.map((result) => [result.key, result]));
 		} catch (caught: unknown) {
 			if (!disposed) {
 				results.value = {};
@@ -87,6 +95,20 @@ export const useModbusLiveValues = (
 		}
 	};
 
+	const whilePaused = async <T>(work: () => Promise<T>): Promise<T> => {
+		pauseDepth++;
+
+		try {
+			while (inFlight !== null) {
+				await inFlight;
+			}
+
+			return await work();
+		} finally {
+			pauseDepth--;
+		}
+	};
+
 	const stopTimer = (): void => {
 		if (timer !== null) {
 			clearInterval(timer);
@@ -106,7 +128,7 @@ export const useModbusLiveValues = (
 			void readNow();
 
 			timer = setInterval(() => {
-				if (inFlight === null) {
+				if (inFlight === null && pauseDepth === 0) {
 					void readNow();
 				}
 			}, intervalMs);
@@ -119,5 +141,5 @@ export const useModbusLiveValues = (
 		stopTimer();
 	});
 
-	return { results, error, reading, autoRefresh, readNow };
+	return { results, error, reading, autoRefresh, readNow, whilePaused };
 };

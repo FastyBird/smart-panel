@@ -9,6 +9,8 @@ export function explainProbeError(error: { kind: string; exceptionCode: number |
 			return `${PREFIX}timeout`;
 		case 'busy':
 			return `${PREFIX}busy`;
+		case 'rate_limited':
+			return `${PREFIX}rateLimited`;
 		case 'unavailable':
 			return `${PREFIX}unavailable`;
 		case 'exception':

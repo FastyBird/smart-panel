@@ -140,6 +140,23 @@ describe('ModbusDeviceSection', () => {
 		expect(wrapper.get('[data-test-id="modbus-section-decoded-b1"]').text()).toBe('true');
 	});
 
+	it('passes the device read limits and explains failed readings instead of showing raw messages', async () => {
+		readPoints.mockResolvedValue({
+			ok: false,
+			points: [{ key: 'b1', raw: null, value: null, error: { kind: 'exception', exceptionCode: 2, message: 'raw backend text' } }],
+			error: null,
+			durationMs: 5,
+		});
+		const wrapper = await mountSection(device({ maxReadRegisters: 40, maxReadBits: null, maxReadGap: 3 }));
+
+		await wrapper.get('[data-test-id="modbus-section-read-now"]').trigger('click');
+		await flushPromises();
+
+		expect(readPoints.mock.calls[0]![4]).toEqual({ maxReadRegisters: 40, maxReadBits: null, maxReadGap: 3 });
+		expect(wrapper.get('[data-test-id="modbus-section-error-b1"]').text()).toBe('devicesModbusPlugin.wizard.probe.errors.illegalAddress');
+		expect(wrapper.text()).not.toContain('raw backend text');
+	});
+
 	it('shows custom when the device has no template', async () => {
 		const wrapper = await mountSection(device({ templateId: null, templateRevision: null, pollIntervalMs: null }));
 

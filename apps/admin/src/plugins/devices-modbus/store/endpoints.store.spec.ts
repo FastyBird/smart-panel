@@ -188,6 +188,27 @@ describe('Modbus endpoints store', () => {
 		expect(store.findAll()).toHaveLength(1);
 	});
 
+	it.each([
+		['an HTTP failure', () => get.mockResolvedValue({ data: undefined, error: { reason: 'down' }, response: { status: 500 } })],
+		['a network error', () => get.mockRejectedValue(new Error('offline'))],
+	])('fetchHealth drops the last known health after %s', async (_label, fail) => {
+		const store = useModbusEndpoints();
+
+		store.health['abc'] = {
+			state: 'connected',
+			lastError: null,
+			lastErrorAt: null,
+			averageLatencyMs: 5,
+			requests: 1,
+			timeouts: 0,
+			overloaded: false,
+		} as never;
+		fail();
+
+		await expect(store.fetchHealth('abc')).rejects.toThrow();
+		expect(store.health['abc']).toBeUndefined();
+	});
+
 	it('fetchHealth maps the health snapshot', async () => {
 		get.mockResolvedValue({
 			data: {

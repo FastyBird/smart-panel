@@ -20,6 +20,7 @@
 				"connection": "The connection was refused: check the port and that the Modbus TCP server is switched on",
 				"timeout": "No answer: check the IP address, the unit ID and the framing",
 				"busy": "Another probe to this endpoint is still running; try again in a moment",
+				"rateLimited": "Too many probe requests; wait a moment and try again",
 				"illegalFunction": "The device does not support this function for the register type",
 				"illegalAddress": "The device is reachable but does not have this address; try another address",
 				"gatewayUnreachable": "The gateway could not reach the unit; check the unit ID and the serial line",
@@ -228,7 +229,8 @@
 			"connected": "Connected",
 			"connecting": "Connecting",
 			"backoff": "Retrying",
-			"stopped": "Stopped"
+			"stopped": "Stopped",
+			"unknown": "Unknown"
 		},
 		"table": {
 			"name": "Name",

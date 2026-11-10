@@ -209,6 +209,7 @@ import { useModbusProbe } from '../composables/useModbusProbe';
 import { DEVICES_MODBUS_PLUGIN_PREFIX, RouteNames } from '../devices-modbus.constants';
 import { formatAddress } from '../lib/address-notation';
 import type { ModbusPointBinding } from '../lib/points';
+import { explainProbeError } from '../lib/probe-messages';
 import { modbusEndpointsStoreKey } from '../store/keys';
 
 import type { IModbusBindingReading, IModbusDeviceBinding, IModbusDeviceSectionProps } from './modbus-device-section.types';
@@ -241,6 +242,9 @@ const modbusDevice = computed(
 			wordOrder?: DevicesModbusPluginByteOrder;
 			templateId?: string | null;
 			templateRevision?: string | null;
+			maxReadRegisters?: number | null;
+			maxReadBits?: number | null;
+			maxReadGap?: number | null;
 		}
 );
 
@@ -376,12 +380,19 @@ const onReadNow = async (): Promise<void> => {
 			{
 				byteOrder: modbusDevice.value.byteOrder ?? DevicesModbusPluginByteOrder.big,
 				wordOrder: modbusDevice.value.wordOrder ?? DevicesModbusPluginByteOrder.big,
+			},
+			{
+				maxReadRegisters: modbusDevice.value.maxReadRegisters,
+				maxReadBits: modbusDevice.value.maxReadBits,
+				maxReadGap: modbusDevice.value.maxReadGap,
 			}
 		);
 
-		if (!result.ok && result.points.length === 0) {
-			readError.value = t('devicesModbusPlugin.section.readFailed', { reason: result.error?.message ?? '' });
+		if (result.error) {
+			readError.value = t('devicesModbusPlugin.section.readFailed', { reason: t(explainProbeError(result.error)) });
+		}
 
+		if (result.points.length === 0) {
 			return;
 		}
 
@@ -389,7 +400,7 @@ const onReadNow = async (): Promise<void> => {
 			readBindings.map((item): [string, IModbusBindingReading] => {
 				const point = result.points.find((entry) => entry.key === item.id);
 
-				return [item.id, { raw: point?.raw ?? null, value: point?.value ?? null, error: point?.error?.message ?? null }];
+				return [item.id, { raw: point?.raw ?? null, value: point?.value ?? null, error: point?.error ? t(explainProbeError(point.error)) : null }];
 			})
 		);
 	} catch (err: unknown) {

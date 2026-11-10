@@ -243,6 +243,31 @@ describe('ModbusWizardPointsStep', () => {
 			expect(readPoints).toHaveBeenCalledTimes(1);
 		});
 
+		it('waits for an in-flight read before writing', async () => {
+			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
+			let release!: () => void;
+			readPoints.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = () => resolve({ ok: true, points: [], error: null, durationMs: 1 });
+					})
+			);
+			const { wrapper } = await setup();
+
+			await wrapper.find('[data-test-id="points-read-now"]').trigger('click');
+			await wrapper.find('[data-test-id="points-test-write-run"]').trigger('click');
+			await flushPromises();
+
+			expect(readPoints).toHaveBeenCalledTimes(1);
+			expect(write).not.toHaveBeenCalled();
+
+			release();
+			await flushPromises();
+
+			expect(write).toHaveBeenCalledTimes(1);
+			expect(readPoints).toHaveBeenCalledTimes(2);
+		});
+
 		it('does not read back when the write fails', async () => {
 			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
 			write.mockResolvedValue({ ok: false, error: { kind: 'timeout', exceptionCode: null, message: 'x' }, durationMs: 1 });

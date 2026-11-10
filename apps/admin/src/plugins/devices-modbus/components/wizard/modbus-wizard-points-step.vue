@@ -507,7 +507,11 @@ const readPoints = async (inputs: { key: string; read: ModbusPointBinding }[]): 
 		return { ok: false, points: [], error: { kind: 'request', exceptionCode: null, message: 'No endpoint is selected.' }, durationMs: 0 };
 	}
 
-	return probe.readPoints(target, state.unitId, inputs, deviceOrders());
+	return probe.readPoints(target, state.unitId, inputs, deviceOrders(), {
+		maxReadRegisters: state.templateDevice?.maxReadRegisters,
+		maxReadBits: state.templateDevice?.maxReadBits,
+		maxReadGap: state.templateDevice?.maxReadGap,
+	});
 };
 
 const live = useModbusLiveValues(() => state.points, readPoints);
@@ -713,17 +717,20 @@ const onTestWrite = async (): Promise<void> => {
 	writing.value = true;
 
 	try {
-		const result = await probe.write(target, state.unitId, binding, value, deviceOrders());
+		// Waits for an auto-refresh read in flight and holds the timer until the read-back is done.
+		await live.whilePaused(async () => {
+			const result = await probe.write(target, state.unitId, binding, value, deviceOrders());
 
-		if (!result.ok) {
-			flashMessage.error(result.error ? t(explainProbeError(result.error)) : t('devicesModbusPlugin.wizard.probe.errors.generic'));
+			if (!result.ok) {
+				flashMessage.error(result.error ? t(explainProbeError(result.error)) : t('devicesModbusPlugin.wizard.probe.errors.generic'));
 
-			return;
-		}
+				return;
+			}
 
-		flashMessage.success(t('devicesModbusPlugin.wizard.points.testWrite.done'));
+			flashMessage.success(t('devicesModbusPlugin.wizard.points.testWrite.done'));
 
-		await live.readNow();
+			await live.readNow();
+		});
 	} finally {
 		writing.value = false;
 	}

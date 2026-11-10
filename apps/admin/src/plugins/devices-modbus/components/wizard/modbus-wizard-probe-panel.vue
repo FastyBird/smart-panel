@@ -196,6 +196,18 @@ watch([notation, registerType], ([newNotation, newType], [oldNotation, oldType])
 	addressText.value = formatAddress(previous.ok ? previous.start : 0, newType, newNotation);
 });
 
+// A result describes the target it was read from; drop it when the target changes.
+watch(
+	() => {
+		const { endpointMode, endpointId, newEndpoint, unitId } = props.wizard.state;
+
+		return [endpointMode, endpointId, newEndpoint.host, newEndpoint.port, newEndpoint.framing, unitId];
+	},
+	() => {
+		result.value = null;
+	}
+);
+
 const canRun = computed<boolean>(() => parsed.value.ok && props.wizard.probeTarget() !== null && !running.value);
 
 const onRun = async (): Promise<void> => {
