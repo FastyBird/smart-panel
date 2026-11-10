@@ -336,10 +336,12 @@ const isDevicesListRoute = computed<boolean>((): boolean => {
 });
 
 const isWizardRoute = computed<boolean>((): boolean => {
-	// Plugin-owned construction/generation wizards are children of the Devices list just like the
-	// shared adoption route. Treat every registered launcher target as a full-page wizard so its route
-	// remains visible on lg+ viewports instead of leaving the device list mounted over it.
-	return route.name === RouteNames.DEVICES_WIZARD || wizardRouteOptions.value.some((item) => router.resolve(item.to).name === route.name);
+	// Secondary authoring routes are not launchers themselves, but still need the full page.
+	return (
+		route.meta.devicesWizard === true ||
+		route.name === RouteNames.DEVICES_WIZARD ||
+		wizardRouteOptions.value.some((item) => router.resolve(item.to).name === route.name)
+	);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

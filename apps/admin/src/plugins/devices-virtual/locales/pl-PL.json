@@ -145,6 +145,7 @@
 		"aggregate": "Czujnik zbiorczy",
 		"transform": "Konwersja liczbowa",
 		"group": "Grupa urządzeń wykonawczych",
+		"thermostat": "Sterownik termostatu",
 		"name": "Nazwa",
 		"profile": "Profil wyjścia",
 		"temperature": "Temperatura (°C)",

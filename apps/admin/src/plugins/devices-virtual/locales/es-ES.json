@@ -145,6 +145,7 @@
 		"aggregate": "Sensor agregado",
 		"transform": "Conversión numérica",
 		"group": "Grupo de actuadores",
+		"thermostat": "Controlador de termostato",
 		"name": "Nombre",
 		"profile": "Perfil de salida",
 		"temperature": "Temperatura (°C)",

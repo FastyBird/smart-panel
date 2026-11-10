@@ -145,6 +145,7 @@
 		"aggregate": "Sensor aggregate",
 		"transform": "Numeric conversion",
 		"group": "Actuator group",
+		"thermostat": "Thermostat controller",
 		"name": "Name",
 		"profile": "Output profile",
 		"temperature": "Temperature (°C)",
