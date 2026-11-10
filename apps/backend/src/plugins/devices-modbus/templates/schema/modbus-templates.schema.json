@@ -1,0 +1,173 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "modbus-templates.schema.json",
+	"title": "Modbus device templates",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version", "templates"],
+	"properties": {
+		"version": { "const": "1.0" },
+		"templates": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "$ref": "#/definitions/template" }
+		}
+	},
+	"definitions": {
+		"shortString": { "type": "string", "minLength": 1, "maxLength": 64 },
+		"scalar": {
+			"anyOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }]
+		},
+		"address": {
+			"anyOf": [
+				{ "type": "integer", "minimum": 0, "maximum": 65535 },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["base"],
+					"properties": {
+						"base": { "type": "integer", "minimum": 0, "maximum": 65535 },
+						"step": { "type": "integer", "minimum": 0 },
+						"every": { "type": "integer", "minimum": 1 }
+					}
+				}
+			]
+		},
+		"bit": {
+			"anyOf": [
+				{ "type": "integer", "minimum": 0, "maximum": 15 },
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"base": { "type": "integer", "minimum": 0, "maximum": 15 },
+						"step": { "type": "integer", "minimum": 0 },
+						"modulo": { "type": "integer", "minimum": 1, "maximum": 16 }
+					}
+				}
+			]
+		},
+		"binding": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["register_type", "address", "data_type"],
+			"properties": {
+				"register_type": { "enum": ["coil", "discrete_input", "input_register", "holding_register"] },
+				"address": { "$ref": "#/definitions/address" },
+				"data_type": { "enum": ["bool", "int16", "uint16", "int32", "uint32", "float32"] },
+				"bit": { "$ref": "#/definitions/bit" },
+				"byte_order": { "enum": ["big", "little"] },
+				"word_order": { "enum": ["big", "little"] },
+				"scale": { "type": "number" },
+				"offset": { "type": "number" },
+				"invert": { "type": "boolean" },
+				"value_map": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["raw", "value"],
+						"properties": {
+							"raw": { "type": "number" },
+							"value": { "$ref": "#/definitions/scalar" }
+						}
+					}
+				},
+				"write_function": { "enum": ["single", "multiple"] },
+				"poll_interval_ms": { "type": "integer", "minimum": 100, "maximum": 86400000 }
+			}
+		},
+		"property": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["category"],
+			"properties": {
+				"category": { "$ref": "#/definitions/shortString" },
+				"identifier": { "$ref": "#/definitions/shortString" },
+				"name": { "$ref": "#/definitions/shortString" },
+				"data_type": { "$ref": "#/definitions/shortString" },
+				"permissions": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string" }
+				},
+				"unit": { "type": "string" },
+				"format": {
+					"type": "array",
+					"items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+				},
+				"static_value": { "$ref": "#/definitions/scalar" },
+				"read": { "$ref": "#/definitions/binding" },
+				"write": { "$ref": "#/definitions/binding" }
+			}
+		},
+		"channel": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["category", "identifier", "name", "properties"],
+			"properties": {
+				"category": { "$ref": "#/definitions/shortString" },
+				"identifier": { "$ref": "#/definitions/shortString" },
+				"name": { "$ref": "#/definitions/shortString" },
+				"repeat": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["count"],
+					"properties": {
+						"count": { "type": "integer", "minimum": 1, "maximum": 256 }
+					}
+				},
+				"properties": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/definitions/property" }
+				}
+			}
+		},
+		"defaults": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"framing": { "enum": ["tcp", "rtu_over_tcp"] },
+				"port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+				"unit_id": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["default"],
+					"properties": {
+						"default": { "type": "integer", "minimum": 0, "maximum": 255 },
+						"min": { "type": "integer", "minimum": 0, "maximum": 255 },
+						"max": { "type": "integer", "minimum": 0, "maximum": 255 },
+						"hint": { "type": "string", "maxLength": 256 }
+					}
+				},
+				"poll_interval_ms": { "type": "integer", "minimum": 100, "maximum": 86400000 },
+				"byte_order": { "enum": ["big", "little"] },
+				"word_order": { "enum": ["big", "little"] },
+				"max_read_registers": { "type": "integer", "minimum": 1, "maximum": 125 },
+				"max_read_bits": { "type": "integer", "minimum": 1, "maximum": 2000 },
+				"max_read_gap": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"template": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "name", "manufacturer", "model", "category", "channels"],
+			"properties": {
+				"id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+				"name": { "type": "string", "minLength": 1, "maxLength": 128 },
+				"manufacturer": { "$ref": "#/definitions/shortString" },
+				"model": { "$ref": "#/definitions/shortString" },
+				"description": { "type": "string", "maxLength": 1024 },
+				"category": { "$ref": "#/definitions/shortString" },
+				"defaults": { "$ref": "#/definitions/defaults" },
+				"channels": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/definitions/channel" }
+				}
+			}
+		}
+	}
+}
