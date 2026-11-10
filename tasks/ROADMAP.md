@@ -470,6 +470,27 @@ tracked as GitHub sub-issues of #1191 (MT-1 … MT-20). Supersedes FEATURE-PLUGI
 
 ---
 
+## 13c. Automations (Epic)
+
+> [EPIC-AUTOMATIONS](epics/EPIC-AUTOMATIONS.md) — Status: :clipboard: Planned — GitHub tracking not created yet
+
+Let the administrator draw automations on a canvas (When / And / Then blocks wired together, as in Homey Advanced
+Flow) and have the backend run them: a new core `automations` module with a graph model, an event-driven engine and a
+Vue Flow editor in the admin. Analysis and design: `docs/superpowers/specs/2026-11-10-automations-design.md`. Draft
+tasks AU-0 … AU-27 are listed in the epic file.
+
+| #   | Phase                                                                                              | Scope                        | Status              |
+| --- | -------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------- |
+| 0   | Spike and open decisions (AU-0)                                                                    | backend, admin               | :clipboard: Planned |
+| 1   | Core (AU-1 … AU-12): module, engine, first cards, safety policy, canvas editor, reference scenario | backend, admin               | :clipboard: Planned |
+| 2   | Usable (AU-13 … AU-20, AU-27): runs and traces, more cards, space cards, templates, verification   | backend, admin               | :clipboard: Planned |
+| 3   | Reach (AU-21, AU-22): panel list and toggle, documentation                                         | panel, website, docs         | :clipboard: Planned |
+| 4   | Ecosystem (AU-23 … AU-26): Buddy and MCP, suggestions, SDK contract, YAML import/export            | backend, admin, sdk          | :clipboard: Planned |
+
+**Next up:** AU-0, the spike; no production automation code before its ADR is merged.
+
+---
+
 ## 14. Technical Debt
 
 | #   | Task                                                                                  | Scope          | Status                  |
@@ -549,6 +570,7 @@ tracked as GitHub sub-issues of #1191 (MT-1 … MT-20). Supersedes FEATURE-PLUGI
 | Remote Access (milestones)       | 0      | 2           | 1       | 3       |
 | UniFi Protect (milestones)       | 0      | 0           | 7       | 7       |
 | Matter Epic (milestones)         | 0      | 0           | 5       | 5       |
-| **Total**                        | **96** | **7**       | **39**  | **142** |
+| Automations Epic (phases)        | 0      | 0           | 5       | 5       |
+| **Total**                        | **96** | **7**       | **44**  | **147** |
 
-The Remote access, UniFi Protect and Matter epics are counted per milestone row; superseded tasks are not counted.
+The Remote access, UniFi Protect, Matter and Automations epics are counted per milestone or phase row; superseded tasks are not counted.
