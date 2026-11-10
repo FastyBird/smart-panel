@@ -328,6 +328,7 @@ export type DevicesModbusPluginProbePointsSchema = components['schemas']['Device
 export type DevicesModbusPluginProbeWriteRequestSchema = components['schemas']['DevicesModbusPluginProbeWrite'];
 export type DevicesModbusPluginProbeWriteSchema = components['schemas']['DevicesModbusPluginDataProbeWrite'];
 export type DevicesModbusPluginProbeErrorSchema = components['schemas']['DevicesModbusPluginDataProbeError'];
+export type ApiCreateModbusDeviceStructure = operations['create-devices-modbus-plugin-device']['requestBody']['content']['application/json'];
 export {
 	DevicesModbusPluginCreateBindingByte_order as DevicesModbusPluginByteOrder,
 	DevicesModbusPluginCreateBindingData_type as DevicesModbusPluginDataType,

@@ -2,7 +2,31 @@
 	"wizard": {
 		"title": "Add Modbus device",
 		"subtitle": "Connect a Modbus TCP gateway and map its registers to a device",
-		"breadcrumb": "Add Modbus device"
+		"breadcrumb": "Add Modbus device",
+		"address": {
+			"errors": {
+				"empty": "Enter an address",
+				"invalid": "Enter an address like 0, 40001 or 0-31",
+				"reversed": "The end of the range must not be lower than its start",
+				"tooMany": "A range can hold at most 256 points",
+				"outOfRange": "The address is outside 0-65535",
+				"zeroNotAllowed": "Addresses start at 1 in this notation",
+				"modiconFormat": "Use 5 digits (0xxxx, 1xxxx, 3xxxx, 4xxxx) or 6 digits (4xxxxx)",
+				"modiconMixed": "Both ends of a range must be in the same register table"
+			}
+		},
+		"probe": {
+			"errors": {
+				"connection": "The connection was refused: check the port and that the Modbus TCP server is switched on",
+				"timeout": "No answer: check the IP address, the unit ID and the framing",
+				"busy": "Another probe to this endpoint is still running; try again in a moment",
+				"illegalFunction": "The device does not support this function for the register type",
+				"illegalAddress": "The device is reachable but does not have this address; try another address",
+				"gatewayUnreachable": "The gateway could not reach the unit; check the unit ID and the serial line",
+				"unavailable": "The endpoint is waiting to reconnect after a failure; try again shortly",
+				"generic": "The probe failed"
+			}
+		}
 	},
 	"endpoints": {
 		"title": "Modbus endpoints",

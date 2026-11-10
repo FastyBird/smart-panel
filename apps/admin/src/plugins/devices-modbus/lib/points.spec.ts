@@ -1,0 +1,321 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+	DevicesModbusPluginByteOrder as BO,
+	DevicesModbusPluginDataType as DT,
+	DevicesModbusPluginRegisterType as RT,
+} from '../../../openapi.constants';
+import type { IModbusTemplatePreview } from '../store/templates.types';
+
+import {
+	type ModbusPoint,
+	type ModbusPointBinding,
+	pointsFromPreview,
+	pointsFromRange,
+	samePoints,
+	suggestCategory,
+	toCreateRequest,
+} from './points';
+
+const binding = (over: Partial<ModbusPointBinding> = {}): ModbusPointBinding => ({
+	registerType: RT.coil,
+	address: 0,
+	dataType: DT.bool,
+	bit: null,
+	byteOrder: null,
+	wordOrder: null,
+	scale: 1,
+	offset: 0,
+	invert: false,
+	valueMap: null,
+	writeFunction: null,
+	...over,
+});
+
+const base = (
+	over: Partial<Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'>> = {}
+): Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'> => ({
+	channelCategory: 'switcher',
+	propertyCategory: 'on',
+	dataType: 'bool',
+	permissions: ['rw'],
+	staticValue: null,
+	unit: null,
+	read: binding(),
+	write: binding(),
+	...over,
+});
+
+const preview: IModbusTemplatePreview = {
+	templateId: 'relay-board',
+	templateRevision: 'abcdef0123456789',
+	category: 'switcher' as IModbusTemplatePreview['category'],
+	manufacturer: 'Acme',
+	model: 'R8',
+	endpointDefaults: { framing: 'tcp' as never, port: 502 },
+	unitId: 1,
+	pollIntervalMs: 1000,
+	byteOrder: BO.big,
+	wordOrder: BO.big,
+	maxReadRegisters: null,
+	maxReadBits: null,
+	maxReadGap: null,
+	channels: [
+		{
+			identifier: 'relay_1',
+			name: 'Relay 1',
+			category: 'switcher',
+			properties: [
+				{
+					category: 'on',
+					dataType: 'bool',
+					permissions: ['rw'],
+					read: {
+						registerType: RT.holding_register,
+						address: 1,
+						dataType: DT.uint16,
+						byteOrder: null,
+						wordOrder: BO.little,
+						valueMap: [
+							{ raw: 1, value: true },
+							{ raw: 0, value: false },
+						],
+					},
+					write: {
+						registerType: RT.holding_register,
+						address: 1,
+						dataType: DT.uint16,
+						valueMap: [
+							{ raw: 256, value: true },
+							{ raw: 512, value: false },
+						],
+						writeFunction: 'single' as never,
+					},
+				},
+			],
+		},
+		{
+			identifier: 'temp',
+			name: 'Temperature',
+			category: 'temperature',
+			properties: [
+				{
+					category: 'temperature',
+					dataType: 'float',
+					permissions: ['ro'],
+					unit: '°C',
+					read: { registerType: RT.input_register, address: 3, dataType: DT.int16, scale: 0.1, offset: -5, bit: 2, invert: true },
+				},
+			],
+		},
+		{
+			identifier: 'device_information',
+			name: 'Device information',
+			category: 'device_information',
+			properties: [{ category: 'manufacturer', dataType: 'string', permissions: ['ro'], staticValue: 'Acme' }],
+		},
+	],
+};
+
+const input = (points: ModbusPoint[], template: { id: string; revision: string; points: ModbusPoint[] } | null = null) => ({
+	name: 'Board',
+	category: 'switcher',
+	roomId: null,
+	endpointId: 'ep-1',
+	unitId: 3,
+	pollIntervalMs: 500,
+	byteOrder: BO.big,
+	wordOrder: BO.little,
+	points,
+	template,
+});
+
+describe('pointsFromRange', () => {
+	it('creates one point per address with unique keys, names and identifiers', () => {
+		const points = pointsFromRange(base(), { registerType: null, start: 10, count: 3 }, 'Relay');
+
+		expect(points.map((p) => p.name)).toEqual(['Relay 1', 'Relay 2', 'Relay 3']);
+		expect(points.map((p) => p.channelIdentifier)).toEqual(['relay_1', 'relay_2', 'relay_3']);
+		expect(points.map((p) => p.read?.address)).toEqual([10, 11, 12]);
+		expect(points.map((p) => p.write?.address)).toEqual([10, 11, 12]);
+		expect(new Set(points.map((p) => p.key)).size).toBe(3);
+	});
+
+	it('takes the register type from a modicon range', () => {
+		const [point] = pointsFromRange(base(), { registerType: RT.holding_register, start: 0, count: 1 }, 'R');
+
+		expect(point.read?.registerType).toBe(RT.holding_register);
+		expect(point.write?.registerType).toBe(RT.holding_register);
+	});
+
+	it('slugs identifiers and avoids existing ones', () => {
+		const points = pointsFromRange(base(), { registerType: null, start: 0, count: 2 }, 'Čerpadlo / Pump!', ['cerpadlo_pump_1']);
+		const ids = points.map((p) => p.channelIdentifier);
+
+		expect(ids.every((id) => /^[a-z0-9_]+$/.test(id))).toBe(true);
+		expect(new Set(ids).size).toBe(2);
+		expect(ids).not.toContain('cerpadlo_pump_1');
+	});
+
+	it('falls back to a generic identifier for an unsluggable prefix', () => {
+		const [point] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, '###');
+
+		expect(point.channelIdentifier).toMatch(/^[a-z0-9_]+$/);
+		expect(point.channelIdentifier).not.toBe('');
+	});
+
+	it('keeps keys unique across calls', () => {
+		const a = pointsFromRange(base(), { registerType: null, start: 0, count: 2 }, 'A');
+		const b = pointsFromRange(base(), { registerType: null, start: 0, count: 2 }, 'A');
+
+		expect(new Set([...a, ...b].map((p) => p.key)).size).toBe(4);
+	});
+
+	it('does not share binding objects between points', () => {
+		const [a, b] = pointsFromRange(base(), { registerType: null, start: 0, count: 2 }, 'A');
+
+		expect(a.read).not.toBe(b.read);
+	});
+});
+
+describe('suggestCategory', () => {
+	it('suggests switcher when any point is writable', () => {
+		expect(
+			suggestCategory([
+				...pointsFromRange(base({ write: null, permissions: ['ro'] }), { registerType: null, start: 0, count: 1 }, 'A'),
+				...pointsFromRange(base(), { registerType: null, start: 1, count: 1 }, 'B'),
+			])
+		).toBe('switcher');
+	});
+
+	it('suggests input_controller otherwise, also for no points', () => {
+		expect(suggestCategory(pointsFromRange(base({ write: null }), { registerType: null, start: 0, count: 2 }, 'A'))).toBe('input_controller');
+		expect(suggestCategory([])).toBe('input_controller');
+	});
+});
+
+describe('samePoints', () => {
+	it('ignores keys but sees edits, additions and removals', () => {
+		const a = pointsFromRange(base(), { registerType: null, start: 0, count: 2 }, 'A');
+		const b = pointsFromRange(base(), { registerType: null, start: 0, count: 2 }, 'A');
+
+		expect(samePoints(a, b)).toBe(true);
+		expect(samePoints(a, b.slice(0, 1))).toBe(false);
+		expect(samePoints(a, [b[0], { ...b[1], name: 'Other' }])).toBe(false);
+		expect(samePoints(a, [b[0], { ...b[1], read: binding({ address: 99 }) }])).toBe(false);
+	});
+});
+
+describe('pointsFromPreview', () => {
+	it('flattens channels and properties, normalising defaults and null orders', () => {
+		const points = pointsFromPreview(preview);
+
+		expect(points).toHaveLength(3);
+		expect(points[0]).toMatchObject({ name: 'Relay 1', channelIdentifier: 'relay_1', channelCategory: 'switcher', propertyCategory: 'on' });
+		expect(points[0].read).toMatchObject({
+			byteOrder: null,
+			wordOrder: BO.little,
+			scale: 1,
+			offset: 0,
+			invert: false,
+			bit: null,
+			writeFunction: null,
+		});
+		expect(points[0].write?.writeFunction).toBe('single');
+		expect(points[1]).toMatchObject({ unit: '°C', write: null });
+		expect(points[1].read).toMatchObject({ scale: 0.1, offset: -5, bit: 2, invert: true, valueMap: null });
+		expect(points[2]).toMatchObject({ staticValue: 'Acme', read: null, write: null });
+		expect(new Set(points.map((p) => p.key)).size).toBe(3);
+	});
+});
+
+describe('toCreateRequest', () => {
+	it('round-trips a relay with read and write value maps and static channels', () => {
+		const points = pointsFromPreview(preview);
+		const { data } = toCreateRequest(input(points));
+
+		const relay = data.channels[0];
+		expect(relay).toMatchObject({ identifier: 'relay_1', name: 'Relay 1', category: 'switcher' });
+		expect(relay.properties[0]).toMatchObject({ category: 'on', data_type: 'bool', permissions: ['rw'] });
+		expect(relay.properties[0].read).toEqual({
+			register_type: 'holding_register',
+			address: 1,
+			data_type: 'uint16',
+			word_order: 'little',
+			value_map: [
+				{ raw: 1, value: true },
+				{ raw: 0, value: false },
+			],
+		});
+		expect(relay.properties[0].write).toEqual({
+			register_type: 'holding_register',
+			address: 1,
+			data_type: 'uint16',
+			write_function: 'single',
+			value_map: [
+				{ raw: 256, value: true },
+				{ raw: 512, value: false },
+			],
+		});
+		expect(data.channels[1].properties[0]).toMatchObject({ unit: '°C' });
+		expect(data.channels[1].properties[0].read).toEqual({
+			register_type: 'input_register',
+			address: 3,
+			data_type: 'int16',
+			bit: 2,
+			scale: 0.1,
+			offset: -5,
+			invert: true,
+		});
+		expect(data.channels[1].properties[0].write).toBeUndefined();
+		expect(data.channels[2].properties[0]).toMatchObject({ category: 'manufacturer', static_value: 'Acme' });
+		expect(data.channels[2].properties[0].read).toBeUndefined();
+		expect(data.channels[2].properties[0].write).toBeUndefined();
+	});
+
+	it('always sends the device settings and nothing else optional', () => {
+		const { data } = toCreateRequest(input(pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A')));
+
+		expect(data).toMatchObject({
+			name: 'Board',
+			category: 'switcher',
+			endpoint_id: 'ep-1',
+			unit_id: 3,
+			poll_interval_ms: 500,
+			byte_order: 'big',
+			word_order: 'little',
+		});
+		expect(data.room_id).toBeUndefined();
+		expect(data.template_id).toBeUndefined();
+	});
+
+	it('sends the room when set', () => {
+		expect(toCreateRequest({ ...input([]), roomId: 'room-1' }).data.room_id).toBe('room-1');
+	});
+
+	it('keeps template provenance for unchanged points and drops it after an edit', () => {
+		const templatePoints = pointsFromPreview(preview);
+		const template = { id: 'relay-board', revision: 'abcdef0123456789', points: templatePoints };
+
+		const unchanged = toCreateRequest(input(pointsFromPreview(preview), template)).data;
+		expect(unchanged.template_id).toBe('relay-board');
+		expect(unchanged.template_revision).toBe('abcdef0123456789');
+
+		const edited = pointsFromPreview(preview);
+		edited[0] = { ...edited[0], name: 'Renamed' };
+		const dropped = toCreateRequest(input(edited, template)).data;
+		expect(dropped.template_id).toBeUndefined();
+		expect(dropped.template_revision).toBeUndefined();
+
+		expect(toCreateRequest(input(templatePoints.slice(1), template)).data.template_id).toBeUndefined();
+	});
+
+	it('merges points sharing a channel identifier into one channel', () => {
+		const [a] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A');
+		const b: ModbusPoint = { ...a, key: 'other', propertyCategory: 'state', write: null, permissions: ['ro'] };
+		const { data } = toCreateRequest(input([a, b]));
+
+		expect(data.channels).toHaveLength(1);
+		expect(data.channels[0].properties.map((p) => p.category)).toEqual(['on', 'state']);
+	});
+});

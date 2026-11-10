@@ -62,8 +62,8 @@ export interface IModbusTemplatePreviewBinding {
 	address: number;
 	dataType: DevicesModbusPluginDataType;
 	bit?: number;
-	byteOrder?: DevicesModbusPluginByteOrder;
-	wordOrder?: DevicesModbusPluginByteOrder;
+	byteOrder?: DevicesModbusPluginByteOrder | null;
+	wordOrder?: DevicesModbusPluginByteOrder | null;
 	scale?: number;
 	offset?: number;
 	invert?: boolean;
