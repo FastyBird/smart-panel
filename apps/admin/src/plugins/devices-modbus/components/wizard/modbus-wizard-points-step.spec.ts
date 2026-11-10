@@ -55,10 +55,10 @@ vi.mock('../../composables/useModbusProbe', () => ({
 	useModbusProbe: () => ({ read: vi.fn(), readPoints, write }),
 }));
 
-const mountStep = (wizard: IUseModbusDeviceWizard) =>
+const mountStep = (wizard: IUseModbusDeviceWizard, stubs: Record<string, boolean> = {}) =>
 	mount(ModbusWizardPointsStep, {
 		props: { wizard },
-		global: { stubs: { teleport: true, transition: false } },
+		global: { stubs: { teleport: true, transition: false, ...stubs } },
 	});
 
 const addRange = async (wrapper: ReturnType<typeof mountStep>, text: string) => {
@@ -117,7 +117,8 @@ describe('ModbusWizardPointsStep', () => {
 	it('refuses to grow beyond 256 points', async () => {
 		const wizard = wizardWithEndpoint();
 		wizard.setNotation('pdu');
-		const wrapper = mountStep(wizard);
+		// Rendering hundreds of table rows is slow in jsdom and irrelevant here: the cap is enforced by the add form.
+		const wrapper = mountStep(wizard, { ElTable: true, ElTableColumn: true });
 
 		await addRange(wrapper, '0-199');
 		await addRange(wrapper, '200-299');
