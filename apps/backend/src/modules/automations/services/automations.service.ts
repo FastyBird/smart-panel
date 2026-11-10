@@ -276,7 +276,8 @@ export class AutomationsService {
 			const reasons = ValidationExceptionFactory.createException(errors).getResponse() as { message: string[] };
 			const message = reasons.message.join('; ');
 
-			this.logger.error(`[VALIDATION FAILED] DTO validation failed: ${message}`);
+			// The reasons can quote submitted identifiers, so they go to the caller only and the log gets a count
+			this.logger.error(`[VALIDATION FAILED] DTO validation failed with ${reasons.message.length} problem(s)`);
 
 			throw new AutomationsValidationException(`Provided automation data are invalid: ${message}`);
 		}
