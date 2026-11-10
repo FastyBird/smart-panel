@@ -443,6 +443,7 @@
 				loading ||
 				!!catalogError ||
 				(!isTransform && (!selectedProfile || sourcesLoading || !!sourcesError)) ||
+				(isTransform && !model.temperature && (!model.quantity.trim() || !model.unit.trim())) ||
 				(!outputId && !model.name.trim())
 			"
 			@click="previewDraft"
@@ -481,7 +482,12 @@ import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useMeasurementAuthoring } from '../composables/use-measurement-authoring';
 import { type MeasurementMode, aggregateCandidates, measurementCandidates } from '../utils/measurement-authoring.utils';
 
-const props = defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>();
+// `temperature` defaults to `undefined` explicitly: Vue casts an absent boolean prop to `false`, which
+// made the `?? true` below dead code and opened every new conversion on the generic profile.
+const props = withDefaults(defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>(), {
+	outputId: undefined,
+	temperature: undefined,
+});
 const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
 const { t, te } = useI18n();
 const stores = injectStoresManager(),
@@ -516,6 +522,21 @@ const {
 } = useMeasurementAuthoring(props.mode, props.outputId);
 watch(busy, (value) => emit('busy', value), { immediate: true });
 model.temperature = props.temperature ?? true;
+// The generic output slot refuses `temperature` as its quantity (that is what the temperature profile
+// is for), so the two profiles cannot share one pre-filled quantity: carrying `temperature / °C` over
+// to the generic profile produced a draft the backend always rejected as `incompatible_output`.
+const syncProfileQuantity = (temperature: boolean): void => {
+	if (props.outputId) return;
+	if (temperature) {
+		model.quantity = 'temperature';
+		model.unit = '°C';
+	} else if (model.quantity === 'temperature') {
+		model.quantity = '';
+		model.unit = '';
+	}
+};
+syncProfileQuantity(model.temperature);
+watch(() => model.temperature, syncProfileQuantity);
 if (isTransform) model.inputs = [{ source_property: null }];
 const loading = ref(false),
 	catalogError = ref<string | null>(null);
@@ -606,9 +627,10 @@ const reload = async () => {
 	loading.value = true;
 	catalogError.value = null;
 	try {
+		// One request: the devices list embeds every channel and its properties and the store cascades
+		// them into the channel and property stores. Fetching properties per channel on top of that is
+		// hundreds of requests on a real installation, which the backend rate limiter answers with 429s.
 		await devices.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
-		await channels.fetch({});
-		await Promise.all([...new Set(channels.findAll().map((channel) => channel.id))].map((channelId) => properties.fetch({ channelId })));
 		await load();
 		await loadCapabilities();
 	} catch {

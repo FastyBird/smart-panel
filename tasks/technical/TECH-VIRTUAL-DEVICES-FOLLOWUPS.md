@@ -447,6 +447,27 @@ The gap was real. The wizard's preview is not atomic with the write it precedes,
 
 Known shortfall, worth a follow-up: on the **nested** device-create path the guard's reason does not reach the client — that path reports its own generic "Device could not be created" envelope for every nested failure, not just this one. The single-property create and update paths are unaffected in kind (this suite asserts status rather than message throughout). The wizard previews compatibility, so an operator reaching this in practice is rare, but the message is the thing that would tell them why.
 
+### 3a.11 Admin authoring could not finish the newer kinds — repaired, with open remainder
+
+Found on an installed alpha.67 and reproduced locally with 14 simulated devices. Repaired:
+
+- **Rate-limited source loading.** The aggregate, conversion, dew-point and actuator-group editors fetched properties once per channel on top of a devices list that already embeds them — 162 requests for 14 devices against the backend's 30 requests/minute throttle. Every editor answered with 429s, an empty source list and a disabled Preview/Create. They now hydrate from the single devices request.
+- **The mode selector left the wizard.** The non-projection kinds rendered as bare forms with no header, breadcrumbs, selector or Cancel. All kinds now share `virtual-wizard-shell.vue` and `virtual-wizard-mode-selector.vue`, with the current kind highlighted.
+- **Generic numeric conversion was always refused.** An absent boolean prop made new conversions open on the generic profile pre-filled with `temperature / °C`, which the generic output slot rejects (`incompatible_output`).
+- **Dew-point preview returned 500.** `LocationReplaceInterceptor` wrote into the frozen preview response. It now leaves frozen objects alone and copies them only when a value actually changes.
+- **Thermostat actuator members could not be selected.** The property picker reset the chosen device when its own cleared value was echoed back. It also offered every boolean of every device although the backend accepts only a Shelly NG `switch:N` output, and hid the backend's refusal behind "Thermostat request failed."
+
+Still open, deliberately not changed here:
+
+- **Guarded thermostat defaults.** Every policy number, source age and lease starts empty. `thermostat-authoring.spec.ts` pins this ("does not invent safety thresholds or actuator leases for a new draft"), so pre-filling is a product decision, not a bug fix.
+- **Guarded thermostat and property picker are untranslated** (about 30 hardcoded English labels, plus the validation messages in `thermostat-authoring.ts`), and the route titles in `router/index.ts` are hardcoded.
+- **No room/zone input** on the aggregate, conversion, dew-point and both thermostat flows; the actuator group has room only. The backend accepts `room_id`/`zone_ids` on these producers.
+- **Native thermostat has no preview step**; `native/draft-preview` and `expected_graph_revision` are unused by the admin.
+- **NTC/Steinhart operators** require a `voltage` property in the admin, while the backend also accepts the Shelly `analog_input/value` raw-voltage identity.
+- **Aggregate quorum defaults to 1**; the capabilities design says all configured sources.
+- **Dew-point errors are generic**: preview and create failures do not show the backend reason.
+- Not verified locally: guarded and native thermostat creation end to end (needs a Shelly Gen2+ relay, respectively a Home Assistant or Zigbee2MQTT climate unit).
+
 ## 4. Not to be done
 
 _(`assertPermissionsCompatible`'s entry moved to §3a.10 — it is now enforced at persistence. Its original point, that the rule cannot be a DTO constraint because the spec slot is not resolvable from a property DTO in isolation, still holds and is why the hooks own it instead.)_

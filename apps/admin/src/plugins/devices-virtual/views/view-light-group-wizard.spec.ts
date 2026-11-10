@@ -14,6 +14,17 @@ vi.mock('../../../modules/devices/store/keys', () => ({
 	channelsStoreKey: 'channels',
 	channelsPropertiesStoreKey: 'properties',
 }));
+vi.mock('../components/wizard/virtual-wizard-shell.vue', async () => {
+	const { defineComponent } = await import('vue');
+
+	return {
+		default: defineComponent({
+			name: 'VirtualWizardShell',
+			props: { mode: { type: String, default: '' }, busy: Boolean },
+			template: '<div><slot /></div>',
+		}),
+	};
+});
 vi.mock('../../../modules/spaces/store/keys', () => ({ spacesStoreKey: 'spaces' }));
 vi.mock('../../../common', () => ({
 	useBackend: () => ({ client: mocks }),

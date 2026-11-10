@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 
-import { ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
+import { ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -322,6 +322,25 @@ describe('trusted numeric operator form', () => {
 			'/plugins/devices-virtual/producers/transforms/{id}',
 			expect.objectContaining({ body: expect.objectContaining({ policy: expect.objectContaining({ operator: 'affine' }) }) })
 		);
+		wrapper.unmount();
+	});
+
+	it('opens a new conversion on the temperature profile and never carries temperature into the generic one', async () => {
+		mocks.GET.mockResolvedValue({ data: { data: [] } });
+		const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform } });
+		await flushPromises();
+		const profile = wrapper
+			.findAllComponents(ElSelect)
+			.find((select) => select.findAllComponents(ElOption).some((option) => option.props('value') === true))!;
+		// An absent boolean prop is cast to `false`; the editor must still default to temperature.
+		expect(profile.props('modelValue')).toBe(true);
+		expect(wrapper.findAllComponents(ElInput).some((input) => input.props('modelValue') === 'temperature')).toBe(false);
+		profile.vm.$emit('update:modelValue', false);
+		await flushPromises();
+		// The generic output slot rejects `temperature`, so the quantity and unit start empty.
+		const values = wrapper.findAllComponents(ElInput).map((input) => input.props('modelValue'));
+		expect(values).not.toContain('temperature');
+		expect(values).not.toContain('°C');
 		wrapper.unmount();
 	});
 

@@ -126,33 +126,11 @@
 					review step mounts, the details step has always mounted at least once first.
 				-->
 				<div class="p-4">
-					<div
+					<virtual-wizard-mode-selector
 						v-if="activeStep === 0"
-						class="mb-4 overflow-x-auto"
-					>
-						<el-radio-group
-							class="flex-nowrap!"
-							:model-value="DevicesVirtualPluginDeviceMode.projection"
-							:aria-label="t('devicesVirtualPlugin.measurement.mode')"
-							@change="onMode"
-						>
-							<el-radio-button :value="DevicesVirtualPluginDeviceMode.projection">
-								{{ t('devicesVirtualPlugin.measurement.projection') }}
-							</el-radio-button>
-							<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_aggregate">
-								{{ t('devicesVirtualPlugin.measurement.aggregate') }}
-							</el-radio-button>
-							<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_transform">
-								{{ t('devicesVirtualPlugin.measurement.transform') }}
-							</el-radio-button>
-							<el-radio-button :value="DevicesVirtualPluginDeviceMode.actuator_group">
-								{{ t('devicesVirtualPlugin.measurement.group') }}
-							</el-radio-button>
-							<el-radio-button :value="DevicesVirtualPluginDeviceMode.climate_controller">
-								{{ t('devicesVirtualPlugin.measurement.thermostat') }}
-							</el-radio-button>
-						</el-radio-group>
-					</div>
+						class="mb-4"
+						:mode="DevicesVirtualPluginDeviceMode.projection"
+					/>
 					<virtual-wizard-category-step
 						v-if="activeStep === 0"
 						v-model="state.category"
@@ -255,7 +233,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, onBeforeRouteLeave, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, ElRadioButton, ElRadioGroup, ElScrollbar, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElCard, ElIcon, ElScrollbar, ElStep, ElSteps } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -265,6 +243,7 @@ import { type DevicesModuleDeviceCategory, DevicesVirtualPluginDeviceMode } from
 import VirtualWizardCategoryStep from '../components/wizard/virtual-wizard-category-step.vue';
 import VirtualWizardDetailsStep from '../components/wizard/virtual-wizard-details-step.vue';
 import VirtualWizardMappingStep from '../components/wizard/virtual-wizard-mapping-step.vue';
+import VirtualWizardModeSelector from '../components/wizard/virtual-wizard-mode-selector.vue';
 import type { IVirtualWizardReviewCreatedPayload } from '../components/wizard/virtual-wizard-review-step.types';
 import VirtualWizardReviewStep from '../components/wizard/virtual-wizard-review-step.vue';
 import type { IVirtualWizardState } from '../components/wizard/virtual-wizard.types';
@@ -276,12 +255,6 @@ defineOptions({
 
 const { t } = useI18n();
 const router = useRouter();
-const onMode = (mode: unknown) => {
-	if (mode === DevicesVirtualPluginDeviceMode.actuator_group) void router.push({ name: RouteNames.LIGHT_GROUP_WIZARD });
-	else if (mode === DevicesVirtualPluginDeviceMode.climate_controller) void router.push({ name: RouteNames.THERMOSTAT_WIZARD });
-	else if (mode === DevicesVirtualPluginDeviceMode.sensor_aggregate || mode === DevicesVirtualPluginDeviceMode.sensor_transform)
-		void router.push({ name: RouteNames.MEASUREMENT_WIZARD, query: { mode } });
-};
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 

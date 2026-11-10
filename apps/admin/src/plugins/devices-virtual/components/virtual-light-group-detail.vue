@@ -448,16 +448,8 @@ const load = async () => {
 const edit = async () => {
 	busy.value = true;
 	try {
+		// The devices list embeds channels and properties, so this hydrates all three stores at once.
 		await devices.fetch();
-		await Promise.all(
-			devices
-				.findAll()
-				.filter((device) => device.type !== 'virtual')
-				.map(async (device) => {
-					await channels.fetch({ deviceId: device.id });
-					await Promise.all(channels.findForDevice(device.id).map((channel) => properties.fetch({ channelId: channel.id })));
-				})
-		);
 		replacementIds.value = {};
 		memberIds.value = configuration.value?.members.map((member) => member.source_channel ?? member.source_identity) ?? [];
 		editing.value = true;

@@ -1,14 +1,8 @@
 <template>
-	<div class="p-4 overflow-auto">
-		<el-button
-			class="mb-3"
-			@click="router.push({ name: VirtualRouteNames.WIZARD })"
-		>
-			Back
-		</el-button>
+	<virtual-wizard-shell :mode="DevicesVirtualPluginDeviceMode.climate_controller">
 		<el-radio-group
 			v-model="strategy"
-			class="mb-3"
+			class="mb-2"
 			:aria-label="t('devicesVirtualPlugin.nativeThermostat.strategy')"
 		>
 			<el-radio-button value="guarded_branches">{{ t('devicesVirtualPlugin.nativeThermostat.guarded') }}</el-radio-button>
@@ -24,7 +18,7 @@
 			create
 			@created="onCreated"
 		/>
-	</div>
+	</virtual-wizard-shell>
 </template>
 
 <script setup lang="ts">
@@ -32,12 +26,17 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElRadioButton, ElRadioGroup } from 'element-plus';
+import { ElRadioButton, ElRadioGroup } from 'element-plus';
 
 import { RouteNames as DeviceRouteNames } from '../../../modules/devices';
+import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import NativeThermostatEditor from '../components/NativeThermostatEditor.vue';
 import VirtualThermostatEditor from '../components/virtual-thermostat-editor.vue';
-import { RouteNames as VirtualRouteNames } from '../devices-virtual.constants';
+import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';
+
+defineOptions({
+	name: 'ViewVirtualThermostatWizard',
+});
 
 const router = useRouter();
 const { t } = useI18n();

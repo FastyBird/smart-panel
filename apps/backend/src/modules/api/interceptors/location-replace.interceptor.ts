@@ -86,18 +86,48 @@ export class LocationReplaceInterceptor implements NestInterceptor {
 		}
 
 		if (Array.isArray(value)) {
+			let changed = false;
 			const out: Array<JsonValue> = [];
 
-			for (const el of value) {
-				out.push(this.deepReplace(el, fullBaseUrl, depth + 1) as JsonValue);
+			for (const el of value as unknown[]) {
+				const replaced = this.deepReplace(el, fullBaseUrl, depth + 1) as JsonValue;
+
+				changed ||= replaced !== el;
+				out.push(replaced);
 			}
 
-			return out;
+			// Identity is preserved when nothing was replaced, so an untouched array nested in a frozen
+			// object is not mistaken for a change that has to be written back.
+			return changed ? out : value;
 		}
 
 		if (typeof value === 'object') {
-			for (const [k, v] of Object.entries(value)) {
-				value[k] = this.deepReplace(v, fullBaseUrl, depth + 1) as JsonValue;
+			const record = value as Record<string, unknown>;
+			let copy: Record<string, unknown> | null = null;
+
+			for (const [k, v] of Object.entries(record)) {
+				const replaced = this.deepReplace(v, fullBaseUrl, depth + 1);
+
+				if (replaced === v) {
+					continue;
+				}
+
+				// Responses may carry frozen objects (shared catalogs, immutable previews). Writing to one
+				// throws in strict mode and turned an otherwise successful request into a 500, so a frozen
+				// object is copied instead — and only when something in it actually changed.
+				if (Object.isFrozen(record) || !Object.getOwnPropertyDescriptor(record, k)?.writable) {
+					copy ??= Object.assign(
+						Object.create(Object.getPrototypeOf(record) as object | null) as Record<string, unknown>,
+						record,
+					);
+					copy[k] = replaced;
+				} else {
+					record[k] = replaced;
+				}
+			}
+
+			if (copy !== null) {
+				return copy;
 			}
 		}
 

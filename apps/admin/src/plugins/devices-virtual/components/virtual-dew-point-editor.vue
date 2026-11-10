@@ -193,8 +193,8 @@ async function submit() {
 }
 watch(busy, (value) => emit('busy', value), { immediate: true });
 onMounted(async () => {
+	// The devices list embeds channels and properties; see the numeric editor for why nothing is
+	// fetched per channel.
 	await devices.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
-	await channels.fetch({});
-	await Promise.all(channels.findAll().map((channel) => properties.fetch({ channelId: channel.id })));
 });
 </script>

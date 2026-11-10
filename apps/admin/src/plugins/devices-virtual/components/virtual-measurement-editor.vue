@@ -45,7 +45,10 @@ import type { MeasurementMode } from '../utils/measurement-authoring.utils';
 import VirtualDewPointEditor from './virtual-dew-point-editor.vue';
 import VirtualNumericMeasurementEditor from './virtual-numeric-measurement-editor.vue';
 
-const props = defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>();
+const props = withDefaults(defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>(), {
+	outputId: undefined,
+	temperature: undefined,
+});
 const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
 const { t } = useI18n(),
 	properties = injectStoresManager().getStore(channelsPropertiesStoreKey);

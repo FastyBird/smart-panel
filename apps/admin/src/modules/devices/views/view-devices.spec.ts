@@ -389,9 +389,13 @@ describe('ViewDevices', () => {
 		expect(wrapper.get('[data-test-id="measurement-editor"]').text()).toBe('sensor_aggregate');
 		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
 
-		// Back and selecting either measurement mode must also work while the parent stays mounted.
+		// The measurement page is part of the wizard: it carries the mode selector with its own mode
+		// highlighted, and switching back to projection or to either measurement mode must work while
+		// the parent stays mounted.
 		for (const mode of [DevicesVirtualPluginDeviceMode.sensor_aggregate, DevicesVirtualPluginDeviceMode.sensor_transform]) {
-			await wrapper.get('button').trigger('click');
+			const selector = wrapper.findComponent({ name: 'VirtualWizardModeSelector' });
+			expect(selector.props('mode')).toBe(router.currentRoute.value.query.mode);
+			selector.findComponent({ name: 'ElRadioGroup' }).vm.$emit('change', DevicesVirtualPluginDeviceMode.projection);
 			await flushPromises();
 			expect(router.currentRoute.value.name).toBe(VirtualRouteNames.WIZARD);
 			await router.push({ name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode } });

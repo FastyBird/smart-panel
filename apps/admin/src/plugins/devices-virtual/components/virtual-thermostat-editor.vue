@@ -641,7 +641,9 @@ const errorText = (error: unknown): string => {
 		if (typeof message === 'string') return message;
 		if (Array.isArray(message)) return message.join('; ');
 	}
-	return 'Thermostat request failed.';
+	// The backend's own refusal travels as `error.details.reason`; without reading it every rejected
+	// preview or save collapsed into the same sentence and gave no hint of what to change.
+	return getErrorReason(error as Parameters<typeof getErrorReason>[0], 'Thermostat request failed.');
 };
 const runPreview = async (): Promise<void> => {
 	if (mutationBusy.value || !canAuthor.value) return;
