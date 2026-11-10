@@ -19,6 +19,8 @@ import {
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
+import ModbusConfigForm from './components/modbus-config-form.vue';
+import ModbusDeviceSection from './components/modbus-device-section.vue';
 import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_TYPE, RouteNames } from './devices-modbus.constants';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
@@ -101,6 +103,9 @@ export default {
 			elements: [
 				{
 					type: CONFIG_MODULE_PLUGIN_TYPE,
+					components: {
+						pluginConfigEditForm: ModbusConfigForm,
+					},
 					schemas: {
 						pluginConfigSchema: ModbusConfigSchema,
 						pluginConfigEditFormSchema: ModbusConfigEditFormSchema,
@@ -112,6 +117,9 @@ export default {
 					// Wizard-only: Modbus devices are created through the plugin's own route, so there is no
 					// `deviceAddForm`.
 					type: DEVICES_MODBUS_TYPE,
+					components: {
+						deviceDetailSection: ModbusDeviceSection,
+					},
 					schemas: {
 						deviceSchema: ModbusDeviceSchema,
 						deviceCreateReqSchema: ModbusDeviceCreateReqSchema,

@@ -292,5 +292,99 @@
 				"title": "Enabled"
 			}
 		}
+	},
+	"config": {
+		"about": {
+			"title": "Modbus defaults",
+			"text": "These values prefill new endpoints and the device wizard. Existing endpoints and devices keep their own settings."
+		},
+		"enabled": {
+			"title": "Enabled"
+		},
+		"defaultConnectTimeoutMs": {
+			"title": "Default connect timeout (ms)",
+			"required": "Enter the connect timeout.",
+			"range": "Enter a whole number from 1 to 60000."
+		},
+		"defaultRequestTimeoutMs": {
+			"title": "Default request timeout (ms)",
+			"required": "Enter the request timeout.",
+			"range": "Enter a whole number from 1 to 60000."
+		},
+		"defaultPollIntervalMs": {
+			"title": "Default poll interval (ms)",
+			"required": "Enter the poll interval.",
+			"range": "Enter a whole number from 100 to 86400000."
+		},
+		"manageEndpoints": "Manage Modbus endpoints",
+		"messages": {
+			"edited": "Modbus settings saved.",
+			"notEdited": "Failed to save the Modbus settings."
+		}
+	},
+	"catalog": {
+		"heading": "Device templates",
+		"description": "Templates describe the registers of a known device. Built-in templates ship with Smart Panel; yours are loaded from the templates folder.",
+		"reload": "Reload templates",
+		"empty": "No templates loaded",
+		"loadFailed": "Failed to load the Modbus device templates.",
+		"reloadFailed": "Failed to reload the Modbus device templates.",
+		"reloaded": "Reloaded {templates} template(s) from {files} file(s): {errors} error(s), {warnings} warning(s).",
+		"table": {
+			"name": "Template",
+			"source": "Source",
+			"revision": "Revision",
+			"points": "Points"
+		},
+		"source": {
+			"builtin": "Built-in",
+			"user": "Custom"
+		},
+		"overridesBuiltin": "Overrides a built-in template",
+		"files": {
+			"heading": "Template files",
+			"loaded": "{count} loaded",
+			"errors": "Errors",
+			"warnings": "Warnings",
+			"clean": "No problems"
+		}
+	},
+	"section": {
+		"heading": "Modbus",
+		"endpoint": "Endpoint",
+		"endpointUnknown": "Endpoint not found",
+		"manageEndpoints": "Open endpoints",
+		"unitId": "Unit ID",
+		"pollInterval": "Poll interval",
+		"pollDefault": "Default",
+		"pollValue": "{ms} ms",
+		"template": "Template",
+		"templateCustom": "Custom",
+		"templateValue": "{id} (revision {revision})",
+		"bindings": {
+			"heading": "Register bindings",
+			"empty": "This device has no register bindings",
+			"loadFailed": "Failed to load the register bindings.",
+			"property": "Property",
+			"role": "Role",
+			"registerType": "Register type",
+			"address": "PDU address",
+			"dataType": "Data type",
+			"bit": "Bit",
+			"maps": "Mapping",
+			"roles": {
+				"read": "Read",
+				"write": "Write"
+			},
+			"valueMap": "{count} value mapping(s)",
+			"scaleOffset": "x{scale} + {offset}",
+			"invert": "inverted",
+			"raw": "Raw",
+			"decoded": "Decoded"
+		},
+		"readNow": "Read now",
+		"readNowHint": "Reads the saved read bindings once through the endpoint. Nothing is written.",
+		"readFailed": "The read failed: {reason}",
+		"readNoUnit": "This device has no endpoint or unit ID to read from."
 	}
 }

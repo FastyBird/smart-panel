@@ -86,8 +86,10 @@ describe('DevicesModbusPlugin', () => {
 			})
 		);
 		expect(deviceElement.components?.deviceAddForm).toBeUndefined();
+		expect(deviceElement.components?.deviceDetailSection).toBeDefined();
 
 		const configElement = registration.elements.find((element: { type: string }) => element.type !== 'devices-modbus');
+		expect(configElement.components?.pluginConfigEditForm).toBeDefined();
 		expect(configElement.schemas).toEqual(
 			expect.objectContaining({
 				pluginConfigSchema: expect.anything(),
