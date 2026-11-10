@@ -45,9 +45,14 @@
 						:wizard="wizard"
 					/>
 
-					<el-empty
+					<modbus-wizard-device-step
+						v-else-if="wizard.state.step === MODBUS_WIZARD_STEP.DEVICE"
+						:wizard="wizard"
+					/>
+
+					<modbus-wizard-review-step
 						v-else
-						:description="t('devicesModbusPlugin.wizard.comingNext')"
+						:wizard="wizard"
 					/>
 				</div>
 			</el-scrollbar>
@@ -92,12 +97,14 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElEmpty, ElScrollbar, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElCard, ElScrollbar, ElStep, ElSteps } from 'element-plus';
 
 import { AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
+import ModbusWizardDeviceStep from '../components/wizard/modbus-wizard-device-step.vue';
 import ModbusWizardEndpointStep from '../components/wizard/modbus-wizard-endpoint-step.vue';
 import ModbusWizardPointsStep from '../components/wizard/modbus-wizard-points-step.vue';
+import ModbusWizardReviewStep from '../components/wizard/modbus-wizard-review-step.vue';
 import ModbusWizardTemplateStep from '../components/wizard/modbus-wizard-template-step.vue';
 import { MODBUS_WIZARD_STEP, MODBUS_WIZARD_STEP_COUNT, useModbusDeviceWizard } from '../composables/useModbusDeviceWizard';
 import { RouteNames } from '../devices-modbus.constants';
@@ -117,11 +124,14 @@ useMeta({
 const wizard = useModbusDeviceWizard();
 
 // True while a step transition does work (saving a new endpoint when leaving step 1).
-const busy = ref<boolean>(false);
+const stepBusy = ref<boolean>(false);
+
+// Back and Cancel are locked while the device is being created.
+const busy = computed<boolean>((): boolean => stepBusy.value || wizard.submitState.value === 'submitting');
 
 const isLastStep = computed<boolean>((): boolean => wizard.state.step === MODBUS_WIZARD_STEP_COUNT - 1);
 
-const canAdvance = computed<boolean>((): boolean => !busy.value && wizard.canContinue(wizard.state.step));
+const canAdvance = computed<boolean>((): boolean => !stepBusy.value && wizard.canContinue(wizard.state.step));
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => [
@@ -162,7 +172,7 @@ const onNext = async (): Promise<void> => {
 	}
 
 	if (wizard.state.step === MODBUS_WIZARD_STEP.ENDPOINT && wizard.state.endpointMode === 'new') {
-		busy.value = true;
+		stepBusy.value = true;
 
 		try {
 			// Device creation needs an endpoint id, so a new endpoint is saved here (once). A failure stays on this step with
@@ -171,7 +181,7 @@ const onNext = async (): Promise<void> => {
 		} catch {
 			return;
 		} finally {
-			busy.value = false;
+			stepBusy.value = false;
 		}
 	}
 

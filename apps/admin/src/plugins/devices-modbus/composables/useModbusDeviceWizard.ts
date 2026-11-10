@@ -1,11 +1,12 @@
 import { type Ref, reactive, ref } from 'vue';
 
-import { injectStoresManager } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
+import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import { configPluginsStoreKey } from '../../../modules/config';
-import { DevicesModbusPluginByteOrder, DevicesModbusPluginFraming } from '../../../openapi.constants';
-import { DEVICES_MODBUS_PLUGIN_NAME } from '../devices-modbus.constants';
+import { DevicesModbusPluginByteOrder, type DevicesModbusPluginCreateDeviceOperation, DevicesModbusPluginFraming } from '../../../openapi.constants';
+import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_PLUGIN_PREFIX } from '../devices-modbus.constants';
 import type { AddressNotation } from '../lib/address-notation';
-import { type ModbusPoint, pointsFromPreview } from '../lib/points';
+import { type ModbusPoint, pointsFromPreview, toCreateRequest } from '../lib/points';
 import { modbusTemplatesStoreKey } from '../store/keys';
 import type { IModbusTemplatePreviewOverrides } from '../store/templates.types';
 
@@ -26,6 +27,8 @@ const MAX_UNIT_ID = 255;
  * `toCreateRequest` as `manufacturer`, `model`, `maxReadRegisters`, `maxReadBits` and `maxReadGap`.
  */
 export interface IModbusWizardTemplateDevice {
+	/** The template's own category; the device step keeps offering it after the user picks another one. */
+	category: string;
 	manufacturer: string;
 	model: string;
 	maxReadRegisters: number | null;
@@ -65,8 +68,13 @@ export interface IModbusWizardState {
 	notation: AddressNotation;
 }
 
+export type ModbusWizardSubmitState = 'idle' | 'submitting' | 'created' | 'error';
+
 export interface IUseModbusDeviceWizard {
 	state: IModbusWizardState;
+	submitState: Ref<ModbusWizardSubmitState>;
+	createError: Ref<string | null>;
+	create: () => Promise<string>;
 	endpointForm: IUseModbusEndpointForm;
 	applyingTemplate: Ref<boolean>;
 	canContinue: (step: number) => boolean;
@@ -86,6 +94,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		| null
 		| undefined;
 
+	const backend = useBackend();
 	const endpointForm = useModbusEndpointForm();
 
 	const state = reactive<IModbusWizardState>({
@@ -135,12 +144,14 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 				// The backend refuses a device without a read binding.
 				return state.points.length > 0 && state.points.some((point) => point.read !== null);
 			case MODBUS_WIZARD_STEP.DEVICE:
-				// Placeholder until the device step exists.
-				return true;
+				return state.device.name.trim() !== '' && state.device.category !== null && state.device.category !== '';
 			default:
 				return false;
 		}
 	};
+
+	const submitState = ref<ModbusWizardSubmitState>('idle');
+	const createError = ref<string | null>(null);
 
 	let saving: Promise<string> | null = null;
 
@@ -241,6 +252,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 			state.device.category = preview.category;
 			state.template = { id: preview.templateId, revision: preview.templateRevision, points: pointsFromPreview(preview) };
 			state.templateDevice = {
+				category: preview.category,
 				manufacturer: preview.manufacturer,
 				model: preview.model,
 				maxReadRegisters: preview.maxReadRegisters,
@@ -270,6 +282,83 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		state.points = [];
 		state.device.category = null;
 		state.startedEmpty = true;
+	};
+
+	// Posts the whole structure in one request; Modbus devices are created only through this plugin route. A second call
+	// while one is pending, or after the device exists, returns that outcome instead of posting again.
+	let creating: Promise<string> | null = null;
+	let createdId: string | null = null;
+
+	const create = (): Promise<string> => {
+		if (createdId !== null) {
+			return Promise.resolve(createdId);
+		}
+
+		if (creating !== null) {
+			return creating;
+		}
+
+		const fallback = 'Failed to create the Modbus device.';
+
+		if (state.endpointId === null || state.device.category === null) {
+			return Promise.reject(new Error(fallback));
+		}
+
+		let body: ReturnType<typeof toCreateRequest>;
+
+		try {
+			body = toCreateRequest({
+				name: state.device.name.trim(),
+				category: state.device.category,
+				roomId: state.device.roomId,
+				endpointId: state.endpointId,
+				unitId: state.unitId,
+				pollIntervalMs: state.device.pollIntervalMs,
+				byteOrder: state.device.byteOrder,
+				wordOrder: state.device.wordOrder,
+				points: state.points,
+				template: state.template,
+				manufacturer: state.templateDevice?.manufacturer,
+				model: state.templateDevice?.model,
+				maxReadRegisters: state.templateDevice?.maxReadRegisters,
+				maxReadBits: state.templateDevice?.maxReadBits,
+				maxReadGap: state.templateDevice?.maxReadGap,
+			});
+		} catch (error: unknown) {
+			createError.value = error instanceof Error ? error.message : fallback;
+			submitState.value = 'error';
+
+			return Promise.reject(error);
+		}
+
+		submitState.value = 'submitting';
+		createError.value = null;
+
+		creating = (async (): Promise<string> => {
+			try {
+				const { data: responseData, error } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices`, {
+					body,
+				});
+
+				if (!responseData) {
+					throw new Error(error ? getErrorReason<DevicesModbusPluginCreateDeviceOperation>(error, fallback) : fallback);
+				}
+
+				submitState.value = 'created';
+				createdId = responseData.data.id;
+
+				return responseData.data.id;
+			} catch (error: unknown) {
+				createError.value = error instanceof Error ? error.message : fallback;
+				submitState.value = 'error';
+
+				throw error;
+			} finally {
+				creating = null;
+			}
+		})();
+
+		return creating;
 	};
 
 	const setEndpointMode = (mode: IModbusWizardState['endpointMode']): void => {
@@ -302,6 +391,9 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 
 	return {
 		state,
+		submitState,
+		createError,
+		create,
 		endpointForm,
 		applyingTemplate,
 		canContinue,

@@ -58,7 +58,6 @@
 			"device": "Device",
 			"review": "Review"
 		},
-		"comingNext": "This step is coming next.",
 		"endpoint": {
 			"mode": {
 				"existing": "Use a saved endpoint",
@@ -168,6 +167,51 @@
 				"cancelButton": "Cancel",
 				"done": "The value was written."
 			}
+		},
+		"device": {
+			"name": {
+				"title": "Device name",
+				"placeholder": "e.g. Relay box"
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Select a category",
+				"hint": "Devices with a writable point are usually switchers; read-only devices are input controllers."
+			},
+			"pollInterval": {
+				"title": "Poll interval (ms)",
+				"hint": "How often the device is read, at least 100 ms.",
+				"buttonHint": "Button inputs are short pulses: a poll interval of 100-250 ms catches them."
+			},
+			"byteOrder": {
+				"title": "Byte order"
+			},
+			"wordOrder": {
+				"title": "Word order"
+			},
+			"order": {
+				"big": "Big endian",
+				"little": "Little endian"
+			}
+		},
+		"review": {
+			"failed": "The device could not be created",
+			"endpoint": "Endpoint",
+			"unitId": "Unit ID",
+			"name": "Name",
+			"category": "Category",
+			"room": "Room",
+			"noRoom": "No room",
+			"pollInterval": "Poll interval",
+			"orders": "Byte / word order",
+			"source": "Source",
+			"fromTemplate": "Template {id} (revision {revision})",
+			"custom": "Custom device",
+			"read": "read",
+			"write": "write",
+			"inverted": "inverted",
+			"create": "Create device",
+			"created": "Device \"{name}\" was created."
 		}
 	},
 	"endpoints": {

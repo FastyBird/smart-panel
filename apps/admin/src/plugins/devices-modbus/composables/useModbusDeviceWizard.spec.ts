@@ -14,12 +14,14 @@ import { useModbusDeviceWizard } from './useModbusDeviceWizard';
 const endpointsStore = { add: vi.fn(), edit: vi.fn(), findAll: vi.fn(() => []), fetch: vi.fn() };
 const templatesStore = { preview: vi.fn(), fetch: vi.fn(), catalog: null };
 const configPluginsStore = { findByType: vi.fn() };
+const post = vi.fn();
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
 
 	return {
 		...actual,
+		useBackend: () => ({ client: { POST: post } }),
 		injectStoresManager: () => ({
 			getStore: (key: symbol) => {
 				if (key === modbusEndpointsStoreKey) return endpointsStore;
@@ -191,6 +193,7 @@ describe('useModbusDeviceWizard', () => {
 		expect(wizard.state.points).not.toBe(wizard.state.template?.points);
 		expect(wizard.state.device.category).toBe('switcher');
 		expect(wizard.state.templateDevice).toEqual({
+			category: 'switcher',
 			manufacturer: 'Acme',
 			model: 'IO-8',
 			maxReadRegisters: 60,
@@ -268,5 +271,100 @@ describe('useModbusDeviceWizard', () => {
 
 		await expect(wizard.saveNewEndpoint()).rejects.toThrow();
 		expect(endpointsStore.add).not.toHaveBeenCalled();
+	});
+
+	describe('create', () => {
+		const readyWizard = async () => {
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.endpointId = 'e1';
+			await wizard.applyTemplate('acme-io');
+			wizard.state.device.roomId = 'r1';
+
+			return wizard;
+		};
+
+		it('posts the structure once and returns the device id', async () => {
+			post.mockResolvedValue({ data: { data: { id: 'd1' } } });
+
+			const wizard = await readyWizard();
+
+			expect(wizard.canContinue(3)).toBe(true);
+
+			const [first, second] = await Promise.all([wizard.create(), wizard.create()]);
+			const third = await wizard.create();
+
+			expect([first, second, third]).toEqual(['d1', 'd1', 'd1']);
+			expect(post).toHaveBeenCalledTimes(1);
+			expect(wizard.submitState.value).toBe('created');
+
+			const [path, options] = post.mock.calls[0];
+
+			expect(path).toBe('/plugins/devices-modbus/devices');
+			expect(options.body.data).toMatchObject({
+				name: 'Acme IO-8',
+				category: 'switcher',
+				room_id: 'r1',
+				endpoint_id: 'e1',
+				unit_id: 7,
+				poll_interval_ms: 500,
+				manufacturer: 'Acme',
+				model: 'IO-8',
+				max_read_registers: 60,
+				max_read_bits: 1000,
+				max_read_gap: 4,
+				template_id: 'acme-io',
+				template_revision: 'r1',
+			});
+		});
+
+		it('drops the template provenance once the points are edited', async () => {
+			post.mockResolvedValue({ data: { data: { id: 'd1' } } });
+
+			const wizard = await readyWizard();
+
+			wizard.state.points[0].name = 'Renamed';
+
+			await wizard.create();
+
+			expect(post.mock.calls[0][1].body.data.template_id).toBeUndefined();
+		});
+
+		it('keeps the error reason on a 400 and allows a retry', async () => {
+			post.mockResolvedValueOnce({
+				error: { error: { message: 'Invalid structure' }, status: 400 },
+				response: { status: 400 },
+			});
+			post.mockResolvedValueOnce({ data: { data: { id: 'd2' } } });
+
+			const wizard = await readyWizard();
+
+			await expect(wizard.create()).rejects.toThrow();
+			expect(wizard.submitState.value).toBe('error');
+			expect(wizard.createError.value).toBeTruthy();
+			expect(wizard.createError.value).not.toBe('');
+
+			await expect(wizard.create()).resolves.toBe('d2');
+			expect(wizard.createError.value).toBeNull();
+			expect(post).toHaveBeenCalledTimes(2);
+		});
+
+		it('requires a name and a category on the device step', async () => {
+			const wizard = useModbusDeviceWizard();
+
+			expect(wizard.canContinue(3)).toBe(false);
+
+			wizard.state.device.name = 'Box';
+
+			expect(wizard.canContinue(3)).toBe(false);
+
+			wizard.state.device.category = 'switcher';
+
+			expect(wizard.canContinue(3)).toBe(true);
+
+			wizard.state.device.name = '  ';
+
+			expect(wizard.canContinue(3)).toBe(false);
+		});
 	});
 });

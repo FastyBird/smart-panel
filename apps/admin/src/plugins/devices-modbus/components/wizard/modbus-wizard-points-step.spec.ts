@@ -39,6 +39,7 @@ vi.mock('../../../../common', async () => {
 	return {
 		...actual,
 		useFlashMessage: () => flash,
+		useBackend: () => ({ client: { POST: vi.fn() } }),
 		injectStoresManager: () => ({
 			getStore: (key: symbol) => {
 				if (key === modbusEndpointsStoreKey) return { findAll: () => [], fetch: vi.fn() };
