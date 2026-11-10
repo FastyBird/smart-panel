@@ -128,12 +128,27 @@ describe('DefinitionLoader', () => {
 	});
 
 	it('refuses alias expansion', () => {
-		write(join(builtinDir, 'a.yaml'), "version: '1.0'\nitems:\n  - id: &x a\n  - id: *x\n");
+		write(join(builtinDir, 'a.yaml'), "version: '1.0'\nitems:\n  - id: a\n    label: &x l\n  - id: b\n    label: *x\n");
 
 		const result = loader().load();
 
 		expect(result.definitions).toEqual([]);
 		expect(result.files[0].errors).toHaveLength(1);
+		expect(result.files[0].errors[0]).toMatch(/alias/i);
+		expect(result.files[0].loaded).toBe(0);
+	});
+
+	it('reports a directory that cannot be read', () => {
+		const notADirectory = join(root, 'file.txt');
+
+		write(notADirectory, 'x');
+
+		const result = loader({ builtinDirectory: notADirectory }).load();
+
+		expect(result.definitions).toEqual([]);
+		expect(result.files).toHaveLength(1);
+		expect(result.files[0]).toMatchObject({ source: 'builtin', path: '.', loaded: 0 });
+		expect(result.files[0].errors[0]).toMatch(/^cannot read directory: /);
 	});
 
 	it('refuses a symlink that escapes the directory', () => {

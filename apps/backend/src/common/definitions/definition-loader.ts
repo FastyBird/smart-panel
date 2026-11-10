@@ -86,17 +86,19 @@ export class DefinitionLoader<T> {
 
 		try {
 			root = realpathSync(resolve(directory));
-
-			if (!statSync(root).isDirectory()) {
-				throw new Error('not a directory');
-			}
 		} catch {
 			files.push({ source, path: '.', loaded: 0, errors: ['directory not found'], warnings: [] });
 
 			return accepted;
 		}
 
-		const paths = this.collectFiles(root, recursive, source === 'user' && !this.options.overrideDirectory);
+		const paths = this.collectFiles(
+			source,
+			root,
+			recursive,
+			source === 'user' && !this.options.overrideDirectory,
+			files,
+		);
 
 		for (const path of paths) {
 			const result: DefinitionFileResult = { source, path, loaded: 0, errors: [], warnings: [] };
@@ -140,7 +142,13 @@ export class DefinitionLoader<T> {
 		return accepted;
 	}
 
-	private collectFiles(root: string, recursive: boolean, prefixed: boolean): string[] {
+	private collectFiles(
+		source: DefinitionSource,
+		root: string,
+		recursive: boolean,
+		prefixed: boolean,
+		files: DefinitionFileResult[],
+	): string[] {
 		const found: string[] = [];
 
 		const walk = (directory: string): void => {
@@ -148,7 +156,15 @@ export class DefinitionLoader<T> {
 
 			try {
 				entries = readdirSync(directory, { withFileTypes: true });
-			} catch {
+			} catch (error) {
+				files.push({
+					source,
+					path: relative(root, directory) || '.',
+					loaded: 0,
+					errors: [`cannot read directory: ${errorMessage(error)}`],
+					warnings: [],
+				});
+
 				return;
 			}
 
