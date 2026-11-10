@@ -376,6 +376,41 @@ describe('ModbusProbeService', () => {
 			expect(result.points.map((p) => p.error?.exceptionCode)).toEqual([6, 6]);
 		});
 
+		it('stops at the first timeout and fails the remaining blocks without reading them', async () => {
+			transport.read.mockRejectedValueOnce(new ModbusTimeoutError('timed out'));
+
+			const result = await service.readPoints({ endpointId: 'ep-1' }, [point('a', 10), point('b', 400)], pointsOptions);
+
+			expect(transport.read).toHaveBeenCalledTimes(1);
+			expect(result.ok).toBe(false);
+			expect(result.points.map((p) => p.error?.kind)).toEqual(['timeout', 'timeout']);
+			expect(result.points.every((p) => p.raw === null && p.value === null)).toBe(true);
+		});
+
+		it('keeps earlier decoded blocks when a later block times out', async () => {
+			transport.read.mockResolvedValueOnce([5]).mockRejectedValueOnce(new ModbusTimeoutError('timed out'));
+
+			const result = await service.readPoints(
+				{ endpointId: 'ep-1' },
+				[point('a', 10), point('b', 400), point('c', 800)],
+				pointsOptions,
+			);
+
+			expect(transport.read).toHaveBeenCalledTimes(2);
+			expect(result.points[0]).toEqual({ key: 'a', raw: [5], value: 5, error: null });
+			expect(result.points.slice(1).map((p) => p.error?.kind)).toEqual(['timeout', 'timeout']);
+		});
+
+		it('continues to the next block after a non-request exception', async () => {
+			transport.read.mockRejectedValueOnce(new ModbusExceptionError(6)).mockResolvedValueOnce([9]);
+
+			const result = await service.readPoints({ endpointId: 'ep-1' }, [point('a', 10), point('b', 400)], pointsOptions);
+
+			expect(transport.read).toHaveBeenCalledTimes(2);
+			expect(result.points[0].error).toMatchObject({ kind: 'exception', exceptionCode: 6 });
+			expect(result.points[1]).toMatchObject({ value: 9, error: null });
+		});
+
 		it('reports a value map miss per point', async () => {
 			transport.read.mockResolvedValueOnce([1, 9]);
 

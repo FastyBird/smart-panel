@@ -219,7 +219,7 @@ export class ModbusProbeService {
 
 	/**
 	 * Reads many bindings in as few requests as the limits allow, all inside one channel. A block that fails with a
-	 * request exception is retried once as per-point reads; any other block failure fails just that block's points.
+	 * request exception is retried once as per-point reads; a timeout, connection or availability failure fails the block and every remaining one and stops the batch; other failures fail just that block's points.
 	 */
 	async readPoints(
 		target: ModbusProbeTarget,
@@ -261,7 +261,19 @@ export class ModbusProbeService {
 				);
 
 				for (const block of blocks) {
-					await this.readBlock(channel, block, points, results, options);
+					const fatal = await this.readBlock(channel, block, points, results, options);
+
+					if (fatal) {
+						// Stop at the first transport failure (as the poller does): continuing would reset an rtu_over_tcp
+						// socket per block, and a late reply could be decoded as the next block's answer.
+						for (const result of results) {
+							if (result.raw === null && result.error === null) {
+								result.error = fatal;
+							}
+						}
+
+						break;
+					}
 				}
 			});
 		} catch (error) {
@@ -365,7 +377,7 @@ export class ModbusProbeService {
 		points: ModbusProbePoint[],
 		results: ModbusProbePointResult[],
 		options: ModbusProbePointsOptions,
-	): Promise<void> {
+	): Promise<ModbusProbeError | null> {
 		try {
 			const values = await channel.read({
 				unitId: options.unitId,
@@ -377,13 +389,19 @@ export class ModbusProbeService {
 			for (const planned of block.points) {
 				this.decodePoint(points, results, Number(planned.key), sliceForPoint(block, values, planned), options);
 			}
+
+			return null;
 		} catch (error) {
 			if (error instanceof ModbusExceptionError && error.isRequestError && !this.isSplit(block)) {
 				for (const part of splitBlock(block)) {
-					await this.readBlock(channel, part, points, results, options);
+					const fatal = await this.readBlock(channel, part, points, results, options);
+
+					if (fatal) {
+						return fatal;
+					}
 				}
 
-				return;
+				return null;
 			}
 
 			const probeError = toProbeError(error);
@@ -391,6 +409,10 @@ export class ModbusProbeService {
 			for (const planned of block.points) {
 				results[Number(planned.key)].error = probeError;
 			}
+
+			return probeError.kind === 'timeout' || probeError.kind === 'connection' || probeError.kind === 'unavailable'
+				? probeError
+				: null;
 		}
 	}
 
@@ -472,6 +494,8 @@ export class ModbusProbeService {
 			};
 		}
 
+		// Accepted race: a one-shot probe of a disabled endpoint that is still running when the endpoint gets enabled can
+		// briefly coexist with the new runtime connection.
 		const transport = this.transportFactory(options);
 
 		try {
