@@ -78,6 +78,18 @@ describe('ModbusConnectionsService', () => {
 		expect(service.get('a')).toBeNull();
 	});
 
+	it('reports whether a listener is attached', async () => {
+		expect(service.isAttached()).toBe(false);
+
+		service.attach(listener as ModbusConnectionsListener);
+
+		expect(service.isAttached()).toBe(true);
+
+		await service.stopAll();
+
+		expect(service.isAttached()).toBe(false);
+	});
+
 	it('starts one connection per enabled endpoint', async () => {
 		endpoints = [endpoint('a'), endpoint('b', { enabled: false })];
 

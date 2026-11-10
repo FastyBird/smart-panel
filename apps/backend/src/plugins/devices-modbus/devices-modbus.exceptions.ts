@@ -22,12 +22,6 @@ export class ModbusTemplateNotFoundException extends DevicesModbusException {
 	}
 }
 
-export class ModbusEndpointNotFoundException extends DevicesModbusException {
-	constructor(id: string) {
-		super(`Modbus endpoint ${id} does not exist`, HttpStatus.NOT_FOUND);
-	}
-}
-
 export class ModbusProbeBusyException extends DevicesModbusException {
 	constructor() {
 		super('Another probe to this endpoint is still running.', HttpStatus.TOO_MANY_REQUESTS);

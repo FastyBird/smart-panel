@@ -87,6 +87,11 @@ export class ModbusConnectionsService {
 		this.listener = listener;
 	}
 
+	/** Whether the runtime is attached, i.e. every enabled endpoint is expected to have a running connection. */
+	isAttached(): boolean {
+		return this.listener !== null;
+	}
+
 	/** Brings the running connections in line with the stored endpoints. A no-op while detached. */
 	reconcile(): Promise<void> {
 		return this.serialise(() => this.doReconcile());
