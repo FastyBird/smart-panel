@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 
@@ -31,6 +31,32 @@ describe('WledHardwareIdentityService', () => {
 		await expect(service.persist(device, 'AA:BB:CC:DD:EE:FF')).resolves.toBe('conflict');
 
 		expect(update).not.toHaveBeenCalled();
+	});
+
+	it('reports a conflict when another device claims the same identity first', async () => {
+		const device = { id: 'device-late', mac: null } as WledDeviceEntity;
+		const raced = new QueryFailedError(
+			'UPDATE',
+			[],
+			new Error('SQLITE_CONSTRAINT: UNIQUE constraint failed: devices_module_devices.mac, devices_module_devices.type'),
+		);
+		const repository = { findOne: jest.fn().mockResolvedValue(null), update: jest.fn().mockRejectedValue(raced) };
+		const dataSource = { getRepository: jest.fn().mockReturnValue(repository) } as unknown as DataSource;
+		const service = new WledHardwareIdentityService(dataSource);
+
+		await expect(service.persist(device, 'AA:BB:CC:DD:EE:FF')).resolves.toBe('conflict');
+
+		expect(device.mac).toBeNull();
+	});
+
+	it('does not hide other write failures as conflicts', async () => {
+		const device = { id: 'device-1', mac: null } as WledDeviceEntity;
+		const failure = new QueryFailedError('UPDATE', [], new Error('SQLITE_BUSY: database is locked'));
+		const repository = { findOne: jest.fn().mockResolvedValue(null), update: jest.fn().mockRejectedValue(failure) };
+		const dataSource = { getRepository: jest.fn().mockReturnValue(repository) } as unknown as DataSource;
+		const service = new WledHardwareIdentityService(dataSource);
+
+		await expect(service.persist(device, 'AA:BB:CC:DD:EE:FF')).rejects.toBe(failure);
 	});
 
 	it('rejects replacing an identity already verified for the device', async () => {
