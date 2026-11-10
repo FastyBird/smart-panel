@@ -482,6 +482,22 @@ describe('WebsocketGateway', () => {
 			expect(displaySocket.emit).not.toHaveBeenCalled();
 		});
 
+		it('delivers an AutomationsModule event to an owner socket and an admin socket only', () => {
+			emitBusEvent('AutomationsModule.Automation.Updated', {
+				id: 'a-1',
+				name: 'Motion light',
+				revision: 2,
+				graph: { version: 1, nodes: [], edges: [] },
+			});
+
+			expect(ownerSocket.emit).toHaveBeenCalledTimes(1);
+			expect(adminSocket.emit).toHaveBeenCalledTimes(1);
+			// The REST API is owner/admin-only, so the bus event must not hand the same
+			// automation to a USER-role socket or a display either.
+			expect(userSocket.emit).not.toHaveBeenCalled();
+			expect(displaySocket.emit).not.toHaveBeenCalled();
+		});
+
 		it('delivers a DevicesHomeKitPlugin event to an owner socket and an admin socket only and redacts credentials from logs', () => {
 			const loggerDebugSpy = jest.spyOn((gateway as any).logger, 'debug');
 

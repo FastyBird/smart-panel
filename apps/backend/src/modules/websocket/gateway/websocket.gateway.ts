@@ -376,6 +376,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		'NotificationsModule.', // Notifications are owner/admin-only
 		'RemoteAccessModule.', // Provider/URL/setup state is owner/admin-only, never for USER sockets or displays
 		'DevicesHomeKitPlugin.', // HomeKit pairing credentials/status are owner/admin-only
+		'AutomationsModule.', // Automations are owner/admin-only, like their REST API
 	];
 
 	private static readonly SENSITIVE_PAYLOAD_KEYS = new Set([

@@ -112,7 +112,7 @@ acceptance criteria; the notes below are the summary.
 | AU-13 | #1570 | 2 | `feat(backend): record automation runs and traces` | AU-4 |
 | AU-14 | #1571 | 2 | `feat(admin): test automations and show live and past runs` | AU-10, AU-13 |
 | AU-15 | #1572 | 2 | `feat(backend): add any, all and wait-until automation blocks` | AU-4 |
-| AU-16 | #1573 | 2 | `feat(backend): add sunrise and sunset automation cards` | AU-5 |
+| AU-16 | #1573 | 2 | `feat(cross): add sunrise and sunset automation cards` | AU-5 |
 | AU-17 | #1574 | 2 | `feat(backend): add button, connection, house mode and security automation cards` | AU-5 |
 | AU-18 | #1575 | 2 | `feat(backend): add space occupancy and activity mode automation cards` | AU-5 |
 | AU-19 | #1584 | 2 | `feat(admin): add forms for phase 2 automation cards` | AU-11, AU-15 … AU-18 |
@@ -233,7 +233,7 @@ Done when: a failed condition or action can be located from the UI without readi
 Scope: Any and All joins; Wait until a trigger-style event with a timeout output.
 Done when: unit tests cover joins with partial arrivals, timeouts and cancellation on restart mode.
 
-**AU-16 — `feat(backend): add sunrise and sunset automation cards`**
+**AU-16 — `feat(cross): add sunrise and sunset automation cards`**
 Scope: local sun calculation from the configured location (per AU-0 decision), sunrise/sunset triggers with offset,
 day/night condition, correct across DST and at high latitudes where the sun does not rise or set.
 Done when: unit tests compare against known times for several locations and dates.
