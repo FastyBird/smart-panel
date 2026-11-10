@@ -1,4 +1,7 @@
+import { join } from 'path';
+
 import { Module } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PLUGINS_PREFIX } from '../../app.constants';
@@ -26,6 +29,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { ModbusDevicesController } from './controllers/modbus-devices.controller';
 import { ModbusEndpointsController } from './controllers/modbus-endpoints.controller';
+import { ModbusTemplatesController } from './controllers/modbus-templates.controller';
 import {
 	DEVICES_MODBUS_API_TAG_DESCRIPTION,
 	DEVICES_MODBUS_API_TAG_NAME,
@@ -51,6 +55,7 @@ import { ModbusConnectionsService } from './services/modbus-connections.service'
 import { ModbusDeviceStructureService } from './services/modbus-device-structure.service';
 import { ModbusEndpointsService } from './services/modbus-endpoints.service';
 import { ModbusRuntimeService } from './services/modbus-runtime.service';
+import { MODBUS_TEMPLATES_LOCATIONS, ModbusTemplatesService } from './services/modbus-templates.service';
 
 @ApiTag({
 	tagName: DEVICES_MODBUS_PLUGIN_NAME,
@@ -67,6 +72,7 @@ import { ModbusRuntimeService } from './services/modbus-runtime.service';
 			ModbusBindingEntity,
 		]),
 		DevicesModule,
+		NestConfigModule,
 		ConfigModule,
 		SwaggerModule,
 		ExtensionsModule,
@@ -78,8 +84,16 @@ import { ModbusRuntimeService } from './services/modbus-runtime.service';
 		ModbusEndpointsService,
 		ModbusBindingsService,
 		ModbusDeviceStructureService,
+		{
+			provide: MODBUS_TEMPLATES_LOCATIONS,
+			useValue: {
+				builtinDirectory: join(__dirname, 'templates/definitions'),
+				schemaPath: join(__dirname, 'templates/schema/modbus-templates.schema.json'),
+			},
+		},
+		ModbusTemplatesService,
 	],
-	controllers: [ModbusEndpointsController, ModbusDevicesController],
+	controllers: [ModbusEndpointsController, ModbusDevicesController, ModbusTemplatesController],
 	exports: [ModbusEndpointsService, ModbusConnectionsService, ModbusBindingsService, ModbusDeviceStructureService],
 })
 export class DevicesModbusPlugin {
@@ -236,6 +250,7 @@ Integration for Modbus devices reachable over the network. Supports **Modbus TCP
 - **RTU over TCP** — RTU frames (with CRC) through transparent serial-to-Ethernet gateways
 - **Typed registers** — bool, int16, uint16, int32, uint32 and float32 with configurable byte and word order
 - **Resilient connections** — automatic reconnect with backoff and per-device health tracking
+- **Device templates** — built-in templates (Qingjun 32 channel input board, Eletechsup N4D8B08) create a complete device from a unit ID. Your own templates are YAML files named \`plugin.devices-modbus.*.yaml\` in the configuration directory, or any \`*.yaml\` file under the directory set in \`FB_MODBUS_TEMPLATES_PATH\`; a template with the same ID replaces the built-in one. Reload them from the API without restarting. Devices keep the structure they were created with when a template changes.
 
 ## Configuration
 

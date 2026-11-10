@@ -41,6 +41,7 @@ import {
 
 import { ModbusEndpointsService } from './modbus-endpoints.service';
 import { ModbusRuntimeService } from './modbus-runtime.service';
+import { ModbusTemplatesService } from './modbus-templates.service';
 
 type StaticValue = { propertyId: string; value: string | number | boolean };
 
@@ -69,6 +70,7 @@ export class ModbusDeviceStructureService {
 		private readonly endpoints: ModbusEndpointsService,
 		private readonly runtime: ModbusRuntimeService,
 		private readonly propertyValues: PropertyValueService,
+		private readonly templates: ModbusTemplatesService,
 	) {}
 
 	async create(dto: CreateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
@@ -80,6 +82,7 @@ export class ModbusDeviceStructureService {
 			);
 			const issues = [
 				...validateModbusStructure(structure, (input) => this.deviceValidation.validateDeviceStructure(input).issues),
+				...this.validateProvenance(dto),
 				...(await this.validateAgainstDatabase(structure, endpoint)),
 			];
 
@@ -309,6 +312,25 @@ export class ModbusDeviceStructureService {
 				stack: err.stack,
 			});
 		}
+	}
+
+	/** The revision is required but not compared: a reload between preview and create is legitimate. */
+	private validateProvenance(dto: CreateModbusDeviceStructureDto): ModbusStructureIssue[] {
+		if (typeof dto.template_id !== 'string') {
+			return [];
+		}
+
+		const issues: ModbusStructureIssue[] = [];
+
+		if (typeof dto.template_revision !== 'string') {
+			issues.push({ field: 'template_revision', reason: 'is required when template_id is set.' });
+		}
+
+		if (!this.templates.has(dto.template_id)) {
+			issues.push({ field: 'template_id', reason: `Template ${dto.template_id} is not loaded.` });
+		}
+
+		return issues;
 	}
 
 	private unitInUse(unitId: number): ModbusValidationException {

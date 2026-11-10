@@ -12,6 +12,7 @@ import {
 } from './dto/create-device-structure.dto';
 import { CreateModbusDeviceDto } from './dto/create-device.dto';
 import { CreateModbusEndpointDto, ReqCreateModbusEndpointDto } from './dto/create-endpoint.dto';
+import { PreviewModbusTemplateDto, ReqPreviewModbusTemplateDto } from './dto/preview-template.dto';
 import { UpdateModbusChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateModbusChannelDto } from './dto/update-channel.dto';
 import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -25,6 +26,24 @@ import { ModbusConfigModel } from './models/config.model';
 import { ModbusDeviceResponseModel } from './models/device-response.model';
 import { ModbusEndpointHealthModel, ModbusEndpointHealthResponseModel } from './models/endpoint-health.model';
 import { ModbusEndpointResponseModel, ModbusEndpointsResponseModel } from './models/endpoint-response.model';
+import {
+	ModbusTemplatePreviewResponseModel,
+	ModbusTemplateResponseModel,
+	ModbusTemplatesResponseModel,
+} from './models/template-response.model';
+import {
+	ModbusTemplateCatalogModel,
+	ModbusTemplateDefaultsModel,
+	ModbusTemplateFileModel,
+	ModbusTemplatePreviewBindingModel,
+	ModbusTemplatePreviewChannelModel,
+	ModbusTemplatePreviewEndpointDefaultsModel,
+	ModbusTemplatePreviewModel,
+	ModbusTemplatePreviewPropertyModel,
+	ModbusTemplatePreviewValueMapEntryModel,
+	ModbusTemplateSummaryModel,
+	ModbusTemplateUnitIdModel,
+} from './models/template.model';
 
 export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
@@ -45,6 +64,8 @@ export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	CreateModbusDeviceStructureChannelDto,
 	CreateModbusDeviceStructureDto,
 	ReqCreateModbusDeviceStructureDto,
+	PreviewModbusTemplateDto,
+	ReqPreviewModbusTemplateDto,
 	// Response models
 	ModbusEndpointResponseModel,
 	ModbusEndpointsResponseModel,
@@ -52,6 +73,21 @@ export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ModbusEndpointHealthResponseModel,
 	ModbusDeviceResponseModel,
 	ModbusBindingsResponseModel,
+	ModbusTemplatesResponseModel,
+	ModbusTemplateResponseModel,
+	ModbusTemplatePreviewResponseModel,
+	// Template models
+	ModbusTemplateUnitIdModel,
+	ModbusTemplateDefaultsModel,
+	ModbusTemplateSummaryModel,
+	ModbusTemplateFileModel,
+	ModbusTemplateCatalogModel,
+	ModbusTemplatePreviewValueMapEntryModel,
+	ModbusTemplatePreviewBindingModel,
+	ModbusTemplatePreviewPropertyModel,
+	ModbusTemplatePreviewChannelModel,
+	ModbusTemplatePreviewEndpointDefaultsModel,
+	ModbusTemplatePreviewModel,
 	// Config models
 	ModbusConfigModel,
 	// Entities
