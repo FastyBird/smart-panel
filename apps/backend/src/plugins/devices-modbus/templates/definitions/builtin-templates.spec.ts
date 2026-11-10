@@ -147,7 +147,7 @@ describe('built-in Modbus templates', () => {
 			});
 		});
 
-		it('binds relay 8 to PDU 8 and input 1 and input 8 to PDU 129 and 136', () => {
+		it('binds relay 8 to PDU 8 and input 1 and input 8 to PDU 81 and 88', () => {
 			service.reload();
 
 			const expansion = service.preview('eletechsup-n4d8b08', {});
@@ -155,18 +155,23 @@ describe('built-in Modbus templates', () => {
 
 			expect(relay8?.read?.address).toBe(8);
 			expect(relay8?.write?.address).toBe(8);
-			expect(stateRead(expansion, 8)?.address).toBe(129);
-			expect(stateRead(expansion, 15)?.address).toBe(136);
+			expect(stateRead(expansion, 8)?.address).toBe(81);
+			expect(stateRead(expansion, 15)?.address).toBe(88);
 		});
 
-		it('binds no register at PDU 253 or 254', () => {
+		it('binds only the relay and input registers, never 253 or 254', () => {
 			service.reload();
 
 			const addresses = service
 				.preview('eletechsup-n4d8b08', {})
 				.channels.flatMap((channel) => channel.properties.flatMap((property) => [property.read, property.write]))
-				.map((binding) => binding?.address);
+				.map((binding) => binding?.address)
+				.filter((address) => address !== undefined);
 
+			const relays = [1, 2, 3, 4, 5, 6, 7, 8];
+			const inputs = [81, 82, 83, 84, 85, 86, 87, 88];
+
+			expect([...new Set(addresses)].sort((x, y) => x - y)).toEqual([...relays, ...inputs]);
 			expect(addresses).not.toContain(253);
 			expect(addresses).not.toContain(254);
 		});

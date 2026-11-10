@@ -116,7 +116,7 @@ Qingjun 32DI: holding register 4 carries DI1-DI16 and register 5 carries DI17-DI
 ```
 
 Eletechsup N4D8B08: relays at PDU 1-8 read `1`/`0` but are written with `256` (on) and `512` (off); inputs are one
-register each.
+register each at PDU 81-88.
 
 ```yaml
 - id: eletechsup-n4d8b08
@@ -148,7 +148,7 @@ register each.
             data_type: uint16
             value_map: [{ raw: 256, value: true }, { raw: 512, value: false }]
             write_function: single
-    # PDU 129-136 (0x0081-0x0088): confirm in hardware acceptance (spec "Open items").
+    # Inputs at PDU 81-88, as listed in the board's register table (same notation as the relays at 1-8).
     - repeat: { count: 8 }
       identifier: 'input_{n}'
       name: 'Input {n}'
@@ -157,7 +157,7 @@ register each.
         - category: state
           read:
             register_type: holding_register
-            address: { base: 129 }
+            address: { base: 81 }
             data_type: uint16
             value_map: [{ raw: 1, value: true }, { raw: 0, value: false }]
 ```

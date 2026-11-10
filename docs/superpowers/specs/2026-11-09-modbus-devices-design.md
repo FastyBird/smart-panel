@@ -419,7 +419,7 @@ The template defaults to `rtu_over_tcp`; the wizard lets the user pick either.
   (0x0200) switches off (`768` toggles; not used, the spec has no toggle). This is expressed with two bindings per
   relay: a read binding with `value_map {1: true, 0: false}` and a write binding to the same register with
   `value_map {true: 256, false: 512}`. No bit writes are needed.
-- **Inputs:** 8 `ushort` holding registers (one per input, `1` = active), read as `binary_input.state`.
+- **Inputs:** 8 `ushort` holding registers at PDU 81–88 (one per input, `1` = active), read as `binary_input.state`.
 - **Not exposed:** register 253 (I/O linking) and 254 (baud rate) are configuration registers; the template does not
   bind them, so the panel can never change the board's baud rate by accident.
 - **Category:** `switcher` (eight `switcher` channels plus eight `binary_input` channels).
@@ -529,10 +529,8 @@ No Modbus UI. The panel renders from spec categories. A thin model/mapper stub l
 
 ## Open items
 
-- **N4D8B08 input register address.** The miniserver document lists the inputs as `81-88`. Eletechsup manuals usually
-  write register addresses in hex, which would make them `0x0081–0x0088` (PDU 129–136), not decimal 81–88. One read
-  through the gateway settles it before the template is finalised; the relay addresses (1–8) were used in the
-  miniserver and are taken as verified.
+- ~~**N4D8B08 input register address.**~~ Resolved (2026-11-10): the register table in the relay board document is
+  correct as written, so the inputs are at PDU 81–88, in the same notation as the relays at 1–8.
 - **Waveshare gateway settings.** The product page lists the modes but not the defaults (IP, TCP port, number of client
   connections, RS485 packing/timeout settings), and the Waveshare wiki was unreachable when this was written. Before
   the hardware tests: note the TCP port used in each mode, set the serial side to 9600 8N1, check that it accepts one

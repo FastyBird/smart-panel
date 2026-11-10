@@ -29,7 +29,7 @@ templates:
               data_type: uint16
               value_map: [{ raw: 256, value: true }, { raw: 512, value: false }]
               write_function: single
-      # PDU 129-136 (0x0081-0x0088): confirm in hardware acceptance (spec "Open items").
+      # Inputs at PDU 81-88, as listed in the board's register table (same notation as the relays at 1-8).
       - repeat: { count: 8 }
         identifier: 'input_{n}'
         name: 'Input {n}'
@@ -38,6 +38,6 @@ templates:
           - category: state
             read:
               register_type: holding_register
-              address: { base: 129 }
+              address: { base: 81 }
               data_type: uint16
               value_map: [{ raw: 1, value: true }, { raw: 0, value: false }]
