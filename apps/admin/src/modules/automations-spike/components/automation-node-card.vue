@@ -83,8 +83,8 @@ const tagType = computed<'primary' | 'success' | 'warning' | 'info'>(() => {
 	align-items: center;
 	gap: 10px;
 	box-sizing: border-box;
-	width: 230px;
-	padding: 10px 14px 10px 10px;
+	width: 300px;
+	padding: 10px 50px 10px 10px;
 	border: 1px solid var(--el-border-color);
 	border-left: 4px solid var(--automation-node-accent);
 	border-radius: var(--el-border-radius-base);

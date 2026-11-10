@@ -12,12 +12,12 @@ export const REFERENCE_SCENARIO: IAutomationGraph = {
 	version: 1,
 	nodes: [
 		{ id: 't1', type: 'device.property.changed', position: { x: 40, y: 60 }, config: { property: 'occupancy', to: 'detected', for_minutes: 0 } },
-		{ id: 'c1', type: 'device.property.compare', position: { x: 340, y: 60 }, config: { property: 'illuminance', operator: 'lt', value: 50 } },
-		{ id: 'c2', type: 'time.window', position: { x: 640, y: 20 }, config: { from: '22:00', to: '06:00' } },
-		{ id: 'a1', type: 'light.set', position: { x: 940, y: -40 }, config: { on: true, brightness: 20 } },
-		{ id: 'a2', type: 'light.set', position: { x: 940, y: 100 }, config: { on: true, brightness: 100 } },
+		{ id: 'c1', type: 'device.property.compare', position: { x: 400, y: 60 }, config: { property: 'illuminance', operator: 'lt', value: 50 } },
+		{ id: 'c2', type: 'time.window', position: { x: 760, y: 20 }, config: { from: '22:00', to: '06:00' } },
+		{ id: 'a1', type: 'light.set', position: { x: 1120, y: -40 }, config: { on: true, brightness: 20 } },
+		{ id: 'a2', type: 'light.set', position: { x: 1120, y: 100 }, config: { on: true, brightness: 100 } },
 		{ id: 't2', type: 'device.property.changed', position: { x: 40, y: 300 }, config: { property: 'occupancy', to: 'clear', for_minutes: 2 } },
-		{ id: 'a3', type: 'light.set', position: { x: 340, y: 300 }, config: { on: false, brightness: 100 } },
+		{ id: 'a3', type: 'light.set', position: { x: 400, y: 300 }, config: { on: false, brightness: 100 } },
 	],
 	edges: [
 		{ id: 'e1', source: 't1', source_port: 'out', target: 'c1', target_port: 'in' },
