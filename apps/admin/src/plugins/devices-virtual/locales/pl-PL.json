@@ -34,6 +34,29 @@
 	},
 	"wizard": {
 		"title": "Utwórz urządzenie wirtualne",
+		"selectKind": "Wybierz, co chcesz utworzyć",
+		"kinds": {
+			"projection": {
+				"title": "Projekcja",
+				"description": "Przedstawia kanały istniejących urządzeń jako jedno nowe urządzenie wybranej kategorii."
+			},
+			"aggregate": {
+				"title": "Agregat czujników",
+				"description": "Łączy kilka czujników w jeden odczyt, na przykład średnią temperaturę w pomieszczeniu."
+			},
+			"transform": {
+				"title": "Konwersja liczbowa",
+				"description": "Przelicza jeden odczyt na inny, w tym kalibrację, czujniki NTC i punkt rosy."
+			},
+			"group": {
+				"title": "Grupa elementów wykonawczych",
+				"description": "Steruje kilkoma światłami, przełącznikami, gniazdami, wentylatorami lub roletami jako jednym urządzeniem."
+			},
+			"thermostat": {
+				"title": "Sterownik termostatu",
+				"description": "Reguluje temperaturę w pomieszczeniu za pomocą przekaźników i czujników lub obsługuje natywny termostat."
+			}
+		},
 		"subtitle": "Utwórz urządzenie z kanałów innego urządzenia",
 		"breadcrumb": "Utwórz urządzenie wirtualne",
 		"viewDevice": "Zobacz urządzenie",

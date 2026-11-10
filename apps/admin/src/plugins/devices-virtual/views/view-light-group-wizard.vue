@@ -1,8 +1,5 @@
 <template>
-	<virtual-wizard-shell
-		:mode="DevicesVirtualPluginDeviceMode.actuator_group"
-		:busy="authoring.pending.value"
-	>
+	<virtual-wizard-shell :busy="authoring.pending.value">
 		<el-card
 			shadow="never"
 			data-test-id="light-group-wizard"
@@ -131,7 +128,6 @@ import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import { spacesStoreKey } from '../../../modules/spaces/store/keys';
 import type { components } from '../../../openapi';
-import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import VirtualLightGroupMembers from '../components/virtual-light-group-members.vue';
 import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';
 import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';

@@ -126,11 +126,6 @@
 					review step mounts, the details step has always mounted at least once first.
 				-->
 				<div class="p-4">
-					<virtual-wizard-mode-selector
-						v-if="activeStep === 0"
-						class="mb-4"
-						:mode="DevicesVirtualPluginDeviceMode.projection"
-					/>
 					<virtual-wizard-category-step
 						v-if="activeStep === 0"
 						v-model="state.category"
@@ -239,11 +234,10 @@ import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
-import { type DevicesModuleDeviceCategory, DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
+import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import VirtualWizardCategoryStep from '../components/wizard/virtual-wizard-category-step.vue';
 import VirtualWizardDetailsStep from '../components/wizard/virtual-wizard-details-step.vue';
 import VirtualWizardMappingStep from '../components/wizard/virtual-wizard-mapping-step.vue';
-import VirtualWizardModeSelector from '../components/wizard/virtual-wizard-mode-selector.vue';
 import type { IVirtualWizardReviewCreatedPayload } from '../components/wizard/virtual-wizard-review-step.types';
 import VirtualWizardReviewStep from '../components/wizard/virtual-wizard-review-step.vue';
 import type { IVirtualWizardState } from '../components/wizard/virtual-wizard.types';

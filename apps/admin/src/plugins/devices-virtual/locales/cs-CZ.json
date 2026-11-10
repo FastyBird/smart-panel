@@ -34,6 +34,29 @@
 	},
 	"wizard": {
 		"title": "Vytvořit virtuální zařízení",
+		"selectKind": "Vyberte, co chcete vytvořit",
+		"kinds": {
+			"projection": {
+				"title": "Projekce",
+				"description": "Zobrazí kanály existujících zařízení jako jedno nové zařízení zvolené kategorie."
+			},
+			"aggregate": {
+				"title": "Agregovaný senzor",
+				"description": "Spojí několik senzorů do jedné hodnoty, například průměrné teploty v místnosti."
+			},
+			"transform": {
+				"title": "Číselný převod",
+				"description": "Převede jednu hodnotu na jinou, včetně kalibrace, NTC čidel a rosného bodu."
+			},
+			"group": {
+				"title": "Skupina ovladačů",
+				"description": "Ovládá několik světel, spínačů, zásuvek, ventilátorů nebo rolet jako jedno zařízení."
+			},
+			"thermostat": {
+				"title": "Termostatický regulátor",
+				"description": "Reguluje teplotu v místnosti pomocí relé a senzorů, nebo zapouzdří nativní termostat."
+			}
+		},
 		"subtitle": "Sestavte zařízení z kanálů jiného zařízení",
 		"breadcrumb": "Vytvořit virtuální zařízení",
 		"viewDevice": "Zobrazit zařízení",

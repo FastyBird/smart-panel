@@ -1,8 +1,5 @@
 <template>
-	<virtual-wizard-shell
-		:mode="mode"
-		:busy="busy"
-	>
+	<virtual-wizard-shell :busy="busy">
 		<virtual-measurement-editor
 			:key="mode"
 			:mode="mode"

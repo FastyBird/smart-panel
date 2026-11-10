@@ -452,14 +452,16 @@ Known shortfall, worth a follow-up: on the **nested** device-create path the gua
 Found on an installed alpha.67 and reproduced locally with 14 simulated devices. Repaired:
 
 - **Rate-limited source loading.** The aggregate, conversion, dew-point and actuator-group editors fetched properties once per channel on top of a devices list that already embeds them — 162 requests for 14 devices against the backend's 30 requests/minute throttle. Every editor answered with 429s, an empty source list and a disabled Preview/Create. They now hydrate from the single devices request.
-- **The mode selector left the wizard.** The non-projection kinds rendered as bare forms with no header, breadcrumbs, selector or Cancel. All kinds now share `virtual-wizard-shell.vue` and `virtual-wizard-mode-selector.vue`, with the current kind highlighted.
+- **The mode selector left the wizard.** The non-projection kinds rendered as bare forms with no header, breadcrumbs or Cancel, and the kind was switched from inside a wizard already under way. The kind is now chosen before the wizard starts, in a chooser dialog on the Devices list (the same dialog shape as the adoption wizard's plugin picker, driven by `options` on the plugin's wizard launcher), and every kind renders inside `virtual-wizard-shell.vue`.
 - **Generic numeric conversion was always refused.** An absent boolean prop made new conversions open on the generic profile pre-filled with `temperature / °C`, which the generic output slot rejects (`incompatible_output`).
 - **Dew-point preview returned 500.** `LocationReplaceInterceptor` wrote into the frozen preview response. It now leaves frozen objects alone and copies them only when a value actually changes.
 - **Thermostat actuator members could not be selected.** The property picker reset the chosen device when its own cleared value was echoed back. It also offered every boolean of every device although the backend accepts only a Shelly NG `switch:N` output, and hid the backend's refusal behind "Thermostat request failed."
 
+- **The backend refused to boot once a dew point device existed.** `VirtualDewPointRuntimeService` registered its output while startup graph validation was still publishing the placeholder for the same slot, so the publication failed its own re-check ("Original producer state publication expired") and `onApplicationBootstrap` threw. The runtime now waits for validation and takes the slot through the guarded `registerRuntime`, like the transform and aggregate runtimes.
+- **The guarded thermostat opened with a wall of validation errors.** A new thermostat is pre-filled with recommended, editable timings (tolerances 0.5 °C, neutral margin 1 °C, minimum OFF 5 min, changeover 10 min, contact debounce 30 s / 60 s, source age 300 s, ON lease 600 s) and lists what is missing only after the first edit. Editing an existing thermostat is unchanged.
+
 Still open, deliberately not changed here:
 
-- **Guarded thermostat defaults.** Every policy number, source age and lease starts empty. `thermostat-authoring.spec.ts` pins this ("does not invent safety thresholds or actuator leases for a new draft"), so pre-filling is a product decision, not a bug fix.
 - **Guarded thermostat and property picker are untranslated** (about 30 hardcoded English labels, plus the validation messages in `thermostat-authoring.ts`), and the route titles in `router/index.ts` are hardcoded.
 - **No room/zone input** on the aggregate, conversion, dew-point and both thermostat flows; the actuator group has room only. The backend accepts `room_id`/`zone_ids` on these producers.
 - **Native thermostat has no preview step**; `native/draft-preview` and `expected_graph_revision` are unused by the admin.

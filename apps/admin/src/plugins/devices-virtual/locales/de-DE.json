@@ -34,6 +34,29 @@
 	},
 	"wizard": {
 		"title": "Virtuelles Gerät erstellen",
+		"selectKind": "Wählen Sie, was erstellt werden soll",
+		"kinds": {
+			"projection": {
+				"title": "Projektion",
+				"description": "Stellt Kanäle vorhandener Geräte als ein neues Gerät einer gewählten Kategorie dar."
+			},
+			"aggregate": {
+				"title": "Sensoraggregat",
+				"description": "Fasst mehrere Sensoren zu einem Messwert zusammen, etwa zur durchschnittlichen Raumtemperatur."
+			},
+			"transform": {
+				"title": "Numerische Umrechnung",
+				"description": "Rechnet einen Messwert in einen anderen um, einschließlich Kalibrierung, NTC-Fühlern und Taupunkt."
+			},
+			"group": {
+				"title": "Aktorgruppe",
+				"description": "Steuert mehrere Lampen, Schalter, Steckdosen, Ventilatoren oder Rollläden als ein Gerät."
+			},
+			"thermostat": {
+				"title": "Thermostatregler",
+				"description": "Regelt die Raumtemperatur mit Relais und Sensoren oder bindet einen nativen Thermostat ein."
+			}
+		},
 		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
 		"breadcrumb": "Virtuelles Gerät erstellen",
 		"viewDevice": "Gerät anzeigen",

@@ -7,14 +7,32 @@ import {
 	DevicesVirtualPluginThermostatSourceRole as SourceRole,
 } from '../../../openapi';
 
-import { type ThermostatConfiguration, buildThermostatRequest, draftFromConfiguration, emptyThermostatDraft } from './thermostat-authoring';
+import {
+	type ThermostatConfiguration,
+	buildThermostatRequest,
+	draftFromConfiguration,
+	emptyThermostatDraft,
+	newThermostatDraft,
+} from './thermostat-authoring';
 
 describe('thermostat authoring payload', () => {
-	it('does not invent safety thresholds or actuator leases for a new draft', () => {
+	it('does not invent safety thresholds or actuator leases for an empty draft', () => {
 		const result = buildThermostatRequest(emptyThermostatDraft(), 0);
 		expect(result.request).toBeUndefined();
 		expect(result.errors).toContain('Enter the minimum OFF interval in milliseconds.');
 		expect(result.errors).toContain('Select at least one physical actuator.');
+	});
+
+	it('pre-fills a new thermostat with recommended timings but still asks for the room-specific choices', () => {
+		const draft = newThermostatDraft();
+		expect(draft.policy).toMatchObject({ coldTolerance: 0.5, hotTolerance: 0.5, neutralMargin: 1, minimumOffMs: 300_000, changeoverMs: 600_000 });
+		expect(draft.policy.heatingSetpoint).toBeNull();
+		expect(draft.policy.coolingSetpoint).toBeNull();
+		expect(buildThermostatRequest(draft, 0).errors).toEqual([
+			'Select at least one comfort branch and setpoint.',
+			'Configure exactly one ambient source.',
+			'Select at least one physical actuator.',
+		]);
 	});
 
 	it('preserves missing binding identity and exact revisions for repair', () => {

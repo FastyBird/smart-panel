@@ -1,5 +1,4 @@
 import type { ComputedRef, Reactive, Ref } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
 
 import type { FormInstance } from 'element-plus';
 import { z } from 'zod';
@@ -22,6 +21,7 @@ import type {
 	IDevicePluginRoutes,
 	IDevicePluginsComponents,
 	IDevicePluginsSchemas,
+	IDeviceWizardRouteLauncher,
 } from '../devices.types';
 import type { IChannelPropertyAddForm, IChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IChannelAddForm, IChannelEditForm } from '../schemas/channels.types';
@@ -282,7 +282,7 @@ export interface IUseDevicesPlugins {
 	plugins: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
 	wizardOptions: ComputedRef<{ value: IPlugin['type']; label: string; description: string; disabled: boolean }[]>;
-	wizardRouteOptions: ComputedRef<{ value: IPlugin['type']; label: string; icon: string; to: RouteLocationRaw; testId: string; disabled: boolean }[]>;
+	wizardRouteOptions: ComputedRef<(IDeviceWizardRouteLauncher & { value: IPlugin['type']; disabled: boolean })[]>;
 	getByPluginType: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined;
 	getByName: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas, IDevicePluginRoutes> | undefined;

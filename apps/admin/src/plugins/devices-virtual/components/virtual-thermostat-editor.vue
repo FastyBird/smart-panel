@@ -365,7 +365,7 @@
 			</el-button>
 			<el-divider />
 			<el-alert
-				v-for="reason in validationErrors"
+				v-for="reason in visibleValidationErrors"
 				:key="reason"
 				type="warning"
 				:closable="false"
@@ -466,6 +466,8 @@ import { useThermostatMemberContext } from '../composables/use-thermostat-member
 import { useThermostatPreviewGate } from '../composables/use-thermostat-preview-gate';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import {
+	RECOMMENDED_ACTUATOR_LEASE_SECONDS,
+	RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS,
 	type ThermostatConfiguration,
 	type ThermostatDraft,
 	type ThermostatSource,
@@ -473,6 +475,7 @@ import {
 	draftAfterRelease,
 	draftFromConfiguration,
 	emptyThermostatDraft,
+	newThermostatDraft,
 } from '../services/thermostat-authoring';
 import { ThermostatMemberFreshness } from '../services/thermostat-members';
 import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
@@ -547,7 +550,7 @@ onBeforeUnmount(() => {
 	sockets.off('disconnect', disconnectMembers);
 });
 const preview = ref<ThermostatConfiguration | null>(null);
-const draft = ref(emptyThermostatDraft());
+const draft = ref(props.create ? newThermostatDraft() : emptyThermostatDraft());
 const name = ref('');
 const graph = ref<ReturnType<typeof thermostatDeviceDraft> | null>(null);
 let graphBranchSignature = '';
@@ -591,6 +594,19 @@ const validationErrors = computed(() => [
 		: []),
 	...payload().errors.map((error) => (error.startsWith('devicesVirtualPlugin.') ? t(error) : error)),
 ]);
+// A new thermostat is incomplete by definition, so listing what is missing before the user has
+// touched anything reads as the form scolding them for opening it. The list appears with the first
+// edit; Preview and Create stay gated on the full list throughout. An existing thermostat always
+// shows it — there the errors describe a stored configuration that needs repair.
+const touched = ref(false);
+watch(
+	[draft, name],
+	() => {
+		touched.value = true;
+	},
+	{ deep: true }
+);
+const visibleValidationErrors = computed(() => (props.create && !touched.value ? [] : validationErrors.value));
 const modeNames = Object.values(SpacesModuleClimateIntentMode);
 const settingNames = Object.values(ThermostatSettingRole);
 type TrendKey = keyof NonNullable<typeof draft.value.heuristic>;
@@ -746,11 +762,11 @@ const toggleTrend = (enabled: string | number | boolean): void => {
 		enabled === true ? (Object.fromEntries(trendFields.map((field) => [field.key, null])) as NonNullable<typeof draft.value.heuristic>) : null;
 };
 const addSource = (role: ThermostatSource['role']): void => {
-	draft.value.sources.push({ role, source_property: null, maximum_age_seconds: null });
+	draft.value.sources.push({ role, source_property: null, maximum_age_seconds: props.create ? RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS : null });
 };
 const addActuator = (role: ThermostatActuatorRole): void => {
 	if (draft.value.actuators.length >= 8 || !canAuthor.value) return;
-	draft.value.actuators.push({ role, source_property: '', lease_seconds: null });
+	draft.value.actuators.push({ role, source_property: '', lease_seconds: props.create ? RECOMMENDED_ACTUATOR_LEASE_SECONDS : null });
 };
 const addSetting = (): void => {
 	draft.value.settings.push({ setting: ThermostatSettingRole.heating_setpoint, property: '' });

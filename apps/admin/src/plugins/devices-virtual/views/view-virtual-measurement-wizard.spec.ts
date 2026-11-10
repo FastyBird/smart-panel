@@ -13,7 +13,7 @@ vi.mock('../../../modules/devices', () => ({ RouteNames: { DEVICE: 'device' } })
 vi.mock('../components/wizard/virtual-wizard-shell.vue', () => ({
 	default: defineComponent({
 		name: 'VirtualWizardShell',
-		props: { mode: { type: String, default: '' }, busy: Boolean },
+		props: { busy: Boolean },
 		template: '<div><slot /></div>',
 	}),
 }));
@@ -33,7 +33,6 @@ describe('measurement creation navigation', () => {
 		const wrapper = mount(ViewVirtualMeasurementWizard);
 		const shell = wrapper.findComponent({ name: 'VirtualWizardShell' });
 		const editor = wrapper.findComponent({ name: 'VirtualMeasurementEditor' });
-		expect(shell.props('mode')).toBe('sensor_aggregate');
 		expect(editor.props('mode')).toBe('sensor_aggregate');
 		editor.vm.$emit('busy', true);
 		await wrapper.vm.$nextTick();
@@ -45,10 +44,9 @@ describe('measurement creation navigation', () => {
 		expect(push).toHaveBeenCalledWith({ name: 'device', params: { id: 'committed-device' } });
 	});
 
-	it('highlights numeric conversion in the shell when the route asks for a transform', () => {
+	it('opens the numeric conversion editor when the route asks for a transform', () => {
 		route.query = { mode: 'sensor_transform' };
 		const wrapper = mount(ViewVirtualMeasurementWizard);
-		expect(wrapper.findComponent({ name: 'VirtualWizardShell' }).props('mode')).toBe('sensor_transform');
 		expect(wrapper.findComponent({ name: 'VirtualMeasurementEditor' }).props('mode')).toBe('sensor_transform');
 	});
 });

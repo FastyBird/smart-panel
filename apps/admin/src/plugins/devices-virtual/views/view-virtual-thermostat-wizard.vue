@@ -1,5 +1,5 @@
 <template>
-	<virtual-wizard-shell :mode="DevicesVirtualPluginDeviceMode.climate_controller">
+	<virtual-wizard-shell>
 		<el-radio-group
 			v-model="strategy"
 			class="mb-2"
@@ -29,7 +29,6 @@ import { useRouter } from 'vue-router';
 import { ElRadioButton, ElRadioGroup } from 'element-plus';
 
 import { RouteNames as DeviceRouteNames } from '../../../modules/devices';
-import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import NativeThermostatEditor from '../components/NativeThermostatEditor.vue';
 import VirtualThermostatEditor from '../components/virtual-thermostat-editor.vue';
 import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';

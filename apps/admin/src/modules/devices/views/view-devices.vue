@@ -71,7 +71,7 @@
 					:key="item.value"
 					class="px-4! ml-2!"
 					:data-test-id="item.testId"
-					@click="onRouteWizard(item.to)"
+					@click="onRouteWizard(item)"
 				>
 					<el-icon class="mr-1"><icon :icon="item.icon" /></el-icon>
 					{{ t(item.label) }}
@@ -116,7 +116,7 @@
 			:key="item.value"
 			class="flex-1"
 			:data-test-id="`${item.testId}-small`"
-			@click="onRouteWizard(item.to)"
+			@click="onRouteWizard(item)"
 		>
 			<el-icon class="mr-1"><icon :icon="item.icon" /></el-icon>
 			{{ t(item.label) }}
@@ -253,6 +253,52 @@
 			</el-button>
 		</template>
 	</el-dialog>
+	<!--
+		A plugin wizard that builds more than one kind of device asks which kind before it starts, in the
+		same dialog shape the adoption wizard uses to pick a plugin — so the choice is made once, up
+		front, rather than by a switch inside a wizard that is already under way.
+	-->
+	<el-dialog
+		v-model="routeWizardDialogVisible"
+		:title="routeWizardLauncher?.optionsTitle ? t(routeWizardLauncher.optionsTitle) : t('devicesModule.headings.devices.selectWizardPlugin')"
+		width="520px"
+		data-test-id="route-wizard-dialog"
+	>
+		<div class="flex flex-col gap-2">
+			<el-card
+				v-for="option in routeWizardLauncher?.options ?? []"
+				:key="option.value"
+				shadow="hover"
+				class="devices-wizard-plugin-card"
+				body-class="p-4!"
+				:data-test-id="option.testId"
+				@click="onStartRouteWizard(option.to)"
+			>
+				<div class="flex items-start gap-3">
+					<div class="devices-wizard-plugin-card__icon">
+						<icon :icon="option.icon" />
+					</div>
+					<div class="flex-1 min-w-0 devices-wizard-plugin-card__content">
+						<h3 class="devices-wizard-plugin-card__title">
+							{{ t(option.label) }}
+						</h3>
+						<p class="devices-wizard-plugin-card__description">
+							{{ t(option.description) }}
+						</p>
+					</div>
+					<div class="devices-wizard-plugin-card__chevron">
+						<icon icon="mdi:chevron-right" />
+					</div>
+				</div>
+			</el-card>
+		</div>
+
+		<template #footer>
+			<el-button @click="routeWizardDialogVisible = false">
+				{{ t('devicesModule.buttons.cancel.title') }}
+			</el-button>
+		</template>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -280,6 +326,7 @@ import { ListDevices, ListDevicesAdjust } from '../components/components';
 import { useDevicesActions, useDevicesDataSource, useDevicesPlugins, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
+import type { IDeviceWizardRouteLauncher } from '../devices.types';
 import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDevicesProps } from './view-devices.types';
@@ -328,6 +375,8 @@ const mounted = ref<boolean>(false);
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
 const wizardPluginDialogVisible = ref<boolean>(false);
+const routeWizardDialogVisible = ref<boolean>(false);
+const routeWizardLauncher = ref<IDeviceWizardRouteLauncher | null>(null);
 
 const remoteFormChanged = ref<boolean>(false);
 
@@ -486,12 +535,25 @@ const onStartWizard = (type: string): void => {
 	});
 };
 
-const onRouteWizard = (to: RouteLocationRaw): void => {
+const onStartRouteWizard = (to: RouteLocationRaw): void => {
+	routeWizardDialogVisible.value = false;
+
 	if (isLGDevice.value) {
 		router.replace(to);
 	} else {
 		router.push(to);
 	}
+};
+
+const onRouteWizard = (launcher: IDeviceWizardRouteLauncher): void => {
+	if (launcher.options && launcher.options.length > 1) {
+		routeWizardLauncher.value = launcher;
+		routeWizardDialogVisible.value = true;
+
+		return;
+	}
+
+	onStartRouteWizard(launcher.options?.[0]?.to ?? launcher.to);
 };
 
 onBeforeMount((): void => {

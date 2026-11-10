@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
 		to: { name: string };
 		testId: string;
 		disabled: boolean;
+		optionsTitle?: string;
+		options?: { value: string; label: string; description: string; icon: string; to: { name: string }; testId: string }[];
 	}[],
 	isLGDevice: false,
 	// Read once per `useBreakpoints()` call, like `isLGDevice` above: set it before `mountView()`.
@@ -315,6 +317,46 @@ describe('ViewDevices', () => {
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-wizard' });
 	});
 
+	it('asks which kind of virtual device to create before the wizard starts', async () => {
+		mocks.wizardRouteOptions[0] = {
+			...mocks.wizardRouteOptions[0]!,
+			optionsTitle: 'devicesVirtualPlugin.wizard.selectKind',
+			options: [
+				{
+					value: 'projection',
+					label: 'p.title',
+					description: 'p.description',
+					icon: 'mdi:a',
+					to: { name: 'devices_virtual-wizard' },
+					testId: 'kind-projection',
+				},
+				{
+					value: 'group',
+					label: 'g.title',
+					description: 'g.description',
+					icon: 'mdi:b',
+					to: { name: 'devices_virtual-light_group_wizard' },
+					testId: 'kind-group',
+				},
+			],
+		} as (typeof mocks.wizardRouteOptions)[number];
+
+		const wrapper = mountView();
+		await flushPromises();
+
+		await wrapper.get('[data-test-id="virtual-device-wizard"]').trigger('click');
+		await flushPromises();
+
+		// The launcher opens the chooser instead of navigating.
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
+		expect(wrapper.get('[data-test-id="kind-projection"]').text()).toContain('p.title');
+
+		await wrapper.get('[data-test-id="kind-group"]').trigger('click');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-light_group_wizard' });
+	});
+
 	it('renders and navigates an enabled Simulator generation launcher alongside Virtual Devices', async () => {
 		mocks.wizardRouteOptions.push({
 			value: 'simulator-plugin',
@@ -389,13 +431,9 @@ describe('ViewDevices', () => {
 		expect(wrapper.get('[data-test-id="measurement-editor"]').text()).toBe('sensor_aggregate');
 		expect(wrapper.findComponent(ListDevices).exists()).toBe(false);
 
-		// The measurement page is part of the wizard: it carries the mode selector with its own mode
-		// highlighted, and switching back to projection or to either measurement mode must work while
-		// the parent stays mounted.
+		// Either measurement mode must also work while the parent stays mounted.
 		for (const mode of [DevicesVirtualPluginDeviceMode.sensor_aggregate, DevicesVirtualPluginDeviceMode.sensor_transform]) {
-			const selector = wrapper.findComponent({ name: 'VirtualWizardModeSelector' });
-			expect(selector.props('mode')).toBe(router.currentRoute.value.query.mode);
-			selector.findComponent({ name: 'ElRadioGroup' }).vm.$emit('change', DevicesVirtualPluginDeviceMode.projection);
+			await router.push({ name: VirtualRouteNames.WIZARD });
 			await flushPromises();
 			expect(router.currentRoute.value.name).toBe(VirtualRouteNames.WIZARD);
 			await router.push({ name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode } });

@@ -73,6 +73,31 @@ export const emptyThermostatDraft = (): ThermostatDraft => ({
 	settings: [],
 });
 
+/** Recommended starting values for the mandatory per-entry fields of a new thermostat. */
+export const RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS = 300;
+export const RECOMMENDED_ACTUATOR_LEASE_SECONDS = 600;
+
+/**
+ * Starting point for a thermostat that does not exist yet. Unlike {@link emptyThermostatDraft} the
+ * timing and tolerance fields carry recommended values: every one of them is mandatory, none has an
+ * obvious value to someone meeting the form for the first time, and an all-blank form answered with
+ * a wall of validation errors before anything had been touched. They are ordinary editable values —
+ * setpoints, sources and members still have to be chosen, because those depend on the room.
+ */
+export const newThermostatDraft = (): ThermostatDraft => {
+	const draft = emptyThermostatDraft();
+
+	draft.policy.coldTolerance = 0.5;
+	draft.policy.hotTolerance = 0.5;
+	draft.policy.neutralMargin = 1;
+	draft.policy.minimumOffMs = 300_000;
+	draft.policy.changeoverMs = 600_000;
+	draft.contact_opening_ms = 30_000;
+	draft.contact_closing_ms = 60_000;
+
+	return draft;
+};
+
 export const draftFromConfiguration = (config: ThermostatConfiguration): ThermostatDraft => ({
 	display_floor_claim: config.display_floor_claim ?? null,
 	requested_mode: config.requested_mode,

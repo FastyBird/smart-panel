@@ -48,3 +48,19 @@ export const RouteNames = {
 	THERMOSTAT_WIZARD: 'devices_virtual-thermostat_wizard',
 	LIGHT_GROUP_WIZARD: 'devices_virtual-light_group_wizard',
 };
+
+// What the "Create virtual device" launcher offers before the wizard starts. Each kind is authored on
+// its own route, so the choice is made once, up front, in the Devices view's chooser dialog — there is
+// no switch between kinds inside a wizard that is already under way.
+export const VIRTUAL_WIZARD_KINDS = [
+	{ value: 'projection', icon: 'mdi:call-split', to: { name: RouteNames.WIZARD } },
+	{ value: 'aggregate', icon: 'mdi:sigma', to: { name: RouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_aggregate' } } },
+	{ value: 'transform', icon: 'mdi:function-variant', to: { name: RouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform' } } },
+	{ value: 'group', icon: 'mdi:lightbulb-group', to: { name: RouteNames.LIGHT_GROUP_WIZARD } },
+	{ value: 'thermostat', icon: 'mdi:thermostat', to: { name: RouteNames.THERMOSTAT_WIZARD } },
+].map((kind) => ({
+	...kind,
+	label: `devicesVirtualPlugin.wizard.kinds.${kind.value}.title`,
+	description: `devicesVirtualPlugin.wizard.kinds.${kind.value}.description`,
+	testId: `virtual-device-wizard-${kind.value}`,
+}));

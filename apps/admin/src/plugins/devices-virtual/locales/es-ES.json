@@ -34,6 +34,29 @@
 	},
 	"wizard": {
 		"title": "Crear dispositivo virtual",
+		"selectKind": "Elige qué crear",
+		"kinds": {
+			"projection": {
+				"title": "Proyección",
+				"description": "Presenta canales de dispositivos existentes como un nuevo dispositivo de la categoría elegida."
+			},
+			"aggregate": {
+				"title": "Agregado de sensores",
+				"description": "Combina varios sensores en una sola lectura, como la temperatura media de una habitación."
+			},
+			"transform": {
+				"title": "Conversión numérica",
+				"description": "Convierte una lectura en otra, incluida la calibración, las sondas NTC y el punto de rocío."
+			},
+			"group": {
+				"title": "Grupo de actuadores",
+				"description": "Controla varias luces, interruptores, enchufes, ventiladores o persianas como un solo dispositivo."
+			},
+			"thermostat": {
+				"title": "Controlador de termostato",
+				"description": "Regula la temperatura de la habitación con relés y sensores, o integra un termostato nativo."
+			}
+		},
 		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
 		"breadcrumb": "Crear dispositivo virtual",
 		"viewDevice": "Ver dispositivo",

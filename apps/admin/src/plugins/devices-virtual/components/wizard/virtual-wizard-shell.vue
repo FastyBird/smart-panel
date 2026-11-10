@@ -57,12 +57,6 @@
 
 	<div class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
 		<el-scrollbar class="flex-1 overflow-hidden h-full">
-			<virtual-wizard-mode-selector
-				class="mb-2"
-				:mode="mode"
-				:disabled="busy"
-			/>
-
 			<slot />
 		</el-scrollbar>
 	</div>
@@ -94,10 +88,7 @@ import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../../modules/devices';
-import type { DevicesVirtualPluginDeviceMode } from '../../../../openapi.constants';
 import { RouteNames } from '../../devices-virtual.constants';
-
-import VirtualWizardModeSelector from './virtual-wizard-mode-selector.vue';
 
 defineOptions({
 	name: 'VirtualWizardShell',
@@ -105,9 +96,10 @@ defineOptions({
 
 // The page chrome of the projection wizard (app bar, breadcrumbs, header, Cancel) for the kinds that
 // are authored by a single editor rather than by the four projection steps. Without it those editors
-// rendered as bare forms: no title, no breadcrumbs, no way back to the device list and no sign of the
-// other kinds, which read as having been thrown out of the wizard.
-const props = defineProps<{ mode: DevicesVirtualPluginDeviceMode; busy?: boolean }>();
+// rendered as bare forms: no title, no breadcrumbs and no way back to the device list, which read as
+// having been thrown out of the wizard. The kind itself is chosen before the wizard starts, in the
+// Devices view's chooser dialog, so nothing here switches between kinds.
+const props = defineProps<{ busy?: boolean }>();
 
 const { t } = useI18n();
 const router = useRouter();

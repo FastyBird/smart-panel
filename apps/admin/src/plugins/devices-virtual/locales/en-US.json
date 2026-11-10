@@ -34,6 +34,29 @@
 	},
 	"wizard": {
 		"title": "Create virtual device",
+		"selectKind": "Choose what to create",
+		"kinds": {
+			"projection": {
+				"title": "Projection",
+				"description": "Present channels of existing devices as one new device of a chosen category."
+			},
+			"aggregate": {
+				"title": "Sensor aggregate",
+				"description": "Combine several sensors into one reading, such as an average room temperature."
+			},
+			"transform": {
+				"title": "Numeric conversion",
+				"description": "Convert one reading into another, including calibration, NTC probes and dew point."
+			},
+			"group": {
+				"title": "Actuator group",
+				"description": "Control several lights, switches, outlets, fans or covers as one device."
+			},
+			"thermostat": {
+				"title": "Thermostat controller",
+				"description": "Regulate room temperature with relays and sensors, or wrap a native thermostat."
+			}
+		},
 		"subtitle": "Build a device from another device's channels",
 		"breadcrumb": "Create virtual device",
 		"viewDevice": "View device",

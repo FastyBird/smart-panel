@@ -20,7 +20,7 @@ vi.mock('../components/wizard/virtual-wizard-shell.vue', async () => {
 	return {
 		default: defineComponent({
 			name: 'VirtualWizardShell',
-			props: { mode: { type: String, default: '' }, busy: Boolean },
+			props: { busy: Boolean },
 			template: '<div><slot /></div>',
 		}),
 	};
