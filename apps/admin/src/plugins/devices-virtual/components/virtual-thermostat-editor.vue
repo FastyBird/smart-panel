@@ -6,13 +6,13 @@
 		data-test-id="virtual-thermostat-editor"
 	>
 		<template #header>
-			<strong>{{ create ? 'Create virtual thermostat' : 'Thermostat configuration' }}</strong>
+			<strong>{{ tt(create ? 'title.create' : 'title.edit') }}</strong>
 		</template>
 		<el-alert
 			type="info"
 			:closable="false"
-			title="Draft controller"
-			description="Configuration and reservations persist, but heating and cooling remain unavailable until hardware qualification and runtime reconciliation."
+			:title="tt('draft.title')"
+			:description="tt('draft.description')"
 		/>
 		<el-alert
 			v-if="loadError"
@@ -37,7 +37,7 @@
 				<div v-show="at(0)">
 					<el-form-item
 						v-if="create"
-						label="Thermostat name"
+						:label="tt('name')"
 						class="mt-3"
 					>
 						<el-input v-model="name" />
@@ -47,7 +47,7 @@
 						class="mt-3 space-y-2"
 					>
 						<p>
-							Configuration revision {{ configuration.revision }} · graph revision {{ configuration.graph_revision }} · {{ configuration.readiness }}
+							{{ tt('revision', { revision: configuration.revision, graph: configuration.graph_revision, readiness: configuration.readiness }) }}
 						</p>
 						<el-alert
 							v-for="reason in configuration.reasons"
@@ -61,7 +61,7 @@
 							:key="claim.id"
 							:type="claim.state === 'reserved' ? 'info' : 'warning'"
 							:closable="false"
-							:title="`${claim.role}: ${claim.state} · ${claim.physical_identity}`"
+							:title="`${roleLabel(claim.role)}: ${claim.state} · ${claim.physical_identity}`"
 							:description="claim.reason ?? undefined"
 						/>
 						<el-alert
@@ -69,15 +69,15 @@
 							:key="source.id"
 							type="warning"
 							:closable="false"
-							:title="`${source.role}: missing ${source.source_identity}`"
+							:title="tt('missingSource', { role: roleLabel(source.role), identity: source.source_identity })"
 						/>
 					</div>
-					<el-divider content-position="left">Requested settings</el-divider>
+					<el-divider content-position="left">{{ tt('requested') }}</el-divider>
 					<el-form
 						label-position="top"
 						class="space-y-3"
 					>
-						<el-form-item label="Requested mode (intent, not reported activity)">
+						<el-form-item :label="tt('requestedMode')">
 							<el-select
 								v-model="draft.requested_mode"
 								class="w-40"
@@ -86,52 +86,52 @@
 									v-for="mode in modeNames"
 									:key="mode"
 									:value="mode"
-									:label="mode"
+									:label="tt(`modes.${mode}`)"
 								/>
 							</el-select>
 						</el-form-item>
 						<div class="grid grid-cols-2 gap-3">
-							<el-form-item label="Heating setpoint (°C)">
+							<el-form-item :label="tt('heatingSetpoint')">
 								<el-input-number
 									v-model="draft.policy.heatingSetpoint"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Cooling setpoint (°C)">
+							<el-form-item :label="tt('coolingSetpoint')">
 								<el-input-number
 									v-model="draft.policy.coolingSetpoint"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Cold tolerance (°C)">
+							<el-form-item :label="tt('coldTolerance')">
 								<el-input-number
 									v-model="draft.policy.coldTolerance"
 									:min="0"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Hot tolerance (°C)">
+							<el-form-item :label="tt('hotTolerance')">
 								<el-input-number
 									v-model="draft.policy.hotTolerance"
 									:min="0"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Neutral heat/cool margin (°C)">
+							<el-form-item :label="tt('neutralMargin')">
 								<el-input-number
 									v-model="draft.policy.neutralMargin"
 									:min="0"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Minimum OFF interval (ms)">
+							<el-form-item :label="tt('minimumOff')">
 								<el-input-number
 									v-model="draft.policy.minimumOffMs"
 									:min="0"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Changeover interval (ms)">
+							<el-form-item :label="tt('changeover')">
 								<el-input-number
 									v-model="draft.policy.changeoverMs"
 									:min="0"
@@ -143,19 +143,19 @@
 							:model-value="draft.policy.floor !== null"
 							@change="toggleFloor"
 						>
-							Protect heating with floor temperature
+							{{ tt('floorProtect') }}
 						</el-checkbox>
 						<div
 							v-if="draft.policy.floor"
 							class="grid grid-cols-2 gap-3"
 						>
-							<el-form-item label="Floor maximum (°C)">
+							<el-form-item :label="tt('floorLimit')">
 								<el-input-number
 									v-model="draft.policy.floor.limit"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Floor recovery hysteresis (°C)">
+							<el-form-item :label="tt('floorHysteresis')">
 								<el-input-number
 									v-model="draft.policy.floor.recoveryHysteresis"
 									:controls="false"
@@ -166,7 +166,7 @@
 							:model-value="draft.heuristic !== null"
 							@change="toggleTrend"
 						>
-							Use ambient trend to infer open window without contact
+							{{ tt('trend') }}
 						</el-checkbox>
 						<div
 							v-if="draft.heuristic"
@@ -184,14 +184,14 @@
 							</el-form-item>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
-							<el-form-item label="Contact opening debounce (ms)">
+							<el-form-item :label="tt('contactOpening')">
 								<el-input-number
 									v-model="draft.contact_opening_ms"
 									:min="0"
 									:controls="false"
 								/>
 							</el-form-item>
-							<el-form-item label="Contact closing debounce (ms)">
+							<el-form-item :label="tt('contactClosing')">
 								<el-input-number
 									v-model="draft.contact_closing_ms"
 									:min="0"
@@ -202,14 +202,14 @@
 					</el-form>
 				</div>
 				<div v-show="at(1)">
-					<el-divider content-position="left">Temperature and contact sources</el-divider>
+					<el-divider content-position="left">{{ tt('sources.title') }}</el-divider>
 					<el-checkbox
 						v-if="configuration?.sources.some((entry) => entry.role === 'floor')"
 						v-model="removeLegacyFloor"
 					>
 						{{ memberLabel('removeLegacyGuard') }}
 					</el-checkbox>
-					<p class="text-sm">Select original-age-qualified sources. Floor is an independent Celsius protection input; contact is optional.</p>
+					<p class="text-sm">{{ tt('sources.help') }}</p>
 					<div
 						v-for="(source, index) in draft.sources"
 						:key="source.id ?? index"
@@ -217,7 +217,7 @@
 					>
 						<div class="flex items-center justify-between mb-2">
 							<strong>
-								{{ source.role }}
+								{{ roleLabel(source.role) }}
 								<small v-if="source.id">· {{ source.id }}</small>
 							</strong>
 							<el-button
@@ -226,7 +226,7 @@
 								:disabled="source.role === 'floor' && !!configuration?.sources.some((entry) => entry.role === 'floor') && !removeLegacyFloor"
 								@click="draft.sources.splice(index, 1)"
 							>
-								Remove
+								{{ tt('remove') }}
 							</el-button>
 						</div>
 						<thermostat-property-picker
@@ -234,7 +234,7 @@
 							:kind="source.role"
 						/>
 						<el-form-item
-							label="Maximum original sample age (seconds)"
+							:label="tt('sources.maximumAge')"
 							class="mt-2"
 						>
 							<el-input-number
@@ -247,13 +247,13 @@
 							v-if="source.role === 'contact'"
 							class="grid grid-cols-2 gap-3"
 						>
-							<el-form-item label="Open value (JSON literal or text)">
+							<el-form-item :label="tt('sources.openValue')">
 								<el-input
 									:model-value="formatContactValue(source.open_value)"
 									@update:model-value="setContactValue(source, 'open_value', $event)"
 								/>
 							</el-form-item>
-							<el-form-item label="Closed value (JSON literal or text)">
+							<el-form-item :label="tt('sources.closedValue')">
 								<el-input
 									:model-value="formatContactValue(source.closed_value)"
 									@update:model-value="setContactValue(source, 'closed_value', $event)"
@@ -262,18 +262,18 @@
 						</div>
 					</div>
 					<div class="flex gap-2">
-						<el-button @click="addSource(ThermostatSourceRole.ambient)">Add ambient</el-button>
+						<el-button @click="addSource(ThermostatSourceRole.ambient)">{{ tt('sources.addAmbient') }}</el-button>
 						<el-button
 							:disabled="draft.sources.some((source) => source.role === 'floor')"
 							@click="addSource(ThermostatSourceRole.floor)"
 						>
-							Add floor
+							{{ tt('sources.addFloor') }}
 						</el-button>
 						<el-button
 							:disabled="draft.sources.some((source) => source.role === 'contact')"
 							@click="addSource(ThermostatSourceRole.contact)"
 						>
-							Add contact
+							{{ tt('sources.addContact') }}
 						</el-button>
 					</div>
 				</div>
@@ -289,7 +289,7 @@
 						v-for="role in [ThermostatActuatorRole.heating, ThermostatActuatorRole.cooling]"
 						:key="role"
 					>
-						<h3>{{ role }}</h3>
+						<h3>{{ roleLabel(role) }}</h3>
 						<thermostat-member-card
 							v-for="(actuator, index) in draft.actuators.filter((member) => member.role === role)"
 							:key="actuator.retained?.id ?? `${role}-${index}`"
@@ -311,7 +311,7 @@
 							:disabled="busy || draft.actuators.length >= 8"
 							@click="addActuator(role)"
 						>
-							{{ memberLabel('addMember') }} · {{ role }}
+							{{ memberLabel('addMember') }} · {{ roleLabel(role) }}
 						</el-button>
 					</section>
 					<el-form-item :label="memberLabel('displayFloor')">
@@ -323,7 +323,7 @@
 								v-for="member in draft.actuators.filter((member) => member.retained?.protection)"
 								:key="member.retained!.id"
 								:value="member.retained!.id"
-								:label="`${member.role} · ${member.retained!.physical_identity}`"
+								:label="`${roleLabel(member.role)} · ${member.retained!.physical_identity}`"
 							/>
 						</el-select>
 					</el-form-item>
@@ -337,12 +337,12 @@
 					</details>
 				</div>
 				<div v-show="at(0)">
-					<el-divider content-position="left">Owned local command settings</el-divider>
+					<el-divider content-position="left">{{ tt('settings.title') }}</el-divider>
 					<p
 						v-if="create"
 						class="text-sm"
 					>
-						The controller creates local mode, setpoint and lock slots together with their registrations.
+						{{ tt('settings.help') }}
 					</p>
 					<div
 						v-for="(setting, index) in create ? [] : draft.settings"
@@ -357,7 +357,7 @@
 								v-for="settingName in settingNames"
 								:key="settingName"
 								:value="settingName"
-								:label="settingName"
+								:label="tt(`settingRoles.${settingName}`)"
 							/>
 						</el-select>
 						<thermostat-property-picker
@@ -370,14 +370,14 @@
 							link
 							@click="draft.settings.splice(index, 1)"
 						>
-							Remove
+							{{ tt('remove') }}
 						</el-button>
 					</div>
 					<el-button
 						v-if="!create"
 						@click="addSetting"
 					>
-						Add setting
+						{{ tt('settings.add') }}
 					</el-button>
 				</div>
 				<div v-show="at(3)">
@@ -389,21 +389,28 @@
 						class="mb-3"
 						data-test-id="thermostat-summary"
 					>
-						<el-descriptions-item label="Thermostat name">{{ name }}</el-descriptions-item>
-						<el-descriptions-item label="Requested mode">{{ draft.requested_mode }}</el-descriptions-item>
-						<el-descriptions-item label="Setpoints (°C)">
-							heating {{ draft.policy.heatingSetpoint ?? '—' }} · cooling {{ draft.policy.coolingSetpoint ?? '—' }}
+						<el-descriptions-item :label="tt('name')">{{ name }}</el-descriptions-item>
+						<el-descriptions-item :label="tt('summary.mode')">{{ tt(`modes.${draft.requested_mode}`) }}</el-descriptions-item>
+						<el-descriptions-item :label="tt('summary.setpoints')">
+							{{ tt('summary.setpointsValue', { heating: draft.policy.heatingSetpoint ?? '—', cooling: draft.policy.coolingSetpoint ?? '—' }) }}
 						</el-descriptions-item>
-						<el-descriptions-item label="Tolerances (°C)">
-							cold {{ draft.policy.coldTolerance ?? '—' }} · hot {{ draft.policy.hotTolerance ?? '—' }} · neutral margin
-							{{ draft.policy.neutralMargin ?? '—' }}
+						<el-descriptions-item :label="tt('summary.tolerances')">
+							{{
+								tt('summary.tolerancesValue', {
+									cold: draft.policy.coldTolerance ?? '—',
+									hot: draft.policy.hotTolerance ?? '—',
+									neutral: draft.policy.neutralMargin ?? '—',
+								})
+							}}
 						</el-descriptions-item>
-						<el-descriptions-item label="Timing (ms)">
-							minimum OFF {{ draft.policy.minimumOffMs ?? '—' }} · changeover {{ draft.policy.changeoverMs ?? '—' }}
+						<el-descriptions-item :label="tt('summary.timing')">
+							{{ tt('summary.timingValue', { off: draft.policy.minimumOffMs ?? '—', changeover: draft.policy.changeoverMs ?? '—' }) }}
 						</el-descriptions-item>
-						<el-descriptions-item label="Sources">{{ draft.sources.map((source) => source.role).join(', ') || '—' }}</el-descriptions-item>
-						<el-descriptions-item label="Actuator members">
-							{{ draft.actuators.map((member) => member.role).join(', ') || '—' }}
+						<el-descriptions-item :label="tt('summary.sources')">
+							{{ draft.sources.map((source) => roleLabel(source.role)).join(', ') || '—' }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="tt('summary.members')">
+							{{ draft.actuators.map((member) => roleLabel(member.role)).join(', ') || '—' }}
 						</el-descriptions-item>
 					</el-descriptions>
 					<el-alert
@@ -425,7 +432,7 @@
 						v-if="preview"
 						:type="preview.reasons.length ? 'warning' : 'success'"
 						:closable="false"
-						:title="`Preview: ${preview.readiness}; ${preview.reasons.length} blocker(s)`"
+						:title="tt('previewResult', { readiness: preview.readiness, count: preview.reasons.length })"
 						class="mb-2"
 					>
 						<ul>
@@ -447,7 +454,7 @@
 							:disabled="validationErrors.length > 0"
 							@click="runPreview"
 						>
-							Preview eligibility and claims
+							{{ tt('actions.preview') }}
 						</el-button>
 						<el-button
 							type="primary"
@@ -455,7 +462,7 @@
 							:disabled="!preview || !canSavePreview || validationErrors.length > 0"
 							@click="save"
 						>
-							{{ create ? 'Create thermostat' : 'Save configuration' }}
+							{{ tt(create ? 'actions.create' : 'actions.save') }}
 						</el-button>
 						<el-button
 							v-if="configuration?.actuators.length"
@@ -463,13 +470,13 @@
 							:loading="busy"
 							@click="requestRelease"
 						>
-							Request OFF and release
+							{{ tt('actions.release') }}
 						</el-button>
 						<el-button
 							v-if="!create"
 							@click="reload"
 						>
-							Reload
+							{{ tt('actions.reload') }}
 						</el-button>
 					</div>
 				</template>
@@ -531,6 +538,7 @@ import {
 	draftFromConfiguration,
 	emptyThermostatDraft,
 	newThermostatDraft,
+	translateThermostatError,
 } from '../services/thermostat-authoring';
 import { ThermostatMemberFreshness } from '../services/thermostat-members';
 import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
@@ -550,6 +558,8 @@ const { profile } = useSession();
 const canAuthor = computed(() => ['owner', 'admin'].includes(profile.value?.role ?? ''));
 const { t } = useI18n();
 const memberLabel = (key: string) => t(`devicesVirtualPlugin.members.${key}`);
+const tt = (key: string, params: Record<string, unknown> = {}): string => t(`devicesVirtualPlugin.thermostat.${key}`, params);
+const roleLabel = (role: string): string => tt(`roles.${role}`);
 const removeLegacyFloor = ref(false),
 	now = ref(Date.now());
 const configuration = ref<ThermostatConfiguration | null>(null);
@@ -642,13 +652,13 @@ const previewGate = useThermostatPreviewGate(
 );
 const canSavePreview = previewGate.canSave;
 const validationErrors = computed(() => [
-	...(props.create && !name.value.trim() ? ['Enter a thermostat name.'] : []),
+	...(props.create && !name.value.trim() ? [tt('errors.nameRequired')] : []),
 	...(configuration.value?.sources.some((source) => source.role === 'floor') &&
 	!draft.value.sources.some((source) => source.role === 'floor') &&
 	!removeLegacyFloor.value
 		? [memberLabel('removeLegacyGuard')]
 		: []),
-	...payload().errors.map((error) => (error.startsWith('devicesVirtualPlugin.') ? t(error) : error)),
+	...payload().errors.map((error) => translateThermostatError(t, error)),
 ]);
 // Creation walks the form in four steps — settings, sources, actuators, review — one section at a
 // time; an existing thermostat keeps the single page. What is still missing is listed on the review
@@ -674,17 +684,18 @@ watch(step, (value) => {
 const modeNames = Object.values(SpacesModuleClimateIntentMode);
 const settingNames = Object.values(ThermostatSettingRole);
 type TrendKey = keyof NonNullable<typeof draft.value.heuristic>;
-const trendFields: { key: TrendKey; label: string }[] = [
-	{ key: 'sampleWindowMs', label: 'Sample window (ms)' },
-	{ key: 'minimumSamples', label: 'Minimum samples' },
-	{ key: 'minimumSpanMs', label: 'Minimum span (ms)' },
-	{ key: 'maximumSampleAgeMs', label: 'Maximum sample age (ms)' },
-	{ key: 'slopeThresholdCPerMinute', label: 'Slope threshold (°C/min)' },
-	{ key: 'confirmationMs', label: 'Confirmation (ms)' },
-	{ key: 'recoveryMs', label: 'Recovery (ms)' },
-	{ key: 'maximumPauseMs', label: 'Maximum pause (ms)' },
-	{ key: 'cooldownMs', label: 'Cooldown (ms)' },
+const trendKeys: TrendKey[] = [
+	'sampleWindowMs',
+	'minimumSamples',
+	'minimumSpanMs',
+	'maximumSampleAgeMs',
+	'slopeThresholdCPerMinute',
+	'confirmationMs',
+	'recoveryMs',
+	'maximumPauseMs',
+	'cooldownMs',
 ];
+const trendFields = computed<{ key: TrendKey; label: string }[]>(() => trendKeys.map((key) => ({ key, label: tt(`trendFields.${key}`) })));
 
 let requestSequence = 0;
 const path = `/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/thermostats/{id}` as const;
@@ -704,11 +715,7 @@ const reload = async (): Promise<void> => {
 		} else if (data) {
 			configuration.value = data.data;
 			draft.value = draftFromConfiguration(data.data);
-		} else
-			loadError.value = getErrorReason<operations['get-devices-virtual-plugin-thermostat-configuration']>(
-				error,
-				'Could not load thermostat configuration.'
-			);
+		} else loadError.value = getErrorReason<operations['get-devices-virtual-plugin-thermostat-configuration']>(error, tt('loadFailed'));
 	} catch (error) {
 		if (sequence === requestSequence) loadError.value = String(error);
 	} finally {
@@ -723,7 +730,7 @@ const errorText = (error: unknown): string => {
 	}
 	// The backend's own refusal travels as `error.details.reason`; without reading it every rejected
 	// preview or save collapsed into the same sentence and gave no hint of what to change.
-	return getErrorReason(error as Parameters<typeof getErrorReason>[0], 'Thermostat request failed.');
+	return getErrorReason(error as Parameters<typeof getErrorReason>[0], tt('requestFailed'));
 };
 const runPreview = async (): Promise<void> => {
 	if (mutationBusy.value || !canAuthor.value) return;
@@ -823,7 +830,7 @@ const toggleFloor = (enabled: string | number | boolean): void => {
 };
 const toggleTrend = (enabled: string | number | boolean): void => {
 	draft.value.heuristic =
-		enabled === true ? (Object.fromEntries(trendFields.map((field) => [field.key, null])) as NonNullable<typeof draft.value.heuristic>) : null;
+		enabled === true ? (Object.fromEntries(trendKeys.map((key) => [key, null])) as NonNullable<typeof draft.value.heuristic>) : null;
 };
 const addSource = (role: ThermostatSource['role']): void => {
 	draft.value.sources.push({ role, source_property: null, maximum_age_seconds: props.create ? RECOMMENDED_SOURCE_MAXIMUM_AGE_SECONDS : null });

@@ -463,9 +463,12 @@ Found on an installed alpha.67 and reproduced locally with 14 simulated devices.
 - **Only the projection kind was a wizard.** Every kind now walks four steps with a review at the end, in the shared step frame (`virtual-wizard-steps.vue`), with Back / Next / Create in the page header like the projection wizard: aggregate, conversion and dew point (output → sources → processing → review), actuator group (details → members → capabilities → review), thermostat (settings → sources → actuators → review). The review step previews by itself. Editing an existing device keeps the single-page editor. Dew point has its own entry in the chooser.
 - **The thermostat wizard no longer offers "Native HA / Zigbee thermostat".** It created a second, virtual thermostat for a climate unit that is already adopted and controllable as a device. The backend (`native_unit` strategy, #1456/#1457) and the editor of controllers created that way are untouched; only the creation entry is gone. Whether to remove the strategy itself is open.
 
+- **The backend also refused to boot with about twenty virtual devices.** At startup the status listener stores a connection state for every non-projection device; each such write goes through the structural write path, starts a validation of its own and supersedes the startup validation, whose "publication expired" error escaped `onApplicationBootstrap`. Startup now retries a superseded validation and, if the writers never go quiet, continues with validation pending instead of aborting; any other validation failure still aborts. Open behind it: a value-only status write on a virtual device should not be a structural write at all.
+- **The thermostat editor, property picker and thermostat validation messages were hardcoded English.** They are translated in all six locales under `devicesVirtualPlugin.thermostat`; the request builder reports problems as translation keys.
+
 Still open, deliberately not changed here:
 
-- **Guarded thermostat and property picker are untranslated** (about 30 hardcoded English labels, plus the validation messages in `thermostat-authoring.ts`), and the route titles in `router/index.ts` are hardcoded.
+- Route `meta.title` values and the plugin's own name/description are plain English, as in every other admin module and plugin; they are not shown in the wizard.
 - **No room/zone input** on the aggregate, conversion, dew-point and both thermostat flows; the actuator group has room only. The backend accepts `room_id`/`zone_ids` on these producers.
 - **NTC/Steinhart operators** require a `voltage` property in the admin, while the backend also accepts the Shelly `analog_input/value` raw-voltage identity.
 - **Aggregate quorum defaults to 1**; the capabilities design says all configured sources.

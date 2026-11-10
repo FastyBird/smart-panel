@@ -85,7 +85,7 @@ describe('mandatory member authoring and current evidence', () => {
 		expect(draft.actuators).toHaveLength(8);
 		expect(draft.actuators[0]).toMatchObject({ source_property: 'relay-0', retained: { id: 'claim-0', source_property: null } });
 		draft.actuators.push({ ...draft.actuators[7], source_property: 'ninth' });
-		expect(buildThermostatRequest(draft, 3).errors).toContain('At most eight mandatory members, including retained claims, are allowed.');
+		expect(buildThermostatRequest(draft, 3).errors).toContain('devicesVirtualPlugin.thermostat.errors.memberLimit');
 	});
 	it('retains missing protective identities and requires every parallel heating member binding', () => {
 		const config = memberConfiguration();

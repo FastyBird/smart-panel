@@ -161,6 +161,26 @@ export const draftAfterRelease = (draft: ThermostatDraft, config: ThermostatConf
 	};
 };
 
+const THERMOSTAT_ERRORS = 'devicesVirtualPlugin.thermostat.errors';
+const THERMOSTAT_ROLES = 'devicesVirtualPlugin.thermostat.roles';
+
+/**
+ * Validation problems are reported as translation keys, never as prose: this module has no access to
+ * the active locale, and its messages are shown verbatim in the editor. A key may carry parameters
+ * after a `?`, as JSON — `role` names a source or actuator role and is itself translated.
+ */
+export const thermostatError = (key: string, params?: Record<string, string>): string =>
+	`${THERMOSTAT_ERRORS}.${key}${params ? `?${JSON.stringify(params)}` : ''}`;
+
+/** Renders a problem produced by {@link thermostatError} (or any plain translation key) for display. */
+export const translateThermostatError = (t: (key: string, params?: Record<string, unknown>) => string, error: string): string => {
+	if (!error.startsWith('devicesVirtualPlugin.')) return error;
+	const separator = error.indexOf('?');
+	if (separator < 0) return t(error);
+	const params = JSON.parse(error.slice(separator + 1)) as Record<string, string>;
+	return t(error.slice(0, separator), { ...params, ...(params.role ? { role: t(`${THERMOSTAT_ROLES}.${params.role}`) } : {}) });
+};
+
 const finite = (value: number | null): value is number => typeof value === 'number' && Number.isFinite(value);
 const whole = (value: number | null): value is number => finite(value) && Number.isInteger(value);
 
@@ -200,24 +220,23 @@ export const buildThermostatRequest = (
 			)
 				errors.push('devicesVirtualPlugin.dewPoint.errors.coolingDependencies');
 	}
-	if (!finite(policy.heatingSetpoint) && !finite(policy.coolingSetpoint)) errors.push('Select at least one comfort branch and setpoint.');
-	if (!finite(policy.coldTolerance) || policy.coldTolerance < 0) errors.push('Enter a nonnegative cold tolerance.');
-	if (!finite(policy.hotTolerance) || policy.hotTolerance < 0) errors.push('Enter a nonnegative hot tolerance.');
-	if (!finite(policy.neutralMargin) || policy.neutralMargin <= 0) errors.push('Enter a positive neutral margin.');
-	if (!whole(policy.minimumOffMs) || policy.minimumOffMs < 0) errors.push('Enter the minimum OFF interval in milliseconds.');
-	if (!whole(policy.changeoverMs) || policy.changeoverMs < 0) errors.push('Enter the changeover interval in milliseconds.');
+	if (!finite(policy.heatingSetpoint) && !finite(policy.coolingSetpoint)) errors.push(thermostatError('setpointRequired'));
+	if (!finite(policy.coldTolerance) || policy.coldTolerance < 0) errors.push(thermostatError('coldTolerance'));
+	if (!finite(policy.hotTolerance) || policy.hotTolerance < 0) errors.push(thermostatError('hotTolerance'));
+	if (!finite(policy.neutralMargin) || policy.neutralMargin <= 0) errors.push(thermostatError('neutralMargin'));
+	if (!whole(policy.minimumOffMs) || policy.minimumOffMs < 0) errors.push(thermostatError('minimumOff'));
+	if (!whole(policy.changeoverMs) || policy.changeoverMs < 0) errors.push(thermostatError('changeover'));
 	if (policy.floor && (!finite(policy.floor.limit) || !finite(policy.floor.recoveryHysteresis) || policy.floor.recoveryHysteresis <= 0)) {
-		errors.push('Enter the floor limit and positive recovery hysteresis in Celsius.');
+		errors.push(thermostatError('floorPolicy'));
 	}
 	if (draft.heuristic && Object.values(draft.heuristic).some((value) => !finite(value))) {
-		errors.push('Complete every enabled trend setting.');
+		errors.push(thermostatError('trendIncomplete'));
 	}
 	if (!whole(draft.contact_opening_ms) || draft.contact_opening_ms < 0 || !whole(draft.contact_closing_ms) || draft.contact_closing_ms < 0) {
-		errors.push('Enter both contact debounce intervals in milliseconds.');
+		errors.push(thermostatError('contactDebounce'));
 	}
-	if (draft.sources.filter((source) => source.role === 'ambient').length !== 1) errors.push('Configure exactly one ambient source.');
-	if (draft.sources.some((source) => source.role === 'floor') && !policy.floor)
-		errors.push('Retain a common floor policy for the existing global guard.');
+	if (draft.sources.filter((source) => source.role === 'ambient').length !== 1) errors.push(thermostatError('ambientSource'));
+	if (draft.sources.some((source) => source.role === 'floor') && !policy.floor) errors.push(thermostatError('retainFloorPolicy'));
 	if (
 		policy.floor &&
 		!draft.sources.some((source) => source.role === 'floor') &&
@@ -226,40 +245,37 @@ export const buildThermostatRequest = (
 			draft.actuators.filter((member) => member.role === 'heating').every((member) => !!member.protection)
 		)
 	)
-		errors.push('Floor protection requires a global source or an explicit local guard for every heating member.');
-	if (draft.sources.filter((source) => source.role === 'contact').length > 1) errors.push('Configure at most one contact source.');
+		errors.push(thermostatError('floorProtectionSource'));
+	if (draft.sources.filter((source) => source.role === 'contact').length > 1) errors.push(thermostatError('contactSourceLimit'));
 	for (const source of draft.sources) {
-		if (!whole(source.maximum_age_seconds) || source.maximum_age_seconds < 1) errors.push(`Enter a positive maximum age for ${source.role}.`);
-		if (!source.source_property && !source.id) errors.push(`Select a ${source.role} source.`);
-		if (source.role === 'contact' && (source.open_value == null || source.closed_value == null))
-			errors.push('Map both contact open and closed values.');
-		if (source.role === 'contact' && source.open_value === source.closed_value) errors.push('Contact open and closed values must differ.');
+		if (!whole(source.maximum_age_seconds) || source.maximum_age_seconds < 1) errors.push(thermostatError('sourceAge', { role: source.role }));
+		if (!source.source_property && !source.id) errors.push(thermostatError('sourceSelect', { role: source.role }));
+		if (source.role === 'contact' && (source.open_value == null || source.closed_value == null)) errors.push(thermostatError('contactValues'));
+		if (source.role === 'contact' && source.open_value === source.closed_value) errors.push(thermostatError('contactValuesDiffer'));
 	}
-	if (!draft.actuators.length) errors.push('Select at least one physical actuator.');
+	if (!draft.actuators.length) errors.push(thermostatError('actuatorRequired'));
 	for (const role of ['heating', 'cooling'] as const) {
 		if (draft.actuators.some((actuator) => actuator.role === role) !== finite(policy[`${role}Setpoint`]))
-			errors.push(`${role} actuator must match its comfort setpoint branch.`);
+			errors.push(thermostatError('branchMismatch', { role }));
 	}
-	if (draft.actuators.length > 8) errors.push('At most eight mandatory members, including retained claims, are allowed.');
+	if (draft.actuators.length > 8) errors.push(thermostatError('memberLimit'));
 	if (new Set(draft.actuators.map((member) => member.source_property)).size !== draft.actuators.length)
-		errors.push('Each physical member must be distinct.');
+		errors.push(thermostatError('memberDistinct'));
 	const parallelHeating = draft.actuators.filter((member) => member.role === 'heating').length > 1;
 	for (const actuator of draft.actuators) {
-		if (actuator.retained && !actuator.retained.source_property)
-			errors.push(`Repair retained claim ${actuator.retained.id}; its ownership is preserved.`);
+		if (actuator.retained && !actuator.retained.source_property) errors.push(thermostatError('retainedClaim', { id: actuator.retained.id }));
 		if (actuator.role === 'heating' && (parallelHeating || actuator.protection)) {
-			if (!policy.floor) errors.push('Enter the shared floor limit and hysteresis for local protection.');
+			if (!policy.floor) errors.push(thermostatError('sharedFloorPolicy'));
 			if (!actuator.protection || (!actuator.protection.source_property && !actuator.retained?.protection))
-				errors.push('Every heating member requires an explicit local protective source.');
+				errors.push(thermostatError('localProtection'));
 			if (actuator.protection && (!whole(actuator.protection.maximum_age_seconds) || actuator.protection.maximum_age_seconds < 1))
-				errors.push('Enter a positive protective source maximum age.');
+				errors.push(thermostatError('protectionAge'));
 		}
-		if (!actuator.source_property) errors.push(`Repair the ${actuator.role} actuator before saving.`);
-		if (!finite(actuator.lease_seconds) || actuator.lease_seconds <= 0) errors.push(`Enter a positive ${actuator.role} ON lease.`);
+		if (!actuator.source_property) errors.push(thermostatError('actuatorRepair', { role: actuator.role }));
+		if (!finite(actuator.lease_seconds) || actuator.lease_seconds <= 0) errors.push(thermostatError('lease', { role: actuator.role }));
 	}
-	if (new Set(draft.settings.map((setting) => setting.setting)).size !== draft.settings.length)
-		errors.push('Each local setting role may be registered once.');
-	if (draft.settings.some((setting) => !setting.property)) errors.push('Select a local property for each setting.');
+	if (new Set(draft.settings.map((setting) => setting.setting)).size !== draft.settings.length) errors.push(thermostatError('settingUnique'));
+	if (draft.settings.some((setting) => !setting.property)) errors.push(thermostatError('settingProperty'));
 	if (errors.length) return { errors };
 	return {
 		errors,

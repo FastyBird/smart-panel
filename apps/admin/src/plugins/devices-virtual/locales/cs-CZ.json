@@ -524,5 +524,140 @@
 		"drift": "Pozorované nastavení se liší od požadavku",
 		"release": "Uvolnit ovladač",
 		"releaseHelp": "Uvolnit rezervaci Smart Panelu? Vyčká na odeslané operace, ale neposílá příkaz OFF. Fyzický termostat může dále regulovat."
+	},
+	"thermostat": {
+		"title": {
+			"create": "Vytvořit virtuální termostat",
+			"edit": "Konfigurace termostatu"
+		},
+		"draft": {
+			"title": "Koncept regulátoru",
+			"description": "Konfigurace a rezervace se uloží, ale topení a chlazení zůstanou nedostupné až do kvalifikace hardwaru a srovnání běhového stavu."
+		},
+		"name": "Název termostatu",
+		"revision": "Revize konfigurace {revision} · revize grafu {graph} · {readiness}",
+		"missingSource": "{role}: chybí {identity}",
+		"requested": "Požadované nastavení",
+		"requestedMode": "Požadovaný režim (záměr, nikoli hlášená činnost)",
+		"heatingSetpoint": "Žádaná teplota topení (°C)",
+		"coolingSetpoint": "Žádaná teplota chlazení (°C)",
+		"coldTolerance": "Tolerance chladu (°C)",
+		"hotTolerance": "Tolerance tepla (°C)",
+		"neutralMargin": "Neutrální pásmo topení/chlazení (°C)",
+		"minimumOff": "Minimální doba vypnutí (ms)",
+		"changeover": "Interval přepnutí režimu (ms)",
+		"floorProtect": "Chránit topení teplotou podlahy",
+		"floorLimit": "Maximum podlahy (°C)",
+		"floorHysteresis": "Hystereze obnovy podlahy (°C)",
+		"trend": "Odvodit otevřené okno z trendu teploty bez kontaktu",
+		"trendFields": {
+			"sampleWindowMs": "Okno vzorků (ms)",
+			"minimumSamples": "Minimum vzorků",
+			"minimumSpanMs": "Minimální rozpětí (ms)",
+			"maximumSampleAgeMs": "Maximální stáří vzorku (ms)",
+			"slopeThresholdCPerMinute": "Práh sklonu (°C/min)",
+			"confirmationMs": "Potvrzení (ms)",
+			"recoveryMs": "Obnova (ms)",
+			"maximumPauseMs": "Maximální pauza (ms)",
+			"cooldownMs": "Doba klidu (ms)"
+		},
+		"contactOpening": "Zpoždění otevření kontaktu (ms)",
+		"contactClosing": "Zpoždění zavření kontaktu (ms)",
+		"sources": {
+			"title": "Zdroje teploty a kontaktu",
+			"help": "Vyberte zdroje, které hlásí stáří původního vzorku. Podlaha je nezávislý ochranný vstup ve stupních Celsia; kontakt je volitelný.",
+			"maximumAge": "Maximální stáří původního vzorku (sekundy)",
+			"openValue": "Hodnota pro otevřeno (JSON literál nebo text)",
+			"closedValue": "Hodnota pro zavřeno (JSON literál nebo text)",
+			"addAmbient": "Přidat okolní teplotu",
+			"addFloor": "Přidat podlahu",
+			"addContact": "Přidat kontakt"
+		},
+		"remove": "Odebrat",
+		"settings": {
+			"title": "Vlastní místní povelová nastavení",
+			"help": "Regulátor vytvoří místní sloty pro režim, žádanou teplotu a zámek včetně jejich registrací.",
+			"add": "Přidat nastavení"
+		},
+		"summary": {
+			"mode": "Požadovaný režim",
+			"setpoints": "Žádané teploty (°C)",
+			"setpointsValue": "topení {heating} · chlazení {cooling}",
+			"tolerances": "Tolerance (°C)",
+			"tolerancesValue": "chlad {cold} · teplo {hot} · neutrální pásmo {neutral}",
+			"timing": "Časování (ms)",
+			"timingValue": "minimální vypnutí {off} · přepnutí {changeover}",
+			"sources": "Zdroje",
+			"members": "Akční členy"
+		},
+		"previewResult": "Náhled: {readiness}; počet překážek: {count}",
+		"actions": {
+			"preview": "Náhled způsobilosti a nároků",
+			"create": "Vytvořit termostat",
+			"save": "Uložit konfiguraci",
+			"release": "Vyžádat vypnutí a uvolnění",
+			"reload": "Načíst znovu"
+		},
+		"roles": {
+			"heating": "topení",
+			"cooling": "chlazení",
+			"ambient": "okolní teplota",
+			"floor": "podlaha",
+			"contact": "kontakt"
+		},
+		"modes": {
+			"off": "Vypnuto",
+			"heat": "Topení",
+			"cool": "Chlazení",
+			"auto": "Automaticky"
+		},
+		"loadFailed": "Konfiguraci termostatu se nepodařilo načíst.",
+		"requestFailed": "Požadavek na termostat selhal.",
+		"picker": {
+			"device": "Zařízení",
+			"channel": "Kanál",
+			"property": "Vlastnost",
+			"noActuator": "Nebyl nalezen žádný vhodný akční člen. Hlídaný člen musí být spínaný výstup adoptovaného zařízení Shelly Gen2+.",
+			"missing": "Chybějící nebo nenačtená vlastnost: {id}"
+		},
+		"errors": {
+			"nameRequired": "Zadejte název termostatu.",
+			"setpointRequired": "Vyberte alespoň jednu větev komfortu a žádanou teplotu.",
+			"coldTolerance": "Zadejte nezápornou toleranci chladu.",
+			"hotTolerance": "Zadejte nezápornou toleranci tepla.",
+			"neutralMargin": "Zadejte kladné neutrální pásmo.",
+			"minimumOff": "Zadejte minimální dobu vypnutí v milisekundách.",
+			"changeover": "Zadejte interval přepnutí režimu v milisekundách.",
+			"floorPolicy": "Zadejte limit podlahy a kladnou hysterezi obnovy ve stupních Celsia.",
+			"trendIncomplete": "Vyplňte všechna povolená nastavení trendu.",
+			"contactDebounce": "Zadejte obě zpoždění kontaktu v milisekundách.",
+			"ambientSource": "Nastavte právě jeden zdroj okolní teploty.",
+			"retainFloorPolicy": "Ponechte společnou politiku podlahy pro stávající globální ochranu.",
+			"floorProtectionSource": "Ochrana podlahy vyžaduje globální zdroj nebo výslovnou místní ochranu u každého topného členu.",
+			"contactSourceLimit": "Nastavte nejvýše jeden zdroj kontaktu.",
+			"sourceAge": "Zadejte kladné maximální stáří pro zdroj: {role}.",
+			"sourceSelect": "Vyberte zdroj: {role}.",
+			"contactValues": "Namapujte hodnoty kontaktu pro otevřeno i zavřeno.",
+			"contactValuesDiffer": "Hodnoty kontaktu pro otevřeno a zavřeno se musí lišit.",
+			"actuatorRequired": "Vyberte alespoň jeden fyzický akční člen.",
+			"branchMismatch": "Akční člen musí odpovídat své větvi žádané teploty: {role}.",
+			"memberLimit": "Povoleno je nejvýše osm povinných členů včetně zachovaných nároků.",
+			"memberDistinct": "Každý fyzický člen musí být jedinečný.",
+			"retainedClaim": "Opravte zachovaný nárok {id}; jeho vlastnictví zůstává zachováno.",
+			"sharedFloorPolicy": "Zadejte společný limit podlahy a hysterezi pro místní ochranu.",
+			"localProtection": "Každý topný člen vyžaduje výslovný místní ochranný zdroj.",
+			"protectionAge": "Zadejte kladné maximální stáří ochranného zdroje.",
+			"actuatorRepair": "Před uložením opravte akční člen: {role}.",
+			"lease": "Zadejte kladnou dobu zapnutí pro akční člen: {role}.",
+			"settingUnique": "Každá role místního nastavení může být registrována jen jednou.",
+			"settingProperty": "Vyberte místní vlastnost pro každé nastavení."
+		},
+		"settingRoles": {
+			"heating_setpoint": "Žádaná teplota topení",
+			"cooling_setpoint": "Žádaná teplota chlazení",
+			"heating_enabled": "Topení povoleno",
+			"cooling_enabled": "Chlazení povoleno",
+			"locked": "Uzamčeno"
+		}
 	}
 }

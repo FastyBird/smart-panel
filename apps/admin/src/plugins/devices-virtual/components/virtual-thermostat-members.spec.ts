@@ -171,19 +171,19 @@ describe('actual mandatory-member authoring forms', () => {
 			.findComponent(ElInput);
 		dewPointInput.vm.$emit('update:modelValue', 'repaired-dew');
 		await flushPromises();
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
 		expect(dewPointInput.props('modelValue')).toBe('repaired-dew');
 		expect(mocks.post.mock.calls.find(([path]) => path.endsWith('/preview'))![1].body.actuators[0].cooling_protection.dew_point_property).toBe(
 			'repaired-dew'
 		);
-		expect(button(editor, 'Save configuration').props('disabled')).toBe(false);
+		expect(button(editor, 'devicesVirtualPlugin.thermostat.actions.save').props('disabled')).toBe(false);
 		cooling.findAllComponents(ElInputNumber)[0].vm.$emit('update:modelValue', 3);
 		await flushPromises();
-		expect(button(editor, 'Save configuration').props('disabled')).toBe(true);
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		expect(button(editor, 'devicesVirtualPlugin.thermostat.actions.save').props('disabled')).toBe(true);
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
-		await button(editor, 'Save configuration').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.save').trigger('click');
 		await flushPromises();
 		expect(mocks.put).toHaveBeenCalledTimes(1);
 		const request = mocks.put.mock.calls[0][1].body;
@@ -203,31 +203,31 @@ describe('actual mandatory-member authoring forms', () => {
 		const editor = await open(true);
 		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Room');
 		for (const [label, value] of Object.entries({
-			'Heating setpoint (°C)': 21,
-			'Cold tolerance (°C)': 0.5,
-			'Hot tolerance (°C)': 0.5,
-			'Neutral heat/cool margin (°C)': 1,
-			'Minimum OFF interval (ms)': 0,
-			'Changeover interval (ms)': 0,
-			'Contact opening debounce (ms)': 0,
-			'Contact closing debounce (ms)': 0,
+			'devicesVirtualPlugin.thermostat.heatingSetpoint': 21,
+			'devicesVirtualPlugin.thermostat.coldTolerance': 0.5,
+			'devicesVirtualPlugin.thermostat.hotTolerance': 0.5,
+			'devicesVirtualPlugin.thermostat.neutralMargin': 1,
+			'devicesVirtualPlugin.thermostat.minimumOff': 0,
+			'devicesVirtualPlugin.thermostat.changeover': 0,
+			'devicesVirtualPlugin.thermostat.contactOpening': 0,
+			'devicesVirtualPlugin.thermostat.contactClosing': 0,
 		}))
 			setNumber(editor, label, value);
 		editor
 			.findAllComponents(ElCheckbox)
-			.find((entry) => entry.text().includes('Protect heating'))!
+			.find((entry) => entry.text().includes('devicesVirtualPlugin.thermostat.floorProtect'))!
 			.vm.$emit('change', true);
 		await flushPromises();
-		setNumber(editor, 'Floor maximum (°C)', 28);
-		setNumber(editor, 'Floor recovery hysteresis (°C)', 1);
-		await button(editor, 'Add ambient').trigger('click');
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.floorLimit', 28);
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.floorHysteresis', 1);
+		await button(editor, 'devicesVirtualPlugin.thermostat.sources.addAmbient').trigger('click');
 		editor
 			.findAllComponents(ThermostatPropertyPicker)
 			.find((entry) => entry.props('kind') === 'ambient')!
 			.vm.$emit('update:modelValue', 'ambient');
-		setNumber(editor, 'Maximum original sample age (seconds)', 60);
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.sources.maximumAge', 60);
 		for (let index = 0; index < 2; index++) {
-			await button(editor, 'devicesVirtualPlugin.members.addMember · heating').trigger('click');
+			await button(editor, 'devicesVirtualPlugin.members.addMember · devicesVirtualPlugin.thermostat.roles.heating').trigger('click');
 			const card = editor.findAllComponents(ThermostatMemberCard)[index];
 			card.findComponent(ThermostatPropertyPicker).vm.$emit('update:modelValue', `relay-${index}`);
 			card.findComponent(ElInputNumber).vm.$emit('update:modelValue', 30);
@@ -245,7 +245,7 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(
 			preview[1].body.configuration.actuators.map((member: { protection: { source_property: string } }) => member.protection.source_property)
 		).toEqual(['floor-relay-0', 'floor-relay-1']);
-		await button(editor, 'Create thermostat').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.create').trigger('click');
 		await flushPromises();
 		expect(editor.emitted('created')).toEqual([['created-controller']]);
 		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
@@ -258,9 +258,9 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(card.text()).toContain('claim-0');
 		expect(card.text()).toContain('canonical-0');
 		expect(card.findAllComponents(ElButton).some((entry) => entry.text().includes('removeDraft'))).toBe(false);
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
-		await button(editor, 'Save configuration').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.save').trigger('click');
 		await flushPromises();
 		expect(mocks.put.mock.calls[0][1].body.actuators).toHaveLength(2);
 		expect(mocks.put.mock.calls[0][1].body).toMatchObject({ expected_revision: 3, expected_graph_revision: 8 });
@@ -269,7 +269,7 @@ describe('actual mandatory-member authoring forms', () => {
 		current = configuration(8, true);
 		const editor = await open();
 		expect(editor.findAllComponents(ThermostatMemberCard)).toHaveLength(8);
-		expect(button(editor, 'devicesVirtualPlugin.members.addMember · heating').props('disabled')).toBe(true);
+		expect(button(editor, 'devicesVirtualPlugin.members.addMember · devicesVirtualPlugin.thermostat.roles.heating').props('disabled')).toBe(true);
 		const recovery = editor.findComponent(ThermostatMemberRecovery);
 		recovery.findComponent(ThermostatPropertyPicker).vm.$emit('update:modelValue', 'restored-property');
 		recovery.findComponent(ElInput).vm.$emit('update:modelValue', 'operator checked physical identity');
@@ -290,22 +290,22 @@ describe('actual mandatory-member authoring forms', () => {
 	});
 	it('preserves edits already present before requesting release', async () => {
 		const editor = await open();
-		setNumber(editor, 'Heating setpoint (°C)', 22);
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.heatingSetpoint', 22);
 		await flushPromises();
 		mocks.post.mockResolvedValueOnce({ data: { data: structuredClone(current) } });
-		await button(editor, 'Request OFF and release').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.release').trigger('click');
 		await flushPromises();
 		expect(
 			editor
 				.findAllComponents(ElFormItem)
-				.find((item) => item.props('label') === 'Heating setpoint (°C)')!
+				.find((item) => item.props('label') === 'devicesVirtualPlugin.thermostat.heatingSetpoint')!
 				.findComponent(ElInputNumber)
 				.props('modelValue')
 		).toBe(22);
 	});
 	it.each(['releasing', 'released', 'refused'] as const)('preserves in-flight policy/source edits after %s release response', async (outcome) => {
 		const editor = await open();
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
 		let respond!: (value: unknown) => void;
 		mocks.post.mockImplementationOnce(
@@ -314,8 +314,8 @@ describe('actual mandatory-member authoring forms', () => {
 					respond = resolve;
 				})
 		);
-		await button(editor, 'Request OFF and release').trigger('click');
-		setNumber(editor, 'Heating setpoint (°C)', 23);
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.release').trigger('click');
+		setNumber(editor, 'devicesVirtualPlugin.thermostat.heatingSetpoint', 23);
 		editor
 			.findAllComponents(ThermostatPropertyPicker)
 			.find((picker) => picker.props('kind') === 'ambient')!
@@ -335,7 +335,7 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(
 			editor
 				.findAllComponents(ElFormItem)
-				.find((item) => item.props('label') === 'Heating setpoint (°C)')!
+				.find((item) => item.props('label') === 'devicesVirtualPlugin.thermostat.heatingSetpoint')!
 				.findComponent(ElInputNumber)
 				.props('modelValue')
 		).toBe(23);
@@ -345,7 +345,7 @@ describe('actual mandatory-member authoring forms', () => {
 				.find((picker) => picker.props('kind') === 'ambient')!
 				.props('modelValue')
 		).toBe('edited-ambient');
-		expect(button(editor, 'Save configuration').props('disabled')).toBe(true);
+		expect(button(editor, 'devicesVirtualPlugin.thermostat.actions.save').props('disabled')).toBe(true);
 		const cards = editor.findAllComponents(ThermostatMemberCard);
 		expect(cards).toHaveLength(outcome === 'released' ? 0 : 2);
 		if (outcome === 'releasing') expect(cards[0].props('member').retained).toMatchObject({ state: 'releasing', revision: 5 });
@@ -437,18 +437,18 @@ describe('actual mandatory-member authoring forms', () => {
 		await flushPromises();
 		expect(card.props('member').protection!.source_property).toBe('floor-0');
 		mocks.post.mockResolvedValueOnce({ error: { message: 'source_contract_changed' } });
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
 		expect(editor.text()).toContain('source_contract_changed');
-		expect(button(editor, 'Save configuration').props('disabled')).toBe(true);
+		expect(button(editor, 'devicesVirtualPlugin.thermostat.actions.save').props('disabled')).toBe(true);
 		expect(editor.findComponent(ThermostatMemberCard).props('member').retained!.id).toBe('claim-0');
 	});
 	it('retains the reviewed member draft after a server revision conflict', async () => {
 		const editor = await open();
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.preview').trigger('click');
 		await flushPromises();
 		mocks.put.mockResolvedValueOnce({ error: { message: 'configuration_revision_changed' }, response: { status: 409 } });
-		await button(editor, 'Save configuration').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.save').trigger('click');
 		await flushPromises();
 		expect(editor.text()).toContain('configuration_revision_changed');
 		expect(editor.findAllComponents(ThermostatMemberCard).map((card) => card.props('member').retained!.id)).toEqual(['claim-0', 'claim-1']);
@@ -612,7 +612,7 @@ describe('actual mandatory-member authoring forms', () => {
 		cache.observation('claim-0', sample, 0, 0);
 		cache.expire(30000);
 		// Actual configuration reload destroys and recreates the member cards.
-		await button(editor, 'Reload').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.reload').trigger('click');
 		await flushPromises();
 		expect(editor.findComponent(ThermostatMemberCard).props('freshness')).toBe(cache);
 		expect(cache.size).toBe(2);
@@ -620,7 +620,7 @@ describe('actual mandatory-member authoring forms', () => {
 		// Only a current authoritative runtime without the old claims confirms their removal.
 		released = true;
 		current = { ...current, revision: current.revision + 1, actuators: current.actuators.slice(1) };
-		await button(editor, 'Reload').trigger('click');
+		await button(editor, 'devicesVirtualPlugin.thermostat.actions.reload').trigger('click');
 		await flushPromises();
 		expect(cache.size).toBe(0);
 		cache.observation('claim-1', sample, 0, 0);

@@ -57,6 +57,7 @@ const propertiesStore = {
 	fetch: vi.fn(async () => []),
 };
 
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../common', () => ({
 	injectStoresManager: () => ({
 		getStore: (key: symbol) => {

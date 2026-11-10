@@ -524,5 +524,140 @@
 		"drift": "Beobachtete Einstellungen weichen von der Anforderung ab",
 		"release": "Controller freigeben",
 		"releaseHelp": "Smart-Panel-Reservierung freigeben? Laufende Operationen werden abgewartet, aber kein AUS-Befehl gesendet. Der physische Thermostat kann weiter regeln."
+	},
+	"thermostat": {
+		"title": {
+			"create": "Virtuellen Thermostat erstellen",
+			"edit": "Thermostatkonfiguration"
+		},
+		"draft": {
+			"title": "Reglerentwurf",
+			"description": "Konfiguration und Reservierungen bleiben erhalten, Heizen und Kühlen sind jedoch erst nach Hardware-Qualifizierung und Laufzeitabgleich verfügbar."
+		},
+		"name": "Name des Thermostats",
+		"revision": "Konfigurationsrevision {revision} · Graphrevision {graph} · {readiness}",
+		"missingSource": "{role}: {identity} fehlt",
+		"requested": "Gewünschte Einstellungen",
+		"requestedMode": "Gewünschter Modus (Absicht, nicht gemeldete Aktivität)",
+		"heatingSetpoint": "Heiz-Sollwert (°C)",
+		"coolingSetpoint": "Kühl-Sollwert (°C)",
+		"coldTolerance": "Kältetoleranz (°C)",
+		"hotTolerance": "Wärmetoleranz (°C)",
+		"neutralMargin": "Neutrale Zone Heizen/Kühlen (°C)",
+		"minimumOff": "Minimale Ausschaltzeit (ms)",
+		"changeover": "Umschaltintervall (ms)",
+		"floorProtect": "Heizung über Bodentemperatur schützen",
+		"floorLimit": "Bodenmaximum (°C)",
+		"floorHysteresis": "Hysterese der Bodenfreigabe (°C)",
+		"trend": "Offenes Fenster ohne Kontakt aus dem Temperaturtrend ableiten",
+		"trendFields": {
+			"sampleWindowMs": "Abtastfenster (ms)",
+			"minimumSamples": "Mindestanzahl Messwerte",
+			"minimumSpanMs": "Mindestzeitspanne (ms)",
+			"maximumSampleAgeMs": "Maximales Messwertalter (ms)",
+			"slopeThresholdCPerMinute": "Steigungsschwelle (°C/min)",
+			"confirmationMs": "Bestätigung (ms)",
+			"recoveryMs": "Erholung (ms)",
+			"maximumPauseMs": "Maximale Pause (ms)",
+			"cooldownMs": "Sperrzeit (ms)"
+		},
+		"contactOpening": "Entprellzeit beim Öffnen des Kontakts (ms)",
+		"contactClosing": "Entprellzeit beim Schließen des Kontakts (ms)",
+		"sources": {
+			"title": "Temperatur- und Kontaktquellen",
+			"help": "Wählen Sie Quellen, die das Alter ihres ursprünglichen Messwerts melden. Der Boden ist ein unabhängiger Schutzeingang in Celsius; der Kontakt ist optional.",
+			"maximumAge": "Maximales Alter des ursprünglichen Messwerts (Sekunden)",
+			"openValue": "Wert für offen (JSON-Literal oder Text)",
+			"closedValue": "Wert für geschlossen (JSON-Literal oder Text)",
+			"addAmbient": "Raumtemperatur hinzufügen",
+			"addFloor": "Boden hinzufügen",
+			"addContact": "Kontakt hinzufügen"
+		},
+		"remove": "Entfernen",
+		"settings": {
+			"title": "Eigene lokale Befehlseinstellungen",
+			"help": "Der Regler legt lokale Slots für Modus, Sollwert und Sperre samt ihren Registrierungen an.",
+			"add": "Einstellung hinzufügen"
+		},
+		"summary": {
+			"mode": "Gewünschter Modus",
+			"setpoints": "Sollwerte (°C)",
+			"setpointsValue": "Heizen {heating} · Kühlen {cooling}",
+			"tolerances": "Toleranzen (°C)",
+			"tolerancesValue": "Kälte {cold} · Wärme {hot} · neutrale Zone {neutral}",
+			"timing": "Zeiten (ms)",
+			"timingValue": "minimale Ausschaltzeit {off} · Umschaltung {changeover}",
+			"sources": "Quellen",
+			"members": "Aktoren"
+		},
+		"previewResult": "Vorschau: {readiness}; Hindernisse: {count}",
+		"actions": {
+			"preview": "Eignung und Ansprüche prüfen",
+			"create": "Thermostat erstellen",
+			"save": "Konfiguration speichern",
+			"release": "AUS anfordern und freigeben",
+			"reload": "Neu laden"
+		},
+		"roles": {
+			"heating": "Heizen",
+			"cooling": "Kühlen",
+			"ambient": "Raumtemperatur",
+			"floor": "Boden",
+			"contact": "Kontakt"
+		},
+		"modes": {
+			"off": "Aus",
+			"heat": "Heizen",
+			"cool": "Kühlen",
+			"auto": "Automatik"
+		},
+		"loadFailed": "Die Thermostatkonfiguration konnte nicht geladen werden.",
+		"requestFailed": "Die Thermostatanfrage ist fehlgeschlagen.",
+		"picker": {
+			"device": "Gerät",
+			"channel": "Kanal",
+			"property": "Eigenschaft",
+			"noActuator": "Kein geeigneter Aktor gefunden. Ein überwachtes Mitglied muss der Schaltausgang eines übernommenen Shelly-Gen2+-Geräts sein.",
+			"missing": "Fehlende oder nicht geladene Eigenschaft: {id}"
+		},
+		"errors": {
+			"nameRequired": "Geben Sie einen Namen für den Thermostat ein.",
+			"setpointRequired": "Wählen Sie mindestens einen Komfortzweig mit Sollwert.",
+			"coldTolerance": "Geben Sie eine nicht negative Kältetoleranz ein.",
+			"hotTolerance": "Geben Sie eine nicht negative Wärmetoleranz ein.",
+			"neutralMargin": "Geben Sie eine positive neutrale Zone ein.",
+			"minimumOff": "Geben Sie die minimale Ausschaltzeit in Millisekunden ein.",
+			"changeover": "Geben Sie das Umschaltintervall in Millisekunden ein.",
+			"floorPolicy": "Geben Sie die Bodengrenze und eine positive Freigabehysterese in Celsius ein.",
+			"trendIncomplete": "Füllen Sie alle aktivierten Trendeinstellungen aus.",
+			"contactDebounce": "Geben Sie beide Entprellzeiten des Kontakts in Millisekunden ein.",
+			"ambientSource": "Konfigurieren Sie genau eine Raumtemperaturquelle.",
+			"retainFloorPolicy": "Behalten Sie für den vorhandenen globalen Schutz eine gemeinsame Bodenrichtlinie bei.",
+			"floorProtectionSource": "Der Bodenschutz erfordert eine globale Quelle oder einen ausdrücklichen lokalen Schutz für jedes Heizmitglied.",
+			"contactSourceLimit": "Konfigurieren Sie höchstens eine Kontaktquelle.",
+			"sourceAge": "Geben Sie ein positives Höchstalter für die Quelle ein: {role}.",
+			"sourceSelect": "Wählen Sie eine Quelle: {role}.",
+			"contactValues": "Ordnen Sie beide Kontaktwerte für offen und geschlossen zu.",
+			"contactValuesDiffer": "Die Kontaktwerte für offen und geschlossen müssen sich unterscheiden.",
+			"actuatorRequired": "Wählen Sie mindestens einen physischen Aktor.",
+			"branchMismatch": "Der Aktor muss zu seinem Sollwertzweig passen: {role}.",
+			"memberLimit": "Es sind höchstens acht Pflichtmitglieder einschließlich beibehaltener Ansprüche zulässig.",
+			"memberDistinct": "Jedes physische Mitglied muss eindeutig sein.",
+			"retainedClaim": "Reparieren Sie den beibehaltenen Anspruch {id}; seine Zuordnung bleibt erhalten.",
+			"sharedFloorPolicy": "Geben Sie die gemeinsame Bodengrenze und Hysterese für den lokalen Schutz ein.",
+			"localProtection": "Jedes Heizmitglied benötigt eine ausdrückliche lokale Schutzquelle.",
+			"protectionAge": "Geben Sie ein positives Höchstalter für die Schutzquelle ein.",
+			"actuatorRepair": "Reparieren Sie den Aktor vor dem Speichern: {role}.",
+			"lease": "Geben Sie eine positive Einschaltdauer für den Aktor ein: {role}.",
+			"settingUnique": "Jede lokale Einstellungsrolle darf nur einmal registriert werden.",
+			"settingProperty": "Wählen Sie für jede Einstellung eine lokale Eigenschaft."
+		},
+		"settingRoles": {
+			"heating_setpoint": "Heiz-Sollwert",
+			"cooling_setpoint": "Kühl-Sollwert",
+			"heating_enabled": "Heizen aktiviert",
+			"cooling_enabled": "Kühlen aktiviert",
+			"locked": "Gesperrt"
+		}
 	}
 }

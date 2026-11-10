@@ -653,7 +653,43 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
-		await this.refreshQuarantine();
+		// Startup validation is not alone at startup. Other bootstrap work writes to virtual devices
+		// while it runs — the status listener stores a connection state for every non-projection
+		// device, and each such write is a structural write that starts a validation of its own and
+		// supersedes this one. A superseded pass throws ("publication expired"), and letting that
+		// escape `onApplicationBootstrap` stopped the whole backend from booting once an installation
+		// had more than a handful of virtual devices. Being superseded is contention, not a defect in
+		// the graph, so the pass is retried; if the writers still have not gone quiet, startup
+		// continues with validation pending — derived values stay unavailable (the fail-safe state)
+		// until the next structural write or index rebuild validates. Any other failure still aborts.
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.refreshQuarantine();
+				return;
+			} catch (error) {
+				if (!VirtualDependencyGraphService.isSupersededValidation(error)) throw error;
+				if (attempt >= VirtualDependencyGraphService.BOOTSTRAP_VALIDATION_ATTEMPTS) {
+					this.logger.error(
+						'Startup graph validation kept being superseded by concurrent structural writes; derived values remain unavailable until the next successful validation.',
+						error instanceof Error ? error : new Error(String(error)),
+					);
+					return;
+				}
+				await new Promise((resolve) =>
+					setTimeout(resolve, VirtualDependencyGraphService.BOOTSTRAP_VALIDATION_DELAY_MS * attempt),
+				);
+			}
+		}
+	}
+
+	private static readonly BOOTSTRAP_VALIDATION_ATTEMPTS = 8;
+	private static readonly BOOTSTRAP_VALIDATION_DELAY_MS = 250;
+
+	/** A validation pass that lost its admission to a newer one, as opposed to one that found a fault. */
+	private static isSupersededValidation(error: unknown): boolean {
+		return (
+			error instanceof Error && /publication (expired|changed)|preparation expired|slot changed/i.test(error.message)
+		);
 	}
 
 	/** Explicit/startup validation also refreshes activated runtime outputs. */

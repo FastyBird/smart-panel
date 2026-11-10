@@ -87,6 +87,22 @@ describe('actual native graph and owned producer-state publication', () => {
 		} as never);
 		return database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id });
 	};
+	it('retries a startup validation that concurrent structural writes superseded instead of aborting boot', async () => {
+		const original: () => Promise<void> = graph.refreshQuarantine.bind(graph) as () => Promise<void>;
+		const refresh = jest
+			.spyOn(graph, 'refreshQuarantine')
+			.mockRejectedValueOnce(new Error('Original graph publication expired'))
+			.mockRejectedValueOnce(new Error('Original durable graph publication changed'))
+			.mockImplementation(original);
+		await state.onModuleInit();
+		await expect(graph.onApplicationBootstrap()).resolves.toBeUndefined();
+		expect(refresh).toHaveBeenCalledTimes(3);
+		expect(graph.isValidated()).toBe(true);
+	});
+	it('still aborts boot when startup validation finds a fault rather than contention', async () => {
+		jest.spyOn(graph, 'refreshQuarantine').mockRejectedValue(new Error('Producer state installation refused'));
+		await expect(graph.onApplicationBootstrap()).rejects.toThrow('Producer state installation refused');
+	});
 	it('boots nonempty unavailable overlays, opens only the validated generation, and preserves independent runtime through refresh and disposal', async () => {
 		const property = await seed();
 		await state.onModuleInit();
