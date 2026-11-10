@@ -113,7 +113,7 @@ const formRef = ref<InstanceType<typeof ModbusEndpointForm>>();
 const endpoints = computed<IModbusEndpoint[]>(() => Object.values(endpointsStore.data));
 const modbusDevices = computed<IDevice[]>(() => devicesStore.findAll().filter((device) => device.type === DEVICES_MODBUS_TYPE));
 
-useModbusEndpointsHealth();
+const { refresh: refreshHealth } = useModbusEndpointsHealth();
 
 onMounted(async (): Promise<void> => {
 	try {
@@ -123,6 +123,8 @@ onMounted(async (): Promise<void> => {
 	} finally {
 		loading.value = false;
 	}
+
+	void refreshHealth();
 });
 
 const onAdd = (): void => {
@@ -137,6 +139,7 @@ const onEdit = (endpoint: IModbusEndpoint): void => {
 
 const onSaved = (): void => {
 	dialogVisible.value = false;
+	void refreshHealth();
 	flashMessage.success(t('devicesModbusPlugin.endpoints.messages.saved'));
 };
 

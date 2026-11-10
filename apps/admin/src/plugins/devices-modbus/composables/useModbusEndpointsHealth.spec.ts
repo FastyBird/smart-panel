@@ -29,11 +29,13 @@ vi.mock('../../../common', async () => {
 	};
 });
 
+let refreshFn: () => Promise<void> = async () => undefined;
+
 const mountComposable = (intervalMs?: number) =>
 	mount(
 		defineComponent({
 			setup() {
-				useModbusEndpointsHealth(intervalMs);
+				refreshFn = useModbusEndpointsHealth(intervalMs).refresh;
 
 				return () => null;
 			},
@@ -85,6 +87,19 @@ describe('useModbusEndpointsHealth', () => {
 		await vi.advanceTimersByTimeAsync(1000);
 		expect(store.fetchHealth).toHaveBeenCalledTimes(2);
 
+		wrapper.unmount();
+	});
+
+	it('fetches health on refresh for endpoints that appeared after mount', async () => {
+		store.findAll.mockReturnValue([]);
+		const wrapper = mountComposable(5000);
+		await flushPromises();
+		expect(store.fetchHealth).not.toHaveBeenCalled();
+
+		store.findAll.mockReturnValue([{ id: 'a' }]);
+		await refreshFn();
+
+		expect(store.fetchHealth).toHaveBeenCalledWith('a');
 		wrapper.unmount();
 	});
 

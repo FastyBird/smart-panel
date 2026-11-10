@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted } from 'vue';
 import { injectStoresManager } from '../../../common';
 import { modbusEndpointsStoreKey } from '../store/keys';
 
-export const useModbusEndpointsHealth = (intervalMs: number = 5000): void => {
+export const useModbusEndpointsHealth = (intervalMs: number = 5000): { refresh: () => Promise<void> } => {
 	const endpointsStore = injectStoresManager().getStore(modbusEndpointsStoreKey);
 
 	let timer: ReturnType<typeof setInterval> | null = null;
@@ -25,6 +25,9 @@ export const useModbusEndpointsHealth = (intervalMs: number = 5000): void => {
 		}
 	};
 
+	// Runs a round now (e.g. after the endpoints were loaded); skipped while another round is running.
+	const refresh = (): Promise<void> => round();
+
 	onMounted((): void => {
 		stopped = false;
 		void round();
@@ -39,4 +42,6 @@ export const useModbusEndpointsHealth = (intervalMs: number = 5000): void => {
 			timer = null;
 		}
 	});
+
+	return { refresh };
 };
