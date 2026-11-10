@@ -117,6 +117,44 @@ describe('Modbus endpoints store', () => {
 		expect(store.findById('4a2515a6-7e87-4e51-96cc-832698237613')?.enabled).toBe(false);
 	});
 
+	it('fetch prunes health of endpoints that no longer exist', async () => {
+		const keep = wireEndpoint({ id: 'keep' });
+		const gone = wireEndpoint({ id: 'gone' });
+		const wireHealth = {
+			state: 'connected',
+			last_error: null,
+			last_error_at: null,
+			average_latency_ms: 1,
+			requests: 1,
+			timeouts: 0,
+			overloaded: false,
+		};
+		get.mockResolvedValueOnce({ data: { data: [keep, gone] }, response: { status: 200 } });
+		get.mockResolvedValueOnce({ data: { data: wireHealth }, response: { status: 200 } });
+		get.mockResolvedValueOnce({ data: { data: wireHealth }, response: { status: 200 } });
+		get.mockResolvedValueOnce({ data: { data: [keep] }, response: { status: 200 } });
+		const store = useModbusEndpoints();
+		await store.fetch();
+		await store.fetchHealth('keep');
+		await store.fetchHealth('gone');
+
+		await store.fetch();
+
+		expect(Object.keys(store.health)).toEqual(['keep']);
+	});
+
+	it('add exposes backend field errors on the exception', async () => {
+		post.mockResolvedValue({
+			error: { error: { details: [{ field: 'host', reason: 'Host is invalid.' }] } },
+			response: { status: 400 },
+		});
+		const store = useModbusEndpoints();
+
+		const error = await store.add({ name: 'x', host: '' }).catch((e: unknown) => e);
+
+		expect((error as DevicesModbusApiException).fields).toEqual([{ field: 'host', reason: 'Host is invalid.' }]);
+	});
+
 	it('remove drops the entry and its health', async () => {
 		get.mockResolvedValueOnce({ data: { data: [wireEndpoint()] }, response: { status: 200 } });
 		get.mockResolvedValueOnce({

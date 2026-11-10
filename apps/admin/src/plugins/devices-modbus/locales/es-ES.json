@@ -7,6 +7,80 @@
 	"endpoints": {
 		"title": "Modbus endpoints",
 		"subtitle": "Gateways the Modbus devices are polled through",
-		"breadcrumb": "Modbus endpoints"
+		"breadcrumb": "Modbus endpoints",
+		"empty": "No Modbus endpoints yet",
+		"confirmRemove": "Remove the endpoint \"{name}\"?",
+		"framing": {
+			"tcp": "Modbus TCP",
+			"rtuOverTcp": "RTU over TCP"
+		},
+		"state": {
+			"connected": "Connected",
+			"connecting": "Connecting",
+			"backoff": "Retrying",
+			"stopped": "Stopped"
+		},
+		"table": {
+			"name": "Name",
+			"address": "Address",
+			"framing": "Framing",
+			"enabled": "Enabled",
+			"state": "State",
+			"lastError": "Last error",
+			"latency": "Avg. latency",
+			"requests": "Requests / timeouts",
+			"overloaded": "Overloaded",
+			"devices": "Devices",
+			"actions": "Actions"
+		},
+		"actions": {
+			"add": "Add endpoint",
+			"edit": "Edit",
+			"remove": "Remove",
+			"save": "Save",
+			"cancel": "Cancel"
+		},
+		"dialog": {
+			"add": "Add Modbus endpoint",
+			"edit": "Edit Modbus endpoint"
+		},
+		"messages": {
+			"saved": "Endpoint saved.",
+			"notSaved": "Failed to save the endpoint.",
+			"removed": "Endpoint removed.",
+			"notRemoved": "Failed to remove the endpoint."
+		},
+		"form": {
+			"name": {
+				"title": "Name",
+				"required": "Enter a name."
+			},
+			"host": {
+				"title": "Host",
+				"required": "Enter a host or IP address."
+			},
+			"port": {
+				"title": "Port"
+			},
+			"framing": {
+				"title": "Framing"
+			},
+			"connectTimeoutMs": {
+				"title": "Connect timeout (ms)"
+			},
+			"requestTimeoutMs": {
+				"title": "Request timeout (ms)"
+			},
+			"interRequestDelayMs": {
+				"title": "Delay between requests (ms)"
+			},
+			"maxInFlight": {
+				"title": "Max requests in flight",
+				"rtuHint": "RTU over TCP allows one request at a time."
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		}
 	}
 }

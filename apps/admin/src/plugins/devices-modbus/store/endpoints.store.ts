@@ -2,6 +2,8 @@ import { ref } from 'vue';
 
 import { type Pinia, defineStore } from 'pinia';
 
+import { get as getPath } from 'lodash';
+
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, useBackend } from '../../../common';
 import type {
@@ -13,10 +15,28 @@ import type {
 	DevicesModbusPluginUpdateEndpointOperation,
 } from '../../../openapi.constants';
 import { DEVICES_MODBUS_PLUGIN_PREFIX } from '../devices-modbus.constants';
-import { DevicesModbusApiException } from '../devices-modbus.exceptions';
+import { DevicesModbusApiException, type IDevicesModbusErrorField } from '../devices-modbus.exceptions';
 
 import type { IModbusEndpoint, IModbusEndpointCreate, IModbusEndpointHealth, IModbusEndpointUpdate } from './endpoints.types';
 import { transformModbusEndpoint, transformModbusEndpointHealth, transformModbusEndpointRequest } from './modbus.transformers';
+
+const getErrorFields = (error: unknown): IDevicesModbusErrorField[] => {
+	const details: unknown = getPath(error, 'error.details', null);
+
+	if (!Array.isArray(details)) {
+		return [];
+	}
+
+	const fields: IDevicesModbusErrorField[] = [];
+
+	for (const row of details as Record<string, unknown>[]) {
+		if (row && typeof row.reason === 'string') {
+			fields.push({ field: typeof row.field === 'string' ? row.field : undefined, reason: row.reason });
+		}
+	}
+
+	return fields;
+};
 
 const BASE = `/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/endpoints` as const;
 
@@ -34,6 +54,7 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		if (responseData) {
 			const endpoints = responseData.data.map(transformModbusEndpoint);
 			data.value = Object.fromEntries(endpoints.map((endpoint) => [endpoint.id, endpoint]));
+			health.value = Object.fromEntries(Object.entries(health.value).filter(([id]) => id in data.value));
 
 			return endpoints;
 		}
@@ -72,7 +93,8 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 
 		throw new DevicesModbusApiException(
 			getErrorReason<DevicesModbusPluginCreateEndpointOperation>(error, 'Failed to create the Modbus endpoint.'),
-			response.status
+			response.status,
+			getErrorFields(error)
 		);
 	};
 
@@ -92,7 +114,8 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 
 		throw new DevicesModbusApiException(
 			getErrorReason<DevicesModbusPluginUpdateEndpointOperation>(error, 'Failed to update the Modbus endpoint.'),
-			response.status
+			response.status,
+			getErrorFields(error)
 		);
 	};
 
