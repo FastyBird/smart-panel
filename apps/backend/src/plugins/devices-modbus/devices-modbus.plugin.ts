@@ -29,6 +29,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { ModbusDevicesController } from './controllers/modbus-devices.controller';
 import { ModbusEndpointsController } from './controllers/modbus-endpoints.controller';
+import { ModbusProbeController } from './controllers/modbus-probe.controller';
 import { ModbusTemplatesController } from './controllers/modbus-templates.controller';
 import {
 	DEVICES_MODBUS_API_TAG_DESCRIPTION,
@@ -54,8 +55,10 @@ import { ModbusBindingsService } from './services/modbus-bindings.service';
 import { ModbusConnectionsService } from './services/modbus-connections.service';
 import { ModbusDeviceStructureService } from './services/modbus-device-structure.service';
 import { ModbusEndpointsService } from './services/modbus-endpoints.service';
+import { MODBUS_PROBE_TRANSPORT_FACTORY, ModbusProbeService } from './services/modbus-probe.service';
 import { ModbusRuntimeService } from './services/modbus-runtime.service';
 import { MODBUS_TEMPLATES_LOCATIONS, ModbusTemplatesService } from './services/modbus-templates.service';
+import { createModbusSerialTransport } from './transport/modbus-serial.transport';
 
 @ApiTag({
 	tagName: DEVICES_MODBUS_PLUGIN_NAME,
@@ -92,8 +95,10 @@ import { MODBUS_TEMPLATES_LOCATIONS, ModbusTemplatesService } from './services/m
 			},
 		},
 		ModbusTemplatesService,
+		{ provide: MODBUS_PROBE_TRANSPORT_FACTORY, useValue: createModbusSerialTransport },
+		ModbusProbeService,
 	],
-	controllers: [ModbusEndpointsController, ModbusDevicesController, ModbusTemplatesController],
+	controllers: [ModbusEndpointsController, ModbusDevicesController, ModbusTemplatesController, ModbusProbeController],
 	exports: [ModbusEndpointsService, ModbusConnectionsService, ModbusBindingsService, ModbusDeviceStructureService],
 })
 export class DevicesModbusPlugin {

@@ -299,6 +299,14 @@ export class ModbusProbeService {
 			throw validationError('register_type', 'Only coils and holding registers can be written.');
 		}
 
+		if (
+			!Number.isInteger(binding.address) ||
+			binding.address < 0 ||
+			binding.address + spanOf(binding) > ADDRESS_SPACE
+		) {
+			throw validationError('address', `Address plus length must not exceed ${ADDRESS_SPACE}.`);
+		}
+
 		const start = performance.now();
 		const registerType = binding.registerType;
 

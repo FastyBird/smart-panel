@@ -519,6 +519,28 @@ describe('ModbusProbeService', () => {
 			expect(factory).not.toHaveBeenCalled();
 		});
 
+		it('refuses a write that would run past the end of the address space', async () => {
+			const wide = { ...relay, valueMap: null, dataType: ModbusDataType.UINT32, address: 65535 };
+
+			await expect(service.write({ endpointId: 'ep-1' }, 1, wide, 1, defaults)).rejects.toMatchObject({
+				response: { message: [expect.stringContaining('"field":"address"')] },
+			});
+			await expect(
+				service.write(
+					{ endpointId: 'ep-1' },
+					1,
+					{ ...wide, registerType: ModbusRegisterType.COIL, dataType: ModbusDataType.BOOL, address: 65536 },
+					true,
+					defaults,
+				),
+			).rejects.toMatchObject({ response: { message: [expect.stringContaining('"field":"address"')] } });
+			expect(factory).not.toHaveBeenCalled();
+
+			await expect(
+				service.write({ endpointId: 'ep-1' }, 1, { ...wide, dataType: ModbusDataType.UINT16 }, 1, defaults),
+			).resolves.toMatchObject({ ok: true });
+		});
+
 		it('maps a write exception to a probe error', async () => {
 			transport.write.mockRejectedValueOnce(new ModbusExceptionError(4));
 
