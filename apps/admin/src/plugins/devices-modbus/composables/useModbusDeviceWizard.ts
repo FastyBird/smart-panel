@@ -132,8 +132,10 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 			case MODBUS_WIZARD_STEP.TEMPLATE:
 				return state.template !== null || state.startedEmpty;
 			case MODBUS_WIZARD_STEP.POINTS:
+				// The backend refuses a device without a read binding.
+				return state.points.length > 0 && state.points.some((point) => point.read !== null);
 			case MODBUS_WIZARD_STEP.DEVICE:
-				// Placeholders until the points and device steps exist.
+				// Placeholder until the device step exists.
 				return true;
 			default:
 				return false;

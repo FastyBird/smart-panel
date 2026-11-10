@@ -40,6 +40,11 @@
 						:wizard="wizard"
 					/>
 
+					<modbus-wizard-points-step
+						v-else-if="wizard.state.step === MODBUS_WIZARD_STEP.POINTS"
+						:wizard="wizard"
+					/>
+
 					<el-empty
 						v-else
 						:description="t('devicesModbusPlugin.wizard.comingNext')"
@@ -92,6 +97,7 @@ import { ElButton, ElCard, ElEmpty, ElScrollbar, ElStep, ElSteps } from 'element
 import { AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import ModbusWizardEndpointStep from '../components/wizard/modbus-wizard-endpoint-step.vue';
+import ModbusWizardPointsStep from '../components/wizard/modbus-wizard-points-step.vue';
 import ModbusWizardTemplateStep from '../components/wizard/modbus-wizard-template-step.vue';
 import { MODBUS_WIZARD_STEP, MODBUS_WIZARD_STEP_COUNT, useModbusDeviceWizard } from '../composables/useModbusDeviceWizard';
 import { RouteNames } from '../devices-modbus.constants';

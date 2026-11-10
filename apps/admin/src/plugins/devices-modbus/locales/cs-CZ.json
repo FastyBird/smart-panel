@@ -93,6 +93,80 @@
 				"title": "Start empty",
 				"description": "Define the points yourself."
 			}
+		},
+		"points": {
+			"customNotice": "The points differ from the template, so the device will be created as a custom device.",
+			"readNow": "Read now",
+			"autoRefresh": "Auto refresh",
+			"empty": "No points yet. Add the addresses to read or switch above.",
+			"needsRead": "Add at least one point with a read binding: a device needs something to read.",
+			"yes": "yes",
+			"pduAddress": "PDU {address}",
+			"add": {
+				"title": "Add points",
+				"address": "Address or range",
+				"placeholder": "e.g. 0, 40001 or 0-31",
+				"namePrefix": "Name prefix",
+				"defaultPrefix": "Point",
+				"button": "Add",
+				"preview": "{count} point(s) from stored address {address} ({registerType})"
+			},
+			"columns": {
+				"name": "Name",
+				"capability": "Capability",
+				"registerType": "Register type",
+				"address": "Address",
+				"dataType": "Data type",
+				"bit": "Bit",
+				"orders": "Byte / word order",
+				"byteOrder": "Byte order",
+				"wordOrder": "Word order",
+				"scale": "Scale / offset",
+				"offset": "Offset",
+				"invert": "Invert",
+				"valueMap": "Value map",
+				"writeFunction": "Write function",
+				"live": "Live value",
+				"raw": "Raw value",
+				"error": "Error",
+				"actions": "Actions"
+			},
+			"actions": {
+				"edit": "Edit",
+				"testWrite": "Test write",
+				"delete": "Delete"
+			},
+			"errors": {
+				"registerType": "This capability cannot use that register table",
+				"writeRegisterType": "A write binding must use a coil or holding register"
+			},
+			"editor": {
+				"title": "Edit point",
+				"readBinding": "Read binding",
+				"writeBinding": "Write binding",
+				"deviceOrder": "Device setting",
+				"defaultFunction": "Default",
+				"singleAddress": "Enter a single address",
+				"raw": "Raw value",
+				"addEntry": "Add entry",
+				"removeEntry": "Remove",
+				"cancel": "Cancel",
+				"save": "Save"
+			},
+			"testWrite": {
+				"title": "Test write: {name}",
+				"description": "Writes the value to the real device once. Nothing is sent until you confirm.",
+				"on": "On",
+				"off": "Off",
+				"run": "Write...",
+				"close": "Close",
+				"newDevice": "new device",
+				"confirmTitle": "Write to the device?",
+				"confirm": "Write {value} to {device}? Unit ID {unit}, {registerType}, stored (PDU) address {address} (shown as {shown}). This changes the real device.",
+				"confirmButton": "Write",
+				"cancelButton": "Cancel",
+				"done": "The value was written."
+			}
 		}
 	},
 	"endpoints": {
