@@ -3,6 +3,7 @@
 Run only in a disposable Linux container with Python 3, sudo and this directory
 mounted at /tests. Set SMART_PANEL_HELPER_CONTAINER_TEST=1 explicitly.
 """
+import configparser
 import json
 import os
 from pathlib import Path
@@ -35,6 +36,9 @@ class InstalledBoundaryTests(unittest.TestCase):
             'FB_DB_PATH=/srv/panel/db\nFB_CONFIG_PATH="/srv/panel/config"\n')
         Path('/etc/sudoers.d/smart-panel').write_text('smartpanel ALL=(root) NOPASSWD: ALL\n')
         Path('/etc/sudoers.d/smart-panel').chmod(0o440)
+        cls.legacy_unit = Path('/etc/systemd/system/smart-panel.service')
+        cls.legacy_unit.parent.mkdir(parents=True, exist_ok=True)
+        cls.legacy_unit.write_text('[Service]\nKillMode=process\n')
         cls.install = [sys.executable, '-I', str(scripts / 'privileged/install-helper.py'),
                        '--backend-root', str(cls.backend), '--install-type', 'npm',
                        '--service-user', 'smartpanel', '--data-dir', '/var/lib/smart-panel', '--port', '3000']
@@ -55,6 +59,15 @@ class InstalledBoundaryTests(unittest.TestCase):
         self.assertEqual(config['configDir'], '/srv/panel/config')
         dropin = Path('/etc/systemd/system/smart-panel.service.d/privileged-helper.conf')
         self.assertIn('ReadWritePaths=/var/lib/smart-panel-privileged', dropin.read_text())
+        # Refresh an already protected legacy installation, as the live update worker does.
+        dropin.write_text('[Service]\nReadWritePaths=/var/lib/smart-panel-privileged\n')
+        result = self.run_command(self.install + ['--worker-refresh'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        effective = configparser.ConfigParser(interpolation=None)
+        effective.read([str(self.legacy_unit), str(dropin)])
+        self.assertEqual(effective['Service']['KillMode'], 'control-group')
+        self.assertIn('KillMode=process', self.legacy_unit.read_text())
+
         self.assertNotEqual(self.as_service(['/usr/bin/test', '-w', str(dropin)]).returncode, 0)
         policy = Path('/etc/sudoers.d/smart-panel').read_text()
         self.assertNotIn('NOPASSWD: ALL', policy)
