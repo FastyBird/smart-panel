@@ -61,6 +61,7 @@ import { ModbusConnectionsService } from './modbus-connections.service';
 import { ModbusDeviceStructureService } from './modbus-device-structure.service';
 import { ModbusEndpointsService } from './modbus-endpoints.service';
 import { ModbusRuntimeService } from './modbus-runtime.service';
+import { ModbusTemplatesService } from './modbus-templates.service';
 
 type Plain = Record<string, unknown>;
 
@@ -145,6 +146,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 	let bindings: ModbusBindingsService;
 	let runtime: { loadDevice: jest.Mock };
 	let values: { write: jest.Mock };
+	let templates: { has: jest.Mock };
 	let endpoint: ModbusEndpointEntity;
 	let otherEndpoint: ModbusEndpointEntity;
 
@@ -245,6 +247,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 
 		runtime = { loadDevice: jest.fn().mockResolvedValue(undefined) };
 		values = { write: jest.fn().mockResolvedValue(true) };
+		templates = { has: jest.fn().mockReturnValue(true) };
 		bindings = new ModbusBindingsService(database.getRepository(ModbusBindingEntity));
 		service = new ModbusDeviceStructureService(
 			database,
@@ -254,6 +257,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			endpoints,
 			runtime as unknown as ModbusRuntimeService,
 			values as unknown as PropertyValueService,
+			templates as unknown as ModbusTemplatesService,
 		);
 	});
 
@@ -316,6 +320,32 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		);
 
 		expect(device).toMatchObject({ templateId: 'eletechsup-n4d8b08', templateRevision: '1.2.0+3f2a9c1b' });
+	});
+
+	it('creates a device from a loaded template with any revision', async () => {
+		const device = await service.create(
+			toDto({ ...relayBoard(endpoint.id), template_id: 'qingjun-32di', template_revision: 'abc' }),
+		);
+
+		expect(templates.has).toHaveBeenCalledWith('qingjun-32di');
+		expect(device).toMatchObject({ templateId: 'qingjun-32di', templateRevision: 'abc' });
+	});
+
+	it('refuses a template id without a revision', async () => {
+		expect(await reasonsOf(service.create(toDto({ ...relayBoard(endpoint.id), template_id: 'qingjun-32di' })))).toEqual(
+			[{ field: 'template_revision', reason: 'is required when template_id is set.' }],
+		);
+	});
+
+	it('refuses a template that is not loaded', async () => {
+		templates.has.mockReturnValue(false);
+
+		expect(
+			await reasonsOf(
+				service.create(toDto({ ...relayBoard(endpoint.id), template_id: 'missing', template_revision: 'abc' })),
+			),
+		).toEqual([{ field: 'template_id', reason: 'Template missing is not loaded.' }]);
+		expect(await devices.findAll()).toHaveLength(0);
 	});
 
 	it('rolls back everything when a binding fails', async () => {

@@ -46,6 +46,14 @@
         "outDir": "dist"
       },
       {
+        "include": "plugins/devices-modbus/templates/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-modbus/templates/definitions/**/*.yaml",
+        "outDir": "dist"
+      },
+      {
         "include": "plugins/simulator/scenarios/schema/**/*.json",
         "outDir": "dist"
       },

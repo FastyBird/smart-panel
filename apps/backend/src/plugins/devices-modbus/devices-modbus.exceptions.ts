@@ -15,3 +15,9 @@ export class ModbusValidationException extends DevicesModbusException {
 		super({ statusCode: HttpStatus.BAD_REQUEST, error: 'Bad Request', message: reasons }, HttpStatus.BAD_REQUEST);
 	}
 }
+
+export class ModbusTemplateNotFoundException extends DevicesModbusException {
+	constructor(id: string) {
+		super(`Modbus template ${id} does not exist`, HttpStatus.NOT_FOUND);
+	}
+}

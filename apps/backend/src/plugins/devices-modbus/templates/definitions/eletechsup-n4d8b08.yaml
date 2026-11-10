@@ -1,0 +1,43 @@
+version: '1.0'
+templates:
+  - id: eletechsup-n4d8b08
+    name: Eletechsup N4D8B08 8-channel relay board
+    manufacturer: Eletechsup
+    model: N4D8B08
+    description: 8 relays and 8 inputs on RS485 at 9600 8N1, reached through a Modbus TCP gateway. The serial settings are configured on the gateway.
+    category: switcher
+    defaults:
+      framing: rtu_over_tcp
+      port: 502
+      unit_id: { default: 1, min: 1, max: 247 }
+      poll_interval_ms: 500
+    channels:
+      - repeat: { count: 8 }
+        identifier: 'relay_{n}'
+        name: 'Relay {n}'
+        category: switcher
+        properties:
+          - category: 'on'
+            read:
+              register_type: holding_register
+              address: { base: 1 }
+              data_type: uint16
+              value_map: [{ raw: 1, value: true }, { raw: 0, value: false }]
+            write:
+              register_type: holding_register
+              address: { base: 1 }
+              data_type: uint16
+              value_map: [{ raw: 256, value: true }, { raw: 512, value: false }]
+              write_function: single
+      # Inputs at PDU 81-88, as listed in the board's register table (same notation as the relays at 1-8).
+      - repeat: { count: 8 }
+        identifier: 'input_{n}'
+        name: 'Input {n}'
+        category: binary_input
+        properties:
+          - category: state
+            read:
+              register_type: holding_register
+              address: { base: 81 }
+              data_type: uint16
+              value_map: [{ raw: 1, value: true }, { raw: 0, value: false }]
