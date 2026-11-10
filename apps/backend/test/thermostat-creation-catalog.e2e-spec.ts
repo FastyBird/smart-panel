@@ -505,15 +505,32 @@ describe('thermostat catalog: actual migrated native conflict and allocation bou
 	afterAll(async () => {
 		if (database?.isInitialized) await database.destroy();
 	});
-	async function scenario(work: (manager: import('typeorm').EntityManager) => Promise<void>) {
+	async function scenario(work: (manager: import('typeorm').EntityManager) => Promise<void>, target = database) {
 		const rollback = new Error('discard native fixture');
 		try {
-			await database.transaction(async (manager) => {
+			await target.transaction(async (manager) => {
 				await work(manager);
 				throw rollback;
 			});
 		} catch (cause) {
 			if (cause !== rollback) throw cause;
+		}
+	}
+	/** ORM maps come from the current entities, so their rows need every later migration's catalog columns too. */
+	async function currentSchemaScenario(work: (manager: import('typeorm').EntityManager) => Promise<void>) {
+		const current = await createSqliteDataSource({
+			type: 'sqlite',
+			database: ':memory:',
+			entities: [sourceRoot + '/**/*.entity.ts'],
+			subscribers: [sourceRoot + '/**/*.subscriber.ts'],
+			migrations: migrationPaths(Number.POSITIVE_INFINITY),
+			migrationsTransactionMode: 'each',
+			migrationsRun: true,
+		});
+		try {
+			await scenario(work, current);
+		} finally {
+			await current.destroy();
 		}
 	}
 	async function insert(
@@ -631,8 +648,8 @@ describe('thermostat catalog: actual migrated native conflict and allocation bou
 		},
 	);
 	it('keeps private columns out of normal save/insert/update/select/returning maps across every discovered catalog STI', async () =>
-		scenario(async (manager) => {
-			const metadatas = database.entityMetadatas.filter((metadata) => tables.includes(metadata.tableName));
+		currentSchemaScenario(async (manager) => {
+			const metadatas = manager.connection.entityMetadatas.filter((metadata) => tables.includes(metadata.tableName));
 			expect(metadatas.length).toBeGreaterThan(3);
 			let index = 0;
 			for (const metadata of metadatas) {

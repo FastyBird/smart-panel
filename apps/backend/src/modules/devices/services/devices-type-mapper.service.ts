@@ -36,6 +36,19 @@ export interface DeviceTypeMapping<
 	 * reject.
 	 */
 	beforeUpdate?: (device: TDevice, previous: Readonly<Partial<TDevice>>) => Promise<void>;
+	/**
+	 * Opt-in for a type whose devices may only be created through the owning plugin's own route.
+	 *
+	 * When set, `DevicesService.create()` refuses a creation that is not running inside a
+	 * `DeviceCreationContext` — the generic `POST /modules/devices/devices` route among them — before
+	 * the DTO is validated or anything is written, by throwing `DevicesValidationException` with
+	 * `creationRoute` in its message. Use it when the plugin checks invariants the generic create path
+	 * cannot (references to plugin-owned rows, a required structure) and installs the device atomically
+	 * with `DeviceCreationContext.run`.
+	 */
+	requiresCreationContext?: boolean;
+	/** The route a refused generic creation is pointed at; only read when `requiresCreationContext` is set. */
+	creationRoute?: string;
 	afterCreate?: (device: TDevice, createDto?: TCreateDTO) => Promise<TDevice>;
 	afterUpdate?: (device: TDevice) => Promise<TDevice>;
 }
@@ -57,7 +70,16 @@ export class DevicesTypeMapperService {
 			'creationRegistrations',
 		] as (keyof this)[]);
 		const mapping = api.values.getMapping.call(this, type);
-		const fields = ['type', 'class', 'createDto', 'afterCreate', 'beforeCreate', 'withStructuralWrite'] as const;
+		const fields = [
+			'type',
+			'class',
+			'createDto',
+			'afterCreate',
+			'beforeCreate',
+			'withStructuralWrite',
+			'requiresCreationContext',
+			'creationRoute',
+		] as const;
 		const captured = captureCreation(mapping, fields as readonly (keyof typeof mapping)[]);
 		const registration = this.creationRegistrations.get(type);
 		return Object.freeze({
