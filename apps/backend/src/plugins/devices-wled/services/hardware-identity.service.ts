@@ -1,8 +1,18 @@
-import { DataSource } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
+
+const isMacUniqueViolation = (error: unknown): boolean => {
+	if (!(error instanceof QueryFailedError)) {
+		return false;
+	}
+	const driverMessage = (error.driverError as { message?: string } | undefined)?.message ?? '';
+	const message = `${error.message} ${driverMessage}`;
+
+	return message.includes('UNIQUE constraint failed') && message.includes('devices_module_devices.mac');
+};
 
 @Injectable()
 export class WledHardwareIdentityService {
@@ -23,7 +33,16 @@ export class WledHardwareIdentityService {
 			return 'conflict';
 		}
 
-		await repository.update(device.id, { mac });
+		try {
+			await repository.update(device.id, { mac });
+		} catch (error) {
+			// Another device claimed this identity between the lookup and the write.
+			if (isMacUniqueViolation(error)) {
+				return 'conflict';
+			}
+
+			throw error;
+		}
 		device.mac = mac;
 		return 'persisted';
 	}
