@@ -268,14 +268,17 @@ export class AutomationsService {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
+			// The errors must not carry the submitted document: a graph can hold 100 nodes with arbitrary configuration
+			validationError: { target: false, value: false },
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] DTO validation failed: ${JSON.stringify(errors)}`);
-
 			const reasons = ValidationExceptionFactory.createException(errors).getResponse() as { message: string[] };
+			const message = reasons.message.join('; ');
 
-			throw new AutomationsValidationException(`Provided automation data are invalid: ${reasons.message.join('; ')}`);
+			this.logger.error(`[VALIDATION FAILED] DTO validation failed: ${message}`);
+
+			throw new AutomationsValidationException(`Provided automation data are invalid: ${message}`);
 		}
 
 		return dtoInstance;
