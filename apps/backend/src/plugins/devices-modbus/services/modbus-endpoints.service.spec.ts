@@ -81,6 +81,13 @@ describe('ModbusEndpointsService', () => {
 		await expect(service.create({ name: 'C', host: '10.10.0.10', port: 503 })).resolves.toBeDefined();
 	});
 
+	it('finds an endpoint by host and port, ignoring the host case', async () => {
+		const endpoint = await service.create({ name: 'A', host: 'Gateway.local', port: 503 });
+
+		await expect(service.findByHostAndPort('gateway.LOCAL', 503)).resolves.toBe(endpoint);
+		await expect(service.findByHostAndPort('gateway.local', 502)).resolves.toBeNull();
+	});
+
 	it('refuses to delete an endpoint in use', async () => {
 		const endpoint = await service.create({ name: 'A', host: '10.10.0.10' });
 

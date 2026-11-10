@@ -41,6 +41,14 @@ export class ModbusEndpointsService {
 		return this.repository.findOne({ where: { id } });
 	}
 
+	/** Finds the endpoint at this address; the host is compared case-insensitively. */
+	async findByHostAndPort(host: string, port: number): Promise<ModbusEndpointEntity | null> {
+		const wanted = host.toLowerCase();
+		const endpoints = await this.repository.find();
+
+		return endpoints.find((endpoint) => endpoint.port === port && endpoint.host.toLowerCase() === wanted) ?? null;
+	}
+
 	async getOneOrThrow(id: string): Promise<ModbusEndpointEntity> {
 		const endpoint = await this.findOne(id);
 
