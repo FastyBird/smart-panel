@@ -164,7 +164,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, fieldErrors, formAlert, maxInFlightDisabled, setFraming, submit } = useModbusEndpointForm(props.endpoint);
+const { model, fieldErrors, formAlert, maxInFlightDisabled, setFraming, submit } = props.form ?? useModbusEndpointForm(props.endpoint);
 
 const formEl = ref<FormInstance>();
 

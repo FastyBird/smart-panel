@@ -25,6 +25,73 @@
 				"gatewayUnreachable": "The gateway could not reach the unit; check the unit ID and the serial line",
 				"unavailable": "The endpoint is waiting to reconnect after a failure; try again shortly",
 				"generic": "The probe failed"
+			},
+			"title": "Test connection",
+			"description": "Reads a few values to check that the device answers. Nothing is written or saved.",
+			"registerType": {
+				"title": "Register type",
+				"holding_register": "Holding register",
+				"input_register": "Input register",
+				"coil": "Coil",
+				"discrete_input": "Discrete input"
+			},
+			"notation": {
+				"title": "Address notation",
+				"one_based": "1-based",
+				"pdu": "0-based (PDU)",
+				"modicon": "Modicon (4xxxx)"
+			},
+			"address": {
+				"title": "Address",
+				"stored": "Stored as address {address} ({registerType})"
+			},
+			"count": {
+				"title": "Count"
+			},
+			"run": "Test connection",
+			"success": "Read {count} value(s) in {ms} ms"
+		},
+		"steps": {
+			"endpoint": "Endpoint",
+			"template": "Template",
+			"points": "Points",
+			"device": "Device",
+			"review": "Review"
+		},
+		"comingNext": "This step is coming next.",
+		"endpoint": {
+			"mode": {
+				"existing": "Use a saved endpoint",
+				"new": "Add a new endpoint"
+			},
+			"select": {
+				"title": "Endpoint",
+				"placeholder": "Select an endpoint",
+				"refresh": "Refresh",
+				"manage": "Manage endpoints (opens in a new tab)",
+				"loadFailed": "Failed to load the Modbus endpoints."
+			},
+			"unitId": {
+				"title": "Unit ID",
+				"hint": "Modbus unit (slave) ID, 0-255. Most TCP devices use 1.",
+				"broadcastWarning": "Unit ID 0 is the broadcast address on RTU lines: devices do not answer it, so reads will time out."
+			}
+		},
+		"template": {
+			"loading": "Loading templates...",
+			"none": "No device templates are available; start with an empty device.",
+			"loadFailed": "Failed to load the device templates.",
+			"applyFailed": "Failed to apply the device template.",
+			"source": {
+				"builtin": "Built-in",
+				"user": "Custom"
+			},
+			"overrides": "Overrides a built-in template",
+			"counts": "{channels} channels, {points} points",
+			"fileErrors": "Some template files could not be loaded",
+			"startEmpty": {
+				"title": "Start empty",
+				"description": "Define the points yourself."
 			}
 		}
 	},

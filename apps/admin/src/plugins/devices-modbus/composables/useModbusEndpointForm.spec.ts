@@ -71,6 +71,31 @@ describe('useModbusEndpointForm', () => {
 		expect(maxInFlightDisabled.value).toBe(true);
 	});
 
+	it('derives max in flight locking from the framing', () => {
+		const { model, maxInFlightDisabled } = useModbusEndpointForm();
+
+		expect(maxInFlightDisabled.value).toBe(false);
+
+		model.framing = DevicesModbusPluginFraming.rtu_over_tcp;
+
+		expect(maxInFlightDisabled.value).toBe(true);
+	});
+
+	it('reports whether the required fields are filled', () => {
+		const { model, requiredFilled } = useModbusEndpointForm();
+
+		expect(requiredFilled.value).toBe(false);
+
+		model.name = 'Gateway';
+		model.host = ' ';
+
+		expect(requiredFilled.value).toBe(false);
+
+		model.host = '10.0.0.1';
+
+		expect(requiredFilled.value).toBe(true);
+	});
+
 	it('submits a new endpoint through add and an existing one through edit', async () => {
 		endpointsStore.add.mockResolvedValue({ ...existing, id: 'new' });
 		const create = useModbusEndpointForm();

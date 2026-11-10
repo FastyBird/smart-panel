@@ -1,4 +1,4 @@
-import { type Ref, reactive, ref } from 'vue';
+import { type ComputedRef, type Ref, computed, reactive, ref } from 'vue';
 
 import { injectStoresManager } from '../../../common';
 import { configPluginsStoreKey } from '../../../modules/config';
@@ -44,7 +44,9 @@ export interface IUseModbusEndpointForm {
 	fieldErrors: Partial<Record<ModbusEndpointFormField, string>>;
 	formAlert: Ref<string | null>;
 	submitting: Ref<boolean>;
-	maxInFlightDisabled: Ref<boolean>;
+	maxInFlightDisabled: ComputedRef<boolean>;
+	/** True when the required fields (name and host) are filled in. */
+	requiredFilled: ComputedRef<boolean>;
 	setFraming: (framing: DevicesModbusPluginFraming) => void;
 	submit: () => Promise<IModbusEndpoint>;
 }
@@ -72,12 +74,11 @@ export const useModbusEndpointForm = (endpoint?: IModbusEndpoint): IUseModbusEnd
 	const fieldErrors = reactive<Partial<Record<ModbusEndpointFormField, string>>>({});
 	const formAlert = ref<string | null>(null);
 	const submitting = ref<boolean>(false);
-	const maxInFlightDisabled = ref<boolean>(model.framing === DevicesModbusPluginFraming.rtu_over_tcp);
+	const maxInFlightDisabled = computed<boolean>(() => model.framing === DevicesModbusPluginFraming.rtu_over_tcp);
+	const requiredFilled = computed<boolean>(() => model.name.trim() !== '' && model.host.trim() !== '');
 
 	const setFraming = (framing: DevicesModbusPluginFraming): void => {
 		model.framing = framing;
-		maxInFlightDisabled.value = framing === DevicesModbusPluginFraming.rtu_over_tcp;
-
 		if (maxInFlightDisabled.value) {
 			// RTU frames carry no transaction id, so requests must be strictly serial with a pause between them.
 			model.interRequestDelayMs = RTU_OVER_TCP_INTER_REQUEST_DELAY_MS;
@@ -124,5 +125,5 @@ export const useModbusEndpointForm = (endpoint?: IModbusEndpoint): IUseModbusEnd
 		}
 	};
 
-	return { model, fieldErrors, formAlert, submitting, maxInFlightDisabled, setFraming, submit };
+	return { model, fieldErrors, formAlert, submitting, maxInFlightDisabled, requiredFilled, setFraming, submit };
 };

@@ -181,7 +181,7 @@ type Channel = Body['channels'][number];
 type Property = Channel['properties'][number];
 type RequestBinding = NonNullable<Property['read']>;
 
-const toRequestBinding = (binding: ModbusPointBinding): RequestBinding => ({
+export const toRequestBinding = (binding: ModbusPointBinding): RequestBinding => ({
 	register_type: binding.registerType,
 	address: binding.address,
 	data_type: binding.dataType,
