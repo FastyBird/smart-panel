@@ -87,6 +87,7 @@ Qingjun 32DI: holding register 4 carries DI1-DI16 and register 5 carries DI17-DI
   name: Qingjun 32-channel digital input board
   manufacturer: Qingjun
   model: 32DI
+  description: 32 dry-contact inputs, Modbus TCP. Unit ID is set by DIP switches.
   category: input_controller
   defaults:
     framing: tcp
@@ -117,6 +118,7 @@ register each.
   name: Eletechsup N4D8B08 8-channel relay board
   manufacturer: Eletechsup
   model: N4D8B08
+  description: 8 relays and 8 inputs on RS485 at 9600 8N1, reached through a Modbus TCP gateway. The serial settings are configured on the gateway.
   category: switcher
   defaults:
     framing: rtu_over_tcp
