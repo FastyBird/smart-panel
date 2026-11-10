@@ -67,7 +67,7 @@
 			<el-button
 				size="small"
 				:loading="reading"
-				:disabled="!canRead"
+				:disabled="!canRead || loading || !hasReadBindings"
 				data-test-id="modbus-section-read-now"
 				@click="onReadNow"
 			>
@@ -278,6 +278,8 @@ const readError = ref<string | null>(null);
 
 const canRead = computed<boolean>(() => !!modbusDevice.value.endpointId && modbusDevice.value.unitId != null);
 
+const hasReadBindings = computed<boolean>(() => bindings.value.some((item) => item.role === 'read'));
+
 const propertyName = (propertyId: string): string => {
 	for (const channel of channelsStore.findForDevice(props.device.id)) {
 		const property = propertiesStore.findForChannel(channel.id).find((item) => item.id === propertyId);
@@ -368,6 +370,10 @@ const onReadNow = async (): Promise<void> => {
 	}
 
 	const readBindings = bindings.value.filter((item) => item.role === 'read');
+
+	if (reading.value || readBindings.length === 0) {
+		return;
+	}
 
 	reading.value = true;
 	readError.value = null;

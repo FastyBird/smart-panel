@@ -54,7 +54,7 @@
 		<el-form-item :label="t('devicesModbusPlugin.wizard.device.pollInterval.title')">
 			<el-input-number
 				v-model="wizard.state.device.pollIntervalMs"
-				:min="MIN_POLL_INTERVAL_MS"
+				:min="MODBUS_MIN_POLL_INTERVAL_MS"
 				:step="100"
 				:step-strictly="false"
 				name="devicePollInterval"
@@ -118,6 +118,7 @@ import { SpaceType } from '../../../../modules/spaces/spaces.constants';
 import { spacesStoreKey } from '../../../../modules/spaces/store/keys';
 import type { ISpace } from '../../../../modules/spaces/store/spaces.store.types';
 import { DevicesModbusPluginByteOrder } from '../../../../openapi.constants';
+import { MODBUS_MIN_POLL_INTERVAL_MS } from '../../devices-modbus.constants';
 import { suggestCategory } from '../../lib/points';
 
 import type { IModbusWizardDeviceStepProps } from './modbus-wizard-device-step.types';
@@ -128,7 +129,6 @@ defineOptions({
 
 const props = defineProps<IModbusWizardDeviceStepProps>();
 
-const MIN_POLL_INTERVAL_MS = 100;
 const ORDERS = [DevicesModbusPluginByteOrder.big, DevicesModbusPluginByteOrder.little];
 const BASE_CATEGORIES = ['switcher', 'input_controller'];
 

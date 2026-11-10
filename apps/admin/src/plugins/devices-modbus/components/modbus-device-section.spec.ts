@@ -117,6 +117,18 @@ describe('ModbusDeviceSection', () => {
 		expect(wrapper.text()).not.toContain('Test write');
 	});
 
+	it('disables read now when the device has no read bindings', async () => {
+		get.mockResolvedValue({ data: { data: [{ ...wireBinding, role: 'write', register_type: 'holding_register' }] } });
+		const wrapper = await mountSection(device());
+
+		expect(wrapper.get('button[data-test-id="modbus-section-read-now"]').attributes('disabled')).toBeDefined();
+
+		await wrapper.get('[data-test-id="modbus-section-read-now"]').trigger('click');
+		await flushPromises();
+
+		expect(readPoints).not.toHaveBeenCalled();
+	});
+
 	it('read now probes the saved endpoint and shows raw values', async () => {
 		readPoints.mockResolvedValue({
 			ok: true,

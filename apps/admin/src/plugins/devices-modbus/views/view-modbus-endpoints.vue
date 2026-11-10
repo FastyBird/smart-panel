@@ -49,6 +49,9 @@
 		v-model="dialogVisible"
 		:title="editing ? t('devicesModbusPlugin.endpoints.dialog.edit') : t('devicesModbusPlugin.endpoints.dialog.add')"
 		destroy-on-close
+		:show-close="!submitting"
+		:close-on-press-escape="!submitting"
+		:close-on-click-modal="!submitting"
 	>
 		<modbus-endpoint-form
 			ref="formRef"
@@ -58,7 +61,12 @@
 		/>
 
 		<template #footer>
-			<el-button @click="dialogVisible = false">{{ t('devicesModbusPlugin.endpoints.actions.cancel') }}</el-button>
+			<el-button
+				:disabled="submitting"
+				@click="dialogVisible = false"
+			>
+				{{ t('devicesModbusPlugin.endpoints.actions.cancel') }}
+			</el-button>
 			<el-button
 				type="primary"
 				:loading="submitting"
@@ -129,11 +137,14 @@ onMounted(async (): Promise<void> => {
 
 const onAdd = (): void => {
 	editing.value = null;
+	// A save that finished after the dialog unmounted could not report back; never start with a stuck button.
+	submitting.value = false;
 	dialogVisible.value = true;
 };
 
 const onEdit = (endpoint: IModbusEndpoint): void => {
 	editing.value = endpoint;
+	submitting.value = false;
 	dialogVisible.value = true;
 };
 

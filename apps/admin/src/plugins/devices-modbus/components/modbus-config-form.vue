@@ -65,14 +65,14 @@
 				/>
 			</el-form-item>
 
-			<el-link
+			<el-button
+				link
 				type="primary"
-				underline="never"
 				data-test-id="modbus-config-endpoints-link"
 				@click="onOpenEndpoints"
 			>
 				{{ t('devicesModbusPlugin.config.manageEndpoints') }}
-			</el-link>
+			</el-button>
 		</el-form>
 
 		<hr class="my-4" />

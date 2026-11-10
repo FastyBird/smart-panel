@@ -32,7 +32,7 @@
 			<div class="flex items-center gap-2">
 				<el-button
 					:loading="live.reading.value"
-					:disabled="!canRead"
+					:disabled="!canRead || writing"
 					data-test-id="points-read-now"
 					@click="live.readNow()"
 				>

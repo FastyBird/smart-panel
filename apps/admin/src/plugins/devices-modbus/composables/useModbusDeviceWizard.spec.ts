@@ -366,5 +366,23 @@ describe('useModbusDeviceWizard', () => {
 
 			expect(wizard.canContinue(3)).toBe(false);
 		});
+
+		it('requires a poll interval of at least 100 ms on the device step', () => {
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.device.name = 'Box';
+			wizard.state.device.category = 'switcher';
+			wizard.state.device.pollIntervalMs = null as unknown as number;
+
+			expect(wizard.canContinue(3)).toBe(false);
+
+			wizard.state.device.pollIntervalMs = 50;
+
+			expect(wizard.canContinue(3)).toBe(false);
+
+			wizard.state.device.pollIntervalMs = 100;
+
+			expect(wizard.canContinue(3)).toBe(true);
+		});
 	});
 });

@@ -4,7 +4,7 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import { configPluginsStoreKey } from '../../../modules/config';
 import { DevicesModbusPluginByteOrder, type DevicesModbusPluginCreateDeviceOperation, DevicesModbusPluginFraming } from '../../../openapi.constants';
-import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_PLUGIN_PREFIX } from '../devices-modbus.constants';
+import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_PLUGIN_PREFIX, MODBUS_MIN_POLL_INTERVAL_MS } from '../devices-modbus.constants';
 import type { AddressNotation } from '../lib/address-notation';
 import { type ModbusPoint, pointsFromPreview, toCreateRequest } from '../lib/points';
 import { modbusTemplatesStoreKey } from '../store/keys';
@@ -144,7 +144,13 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 				// The backend refuses a device without a read binding.
 				return state.points.length > 0 && state.points.some((point) => point.read !== null);
 			case MODBUS_WIZARD_STEP.DEVICE:
-				return state.device.name.trim() !== '' && state.device.category !== null && state.device.category !== '';
+				return (
+					state.device.name.trim() !== '' &&
+					state.device.category !== null &&
+					state.device.category !== '' &&
+					Number.isFinite(state.device.pollIntervalMs) &&
+					state.device.pollIntervalMs >= MODBUS_MIN_POLL_INTERVAL_MS
+				);
 			default:
 				return false;
 		}
