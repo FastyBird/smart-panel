@@ -36,7 +36,7 @@ The same model must cover the usual heating, cover, alarm and notification scena
 | --- | --- |
 | Where does it live? | A new core module `automations` in backend and admin. Not an extension of scenes or spaces. |
 | What is extended? | Devices (one event gap), intents (a new origin), spaces-home-control, scenes, security, notifications, tools/MCP/buddy — each contributes node types or a small hook. See [What existing code changes](#what-existing-code-changes). |
-| How is an automation stored? | One row per automation with the whole graph (nodes, edges, positions) as a versioned JSON document. |
+| How is an automation stored? | One row per automation with the whole graph (nodes, edges, positions) as a versioned JSON document. YAML is used for hand-written files: templates and import/export. |
 | How is it executed? | A small custom engine in the backend: event-driven triggers, token-based graph walk. No rule-engine dependency, no Node-RED. |
 | Canvas library? | **Vue Flow** (`@vue-flow/core`, MIT) wrapped in one component of ours. Not custom, not Rete/Baklava/Drawflow/LiteGraph. |
 | Panel app? | No editor on the panel. Later: list and enable/disable per space. |
@@ -163,6 +163,20 @@ Storing the graph as one JSON document, not as node and edge tables, is delibera
 graph at once, a partial save has no meaning, and the positions are view data that would otherwise need their
 own columns. `config` is validated per node type against that type's DTO class, the same way
 `SceneActionsService` validates against `mapping.createDto`.
+
+### JSON and YAML
+
+The project uses YAML for files a person writes by hand (the main config file, device mapping definitions,
+simulator scenarios, spec definitions) and JSON for records stored in the database and sent over the API
+(`SceneActionEntity.configuration`, `SpaceOccupancyEntity.sensorPropertyIds`, the OpenAPI contract).
+Automations follow the same split:
+
+| Use | Format | Why |
+| --- | --- | --- |
+| Stored graph and REST API | JSON | Written by the canvas, not by hand; contains positions and generated ids; described by the OpenAPI schema and the generated admin and panel clients. |
+| Templates shipped with the backend | YAML | Hand-authored files in a `definitions` folder with a loader service, like the device mappings. |
+| Import and export | YAML | The same graph serialised for sharing and backup. The `yaml` package is already a dependency of backend and admin. |
+| "View as YAML" tab in the editor | YAML | Optional, for advanced users; a later addition. |
 
 ### Node kinds and ports
 
@@ -419,7 +433,8 @@ should be avoided.
 
 A blank canvas is a poor start for the common cases. A "New from template" dialog creates a pre-wired graph
 from a few questions (which sensor, which light, how long): motion light, door-open reminder, away-mode
-heating setback, leak alarm. Templates produce ordinary graphs and need no engine support.
+heating setback, leak alarm. Templates are YAML definition files loaded by the backend; they produce ordinary
+graphs and need no engine support.
 
 ## Panel
 
@@ -460,7 +475,7 @@ Proposed epic `EPIC-AUTOMATIONS`, with one issue per row.
 | 1. Core | The reference scenario works | Backend module, entity, migration, CRUD, validation, node registry, engine with device/time triggers, comparison and time-window conditions, set-value / run-scene / notify actions, Delay, modes, guards. Admin list, canvas editor, node forms, extracted property picker. `automation` intent origin and the Buddy filter. |
 | 2. Usable | Debuggable and covers heating, covers, alarms | Run history and live trace, Test, Any/All, Wait until, button trigger, sunrise/sunset, house mode, security, device offline, spaces-home-control cards, templates. |
 | 3. Reach | Visible beyond the editor | Panel list and enable switch per space, website documentation (`apps/website/app/docs/admin-management/automations/`), `docs/automations-architecture.md`. |
-| 4. Ecosystem | Open to others | Buddy/MCP tools, Buddy suggesting automations instead of only scenes, node contract in the extension SDK, import/export. |
+| 4. Ecosystem | Open to others | Buddy/MCP tools, Buddy suggesting automations instead of only scenes, node contract in the extension SDK, YAML import/export. |
 
 Phase 1 is the large one: it is a full new module on both backend and admin plus the editor. Phases 2–4 are
 additive and can be reordered.
@@ -479,7 +494,8 @@ additive and can be reordered.
 ## Decisions to confirm during review
 
 1. **Graph as one JSON document** rather than node/edge tables with single-table inheritance. This departs
-   from the scene action pattern; the reason is atomic canvas saves.
+   from the scene action pattern; the reason is atomic canvas saves. Confirmed in review: JSON for storage and
+   API, YAML for templates and import/export (see [JSON and YAML](#json-and-yaml)).
 2. **Default run mode `restart`.**
 3. **Where built-in cards live.** Proposed: device, time, scene, notification, house mode and security cards
    inside the core module; space cards in `spaces-home-control`. The alternative is a separate
