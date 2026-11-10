@@ -231,6 +231,9 @@ These rules decide whether automations feel reliable, so they are fixed up front
 - **Numeric triggers fire on crossing.** "Above 25" fires when the value moves from ≤ 25 to > 25, not while it
   stays above.
 - **"For" durations** start a timer on the transition and cancel it if the value leaves the target state.
+  The timer is also cancelled when the device goes offline or the value becomes invalid; it starts again only
+  after a fresh valid report in the target state. A sensor that reported "clear" and then dropped off the
+  network must not turn the light off on its last known value.
 - **Startup does not fire.** On boot the engine seeds the last-seen values from `PropertyValueService` without
   firing. "For" timers whose state already holds restart from boot time.
 - **Unknown is not true.** A condition on a property with no value, an invalid value or an offline device
@@ -246,11 +249,14 @@ in parallel. A Delay parks its token on a timer. The run ends when no tokens rem
 - **Mode** decides what a new trigger does while a run is active (`single`, `restart`, `parallel` with a cap).
   `restart` is the default because it gives correct motion-light behaviour: new motion cancels the pending
   "off" delay.
-- **Runs are in memory.** A restart of the backend ends active runs and records them as `interrupted`. Durable
-  delays are a follow-up; they matter for long delays, which the cap keeps rare.
+- **Run state is in memory.** A restart of the backend ends active runs; they do not resume. Durable delays
+  are a follow-up; they matter for long delays, which the cap keeps rare.
 - **Trace.** Each run records the trigger, the nodes visited, the output taken, the value a condition saw, and
-  the result of each action. The last runs per automation are kept (proposed: 50) in a table and written once
-  when the run ends, to limit SD-card writes.
+  the result of each action. The last runs per automation are kept (proposed: 50) in a table. The full trace
+  is written once when the run ends, to limit SD-card writes.
+- **Interrupted runs stay visible.** A run that parks on a Delay or Wait writes a marker row (`running`) at
+  that moment, so short runs still cost one write. On startup every row still marked `running` is set to
+  `interrupted`, which tells the user why a delayed action never happened, including after a power loss.
 
 ### Loop and overload guards
 
@@ -315,8 +321,11 @@ still shows up with a generic form.
 - On start and on every automation create/update/delete/enable, the engine rebuilds the subscriptions for that
   automation only.
 - Device triggers do not each add an EventEmitter listener (the bus is capped at 32 listeners per event). The
-  state tracker holds **one** listener for `CHANNEL_PROPERTY_VALUE_SET` and one for
-  `CHANNEL_PROPERTY_VALUE_STATE_CHANGED` and routes by property id through an index.
+  state tracker holds **one** listener each for `CHANNEL_PROPERTY_VALUE_SET`,
+  `CHANNEL_PROPERTY_UPDATED` and `CHANNEL_PROPERTY_VALUE_STATE_CHANGED` and routes by property id through an
+  index. `CHANNEL_PROPERTY_UPDATED` is required: when one update changes both metadata and value,
+  `ChannelsPropertiesService` emits only that event, so a tracker without it would miss the transition and
+  keep a stale value. The existing space listeners subscribe to both for the same reason.
 - Time triggers share one minute tick.
 - Property writes are grouped per device before calling `executePropertyCommands`, because that method rejects
   a batch spanning several devices.
@@ -370,7 +379,7 @@ during the phase 2 spike.
 | `modules/intents` | Add `'automation'` to `IntentOrigin`, and carry the automation id in `context.extra`, so the panel and Buddy can tell automated changes from user actions. | tiny |
 | `modules/buddy` | `ActionObserverService` must ignore intents with the `automation` origin, otherwise automated actions are learned as user habits and suggested back. | small |
 | `plugins/spaces-home-control` | Register mode and occupancy node types. Decide how an automation-activated mode ranks against manual, schedule and occupancy activation (see [Decisions to confirm](#decisions-to-confirm-during-review)). Move `schedule/schedule-time.ts` to a shared location so both schedulers use it. | medium |
-| `modules/scenes` | None for execution. `triggerScene(id, 'automation')` already accepts a source. | none |
+| `modules/scenes` | None for execution. The engine calls `triggerScene(id, 'automation', { origin: 'automation', extra: { automationId } })`: the second argument is only the `triggeredBy` label, and the intent context comes from the third, so the origin must be passed there for the Buddy filter to see scene runs. A read-only helper that lists a scene's enabled actions is needed for the safety check below. | small |
 | `modules/security` | Expose a typed bus event for armed/alarm state transitions; today `security:status` carries the whole status model, so the trigger would diff it. | small |
 | `modules/tools`, `modules/mcp`, `modules/home-context` | Tool provider (`list_automations`, `run_automation`, `set_automation_enabled`), MCP wrappers, and automations in the home-context snapshot. Phase 4. | medium |
 | `apps/admin` devices module | Extract a reusable `device-property-picker` (device → channel → property) and a `property-value-input` from the scenes-local forms; use them in scenes, data sources and automation node forms. | medium |
@@ -446,7 +455,18 @@ schedule and occupancy sections.
 
 - Creating, editing and running automations requires `owner` or `admin`. Display tokens cannot edit.
 - An automation acts without a person present. Actions that reduce safety — disarming the alarm, unlocking a
-  door, opening a garage — are **not offered** in the first version. Arming, locking and closing are.
+  door, opening a garage — are **not allowed** in the first version. Arming, locking and closing are.
+- Hiding those actions in the editor is not enough, because a generic "set device value" action or a scene
+  can reach the same commands. The rule is enforced on the server, in one policy service used by every action
+  path:
+  - A safety-reducing command is identified by device category, property category and target value (lock →
+    unlocked, alarm → disarmed, door/garage/gate → open). The list lives in one place next to the policy.
+  - **On save**, a graph containing such a write is rejected with a per-node error.
+  - **At execution**, every property write is checked again before dispatch.
+  - **Run scene** inspects the scene's *current* enabled actions at execution time and refuses the whole
+    scene if any of them is safety-reducing. Checking at execution, not only on save, covers scenes that are
+    edited after the automation was saved. The refusal is recorded in the trace and takes the `error` output.
+  - Running the same scene manually from the panel or admin is unchanged.
 - Notification text is plain text with no template evaluation in the first version.
 - The graph is validated on the server on every save; the client is not trusted. Unknown node types and
   unknown config keys are rejected (`forbidNonWhitelisted`, as for scene actions).
