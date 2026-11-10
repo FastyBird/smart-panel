@@ -55,7 +55,7 @@
 			<el-card
 				shadow="hover"
 				class="cursor-pointer"
-				:class="{ 'border-[var(--el-color-primary)]!': wizard.state.startedEmpty }"
+				:class="{ 'border-[var(--el-color-primary)]!': wizard.state.startedEmpty, 'opacity-50 pointer-events-none': wizard.applyingTemplate.value }"
 				data-test-id="template-start-empty"
 				@click="wizard.startEmpty()"
 			>

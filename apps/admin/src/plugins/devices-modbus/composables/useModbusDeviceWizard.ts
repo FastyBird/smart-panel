@@ -145,8 +145,8 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	// Called when the user leaves step 1: device creation needs an endpoint id. It is a no-op once the endpoint exists,
 	// so going back and forward never creates a second one.
 	const saveNewEndpoint = (): Promise<string> => {
-		if (state.endpointMode === 'existing' && state.endpointId !== null) {
-			return Promise.resolve(state.endpointId);
+		if (state.endpointMode === 'existing') {
+			return state.endpointId !== null ? Promise.resolve(state.endpointId) : Promise.reject(new Error('No endpoint is selected.'));
 		}
 
 		if (saving === null) {
@@ -166,7 +166,11 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		return saving;
 	};
 
+	// Bumped by every apply and by startEmpty; a preview that returns after a newer one started is ignored.
+	let applyToken = 0;
+
 	const applyTemplate = async (id: string): Promise<void> => {
+		const token = ++applyToken;
 		const overrides: IModbusTemplatePreviewOverrides = {};
 
 		if (state.unitId !== applied.unitId) {
@@ -181,6 +185,10 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 
 		try {
 			const preview = await templatesStore.preview(id, overrides);
+
+			if (token !== applyToken) {
+				return;
+			}
 
 			if (state.unitId === applied.unitId) {
 				state.unitId = preview.unitId;
@@ -240,11 +248,21 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 			state.points = pointsFromPreview(preview);
 			state.startedEmpty = false;
 		} finally {
-			applyingTemplate.value = false;
+			if (token === applyToken) {
+				applyingTemplate.value = false;
+			}
 		}
 	};
 
 	const startEmpty = (): void => {
+		applyToken++;
+		applyingTemplate.value = false;
+
+		if (state.device.name === applied.name) {
+			state.device.name = '';
+		}
+
+		applied.name = '';
 		state.template = null;
 		state.templateDevice = null;
 		state.points = [];

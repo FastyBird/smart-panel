@@ -158,11 +158,15 @@ describe('useModbusDeviceWizard', () => {
 		expect(wizard.state.newEndpoint.interRequestDelayMs).toBe(20);
 
 		wizard.state.device.pollIntervalMs = 900;
+		wizard.state.device.byteOrder = DevicesModbusPluginByteOrder.big;
+		wizard.state.device.wordOrder = DevicesModbusPluginByteOrder.big;
 		templatesStore.preview.mockResolvedValue(preview({ pollIntervalMs: 250, unitId: 9 }));
 
 		await wizard.applyTemplate('acme-io');
 
 		expect(wizard.state.device.pollIntervalMs).toBe(900);
+		expect(wizard.state.device.byteOrder).toBe('big');
+		expect(wizard.state.device.wordOrder).toBe('big');
 		expect(wizard.state.unitId).toBe(5);
 	});
 
@@ -208,5 +212,61 @@ describe('useModbusDeviceWizard', () => {
 		expect(wizard.state.templateDevice).toBeNull();
 		expect(wizard.state.points).toEqual([]);
 		expect(wizard.canContinue(1)).toBe(true);
+	});
+
+	it('ignores a template preview that returns after start empty', async () => {
+		let resolvePreview: (value: IModbusTemplatePreview) => void = () => undefined;
+		templatesStore.preview.mockReturnValue(new Promise((resolve) => (resolvePreview = resolve)));
+
+		const wizard = useModbusDeviceWizard();
+		const pending = wizard.applyTemplate('acme-io');
+
+		wizard.startEmpty();
+		resolvePreview(preview());
+		await pending;
+
+		expect(wizard.state.template).toBeNull();
+		expect(wizard.state.points).toEqual([]);
+		expect(wizard.state.startedEmpty).toBe(true);
+		expect(wizard.applyingTemplate.value).toBe(false);
+	});
+
+	it('lets the later of two racing applies win', async () => {
+		const resolvers: ((value: IModbusTemplatePreview) => void)[] = [];
+		templatesStore.preview.mockImplementation(() => new Promise((resolve) => resolvers.push(resolve)));
+
+		const wizard = useModbusDeviceWizard();
+		const first = wizard.applyTemplate('a');
+		const second = wizard.applyTemplate('b');
+
+		resolvers[1](preview({ templateId: 'b' }));
+		await second;
+		resolvers[0](preview({ templateId: 'a' }));
+		await first;
+
+		expect(wizard.state.template?.id).toBe('b');
+		expect(wizard.applyingTemplate.value).toBe(false);
+	});
+
+	it('clears the suggested device name when starting empty but keeps a typed one', async () => {
+		const wizard = useModbusDeviceWizard();
+
+		await wizard.applyTemplate('acme-io');
+		expect(wizard.state.device.name).toBe('Acme IO-8');
+
+		wizard.startEmpty();
+		expect(wizard.state.device.name).toBe('');
+
+		await wizard.applyTemplate('acme-io');
+		wizard.state.device.name = 'My relay box';
+		wizard.startEmpty();
+		expect(wizard.state.device.name).toBe('My relay box');
+	});
+
+	it('rejects saving when an existing endpoint is not selected', async () => {
+		const wizard = useModbusDeviceWizard();
+
+		await expect(wizard.saveNewEndpoint()).rejects.toThrow();
+		expect(endpointsStore.add).not.toHaveBeenCalled();
 	});
 });
