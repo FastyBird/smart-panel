@@ -180,6 +180,7 @@ if [ -n "\${IDENTITY_CHANGE_AFTER_BACKUP:-}" ]; then
   case "$IDENTITY_CHANGE_AFTER_BACKUP" in
     boot) printf 'replacement-boot' > "$SERVICE_BOOT_ID_FILE";;
     manager) printf 'replacement-manager' > "$SERVICE_PROCESS_ROOT/1/identity";;
+    kill-mode) printf 'control-group' > "$SERVICE_STATE_FILE.kill-mode";;
     cgroup)
       # Keep the old fixture inode allocated while replacing the directory, like kernfs cyclic IDs.
       exec 9< "$SERVICE_CGROUP_EVENTS_FILE"
@@ -288,7 +289,9 @@ if [ "$1" = "show" ]; then
 				LoadState) printf 'loaded\\n';;
 				Slice) printf '%s\\n' "\${SLICE_VALUE:-system.slice}";;
 				Delegate) printf '%s\\n' "\${DELEGATE_VALUE:-no}";;
-				KillMode) printf '%s\\n' "\${KILL_MODE_VALUE:-process}";;
+				KillMode)
+          if [ -f "$SERVICE_STATE_FILE.kill-mode" ]; then cat "$SERVICE_STATE_FILE.kill-mode";
+          else printf '%s\\n' "\${KILL_MODE_VALUE:-process}"; fi;;
 				InvocationID) printf 'fixture-invocation\\n';;
 				Result) printf 'success\\n';;
 				ExecMainStartTimestampMonotonic) printf '1\\n';;
@@ -461,52 +464,56 @@ describe('legacy image update worker lifecycle', () => {
 		}
 	});
 
-	it('runs a verified stopped-maintenance update without starting the old release', async () => {
-		const fixture = createFixture();
-		const backup = join(fixture.root, 'backup.sqlite');
-		const source = new DataSource({ type: 'sqlite', database: fixture.database });
-		let backupSource: DataSource | undefined;
+	it.each(['process', 'control-group'])(
+		'runs a verified stopped-maintenance update with KillMode=%s without starting the old release',
+		async (killMode) => {
+			const fixture = createFixture();
+			const backup = join(fixture.root, 'backup.sqlite');
+			const source = new DataSource({ type: 'sqlite', database: fixture.database });
+			let backupSource: DataSource | undefined;
 
-		try {
-			await source.initialize();
-			await source.query('PRAGMA journal_mode = WAL');
-			await source.query('PRAGMA wal_autocheckpoint = 0');
-			await source.query('CREATE TABLE maintenance_fixture (id integer primary key, value text not null)');
-			await source.query("INSERT INTO maintenance_fixture (value) VALUES ('committed in WAL')");
-			expect(existsSync(`${fixture.database}-wal`)).toBe(true);
-			writeFileSync(fixture.stateFile, 'inactive');
-			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
-			writeFileSync(fixture.cgroupProcs, '');
-			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			try {
+				await source.initialize();
+				await source.query('PRAGMA journal_mode = WAL');
+				await source.query('PRAGMA wal_autocheckpoint = 0');
+				await source.query('CREATE TABLE maintenance_fixture (id integer primary key, value text not null)');
+				await source.query("INSERT INTO maintenance_fixture (value) VALUES ('committed in WAL')");
+				expect(existsSync(`${fixture.database}-wal`)).toBe(true);
+				writeFileSync(fixture.stateFile, 'inactive');
+				rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+				writeFileSync(fixture.cgroupProcs, '');
+				writeFileSync(fixture.cgroupEvents, 'populated 0\n');
 
-			const result = runWorker(fixture, {
-				UPDATE_START_MODE: 'stopped-maintenance',
-				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
-				TARGET_ARCHIVE_SHA256: fixture.archiveSha256.toUpperCase(),
-				TARGET_WORKER_SHA256: fixture.targetWorkerSha256.toUpperCase(),
-				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
-				EXPECTED_STATUS_FILE: fixture.statusFile,
-				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
-				EXPECTED_DB_PATH: fixture.databaseDir,
-				DB_BACKUP_PATH: backup,
-			});
-			const status = readJson(fixture.statusFile);
-			expect(result.status).toBe('success');
-			expect(status.status).toBe('complete');
-			expect(existsSync(backup)).toBe(true);
-			backupSource = new DataSource({ type: 'sqlite', database: backup });
-			await backupSource.initialize();
-			expect(await backupSource.query('SELECT value FROM maintenance_fixture')).toEqual([
-				{ value: 'committed in WAL' },
-			]);
-			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
-			expect(readFileSync(fixture.stateFile, 'utf8')).toBe('active');
-		} finally {
-			if (backupSource?.isInitialized) await backupSource.destroy();
-			if (source.isInitialized) await source.destroy();
-			rmSync(fixture.root, { recursive: true, force: true });
-		}
-	});
+				const result = runWorker(fixture, {
+					KILL_MODE_VALUE: killMode,
+					UPDATE_START_MODE: 'stopped-maintenance',
+					EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+					TARGET_ARCHIVE_SHA256: fixture.archiveSha256.toUpperCase(),
+					TARGET_WORKER_SHA256: fixture.targetWorkerSha256.toUpperCase(),
+					EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+					EXPECTED_STATUS_FILE: fixture.statusFile,
+					EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+					EXPECTED_DB_PATH: fixture.databaseDir,
+					DB_BACKUP_PATH: backup,
+				});
+				const status = readJson(fixture.statusFile);
+				expect(result.status).toBe('success');
+				expect(status.status).toBe('complete');
+				expect(existsSync(backup)).toBe(true);
+				backupSource = new DataSource({ type: 'sqlite', database: backup });
+				await backupSource.initialize();
+				expect(await backupSource.query('SELECT value FROM maintenance_fixture')).toEqual([
+					{ value: 'committed in WAL' },
+				]);
+				expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
+				expect(readFileSync(fixture.stateFile, 'utf8')).toBe('active');
+			} finally {
+				if (backupSource?.isInitialized) await backupSource.destroy();
+				if (source.isInitialized) await source.destroy();
+				rmSync(fixture.root, { recursive: true, force: true });
+			}
+		},
+	);
 
 	it('rejects an existing stopped-maintenance backup before downloading or extracting', () => {
 		const fixture = createFixture();
@@ -688,7 +695,7 @@ describe('legacy image update worker lifecycle', () => {
 		}
 	});
 
-	it.each(['boot', 'manager', 'cgroup', 'events'] as const)(
+	it.each(['boot', 'manager', 'cgroup', 'events', 'kill-mode'] as const)(
 		'holds a changed %s identity after backup without switch or SQL',
 		(identity) => {
 			const fixture = createFixture();
@@ -917,6 +924,7 @@ describe('legacy image update worker lifecycle', () => {
 		['wrong slice', { SLICE_VALUE: 'other.slice' }],
 		['delegated unit', { DELEGATE_VALUE: 'yes' }],
 		['unsupported kill mode', { KILL_MODE_VALUE: 'none' }],
+		['mixed kill mode', { KILL_MODE_VALUE: 'mixed' }],
 	] as const)('rejects a %s before download and SQL', (_caseName, overrides) => {
 		const fixture = createFixture();
 		try {
