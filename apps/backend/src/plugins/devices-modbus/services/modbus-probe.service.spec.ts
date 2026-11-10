@@ -541,6 +541,30 @@ describe('ModbusProbeService', () => {
 			expect(factory).not.toHaveBeenCalled();
 		});
 
+		it('refuses a broadcast write to unit 0 on an rtu over tcp endpoint', async () => {
+			await expect(service.write({ endpointId: 'ep-1' }, 0, relay, true, defaults)).rejects.toMatchObject({
+				response: { message: [expect.stringContaining('"field":"unit_id"')] },
+			});
+			await expect(
+				service.write({ host: '10.0.0.9', port: 4196, framing: ModbusFraming.RTU_OVER_TCP }, 0, relay, true, defaults),
+			).rejects.toMatchObject({ response: { message: [expect.stringContaining('"field":"unit_id"')] } });
+			expect(factory).not.toHaveBeenCalled();
+			expect(transport.write).not.toHaveBeenCalled();
+		});
+
+		it('allows unit 0 on a tcp target', async () => {
+			const result = await service.write(
+				{ host: '10.0.0.9', port: 502, framing: ModbusFraming.TCP },
+				0,
+				relay,
+				true,
+				defaults,
+			);
+
+			expect(result).toMatchObject({ ok: true });
+			expect(transport.write).toHaveBeenCalledWith(expect.objectContaining({ unitId: 0 }));
+		});
+
 		it('refuses a discrete input write target', async () => {
 			await expect(
 				service.write(
