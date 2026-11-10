@@ -72,7 +72,7 @@ describe('ModbusProbeService', () => {
 	let calls: string[];
 	let transport: { [K in keyof ModbusTransport]: jest.Mock };
 	let factory: jest.Mock;
-	let running: { read: jest.Mock; write: jest.Mock } | null;
+	let running: { read: jest.Mock; write: jest.Mock; framing?: ModbusFraming } | null;
 	let attached: boolean;
 	let saved: ModbusEndpointEntity;
 	let service: ModbusProbeService;
@@ -550,6 +550,17 @@ describe('ModbusProbeService', () => {
 			).rejects.toMatchObject({ response: { message: [expect.stringContaining('"field":"unit_id"')] } });
 			expect(factory).not.toHaveBeenCalled();
 			expect(transport.write).not.toHaveBeenCalled();
+		});
+
+		it('refuses unit 0 when the running connection is still rtu over tcp after the framing was changed', async () => {
+			saved.framing = ModbusFraming.TCP;
+			running = { read: jest.fn(), write: jest.fn(), framing: ModbusFraming.RTU_OVER_TCP };
+
+			await expect(service.write({ endpointId: 'ep-1' }, 0, relay, true, defaults)).rejects.toMatchObject({
+				response: { message: [expect.stringContaining('"field":"unit_id"')] },
+			});
+			expect(running.write).not.toHaveBeenCalled();
+			expect(factory).not.toHaveBeenCalled();
 		});
 
 		it('allows unit 0 on a tcp target', async () => {

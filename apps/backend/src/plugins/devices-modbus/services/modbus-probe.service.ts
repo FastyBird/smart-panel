@@ -475,7 +475,7 @@ export class ModbusProbeService {
 			const connection = this.connections.get(endpoint.id);
 
 			if (connection) {
-				return work(this.guard(connection));
+				return work(this.guard(connection, connection.framing));
 			}
 
 			// The runtime owns the socket of an enabled endpoint; a second one could upset a single-connection gateway.
@@ -511,20 +511,32 @@ export class ModbusProbeService {
 		try {
 			await transport.connect();
 
-			return await work(this.guard(transport));
+			return await work(this.guard(transport, options.framing));
 		} finally {
 			await transport.close().catch((): void => undefined);
 		}
 	}
 
-	private guard(channel: ModbusProbeChannel): ModbusProbeChannel {
+	/**
+	 * Checks every request against the framing of the channel that will carry it. The unit-0 check here covers the
+	 * window in which an endpoint's saved framing was already changed but the runtime still runs the old connection.
+	 */
+	private guard(channel: ModbusProbeChannel, framing: ModbusFraming): ModbusProbeChannel {
 		return {
 			read: (request) => {
 				assertReadRequest(request);
 
 				return channel.read(request);
 			},
-			write: (request) => channel.write(request),
+			write: (request) => {
+				if (request.unitId === 0 && framing === ModbusFraming.RTU_OVER_TCP) {
+					return Promise.reject(
+						validationError('unit_id', 'Unit 0 on an rtu_over_tcp endpoint is a broadcast and cannot be written.'),
+					);
+				}
+
+				return channel.write(request);
+			},
 		};
 	}
 }
