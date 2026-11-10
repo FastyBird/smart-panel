@@ -319,6 +319,12 @@ export class ModbusProbeService {
 			throw validationError('address', `Address plus length must not exceed ${ADDRESS_SPACE}.`);
 		}
 
+		// Unit 0 on an RTU bus is a broadcast: every slave executes the write and none answers. The device platform
+		// refuses the same case; a test write that names one unit must never reach every unit on the bus.
+		if (unitId === 0 && (await this.framingOf(target)) === ModbusFraming.RTU_OVER_TCP) {
+			throw validationError('unit_id', 'Unit 0 on an rtu_over_tcp endpoint is a broadcast and cannot be written.');
+		}
+
 		const start = performance.now();
 		const registerType = binding.registerType;
 
@@ -351,6 +357,10 @@ export class ModbusProbeService {
 		} catch (error) {
 			return { ok: false, error: toProbeError(error), durationMs: performance.now() - start };
 		}
+	}
+
+	private async framingOf(target: ModbusProbeTarget): Promise<ModbusFraming> {
+		return 'endpointId' in target ? (await this.endpoints.getOneOrThrow(target.endpointId)).framing : target.framing;
 	}
 
 	/** Runs `work` with a channel to the target: the running connection, or a one-shot transport closed afterwards. */
