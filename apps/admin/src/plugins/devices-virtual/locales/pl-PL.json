@@ -46,7 +46,11 @@
 			},
 			"transform": {
 				"title": "Konwersja liczbowa",
-				"description": "Przelicza jeden odczyt na inny, w tym kalibrację, czujniki NTC i punkt rosy."
+				"description": "Przelicza jeden odczyt na inny, w tym kalibrację i czujniki NTC."
+			},
+			"dewPoint": {
+				"title": "Punkt rosy",
+				"description": "Oblicza punkt rosy na podstawie czujnika temperatury i wilgotności względnej."
 			},
 			"group": {
 				"title": "Grupa elementów wykonawczych",
@@ -54,7 +58,7 @@
 			},
 			"thermostat": {
 				"title": "Sterownik termostatu",
-				"description": "Reguluje temperaturę w pomieszczeniu za pomocą przekaźników i czujników lub obsługuje natywny termostat."
+				"description": "Reguluje temperaturę w pomieszczeniu za pomocą przekaźników i czujników temperatury."
 			}
 		},
 		"subtitle": "Utwórz urządzenie z kanałów innego urządzenia",
@@ -64,7 +68,14 @@
 			"category": "Kategoria",
 			"mapping": "Mapowanie",
 			"details": "Szczegóły",
-			"review": "Podsumowanie"
+			"review": "Podsumowanie",
+			"output": "Wyjście",
+			"sources": "Źródła",
+			"processing": "Przetwarzanie",
+			"members": "Członkowie",
+			"capabilities": "Możliwości",
+			"settings": "Ustawienia",
+			"actuators": "Elementy wykonawcze"
 		},
 		"category": {
 			"heading": "Wybierz kategorię",

@@ -1,20 +1,6 @@
 <template>
 	<virtual-wizard-shell>
-		<el-radio-group
-			v-model="strategy"
-			class="mb-2"
-			:aria-label="t('devicesVirtualPlugin.nativeThermostat.strategy')"
-		>
-			<el-radio-button value="guarded_branches">{{ t('devicesVirtualPlugin.nativeThermostat.guarded') }}</el-radio-button>
-			<el-radio-button value="native_unit">{{ t('devicesVirtualPlugin.nativeThermostat.title') }}</el-radio-button>
-		</el-radio-group>
 		<virtual-thermostat-editor
-			v-show="strategy === 'guarded_branches'"
-			create
-			@created="onCreated"
-		/>
-		<native-thermostat-editor
-			v-show="strategy === 'native_unit'"
 			create
 			@created="onCreated"
 		/>
@@ -22,14 +8,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElRadioButton, ElRadioGroup } from 'element-plus';
-
 import { RouteNames as DeviceRouteNames } from '../../../modules/devices';
-import NativeThermostatEditor from '../components/NativeThermostatEditor.vue';
 import VirtualThermostatEditor from '../components/virtual-thermostat-editor.vue';
 import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';
 
@@ -37,8 +18,11 @@ defineOptions({
 	name: 'ViewVirtualThermostatWizard',
 });
 
+// Only the guarded-relay thermostat is created here. Binding a controller to a device that already
+// is a thermostat (a Home Assistant or Zigbee2MQTT climate unit) was offered as a second strategy on
+// this page; it produced a second thermostat for hardware that is already adopted and controllable,
+// so it is no longer offered. Controllers created that way earlier keep their editor on the device
+// detail page.
 const router = useRouter();
-const { t } = useI18n();
-const strategy = ref<'guarded_branches' | 'native_unit'>('guarded_branches');
 const onCreated = (id: string) => router.push({ name: DeviceRouteNames.DEVICE, params: { id } });
 </script>

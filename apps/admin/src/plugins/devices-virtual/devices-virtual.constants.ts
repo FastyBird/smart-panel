@@ -56,6 +56,11 @@ export const VIRTUAL_WIZARD_KINDS = [
 	{ value: 'projection', icon: 'mdi:call-split', to: { name: RouteNames.WIZARD } },
 	{ value: 'aggregate', icon: 'mdi:sigma', to: { name: RouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_aggregate' } } },
 	{ value: 'transform', icon: 'mdi:function-variant', to: { name: RouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform' } } },
+	{
+		value: 'dewPoint',
+		icon: 'mdi:water-thermometer-outline',
+		to: { name: RouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform', kind: 'dew_point' } },
+	},
 	{ value: 'group', icon: 'mdi:lightbulb-group', to: { name: RouteNames.LIGHT_GROUP_WIZARD } },
 	{ value: 'thermostat', icon: 'mdi:thermostat', to: { name: RouteNames.THERMOSTAT_WIZARD } },
 ].map((kind) => ({

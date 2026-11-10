@@ -46,7 +46,11 @@
 			},
 			"transform": {
 				"title": "Conversión numérica",
-				"description": "Convierte una lectura en otra, incluida la calibración, las sondas NTC y el punto de rocío."
+				"description": "Convierte una lectura en otra, incluida la calibración y las sondas NTC."
+			},
+			"dewPoint": {
+				"title": "Punto de rocío",
+				"description": "Calcula el punto de rocío a partir de un sensor de temperatura y otro de humedad relativa."
 			},
 			"group": {
 				"title": "Grupo de actuadores",
@@ -54,7 +58,7 @@
 			},
 			"thermostat": {
 				"title": "Controlador de termostato",
-				"description": "Regula la temperatura de la habitación con relés y sensores, o integra un termostato nativo."
+				"description": "Regula la temperatura de la habitación con relés y sensores de temperatura."
 			}
 		},
 		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
@@ -64,7 +68,14 @@
 			"category": "Categoría",
 			"mapping": "Asignación",
 			"details": "Detalles",
-			"review": "Revisión"
+			"review": "Revisión",
+			"output": "Salida",
+			"sources": "Fuentes",
+			"processing": "Procesamiento",
+			"members": "Miembros",
+			"capabilities": "Capacidades",
+			"settings": "Ajustes",
+			"actuators": "Actuadores"
 		},
 		"category": {
 			"heading": "Elija una categoría",

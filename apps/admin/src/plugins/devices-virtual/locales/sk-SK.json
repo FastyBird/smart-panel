@@ -46,7 +46,11 @@
 			},
 			"transform": {
 				"title": "Číselný prevod",
-				"description": "Prevedie jednu hodnotu na inú, vrátane kalibrácie, NTC snímačov a rosného bodu."
+				"description": "Prevedie jednu hodnotu na inú, vrátane kalibrácie a NTC snímačov."
+			},
+			"dewPoint": {
+				"title": "Rosný bod",
+				"description": "Vypočíta rosný bod zo senzora teploty a relatívnej vlhkosti."
 			},
 			"group": {
 				"title": "Skupina ovládačov",
@@ -54,7 +58,7 @@
 			},
 			"thermostat": {
 				"title": "Termostatický regulátor",
-				"description": "Reguluje teplotu v miestnosti pomocou relé a senzorov, alebo zapuzdrí natívny termostat."
+				"description": "Reguluje teplotu v miestnosti pomocou relé a teplotných senzorov."
 			}
 		},
 		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
@@ -64,7 +68,14 @@
 			"category": "Kategória",
 			"mapping": "Mapovanie",
 			"details": "Detaily",
-			"review": "Zhrnutie"
+			"review": "Zhrnutie",
+			"output": "Výstup",
+			"sources": "Zdroje",
+			"processing": "Spracovanie",
+			"members": "Členovia",
+			"capabilities": "Schopnosti",
+			"settings": "Nastavenia",
+			"actuators": "Akčné členy"
 		},
 		"category": {
 			"heading": "Vyberte kategóriu",

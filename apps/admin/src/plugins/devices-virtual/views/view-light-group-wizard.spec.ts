@@ -85,7 +85,9 @@ describe('native group authoring profile selection', () => {
 		await flushPromises();
 		wrapper.findComponent({ name: 'VirtualLightGroupMembers' }).vm.$emit('update:modelValue', ['a', 'b']);
 		await flushPromises();
-		await button(wrapper, 'preview').trigger('click');
+		// Entering the capabilities step evaluates the selection; there is no separate Preview button.
+		const steps = wrapper.findComponent({ name: 'VirtualWizardSteps' });
+		steps.vm.$emit('update:modelValue', 2);
 		await flushPromises();
 		expect(mocks.POST).toHaveBeenCalledWith(
 			expect.stringContaining('draft-preview'),
@@ -95,7 +97,12 @@ describe('native group authoring profile selection', () => {
 		select.vm.$emit('update:modelValue', 'cover');
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'VirtualLightGroupMembers' }).props('modelValue')).toEqual([]);
+		steps.vm.$emit('update:modelValue', 3);
+		await flushPromises();
 		expect(button(wrapper, 'create').attributes('disabled')).toBeDefined();
+		// The cover guidance belongs to choosing the profile and members, the first two steps.
+		steps.vm.$emit('update:modelValue', 0);
+		await flushPromises();
 		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.coverTypeGuide');
 		expect(wrapper.findComponent({ name: 'VirtualLightGroupMembers' }).props('candidates')[1]).toMatchObject({
 			eligible: false,

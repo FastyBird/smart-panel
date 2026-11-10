@@ -18,101 +18,143 @@
 				type="warning"
 				:closable="false"
 			/>
-			<el-form
-				label-position="top"
-				@submit.prevent
+			<virtual-wizard-steps
+				v-model="step"
+				:steps="stepLabels"
+				:can-advance="canAdvance"
+				:disabled="authoring.pending.value"
 			>
-				<el-form-item :label="t('devicesVirtualPlugin.fields.devices.name.title')"><el-input v-model="name" /></el-form-item>
-				<el-form-item :label="t('devicesVirtualPlugin.lightGroup.profile')">
-					<el-select
-						v-model="profile"
-						:disabled="authoring.pending.value"
-						data-test-id="group-profile"
+				<el-form
+					label-position="top"
+					@submit.prevent
+				>
+					<el-form-item
+						v-show="step === 0"
+						:label="t('devicesVirtualPlugin.fields.devices.name.title')"
 					>
-						<el-option
-							v-for="option in catalog.profiles.value"
-							:key="option.profile"
-							:value="option.profile"
-							:label="t(`devicesVirtualPlugin.lightGroup.profiles.${option.profile}`)"
-						/>
-					</el-select>
-				</el-form-item>
-				<el-alert
-					v-if="profile === 'cover'"
-					:title="t('devicesVirtualPlugin.lightGroup.coverTypeGuide')"
-					type="info"
-					:closable="false"
-				/>
-				<el-alert
-					v-if="catalog.error.value"
-					:title="catalog.error.value"
-					type="error"
-					:closable="false"
-				/>
-				<el-form-item :label="t('devicesVirtualPlugin.lightGroup.members')">
-					<virtual-light-group-members
-						v-model="memberIds"
-						:disabled="authoring.pending.value"
-						:candidates="candidates"
+						<el-input v-model="name" />
+					</el-form-item>
+					<el-form-item
+						v-show="step === 0"
+						:label="t('devicesVirtualPlugin.lightGroup.profile')"
+					>
+						<el-select
+							v-model="profile"
+							:disabled="authoring.pending.value"
+							data-test-id="group-profile"
+						>
+							<el-option
+								v-for="option in catalog.profiles.value"
+								:key="option.profile"
+								:value="option.profile"
+								:label="t(`devicesVirtualPlugin.lightGroup.profiles.${option.profile}`)"
+							/>
+						</el-select>
+					</el-form-item>
+					<el-alert
+						v-if="profile === 'cover' && step <= 1"
+						:title="t('devicesVirtualPlugin.lightGroup.coverTypeGuide')"
+						type="info"
+						:closable="false"
 					/>
-				</el-form-item>
-				<el-form-item :label="t('devicesVirtualPlugin.lightGroup.room')">
-					<el-select
-						v-model="roomId"
-						clearable
+					<el-alert
+						v-if="catalog.error.value"
+						:title="catalog.error.value"
+						type="error"
+						:closable="false"
+					/>
+					<el-form-item
+						v-show="step === 1"
+						:label="t('devicesVirtualPlugin.lightGroup.members')"
 					>
-						<el-option
-							v-for="room in rooms"
-							:key="room.id"
-							:label="room.name"
-							:value="room.id"
+						<virtual-light-group-members
+							v-model="memberIds"
+							:disabled="authoring.pending.value"
+							:candidates="candidates"
 						/>
-					</el-select>
-				</el-form-item>
-			</el-form>
-			<template v-if="availableCapabilities.length">
-				<el-alert
-					v-if="authoring.preview.value?.unavailable_capabilities.length"
-					:title="t('devicesVirtualPlugin.lightGroup.commonOnly')"
-					:description="authoring.preview.value?.unavailable_capabilities.map(categoryLabel).join(', ')"
-					type="info"
-					:closable="false"
-				/>
-				<el-checkbox-group v-model="selectedCapabilities">
-					<el-checkbox
-						v-for="capability in availableCapabilities"
-						:key="capability.category"
-						:value="capability.category"
-						:disabled="requiredCapabilities.includes(capability.category)"
+					</el-form-item>
+					<el-form-item
+						v-show="step === 0"
+						:label="t('devicesVirtualPlugin.lightGroup.room')"
 					>
-						{{ categoryLabel(capability.category) }}
-					</el-checkbox>
-				</el-checkbox-group>
-				<ul>
-					<li
-						v-for="capability in authoring.preview.value?.common_capabilities ?? []"
-						:key="capability.category"
+						<el-select
+							v-model="roomId"
+							clearable
+						>
+							<el-option
+								v-for="room in rooms"
+								:key="room.id"
+								:label="room.name"
+								:value="room.id"
+							/>
+						</el-select>
+					</el-form-item>
+				</el-form>
+				<template v-if="step === 2 && availableCapabilities.length">
+					<el-alert
+						v-if="authoring.preview.value?.unavailable_capabilities.length"
+						:title="t('devicesVirtualPlugin.lightGroup.commonOnly')"
+						:description="authoring.preview.value?.unavailable_capabilities.map(categoryLabel).join(', ')"
+						type="info"
+						:closable="false"
+					/>
+					<el-checkbox-group v-model="selectedCapabilities">
+						<el-checkbox
+							v-for="capability in availableCapabilities"
+							:key="capability.category"
+							:value="capability.category"
+							:disabled="requiredCapabilities.includes(capability.category)"
+						>
+							{{ categoryLabel(capability.category) }}
+						</el-checkbox>
+					</el-checkbox-group>
+					<ul>
+						<li
+							v-for="capability in authoring.preview.value?.common_capabilities ?? []"
+							:key="capability.category"
+						>
+							{{ categoryLabel(capability.category) }} {{ capability.unit ?? '' }}
+							{{ capability.format?.join(capability.data_type === 'enum' ? ', ' : ' – ') ?? '' }}
+							{{ capability.step === null ? '' : t('devicesVirtualPlugin.lightGroup.step', { value: capability.step }) }}
+						</li>
+					</ul>
+				</template>
+				<el-descriptions
+					v-if="step === 3"
+					:column="1"
+					border
+					data-test-id="group-summary"
+				>
+					<el-descriptions-item :label="t('devicesVirtualPlugin.fields.devices.name.title')">{{ name }}</el-descriptions-item>
+					<el-descriptions-item :label="t('devicesVirtualPlugin.lightGroup.profile')">
+						{{ t(`devicesVirtualPlugin.lightGroup.profiles.${profile}`) }}
+					</el-descriptions-item>
+					<el-descriptions-item :label="t('devicesVirtualPlugin.lightGroup.room')">
+						{{ rooms.find((room) => room.id === roomId)?.name ?? '—' }}
+					</el-descriptions-item>
+					<el-descriptions-item :label="t('devicesVirtualPlugin.lightGroup.members')">
+						<div
+							v-for="member in candidates.filter((candidate) => memberIds.includes(candidate.id))"
+							:key="member.id"
+						>
+							{{ member.label }}
+						</div>
+					</el-descriptions-item>
+					<el-descriptions-item :label="t('devicesVirtualPlugin.wizard.steps.capabilities')">
+						{{ (authoring.preview.value?.common_capabilities ?? []).map((capability) => categoryLabel(capability.category)).join(', ') }}
+					</el-descriptions-item>
+				</el-descriptions>
+				<template #final>
+					<el-button
+						type="primary"
+						:disabled="!name.trim() || !authoring.preview.value || authoring.pending.value"
+						:loading="authoring.pending.value"
+						@click="create"
 					>
-						{{ categoryLabel(capability.category) }} {{ capability.unit ?? '' }}
-						{{ capability.format?.join(capability.data_type === 'enum' ? ', ' : ' – ') ?? '' }}
-						{{ capability.step === null ? '' : t('devicesVirtualPlugin.lightGroup.step', { value: capability.step }) }}
-					</li>
-				</ul>
-			</template>
-			<el-button
-				:disabled="memberIds.length < 2 || authoring.pending.value"
-				@click="preview"
-			>
-				{{ t('devicesVirtualPlugin.lightGroup.preview') }}
-			</el-button>
-			<el-button
-				type="primary"
-				:disabled="!name.trim() || !authoring.preview.value || authoring.pending.value"
-				:loading="authoring.pending.value"
-				@click="create"
-			>
-				{{ t('devicesVirtualPlugin.lightGroup.create') }}
-			</el-button>
+						{{ t('devicesVirtualPlugin.lightGroup.create') }}
+					</el-button>
+				</template>
+			</virtual-wizard-steps>
 		</el-card>
 	</virtual-wizard-shell>
 </template>
@@ -121,7 +163,20 @@ import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElCard, ElCheckbox, ElCheckboxGroup, ElForm, ElFormItem, ElInput, ElOption, ElSelect } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCard,
+	ElCheckbox,
+	ElCheckboxGroup,
+	ElDescriptions,
+	ElDescriptionsItem,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElOption,
+	ElSelect,
+} from 'element-plus';
 
 import { injectStoresManager } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
@@ -130,6 +185,7 @@ import { spacesStoreKey } from '../../../modules/spaces/store/keys';
 import type { components } from '../../../openapi';
 import VirtualLightGroupMembers from '../components/virtual-light-group-members.vue';
 import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';
+import VirtualWizardSteps from '../components/wizard/virtual-wizard-steps.vue';
 import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';
 import { useLightGroupAuthoring } from '../composables/useLightGroupAuthoring';
 
@@ -218,6 +274,21 @@ watch(
 	},
 	{ deep: true }
 );
+// Details → members → capabilities → review. The capability step is where the backend evaluates the
+// selection, so entering it (or the review after it) runs the preview the single-page form left to a
+// button; changing a capability invalidates that preview and the review step takes a fresh one.
+const step = ref(0);
+const stepLabels = computed<string[]>(() =>
+	['details', 'members', 'capabilities', 'review'].map((key) => t(`devicesVirtualPlugin.wizard.steps.${key}`))
+);
+const canAdvance = computed<boolean>(() => {
+	if (step.value === 0) return !!name.value.trim();
+	if (step.value === 1) return memberIds.value.length >= 2;
+	return !authoring.pending.value && availableCapabilities.value.length > 0;
+});
+watch(step, (value) => {
+	if (value >= 2 && !authoring.preview.value) void preview();
+});
 const preview = async () => {
 	const result = await authoring.previewDraft(draft());
 	if (result && !availableCapabilities.value.length) availableCapabilities.value = result.common_capabilities;

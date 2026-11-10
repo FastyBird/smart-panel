@@ -46,7 +46,11 @@
 			},
 			"transform": {
 				"title": "Numeric conversion",
-				"description": "Convert one reading into another, including calibration, NTC probes and dew point."
+				"description": "Convert one reading into another, including calibration and NTC probes."
+			},
+			"dewPoint": {
+				"title": "Dew point",
+				"description": "Calculate the dew point from a temperature and a relative humidity sensor."
 			},
 			"group": {
 				"title": "Actuator group",
@@ -54,7 +58,7 @@
 			},
 			"thermostat": {
 				"title": "Thermostat controller",
-				"description": "Regulate room temperature with relays and sensors, or wrap a native thermostat."
+				"description": "Regulate room temperature with relays and temperature sensors."
 			}
 		},
 		"subtitle": "Build a device from another device's channels",
@@ -64,7 +68,14 @@
 			"category": "Category",
 			"mapping": "Mapping",
 			"details": "Details",
-			"review": "Review"
+			"review": "Review",
+			"output": "Output",
+			"sources": "Sources",
+			"processing": "Processing",
+			"members": "Members",
+			"capabilities": "Capabilities",
+			"settings": "Settings",
+			"actuators": "Actuators"
 		},
 		"category": {
 			"heading": "Choose a category",

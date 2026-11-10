@@ -237,7 +237,9 @@ describe('actual mandatory-member authoring forms', () => {
 			setNumber(card, 'devicesVirtualPlugin.members.maximumAge', 30);
 		}
 		await flushPromises();
-		await button(editor, 'Preview eligibility and claims').trigger('click');
+		// Creation is stepped: reaching the review step previews the draft by itself.
+		editor.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 3);
+		await flushPromises();
 		await flushPromises();
 		const preview = mocks.post.mock.calls.find(([path]) => path.endsWith('/draft-preview'))!;
 		expect(

@@ -460,11 +460,13 @@ Found on an installed alpha.67 and reproduced locally with 14 simulated devices.
 - **The backend refused to boot once a dew point device existed.** `VirtualDewPointRuntimeService` registered its output while startup graph validation was still publishing the placeholder for the same slot, so the publication failed its own re-check ("Original producer state publication expired") and `onApplicationBootstrap` threw. The runtime now waits for validation and takes the slot through the guarded `registerRuntime`, like the transform and aggregate runtimes.
 - **The guarded thermostat opened with a wall of validation errors.** A new thermostat is pre-filled with recommended, editable timings (tolerances 0.5 °C, neutral margin 1 °C, minimum OFF 5 min, changeover 10 min, contact debounce 30 s / 60 s, source age 300 s, ON lease 600 s) and lists what is missing only after the first edit. Editing an existing thermostat is unchanged.
 
+- **Only the projection kind was a wizard.** Every kind now walks four steps with a review at the end, in the shared step frame (`virtual-wizard-steps.vue`), with Back / Next / Create in the page header like the projection wizard: aggregate, conversion and dew point (output → sources → processing → review), actuator group (details → members → capabilities → review), thermostat (settings → sources → actuators → review). The review step previews by itself. Editing an existing device keeps the single-page editor. Dew point has its own entry in the chooser.
+- **The thermostat wizard no longer offers "Native HA / Zigbee thermostat".** It created a second, virtual thermostat for a climate unit that is already adopted and controllable as a device. The backend (`native_unit` strategy, #1456/#1457) and the editor of controllers created that way are untouched; only the creation entry is gone. Whether to remove the strategy itself is open.
+
 Still open, deliberately not changed here:
 
 - **Guarded thermostat and property picker are untranslated** (about 30 hardcoded English labels, plus the validation messages in `thermostat-authoring.ts`), and the route titles in `router/index.ts` are hardcoded.
 - **No room/zone input** on the aggregate, conversion, dew-point and both thermostat flows; the actuator group has room only. The backend accepts `room_id`/`zone_ids` on these producers.
-- **Native thermostat has no preview step**; `native/draft-preview` and `expected_graph_revision` are unused by the admin.
 - **NTC/Steinhart operators** require a `voltage` property in the admin, while the backend also accepts the Shelly `analog_input/value` raw-voltage identity.
 - **Aggregate quorum defaults to 1**; the capabilities design says all configured sources.
 - **Dew-point errors are generic**: preview and create failures do not show the backend reason.

@@ -59,6 +59,12 @@ describe('virtual wizard shell', () => {
 		expect(wrapper.find('[data-test-id="wizard-cancel"]').exists()).toBe(true);
 	});
 
+	it('offers the step navigation a place in the header', () => {
+		const wrapper = mountShell();
+
+		expect(wrapper.find('#virtual-wizard-actions').exists()).toBe(true);
+	});
+
 	it.each([
 		[false, 'push'],
 		[true, 'replace'],

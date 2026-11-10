@@ -1,8 +1,10 @@
 <template>
 	<virtual-wizard-shell :busy="busy">
 		<virtual-measurement-editor
-			:key="mode"
+			:key="`${mode}:${dewPoint}`"
 			:mode="mode"
+			:dew-point="dewPoint"
+			wizard
 			@created="onCreated"
 			@busy="busy = $event"
 		/>
@@ -29,5 +31,6 @@ const mode = computed(() =>
 		? DevicesVirtualPluginDeviceMode.sensor_transform
 		: DevicesVirtualPluginDeviceMode.sensor_aggregate
 );
+const dewPoint = computed(() => mode.value === DevicesVirtualPluginDeviceMode.sensor_transform && route.query.kind === 'dew_point');
 const onCreated = (id: string) => router.push({ name: RouteNames.DEVICE, params: { id } });
 </script>

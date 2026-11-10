@@ -46,7 +46,11 @@
 			},
 			"transform": {
 				"title": "Numerische Umrechnung",
-				"description": "Rechnet einen Messwert in einen anderen um, einschließlich Kalibrierung, NTC-Fühlern und Taupunkt."
+				"description": "Rechnet einen Messwert in einen anderen um, einschließlich Kalibrierung und NTC-Fühlern."
+			},
+			"dewPoint": {
+				"title": "Taupunkt",
+				"description": "Berechnet den Taupunkt aus einem Temperatur- und einem Feuchtigkeitssensor."
 			},
 			"group": {
 				"title": "Aktorgruppe",
@@ -54,7 +58,7 @@
 			},
 			"thermostat": {
 				"title": "Thermostatregler",
-				"description": "Regelt die Raumtemperatur mit Relais und Sensoren oder bindet einen nativen Thermostat ein."
+				"description": "Regelt die Raumtemperatur mit Relais und Temperatursensoren."
 			}
 		},
 		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
@@ -64,7 +68,14 @@
 			"category": "Kategorie",
 			"mapping": "Zuordnung",
 			"details": "Einzelheiten",
-			"review": "Überprüfung"
+			"review": "Überprüfung",
+			"output": "Ausgabe",
+			"sources": "Quellen",
+			"processing": "Verarbeitung",
+			"members": "Mitglieder",
+			"capabilities": "Funktionen",
+			"settings": "Einstellungen",
+			"actuators": "Aktoren"
 		},
 		"category": {
 			"heading": "Kategorie wählen",

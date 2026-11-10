@@ -233,6 +233,10 @@ describe('devicesVirtualPlugin', () => {
 								value: 'transform',
 								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform' } },
 							}),
+							expect.objectContaining({
+								value: 'dewPoint',
+								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform', kind: 'dew_point' } },
+							}),
 							expect.objectContaining({ value: 'group', to: { name: VirtualRouteNames.LIGHT_GROUP_WIZARD } }),
 							expect.objectContaining({ value: 'thermostat', to: { name: VirtualRouteNames.THERMOSTAT_WIZARD } }),
 						],

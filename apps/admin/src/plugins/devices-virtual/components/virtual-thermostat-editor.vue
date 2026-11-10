@@ -27,400 +27,453 @@
 			class="h-20"
 		/>
 		<template v-else>
-			<el-form-item
-				v-if="create"
-				label="Thermostat name"
-				class="mt-3"
+			<virtual-wizard-steps
+				v-model="step"
+				:enabled="create"
+				:steps="stepLabels"
+				:can-advance="canAdvance"
+				:disabled="busy"
 			>
-				<el-input v-model="name" />
-			</el-form-item>
-			<div
-				v-if="configuration"
-				class="mt-3 space-y-2"
-			>
-				<p>Configuration revision {{ configuration.revision }} · graph revision {{ configuration.graph_revision }} · {{ configuration.readiness }}</p>
-				<el-alert
-					v-for="reason in configuration.reasons"
-					:key="reason"
-					type="warning"
-					:closable="false"
-					:title="reason"
-				/>
-				<el-alert
-					v-for="claim in configuration.actuators"
-					:key="claim.id"
-					:type="claim.state === 'reserved' ? 'info' : 'warning'"
-					:closable="false"
-					:title="`${claim.role}: ${claim.state} · ${claim.physical_identity}`"
-					:description="claim.reason ?? undefined"
-				/>
-				<el-alert
-					v-for="source in configuration.sources.filter((entry) => !entry.source_property)"
-					:key="source.id"
-					type="warning"
-					:closable="false"
-					:title="`${source.role}: missing ${source.source_identity}`"
-				/>
-			</div>
-			<el-divider content-position="left">Requested settings</el-divider>
-			<el-form
-				label-position="top"
-				class="space-y-3"
-			>
-				<el-form-item label="Requested mode (intent, not reported activity)">
-					<el-select
-						v-model="draft.requested_mode"
-						class="w-40"
-					>
-						<el-option
-							v-for="mode in modeNames"
-							:key="mode"
-							:value="mode"
-							:label="mode"
-						/>
-					</el-select>
-				</el-form-item>
-				<div class="grid grid-cols-2 gap-3">
-					<el-form-item label="Heating setpoint (°C)">
-						<el-input-number
-							v-model="draft.policy.heatingSetpoint"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Cooling setpoint (°C)">
-						<el-input-number
-							v-model="draft.policy.coolingSetpoint"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Cold tolerance (°C)">
-						<el-input-number
-							v-model="draft.policy.coldTolerance"
-							:min="0"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Hot tolerance (°C)">
-						<el-input-number
-							v-model="draft.policy.hotTolerance"
-							:min="0"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Neutral heat/cool margin (°C)">
-						<el-input-number
-							v-model="draft.policy.neutralMargin"
-							:min="0"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Minimum OFF interval (ms)">
-						<el-input-number
-							v-model="draft.policy.minimumOffMs"
-							:min="0"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Changeover interval (ms)">
-						<el-input-number
-							v-model="draft.policy.changeoverMs"
-							:min="0"
-							:controls="false"
-						/>
-					</el-form-item>
-				</div>
-				<el-checkbox
-					:model-value="draft.policy.floor !== null"
-					@change="toggleFloor"
-				>
-					Protect heating with floor temperature
-				</el-checkbox>
-				<div
-					v-if="draft.policy.floor"
-					class="grid grid-cols-2 gap-3"
-				>
-					<el-form-item label="Floor maximum (°C)">
-						<el-input-number
-							v-model="draft.policy.floor.limit"
-							:controls="false"
-						/>
-					</el-form-item>
-					<el-form-item label="Floor recovery hysteresis (°C)">
-						<el-input-number
-							v-model="draft.policy.floor.recoveryHysteresis"
-							:controls="false"
-						/>
-					</el-form-item>
-				</div>
-				<el-checkbox
-					:model-value="draft.heuristic !== null"
-					@change="toggleTrend"
-				>
-					Use ambient trend to infer open window without contact
-				</el-checkbox>
-				<div
-					v-if="draft.heuristic"
-					class="grid grid-cols-2 gap-3"
-				>
+				<div v-show="at(0)">
 					<el-form-item
-						v-for="field in trendFields"
-						:key="field.key"
-						:label="field.label"
+						v-if="create"
+						label="Thermostat name"
+						class="mt-3"
 					>
-						<el-input-number
-							v-model="draft.heuristic[field.key]"
-							:controls="false"
-						/>
+						<el-input v-model="name" />
 					</el-form-item>
+					<div
+						v-if="configuration"
+						class="mt-3 space-y-2"
+					>
+						<p>
+							Configuration revision {{ configuration.revision }} · graph revision {{ configuration.graph_revision }} · {{ configuration.readiness }}
+						</p>
+						<el-alert
+							v-for="reason in configuration.reasons"
+							:key="reason"
+							type="warning"
+							:closable="false"
+							:title="reason"
+						/>
+						<el-alert
+							v-for="claim in configuration.actuators"
+							:key="claim.id"
+							:type="claim.state === 'reserved' ? 'info' : 'warning'"
+							:closable="false"
+							:title="`${claim.role}: ${claim.state} · ${claim.physical_identity}`"
+							:description="claim.reason ?? undefined"
+						/>
+						<el-alert
+							v-for="source in configuration.sources.filter((entry) => !entry.source_property)"
+							:key="source.id"
+							type="warning"
+							:closable="false"
+							:title="`${source.role}: missing ${source.source_identity}`"
+						/>
+					</div>
+					<el-divider content-position="left">Requested settings</el-divider>
+					<el-form
+						label-position="top"
+						class="space-y-3"
+					>
+						<el-form-item label="Requested mode (intent, not reported activity)">
+							<el-select
+								v-model="draft.requested_mode"
+								class="w-40"
+							>
+								<el-option
+									v-for="mode in modeNames"
+									:key="mode"
+									:value="mode"
+									:label="mode"
+								/>
+							</el-select>
+						</el-form-item>
+						<div class="grid grid-cols-2 gap-3">
+							<el-form-item label="Heating setpoint (°C)">
+								<el-input-number
+									v-model="draft.policy.heatingSetpoint"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Cooling setpoint (°C)">
+								<el-input-number
+									v-model="draft.policy.coolingSetpoint"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Cold tolerance (°C)">
+								<el-input-number
+									v-model="draft.policy.coldTolerance"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Hot tolerance (°C)">
+								<el-input-number
+									v-model="draft.policy.hotTolerance"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Neutral heat/cool margin (°C)">
+								<el-input-number
+									v-model="draft.policy.neutralMargin"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Minimum OFF interval (ms)">
+								<el-input-number
+									v-model="draft.policy.minimumOffMs"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Changeover interval (ms)">
+								<el-input-number
+									v-model="draft.policy.changeoverMs"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+						</div>
+						<el-checkbox
+							:model-value="draft.policy.floor !== null"
+							@change="toggleFloor"
+						>
+							Protect heating with floor temperature
+						</el-checkbox>
+						<div
+							v-if="draft.policy.floor"
+							class="grid grid-cols-2 gap-3"
+						>
+							<el-form-item label="Floor maximum (°C)">
+								<el-input-number
+									v-model="draft.policy.floor.limit"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Floor recovery hysteresis (°C)">
+								<el-input-number
+									v-model="draft.policy.floor.recoveryHysteresis"
+									:controls="false"
+								/>
+							</el-form-item>
+						</div>
+						<el-checkbox
+							:model-value="draft.heuristic !== null"
+							@change="toggleTrend"
+						>
+							Use ambient trend to infer open window without contact
+						</el-checkbox>
+						<div
+							v-if="draft.heuristic"
+							class="grid grid-cols-2 gap-3"
+						>
+							<el-form-item
+								v-for="field in trendFields"
+								:key="field.key"
+								:label="field.label"
+							>
+								<el-input-number
+									v-model="draft.heuristic[field.key]"
+									:controls="false"
+								/>
+							</el-form-item>
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<el-form-item label="Contact opening debounce (ms)">
+								<el-input-number
+									v-model="draft.contact_opening_ms"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+							<el-form-item label="Contact closing debounce (ms)">
+								<el-input-number
+									v-model="draft.contact_closing_ms"
+									:min="0"
+									:controls="false"
+								/>
+							</el-form-item>
+						</div>
+					</el-form>
 				</div>
-				<div class="grid grid-cols-2 gap-3">
-					<el-form-item label="Contact opening debounce (ms)">
-						<el-input-number
-							v-model="draft.contact_opening_ms"
-							:min="0"
-							:controls="false"
+				<div v-show="at(1)">
+					<el-divider content-position="left">Temperature and contact sources</el-divider>
+					<el-checkbox
+						v-if="configuration?.sources.some((entry) => entry.role === 'floor')"
+						v-model="removeLegacyFloor"
+					>
+						{{ memberLabel('removeLegacyGuard') }}
+					</el-checkbox>
+					<p class="text-sm">Select original-age-qualified sources. Floor is an independent Celsius protection input; contact is optional.</p>
+					<div
+						v-for="(source, index) in draft.sources"
+						:key="source.id ?? index"
+						class="border rounded p-3 mb-2"
+					>
+						<div class="flex items-center justify-between mb-2">
+							<strong>
+								{{ source.role }}
+								<small v-if="source.id">· {{ source.id }}</small>
+							</strong>
+							<el-button
+								type="danger"
+								link
+								:disabled="source.role === 'floor' && !!configuration?.sources.some((entry) => entry.role === 'floor') && !removeLegacyFloor"
+								@click="draft.sources.splice(index, 1)"
+							>
+								Remove
+							</el-button>
+						</div>
+						<thermostat-property-picker
+							v-model="source.source_property"
+							:kind="source.role"
 						/>
-					</el-form-item>
-					<el-form-item label="Contact closing debounce (ms)">
-						<el-input-number
-							v-model="draft.contact_closing_ms"
-							:min="0"
-							:controls="false"
-						/>
-					</el-form-item>
+						<el-form-item
+							label="Maximum original sample age (seconds)"
+							class="mt-2"
+						>
+							<el-input-number
+								v-model="source.maximum_age_seconds"
+								:min="1"
+								:controls="false"
+							/>
+						</el-form-item>
+						<div
+							v-if="source.role === 'contact'"
+							class="grid grid-cols-2 gap-3"
+						>
+							<el-form-item label="Open value (JSON literal or text)">
+								<el-input
+									:model-value="formatContactValue(source.open_value)"
+									@update:model-value="setContactValue(source, 'open_value', $event)"
+								/>
+							</el-form-item>
+							<el-form-item label="Closed value (JSON literal or text)">
+								<el-input
+									:model-value="formatContactValue(source.closed_value)"
+									@update:model-value="setContactValue(source, 'closed_value', $event)"
+								/>
+							</el-form-item>
+						</div>
+					</div>
+					<div class="flex gap-2">
+						<el-button @click="addSource(ThermostatSourceRole.ambient)">Add ambient</el-button>
+						<el-button
+							:disabled="draft.sources.some((source) => source.role === 'floor')"
+							@click="addSource(ThermostatSourceRole.floor)"
+						>
+							Add floor
+						</el-button>
+						<el-button
+							:disabled="draft.sources.some((source) => source.role === 'contact')"
+							@click="addSource(ThermostatSourceRole.contact)"
+						>
+							Add contact
+						</el-button>
+					</div>
 				</div>
-			</el-form>
-			<el-divider content-position="left">Temperature and contact sources</el-divider>
-			<el-checkbox
-				v-if="configuration?.sources.some((entry) => entry.role === 'floor')"
-				v-model="removeLegacyFloor"
-			>
-				{{ memberLabel('removeLegacyGuard') }}
-			</el-checkbox>
-			<p class="text-sm">Select original-age-qualified sources. Floor is an independent Celsius protection input; contact is optional.</p>
-			<div
-				v-for="(source, index) in draft.sources"
-				:key="source.id ?? index"
-				class="border rounded p-3 mb-2"
-			>
-				<div class="flex items-center justify-between mb-2">
-					<strong>
-						{{ source.role }}
-						<small v-if="source.id">· {{ source.id }}</small>
-					</strong>
+				<div v-show="at(2)">
+					<virtual-cooling-policy-editor
+						v-model:draft="draft"
+						:disabled="busy"
+					/>
+					<el-divider content-position="left">{{ memberLabel('members') }} · {{ draft.actuators.length }}/8</el-divider>
+					<p>{{ memberLabel('mandatoryHelp') }}</p>
+					<p>{{ memberLabel('nativeUnavailable') }}</p>
+					<section
+						v-for="role in [ThermostatActuatorRole.heating, ThermostatActuatorRole.cooling]"
+						:key="role"
+					>
+						<h3>{{ role }}</h3>
+						<thermostat-member-card
+							v-for="(actuator, index) in draft.actuators.filter((member) => member.role === role)"
+							:key="actuator.retained?.id ?? `${role}-${index}`"
+							:member="actuator"
+							:parallel="draft.actuators.filter((member) => member.role === 'heating').length > 1"
+							:controller="deviceId"
+							:configuration-revision="configuration?.revision ?? 0"
+							:requested-limit="draft.policy.floor?.limit ?? null"
+							:disabled="busy"
+							:runtime="memberRuntime.value.value?.snapshot.branches.find((branch) => branch.claim === actuator.retained?.id) ?? null"
+							:setup-disabled="!!configuration && JSON.stringify(draft) !== JSON.stringify(draftFromConfiguration(configuration))"
+							:freshness="memberFreshness"
+							:received-at="memberRuntime.value.value?.receivedAt ?? now"
+							:now="now"
+							@remove="draft.actuators.splice(draft.actuators.indexOf(actuator), 1)"
+							@changed="reload"
+						/>
+						<el-button
+							:disabled="busy || draft.actuators.length >= 8"
+							@click="addActuator(role)"
+						>
+							{{ memberLabel('addMember') }} · {{ role }}
+						</el-button>
+					</section>
+					<el-form-item :label="memberLabel('displayFloor')">
+						<el-select
+							v-model="draft.display_floor_claim"
+							clearable
+						>
+							<el-option
+								v-for="member in draft.actuators.filter((member) => member.retained?.protection)"
+								:key="member.retained!.id"
+								:value="member.retained!.id"
+								:label="`${member.role} · ${member.retained!.physical_identity}`"
+							/>
+						</el-select>
+					</el-form-item>
+					<details v-if="configuration?.released_actuators?.length">
+						<summary>{{ memberLabel('releasedHistory') }}</summary>
+						<pre
+							v-for="claim in configuration.released_actuators"
+							:key="claim.id"
+							>{{ JSON.stringify(claim, null, 2) }}</pre
+						>
+					</details>
+				</div>
+				<div v-show="at(0)">
+					<el-divider content-position="left">Owned local command settings</el-divider>
+					<p
+						v-if="create"
+						class="text-sm"
+					>
+						The controller creates local mode, setpoint and lock slots together with their registrations.
+					</p>
+					<div
+						v-for="(setting, index) in create ? [] : draft.settings"
+						:key="setting.setting"
+						class="flex items-center gap-2 mb-2"
+					>
+						<el-select
+							v-model="setting.setting"
+							class="w-48"
+						>
+							<el-option
+								v-for="settingName in settingNames"
+								:key="settingName"
+								:value="settingName"
+								:label="settingName"
+							/>
+						</el-select>
+						<thermostat-property-picker
+							v-model="setting.property"
+							:owner-device-id="deviceId"
+							kind="setting"
+						/>
+						<el-button
+							type="danger"
+							link
+							@click="draft.settings.splice(index, 1)"
+						>
+							Remove
+						</el-button>
+					</div>
 					<el-button
-						type="danger"
-						link
-						:disabled="source.role === 'floor' && !!configuration?.sources.some((entry) => entry.role === 'floor') && !removeLegacyFloor"
-						@click="draft.sources.splice(index, 1)"
+						v-if="!create"
+						@click="addSetting"
 					>
-						Remove
+						Add setting
 					</el-button>
 				</div>
-				<thermostat-property-picker
-					v-model="source.source_property"
-					:kind="source.role"
-				/>
-				<el-form-item
-					label="Maximum original sample age (seconds)"
-					class="mt-2"
-				>
-					<el-input-number
-						v-model="source.maximum_age_seconds"
-						:min="1"
-						:controls="false"
-					/>
-				</el-form-item>
-				<div
-					v-if="source.role === 'contact'"
-					class="grid grid-cols-2 gap-3"
-				>
-					<el-form-item label="Open value (JSON literal or text)">
-						<el-input
-							:model-value="formatContactValue(source.open_value)"
-							@update:model-value="setContactValue(source, 'open_value', $event)"
-						/>
-					</el-form-item>
-					<el-form-item label="Closed value (JSON literal or text)">
-						<el-input
-							:model-value="formatContactValue(source.closed_value)"
-							@update:model-value="setContactValue(source, 'closed_value', $event)"
-						/>
-					</el-form-item>
-				</div>
-			</div>
-			<div class="flex gap-2">
-				<el-button @click="addSource(ThermostatSourceRole.ambient)">Add ambient</el-button>
-				<el-button
-					:disabled="draft.sources.some((source) => source.role === 'floor')"
-					@click="addSource(ThermostatSourceRole.floor)"
-				>
-					Add floor
-				</el-button>
-				<el-button
-					:disabled="draft.sources.some((source) => source.role === 'contact')"
-					@click="addSource(ThermostatSourceRole.contact)"
-				>
-					Add contact
-				</el-button>
-			</div>
-			<virtual-cooling-policy-editor
-				v-model:draft="draft"
-				:disabled="busy"
-			/>
-			<el-divider content-position="left">{{ memberLabel('members') }} · {{ draft.actuators.length }}/8</el-divider>
-			<p>{{ memberLabel('mandatoryHelp') }}</p>
-			<p>{{ memberLabel('nativeUnavailable') }}</p>
-			<section
-				v-for="role in [ThermostatActuatorRole.heating, ThermostatActuatorRole.cooling]"
-				:key="role"
-			>
-				<h3>{{ role }}</h3>
-				<thermostat-member-card
-					v-for="(actuator, index) in draft.actuators.filter((member) => member.role === role)"
-					:key="actuator.retained?.id ?? `${role}-${index}`"
-					:member="actuator"
-					:parallel="draft.actuators.filter((member) => member.role === 'heating').length > 1"
-					:controller="deviceId"
-					:configuration-revision="configuration?.revision ?? 0"
-					:requested-limit="draft.policy.floor?.limit ?? null"
-					:disabled="busy"
-					:runtime="memberRuntime.value.value?.snapshot.branches.find((branch) => branch.claim === actuator.retained?.id) ?? null"
-					:setup-disabled="!!configuration && JSON.stringify(draft) !== JSON.stringify(draftFromConfiguration(configuration))"
-					:freshness="memberFreshness"
-					:received-at="memberRuntime.value.value?.receivedAt ?? now"
-					:now="now"
-					@remove="draft.actuators.splice(draft.actuators.indexOf(actuator), 1)"
-					@changed="reload"
-				/>
-				<el-button
-					:disabled="busy || draft.actuators.length >= 8"
-					@click="addActuator(role)"
-				>
-					{{ memberLabel('addMember') }} · {{ role }}
-				</el-button>
-			</section>
-			<el-form-item :label="memberLabel('displayFloor')">
-				<el-select
-					v-model="draft.display_floor_claim"
-					clearable
-				>
-					<el-option
-						v-for="member in draft.actuators.filter((member) => member.retained?.protection)"
-						:key="member.retained!.id"
-						:value="member.retained!.id"
-						:label="`${member.role} · ${member.retained!.physical_identity}`"
-					/>
-				</el-select>
-			</el-form-item>
-			<details v-if="configuration?.released_actuators?.length">
-				<summary>{{ memberLabel('releasedHistory') }}</summary>
-				<pre
-					v-for="claim in configuration.released_actuators"
-					:key="claim.id"
-					>{{ JSON.stringify(claim, null, 2) }}</pre
-				>
-			</details>
-			<el-divider content-position="left">Owned local command settings</el-divider>
-			<p
-				v-if="create"
-				class="text-sm"
-			>
-				The controller creates local mode, setpoint and lock slots together with their registrations.
-			</p>
-			<div
-				v-for="(setting, index) in create ? [] : draft.settings"
-				:key="setting.setting"
-				class="flex items-center gap-2 mb-2"
-			>
-				<el-select
-					v-model="setting.setting"
-					class="w-48"
-				>
-					<el-option
-						v-for="settingName in settingNames"
-						:key="settingName"
-						:value="settingName"
-						:label="settingName"
-					/>
-				</el-select>
-				<thermostat-property-picker
-					v-model="setting.property"
-					:owner-device-id="deviceId"
-					kind="setting"
-				/>
-				<el-button
-					type="danger"
-					link
-					@click="draft.settings.splice(index, 1)"
-				>
-					Remove
-				</el-button>
-			</div>
-			<el-button
-				v-if="!create"
-				@click="addSetting"
-			>
-				Add setting
-			</el-button>
-			<el-divider />
-			<el-alert
-				v-for="reason in visibleValidationErrors"
-				:key="reason"
-				type="warning"
-				:closable="false"
-				:title="reason"
-				class="mb-2"
-			/>
-			<el-alert
-				v-if="requestError"
-				type="error"
-				:closable="false"
-				:title="requestError"
-				class="mb-2"
-			/>
-			<el-alert
-				v-if="preview"
-				:type="preview.reasons.length ? 'warning' : 'success'"
-				:closable="false"
-				:title="`Preview: ${preview.readiness}; ${preview.reasons.length} blocker(s)`"
-				class="mb-2"
-			>
-				<ul>
-					<li
-						v-for="reason in preview.reasons"
-						:key="reason"
+				<div v-show="at(3)">
+					<el-divider v-if="!create" />
+					<el-descriptions
+						v-if="create"
+						:column="1"
+						border
+						class="mb-3"
+						data-test-id="thermostat-summary"
 					>
-						{{ reason }}
-					</li>
-				</ul>
-			</el-alert>
-			<div class="flex gap-2">
-				<el-button
-					:loading="busy"
-					:disabled="validationErrors.length > 0"
-					@click="runPreview"
-				>
-					Preview eligibility and claims
-				</el-button>
-				<el-button
-					type="primary"
-					:loading="busy"
-					:disabled="!preview || !canSavePreview || validationErrors.length > 0"
-					@click="save"
-				>
-					{{ create ? 'Create thermostat' : 'Save configuration' }}
-				</el-button>
-				<el-button
-					v-if="configuration?.actuators.length"
-					type="warning"
-					:loading="busy"
-					@click="requestRelease"
-				>
-					Request OFF and release
-				</el-button>
-				<el-button @click="reload">Reload</el-button>
-			</div>
+						<el-descriptions-item label="Thermostat name">{{ name }}</el-descriptions-item>
+						<el-descriptions-item label="Requested mode">{{ draft.requested_mode }}</el-descriptions-item>
+						<el-descriptions-item label="Setpoints (°C)">
+							heating {{ draft.policy.heatingSetpoint ?? '—' }} · cooling {{ draft.policy.coolingSetpoint ?? '—' }}
+						</el-descriptions-item>
+						<el-descriptions-item label="Tolerances (°C)">
+							cold {{ draft.policy.coldTolerance ?? '—' }} · hot {{ draft.policy.hotTolerance ?? '—' }} · neutral margin
+							{{ draft.policy.neutralMargin ?? '—' }}
+						</el-descriptions-item>
+						<el-descriptions-item label="Timing (ms)">
+							minimum OFF {{ draft.policy.minimumOffMs ?? '—' }} · changeover {{ draft.policy.changeoverMs ?? '—' }}
+						</el-descriptions-item>
+						<el-descriptions-item label="Sources">{{ draft.sources.map((source) => source.role).join(', ') || '—' }}</el-descriptions-item>
+						<el-descriptions-item label="Actuator members">
+							{{ draft.actuators.map((member) => member.role).join(', ') || '—' }}
+						</el-descriptions-item>
+					</el-descriptions>
+					<el-alert
+						v-for="reason in validationErrors"
+						:key="reason"
+						type="warning"
+						:closable="false"
+						:title="reason"
+						class="mb-2"
+					/>
+					<el-alert
+						v-if="requestError"
+						type="error"
+						:closable="false"
+						:title="requestError"
+						class="mb-2"
+					/>
+					<el-alert
+						v-if="preview"
+						:type="preview.reasons.length ? 'warning' : 'success'"
+						:closable="false"
+						:title="`Preview: ${preview.readiness}; ${preview.reasons.length} blocker(s)`"
+						class="mb-2"
+					>
+						<ul>
+							<li
+								v-for="reason in preview.reasons"
+								:key="reason"
+							>
+								{{ reason }}
+							</li>
+						</ul>
+					</el-alert>
+				</div>
+				<template #final>
+					<div class="flex gap-2">
+						<!-- The review step previews by itself; the button is only the way to take a fresh one. -->
+						<el-button
+							v-if="!create || (!preview && validationErrors.length === 0)"
+							:loading="busy"
+							:disabled="validationErrors.length > 0"
+							@click="runPreview"
+						>
+							Preview eligibility and claims
+						</el-button>
+						<el-button
+							type="primary"
+							:loading="busy"
+							:disabled="!preview || !canSavePreview || validationErrors.length > 0"
+							@click="save"
+						>
+							{{ create ? 'Create thermostat' : 'Save configuration' }}
+						</el-button>
+						<el-button
+							v-if="configuration?.actuators.length"
+							type="warning"
+							:loading="busy"
+							@click="requestRelease"
+						>
+							Request OFF and release
+						</el-button>
+						<el-button
+							v-if="!create"
+							@click="reload"
+						>
+							Reload
+						</el-button>
+					</div>
+				</template>
+			</virtual-wizard-steps>
 		</template>
 	</el-card>
 	<virtual-thermostat-comfort
@@ -442,6 +495,8 @@ import {
 	ElButton,
 	ElCard,
 	ElCheckbox,
+	ElDescriptions,
+	ElDescriptionsItem,
 	ElDivider,
 	ElForm,
 	ElFormItem,
@@ -484,6 +539,7 @@ import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
 import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
+import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
 
 const props = defineProps<{ deviceId?: string; create?: boolean }>();
 const emit = defineEmits<{ created: [deviceId: string] }>();
@@ -594,19 +650,27 @@ const validationErrors = computed(() => [
 		: []),
 	...payload().errors.map((error) => (error.startsWith('devicesVirtualPlugin.') ? t(error) : error)),
 ]);
-// A new thermostat is incomplete by definition, so listing what is missing before the user has
-// touched anything reads as the form scolding them for opening it. The list appears with the first
-// edit; Preview and Create stay gated on the full list throughout. An existing thermostat always
-// shows it — there the errors describe a stored configuration that needs repair.
-const touched = ref(false);
-watch(
-	[draft, name],
-	() => {
-		touched.value = true;
-	},
-	{ deep: true }
+// Creation walks the form in four steps — settings, sources, actuators, review — one section at a
+// time; an existing thermostat keeps the single page. What is still missing is listed on the review
+// step only: a new thermostat is incomplete by definition, and reciting that on every earlier step
+// reads as the form scolding the user for opening it. Preview and Create stay gated on the full list.
+const step = ref(0);
+const REVIEW_STEP = 3;
+const at = (index: number): boolean => !props.create || step.value === index;
+const stepLabels = computed<string[]>(() =>
+	['settings', 'sources', 'actuators', 'review'].map((key) => t(`devicesVirtualPlugin.wizard.steps.${key}`))
 );
-const visibleValidationErrors = computed(() => (props.create && !touched.value ? [] : validationErrors.value));
+// Each step asks for the one thing the later steps cannot do without; the review step still lists
+// every remaining problem in full.
+const canAdvance = computed<boolean>(() => {
+	const { policy, sources, actuators } = draft.value;
+	if (step.value === 0) return !!name.value.trim() && (policy.heatingSetpoint !== null || policy.coolingSetpoint !== null);
+	if (step.value === 1) return sources.some((source) => source.role === 'ambient' && !!source.source_property);
+	return actuators.length > 0 && actuators.every((member) => !!member.source_property);
+});
+watch(step, (value) => {
+	if (props.create && value === REVIEW_STEP && validationErrors.value.length === 0) void runPreview();
+});
 const modeNames = Object.values(SpacesModuleClimateIntentMode);
 const settingNames = Object.values(ThermostatSettingRole);
 type TrendKey = keyof NonNullable<typeof draft.value.heuristic>;

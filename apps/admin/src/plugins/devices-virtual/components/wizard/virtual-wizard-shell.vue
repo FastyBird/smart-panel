@@ -44,14 +44,18 @@
 			v-if="isMDDevice"
 			#extra
 		>
-			<el-button
-				link
-				:disabled="busy"
-				data-test-id="wizard-cancel"
-				@click="onCancel"
-			>
-				{{ t('devicesModule.wizard.actions.cancel') }}
-			</el-button>
+			<div class="flex items-center">
+				<el-button
+					link
+					class="mr-2!"
+					:disabled="busy"
+					data-test-id="wizard-cancel"
+					@click="onCancel"
+				>
+					{{ t('devicesModule.wizard.actions.cancel') }}
+				</el-button>
+				<div :id="ACTIONS_ID" />
+			</div>
 		</template>
 	</view-header>
 
@@ -63,21 +67,23 @@
 
 	<div
 		v-if="!isMDDevice"
-		class="mt-2 flex justify-end lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+		class="mt-2 flex justify-end items-center lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
 	>
 		<el-button
 			link
+			class="mr-2!"
 			:disabled="busy"
 			data-test-id="wizard-cancel"
 			@click="onCancel"
 		>
 			{{ t('devicesModule.wizard.actions.cancel') }}
 		</el-button>
+		<div :id="ACTIONS_ID" />
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, provide } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, onBeforeRouteLeave, useRouter } from 'vue-router';
@@ -90,9 +96,17 @@ import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHea
 import { RouteNames as DevicesRouteNames } from '../../../../modules/devices';
 import { RouteNames } from '../../devices-virtual.constants';
 
+import { virtualWizardActionsKey } from './virtual-wizard.types';
+
 defineOptions({
 	name: 'VirtualWizardShell',
 });
+
+// Where the editor's step navigation (Back / Next / Create) is teleported: the header on md+ screens,
+// the bottom bar below that — the same two places the projection wizard keeps its own buttons.
+const ACTIONS_ID = 'virtual-wizard-actions';
+
+provide(virtualWizardActionsKey, `#${ACTIONS_ID}`);
 
 // The page chrome of the projection wizard (app bar, breadcrumbs, header, Cancel) for the kinds that
 // are authored by a single editor rather than by the four projection steps. Without it those editors
