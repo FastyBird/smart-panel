@@ -203,8 +203,9 @@ def main():
         dropin = Path('/etc/systemd/system/smart-panel.service.d')
         for directory in (Path('/etc/systemd'), dropin.parent, dropin):
             protected_directory(directory)
+        # The updater has its own manager unit; stop every backend descendant, including old tunnels.
         install_file(dropin / 'privileged-helper.conf',
-                     b'[Service]\nReadWritePaths=/var/lib/smart-panel-privileged\n', 0o644)
+                     b'[Service]\nReadWritePaths=/var/lib/smart-panel-privileged\nKillMode=control-group\n', 0o644)
         for name, data in payloads.items():
             install_file(helper.ROOT / name, data, 0o755 if name == 'helper' else 0o644)
         install_file(helper.CONFIG, (json.dumps(config, indent=2) + '\n').encode(), 0o644)
