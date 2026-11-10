@@ -1,0 +1,12 @@
+{
+	"wizard": {
+		"title": "Add Modbus device",
+		"subtitle": "Connect a Modbus TCP gateway and map its registers to a device",
+		"breadcrumb": "Add Modbus device"
+	},
+	"endpoints": {
+		"title": "Modbus endpoints",
+		"subtitle": "Gateways the Modbus devices are polled through",
+		"breadcrumb": "Modbus endpoints"
+	}
+}

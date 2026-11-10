@@ -1,0 +1,129 @@
+import { ref } from 'vue';
+
+import { type Pinia, defineStore } from 'pinia';
+
+import { PLUGINS_PREFIX } from '../../../app.constants';
+import { getErrorReason, useBackend } from '../../../common';
+import type {
+	DevicesModbusPluginCreateEndpointOperation,
+	DevicesModbusPluginDeleteEndpointOperation,
+	DevicesModbusPluginGetEndpointHealthOperation,
+	DevicesModbusPluginGetEndpointOperation,
+	DevicesModbusPluginGetEndpointsOperation,
+	DevicesModbusPluginUpdateEndpointOperation,
+} from '../../../openapi.constants';
+import { DEVICES_MODBUS_PLUGIN_PREFIX } from '../devices-modbus.constants';
+import { DevicesModbusApiException } from '../devices-modbus.exceptions';
+
+import type { IModbusEndpoint, IModbusEndpointCreate, IModbusEndpointHealth, IModbusEndpointUpdate } from './endpoints.types';
+import { transformModbusEndpoint, transformModbusEndpointHealth, transformModbusEndpointRequest } from './modbus.transformers';
+
+const BASE = `/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/endpoints` as const;
+
+export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints', () => {
+	const backend = useBackend();
+	const data = ref<Record<string, IModbusEndpoint>>({});
+	const health = ref<Record<string, IModbusEndpointHealth>>({});
+
+	const findAll = (): IModbusEndpoint[] => Object.values(data.value);
+	const findById = (id: string): IModbusEndpoint | null => data.value[id] ?? null;
+
+	const fetch = async (): Promise<IModbusEndpoint[]> => {
+		const { data: responseData, error, response } = await backend.client.GET(BASE);
+
+		if (responseData) {
+			const endpoints = responseData.data.map(transformModbusEndpoint);
+			data.value = Object.fromEntries(endpoints.map((endpoint) => [endpoint.id, endpoint]));
+
+			return endpoints;
+		}
+
+		throw new DevicesModbusApiException(
+			getErrorReason<DevicesModbusPluginGetEndpointsOperation>(error, 'Failed to load the Modbus endpoints.'),
+			response.status
+		);
+	};
+
+	const get = async (id: string): Promise<IModbusEndpoint> => {
+		const { data: responseData, error, response } = await backend.client.GET(`${BASE}/{id}`, { params: { path: { id } } });
+
+		if (responseData) {
+			return (data.value[id] = transformModbusEndpoint(responseData.data));
+		}
+
+		throw new DevicesModbusApiException(
+			getErrorReason<DevicesModbusPluginGetEndpointOperation>(error, 'Failed to load the Modbus endpoint.'),
+			response.status
+		);
+	};
+
+	const add = async (payload: IModbusEndpointCreate): Promise<IModbusEndpoint> => {
+		const {
+			data: responseData,
+			error,
+			response,
+		} = await backend.client.POST(BASE, {
+			body: { data: transformModbusEndpointRequest(payload) as never },
+		});
+
+		if (responseData) {
+			return (data.value[responseData.data.id] = transformModbusEndpoint(responseData.data));
+		}
+
+		throw new DevicesModbusApiException(
+			getErrorReason<DevicesModbusPluginCreateEndpointOperation>(error, 'Failed to create the Modbus endpoint.'),
+			response.status
+		);
+	};
+
+	const edit = async (id: string, payload: IModbusEndpointUpdate): Promise<IModbusEndpoint> => {
+		const {
+			data: responseData,
+			error,
+			response,
+		} = await backend.client.PATCH(`${BASE}/{id}`, {
+			params: { path: { id } },
+			body: { data: transformModbusEndpointRequest(payload) as never },
+		});
+
+		if (responseData) {
+			return (data.value[id] = transformModbusEndpoint(responseData.data));
+		}
+
+		throw new DevicesModbusApiException(
+			getErrorReason<DevicesModbusPluginUpdateEndpointOperation>(error, 'Failed to update the Modbus endpoint.'),
+			response.status
+		);
+	};
+
+	const remove = async (id: string): Promise<void> => {
+		const { error, response } = await backend.client.DELETE(`${BASE}/{id}`, { params: { path: { id } } });
+
+		if (error) {
+			throw new DevicesModbusApiException(
+				getErrorReason<DevicesModbusPluginDeleteEndpointOperation>(error, 'Failed to remove the Modbus endpoint.'),
+				response.status
+			);
+		}
+
+		delete data.value[id];
+		delete health.value[id];
+	};
+
+	const fetchHealth = async (id: string): Promise<IModbusEndpointHealth> => {
+		const { data: responseData, error, response } = await backend.client.GET(`${BASE}/{id}/health`, { params: { path: { id } } });
+
+		if (responseData) {
+			return (health.value[id] = transformModbusEndpointHealth(responseData.data));
+		}
+
+		throw new DevicesModbusApiException(
+			getErrorReason<DevicesModbusPluginGetEndpointHealthOperation>(error, 'Failed to load the Modbus endpoint health.'),
+			response.status
+		);
+	};
+
+	return { data, health, findAll, findById, fetch, get, add, edit, remove, fetchHealth };
+});
+
+export const registerModbusEndpointsStore = (pinia: Pinia): ReturnType<typeof useModbusEndpoints> => useModbusEndpoints(pinia);
