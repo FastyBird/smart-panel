@@ -6,7 +6,7 @@
 
 **Author:** Adam Kadlec (drafted with Claude)
 
-**Related task:** none yet. A new epic `tasks/epics/EPIC-AUTOMATIONS.md` is proposed in [Delivery phases](#delivery-phases).
+**Related task:** `tasks/epics/EPIC-AUTOMATIONS.md` (GitHub epic https://github.com/FastyBird/smart-panel/issues/1555)
 
 ## Goal
 
