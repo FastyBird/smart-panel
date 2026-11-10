@@ -17,7 +17,7 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 		};
 		const requestId = uuidv4();
 
-		const details: { reason: unknown; code?: string } = {
+		const details: { reason: unknown; code?: string; issues?: unknown[] } = {
 			reason: exceptionResponse.message || `The data provided could not be processed in its current state.`,
 		};
 
@@ -29,6 +29,16 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 
 		if (applicationCode !== undefined) {
 			details.code = applicationCode;
+		}
+
+		// Structured issue list pass-through: a refusal that is about several parts of the submitted
+		// document (the nodes and edges of an automation graph) carries one entry per part, so the client
+		// can show each of them where it belongs. Only an object response with an `issues` array
+		// contributes one.
+		const issues = this.extractIssues(exception.getResponse());
+
+		if (issues !== undefined) {
+			details.issues = issues;
 		}
 
 		return response
@@ -49,6 +59,16 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 					server_time: new Date().toISOString(),
 				},
 			});
+	}
+
+	private extractIssues(exceptionResponse: unknown): unknown[] | undefined {
+		if (typeof exceptionResponse === 'object' && exceptionResponse !== null && 'issues' in exceptionResponse) {
+			const issues = (exceptionResponse as Record<string, unknown>).issues;
+
+			return Array.isArray(issues) ? (issues as unknown[]) : undefined;
+		}
+
+		return undefined;
 	}
 
 	private extractApplicationCode(exceptionResponse: unknown): string | undefined {

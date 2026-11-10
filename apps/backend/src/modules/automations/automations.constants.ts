@@ -46,3 +46,6 @@ export const AUTOMATION_GRAPH_ID_MAX_LENGTH = 64;
 export const AUTOMATION_GRAPH_NODE_TYPE_MAX_LENGTH = 100;
 export const AUTOMATION_GRAPH_PORT_MAX_LENGTH = 64;
 export const AUTOMATION_GRAPH_POSITION_LIMIT = 1_000_000;
+
+// Application error code of a save refused because of its graph (error.details.code of the 422 response)
+export const AUTOMATION_GRAPH_INVALID_ERROR_CODE = 'automation-graph-invalid';

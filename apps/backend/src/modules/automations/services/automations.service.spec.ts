@@ -12,6 +12,7 @@ import {
 	EventType,
 } from '../automations.constants';
 import {
+	AutomationsGraphValidationException,
 	AutomationsNotFoundException,
 	AutomationsRevisionConflictException,
 	AutomationsSpaceValidationException,
@@ -20,16 +21,24 @@ import {
 import { CreateAutomationDto } from '../dto/create-automation.dto';
 import { UpdateAutomationDto } from '../dto/update-automation.dto';
 import { AutomationEntity } from '../entities/automations.entity';
+import {
+	FAKE_ACTION_TYPE,
+	FAKE_NODE_TYPES,
+	FAKE_STRICT_ACTION_TYPE,
+	FAKE_TRIGGER_TYPE,
+} from '../testing/fake-node-types';
 
 import { AutomationsService } from './automations.service';
+import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 
 const SPACE_ID = '0b0f3f52-55d6-4b2f-9d8e-3f8b9b6f6a01';
 const OTHER_SPACE_ID = '0b0f3f52-55d6-4b2f-9d8e-3f8b9b6f6a02';
 const MISSING_ID = '0b0f3f52-55d6-4b2f-9d8e-3f8b9b6f6aff';
 
-const node = (id: string, config: Record<string, unknown> = {}) => ({
+// No concrete node type ships with the module yet, so the tests register fake ones (see beforeEach)
+const node = (id: string, config: Record<string, unknown> = {}, type: string = FAKE_ACTION_TYPE) => ({
 	id,
-	type: 'device.property.changed',
+	type,
 	position: { x: 40, y: 80 },
 	config,
 });
@@ -44,7 +53,7 @@ const edge = (id: string, source: string, target: string) => ({
 
 const graph = () => ({
 	version: 1,
-	nodes: [node('n1', { propertyId: 'p-1', to: true, nested: { keepCase: [1, 2] } }), node('n2')],
+	nodes: [node('n1', { propertyId: 'p-1', to: true, nested: { keepCase: [1, 2] } }, FAKE_TRIGGER_TYPE), node('n2')],
 	edges: [edge('e1', 'n1', 'n2')],
 });
 
@@ -53,6 +62,7 @@ describe('AutomationsService', () => {
 	let repository: Repository<AutomationEntity>;
 	let spacesService: { findOne: jest.Mock };
 	let eventEmitter: { emit: jest.Mock };
+	let nodeTypeRegistry: AutomationNodeTypeRegistryService;
 	let service: AutomationsService;
 
 	// The service accepts plain objects from in-process callers; the cast only satisfies the compiler.
@@ -75,10 +85,17 @@ describe('AutomationsService', () => {
 		};
 		eventEmitter = { emit: jest.fn() };
 
+		nodeTypeRegistry = new AutomationNodeTypeRegistryService();
+
+		for (const nodeType of FAKE_NODE_TYPES) {
+			nodeTypeRegistry.register(nodeType);
+		}
+
 		service = new AutomationsService(
 			repository,
 			spacesService as unknown as SpacesService,
 			eventEmitter as unknown as EventEmitter2,
+			nodeTypeRegistry,
 		);
 	});
 
@@ -235,15 +252,295 @@ describe('AutomationsService', () => {
 			).rejects.toThrow(/e-lost/);
 		});
 
-		it('accepts a graph at the node limit, any node type and any port name', async () => {
-			const nodes = manyNodes(AUTOMATION_GRAPH_MAX_NODES).map((item) => ({ ...item, type: 'not.a.known.type' }));
-
+		it('accepts a graph at the node limit', async () => {
 			const automation = await create({
 				name: 'A',
-				graph: { version: 1, nodes, edges: [{ ...edge('e1', 'n0', 'n0'), source_port: 'whatever' }] },
+				graph: { version: 1, nodes: manyNodes(AUTOMATION_GRAPH_MAX_NODES), edges: [] },
 			});
 
 			expect(automation.graph.nodes).toHaveLength(AUTOMATION_GRAPH_MAX_NODES);
+		});
+	});
+
+	describe('graph validation against the node types', () => {
+		const trigger = (id: string) => node(id, {}, FAKE_TRIGGER_TYPE);
+		const strict = (id: string, config: Record<string, unknown>) => node(id, config, FAKE_STRICT_ACTION_TYPE);
+
+		const complete = () => ({
+			version: 1,
+			nodes: [trigger('t'), strict('a', { level: 40 })],
+			edges: [edge('e1', 't', 'a')],
+		});
+
+		// Drawn correctly but not finished: one node is not configured and one is not wired yet
+		const draft = () => ({
+			version: 1,
+			nodes: [trigger('t'), strict('a', { level: 250 }), node('later')],
+			edges: [edge('e1', 't', 'a')],
+		});
+
+		const structurallyBroken: Array<[string, string, Record<string, unknown>]> = [
+			[
+				'an unknown node type',
+				'unknown_node_type',
+				{ version: 1, nodes: [node('x', {}, 'not.registered')], edges: [] },
+			],
+			[
+				'an unknown port',
+				'unknown_port',
+				{ version: 1, nodes: [trigger('t'), node('a')], edges: [{ ...edge('e1', 't', 'a'), source_port: 'yes' }] },
+			],
+			[
+				'an edge into a trigger',
+				'edge_into_trigger',
+				{ version: 1, nodes: [trigger('t1'), trigger('t2')], edges: [edge('e1', 't1', 't2')] },
+			],
+			[
+				'a cycle',
+				'cycle',
+				{
+					version: 1,
+					nodes: [trigger('t'), node('a'), node('b')],
+					edges: [
+						edge('e1', 't', 'a'),
+						{ ...edge('e2', 'a', 'b'), source_port: 'done' },
+						{ ...edge('e3', 'b', 'a'), source_port: 'done' },
+					],
+				},
+			],
+			[
+				'a duplicate edge',
+				'duplicate_edge',
+				{ version: 1, nodes: [trigger('t'), node('a')], edges: [edge('e1', 't', 'a'), edge('e2', 't', 'a')] },
+			],
+		];
+
+		const rejection = async (attempt: Promise<unknown>): Promise<AutomationsGraphValidationException> => {
+			const error: unknown = await attempt.then(
+				() => undefined,
+				(reason: unknown) => reason,
+			);
+
+			expect(error).toBeInstanceOf(AutomationsGraphValidationException);
+			// The controller answers every validation exception with 422
+			expect(error).toBeInstanceOf(AutomationsValidationException);
+
+			return error as AutomationsGraphValidationException;
+		};
+
+		describe('create', () => {
+			it.each(structurallyBroken)('refuses %s even on a disabled automation', async (_label, code, brokenGraph) => {
+				const error = await rejection(create({ name: 'A', graph: brokenGraph }));
+
+				expect(error.issues.filter((issue) => issue.blocking).map((issue) => issue.code)).toEqual([code]);
+				expect(await repository.count()).toBe(0);
+				expect(eventEmitter.emit).not.toHaveBeenCalled();
+			});
+
+			it('stores an empty graph on a disabled automation', async () => {
+				expect((await create({ name: 'A' })).graph.nodes).toEqual([]);
+				expect((await create({ name: 'B', enabled: false, graph: { version: 1, nodes: [], edges: [] } })).enabled).toBe(
+					false,
+				);
+			});
+
+			it('refuses an enabled automation without a graph, as it has no trigger', async () => {
+				const error = await rejection(create({ name: 'A', enabled: true }));
+
+				expect(error.issues).toEqual([
+					expect.objectContaining({ code: 'no_trigger', severity: 'error', blocking: true }),
+				]);
+				expect(await repository.count()).toBe(0);
+			});
+
+			it('stores a half-drawn, half-configured graph as a disabled draft', async () => {
+				const automation = await create({ name: 'A', graph: draft() });
+
+				expect(automation.enabled).toBe(false);
+				expect(automation.graph).toEqual(draft());
+			});
+
+			it('refuses the same draft on an enabled automation and tells which node is not configured', async () => {
+				const error = await rejection(create({ name: 'A', enabled: true, graph: draft() }));
+
+				expect(error.issues.map((issue) => [issue.code, issue.node_id, issue.blocking])).toEqual([
+					['invalid_config', 'a', true],
+					['unreachable_node', 'later', false],
+				]);
+				expect(error.issues[0]).toMatchObject({ field: 'level', message: 'Level must be between 0 and 100.' });
+				expect(await repository.count()).toBe(0);
+			});
+
+			it('stores a complete graph on an enabled automation, warnings included', async () => {
+				const withOrphan = { ...complete(), nodes: [...complete().nodes, node('later')] };
+
+				expect((await create({ name: 'A', enabled: true, graph: complete() })).enabled).toBe(true);
+				expect((await create({ name: 'B', enabled: true, graph: withOrphan })).graph).toEqual(withOrphan);
+			});
+
+			it('does not put the submitted configuration into the message or the log', async () => {
+				const logged: string[] = [];
+				const logger = (service as unknown as { logger: Record<string, (message: string) => void> }).logger;
+
+				for (const level of ['error', 'warn', 'log', 'debug']) {
+					jest.spyOn(logger, level).mockImplementation((message: string) => {
+						logged.push(message);
+					});
+				}
+
+				const leaky = {
+					...complete(),
+					nodes: [trigger('t'), strict('a', { level: 'secret-value', note: 'secret-value' })],
+				};
+
+				const error = await rejection(create({ name: 'A', enabled: true, graph: leaky }));
+
+				expect(error.issues.length).toBeGreaterThan(1);
+				expect(logged.join('\n')).toContain(`${error.issues.length} blocking issue(s)`);
+				expect(logged.join('\n')).not.toContain('secret-value');
+				expect(error.message).not.toContain('secret-value');
+				expect(JSON.stringify(error.issues)).not.toContain('secret-value');
+			});
+		});
+
+		describe('update', () => {
+			it.each(structurallyBroken)('refuses %s and changes nothing', async (_label, code, brokenGraph) => {
+				const automation = await create({ name: 'A', graph: complete() });
+
+				eventEmitter.emit.mockClear();
+
+				const error = await rejection(update(automation.id, { revision: 1, name: 'Renamed', graph: brokenGraph }));
+
+				expect(error.issues.filter((issue) => issue.blocking).map((issue) => issue.code)).toEqual([code]);
+
+				const stored = await service.getOneOrThrow(automation.id);
+
+				expect(stored).toMatchObject({ name: 'A', revision: 1 });
+				expect(stored.graph).toEqual(complete());
+				expect(eventEmitter.emit).not.toHaveBeenCalled();
+			});
+
+			it('stores a draft on a disabled automation', async () => {
+				const automation = await create({ name: 'A', graph: complete() });
+
+				expect((await update(automation.id, { revision: 1, graph: draft() })).graph).toEqual(draft());
+			});
+
+			it('refuses a draft submitted for an enabled automation', async () => {
+				const automation = await create({ name: 'A', enabled: true, graph: complete() });
+
+				await rejection(update(automation.id, { revision: 1, graph: draft() }));
+
+				expect((await service.getOneOrThrow(automation.id)).graph).toEqual(complete());
+			});
+
+			it('stores a draft submitted together with switching the automation off', async () => {
+				const automation = await create({ name: 'A', enabled: true, graph: complete() });
+
+				const updated = await update(automation.id, { revision: 1, enabled: false, graph: draft() });
+
+				expect(updated).toMatchObject({ enabled: false, revision: 2 });
+				expect(updated.graph).toEqual(draft());
+			});
+
+			it('refuses a draft submitted together with switching the automation on', async () => {
+				const automation = await create({ name: 'A', graph: complete() });
+
+				await rejection(update(automation.id, { revision: 1, enabled: true, graph: draft() }));
+
+				expect(await service.getOneOrThrow(automation.id)).toMatchObject({ enabled: false, revision: 1 });
+			});
+
+			it('refuses to enable an automation whose stored graph is a draft', async () => {
+				const automation = await create({ name: 'A', graph: draft() });
+
+				const error = await rejection(update(automation.id, { revision: 1, enabled: true }));
+
+				expect(error.issues.filter((issue) => issue.blocking).map((issue) => [issue.code, issue.node_id])).toEqual([
+					['invalid_config', 'a'],
+				]);
+				expect(await service.getOneOrThrow(automation.id)).toMatchObject({ enabled: false, revision: 1 });
+			});
+
+			it('refuses to enable an automation whose stored graph is empty', async () => {
+				const automation = await create({ name: 'A' });
+
+				const error = await rejection(update(automation.id, { revision: 1, enabled: true }));
+
+				expect(error.issues.map((issue) => issue.code)).toEqual(['no_trigger']);
+			});
+
+			it('enables an automation whose stored graph is complete', async () => {
+				const automation = await create({ name: 'A', graph: complete() });
+
+				expect((await update(automation.id, { revision: 1, enabled: true })).enabled).toBe(true);
+			});
+
+			it('enables an automation together with the graph that completes it', async () => {
+				const automation = await create({ name: 'A', graph: draft() });
+
+				const updated = await update(automation.id, { revision: 1, enabled: true, graph: complete() });
+
+				expect(updated.enabled).toBe(true);
+				expect(updated.graph).toEqual(complete());
+			});
+
+			it('reports a stale revision before it looks at the graph', async () => {
+				const automation = await create({ name: 'A', graph: complete() });
+
+				await expect(update(automation.id, { revision: 7, graph: structurallyBroken[0][2] })).rejects.toBeInstanceOf(
+					AutomationsRevisionConflictException,
+				);
+			});
+
+			describe('when a node type has gone since the graph was stored', () => {
+				let automationId: string;
+
+				beforeEach(async () => {
+					automationId = (await create({ name: 'A', enabled: true, graph: complete() })).id;
+
+					// A registry without the strict action, as after its plugin was removed
+					const smaller = new AutomationNodeTypeRegistryService();
+
+					for (const nodeType of FAKE_NODE_TYPES.filter((item) => item.type !== FAKE_STRICT_ACTION_TYPE)) {
+						smaller.register(nodeType);
+					}
+
+					service = new AutomationsService(
+						repository,
+						spacesService as unknown as SpacesService,
+						eventEmitter as unknown as EventEmitter2,
+						smaller,
+					);
+				});
+
+				it('still lets the automation be renamed and switched off', async () => {
+					const renamed = await update(automationId, { revision: 1, name: 'Renamed' });
+					const disabled = await update(automationId, { revision: 2, enabled: false });
+
+					expect(renamed.name).toBe('Renamed');
+					expect(disabled.enabled).toBe(false);
+				});
+
+				it('does not let it be switched back on or its graph be saved again unchanged', async () => {
+					await update(automationId, { revision: 1, enabled: false });
+
+					const enabling = await rejection(update(automationId, { revision: 2, enabled: true }));
+					const saving = await rejection(update(automationId, { revision: 2, graph: complete() }));
+
+					expect(enabling.issues.map((issue) => issue.code)).toEqual(['unknown_node_type']);
+					expect(saving.issues.map((issue) => issue.code)).toEqual(['unknown_node_type']);
+				});
+			});
+		});
+
+		describe('checkGraph', () => {
+			it('validates without storing anything', async () => {
+				expect(await service.checkGraph(complete(), true)).toEqual({ valid: true, issues: [] });
+				expect((await service.checkGraph(draft(), false)).valid).toBe(true);
+				expect((await service.checkGraph(draft(), true)).valid).toBe(false);
+				expect(await repository.count()).toBe(0);
+			});
 		});
 	});
 
@@ -291,7 +588,7 @@ describe('AutomationsService', () => {
 
 		it('replaces the graph as a whole', async () => {
 			const automation = await create({ name: 'Motion light', graph: graph() });
-			const nextGraph = { version: 1, nodes: [node('only', { camelCase: 1 })], edges: [] };
+			const nextGraph = { version: 1, nodes: [node('only', { camelCase: 1 }, FAKE_TRIGGER_TYPE)], edges: [] };
 
 			const updated = await update(automation.id, { revision: 1, graph: nextGraph });
 

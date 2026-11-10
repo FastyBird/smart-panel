@@ -14,6 +14,7 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { AUTOMATIONS_MODULE_NAME, AutomationMode, AutomationStatus, EventType } from '../automations.constants';
 import {
+	AutomationsGraphValidationException,
 	AutomationsNotFoundException,
 	AutomationsRevisionConflictException,
 	AutomationsSpaceValidationException,
@@ -23,8 +24,11 @@ import { AutomationGraphDto } from '../dto/automation-graph.dto';
 import { CreateAutomationDto } from '../dto/create-automation.dto';
 import { UpdateAutomationDto } from '../dto/update-automation.dto';
 import { AutomationEntity } from '../entities/automations.entity';
+import { AutomationGraphSaveCheck, checkGraphForSave } from '../graph/save-policy';
 import { AutomationGraphModel, createEmptyAutomationGraph } from '../models/automation-graph.model';
 import { AutomationSummaryModel } from '../models/automations.model';
+
+import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 
 @Injectable()
 export class AutomationsService {
@@ -35,6 +39,7 @@ export class AutomationsService {
 		private readonly repository: Repository<AutomationEntity>,
 		private readonly spacesService: SpacesService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly nodeTypeRegistry: AutomationNodeTypeRegistryService,
 	) {}
 
 	/**
@@ -110,6 +115,9 @@ export class AutomationsService {
 		}
 
 		const id = dtoInstance.id ?? uuid().toString();
+		const graph = dtoInstance.graph ? this.toStoredGraph(dtoInstance.graph) : createEmptyAutomationGraph();
+
+		await this.assertGraphCanBeSaved(graph, dtoInstance.enabled ?? false);
 
 		// The entity is assembled by hand, not through toInstance(): that helper rewrites every object key
 		// to snake_case, which would also rewrite the keys of the opaque node configuration.
@@ -121,7 +129,7 @@ export class AutomationsService {
 			enabled: dtoInstance.enabled ?? false,
 			spaceId: dtoInstance.space_id ?? null,
 			mode: dtoInstance.mode ?? AutomationMode.RESTART,
-			graph: dtoInstance.graph ? this.toStoredGraph(dtoInstance.graph) : createEmptyAutomationGraph(),
+			graph,
 			revision: 1,
 			status: AutomationStatus.OK,
 			lastTriggeredAt: null,
@@ -158,6 +166,16 @@ export class AutomationsService {
 			await this.validateSpace(dtoInstance.space_id);
 		}
 
+		// The graph that will be stored is checked whenever it can become worse than it was: when a new graph
+		// is submitted, and when the stored graph is switched on. Other saves (a rename, switching off) are
+		// let through, so an automation whose node type has gone since can still be edited.
+		const graph = dtoInstance.graph !== undefined ? this.toStoredGraph(dtoInstance.graph) : undefined;
+		const enabled = dtoInstance.enabled ?? existing.enabled;
+
+		if (graph !== undefined || (dtoInstance.enabled === true && !existing.enabled)) {
+			await this.assertGraphCanBeSaved(graph ?? existing.graph, enabled);
+		}
+
 		const changes: QueryDeepPartialEntity<AutomationEntity> = {
 			revision: dtoInstance.revision + 1,
 			updatedAt: new Date(),
@@ -187,8 +205,8 @@ export class AutomationsService {
 			changes.mode = dtoInstance.mode;
 		}
 
-		if (dtoInstance.graph !== undefined) {
-			changes.graph = this.toStoredGraph(dtoInstance.graph) as QueryDeepPartialEntity<AutomationGraphModel>;
+		if (graph !== undefined) {
+			changes.graph = graph as QueryDeepPartialEntity<AutomationGraphModel>;
 		}
 
 		const result = await this.repository.update({ id, revision: dtoInstance.revision }, changes);
@@ -219,6 +237,36 @@ export class AutomationsService {
 		this.logger.debug(`[DELETE] Removed automation with id=${id}`);
 
 		this.eventEmitter.emit(EventType.AUTOMATION_DELETED, { id });
+	}
+
+	/**
+	 * Validates a graph against the registered node types without saving anything.
+	 *
+	 * @param enabled whether the automation the graph belongs to would be enabled; an enabled automation
+	 * needs a complete graph, a disabled one may be a draft
+	 */
+	async checkGraph(graph: unknown, enabled: boolean): Promise<AutomationGraphSaveCheck> {
+		return checkGraphForSave(graph, this.nodeTypeRegistry.lookup, { enabled });
+	}
+
+	private async assertGraphCanBeSaved(graph: unknown, enabled: boolean): Promise<void> {
+		const check = await this.checkGraph(graph, enabled);
+
+		if (check.valid) {
+			return;
+		}
+
+		const blocking = check.issues.filter((issue) => issue.blocking).length;
+
+		// The issues can quote submitted identifiers, so they go to the caller only and the log gets a count
+		this.logger.error(`[VALIDATION FAILED] Graph validation failed with ${blocking} blocking issue(s)`);
+
+		throw new AutomationsGraphValidationException(
+			enabled
+				? `The automation graph cannot be saved: it has ${blocking} problem(s). An enabled automation needs a complete graph.`
+				: `The automation graph cannot be saved: it has ${blocking} problem(s).`,
+			check.issues,
+		);
 	}
 
 	private createRevisionConflict(id: string, revision: number): AutomationsRevisionConflictException {
