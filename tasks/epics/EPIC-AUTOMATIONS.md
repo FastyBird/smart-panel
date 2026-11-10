@@ -1,6 +1,6 @@
 # Task: Automations with a visual flow editor
 
-This epic is tracked in GitHub epic #1555. The milestone "Automations" is not created yet.
+This epic is tracked in the GitHub milestone "Automations" (epic #1555).
 
 ID: EPIC-AUTOMATIONS
 Type: epic
