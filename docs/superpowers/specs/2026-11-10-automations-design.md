@@ -1,6 +1,7 @@
 # Automations — Analysis and Design
 
-**Status:** Proposed (analysis; nothing implemented)
+**Status:** Accepted (nothing implemented). Spike results and the settled decisions are in
+[ADR 0003](../../adr/0003-automations-spike-and-decisions.md), which takes precedence where this document is less precise.
 
 **Date:** 2026-11-10
 
@@ -217,7 +218,7 @@ half-drawn canvas can be saved while disabled); no cycles in the first version.
 | Action | Set house mode | automations | |
 | Action | Enable / disable / run another automation | automations | |
 | Action | Set space activity mode, space lighting intent | spaces-home-control | |
-| Flow | Delay | automations | Up to 24 h. |
+| Flow | Delay | automations | Up to 1 h in the first version (see [Runs](#runs)). |
 | Flow | Wait until (a trigger-style event, with timeout output) | automations | Phase 2. |
 | Flow | Any / All | automations | Join branches. |
 
@@ -246,10 +247,25 @@ A trigger firing creates a run. The run walks the graph as a set of tokens: a to
 executes, and the token moves along the edges of the output that was taken. Several edges from one output run
 in parallel. A Delay parks its token on a timer. The run ends when no tokens remain.
 
-- **Mode** decides what a new trigger does while a run is active (`single`, `restart`, `parallel` with a cap).
-  `restart` is the default because it gives correct motion-light behaviour: new motion cancels the pending
-  "off" delay.
-- **Run state is in memory.** A restart of the backend ends active runs; they do not resume. Durable delays
+- **Mode** decides what a new trigger does while a run is active (`single`, `restart`, `parallel` capped at
+  10). `restart` is the default and cancels **every** active run of the automation, whichever trigger started
+  it, including parked delays and waits. It is the only mode in which "becomes clear → Delay → off" lets new
+  motion cancel the pending off. "For" durations belong to the trigger, not to a run, so no mode affects them.
+- **One automation, one concern.** Under `restart`, unrelated flows on the same canvas cancel each other; the
+  editor warns about disconnected sub-graphs.
+- **Prefer "for" to Delay for waits on a state.** "Occupancy clear for 2 min → off" is correct in every mode
+  and when the sensor drops offline. A Delay before a state-changing action needs a re-check condition after
+  it. Templates follow this.
+- **Branches are unordered.** Several edges from one output run in parallel with no ordering guarantee; a
+  sequence is a chain through `done`.
+- **Errors.** An `error` output with no edge ends that token and marks the run `failed`. Every action has a
+  timeout. `last_run_status` is `completed`, `failed`, `cancelled` or `interrupted`.
+- **Edits.** Saving a changed graph, mode or `enabled` cancels active runs; a save that changes only name,
+  description or icon does not.
+- **Joins.** Any passes the first arrival and absorbs later ones. All is a strict AND over its incoming edges
+  and cannot combine two triggers; "A and B within 30 s" uses Wait until.
+- **Run state is in memory.** A restart of the backend ends active runs; they do not resume, which is why Delay
+  and Wait until are limited to 1 h in the first version and long waits use a "for" trigger. Durable delays
   are a follow-up; they matter for long delays, which the cap keeps rare.
 - **Trace.** Each run records the trigger, the nodes visited, the output taken, the value a condition saw, and
   the result of each action. The last runs per automation are kept (proposed: 50) in a table. The full trace
@@ -263,10 +279,12 @@ in parallel. A Delay parks its token on a timer. The run ends when no tokens rem
 An action can change a value that triggers the same or another automation. The value event does not say who
 caused the change, so call-depth tracking is not reliable. The guards are therefore rate based:
 
-- Per automation: more than N runs per minute (proposed 30) sets `status = suspended`, stops it, and raises a
-  notification with a link to the automation.
+- Per automation: more than 30 runs per minute, or more than 200 per hour, sets `status = suspended`, stops it,
+  and raises a notification with a link to the automation. The hourly window catches slow loops that pass the
+  first. Saving or re-enabling the automation clears the suspension.
+- Ignored and dropped triggers are counted per automation and shown, so "why did it not run" has an answer.
 - Global caps: automations (proposed 200), nodes per automation (100), concurrent runs (50), delay length
-  (24 h).
+  (1 h).
 - The editor warns when an automation writes a property that one of its own triggers watches.
 
 ## Backend architecture
@@ -409,8 +427,9 @@ Risks with Vue Flow and how to contain them:
   is pinned and the worst case is carrying fixes ourselves.
 - All use goes through one wrapper component (`automation-canvas.vue`) that maps between our graph JSON and the
   library's node/edge arrays. Nothing else imports the library, so it can be replaced.
-- Compatibility with Vue 3.5, Vite 8 and the Home Assistant ingress path has not been tried here. The first
-  task of phase 1 is a short spike that renders the reference scenario.
+- Compatibility with Vue 3.5, Vite 8, dark mode, touch and a path prefix was checked in the spike (ADR 0003):
+  all editor requirements work, for about 52 kB gzip. Firefox, Safari and a physical touch device are still to
+  be checked.
 
 An automatic "tidy up" layout is optional later; `@dagrejs/dagre` (MIT) fits. `elkjs` is EPL/GPL licensed and
 should be avoided.
@@ -420,7 +439,8 @@ should be avoided.
 - **List view** (`automations` route in the main menu next to Scenes): name, space, enabled switch, status,
   last run, actions. Same table and filter pattern as scenes.
 - **Editor view**: palette on the left grouped as When / And / Then / Flow; canvas in the middle; an
-  `el-drawer` on the right with the configuration form of the selected node. Top bar: name, enabled switch,
+  side panel on the right (not `el-drawer`, which traps keyboard focus and covers the canvas) with the
+  configuration form of the selected node. Top bar: name, enabled switch,
   mode, Save, Test.
 - **Node cards** show a one-line readable summary ("Hall motion becomes detected", "Illuminance < 50 lx") built
   from the configuration, with the kind shown by colour and icon.
@@ -511,24 +531,25 @@ additive and can be reordered.
   house mode actions into default automations is a possible later clean-up.
 - Editing on the panel.
 
-## Decisions to confirm during review
+## Decisions
 
-1. **Graph as one JSON document** rather than node/edge tables with single-table inheritance. This departs
-   from the scene action pattern; the reason is atomic canvas saves. Confirmed in review: JSON for storage and
-   API, YAML for templates and import/export (see [JSON and YAML](#json-and-yaml)).
-2. **Default run mode `restart`.**
-3. **Where built-in cards live.** Proposed: device, time, scene, notification, house mode and security cards
-   inside the core module; space cards in `spaces-home-control`. The alternative is a separate
-   `automations-*` plugin per group, mirroring `scenes-local`, which costs more boilerplate for cards nobody
-   would disable.
-4. **Mode precedence.** When an automation sets a space activity mode, does it count as a manual change (which
-   pauses schedule and occupancy until Resume) or as an automatic one? Proposed: automatic, same rank as the
-   schedule.
-5. **Safety-reducing actions** (disarm, unlock, open) excluded in the first version.
+All settled; details and evidence in [ADR 0003](../../adr/0003-automations-spike-and-decisions.md).
+
+1. **Graph as one JSON document** rather than node/edge tables with single-table inheritance. JSON for storage
+   and API, YAML for templates and import/export (see [JSON and YAML](#json-and-yaml)).
+2. **Default run mode `restart`**, cancelling every active run of the automation.
+3. **Built-in cards** for core modules live in the core module; space cards in `spaces-home-control`. The engine
+   checks the owning plugin's `enabled` flag itself.
+4. **Mode precedence.** A manual change pauses only occupancy (schedules are never paused). Automations use a new
+   automatic activation source that does not set that hold; last automatic writer wins.
+5. **Safety-reducing actions** (disarm, unlock, open) are blocked on the server on every action path.
 6. **Phone-width editing** is read-only.
-7. **Sun calculation** implemented locally rather than adding `suncalc`.
-8. **Run history** in SQLite (last 50 per automation) rather than InfluxDB.
-9. **Naming.** "Automations" in the UI, with When / And / Then card labels.
+7. **Sun calculation** is implemented in the module. It needs a house location, added as nullable latitude and
+   longitude in the system configuration.
+8. **Run history** in SQLite: last 50 runs per automation, a nightly prune after 30 days, a trace size limit.
+9. **Naming.** "Automations", with When / And / Then card labels. Buddy stops treating "automation" as a synonym
+   for scene, and text that calls scenes "automations" is corrected.
+10. **Delay and Wait until limit** of 1 h until delays are durable.
 
 ## Calls to check
 

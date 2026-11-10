@@ -24,7 +24,9 @@ Flow does, and have the Smart Panel backend run them.
   It records what exists today, the prior art, the product decisions, the graph model, trigger and run semantics,
   the canvas library comparison and the delivery phases. Decisions confirmed on 2026-11-10: JSON for the stored
   graph and API with YAML for templates and import/export, and server-side enforcement of the safety restriction on
-  every action path. The remaining "Decisions to confirm during review" of the design are settled in AU-0.
+  every action path. The remaining decisions were settled by the AU-0 spike and are recorded in
+  [`docs/adr/0003-automations-spike-and-decisions.md`](../../docs/adr/0003-automations-spike-and-decisions.md),
+  which the implementing issues must follow. The spike code is kept in `docs/work/automations-spike/`.
 - No automation engine exists today. Scenes are action lists run on demand; space mode schedules and occupancy
   (`plugins/spaces-home-control`) are fixed-purpose and stay as they are. Automations use them as actions,
   triggers and conditions.
@@ -70,7 +72,7 @@ Flow does, and have the Smart Panel backend run them.
 
 ## 4. Acceptance criteria
 
-- [ ] The open decisions of the design are confirmed and recorded in the design doc (AU-0).
+- [x] The open decisions of the design are confirmed and recorded in ADR 0003 and the design doc (AU-0).
 - [ ] The reference scenario is drawn on one canvas, saved, survives a reload unchanged, and runs correctly against
       the simulator: dimmed light at night, full light by day, light off after occupancy clears.
 - [ ] Triggers fire on transitions and threshold crossings only, never on repeated reports or at startup.
@@ -291,6 +293,19 @@ Done when: export followed by import reproduces the graph.
 Scope: run the reference scenario and one heating, one cover and one alarm scenario on a Raspberry Pi installation
 with real devices; check behaviour across backend restart, device loss and a full day of triggers.
 Done when: results are recorded in section 7.
+
+### Scope changes from the spike (ADR 0003)
+
+- AU-3: optional hysteresis on numeric triggers; baseline read when a save first references a property.
+- AU-4: `restart` cancels all runs of the automation; action timeouts; second rate window (200 per hour);
+  counters for ignored and dropped triggers; monotonic clock for durations; Delay limit 1 h.
+- AU-7: also remove "automation" from Buddy's scene synonyms (`SCENE_SIGNALS`, planner grammar).
+- AU-10: side panel instead of `el-drawer`; strict connection mode; tap-to-add in the palette.
+- AU-15: All is a strict AND and is rejected when fed from two triggers; Wait until timeout is mandatory.
+- AU-16: add nullable house latitude and longitude to the system configuration, filled from onboarding.
+- AU-18: add an automatic activation source to `SpaceModeService.activateMode` that does not set the occupancy
+  manual hold.
+- AU-22: correct admin, website and README text that calls scenes "automations".
 
 ### Execution order
 

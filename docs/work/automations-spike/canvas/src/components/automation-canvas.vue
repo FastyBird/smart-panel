@@ -33,6 +33,7 @@
 					:position="Position.Left"
 					:style="{ top: handleOffset(index, portsOf(nodeProps.data.type).inputs.length) }"
 					:data-test-port="port"
+					@click.stop
 				/>
 
 				<automation-node-card
@@ -59,6 +60,7 @@
 						:class="`automation-canvas__handle--${port}`"
 						:style="{ top: handleOffset(index, portsOf(nodeProps.data.type).outputs.length) }"
 						:data-test-port="port"
+						@click.stop
 					/>
 				</template>
 			</template>
@@ -200,6 +202,13 @@ const toFlowNode = (node: IAutomationGraphNode): Node<IAutomationNodeData> => ({
 	ariaLabel: `${getNodeType(node.type)?.kind ?? 'node'}: ${getNodeType(node.type)?.summary(node.config) ?? node.type}`,
 });
 
+const EDGE_COLORS: Record<string, string> = {
+	default: 'var(--el-text-color-secondary)',
+	yes: 'var(--el-color-success)',
+	done: 'var(--el-color-success)',
+	error: 'var(--el-color-danger)',
+};
+
 const toFlowEdge = (edge: IAutomationGraphEdge): Edge => ({
 	id: edge.id,
 	source: edge.source,
@@ -207,7 +216,8 @@ const toFlowEdge = (edge: IAutomationGraphEdge): Edge => ({
 	target: edge.target,
 	targetHandle: edge.target_port,
 	class: `automation-canvas__edge automation-canvas__edge--${edge.source_port}`,
-	markerEnd: MarkerType.ArrowClosed,
+	// The marker colour is written into an inline style, so a CSS variable works here (a stylesheet rule would lose to the inline style).
+	markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS[edge.source_port] ?? EDGE_COLORS.default },
 });
 
 /*
@@ -580,11 +590,6 @@ defineExpose({
 	.vue-flow__edge:focus-visible .vue-flow__edge-path {
 		stroke: var(--el-color-primary);
 		stroke-width: 3;
-	}
-
-	.vue-flow__arrowhead polyline {
-		fill: var(--el-text-color-secondary);
-		stroke: var(--el-text-color-secondary);
 	}
 
 	// The background component writes the colour into an SVG attribute, where var() does not resolve.
