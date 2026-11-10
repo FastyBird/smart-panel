@@ -81,4 +81,24 @@ describe('ModbusWizardProbePanel', () => {
 
 		expect(wrapper.find('.el-alert').exists()).toBe(false);
 	});
+
+	it('drops a result that arrives after the target changed', async () => {
+		let resolveRead: (value: unknown) => void = () => undefined;
+		read.mockReturnValue(new Promise((resolve) => (resolveRead = resolve)));
+
+		const wizard = useModbusDeviceWizard();
+		wizard.state.endpointId = 'e1';
+
+		const wrapper = mount(ModbusWizardProbePanel, { props: { wizard }, global: { stubs: { teleport: true, transition: false } } });
+
+		await wrapper.find('[data-test-id="probe-run"]').trigger('click');
+
+		wizard.state.unitId = 9;
+		await flushPromises();
+
+		resolveRead({ ok: true, values: [1], error: null, durationMs: 4 });
+		await flushPromises();
+
+		expect(wrapper.find('.el-alert').exists()).toBe(false);
+	});
 });

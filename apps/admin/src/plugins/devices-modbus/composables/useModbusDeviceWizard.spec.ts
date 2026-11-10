@@ -234,6 +234,25 @@ describe('useModbusDeviceWizard', () => {
 		expect(wizard.applyingTemplate.value).toBe(false);
 	});
 
+	it('does not allow leaving the template step while a template is applying', async () => {
+		let resolvePreview: (value: IModbusTemplatePreview) => void = () => undefined;
+		templatesStore.preview.mockReturnValue(new Promise((resolve) => (resolvePreview = resolve)));
+
+		const wizard = useModbusDeviceWizard();
+
+		wizard.startEmpty();
+		expect(wizard.canContinue(1)).toBe(true);
+
+		const pending = wizard.applyTemplate('acme-io');
+
+		expect(wizard.canContinue(1)).toBe(false);
+
+		resolvePreview(preview());
+		await pending;
+
+		expect(wizard.canContinue(1)).toBe(true);
+	});
+
 	it('lets the later of two racing applies win', async () => {
 		const resolvers: ((value: IModbusTemplatePreview) => void)[] = [];
 		templatesStore.preview.mockImplementation(() => new Promise((resolve) => resolvers.push(resolve)));

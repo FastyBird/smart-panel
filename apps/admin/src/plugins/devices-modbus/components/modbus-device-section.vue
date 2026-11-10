@@ -399,6 +399,11 @@ const onReadNow = async (): Promise<void> => {
 		}
 
 		if (result.points.length === 0) {
+			if (result.error) {
+				// Values from an earlier read must not stay on screen as if they were current.
+				readings.value = null;
+			}
+
 			return;
 		}
 

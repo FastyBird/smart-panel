@@ -51,8 +51,9 @@
 				<div class="flex flex-wrap gap-4">
 					<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.registerType')">
 						<el-select
-							v-model="section.binding.registerType"
+							:model-value="section.binding.registerType"
 							class="w-[180px]!"
+							@update:model-value="(type: DevicesModbusPluginRegisterType) => onRegisterTypeChange(section.kind, type)"
 						>
 							<el-option
 								v-for="type in registerTypeOptions(section.kind)"
@@ -339,6 +340,24 @@ const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] =>
 	kind === 'write'
 		? [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register]
 		: Object.values(DevicesModbusPluginRegisterType);
+
+// In Modicon notation the address prefix names the register table, so the text must follow the selected type, or
+// saving would silently restore the type the prefix names.
+const onRegisterTypeChange = (kind: Kind, type: DevicesModbusPluginRegisterType): void => {
+	const binding = draft.value?.[kind] ?? null;
+
+	if (binding === null) {
+		return;
+	}
+
+	const { parsed } = parseKind(kind);
+
+	binding.registerType = type;
+
+	if (parsed !== null) {
+		addressTexts[kind] = formatAddress(parsed.start, type, props.notation);
+	}
+};
 
 const parseKind = (kind: Kind): { parsed: ParsedAddress | null; error: string | null } => {
 	const binding = draft.value?.[kind] ?? null;

@@ -196,7 +196,9 @@ watch([notation, registerType], ([newNotation, newType], [oldNotation, oldType])
 	addressText.value = formatAddress(previous.ok ? previous.start : 0, newType, newNotation);
 });
 
-// A result describes the target it was read from; drop it when the target changes.
+// A result describes the target it was read from; drop it when the target changes, including one still in flight.
+let targetGeneration = 0;
+
 watch(
 	() => {
 		const { endpointMode, endpointId, newEndpoint, unitId } = props.wizard.state;
@@ -205,6 +207,7 @@ watch(
 	},
 	() => {
 		result.value = null;
+		targetGeneration++;
 	}
 );
 
@@ -219,8 +222,14 @@ const onRun = async (): Promise<void> => {
 
 	running.value = true;
 
+	const generation = targetGeneration;
+
 	try {
-		result.value = await probe.read(target, props.wizard.state.unitId, effectiveRegisterType.value, parsed.value.start, count.value);
+		const outcome = await probe.read(target, props.wizard.state.unitId, effectiveRegisterType.value, parsed.value.start, count.value);
+
+		if (generation === targetGeneration) {
+			result.value = outcome;
+		}
 	} finally {
 		running.value = false;
 	}

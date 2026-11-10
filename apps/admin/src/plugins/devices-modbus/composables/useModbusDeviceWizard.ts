@@ -139,7 +139,8 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 			case MODBUS_WIZARD_STEP.ENDPOINT:
 				return isValidUnitId(state.unitId) && (state.endpointMode === 'existing' ? state.endpointId !== null : endpointForm.requiredFilled.value);
 			case MODBUS_WIZARD_STEP.TEMPLATE:
-				return state.template !== null || state.startedEmpty;
+				// A pending preview would replace the points after the user moved on.
+				return !applyingTemplate.value && (state.template !== null || state.startedEmpty);
 			case MODBUS_WIZARD_STEP.POINTS:
 				// The backend refuses a device without a read binding.
 				return state.points.length > 0 && state.points.some((point) => point.read !== null);

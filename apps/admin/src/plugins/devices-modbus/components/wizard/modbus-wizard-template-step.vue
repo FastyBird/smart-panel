@@ -18,9 +18,14 @@
 				:key="template.id"
 				shadow="hover"
 				class="cursor-pointer"
+				role="button"
+				tabindex="0"
+				:aria-pressed="wizard.state.template?.id === template.id"
 				:class="{ 'border-[var(--el-color-primary)]!': wizard.state.template?.id === template.id }"
 				:data-test-id="`template-${template.id}`"
 				@click="onSelect(template.id)"
+				@keydown.enter.self.prevent="onSelect(template.id)"
+				@keydown.space.self.prevent="onSelect(template.id)"
 			>
 				<div class="font-bold">
 					{{ template.name }}
@@ -56,8 +61,14 @@
 				shadow="hover"
 				class="cursor-pointer"
 				:class="{ 'border-[var(--el-color-primary)]!': wizard.state.startedEmpty, 'opacity-50 pointer-events-none': wizard.applyingTemplate.value }"
+				role="button"
+				:tabindex="wizard.applyingTemplate.value ? -1 : 0"
+				:aria-pressed="wizard.state.startedEmpty"
+				:aria-disabled="wizard.applyingTemplate.value"
 				data-test-id="template-start-empty"
 				@click="wizard.startEmpty()"
+				@keydown.enter.self.prevent="onStartEmptyKey"
+				@keydown.space.self.prevent="onStartEmptyKey"
 			>
 				<div class="font-bold">
 					{{ t('devicesModbusPlugin.wizard.template.startEmpty.title') }}
@@ -134,6 +145,15 @@ const onSelect = async (id: string): Promise<void> => {
 	} catch (error: unknown) {
 		flashMessage.error(error instanceof Error ? error.message : t('devicesModbusPlugin.wizard.template.applyFailed'));
 	}
+};
+
+// The card is dimmed with pointer-events off while a template applies; the keyboard path honours the same lock.
+const onStartEmptyKey = (): void => {
+	if (props.wizard.applyingTemplate.value) {
+		return;
+	}
+
+	props.wizard.startEmpty();
 };
 
 onMounted(async () => {
