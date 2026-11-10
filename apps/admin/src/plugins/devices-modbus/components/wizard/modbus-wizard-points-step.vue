@@ -415,7 +415,7 @@
 				<el-button
 					type="warning"
 					:loading="writing"
-					:disabled="wizard.probeTarget() === null"
+					:disabled="wizard.probeTarget() === null || !writeValueValid"
 					data-test-id="points-test-write-run"
 					@click="onTestWrite"
 				>
@@ -478,6 +478,9 @@ defineOptions({
 });
 
 const props = defineProps<IModbusWizardPointsStepProps>();
+
+// The probe API reads at most this many points in one request.
+const MAX_POINTS = 256;
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
@@ -573,10 +576,20 @@ const addParse = computed<AddParse>(() => {
 	}
 });
 
-const addError = computed<string | null>(() => (addParse.value.ok ? null : addParse.value.error));
+const addError = computed<string | null>(() => {
+	if (!addParse.value.ok) {
+		return addParse.value.error;
+	}
+
+	return state.points.length + addParse.value.parsed.count > MAX_POINTS
+		? t('devicesModbusPlugin.wizard.points.errors.tooManyTotal', { max: MAX_POINTS, free: Math.max(0, MAX_POINTS - state.points.length) })
+		: null;
+});
 
 const addPreview = computed<{ count: number; start: number; registerType: DevicesModbusPluginRegisterType } | null>(() =>
-	addParse.value.ok ? { count: addParse.value.parsed.count, start: addParse.value.parsed.start, registerType: addParse.value.registerType } : null
+	addParse.value.ok && addError.value === null
+		? { count: addParse.value.parsed.count, start: addParse.value.parsed.start, registerType: addParse.value.registerType }
+		: null
 );
 
 const takenIdentifiers = (): string[] => [
@@ -585,7 +598,7 @@ const takenIdentifiers = (): string[] => [
 ];
 
 const onAdd = (): void => {
-	if (!addParse.value.ok) {
+	if (!addParse.value.ok || addError.value !== null) {
 		return;
 	}
 
@@ -642,6 +655,19 @@ const writeOptions = computed<(string | number | boolean)[] | null>(() => {
 	return map && map.length > 0 ? [...new Set(map.map((entry) => entry.value))] : null;
 });
 
+// A cleared number input is null/undefined; a value-map binding only accepts a value of its write map.
+const writeValueValid = computed<boolean>(() => {
+	if (writeOptions.value !== null) {
+		return writeOptions.value.includes(writeValue.value);
+	}
+
+	if (writePoint.value?.dataType === 'bool') {
+		return typeof writeValue.value === 'boolean';
+	}
+
+	return typeof writeValue.value === 'number' && Number.isFinite(writeValue.value);
+});
+
 const onOpenTestWrite = (point: ModbusPoint): void => {
 	writeKey.value = point.key;
 
@@ -654,7 +680,7 @@ const onTestWrite = async (): Promise<void> => {
 	const point = writePoint.value;
 	const target = props.wizard.probeTarget();
 
-	if (point === null || point.write === null || target === null || writing.value) {
+	if (point === null || point.write === null || target === null || writing.value || !writeValueValid.value) {
 		return;
 	}
 

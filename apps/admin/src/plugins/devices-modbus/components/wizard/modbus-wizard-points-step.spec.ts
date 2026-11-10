@@ -113,6 +113,50 @@ describe('ModbusWizardPointsStep', () => {
 		expect(wizard.state.points[0].read?.registerType).toBe(DevicesModbusPluginRegisterType.coil);
 	});
 
+	it('refuses to grow beyond 256 points', async () => {
+		const wizard = wizardWithEndpoint();
+		wizard.setNotation('pdu');
+		const wrapper = mountStep(wizard);
+
+		await addRange(wrapper, '0-199');
+		await addRange(wrapper, '200-299');
+
+		expect(wizard.state.points).toHaveLength(200);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="points-add-preview"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="points-add"]').attributes('disabled')).toBeDefined();
+
+		await addRange(wrapper, '200-255');
+
+		expect(wizard.state.points).toHaveLength(256);
+	});
+
+	it('stops auto refresh when the step unmounts', async () => {
+		vi.useFakeTimers();
+
+		try {
+			const wizard = wizardWithEndpoint();
+			wizard.setNotation('pdu');
+			const wrapper = mountStep(wizard);
+
+			await addRange(wrapper, '0-1');
+			await wrapper.find('[data-test-id="points-auto-refresh"] input').setValue(true);
+			await vi.advanceTimersByTimeAsync(4100);
+
+			const calls = readPoints.mock.calls.length;
+
+			expect(calls).toBeGreaterThanOrEqual(2);
+
+			wrapper.unmount();
+			await vi.advanceTimersByTimeAsync(20000);
+
+			expect(readPoints).toHaveBeenCalledTimes(calls);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not continue without a read binding', () => {
 		const wizard = wizardWithEndpoint();
 
@@ -209,6 +253,27 @@ describe('ModbusWizardPointsStep', () => {
 			expect(write).toHaveBeenCalledTimes(1);
 			expect(readPoints).not.toHaveBeenCalled();
 			expect(flash.error).toHaveBeenCalled();
+		});
+
+		it('does not confirm or write when the value input is cleared', async () => {
+			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
+			const { wizard, wrapper } = await setup();
+
+			wizard.state.points[0].dataType = 'uint16';
+			wizard.state.points[0].write!.dataType = DevicesModbusPluginDataType.uint16;
+			await wrapper.find('[data-test-id="point-test-write-p1"]').trigger('click');
+			await wrapper.find('input[name="testWriteValue"]').setValue('');
+			await flushPromises();
+
+			const run = wrapper.find('[data-test-id="points-test-write-run"]');
+
+			expect(run.attributes('disabled')).toBeDefined();
+
+			await run.trigger('click');
+			await flushPromises();
+
+			expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+			expect(write).not.toHaveBeenCalled();
 		});
 
 		it('names a new device when it has no name yet', async () => {
