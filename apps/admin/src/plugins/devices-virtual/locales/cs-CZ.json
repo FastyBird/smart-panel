@@ -145,6 +145,7 @@
 		"aggregate": "Agregovaný senzor",
 		"transform": "Číselný převod",
 		"group": "Skupina ovladačů",
+		"thermostat": "Termostatický regulátor",
 		"name": "Název",
 		"profile": "Profil výstupu",
 		"temperature": "Teplota (°C)",

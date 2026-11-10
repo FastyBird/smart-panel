@@ -145,6 +145,7 @@
 		"aggregate": "Sensoraggregat",
 		"transform": "Numerische Umrechnung",
 		"group": "Aktorgruppe",
+		"thermostat": "Thermostatregler",
 		"name": "Name",
 		"profile": "Ausgabeprofil",
 		"temperature": "Temperatur (°C)",

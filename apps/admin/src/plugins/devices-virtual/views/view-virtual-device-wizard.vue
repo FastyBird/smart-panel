@@ -148,7 +148,9 @@
 							<el-radio-button :value="DevicesVirtualPluginDeviceMode.actuator_group">
 								{{ t('devicesVirtualPlugin.measurement.group') }}
 							</el-radio-button>
-							<el-radio-button :value="DevicesVirtualPluginDeviceMode.climate_controller">Thermostat controller</el-radio-button>
+							<el-radio-button :value="DevicesVirtualPluginDeviceMode.climate_controller">
+								{{ t('devicesVirtualPlugin.measurement.thermostat') }}
+							</el-radio-button>
 						</el-radio-group>
 					</div>
 					<virtual-wizard-category-step
