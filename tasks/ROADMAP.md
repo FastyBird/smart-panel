@@ -11,6 +11,7 @@ Every open epic has a GitHub milestone and an epic issue whose sub-issues are ti
 | Remote access | Remote access | #897 |
 | UniFi Protect | UniFi Protect | #1175 |
 | Matter | Matter | #1191 |
+| Automations | (not created) | #1555 |
 | Space security domain and activity modes | Space modes and security | #1287 |
 | Animated Buddy face | Buddy face | #1253 |
 | Buddy hardening | Buddy hardening | #1264 |
@@ -472,12 +473,12 @@ tracked as GitHub sub-issues of #1191 (MT-1 … MT-20). Supersedes FEATURE-PLUGI
 
 ## 13c. Automations (Epic)
 
-> [EPIC-AUTOMATIONS](epics/EPIC-AUTOMATIONS.md) — Status: :clipboard: Planned — GitHub tracking not created yet
+> [EPIC-AUTOMATIONS](epics/EPIC-AUTOMATIONS.md) — Status: :clipboard: Planned — GitHub #1555
 
 Let the administrator draw automations on a canvas (When / And / Then blocks wired together, as in Homey Advanced
 Flow) and have the backend run them: a new core `automations` module with a graph model, an event-driven engine and a
-Vue Flow editor in the admin. Analysis and design: `docs/superpowers/specs/2026-11-10-automations-design.md`. Draft
-tasks AU-0 … AU-27 are listed in the epic file.
+Vue Flow editor in the admin. Analysis and design: `docs/superpowers/specs/2026-11-10-automations-design.md`. Tasks
+AU-0 … AU-27 are tracked as GitHub sub-issues of #1555.
 
 | #   | Phase                                                                                              | Scope                        | Status              |
 | --- | -------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------- |

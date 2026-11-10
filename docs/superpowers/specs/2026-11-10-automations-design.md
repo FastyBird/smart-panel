@@ -6,7 +6,7 @@
 
 **Author:** Adam Kadlec (drafted with Claude)
 
-**Related task:** `tasks/epics/EPIC-AUTOMATIONS.md` (GitHub epic not created yet)
+**Related task:** `tasks/epics/EPIC-AUTOMATIONS.md` (GitHub epic https://github.com/FastyBird/smart-panel/issues/1555)
 
 ## Goal
 

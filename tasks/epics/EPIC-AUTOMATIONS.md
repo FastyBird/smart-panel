@@ -1,7 +1,6 @@
 # Task: Automations with a visual flow editor
 
-GitHub tracking is not created yet: the milestone "Automations", the epic issue and the sub-issues below are drafts.
-Issue numbers are filled in when the issues are opened.
+This epic is tracked in GitHub epic #1555. The milestone "Automations" is not created yet.
 
 ID: EPIC-AUTOMATIONS
 Type: epic
@@ -10,7 +9,7 @@ Size: large
 Parent: (none)
 Status: planned
 Created: 2026-11-10
-GitHub: (not created)
+GitHub: #1555
 
 ## 1. Business goal
 
@@ -90,41 +89,41 @@ Flow does, and have the Smart Panel backend run them.
 
 ## 5. Tasks
 
-Draft sub-issues. PR titles are the issue titles unless stated otherwise. Each issue body is the "Scope" and "Done
-when" text below plus a link to this file and the design doc.
+Sub-issues of #1555. PR titles are the issue titles unless stated otherwise. The issue bodies carry the full
+acceptance criteria; the notes below are the summary.
 
 | ID | Issue | Phase | Task | Depends on |
 |---|---|---|---|---|
-| AU-0 | — | 0 | Spike: Vue Flow in the admin build, engine walk prototype, open decisions | — |
-| AU-1 | — | 1 | `feat(backend): add automations module with entity, migration and CRUD API` | AU-0 |
-| AU-2 | — | 1 | `feat(backend): add automation node type registry and graph validation` | AU-1 |
-| AU-3 | — | 1 | `feat(backend): track device state transitions for automation triggers` | AU-2 |
-| AU-4 | — | 1 | `feat(backend): run automation graphs with modes, delays and guards` | AU-2 |
-| AU-5 | — | 1 | `feat(backend): add device, time, scene and notification automation cards` | AU-3, AU-4 |
-| AU-6 | — | 1 | `feat(backend): block safety-reducing actions from automations` | AU-4 |
-| AU-7 | — | 1 | `feat(backend): mark automation commands with their own intent origin` | AU-5 |
-| AU-8 | — | 1 | `refactor(admin): extract device property picker and value input` | — |
-| AU-9 | — | 1 | `feat(admin): add automations module with list and stores` | AU-1 |
-| AU-10 | — | 1 | `feat(admin): add the automation canvas editor` | AU-0, AU-2, AU-9 |
-| AU-11 | — | 1 | `feat(admin): add configuration forms for the first automation cards` | AU-5, AU-8, AU-10 |
-| AU-12 | — | 1 | `test(cross): cover the reference automation scenario end to end` | AU-5, AU-11 |
-| AU-13 | — | 2 | `feat(backend): record automation runs and traces` | AU-4 |
-| AU-14 | — | 2 | `feat(admin): test automations and show live and past runs` | AU-10, AU-13 |
-| AU-15 | — | 2 | `feat(backend): add any, all and wait-until automation blocks` | AU-4 |
-| AU-16 | — | 2 | `feat(backend): add sunrise and sunset automation cards` | AU-5 |
-| AU-17 | — | 2 | `feat(backend): add button, connection, house mode and security automation cards` | AU-5 |
-| AU-18 | — | 2 | `feat(backend): add space occupancy and activity mode automation cards` | AU-5 |
-| AU-19 | — | 2 | `feat(admin): add forms for phase 2 automation cards` | AU-11, AU-15 … AU-18 |
-| AU-20 | — | 2 | `feat(cross): create automations from templates` | AU-11 |
-| AU-21 | — | 3 | `feat(panel): list and toggle a space's automations` | AU-1 |
-| AU-22 | — | 3 | `docs(cross): document automations` | AU-14, AU-19 |
-| AU-23 | — | 4 | `feat(backend): expose automations to Buddy and MCP` | AU-1 |
-| AU-24 | — | 4 | `feat(backend): suggest automations from detected routines` | AU-23 |
-| AU-25 | — | 4 | `feat(sdk): publish the automation node type contract` | AU-2 |
-| AU-26 | — | 4 | `feat(cross): import and export automations as YAML` | AU-10 |
-| AU-27 | — | 2 | Integrated verification on hardware | phase 1 and 2 merged |
+| AU-0 | #1556 | 0 | Spike: Vue Flow in the admin build, engine walk prototype, open decisions | — |
+| AU-1 | #1557 | 1 | `feat(backend): add automations module with entity, migration and CRUD API` | AU-0 |
+| AU-2 | #1558 | 1 | `feat(backend): add automation node type registry and graph validation` | AU-1 |
+| AU-3 | #1559 | 1 | `feat(backend): track device state transitions for automation triggers` | AU-2 |
+| AU-4 | #1560 | 1 | `feat(backend): run automation graphs with modes, delays and guards` | AU-2 |
+| AU-5 | #1561 | 1 | `feat(backend): add device, time, scene and notification automation cards` | AU-3, AU-4 |
+| AU-6 | #1562 | 1 | `feat(backend): block safety-reducing actions from automations` | AU-4 |
+| AU-7 | #1563 | 1 | `feat(backend): mark automation commands with their own intent origin` | AU-5 |
+| AU-8 | #1564 | 1 | `refactor(admin): extract device property picker and value input` | — |
+| AU-9 | #1566 | 1 | `feat(admin): add automations module with list and stores` | AU-1 |
+| AU-10 | #1567 | 1 | `feat(admin): add the automation canvas editor` | AU-0, AU-2, AU-9 |
+| AU-11 | #1568 | 1 | `feat(admin): add configuration forms for the first automation cards` | AU-5, AU-8, AU-10 |
+| AU-12 | #1569 | 1 | `test(cross): cover the reference automation scenario end to end` | AU-5, AU-11 |
+| AU-13 | #1570 | 2 | `feat(backend): record automation runs and traces` | AU-4 |
+| AU-14 | #1571 | 2 | `feat(admin): test automations and show live and past runs` | AU-10, AU-13 |
+| AU-15 | #1572 | 2 | `feat(backend): add any, all and wait-until automation blocks` | AU-4 |
+| AU-16 | #1573 | 2 | `feat(backend): add sunrise and sunset automation cards` | AU-5 |
+| AU-17 | #1574 | 2 | `feat(backend): add button, connection, house mode and security automation cards` | AU-5 |
+| AU-18 | #1575 | 2 | `feat(backend): add space occupancy and activity mode automation cards` | AU-5 |
+| AU-19 | #1584 | 2 | `feat(admin): add forms for phase 2 automation cards` | AU-11, AU-15 … AU-18 |
+| AU-20 | #1576 | 2 | `feat(cross): create automations from templates` | AU-11 |
+| AU-21 | #1577 | 3 | `feat(panel): list and toggle a space's automations` | AU-1 |
+| AU-22 | #1578 | 3 | `docs(cross): document automations` | AU-14, AU-19 |
+| AU-23 | #1579 | 4 | `feat(backend): expose automations to Buddy and MCP` | AU-1 |
+| AU-24 | #1580 | 4 | `feat(backend): suggest automations from detected routines` | AU-23 |
+| AU-25 | #1581 | 4 | `feat(sdk): publish the automation node type contract` | AU-2 |
+| AU-26 | #1582 | 4 | `feat(cross): import and export automations as YAML` | AU-10 |
+| AU-27 | #1583 | 2 | Integrated verification on hardware | phase 1 and 2 merged |
 
-### Issue drafts
+### Issue summaries
 
 **AU-0 — Spike: Vue Flow in the admin build, engine walk prototype, open decisions**
 Scope: render the reference scenario with `@vue-flow/core` inside the admin (Vue 3.5, Vite 8, dark mode, Home
