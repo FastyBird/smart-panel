@@ -4,6 +4,7 @@ import {
 	closeSync,
 	existsSync,
 	fstatSync,
+	lstatSync,
 	openSync,
 	readFileSync,
 	readdirSync,
@@ -179,7 +180,9 @@ export class DefinitionLoader<T> {
 			}
 
 			for (const entry of entries) {
-				if (entry.isDirectory()) {
+				// The listing can be stale: re-check without following links before descending, so an entry
+				// swapped for a symlink after readdirSync is reported below instead of walked.
+				if (entry.isDirectory() && (!recursive || isRealDirectory(join(directory, entry.name)))) {
 					if (recursive) {
 						walk(join(directory, entry.name));
 					}
@@ -187,7 +190,11 @@ export class DefinitionLoader<T> {
 					continue;
 				}
 
-				if (entry.isSymbolicLink() && recursive && isDirectoryLink(join(directory, entry.name))) {
+				if (
+					(entry.isSymbolicLink() || entry.isDirectory()) &&
+					recursive &&
+					isDirectoryLink(join(directory, entry.name))
+				) {
 					files.push({
 						source,
 						path: relative(root, join(directory, entry.name)),
@@ -326,6 +333,14 @@ function isInside(root: string, file: string): boolean {
 	const fromRoot = relative(root, file);
 
 	return fromRoot !== '' && fromRoot !== '..' && !fromRoot.startsWith('..' + sep) && !isAbsolute(fromRoot);
+}
+
+function isRealDirectory(path: string): boolean {
+	try {
+		return lstatSync(path).isDirectory();
+	} catch {
+		return false;
+	}
 }
 
 function isDirectoryLink(path: string): boolean {

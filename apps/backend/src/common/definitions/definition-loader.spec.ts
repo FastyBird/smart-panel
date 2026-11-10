@@ -1,9 +1,17 @@
 import { execFileSync } from 'child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
+import { Dirent, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 
 import { DefinitionLoader, DefinitionLoaderOptions } from './definition-loader';
+
+jest.mock('fs', () => {
+	const actual = jest.requireActual<typeof import('fs')>('fs');
+
+	return { ...actual, readdirSync: jest.fn(actual.readdirSync) };
+});
+
+const actualFs = jest.requireActual<typeof import('fs')>('fs');
 
 interface Item {
 	id: string;
@@ -211,6 +219,49 @@ describe('DefinitionLoader', () => {
 				warnings: [],
 			},
 		]);
+	});
+
+	it('does not descend into a directory swapped for a symlink after listing', () => {
+		const target = join(root, 'elsewhere');
+
+		write(join(target, 'x.yaml'), file('x'));
+		symlinkSync(target, join(builtinDir, 'linked'));
+
+		const listedRoot = actualFs.realpathSync(builtinDir);
+
+		jest.mocked(readdirSync).mockImplementation(((path: string, options: { withFileTypes: true }) => {
+			const entries = actualFs.readdirSync(path, options);
+
+			// Simulate a listing taken while `linked` was still a real directory.
+			return path === listedRoot
+				? entries.map((entry) =>
+						entry.name === 'linked'
+							? Object.assign(Object.create(Object.getPrototypeOf(entry) as object) as Dirent, entry, {
+									isDirectory: () => true,
+									isSymbolicLink: () => false,
+								})
+							: entry,
+					)
+				: entries;
+		}) as unknown as typeof readdirSync);
+
+		try {
+			const result = loader().load();
+
+			expect(jest.mocked(readdirSync)).toHaveBeenCalledWith(listedRoot, { withFileTypes: true });
+			expect(result.definitions).toEqual([]);
+			expect(result.files).toEqual([
+				{
+					source: 'builtin',
+					path: 'linked',
+					loaded: 0,
+					errors: ['symbolic link to a directory is not followed'],
+					warnings: [],
+				},
+			]);
+		} finally {
+			jest.mocked(readdirSync).mockImplementation(actualFs.readdirSync);
+		}
 	});
 
 	it('loads a file whose name starts with two dots', () => {

@@ -71,7 +71,7 @@ export class ModbusTemplatesController {
 		tags: [DEVICES_MODBUS_API_TAG_NAME],
 		summary: 'Preview a Modbus device template',
 		description:
-			'Expands a template into the device structure it would create, with an optional unit ID and poll interval. Nothing is stored; the result can be sent to the device creation route together with an endpoint ID and a name.',
+			'Expands a template into the device structure it would create, with an optional unit ID and poll interval. Nothing is stored; without endpoint_defaults, the result can be sent to the device creation route together with an endpoint ID and a name.',
 		operationId: 'create-devices-modbus-plugin-template-preview',
 	})
 	@ApiParam({ name: 'id', type: 'string', description: 'Template ID', example: 'qingjun-32di' })
