@@ -116,6 +116,18 @@ export class SupersededGraphValidationError extends Error {
 	}
 }
 
+/**
+ * The same contention, met after the graph was validated and published: a newer pass took over before
+ * the completion observers ran. It stays a validation exception for the write paths that already
+ * handle one, and startup retries it like any other superseded pass.
+ */
+export class SupersededCompletedGraphException extends DevicesValidationException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'SupersededCompletedGraphException';
+	}
+}
+
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
@@ -679,7 +691,8 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 				await this.refreshQuarantine();
 				return;
 			} catch (error) {
-				if (!(error instanceof SupersededGraphValidationError)) throw error;
+				if (!(error instanceof SupersededGraphValidationError) && !(error instanceof SupersededCompletedGraphException))
+					throw error;
 				if (attempt >= VirtualDependencyGraphService.BOOTSTRAP_VALIDATION_ATTEMPTS) {
 					this.logger.error(
 						'Startup graph validation kept being superseded by concurrent structural writes; derived values remain unavailable until the next successful validation.',
@@ -887,7 +900,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			const published = this.capturePublishGuard();
 			const current = () => admission.current() && published() && this.isRevisionCurrent(snapshot.revision);
 			for (const { pin } of invokeOrdinary ? admission.completions : []) {
-				if (!current()) throw new DevicesValidationException('Original completed graph expired.');
+				if (!current()) throw new SupersededCompletedGraphException('Original completed graph expired.');
 				await invokeCreation(pin.values.complete, pin.receiver, snapshot.revision, current);
 			}
 			if (invokeOrdinary && admission.completions.length) await verify();

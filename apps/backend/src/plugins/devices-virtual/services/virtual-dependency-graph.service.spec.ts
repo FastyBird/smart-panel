@@ -22,7 +22,11 @@ import {
 } from '../entities/devices-virtual.entity';
 import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
 
-import { SupersededGraphValidationError, VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import {
+	SupersededCompletedGraphException,
+	SupersededGraphValidationError,
+	VirtualDependencyGraphService,
+} from './virtual-dependency-graph.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 
 const gate = () => {
@@ -132,6 +136,37 @@ describe('actual native graph and owned producer-state publication', () => {
 		expect(failures).toHaveLength(1);
 		expect(failures[0]).toBeInstanceOf(SupersededGraphValidationError);
 		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(graph.isValidated()).toBe(true);
+	});
+	it('retries a startup validation that was superseded before its completion observers ran', async () => {
+		const internals = graph as unknown as { validationGeneration: number };
+		const original: () => Promise<void> = graph.refreshQuarantine.bind(graph) as () => Promise<void>;
+		const failures: unknown[] = [];
+		let armed = false;
+		const refresh = jest.spyOn(graph, 'refreshQuarantine').mockImplementation(() =>
+			original().catch((cause: unknown) => {
+				failures.push(cause);
+				throw cause;
+			}),
+		);
+		// The first observer stands in for a structural write landing between two completions.
+		graph.observeCompletion(() => {
+			if (!armed) return Promise.resolve();
+			armed = false;
+			internals.validationGeneration++;
+			return Promise.resolve();
+		});
+		const later = jest.fn(() => Promise.resolve());
+		graph.observeCompletion(later);
+		await state.onModuleInit();
+		refresh.mockClear();
+		later.mockClear();
+		armed = true;
+		await expect(graph.onApplicationBootstrap()).resolves.toBeUndefined();
+		expect(failures).toHaveLength(1);
+		expect(failures[0]).toBeInstanceOf(SupersededCompletedGraphException);
+		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(later).toHaveBeenCalledTimes(1);
 		expect(graph.isValidated()).toBe(true);
 	});
 	it('retries a startup validation whose snapshot is older than one a newer pass already published', async () => {
