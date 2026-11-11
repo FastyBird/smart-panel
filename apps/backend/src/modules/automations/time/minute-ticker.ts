@@ -117,8 +117,9 @@ export class MinuteTicker {
 			}
 		}
 
-		// A listener may have released the last subscription
-		if (this.running) this.schedule();
+		// A listener may have released the last subscription - and may have subscribed again after that,
+		// which already set the timer
+		if (this.running && this.timer === undefined) this.schedule();
 	}
 
 	private emit(minuteStart: number): void {

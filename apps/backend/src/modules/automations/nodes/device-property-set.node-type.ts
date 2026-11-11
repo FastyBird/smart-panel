@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsObject, ValidateNested } from 'class-validator';
 
 import {
 	AutomationActionNodeType,
@@ -40,6 +40,8 @@ export class DevicePropertySetConfigDto {
 	@ArrayMaxSize(DEVICE_PROPERTY_SET_MAX_WRITES, {
 		message: `[{"field":"writes","reason":"At most ${DEVICE_PROPERTY_SET_MAX_WRITES} values can be set by one action."}]`,
 	})
+	// A list inside the list would pass the nested check unseen: it is checked item by item, and has none
+	@IsObject({ each: true, message: '[{"field":"writes","reason":"Each value to set must be an object."}]' })
 	@ValidateNested({ each: true })
 	@Type(() => DevicePropertyWriteDto)
 	writes: DevicePropertyWriteDto[];

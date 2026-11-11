@@ -45,16 +45,32 @@ const isReachable = (status: ConnectionState | undefined, online?: boolean): boo
 /**
  * The reading of a property as a value of its data type, or null when it can not be one. An integration may
  * report the value of a numeric property as a text; the devices module stores it as a number, so it is read
- * back as a number after a restart, and it is a number here too. Other data types are taken as reported.
+ * back as a number after a restart, and it is a number here too. The devices module keeps what was reported
+ * for a yes/no property as it came, so a text "true" or "false" is read as the yes/no value it spells - the
+ * texts the devices module takes as a yes/no command - and anything else is not a reading: a card compares
+ * with a yes/no value, which no text and no number is equal to. Other data types are taken as reported.
  */
 const readingOfType = (value: TrackedValue, dataType: DataTypeType | null | undefined): TrackedValue | null => {
-	if (propertyValueKind(dataType) !== 'number' || typeof value === 'number') return value;
+	switch (propertyValueKind(dataType)) {
+		case 'number': {
+			if (typeof value === 'number') return value;
 
-	if (typeof value !== 'string' || value.trim() === '') return null;
+			if (typeof value !== 'string' || value.trim() === '') return null;
 
-	const parsed = Number(value);
+			const parsed = Number(value);
 
-	return Number.isFinite(parsed) ? parsed : null;
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+		case 'boolean': {
+			if (typeof value === 'boolean') return value;
+
+			const text = typeof value === 'string' ? value.trim().toLowerCase() : null;
+
+			return text === 'true' ? true : text === 'false' ? false : null;
+		}
+		default:
+			return value;
+	}
 };
 
 /**

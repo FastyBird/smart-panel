@@ -151,6 +151,34 @@ describe('MinuteTicker', () => {
 		expect(clock.pending()).toBe(0);
 	});
 
+	it('keeps one timer when a listener releases the last subscription and subscribes again during a tick', () => {
+		let release: () => void = () => undefined;
+
+		const listener = (minute: number): void => {
+			seen.push(minute);
+
+			// What re-arming a time trigger from inside its own tick does
+			release();
+			release = ticker.subscribe(listener);
+		};
+
+		release = ticker.subscribe(listener);
+
+		clock.advanceMinutes(1);
+
+		expect(clock.pending()).toBe(1);
+
+		clock.advanceMinutes(2);
+
+		expect(iso(seen)).toEqual(['2026-03-02T07:00:00.000Z', '2026-03-02T07:01:00.000Z', '2026-03-02T07:02:00.000Z']);
+		expect(clock.pending()).toBe(1);
+
+		release();
+
+		expect(clock.pending()).toBe(0);
+		expect(ticker.isRunning()).toBe(false);
+	});
+
 	it('drops everything on dispose', () => {
 		listen();
 		ticker.dispose();

@@ -759,6 +759,23 @@ describe('AutomationStateTrackerService', () => {
 			expect(snapshot('20', DataTypeType.STRING)).toEqual({ value: '20', valid: true });
 			expect(snapshot('20')).toEqual({ value: '20', valid: true });
 		});
+
+		it('reads the value of a yes/no property that was reported as a text as a yes/no value', () => {
+			const snapshot = (value: string | number | boolean, dataType?: DataTypeType): unknown =>
+				toStateSnapshot(new PropertyValueState(value), dataType);
+
+			expect(snapshot(false, DataTypeType.BOOL)).toEqual({ value: false, valid: true });
+			expect(snapshot('false', DataTypeType.BOOL)).toEqual({ value: false, valid: true });
+			expect(snapshot(' TRUE ', DataTypeType.BOOL)).toEqual({ value: true, valid: true });
+
+			// Not a yes/no value: kept as reported, and not valid
+			expect(snapshot('maybe', DataTypeType.BOOL)).toEqual({ value: 'maybe', valid: false });
+			expect(snapshot('', DataTypeType.BOOL)).toEqual({ value: '', valid: false });
+			expect(snapshot(0, DataTypeType.BOOL)).toEqual({ value: 0, valid: false });
+
+			// A property whose data type is not known is taken as reported
+			expect(snapshot('false')).toEqual({ value: 'false', valid: true });
+		});
 	});
 
 	it('compares a numeric property that reports its value as a text as a number', async () => {
@@ -780,5 +797,54 @@ describe('AutomationStateTrackerService', () => {
 		reported('not-a-number');
 
 		expect(service.read('temp')).toEqual({ status: 'invalid', value: 'not-a-number' });
+	});
+
+	it('compares a yes/no property that reports its value as a text as a yes/no value', async () => {
+		addProperty('door', true);
+		service.watch({ propertyId: 'door', to: false }, fire);
+		await service.settled();
+
+		const reported = (value: Value): boolean =>
+			emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+				...entity('door', value),
+				dataType: DataTypeType.BOOL,
+			});
+
+		reported('false');
+
+		expect(service.read('door')).toEqual({ status: 'ok', value: false });
+		expect(fired).toEqual([{ propertyId: 'door', from: true, to: false }]);
+
+		// Neither yes nor no: not a reading a condition may act on, and not a change a trigger fires for
+		reported('ajar');
+
+		expect(service.read('door')).toEqual({ status: 'invalid', value: 'ajar' });
+
+		reported(1);
+
+		expect(service.read('door')).toEqual({ status: 'invalid', value: 1 });
+		expect(fired).toHaveLength(1);
+	});
+
+	it('reads the baseline of a yes/no property that holds a text as a yes/no value', async () => {
+		const withDataType = (id: string): ChannelPropertyEntity =>
+			({
+				id,
+				dataType: DataTypeType.BOOL,
+				channel: { id: `channel-of-${id}`, device: { id: `device-of-${id}` } },
+			}) as ChannelPropertyEntity;
+
+		findOne.mockImplementation((id: string) => Promise.resolve(withDataType(id)));
+		addProperty('door', 'false');
+		addProperty('window', 'ajar');
+
+		const releases = [service.reference('door'), service.reference('window')];
+
+		await service.settled();
+
+		expect(service.read('door')).toEqual({ status: 'ok', value: false });
+		expect(service.read('window')).toEqual({ status: 'invalid', value: 'ajar' });
+
+		for (const release of releases) release();
 	});
 });
