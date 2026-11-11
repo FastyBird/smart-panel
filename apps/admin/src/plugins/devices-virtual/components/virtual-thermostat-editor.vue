@@ -494,7 +494,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -550,7 +550,7 @@ import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
 import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
 
 const props = defineProps<{ deviceId?: string; create?: boolean }>();
-const emit = defineEmits<{ created: [deviceId: string] }>();
+const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
 const backend = useBackend();
 const sockets = injectSockets();
 let alive = true;
@@ -639,6 +639,9 @@ const loading = ref(false);
 const mutationBusy = ref(false);
 const previewBusy = ref(false);
 const busy = computed(() => mutationBusy.value || previewBusy.value);
+// The wizard shell holds navigation while a save is in flight: leaving would unmount this editor and
+// drop the response of a request the backend still completes.
+watch(mutationBusy, (value) => emit('busy', value), { immediate: true });
 const loadError = ref<string | null>(null);
 const requestError = ref<string | null>(null);
 const previewGate = useThermostatPreviewGate(
@@ -776,8 +779,14 @@ const save = async (): Promise<void> => {
 				body: { device: creationGraph().device, configuration: result.request },
 			});
 			if (!alive || ticket !== requestSequence) return;
-			if (data) emit('created', data.data.device.id);
-			else requestError.value = errorText(error);
+			if (data) {
+				// Release the shell before announcing the device: the parent navigates on `created`, and
+				// the shell refuses to leave while it still believes a save is in flight.
+				mutationBusy.value = false;
+				await nextTick();
+				if (!alive || ticket !== requestSequence) return;
+				emit('created', data.data.device.id);
+			} else requestError.value = errorText(error);
 			return;
 		}
 		const { data, error } = await backend.client.PUT(path, { params: { path: { id: props.deviceId! } }, body: result.request });

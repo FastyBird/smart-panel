@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 
 import type { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../../openapi.constants';
 
@@ -33,4 +33,4 @@ export interface IVirtualWizardState {
 }
 
 // CSS selector of the element in the wizard shell's chrome that step navigation is teleported into.
-export const virtualWizardActionsKey: InjectionKey<string> = Symbol('virtual-wizard-actions');
+export const virtualWizardActionsKey: InjectionKey<Ref<string>> = Symbol('virtual-wizard-actions');

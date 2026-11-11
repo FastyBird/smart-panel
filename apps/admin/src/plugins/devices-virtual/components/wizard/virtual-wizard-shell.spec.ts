@@ -62,7 +62,8 @@ describe('virtual wizard shell', () => {
 	it('offers the step navigation a place in the header', () => {
 		const wrapper = mountShell();
 
-		expect(wrapper.find('#virtual-wizard-actions').exists()).toBe(true);
+		expect(wrapper.find('#virtual-wizard-header-actions').exists()).toBe(true);
+		expect(wrapper.find('#virtual-wizard-footer-actions').exists()).toBe(false);
 	});
 
 	it.each([

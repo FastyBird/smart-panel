@@ -66,4 +66,19 @@ describe('LocationReplaceInterceptor', () => {
 		expect(body.data.url).toMatch(/\/devices$/);
 		expect(body.data.url).not.toContain(':baseUrl');
 	});
+
+	it('writes every replacement to the copy when only one property is read-only', async () => {
+		const body: Record<string, unknown> = {};
+		Object.defineProperty(body, 'self', { value: ':baseUrl/a', enumerable: true, writable: false });
+		body.next = ':baseUrl/b';
+
+		const result = (await run({ data: body })) as { data: Record<string, string> };
+
+		expect(result.data.self).toMatch(/\/a$/);
+		expect(result.data.next).toMatch(/\/b$/);
+		expect(result.data.self).not.toContain(':baseUrl');
+		expect(result.data.next).not.toContain(':baseUrl');
+		// The original is left untouched once a copy is needed.
+		expect(body.next).toBe(':baseUrl/b');
+	});
 });

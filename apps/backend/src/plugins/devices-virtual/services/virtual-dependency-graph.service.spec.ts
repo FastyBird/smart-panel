@@ -22,7 +22,7 @@ import {
 } from '../entities/devices-virtual.entity';
 import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
 
-import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { SupersededGraphValidationError, VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 
 const gate = () => {
@@ -91,13 +91,17 @@ describe('actual native graph and owned producer-state publication', () => {
 		const original: () => Promise<void> = graph.refreshQuarantine.bind(graph) as () => Promise<void>;
 		const refresh = jest
 			.spyOn(graph, 'refreshQuarantine')
-			.mockRejectedValueOnce(new Error('Original graph publication expired'))
-			.mockRejectedValueOnce(new Error('Original durable graph publication changed'))
+			.mockRejectedValueOnce(new SupersededGraphValidationError('Original graph publication expired'))
+			.mockRejectedValueOnce(new SupersededGraphValidationError('Original durable graph publication changed'))
 			.mockImplementation(original);
 		await state.onModuleInit();
 		await expect(graph.onApplicationBootstrap()).resolves.toBeUndefined();
 		expect(refresh).toHaveBeenCalledTimes(3);
 		expect(graph.isValidated()).toBe(true);
+	});
+	it('does not mistake an ordinary error with similar wording for contention', async () => {
+		jest.spyOn(graph, 'refreshQuarantine').mockRejectedValue(new Error('Original graph publication expired'));
+		await expect(graph.onApplicationBootstrap()).rejects.toThrow('Original graph publication expired');
 	});
 	it('still aborts boot when startup validation finds a fault rather than contention', async () => {
 		jest.spyOn(graph, 'refreshQuarantine').mockRejectedValue(new Error('Producer state installation refused'));

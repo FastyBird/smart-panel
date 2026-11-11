@@ -104,6 +104,18 @@ function ownGraphView<T>(value: T): T {
 }
 
 /** Database writer reservation precedes all graph validation, including across independent processes. */
+/**
+ * A validation pass that lost its admission to a newer one, or whose snapshot moved under it — as
+ * opposed to one that found a fault in the graph. Raised by type so that startup can tell contention
+ * (retry) from a defect (abort) without depending on the wording of a message.
+ */
+export class SupersededGraphValidationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'SupersededGraphValidationError';
+	}
+}
+
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
@@ -667,7 +679,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 				await this.refreshQuarantine();
 				return;
 			} catch (error) {
-				if (!VirtualDependencyGraphService.isSupersededValidation(error)) throw error;
+				if (!(error instanceof SupersededGraphValidationError)) throw error;
 				if (attempt >= VirtualDependencyGraphService.BOOTSTRAP_VALIDATION_ATTEMPTS) {
 					this.logger.error(
 						'Startup graph validation kept being superseded by concurrent structural writes; derived values remain unavailable until the next successful validation.',
@@ -684,13 +696,6 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 
 	private static readonly BOOTSTRAP_VALIDATION_ATTEMPTS = 8;
 	private static readonly BOOTSTRAP_VALIDATION_DELAY_MS = 250;
-
-	/** A validation pass that lost its admission to a newer one, as opposed to one that found a fault. */
-	private static isSupersededValidation(error: unknown): boolean {
-		return (
-			error instanceof Error && /publication (expired|changed)|preparation expired|slot changed/i.test(error.message)
-		);
-	}
 
 	/** Explicit/startup validation also refreshes activated runtime outputs. */
 	async refreshQuarantine(): Promise<void> {
@@ -756,10 +761,11 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			const snapshot = ownGraphView(await read.values.readPublicationSnapshot.call(read.receiver));
 			const snapshotBytes = JSON.stringify(snapshot);
 			const verify = async () => {
-				if (!read.current() || !admission.current()) throw new Error('Original graph publication expired');
+				if (!read.current() || !admission.current())
+					throw new SupersededGraphValidationError('Original graph publication expired');
 				const latest = await read.values.readPublicationSnapshot.call(read.receiver);
 				if (!read.current() || !admission.current() || JSON.stringify(latest) !== snapshotBytes)
-					throw new Error('Original durable graph publication changed');
+					throw new SupersededGraphValidationError('Original durable graph publication changed');
 			};
 			const initialEligibilityFailure =
 				!admission.current() ||
@@ -823,7 +829,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			try {
 				await verify();
 				if (!stages.every((stage) => stage.current() && invokeCreation(stage.values.validate, stage.receiver)))
-					throw new Error('Original producer state slot changed');
+					throw new SupersededGraphValidationError('Original producer state slot changed');
 			} catch (cause: unknown) {
 				eligibilityFailure ??= { cause };
 			}
@@ -848,7 +854,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			await verify();
 			for (const stage of stages)
 				if (!stage.current() || !invokeCreation(stage.values.validate, stage.receiver))
-					throw new Error('Producer state preparation expired');
+					throw new SupersededGraphValidationError('Producer state preparation expired');
 			for (const stage of stages)
 				if (!invokeCreation(stage.values.install, stage.receiver))
 					throw new Error('Producer state installation refused');
@@ -863,7 +869,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			if (publicationFailure) throw publicationFailure.cause;
 			await verify();
 			if (!stages.every((stage) => stage.current() && invokeCreation(stage.values.validate, stage.receiver)))
-				throw new Error('Original producer state publication expired');
+				throw new SupersededGraphValidationError('Original producer state publication expired');
 			this.quarantineRevision = snapshot.revision;
 			this.validationPending = false;
 			if (activated) {

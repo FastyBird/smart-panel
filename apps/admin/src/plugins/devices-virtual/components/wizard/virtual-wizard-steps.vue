@@ -23,6 +23,7 @@
 	-->
 	<teleport
 		v-if="enabled"
+		:key="actionsTarget ?? 'inline'"
 		defer
 		:to="actionsTarget ?? 'body'"
 		:disabled="actionsTarget === null"
@@ -92,7 +93,11 @@ const emit = defineEmits<{ 'update:modelValue': [step: number] }>();
 
 const { t } = useI18n();
 
-const actionsTarget = inject(virtualWizardActionsKey, null);
+// The shell swaps its target element when the viewport crosses `md`. The teleport is keyed by the
+// selector so that it is mounted afresh then — `defer` resolves a fresh mount after the shell has
+// rendered the new element, whereas an in-place update would look for it before it exists.
+const actionsSelector = inject(virtualWizardActionsKey, null);
+const actionsTarget = computed<string | null>(() => actionsSelector?.value ?? null);
 
 const isLast = computed<boolean>((): boolean => props.modelValue >= props.steps.length - 1);
 </script>

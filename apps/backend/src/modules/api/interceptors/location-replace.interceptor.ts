@@ -103,32 +103,41 @@ export class LocationReplaceInterceptor implements NestInterceptor {
 
 		if (typeof value === 'object') {
 			const record = value as Record<string, unknown>;
-			let copy: Record<string, unknown> | null = null;
+			const replacements: [string, unknown][] = [];
 
 			for (const [k, v] of Object.entries(record)) {
 				const replaced = this.deepReplace(v, fullBaseUrl, depth + 1);
 
-				if (replaced === v) {
-					continue;
+				if (replaced !== v) {
+					replacements.push([k, replaced]);
 				}
+			}
 
-				// Responses may carry frozen objects (shared catalogs, immutable previews). Writing to one
-				// throws in strict mode and turned an otherwise successful request into a 500, so a frozen
-				// object is copied instead — and only when something in it actually changed.
-				if (Object.isFrozen(record) || !Object.getOwnPropertyDescriptor(record, k)?.writable) {
-					copy ??= Object.assign(
+			if (replacements.length === 0) {
+				return value;
+			}
+
+			// Responses may carry frozen objects (shared catalogs, immutable previews). Writing to one
+			// throws in strict mode and turned an otherwise successful request into a 500, so such an
+			// object is copied instead — and only when something in it actually changed. The decision is
+			// made for the object as a whole, before anything is written: every replacement lands in the
+			// copy, and the original is left exactly as it was.
+			const immutable =
+				Object.isFrozen(record) || replacements.some(([k]) => !Object.getOwnPropertyDescriptor(record, k)?.writable);
+			const target = immutable
+				? Object.assign(
 						Object.create(Object.getPrototypeOf(record) as object | null) as Record<string, unknown>,
 						record,
-					);
-					copy[k] = replaced;
-				} else {
-					record[k] = replaced;
-				}
+					)
+				: record;
+
+			for (const [k, replaced] of replacements) {
+				// A copied non-writable property keeps its descriptor only on the original; on the copy it
+				// is an ordinary data property, so plain assignment is enough.
+				target[k] = replaced;
 			}
 
-			if (copy !== null) {
-				return copy;
-			}
+			return target;
 		}
 
 		return value;

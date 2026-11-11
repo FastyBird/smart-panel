@@ -1,13 +1,15 @@
 <template>
-	<virtual-wizard-shell>
+	<virtual-wizard-shell :busy="busy">
 		<virtual-thermostat-editor
 			create
 			@created="onCreated"
+			@busy="busy = $event"
 		/>
 	</virtual-wizard-shell>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { RouteNames as DeviceRouteNames } from '../../../modules/devices';
@@ -24,5 +26,6 @@ defineOptions({
 // so it is no longer offered. Controllers created that way earlier keep their editor on the device
 // detail page.
 const router = useRouter();
+const busy = ref(false);
 const onCreated = (id: string) => router.push({ name: DeviceRouteNames.DEVICE, params: { id } });
 </script>

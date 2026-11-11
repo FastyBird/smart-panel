@@ -54,7 +54,7 @@
 				>
 					{{ t('devicesModule.wizard.actions.cancel') }}
 				</el-button>
-				<div :id="ACTIONS_ID" />
+				<div :id="HEADER_ACTIONS_ID" />
 			</div>
 		</template>
 	</view-header>
@@ -78,7 +78,7 @@
 		>
 			{{ t('devicesModule.wizard.actions.cancel') }}
 		</el-button>
-		<div :id="ACTIONS_ID" />
+		<div :id="FOOTER_ACTIONS_ID" />
 	</div>
 </template>
 
@@ -103,10 +103,12 @@ defineOptions({
 });
 
 // Where the editor's step navigation (Back / Next / Create) is teleported: the header on md+ screens,
-// the bottom bar below that — the same two places the projection wizard keeps its own buttons.
-const ACTIONS_ID = 'virtual-wizard-actions';
-
-provide(virtualWizardActionsKey, `#${ACTIONS_ID}`);
+// the bottom bar below that — the same two places the projection wizard keeps its own buttons. The two
+// places are different elements that replace each other when the viewport crosses `md`, so each has
+// its own id and the selector is provided as a ref: a teleport bound to one fixed selector would keep
+// its content in the element that has just been removed.
+const HEADER_ACTIONS_ID = 'virtual-wizard-header-actions';
+const FOOTER_ACTIONS_ID = 'virtual-wizard-footer-actions';
 
 // The page chrome of the projection wizard (app bar, breadcrumbs, header, Cancel) for the kinds that
 // are authored by a single editor rather than by the four projection steps. Without it those editors
@@ -118,6 +120,11 @@ const props = defineProps<{ busy?: boolean }>();
 const { t } = useI18n();
 const router = useRouter();
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+provide(
+	virtualWizardActionsKey,
+	computed<string>(() => `#${isMDDevice.value ? HEADER_ACTIONS_ID : FOOTER_ACTIONS_ID}`)
+);
 
 useMeta({
 	title: t('devicesVirtualPlugin.wizard.title'),
