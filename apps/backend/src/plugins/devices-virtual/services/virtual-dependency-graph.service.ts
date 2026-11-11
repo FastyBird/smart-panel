@@ -776,8 +776,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 					: !admission.current()
 						? { cause: new SupersededGraphValidationError('Original graph revision changed') }
 						: undefined;
+			// A newer pass published while this one was still reading: this snapshot is simply stale, so
+			// the pass is superseded and startup retries it with a fresh read.
 			if (snapshot.revision < this.quarantineRevision)
-				throw new Error('Graph validation snapshot is older than the applied revision');
+				throw new SupersededGraphValidationError('Graph validation snapshot is older than the applied revision');
 			const quarantined = new Set<string>();
 			const neighbors = new Map<string, Set<string>>();
 			for (const edge of snapshot.edges) {

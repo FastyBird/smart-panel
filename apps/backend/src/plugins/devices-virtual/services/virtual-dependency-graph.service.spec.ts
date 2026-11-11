@@ -134,6 +134,39 @@ describe('actual native graph and owned producer-state publication', () => {
 		expect(refresh).toHaveBeenCalledTimes(2);
 		expect(graph.isValidated()).toBe(true);
 	});
+	it('retries a startup validation whose snapshot is older than one a newer pass already published', async () => {
+		const internals = graph as unknown as { readPublicationSnapshot: () => Promise<{ revision: number }> };
+		const read: () => Promise<{ revision: number }> = internals.readPublicationSnapshot.bind(graph) as () => Promise<{
+			revision: number;
+		}>;
+		const original: () => Promise<void> = graph.refreshQuarantine.bind(graph) as () => Promise<void>;
+		const failures: unknown[] = [];
+		let armed = false;
+		const refresh = jest.spyOn(graph, 'refreshQuarantine').mockImplementation(() =>
+			original().catch((cause: unknown) => {
+				failures.push(cause);
+				throw cause;
+			}),
+		);
+		jest.spyOn(internals, 'readPublicationSnapshot').mockImplementation(async () => {
+			const snapshot = await read();
+			if (!armed) return snapshot;
+			armed = false;
+			// The read that was held while a newer pass published: its revision is behind the applied one.
+			return { ...snapshot, revision: snapshot.revision - 1 };
+		});
+		await state.onModuleInit();
+		// A newer pass has already published the current revision.
+		await original();
+		expect(graph.isValidated()).toBe(true);
+		refresh.mockClear();
+		armed = true;
+		await expect(graph.onApplicationBootstrap()).resolves.toBeUndefined();
+		expect(failures).toHaveLength(1);
+		expect(failures[0]).toBeInstanceOf(SupersededGraphValidationError);
+		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(graph.isValidated()).toBe(true);
+	});
 	it('does not mistake an ordinary error with similar wording for contention', async () => {
 		jest.spyOn(graph, 'refreshQuarantine').mockRejectedValue(new Error('Original graph publication expired'));
 		await expect(graph.onApplicationBootstrap()).rejects.toThrow('Original graph publication expired');
