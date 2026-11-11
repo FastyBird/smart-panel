@@ -492,6 +492,13 @@ export class ModbusProbeService {
 			const connection = this.connections.get(endpoint.id);
 
 			if (connection) {
+				// A connection not yet rebuilt after an update may still reach the previous host, port or framing.
+				if (!this.connections.isCurrent(endpoint)) {
+					throw new ModbusEndpointUnavailableError(
+						'Endpoint connection is being rebuilt with new settings; try again shortly.',
+					);
+				}
+
 				return work(this.guard(connection, connection.framing));
 			}
 

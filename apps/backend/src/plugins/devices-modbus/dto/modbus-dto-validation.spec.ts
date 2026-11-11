@@ -105,6 +105,17 @@ describe('Modbus DTO validation', () => {
 			expect(await fieldErrors(ProbeModbusWriteDto, 'binding', undefined)).not.toEqual([]);
 		});
 
+		it('refuses array elements as points and arrays as data or bindings', async () => {
+			const points = await validate(plainToInstance(ReqProbeModbusPointsDto, { data: { unit_id: 1, points: [[]] } }));
+			const pointErrors = points.find((error) => error.property === 'data')?.children ?? [];
+
+			expect(pointErrors.map((error) => error.property)).toContain('points');
+			expect(
+				(await validate(plainToInstance(ReqProbeModbusReadDto, { data: [] }))).map((error) => error.property),
+			).toEqual(['data']);
+			expect(await fieldErrors(ProbeModbusWriteDto, 'binding', [])).not.toEqual([]);
+		});
+
 		it('refuses a point without a binding', async () => {
 			const errors = await validate(plainToInstance(ProbeModbusPointDto, { key: 'a' }));
 

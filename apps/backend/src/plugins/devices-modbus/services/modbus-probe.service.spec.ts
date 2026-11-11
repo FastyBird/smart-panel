@@ -74,6 +74,7 @@ describe('ModbusProbeService', () => {
 	let factory: jest.Mock;
 	let running: { read: jest.Mock; write: jest.Mock; framing?: ModbusFraming } | null;
 	let attached: boolean;
+	let current: boolean;
 	let saved: ModbusEndpointEntity;
 	let service: ModbusProbeService;
 
@@ -102,6 +103,7 @@ describe('ModbusProbeService', () => {
 		factory = jest.fn((_options: ModbusTransportOptions) => transport as unknown as ModbusTransport);
 		running = null;
 		attached = false;
+		current = true;
 		saved = Object.assign(new ModbusEndpointEntity(), {
 			id: 'ep-1',
 			enabled: true,
@@ -122,7 +124,11 @@ describe('ModbusProbeService', () => {
 				Promise.resolve(host.toLowerCase() === saved.host.toLowerCase() && port === saved.port ? saved : null),
 			),
 		};
-		const connections = { get: jest.fn(() => running), isAttached: jest.fn(() => attached) };
+		const connections = {
+			get: jest.fn(() => running),
+			isAttached: jest.fn(() => attached),
+			isCurrent: jest.fn(() => current),
+		};
 
 		service = new ModbusProbeService(
 			endpoints as unknown as ModbusEndpointsService,
@@ -140,6 +146,20 @@ describe('ModbusProbeService', () => {
 		expect(factory).not.toHaveBeenCalled();
 		expect(result).toMatchObject({ ok: true, values: [5, 6], error: null });
 		expect(result.durationMs).toBeGreaterThanOrEqual(0);
+	});
+
+	it('refuses to probe through a running connection not yet rebuilt after an endpoint update', async () => {
+		running = { read: jest.fn().mockResolvedValue([5, 6]), write: jest.fn() };
+		current = false;
+
+		const read = await service.read({ endpointId: 'ep-1' }, request);
+		const write = await service.write({ endpointId: 'ep-1' }, 1, relay, true, defaults);
+
+		expect(read).toMatchObject({ ok: false, error: { kind: 'unavailable' } });
+		expect(write).toMatchObject({ ok: false, error: { kind: 'unavailable' } });
+		expect(running.read).not.toHaveBeenCalled();
+		expect(running.write).not.toHaveBeenCalled();
+		expect(factory).not.toHaveBeenCalled();
 	});
 
 	it('uses a one-shot transport for a saved endpoint without a running connection', async () => {

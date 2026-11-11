@@ -7,6 +7,7 @@ import {
 	IsEnum,
 	IsInt,
 	IsNotEmpty,
+	IsObject,
 	IsOptional,
 	IsString,
 	IsUUID,
@@ -184,6 +185,7 @@ export class ProbeModbusPointDto {
 	@ApiProperty({ description: 'How the point is read and decoded', type: () => ModbusBindingDto })
 	@Expose()
 	@IsDefined({ message: '[{"field":"binding","reason":"Binding is required."}]' })
+	@IsObject({ message: '[{"field":"binding","reason":"Binding must be an object."}]' })
 	@ValidateNested()
 	@Type(() => ModbusBindingDto)
 	binding: ModbusBindingDto;
@@ -268,6 +270,7 @@ export class ProbeModbusPointsDto extends ProbeModbusTargetDto {
 	@ArrayMaxSize(MAX_POINTS, {
 		message: `[{"field":"points","reason":"At most ${MAX_POINTS} points can be read at once."}]`,
 	})
+	@IsObject({ each: true, message: '[{"field":"points","reason":"Every point must be an object."}]' })
 	@ValidateNested({ each: true })
 	@Type(() => ProbeModbusPointDto)
 	points: ProbeModbusPointDto[];
@@ -278,6 +281,7 @@ export class ProbeModbusWriteDto extends ProbeModbusTargetDto {
 	@ApiProperty({ description: 'Where and how the value is written', type: () => ModbusBindingDto })
 	@Expose()
 	@IsDefined({ message: '[{"field":"binding","reason":"Binding is required."}]' })
+	@IsObject({ message: '[{"field":"binding","reason":"Binding must be an object."}]' })
 	@ValidateNested()
 	@Type(() => ModbusBindingDto)
 	binding: ModbusBindingDto;
@@ -326,6 +330,7 @@ export class ReqProbeModbusReadDto {
 	@ApiProperty({ description: 'Probe read data', type: () => ProbeModbusReadDto })
 	@Expose()
 	@IsDefined({ message: '[{"field":"data","reason":"Request data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Request data must be an object."}]' })
 	@ValidateNested()
 	@Type(() => ProbeModbusReadDto)
 	data: ProbeModbusReadDto;
@@ -336,6 +341,7 @@ export class ReqProbeModbusPointsDto {
 	@ApiProperty({ description: 'Probe points data', type: () => ProbeModbusPointsDto })
 	@Expose()
 	@IsDefined({ message: '[{"field":"data","reason":"Request data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Request data must be an object."}]' })
 	@ValidateNested()
 	@Type(() => ProbeModbusPointsDto)
 	data: ProbeModbusPointsDto;
@@ -346,6 +352,7 @@ export class ReqProbeModbusWriteDto {
 	@ApiProperty({ description: 'Probe write data', type: () => ProbeModbusWriteDto })
 	@Expose()
 	@IsDefined({ message: '[{"field":"data","reason":"Request data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Request data must be an object."}]' })
 	@ValidateNested()
 	@Type(() => ProbeModbusWriteDto)
 	data: ProbeModbusWriteDto;
