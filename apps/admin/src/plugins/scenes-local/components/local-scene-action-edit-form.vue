@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElResult, type FormInstance, type FormRules } from 'element-plus';
@@ -70,6 +70,7 @@ import { Icon } from '@iconify/vue';
 import { IconWithChild } from '../../../common';
 import {
 	DevicePropertyPicker,
+	DevicesException,
 	type IChannelProperty,
 	type IDevicePropertyPickerField,
 	type IDevicePropertyPickerTexts,
@@ -123,8 +124,8 @@ const model = reactive<ILocalSceneActionEditForm>({
 
 const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
 
-// The picker loads the devices, channels and properties; the form only reads them from the stores
-const { devices, areLoading: loadingDevices } = useDevices();
+// The picker loads the channels and properties; the form only reads them from the stores
+const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
 const { channels } = useChannels({
 	deviceId: computed<string>((): string => model.deviceId ?? ''),
 });
@@ -213,6 +214,15 @@ const submit = async (): Promise<void> => {
 	});
 	formResult.value = FormResult.OK;
 };
+
+// The picker is not rendered in the empty state, so the devices are loaded here
+onBeforeMount(async (): Promise<void> => {
+	if (!devicesLoaded.value) {
+		await fetchDevices().catch((error: unknown): void => {
+			throw new DevicesException('Something went wrong', error as Error);
+		});
+	}
+});
 
 watch(
 	(): FormResultType => formResult.value,

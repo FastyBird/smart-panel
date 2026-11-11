@@ -166,6 +166,11 @@ const {
 } = useChannels({
 	deviceId: computed<IDevice['id']>((): IDevice['id'] => props.deviceId ?? ''),
 });
+// Every property the store holds, whichever channel it belongs to
+const { properties: knownProperties } = useChannelsProperties({
+	channelId: computed<IChannel['id'] | undefined>((): undefined => undefined),
+});
+
 const {
 	properties,
 	fetchProperties,
@@ -258,11 +263,16 @@ const otherDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>(
 });
 
 const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() => {
-	// Offer only the channels with a property passing the filters (once the properties are loaded)
-	const channelsToShow =
-		hasPropertyFilter.value && properties.value.length > 0
-			? channels.value.filter((channel) => properties.value.some((property) => property.channel === channel.id && isPropertyOffered(property)))
-			: channels.value;
+	// A channel is left out only when its properties are known and none of them passes the filters.
+	// `properties` holds the selected channel alone, so the siblings are judged by what the store knows
+	// of them; a channel whose properties were not loaded yet stays on offer.
+	const channelsToShow = hasPropertyFilter.value
+		? channels.value.filter((channel) => {
+				const known = knownProperties.value.filter((property) => property.channel === channel.id);
+
+				return known.length === 0 || known.some(isPropertyOffered);
+			})
+		: channels.value;
 
 	return orderBy<IChannel>(channelsToShow, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']).map((channel) => ({
 		value: channel.id,

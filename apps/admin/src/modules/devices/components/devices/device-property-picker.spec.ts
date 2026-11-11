@@ -1,4 +1,4 @@
-import { type ComputedRef, h, ref } from 'vue';
+import { type ComputedRef, computed, h, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,7 +42,12 @@ vi.mock('../../composables/composables', () => ({
 	useChannelsProperties: ({ channelId }: { channelId: ComputedRef<string | undefined> }) => {
 		propertiesChannelId = channelId;
 
-		return { properties: mockProperties, fetchProperties: mockFetchProperties, areLoading: ref(false) };
+		// As the real composable: the properties of the given channel, or all of them without one
+		const properties = computed<IChannelProperty[]>(() =>
+			mockProperties.value.filter((item) => !channelId.value || item.channel === channelId.value)
+		);
+
+		return { properties, fetchProperties: mockFetchProperties, areLoading: ref(false) };
 	},
 }));
 
@@ -210,7 +215,7 @@ describe('DevicePropertyPicker', (): void => {
 			const wrapper = mountPicker({ deviceId: 'device', channelId: 'writable' });
 
 			expect(optionValues(findSelect(wrapper, 'channelId'))).toEqual(['event', 'readable', 'writable']);
-			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['wo', 'rw', 'ev', 'ro']);
+			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['wo', 'rw']);
 		});
 
 		it('offers only the writable properties and the channels having one', (): void => {
@@ -224,18 +229,18 @@ describe('DevicePropertyPicker', (): void => {
 			const wrapper = mountPicker({ deviceId: 'device', channelId: 'readable', access: 'readable' });
 
 			expect(optionValues(findSelect(wrapper, 'channelId'))).toEqual(['readable', 'writable']);
-			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['rw', 'ro']);
+			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['ro']);
 		});
 
 		it('offers only the properties of the given data types', (): void => {
 			const wrapper = mountPicker({
 				deviceId: 'device',
-				channelId: 'writable',
+				channelId: 'readable',
 				dataTypes: [DevicesModuleChannelPropertyDataType.float, DevicesModuleChannelPropertyDataType.bool],
 			});
 
 			expect(optionValues(findSelect(wrapper, 'channelId'))).toEqual(['event', 'readable']);
-			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['ev', 'ro']);
+			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['ro']);
 		});
 
 		it('combines the custom property filter with the access filter', (): void => {
@@ -247,6 +252,21 @@ describe('DevicePropertyPicker', (): void => {
 			});
 
 			expect(optionValues(findSelect(wrapper, 'propertyId'))).toEqual(['rw']);
+		});
+
+		it('keeps the sibling channels on offer when one channel is picked', (): void => {
+			// The properties composable hands over the picked channel alone; the siblings must not go with it
+			const wrapper = mountPicker({ deviceId: 'device', channelId: 'writable', access: 'readable' });
+
+			expect(optionValues(findSelect(wrapper, 'channelId'))).toEqual(['readable', 'writable']);
+		});
+
+		it('keeps a channel whose properties are not loaded yet on offer', (): void => {
+			mockProperties.value = mockProperties.value.filter((item) => item.channel !== 'readable');
+
+			const wrapper = mountPicker({ deviceId: 'device', channelId: 'writable', access: 'writable' });
+
+			expect(optionValues(findSelect(wrapper, 'channelId'))).toEqual(['readable', 'writable']);
 		});
 
 		it('offers every channel while no property is loaded yet', (): void => {
