@@ -111,6 +111,33 @@ describe('ViewModbusEndpoints', () => {
 		expect(wrapper.findComponent({ name: 'ModbusEndpointsTable' }).exists()).toBe(true);
 	});
 
+	it('keeps the error and hides the table while a retry is pending and after it fails', async () => {
+		endpointsStore.fetch.mockRejectedValueOnce(new Error('Endpoints unavailable'));
+
+		const wrapper = shallowMount(ViewModbusEndpoints, { global: { directives: { loading: {} }, renderStubDefaultSlot: true } });
+		await flushPromises();
+
+		const retry = () =>
+			wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.attributes('data-test-id') === 'modbus-endpoints-retry')!;
+		const errorShown = () => wrapper.findAllComponents({ name: 'ElAlert' }).some((alert) => alert.props('title') === 'Endpoints unavailable');
+
+		let fail!: (error: Error) => void;
+		endpointsStore.fetch.mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
+
+		retry().vm.$emit('click');
+		await flushPromises();
+
+		expect(errorShown()).toBe(true);
+		expect(retry().props('loading')).toBe(true);
+		expect(wrapper.findComponent({ name: 'ModbusEndpointsTable' }).exists()).toBe(false);
+
+		fail(new Error('Endpoints unavailable'));
+		await flushPromises();
+
+		expect(errorShown()).toBe(true);
+		expect(wrapper.findComponent({ name: 'ModbusEndpointsTable' }).exists()).toBe(false);
+	});
+
 	it('shows the table without a warning when both lists load', async () => {
 		const wrapper = await mountView();
 

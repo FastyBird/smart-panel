@@ -32,6 +32,7 @@
 		>
 			<el-button
 				size="small"
+				:loading="loading"
 				data-test-id="modbus-endpoints-retry"
 				@click="load"
 			>
@@ -148,16 +149,14 @@ const { refresh: refreshHealth } = useModbusEndpointsHealth();
 
 // Also the Retry action of a failed load. Add stays disabled meanwhile, so a pending list cannot replace a new endpoint.
 const load = async (): Promise<void> => {
+	// The error stays until a fetch succeeds, so a pending or failed retry never shows the table it hid.
 	loading.value = true;
-	loadError.value = null;
 
 	// The device list only feeds the device column: when it fails, the endpoints stay manageable and a warning says
 	// the device counts are missing.
 	const [endpointsResult, devicesResult] = await Promise.allSettled([endpointsStore.fetch(), devicesStore.fetch()]);
 
-	if (endpointsResult.status === 'rejected') {
-		loadError.value = errorText(endpointsResult.reason);
-	}
+	loadError.value = endpointsResult.status === 'rejected' ? errorText(endpointsResult.reason) : null;
 
 	devicesLoadFailed.value = devicesResult.status === 'rejected';
 	loading.value = false;
