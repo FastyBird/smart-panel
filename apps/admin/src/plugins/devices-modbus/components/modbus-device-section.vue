@@ -276,7 +276,9 @@ const readings = ref<Record<string, IModbusBindingReading> | null>(null);
 const reading = ref<boolean>(false);
 const readError = ref<string | null>(null);
 
-const canRead = computed<boolean>(() => !!modbusDevice.value.endpointId && modbusDevice.value.unitId != null);
+const canRead = computed<boolean>(
+	() => !!modbusDevice.value.endpointId && modbusDevice.value.unitId !== null && modbusDevice.value.unitId !== undefined
+);
 
 const hasReadBindings = computed<boolean>(() => bindings.value.some((item) => item.role === 'read'));
 
@@ -365,7 +367,7 @@ const onReadNow = async (): Promise<void> => {
 	const endpointId = modbusDevice.value.endpointId;
 	const unitId = modbusDevice.value.unitId;
 
-	if (!endpointId || unitId == null) {
+	if (!endpointId || unitId === null || unitId === undefined) {
 		return;
 	}
 

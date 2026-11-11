@@ -82,7 +82,7 @@
 			width="110"
 		>
 			<template #default="{ row }: { row: IModbusEndpoint }">
-				<template v-if="health[row.id]?.averageLatencyMs != null">{{ Math.round(health[row.id]!.averageLatencyMs!) }} ms</template>
+				<template v-if="typeof health[row.id]?.averageLatencyMs === 'number'">{{ Math.round(health[row.id]!.averageLatencyMs!) }} ms</template>
 				<span v-else>-</span>
 			</template>
 		</el-table-column>
