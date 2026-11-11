@@ -1,8 +1,16 @@
 import { Repository } from 'typeorm';
 
-import { ConnectionState } from '../../../modules/devices/devices.constants';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { CreateChannelInputOccurrenceDto } from '../../../modules/devices/dto/channel-input-occurrence.dto';
+import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
@@ -32,11 +40,15 @@ interface PendingRead {
 	reject: (error: Error) => void;
 }
 
-/** Answers every read with `value` per register unless `hold` is set, in which case reads stay pending. */
+/**
+ * Answers every read with `value` per register (`level` per coil or discrete input) unless `hold` is set, in which
+ * case reads stay pending.
+ */
 class FakeConnection {
 	readonly pending: PendingRead[] = [];
 	hold = false;
 	value = 1;
+	level = false;
 	stopped = false;
 	/** Number of upcoming reads that time out. */
 	failures = 0;
@@ -56,7 +68,14 @@ class FakeConnection {
 		}
 
 		if (!this.hold) {
-			return Promise.resolve(Array<number>(request.count).fill(this.value));
+			const bits =
+				request.registerType === ModbusRegisterType.COIL || request.registerType === ModbusRegisterType.DISCRETE_INPUT;
+
+			return Promise.resolve(
+				bits
+					? (Array<boolean>(request.count).fill(this.level) as unknown as number[])
+					: Array<number>(request.count).fill(this.value),
+			);
 		}
 
 		return new Promise<number[]>((resolve, reject) => this.pending.push({ request, resolve, reject }));
@@ -127,18 +146,29 @@ const bindingEntity = (
 		valueMap: null,
 		writeFunction: null,
 		pollIntervalMs: null,
+		longPressMs: null,
 		...overrides,
 	}) as ModbusBindingEntity;
+
+/** A channel of a device as the core channels service returns it, with its properties. */
+const channelEntity = (
+	id: string,
+	category: ChannelCategory,
+	properties: Array<{ id: string; category: PropertyCategory; dataType: DataTypeType }>,
+): ChannelEntity => ({ id, category, properties }) as unknown as ChannelEntity;
 
 describe('ModbusRuntimeService', () => {
 	let endpoints: ModbusEndpointEntity[];
 	let devices: ModbusDeviceEntity[];
 	let bindings: ModbusBindingEntity[];
+	let channels: Map<string, ChannelEntity[]>;
 	let connections: FakeConnection[];
 	let properties: { reportSample: jest.Mock };
 	let connectivity: { trySetConnectionState: jest.Mock };
 	let bindingsService: { findByDevice: jest.Mock };
 	let devicesService: { findOne: jest.Mock; findAll: jest.Mock };
+	let channelsService: { findAll: jest.Mock };
+	let occurrencesService: { publishOccurrence: jest.Mock };
 	let connectionsService: ModbusConnectionsService;
 	let runtime: ModbusRuntimeService;
 
@@ -149,6 +179,9 @@ describe('ModbusRuntimeService', () => {
 		connectivity.trySetConnectionState.mock.calls
 			.filter(([id]) => id === deviceId)
 			.map(([, state]) => (state as { state: ConnectionState }).state);
+
+	const published = (): CreateChannelInputOccurrenceDto[] =>
+		occurrencesService.publishOccurrence.mock.calls.map(([dto]) => dto as CreateChannelInputOccurrenceDto);
 
 	const reports = (): Array<[string, unknown]> =>
 		properties.reportSample.mock.calls.map(([id, dto]) => [
@@ -162,6 +195,7 @@ describe('ModbusRuntimeService', () => {
 		endpoints = [endpointEntity('endpoint-a')];
 		devices = [deviceEntity('device-1')];
 		bindings = [bindingEntity('device-1', 'p1')];
+		channels = new Map();
 		connections = [];
 
 		properties = { reportSample: jest.fn(() => Promise.resolve({})) };
@@ -189,6 +223,10 @@ describe('ModbusRuntimeService', () => {
 		bindingsService = {
 			findByDevice: jest.fn((id: string) => Promise.resolve(bindings.filter((binding) => binding.deviceId === id))),
 		};
+		channelsService = {
+			findAll: jest.fn((deviceId: string) => Promise.resolve(channels.get(deviceId) ?? [])),
+		};
+		occurrencesService = { publishOccurrence: jest.fn(() => Promise.resolve(null)) };
 		const endpointsService = {
 			findOne: jest.fn((id: string) => Promise.resolve(endpoints.find((endpoint) => endpoint.id === id) ?? null)),
 		};
@@ -200,6 +238,8 @@ describe('ModbusRuntimeService', () => {
 			connectionsService,
 			properties as unknown as ChannelsPropertiesService,
 			connectivity as unknown as DeviceConnectivityService,
+			channelsService as unknown as ChannelsService,
+			occurrencesService as unknown as ChannelInputOccurrencesService,
 		);
 	});
 
@@ -234,6 +274,102 @@ describe('ModbusRuntimeService', () => {
 		expect(evidence.receivedAt).toBeInstanceOf(Date);
 		expect(evidence.isCurrent()).toBe(true);
 		expect(options).toEqual({ skipUnchangedMetadata: true });
+	});
+
+	describe('button points and data types', () => {
+		beforeEach(() => {
+			bindings = [
+				bindingEntity('device-1', 'humidity', { scale: 0.1 }),
+				bindingEntity('device-1', 'button-event', {
+					registerType: ModbusRegisterType.DISCRETE_INPUT,
+					dataType: ModbusDataType.BOOL,
+					address: 3,
+				}),
+			];
+			channels.set('device-1', [
+				channelEntity('channel-humidity', ChannelCategory.HUMIDITY, [
+					{ id: 'humidity', category: PropertyCategory.HUMIDITY, dataType: DataTypeType.UCHAR },
+				]),
+				channelEntity('channel-button', ChannelCategory.BUTTON, [
+					{ id: 'button-event', category: PropertyCategory.EVENT, dataType: DataTypeType.ENUM },
+				]),
+			]);
+		});
+
+		it('publishes occurrences through ChannelInputOccurrencesService', async () => {
+			await runtime.start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(channelsService.findAll).toHaveBeenCalledTimes(1);
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+
+			connections[0].level = true;
+			await jest.advanceTimersByTimeAsync(1000);
+
+			expect(published()).toEqual([
+				{
+					deviceId: 'device-1',
+					channelId: 'channel-button',
+					propertyId: 'button-event',
+					event: 'down',
+					sourceOccurrenceId: expect.any(String) as string,
+					sourceTimestamp: expect.any(String) as string,
+				},
+			]);
+
+			const [down] = published();
+
+			expect(new Date(down.sourceTimestamp ?? '').toISOString()).toBe(down.sourceTimestamp);
+
+			connections[0].level = false;
+			await jest.advanceTimersByTimeAsync(1000);
+
+			expect(published().map((dto) => dto.event)).toEqual(['down', 'long_press', 'up']);
+			// Every event has its own source identity, so the core never drops one as a redelivery.
+			expect(new Set(published().map((dto) => dto.sourceOccurrenceId)).size).toBe(3);
+			// Channels are resolved once per device load, not per poll.
+			expect(channelsService.findAll).toHaveBeenCalledTimes(1);
+		});
+
+		it('rounds values of integer properties and never reports a button level as a sample', async () => {
+			await runtime.start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			connections[0].value = 456;
+			await jest.advanceTimersByTimeAsync(1000);
+
+			// Raw 1 and 456 at scale 0.1 are 0.1 and 45.6; the humidity property is a uchar.
+			expect(reports()).toEqual([
+				['humidity', 0],
+				['humidity', 46],
+			]);
+
+			await runtime.stop();
+
+			// Stopping invalidates the read properties, but a button level is not a sample to invalidate.
+			expect(reports()).toEqual([
+				['humidity', 0],
+				['humidity', 46],
+				['humidity', null],
+			]);
+		});
+
+		it('treats an event property outside a button channel as a plain read', async () => {
+			channels.set('device-1', [
+				channelEntity('channel-humidity', ChannelCategory.HUMIDITY, [
+					{ id: 'humidity', category: PropertyCategory.HUMIDITY, dataType: DataTypeType.UCHAR },
+				]),
+				channelEntity('channel-input', ChannelCategory.BINARY_INPUT, [
+					{ id: 'button-event', category: PropertyCategory.STATE, dataType: DataTypeType.BOOL },
+				]),
+			]);
+
+			await runtime.start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(reports()).toContainEqual(['button-event', false]);
+			expect(occurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
 	});
 
 	it('stores connected on a later poll when the store did not take it', async () => {

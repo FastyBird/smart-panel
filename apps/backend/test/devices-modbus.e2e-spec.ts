@@ -23,6 +23,8 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
+import { ChannelInputOccurrencePayload } from '../src/modules/devices/models/channel-input-occurrence.model';
+import { ChannelInputOccurrencesService } from '../src/modules/devices/services/channel-input-occurrences.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import {
@@ -83,12 +85,17 @@ const freePort = (): Promise<number> =>
 		});
 	});
 
+/** Discrete input of the simulated board that the button device reads as its level. */
+const BUTTON_INPUT = 0;
+
 /**
  * Simulated Eletechsup N4D8B08 relay board on a Modbus TCP server: holding registers 1–8 read `1` (on) or `0` (off);
- * a write of `256` to register n switches relay n on, `512` switches it off. Every write is recorded.
+ * a write of `256` to register n switches relay n on, `512` switches it off. Every write is recorded. Discrete input
+ * `BUTTON_INPUT` is a push button. The server answers every unit id, so a second device can use another unit.
  */
 class RelayBoardSimulator {
 	readonly registers = new Map<number, number>(RELAYS.map((relay) => [relay, 0]));
+	readonly discreteInputs = new Map<number, boolean>([[BUTTON_INPUT, false]]);
 	readonly writes: { address: number; value: number }[] = [];
 
 	private server: ServerTCP | null = null;
@@ -99,6 +106,15 @@ class RelayBoardSimulator {
 		return new Promise((resolve, reject) => {
 			const server = new ServerTCP(
 				{
+					getDiscreteInput: (address: number): boolean => {
+						const value = this.discreteInputs.get(address);
+
+						if (value === undefined) {
+							throw Object.assign(new Error('Illegal data address'), { modbusErrorCode: 0x02 });
+						}
+
+						return value;
+					},
 					getHoldingRegister: (address: number): number => this.read(address),
 					getMultipleHoldingRegisters: (address: number, length: number): number[] =>
 						Array.from({ length }, (_, index) => this.read(address + index)),
@@ -116,7 +132,8 @@ class RelayBoardSimulator {
 						}
 					},
 				},
-				{ host: '127.0.0.1', port: this.port, unitID: 1 },
+				// 255: answer every unit id.
+				{ host: '127.0.0.1', port: this.port, unitID: 255 },
 			);
 
 			server.on('initialized', () => resolve());
@@ -535,6 +552,103 @@ describe('devices-modbus plugin (e2e)', () => {
 			endpoint_id: endpointId,
 			unit_id: 1,
 		});
+	});
+
+	it('button point emits events', async () => {
+		const occurrences: ChannelInputOccurrencePayload[] = [];
+		const unsubscribe = moduleRef
+			.get(ChannelInputOccurrencesService)
+			.subscribe((occurrence) => void occurrences.push(occurrence));
+		let buttonDeviceId: string | null = null;
+
+		try {
+			const response = await authPost('/plugins/devices-modbus/devices')
+				.send({
+					data: {
+						name: 'Push button',
+						category: DeviceCategory.INPUT_CONTROLLER,
+						endpoint_id: endpointId,
+						unit_id: 2,
+						poll_interval_ms: POLL_INTERVAL_MS,
+						channels: [
+							{
+								identifier: 'button_1',
+								name: 'Button 1',
+								category: ChannelCategory.BUTTON,
+								properties: [
+									{
+										category: PropertyCategory.EVENT,
+										data_type: DataTypeType.ENUM,
+										permissions: [PermissionType.EVENT_ONLY],
+										format: ['press', 'long_press', 'double_press', 'triple_press', 'down', 'up'],
+										read: {
+											register_type: ModbusRegisterType.DISCRETE_INPUT,
+											address: BUTTON_INPUT,
+											data_type: ModbusDataType.BOOL,
+											// The longest allowed: a loaded test machine never turns the short press into a long one.
+											long_press_ms: 10_000,
+										},
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+			const buttonDevice = (response.body as { data: DeviceBody }).data;
+
+			buttonDeviceId = buttonDevice.id;
+			const buttonChannel = buttonDevice.channels.find((channel) => channel.category === ChannelCategory.BUTTON);
+			const eventProperty = buttonChannel?.properties.find((property) => property.category === PropertyCategory.EVENT);
+
+			if (!buttonChannel || !eventProperty) {
+				throw new Error('Button device has no button event property');
+			}
+
+			const status = async (): Promise<ConnectionState> =>
+				(await moduleRef.get(DevicesService).getOneOrThrow(buttonDevice.id)).status.status;
+
+			// Connected means the first poll ran: the released level is the baseline.
+			await waitFor(
+				'button device connected',
+				async () => ((await status()) === ConnectionState.CONNECTED ? true : undefined),
+				5000,
+			);
+
+			const events = (): string[] =>
+				occurrences
+					.filter((occurrence) => occurrence.propertyId === eventProperty.id)
+					.map((occurrence) => occurrence.event);
+
+			expect(events()).toEqual([]);
+
+			simulator.discreteInputs.set(BUTTON_INPUT, true);
+
+			await waitFor('down event', () => Promise.resolve(events().includes('down') ? true : undefined), 2000, 20);
+
+			simulator.discreteInputs.set(BUTTON_INPUT, false);
+
+			await waitFor('press event', () => Promise.resolve(events().includes('press') ? true : undefined), 2000, 20);
+
+			expect(events()).toEqual(['down', 'up', 'press']);
+			expect(occurrences.find((occurrence) => occurrence.event === 'down')).toMatchObject({
+				deviceId: buttonDevice.id,
+				channelId: buttonChannel.id,
+				propertyId: eventProperty.id,
+				channelCategory: ChannelCategory.BUTTON,
+				propertyCategory: PropertyCategory.EVENT,
+				integration: DEVICES_MODBUS_TYPE,
+				sourceOccurrenceId: expect.any(String) as string,
+				sourceTimestamp: expect.any(String) as string,
+			});
+		} finally {
+			unsubscribe();
+
+			// Removed even when an assertion failed, so the endpoint test below still runs against one device.
+			if (buttonDeviceId) {
+				await authDelete(`/modules/devices/devices/${buttonDeviceId}`).expect(204);
+			}
+		}
 	});
 
 	it('refuses deleting the endpoint while the device exists', async () => {

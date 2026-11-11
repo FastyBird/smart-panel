@@ -1,11 +1,21 @@
+import { randomUUID } from 'crypto';
+
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	EventType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
@@ -20,7 +30,9 @@ import {
 } from '../devices-modbus.constants';
 import { UpdateModbusChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ModbusDeviceEntity } from '../entities/devices-modbus.entity';
+import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusEndpointEntity } from '../entities/modbus-endpoint.entity';
+import { ModbusButtonEvent } from '../lib/button-synthesizer';
 import { ModbusPropertyValue } from '../lib/codec';
 import { ModbusEndpointUnavailableError } from '../lib/errors';
 import { DevicePoller, ModbusDeviceSnapshot, PollerCallbacks } from '../runtime/device-poller';
@@ -39,6 +51,7 @@ const INVALIDATING_STATES = new Set<ConnectionState>([
 
 interface LoadedDevice {
 	endpointId: string | null;
+	/** Read-bound properties that report samples; a button level never does. */
 	readPropertyIds: string[];
 	poller: DevicePoller | null;
 	/** The device may be commanded over its endpoint connection. */
@@ -50,7 +63,7 @@ const isModbusDevice = (device: DeviceEntity | null | undefined): device is Modb
 
 /**
  * Modbus runtime (managed connector service): one `DevicePoller` per loaded device on its endpoint's connection,
- * sample reporting and device connection state.
+ * sample reporting, button event publishing and device connection state.
  *
  * A device entry is replaced (never mutated) on every load, endpoint change and unload; pollers and in-flight reports
  * check by identity that their entry is still the current one, so late results of a replaced or deleted device are
@@ -86,6 +99,8 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		private readonly connections: ModbusConnectionsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly channelsService: ChannelsService,
+		private readonly channelInputOccurrencesService: ChannelInputOccurrencesService,
 	) {}
 
 	start(): Promise<void> {
@@ -246,6 +261,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 
 		const device = preloaded ?? (await this.devicesService.findOne<ModbusDeviceEntity>(deviceId, DEVICES_MODBUS_TYPE));
 		const bindings = device ? await this.bindingsService.findByDevice(deviceId) : [];
+		const channels = device ? await this.channelsService.findAll(deviceId) : [];
 		const endpoint = device?.endpointId ? await this.endpointsService.findOne(device.endpointId) : null;
 
 		if (this.loads.get(deviceId) !== ticket || !this.isRunning()) {
@@ -261,12 +277,10 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 			return;
 		}
 
-		const reads = bindings
-			.filter((binding) => binding.role === ModbusBindingRole.READ)
-			.map((binding) => ({ propertyId: binding.propertyId, binding }));
+		const reads = this.resolveReads(bindings, channels);
 		const entry: LoadedDevice = {
 			endpointId: device.endpointId,
-			readPropertyIds: reads.map((read) => read.propertyId),
+			readPropertyIds: reads.filter((read) => read.button === null).map((read) => read.propertyId),
 			poller: null,
 			commandable: false,
 		};
@@ -296,6 +310,35 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 			this.pollerCallbacks(deviceId, target.endpoint.id, isCurrent),
 		);
 		entry.poller.start();
+	}
+
+	/**
+	 * The device's read bindings with their property's data type; the read of a button channel's event property is
+	 * marked as a button level. A binding whose property is not among the channels keeps an unknown data type.
+	 */
+	private resolveReads(bindings: ModbusBindingEntity[], channels: ChannelEntity[]): ModbusDeviceSnapshot['reads'] {
+		const properties = new Map<string, { channel: ChannelEntity; property: ChannelPropertyEntity }>();
+
+		for (const channel of channels) {
+			for (const property of channel.properties ?? []) {
+				properties.set(property.id, { channel, property });
+			}
+		}
+
+		return bindings
+			.filter((binding) => binding.role === ModbusBindingRole.READ)
+			.map((binding) => {
+				const found = properties.get(binding.propertyId);
+				const isButton =
+					found?.channel.category === ChannelCategory.BUTTON && found.property.category === PropertyCategory.EVENT;
+
+				return {
+					propertyId: binding.propertyId,
+					binding,
+					dataType: found?.property.dataType ?? DataTypeType.UNKNOWN,
+					button: isButton ? { channelId: found.channel.id } : null,
+				};
+			});
 	}
 
 	/** The running connection the device is polled over, or why it cannot be. */
@@ -351,6 +394,8 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 			setConnectionState: (state, reason) => this.setDeviceState(deviceId, state, reason),
 			isCurrent,
 			setOverloaded: () => this.refreshOverload(endpointId),
+			occurrence: (propertyId, channelId, event, at) =>
+				this.publishOccurrence(deviceId, channelId, propertyId, event, at),
 		};
 	}
 
@@ -476,6 +521,24 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		} else {
 			this.lastStates.delete(deviceId);
 		}
+	}
+
+	/** Every event gets its own source identity: the core drops a repeated one as a transport redelivery. */
+	private async publishOccurrence(
+		deviceId: string,
+		channelId: string,
+		propertyId: string,
+		event: ModbusButtonEvent,
+		at: Date,
+	): Promise<void> {
+		await this.channelInputOccurrencesService.publishOccurrence({
+			deviceId,
+			channelId,
+			propertyId,
+			event,
+			sourceOccurrenceId: randomUUID(),
+			sourceTimestamp: at.toISOString(),
+		});
 	}
 
 	private async report(
