@@ -432,4 +432,22 @@ describe('Modbus endpoints store', () => {
 
 		expect(store.findById(endpoint.id)?.name).toBe('Renamed elsewhere');
 	});
+
+	it('keeps an older list response when the newer request failed', async () => {
+		const endpoint = wireEndpoint();
+		let answerOld!: (value: unknown) => void;
+
+		get.mockReturnValueOnce(new Promise((resolve) => (answerOld = resolve)));
+		get.mockResolvedValueOnce({ data: undefined, error: { reason: 'down' }, response: { status: 500 } });
+
+		const store = useModbusEndpoints();
+
+		const older = store.fetch();
+		await expect(store.fetch()).rejects.toThrow();
+
+		answerOld({ data: { data: [endpoint] }, response: { status: 200 } });
+		await older;
+
+		expect(store.findById(endpoint.id)).not.toBeNull();
+	});
 });
