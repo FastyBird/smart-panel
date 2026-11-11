@@ -96,7 +96,7 @@
 					</el-form-item>
 
 					<el-form-item
-						v-if="showBit(section.binding)"
+						v-if="section.kind === 'read' && showBit(section.binding)"
 						:label="t('devicesModbusPlugin.wizard.points.columns.bit')"
 					>
 						<el-input-number
@@ -465,7 +465,8 @@ const onSave = (): void => {
 			binding.address = parsed.start;
 			binding.registerType = parsed.registerType ?? binding.registerType;
 
-			if (!showBit(binding)) {
+			// Bit-in-register bindings are read-only; a write binding copied from a bit read must not keep the bit.
+			if (kind === 'write' || !showBit(binding)) {
 				binding.bit = null;
 			}
 		}

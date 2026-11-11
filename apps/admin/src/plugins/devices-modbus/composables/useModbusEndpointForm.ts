@@ -112,7 +112,17 @@ export const useModbusEndpointForm = (endpoint?: IModbusEndpoint): IUseModbusEnd
 		try {
 			const payload = { ...model, name: model.name.trim(), host: model.host.trim() };
 
-			return endpoint ? await endpointsStore.edit(endpoint.id, payload) : await endpointsStore.add(payload);
+			if (!endpoint) {
+				return await endpointsStore.add(payload);
+			}
+
+			// Only what the user changed: a field captured before a concurrent update (an Enabled toggle still in flight,
+			// another administrator's edit) must not be written back over it.
+			const changed = Object.fromEntries(
+				(Object.keys(payload) as (keyof typeof payload)[]).filter((key) => payload[key] !== endpoint[key]).map((key) => [key, payload[key]])
+			) as Partial<typeof payload>;
+
+			return Object.keys(changed).length === 0 ? endpoint : await endpointsStore.edit(endpoint.id, changed);
 		} catch (error: unknown) {
 			const fields = error instanceof DevicesModbusApiException ? error.fields : [];
 			let matched = false;

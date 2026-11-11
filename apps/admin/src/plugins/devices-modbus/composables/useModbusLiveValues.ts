@@ -1,5 +1,6 @@
 import { type MaybeRefOrGetter, type Ref, onScopeDispose, ref, toValue, watch } from 'vue';
 
+import { MODBUS_PROBE_MAX_POINTS } from '../devices-modbus.constants';
 import type { ModbusPoint, ModbusPointBinding } from '../lib/points';
 
 import type { IModbusProbeError, IModbusProbePointResult, IModbusProbePointsResult } from './useModbusProbe';
@@ -48,6 +49,8 @@ export const useModbusLiveValues = (
 	let readWith = new Map<string, string>();
 
 	const signatureOf = (read: ModbusPointBinding): string => JSON.stringify(read);
+
+	const readableCount = (): number => toValue(points).filter((point) => point.read !== null).length;
 
 	const currentSignatures = (): Map<string, string> =>
 		new Map(toValue(points).flatMap((point) => (point.read === null ? [] : [[point.key, signatureOf(point.read)] as const])));
@@ -164,8 +167,17 @@ export const useModbusLiveValues = (
 				void readNow();
 			}
 
+			let ticks = 0;
+
 			timer = setInterval(() => {
-				if (inFlight === null && pauseDepth === 0) {
+				// A read of many points goes out in several requests; reading only every n-th tick keeps the request rate
+				// of auto refresh the same however many points there are.
+				const batches = Math.max(1, Math.ceil(readableCount() / MODBUS_PROBE_MAX_POINTS));
+
+				ticks++;
+
+				if (ticks >= batches && inFlight === null && pauseDepth === 0) {
+					ticks = 0;
 					void readNow();
 				}
 			}, intervalMs);

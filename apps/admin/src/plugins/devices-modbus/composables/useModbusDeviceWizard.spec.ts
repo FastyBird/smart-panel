@@ -172,6 +172,42 @@ describe('useModbusDeviceWizard', () => {
 		expect(wizard.state.unitId).toBe(5);
 	});
 
+	it('keeps a user unit id and poll interval across templates when the preview echoes the overrides', async () => {
+		templatesStore.preview.mockImplementation((_id: string, overrides: { unitId?: number; pollIntervalMs?: number }) =>
+			Promise.resolve(preview({ unitId: overrides.unitId ?? 1, pollIntervalMs: overrides.pollIntervalMs ?? 500 }))
+		);
+
+		const wizard = useModbusDeviceWizard();
+		wizard.state.unitId = 5;
+		wizard.state.device.pollIntervalMs = 900;
+
+		await wizard.applyTemplate('acme-io');
+		await wizard.applyTemplate('other-io');
+
+		expect(templatesStore.preview).toHaveBeenLastCalledWith('other-io', { unitId: 5, pollIntervalMs: 900 });
+		expect(wizard.state.unitId).toBe(5);
+		expect(wizard.state.device.pollIntervalMs).toBe(900);
+	});
+
+	it('locks the endpoint step while a new endpoint is saving', async () => {
+		let release!: (endpoint: { id: string }) => void;
+		endpointsStore.add.mockReturnValue(new Promise((resolve) => (release = resolve)));
+
+		const wizard = useModbusDeviceWizard();
+		wizard.state.endpointMode = 'new';
+		wizard.state.newEndpoint.name = 'Gateway';
+		wizard.state.newEndpoint.host = '10.0.0.5';
+
+		const saving = wizard.saveNewEndpoint();
+
+		expect(wizard.savingEndpoint.value).toBe(true);
+
+		release({ id: 'e9' });
+		await saving;
+
+		expect(wizard.savingEndpoint.value).toBe(false);
+	});
+
 	it('takes the template unit id when the user did not change it', async () => {
 		const wizard = useModbusDeviceWizard();
 

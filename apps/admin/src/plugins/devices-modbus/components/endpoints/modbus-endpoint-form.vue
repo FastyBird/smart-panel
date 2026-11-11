@@ -2,6 +2,7 @@
 	<el-form
 		ref="formEl"
 		:model="model"
+		:disabled="disabled"
 		:rules="rules"
 		label-position="top"
 		status-icon

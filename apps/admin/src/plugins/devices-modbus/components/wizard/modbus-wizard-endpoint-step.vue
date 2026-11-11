@@ -2,7 +2,7 @@
 	<div class="flex flex-col gap-4">
 		<el-radio-group
 			v-model="wizard.state.endpointMode"
-			:disabled="endpoints.length === 0 && wizard.state.endpointMode === 'new'"
+			:disabled="wizard.savingEndpoint.value || (endpoints.length === 0 && wizard.state.endpointMode === 'new')"
 			data-test-id="endpoint-mode"
 		>
 			<el-radio-button
@@ -22,6 +22,7 @@
 					<div class="flex items-center gap-2 w-full">
 						<el-select
 							v-model="wizard.state.endpointId"
+							:disabled="wizard.savingEndpoint.value"
 							:placeholder="t('devicesModbusPlugin.wizard.endpoint.select.placeholder')"
 							:loading="loading"
 							name="endpointId"
@@ -58,6 +59,7 @@
 		<modbus-endpoint-form
 			v-else
 			:form="wizard.endpointForm"
+			:disabled="wizard.savingEndpoint.value"
 		/>
 
 		<el-form label-position="top">

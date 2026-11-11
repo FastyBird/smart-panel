@@ -85,6 +85,8 @@ export interface IUseModbusDeviceWizard {
 	create: () => Promise<string>;
 	endpointForm: IUseModbusEndpointForm;
 	applyingTemplate: Ref<boolean>;
+	/** True while a new endpoint is being saved; the endpoint step is locked so the save cannot replace a newer choice. */
+	savingEndpoint: Ref<boolean>;
 	/**
 	 * Set when the applied template expects another framing or port than the saved endpoint. The wizard never edits a
 	 * saved endpoint on its own: its settings may be exactly what the user just tested, so the step only warns.
@@ -133,6 +135,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	});
 
 	const applyingTemplate = ref<boolean>(false);
+	const savingEndpoint = ref<boolean>(false);
 
 	// The defaults last applied to each field. A field still holding its applied default has not been changed by
 	// the user, so the next template may replace it; a differing value is the user's and is kept.
@@ -184,6 +187,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		}
 
 		if (saving === null) {
+			savingEndpoint.value = true;
 			saving = endpointForm
 				.submit()
 				.then((saved) => {
@@ -194,6 +198,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 				})
 				.finally(() => {
 					saving = null;
+					savingEndpoint.value = false;
 				});
 		}
 
@@ -206,12 +211,17 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	const applyTemplate = async (id: string): Promise<void> => {
 		const token = ++applyToken;
 		const overrides: IModbusTemplatePreviewOverrides = {};
+		// A value that differs from the last applied default is the user's. It is sent as an override, and the preview
+		// then echoes it back, so the echo must not be recorded as a template default: the next template would treat
+		// the user's value as its own and replace it.
+		const ownUnitId = state.unitId !== applied.unitId;
+		const ownPollInterval = state.device.pollIntervalMs !== applied.pollIntervalMs;
 
-		if (state.unitId !== applied.unitId) {
+		if (ownUnitId) {
 			overrides.unitId = state.unitId;
 		}
 
-		if (state.device.pollIntervalMs !== applied.pollIntervalMs) {
+		if (ownPollInterval) {
 			overrides.pollIntervalMs = state.device.pollIntervalMs;
 		}
 
@@ -224,17 +234,13 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 				return;
 			}
 
-			if (state.unitId === applied.unitId) {
+			if (!ownUnitId) {
 				state.unitId = preview.unitId;
+				applied.unitId = preview.unitId;
 			}
 
-			applied.unitId = preview.unitId;
-
-			if (preview.pollIntervalMs !== null) {
-				if (state.device.pollIntervalMs === applied.pollIntervalMs) {
-					state.device.pollIntervalMs = preview.pollIntervalMs;
-				}
-
+			if (preview.pollIntervalMs !== null && !ownPollInterval) {
+				state.device.pollIntervalMs = preview.pollIntervalMs;
 				applied.pollIntervalMs = preview.pollIntervalMs;
 			}
 
@@ -437,6 +443,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		create,
 		endpointForm,
 		applyingTemplate,
+		savingEndpoint,
 		endpointMismatch,
 		canContinue,
 		saveNewEndpoint,

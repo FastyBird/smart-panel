@@ -6,7 +6,7 @@ import type {
 	DevicesModbusPluginProbeReadRequestSchema,
 	DevicesModbusPluginRegisterType,
 } from '../../../openapi.constants';
-import { DEVICES_MODBUS_PLUGIN_PREFIX } from '../devices-modbus.constants';
+import { DEVICES_MODBUS_PLUGIN_PREFIX, MODBUS_PROBE_MAX_POINTS } from '../devices-modbus.constants';
 import { type ModbusPointBinding, toRequestBinding } from '../lib/points';
 
 const BASE = `/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/probe` as const;
@@ -156,7 +156,7 @@ export const useModbusProbe = (): IUseModbusProbe => {
 			(kind, message) => ({ ...failure(kind, message), values: null })
 		);
 
-	const readPoints: IUseModbusProbe['readPoints'] = (target, unitId, points, orders, limits) =>
+	const readBatch: IUseModbusProbe['readPoints'] = (target, unitId, points, orders, limits) =>
 		post<IModbusProbePointsResult>(
 			'points',
 			{
@@ -172,6 +172,33 @@ export const useModbusProbe = (): IUseModbusProbe => {
 			'The probe request failed.',
 			(kind, message) => ({ ...failure(kind, message), points: [] })
 		);
+
+	// The backend reads at most MODBUS_PROBE_MAX_POINTS points per request, and a template can define more. Batches
+	// run one after another (the backend allows one probe per target at a time) and stop at the first batch that fails
+	// as a whole; points of the batches not read get no result.
+	const readPoints: IUseModbusProbe['readPoints'] = async (target, unitId, points, orders, limits) => {
+		if (points.length <= MODBUS_PROBE_MAX_POINTS) {
+			return readBatch(target, unitId, points, orders, limits);
+		}
+
+		const combined: IModbusProbePointsResult = { ok: false, points: [], error: null, durationMs: 0 };
+
+		for (let start = 0; start < points.length; start += MODBUS_PROBE_MAX_POINTS) {
+			const result = await readBatch(target, unitId, points.slice(start, start + MODBUS_PROBE_MAX_POINTS), orders, limits);
+
+			combined.ok ||= result.ok;
+			combined.points.push(...result.points);
+			combined.durationMs += result.durationMs;
+
+			if (result.error !== null) {
+				combined.error = result.error;
+
+				break;
+			}
+		}
+
+		return combined;
+	};
 
 	const write: IUseModbusProbe['write'] = (target, unitId, binding, value, orders) =>
 		post<IModbusProbeWriteResult>(

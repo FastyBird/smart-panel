@@ -106,8 +106,25 @@ describe('useModbusEndpointForm', () => {
 
 		endpointsStore.edit.mockResolvedValue(existing);
 		const edit = useModbusEndpointForm(existing);
+		edit.model.name = 'Renamed';
 		await edit.submit();
-		expect(endpointsStore.edit).toHaveBeenCalledWith('e1', expect.objectContaining({ name: 'Gateway' }));
+		expect(endpointsStore.edit).toHaveBeenCalledWith('e1', { name: 'Renamed' });
+	});
+
+	it('sends only the changed fields of an existing endpoint, and nothing when unchanged', async () => {
+		endpointsStore.edit.mockResolvedValue(existing);
+
+		const unchanged = useModbusEndpointForm(existing);
+
+		expect(await unchanged.submit()).toBe(existing);
+		expect(endpointsStore.edit).not.toHaveBeenCalled();
+
+		const form = useModbusEndpointForm(existing);
+		form.model.port = 1502;
+		form.model.host = ` ${existing.host} `;
+		await form.submit();
+
+		expect(endpointsStore.edit).toHaveBeenCalledWith('e1', { port: 1502 });
 	});
 
 	it('joins a second submit to the save in flight instead of sending another request', async () => {

@@ -9,6 +9,8 @@
 		<template #extra>
 			<el-button
 				type="primary"
+				:disabled="loading"
+				data-test-id="modbus-endpoints-add"
 				@click="onAdd"
 			>
 				{{ t('devicesModbusPlugin.endpoints.actions.add') }}
@@ -27,7 +29,15 @@
 			:closable="false"
 			show-icon
 			class="mb-4"
-		/>
+		>
+			<el-button
+				size="small"
+				data-test-id="modbus-endpoints-retry"
+				@click="load"
+			>
+				{{ t('devicesModbusPlugin.endpoints.actions.retry') }}
+			</el-button>
+		</el-alert>
 
 		<el-alert
 			v-if="!loadError && devicesLoadFailed"
@@ -136,7 +146,11 @@ const modbusDevices = computed<IDevice[]>(() => devicesStore.findAll().filter((d
 
 const { refresh: refreshHealth } = useModbusEndpointsHealth();
 
-onMounted(async (): Promise<void> => {
+// Also the Retry action of a failed load. Add stays disabled meanwhile, so a pending list cannot replace a new endpoint.
+const load = async (): Promise<void> => {
+	loading.value = true;
+	loadError.value = null;
+
 	// The device list only feeds the device column: when it fails, the endpoints stay manageable and a warning says
 	// the device counts are missing.
 	const [endpointsResult, devicesResult] = await Promise.allSettled([endpointsStore.fetch(), devicesStore.fetch()]);
@@ -149,6 +163,10 @@ onMounted(async (): Promise<void> => {
 	loading.value = false;
 
 	void refreshHealth();
+};
+
+onMounted((): void => {
+	void load();
 });
 
 const onAdd = (): void => {

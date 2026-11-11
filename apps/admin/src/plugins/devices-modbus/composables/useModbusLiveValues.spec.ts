@@ -162,6 +162,22 @@ describe('useModbusLiveValues', () => {
 		expect(readFn).toHaveBeenCalledTimes(1);
 	});
 
+	it('auto-refreshes a read that needs several requests less often', async () => {
+		const many = Array.from({ length: 300 }, (_, index) => point(`p${index}`, binding(index)));
+		const readFn = vi.fn().mockResolvedValue(okResult());
+		const { live } = host(many, readFn);
+
+		live.autoRefresh.value = true;
+		await vi.advanceTimersByTimeAsync(0);
+		expect(readFn).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(readFn).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(readFn).toHaveBeenCalledTimes(2);
+	});
+
 	it('drops the shown reading of a point whose binding changes', async () => {
 		const points = ref([point('a', binding(0)), point('b', binding(1))]);
 		const readFn = vi.fn().mockResolvedValue(okResult());

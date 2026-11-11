@@ -29,6 +29,23 @@ const readOk = {
 	response: { status: 200 },
 };
 
+const coil = (address: number): ModbusPointBinding => ({
+	registerType: DevicesModbusPluginRegisterType.coil,
+	address,
+	dataType: DevicesModbusPluginDataType.bool,
+	bit: null,
+	byteOrder: null,
+	wordOrder: null,
+	scale: 1,
+	offset: 0,
+	invert: false,
+	valueMap: null,
+	writeFunction: null,
+	pollIntervalMs: null,
+});
+
+const orders = { byteOrder: DevicesModbusPluginByteOrder.big, wordOrder: DevicesModbusPluginByteOrder.big };
+
 describe('useModbusProbe', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -191,6 +208,43 @@ describe('useModbusProbe', () => {
 			},
 		});
 		expect(result.points[0]).toEqual({ key: 'k1', raw: [1], value: 1, error: null });
+	});
+
+	it('splits more than 256 points into batches and combines their results', async () => {
+		post.mockImplementation((_path: string, options: { body: { data: { points: { key: string }[] } } }) =>
+			Promise.resolve({
+				data: {
+					data: {
+						ok: true,
+						points: options.body.data.points.map((point) => ({ key: point.key, raw: [1], value: 1, error: null })),
+						error: null,
+						duration_ms: 2,
+					},
+				},
+				response: { status: 200 },
+			})
+		);
+
+		const points = Array.from({ length: 300 }, (_, index) => ({ key: `p${index}`, read: coil(index) }));
+		const result = await useModbusProbe().readPoints({ endpoint_id: 'e1' }, 1, points, orders);
+
+		expect(post).toHaveBeenCalledTimes(2);
+		expect(post.mock.calls.map((call) => call[1].body.data.points.length)).toEqual([256, 44]);
+		expect(result.points.map((point) => point.key)).toEqual(points.map((point) => point.key));
+		expect(result).toMatchObject({ ok: true, error: null, durationMs: 4 });
+	});
+
+	it('stops at the first batch that fails as a whole', async () => {
+		post.mockResolvedValueOnce({
+			data: { data: { ok: false, points: [], error: { kind: 'timeout', exception_code: null, message: 'x' }, duration_ms: 1 } },
+			response: { status: 200 },
+		});
+
+		const points = Array.from({ length: 300 }, (_, index) => ({ key: `p${index}`, read: coil(index) }));
+		const result = await useModbusProbe().readPoints({ endpoint_id: 'e1' }, 1, points, orders);
+
+		expect(post).toHaveBeenCalledTimes(1);
+		expect(result).toMatchObject({ ok: false, error: { kind: 'timeout' } });
 	});
 
 	it('sends a write with the binding and the confirmed value', async () => {

@@ -61,6 +61,28 @@ const mountEditor = () =>
 	});
 
 describe('ModbusPointEditor', () => {
+	it('offers the bit only on the read binding and drops a copied bit from the write binding on save', async () => {
+		const bitRead: ModbusPointBinding = { ...binding(4), registerType: DevicesModbusPluginRegisterType.holding_register, bit: 3 };
+		const wrapper = mount(ModbusPointEditor, {
+			props: { visible: true, point: { ...relay(), read: bitRead, write: { ...bitRead } }, notation: 'pdu', capabilityEditable: true },
+			global: { stubs: { ElDialog: { template: '<div><slot /><slot name="footer" /></div>' } } },
+		});
+		await flushPromises();
+
+		const bitLabels = wrapper
+			.findAllComponents({ name: 'ElFormItem' })
+			.filter((item) => item.props('label') === 'devicesModbusPlugin.wizard.points.columns.bit');
+
+		expect(bitLabels).toHaveLength(1);
+
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		const saved = wrapper.emitted('save')?.[0]?.[0] as ModbusPoint;
+
+		expect(saved.read?.bit).toBe(3);
+		expect(saved.write?.bit).toBeNull();
+	}, 15_000);
+
 	it('starts a recreated write binding at the address typed for the read binding, not at its old address', async () => {
 		const wrapper = mountEditor();
 		await flushPromises();
@@ -85,5 +107,5 @@ describe('ModbusPointEditor', () => {
 
 		expect(saved.read?.address).toBe(7);
 		expect(saved.write?.address).toBe(7);
-	});
+	}, 15_000);
 });

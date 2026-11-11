@@ -252,7 +252,8 @@
 			"edit": "Edit",
 			"remove": "Remove",
 			"save": "Save",
-			"cancel": "Cancel"
+			"cancel": "Cancel",
+			"retry": "Spróbuj ponownie"
 		},
 		"dialog": {
 			"add": "Add Modbus endpoint",

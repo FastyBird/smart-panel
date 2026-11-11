@@ -252,7 +252,8 @@
 			"edit": "Edit",
 			"remove": "Remove",
 			"save": "Save",
-			"cancel": "Cancel"
+			"cancel": "Cancel",
+			"retry": "Skúsiť znova"
 		},
 		"dialog": {
 			"add": "Add Modbus endpoint",
