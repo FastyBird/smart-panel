@@ -1004,10 +1004,17 @@ export class AutomationEngine {
 		if (!policy) return { allow: true };
 
 		const unchecked: RunGate = { allow: false, reason: 'The safety policy could not be checked.' };
-		const read = (verdict: ActionPolicyVerdict | undefined): RunGate =>
-			verdict?.allow === true
-				? { allow: true }
-				: { allow: false, reason: verdict?.reason ?? 'The action was refused by the safety policy.' };
+		const read = (verdict: ActionPolicyVerdict | undefined): RunGate => {
+			try {
+				return verdict?.allow === true
+					? { allow: true }
+					: { allow: false, reason: verdict?.reason ?? 'The action was refused by the safety policy.' };
+			} catch (error) {
+				this.hook('error', error, 'asking the action policy');
+
+				return unchecked;
+			}
+		};
 
 		// Reading `then` and calling it are part of asking: a verdict that can not be read is no verdict
 		try {

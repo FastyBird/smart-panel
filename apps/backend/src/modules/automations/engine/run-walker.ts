@@ -479,11 +479,16 @@ export class RunWalker {
 		const read = (gate: unknown): RunGate => {
 			if (typeof gate !== 'object' || gate === null) return failed;
 
-			const { allow, reason } = gate as { allow?: unknown; reason?: unknown };
+			try {
+				// Reading the verdict is part of the check: a verdict that can not be read lets nothing through
+				const { allow, reason } = gate as { allow?: unknown; reason?: unknown };
 
-			if (allow === true) return { allow: true };
+				if (allow === true) return { allow: true };
 
-			return { allow: false, reason: typeof reason === 'string' ? reason : ACTION_CHECK_FAILED_REASON };
+				return { allow: false, reason: typeof reason === 'string' ? reason : ACTION_CHECK_FAILED_REASON };
+			} catch {
+				return failed;
+			}
 		};
 
 		let asked: RunGate | PromiseLike<RunGate>;

@@ -846,6 +846,32 @@ describe('RunWalker', () => {
 			});
 			expect(events).toEqual(['ended:completed', 'settled']);
 		});
+
+		it.each([
+			['at once', (verdict: RunGate): RunGate => verdict],
+			['later', (verdict: RunGate): Promise<RunGate> => Promise.resolve(verdict)],
+		])('a verdict that can not be read, answered %s, lets nothing through', async (_label, answer) => {
+			const broken = Object.defineProperty({}, 'allow', {
+				get: () => {
+					throw new Error('allow broke');
+				},
+			}) as RunGate;
+
+			const walker = walk(plan([trigger('t'), action('a'), action('handler')], ['t:out>a', 'a:error>handler']), {
+				checkAction: (node) => (node.id === 'a' ? answer(broken) : { allow: true }),
+			});
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['handler']);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The action could not be checked, so it was not executed.',
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
 	});
 
 	it('stops a run whose tokens multiply beyond the step limit', async () => {
