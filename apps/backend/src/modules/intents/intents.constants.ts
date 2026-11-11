@@ -108,12 +108,19 @@ export type IntentOrigin =
 	| 'panel.scenes'
 	| 'panel.spaces'
 	| 'admin'
-	| 'api';
+	| 'api'
+	| 'automation';
 
 /**
- * All valid intent origin values for validation
+ * The origin of what an automation does by itself. It is set by the automations module only: a client
+ * can not claim it (see INTENT_CLIENT_ORIGINS), so an intent that carries it was not asked for by a person.
  */
-export const INTENT_ORIGINS: IntentOrigin[] = [
+export const INTENT_ORIGIN_AUTOMATION: IntentOrigin = 'automation';
+
+/**
+ * The origins a client may name in the context of a command it sends
+ */
+export const INTENT_CLIENT_ORIGINS: IntentOrigin[] = [
 	'panel.system.room',
 	'panel.system.master',
 	'panel.system.entry',
@@ -125,3 +132,8 @@ export const INTENT_ORIGINS: IntentOrigin[] = [
 	'admin',
 	'api',
 ];
+
+/**
+ * All valid intent origin values for validation
+ */
+export const INTENT_ORIGINS: IntentOrigin[] = [...INTENT_CLIENT_ORIGINS, INTENT_ORIGIN_AUTOMATION];

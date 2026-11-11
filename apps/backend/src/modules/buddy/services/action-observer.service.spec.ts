@@ -8,6 +8,7 @@ function makeAction(overrides: Partial<ActionRecord> = {}): ActionRecord {
 		type: overrides.type ?? IntentType.LIGHT_TOGGLE,
 		spaceId: overrides.spaceId ?? 'space-1',
 		deviceIds: overrides.deviceIds ?? ['dev-1'],
+		...(overrides.origin !== undefined ? { origin: overrides.origin } : {}),
 		timestamp: overrides.timestamp ?? new Date(),
 	};
 }
@@ -39,6 +40,19 @@ describe('ActionObserverService', () => {
 			service.recordAction(makeAction({ intentId: 'c' }));
 
 			expect(service.getBufferSize()).toBe(3);
+		});
+
+		it('should ignore what an automation did, and keep what a person did', () => {
+			service.recordAction(makeAction({ intentId: 'automated', origin: 'automation' }));
+			service.recordAction(makeAction({ intentId: 'from-panel', origin: 'panel.device' }));
+			service.recordAction(makeAction({ intentId: 'no-origin' }));
+
+			expect(service.getBufferSize()).toBe(2);
+			expect(service.getRecentActions().map((action) => action.intentId)).toEqual(['from-panel', 'no-origin']);
+			expect(service.getRecentActionsBySpace('space-1').map((action) => action.intentId)).toEqual([
+				'from-panel',
+				'no-origin',
+			]);
 		});
 
 		it('should remove oldest action when buffer overflows', () => {

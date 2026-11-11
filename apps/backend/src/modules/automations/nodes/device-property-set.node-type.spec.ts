@@ -1,3 +1,4 @@
+import { IntentContext } from '../../intents/models/intent.model';
 import { normalizeAutomationNodeType } from '../graph/node-type';
 import {
 	CHANNEL_A,
@@ -28,7 +29,10 @@ import {
 } from './device-property-set.node-type';
 
 describe('device.property.set', () => {
-	let executePropertyCommands: jest.Mock<Promise<DevicePropertyCommandsResult>, [DevicePropertyCommand[]]>;
+	let executePropertyCommands: jest.Mock<
+		Promise<DevicePropertyCommandsResult>,
+		[DevicePropertyCommand[], { context?: IntentContext }?]
+	>;
 
 	const card = () =>
 		createDevicePropertySetNodeType({ commands: { executePropertyCommands }, findProperty: fixtureFindProperty });
@@ -193,10 +197,22 @@ describe('device.property.set', () => {
 			expect(await execute({ writes: [on, level] })).toEqual({ success: true });
 
 			expect(executePropertyCommands).toHaveBeenCalledTimes(1);
-			expect(executePropertyCommands).toHaveBeenCalledWith([
+			expect(executePropertyCommands.mock.calls[0][0]).toEqual([
 				{ propertyId: PROPERTY_BOOL, value: true, requestedDeviceId: DEVICE_A, requestedChannelId: CHANNEL_A },
 				{ propertyId: PROPERTY_NUMBER, value: 20, requestedDeviceId: DEVICE_A, requestedChannelId: CHANNEL_A },
 			]);
+		});
+
+		it('names the automation as the origin of every command batch it sends', async () => {
+			expect(await execute({ writes: [on, other, level] }, runContext({ automationId: 'automation-7' }))).toEqual({
+				success: true,
+			});
+
+			expect(executePropertyCommands).toHaveBeenCalledTimes(2);
+
+			for (const [, options] of executePropertyCommands.mock.calls) {
+				expect(options).toEqual({ context: { origin: 'automation', extra: { automationId: 'automation-7' } } });
+			}
 		});
 
 		it('never sends one batch that spans several devices', async () => {

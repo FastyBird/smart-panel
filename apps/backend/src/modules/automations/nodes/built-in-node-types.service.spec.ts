@@ -109,9 +109,11 @@ describe('AutomationBuiltInNodeTypesService', () => {
 		expect(await card.execute({ writes: [{ ...target(PROPERTY_BOOL), value: true }] }, runContext())).toEqual({
 			success: true,
 		});
-		expect(executePropertyCommands).toHaveBeenCalledWith([
-			{ propertyId: PROPERTY_BOOL, value: true, requestedDeviceId: DEVICE_A, requestedChannelId: CHANNEL_A },
-		]);
+		// ... with the automation as the origin of the intent the write creates
+		expect(executePropertyCommands).toHaveBeenCalledWith(
+			[{ propertyId: PROPERTY_BOOL, value: true, requestedDeviceId: DEVICE_A, requestedChannelId: CHANNEL_A }],
+			{ context: { origin: 'automation', extra: { automationId: 'automation-1' } } },
+		);
 	});
 
 	it('hands the scene and the notification to their services', async () => {
@@ -121,8 +123,14 @@ describe('AutomationBuiltInNodeTypesService', () => {
 			runContext(),
 		);
 
-		// Every scene an automation runs is handed the safety guard, for the actions it is about to execute
-		expect(triggerScene).toHaveBeenCalledWith(SCENE_ID, 'automation', undefined, { guard: sceneGuard });
+		// Every scene an automation runs is handed the safety guard, for the actions it is about to execute, and
+		// the automation as the origin of its intent: the label alone would not reach the intent
+		expect(triggerScene).toHaveBeenCalledWith(
+			SCENE_ID,
+			'automation',
+			{ origin: 'automation', extra: { automationId: 'automation-1' } },
+			{ guard: sceneGuard },
+		);
 		expect(notify).toHaveBeenCalledWith(expect.objectContaining({ title: 'Hello', severity: 'info' }));
 	});
 

@@ -246,7 +246,8 @@ export const BUDDY_HOME_SIGNALS: ReadonlySet<string> = new Set([
 	'zarizeni',
 ]);
 const HOME_SIGNALS = BUDDY_HOME_SIGNALS;
-const SCENE_SIGNALS = new Set(['automation', 'preset', 'routine', 'scene', 'scena']);
+// An automation is not a scene: "run the X automation" must not be routed to the scene tools
+const SCENE_SIGNALS = new Set(['preset', 'routine', 'scene', 'scena']);
 export const BUDDY_SCENE_ACTION_SIGNALS: ReadonlySet<string> = new Set(['run', 'spust']);
 const SCENE_ACTION_SIGNALS = BUDDY_SCENE_ACTION_SIGNALS;
 const AMBIGUOUS_ACTION_SIGNALS = new Set(['activate', 'deactivate', 'start', 'stop']);

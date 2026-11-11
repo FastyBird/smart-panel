@@ -16,19 +16,19 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { INTENT_ORIGINS, IntentOrigin } from '../../intents/intents.constants';
+import { INTENT_CLIENT_ORIGINS, IntentOrigin } from '../../intents/intents.constants';
 import { ValidatePropertyCommandTarget } from '../validators/property-command-target-constraint.validator';
 
 @ApiSchema({ name: 'DevicesModulePropertyCommandContext' })
 export class PropertyCommandContextDto {
 	@ApiPropertyOptional({
 		description: 'Origin of the command (where it was initiated from)',
-		enum: INTENT_ORIGINS,
+		enum: INTENT_CLIENT_ORIGINS,
 		example: 'admin',
 	})
 	@Expose()
 	@IsOptional()
-	@IsIn(INTENT_ORIGINS, {
+	@IsIn(INTENT_CLIENT_ORIGINS, {
 		message: '[{"field":"origin","reason":"Origin must be a valid intent origin value."}]',
 	})
 	origin?: IntentOrigin;

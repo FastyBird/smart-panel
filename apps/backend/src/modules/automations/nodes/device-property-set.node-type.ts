@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsObject, ValidateNested } from 'class-validator';
 
+import { IntentContext } from '../../intents/models/intent.model';
 import {
 	AutomationActionCommand,
 	AutomationActionNodeType,
@@ -24,6 +25,7 @@ import {
 	findPropertyForCheck,
 	isWritable,
 } from './device-property.utils';
+import { automationIntentContext } from './intent-context.utils';
 
 export const DEVICE_PROPERTY_SET_NODE_TYPE = 'device.property.set';
 
@@ -62,7 +64,10 @@ export interface DevicePropertyCommandsResult {
 
 /** The part of `PropertyCommandService` the action needs */
 export interface DevicePropertyCommander {
-	executePropertyCommands(commands: DevicePropertyCommand[]): Promise<DevicePropertyCommandsResult>;
+	executePropertyCommands(
+		commands: DevicePropertyCommand[],
+		options?: { context?: IntentContext },
+	): Promise<DevicePropertyCommandsResult>;
 }
 
 export interface DevicePropertySetDependencies {
@@ -99,7 +104,8 @@ const describeError = (error: unknown): string => (error instanceof Error ? erro
  * `done` only when every value was accepted; otherwise it takes `error` with what was refused.
  *
  * The device and the channel named with a write are handed to the command service, which refuses a write
- * whose property is no longer the one of that channel and device.
+ * whose property is no longer the one of that channel and device. Every call carries the automation as the
+ * origin of the intent, so the change can be told from one a person made.
  *
  * Refusing writes that reduce safety (unlock, disarm, open) is the job of the safety policy, which reads
  * what this action will write from `commands()` when the graph is saved and again before every execution.
@@ -225,6 +231,7 @@ export const createDevicePropertySetNodeType = (
 								requestedDeviceId: write.device_id,
 								requestedChannelId: write.channel_id,
 							})),
+							{ context: automationIntentContext(context) },
 						);
 
 						const refused = result.results.filter((item) => !item.success);

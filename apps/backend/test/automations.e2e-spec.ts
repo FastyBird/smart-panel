@@ -1431,6 +1431,10 @@ describe('Automations module (e2e)', () => {
 						requestedChannelId: lightBrightness.channel_id,
 					},
 				]);
+				// ... and carries the automation as the origin of its intent
+				expect(commands.mock.calls[0][1]).toEqual({
+					context: { origin: 'automation', extra: { automationId: automation.id } },
+				});
 
 				// The sensor reporting "occupied" again is not a change and starts nothing
 				await report(occupancy, true);

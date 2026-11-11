@@ -35,6 +35,38 @@ describe('IntentEventListener', () => {
 			expect(actions[0].timestamp).toBeInstanceOf(Date);
 		});
 
+		it('should not record an intent that an automation started', () => {
+			// The payload of a device write and of a scene run started by an automation
+			listener.handleIntentCompleted({
+				intent_id: 'intent-auto-1',
+				type: IntentType.DEVICE_SET_PROPERTY,
+				context: { origin: 'automation', extra: { automationId: 'automation-1' } },
+				targets: [{ device_id: 'dev-1' }],
+			});
+			listener.handleIntentCompleted({
+				intent_id: 'intent-auto-2',
+				type: IntentType.SCENE_RUN,
+				context: { origin: 'automation', space_id: 'space-1', extra: { automationId: 'automation-1' } },
+				targets: [{ scene_id: 'scene-1' }, { device_id: 'dev-1' }],
+			});
+
+			expect(actionObserver.getRecentActions()).toEqual([]);
+		});
+
+		it('should record the origin of an intent a person started', () => {
+			listener.handleIntentCompleted({
+				intent_id: 'intent-panel',
+				type: IntentType.DEVICE_SET_PROPERTY,
+				context: { origin: 'panel.device', space_id: 'space-1' },
+				targets: [{ device_id: 'dev-1' }],
+			});
+
+			const actions = actionObserver.getRecentActions();
+
+			expect(actions).toHaveLength(1);
+			expect(actions[0].origin).toBe('panel.device');
+		});
+
 		it('should extract multiple device IDs from targets', () => {
 			listener.handleIntentCompleted({
 				intent_id: 'intent-2',

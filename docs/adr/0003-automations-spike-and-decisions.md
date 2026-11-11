@@ -329,6 +329,26 @@ Added with AU-6; the design names the rule (§ Security and safety), this record
 - **The action policy of the engine may answer later**, since it has to read the database. A policy that
   answers at once is not waited for, so nothing changes in the timing of an engine without one.
 
+### 19. Intent origin of an automation
+
+Added with AU-7.
+
+- **One origin, set on the server.** `IntentOrigin` has the value `automation`. The built-in actions hand
+  `{ origin: 'automation', extra: { automationId } }` to `PropertyCommandService.executePropertyCommands` and, as
+  the third argument, to `SceneExecutorService.triggerScene`; the second argument of `triggerScene` is only the
+  `triggeredBy` label and never reaches the intent. A scene runs its actions under its own intent, so they carry
+  the origin too.
+- **A client can not claim it.** The command context a client sends (`DevicesModulePropertyCommandContext`)
+  takes `INTENT_CLIENT_ORIGINS`, the list as it was. Otherwise any client could hide what a person does from
+  Buddy by naming the origin. The request schema is therefore unchanged; the origin reaches clients only in the
+  context of the intent events.
+- **Buddy does not learn it.** `ActionObserverService` drops a completed intent with this origin before it gets
+  to the buffer, so pattern detection, scene suggestions and the "recent actions" context never see it.
+- **"Automation" is not scene vocabulary.** The word is removed from `SCENE_SIGNALS` and from the scene patterns
+  of the planner grammar (decision 14). Until Buddy has automation tools the word means nothing to it: "run the
+  Morning automation" is asked about instead of running a scene, and next to a device noun ("start the garage
+  door in automation mode") the request is a plain device request.
+
 ## Consequences
 
 - The design doc is updated to match this ADR.
