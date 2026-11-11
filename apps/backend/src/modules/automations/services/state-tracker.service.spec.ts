@@ -367,6 +367,63 @@ describe('AutomationStateTrackerService', () => {
 		expect(service.read('occ')).toEqual({ status: 'offline', value: false });
 	});
 
+	it('suspends a running duration while the connection state of a learned device is being read', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false, forSeconds: 120 }, fire);
+		await service.settled();
+
+		// Reports without the channel: the device stays unknown and a duration starts
+		valueSet('occ', true);
+		valueSet('occ', false);
+
+		expect(service.pendingTimers()).toBe(1);
+
+		let release: (value: unknown) => void = () => undefined;
+
+		readConnection.mockReturnValueOnce(
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+		);
+
+		// A report that leaves the target state and carries the device: held while the read is open
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+			...entity('occ', true),
+			channel: { id: 'channel', device: { id: 'sensor' } },
+		} as ChannelPropertyEntity);
+
+		expect(service.pendingTimers()).toBe(0);
+
+		clock.advanceSeconds(600);
+
+		expect(fired).toEqual([]);
+
+		release({ online: true, status: ConnectionState.CONNECTED, lastChanged: null });
+		await service.settled();
+		clock.advanceSeconds(600);
+
+		expect(fired).toEqual([]);
+		expect(service.read('occ')).toEqual({ status: 'ok', value: true });
+	});
+
+	it('counts a learned device as reachable when its connection state cannot be read', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false }, fire);
+		await service.settled();
+
+		readConnection.mockRejectedValueOnce(new Error('database is gone'));
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+			...entity('occ', true),
+			channel: { id: 'channel', device: { id: 'sensor' } },
+		} as ChannelPropertyEntity);
+		await service.settled();
+
+		expect(service.read('occ')).toEqual({ status: 'ok', value: true });
+	});
+
 	it('replays the reports held during the connection read, in order, when the device is online', async () => {
 		findOne.mockRejectedValueOnce(new Error('database is gone'));
 

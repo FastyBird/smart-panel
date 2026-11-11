@@ -236,14 +236,24 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 
 		this.heldReports.set(propertyId, held);
 
+		// Treated as offline until the read answers: this suspends a duration that is already running
+		this.tracker.setAvailability(propertyId, { online: false });
+
+		const apply = (online: boolean): void => {
+			if (this.heldReports.get(propertyId) !== held || this.connectionSeen.has(propertyId)) return;
+
+			this.tracker.setAvailability(propertyId, { online });
+		};
+
 		const restore = this.connectionStateService
 			.readLatest({ id: deviceId })
-			.then((connection) => {
-				if (this.heldReports.get(propertyId) !== held || this.connectionSeen.has(propertyId)) return;
+			.then((connection) => apply(isReachable(connection.status, connection.online)))
+			.catch((error: unknown) => {
+				this.logFailure(`the connection state of property id=${propertyId}`, error);
 
-				this.tracker.setAvailability(propertyId, { online: isReachable(connection.status, connection.online) });
+				// Unknown reachability counts as reachable, as it does for the baseline
+				apply(true);
 			})
-			.catch((error: unknown) => this.logFailure(`the connection state of property id=${propertyId}`, error))
 			.finally(() => {
 				this.baselines.delete(restore);
 
