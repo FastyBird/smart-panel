@@ -115,6 +115,49 @@ describe('useAutomationsDataSource', () => {
 		expect(mockStore.fetch).toHaveBeenCalled();
 	});
 
+	it('stops waiting for the first load and says so when it fails, until a retry succeeds', async () => {
+		mockStore.firstLoad.value = false;
+		mockStore.fetch.mockRejectedValueOnce(new Error('offline'));
+
+		const { fetchAutomations, areLoading, loadFailed } = useAutomationsDataSource();
+
+		expect(areLoading.value).toBe(true);
+		expect(loadFailed.value).toBe(false);
+
+		await expect(fetchAutomations()).rejects.toThrow('offline');
+
+		expect(areLoading.value).toBe(false);
+		expect(loadFailed.value).toBe(true);
+
+		mockStore.fetch.mockImplementationOnce(async (): Promise<void> => {
+			mockStore.firstLoad.value = true;
+		});
+
+		const retry = fetchAutomations();
+
+		// The failure is gone as soon as it is tried again
+		expect(loadFailed.value).toBe(false);
+
+		await retry;
+
+		expect(areLoading.value).toBe(false);
+		expect(loadFailed.value).toBe(false);
+	});
+
+	it('forgets a failed load once the list was loaded by something else', async () => {
+		mockStore.firstLoad.value = false;
+		mockStore.fetch.mockRejectedValueOnce(new Error('offline'));
+
+		const { fetchAutomations, loadFailed } = useAutomationsDataSource();
+
+		await expect(fetchAutomations()).rejects.toThrow('offline');
+
+		// The refresh after the socket has reconnected
+		mockStore.firstLoad.value = true;
+
+		expect(loadFailed.value).toBe(false);
+	});
+
 	it('sorts by name by default and paginates', () => {
 		const { automations, automationsPaginated, totalRows } = useAutomationsDataSource();
 

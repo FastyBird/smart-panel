@@ -8,6 +8,7 @@ export interface IAutomationsTableProps {
 	filtersActive: boolean;
 	tableHeight: number;
 	loading: boolean;
+	loadFailed?: boolean;
 	updating: IAutomation['id'][];
 	sortBy: AutomationsSortBy | undefined;
 	sortDir: 'asc' | 'desc' | null;

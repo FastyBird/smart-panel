@@ -12,5 +12,6 @@ export interface IListAutomationsProps {
 	sortBy: AutomationsSortBy | undefined;
 	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
+	loadFailed?: boolean;
 	updating: IAutomation['id'][];
 }

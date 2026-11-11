@@ -149,6 +149,17 @@ describe('AutomationsTable', (): void => {
 		expect(wrapper.text()).toContain('automations.texts.noAutomations');
 	});
 
+	it('says that the list could not be loaded and offers to try again', async (): Promise<void> => {
+		await createWrapper({ items: [], totalRows: 0, loadFailed: true });
+
+		expect(wrapper.text()).toContain('automations.texts.loadFailed');
+		expect(wrapper.text()).not.toContain('automations.texts.noAutomations');
+
+		await wrapper.find('[data-test-id="retry-load"]').trigger('click');
+
+		expect(wrapper.emitted('retry')).toHaveLength(1);
+	});
+
 	it('offers to reset the filters when they hide everything', async (): Promise<void> => {
 		await createWrapper({ items: [], filtersActive: true });
 

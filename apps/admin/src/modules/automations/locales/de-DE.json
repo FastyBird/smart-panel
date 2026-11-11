@@ -87,6 +87,7 @@
 			"loadingAutomations": "Automationen werden geladen...",
 			"noAutomations": "Sie haben noch keine Automation",
 			"noFilteredAutomations": "Keine Automationen entsprechen Ihren Filtern",
+			"loadFailed": "Die Automatisierungen konnten nicht geladen werden.",
 			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
 			"confirmRemove": "Möchten Sie die Automation „{automation}“ wirklich entfernen?",
 			"addHint": "Eine neue Automation wird deaktiviert und mit leerem Ablauf erstellt. Sie kann aktiviert werden, sobald ihr Ablauf mindestens einen Auslöser hat."
@@ -138,6 +139,9 @@
 			},
 			"resetFilters": {
 				"title": "Filter zurücksetzen"
+			},
+			"retry": {
+				"title": "Erneut versuchen"
 			}
 		},
 		"messages": {

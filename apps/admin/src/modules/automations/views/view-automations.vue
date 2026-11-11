@@ -84,6 +84,7 @@
 			:all-items="automations"
 			:total-rows="totalRows"
 			:loading="areLoading"
+			:load-failed="loadFailed"
 			:filters-active="filtersActive"
 			:updating="updating"
 			@edit="onAutomationEdit"
@@ -91,6 +92,7 @@
 			@toggle-enabled="onAutomationToggleEnabled"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@retry="onRetry"
 		/>
 	</div>
 
@@ -102,8 +104,9 @@
 		<component :is="Component" />
 	</router-view>
 
+	<!-- Details open in the drawer on large screens only; the list adjustment has no other place on any -->
 	<el-drawer
-		v-if="isLGDevice"
+		v-if="isLGDevice || adjustList"
 		v-model="showDrawer"
 		:show-close="false"
 		:size="adjustList ? '300px' : '40%'"
@@ -172,7 +175,6 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { AUTOMATION_DEFAULT_ICON, RouteNames } from '../automations.constants';
-import { AutomationsException } from '../automations.exceptions';
 import { ListAutomations, ListAutomationsAdjust } from '../components/components';
 import { useAutomationSpaces, useAutomationsActions, useAutomationsDataSource } from '../composables/composables';
 import type { IAutomation } from '../store/automations.store.types';
@@ -207,6 +209,7 @@ const {
 	paginateSize,
 	paginatePage,
 	areLoading,
+	loadFailed,
 	resetFilter,
 } = useAutomationsDataSource();
 
@@ -308,11 +311,21 @@ const onAdjustList = (): void => {
 	adjustList.value = true;
 };
 
-onBeforeMount((): void => {
-	Promise.all([fetchAutomations(), fetchSpaces()]).catch((error: unknown): void => {
-		const err = error as Error;
+const loadAutomations = (): void => {
+	fetchAutomations().catch((): void => {
+		// The list says so and offers to try again
+	});
+};
 
-		throw new AutomationsException('Something went wrong', err);
+const onRetry = (): void => {
+	loadAutomations();
+};
+
+onBeforeMount((): void => {
+	loadAutomations();
+
+	fetchSpaces().catch((): void => {
+		// Spaces only name the column and the filter; the list works without them
 	});
 
 	showDrawer.value = isDetailRouteOpen();

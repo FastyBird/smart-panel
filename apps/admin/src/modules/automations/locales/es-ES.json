@@ -87,6 +87,7 @@
 			"loadingAutomations": "Cargando automatizaciones...",
 			"noAutomations": "Todavía no tiene ninguna automatización",
 			"noFilteredAutomations": "Ninguna automatización coincide con sus filtros",
+			"loadFailed": "No se pudieron cargar las automatizaciones.",
 			"confirmDiscard": "Tiene cambios sin guardar. ¿Seguro que desea descartarlos?",
 			"confirmRemove": "¿Seguro que desea eliminar la automatización «{automation}»?",
 			"addHint": "Una automatización nueva se crea deshabilitada y con el flujo vacío. Se puede habilitar cuando su flujo tenga al menos un disparador."
@@ -138,6 +139,9 @@
 			},
 			"resetFilters": {
 				"title": "Restablecer filtros"
+			},
+			"retry": {
+				"title": "Reintentar"
 			}
 		},
 		"messages": {

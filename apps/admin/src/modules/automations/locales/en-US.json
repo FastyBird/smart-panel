@@ -87,6 +87,7 @@
 			"loadingAutomations": "Loading automations...",
 			"noAutomations": "You don't have any automation yet",
 			"noFilteredAutomations": "No automations match your filters",
+			"loadFailed": "The automations could not be loaded.",
 			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
 			"confirmRemove": "Are you sure you want to remove the automation \"{automation}\"?",
 			"addHint": "A new automation is created disabled and with an empty flow. It can be enabled once its flow has at least one trigger."
@@ -138,6 +139,9 @@
 			},
 			"resetFilters": {
 				"title": "Reset filters"
+			},
+			"retry": {
+				"title": "Try again"
 			}
 		},
 		"messages": {

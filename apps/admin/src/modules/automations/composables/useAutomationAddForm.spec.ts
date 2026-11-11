@@ -109,6 +109,37 @@ describe('useAutomationAddForm', () => {
 		expect(formResult.value).toBe(FormResult.NONE);
 	});
 
+	it('creates the automation once when it is submitted again before the first one has finished', async () => {
+		let resolve: (value: unknown) => void = () => {};
+
+		mockStore.add.mockReturnValue(
+			new Promise((res) => {
+				resolve = res;
+			})
+		);
+
+		const { model, formEl, submit } = useAutomationAddForm({ id: automationId });
+
+		formEl.value = createFormEl();
+
+		model.name = 'Night mode';
+
+		const first = submit();
+		const second = submit();
+
+		// Also once the first one is past the validation and waits for the backend
+		await vi.advanceTimersByTimeAsync(0);
+
+		const third = submit();
+
+		resolve(undefined);
+
+		await expect(Promise.all([first, second, third])).resolves.toEqual(['added', 'added', 'added']);
+
+		expect(mockStore.add).toHaveBeenCalledTimes(1);
+		expect(mockFlash.success).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not call the store for a form that is not valid', async () => {
 		const { formEl, submit } = useAutomationAddForm({ id: automationId });
 

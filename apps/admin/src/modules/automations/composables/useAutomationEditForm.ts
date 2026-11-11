@@ -36,19 +36,58 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 
 	let timer: number;
 
+	// The record the draft was started from. The store replaces its record whenever the automation is
+	// changed elsewhere, while the draft stays as it was - so a save has to name the revision the draft
+	// is based on, not the one held by the store, or it would silently overwrite the other change.
+	let base: IAutomation = automation;
+
 	const model = reactive<IAutomationEditForm>({
-		id: automation.id,
-		name: automation.name,
-		description: automation.description ?? '',
-		spaceId: automation.spaceId,
-		mode: automation.mode,
+		id: base.id,
+		name: base.name,
+		description: base.description ?? '',
+		spaceId: base.spaceId,
+		mode: base.mode,
 	});
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
 	const formChanged = ref<boolean>(false);
 
-	const submit = async (): Promise<'saved'> => {
+	const isChanged = (): boolean => {
+		return (
+			model.name !== base.name ||
+			(model.description ?? '') !== (base.description ?? '') ||
+			(model.spaceId ?? null) !== base.spaceId ||
+			model.mode !== base.mode
+		);
+	};
+
+	// Starts the draft over from the given record
+	const rebase = (record: IAutomation): void => {
+		base = record;
+
+		model.name = record.name;
+		model.description = record.description ?? '';
+		model.spaceId = record.spaceId;
+		model.mode = record.mode;
+
+		formChanged.value = false;
+	};
+
+	let pending: Promise<'saved'> | null = null;
+
+	// A submit asked for while another one is on its way joins it instead of sending the update twice
+	const submit = (): Promise<'saved'> => {
+		if (pending === null) {
+			pending = save().finally((): void => {
+				pending = null;
+			});
+		}
+
+		return pending;
+	};
+
+	const save = async (): Promise<'saved'> => {
 		formEl.value!.clearValidate();
 
 		const valid = await formEl.value!.validate();
@@ -57,9 +96,14 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 
 		formResult.value = FormResult.WORKING;
 
+		const name = base.name;
+
+		let saved: IAutomation;
+
 		try {
-			await automationsStore.edit({
-				id: automation.id,
+			saved = await automationsStore.edit({
+				id: base.id,
+				revision: base.revision,
 				data: {
 					name: model.name,
 					description: model.description ?? null,
@@ -73,11 +117,15 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 			timer = window.setTimeout(clear, 2000);
 
 			if (error instanceof AutomationsRevisionConflictException) {
-				flashMessage.warning(t('automations.messages.changedElsewhere', { automation: automation.name }));
+				// The store has read the automation again. The draft was made over what is no longer there,
+				// so it starts over from what is - saving it as it is would undo the other change.
+				rebase(automationsStore.findById(base.id) ?? base);
+
+				flashMessage.warning(t('automations.messages.changedElsewhere', { automation: name }));
 			} else if (error instanceof AutomationsApiException && error.code === 422) {
 				flashMessage.error(error.message);
 			} else {
-				flashMessage.error(t('automations.messages.notEdited', { automation: automation.name }));
+				flashMessage.error(t('automations.messages.notEdited', { automation: name }));
 			}
 
 			throw error;
@@ -89,6 +137,9 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 
 		flashMessage.success(t('automations.messages.edited', { automation: model.name }));
 
+		// What was saved is what any further change is made over
+		rebase(saved);
+
 		return 'saved';
 	};
 
@@ -98,12 +149,8 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IAutomationEditForm): void => {
-		formChanged.value =
-			val.name !== automation.name ||
-			(val.description ?? '') !== (automation.description ?? '') ||
-			(val.spaceId ?? null) !== automation.spaceId ||
-			val.mode !== automation.mode;
+	watch(model, (): void => {
+		formChanged.value = isChanged();
 	});
 
 	return {

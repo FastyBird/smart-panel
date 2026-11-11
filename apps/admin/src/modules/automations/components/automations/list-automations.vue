@@ -28,6 +28,7 @@
 				:items="props.items"
 				:total-rows="props.totalRows"
 				:loading="props.loading"
+				:load-failed="props.loadFailed"
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
 				:updating="props.updating"
@@ -35,6 +36,7 @@
 				@remove="(id: IAutomation['id']): void => emit('remove', id)"
 				@toggle-enabled="(id: IAutomation['id'], enabled: boolean): void => emit('toggle-enabled', id, enabled)"
 				@reset-filters="emit('reset-filters')"
+				@retry="emit('retry')"
 			/>
 
 			<div
@@ -81,6 +83,7 @@ const emit = defineEmits<{
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
 	(e: 'adjust-list'): void;
 	(e: 'reset-filters'): void;
+	(e: 'retry'): void;
 	(e: 'update:filters', filters: IAutomationsFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;

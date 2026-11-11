@@ -128,12 +128,28 @@ export const useAutomationsDataSource = (): IUseAutomationsDataSource => {
 		return automations.value.slice(start, end);
 	});
 
+	const fetchFailed = ref<boolean>(false);
+
 	const fetchAutomations = async (): Promise<void> => {
-		await automationsStore.fetch();
+		fetchFailed.value = false;
+
+		try {
+			await automationsStore.fetch();
+		} catch (error: unknown) {
+			fetchFailed.value = true;
+
+			throw error;
+		}
 	};
 
+	// The list was never read and the last attempt failed. Without it the list would wait for a first
+	// load that is not coming; once anything has loaded it (a retry, the refresh after a reconnect) it is over.
+	const loadFailed = computed<boolean>((): boolean => {
+		return fetchFailed.value && !firstLoad.value;
+	});
+
 	const areLoading = computed<boolean>((): boolean => {
-		return semaphore.value.fetching.items || !firstLoad.value;
+		return semaphore.value.fetching.items || (!firstLoad.value && !loadFailed.value);
 	});
 
 	const loaded = computed<boolean>((): boolean => {
@@ -212,6 +228,7 @@ export const useAutomationsDataSource = (): IUseAutomationsDataSource => {
 		totalRows,
 		areLoading,
 		loaded,
+		loadFailed,
 		fetchAutomations,
 		filters,
 		filtersActive,

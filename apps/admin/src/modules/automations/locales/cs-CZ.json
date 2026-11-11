@@ -87,6 +87,7 @@
 			"loadingAutomations": "Načítání automatizací...",
 			"noAutomations": "Zatím nemáte žádnou automatizaci",
 			"noFilteredAutomations": "Vašim filtrům neodpovídá žádná automatizace",
+			"loadFailed": "Automatizace se nepodařilo načíst.",
 			"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
 			"confirmRemove": "Opravdu chcete odstranit automatizaci „{automation}“?",
 			"addHint": "Nová automatizace se vytvoří zakázaná a s prázdným průběhem. Povolit ji lze, jakmile její průběh obsahuje alespoň jeden spouštěč."
@@ -138,6 +139,9 @@
 			},
 			"resetFilters": {
 				"title": "Resetovat filtry"
+			},
+			"retry": {
+				"title": "Zkusit znovu"
 			}
 		},
 		"messages": {

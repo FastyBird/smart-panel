@@ -48,7 +48,20 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 
 	const formChanged = ref<boolean>(false);
 
-	const submit = async (): Promise<'added'> => {
+	let pending: Promise<'added'> | null = null;
+
+	// A submit asked for while another one is on its way joins it instead of creating the automation twice
+	const submit = (): Promise<'added'> => {
+		if (pending === null) {
+			pending = save().finally((): void => {
+				pending = null;
+			});
+		}
+
+		return pending;
+	};
+
+	const save = async (): Promise<'added'> => {
 		formEl.value!.clearValidate();
 
 		const valid = await formEl.value!.validate();

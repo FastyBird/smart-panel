@@ -87,6 +87,7 @@
 			"loadingAutomations": "Ładowanie automatyzacji...",
 			"noAutomations": "Nie masz jeszcze żadnej automatyzacji",
 			"noFilteredAutomations": "Żadna automatyzacja nie pasuje do filtrów",
+			"loadFailed": "Nie udało się wczytać automatyzacji.",
 			"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
 			"confirmRemove": "Czy na pewno chcesz usunąć automatyzację „{automation}”?",
 			"addHint": "Nowa automatyzacja jest tworzona jako wyłączona i z pustym przebiegiem. Można ją włączyć, gdy jej przebieg ma co najmniej jeden wyzwalacz."
@@ -138,6 +139,9 @@
 			},
 			"resetFilters": {
 				"title": "Resetuj filtry"
+			},
+			"retry": {
+				"title": "Spróbuj ponownie"
 			}
 		},
 		"messages": {

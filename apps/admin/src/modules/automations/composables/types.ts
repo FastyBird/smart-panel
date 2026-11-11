@@ -45,6 +45,7 @@ export interface IUseAutomationsDataSource {
 	totalRows: ComputedRef<number>;
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
+	loadFailed: ComputedRef<boolean>;
 	fetchAutomations: () => Promise<void>;
 	filters: Ref<IAutomationsFilter>;
 	filtersActive: ComputedRef<boolean>;

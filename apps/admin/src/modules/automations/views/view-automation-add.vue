@@ -33,6 +33,8 @@
 	<app-bar-button
 		v-if="!isMDDevice"
 		:align="AppBarButtonAlign.RIGHT"
+		:loading="remoteFormResult === FormResult.WORKING"
+		:disabled="remoteFormResult === FormResult.WORKING"
 		teleport
 		small
 		@click="remoteFormSubmit = true"

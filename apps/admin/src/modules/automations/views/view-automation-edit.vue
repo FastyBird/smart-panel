@@ -33,6 +33,8 @@
 	<app-bar-button
 		v-if="!isMDDevice && automation"
 		:align="AppBarButtonAlign.RIGHT"
+		:loading="remoteFormResult === FormResult.WORKING"
+		:disabled="remoteFormResult === FormResult.WORKING"
 		teleport
 		small
 		@click="remoteFormSubmit = true"
@@ -41,8 +43,10 @@
 	</app-bar-button>
 
 	<div class="flex flex-col overflow-hidden h-full">
+		<!-- Only the first read replaces the form. A later one (the store reads the automation again after
+		     a refused save) must leave it mounted, or the outcome of the submit would never get here. -->
 		<div
-			v-if="isLoading || !automationReady"
+			v-if="!automationReady || (!automation && isLoading)"
 			class="flex items-center justify-center h-full"
 		>
 			<el-icon

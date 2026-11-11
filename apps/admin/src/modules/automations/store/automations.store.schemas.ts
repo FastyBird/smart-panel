@@ -134,6 +134,8 @@ export const AutomationsAddActionPayloadSchema = z.object({
 
 export const AutomationsEditActionPayloadSchema = z.object({
 	id: ItemIdSchema,
+	// The revision the edit is based on, when it is not the one held by the store
+	revision: z.number().int().min(1).optional(),
 	data: z.object({
 		name: z.string().trim().nonempty().max(AUTOMATION_NAME_MAX_LENGTH).optional(),
 		description: DescriptionSchema,

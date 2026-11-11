@@ -97,26 +97,27 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 		const pendingFetchPromises: Record<string, Promise<IAutomation[]>> = {};
 
+		// What was written or removed while the list was being read (null when it is not). The list is a
+		// snapshot of the moment the backend answered, so it must not undo what happened here since.
+		let changedWhileFetching: Map<IAutomation['id'], 'set' | 'unset'> | null = null;
+
 		const onEvent = (payload: IAutomationsOnEventActionPayload): IAutomation => {
-			const transformed = transformAutomationResponse(payload.data, AutomationSchema);
-
-			const existingRecord = data.value.get(payload.id);
-
-			// The response of our own save and the event announcing it race each other. The revision moves
-			// with every save, so an event older than what is held must not overwrite it. Writes of the
-			// engine (status, last run) keep the revision and are let through.
-			if (existingRecord && transformed.revision < existingRecord.revision) {
-				return existingRecord;
-			}
-
 			return set({
 				id: payload.id,
-				data: transformed,
+				data: transformAutomationResponse(payload.data, AutomationSchema),
 			});
 		};
 
 		const set = (payload: IAutomationsSetActionPayload): IAutomation => {
 			const existingRecord = data.value.get(payload.id);
+
+			// Responses and events race each other: the answer to a read may arrive after the event of a
+			// later save, and the answer to our own save after the event announcing it. The revision moves
+			// with every save, so whatever is older than what is held must not overwrite it. Writes of the
+			// engine (status, last run) keep the revision and are let through.
+			if (existingRecord && typeof payload.data.revision === 'number' && payload.data.revision < existingRecord.revision) {
+				return existingRecord;
+			}
 
 			const candidate: Record<string, unknown> = existingRecord ? { ...existingRecord, ...payload.data } : { ...payload.data, id: payload.id };
 
@@ -136,11 +137,15 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			data.value.set(parsed.data.id, parsed.data);
 
+			changedWhileFetching?.set(parsed.data.id, 'set');
+
 			return parsed.data;
 		};
 
 		const unset = (payload: IAutomationsUnsetActionPayload): void => {
 			data.value.delete(payload.id);
+
+			changedWhileFetching?.set(payload.id, 'unset');
 		};
 
 		const get = async (payload: IAutomationsGetActionPayload): Promise<IAutomation> => {
@@ -211,8 +216,15 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			const fetchPromise = (async (): Promise<IAutomation[]> => {
 				semaphore.value.fetching.items = true;
 
+				const changedMeanwhile = new Map<IAutomation['id'], 'set' | 'unset'>();
+
+				changedWhileFetching = changedMeanwhile;
+
 				try {
 					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/automations`);
+
+					// Only what happened while the request was on its way is of interest
+					changedWhileFetching = null;
 
 					if (typeof responseData === 'undefined') {
 						let errorReason: string = 'Failed to fetch automations.';
@@ -230,21 +242,27 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 					for (const automationData of responseData.data) {
 						const transformed = transformAutomationResponse(automationData, AutomationSchema);
 
+						fetched.add(transformed.id);
+
+						// Removed while the list was on its way: the snapshot is from before
+						if (changedMeanwhile.get(transformed.id) === 'unset') {
+							continue;
+						}
+
 						automations.push(
 							set({
 								id: transformed.id,
 								data: transformed,
 							})
 						);
-
-						fetched.add(transformed.id);
 					}
 
 					// The response is the whole collection, so anything missing from it is gone.
 					// Merging alone would keep a deleted automation on screen whenever its event was
-					// missed - which is exactly the case after the browser has been asleep.
+					// missed - which is exactly the case after the browser has been asleep. What was created
+					// while the list was on its way is not in it either and stays.
 					for (const knownId of [...data.value.keys()]) {
-						if (!fetched.has(knownId)) {
+						if (!fetched.has(knownId) && !changedMeanwhile.has(knownId)) {
 							data.value.delete(knownId);
 						}
 					}
@@ -255,6 +273,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 				} catch (e) {
 					throw toApiException(e, 'Failed to fetch automations.');
 				} finally {
+					changedWhileFetching = null;
+
 					semaphore.value.fetching.items = false;
 				}
 			})();
@@ -332,7 +352,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		/**
 		 * Updates an automation. Nothing is written to the store before the backend has accepted the change:
 		 * the update is a compare-and-swap on the revision, so there is no optimistic state to roll back when
-		 * it is refused.
+		 * it is refused. The revision compared is the one the change was based on: a caller that edits a
+		 * copy passes the revision it copied, otherwise it is the revision held.
 		 */
 		const edit = async (payload: IAutomationsEditActionPayload): Promise<IAutomation> => {
 			const parsedPayload = AutomationsEditActionPayloadSchema.safeParse(payload);
@@ -343,7 +364,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 				throw new AutomationsValidationException('Failed to edit automation.');
 			}
 
-			const { id, data: automationData } = parsedPayload.data;
+			const { id, revision, data: automationData } = parsedPayload.data;
 
 			const existingRecord = data.value.get(id);
 
@@ -354,7 +375,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			semaphore.value.updating.push(id);
 
 			try {
-				const updateData = transformAutomationUpdateRequest({ ...automationData, revision: existingRecord.revision });
+				const updateData = transformAutomationUpdateRequest({ ...automationData, revision: revision ?? existingRecord.revision });
 
 				const {
 					data: responseData,

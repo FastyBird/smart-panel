@@ -36,6 +36,47 @@
 			</div>
 
 			<div
+				v-else-if="props.loadFailed"
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child
+							type="danger"
+							:size="80"
+						>
+							<template #primary>
+								<icon :icon="AUTOMATION_DEFAULT_ICON" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:alert-circle" />
+							</template>
+						</icon-with-child>
+					</template>
+
+					<template #title>
+						<el-text class="block">
+							{{ t('automations.texts.loadFailed') }}
+						</el-text>
+
+						<el-button
+							type="primary"
+							plain
+							class="mt-4"
+							data-test-id="retry-load"
+							@click="emit('retry')"
+						>
+							<template #icon>
+								<icon icon="mdi:refresh" />
+							</template>
+
+							{{ t('automations.buttons.retry.title') }}
+						</el-button>
+					</template>
+				</el-result>
+			</div>
+
+			<div
 				v-else-if="noResults && !props.loading"
 				class="h-full w-full leading-normal"
 			>
@@ -304,6 +345,7 @@ const emit = defineEmits<{
 	(e: 'remove', id: IAutomation['id']): void;
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
 	(e: 'reset-filters'): void;
+	(e: 'retry'): void;
 	(e: 'update:filters', filters: IAutomationsFilter): void;
 	(e: 'update:sort-by', by: AutomationsSortBy | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
