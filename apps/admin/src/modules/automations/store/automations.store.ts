@@ -523,6 +523,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			semaphore.value.deleting.push(payload.id);
 
+			const startedAt = ++sequence;
+
 			try {
 				const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/automations/{id}`, {
 					params: { path: { id: payload.id } },
@@ -536,7 +538,10 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 					);
 				}
 
-				unset({ id: payload.id });
+				// After a reset the id may belong to an automation created since, which this request never saw
+				if (allRemovedAt <= startedAt) {
+					unset({ id: payload.id });
+				}
 			} catch (e) {
 				throw toApiException(e, 'Failed to remove automation.');
 			} finally {

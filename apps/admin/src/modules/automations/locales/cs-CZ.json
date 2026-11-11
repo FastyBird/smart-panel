@@ -153,6 +153,7 @@
 		"messages": {
 			"requestError": "Při načítání automatizace se něco pokazilo.",
 			"notFound": "Automatizace nebyla nalezena.",
+			"loadFailed": "Automatizaci se nepodařilo načíst.",
 			"created": "Automatizace „{automation}“ byla vytvořena.",
 			"notCreated": "Automatizaci „{automation}“ se nepodařilo vytvořit.",
 			"edited": "Automatizace „{automation}“ byla uložena.",

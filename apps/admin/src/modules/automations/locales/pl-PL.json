@@ -153,6 +153,7 @@
 		"messages": {
 			"requestError": "Coś poszło nie tak podczas ładowania automatyzacji.",
 			"notFound": "Nie znaleziono automatyzacji.",
+			"loadFailed": "Nie udało się wczytać automatyzacji.",
 			"created": "Automatyzacja „{automation}” została utworzona.",
 			"notCreated": "Nie udało się utworzyć automatyzacji „{automation}”.",
 			"edited": "Automatyzacja „{automation}” została zapisana.",

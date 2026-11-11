@@ -5,6 +5,7 @@
 			:inline="true"
 			:model="innerFilters"
 			class="grow-1"
+			@submit.prevent
 		>
 			<el-input
 				v-model="innerFilters.search"

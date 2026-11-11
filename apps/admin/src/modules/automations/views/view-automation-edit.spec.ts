@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { AutomationMode, AutomationStatus, FormResult } from '../automations.constants';
+import { AutomationsApiException } from '../automations.exceptions';
 import { AutomationEditForm } from '../components/components';
 import type { IAutomation } from '../store/automations.store.types';
 
@@ -201,11 +202,32 @@ describe('ViewAutomationEdit', (): void => {
 
 	it('says that the automation was not found', async (): Promise<void> => {
 		mocks.automation.value = null;
-		mocks.fetchAutomation.mockRejectedValue(new Error('Not found'));
+		mocks.fetchAutomation.mockRejectedValue(new AutomationsApiException('Not found', 404));
 
 		await mountView();
 
 		expect(wrapper.text()).toContain('automations.messages.notFound');
+		expect(wrapper.text()).not.toContain('automations.messages.loadFailed');
+	});
+
+	it('says that the automation could not be read, rather than that it is gone, and reads it again when asked to', async (): Promise<void> => {
+		mocks.automation.value = null;
+		mocks.fetchAutomation.mockRejectedValueOnce(new AutomationsApiException('Server error', 500));
+
+		await mountView();
+
+		expect(wrapper.text()).toContain('automations.messages.loadFailed');
+		expect(wrapper.text()).not.toContain('automations.messages.notFound');
+
+		mocks.fetchAutomation.mockImplementationOnce(async (): Promise<void> => {
+			mocks.automation.value = automation;
+		});
+
+		await wrapper.findAll('button').find((button) => button.text() === 'automations.buttons.retry.title')!.trigger('click');
+		await flushPromises();
+
+		expect(mocks.fetchAutomation).toHaveBeenCalledTimes(2);
+		expect(wrapper.findComponent(AutomationEditForm).exists()).toBe(true);
 	});
 
 	it('keeps the form and the outcome of its submit while the automation is read again after a conflict', async (): Promise<void> => {

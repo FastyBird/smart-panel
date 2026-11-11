@@ -555,6 +555,23 @@ describe('Automations Store', () => {
 			expect(store.findById(automationId)).not.toBeNull();
 		});
 
+		it('does not remove an automation created again under the same id after a reset that came while it was deleted', async () => {
+			const deleting = deferred();
+
+			mockBackendClient.DELETE.mockReturnValueOnce(deleting.promise);
+
+			const pendingRemove = store.remove({ id: automationId });
+
+			store.unsetAll();
+			store.onEvent({ id: automationId, data: detailRes({ revision: 1, name: 'Created again' }) });
+
+			deleting.resolve({ response: { status: 204 } });
+
+			await pendingRemove;
+
+			expect(store.findById(automationId)?.name).toBe('Created again');
+		});
+
 		it('does nothing for an automation that is not in the store', async () => {
 			await store.remove({ id: otherAutomationId });
 

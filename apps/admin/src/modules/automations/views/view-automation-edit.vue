@@ -60,6 +60,30 @@
 		</div>
 
 		<div
+			v-else-if="!automation && loadFailed"
+			class="flex flex-col items-center justify-center h-full gap-4 p-4"
+		>
+			<el-icon
+				:size="48"
+				class="text-gray-300"
+			>
+				<icon icon="mdi:alert-circle-outline" />
+			</el-icon>
+			<div class="text-gray-500">{{ t('automations.messages.loadFailed') }}</div>
+			<div class="flex gap-2">
+				<el-button @click="onClose">
+					{{ t('automations.buttons.backToList.title') }}
+				</el-button>
+				<el-button
+					type="primary"
+					@click="load"
+				>
+					{{ t('automations.buttons.retry.title') }}
+				</el-button>
+			</div>
+		</div>
+
+		<div
 			v-else-if="!automation"
 			class="flex flex-col items-center justify-center h-full gap-4 p-4"
 		>
@@ -139,6 +163,7 @@ import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
 import { FormResult, type FormResultType, RouteNames } from '../automations.constants';
+import { AutomationsApiException } from '../automations.exceptions';
 import { AutomationEditForm } from '../components/components';
 import { useAutomation } from '../composables/composables';
 
@@ -234,13 +259,20 @@ watch(
 	}
 );
 
-onBeforeMount(async (): Promise<void> => {
+// A read that failed for any reason other than the automation being gone is offered again
+const loadFailed = ref<boolean>(false);
+
+const load = async (): Promise<void> => {
+	loadFailed.value = false;
+
 	try {
 		await fetchAutomation();
-	} catch {
-		// Not found or not reachable: the view says so instead of the form
+	} catch (error: unknown) {
+		loadFailed.value = !(error instanceof AutomationsApiException && error.code === 404);
 	} finally {
 		automationReady.value = true;
 	}
-});
+};
+
+onBeforeMount(load);
 </script>

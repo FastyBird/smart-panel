@@ -153,6 +153,7 @@
 		"messages": {
 			"requestError": "Something went wrong while loading the automation.",
 			"notFound": "The automation was not found.",
+			"loadFailed": "The automation could not be loaded.",
 			"created": "Automation \"{automation}\" was created.",
 			"notCreated": "Automation \"{automation}\" could not be created.",
 			"edited": "Automation \"{automation}\" was saved.",

@@ -153,6 +153,7 @@
 		"messages": {
 			"requestError": "Algo salió mal al cargar la automatización.",
 			"notFound": "No se encontró la automatización.",
+			"loadFailed": "No se pudo cargar la automatización.",
 			"created": "La automatización «{automation}» se ha creado.",
 			"notCreated": "No se pudo crear la automatización «{automation}».",
 			"edited": "La automatización «{automation}» se ha guardado.",

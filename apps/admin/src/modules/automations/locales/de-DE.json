@@ -153,6 +153,7 @@
 		"messages": {
 			"requestError": "Beim Laden der Automation ist ein Fehler aufgetreten.",
 			"notFound": "Die Automation wurde nicht gefunden.",
+			"loadFailed": "Die Automatisierung konnte nicht geladen werden.",
 			"created": "Die Automation „{automation}“ wurde erstellt.",
 			"notCreated": "Die Automation „{automation}“ konnte nicht erstellt werden.",
 			"edited": "Die Automation „{automation}“ wurde gespeichert.",

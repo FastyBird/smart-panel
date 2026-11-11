@@ -24,4 +24,21 @@ describe('AutomationsFilter', (): void => {
 
 		wrapper.unmount();
 	});
+
+	it('keeps the page when Enter is pressed in the search', (): void => {
+		const wrapper = mount(AutomationsFilter, {
+			props: {
+				filters: { search: undefined, spaceId: undefined, enabled: 'all', statuses: [] },
+				filtersActive: false,
+			},
+		});
+
+		const submit = new Event('submit', { cancelable: true });
+
+		wrapper.find('form').element.dispatchEvent(submit);
+
+		expect(submit.defaultPrevented).toBe(true);
+
+		wrapper.unmount();
+	});
 });
