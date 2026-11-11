@@ -37,6 +37,7 @@ export enum AutomationRunStatus {
 export const AUTOMATION_GRAPH_VERSION = 1;
 
 // Limits
+export const AUTOMATIONS_MAX_COUNT = 200;
 export const AUTOMATION_NAME_MAX_LENGTH = 100;
 export const AUTOMATION_DESCRIPTION_MAX_LENGTH = 1000;
 export const AUTOMATION_ICON_MAX_LENGTH = 100;

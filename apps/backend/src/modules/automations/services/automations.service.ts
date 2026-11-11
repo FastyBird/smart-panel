@@ -12,7 +12,13 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { SpacesService } from '../../spaces/services/spaces.service';
-import { AUTOMATIONS_MODULE_NAME, AutomationMode, AutomationStatus, EventType } from '../automations.constants';
+import {
+	AUTOMATIONS_MAX_COUNT,
+	AUTOMATIONS_MODULE_NAME,
+	AutomationMode,
+	AutomationStatus,
+	EventType,
+} from '../automations.constants';
 import {
 	AutomationsGraphValidationException,
 	AutomationsNotFoundException,
@@ -108,6 +114,12 @@ export class AutomationsService {
 
 		if (dtoInstance.id && (await this.repository.existsBy({ id: dtoInstance.id }))) {
 			throw new AutomationsValidationException(`Automation with id=${dtoInstance.id} already exists.`);
+		}
+
+		if ((await this.repository.count()) >= AUTOMATIONS_MAX_COUNT) {
+			throw new AutomationsValidationException(
+				`The limit of ${AUTOMATIONS_MAX_COUNT} automations is reached. Remove an automation before adding another.`,
+			);
 		}
 
 		if (dtoInstance.space_id) {

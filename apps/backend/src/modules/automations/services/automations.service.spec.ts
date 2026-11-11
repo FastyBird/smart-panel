@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import {
+	AUTOMATIONS_MAX_COUNT,
 	AUTOMATION_GRAPH_MAX_EDGES,
 	AUTOMATION_GRAPH_MAX_NODES,
 	AutomationMode,
@@ -104,6 +105,20 @@ describe('AutomationsService', () => {
 	});
 
 	describe('create', () => {
+		it('refuses another automation once the limit is reached', async () => {
+			const count = jest.spyOn(repository, 'count');
+
+			count.mockResolvedValueOnce(AUTOMATIONS_MAX_COUNT - 1);
+			await expect(create({ name: 'Last one that fits' })).resolves.toBeInstanceOf(AutomationEntity);
+
+			count.mockResolvedValueOnce(AUTOMATIONS_MAX_COUNT);
+			await expect(create({ name: 'One too many' })).rejects.toThrow(AutomationsValidationException);
+
+			count.mockRestore();
+
+			expect(await repository.count()).toBe(1);
+		});
+
 		it('creates a disabled automation in restart mode with an empty graph at revision 1', async () => {
 			const automation = await create({ name: 'Motion light' });
 
