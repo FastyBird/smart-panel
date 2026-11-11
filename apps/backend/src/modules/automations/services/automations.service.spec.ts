@@ -263,6 +263,8 @@ describe('AutomationsService', () => {
 				},
 			],
 			['a graph that is not an object', 'graph'],
+			['a node that is a list', { version: 1, nodes: [[]], edges: [] }],
+			['an edge that is a list', { version: 1, nodes: [node('n1')], edges: [[]] }],
 		])('refuses %s on create and on update', async (_label, invalidGraph) => {
 			await expect(create({ name: 'A', graph: invalidGraph })).rejects.toBeInstanceOf(AutomationsValidationException);
 

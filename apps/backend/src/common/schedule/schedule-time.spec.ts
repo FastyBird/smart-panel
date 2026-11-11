@@ -1,7 +1,7 @@
-import { ActivityMode } from '../activity/space-activity.constants';
+import { ActivityMode } from '../../plugins/spaces-home-control/activity/space-activity.constants';
+import { ScheduleEntry } from '../../plugins/spaces-home-control/schedule/space-mode-schedule.types';
 
 import { evaluateSchedule, isScheduleTimezone, nextScheduleOccurrence } from './schedule-time';
-import { ScheduleEntry } from './space-mode-schedule.types';
 
 const entry = (time: string, days = [0, 1, 2, 3, 4, 5, 6]): ScheduleEntry => ({
 	id: 'entry',

@@ -240,6 +240,9 @@ These rules decide whether automations feel reliable, so they are fixed up front
 - **Unknown is not true.** A condition on a property with no value, an invalid value or an offline device
   evaluates to `no` and the trace records why.
 - **Missed times are not replayed** after a restart, matching `SpaceModeSchedulerService`.
+- **An unset clock is not a time.** Until the system clock is set (a board without a real-time clock, before
+  the first time sync) time-of-day triggers do not fire and a time-window condition evaluates to `no`. The
+  times a clock jump skips are not replayed (ADR 0003, decision 17).
 
 ### Runs
 

@@ -5,6 +5,7 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../extensions/services/managed-service-manager.service';
+import { ScenesModule } from '../scenes/scenes.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SpacesModule } from '../spaces/spaces.module';
@@ -26,7 +27,7 @@ import { AutomationEntity } from './entities/automations.entity';
 import { ReferenceCleanupListener } from './listeners/reference-cleanup.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { AutomationsConfigModel } from './models/config.model';
-import { delayNodeType } from './nodes/delay.node-type';
+import { AutomationBuiltInNodeTypesService } from './nodes/built-in-node-types.service';
 import { AutomationEngineService } from './services/automation-engine.service';
 import { AutomationRunService } from './services/automation-run.service';
 import { AutomationsSeederService } from './services/automations-seeder.service';
@@ -34,6 +35,7 @@ import { AutomationsService } from './services/automations.service';
 import { AutomationsModuleResetService } from './services/module-reset.service';
 import { AutomationNodeTypeRegistryService } from './services/node-type-registry.service';
 import { AutomationStateTrackerService } from './services/state-tracker.service';
+import { AutomationTimeSourceService } from './services/time-source.service';
 
 @ApiTag({
 	tagName: AUTOMATIONS_MODULE_NAME,
@@ -41,15 +43,25 @@ import { AutomationStateTrackerService } from './services/state-tracker.service'
 	description: AUTOMATIONS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([AutomationEntity]), DevicesModule, SpacesModule, WebsocketModule, SeedModule],
+	imports: [
+		TypeOrmModule.forFeature([AutomationEntity]),
+		DevicesModule,
+		SpacesModule,
+		ScenesModule,
+		WebsocketModule,
+		SeedModule,
+	],
 	controllers: [AutomationsController, AutomationNodeTypesController],
 	providers: [
 		// Core services
 		AutomationsService,
 		AutomationNodeTypeRegistryService,
 		AutomationStateTrackerService,
+		AutomationTimeSourceService,
 		AutomationRunService,
 		AutomationEngineService,
+		// Built-in cards
+		AutomationBuiltInNodeTypesService,
 		// Listeners
 		ReferenceCleanupListener,
 		WebsocketExchangeListener,
@@ -62,6 +74,7 @@ import { AutomationStateTrackerService } from './services/state-tracker.service'
 		AutomationsService,
 		AutomationNodeTypeRegistryService,
 		AutomationStateTrackerService,
+		AutomationTimeSourceService,
 		AutomationEngineService,
 		AutomationsModuleResetService,
 	],
@@ -76,13 +89,16 @@ export class AutomationsModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly nodeTypeRegistry: AutomationNodeTypeRegistryService,
+		private readonly builtInNodeTypes: AutomationBuiltInNodeTypesService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly engine: AutomationEngineService,
 	) {}
 
 	onModuleInit(): void {
 		// Register the node types the module itself provides
-		this.nodeTypeRegistry.register(delayNodeType);
+		for (const nodeType of this.builtInNodeTypes.create()) {
+			this.nodeTypeRegistry.register(nodeType);
+		}
 
 		// Register the engine with the central service manager
 		this.managedServiceManager.register(this.engine);
@@ -129,7 +145,7 @@ export class AutomationsModule implements OnModuleInit {
 
 Stores automations: graphs of *When / And / Then* blocks drawn on a canvas, which let the home react on its own to presence, light, time, temperature and alarms.
 
-The module stores, validates and runs automations. The blocks themselves (device, time, scene and notification cards) are registered by the modules and plugins that provide them; the module itself provides the Delay block.
+The module stores, validates and runs automations. It provides the first set of blocks itself — device, time, scene and notification cards and the Delay block; plugins register further ones.
 
 ## Features
 
@@ -140,6 +156,9 @@ The module stores, validates and runs automations. The blocks themselves (device
 - **Graph validation** — every saved graph is checked against the registry: unknown node types and ports, edges into a trigger, cycles and duplicate edges are refused; an enabled automation also needs a trigger and a valid configuration on every node, while a disabled one can be kept as a draft
 - **Safe concurrent editing** — every save carries the revision it was based on; a save based on a stale revision is refused instead of overwriting somebody else's change
 - **Engine** — a managed service that watches the triggers of every enabled automation and walks its graph when one fires: several edges from one output run in parallel, conditions continue on \`yes\` or \`no\`, actions on \`done\` or \`error\`, a Delay parks the run for up to one hour
+- **Built-in blocks** — *When*: a device value changes (to / from / any, above / below a threshold, optionally only after it stayed there for a time), a time of day on chosen weekdays, a manual start. *And*: a device value compares as asked, the time is inside a window (which may cross midnight). *Then*: set device values (values of one device are applied together), run a scene, send a notification
+- **House time** — time blocks use the house timezone and share one minute tick; a time missed while the backend was down is not replayed, and nothing depending on the time runs before the system clock is set
+- **Unknown is not true** — a condition on a value that is missing, invalid or belongs to an offline device continues on \`no\`, with the reason recorded
 - **Run modes** — \`single\` ignores a trigger while a run is active, \`restart\` (default) cancels every active run and starts again, \`parallel\` lets up to 10 runs overlap
 - **Overload guard** — an automation that starts more than 30 times a minute or 200 times an hour is suspended and a notification is raised; saving or enabling it again resumes it
 - **Self-checking status** — an automation is marked \`invalid\` and stopped when a device, property, scene or space it refers to is removed, or when one of its block types is no longer available

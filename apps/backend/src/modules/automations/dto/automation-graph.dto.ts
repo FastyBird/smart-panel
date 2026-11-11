@@ -205,6 +205,7 @@ export class AutomationGraphDto {
 	@ArrayUnique((node: AutomationGraphNodeDto | null) => node?.id, {
 		message: '[{"field":"nodes","reason":"Node IDs must be unique."}]',
 	})
+	@IsObject({ each: true, message: '[{"field":"nodes","reason":"Each node must be an object."}]' })
 	@ValidateNested({ each: true })
 	@Type(() => AutomationGraphNodeDto)
 	nodes: AutomationGraphNodeDto[];
@@ -224,6 +225,7 @@ export class AutomationGraphDto {
 		message: '[{"field":"edges","reason":"Edge IDs must be unique."}]',
 	})
 	@Validate(GraphEdgesReferenceNodesConstraint)
+	@IsObject({ each: true, message: '[{"field":"edges","reason":"Each edge must be an object."}]' })
 	@ValidateNested({ each: true })
 	@Type(() => AutomationGraphEdgeDto)
 	edges: AutomationGraphEdgeDto[];

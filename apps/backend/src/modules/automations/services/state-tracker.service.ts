@@ -2,13 +2,19 @@ import { Inject, Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ConnectionState, EventType as DevicesEventType, OnlineDeviceState } from '../../devices/devices.constants';
+import {
+	ConnectionState,
+	DataTypeType,
+	EventType as DevicesEventType,
+	OnlineDeviceState,
+} from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { PropertyValueService } from '../../devices/services/property-value.service';
 import { AUTOMATIONS_MODULE_NAME } from '../automations.constants';
+import { propertyValueKind } from '../nodes/device-property.utils';
 import { TrackerClock, systemTrackerClock } from '../tracker/clock';
 import {
 	StateFireCallback,
@@ -16,6 +22,7 @@ import {
 	StateSnapshot,
 	StateTracker,
 	StateWatchSpec,
+	TrackedValue,
 } from '../tracker/state-tracker';
 
 /** Injection token for the clock of the state tracker; left unbound in the application, bound in tests */
@@ -36,13 +43,49 @@ const isReachable = (status: ConnectionState | undefined, online?: boolean): boo
 	online === true || status === undefined || status === ConnectionState.UNKNOWN || OnlineDeviceState.includes(status);
 
 /**
- * Turns the value state of a property into what the tracker takes. A property without a value, or one
- * whose derived value is reported as unavailable, is not valid.
+ * The reading of a property as a value of its data type, or null when it can not be one. An integration may
+ * report the value of a numeric property as a text; the devices module stores it as a number, so it is read
+ * back as a number after a restart, and it is a number here too. The devices module keeps what was reported
+ * for a yes/no property as it came, so a text "true" or "false" is read as the yes/no value it spells - the
+ * texts the devices module takes as a yes/no command - and anything else is not a reading: a card compares
+ * with a yes/no value, which no text and no number is equal to. Other data types are taken as reported.
  */
-export const toStateSnapshot = (state: PropertyValueState | null | undefined): StateSnapshot => {
-	const value = state?.value ?? null;
+const readingOfType = (value: TrackedValue, dataType: DataTypeType | null | undefined): TrackedValue | null => {
+	switch (propertyValueKind(dataType)) {
+		case 'number': {
+			if (typeof value === 'number') return value;
 
-	return { value, valid: value !== null && state?.producer?.quality !== 'unavailable' };
+			if (typeof value !== 'string' || value.trim() === '') return null;
+
+			const parsed = Number(value);
+
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+		case 'boolean': {
+			if (typeof value === 'boolean') return value;
+
+			const text = typeof value === 'string' ? value.trim().toLowerCase() : null;
+
+			return text === 'true' ? true : text === 'false' ? false : null;
+		}
+		default:
+			return value;
+	}
+};
+
+/**
+ * Turns the value state of a property into what the tracker takes. A property without a value, one whose
+ * derived value is reported as unavailable, or one whose value is not a value of its data type, is not
+ * valid; the value that was reported is kept, so a trace can show it.
+ */
+export const toStateSnapshot = (
+	state: PropertyValueState | null | undefined,
+	dataType?: DataTypeType | null,
+): StateSnapshot => {
+	const reported = state?.value ?? null;
+	const value = reported === null ? null : readingOfType(reported, dataType);
+
+	return { value: value ?? reported, valid: value !== null && state?.producer?.quality !== 'unavailable' };
 };
 
 /** The id of the device a property belongs to, when the entity carries its channel */
@@ -209,7 +252,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 
 			if (options.requireState && (property.value === null || property.value === undefined)) return;
 
-			const snapshot = toStateSnapshot(property.value);
+			const snapshot = toStateSnapshot(property.value, property.dataType);
 			const held = this.heldReports.get(property.id);
 
 			// While the reachability of a newly learned device is being read, reports wait, so a "for"
@@ -307,7 +350,10 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 			return;
 		}
 
-		this.tracker.seed(propertyId, { ...toStateSnapshot(state), ...(online !== undefined ? { online } : {}) });
+		this.tracker.seed(propertyId, {
+			...toStateSnapshot(state, property.dataType),
+			...(online !== undefined ? { online } : {}),
+		});
 	}
 
 	private rememberDevice(propertyId: string, deviceId: string): void {

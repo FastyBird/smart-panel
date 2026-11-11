@@ -244,6 +244,56 @@ Also settled with the engine:
 - Active runs end as `interrupted` when the engine stops in an orderly way. Recognising runs lost to a power
   cut needs the `running` marker of the run history (AU-13).
 
+### 17. Time before the system clock is trustworthy
+
+Added with the first cards (AU-5); the spike left it open. A Raspberry Pi has no real-time clock: after a power
+cut it starts at the epoch, at the build date of its image, or at the time `fake-hwclock` saved at the last
+orderly shutdown, and stays there until the network sets the time.
+
+- **Unknown is not true, for time as for device values.** While the wall clock reads earlier than
+  2026-01-01 UTC it is not trusted: no time-of-day trigger fires, and a time-window condition evaluates to `no`
+  with the reason recorded. The floor is a constant (`MIN_TRUSTED_WALL_CLOCK_MS`); a clock before it can only be
+  one that was never set. The same holds while the house timezone in the system configuration is not a zone the
+  runtime knows.
+- **A set clock is not replayed.** The minute tick follows the wall clock and is re-aligned after every tick.
+  When the clock jumps forward by more than 5 minutes (the network setting the time, a long suspend) only the
+  current minute is served; the times the jump skipped do not fire, exactly as after a restart. A stall of up
+  to 5 minutes is caught up minute by minute, so a busy event loop does not lose a trigger.
+- **A corrected clock does not fire twice.** When the clock is set back the tick continues from the new time,
+  and a time-of-day trigger does not fire again for any of the last 31 local dates it fired for
+  (`TIME_OF_DAY_SERVED_DATES_KEPT`). The guarantee is counted in fired dates, not in elapsed time: a date that
+  has dropped out of those 31 can fire again. A set of dates is kept instead of a high-water mark, because a clock
+  briefly set far ahead would otherwise silence the trigger until that date. The memory is per subscription and
+  is lost when the trigger is re-armed or the backend restarts.
+- **Durations are not affected.** Delays, "for" durations, timeouts and the rate windows run on the monotonic
+  clock (decision 6), so none of them changes when the wall clock is set.
+- **What is not detected:** a clock that is wrong but plausible - `fake-hwclock` restoring a time some hours or
+  days old that is later than the floor. Until the network corrects it, time cards act on that time; the
+  correction is then handled by the two rules above. Detecting it needs the synchronisation state of the
+  operating system (`timedatectl`), which is not available in a container or on every platform, and the window
+  is the few seconds between the start of the backend and the first time sync. Left as a follow-up for the
+  hardware verification (AU-27) should it show up there.
+
+Also settled with the first cards:
+
+- The time helpers shared with the space mode scheduler live in `apps/backend/src/common/schedule/`. The
+  scheduler keeps its rule that a schedule entry inside a skipped hour is skipped that day; an automation
+  time-of-day trigger fires at the first valid minute after it (decision 6). The two rules differ on purpose:
+  a schedule entry sets a state that the next entry replaces, a trigger starts something that would otherwise
+  not happen that day.
+- A device card stores the device, channel and property ids together. The engine can then mark the automation
+  `invalid` when any of the three is removed, and a write is refused by the command service when the property
+  is no longer the one of that channel and device.
+- A card configuration is checked on save against the property it points at: operators and thresholds by data
+  type, values by data type and enum format, and writes against the permissions. A property that does not exist
+  is not a configuration error; it marks the automation `invalid` in the engine, with the node named.
+- "Set device value" takes up to 20 writes. They are grouped per device, one command batch per device, and
+  devices are written side by side so an offline device does not hold up the others.
+- A condition waits for the baseline of a property that was referenced a moment ago before it answers
+  `unknown`, so a run right after a save does not see "no value" for a property that has one.
+- Notifications sent by automations are events with the automations module as source. They share the
+  notifications module's limit of 60 per minute per source with the engine's own "suspended" notification.
+
 ## Consequences
 
 - The design doc is updated to match this ADR.
@@ -253,8 +303,8 @@ Also settled with the engine:
 - Scope reduced: the Delay limit drops to one hour.
 - Open after this ADR: write grouping when parallel branches target the same device (settled in AU-4, see
   decision 16); behaviour of time conditions before the system clock is trustworthy on hardware without a
-  real-time clock; verification on Firefox, Safari and a physical touch device. The last two are settled in AU-5
-  and AU-27.
+  real-time clock (settled in AU-5, see decision 17); verification on Firefox, Safari and a physical touch
+  device (AU-27).
 
 ## Environment note
 

@@ -16,6 +16,8 @@ import { AutomationEntity } from '../src/modules/automations/entities/automation
 import { AutomationEngineService } from '../src/modules/automations/services/automation-engine.service';
 import { AutomationsService } from '../src/modules/automations/services/automations.service';
 import { AutomationNodeTypeRegistryService } from '../src/modules/automations/services/node-type-registry.service';
+import { AutomationStateTrackerService } from '../src/modules/automations/services/state-tracker.service';
+import { AutomationTimeSourceService } from '../src/modules/automations/services/time-source.service';
 import {
 	FAKE_ACTION_TYPE,
 	FAKE_NODE_TYPES,
@@ -23,7 +25,19 @@ import {
 	FAKE_STRICT_ACTION_TYPE,
 	FAKE_TRIGGER_TYPE,
 } from '../src/modules/automations/testing/fake-node-types';
+import { formatTimeOfDay } from '../src/modules/automations/time/house-time';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../src/modules/devices/devices.constants';
+import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
+import { PropertyCommandService } from '../src/modules/devices/services/property-command.service';
+import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { UserRole } from '../src/modules/users/users.constants';
+import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 
 interface AutomationBody {
 	id: string;
@@ -166,8 +180,8 @@ describe('Automations module (e2e)', () => {
 
 		await app.init();
 
-		// No concrete node type ships with the module yet, so the tests register fake ones the way a module
-		// or plugin registers its own from onModuleInit
+		// The CRUD, validation and engine tests use fake node types, registered the way a module or plugin
+		// registers its own from onModuleInit; the cards the module provides are covered in "built-in cards"
 		const nodeTypeRegistry = app.get(AutomationNodeTypeRegistryService, { strict: false });
 
 		for (const nodeType of FAKE_NODE_TYPES) {
@@ -1009,6 +1023,575 @@ describe('Automations module (e2e)', () => {
 
 			expect(engine.runtime(automation.id)).toBeUndefined();
 			await trigger(automation.id).expect(404);
+		});
+	});
+
+	describe('built-in cards', () => {
+		interface PropertyBody {
+			id: string;
+			category: string;
+		}
+
+		interface ChannelBody {
+			id: string;
+			category: string;
+			properties: PropertyBody[];
+		}
+
+		interface DeviceBody {
+			id: string;
+			channels: ChannelBody[];
+		}
+
+		interface Target {
+			device_id: string;
+			channel_id: string;
+			property_id: string;
+		}
+
+		let automationsService: AutomationsService;
+		let engine: AutomationEngineService;
+		let stateTracker: AutomationStateTrackerService;
+		let timeSource: AutomationTimeSourceService;
+		let propertiesService: ChannelsPropertiesService;
+		let propertyValueService: PropertyValueService;
+		let propertyCommands: PropertyCommandService;
+
+		let occupancy: Target;
+		let illuminance: Target;
+		let lightOn: Target;
+		let lightBrightness: Target;
+
+		const createDevice = async (data: Record<string, unknown>): Promise<DeviceBody> => {
+			const response = await request(app.getHttpServer())
+				.post('/modules/devices/devices')
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({ data: { type: SIMULATOR_TYPE, ...data } })
+				.expect(201);
+
+			return (response.body as { data: DeviceBody }).data;
+		};
+
+		const targetOf = (device: DeviceBody, channelCategory: string, propertyCategory: string): Target => {
+			const channel = device.channels.find((item) => item.category === channelCategory);
+			const property = channel?.properties.find((item) => item.category === propertyCategory);
+
+			if (!channel || !property) {
+				throw new Error(`The device has no ${channelCategory}.${propertyCategory} property`);
+			}
+
+			return { device_id: device.id, channel_id: channel.id, property_id: property.id };
+		};
+
+		/** What a device would report: the value is stored and announced on the bus, as the simulator does it */
+		const report = async (target: Target, value: string | number | boolean): Promise<void> => {
+			await propertiesService.update(target.property_id, { type: SIMULATOR_TYPE, value });
+		};
+
+		const valueOf = async (target: Target): Promise<unknown> => {
+			const property = await propertiesService.findOne(target.property_id);
+
+			return property ? ((await propertyValueService.readLatest(property))?.value ?? null) : null;
+		};
+
+		const light = async (): Promise<{ on: unknown; brightness: unknown }> => ({
+			on: await valueOf(lightOn),
+			brightness: await valueOf(lightBrightness),
+		});
+
+		/** Polls the backend itself, not HTTP: the throttler allows 30 requests a minute per route */
+		const waitFor = async <T>(read: () => Promise<T>, done: (value: T) => boolean, what: string): Promise<T> => {
+			const deadline = Date.now() + 10_000;
+
+			for (;;) {
+				const value = await read();
+
+				if (done(value)) return value;
+
+				if (Date.now() > deadline) {
+					throw new Error(`Timed out waiting for ${what}; last seen ${JSON.stringify(value)}`);
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, 25));
+			}
+		};
+
+		/** The engine has followed every save, every baseline is read and every run is recorded */
+		const settled = async (): Promise<void> => {
+			await engine.settled();
+			await stateTracker.settled();
+			await engine.settled();
+		};
+
+		/** Waits until the automation has started `more` further runs and none of them is still going */
+		const afterRuns = async (id: string, more: number, act: () => Promise<void>): Promise<void> => {
+			const started = engine.runtime(id)?.triggers.started ?? 0;
+
+			await act();
+
+			await waitFor(
+				() => Promise.resolve(engine.runtime(id)),
+				(state) => (state?.triggers.started ?? 0) >= started + more && state?.activeRuns === 0,
+				`${more} more run(s) of the automation`,
+			);
+			await settled();
+		};
+
+		/** A window of the house clock that holds right now, or one that does not */
+		const windowAroundNow = (holds: boolean): { from: string; to: string } => {
+			const reading = timeSource.houseNow();
+
+			if (reading.status !== 'ok') {
+				throw new Error(`The house time is not known: ${reading.reason}`);
+			}
+
+			const at = (offset: number): string => formatTimeOfDay((reading.local.minutes + offset + 1440) % 1440);
+
+			return holds ? { from: at(-120), to: at(120) } : { from: at(180), to: at(300) };
+		};
+
+		const VACANT_FOR_SECONDS = 1;
+
+		/**
+		 * The reference scenario: somebody enters a dark room and the light goes on, dimmed at night; once
+		 * the room has been empty for a while the light goes off.
+		 */
+		const referenceGraph = (night: { from: string; to: string }) => ({
+			version: 1,
+			nodes: [
+				{
+					id: 'occupied',
+					type: 'device.property.changed',
+					position: { x: 0, y: 0 },
+					config: { ...occupancy, to: true },
+				},
+				{
+					id: 'dark',
+					type: 'device.property.compare',
+					position: { x: 200, y: 0 },
+					config: { ...illuminance, operator: 'lt', value: 50 },
+				},
+				{ id: 'night', type: 'time.window', position: { x: 400, y: 0 }, config: night },
+				{
+					id: 'dimmed',
+					type: 'device.property.set',
+					position: { x: 600, y: -80 },
+					config: {
+						writes: [
+							{ ...lightOn, value: true },
+							{ ...lightBrightness, value: 20 },
+						],
+					},
+				},
+				{
+					id: 'full',
+					type: 'device.property.set',
+					position: { x: 600, y: 80 },
+					config: {
+						writes: [
+							{ ...lightOn, value: true },
+							{ ...lightBrightness, value: 100 },
+						],
+					},
+				},
+				{
+					id: 'vacant',
+					type: 'device.property.changed',
+					position: { x: 0, y: 240 },
+					config: { ...occupancy, to: false, for_seconds: VACANT_FOR_SECONDS },
+				},
+				{
+					id: 'off',
+					type: 'device.property.set',
+					position: { x: 200, y: 240 },
+					config: { writes: [{ ...lightOn, value: false }] },
+				},
+			],
+			edges: [
+				{ id: 'e1', source: 'occupied', source_port: 'out', target: 'dark', target_port: 'in' },
+				{ id: 'e2', source: 'dark', source_port: 'yes', target: 'night', target_port: 'in' },
+				{ id: 'e3', source: 'night', source_port: 'yes', target: 'dimmed', target_port: 'in' },
+				{ id: 'e4', source: 'night', source_port: 'no', target: 'full', target_port: 'in' },
+				{ id: 'e5', source: 'vacant', source_port: 'out', target: 'off', target_port: 'in' },
+			],
+		});
+
+		beforeAll(async () => {
+			automationsService = app.get(AutomationsService, { strict: false });
+			engine = app.get(AutomationEngineService, { strict: false });
+			stateTracker = app.get(AutomationStateTrackerService, { strict: false });
+			timeSource = app.get(AutomationTimeSourceService, { strict: false });
+			propertiesService = app.get(ChannelsPropertiesService, { strict: false });
+			propertyValueService = app.get(PropertyValueService, { strict: false });
+			propertyCommands = app.get(PropertyCommandService, { strict: false });
+
+			const sensor = await createDevice({
+				category: DeviceCategory.SENSOR,
+				name: 'Hallway sensor',
+				channels: [
+					{
+						type: SIMULATOR_TYPE,
+						category: ChannelCategory.OCCUPANCY,
+						identifier: 'occupancy',
+						name: 'Occupancy',
+						properties: [
+							{
+								type: SIMULATOR_TYPE,
+								category: PropertyCategory.DETECTED,
+								identifier: 'detected',
+								name: 'Detected',
+								permissions: [PermissionType.READ_ONLY],
+								data_type: DataTypeType.BOOL,
+								value: false,
+							},
+						],
+					},
+					{
+						type: SIMULATOR_TYPE,
+						category: ChannelCategory.ILLUMINANCE,
+						identifier: 'illuminance',
+						name: 'Illuminance',
+						properties: [
+							{
+								type: SIMULATOR_TYPE,
+								category: PropertyCategory.ILLUMINANCE,
+								identifier: 'illuminance',
+								name: 'Illuminance',
+								permissions: [PermissionType.READ_ONLY],
+								data_type: DataTypeType.FLOAT,
+								value: 10,
+							},
+						],
+					},
+				],
+			});
+
+			const lamp = await createDevice({
+				category: DeviceCategory.LIGHTING,
+				name: 'Hallway light',
+				channels: [
+					{
+						type: SIMULATOR_TYPE,
+						category: ChannelCategory.LIGHT,
+						identifier: 'light',
+						name: 'Light',
+						properties: [
+							{
+								type: SIMULATOR_TYPE,
+								category: PropertyCategory.ON,
+								identifier: 'on',
+								name: 'On',
+								permissions: [PermissionType.READ_WRITE],
+								data_type: DataTypeType.BOOL,
+								value: false,
+							},
+							{
+								type: SIMULATOR_TYPE,
+								category: PropertyCategory.BRIGHTNESS,
+								identifier: 'brightness',
+								name: 'Brightness',
+								permissions: [PermissionType.READ_WRITE],
+								data_type: DataTypeType.UCHAR,
+								format: [0, 100],
+								value: 100,
+							},
+						],
+					},
+				],
+			});
+
+			occupancy = targetOf(sensor, ChannelCategory.OCCUPANCY, PropertyCategory.DETECTED);
+			illuminance = targetOf(sensor, ChannelCategory.ILLUMINANCE, PropertyCategory.ILLUMINANCE);
+			lightOn = targetOf(lamp, ChannelCategory.LIGHT, PropertyCategory.ON);
+			lightBrightness = targetOf(lamp, ChannelCategory.LIGHT, PropertyCategory.BRIGHTNESS);
+		}, 60_000);
+
+		it('lists the cards the module provides, by kind', async () => {
+			const response = await request(app.getHttpServer())
+				.get(nodeTypesBase)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			const builtIn = (response.body as { data: NodeTypeBody[] }).data.filter((item) => !item.type.startsWith('test.'));
+
+			expect(builtIn.map((item) => `${item.kind} ${item.type}`)).toEqual([
+				'trigger device.property.changed',
+				'condition device.property.compare',
+				'action device.property.set',
+				'flow flow.delay',
+				'trigger manual.start',
+				'action notification.send',
+				'action scene.run',
+				'trigger time.of-day',
+				'condition time.window',
+			]);
+
+			// Every card describes its configuration, so a form can be built for it
+			for (const item of builtIn) {
+				expect(item.config_schema).toMatchObject({ type: 'object', additionalProperties: false });
+			}
+
+			expect(builtIn.find((item) => item.type === 'device.property.compare')?.config_schema).toMatchObject({
+				required: ['device_id', 'channel_id', 'property_id', 'operator'],
+				'x-operators-by-value-kind': { boolean: ['eq', 'neq'] },
+			});
+		});
+
+		it('refuses a card configured against the property it points at, node by node', async () => {
+			const graph = referenceGraph(windowAroundNow(true));
+
+			const broken = {
+				...graph,
+				nodes: graph.nodes.map((item) => {
+					switch (item.id) {
+						case 'occupied':
+							// A duration needs a state that can hold; "from" names none
+							return { ...item, config: { ...occupancy, from: false, for_seconds: 30 } };
+						case 'dark':
+							// Occupancy is a yes/no value: it can not be "less than"
+							return { ...item, config: { ...occupancy, operator: 'lt', value: 50 } };
+						case 'night':
+							return { ...item, config: { from: '22:00', to: '22:00' } };
+						case 'off':
+							// A sensor reading can not be set
+							return { ...item, config: { writes: [{ ...occupancy, value: false }] } };
+						default:
+							return item;
+					}
+				}),
+			};
+
+			const response = await request(app.getHttpServer())
+				.post(`${base}/validate`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({ data: { enabled: true, graph: broken } })
+				.expect(200);
+
+			const result = (response.body as { data: { valid: boolean; issues: IssueBody[] } }).data;
+
+			expect(result.valid).toBe(false);
+			expect(result.issues.map((issue) => `${issue.node_id}:${issue.field}`).sort()).toEqual([
+				'dark:operator',
+				'night:to',
+				'occupied:for_seconds',
+				'off:writes.0.property_id',
+			]);
+			expect(result.issues.every((issue) => issue.code === 'invalid_config' && issue.blocking)).toBe(true);
+		});
+
+		it('runs the reference scenario: a dimmed light at night, a full one by day, off once the room is empty', async () => {
+			const commands = jest.spyOn(propertyCommands, 'executePropertyCommands');
+
+			try {
+				// A dark, empty room with the light off
+				await report(occupancy, false);
+				await report(illuminance, 10);
+
+				const automation = await automationsService.create({
+					name: 'Hallway light',
+					enabled: true,
+					graph: referenceGraph(windowAroundNow(true)),
+				} as unknown as CreateAutomationDto);
+
+				await settled();
+
+				expect(engine.runtime(automation.id)).toMatchObject({ status: 'ok', armed: true, armedTriggers: 2 });
+				expect(await light()).toEqual({ on: false, brightness: 100 });
+
+				// ---- night: somebody walks in ------------------------------------------------------------
+
+				await report(occupancy, true);
+
+				expect(
+					await waitFor(light, (state) => state.on === true && state.brightness === 20, 'the dimmed light'),
+				).toEqual({ on: true, brightness: 20 });
+
+				await settled();
+
+				// Both values of the light went out as one command batch for the one device
+				expect(commands).toHaveBeenCalledTimes(1);
+				expect(commands.mock.calls[0][0]).toEqual([
+					{
+						propertyId: lightOn.property_id,
+						value: true,
+						requestedDeviceId: lightOn.device_id,
+						requestedChannelId: lightOn.channel_id,
+					},
+					{
+						propertyId: lightBrightness.property_id,
+						value: 20,
+						requestedDeviceId: lightBrightness.device_id,
+						requestedChannelId: lightBrightness.channel_id,
+					},
+				]);
+
+				// The sensor reporting "occupied" again is not a change and starts nothing
+				await report(occupancy, true);
+				await settled();
+
+				expect(commands).toHaveBeenCalledTimes(1);
+
+				// ---- the room empties: the light stays on until it has been empty long enough ------------
+
+				let leftAt = 0;
+
+				// The count of runs is taken before the room empties, so the run is counted however long the
+				// reads of the light take
+				await afterRuns(automation.id, 1, async () => {
+					leftAt = Date.now();
+
+					await report(occupancy, false);
+
+					expect((await light()).on).toBe(true);
+
+					await waitFor(light, (state) => state.on === false, 'the light going off');
+				});
+
+				expect(Date.now() - leftAt).toBeGreaterThanOrEqual(VACANT_FOR_SECONDS * 1000 - 50);
+				expect((await automationsService.getOneOrThrow(automation.id)).lastRunStatus).toBe('completed');
+
+				// ---- somebody comes back before the time is up: the light stays on -----------------------
+
+				await report(occupancy, true);
+				await waitFor(light, (state) => state.on === true, 'the light coming on again');
+				await report(occupancy, false);
+				await new Promise((resolve) => setTimeout(resolve, (VACANT_FOR_SECONDS * 1000) / 2));
+				await report(occupancy, true);
+				await new Promise((resolve) => setTimeout(resolve, VACANT_FOR_SECONDS * 1000));
+				await settled();
+
+				expect((await light()).on).toBe(true);
+
+				// ---- day: the same graph outside the night window gives the full light -------------------
+
+				await report(occupancy, false);
+				await waitFor(light, (state) => state.on === false, 'the light going off before the day run');
+				await settled();
+
+				const saved = await automationsService.getOneOrThrow(automation.id);
+
+				await automationsService.update(automation.id, {
+					revision: saved.revision,
+					graph: referenceGraph(windowAroundNow(false)),
+				} as unknown as UpdateAutomationDto);
+				await settled();
+
+				await report(occupancy, true);
+
+				expect(
+					await waitFor(light, (state) => state.on === true && state.brightness === 100, 'the full light'),
+				).toEqual({ on: true, brightness: 100 });
+
+				// ---- a bright room: the light is left alone ------------------------------------------------
+
+				await report(occupancy, false);
+				await waitFor(light, (state) => state.on === false, 'the light going off before the bright run');
+				await settled();
+
+				await report(illuminance, 400);
+
+				const before = commands.mock.calls.length;
+
+				// The run starts, and ends at the "no" of the condition
+				await afterRuns(automation.id, 1, () => report(occupancy, true));
+
+				expect(commands).toHaveBeenCalledTimes(before);
+				expect((await light()).on).toBe(false);
+				expect((await automationsService.getOneOrThrow(automation.id)).lastRunStatus).toBe('completed');
+
+				// ---- cleanup ---------------------------------------------------------------------------------
+
+				await automationsService.remove(automation.id);
+				await settled();
+
+				expect(stateTracker.pendingTimers()).toBe(0);
+			} finally {
+				commands.mockRestore();
+			}
+		}, 60_000);
+
+		it('raises a notification from an automation that is run by hand', async () => {
+			const automation = await automationsService.create({
+				name: 'Tell me',
+				enabled: true,
+				graph: {
+					version: 1,
+					nodes: [
+						{ id: 'start', type: 'manual.start', position: { x: 0, y: 0 }, config: {} },
+						{
+							id: 'tell',
+							type: 'notification.send',
+							position: { x: 200, y: 0 },
+							config: { severity: 'warning', title: 'The hallway was checked', message: 'By hand.' },
+						},
+					],
+					edges: [{ id: 'e1', source: 'start', source_port: 'out', target: 'tell', target_port: 'in' }],
+				},
+			} as unknown as CreateAutomationDto);
+
+			await settled();
+
+			// A manual start watches nothing, yet the automation is armed and can be run
+			expect(engine.runtime(automation.id)).toMatchObject({ status: 'ok', armed: true });
+
+			await afterRuns(automation.id, 1, async () => {
+				await request(app.getHttpServer())
+					.post(`${base}/${automation.id}/trigger`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send()
+					.expect(200);
+			});
+
+			expect((await automationsService.getOneOrThrow(automation.id)).lastRunStatus).toBe('completed');
+
+			const response = await request(app.getHttpServer())
+				.get('/modules/notifications/notifications')
+				.query({ source: 'automations-module' })
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			const notifications = (
+				response.body as {
+					data: { title: string; severity: string; kind: string; message: string | null; source: string }[];
+				}
+			).data;
+
+			expect(notifications.find((item) => item.title === 'The hallway was checked')).toMatchObject({
+				source: 'automations-module',
+				kind: 'event',
+				severity: 'warning',
+				message: 'By hand.',
+			});
+
+			await automationsService.remove(automation.id);
+			await settled();
+		});
+
+		it('marks an automation invalid when the scene it runs does not exist, and arms no time trigger for it', async () => {
+			const missingScene = '22222222-2222-4222-8222-222222222222';
+
+			const automation = await automationsService.create({
+				name: 'Evening scene',
+				enabled: true,
+				graph: {
+					version: 1,
+					nodes: [
+						{ id: 'at', type: 'time.of-day', position: { x: 0, y: 0 }, config: { time: '21:30', weekdays: [5, 6] } },
+						{ id: 'scene', type: 'scene.run', position: { x: 200, y: 0 }, config: { scene_id: missingScene } },
+					],
+					edges: [{ id: 'e1', source: 'at', source_port: 'out', target: 'scene', target_port: 'in' }],
+				},
+			} as unknown as CreateAutomationDto);
+
+			await settled();
+
+			expect(engine.runtime(automation.id)).toMatchObject({ status: 'invalid', armed: false });
+			expect(engine.runtime(automation.id)?.problems).toEqual([expect.objectContaining({ node_id: 'scene' })]);
+			// An automation that is not armed holds no time trigger
+			expect(timeSource.subscriptionCount()).toBe(0);
+
+			await automationsService.remove(automation.id);
+			await settled();
 		});
 	});
 
