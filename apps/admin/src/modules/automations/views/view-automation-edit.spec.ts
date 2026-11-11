@@ -223,7 +223,10 @@ describe('ViewAutomationEdit', (): void => {
 			mocks.automation.value = automation;
 		});
 
-		await wrapper.findAll('button').find((button) => button.text() === 'automations.buttons.retry.title')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'automations.buttons.retry.title')!
+			.trigger('click');
 		await flushPromises();
 
 		expect(mocks.fetchAutomation).toHaveBeenCalledTimes(2);
