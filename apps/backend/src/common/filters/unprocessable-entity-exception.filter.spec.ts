@@ -74,6 +74,32 @@ describe('UnprocessableEntityExceptionFilter', () => {
 		});
 	});
 
+	it('passes a structured issue list through details.issues for an object-thrown UnprocessableEntityException', () => {
+		const { host, response } = createHost();
+		const issues = [
+			{ severity: 'error', code: 'unknown_port', message: 'No such port.', node_id: 'n1', edge_id: 'e1' },
+		];
+
+		filter.catch(
+			new UnprocessableEntityException({ code: 'automation-graph-invalid', message: 'graph refused', issues }),
+			host,
+		);
+
+		const body = response.send.mock.calls[0][0];
+
+		expect(body.error.details).toEqual({ reason: 'graph refused', code: 'automation-graph-invalid', issues });
+	});
+
+	it('ignores an issues field that is not a list', () => {
+		const { host, response } = createHost();
+
+		filter.catch(new UnprocessableEntityException({ message: 'weird', issues: 'many' }), host);
+
+		const body = response.send.mock.calls[0][0];
+
+		expect(body.error.details).toEqual({ reason: 'weird' });
+	});
+
 	it('ignores a non-string code field on the thrown response', () => {
 		const { host, response } = createHost();
 

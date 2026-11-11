@@ -12,8 +12,15 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { SpacesService } from '../../spaces/services/spaces.service';
-import { AUTOMATIONS_MODULE_NAME, AutomationMode, AutomationStatus, EventType } from '../automations.constants';
 import {
+	AUTOMATIONS_MAX_COUNT,
+	AUTOMATIONS_MODULE_NAME,
+	AutomationMode,
+	AutomationStatus,
+	EventType,
+} from '../automations.constants';
+import {
+	AutomationsGraphValidationException,
 	AutomationsNotFoundException,
 	AutomationsRevisionConflictException,
 	AutomationsSpaceValidationException,
@@ -23,18 +30,24 @@ import { AutomationGraphDto } from '../dto/automation-graph.dto';
 import { CreateAutomationDto } from '../dto/create-automation.dto';
 import { UpdateAutomationDto } from '../dto/update-automation.dto';
 import { AutomationEntity } from '../entities/automations.entity';
+import { AutomationGraphSaveCheck, checkGraphForSave } from '../graph/save-policy';
 import { AutomationGraphModel, createEmptyAutomationGraph } from '../models/automation-graph.model';
 import { AutomationSummaryModel } from '../models/automations.model';
+
+import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 
 @Injectable()
 export class AutomationsService {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'AutomationsService');
+
+	private createQueue: Promise<void> = Promise.resolve();
 
 	constructor(
 		@InjectRepository(AutomationEntity)
 		private readonly repository: Repository<AutomationEntity>,
 		private readonly spacesService: SpacesService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly nodeTypeRegistry: AutomationNodeTypeRegistryService,
 	) {}
 
 	/**
@@ -110,22 +123,35 @@ export class AutomationsService {
 		}
 
 		const id = dtoInstance.id ?? uuid().toString();
+		const graph = dtoInstance.graph ? this.toStoredGraph(dtoInstance.graph) : createEmptyAutomationGraph();
 
-		// The entity is assembled by hand, not through toInstance(): that helper rewrites every object key
-		// to snake_case, which would also rewrite the keys of the opaque node configuration.
-		await this.repository.insert({
-			id,
-			name: dtoInstance.name,
-			description: dtoInstance.description ?? null,
-			icon: dtoInstance.icon ?? null,
-			enabled: dtoInstance.enabled ?? false,
-			spaceId: dtoInstance.space_id ?? null,
-			mode: dtoInstance.mode ?? AutomationMode.RESTART,
-			graph: dtoInstance.graph ? this.toStoredGraph(dtoInstance.graph) : createEmptyAutomationGraph(),
-			revision: 1,
-			status: AutomationStatus.OK,
-			lastTriggeredAt: null,
-			lastRunStatus: null,
+		await this.assertGraphCanBeSaved(graph, dtoInstance.enabled ?? false);
+
+		// The limit check and the insert run as one serialized step, so concurrent creates cannot both pass
+		// the check and exceed the limit.
+		await this.serializeCreate(async () => {
+			if ((await this.repository.count()) >= AUTOMATIONS_MAX_COUNT) {
+				throw new AutomationsValidationException(
+					`The limit of ${AUTOMATIONS_MAX_COUNT} automations is reached. Remove an automation before adding another.`,
+				);
+			}
+
+			// The entity is assembled by hand, not through toInstance(): that helper rewrites every object key
+			// to snake_case, which would also rewrite the keys of the opaque node configuration.
+			await this.repository.insert({
+				id,
+				name: dtoInstance.name,
+				description: dtoInstance.description ?? null,
+				icon: dtoInstance.icon ?? null,
+				enabled: dtoInstance.enabled ?? false,
+				spaceId: dtoInstance.space_id ?? null,
+				mode: dtoInstance.mode ?? AutomationMode.RESTART,
+				graph,
+				revision: 1,
+				status: AutomationStatus.OK,
+				lastTriggeredAt: null,
+				lastRunStatus: null,
+			});
 		});
 
 		const automation = await this.getOneOrThrow(id);
@@ -135,6 +161,21 @@ export class AutomationsService {
 		this.eventEmitter.emit(EventType.AUTOMATION_CREATED, automation);
 
 		return automation;
+	}
+
+	/**
+	 * Runs the given step after every earlier create step has settled. The backend is a single process, so an
+	 * in-process queue is enough to make "check the limit, then insert" atomic.
+	 */
+	private serializeCreate<T>(step: () => Promise<T>): Promise<T> {
+		const result = this.createQueue.then(step);
+
+		this.createQueue = result.then(
+			(): void => undefined,
+			(): void => undefined,
+		);
+
+		return result;
 	}
 
 	/**
@@ -156,6 +197,16 @@ export class AutomationsService {
 		// edited without first being moved elsewhere.
 		if (dtoInstance.space_id && dtoInstance.space_id !== existing.spaceId) {
 			await this.validateSpace(dtoInstance.space_id);
+		}
+
+		// The graph that will be stored is checked whenever it can become worse than it was: when a new graph
+		// is submitted, and when the stored graph is switched on. Other saves (a rename, switching off) are
+		// let through, so an automation whose node type has gone since can still be edited.
+		const graph = dtoInstance.graph !== undefined ? this.toStoredGraph(dtoInstance.graph) : undefined;
+		const enabled = dtoInstance.enabled ?? existing.enabled;
+
+		if (graph !== undefined || (dtoInstance.enabled === true && !existing.enabled)) {
+			await this.assertGraphCanBeSaved(graph ?? existing.graph, enabled);
 		}
 
 		const changes: QueryDeepPartialEntity<AutomationEntity> = {
@@ -187,8 +238,8 @@ export class AutomationsService {
 			changes.mode = dtoInstance.mode;
 		}
 
-		if (dtoInstance.graph !== undefined) {
-			changes.graph = this.toStoredGraph(dtoInstance.graph) as QueryDeepPartialEntity<AutomationGraphModel>;
+		if (graph !== undefined) {
+			changes.graph = graph as QueryDeepPartialEntity<AutomationGraphModel>;
 		}
 
 		const result = await this.repository.update({ id, revision: dtoInstance.revision }, changes);
@@ -219,6 +270,36 @@ export class AutomationsService {
 		this.logger.debug(`[DELETE] Removed automation with id=${id}`);
 
 		this.eventEmitter.emit(EventType.AUTOMATION_DELETED, { id });
+	}
+
+	/**
+	 * Validates a graph against the registered node types without saving anything.
+	 *
+	 * @param enabled whether the automation the graph belongs to would be enabled; an enabled automation
+	 * needs a complete graph, a disabled one may be a draft
+	 */
+	async checkGraph(graph: unknown, enabled: boolean): Promise<AutomationGraphSaveCheck> {
+		return checkGraphForSave(graph, this.nodeTypeRegistry.lookup, { enabled });
+	}
+
+	private async assertGraphCanBeSaved(graph: unknown, enabled: boolean): Promise<void> {
+		const check = await this.checkGraph(graph, enabled);
+
+		if (check.valid) {
+			return;
+		}
+
+		const blocking = check.issues.filter((issue) => issue.blocking).length;
+
+		// The issues can quote submitted identifiers, so they go to the caller only and the log gets a count
+		this.logger.error(`[VALIDATION FAILED] Graph validation failed with ${blocking} blocking issue(s)`);
+
+		throw new AutomationsGraphValidationException(
+			enabled
+				? `The automation graph cannot be saved: it has ${blocking} problem(s). An enabled automation needs a complete graph.`
+				: `The automation graph cannot be saved: it has ${blocking} problem(s).`,
+			check.issues,
+		);
 	}
 
 	private createRevisionConflict(id: string, revision: number): AutomationsRevisionConflictException {

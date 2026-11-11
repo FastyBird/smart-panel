@@ -6,6 +6,8 @@ import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { AutomationEntity } from '../entities/automations.entity';
 
 import { AutomationSummaryModel } from './automations.model';
+import { AutomationGraphValidationModel } from './graph-validation.model';
+import { AutomationNodeTypeModel } from './node-types.model';
 
 /**
  * Response wrapper for AutomationEntity
@@ -32,4 +34,31 @@ export class AutomationsResponseModel extends BaseSuccessResponseModel<Automatio
 	})
 	@Expose()
 	declare data: AutomationSummaryModel[];
+}
+
+/**
+ * Response wrapper for AutomationGraphValidationModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResGraphValidation' })
+export class AutomationGraphValidationResponseModel extends BaseSuccessResponseModel<AutomationGraphValidationModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationGraphValidationModel,
+	})
+	@Expose()
+	declare data: AutomationGraphValidationModel;
+}
+
+/**
+ * Response wrapper for array of AutomationNodeTypeModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResNodeTypes' })
+export class AutomationNodeTypesResponseModel extends BaseSuccessResponseModel<AutomationNodeTypeModel[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(AutomationNodeTypeModel) },
+	})
+	@Expose()
+	declare data: AutomationNodeTypeModel[];
 }

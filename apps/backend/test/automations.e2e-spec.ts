@@ -9,6 +9,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
 import { ValidationExceptionFactory } from '../src/common/validation/validation-exception-factory';
+import { AutomationNodeTypeRegistryService } from '../src/modules/automations/services/node-type-registry.service';
+import {
+	FAKE_ACTION_TYPE,
+	FAKE_NODE_TYPES,
+	FAKE_STRICT_ACTION_CONFIG_SCHEMA,
+	FAKE_STRICT_ACTION_TYPE,
+	FAKE_TRIGGER_TYPE,
+} from '../src/modules/automations/testing/fake-node-types';
 import { UserRole } from '../src/modules/users/users.constants';
 
 interface AutomationBody {
@@ -28,6 +36,35 @@ interface AutomationBody {
 	updated_at: string | null;
 }
 
+interface IssueBody {
+	severity: string;
+	code: string;
+	message: string;
+	blocking: boolean;
+	node_id?: string;
+	edge_id?: string;
+	node_ids?: string[];
+	field?: string;
+}
+
+// A refused graph as the controller throws it. The error envelope filters are installed in src/main.ts, not in
+// this test application; in production the 422 filter moves these into error.details (reason, code, issues),
+// which unprocessable-entity-exception.filter.spec.ts covers.
+interface GraphRejectionBody {
+	code: string;
+	message: string;
+	issues: IssueBody[];
+}
+
+interface NodeTypeBody {
+	type: string;
+	kind: string;
+	name: string;
+	description: string;
+	ports: { inputs: string[]; outputs: string[] };
+	config_schema: Record<string, unknown>;
+}
+
 describe('Automations module (e2e)', () => {
 	let app: INestApplication;
 	let ownerToken: string;
@@ -36,6 +73,7 @@ describe('Automations module (e2e)', () => {
 	let displayToken: string;
 
 	const base = '/modules/automations/automations';
+	const nodeTypesBase = '/modules/automations/node-types';
 
 	// Guards run before the route handler even looks the id up, so a well-formed but
 	// non-existent id is enough to prove the role denial happens before anything else.
@@ -46,15 +84,34 @@ describe('Automations module (e2e)', () => {
 		nodes: [
 			{
 				id: 'n1',
-				type: 'device.property.changed',
+				type: FAKE_TRIGGER_TYPE,
 				position: { x: 40, y: 80 },
 				// Mixed-case keys and nested values: the configuration is opaque and must come back untouched
 				config: { property_id: 'p-1', camelCaseKey: true, nested: { list: [1, 'two', { three: 3 }] } },
 			},
-			{ id: 'n2', type: 'device.property.set', position: { x: 320.5, y: -80 }, config: {} },
+			{ id: 'n2', type: FAKE_ACTION_TYPE, position: { x: 320.5, y: -80 }, config: {} },
 		],
 		edges: [{ id: 'e1', source: 'n1', source_port: 'out', target: 'n2', target_port: 'in' }],
 	};
+
+	// Drawn correctly but not finished: the strict action is not configured and one node is not wired yet
+	const draftGraph = {
+		version: 1,
+		nodes: [
+			{ id: 't', type: FAKE_TRIGGER_TYPE, position: { x: 0, y: 0 }, config: {} },
+			{ id: 'a', type: FAKE_STRICT_ACTION_TYPE, position: { x: 200, y: 0 }, config: { level: 250 } },
+			{ id: 'later', type: FAKE_ACTION_TYPE, position: { x: 400, y: 0 }, config: {} },
+		],
+		edges: [{ id: 'e1', source: 't', source_port: 'out', target: 'a', target_port: 'in' }],
+	};
+
+	const completeGraph = {
+		...draftGraph,
+		nodes: [draftGraph.nodes[0], { ...draftGraph.nodes[1], config: { level: 40 } }],
+	};
+
+	// Could never run: an edge on a port the trigger does not have
+	const brokenGraph = { ...completeGraph, edges: [{ ...completeGraph.edges[0], source_port: 'yes' }] };
 
 	const login = async (username: string): Promise<string> => {
 		const response = await request(app.getHttpServer())
@@ -102,6 +159,14 @@ describe('Automations module (e2e)', () => {
 		useContainer(moduleFixture, { fallbackOnErrors: true });
 
 		await app.init();
+
+		// No concrete node type ships with the module yet, so the tests register fake ones the way a module
+		// or plugin registers its own from onModuleInit
+		const nodeTypeRegistry = app.get(AutomationNodeTypeRegistryService, { strict: false });
+
+		for (const nodeType of FAKE_NODE_TYPES) {
+			nodeTypeRegistry.register(nodeType);
+		}
 
 		// Wait for all modules to initialize (especially module mappings)
 		await new Promise((resolve) => setTimeout(resolve, 100));
@@ -316,17 +381,344 @@ describe('Automations module (e2e)', () => {
 		});
 	});
 
+	describe('node type catalogue', () => {
+		it('lists the registered node types with their ports and config schema, ordered by type', async () => {
+			const response = await request(app.getHttpServer())
+				.get(nodeTypesBase)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			const nodeTypes = (response.body as { data: NodeTypeBody[] }).data.filter((item) =>
+				item.type.startsWith('test.'),
+			);
+
+			expect(nodeTypes.map((item) => item.type)).toEqual([
+				'test.action',
+				'test.condition',
+				'test.join',
+				'test.strict-action',
+				'test.trigger',
+			]);
+			expect(nodeTypes.find((item) => item.type === 'test.trigger')).toEqual({
+				type: 'test.trigger',
+				kind: 'trigger',
+				name: 'Test trigger',
+				description: 'Starts a run in tests.',
+				ports: { inputs: [], outputs: ['out'] },
+				// A node type that does not describe its configuration accepts any object
+				config_schema: { type: 'object', additionalProperties: true },
+			});
+			expect(nodeTypes.find((item) => item.type === 'test.condition')?.ports).toEqual({
+				inputs: ['in'],
+				outputs: ['yes', 'no'],
+			});
+			expect(nodeTypes.find((item) => item.type === 'test.join')).toMatchObject({
+				kind: 'flow',
+				ports: { inputs: ['a', 'b'], outputs: ['out'] },
+			});
+			// The schema is served as the node type wrote it: its keys are not rewritten
+			expect(nodeTypes.find((item) => item.type === 'test.strict-action')).toMatchObject({
+				kind: 'action',
+				ports: { inputs: ['in'], outputs: ['done', 'error'] },
+				config_schema: FAKE_STRICT_ACTION_CONFIG_SCHEMA,
+			});
+		});
+	});
+
+	describe('graph validation', () => {
+		const validate = (data: Record<string, unknown>) =>
+			request(app.getHttpServer()).post(`${base}/validate`).set('Authorization', `Bearer ${ownerToken}`).send({ data });
+
+		const countAutomations = async (): Promise<number> => {
+			const list = await request(app.getHttpServer())
+				.get(base)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			return (list.body as { data: AutomationBody[] }).data.length;
+		};
+
+		describe('POST /automations/validate', () => {
+			it('finds nothing in a complete graph and saves nothing', async () => {
+				const before = await countAutomations();
+
+				const response = await validate({ graph: completeGraph, enabled: true }).expect(200);
+
+				expect((response.body as { data: unknown }).data).toEqual({ valid: true, issues: [] });
+				expect(await countAutomations()).toBe(before);
+			});
+
+			it('lists the issues of a draft per node and takes it for a disabled automation unless told otherwise', async () => {
+				const expected = (blocking: boolean) => [
+					{
+						severity: 'error',
+						code: 'invalid_config',
+						message: 'Level must be between 0 and 100.',
+						node_id: 'a',
+						field: 'level',
+						blocking,
+					},
+					{
+						severity: 'warning',
+						code: 'unreachable_node',
+						message: 'No trigger leads to this node, so it never runs.',
+						node_id: 'later',
+						blocking: false,
+					},
+				];
+
+				const asDraft = await validate({ graph: draftGraph }).expect(200);
+				const asDisabled = await validate({ graph: draftGraph, enabled: false }).expect(200);
+				const asEnabled = await validate({ graph: draftGraph, enabled: true }).expect(200);
+
+				expect((asDraft.body as { data: unknown }).data).toEqual({ valid: true, issues: expected(false) });
+				expect((asDisabled.body as { data: unknown }).data).toEqual({ valid: true, issues: expected(false) });
+				expect((asEnabled.body as { data: unknown }).data).toEqual({ valid: false, issues: expected(true) });
+			});
+
+			it('reports structural problems as invalid whatever the enabled flag, with the edge and the nodes', async () => {
+				const cyclic = {
+					version: 1,
+					nodes: [
+						draftGraph.nodes[0],
+						{ ...draftGraph.nodes[2], id: 'x' },
+						{ ...draftGraph.nodes[2], id: 'y' },
+						{ ...draftGraph.nodes[2], id: 'ghost', type: 'not.registered' },
+					],
+					edges: [
+						{ id: 'e1', source: 't', source_port: 'out', target: 'x', target_port: 'in' },
+						{ id: 'e2', source: 'x', source_port: 'done', target: 'y', target_port: 'in' },
+						{ id: 'e3', source: 'y', source_port: 'done', target: 'x', target_port: 'in' },
+						{ id: 'e4', source: 'y', source_port: 'done', target: 'x', target_port: 'in' },
+						{ id: 'e5', source: 'x', source_port: 'error', target: 't', target_port: 'in' },
+						{ id: 'e6', source: 't', source_port: 'sideways', target: 'y', target_port: 'in' },
+					],
+				};
+
+				const response = await validate({ graph: cyclic, enabled: false }).expect(200);
+				const { valid, issues } = (response.body as { data: { valid: boolean; issues: IssueBody[] } }).data;
+
+				expect(valid).toBe(false);
+				expect(issues.every((issue) => issue.blocking && issue.severity === 'error')).toBe(true);
+				expect(issues.map(({ code, node_id, edge_id, node_ids }) => ({ code, node_id, edge_id, node_ids }))).toEqual([
+					{ code: 'unknown_node_type', node_id: 'ghost' },
+					{ code: 'duplicate_edge', edge_id: 'e4' },
+					{ code: 'edge_into_trigger', node_id: 't', edge_id: 'e5' },
+					{ code: 'unknown_port', node_id: 't', edge_id: 'e6' },
+					{ code: 'cycle', node_ids: ['t', 'x', 'y'] },
+				]);
+			});
+
+			it('says an empty graph has no trigger, which matters only once enabled', async () => {
+				const empty = { version: 1, nodes: [], edges: [] };
+
+				const disabled = await validate({ graph: empty }).expect(200);
+				const enabled = await validate({ graph: empty, enabled: true }).expect(200);
+
+				expect((disabled.body as { data: unknown }).data).toMatchObject({
+					valid: true,
+					issues: [{ code: 'no_trigger', severity: 'error', blocking: false }],
+				});
+				expect((enabled.body as { data: unknown }).data).toMatchObject({
+					valid: false,
+					issues: [{ code: 'no_trigger', severity: 'error', blocking: true }],
+				});
+			});
+
+			it.each([
+				['a missing graph', { enabled: true }],
+				['a graph that breaks the shape rules', { graph: { ...completeGraph, version: 2 } }],
+				['an unknown property', { graph: completeGraph, name: 'A' }],
+			])('rejects %s with 400', async (_label, data) => {
+				await validate(data).expect(400);
+			});
+
+			it('is not taken for an automation id', async () => {
+				// GET, PATCH and DELETE on the same path are the /:id routes, which refuse "validate" as an id
+				await request(app.getHttpServer())
+					.get(`${base}/validate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(400);
+			});
+		});
+
+		describe('on create', () => {
+			it('refuses a structurally broken graph with 422 and the issues, even when disabled', async () => {
+				const before = await countAutomations();
+
+				const response = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Broken', graph: brokenGraph } })
+					.expect(422);
+
+				expect(response.body as GraphRejectionBody).toEqual({
+					code: 'automation-graph-invalid',
+					message: 'The automation graph cannot be saved: it has 1 problem(s).',
+					issues: [
+						{
+							severity: 'error',
+							code: 'unknown_port',
+							message: 'Node type "test.trigger" has no output port "yes".',
+							node_id: 't',
+							edge_id: 'e1',
+							blocking: true,
+						},
+					],
+				});
+				expect(await countAutomations()).toBe(before);
+			});
+
+			it('stores a draft while disabled and refuses it when enabled', async () => {
+				const created = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Draft', graph: draftGraph } })
+					.expect(201);
+
+				expect((created.body as { data: AutomationBody }).data).toMatchObject({ enabled: false, graph: draftGraph });
+
+				const refused = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Enabled draft', enabled: true, graph: draftGraph } })
+					.expect(422);
+
+				expect(refused.body as GraphRejectionBody).toMatchObject({
+					code: 'automation-graph-invalid',
+					issues: [
+						{ code: 'invalid_config', node_id: 'a', field: 'level', blocking: true },
+						{ code: 'unreachable_node', node_id: 'later', blocking: false },
+					],
+				});
+			});
+
+			it('refuses an enabled automation without a graph and stores an enabled one with a complete graph', async () => {
+				const refused = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Enabled and empty', enabled: true } })
+					.expect(422);
+
+				expect((refused.body as GraphRejectionBody).issues).toMatchObject([{ code: 'no_trigger', blocking: true }]);
+
+				const created = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Enabled and complete', enabled: true, graph: completeGraph } })
+					.expect(201);
+
+				expect((created.body as { data: AutomationBody }).data).toMatchObject({ enabled: true, graph: completeGraph });
+			});
+		});
+
+		describe('on update', () => {
+			const createAutomation = async (data: Record<string, unknown>): Promise<AutomationBody> => {
+				const created = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data })
+					.expect(201);
+
+				return (created.body as { data: AutomationBody }).data;
+			};
+
+			const patch = (id: string, data: Record<string, unknown>) =>
+				request(app.getHttpServer()).patch(`${base}/${id}`).set('Authorization', `Bearer ${ownerToken}`).send({ data });
+
+			const read = async (id: string): Promise<AutomationBody> => {
+				const detail = await request(app.getHttpServer())
+					.get(`${base}/${id}`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				return (detail.body as { data: AutomationBody }).data;
+			};
+
+			it('refuses a structurally broken graph with 422 and changes nothing', async () => {
+				const automation = await createAutomation({ name: 'Stays as it is', graph: completeGraph });
+
+				const refused = await patch(automation.id, { revision: 1, name: 'Renamed', graph: brokenGraph }).expect(422);
+
+				expect(refused.body as GraphRejectionBody).toMatchObject({
+					code: 'automation-graph-invalid',
+					issues: [{ code: 'unknown_port', node_id: 't', edge_id: 'e1', blocking: true }],
+				});
+				expect(await read(automation.id)).toMatchObject({ name: 'Stays as it is', revision: 1, graph: completeGraph });
+			});
+
+			it('refuses to enable a stored draft, then enables it once the graph is complete', async () => {
+				const automation = await createAutomation({ name: 'Draft to enable', graph: draftGraph });
+
+				const refused = await patch(automation.id, { revision: 1, enabled: true }).expect(422);
+
+				expect(refused.body as GraphRejectionBody).toMatchObject({
+					code: 'automation-graph-invalid',
+					message:
+						'The automation graph cannot be saved: it has 1 problem(s). An enabled automation needs a complete graph.',
+					issues: [
+						{ code: 'invalid_config', node_id: 'a', field: 'level', blocking: true },
+						{ code: 'unreachable_node', node_id: 'later', blocking: false },
+					],
+				});
+				expect(await read(automation.id)).toMatchObject({ enabled: false, revision: 1 });
+
+				const enabled = await patch(automation.id, { revision: 1, enabled: true, graph: completeGraph }).expect(200);
+
+				expect((enabled.body as { data: AutomationBody }).data).toMatchObject({
+					enabled: true,
+					revision: 2,
+					graph: completeGraph,
+				});
+			});
+
+			it('refuses to enable an automation with an empty graph', async () => {
+				const automation = await createAutomation({ name: 'Empty to enable' });
+
+				const refused = await patch(automation.id, { revision: 1, enabled: true }).expect(422);
+
+				expect((refused.body as GraphRejectionBody).issues).toMatchObject([{ code: 'no_trigger', blocking: true }]);
+			});
+
+			it('refuses a draft for an enabled automation unless it is switched off by the same save', async () => {
+				const automation = await createAutomation({ name: 'Enabled', enabled: true, graph: completeGraph });
+
+				await patch(automation.id, { revision: 1, graph: draftGraph }).expect(422);
+
+				const saved = await patch(automation.id, { revision: 1, enabled: false, graph: draftGraph }).expect(200);
+
+				expect((saved.body as { data: AutomationBody }).data).toMatchObject({
+					enabled: false,
+					revision: 2,
+					graph: draftGraph,
+				});
+			});
+
+			it('answers a stale revision with 409 before it looks at the graph', async () => {
+				const automation = await createAutomation({ name: 'Stale', graph: completeGraph });
+
+				await patch(automation.id, { revision: 5, graph: brokenGraph }).expect(409);
+			});
+		});
+	});
+
 	describe('as admin', () => {
 		it('can create, list, update and delete automations', async () => {
 			const created = await request(app.getHttpServer())
 				.post(base)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.send({ data: { name: 'Admin automation' } })
+				.send({ data: { name: 'Admin automation', graph } })
 				.expect(201);
 
 			const { id } = (created.body as { data: AutomationBody }).data;
 
 			await request(app.getHttpServer()).get(base).set('Authorization', `Bearer ${adminToken}`).expect(200);
+			await request(app.getHttpServer()).get(nodeTypesBase).set('Authorization', `Bearer ${adminToken}`).expect(200);
+			await request(app.getHttpServer())
+				.post(`${base}/validate`)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.send({ data: { graph } })
+				.expect(200);
 			await request(app.getHttpServer())
 				.patch(`${base}/${id}`)
 				.set('Authorization', `Bearer ${adminToken}`)
@@ -357,6 +749,14 @@ describe('Automations module (e2e)', () => {
 						data: { revision: 1, name: 'Nope' },
 					}),
 			],
+			[
+				'POST /automations/validate',
+				(token) =>
+					authorize(request(app.getHttpServer()).post(`${base}/validate`), token).send({
+						data: { graph: { version: 1, nodes: [], edges: [] } },
+					}),
+			],
+			['GET /node-types', (token) => authorize(request(app.getHttpServer()).get(nodeTypesBase), token)],
 			[
 				'DELETE /automations/:id',
 				(token) => authorize(request(app.getHttpServer()).delete(`${base}/${placeholderId}`), token),

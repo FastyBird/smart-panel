@@ -1,5 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 
+import { AutomationGraphSaveIssue } from './graph/save-policy';
+
 export class AutomationsException extends Error {
 	public constructor(message: string) {
 		super(message);
@@ -40,5 +42,18 @@ export class AutomationsRevisionConflictException extends AutomationsException {
 	public constructor(message: string) {
 		super(message);
 		this.name = 'AutomationsRevisionConflictException';
+	}
+}
+
+/**
+ * A graph that cannot be saved. Carries the issues so the caller can show each of them on its node or edge.
+ */
+export class AutomationsGraphValidationException extends AutomationsValidationException {
+	public constructor(
+		message: string,
+		public readonly issues: AutomationGraphSaveIssue[],
+	) {
+		super(message);
+		this.name = 'AutomationsGraphValidationException';
 	}
 }
