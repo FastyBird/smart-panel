@@ -377,7 +377,10 @@ export class RunWalker {
 		let gate = this.beforeExecute?.(node) ?? { allow: true };
 
 		if (gate.allow && this.checkAction) {
-			gate = await this.askActionCheck(node, this.checkAction);
+			const asked = this.askActionCheck(node, this.checkAction);
+
+			// Only a check that takes its time is waited for: an answer given at once keeps the action in this tick
+			gate = asked instanceof Promise ? await asked : asked;
 
 			if (this.ended) {
 				// The run ended while the action was being checked: the action is not executed

@@ -169,6 +169,21 @@ describe('RunWalker', () => {
 		expect(events).toEqual(['ended:completed', 'settled']);
 	});
 
+	it('starts an action in the same tick when its check answers at once', async () => {
+		const walker = walk(plan([trigger('t'), action('a'), action('b')], ['t:out>a', 't:out>b']), {
+			checkAction: () => ({ allow: true }),
+		});
+
+		walker.start();
+
+		// The actions were called before anything was awaited
+		expect(calls).toEqual(['a', 'b']);
+
+		await flush();
+
+		expect(walker.record.status).toBe('completed');
+	});
+
 	it('parallel branches interleave: the order of completion follows the latency, not the edges', async () => {
 		const walker = walk(
 			plan(
