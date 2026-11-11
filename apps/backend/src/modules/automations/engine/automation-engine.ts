@@ -1009,25 +1009,29 @@ export class AutomationEngine {
 				? { allow: true }
 				: { allow: false, reason: verdict?.reason ?? 'The action was refused by the safety policy.' };
 
-		let verdict: ActionPolicyVerdict | PromiseLike<ActionPolicyVerdict>;
-
+		// Reading `then` and calling it are part of asking: a verdict that can not be read is no verdict
 		try {
-			verdict = policy({ automationId: loaded.def.id, nodeId: node.id, type: node.type, config: node.config });
+			const verdict = policy({
+				automationId: loaded.def.id,
+				nodeId: node.id,
+				type: node.type,
+				config: node.config,
+			});
+
+			if (typeof (verdict as PromiseLike<ActionPolicyVerdict> | null)?.then !== 'function') {
+				return read(verdict as ActionPolicyVerdict);
+			}
+
+			return (verdict as PromiseLike<ActionPolicyVerdict>).then(read, (error: unknown) => {
+				this.hook('error', error, 'asking the action policy');
+
+				return unchecked;
+			});
 		} catch (error) {
 			this.hook('error', error, 'asking the action policy');
 
 			return unchecked;
 		}
-
-		if (typeof (verdict as PromiseLike<ActionPolicyVerdict> | null)?.then !== 'function') {
-			return read(verdict as ActionPolicyVerdict);
-		}
-
-		return (verdict as PromiseLike<ActionPolicyVerdict>).then(read, (error: unknown) => {
-			this.hook('error', error, 'asking the action policy');
-
-			return unchecked;
-		});
 	}
 
 	// ---- helpers ---------------------------------------------------------------------------------------

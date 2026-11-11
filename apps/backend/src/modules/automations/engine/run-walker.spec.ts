@@ -790,6 +790,62 @@ describe('RunWalker', () => {
 			expect(checkAction).not.toHaveBeenCalled();
 			expect(stepOf(walker, 'blocked')).toMatchObject({ refused: true });
 		});
+
+		it('asks the gate again after the check: an action refused while it was being checked is not executed', async () => {
+			let enabled = true;
+			let answer: (gate: RunGate) => void = () => undefined;
+
+			const walker = walk(plan([trigger('t'), action('a'), action('handler')], ['t:out>a', 'a:error>handler']), {
+				beforeExecute: (node) =>
+					enabled || node.id !== 'a'
+						? { allow: true }
+						: { allow: false, reason: 'The plugin this block belongs to is disabled.' },
+				checkAction: (node) =>
+					node.id === 'a'
+						? new Promise<RunGate>((resolve) => {
+								answer = resolve;
+							})
+						: { allow: true },
+			});
+
+			walker.start();
+			await flush();
+
+			enabled = false;
+			answer({ allow: true });
+			await flush();
+
+			expect(calls).toEqual(['handler']);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The plugin this block belongs to is disabled.',
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
+
+		it('a check whose answer can not be read lets nothing through and the action takes error', async () => {
+			const broken = Object.defineProperty({ allow: true }, 'then', {
+				get: () => {
+					throw new Error('then broke');
+				},
+			}) as RunGate;
+
+			const walker = walk(plan([trigger('t'), action('a'), action('handler')], ['t:out>a', 'a:error>handler']), {
+				checkAction: (node) => (node.id === 'a' ? broken : { allow: true }),
+			});
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['handler']);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The action could not be checked, so it was not executed.',
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
 	});
 
 	it('stops a run whose tokens multiply beyond the step limit', async () => {

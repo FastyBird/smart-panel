@@ -385,6 +385,11 @@ export class RunWalker {
 
 				return;
 			}
+
+			if (gate.allow) {
+				// The check may have taken its time: what the gate said before it may no longer hold
+				gate = this.beforeExecute?.(node) ?? { allow: true };
+			}
 		}
 
 		let result: AutomationActionResult;
@@ -482,14 +487,17 @@ export class RunWalker {
 		};
 
 		let asked: RunGate | PromiseLike<RunGate>;
+		let pending: boolean;
 
 		try {
 			asked = check(node);
+			// Reading `then` is part of asking: an answer that can not be read is no answer
+			pending = typeof (asked as PromiseLike<RunGate> | null)?.then === 'function';
 		} catch {
 			return failed;
 		}
 
-		if (typeof (asked as PromiseLike<RunGate> | null)?.then !== 'function') {
+		if (!pending) {
 			return read(asked);
 		}
 
@@ -518,10 +526,14 @@ export class RunWalker {
 				node.timeoutMs,
 			);
 
-			(asked as PromiseLike<RunGate>).then(
-				(gate) => finish(read(gate)),
-				() => finish(failed),
-			);
+			try {
+				(asked as PromiseLike<RunGate>).then(
+					(gate) => finish(read(gate)),
+					() => finish(failed),
+				);
+			} catch {
+				finish(failed);
+			}
 		});
 	}
 

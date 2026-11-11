@@ -1044,6 +1044,76 @@ describe('AutomationEngine', () => {
 			expect(harness.calls).toEqual([]);
 			expect(settled[0].steps[0]).toMatchObject({ output: 'error', refused: true });
 		});
+
+		it('a policy whose answer can not be read lets nothing through and the action takes error', async () => {
+			policy = (request) =>
+				request.nodeId === 'unlock'
+					? (Object.defineProperty({ allow: true }, 'then', {
+							get: () => {
+								throw new Error('then broke');
+							},
+						}) as ActionPolicyVerdict)
+					: { allow: true };
+
+			await engine.load(
+				automation(
+					graph(
+						[node('t', ENGINE_TRIGGER_TYPE), node('unlock', ENGINE_ACTION_TYPE), node('light', ENGINE_ACTION_TYPE)],
+						['t:out>unlock', 'unlock:error>light'],
+					),
+				),
+			);
+			await fire();
+
+			expect(harness.calls).toEqual(['light']);
+			expect(settled[0].steps.find((step) => step.nodeId === 'unlock')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The safety policy could not be checked.',
+			});
+			expect(settled[0].status).toBe('completed');
+			expect(errors).toContain('asking the action policy');
+		});
+
+		it('does not execute an action whose plugin was disabled while the policy was looking it up', async () => {
+			let answer: (verdict: ActionPolicyVerdict) => void = () => undefined;
+
+			policy = (request) =>
+				request.nodeId === 'own'
+					? new Promise<ActionPolicyVerdict>((resolve) => {
+							answer = resolve;
+						})
+					: { allow: true };
+
+			await engine.load(
+				automation(
+					graph(
+						[
+							node('t', ENGINE_TRIGGER_TYPE),
+							node('own', ENGINE_PLUGIN_ACTION_TYPE),
+							node('handler', ENGINE_ACTION_TYPE),
+						],
+						['t:out>own', 'own:error>handler'],
+					),
+				),
+			);
+
+			harness.fire();
+			await flush();
+
+			pluginEnabled = false;
+			await engine.refreshOwners();
+
+			answer({ allow: true });
+			await flush();
+
+			expect(harness.calls).toEqual(['handler']);
+			expect(settled[0].steps.find((step) => step.nodeId === 'own')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The plugin this block belongs to is disabled.',
+			});
+		});
 	});
 
 	it('survives hooks that throw', async () => {
