@@ -123,7 +123,7 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 				reference.kind === 'property' ? this.stateTracker.reference(reference.id) : undefined,
 			actionPolicy: (request) => this.actionPolicy?.(request) ?? { allow: true },
 			hooks: {
-				statusChanged: (state) => this.handleStatusChanged(state),
+				statusChanged: (state, previous) => this.handleStatusChanged(state, previous),
 				runStarted: (record) => this.runService.runStarted(record),
 				runParked: (record) => this.runService.runParked(record),
 				runEnded: (record) => this.runService.runEnded(record),
@@ -363,7 +363,7 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 
 	// ---- what the engine decided -----------------------------------------------------------------------
 
-	private handleStatusChanged(state: EngineAutomationState): void {
+	private handleStatusChanged(state: EngineAutomationState, previous: EngineAutomationStatus): void {
 		this.logger.warn(
 			`[ENGINE] Automation id=${state.id} is now ${state.status}` +
 				(state.suspendedReason !== undefined ? `: ${state.suspendedReason}` : ''),
@@ -373,15 +373,25 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 
 		if (state.status === 'suspended') {
 			this.raiseSuspended(state);
+		} else if (previous === 'suspended') {
+			// Left `suspended` without a save, e.g. something it refers to was removed: the issue no longer holds
+			this.background(async () => {
+				await this.notifications.resolve(AUTOMATIONS_MODULE_NAME, this.suspendedKey(state.id));
+			}, `resolving the suspension of automation id=${state.id}`);
 		}
 	}
 
+	/**
+	 * Queues the write of a status the engine decided. The status belongs to the revision it was decided
+	 * for: a save that committed while the write was waiting has set the status of the newer revision, and
+	 * the write must not land on it.
+	 */
 	private persistStatus(state: EngineAutomationState): void {
-		const { id, status } = state;
+		const { id, status, revision } = state;
 
 		this.writes = this.writes
 			.then(async () => {
-				const result = await this.repository.update({ id }, { status: STATUS[status] });
+				const result = await this.repository.update({ id, revision }, { status: STATUS[status] });
 
 				if (result.affected !== 1) return;
 

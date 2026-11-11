@@ -29,6 +29,9 @@ const RUN_STATUS: Record<string, AutomationRunStatus | undefined> = {
  *
  * A run that never parks costs one write, when it ends. Writes are queued, so they reach the database in
  * the order the runs reported them, and a failed write never reaches the engine.
+ *
+ * Parallel runs end in any order, so `last_triggered_at` only ever moves forward: a run that started
+ * earlier and ended later leaves it alone. `last_run_status` is that of the run that ended last.
  */
 @Injectable()
 export class AutomationRunService {
@@ -51,7 +54,7 @@ export class AutomationRunService {
 	runParked(record: RunRecord): void {
 		this.enqueue(record.automationId, async () => {
 			// The run may have ended while this write was waiting; its end is then written right behind
-			await this.write(record.automationId, { lastTriggeredAt: new Date(record.startedAt) });
+			await this.write(record.automationId, new Date(record.startedAt));
 		});
 	}
 
@@ -66,7 +69,7 @@ export class AutomationRunService {
 		if (status === undefined) return;
 
 		this.enqueue(record.automationId, async () => {
-			await this.write(record.automationId, { lastTriggeredAt: new Date(record.startedAt), lastRunStatus: status });
+			await this.write(record.automationId, new Date(record.startedAt), status);
 		});
 	}
 
@@ -79,10 +82,20 @@ export class AutomationRunService {
 		await this.writes;
 	}
 
-	private async write(
-		id: string,
-		changes: { lastTriggeredAt: Date; lastRunStatus?: AutomationRunStatus },
-	): Promise<void> {
+	private async write(id: string, startedAt: Date, lastRunStatus?: AutomationRunStatus): Promise<void> {
+		// This queue is the only writer of the column, so what is read here is what the write is compared to
+		const stored = await this.repository.findOne({ where: { id }, select: { id: true, lastTriggeredAt: true } });
+
+		if (!stored) return;
+
+		const newer = !stored.lastTriggeredAt || new Date(stored.lastTriggeredAt).getTime() < startedAt.getTime();
+		const changes: { lastTriggeredAt?: Date; lastRunStatus?: AutomationRunStatus } = {
+			...(newer ? { lastTriggeredAt: startedAt } : {}),
+			...(lastRunStatus !== undefined ? { lastRunStatus } : {}),
+		};
+
+		if (Object.keys(changes).length === 0) return;
+
 		// Neither the revision nor `updated_at` moves: the automation was not edited
 		const result = await this.repository.update({ id }, changes);
 

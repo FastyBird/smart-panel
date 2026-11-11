@@ -40,7 +40,11 @@ describe('AutomationRunService', () => {
 		emit = jest.fn();
 
 		service = new AutomationRunService(
-			{ update, findOneBy: jest.fn(() => Promise.resolve(stored)) } as unknown as Repository<AutomationEntity>,
+			{
+				update,
+				findOne: jest.fn(() => Promise.resolve(stored ? { ...stored } : null)),
+				findOneBy: jest.fn(() => Promise.resolve(stored)),
+			} as unknown as Repository<AutomationEntity>,
 			{ emit } as unknown as EventEmitter2,
 		);
 	});
@@ -86,6 +90,37 @@ describe('AutomationRunService', () => {
 			lastRunStatus: AutomationRunStatus.COMPLETED,
 			lastTriggeredAt: new Date(STARTED_AT + 1000),
 		});
+	});
+
+	it('keeps the newest trigger time when parallel runs end out of the order they started in', async () => {
+		const older = record('completed', { id: 'run-1', startedAt: STARTED_AT });
+		const newer = record('failed', { id: 'run-2', startedAt: STARTED_AT + 1000 });
+
+		// Run 2 started later and ended first
+		service.runEnded(newer);
+		service.runEnded(older);
+		await service.settled();
+
+		expect(update).toHaveBeenNthCalledWith(
+			1,
+			{ id: ID },
+			{ lastTriggeredAt: new Date(STARTED_AT + 1000), lastRunStatus: AutomationRunStatus.FAILED },
+		);
+		expect(update).toHaveBeenNthCalledWith(2, { id: ID }, { lastRunStatus: AutomationRunStatus.COMPLETED });
+		expect(stored).toMatchObject({
+			lastTriggeredAt: new Date(STARTED_AT + 1000),
+			lastRunStatus: AutomationRunStatus.COMPLETED,
+		});
+	});
+
+	it('does not move the trigger time back when an older run parks late, and compares a stored string', async () => {
+		stored = { ...stored, lastTriggeredAt: new Date(STARTED_AT + 1000).toISOString() };
+
+		service.runParked(record('running'));
+		await service.settled();
+
+		expect(update).not.toHaveBeenCalled();
+		expect(emit).not.toHaveBeenCalled();
 	});
 
 	it('announces nothing for an automation that was deleted meanwhile', async () => {

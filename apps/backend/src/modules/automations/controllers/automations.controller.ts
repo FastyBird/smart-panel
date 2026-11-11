@@ -263,7 +263,7 @@ export class AutomationsController {
 		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
 		summary: 'Run an automation by hand',
 		description:
-			'Starts a run of the automation without waiting for one of its triggers. The run starts at the given trigger node, or at the first trigger of the graph, and it may start only at a trigger node. The run mode and the overload guard apply as they do to a trigger that fired, so the answer may be that no run was started: `ignored` (a run is active and the mode is `single`), `dropped` (a limit of runs is reached) or `suspended`. The request is refused with 422 while the automation is disabled, `invalid` or `suspended`, and when the engine is not running. The response does not wait for the run to finish. Requires the owner or admin role.',
+			'Starts a run of the automation without waiting for one of its triggers. The run starts at the given trigger node, or at the first trigger of the graph, and it may start only at a trigger node. The run mode and the overload guard apply as they do to a trigger that fired, so the answer may be that no run was started: `ignored` (a run is active and the mode is `single`), `dropped` (a limit of runs is reached) or `suspended`. The request is refused with 422 while the automation is disabled, `invalid` or `suspended`, and when the engine is not running; `error.details.code` says which. The response does not wait for the run to finish. Requires the owner or admin role.',
 		operationId: 'trigger-automations-module-automation',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Automation ID' })
@@ -276,7 +276,7 @@ export class AutomationsController {
 	@ApiForbiddenResponse('Only owners and admins can run automations')
 	@ApiNotFoundResponse('Automation not found')
 	@ApiUnprocessableEntityResponse(
-		'The automation cannot be run by hand: it is disabled, invalid or suspended, the node is not a trigger, or the engine is not running.',
+		'The automation cannot be run by hand. `error.details.code` says why: `disabled`, `invalid`, `suspended`, `not_a_trigger` (the node asked for is not a trigger), `no_trigger` (the graph has none), `not_running` (the engine is stopped) or `not_found` (the engine has not loaded the automation yet).',
 	)
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/trigger')
@@ -300,7 +300,8 @@ export class AutomationsController {
 			}
 
 			if (error instanceof AutomationsNotTriggerableException) {
-				throw new UnprocessableEntityException(error.message);
+				// The 422 filter puts the refusal code into `error.details.code`, so a client need not read the text
+				throw new UnprocessableEntityException({ code: error.code, message: error.message });
 			}
 
 			throw error;

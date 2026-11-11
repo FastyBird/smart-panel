@@ -5,6 +5,7 @@ import {
 	ENGINE_BROKEN_TRIGGER_TYPE,
 	ENGINE_CONDITION_TYPE,
 	ENGINE_PLUGIN_ACTION_TYPE,
+	ENGINE_PLUGIN_DELAY_TYPE,
 	ENGINE_PLUGIN_TRIGGER_TYPE,
 	ENGINE_TEST_PLUGIN,
 	ENGINE_TRIGGER_TYPE,
@@ -873,6 +874,35 @@ describe('AutomationEngine', () => {
 			expect(settled[0].steps[0]).toMatchObject({
 				nodeId: 'own',
 				output: 'error',
+				refused: true,
+				reason: 'The plugin this block belongs to is disabled.',
+			});
+		});
+
+		it('does not park on a delay whose plugin is disabled: the token ends and the run fails', async () => {
+			pluginEnabled = false;
+
+			await engine.load(
+				automation(
+					graph(
+						[
+							node('core', ENGINE_TRIGGER_TYPE, { key: 'core' }),
+							node('wait', ENGINE_PLUGIN_DELAY_TYPE, { seconds: 60 }),
+							node('after', ENGINE_ACTION_TYPE),
+						],
+						['core:out>wait', 'wait:out>after'],
+					),
+				),
+			);
+			await fire('core');
+			clock.advance(60_000);
+			await flush();
+
+			expect(harness.calls).toEqual([]);
+			expect(parked).toEqual([]);
+			expect(settled[0]).toMatchObject({ status: 'failed' });
+			expect(settled[0].steps[0]).toMatchObject({
+				nodeId: 'wait',
 				refused: true,
 				reason: 'The plugin this block belongs to is disabled.',
 			});

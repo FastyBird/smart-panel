@@ -23,6 +23,7 @@ export const ENGINE_CONDITION_TYPE = 'engine.condition';
 export const ENGINE_ACTION_TYPE = 'engine.action';
 export const ENGINE_PLUGIN_TRIGGER_TYPE = 'engine.plugin-trigger';
 export const ENGINE_PLUGIN_ACTION_TYPE = 'engine.plugin-action';
+export const ENGINE_PLUGIN_DELAY_TYPE = 'engine.plugin-delay';
 export const ENGINE_BROKEN_TRIGGER_TYPE = 'engine.broken-trigger';
 export const ENGINE_TEST_PLUGIN = 'engine-test-plugin';
 
@@ -221,6 +222,7 @@ export class EngineHarness {
 			action,
 			{ ...trigger, type: ENGINE_PLUGIN_TRIGGER_TYPE, owner },
 			{ ...action, type: ENGINE_PLUGIN_ACTION_TYPE, owner },
+			{ ...delayNodeType, type: ENGINE_PLUGIN_DELAY_TYPE, owner },
 			{
 				...trigger,
 				type: ENGINE_BROKEN_TRIGGER_TYPE,

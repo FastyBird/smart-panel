@@ -891,7 +891,10 @@ describe('Automations module (e2e)', () => {
 			});
 
 			await trigger(automation.id, { data: { node_id: 'n1' } }).expect(200);
-			await trigger(automation.id, { data: { node_id: 'n2' } }).expect(422);
+			const refused = await trigger(automation.id, { data: { node_id: 'n2' } }).expect(422);
+
+			expect(refused.body).toMatchObject({ code: 'not_a_trigger', message: 'A run can start only at a trigger node.' });
+
 			await trigger(automation.id, { data: { node_id: 'nowhere' } }).expect(422);
 			await trigger(automation.id, { data: { node_id: '' } }).expect(400);
 			await trigger(automation.id, { data: { node_id: 'n1', extra: true } }).expect(400);
@@ -902,7 +905,8 @@ describe('Automations module (e2e)', () => {
 
 			const response = await trigger(automation.id).expect(422);
 
-			expect(JSON.stringify(response.body)).toContain('The automation is disabled.');
+			// As the controller throws it; in production the 422 filter moves these into error.details
+			expect(response.body).toMatchObject({ code: 'disabled', message: 'The automation is disabled.' });
 			expect(await runtime(automation.id)).toMatchObject({ loaded: true, armed: false, armed_triggers: 0 });
 
 			await trigger(placeholderId).expect(404);
@@ -987,7 +991,7 @@ describe('Automations module (e2e)', () => {
 				],
 			});
 
-			await trigger(automation.id).expect(422);
+			expect((await trigger(automation.id).expect(422)).body).toMatchObject({ code: 'invalid' });
 
 			// Saving a graph without the broken reference heals it
 			await save(automation.id, { revision: 1, graph: completeGraph });

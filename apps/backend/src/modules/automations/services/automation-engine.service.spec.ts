@@ -126,10 +126,10 @@ describe('AutomationEngineService', () => {
 			}),
 			findOne: jest.fn(({ where }: { where: { id: string } }) => Promise.resolve(rows.get(where.id) ?? null)),
 			existsBy: jest.fn(({ id }: { id: string }) => Promise.resolve(rows.has(id))),
-			update: jest.fn(({ id }: { id: string }, changes: Partial<AutomationEntity>) => {
+			update: jest.fn(({ id, revision }: { id: string; revision?: number }, changes: Partial<AutomationEntity>) => {
 				const row = rows.get(id);
 
-				if (!row) return Promise.resolve({ affected: 0 });
+				if (!row || (revision !== undefined && row.revision !== revision)) return Promise.resolve({ affected: 0 });
 
 				Object.assign(row, changes);
 
@@ -522,6 +522,26 @@ describe('AutomationEngineService', () => {
 		});
 	});
 
+	describe('a status write that waited while the automation was saved', () => {
+		it('does not land on the newer revision', async () => {
+			store(entity(simple));
+			await service.start();
+
+			// The guard suspends revision 1 and queues the write; the save commits revision 2 before it runs
+			for (let run = 0; run < 31; run += 1) harness.fire();
+
+			expect(service.runtime(ID)).toMatchObject({ status: 'suspended', revision: 1 });
+			expect(rows.get(ID)?.status).toBe(AutomationStatus.OK);
+
+			save({ name: 'Fixed' });
+			await settle();
+
+			expect(rows.get(ID)).toMatchObject({ revision: 2, status: AutomationStatus.OK });
+			expect(service.runtime(ID)).toMatchObject({ status: 'ok', armed: true, revision: 2 });
+			expect(emitted.some((item) => item.payload.status === AutomationStatus.SUSPENDED)).toBe(false);
+		});
+	});
+
 	describe('invalidation', () => {
 		it('stores the status of every automation that referred to what was removed', async () => {
 			store(
@@ -547,6 +567,38 @@ describe('AutomationEngineService', () => {
 			expect(rows.get(ID)?.status).toBe(AutomationStatus.INVALID);
 			expect(rows.get(OTHER_ID)?.status).toBe(AutomationStatus.OK);
 			expect(service.runtime(ID)).toMatchObject({ armed: false, problems: [{ node_id: 'a' }] });
+		});
+
+		it('resolves the suspension issue of a suspended automation that becomes invalid', async () => {
+			store(
+				entity(
+					graph(
+						[
+							node('t', ENGINE_TRIGGER_TYPE),
+							node('a', ENGINE_ACTION_TYPE, { references: [{ kind: 'device', id: 'device-1' }] }),
+						],
+						['t:out>a'],
+					),
+				),
+			);
+			await service.start();
+
+			for (let run = 0; run < 31; run += 1) harness.fire();
+
+			await settle();
+
+			expect(rows.get(ID)?.status).toBe(AutomationStatus.SUSPENDED);
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).not.toHaveBeenCalled();
+
+			await service.invalidateReferences((reference) => reference.kind === 'device' && reference.id === 'device-1');
+			await settle();
+
+			expect(rows.get(ID)?.status).toBe(AutomationStatus.INVALID);
+			expect(service.runtime(ID)).toMatchObject({ status: 'invalid', armed: false });
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).toHaveBeenCalledWith(AUTOMATIONS_MODULE_NAME, `automation-suspended:${ID}`);
 		});
 
 		it('does nothing while the engine is stopped', async () => {

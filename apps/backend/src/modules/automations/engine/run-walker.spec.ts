@@ -7,6 +7,7 @@ import {
 	RunPlan,
 	RunPlanActionNode,
 	RunPlanConditionNode,
+	RunPlanGatedNode,
 	RunPlanNode,
 	RunRecord,
 	RunStep,
@@ -113,7 +114,7 @@ describe('RunWalker', () => {
 
 	const walk = (
 		runPlan: RunPlan,
-		options: { beforeExecute?: (node: RunPlanConditionNode | RunPlanActionNode) => RunGate; maxSteps?: number } = {},
+		options: { beforeExecute?: (node: RunPlanGatedNode) => RunGate; maxSteps?: number } = {},
 	): RunWalker =>
 		new RunWalker({
 			plan: runPlan,
@@ -562,7 +563,7 @@ describe('RunWalker', () => {
 	});
 
 	describe('gate', () => {
-		const refuse = (node: RunPlanConditionNode | RunPlanActionNode): RunGate =>
+		const refuse = (node: RunPlanGatedNode): RunGate =>
 			node.id.startsWith('blocked')
 				? { allow: false, reason: 'The plugin this block belongs to is disabled.' }
 				: { allow: true };
@@ -602,6 +603,34 @@ describe('RunWalker', () => {
 			expect(calls).toEqual(['no']);
 			expect(stepOf(walker, 'blocked')).toMatchObject({ output: 'no', refused: true });
 		});
+
+		it('a refused delay parks nothing: its token ends and the run fails, other branches continue', async () => {
+			const walker = walk(
+				plan(
+					[trigger('t'), delay('blocked', 60_000), action('never'), action('other')],
+					['t:out>blocked', 'blocked:out>never', 't:out>other'],
+				),
+				{ beforeExecute: refuse },
+			);
+
+			walker.start();
+			await flush();
+			clock.advance(60_000);
+			await flush();
+
+			expect(calls).toEqual(['other']);
+			expect(events).toEqual(['ended:failed', 'settled']);
+
+			const step = stepOf(walker, 'blocked');
+
+			expect(step).toMatchObject({
+				kind: 'flow',
+				state: 'done',
+				refused: true,
+				reason: 'The plugin this block belongs to is disabled.',
+			});
+			expect(step.output).toBeUndefined();
+		});
 	});
 
 	it('stops a run whose tokens multiply beyond the step limit', async () => {
@@ -629,5 +658,46 @@ describe('RunWalker', () => {
 		expect(walker.record.endReason).toBe('The run was stopped after 50 steps.');
 		expect(walker.settled).toBe(true);
 		expect(walker.record.steps.length).toBeLessThan(200);
+	});
+
+	it('counts a step for every token it admits, so a node past the limit is never executed', async () => {
+		// Two nodes a layer, each leading to both of the next: 2 + 4 + ... + 512 = 1,022 tokens over nine
+		// layers. The last layer has nothing behind it, so nothing follows the step that reaches the limit.
+		const nodes: RunPlanNode[] = [trigger('t')];
+		const edges: string[] = ['t:out>a0', 't:out>b0'];
+
+		for (let layer = 0; layer < 9; layer += 1) {
+			nodes.push(action(`a${layer}`), action(`b${layer}`));
+
+			if (layer > 0) {
+				for (const source of ['a', 'b']) {
+					edges.push(`${source}${layer - 1}:done>a${layer}`, `${source}${layer - 1}:done>b${layer}`);
+				}
+			}
+		}
+
+		const walker = walk(plan(nodes, edges));
+
+		walker.start();
+		await flush();
+		await flush();
+
+		expect(walker.record.status).toBe('failed');
+		expect(walker.record.endReason).toBe('The run was stopped after 1000 steps.');
+		expect(calls).toHaveLength(1000);
+		expect(walker.settled).toBe(true);
+	});
+
+	it('a run that needs exactly the step limit completes', async () => {
+		const walker = walk(
+			plan([trigger('t'), action('a'), action('b'), action('c')], ['t:out>a', 'a:done>b', 'b:done>c']),
+			{ maxSteps: 3 },
+		);
+
+		walker.start();
+		await flush();
+
+		expect(calls).toEqual(['a', 'b', 'c']);
+		expect(walker.record.status).toBe('completed');
 	});
 });

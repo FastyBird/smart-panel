@@ -53,9 +53,8 @@ import {
 	RunEndStatus,
 	RunGate,
 	RunPlan,
-	RunPlanActionNode,
-	RunPlanConditionNode,
 	RunPlanEdge,
+	RunPlanGatedNode,
 	RunPlanNode,
 	RunRecord,
 	RunWalker,
@@ -985,12 +984,8 @@ export class AutomationEngine {
 		return walker.record.id;
 	}
 
-	/** Checked before every condition and action (ADR 0003, decision 13) */
-	private gate(
-		loaded: Loaded,
-		node: RunPlanConditionNode | RunPlanActionNode,
-		owner: AutomationNodeTypeOwner | undefined,
-	): RunGate {
+	/** Checked before every condition, action and delay (ADR 0003, decision 13) */
+	private gate(loaded: Loaded, node: RunPlanGatedNode, owner: AutomationNodeTypeOwner | undefined): RunGate {
 		if (!this.ownerEnabled(owner)) {
 			return { allow: false, reason: `The ${owner?.kind ?? 'plugin'} this block belongs to is disabled.` };
 		}

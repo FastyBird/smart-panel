@@ -13,7 +13,10 @@
  * - A condition continues on `yes` or `no`. One that throws or times out evaluates to `no`.
  * - An action continues on `done` or `error`. One that throws, times out or is refused takes `error`. An
  *   `error` output with no edge ends that token and marks the run `failed`; other branches continue.
- * - A Delay parks its token on a timer of the monotonic clock.
+ * - A Delay parks its token on a timer of the monotonic clock. A refused Delay has no `error` output to
+ *   take: its token ends and the run is marked `failed`.
+ * - A run takes a limited number of steps. Every token put on an edge counts, before its node is executed;
+ *   the run ends as `failed` when one more would be needed.
  * - The run ends when no token is left: `completed`, or `failed` when an error went unhandled.
  * - A cancelled run ends at once. Parked tokens are dropped. A node already executing cannot be recalled:
  *   its abort signal fires, its result is traced with `afterCancel` when it returns, and its output is not
@@ -36,7 +39,10 @@ export type RunStatus = 'running' | 'completed' | 'failed' | 'cancelled' | 'inte
 
 export type RunEndStatus = Exclude<RunStatus, 'running'>;
 
-/** The most steps one run may take; a graph that fans in can multiply tokens far beyond its node count */
+/**
+ * The most steps one run may take: tokens put on an edge, each executing one node. A graph that fans in can
+ * multiply tokens far beyond its node count.
+ */
 export const RUN_MAX_STEPS = 1000;
 
 interface RunPlanNodeBase {
@@ -68,6 +74,9 @@ export interface RunPlanDelayNode extends RunPlanNodeBase {
 }
 
 export type RunPlanNode = RunPlanTriggerNode | RunPlanConditionNode | RunPlanActionNode | RunPlanDelayNode;
+
+/** The nodes a token can reach, each of which the gate is asked about */
+export type RunPlanGatedNode = RunPlanConditionNode | RunPlanActionNode | RunPlanDelayNode;
 
 export interface RunPlanEdge {
 	id: string;
@@ -158,8 +167,8 @@ export interface RunWalkerOptions {
 	automationId: string;
 	revision: number;
 	trigger: AutomationRunTrigger;
-	/** Asked before every condition and action; a refusal is traced and the node is not executed */
-	beforeExecute?: (node: RunPlanConditionNode | RunPlanActionNode) => RunGate;
+	/** Asked before every condition, action and delay; a refusal is traced and the node is not executed */
+	beforeExecute?: (node: RunPlanGatedNode) => RunGate;
 	observer?: RunObserver;
 	maxSteps?: number;
 }
@@ -186,6 +195,8 @@ export class RunWalker {
 	private parkedReported = false;
 	private startedMono = 0;
 	private tokens = 0;
+	/** Every token ever put on an edge; unlike `seq` it moves before the node of the token is executed */
+	private admitted = 0;
 	private seq = 0;
 	private unhandledErrors = 0;
 	private readonly parked = new Set<() => void>();
@@ -248,17 +259,21 @@ export class RunWalker {
 		this.settle();
 	}
 
-	/** Puts one token on every edge leaving `port` and returns the number of edges */
+	/**
+	 * Puts one token on every edge leaving `port` and returns the number of edges. The step limit is checked
+	 * for every token: a node is executed as soon as its token is admitted, so the limit must hold before.
+	 */
 	private follow(nodeId: string, port: string): number {
 		const edges = this.plan.outgoing.get(runPlanPortKey(nodeId, port)) ?? [];
 
-		if (edges.length > 0 && this.seq >= this.maxSteps) {
-			this.cancel(`The run was stopped after ${this.maxSteps} steps.`, 'failed');
-
-			return 0;
-		}
-
 		for (const edge of edges) {
+			if (this.admitted >= this.maxSteps) {
+				this.cancel(`The run was stopped after ${this.maxSteps} steps.`, 'failed');
+
+				break;
+			}
+
+			this.admitted += 1;
 			this.tokens += 1;
 
 			this.process(edge)
@@ -396,6 +411,16 @@ export class RunWalker {
 	}
 
 	private async runDelay(node: RunPlanDelayNode, edge: RunPlanEdge): Promise<void> {
+		const gate = this.beforeExecute?.(node) ?? { allow: true };
+
+		if (gate.allow === false) {
+			// A Delay has no `error` output to take: the token ends here and the run fails
+			this.step(node, edge, { reason: gate.reason, refused: true });
+			this.unhandledErrors += 1;
+
+			return;
+		}
+
 		const step = this.step(node, edge, { state: 'parked', delayMs: node.delayMs });
 		const resumed = this.park(node.delayMs);
 
