@@ -6545,17 +6545,50 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.toolNames).not.toContain('control_device');
 	});
 
+	it.each(['Start bedroom fan in scene mode', 'Run bedroom fan with Party scene'])(
+		'clarifies a device target with conflicting scene vocabulary: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		},
+	);
+
 	it.each([
-		'Start bedroom fan in scene mode',
-		'Start garage door device in automation mode',
-		'Run bedroom fan with Party scene',
-	])('clarifies a device target with conflicting scene vocabulary: %s', (message) => {
+		'Run the Morning automation',
+		'Trigger the Bedtime automation',
+		'Start the Night automation',
+		'Run "Morning" automation',
+	])('asks what is meant instead of running a scene for an automation: %s', (message) => {
+		const capabilities = { toolCalling: 'reliable', supportsStructuredToolResults: true } as const;
+
+		expect(service.plan({ message, providerCapabilities: capabilities })).toMatchObject({
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+		// The same request for a scene is still run
 		expect(
-			service.plan({
-				message,
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			}),
-		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+			service.plan({ message: message.replace('automation', 'scene'), providerCapabilities: capabilities }),
+		).toMatchObject({ intent: 'trigger', strategy: 'model-tools', toolNames: ['search_home', 'run_scene'] });
+	});
+
+	it.each([
+		'Activate Bedroom Fan automation now',
+		'Run automation Kitchen Lamp',
+		'Stop Bedroom Fan automation',
+		'Start garage door device in automation mode',
+	])('does not read "automation" as scene vocabulary next to a device: %s', (message) => {
+		const result = service.plan({
+			message,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({ intent: 'write', strategy: 'model-tools' });
+		expect(result.toolNames).not.toContain('run_scene');
 	});
 
 	it.each(['Deactivate Kitchen Lamp scene now', 'Stop Bedroom Fan routine immediately', 'Stop routine Bedroom Fan'])(

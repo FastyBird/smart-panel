@@ -85,16 +85,19 @@ export class AutomationBuiltInNodeTypesService {
 			// Actions
 			createDevicePropertySetNodeType({
 				commands: {
-					// The intent origin of an automation is added with the command context (AU-7)
-					executePropertyCommands: (commands) => this.propertyCommands.executePropertyCommands(commands),
+					// The options carry the intent context of the run: the automation as the origin
+					executePropertyCommands: (commands, options) =>
+						this.propertyCommands.executePropertyCommands(commands, options),
 				},
 				findProperty,
 			}),
 			createSceneRunNodeType({
-				// The scene runner judges the very actions it is about to execute; the intent origin of an
-				// automation is added with the execution context (AU-7)
-				triggerScene: (sceneId, triggeredBy) =>
-					this.sceneExecutor.triggerScene(sceneId, triggeredBy, undefined, { guard: this.safety.sceneGuard }),
+				// The execution context names the automation as the origin of the scene's intent, and the scene
+				// runner judges the very actions it is about to execute
+				triggerScene: (sceneId, triggeredBy, executionContext) =>
+					this.sceneExecutor.triggerScene(sceneId, triggeredBy, executionContext, {
+						guard: this.safety.sceneGuard,
+					}),
 			}),
 			createNotificationSendNodeType(this.notifications),
 			// Flow

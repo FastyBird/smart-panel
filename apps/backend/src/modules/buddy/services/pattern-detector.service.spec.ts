@@ -13,6 +13,7 @@ function makeAction(overrides: Partial<ActionRecord> = {}): ActionRecord {
 		type: overrides.type ?? IntentType.LIGHT_TOGGLE,
 		spaceId: 'spaceId' in overrides ? overrides.spaceId : 'space-1',
 		deviceIds: overrides.deviceIds ?? ['dev-1'],
+		...(overrides.origin !== undefined ? { origin: overrides.origin } : {}),
 		timestamp: overrides.timestamp ?? new Date(),
 	};
 }
@@ -136,6 +137,32 @@ describe('PatternDetectorService', () => {
 		expect(patterns[0].intentType).toBe(IntentType.LIGHT_TOGGLE);
 		expect(patterns[0].spaceId).toBe('living-room');
 		expect(patterns[0].occurrences).toBe(3);
+	});
+
+	it('should not learn what an automation does every day as a habit', () => {
+		const everyNight = (origin: string): void => {
+			for (const day of [1, 2, 3, 4]) {
+				observer.recordAction(
+					makeAction({
+						type: IntentType.DEVICE_SET_PROPERTY,
+						spaceId: 'living-room',
+						origin,
+						timestamp: daysAgoAt(day, 23, 0),
+					}),
+				);
+			}
+		};
+
+		everyNight('automation');
+
+		expect(service.detectPatterns()).toHaveLength(0);
+
+		// The very same actions are a habit when a person does them
+		everyNight('panel.device');
+
+		expect(service.detectPatterns()).toMatchObject([
+			{ intentType: IntentType.DEVICE_SET_PROPERTY, spaceId: 'living-room', occurrences: 4 },
+		]);
 	});
 
 	it('should group actions in different spaces into separate patterns', () => {

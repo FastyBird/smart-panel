@@ -78,7 +78,7 @@ Flow does, and have the Smart Panel backend run them.
 - [ ] Triggers fire on transitions and threshold crossings only, never on repeated reports or at startup.
 - [ ] A property with no value, an invalid value or an offline device makes a condition take the `no` output and
       cancels a pending "for" timer.
-- [ ] Device writes from automations go through `PropertyCommandService` with the `automation` intent origin; Buddy
+- [x] Device writes from automations go through `PropertyCommandService` with the `automation` intent origin; Buddy
       does not learn them as user habits.
 - [x] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
       automation was saved.

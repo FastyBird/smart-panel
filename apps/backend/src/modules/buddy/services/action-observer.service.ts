@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { IntentType } from '../../intents/intents.constants';
+import { INTENT_ORIGIN_AUTOMATION, IntentType } from '../../intents/intents.constants';
 import { ACTION_OBSERVER_BUFFER_SIZE, BUDDY_MODULE_NAME } from '../buddy.constants';
 
 export interface ActionTarget {
@@ -17,6 +17,8 @@ export interface ActionRecord {
 	deviceIds: string[];
 	targets?: ActionTarget[];
 	value?: unknown;
+	/** Where the intent was initiated from, as its context says; left out when it does not say */
+	origin?: string;
 	timestamp: Date;
 }
 
@@ -28,8 +30,17 @@ export class ActionObserverService {
 
 	/**
 	 * Record a completed intent action in the ring buffer.
+	 *
+	 * What an automation did is not recorded: nobody asked for it, so it must not be learned as a habit and
+	 * suggested back, or be taken for something a person just did.
 	 */
 	recordAction(record: ActionRecord): void {
+		if (record.origin === INTENT_ORIGIN_AUTOMATION) {
+			this.logger.debug(`Action of an automation ignored: ${record.type}`);
+
+			return;
+		}
+
 		if (this.buffer.length >= this.maxSize) {
 			this.buffer.shift();
 		}

@@ -214,19 +214,17 @@ export const ACTION_NON_SCALAR_BOUND_PATTERN =
 export const RELATIVE_SCALAR_ADJUSTMENT_PATTERN =
 	/\bby\s+(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?)/u;
 export const UNSUPPORTED_SCENE_INVERSE_PATTERN = /\b(?:deactivate|stop)\b/u;
-export const SCENE_TARGET_PATTERN =
-	/\b(?:automation|automations|preset|presets|routine|routines|scena|scenu|scene|scenes)\b/u;
+export const SCENE_TARGET_PATTERN = /\b(?:preset|presets|routine|routines|scena|scenu|scene|scenes)\b/u;
 export const CONFLICTING_DEVICE_SCENE_QUALIFIER_PATTERN = new RegExp(
 	String.raw`${DEVICE_ACTION_TARGET_PATTERN.source}\s+(?:in|with)\b[^,;.!?]*${SCENE_TARGET_PATTERN.source}`,
 	'u',
 );
 export const QUOTED_ENTITY_TARGET_PATTERN =
 	/"[^"]+"\s+(?:automation|device|door|fan|heater|lamp|light|preset|routine|scene|sensor|switch|thermostat|window)\b/u;
-export const QUOTED_SCENE_TARGET_PATTERN = /"[^"]+"\s+(?:automation|preset|routine|scene)\b/u;
+export const QUOTED_SCENE_TARGET_PATTERN = /"[^"]+"\s+(?:preset|routine|scene)\b/u;
 export const EXPLICIT_SCENE_KIND_SUFFIX_PATTERN =
-	/\b(?:automation|preset|routine|scene)s?(?:\s+(?:asap|at\s+once|for\s+(?:me|us)|immediately|now|please|right\s+(?:away|now)|straight\s+away))*\s*[?!.,]*$/u;
-export const EXPLICIT_SCENE_KIND_PREFIX_PATTERN =
-	/^\s*(?:the\s+)?(?:automation|preset|routine|scene)s?\b(?:\s+called\b)?/u;
+	/\b(?:preset|routine|scene)s?(?:\s+(?:asap|at\s+once|for\s+(?:me|us)|immediately|now|please|right\s+(?:away|now)|straight\s+away))*\s*[?!.,]*$/u;
+export const EXPLICIT_SCENE_KIND_PREFIX_PATTERN = /^\s*(?:the\s+)?(?:preset|routine|scene)s?\b(?:\s+called\b)?/u;
 export const ACTION_TARGET_NEGATION_PATTERN =
 	/\b(?:and\s+not|neither|rather than|instead of)\b|,\s*not\b|\bnot\s+(?:off|on)\b/u;
 export const ACTION_PROHIBITION_PREFIX_PATTERN =

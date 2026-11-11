@@ -1,3 +1,4 @@
+import { IntentContext } from '../../intents/models/intent.model';
 import { ScenesRunRefusedException } from '../../scenes/scenes.exceptions';
 import { normalizeAutomationNodeType } from '../graph/node-type';
 import { SCENE_ID, abortedSignal, runContext } from '../testing/node-fixtures';
@@ -11,14 +12,14 @@ import {
 } from './scene-run.node-type';
 
 describe('scene.run', () => {
-	let triggerScene: jest.Mock<Promise<SceneRunOutcome>, [string, string?]>;
+	let triggerScene: jest.Mock<Promise<SceneRunOutcome>, [string, string?, IntentContext?]>;
 
 	const card = () => createSceneRunNodeType({ triggerScene });
 
 	const execute = (context = runContext()) => card().execute({ scene_id: SCENE_ID }, context);
 
 	beforeEach(() => {
-		triggerScene = jest.fn<Promise<SceneRunOutcome>, [string, string?]>(() =>
+		triggerScene = jest.fn<Promise<SceneRunOutcome>, [string, string?, IntentContext?]>(() =>
 			Promise.resolve({ status: 'completed', error: null }),
 		);
 	});
@@ -52,9 +53,12 @@ describe('scene.run', () => {
 		});
 	});
 
-	it('runs the scene, labelled as run by an automation', async () => {
-		expect(await execute()).toEqual({ success: true });
-		expect(triggerScene).toHaveBeenCalledWith(SCENE_ID, 'automation');
+	it('runs the scene, labelled as run by an automation and with the automation as the origin of its intent', async () => {
+		expect(await execute(runContext({ automationId: 'automation-7' }))).toEqual({ success: true });
+		expect(triggerScene).toHaveBeenCalledWith(SCENE_ID, 'automation', {
+			origin: 'automation',
+			extra: { automationId: 'automation-7' },
+		});
 	});
 
 	it.each([

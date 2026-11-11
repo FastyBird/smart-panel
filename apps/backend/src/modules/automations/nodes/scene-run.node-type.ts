@@ -1,8 +1,11 @@
 import { IsUUID } from 'class-validator';
 
+import { IntentContext } from '../../intents/models/intent.model';
 import { ScenesRunRefusedException } from '../../scenes/scenes.exceptions';
 import { AutomationActionNodeType } from '../graph/node-type';
 import { createConfigValidatorFromDto } from '../utils/node-config-dto.utils';
+
+import { automationIntentContext } from './intent-context.utils';
 
 export const SCENE_RUN_NODE_TYPE = 'scene.run';
 
@@ -24,7 +27,7 @@ export interface SceneRunOutcome {
 
 /** The part of `SceneExecutorService` the action needs */
 export interface SceneRunner {
-	triggerScene(sceneId: string, triggeredBy?: string): Promise<SceneRunOutcome>;
+	triggerScene(sceneId: string, triggeredBy?: string, executionContext?: IntentContext): Promise<SceneRunOutcome>;
 }
 
 const describeError = (error: unknown): string => (error instanceof Error ? error.message : 'unknown error');
@@ -34,6 +37,9 @@ const describeError = (error: unknown): string => (error instanceof Error ? erro
  *
  * It takes `done` only when every action of the scene succeeded. A scene that completed partly, failed,
  * is disabled or no longer exists takes `error`, with the reason the scenes module gave.
+ *
+ * `triggeredBy` is only a label of the run; the intent of the scene gets its origin from the context given
+ * as the third argument, which names the automation.
  *
  * A scene that would unlock, disarm or open is not run by an automation at all. The safety policy reads
  * the scene named by `commands()` before the action is executed, and the scene runner is handed the same
@@ -63,7 +69,11 @@ export const createSceneRunNodeType = (scenes: SceneRunner): AutomationActionNod
 		}
 
 		try {
-			const outcome = await scenes.triggerScene(config.scene_id, SCENE_RUN_TRIGGERED_BY);
+			const outcome = await scenes.triggerScene(
+				config.scene_id,
+				SCENE_RUN_TRIGGERED_BY,
+				automationIntentContext(context),
+			);
 
 			if (outcome.status === 'completed') return { success: true };
 

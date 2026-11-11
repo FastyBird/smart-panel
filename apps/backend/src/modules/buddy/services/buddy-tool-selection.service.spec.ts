@@ -66,6 +66,15 @@ describe('BuddyToolSelectionService', () => {
 		expect(selectNames('Run the evening scene.')).toEqual([SEARCH_HOME_TOOL_NAME, names.scene]);
 	});
 
+	it.each(['Run the Morning automation.', 'Run the "Bedtime" automation.'])(
+		'does not take an automation for a scene: %s',
+		(message) => {
+			// Nothing names a scene, so the scene tool is not chosen alone: every action tool stays offered
+			expect(selectNames(message)).toEqual([SEARCH_HOME_TOOL_NAME, names.control, names.scene, names.spaceLighting]);
+			expect(selectNames(message.replace('automation', 'scene'))).toEqual([SEARCH_HOME_TOOL_NAME, names.scene]);
+		},
+	);
+
 	it('retains scene execution when an unrestricted scene name resembles a device', () => {
 		expect(selectNames('Run Window Watch.')).toEqual([
 			SEARCH_HOME_TOOL_NAME,

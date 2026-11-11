@@ -22,6 +22,7 @@ export class IntentEventListener {
 			const value = payload.value;
 
 			const spaceId = (context?.space_id as string) ?? null;
+			const origin = typeof context?.origin === 'string' ? context.origin : undefined;
 
 			const deviceIds: string[] = [];
 			const targets: ActionTarget[] = [];
@@ -50,6 +51,7 @@ export class IntentEventListener {
 				deviceIds,
 				targets,
 				value,
+				...(origin !== undefined ? { origin } : {}),
 				timestamp: new Date(),
 			};
 
