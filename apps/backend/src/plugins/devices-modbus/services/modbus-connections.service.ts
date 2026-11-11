@@ -87,6 +87,11 @@ export class ModbusConnectionsService {
 		this.listener = listener;
 	}
 
+	/** Whether the runtime is attached, i.e. every enabled endpoint is expected to have a running connection. */
+	isAttached(): boolean {
+		return this.listener !== null;
+	}
+
 	/** Brings the running connections in line with the stored endpoints. A no-op while detached. */
 	reconcile(): Promise<void> {
 		return this.serialise(() => this.doReconcile());
@@ -107,6 +112,15 @@ export class ModbusConnectionsService {
 
 	get(endpointId: string): EndpointConnection | null {
 		return this.connections.get(endpointId)?.connection ?? null;
+	}
+
+	/**
+	 * Whether the running connection of `endpoint` was built from its current settings. After an update the new
+	 * settings are stored before the queued reconcile rebuilds the connection; until then the old one still points at
+	 * the previous destination.
+	 */
+	isCurrent(endpoint: ModbusEndpointEntity): boolean {
+		return this.connections.get(endpoint.id)?.fingerprint === fingerprint(endpoint);
 	}
 
 	/** The slowest request timeout and inter-request delay over the loaded endpoints, or `null` when none is loaded. */

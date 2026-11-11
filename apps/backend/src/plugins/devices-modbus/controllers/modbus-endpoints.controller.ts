@@ -2,6 +2,7 @@ import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 import { setLocationHeader } from '../../../modules/api/utils/location-header.utils';
 import {
@@ -158,6 +159,8 @@ export class ModbusEndpointsController {
 	@ApiNotFoundResponse('Endpoint not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	// The admin table polls every endpoint's health; the global 30/min per handler is too low for that.
+	@Throttle({ default: { limit: 240, ttl: 60000 } })
 	@Get(':id/health')
 	async health(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

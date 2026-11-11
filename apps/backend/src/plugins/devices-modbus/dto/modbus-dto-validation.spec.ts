@@ -5,6 +5,14 @@ import { ModbusBindingDto } from './binding.dto';
 import { CreateModbusDeviceStructureDto } from './create-device-structure.dto';
 import { CreateModbusDeviceDto } from './create-device.dto';
 import { CreateModbusEndpointDto } from './create-endpoint.dto';
+import {
+	ProbeModbusPointDto,
+	ProbeModbusWriteDto,
+	ReqProbeModbusPointsDto,
+	ReqProbeModbusReadDto,
+	ReqProbeModbusWriteDto,
+} from './probe.dto';
+import { ModbusUpdatePluginConfigDto } from './update-config.dto';
 import { UpdateModbusDeviceDto } from './update-device.dto';
 import { UpdateModbusEndpointDto } from './update-endpoint.dto';
 
@@ -82,10 +90,73 @@ describe('Modbus DTO validation', () => {
 		});
 	});
 
+	describe('probe requests', () => {
+		it.each([
+			['ReqProbeModbusReadDto', ReqProbeModbusReadDto],
+			['ReqProbeModbusPointsDto', ReqProbeModbusPointsDto],
+			['ReqProbeModbusWriteDto', ReqProbeModbusWriteDto],
+		] as Array<[string, DtoClass]>)('%s refuses a body without data', async (_name, dto) => {
+			const errors = await validate(plainToInstance(dto, {}));
+
+			expect(errors.map((error) => error.property)).toEqual(['data']);
+		});
+
+		it('refuses a write without a binding', async () => {
+			expect(await fieldErrors(ProbeModbusWriteDto, 'binding', undefined)).not.toEqual([]);
+		});
+
+		it('refuses array elements as points and arrays as data or bindings', async () => {
+			const points = await validate(plainToInstance(ReqProbeModbusPointsDto, { data: { unit_id: 1, points: [[]] } }));
+			const pointErrors = points.find((error) => error.property === 'data')?.children ?? [];
+
+			expect(pointErrors.map((error) => error.property)).toContain('points');
+			expect(
+				(await validate(plainToInstance(ReqProbeModbusReadDto, { data: [] }))).map((error) => error.property),
+			).toEqual(['data']);
+			expect(await fieldErrors(ProbeModbusWriteDto, 'binding', [])).not.toEqual([]);
+		});
+
+		it('refuses a point without a binding', async () => {
+			const errors = await validate(plainToInstance(ProbeModbusPointDto, { key: 'a' }));
+
+			expect(errors.map((error) => error.property)).toEqual(['binding']);
+		});
+	});
+
 	describe('ModbusBindingDto', () => {
 		it('caps the poll interval override at one day', async () => {
 			expect(await fieldErrors(ModbusBindingDto, 'poll_interval_ms', 86_400_000)).toEqual([]);
 			expect(await fieldErrors(ModbusBindingDto, 'poll_interval_ms', 86_400_001)).not.toEqual([]);
 		});
+	});
+});
+
+describe('ModbusUpdatePluginConfigDto', () => {
+	/** The DTO exposes snake_case names; the validation errors name the camelCase property. */
+	const configErrors = async (field: string, value: unknown): Promise<ValidationError[]> => {
+		const errors = await validate(plainToInstance(ModbusUpdatePluginConfigDto, { [field]: value }));
+		const property = field.replace(/_([a-z])/g, (_match, char: string) => char.toUpperCase());
+
+		return errors.filter((error) => error.property === property);
+	};
+
+	it.each([
+		['default_connect_timeout_ms', 0],
+		['default_connect_timeout_ms', 60_001],
+		['default_request_timeout_ms', 0],
+		['default_request_timeout_ms', 1.5],
+		['default_poll_interval_ms', 50],
+		['default_poll_interval_ms', 86_400_001],
+	])('rejects %s = %s', async (field, value) => {
+		expect((await configErrors(field, value)).length).toBeGreaterThan(0);
+	});
+
+	it.each([
+		['default_connect_timeout_ms', 1],
+		['default_request_timeout_ms', 60_000],
+		['default_poll_interval_ms', 100],
+		['default_poll_interval_ms', undefined],
+	])('accepts %s = %s', async (field, value) => {
+		expect(await configErrors(field, value)).toEqual([]);
 	});
 });

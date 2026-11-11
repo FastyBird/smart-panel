@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { THROTTLER_LIMIT, THROTTLER_TTL } from '@nestjs/throttler/dist/throttler.constants';
 
 import { ROLES_KEY } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
@@ -23,6 +24,14 @@ describe('ModbusEndpointsController', () => {
 		timeouts: 1,
 		overloaded: false,
 	};
+
+	it('allows the health endpoint 240 requests a minute for admin polling', () => {
+		const handler: keyof ModbusEndpointsController = 'health';
+		const method = ModbusEndpointsController.prototype[handler];
+
+		expect(Reflect.getMetadata(`${THROTTLER_LIMIT}default`, method)).toBe(240);
+		expect(Reflect.getMetadata(`${THROTTLER_TTL}default`, method)).toBe(60000);
+	});
 
 	beforeEach(() => {
 		endpointsService = {

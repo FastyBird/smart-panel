@@ -4,10 +4,12 @@ import { Repository } from 'typeorm';
 import { ArgumentsHost, NotFoundException } from '@nestjs/common';
 
 import { BadRequestExceptionFilter } from '../../../common/filters/bad-request-exception.filter';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { ModbusFraming } from '../devices-modbus.constants';
 import { ModbusValidationException } from '../devices-modbus.exceptions';
 import { ModbusDeviceEntity } from '../entities/devices-modbus.entity';
 import { ModbusEndpointEntity } from '../entities/modbus-endpoint.entity';
+import { ModbusConfigModel } from '../models/config.model';
 
 import { ModbusConnectionsService } from './modbus-connections.service';
 import { ModbusEndpointsService } from './modbus-endpoints.service';
@@ -16,6 +18,7 @@ describe('ModbusEndpointsService', () => {
 	let endpoints: ModbusEndpointEntity[];
 	let devices: Partial<ModbusDeviceEntity>[];
 	let connections: { reconcile: jest.Mock; getHealth: jest.Mock };
+	let configService: { getPluginConfig: jest.Mock };
 	let service: ModbusEndpointsService;
 	let nextId: number;
 
@@ -23,6 +26,7 @@ describe('ModbusEndpointsService', () => {
 		endpoints = [];
 		devices = [];
 		nextId = 1;
+		configService = { getPluginConfig: jest.fn(() => new ModbusConfigModel()) };
 		connections = { reconcile: jest.fn().mockResolvedValue(undefined), getHealth: jest.fn() };
 
 		const repository = {
@@ -58,6 +62,7 @@ describe('ModbusEndpointsService', () => {
 			repository as unknown as Repository<ModbusEndpointEntity>,
 			devicesRepository as unknown as Repository<ModbusDeviceEntity>,
 			connections as unknown as ModbusConnectionsService,
+			configService as unknown as ConfigService,
 		);
 	});
 
@@ -72,6 +77,41 @@ describe('ModbusEndpointsService', () => {
 		expect(saved).toMatchObject({ maxInFlight: 1, interRequestDelayMs: 20, port: 502, connectTimeoutMs: 2000 });
 	});
 
+	it('creates an endpoint with the configured default timeouts', async () => {
+		configService.getPluginConfig.mockReturnValue(
+			Object.assign(new ModbusConfigModel(), { defaultConnectTimeoutMs: 3500, defaultRequestTimeoutMs: 750 }),
+		);
+
+		const saved = await service.create({ name: 'Gateway', host: '10.10.0.10' });
+
+		expect(saved).toMatchObject({ connectTimeoutMs: 3500, requestTimeoutMs: 750 });
+	});
+
+	it('keeps explicit timeouts', async () => {
+		configService.getPluginConfig.mockReturnValue(
+			Object.assign(new ModbusConfigModel(), { defaultConnectTimeoutMs: 3500, defaultRequestTimeoutMs: 750 }),
+		);
+
+		const saved = await service.create({
+			name: 'Gateway',
+			host: '10.10.0.10',
+			connect_timeout_ms: 100,
+			request_timeout_ms: 200,
+		});
+
+		expect(saved).toMatchObject({ connectTimeoutMs: 100, requestTimeoutMs: 200 });
+	});
+
+	it('falls back to the built-in timeouts when the config is unavailable', async () => {
+		configService.getPluginConfig.mockImplementation(() => {
+			throw new Error('config not loaded');
+		});
+
+		const saved = await service.create({ name: 'Gateway', host: '10.10.0.10' });
+
+		expect(saved).toMatchObject({ connectTimeoutMs: 2000, requestTimeoutMs: 1000 });
+	});
+
 	it('rejects duplicate host and port', async () => {
 		await service.create({ name: 'A', host: '10.10.0.10' });
 
@@ -79,6 +119,13 @@ describe('ModbusEndpointsService', () => {
 			ModbusValidationException,
 		);
 		await expect(service.create({ name: 'C', host: '10.10.0.10', port: 503 })).resolves.toBeDefined();
+	});
+
+	it('finds an endpoint by host and port, ignoring the host case', async () => {
+		const endpoint = await service.create({ name: 'A', host: 'Gateway.local', port: 503 });
+
+		await expect(service.findByHostAndPort('gateway.LOCAL', 503)).resolves.toBe(endpoint);
+		await expect(service.findByHostAndPort('gateway.local', 502)).resolves.toBeNull();
 	});
 
 	it('refuses to delete an endpoint in use', async () => {

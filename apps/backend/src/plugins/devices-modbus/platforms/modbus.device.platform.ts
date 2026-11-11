@@ -14,6 +14,7 @@ import {
 import { ModbusDeviceEntity } from '../entities/devices-modbus.entity';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusValueOptions, ModbusValueRangeError, encodeValue } from '../lib/codec';
+import { isMultipleWrite } from '../lib/write-function';
 import { ModbusBindingsService } from '../services/modbus-bindings.service';
 import { ModbusConnectionsService } from '../services/modbus-connections.service';
 import { ModbusRuntimeService } from '../services/modbus-runtime.service';
@@ -258,9 +259,7 @@ export class ModbusDevicePlatform implements IDevicePlatform {
 
 		// A single-function write can only carry one value; a multi-word value or merged run needs FC15/FC16.
 		for (const run of runs) {
-			if (run.values.length > 1) {
-				run.multiple = true;
-			}
+			run.multiple = isMultipleWrite(run.multiple, run.values.length);
 		}
 
 		return runs;

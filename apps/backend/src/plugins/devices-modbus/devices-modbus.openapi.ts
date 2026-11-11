@@ -13,6 +13,15 @@ import {
 import { CreateModbusDeviceDto } from './dto/create-device.dto';
 import { CreateModbusEndpointDto, ReqCreateModbusEndpointDto } from './dto/create-endpoint.dto';
 import { PreviewModbusTemplateDto, ReqPreviewModbusTemplateDto } from './dto/preview-template.dto';
+import {
+	ProbeModbusPointDto,
+	ProbeModbusPointsDto,
+	ProbeModbusReadDto,
+	ProbeModbusWriteDto,
+	ReqProbeModbusPointsDto,
+	ReqProbeModbusReadDto,
+	ReqProbeModbusWriteDto,
+} from './dto/probe.dto';
 import { UpdateModbusChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateModbusChannelDto } from './dto/update-channel.dto';
 import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -26,6 +35,18 @@ import { ModbusConfigModel } from './models/config.model';
 import { ModbusDeviceResponseModel } from './models/device-response.model';
 import { ModbusEndpointHealthModel, ModbusEndpointHealthResponseModel } from './models/endpoint-health.model';
 import { ModbusEndpointResponseModel, ModbusEndpointsResponseModel } from './models/endpoint-response.model';
+import {
+	ModbusProbePointsResponseModel,
+	ModbusProbeReadResponseModel,
+	ModbusProbeWriteResponseModel,
+} from './models/probe-response.model';
+import {
+	ModbusProbeErrorModel,
+	ModbusProbePointModel,
+	ModbusProbePointsModel,
+	ModbusProbeReadModel,
+	ModbusProbeWriteModel,
+} from './models/probe.model';
 import {
 	ModbusTemplatePreviewResponseModel,
 	ModbusTemplateResponseModel,
@@ -66,6 +87,13 @@ export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ReqCreateModbusDeviceStructureDto,
 	PreviewModbusTemplateDto,
 	ReqPreviewModbusTemplateDto,
+	ProbeModbusPointDto,
+	ProbeModbusReadDto,
+	ProbeModbusPointsDto,
+	ProbeModbusWriteDto,
+	ReqProbeModbusReadDto,
+	ReqProbeModbusPointsDto,
+	ReqProbeModbusWriteDto,
 	// Response models
 	ModbusEndpointResponseModel,
 	ModbusEndpointsResponseModel,
@@ -76,6 +104,15 @@ export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ModbusTemplatesResponseModel,
 	ModbusTemplateResponseModel,
 	ModbusTemplatePreviewResponseModel,
+	ModbusProbeReadResponseModel,
+	ModbusProbePointsResponseModel,
+	ModbusProbeWriteResponseModel,
+	// Probe models
+	ModbusProbeErrorModel,
+	ModbusProbeReadModel,
+	ModbusProbePointModel,
+	ModbusProbePointsModel,
+	ModbusProbeWriteModel,
 	// Template models
 	ModbusTemplateUnitIdModel,
 	ModbusTemplateDefaultsModel,
