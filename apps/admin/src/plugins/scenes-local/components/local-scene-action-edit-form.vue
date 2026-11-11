@@ -21,6 +21,7 @@
 	</el-result>
 
 	<el-form
+		v-else
 		ref="formEl"
 		:model="model"
 		:rules="rules"
@@ -174,6 +175,9 @@ import {
 } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
+import { Icon } from '@iconify/vue';
+
+import { IconWithChild } from '../../../common';
 import {
 	DevicesException,
 	type IChannel,
