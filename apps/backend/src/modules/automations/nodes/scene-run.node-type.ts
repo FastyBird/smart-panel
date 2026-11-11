@@ -1,5 +1,6 @@
 import { IsUUID } from 'class-validator';
 
+import { ScenesRunRefusedException } from '../../scenes/scenes.exceptions';
 import { AutomationActionNodeType } from '../graph/node-type';
 import { createConfigValidatorFromDto } from '../utils/node-config-dto.utils';
 
@@ -68,6 +69,11 @@ export const createSceneRunNodeType = (scenes: SceneRunner): AutomationActionNod
 
 			return { success: false, reason: outcome.error ?? `The scene ended as ${outcome.status}.` };
 		} catch (error) {
+			// The scene runner's own check refused the scene: nothing was run, which is not a failed run
+			if (error instanceof ScenesRunRefusedException) {
+				return { success: false, reason: describeError(error), refused: true };
+			}
+
 			return { success: false, reason: describeError(error) };
 		}
 	},

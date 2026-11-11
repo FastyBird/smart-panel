@@ -421,7 +421,7 @@ export class RunWalker {
 			output,
 			result,
 			...(result.reason !== undefined ? { reason: result.reason } : {}),
-			...(gate.allow ? {} : { refused: true }),
+			...(gate.allow && result.refused !== true ? {} : { refused: true }),
 			...(timedOut ? { timedOut: true } : {}),
 		});
 
@@ -629,9 +629,14 @@ export class RunWalker {
 			return { success: false, reason: 'The action did not return a result.' };
 		}
 
-		const { success, reason } = value as Partial<AutomationActionResult>;
+		const { success, reason, refused } = value as Partial<AutomationActionResult>;
 
-		return { success: success === true, ...(typeof reason === 'string' ? { reason } : {}) };
+		return {
+			success: success === true,
+			...(typeof reason === 'string' ? { reason } : {}),
+			// Only an action that did nothing can have been refused
+			...(success !== true && refused === true ? { refused: true } : {}),
+		};
 	}
 
 	private step(node: RunPlanNode, edge: RunPlanEdge, fields: Partial<RunStep>): RunStep {

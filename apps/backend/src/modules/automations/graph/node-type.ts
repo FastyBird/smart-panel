@@ -146,6 +146,8 @@ export interface AutomationConditionResult {
 export interface AutomationActionResult {
 	success: boolean;
 	reason?: string;
+	/** The action did nothing because a policy refused it, as opposed to having tried and failed */
+	refused?: boolean;
 }
 
 /**

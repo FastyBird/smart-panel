@@ -1,4 +1,4 @@
-import { AutomationRunContext } from '../graph/node-type';
+import { AutomationActionResult, AutomationRunContext } from '../graph/node-type';
 import { flush } from '../testing/engine-harness';
 import { FakeTrackerClock } from '../testing/fake-tracker-clock';
 
@@ -282,6 +282,38 @@ describe('RunWalker', () => {
 		});
 		// Every error was handled by an edge
 		expect(walker.record.status).toBe('completed');
+	});
+
+	it('keeps the refusal an action reports for itself, and only for an action that did nothing', async () => {
+		const reporting = (id: string, result: unknown): RunPlanActionNode => ({
+			...action(id),
+			execute: () => Promise.resolve(result as AutomationActionResult),
+		});
+		const walker = walk(
+			plan(
+				[
+					trigger('t'),
+					reporting('inner', { success: false, reason: 'the scene was refused', refused: true }),
+					reporting('lying', { success: true, refused: true }),
+					action('handler'),
+				],
+				['t:out>inner', 't:out>lying', 'inner:error>handler'],
+			),
+		);
+
+		walker.start();
+		await flush();
+
+		expect(stepOf(walker, 'inner')).toMatchObject({
+			output: 'error',
+			refused: true,
+			reason: 'the scene was refused',
+			result: { success: false, refused: true },
+		});
+		expect(stepOf(walker, 'lying')).toMatchObject({ output: 'done', result: { success: true } });
+		expect(stepOf(walker, 'lying').refused).toBeUndefined();
+		expect(stepOf(walker, 'lying').result).not.toHaveProperty('refused');
+		expect(calls).toContain('handler');
 	});
 
 	it('an error output with no edge ends that token and fails the run; other branches continue', async () => {
