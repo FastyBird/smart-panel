@@ -165,6 +165,37 @@ describe('ViewAutomationEdit', (): void => {
 		expect(wrapper.findComponent(AutomationEditForm).exists()).toBe(true);
 	});
 
+	it('offers the save in the app bar only once the form is there to take it', async (): Promise<void> => {
+		mocks.isMDDevice.value = false;
+
+		let resolve: () => void = () => {};
+
+		mocks.fetchAutomation.mockReturnValue(
+			new Promise<void>((res) => {
+				resolve = res;
+			})
+		);
+
+		// The automation is known from the list already, while it is still being read on its own
+		await mountView();
+
+		expect(wrapper.findComponent(AutomationEditForm).exists()).toBe(false);
+		expect(appBarSave(wrapper)).toBeUndefined();
+
+		resolve();
+
+		await flushPromises();
+
+		// Nothing was asked for before the form could hear it
+		expect(wrapper.findComponent(AutomationEditForm).props('remoteFormSubmit')).toBe(false);
+
+		appBarSave(wrapper).vm.$emit('click');
+
+		await flushPromises();
+
+		expect(wrapper.findComponent(AutomationEditForm).props('remoteFormSubmit')).toBe(true);
+	});
+
 	it('says that the automation was not found', async (): Promise<void> => {
 		mocks.automation.value = null;
 		mocks.fetchAutomation.mockRejectedValue(new Error('Not found'));

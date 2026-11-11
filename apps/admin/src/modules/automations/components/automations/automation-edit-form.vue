@@ -3,6 +3,7 @@
 		ref="formEl"
 		:model="model"
 		:rules="rules"
+		:disabled="formResult === FormResult.WORKING"
 		label-position="top"
 		status-icon
 		@submit.prevent

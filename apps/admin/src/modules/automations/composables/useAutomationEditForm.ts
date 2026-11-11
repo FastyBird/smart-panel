@@ -1,4 +1,4 @@
-import { reactive, ref, watch } from 'vue';
+import { getCurrentScope, onScopeDispose, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -34,7 +34,8 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
-	let timer: number;
+	// Takes the outcome of a submit off the screen a while after it is shown
+	let timer: number | undefined;
 
 	// The record the draft was started from. The store replaces its record whenever the automation is
 	// changed elsewhere, while the draft stays as it was - so a save has to name the revision the draft
@@ -88,6 +89,10 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 	};
 
 	const save = async (): Promise<'saved'> => {
+		// The outcome of the previous submit is over, and so is its timer: left running it would take
+		// the state of this one off the screen while it is still on its way
+		clear();
+
 		formEl.value!.clearValidate();
 
 		const valid = await formEl.value!.validate();
@@ -148,6 +153,10 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 
 		formResult.value = FormResult.NONE;
 	};
+
+	if (getCurrentScope()) {
+		onScopeDispose((): void => window.clearTimeout(timer));
+	}
 
 	watch(model, (): void => {
 		formChanged.value = isChanged();

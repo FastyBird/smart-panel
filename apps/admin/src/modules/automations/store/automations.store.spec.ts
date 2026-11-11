@@ -83,6 +83,25 @@ const detailRes = (overrides: Partial<IAutomationRes> = {}): IAutomationRes => (
 	...overrides,
 });
 
+// A backend call that is answered when the test says so
+const deferred = (): { promise: Promise<unknown>; resolve: (value: unknown) => void } => {
+	let resolve: (value: unknown) => void = () => {};
+
+	const promise = new Promise<unknown>((res) => {
+		resolve = res;
+	});
+
+	return { promise, resolve };
+};
+
+const ran = { last_triggered_at: '2026-01-02T08:30:00.000Z', last_run_status: AutomationRunStatus.failed, status: AutomationStatus.suspended };
+
+const ranState = {
+	lastTriggeredAt: new Date('2026-01-02T08:30:00.000Z'),
+	lastRunStatus: AutomationRunStatus.failed,
+	status: AutomationStatus.suspended,
+};
+
 const errorEnvelope = (details: unknown): { error: { code: string; message: string; details: unknown } } => ({
 	error: { code: 'Error', message: 'Refused', details },
 });
@@ -606,6 +625,322 @@ describe('Automations Store', () => {
 		});
 	});
 
+	describe('ordering of responses, events and removals', () => {
+		it('drops the response of a read when the automation was removed while it was on its way', async () => {
+			store.onEvent({ id: automationId, data: detailRes() });
+
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValue(read.promise);
+
+			const pending = store.get({ id: automationId });
+
+			store.unset({ id: automationId });
+
+			read.resolve({ data: { data: detailRes() }, response: { status: 200 } });
+
+			await expect(pending).rejects.toMatchObject({ name: 'AutomationsApiException', code: 404 });
+
+			expect(store.findAll()).toEqual([]);
+		});
+
+		it('drops the response of a read of an automation not held when its removal is announced meanwhile', async () => {
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValue(read.promise);
+
+			const pending = store.get({ id: automationId });
+
+			store.unset({ id: automationId });
+
+			read.resolve({ data: { data: detailRes() }, response: { status: 200 } });
+
+			await expect(pending).rejects.toMatchObject({ code: 404 });
+
+			expect(store.findAll()).toEqual([]);
+		});
+
+		it('drops the response of a read when a list has found the automation gone meanwhile', async () => {
+			store.onEvent({ id: automationId, data: detailRes() });
+
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(read.promise).mockResolvedValueOnce({ data: { data: [] }, response: { status: 200 } });
+
+			const pending = store.get({ id: automationId });
+
+			await store.fetch();
+
+			read.resolve({ data: { data: detailRes() }, response: { status: 200 } });
+
+			await expect(pending).rejects.toMatchObject({ code: 404 });
+
+			expect(store.findAll()).toEqual([]);
+		});
+
+		it('does not bring a removed automation back with the response of its save', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 3 }) });
+
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = store.edit({ id: automationId, data: { enabled: true } });
+
+			store.unset({ id: automationId });
+
+			save.resolve({ data: { data: detailRes({ enabled: true, revision: 4 }) }, response: { status: 200 } });
+
+			// It was saved, so that is what the caller hears - it just is not held any more
+			await expect(pending).resolves.toMatchObject({ enabled: true, revision: 4 });
+
+			expect(store.findAll()).toEqual([]);
+		});
+
+		it('does not bring back an automation created and removed again before the response of its creation', async () => {
+			const creation = deferred();
+
+			mockBackendClient.POST.mockReturnValue(creation.promise);
+
+			const pending = store.add({ id: automationId, data: { name: 'Hallway motion light' } });
+
+			store.onEvent({ id: automationId, data: detailRes() });
+			store.unset({ id: automationId });
+
+			creation.resolve({ data: { data: detailRes() }, response: { status: 201 } });
+
+			await expect(pending).resolves.toMatchObject({ id: automationId });
+
+			expect(store.findAll()).toEqual([]);
+		});
+
+		it('keeps what the engine wrote while a read was on its way, and still takes the graph from it', async () => {
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [summaryRes({ revision: 2 })] }, response: { status: 200 } });
+
+			await store.fetch();
+
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValue(read.promise);
+
+			const pending = store.get({ id: automationId });
+
+			// A run is recorded: the revision stays. The graph is left out to show where it comes from.
+			store.onEvent({ id: automationId, data: summaryRes({ revision: 2, ...ran }) });
+
+			read.resolve({ data: { data: detailRes({ revision: 2 }) }, response: { status: 200 } });
+
+			await expect(pending).resolves.toMatchObject({ ...ranState, graph });
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, graph, revision: 2 });
+		});
+
+		it('keeps what the engine wrote while the list was on its way', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2 }) });
+
+			const listing = deferred();
+
+			mockBackendClient.GET.mockReturnValue(listing.promise);
+
+			const pending = store.fetch();
+
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2, ...ran }) });
+
+			listing.resolve({ data: { data: [summaryRes({ revision: 2 })] }, response: { status: 200 } });
+
+			await pending;
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, graph, revision: 2 });
+		});
+
+		it('keeps what the engine wrote while a save was on its way when the event of that save got here first', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 3 }) });
+
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = store.edit({ id: automationId, data: { enabled: true } });
+
+			store.onEvent({ id: automationId, data: detailRes({ enabled: true, revision: 4 }) });
+			store.onEvent({ id: automationId, data: detailRes({ enabled: true, revision: 4, ...ran }) });
+
+			save.resolve({ data: { data: detailRes({ enabled: true, revision: 4 }) }, response: { status: 200 } });
+
+			await pending;
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, enabled: true, revision: 4 });
+		});
+
+		it('takes a newer revision whole, even from a read asked for before the last event', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2 }) });
+
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValue(read.promise);
+
+			const pending = store.get({ id: automationId });
+
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2, ...ran }) });
+
+			// Saved after that run: the save has resumed the automation
+			read.resolve({
+				data: { data: detailRes({ name: 'Renamed', revision: 3, last_triggered_at: ran.last_triggered_at, last_run_status: ran.last_run_status }) },
+				response: { status: 200 },
+			});
+
+			await pending;
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed', revision: 3, status: AutomationStatus.ok });
+		});
+
+		it('keeps an automation the list misses when its creation, asked for before the list, was answered meanwhile', async () => {
+			const creation = deferred();
+			const listing = deferred();
+
+			mockBackendClient.POST.mockReturnValue(creation.promise);
+			mockBackendClient.GET.mockReturnValue(listing.promise);
+
+			const pendingAdd = store.add({ id: automationId, data: { name: 'Hallway motion light' } });
+			const pendingList = store.fetch();
+
+			creation.resolve({ data: { data: detailRes() }, response: { status: 201 } });
+
+			await pendingAdd;
+
+			// The list was read before the automation was created
+			listing.resolve({ data: { data: [] }, response: { status: 200 } });
+
+			await pendingList;
+
+			expect(store.findById(automationId)).not.toBeNull();
+		});
+
+		it('keeps an automation the list misses when it was read on its own meanwhile', async () => {
+			const listing = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(listing.promise).mockResolvedValueOnce({ data: { data: detailRes() }, response: { status: 200 } });
+
+			const pending = store.fetch();
+
+			await store.get({ id: automationId });
+
+			listing.resolve({ data: { data: [] }, response: { status: 200 } });
+
+			await pending;
+
+			expect(store.findById(automationId)).not.toBeNull();
+		});
+
+		it('does not remove an automation announced while a read saying it does not exist was on its way', async () => {
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValue(read.promise);
+
+			const pending = store.get({ id: automationId });
+
+			store.onEvent({ id: automationId, data: detailRes() });
+
+			read.resolve({ data: undefined, error: errorEnvelope(null), response: { status: 404 } });
+
+			await expect(pending).rejects.toMatchObject({ code: 404 });
+
+			expect(store.findById(automationId)).not.toBeNull();
+		});
+
+		it('adds the graph of a read answered after another response for the same revision', async () => {
+			const listing = deferred();
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(read.promise).mockReturnValueOnce(listing.promise);
+
+			const pendingRead = store.get({ id: automationId });
+			const pendingList = store.fetch();
+
+			listing.resolve({ data: { data: [summaryRes({ revision: 2, ...ran })] }, response: { status: 200 } });
+
+			await pendingList;
+
+			read.resolve({ data: { data: detailRes({ revision: 2 }) }, response: { status: 200 } });
+
+			await pendingRead;
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, graph, revision: 2 });
+		});
+
+		it('does not bring anything back from before a reset of the module', async () => {
+			store.onEvent({ id: automationId, data: detailRes() });
+			store.onEvent({ id: otherAutomationId, data: detailRes({ id: otherAutomationId, name: 'Night mode' }) });
+
+			const listing = deferred();
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(listing.promise).mockReturnValueOnce(read.promise);
+
+			const pendingList = store.fetch();
+			const pendingRead = store.get({ id: automationId });
+
+			store.unsetAll();
+
+			expect(store.findAll()).toEqual([]);
+
+			// Created after the reset, so it is the only one there is
+			store.onEvent({ id: thirdAutomationId, data: detailRes({ id: thirdAutomationId, name: 'Away heating' }) });
+
+			read.resolve({ data: { data: detailRes() }, response: { status: 200 } });
+
+			await expect(pendingRead).rejects.toMatchObject({ code: 404 });
+
+			listing.resolve({
+				data: { data: [summaryRes(), summaryRes({ id: otherAutomationId, name: 'Night mode' })] },
+				response: { status: 200 },
+			});
+
+			await expect(pendingList).resolves.toEqual([]);
+
+			expect(store.findAll().map((automation) => automation.id)).toEqual([thirdAutomationId]);
+		});
+
+		it('does not recover from a conflict with a read begun before it', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 3 }) });
+
+			const earlierRead = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(earlierRead.promise).mockResolvedValueOnce({
+				data: { data: detailRes({ name: 'Renamed elsewhere', revision: 4 }) },
+				response: { status: 200 },
+			});
+			mockBackendClient.PATCH.mockResolvedValue({ data: undefined, error: errorEnvelope({ reason: 'Changed' }), response: { status: 409 } });
+
+			const pendingRead = store.get({ id: automationId });
+			const pendingEdit = store.edit({ id: automationId, data: { enabled: true } });
+
+			let settled = false;
+
+			pendingEdit
+				.catch((): void => {})
+				.finally((): void => {
+					settled = true;
+				});
+
+			await vi.waitFor(() => expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1));
+			await new Promise((res) => setTimeout(res, 0));
+
+			// The read from before the conflict is still on its way, and it is not what the recovery settles for
+			expect(settled).toBe(false);
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+
+			earlierRead.resolve({ data: { data: detailRes({ revision: 3 }) }, response: { status: 200 } });
+
+			await pendingRead;
+
+			await expect(pendingEdit).rejects.toBeInstanceOf(AutomationsRevisionConflictException);
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed elsewhere', revision: 4 });
+		});
+	});
+
 	describe('refresh contract', () => {
 		it('is not loaded before anything was read', () => {
 			expect(store.isLoaded()).toBe(false);
@@ -618,6 +953,31 @@ describe('Automations Store', () => {
 
 			expect(mockBackendClient.GET).toHaveBeenCalledWith('/modules/automations/automations');
 			expect(store.isLoaded()).toBe(true);
+		});
+
+		it('does not settle for a list asked for before the refresh', async () => {
+			const earlierListing = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(earlierListing.promise).mockResolvedValueOnce({
+				data: { data: [summaryRes()] },
+				response: { status: 200 },
+			});
+
+			const pendingFetch = store.fetch();
+
+			// Everything was reset meanwhile; the list on its way may still be the one from before
+			const pendingRefresh = store.refresh();
+
+			earlierListing.resolve({
+				data: { data: [summaryRes(), summaryRes({ id: otherAutomationId, name: 'Night mode' })] },
+				response: { status: 200 },
+			});
+
+			await pendingFetch;
+			await pendingRefresh;
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+			expect(store.findAll().map((automation) => automation.id)).toEqual([automationId]);
 		});
 	});
 });

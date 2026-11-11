@@ -49,6 +49,9 @@ type SaveOperation = AutomationsModuleUpdateAutomationOperation;
 
 type ApiErrorEnvelope = Parameters<typeof getErrorReason<SaveOperation>>[0];
 
+// What the engine writes without moving the revision
+const ENGINE_FIELDS = ['status', 'lastTriggeredAt', 'lastRunStatus'] as const;
+
 const createDefaultSemaphore = (): IAutomationsStateSemaphore => ({
 	fetching: {
 		items: false,
@@ -97,9 +100,35 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 		const pendingFetchPromises: Record<string, Promise<IAutomation[]>> = {};
 
-		// What was written or removed while the list was being read (null when it is not). The list is a
-		// snapshot of the moment the backend answered, so it must not undo what happened here since.
-		let changedWhileFetching: Map<IAutomation['id'], 'set' | 'unset'> | null = null;
+		// CONCURRENCY MODEL
+		// =================
+		// Responses and events reach the store in no particular order. Two things decide what may
+		// overwrite what, and nothing else does:
+		//
+		//  1. The revision. It moves with every save, so the higher one is the newer automation: a lower
+		//     one never overwrites a higher one, a higher one always replaces a lower one.
+		//  2. A local sequence, for what the revision cannot tell: removals, and the writes of the engine
+		//     (status, last run), which keep the revision. Every write and every removal of an id, whatever
+		//     it comes from, is numbered in `changedAt` - also for ids that are not held, and a reset of the
+		//     module counts as a removal of them all. A request notes the sequence when it STARTS; an id
+		//     changed after that was "overtaken", and for it the response is older than what the store
+		//     has heard since:
+		//       - the automation is not held: it was removed meanwhile, the response is dropped;
+		//       - the revision is the same: the engine fields held stay, and the response only adds what
+		//         is missing (the graph of a detail read);
+		//       - the response says it is gone (404, or a list without it): it stays; if it really is
+		//         gone, its removal is announced.
+		//     An event is as new as it gets, so nothing has overtaken it.
+		//
+		// A read that has to be newer than some moment (after a conflict, after a module reset) never
+		// joins a request started before it: it waits for that one to finish and reads again.
+		let sequence = 0;
+
+		const changedAt = new Map<IAutomation['id'], number>();
+
+		let allRemovedAt = 0;
+
+		const overtaken = (id: IAutomation['id'], startedAt: number): boolean => Math.max(changedAt.get(id) ?? 0, allRemovedAt) > startedAt;
 
 		const onEvent = (payload: IAutomationsOnEventActionPayload): IAutomation => {
 			return set({
@@ -108,23 +137,35 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			});
 		};
 
-		const set = (payload: IAutomationsSetActionPayload): IAutomation => {
-			const existingRecord = data.value.get(payload.id);
+		/**
+		 * The only place an automation is written. `startedAt` is the sequence noted when the request the
+		 * data answers was started; an event has none and is taken as of now. Returns null when the
+		 * automation was removed since, so the data is about something that is no longer there.
+		 */
+		const commit = (id: IAutomation['id'], incoming: IAutomationsSetActionPayload['data'], startedAt: number = sequence): IAutomation | null => {
+			const held = data.value.get(id);
+			const stale = overtaken(id, startedAt);
 
-			// Responses and events race each other: the answer to a read may arrive after the event of a
-			// later save, and the answer to our own save after the event announcing it. The revision moves
-			// with every save, so whatever is older than what is held must not overwrite it. Writes of the
-			// engine (status, last run) keep the revision and are let through.
-			if (existingRecord && typeof payload.data.revision === 'number' && payload.data.revision < existingRecord.revision) {
-				return existingRecord;
+			if (!held) {
+				if (stale) {
+					return null;
+				}
+			} else if (typeof incoming.revision === 'number' && incoming.revision < held.revision) {
+				return held;
 			}
 
-			const candidate: Record<string, unknown> = existingRecord ? { ...existingRecord, ...payload.data } : { ...payload.data, id: payload.id };
+			const candidate: Record<string, unknown> = held ? { ...held, ...incoming } : { ...incoming, id };
+
+			if (held && stale && candidate.revision === held.revision) {
+				for (const field of ENGINE_FIELDS) {
+					candidate[field] = held[field];
+				}
+			}
 
 			// The list comes without graphs. A graph read earlier stays for as long as it is the graph of the
 			// revision held; once the revision has moved it is stale and has to be read again.
-			if (existingRecord && existingRecord.graph !== null && (payload.data.graph === null || typeof payload.data.graph === 'undefined')) {
-				candidate.graph = candidate.revision === existingRecord.revision ? existingRecord.graph : null;
+			if (held && (incoming.graph === null || typeof incoming.graph === 'undefined')) {
+				candidate.graph = candidate.revision === held.revision ? held.graph : null;
 			}
 
 			const parsed = AutomationSchema.safeParse(candidate);
@@ -137,26 +178,56 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			data.value.set(parsed.data.id, parsed.data);
 
-			changedWhileFetching?.set(parsed.data.id, 'set');
+			changedAt.set(parsed.data.id, ++sequence);
 
 			return parsed.data;
 		};
 
+		const set = (payload: IAutomationsSetActionPayload): IAutomation => {
+			return commit(payload.id, payload.data) as IAutomation;
+		};
+
+		// Numbered also for an id that is not held: a read of it may be on its way
 		const unset = (payload: IAutomationsUnsetActionPayload): void => {
 			data.value.delete(payload.id);
 
-			changedWhileFetching?.set(payload.id, 'unset');
+			changedAt.set(payload.id, ++sequence);
 		};
 
-		const get = async (payload: IAutomationsGetActionPayload): Promise<IAutomation> => {
-			const existingPromise = pendingGetPromises[payload.id];
+		// The module was reset: every automation is gone, held or not
+		const unsetAll = (): void => {
+			data.value.clear();
+
+			allRemovedAt = ++sequence;
+		};
+
+		// For a response saying the automation is gone
+		const unsetUnlessOvertaken = (id: IAutomation['id'], startedAt: number): void => {
+			if (!overtaken(id, startedAt)) {
+				unset({ id });
+			}
+		};
+
+		const get = (payload: IAutomationsGetActionPayload): Promise<IAutomation> => read(payload.id);
+
+		const read = async (id: IAutomation['id'], fresh: boolean = false): Promise<IAutomation> => {
+			const existingPromise = pendingGetPromises[id];
+
+			if (existingPromise && fresh) {
+				await existingPromise.catch((): void => {});
+
+				// Whatever is on its way by now was started after the one waited for
+				return read(id);
+			}
 
 			if (existingPromise) {
 				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IAutomation> => {
-				semaphore.value.fetching.item.push(payload.id);
+				const startedAt = sequence;
+
+				semaphore.value.fetching.item.push(id);
 
 				try {
 					const {
@@ -164,21 +235,24 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 						error,
 						response,
 					} = await backend.client.GET(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/automations/{id}`, {
-						params: { path: { id: payload.id } },
+						params: { path: { id } },
 					});
 
 					if (typeof responseData !== 'undefined') {
 						const transformed = transformAutomationResponse(responseData.data, AutomationSchema);
 
-						return set({
-							id: transformed.id,
-							data: transformed,
-						});
+						const automation = commit(transformed.id, transformed, startedAt);
+
+						if (automation === null) {
+							throw new AutomationsApiException('Automation was removed.', 404);
+						}
+
+						return automation;
 					}
 
 					// It is gone on the backend, so it must not stay on screen either
 					if (response?.status === 404) {
-						unset({ id: payload.id });
+						unsetUnlessOvertaken(id, startedAt);
 					}
 
 					let errorReason: string = 'Failed to get automation.';
@@ -191,40 +265,41 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 				} catch (e) {
 					throw toApiException(e, 'Failed to get automation.');
 				} finally {
-					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((id) => id !== payload.id);
+					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== id);
 				}
-			})();
+			})().finally((): void => {
+				delete pendingGetPromises[id];
+			});
 
-			pendingGetPromises[payload.id] = getPromise;
+			pendingGetPromises[id] = getPromise;
 
-			try {
-				return await getPromise;
-			} finally {
-				delete pendingGetPromises[payload.id];
-			}
+			return getPromise;
 		};
 
-		const fetch = async (): Promise<IAutomation[]> => {
+		const fetch = (): Promise<IAutomation[]> => list();
+
+		const list = async (fresh: boolean = false): Promise<IAutomation[]> => {
 			const cacheKey = 'all';
 
 			const existingPromise = pendingFetchPromises[cacheKey];
+
+			if (existingPromise && fresh) {
+				await existingPromise.catch((): void => {});
+
+				return list();
+			}
 
 			if (existingPromise) {
 				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IAutomation[]> => {
+				const startedAt = sequence;
+
 				semaphore.value.fetching.items = true;
-
-				const changedMeanwhile = new Map<IAutomation['id'], 'set' | 'unset'>();
-
-				changedWhileFetching = changedMeanwhile;
 
 				try {
 					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/automations`);
-
-					// Only what happened while the request was on its way is of interest
-					changedWhileFetching = null;
 
 					if (typeof responseData === 'undefined') {
 						let errorReason: string = 'Failed to fetch automations.';
@@ -244,26 +319,21 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 						fetched.add(transformed.id);
 
-						// Removed while the list was on its way: the snapshot is from before
-						if (changedMeanwhile.get(transformed.id) === 'unset') {
-							continue;
-						}
+						const automation = commit(transformed.id, transformed, startedAt);
 
-						automations.push(
-							set({
-								id: transformed.id,
-								data: transformed,
-							})
-						);
+						// Null: removed while the list was on its way, the snapshot is from before
+						if (automation !== null) {
+							automations.push(automation);
+						}
 					}
 
 					// The response is the whole collection, so anything missing from it is gone.
 					// Merging alone would keep a deleted automation on screen whenever its event was
-					// missed - which is exactly the case after the browser has been asleep. What was created
-					// while the list was on its way is not in it either and stays.
+					// missed - which is exactly the case after the browser has been asleep. What was written
+					// while the list was on its way (created meanwhile above all) stays.
 					for (const knownId of [...data.value.keys()]) {
-						if (!fetched.has(knownId) && !changedMeanwhile.has(knownId)) {
-							data.value.delete(knownId);
+						if (!fetched.has(knownId)) {
+							unsetUnlessOvertaken(knownId, startedAt);
 						}
 					}
 
@@ -273,19 +343,15 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 				} catch (e) {
 					throw toApiException(e, 'Failed to fetch automations.');
 				} finally {
-					changedWhileFetching = null;
-
 					semaphore.value.fetching.items = false;
 				}
-			})();
+			})().finally((): void => {
+				delete pendingFetchPromises[cacheKey];
+			});
 
 			pendingFetchPromises[cacheKey] = fetchPromise;
 
-			try {
-				return await fetchPromise;
-			} finally {
-				delete pendingFetchPromises[cacheKey];
-			}
+			return fetchPromise;
 		};
 
 		/**
@@ -321,6 +387,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			semaphore.value.creating.push(id);
 
+			const startedAt = sequence;
+
 			try {
 				const createData = transformAutomationCreateRequest({ ...automationData, id });
 
@@ -338,10 +406,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 				const transformed = transformAutomationResponse(responseData.data, AutomationSchema);
 
-				return set({
-					id: transformed.id,
-					data: transformed,
-				});
+				// Removed again before the answer got here: it was created, it just is not held
+				return commit(transformed.id, transformed, startedAt) ?? transformed;
 			} catch (e) {
 				throw toApiException(e, 'Failed to create automation.');
 			} finally {
@@ -374,6 +440,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			semaphore.value.updating.push(id);
 
+			const startedAt = sequence;
+
 			try {
 				const updateData = transformAutomationUpdateRequest({ ...automationData, revision: revision ?? existingRecord.revision });
 
@@ -392,9 +460,10 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 					if (exception instanceof AutomationsRevisionConflictException) {
 						// What is held is behind the backend. Read it again, so the next attempt is based on the
 						// current revision; when even that fails the conflict is still what the caller hears about.
-						await get({ id }).catch((): void => {});
+						// A read already on its way may be from before the other save, so it is not joined.
+						await read(id, true).catch((): void => {});
 					} else if (exception.code === 404) {
-						unset({ id });
+						unsetUnlessOvertaken(id, startedAt);
 					}
 
 					throw exception;
@@ -402,10 +471,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 				const transformed = transformAutomationResponse(responseData.data, AutomationSchema);
 
-				return set({
-					id: transformed.id,
-					data: transformed,
-				});
+				// Removed before the answer got here: it was saved, it just is not held any more
+				return commit(transformed.id, transformed, startedAt) ?? transformed;
 			} catch (e) {
 				throw toApiException(e, 'Failed to update automation.');
 			} finally {
@@ -445,7 +512,9 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		// re-reading, so the caller never has to guess from a flag it does not maintain.
 		const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
 
-		const refresh = (): Promise<unknown> => fetch();
+		// Asked for because events were missed or everything was reset, so a list already on its way,
+		// asked for before that, is not the answer
+		const refresh = (): Promise<unknown> => list(true);
 
 		return {
 			isLoaded,
@@ -462,6 +531,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			onEvent,
 			set,
 			unset,
+			unsetAll,
 			get,
 			fetch,
 			add,

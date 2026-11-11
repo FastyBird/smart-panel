@@ -66,8 +66,11 @@ export default {
 				return;
 			}
 
-			// A reset wipes every automation at once and names none of them
+			// A reset wipes every automation at once and names none of them. They are dropped right away, so
+			// nothing read before the reset can bring one back; the list is then read for what was created since.
 			if (data.event === EventType.MODULE_RESET) {
+				automationsStore.unsetAll();
+
 				refreshLoadedStores([automationsStore]).catch((error: unknown): void => {
 					console.warn(`Failed to process ${data.event} event:`, error);
 				});

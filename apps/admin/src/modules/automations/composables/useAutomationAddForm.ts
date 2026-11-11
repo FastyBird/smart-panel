@@ -1,4 +1,4 @@
-import { reactive, ref, watch } from 'vue';
+import { getCurrentScope, onScopeDispose, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -34,7 +34,8 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
-	let timer: number;
+	// Takes the outcome of a submit off the screen a while after it is shown
+	let timer: number | undefined;
 
 	const model = reactive<IAutomationAddForm>({
 		id,
@@ -62,6 +63,10 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 	};
 
 	const save = async (): Promise<'added'> => {
+		// The outcome of the previous submit is over, and so is its timer: left running it would take
+		// the state of this one off the screen while it is still on its way
+		clear();
+
 		formEl.value!.clearValidate();
 
 		const valid = await formEl.value!.validate();
@@ -108,6 +113,10 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 
 		formResult.value = FormResult.NONE;
 	};
+
+	if (getCurrentScope()) {
+		onScopeDispose((): void => window.clearTimeout(timer));
+	}
 
 	watch(model, (val: IAutomationAddForm): void => {
 		formChanged.value = val.name !== '' || (val.description ?? '') !== '' || (val.spaceId ?? null) !== null || val.mode !== AutomationMode.restart;

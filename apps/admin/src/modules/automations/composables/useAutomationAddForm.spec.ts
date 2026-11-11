@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { effectScope, nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -138,6 +138,69 @@ describe('useAutomationAddForm', () => {
 
 		expect(mockStore.add).toHaveBeenCalledTimes(1);
 		expect(mockFlash.success).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not let the timer of a failed save take the state of its retry off the screen', async () => {
+		mockStore.add.mockRejectedValueOnce(new AutomationsApiException('Failed', 500));
+
+		const { model, formEl, formResult, submit } = useAutomationAddForm({ id: automationId });
+
+		formEl.value = createFormEl();
+
+		model.name = 'Night mode';
+
+		await expect(submit()).rejects.toThrow(AutomationsApiException);
+
+		expect(formResult.value).toBe(FormResult.ERROR);
+
+		await vi.advanceTimersByTimeAsync(1500);
+
+		let resolve: (value: unknown) => void = () => {};
+
+		mockStore.add.mockReturnValue(
+			new Promise((res) => {
+				resolve = res;
+			})
+		);
+
+		const retry = submit();
+
+		// Past the moment the first outcome would have been cleared
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(formResult.value).toBe(FormResult.WORKING);
+
+		resolve(undefined);
+
+		await retry;
+
+		// And the outcome of the retry stays for its own two seconds
+		await vi.advanceTimersByTimeAsync(1500);
+
+		expect(formResult.value).toBe(FormResult.OK);
+
+		await vi.advanceTimersByTimeAsync(500);
+
+		expect(formResult.value).toBe(FormResult.NONE);
+	});
+
+	it('stops its timer together with the component', async () => {
+		mockStore.add.mockRejectedValue(new AutomationsApiException('Failed', 500));
+
+		const scope = effectScope();
+
+		const { model, formEl, formResult, submit } = scope.run(() => useAutomationAddForm({ id: automationId }))!;
+
+		formEl.value = createFormEl();
+
+		model.name = 'Night mode';
+
+		await expect(submit()).rejects.toThrow(AutomationsApiException);
+
+		scope.stop();
+
+		expect(vi.getTimerCount()).toBe(0);
+		expect(formResult.value).toBe(FormResult.ERROR);
 	});
 
 	it('does not call the store for a form that is not valid', async () => {

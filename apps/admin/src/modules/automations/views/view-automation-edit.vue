@@ -30,8 +30,9 @@
 		</template>
 	</app-bar-button>
 
+	<!-- Only together with the form: a click before the form is there would set a flag nothing takes -->
 	<app-bar-button
-		v-if="!isMDDevice && automation"
+		v-if="!isMDDevice && automationReady && automation"
 		:align="AppBarButtonAlign.RIGHT"
 		:loading="remoteFormResult === FormResult.WORKING"
 		:disabled="remoteFormResult === FormResult.WORKING"
