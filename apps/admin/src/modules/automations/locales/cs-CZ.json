@@ -1,0 +1,161 @@
+{
+	"automations": {
+		"menu": {
+			"title": "Automatizace"
+		},
+		"headings": {
+			"list": "Automatizace",
+			"add": "Přidat automatizaci",
+			"edit": "Upravit automatizaci",
+			"remove": "Odstranit automatizaci",
+			"discard": "Zahodit změny",
+			"adjustFilters": "Upravit filtry"
+		},
+		"subHeadings": {
+			"list": "Nechte chytrou domácnost jednat samostatně",
+			"add": "Teď ji pojmenujte, průběh nakreslíte potom",
+			"adjustFilters": "Filtrujte automatizace podle různých kritérií"
+		},
+		"breadcrumbs": {
+			"automations": "Automatizace"
+		},
+		"filters": {
+			"enabled": {
+				"title": "Povoleno",
+				"values": {
+					"enabled": "Povolené",
+					"disabled": "Zakázané",
+					"all": "Vše"
+				}
+			},
+			"status": {
+				"title": "Stav",
+				"placeholder": "Všechny stavy"
+			},
+			"space": {
+				"title": "Prostor",
+				"placeholder": "Všechny prostory"
+			}
+		},
+		"fields": {
+			"name": "Název",
+			"space": "Prostor",
+			"enabled": "Povoleno",
+			"status": "Stav",
+			"lastRun": "Poslední spuštění",
+			"neverRun": "Nikdy",
+			"wholeHome": "Celý dům",
+			"search": {
+				"placeholder": "Hledat automatizace..."
+			}
+		},
+		"statuses": {
+			"ok": {
+				"title": "V pořádku",
+				"description": "Automatizace je v pořádku a běží, pokud je povolená."
+			},
+			"invalid": {
+				"title": "Neplatná",
+				"description": "Automatizace nemůže běžet: některý z jejích bloků není správně nastaven nebo odkazuje na něco, co už neexistuje."
+			},
+			"suspended": {
+				"title": "Pozastavená",
+				"description": "Automatizace byla zastavena, protože se spouštěla příliš často. Zkontrolujte její průběh a poté ji znovu povolte."
+			}
+		},
+		"runStatuses": {
+			"completed": "Dokončeno",
+			"failed": "Selhalo",
+			"cancelled": "Zrušeno",
+			"interrupted": "Přerušeno"
+		},
+		"modes": {
+			"single": {
+				"title": "Jednou",
+				"description": "Dokud automatizace běží, další spuštění se ignorují."
+			},
+			"restart": {
+				"title": "Restartovat",
+				"description": "Nové spuštění zastaví běžící automatizaci a spustí ji znovu."
+			},
+			"parallel": {
+				"title": "Souběžně",
+				"description": "Každé spuštění zahájí vlastní běh vedle těch, které už běží."
+			}
+		},
+		"texts": {
+			"loadingAutomations": "Načítání automatizací...",
+			"noAutomations": "Zatím nemáte žádnou automatizaci",
+			"noFilteredAutomations": "Vašim filtrům neodpovídá žádná automatizace",
+			"confirmDiscard": "Máte neuložené změny. Opravdu je chcete zahodit?",
+			"confirmRemove": "Opravdu chcete odstranit automatizaci „{automation}“?",
+			"addHint": "Nová automatizace se vytvoří zakázaná a s prázdným průběhem. Povolit ji lze, jakmile její průběh obsahuje alespoň jeden spouštěč."
+		},
+		"form": {
+			"name": {
+				"title": "Název",
+				"placeholder": "Zadejte název automatizace",
+				"validation": {
+					"required": "Název automatizace je povinný"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Volitelný popis toho, co automatizace dělá"
+			},
+			"space": {
+				"title": "Prostor",
+				"hint": "Slouží jen k dohledání automatizace v seznamech. Neomezuje, co smí automatizace ovládat."
+			},
+			"mode": {
+				"title": "Při spuštění během běhu"
+			}
+		},
+		"buttons": {
+			"add": {
+				"title": "Přidat automatizaci"
+			},
+			"save": {
+				"title": "Uložit"
+			},
+			"cancel": {
+				"title": "Zrušit"
+			},
+			"yes": {
+				"title": "Ano"
+			},
+			"no": {
+				"title": "Ne"
+			},
+			"close": {
+				"title": "Zavřít"
+			},
+			"discard": {
+				"title": "Zahodit"
+			},
+			"backToList": {
+				"title": "Zpět na seznam"
+			},
+			"resetFilters": {
+				"title": "Resetovat filtry"
+			}
+		},
+		"messages": {
+			"requestError": "Při načítání automatizace se něco pokazilo.",
+			"notFound": "Automatizace nebyla nalezena.",
+			"created": "Automatizace „{automation}“ byla vytvořena.",
+			"notCreated": "Automatizaci „{automation}“ se nepodařilo vytvořit.",
+			"edited": "Automatizace „{automation}“ byla uložena.",
+			"notEdited": "Automatizaci „{automation}“ se nepodařilo uložit.",
+			"removed": "Automatizace „{automation}“ byla odstraněna.",
+			"notRemoved": "Automatizaci „{automation}“ se nepodařilo odstranit.",
+			"removeCanceled": "Odstranění automatizace „{automation}“ bylo zrušeno.",
+			"enabled": "Automatizace „{automation}“ byla povolena.",
+			"disabled": "Automatizace „{automation}“ byla zakázána.",
+			"notEnabled": "Automatizaci „{automation}“ se nepodařilo povolit.",
+			"notDisabled": "Automatizaci „{automation}“ se nepodařilo zakázat.",
+			"notEnabledIncomplete": "Automatizaci „{automation}“ nelze povolit: její průběh není úplný. Potřebuje alespoň jeden spouštěč a nastavení každého bloku.",
+			"changedElsewhere": "Automatizace „{automation}“ byla mezitím změněna jinde. Byla znovu načtena, zkuste to prosím znovu."
+		}
+	}
+}

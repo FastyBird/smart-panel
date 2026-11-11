@@ -1,0 +1,161 @@
+{
+	"automations": {
+		"menu": {
+			"title": "Automationen"
+		},
+		"headings": {
+			"list": "Automationen",
+			"add": "Automation hinzufügen",
+			"edit": "Automation bearbeiten",
+			"remove": "Automation entfernen",
+			"discard": "Änderungen verwerfen",
+			"adjustFilters": "Filter anpassen"
+		},
+		"subHeadings": {
+			"list": "Lassen Sie Ihr Smart Home selbstständig handeln",
+			"add": "Jetzt benennen, den Ablauf danach zeichnen",
+			"adjustFilters": "Automationen nach verschiedenen Kriterien filtern"
+		},
+		"breadcrumbs": {
+			"automations": "Automationen"
+		},
+		"filters": {
+			"enabled": {
+				"title": "Aktiviert",
+				"values": {
+					"enabled": "Aktiviert",
+					"disabled": "Deaktiviert",
+					"all": "Alle"
+				}
+			},
+			"status": {
+				"title": "Status",
+				"placeholder": "Alle Status"
+			},
+			"space": {
+				"title": "Bereich",
+				"placeholder": "Alle Bereiche"
+			}
+		},
+		"fields": {
+			"name": "Name",
+			"space": "Bereich",
+			"enabled": "Aktiviert",
+			"status": "Status",
+			"lastRun": "Letzte Ausführung",
+			"neverRun": "Nie",
+			"wholeHome": "Ganzes Zuhause",
+			"search": {
+				"placeholder": "Automationen suchen..."
+			}
+		},
+		"statuses": {
+			"ok": {
+				"title": "OK",
+				"description": "Die Automation ist in Ordnung und läuft, wenn sie aktiviert ist."
+			},
+			"invalid": {
+				"title": "Ungültig",
+				"description": "Die Automation kann nicht laufen: Einer ihrer Blöcke ist nicht richtig konfiguriert oder verweist auf etwas, das nicht mehr existiert."
+			},
+			"suspended": {
+				"title": "Angehalten",
+				"description": "Die Automation wurde gestoppt, weil sie zu oft lief. Prüfen Sie ihren Ablauf und aktivieren Sie sie dann erneut."
+			}
+		},
+		"runStatuses": {
+			"completed": "Abgeschlossen",
+			"failed": "Fehlgeschlagen",
+			"cancelled": "Abgebrochen",
+			"interrupted": "Unterbrochen"
+		},
+		"modes": {
+			"single": {
+				"title": "Einzeln",
+				"description": "Solange die Automation läuft, werden neue Auslöser ignoriert."
+			},
+			"restart": {
+				"title": "Neu starten",
+				"description": "Ein neuer Auslöser stoppt die laufende Automation und startet sie neu."
+			},
+			"parallel": {
+				"title": "Parallel",
+				"description": "Jeder Auslöser startet eine eigene Ausführung neben den bereits laufenden."
+			}
+		},
+		"texts": {
+			"loadingAutomations": "Automationen werden geladen...",
+			"noAutomations": "Sie haben noch keine Automation",
+			"noFilteredAutomations": "Keine Automationen entsprechen Ihren Filtern",
+			"confirmDiscard": "Sie haben ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+			"confirmRemove": "Möchten Sie die Automation „{automation}“ wirklich entfernen?",
+			"addHint": "Eine neue Automation wird deaktiviert und mit leerem Ablauf erstellt. Sie kann aktiviert werden, sobald ihr Ablauf mindestens einen Auslöser hat."
+		},
+		"form": {
+			"name": {
+				"title": "Name",
+				"placeholder": "Name der Automation eingeben",
+				"validation": {
+					"required": "Der Name der Automation ist erforderlich"
+				}
+			},
+			"description": {
+				"title": "Beschreibung",
+				"placeholder": "Optionale Beschreibung dessen, was die Automation tut"
+			},
+			"space": {
+				"title": "Bereich",
+				"hint": "Dient nur dazu, die Automation in Listen zu finden. Er schränkt nicht ein, was die Automation steuern darf."
+			},
+			"mode": {
+				"title": "Bei Auslösung während der Ausführung"
+			}
+		},
+		"buttons": {
+			"add": {
+				"title": "Automation hinzufügen"
+			},
+			"save": {
+				"title": "Speichern"
+			},
+			"cancel": {
+				"title": "Abbrechen"
+			},
+			"yes": {
+				"title": "Ja"
+			},
+			"no": {
+				"title": "Nein"
+			},
+			"close": {
+				"title": "Schließen"
+			},
+			"discard": {
+				"title": "Verwerfen"
+			},
+			"backToList": {
+				"title": "Zurück zur Liste"
+			},
+			"resetFilters": {
+				"title": "Filter zurücksetzen"
+			}
+		},
+		"messages": {
+			"requestError": "Beim Laden der Automation ist ein Fehler aufgetreten.",
+			"notFound": "Die Automation wurde nicht gefunden.",
+			"created": "Die Automation „{automation}“ wurde erstellt.",
+			"notCreated": "Die Automation „{automation}“ konnte nicht erstellt werden.",
+			"edited": "Die Automation „{automation}“ wurde gespeichert.",
+			"notEdited": "Die Automation „{automation}“ konnte nicht gespeichert werden.",
+			"removed": "Die Automation „{automation}“ wurde entfernt.",
+			"notRemoved": "Die Automation „{automation}“ konnte nicht entfernt werden.",
+			"removeCanceled": "Das Entfernen der Automation „{automation}“ wurde abgebrochen.",
+			"enabled": "Die Automation „{automation}“ wurde aktiviert.",
+			"disabled": "Die Automation „{automation}“ wurde deaktiviert.",
+			"notEnabled": "Die Automation „{automation}“ konnte nicht aktiviert werden.",
+			"notDisabled": "Die Automation „{automation}“ konnte nicht deaktiviert werden.",
+			"notEnabledIncomplete": "Die Automation „{automation}“ kann nicht aktiviert werden: Ihr Ablauf ist unvollständig. Sie braucht mindestens einen Auslöser und jeder Block muss konfiguriert sein.",
+			"changedElsewhere": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Sie wurde neu geladen, bitte versuchen Sie es erneut."
+		}
+	}
+}

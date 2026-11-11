@@ -1,0 +1,161 @@
+{
+	"automations": {
+		"menu": {
+			"title": "Automatizaciones"
+		},
+		"headings": {
+			"list": "Automatizaciones",
+			"add": "Añadir automatización",
+			"edit": "Editar automatización",
+			"remove": "Eliminar automatización",
+			"discard": "Descartar cambios",
+			"adjustFilters": "Ajustar filtros"
+		},
+		"subHeadings": {
+			"list": "Deje que su hogar inteligente actúe por sí solo",
+			"add": "Póngale nombre ahora y dibuje su flujo después",
+			"adjustFilters": "Filtre las automatizaciones según varios criterios"
+		},
+		"breadcrumbs": {
+			"automations": "Automatizaciones"
+		},
+		"filters": {
+			"enabled": {
+				"title": "Habilitada",
+				"values": {
+					"enabled": "Habilitadas",
+					"disabled": "Deshabilitadas",
+					"all": "Todas"
+				}
+			},
+			"status": {
+				"title": "Estado",
+				"placeholder": "Todos los estados"
+			},
+			"space": {
+				"title": "Espacio",
+				"placeholder": "Todos los espacios"
+			}
+		},
+		"fields": {
+			"name": "Nombre",
+			"space": "Espacio",
+			"enabled": "Habilitada",
+			"status": "Estado",
+			"lastRun": "Última ejecución",
+			"neverRun": "Nunca",
+			"wholeHome": "Toda la casa",
+			"search": {
+				"placeholder": "Buscar automatizaciones..."
+			}
+		},
+		"statuses": {
+			"ok": {
+				"title": "Correcta",
+				"description": "La automatización está en orden y se ejecuta cuando está habilitada."
+			},
+			"invalid": {
+				"title": "No válida",
+				"description": "La automatización no puede ejecutarse: uno de sus bloques no está configurado correctamente o hace referencia a algo que ya no existe."
+			},
+			"suspended": {
+				"title": "Suspendida",
+				"description": "La automatización se detuvo porque se ejecutaba con demasiada frecuencia. Revise su flujo y vuelva a habilitarla."
+			}
+		},
+		"runStatuses": {
+			"completed": "Completada",
+			"failed": "Fallida",
+			"cancelled": "Cancelada",
+			"interrupted": "Interrumpida"
+		},
+		"modes": {
+			"single": {
+				"title": "Única",
+				"description": "Mientras la automatización se ejecuta, los nuevos disparadores se ignoran."
+			},
+			"restart": {
+				"title": "Reiniciar",
+				"description": "Un nuevo disparador detiene la automatización en curso y la inicia de nuevo."
+			},
+			"parallel": {
+				"title": "En paralelo",
+				"description": "Cada disparador inicia su propia ejecución junto a las que ya están en curso."
+			}
+		},
+		"texts": {
+			"loadingAutomations": "Cargando automatizaciones...",
+			"noAutomations": "Todavía no tiene ninguna automatización",
+			"noFilteredAutomations": "Ninguna automatización coincide con sus filtros",
+			"confirmDiscard": "Tiene cambios sin guardar. ¿Seguro que desea descartarlos?",
+			"confirmRemove": "¿Seguro que desea eliminar la automatización «{automation}»?",
+			"addHint": "Una automatización nueva se crea deshabilitada y con el flujo vacío. Se puede habilitar cuando su flujo tenga al menos un disparador."
+		},
+		"form": {
+			"name": {
+				"title": "Nombre",
+				"placeholder": "Introduzca el nombre de la automatización",
+				"validation": {
+					"required": "El nombre de la automatización es obligatorio"
+				}
+			},
+			"description": {
+				"title": "Descripción",
+				"placeholder": "Descripción opcional de lo que hace la automatización"
+			},
+			"space": {
+				"title": "Espacio",
+				"hint": "Solo sirve para encontrar la automatización en las listas. No limita lo que la automatización puede controlar."
+			},
+			"mode": {
+				"title": "Al dispararse mientras ya se ejecuta"
+			}
+		},
+		"buttons": {
+			"add": {
+				"title": "Añadir automatización"
+			},
+			"save": {
+				"title": "Guardar"
+			},
+			"cancel": {
+				"title": "Cancelar"
+			},
+			"yes": {
+				"title": "Sí"
+			},
+			"no": {
+				"title": "No"
+			},
+			"close": {
+				"title": "Cerrar"
+			},
+			"discard": {
+				"title": "Descartar"
+			},
+			"backToList": {
+				"title": "Volver a la lista"
+			},
+			"resetFilters": {
+				"title": "Restablecer filtros"
+			}
+		},
+		"messages": {
+			"requestError": "Algo salió mal al cargar la automatización.",
+			"notFound": "No se encontró la automatización.",
+			"created": "La automatización «{automation}» se ha creado.",
+			"notCreated": "No se pudo crear la automatización «{automation}».",
+			"edited": "La automatización «{automation}» se ha guardado.",
+			"notEdited": "No se pudo guardar la automatización «{automation}».",
+			"removed": "La automatización «{automation}» se ha eliminado.",
+			"notRemoved": "No se pudo eliminar la automatización «{automation}».",
+			"removeCanceled": "Se canceló la eliminación de la automatización «{automation}».",
+			"enabled": "La automatización «{automation}» se ha habilitado.",
+			"disabled": "La automatización «{automation}» se ha deshabilitado.",
+			"notEnabled": "No se pudo habilitar la automatización «{automation}».",
+			"notDisabled": "No se pudo deshabilitar la automatización «{automation}».",
+			"notEnabledIncomplete": "La automatización «{automation}» no se puede habilitar: su flujo no está completo. Necesita al menos un disparador y todos los bloques configurados.",
+			"changedElsewhere": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Se ha vuelto a cargar, inténtelo de nuevo."
+		}
+	}
+}

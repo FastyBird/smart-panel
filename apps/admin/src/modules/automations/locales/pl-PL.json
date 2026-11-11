@@ -1,0 +1,161 @@
+{
+	"automations": {
+		"menu": {
+			"title": "Automatyzacje"
+		},
+		"headings": {
+			"list": "Automatyzacje",
+			"add": "Dodaj automatyzację",
+			"edit": "Edytuj automatyzację",
+			"remove": "Usuń automatyzację",
+			"discard": "Odrzuć zmiany",
+			"adjustFilters": "Dostosuj filtry"
+		},
+		"subHeadings": {
+			"list": "Pozwól, aby inteligentny dom działał samodzielnie",
+			"add": "Teraz nadaj nazwę, przebieg narysujesz później",
+			"adjustFilters": "Filtruj automatyzacje według różnych kryteriów"
+		},
+		"breadcrumbs": {
+			"automations": "Automatyzacje"
+		},
+		"filters": {
+			"enabled": {
+				"title": "Włączona",
+				"values": {
+					"enabled": "Włączone",
+					"disabled": "Wyłączone",
+					"all": "Wszystkie"
+				}
+			},
+			"status": {
+				"title": "Stan",
+				"placeholder": "Wszystkie stany"
+			},
+			"space": {
+				"title": "Przestrzeń",
+				"placeholder": "Wszystkie przestrzenie"
+			}
+		},
+		"fields": {
+			"name": "Nazwa",
+			"space": "Przestrzeń",
+			"enabled": "Włączona",
+			"status": "Stan",
+			"lastRun": "Ostatnie uruchomienie",
+			"neverRun": "Nigdy",
+			"wholeHome": "Cały dom",
+			"search": {
+				"placeholder": "Szukaj automatyzacji..."
+			}
+		},
+		"statuses": {
+			"ok": {
+				"title": "OK",
+				"description": "Automatyzacja jest w porządku i działa, gdy jest włączona."
+			},
+			"invalid": {
+				"title": "Nieprawidłowa",
+				"description": "Automatyzacja nie może działać: jeden z jej bloków nie jest poprawnie skonfigurowany lub odwołuje się do czegoś, co już nie istnieje."
+			},
+			"suspended": {
+				"title": "Wstrzymana",
+				"description": "Automatyzacja została zatrzymana, ponieważ uruchamiała się zbyt często. Sprawdź jej przebieg, a następnie włącz ją ponownie."
+			}
+		},
+		"runStatuses": {
+			"completed": "Zakończono",
+			"failed": "Niepowodzenie",
+			"cancelled": "Anulowano",
+			"interrupted": "Przerwano"
+		},
+		"modes": {
+			"single": {
+				"title": "Pojedynczo",
+				"description": "Dopóki automatyzacja działa, nowe wyzwalacze są ignorowane."
+			},
+			"restart": {
+				"title": "Uruchom ponownie",
+				"description": "Nowy wyzwalacz zatrzymuje działającą automatyzację i uruchamia ją od nowa."
+			},
+			"parallel": {
+				"title": "Równolegle",
+				"description": "Każdy wyzwalacz rozpoczyna własne uruchomienie obok tych, które już trwają."
+			}
+		},
+		"texts": {
+			"loadingAutomations": "Ładowanie automatyzacji...",
+			"noAutomations": "Nie masz jeszcze żadnej automatyzacji",
+			"noFilteredAutomations": "Żadna automatyzacja nie pasuje do filtrów",
+			"confirmDiscard": "Masz niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+			"confirmRemove": "Czy na pewno chcesz usunąć automatyzację „{automation}”?",
+			"addHint": "Nowa automatyzacja jest tworzona jako wyłączona i z pustym przebiegiem. Można ją włączyć, gdy jej przebieg ma co najmniej jeden wyzwalacz."
+		},
+		"form": {
+			"name": {
+				"title": "Nazwa",
+				"placeholder": "Wpisz nazwę automatyzacji",
+				"validation": {
+					"required": "Nazwa automatyzacji jest wymagana"
+				}
+			},
+			"description": {
+				"title": "Opis",
+				"placeholder": "Opcjonalny opis tego, co robi automatyzacja"
+			},
+			"space": {
+				"title": "Przestrzeń",
+				"hint": "Służy tylko do odnajdywania automatyzacji na listach. Nie ogranicza tego, czym automatyzacja może sterować."
+			},
+			"mode": {
+				"title": "Po wyzwoleniu w trakcie działania"
+			}
+		},
+		"buttons": {
+			"add": {
+				"title": "Dodaj automatyzację"
+			},
+			"save": {
+				"title": "Zapisz"
+			},
+			"cancel": {
+				"title": "Anuluj"
+			},
+			"yes": {
+				"title": "Tak"
+			},
+			"no": {
+				"title": "Nie"
+			},
+			"close": {
+				"title": "Zamknij"
+			},
+			"discard": {
+				"title": "Odrzuć"
+			},
+			"backToList": {
+				"title": "Powrót do listy"
+			},
+			"resetFilters": {
+				"title": "Resetuj filtry"
+			}
+		},
+		"messages": {
+			"requestError": "Coś poszło nie tak podczas ładowania automatyzacji.",
+			"notFound": "Nie znaleziono automatyzacji.",
+			"created": "Automatyzacja „{automation}” została utworzona.",
+			"notCreated": "Nie udało się utworzyć automatyzacji „{automation}”.",
+			"edited": "Automatyzacja „{automation}” została zapisana.",
+			"notEdited": "Nie udało się zapisać automatyzacji „{automation}”.",
+			"removed": "Automatyzacja „{automation}” została usunięta.",
+			"notRemoved": "Nie udało się usunąć automatyzacji „{automation}”.",
+			"removeCanceled": "Usuwanie automatyzacji „{automation}” zostało anulowane.",
+			"enabled": "Automatyzacja „{automation}” została włączona.",
+			"disabled": "Automatyzacja „{automation}” została wyłączona.",
+			"notEnabled": "Nie udało się włączyć automatyzacji „{automation}”.",
+			"notDisabled": "Nie udało się wyłączyć automatyzacji „{automation}”.",
+			"notEnabledIncomplete": "Automatyzacji „{automation}” nie można włączyć: jej przebieg nie jest kompletny. Potrzebuje co najmniej jednego wyzwalacza i konfiguracji każdego bloku.",
+			"changedElsewhere": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Została wczytana ponownie, spróbuj jeszcze raz."
+		}
+	}
+}
