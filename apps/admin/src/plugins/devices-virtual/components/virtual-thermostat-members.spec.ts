@@ -22,6 +22,8 @@ vi.mock('../../../common', () => ({
 	useBackend: () => ({ client: { GET: mocks.get, PUT: mocks.put, POST: mocks.post } }),
 	getErrorReason: () => 'failure',
 	injectSockets: () => ({ on: mocks.on, off: mocks.off }),
+	// The spaces store behind the room and zone inputs of a new thermostat.
+	injectStoresManager: () => ({ getStore: () => ({ fetch: async () => undefined, findAll: () => [] }) }),
 }));
 const context = (id: string) => ({
 	physical_identity: `canonical-${id}`,

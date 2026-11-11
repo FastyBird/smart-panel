@@ -55,6 +55,12 @@
 					>
 						<el-input v-model="model.name" />
 					</el-form-item>
+					<virtual-placement-fields
+						v-if="!outputId"
+						v-model:room-id="model.roomId"
+						v-model:zone-ids="model.zoneIds"
+						:disabled="busy"
+					/>
 					<el-form-item
 						v-if="isTransform"
 						:label="t('devicesVirtualPlugin.measurement.profile')"
@@ -238,9 +244,11 @@
 					>
 						<el-input-number
 							v-model="model.minimumValidInputs"
+							data-test-id="aggregate-quorum"
 							:min="1"
 							:max="model.inputs.length || 1"
 							:precision="0"
+							@change="quorumChosen = true"
 						/>
 					</el-form-item>
 					<template v-if="!isTransform && numericPolicy">
@@ -403,6 +411,8 @@
 				data-test-id="measurement-summary"
 			>
 				<el-descriptions-item :label="t('devicesVirtualPlugin.measurement.name')">{{ model.name }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.room.title')">{{ roomName(model.roomId) }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">{{ zoneNames(model.zoneIds) }}</el-descriptions-item>
 				<el-descriptions-item :label="t('devicesVirtualPlugin.measurement.profile')">{{ profileLabel }}</el-descriptions-item>
 				<el-descriptions-item :label="t('devicesVirtualPlugin.measurement.inputs')">
 					<div
@@ -534,8 +544,10 @@ import {
 } from '../../../openapi';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useMeasurementAuthoring } from '../composables/use-measurement-authoring';
+import { usePlacementNames } from '../composables/use-placement-names';
 import { type MeasurementMode, aggregateCandidates, measurementCandidates } from '../utils/measurement-authoring.utils';
 
+import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
 
 // `temperature` defaults to `undefined` explicitly: Vue casts an absent boolean prop to `false`, which
@@ -594,6 +606,17 @@ const syncProfileQuantity = (temperature: boolean): void => {
 syncProfileQuantity(model.temperature);
 watch(() => model.temperature, syncProfileQuantity);
 if (isTransform) model.inputs = [{ source_property: null }];
+// A new aggregate asks for every configured source until the user picks a quorum of their own: an
+// average of three sensors should not silently become the reading of whichever one still answers.
+const { roomName, zoneNames } = usePlacementNames();
+const quorumChosen = ref(false);
+watch(
+	() => model.inputs.length,
+	(count) => {
+		if (!isTransform && !props.outputId && !quorumChosen.value) model.minimumValidInputs = Math.max(1, count);
+	},
+	{ immediate: true }
+);
 const loading = ref(false),
 	catalogError = ref<string | null>(null);
 const candidates = computed(() =>

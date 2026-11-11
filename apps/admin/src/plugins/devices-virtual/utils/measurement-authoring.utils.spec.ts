@@ -17,6 +17,7 @@ import {
 	aggregateDraft,
 	measurementCandidates,
 	measurementDraft,
+	withPlacement,
 } from './measurement-authoring.utils';
 
 const device = (type: string, mode?: string): MeasurementSourceDevice => ({ id: 'device', type, name: 'Probe', mode });
@@ -127,5 +128,14 @@ describe('backend aggregate capability payloads', () => {
 		expect(aggregateCandidates([{ property: 'server-admitted', device: 'd', channel: 'c' }], [], [], [property()], capability)).toEqual([
 			{ id: 'server-admitted', label: 'server-admitted', quantity: 'detected', unit: '' },
 		]);
+	});
+	it('adds a room and zones to a draft only when they are chosen', () => {
+		const device = { id: 'device', name: 'Combined' };
+		expect(withPlacement(device, { roomId: null, zoneIds: [] })).toEqual(device);
+		expect(withPlacement(device, { roomId: 'room', zoneIds: ['zone-a', 'zone-b'] })).toEqual({
+			...device,
+			room_id: 'room',
+			zone_ids: ['zone-a', 'zone-b'],
+		});
 	});
 });
