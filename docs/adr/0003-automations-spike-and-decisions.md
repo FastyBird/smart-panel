@@ -260,7 +260,11 @@ orderly shutdown, and stays there until the network sets the time.
   current minute is served; the times the jump skipped do not fire, exactly as after a restart. A stall of up
   to 5 minutes is caught up minute by minute, so a busy event loop does not lose a trigger.
 - **A corrected clock does not fire twice.** When the clock is set back the tick continues from the new time,
-  and a time-of-day trigger fires at most once per local date.
+  and a time-of-day trigger fires at most once per local date. Each trigger remembers the last 31 local dates
+  it fired for (`TIME_OF_DAY_SERVED_DATES_KEPT`), so the guarantee covers a clock set back by up to a month; a
+  date older than that can fire again. A set of dates is kept instead of a high-water mark, because a clock
+  briefly set far ahead would otherwise silence the trigger until that date. The memory is per subscription and
+  is lost when the trigger is re-armed or the backend restarts.
 - **Durations are not affected.** Delays, "for" durations, timeouts and the rate windows run on the monotonic
   clock (decision 6), so none of them changes when the wall clock is set.
 - **What is not detected:** a clock that is wrong but plausible - `fake-hwclock` restoring a time some hours or

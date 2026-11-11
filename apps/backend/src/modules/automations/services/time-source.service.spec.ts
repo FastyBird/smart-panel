@@ -206,6 +206,26 @@ describe('AutomationTimeSourceService', () => {
 		expect(fired.map((item) => item.date)).toEqual(['2026-01-05', '2026-01-06', '2026-01-07']);
 	});
 
+	it('remembers the last 31 dates it fired for, and no more', async () => {
+		await start('2026-01-05T06:59:30Z');
+
+		service.onTimeOfDay({ time: '08:00' }, fire);
+
+		clock.advanceMinutes(32 * 24 * 60);
+		expect(fired).toHaveLength(32);
+
+		// The second date is among the 31 that are remembered
+		clock.setTo('2026-01-06T06:59:30Z');
+		clock.advanceMinutes(120);
+		expect(fired).toHaveLength(32);
+
+		// The first date is not: the limit is documented in ADR 0003, decision 17
+		clock.setTo('2026-01-05T06:59:30Z');
+		clock.advanceMinutes(120);
+		expect(fired).toHaveLength(33);
+		expect(fired[32].date).toBe('2026-01-05');
+	});
+
 	it('does not hand a trigger the minutes the tick catches up on from before the trigger started', async () => {
 		await start('2026-01-05T06:59:20Z');
 
