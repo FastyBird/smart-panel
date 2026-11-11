@@ -69,6 +69,7 @@ export interface IAutomationsStoreActions {
 	set: (payload: IAutomationsSetActionPayload) => IAutomation;
 	unset: (payload: IAutomationsUnsetActionPayload) => void;
 	unsetAll: () => void;
+	reset: () => Promise<unknown>;
 	get: (payload: IAutomationsGetActionPayload) => Promise<IAutomation>;
 	fetch: () => Promise<IAutomation[]>;
 	add: (payload: IAutomationsAddActionPayload) => Promise<IAutomation>;

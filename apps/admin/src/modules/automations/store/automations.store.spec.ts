@@ -901,6 +901,47 @@ describe('Automations Store', () => {
 			expect(store.findAll().map((automation) => automation.id)).toEqual([thirdAutomationId]);
 		});
 
+		it('reads the list again after a reset that came while the first list was on its way', async () => {
+			const firstList = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(firstList.promise).mockResolvedValueOnce({
+				data: { data: [summaryRes({ id: thirdAutomationId, name: 'Away heating' })] },
+				response: { status: 200 },
+			});
+
+			const pendingList = store.fetch();
+
+			expect(store.isLoaded()).toBe(false);
+
+			const pendingReset = store.reset();
+
+			// From before the reset: none of it is there any more
+			firstList.resolve({ data: { data: [summaryRes()] }, response: { status: 200 } });
+
+			await pendingList;
+			await pendingReset;
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+			expect(store.findAll().map((automation) => automation.id)).toEqual([thirdAutomationId]);
+		});
+
+		it('reads the list again after a reset when it held only what was read one by one', async () => {
+			store.onEvent({ id: automationId, data: detailRes() });
+
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [] }, response: { status: 200 } });
+
+			await store.reset();
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+			expect(store.findAll()).toEqual([]);
+		});
+
+		it('reads nothing after a reset when nothing was asked for yet', async () => {
+			await store.reset();
+
+			expect(mockBackendClient.GET).not.toHaveBeenCalled();
+		});
+
 		it('does not recover from a conflict with a read begun before it', async () => {
 			store.onEvent({ id: automationId, data: detailRes({ revision: 3 }) });
 

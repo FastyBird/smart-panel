@@ -516,6 +516,17 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		// asked for before that, is not the answer
 		const refresh = (): Promise<unknown> => list(true);
 
+		// The module was reset. Whether the list is worth reading again has to be asked before the store
+		// is emptied: afterwards it holds nothing, and a first list still on its way is discarded as older
+		// than the reset, so nothing would ever read what was created since.
+		const reset = (): Promise<unknown> => {
+			const readAgain = isLoaded() || fetching();
+
+			unsetAll();
+
+			return readAgain ? refresh() : Promise.resolve();
+		};
+
 		return {
 			isLoaded,
 			refresh,
@@ -532,6 +543,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			set,
 			unset,
 			unsetAll,
+			reset,
 			get,
 			fetch,
 			add,
