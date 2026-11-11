@@ -26,6 +26,7 @@ import {
 	ModbusTimeoutError,
 } from '../lib/errors';
 import { ReadBlock, ReadLimits, planReadBlocks, sliceForPoint, splitBlock } from '../lib/read-planner';
+import { readLimitIssue } from '../lib/structure-validation';
 import { selectWriteFunction } from '../lib/write-function';
 import {
 	ModbusReadRequest,
@@ -240,6 +241,17 @@ export class ModbusProbeService {
 			}
 		}
 
+		// The planner never splits a value, so a point wider than the register limit would be read with more registers
+		// than the caller allows. The device structure refuses the same combination.
+		const limitIssue = readLimitIssue(
+			options.limits.maxRegisters,
+			points.map(({ binding }) => ({ registerType: binding.registerType, dataType: binding.dataType })),
+		);
+
+		if (limitIssue) {
+			throw validationError(limitIssue.field, limitIssue.reason);
+		}
+
 		const start = performance.now();
 		const results: ModbusProbePointResult[] = points.map(({ key }) => ({
 			key,
@@ -247,6 +259,9 @@ export class ModbusProbeService {
 			value: null,
 			error: null,
 		}));
+
+		// A transport failure that stopped the batch is the batch's error too, even when earlier blocks were read.
+		let stoppedBy: ModbusProbeError | null = null;
 
 		try {
 			await this.withChannel(target, async (channel) => {
@@ -264,6 +279,8 @@ export class ModbusProbeService {
 					const fatal = await this.readBlock(channel, block, points, results, options);
 
 					if (fatal) {
+						stoppedBy = fatal;
+
 						// Stop at the first transport failure (as the poller does): continuing would reset an rtu_over_tcp
 						// socket per block, and a late reply could be decoded as the next block's answer.
 						for (const result of results) {
@@ -291,7 +308,7 @@ export class ModbusProbeService {
 		return {
 			ok: results.some((result) => result.error === null && result.value !== null),
 			points: results,
-			error: null,
+			error: stoppedBy,
 			durationMs: performance.now() - start,
 		};
 	}

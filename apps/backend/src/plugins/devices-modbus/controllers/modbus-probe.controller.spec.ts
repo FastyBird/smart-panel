@@ -3,6 +3,7 @@ import { THROTTLER_LIMIT, THROTTLER_TTL } from '@nestjs/throttler/dist/throttler
 import { ROLES_KEY } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import { ModbusByteOrder, ModbusDataType, ModbusFraming, ModbusRegisterType } from '../devices-modbus.constants';
+import { ModbusValidationException } from '../devices-modbus.exceptions';
 import { ProbeModbusPointsDto, ProbeModbusReadDto, ProbeModbusWriteDto } from '../dto/probe.dto';
 import { ModbusProbeService } from '../services/modbus-probe.service';
 
@@ -205,5 +206,46 @@ describe('ModbusProbeController', () => {
 			error: { kind: 'exception', exception_code: 2, message: 'Illegal data address' },
 			duration_ms: 6,
 		});
+	});
+
+	it.each([
+		['host', { host: null, port: 502, framing: ModbusFraming.TCP }],
+		['port', { host: '10.0.0.5', port: null, framing: ModbusFraming.TCP }],
+		['framing', { host: '10.0.0.5', port: 502, framing: null }],
+		['endpoint_id', { endpoint_id: null }],
+	])('refuses a null %s as a validation error instead of passing it to the service', async (_field, target) => {
+		const dto = { ...target, unit_id: 1, register_type: ModbusRegisterType.HOLDING_REGISTER, address: 0, count: 1 };
+
+		await expect(controller.read({ data: dto as unknown as ProbeModbusReadDto })).rejects.toBeInstanceOf(
+			ModbusValidationException,
+		);
+		expect(service.read).not.toHaveBeenCalled();
+	});
+
+	it('treats null optional timeouts as absent', async () => {
+		const dto = {
+			host: '10.0.0.5',
+			port: 502,
+			framing: ModbusFraming.TCP,
+			connect_timeout_ms: null,
+			request_timeout_ms: null,
+			unit_id: 1,
+			register_type: ModbusRegisterType.HOLDING_REGISTER,
+			address: 0,
+			count: 1,
+		};
+
+		await controller.read({ data: dto as unknown as ProbeModbusReadDto });
+
+		expect(service.read).toHaveBeenCalledWith(
+			{
+				host: '10.0.0.5',
+				port: 502,
+				framing: ModbusFraming.TCP,
+				connectTimeoutMs: undefined,
+				requestTimeoutMs: undefined,
+			},
+			expect.anything(),
+		);
 	});
 });

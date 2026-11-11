@@ -383,6 +383,7 @@ describe('ModbusProbeService', () => {
 
 			expect(transport.read).toHaveBeenCalledTimes(1);
 			expect(result.ok).toBe(false);
+			expect(result.error).toMatchObject({ kind: 'timeout' });
 			expect(result.points.map((p) => p.error?.kind)).toEqual(['timeout', 'timeout']);
 			expect(result.points.every((p) => p.raw === null && p.value === null)).toBe(true);
 		});
@@ -397,6 +398,8 @@ describe('ModbusProbeService', () => {
 			);
 
 			expect(transport.read).toHaveBeenCalledTimes(2);
+			expect(result.ok).toBe(true);
+			expect(result.error).toMatchObject({ kind: 'timeout' });
 			expect(result.points[0]).toEqual({ key: 'a', raw: [5], value: 5, error: null });
 			expect(result.points.slice(1).map((p) => p.error?.kind)).toEqual(['timeout', 'timeout']);
 		});
@@ -407,6 +410,7 @@ describe('ModbusProbeService', () => {
 			const result = await service.readPoints({ endpointId: 'ep-1' }, [point('a', 10), point('b', 400)], pointsOptions);
 
 			expect(transport.read).toHaveBeenCalledTimes(2);
+			expect(result.error).toBeNull();
 			expect(result.points[0].error).toMatchObject({ kind: 'exception', exceptionCode: 6 });
 			expect(result.points[1]).toMatchObject({ value: 9, error: null });
 		});
@@ -468,6 +472,33 @@ describe('ModbusProbeService', () => {
 				ModbusValidationException,
 			);
 			expect(factory).not.toHaveBeenCalled();
+		});
+
+		it('refuses a point wider than the register limit without opening a channel', async () => {
+			await expect(
+				service.readPoints({ endpointId: 'ep-1' }, [point('x', 10, { dataType: ModbusDataType.FLOAT32 })], {
+					...pointsOptions,
+					limits: { ...pointsOptions.limits, maxRegisters: 1 },
+				}),
+			).rejects.toMatchObject({
+				response: { message: [expect.stringContaining('"field":"max_read_registers"')] },
+			});
+			expect(factory).not.toHaveBeenCalled();
+			expect(transport.read).not.toHaveBeenCalled();
+		});
+
+		it('accepts bit points and single-register points under a one-register limit', async () => {
+			transport.read.mockImplementation((req: ModbusReadRequest) =>
+				Promise.resolve(req.registerType === ModbusRegisterType.COIL ? [true] : [7]),
+			);
+
+			const result = await service.readPoints(
+				{ endpointId: 'ep-1' },
+				[point('r', 10), point('c', 3, { registerType: ModbusRegisterType.COIL, dataType: ModbusDataType.BOOL })],
+				{ ...pointsOptions, limits: { ...pointsOptions.limits, maxRegisters: 1 } },
+			);
+
+			expect(result.points.map((p) => p.value)).toEqual([7, true]);
 		});
 	});
 

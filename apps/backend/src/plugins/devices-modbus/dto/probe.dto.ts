@@ -183,6 +183,7 @@ export class ProbeModbusPointDto {
 
 	@ApiProperty({ description: 'How the point is read and decoded', type: () => ModbusBindingDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"binding","reason":"Binding is required."}]' })
 	@ValidateNested()
 	@Type(() => ModbusBindingDto)
 	binding: ModbusBindingDto;
@@ -276,6 +277,7 @@ export class ProbeModbusPointsDto extends ProbeModbusTargetDto {
 export class ProbeModbusWriteDto extends ProbeModbusTargetDto {
 	@ApiProperty({ description: 'Where and how the value is written', type: () => ModbusBindingDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"binding","reason":"Binding is required."}]' })
 	@ValidateNested()
 	@Type(() => ModbusBindingDto)
 	binding: ModbusBindingDto;
@@ -323,6 +325,7 @@ export class ProbeModbusWriteDto extends ProbeModbusTargetDto {
 export class ReqProbeModbusReadDto {
 	@ApiProperty({ description: 'Probe read data', type: () => ProbeModbusReadDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Request data is required."}]' })
 	@ValidateNested()
 	@Type(() => ProbeModbusReadDto)
 	data: ProbeModbusReadDto;
@@ -332,6 +335,7 @@ export class ReqProbeModbusReadDto {
 export class ReqProbeModbusPointsDto {
 	@ApiProperty({ description: 'Probe points data', type: () => ProbeModbusPointsDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Request data is required."}]' })
 	@ValidateNested()
 	@Type(() => ProbeModbusPointsDto)
 	data: ProbeModbusPointsDto;
@@ -341,6 +345,7 @@ export class ReqProbeModbusPointsDto {
 export class ReqProbeModbusWriteDto {
 	@ApiProperty({ description: 'Probe write data', type: () => ProbeModbusWriteDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Request data is required."}]' })
 	@ValidateNested()
 	@Type(() => ProbeModbusWriteDto)
 	data: ProbeModbusWriteDto;
