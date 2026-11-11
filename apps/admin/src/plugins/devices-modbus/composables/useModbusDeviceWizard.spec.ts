@@ -487,5 +487,23 @@ describe('useModbusDeviceWizard', () => {
 
 			expect(wizard.canContinue(3)).toBe(true);
 		});
+
+		it('refuses a fractional poll interval or one longer than a day on the device step', () => {
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.device.name = 'Box';
+			wizard.state.device.category = 'switcher';
+			wizard.state.device.pollIntervalMs = 100.5;
+
+			expect(wizard.canContinue(3)).toBe(false);
+
+			wizard.state.device.pollIntervalMs = 86_400_001;
+
+			expect(wizard.canContinue(3)).toBe(false);
+
+			wizard.state.device.pollIntervalMs = 86_400_000;
+
+			expect(wizard.canContinue(3)).toBe(true);
+		});
 	});
 });

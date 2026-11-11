@@ -14,7 +14,7 @@ import type {
 	DevicesModbusPluginGetEndpointsOperation,
 	DevicesModbusPluginUpdateEndpointOperation,
 } from '../../../openapi.constants';
-import { DEVICES_MODBUS_PLUGIN_PREFIX } from '../devices-modbus.constants';
+import { DEVICES_MODBUS_PLUGIN_PREFIX, MODBUS_HEALTH_REQUESTS_PER_MINUTE } from '../devices-modbus.constants';
 import { DevicesModbusApiException, type IDevicesModbusErrorField } from '../devices-modbus.exceptions';
 
 import type { IModbusEndpoint, IModbusEndpointCreate, IModbusEndpointHealth, IModbusEndpointUpdate } from './endpoints.types';
@@ -191,20 +191,54 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		markMutated(id);
 		delete data.value[id];
 		delete health.value[id];
+		// A health request still in flight must not bring the removed endpoint's health back.
+		latestHealth.delete(id);
 	};
 
 	const remove = (id: string): Promise<void> => enqueue(id, () => sendRemove(id));
 
+	// When each health request of the last minute was sent. The store outlives the pages, so remounting the endpoints
+	// page cannot start a fresh budget while the backend still counts the requests of the previous visit.
+	const healthSent: number[] = [];
+
+	/** Takes up to `wanted` requests from the per-minute health budget and returns how many may be sent now. */
+	const reserveHealthRequests = (wanted: number, now: number = Date.now()): number => {
+		while (healthSent.length > 0 && healthSent[0] <= now - 60_000) {
+			healthSent.shift();
+		}
+
+		const granted = Math.max(0, Math.min(wanted, MODBUS_HEALTH_REQUESTS_PER_MINUTE - healthSent.length));
+
+		for (let index = 0; index < granted; index++) {
+			healthSent.push(now);
+		}
+
+		return granted;
+	};
+
+	// Health requests for one endpoint can overlap (the device page and the endpoints page each ask); only the latest
+	// one may update or clear the cached health, so a slow older answer cannot replace or drop a newer one.
+	let healthCount = 0;
+	const latestHealth = new Map<string, number>();
+
 	const requestHealth = async (id: string) => backend.client.GET(`${BASE}/{id}/health`, { params: { path: { id } } });
 
 	const fetchHealth = async (id: string): Promise<IModbusEndpointHealth> => {
+		const request = ++healthCount;
+
+		latestHealth.set(id, request);
+
+		const isLatest = (): boolean => latestHealth.get(id) === request;
+
 		let result: Awaited<ReturnType<typeof requestHealth>>;
 
 		try {
 			result = await requestHealth(id);
 		} catch (caught: unknown) {
 			// The last known state is no longer live; the table renders a missing entry as unknown.
-			delete health.value[id];
+			if (isLatest()) {
+				delete health.value[id];
+			}
 
 			throw caught;
 		}
@@ -212,11 +246,17 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		const { data: responseData, error, response } = result;
 
 		if (responseData) {
-			return (health.value[id] = transformModbusEndpointHealth(responseData.data));
+			const snapshot = transformModbusEndpointHealth(responseData.data);
+
+			if (isLatest()) {
+				health.value[id] = snapshot;
+			}
+
+			return snapshot;
 		}
 
 		// Too many requests says nothing about the endpoint: keep its last known state.
-		if (response.status !== 429) {
+		if (response.status !== 429 && isLatest()) {
 			delete health.value[id];
 		}
 
@@ -226,7 +266,7 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		);
 	};
 
-	return { data, health, findAll, findById, fetch, get, add, edit, remove, fetchHealth };
+	return { data, health, findAll, findById, fetch, get, add, edit, remove, fetchHealth, reserveHealthRequests };
 });
 
 export const registerModbusEndpointsStore = (pinia: Pinia): ReturnType<typeof useModbusEndpoints> => useModbusEndpoints(pinia);

@@ -225,6 +225,8 @@ watch(
 			newEndpoint.host,
 			newEndpoint.port,
 			newEndpoint.framing,
+			newEndpoint.connectTimeoutMs,
+			newEndpoint.requestTimeoutMs,
 			unitId,
 			parsed.value.ok ? parsed.value.start : null,
 			effectiveRegisterType.value,

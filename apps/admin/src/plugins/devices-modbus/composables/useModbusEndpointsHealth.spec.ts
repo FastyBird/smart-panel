@@ -12,6 +12,22 @@ const store = {
 	findAll: vi.fn(),
 	fetch: vi.fn(),
 	fetchHealth: vi.fn(),
+	reserveHealthRequests: vi.fn(),
+};
+
+// Stands in for the store's per-minute budget, which outlives the component like the real store does.
+let healthSent: number[] = [];
+
+const reserveHealthRequests = (wanted: number): number => {
+	const now = Date.now();
+
+	healthSent = healthSent.filter((at) => at > now - 60_000);
+
+	const granted = Math.max(0, Math.min(wanted, MODBUS_HEALTH_ROUND_SIZE - healthSent.length));
+
+	healthSent.push(...Array.from({ length: granted }, () => now));
+
+	return granted;
 };
 
 vi.mock('../../../common', async () => {
@@ -48,6 +64,8 @@ describe('useModbusEndpointsHealth', () => {
 		vi.clearAllMocks();
 		store.findAll.mockReturnValue([{ id: 'a' }, { id: 'b' }]);
 		store.fetchHealth.mockResolvedValue({});
+		healthSent = [];
+		store.reserveHealthRequests.mockImplementation(reserveHealthRequests);
 	});
 
 	afterEach(() => {
@@ -169,6 +187,29 @@ describe('useModbusEndpointsHealth', () => {
 
 		// E.g. the list reloaded or an endpoint was saved: the minute's budget is already used.
 		await refreshFn();
+		await vi.advanceTimersByTimeAsync(59_999);
+
+		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE);
+
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE * 2);
+
+		wrapper.unmount();
+	});
+
+	it('keeps the per-minute budget when the page is left and opened again', async () => {
+		store.findAll.mockReturnValue(Array.from({ length: 250 }, (_, index) => ({ id: `e${index}` })));
+
+		mountComposable(5000).unmount();
+		await flushPromises();
+
+		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE);
+
+		// Reopened twice within the minute: the backend still counts the first visit's requests.
+		mountComposable(5000).unmount();
+		const wrapper = mountComposable(5000);
+		await flushPromises();
 		await vi.advanceTimersByTimeAsync(59_999);
 
 		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE);

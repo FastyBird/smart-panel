@@ -116,7 +116,8 @@ const bindingFromPreview = (binding: IModbusTemplatePreviewBinding | undefined):
 				scale: binding.scale ?? 1,
 				offset: binding.offset ?? 0,
 				invert: binding.invert ?? false,
-				valueMap: binding.valueMap ? binding.valueMap.map((entry) => ({ raw: entry.raw, value: entry.value })) : null,
+				// An empty map is no map: the editor and the request treat both alike.
+				valueMap: binding.valueMap?.length ? binding.valueMap.map((entry) => ({ raw: entry.raw, value: entry.value })) : null,
 				writeFunction: binding.writeFunction ?? null,
 				pollIntervalMs: binding.pollIntervalMs ?? null,
 			};
@@ -188,7 +189,7 @@ export const toRequestBinding = (binding: ModbusPointBinding): RequestBinding =>
 	...(binding.bit !== null ? { bit: binding.bit } : {}),
 	...(binding.byteOrder !== null ? { byte_order: binding.byteOrder } : {}),
 	...(binding.wordOrder !== null ? { word_order: binding.wordOrder } : {}),
-	...(binding.valueMap !== null
+	...(binding.valueMap !== null && binding.valueMap.length > 0
 		? { value_map: binding.valueMap.map((entry) => ({ raw: entry.raw, value: entry.value })) }
 		: {
 				...(binding.scale !== 1 ? { scale: binding.scale } : {}),

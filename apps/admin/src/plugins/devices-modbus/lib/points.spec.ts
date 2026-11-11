@@ -17,6 +17,7 @@ import {
 	samePoints,
 	suggestCategory,
 	toCreateRequest,
+	toRequestBinding,
 	valueMapValueFromText,
 } from './points';
 
@@ -233,6 +234,49 @@ describe('pointsFromPreview', () => {
 		expect(points[1].read).toMatchObject({ scale: 0.1, offset: -5, bit: 2, invert: true, valueMap: null });
 		expect(points[2]).toMatchObject({ staticValue: 'Acme', read: null, write: null });
 		expect(new Set(points.map((p) => p.key)).size).toBe(3);
+	});
+});
+
+describe('empty value maps', () => {
+	it('imports an empty value map from a template as no map, keeping its scale and offset', () => {
+		const points = pointsFromPreview({
+			...preview,
+			channels: [
+				{
+					identifier: 'temp',
+					name: 'Temperature',
+					category: 'temperature',
+					properties: [
+						{
+							category: 'temperature',
+							dataType: 'float',
+							permissions: ['ro'],
+							read: { registerType: RT.input_register, address: 3, dataType: DT.int16, scale: 0.1, offset: -5, valueMap: [] },
+						},
+					],
+				},
+			],
+		});
+
+		expect(points[0].read?.valueMap).toBeNull();
+		expect(toRequestBinding(points[0].read!)).toEqual({
+			register_type: 'input_register',
+			address: 3,
+			data_type: 'int16',
+			scale: 0.1,
+			offset: -5,
+		});
+	});
+
+	it('sends the scale and offset of a binding whose value map is empty', () => {
+		const binding = {
+			...pointsFromPreview(preview)[1].read!,
+			bit: null,
+			invert: false,
+			valueMap: [],
+		};
+
+		expect(toRequestBinding(binding)).toEqual({ register_type: 'input_register', address: 3, data_type: 'int16', scale: 0.1, offset: -5 });
 	});
 });
 

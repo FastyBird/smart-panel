@@ -55,6 +55,8 @@
 			<el-input-number
 				v-model="wizard.state.device.pollIntervalMs"
 				:min="MODBUS_MIN_POLL_INTERVAL_MS"
+				:max="MODBUS_MAX_POLL_INTERVAL_MS"
+				:precision="0"
 				:step="100"
 				:step-strictly="false"
 				name="devicePollInterval"
@@ -118,7 +120,7 @@ import { SpaceType } from '../../../../modules/spaces/spaces.constants';
 import { spacesStoreKey } from '../../../../modules/spaces/store/keys';
 import type { ISpace } from '../../../../modules/spaces/store/spaces.store.types';
 import { DevicesModbusPluginByteOrder } from '../../../../openapi.constants';
-import { MODBUS_MIN_POLL_INTERVAL_MS } from '../../devices-modbus.constants';
+import { MODBUS_MAX_POLL_INTERVAL_MS, MODBUS_MIN_POLL_INTERVAL_MS } from '../../devices-modbus.constants';
 import { suggestCategory } from '../../lib/points';
 
 import type { IModbusWizardDeviceStepProps } from './modbus-wizard-device-step.types';

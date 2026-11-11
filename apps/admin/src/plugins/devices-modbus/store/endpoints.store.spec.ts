@@ -197,6 +197,79 @@ describe('Modbus endpoints store', () => {
 		expect(store.health.ep).toBeUndefined();
 	});
 
+	const deferredGet = () => {
+		let resolve: (value: unknown) => void = () => undefined;
+		let reject: (reason: unknown) => void = () => undefined;
+		const promise = new Promise((res, rej) => {
+			resolve = res;
+			reject = rej;
+		});
+
+		get.mockReturnValueOnce(promise);
+
+		return { resolve, reject };
+	};
+
+	const healthWire = (state: string) => ({
+		data: { data: { state, last_error: null, last_error_at: null, average_latency_ms: 1, requests: 1, timeouts: 0, overloaded: false } },
+		response: { status: 200 },
+	});
+
+	it('ignores a failure of an older health request that answers after a newer one', async () => {
+		const store = useModbusEndpoints();
+		const older = deferredGet();
+		const newer = deferredGet();
+
+		const first = store.fetchHealth('ep');
+		const second = store.fetchHealth('ep');
+
+		newer.resolve(healthWire('connected'));
+		await second;
+		older.reject(new Error('offline'));
+		await expect(first).rejects.toThrow('offline');
+
+		expect(store.health.ep?.state).toBe('connected');
+	});
+
+	it('ignores an older health snapshot that answers after a newer one', async () => {
+		const store = useModbusEndpoints();
+		const older = deferredGet();
+		const newer = deferredGet();
+
+		const first = store.fetchHealth('ep');
+		const second = store.fetchHealth('ep');
+
+		newer.resolve(healthWire('connected'));
+		await second;
+		older.resolve(healthWire('backoff'));
+		await first;
+
+		expect(store.health.ep?.state).toBe('connected');
+	});
+
+	it('does not bring back the health of an endpoint removed while its health was loading', async () => {
+		del.mockResolvedValue({ response: { status: 204 } });
+		const store = useModbusEndpoints();
+		const pending = deferredGet();
+
+		const request = store.fetchHealth('ep');
+		await store.remove('ep');
+		pending.resolve(healthWire('connected'));
+		await request;
+
+		expect(store.health.ep).toBeUndefined();
+	});
+
+	it('shares one per-minute health budget across callers', () => {
+		const store = useModbusEndpoints();
+
+		expect(store.reserveHealthRequests(100, 0)).toBe(100);
+		expect(store.reserveHealthRequests(100, 30_000)).toBe(20);
+		expect(store.reserveHealthRequests(1, 59_999)).toBe(0);
+		// The first 100 leave the window a minute after they were sent.
+		expect(store.reserveHealthRequests(150, 60_000)).toBe(100);
+	});
+
 	it('remove keeps the entry and throws when the backend refuses', async () => {
 		get.mockResolvedValue({ data: { data: [wireEndpoint()] }, response: { status: 200 } });
 		del.mockResolvedValue({ error: { reason: 'Endpoint is used by devices.' }, response: { status: 400 } });

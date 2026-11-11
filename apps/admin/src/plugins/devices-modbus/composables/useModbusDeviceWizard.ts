@@ -4,7 +4,12 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import { configPluginsStoreKey } from '../../../modules/config';
 import { DevicesModbusPluginByteOrder, type DevicesModbusPluginCreateDeviceOperation, DevicesModbusPluginFraming } from '../../../openapi.constants';
-import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_PLUGIN_PREFIX, MODBUS_MIN_POLL_INTERVAL_MS } from '../devices-modbus.constants';
+import {
+	DEVICES_MODBUS_PLUGIN_NAME,
+	DEVICES_MODBUS_PLUGIN_PREFIX,
+	MODBUS_MAX_POLL_INTERVAL_MS,
+	MODBUS_MIN_POLL_INTERVAL_MS,
+} from '../devices-modbus.constants';
 import type { AddressNotation } from '../lib/address-notation';
 import { type ModbusPoint, pointsFromPreview, toCreateRequest } from '../lib/points';
 import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../store/keys';
@@ -166,8 +171,10 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 					state.device.name.trim() !== '' &&
 					state.device.category !== null &&
 					state.device.category !== '' &&
-					Number.isFinite(state.device.pollIntervalMs) &&
-					state.device.pollIntervalMs >= MODBUS_MIN_POLL_INTERVAL_MS
+					// The create request needs a whole number of milliseconds within the backend's range.
+					Number.isInteger(state.device.pollIntervalMs) &&
+					state.device.pollIntervalMs >= MODBUS_MIN_POLL_INTERVAL_MS &&
+					state.device.pollIntervalMs <= MODBUS_MAX_POLL_INTERVAL_MS
 				);
 			default:
 				return false;

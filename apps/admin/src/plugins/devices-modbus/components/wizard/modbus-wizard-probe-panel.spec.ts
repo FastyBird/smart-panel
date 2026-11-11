@@ -136,6 +136,32 @@ describe('ModbusWizardProbePanel', () => {
 		expect(wrapper.find('.el-alert').exists()).toBe(false);
 	});
 
+	it.each([
+		['connect', (wizard: IUseModbusDeviceWizard) => (wizard.state.newEndpoint.connectTimeoutMs += 1000)],
+		['request', (wizard: IUseModbusDeviceWizard) => (wizard.state.newEndpoint.requestTimeoutMs += 1000)],
+	])('clears the previous result when the %s timeout of a new endpoint changes', async (_label, change) => {
+		const wizard = useModbusDeviceWizard();
+
+		wizard.state.endpointMode = 'new';
+		wizard.state.newEndpoint.host = '10.0.0.9';
+
+		const wrapper = await run(wizard);
+
+		expect(read).toHaveBeenCalledWith(
+			expect.objectContaining({ host: '10.0.0.9' }),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything()
+		);
+		expect(wrapper.find('.el-alert').exists()).toBe(true);
+
+		change(wizard);
+		await flushPromises();
+
+		expect(wrapper.find('.el-alert').exists()).toBe(false);
+	});
+
 	it('clears the previous result when the address or the count changes', async () => {
 		const wizard = useModbusDeviceWizard();
 

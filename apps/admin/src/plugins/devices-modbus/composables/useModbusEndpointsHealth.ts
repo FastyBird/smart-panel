@@ -1,13 +1,8 @@
 import { onBeforeUnmount, onMounted } from 'vue';
 
 import { injectStoresManager } from '../../../common';
+import { MODBUS_HEALTH_REQUESTS_PER_MINUTE } from '../devices-modbus.constants';
 import { modbusEndpointsStoreKey } from '../store/keys';
-
-/**
- * Health requests one admin tab may send per minute. The backend allows 240 a minute per client across all endpoints;
- * half of that leaves room for a second tab and for manual refreshes.
- */
-export const MODBUS_HEALTH_REQUESTS_PER_MINUTE = 120;
 
 /**
  * Endpoints asked in one round. Each round is sent at once, so with more endpoints than this a round takes the next
@@ -41,9 +36,6 @@ export const useModbusEndpointsHealth = (intervalMs: number = 5000): { refresh: 
 	let running = false;
 	let stopped = false;
 	let offset = 0;
-	// When each request of the last minute was sent. Scheduled rounds and refresh() share this one budget, so a
-	// refresh right before a scheduled round cannot double the requests of a minute.
-	const sent: number[] = [];
 
 	const round = async (): Promise<void> => {
 		if (running || stopped) {
@@ -53,20 +45,15 @@ export const useModbusEndpointsHealth = (intervalMs: number = 5000): { refresh: 
 		running = true;
 
 		try {
-			// One failing endpoint (e.g. deleted meanwhile) must not hide the others.
-			const now = Date.now();
-
-			while (sent.length > 0 && sent[0] <= now - 60_000) {
-				sent.shift();
-			}
-
 			const endpoints = endpointsStore.findAll();
-			const slice = healthRoundSlice(endpoints, offset, MODBUS_HEALTH_REQUESTS_PER_MINUTE - sent.length);
-
-			slice.forEach(() => sent.push(now));
+			// Scheduled rounds, refresh() and earlier visits of the page share the store's per-minute budget, so neither
+			// a refresh right before a round nor reopening the page can exceed the requests the backend allows.
+			const granted = endpointsStore.reserveHealthRequests(Math.min(endpoints.length, MODBUS_HEALTH_ROUND_SIZE));
+			const slice = healthRoundSlice(endpoints, offset, granted);
 
 			offset = endpoints.length === 0 ? 0 : (offset + slice.length) % endpoints.length;
 
+			// One failing endpoint (e.g. deleted meanwhile) must not hide the others.
 			await Promise.allSettled(slice.map((endpoint) => endpointsStore.fetchHealth(endpoint.id)));
 		} finally {
 			running = false;
