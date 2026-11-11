@@ -42,6 +42,12 @@
 					>
 						<el-input v-model="name" />
 					</el-form-item>
+					<virtual-placement-fields
+						v-if="create"
+						v-model:room-id="roomId"
+						v-model:zone-ids="zoneIds"
+						:disabled="busy"
+					/>
 					<div
 						v-if="configuration"
 						class="mt-3 space-y-2"
@@ -390,6 +396,8 @@
 						data-test-id="thermostat-summary"
 					>
 						<el-descriptions-item :label="tt('name')">{{ name }}</el-descriptions-item>
+						<el-descriptions-item :label="t('devicesModule.fields.devices.room.title')">{{ roomName(roomId) }}</el-descriptions-item>
+						<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">{{ zoneNames(zoneIds) }}</el-descriptions-item>
 						<el-descriptions-item :label="tt('summary.mode')">{{ tt(`modes.${draft.requested_mode}`) }}</el-descriptions-item>
 						<el-descriptions-item :label="tt('summary.setpoints')">
 							{{ tt('summary.setpointsValue', { heating: draft.policy.heatingSetpoint ?? '—', cooling: draft.policy.coolingSetpoint ?? '—' }) }}
@@ -524,6 +532,7 @@ import {
 	DevicesVirtualPluginThermostatSourceRole as ThermostatSourceRole,
 	type operations,
 } from '../../../openapi';
+import { usePlacementNames } from '../composables/use-placement-names';
 import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
 import { useThermostatPreviewGate } from '../composables/use-thermostat-preview-gate';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
@@ -546,6 +555,7 @@ import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
 import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
 import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
+import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
 import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
 
@@ -618,6 +628,9 @@ onBeforeUnmount(() => {
 const preview = ref<ThermostatConfiguration | null>(null);
 const draft = ref(props.create ? newThermostatDraft() : emptyThermostatDraft());
 const name = ref('');
+const roomId = ref<string | null>(null);
+const zoneIds = ref<string[]>([]);
+const { roomName, zoneNames } = usePlacementNames();
 const graph = ref<ReturnType<typeof thermostatDeviceDraft> | null>(null);
 let graphBranchSignature = '';
 const creationGraph = () => {
@@ -627,6 +640,11 @@ const creationGraph = () => {
 		graphBranchSignature = signature;
 	}
 	graph.value.device.name = name.value.trim();
+	// Assigned, not spread: the same graph object is previewed and then created.
+	if (roomId.value) graph.value.device.room_id = roomId.value;
+	else delete graph.value.device.room_id;
+	if (zoneIds.value.length) graph.value.device.zone_ids = [...zoneIds.value];
+	else delete graph.value.device.zone_ids;
 	return graph.value;
 };
 const payload = () =>
@@ -646,8 +664,16 @@ const loadError = ref<string | null>(null);
 const requestError = ref<string | null>(null);
 const previewGate = useThermostatPreviewGate(
 	() =>
-		JSON.stringify({ draft: draft.value, name: name.value, create: props.create, deviceId: props.deviceId, revision: configuration.value?.revision }),
-	[draft, name, () => props.create, () => props.deviceId, () => configuration.value?.revision],
+		JSON.stringify({
+			draft: draft.value,
+			name: name.value,
+			roomId: roomId.value,
+			zoneIds: zoneIds.value,
+			create: props.create,
+			deviceId: props.deviceId,
+			revision: configuration.value?.revision,
+		}),
+	[draft, name, roomId, zoneIds, () => props.create, () => props.deviceId, () => configuration.value?.revision],
 	() => {
 		preview.value = null;
 		previewBusy.value = false;

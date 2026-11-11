@@ -412,4 +412,28 @@ describe('measurement editor dedicated quantity routing', () => {
 		expect(mocks.GET.mock.calls.map((call) => call[0])).toEqual(['/plugins/devices-virtual/producers/dew-points/{id}']);
 		wrapper.unmount();
 	});
+
+	describe('new aggregate defaults', () => {
+		it('asks for every configured source until the user chooses a quorum', async () => {
+			const wrapper = await mountEditor();
+			const add = () =>
+				wrapper
+					.findAll('button')
+					.find((button) => button.text().includes('.addInput'))!
+					.trigger('click');
+			const quorum = () =>
+				wrapper.findAllComponents({ name: 'ElInputNumber' }).find((input) => input.attributes('data-test-id') === 'aggregate-quorum')!;
+			await add();
+			await add();
+			await add();
+			await flushPromises();
+			expect(quorum().props('modelValue')).toBe(3);
+			quorum().vm.$emit('update:modelValue', 2);
+			quorum().vm.$emit('change', 2, 3);
+			await add();
+			await flushPromises();
+			expect(quorum().props('modelValue')).toBe(2);
+			wrapper.unmount();
+		});
+	});
 });

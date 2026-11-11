@@ -12,6 +12,8 @@
 		<el-alert
 			v-if="error"
 			:title="t(`devicesVirtualPlugin.dewPoint.errors.${error}`)"
+			:description="reason ?? undefined"
+			data-test-id="dew-point-error"
 			type="error"
 			:closable="false"
 		/>
@@ -33,6 +35,16 @@
 				>
 					<el-input v-model="model.name" />
 				</el-form-item>
+				<div
+					v-if="!outputId"
+					v-show="at(0)"
+				>
+					<virtual-placement-fields
+						v-model:room-id="model.roomId"
+						v-model:zone-ids="model.zoneIds"
+						:disabled="busy"
+					/>
+				</div>
 				<el-form-item
 					v-for="role in roles"
 					v-show="at(1)"
@@ -83,6 +95,8 @@
 				data-test-id="dew-point-summary"
 			>
 				<el-descriptions-item :label="t('devicesVirtualPlugin.measurement.name')">{{ model.name }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.room.title')">{{ roomName(model.roomId) }}</el-descriptions-item>
+				<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">{{ zoneNames(model.zoneIds) }}</el-descriptions-item>
 				<el-descriptions-item
 					v-for="role in roles"
 					:key="role.key"
@@ -171,13 +185,16 @@ import { injectStoresManager } from '../../../common';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useDewPointAuthoring } from '../composables/use-dew-point-authoring';
+import { usePlacementNames } from '../composables/use-placement-names';
 
+import VirtualPlacementFields from './virtual-placement-fields.vue';
 import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
 
 const props = withDefaults(defineProps<{ outputId?: string; wizard?: boolean }>(), { outputId: undefined });
 const emit = defineEmits<{ created: [id: string]; busy: [value: boolean] }>();
 const { t } = useI18n();
-const { model, current, preview, busy, error, canSave, reload, check, save } = useDewPointAuthoring(props.outputId);
+const { roomName, zoneNames } = usePlacementNames();
+const { model, current, preview, busy, error, reason, canSave, reload, check, save } = useDewPointAuthoring(props.outputId);
 // Captured response expiry is never renewed by rendering or a wall-clock rollback.
 const diagnosticNow = ref(Date.now()),
 	diagnosticMonotonic = ref(performance.now());

@@ -469,10 +469,12 @@ Found on an installed alpha.67 and reproduced locally with 14 simulated devices.
 Still open, deliberately not changed here:
 
 - Route `meta.title` values and the plugin's own name/description are plain English, as in every other admin module and plugin; they are not shown in the wizard.
-- **No room/zone input** on the aggregate, conversion, dew-point and both thermostat flows; the actuator group has room only. The backend accepts `room_id`/`zone_ids` on these producers.
+- **Room and zones** are offered on every kind authored by one editor (aggregate, conversion, dew point, relay thermostat, actuator group) through `virtual-placement-fields.vue`, and shown on the review step. Still missing on the controller for an existing thermostat: its create request carries only a name and the source device, so that needs a backend change first.
 - **NTC/Steinhart operators** require a `voltage` property in the admin, while the backend also accepts the Shelly `analog_input/value` raw-voltage identity.
-- **Aggregate quorum defaults to 1**; the capabilities design says all configured sources.
-- **Dew-point errors are generic**: preview and create failures do not show the backend reason.
+- **Aggregate quorum** of a new aggregate follows the number of configured sources until the user sets one; an existing aggregate keeps the stored value.
+- **Dew-point errors** show the backend reason under the generic message.
+- Backend diagnostic codes (readiness, claim state, blocker reasons) are still shown as codes.
+- A wizard loses its form state when the window crosses the tablet breakpoint (the app layout remounts the page).
 - Not verified locally: guarded and native thermostat creation end to end (needs a Shelly Gen2+ relay, respectively a Home Assistant or Zigbee2MQTT climate unit).
 
 ## 4. Not to be done

@@ -1,6 +1,7 @@
 import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue';
 
 import { useBackend } from '../../../common';
+import { getErrorReason } from '../../../common/utils/api-error.utils';
 import {
 	DevicesVirtualPluginConfigureDewPointFormula_version,
 	DevicesVirtualPluginConfigureDewPointSchema_version,
@@ -8,7 +9,7 @@ import {
 	type components,
 } from '../../../openapi';
 import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
-import { measurementDraft } from '../utils/measurement-authoring.utils';
+import { measurementDraft, withPlacement } from '../utils/measurement-authoring.utils';
 
 type Configuration = components['schemas']['DevicesVirtualPluginConfigureDewPoint'];
 type State = components['schemas']['DevicesVirtualPluginDataDewPoint'];
@@ -18,11 +19,21 @@ const formula = DevicesVirtualPluginConfigureDewPointFormula_version.magnus_wate
 export function useDewPointAuthoring(outputId?: string) {
 	const backend = useBackend();
 	const ids = { output: outputId ?? crypto.randomUUID(), device: crypto.randomUUID(), channel: crypto.randomUUID() };
-	const model = reactive({ name: '', dryBulb: null as string | null, humidity: null as string | null, maximumAgeSeconds: 60, maximumSkewSeconds: 5 });
+	const model = reactive({
+		name: '',
+		roomId: null as string | null,
+		zoneIds: [] as string[],
+		dryBulb: null as string | null,
+		humidity: null as string | null,
+		maximumAgeSeconds: 60,
+		maximumSkewSeconds: 5,
+	});
 	const current = ref<State | null>(null),
 		preview = ref<State | null>(null),
 		busy = ref(false),
-		error = ref<string | null>(null);
+		error = ref<string | null>(null),
+		// What the backend said about a refused preview or save, shown under the generic message.
+		reason = ref<string | null>(null);
 	let revision = 0,
 		graphRevision: number | undefined,
 		generation = 0,
@@ -42,10 +53,13 @@ export function useDewPointAuthoring(outputId?: string) {
 		],
 	});
 	const draft = () => ({
-		device: measurementDraft(DevicesVirtualPluginDeviceMode.sensor_transform, model.name, false, ids.output, ids.device, ids.channel, {
-			minimum: -45,
-			maximum: 60,
-		}),
+		device: withPlacement(
+			measurementDraft(DevicesVirtualPluginDeviceMode.sensor_transform, model.name, false, ids.output, ids.device, ids.channel, {
+				minimum: -45,
+				maximum: 60,
+			}),
+			model
+		),
 		output_property: ids.output,
 		configuration: configuration(),
 	});
@@ -86,6 +100,7 @@ export function useDewPointAuthoring(outputId?: string) {
 			captured = snapshot();
 		busy.value = true;
 		error.value = null;
+		reason.value = null;
 		reviewed = null;
 		try {
 			const result = outputId
@@ -94,7 +109,10 @@ export function useDewPointAuthoring(outputId?: string) {
 						body: configuration(),
 					})
 				: await backend.client.POST('/plugins/devices-virtual/producers/dew-points/draft-preview', { body: draft() });
-			if (!result.data || result.error) throw new Error('dewPointPreview');
+			if (!result.data || result.error) {
+				if (token === generation) reason.value = getErrorReason(result.error as never, '') || null;
+				throw new Error('dewPointPreview');
+			}
 			if (token !== generation || captured !== snapshot()) return;
 			preview.value = result.data.data;
 			graphRevision = preview.value.graph_revision;
@@ -110,13 +128,17 @@ export function useDewPointAuthoring(outputId?: string) {
 		const token = ++generation;
 		busy.value = true;
 		error.value = null;
+		reason.value = null;
 		try {
 			if (outputId) {
 				const result = await backend.client.PUT('/plugins/devices-virtual/producers/dew-points/{id}', {
 					params: { path: { id: outputId } },
 					body: configuration(),
 				});
-				if (!result.data || result.error) throw new Error('revision');
+				if (!result.data || result.error) {
+					if (token === generation) reason.value = getErrorReason(result.error as never, '') || null;
+					throw new Error('revision');
+				}
 				if (token === generation) {
 					current.value = result.data.data;
 					revision = current.value.revision;
@@ -125,7 +147,10 @@ export function useDewPointAuthoring(outputId?: string) {
 				return null;
 			}
 			const result = await backend.client.POST('/plugins/devices-virtual/producers/dew-points', { body: draft() });
-			if (!result.data || result.error) throw new Error('revision');
+			if (!result.data || result.error) {
+				if (token === generation) reason.value = getErrorReason(result.error as never, '') || null;
+				throw new Error('revision');
+			}
 			return token === generation ? result.data.data.device.id : null;
 		} catch {
 			if (token === generation) error.value = 'revision';
@@ -147,5 +172,5 @@ export function useDewPointAuthoring(outputId?: string) {
 		{ deep: true, flush: 'sync' }
 	);
 	onMounted(reload);
-	return { model, current, preview, busy, error, canSave, reload, check, save };
+	return { model, current, preview, busy, error, reason, canSave, reload, check, save };
 }

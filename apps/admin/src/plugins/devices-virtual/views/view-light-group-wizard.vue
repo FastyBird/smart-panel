@@ -73,22 +73,13 @@
 							:candidates="candidates"
 						/>
 					</el-form-item>
-					<el-form-item
-						v-show="step === 0"
-						:label="t('devicesVirtualPlugin.lightGroup.room')"
-					>
-						<el-select
-							v-model="roomId"
-							clearable
-						>
-							<el-option
-								v-for="room in rooms"
-								:key="room.id"
-								:label="room.name"
-								:value="room.id"
-							/>
-						</el-select>
-					</el-form-item>
+					<div v-show="step === 0">
+						<virtual-placement-fields
+							v-model:room-id="roomId"
+							v-model:zone-ids="zoneIds"
+							:disabled="authoring.pending.value"
+						/>
+					</div>
 				</el-form>
 				<template v-if="step === 2 && availableCapabilities.length">
 					<el-alert
@@ -129,9 +120,8 @@
 					<el-descriptions-item :label="t('devicesVirtualPlugin.lightGroup.profile')">
 						{{ t(`devicesVirtualPlugin.lightGroup.profiles.${profile}`) }}
 					</el-descriptions-item>
-					<el-descriptions-item :label="t('devicesVirtualPlugin.lightGroup.room')">
-						{{ rooms.find((room) => room.id === roomId)?.name ?? '—' }}
-					</el-descriptions-item>
+					<el-descriptions-item :label="t('devicesModule.fields.devices.room.title')">{{ roomName(roomId) }}</el-descriptions-item>
+					<el-descriptions-item :label="t('devicesModule.fields.devices.zones.title')">{{ zoneNames(zoneIds) }}</el-descriptions-item>
 					<el-descriptions-item :label="t('devicesVirtualPlugin.lightGroup.members')">
 						<div
 							v-for="member in candidates.filter((candidate) => memberIds.includes(candidate.id))"
@@ -184,8 +174,10 @@ import { channelsPropertiesStoreKey, devicesStoreKey } from '../../../modules/de
 import { spacesStoreKey } from '../../../modules/spaces/store/keys';
 import type { components } from '../../../openapi';
 import VirtualLightGroupMembers from '../components/virtual-light-group-members.vue';
+import VirtualPlacementFields from '../components/virtual-placement-fields.vue';
 import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';
 import VirtualWizardSteps from '../components/wizard/virtual-wizard-steps.vue';
+import { usePlacementNames } from '../composables/use-placement-names';
 import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';
 import { useLightGroupAuthoring } from '../composables/useLightGroupAuthoring';
 
@@ -201,6 +193,8 @@ const profile = ref<GroupProfile>('light' as GroupProfile);
 const requiredCapabilities = computed(() => catalog.profiles.value.find((entry) => entry.profile === profile.value)?.required_capabilities ?? ['on']);
 const name = ref('');
 const roomId = ref<string | null>(null);
+const zoneIds = ref<string[]>([]);
+const { roomName, zoneNames } = usePlacementNames();
 const memberIds = ref<string[]>([]);
 const capabilities = ref<components['schemas']['DevicesVirtualPluginLightGroupDraft']['capabilities']>(undefined);
 const availableCapabilities = ref<components['schemas']['DevicesVirtualPluginDataLightGroupCapability'][]>([]);
@@ -221,7 +215,6 @@ const selectedCapabilities = computed({
 	},
 });
 
-const rooms = computed(() => spaces.findAll().filter((space) => space.type === 'room'));
 const candidates = computed(() =>
 	(catalog.catalog.value?.candidates ?? []).map((candidate) => ({
 		id: candidate.channel,
@@ -294,7 +287,7 @@ const preview = async () => {
 	if (result && !availableCapabilities.value.length) availableCapabilities.value = result.common_capabilities;
 };
 const create = async () => {
-	const result = await authoring.create({ ...draft(), device: { name: name.value.trim(), room_id: roomId.value, zone_ids: [] } });
+	const result = await authoring.create({ ...draft(), device: { name: name.value.trim(), room_id: roomId.value, zone_ids: zoneIds.value } });
 	if (result) {
 		await router.push({ name: DevicesRouteNames.DEVICE, params: { id: result.device.id } });
 		return;

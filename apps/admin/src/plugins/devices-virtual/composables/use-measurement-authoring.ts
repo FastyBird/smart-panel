@@ -27,6 +27,7 @@ import {
 	aggregateDraft,
 	measurementDraft,
 	numericOperatorKey,
+	withPlacement,
 } from '../utils/measurement-authoring.utils';
 
 type SemanticErrorOperation = { responses: { default: { content: { 'application/json': unknown } } } };
@@ -45,6 +46,8 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const ids = { device: crypto.randomUUID(), channel: crypto.randomUUID(), output: outputId ?? crypto.randomUUID() };
 	const model = reactive({
 		name: '',
+		roomId: null as string | null,
+		zoneIds: [] as string[],
 		profile: 'temperature' as AggregateProfile['profile'],
 		filterEnabled: false,
 		filterThreshold: undefined as number | undefined,
@@ -369,26 +372,29 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		});
 	};
 	const draft = () => ({
-		device: !isTransform
-			? aggregateDraft(
-					selectedProfile.value ??
-						(() => {
-							throw new Error('measurementCatalog');
-						})(),
-					model.name,
-					ids.output,
-					ids.device,
-					ids.channel
-				)
-			: measurementDraft(
-					mode,
-					model.name,
-					!isTransform || model.temperature,
-					ids.output,
-					ids.device,
-					ids.channel,
-					isTransform ? policy().outputRange : undefined
-				),
+		device: withPlacement(
+			!isTransform
+				? aggregateDraft(
+						selectedProfile.value ??
+							(() => {
+								throw new Error('measurementCatalog');
+							})(),
+						model.name,
+						ids.output,
+						ids.device,
+						ids.channel
+					)
+				: measurementDraft(
+						mode,
+						model.name,
+						!isTransform || model.temperature,
+						ids.output,
+						ids.device,
+						ids.channel,
+						isTransform ? policy().outputRange : undefined
+					),
+			model
+		),
 		output_property: ids.output,
 	});
 	const previewDraft = async () => {
