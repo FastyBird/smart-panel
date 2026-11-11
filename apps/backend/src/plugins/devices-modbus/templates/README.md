@@ -56,7 +56,8 @@ A property takes `category` plus optional `identifier`, `name`, `data_type`, `pe
 `static_value`, and optional `read` / `write` bindings. A binding takes `register_type`
 (`coil | discrete_input | input_register | holding_register`), `address`, `data_type`
 (`bool | int16 | uint16 | int32 | uint32 | float32`) and optionally `bit`, `byte_order`, `word_order`, `scale`,
-`offset`, `invert`, `value_map` (`[{ raw, value }]`), `write_function` (`single | multiple`) and `poll_interval_ms`.
+`offset`, `invert`, `value_map` (`[{ raw, value }]`), `write_function` (`single | multiple`), `poll_interval_ms` and `long_press_ms` (100 to 10000, on the read binding of
+`button.event` only).
 Transformations are limited to those binding fields.
 
 ### Property defaults

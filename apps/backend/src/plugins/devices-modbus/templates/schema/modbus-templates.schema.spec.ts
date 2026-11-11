@@ -78,6 +78,29 @@ describe('modbus-templates.schema.json', () => {
 		expect(validate(doc)).toBe(false);
 	});
 
+	it('accepts long_press_ms on a binding', () => {
+		for (const value of [100, 10000]) {
+			const doc = qingjun();
+			binding(doc).long_press_ms = value;
+
+			expect(validate(doc)).toBe(true);
+		}
+	});
+
+	it.each([99, 10001, 800.5])('rejects long_press_ms %s', (value) => {
+		const doc = qingjun();
+		binding(doc).long_press_ms = value;
+
+		expect(validate(doc)).toBe(false);
+	});
+
+	it('refuses the generic device category', () => {
+		const doc = qingjun();
+		doc.templates[0].category = 'generic';
+
+		expect(validate(doc)).toBe(false);
+	});
+
 	it('rejects a repeat count of 0', () => {
 		const doc = qingjun();
 		doc.templates[0].channels[0].repeat = { count: 0 };

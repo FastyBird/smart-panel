@@ -271,6 +271,7 @@ export class ModbusDeviceStructureService {
 			valueMap: dto.value_map ? dto.value_map.map(({ raw, value }) => ({ raw, value })) : null,
 			writeFunction: dto.write_function ?? null,
 			pollIntervalMs: dto.poll_interval_ms ?? null,
+			longPressMs: dto.long_press_ms ?? null,
 		});
 	}
 

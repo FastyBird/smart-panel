@@ -173,4 +173,24 @@ export class ModbusBindingDto {
 		message: '[{"field":"poll_interval_ms","reason":"Poll interval must be at most 86400000 ms (one day)."}]',
 	})
 	poll_interval_ms?: number;
+
+	@ApiPropertyOptional({
+		name: 'long_press_ms',
+		description:
+			'Hold time in milliseconds after which a press counts as a long press. Allowed on the read binding of a button event only; the default applies when omitted',
+		type: 'integer',
+		minimum: MODBUS_LIMITS.MIN_LONG_PRESS_MS,
+		maximum: MODBUS_LIMITS.MAX_LONG_PRESS_MS,
+		example: MODBUS_DEFAULTS.LONG_PRESS_MS,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"long_press_ms","reason":"Value must be an integer."}]' })
+	@Min(MODBUS_LIMITS.MIN_LONG_PRESS_MS, {
+		message: '[{"field":"long_press_ms","reason":"Long press must be at least 100 ms."}]',
+	})
+	@Max(MODBUS_LIMITS.MAX_LONG_PRESS_MS, {
+		message: '[{"field":"long_press_ms","reason":"Long press must be at most 10000 ms."}]',
+	})
+	long_press_ms?: number;
 }

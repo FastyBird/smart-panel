@@ -55,6 +55,8 @@ export const MODBUS_DEFAULTS = {
 	UNIT_ID: 1,
 	POLL_INTERVAL_MS: 1000,
 	MIN_POLL_INTERVAL_MS: 100,
+	/** A press held this long counts as a long press unless the binding says otherwise. */
+	LONG_PRESS_MS: 800,
 	BYTE_ORDER: ModbusByteOrder.BIG,
 	WORD_ORDER: ModbusByteOrder.BIG,
 	MAX_READ_REGISTERS: 125,
@@ -76,6 +78,8 @@ export const MODBUS_LIMITS = {
 	MAX_TIMING_MS: 60_000,
 	/** One day. */
 	MAX_POLL_INTERVAL_MS: 86_400_000,
+	MIN_LONG_PRESS_MS: 100,
+	MAX_LONG_PRESS_MS: 10_000,
 	MAX_IN_FLIGHT: 16,
 	TEMPLATE_REVISION_MAX_LENGTH: 128,
 } as const;
