@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
@@ -25,6 +26,7 @@ import { AutomationsSeederService } from './services/automations-seeder.service'
 import { AutomationsService } from './services/automations.service';
 import { AutomationsModuleResetService } from './services/module-reset.service';
 import { AutomationNodeTypeRegistryService } from './services/node-type-registry.service';
+import { AutomationStateTrackerService } from './services/state-tracker.service';
 
 @ApiTag({
 	tagName: AUTOMATIONS_MODULE_NAME,
@@ -32,18 +34,24 @@ import { AutomationNodeTypeRegistryService } from './services/node-type-registry
 	description: AUTOMATIONS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([AutomationEntity]), SpacesModule, SeedModule],
+	imports: [TypeOrmModule.forFeature([AutomationEntity]), DevicesModule, SpacesModule, SeedModule],
 	controllers: [AutomationsController, AutomationNodeTypesController],
 	providers: [
 		// Core services
 		AutomationsService,
 		AutomationNodeTypeRegistryService,
+		AutomationStateTrackerService,
 		// Reset service
 		AutomationsModuleResetService,
 		// Seeder
 		AutomationsSeederService,
 	],
-	exports: [AutomationsService, AutomationNodeTypeRegistryService, AutomationsModuleResetService],
+	exports: [
+		AutomationsService,
+		AutomationNodeTypeRegistryService,
+		AutomationStateTrackerService,
+		AutomationsModuleResetService,
+	],
 })
 export class AutomationsModule implements OnModuleInit {
 	constructor(
