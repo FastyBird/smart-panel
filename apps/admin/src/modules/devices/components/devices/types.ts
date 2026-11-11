@@ -2,6 +2,7 @@ export * from './device-add-form.types';
 export * from './device-edit-form.types';
 export * from './device-detail.types';
 export * from './device-detail-description.types';
+export * from './device-property-picker.types';
 export * from './devices-filter.types';
 export * from './devices-table.types';
 export * from './devices-table-column-icon.types';

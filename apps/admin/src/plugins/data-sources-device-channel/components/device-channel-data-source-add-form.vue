@@ -19,65 +19,17 @@
 			/>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('dataSourcesDeviceChannelPlugin.fields.device.title')"
-			prop="device"
-		>
-			<el-select
-				v-model="model.device"
-				:placeholder="t('dataSourcesDeviceChannelPlugin.fields.device.placeholder')"
-				name="device"
-				:loading="loadingDevices"
-				filterable
-			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dataSourcesDeviceChannelPlugin.fields.channel.title')"
-			prop="channel"
-		>
-			<el-select
-				v-model="model.channel"
-				:placeholder="t('dataSourcesDeviceChannelPlugin.fields.channel.placeholder')"
-				name="channel"
-				:loading="loadingChannels"
-				filterable
-			>
-				<el-option
-					v-for="item in channelsOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dataSourcesDeviceChannelPlugin.fields.property.title')"
-			prop="property"
-		>
-			<el-select
-				v-model="model.property"
-				:placeholder="t('dataSourcesDeviceChannelPlugin.fields.property.placeholder')"
-				name="property"
-				:loading="loadingProperties"
-				filterable
-			>
-				<el-option
-					v-for="item in propertiesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+		<device-property-picker
+			v-model:device-id="model.device"
+			:channel-id="model.channel"
+			:property-id="model.property"
+			device-prop="device"
+			channel-prop="channel"
+			property-prop="property"
+			:texts="pickerTexts"
+			@update:channel-id="onChannelUpdate"
+			@update:property-id="onPropertyUpdate"
+		/>
 
 		<el-form-item
 			:label="t('dataSourcesDeviceChannelPlugin.fields.icon.title')"
@@ -92,15 +44,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
-import { orderBy } from 'natural-orderby';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
 import { IconPicker } from '../../../common';
-import { DashboardException, FormResult, type FormResultType, type IDataSourceAddFormProps, useDataSourceAddForm } from '../../../modules/dashboard';
-import { type IChannel, type IChannelProperty, type IDevice, useChannels, useChannelsProperties, useDevices } from '../../../modules/devices';
+import { FormResult, type FormResultType, type IDataSourceAddFormProps, useDataSourceAddForm } from '../../../modules/dashboard';
+import { DevicePropertyPicker, type IDevicePropertyPickerTexts } from '../../../modules/devices';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 import type { IDeviceChannelDataSourceAddForm } from '../schemas/data-sources.types';
 
@@ -130,59 +81,32 @@ const { model, formEl, formChanged, submit, formResult } = useDataSourceAddForm<
 	parentId: props.parentId,
 });
 
-const { devices, fetchDevices, areLoading: loadingDevices } = useDevices();
-const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({ deviceId: model.device });
-const {
-	properties,
-	fetchProperties,
-	areLoading: loadingProperties,
-} = useChannelsProperties({ channelId: computed(() => model.channel || undefined) });
-
 const rules = reactive<FormRules<IDeviceChannelDataSourceAddForm>>({
 	device: [{ required: true, message: t('dataSourcesDeviceChannelPlugin.fields.device.validation.required'), trigger: 'change' }],
 	channel: [{ required: true, message: t('dataSourcesDeviceChannelPlugin.fields.channel.validation.required'), trigger: 'change' }],
 	property: [{ required: true, message: t('dataSourcesDeviceChannelPlugin.fields.property.validation.required'), trigger: 'change' }],
 });
 
-const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
-	return orderBy<IDevice>(
-		devices.value.filter((device) => !device.hidden),
-		[(device: IDevice) => device.name],
-		['asc']
-	).map((device) => ({ value: device.id, label: device.name }));
-});
+// This form shows the same placeholder whether or not there is something to pick from
+const pickerTexts = computed<Partial<IDevicePropertyPickerTexts>>(() => ({
+	deviceTitle: t('dataSourcesDeviceChannelPlugin.fields.device.title'),
+	devicePlaceholder: t('dataSourcesDeviceChannelPlugin.fields.device.placeholder'),
+	channelTitle: t('dataSourcesDeviceChannelPlugin.fields.channel.title'),
+	channelPlaceholder: t('dataSourcesDeviceChannelPlugin.fields.channel.placeholder'),
+	channelEmpty: t('dataSourcesDeviceChannelPlugin.fields.channel.placeholder'),
+	propertyTitle: t('dataSourcesDeviceChannelPlugin.fields.property.title'),
+	propertyPlaceholder: t('dataSourcesDeviceChannelPlugin.fields.property.placeholder'),
+	propertyEmpty: t('dataSourcesDeviceChannelPlugin.fields.property.placeholder'),
+}));
 
-const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>((): { value: IChannel['id']; label: string }[] => {
-	return orderBy<IChannel>(
-		channels.value.filter((channel: IChannel) => channel.device === model.device),
-		[(channel: IChannel) => channel.name],
-		['asc']
-	).map((channel) => ({
-		value: channel.id,
-		label: channel.name,
-	}));
-});
+// The form model keeps an empty string for a channel and a property not picked yet
+const onChannelUpdate = (channelId: string | null): void => {
+	model.channel = channelId ?? '';
+};
 
-const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>((): { value: IChannelProperty['id']; label: string }[] => {
-	return orderBy<IChannelProperty>(
-		properties.value.filter((property: IChannelProperty) => property.channel === model.channel),
-		[(property: IChannelProperty) => property.name],
-		['asc']
-	).map((property) => ({
-		value: property.id,
-		label: property.name || property.category,
-	}));
-});
-
-onBeforeMount((): void => {
-	if (!loadingDevices.value) {
-		fetchDevices().catch((error: unknown): void => {
-			const err = error as Error;
-
-			throw new DashboardException('Something went wrong', err);
-		});
-	}
-});
+const onPropertyUpdate = (propertyId: string | null): void => {
+	model.property = propertyId ?? '';
+};
 
 watch(
 	(): FormResultType => formResult.value,
@@ -221,40 +145,6 @@ watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
-	}
-);
-
-watch(
-	(): IDevice['id'] => model.device,
-	(): void => {
-		if (!model.device) {
-			return;
-		}
-
-		if (!loadingChannels.value) {
-			fetchChannels().catch((error: unknown): void => {
-				const err = error as Error;
-
-				throw new DashboardException('Something went wrong', err);
-			});
-		}
-	}
-);
-
-watch(
-	(): IChannel['id'] => model.channel,
-	(): void => {
-		if (!model.channel) {
-			return;
-		}
-
-		if (!loadingProperties.value) {
-			fetchProperties().catch((error: unknown): void => {
-				const err = error as Error;
-
-				throw new DashboardException('Something went wrong', err);
-			});
-		}
 	}
 );
 </script>

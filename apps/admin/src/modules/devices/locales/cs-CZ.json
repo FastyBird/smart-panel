@@ -326,6 +326,29 @@
 		}
 	},
 	"fields": {
+		"propertyPicker": {
+			"device": {
+				"title": "Zařízení",
+				"placeholder": "Vyberte zařízení",
+				"groups": {
+					"recommended": "Doporučená",
+					"other": "Ostatní zařízení"
+				}
+			},
+			"channel": {
+				"title": "Kanál",
+				"placeholder": "Vyberte kanál",
+				"empty": "Žádné kanály nejsou k dispozici"
+			},
+			"property": {
+				"title": "Vlastnost",
+				"placeholder": "Vyberte vlastnost",
+				"empty": "Žádné vlastnosti nejsou k dispozici"
+			}
+		},
+		"propertyValue": {
+			"placeholder": "Zadejte hodnotu"
+		},
 		"devices": {
 			"search": {
 				"placeholder": "Hledat zařízení..."

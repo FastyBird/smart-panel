@@ -11,8 +11,9 @@ import DeviceChannelDataSourceAddForm from './device-channel-data-source-add-for
 const mockDevices = ref<IDevice[]>([]);
 const mockFetchDevices = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../../modules/devices', async () => {
-	const actual = await vi.importActual('../../../modules/devices');
+// The device property picker reads the composables from their own module, so that is the one to mock
+vi.mock('../../../modules/devices/composables/composables', async () => {
+	const actual = await vi.importActual('../../../modules/devices/composables/composables');
 
 	return {
 		...actual,

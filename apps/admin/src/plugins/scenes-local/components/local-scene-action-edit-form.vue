@@ -1,7 +1,7 @@
 <template>
 	<!-- Empty state when no devices available -->
 	<el-result
-		v-if="!loadingDevices && devicesOptions.length === 0"
+		v-if="!loadingDevices && !hasDevices"
 		class="h-full w-full"
 	>
 		<template #icon>
@@ -28,82 +28,14 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('scenesLocalPlugin.fields.device.title')"
-			prop="deviceId"
-		>
-			<el-select
-				v-model="model.deviceId"
-				:placeholder="t('scenesLocalPlugin.fields.device.placeholder')"
-				name="deviceId"
-				:loading="loadingDevices"
-				:disabled="devicesOptions.length === 0"
-				filterable
-				class="w-full"
-				@change="onDeviceChange"
-			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('scenesLocalPlugin.fields.channel.title')"
-			prop="channelId"
-		>
-			<el-select
-				v-model="model.channelId"
-				:placeholder="
-					channelsOptions.length === 0 && model.deviceId && !loadingChannels
-						? t('scenesLocalPlugin.fields.channel.noChannels')
-						: t('scenesLocalPlugin.fields.channel.placeholder')
-				"
-				name="channelId"
-				:loading="loadingChannels"
-				:disabled="!model.deviceId || channelsOptions.length === 0"
-				filterable
-				class="w-full"
-				@change="onChannelChange"
-			>
-				<el-option
-					v-for="item in channelsOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('scenesLocalPlugin.fields.property.title')"
-			prop="propertyId"
-		>
-			<el-select
-				v-model="model.propertyId"
-				:placeholder="
-					propertiesOptions.length === 0 && model.channelId && !loadingProperties
-						? t('scenesLocalPlugin.fields.property.noProperties')
-						: t('scenesLocalPlugin.fields.property.placeholder')
-				"
-				name="propertyId"
-				:loading="loadingProperties"
-				:disabled="!model.channelId || propertiesOptions.length === 0"
-				filterable
-				class="w-full"
-				@change="onPropertyChange"
-			>
-				<el-option
-					v-for="item in propertiesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+		<device-property-picker
+			v-model:device-id="model.deviceId"
+			v-model:channel-id="model.channelId"
+			v-model:property-id="model.propertyId"
+			:property-filter="isPropertyWritable"
+			:texts="pickerTexts"
+			@change="onPickerChange"
+		/>
 
 		<el-alert
 			v-if="groupControls.isGroup.value"
@@ -116,73 +48,32 @@
 			:label="t('scenesLocalPlugin.fields.value.title')"
 			prop="value"
 		>
-			<template v-if="selectedPropertyType === 'boolean'">
-				<el-switch v-model="booleanValue" />
-			</template>
-			<template v-else-if="selectedPropertyType === 'enum' && selectedPropertyFormat">
-				<el-select
-					v-model="model.value"
-					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
-					name="value"
-					class="w-full"
-				>
-					<el-option
-						v-for="item in enumOptions"
-						:key="item"
-						:label="item"
-						:value="item"
-					/>
-				</el-select>
-			</template>
-			<template v-else-if="selectedPropertyType === 'number'">
-				<el-input-number
-					v-model="numberValue"
-					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
-					name="value"
-					:min="numberMin"
-					:max="numberMax"
-					:step="numberStep"
-					class="w-full"
-				/>
-			</template>
-			<template v-else>
-				<el-input
-					v-model="stringValue"
-					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
-					name="value"
-				/>
-			</template>
+			<property-value-input
+				:model-value="model.value"
+				:property="selectedProperty"
+				:option-filter="isValueAllowed"
+				:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
+				@update:model-value="onValueUpdate"
+			/>
 		</el-form-item>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import {
-	ElAlert,
-	ElForm,
-	ElFormItem,
-	ElInput,
-	ElInputNumber,
-	ElOption,
-	ElResult,
-	ElSelect,
-	ElSwitch,
-	type FormInstance,
-	type FormRules,
-} from 'element-plus';
-import { orderBy } from 'natural-orderby';
+import { ElAlert, ElForm, ElFormItem, ElResult, type FormInstance, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { IconWithChild } from '../../../common';
 import {
-	DevicesException,
-	type IChannel,
+	DevicePropertyPicker,
 	type IChannelProperty,
-	type IDevice,
+	type IDevicePropertyPickerField,
+	type IDevicePropertyPickerTexts,
+	PropertyValueInput,
 	useChannels,
 	useChannelsProperties,
 	useDevices,
@@ -232,162 +123,42 @@ const model = reactive<ILocalSceneActionEditForm>({
 
 const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
 
-const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
-const {
-	channels,
-	fetchChannels,
-	areLoading: loadingChannels,
-} = useChannels({
+// The picker loads the devices, channels and properties; the form only reads them from the stores
+const { devices, areLoading: loadingDevices } = useDevices();
+const { channels } = useChannels({
 	deviceId: computed<string>((): string => model.deviceId ?? ''),
 });
-const {
-	properties,
-	fetchProperties,
-	areLoading: loadingProperties,
-} = useChannelsProperties({
+const { properties } = useChannelsProperties({
 	channelId: selectedChannelId,
 });
+
+// Hidden devices are never offered by the picker — the backend refuses a scene action targeting one
+const hasDevices = computed<boolean>(() => devices.value.some((device) => !device.hidden));
 
 const groupControls = useGroupSceneControls(
 	computed(() => devices.value.find((device) => device.id === model.deviceId)),
 	channels
 );
+// Only writable properties are offered
 const isPropertyWritable = (property: IChannelProperty): boolean => groupControls.allowed(property);
-
-// Filter properties to only writable ones
-const writableProperties = computed<IChannelProperty[]>(() => {
-	return properties.value.filter(isPropertyWritable);
-});
-
-// Filter channels to only those with writable properties
-const channelsWithWritableProperties = computed<IChannel[]>(() => {
-	return channels.value.filter((channel) => {
-		const channelProps = properties.value.filter((p) => p.channel === channel.id);
-		return channelProps.some(isPropertyWritable);
-	});
-});
 
 const selectedProperty = computed<IChannelProperty | undefined>(() => {
 	if (!model.propertyId) return undefined;
 	return properties.value.find((p) => p.id === model.propertyId);
 });
 
-const selectedPropertyType = computed<'string' | 'number' | 'boolean' | 'enum'>(() => {
-	if (!selectedProperty.value) return 'string';
-	const dataType = selectedProperty.value.dataType;
-	if (dataType === DevicesModuleChannelPropertyDataType.bool) return 'boolean';
-	if (dataType === DevicesModuleChannelPropertyDataType.enum) return 'enum';
-	if (
-		[
-			DevicesModuleChannelPropertyDataType.int,
-			DevicesModuleChannelPropertyDataType.uint,
-			DevicesModuleChannelPropertyDataType.float,
-			DevicesModuleChannelPropertyDataType.char,
-			DevicesModuleChannelPropertyDataType.uchar,
-			DevicesModuleChannelPropertyDataType.short,
-			DevicesModuleChannelPropertyDataType.ushort,
-		].includes(dataType)
-	) {
-		return 'number';
-	}
-	return 'string';
-});
+const isValueAllowed = (value: string): boolean => !selectedProperty.value || groupControls.allowed(selectedProperty.value, value);
 
-const selectedPropertyFormat = computed<string[] | null>(() => {
-	if (!selectedProperty.value) return null;
-	const format = selectedProperty.value.format;
-	if (!Array.isArray(format)) return null;
-	// Filter to only string values for enum options
-	const stringValues = format.filter((v): v is string => typeof v === 'string');
-	return stringValues.length > 0 ? stringValues : null;
-});
-
-const enumOptions = computed<string[]>(() =>
-	(selectedPropertyFormat.value || []).filter((value) => !selectedProperty.value || groupControls.allowed(selectedProperty.value, value))
-);
-
-const numberMin = computed<number | undefined>(() => {
-	if (!selectedProperty.value) return undefined;
-	const format = selectedProperty.value.format;
-	if (!Array.isArray(format) || format.length < 1) return undefined;
-	const min = format[0];
-	return typeof min === 'number' ? min : undefined;
-});
-
-const numberMax = computed<number | undefined>(() => {
-	if (!selectedProperty.value) return undefined;
-	const format = selectedProperty.value.format;
-	if (!Array.isArray(format) || format.length < 2) return undefined;
-	const max = format[1];
-	return typeof max === 'number' ? max : undefined;
-});
-
-const numberStep = computed<number>(() => {
-	if (!selectedProperty.value) return 1;
-	// Use step property from the channel property if available
-	if (selectedProperty.value.step !== null && selectedProperty.value.step !== undefined) {
-		return selectedProperty.value.step;
-	}
-	return 1;
-});
-
-const booleanValue = computed<boolean>({
-	get: () => model.value === true || model.value === 'true' || model.value === 1,
-	set: (val: boolean) => {
-		model.value = val;
-		formChanged.value = true;
-	},
-});
-
-const numberValue = computed<number>({
-	get: () => (typeof model.value === 'number' ? model.value : parseFloat(String(model.value)) || 0),
-	set: (val: number) => {
-		model.value = val;
-		formChanged.value = true;
-	},
-});
-
-const stringValue = computed<string>({
-	get: () => String(model.value),
-	set: (val: string) => {
-		model.value = val;
-		formChanged.value = true;
-	},
-});
-
-const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
-	const sorted = orderBy<IDevice>(
-		devices.value.filter((device) => !device.hidden),
-		[(device: IDevice) => device.name.toLowerCase()],
-		['asc']
-	);
-	return sorted.map((device) => ({
-		value: device.id,
-		label: device.name,
-	}));
-});
-
-const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() => {
-	// Filter channels to only those with writable properties (if properties are loaded)
-	const channelsToShow = properties.value.length > 0 ? channelsWithWritableProperties.value : channels.value;
-	const sorted = orderBy<IChannel>(channelsToShow, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']);
-	return sorted.map((channel) => ({
-		value: channel.id,
-		label: channel.name,
-	}));
-});
-
-const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>(() => {
-	const sorted = orderBy<IChannelProperty>(
-		writableProperties.value,
-		[(prop: IChannelProperty) => (prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`)).toLowerCase()],
-		['asc']
-	);
-	return sorted.map((prop) => ({
-		value: prop.id,
-		label: prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`),
-	}));
-});
+const pickerTexts = computed<Partial<IDevicePropertyPickerTexts>>(() => ({
+	deviceTitle: t('scenesLocalPlugin.fields.device.title'),
+	devicePlaceholder: t('scenesLocalPlugin.fields.device.placeholder'),
+	channelTitle: t('scenesLocalPlugin.fields.channel.title'),
+	channelPlaceholder: t('scenesLocalPlugin.fields.channel.placeholder'),
+	channelEmpty: t('scenesLocalPlugin.fields.channel.noChannels'),
+	propertyTitle: t('scenesLocalPlugin.fields.property.title'),
+	propertyPlaceholder: t('scenesLocalPlugin.fields.property.placeholder'),
+	propertyEmpty: t('scenesLocalPlugin.fields.property.noProperties'),
+}));
 
 const rules = reactive<FormRules<ILocalSceneActionEditForm>>({
 	deviceId: [{ required: true, message: t('scenesLocalPlugin.fields.device.validation.required'), trigger: 'change' }],
@@ -396,35 +167,18 @@ const rules = reactive<FormRules<ILocalSceneActionEditForm>>({
 	value: [{ required: true, message: t('scenesLocalPlugin.fields.value.validation.required'), trigger: 'change' }],
 });
 
-const onDeviceChange = async (): Promise<void> => {
-	model.channelId = null;
-	model.propertyId = '';
-	model.value = '';
-	formChanged.value = true;
-
-	if (model.deviceId) {
-		await fetchChannels();
-	}
-};
-
-const onChannelChange = async (): Promise<void> => {
-	model.propertyId = '';
-	model.value = '';
-	formChanged.value = true;
-
-	if (model.channelId) {
-		await fetchProperties();
-	}
-};
-
-const onPropertyChange = (): void => {
+const onPickerChange = (field: IDevicePropertyPickerField): void => {
 	// Set default value based on property type
-	const property = properties.value.find((p) => p.id === model.propertyId);
-	if (property?.dataType === DevicesModuleChannelPropertyDataType.bool) {
+	if (field === 'property' && selectedProperty.value?.dataType === DevicesModuleChannelPropertyDataType.bool) {
 		model.value = false;
 	} else {
 		model.value = '';
 	}
+	formChanged.value = true;
+};
+
+const onValueUpdate = (value: string | number | boolean): void => {
+	model.value = value;
 	formChanged.value = true;
 };
 
@@ -459,23 +213,6 @@ const submit = async (): Promise<void> => {
 	});
 	formResult.value = FormResult.OK;
 };
-
-onBeforeMount(async (): Promise<void> => {
-	if (!devicesLoaded.value) {
-		await fetchDevices().catch((error: unknown): void => {
-			const err = error as Error;
-			throw new DevicesException('Something went wrong', err);
-		});
-	}
-
-	if (model.deviceId) {
-		await fetchChannels();
-	}
-
-	if (model.channelId) {
-		await fetchProperties();
-	}
-});
 
 watch(
 	(): FormResultType => formResult.value,

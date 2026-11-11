@@ -326,6 +326,29 @@
 		}
 	},
 	"fields": {
+		"propertyPicker": {
+			"device": {
+				"title": "Gerät",
+				"placeholder": "Gerät auswählen",
+				"groups": {
+					"recommended": "Empfohlen",
+					"other": "Andere Geräte"
+				}
+			},
+			"channel": {
+				"title": "Kanal",
+				"placeholder": "Kanal auswählen",
+				"empty": "Keine Kanäle verfügbar"
+			},
+			"property": {
+				"title": "Eigenschaft",
+				"placeholder": "Eigenschaft auswählen",
+				"empty": "Keine Eigenschaften verfügbar"
+			}
+		},
+		"propertyValue": {
+			"placeholder": "Wert eingeben"
+		},
 		"devices": {
 			"search": {
 				"placeholder": "Geräte suchen..."

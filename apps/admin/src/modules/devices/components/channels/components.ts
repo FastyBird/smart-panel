@@ -22,6 +22,7 @@ export { default as ChannelsPropertiesTableColumnChannel } from './channels-prop
 export { default as ChannelsPropertiesTableDataTypeChannel } from './channels-properties-table-column-data-type.vue';
 export { default as ChannelsPropertiesTableColumnIcon } from './channels-properties-table-column-icon.vue';
 export { default as ChannelsPropertiesTableColumnValue } from './channels-properties-table-column-value.vue';
+export { default as PropertyValueInput } from './property-value-input.vue';
 export { default as ListChannelsProperties } from './list-channels-properties.vue';
 export { default as ListChannelsPropertiesAdjust } from './list-channels-properties-adjust.vue';
 export { default as SelectChannelPlugin } from './select-channel-plugin.vue';

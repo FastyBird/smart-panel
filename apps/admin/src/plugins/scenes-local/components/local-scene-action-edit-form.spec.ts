@@ -13,8 +13,9 @@ const groupDevice = { id: 'group', name: 'Cover group', type: 'virtual' };
 const mockDevices = ref<(typeof groupDevice)[]>([groupDevice]);
 
 vi.mock('vue-i18n', async (original) => ({ ...(await original<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }));
-vi.mock('../../../modules/devices', () => ({
-	DevicesException: Error,
+// The device property picker reads the composables from their own module, so that is the one to mock
+vi.mock('../../../modules/devices/composables/composables', async (original) => ({
+	...(await original<typeof import('../../../modules/devices/composables/composables')>()),
 	useDevices: () => ({
 		devices: mockDevices,
 		fetchDevices: vi.fn(),
