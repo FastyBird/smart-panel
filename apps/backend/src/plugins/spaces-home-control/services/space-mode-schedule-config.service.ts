@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { MINUTE_MS, isScheduleTimezone } from '../../../common/schedule/schedule-time';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceLifecycleRegistryService } from '../../../modules/spaces/services/space-lifecycle-registry.service';
@@ -18,7 +19,6 @@ import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { getConfigTimezone } from '../../../modules/system/utils/timezone.utils';
 import { UpdateSpaceModeScheduleDto } from '../dto/space-mode-schedule.dto';
 import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity';
-import { MINUTE_MS, isScheduleTimezone } from '../schedule/schedule-time';
 import { MAX_SPACE_SCHEDULE_ENTRIES, SPACE_SCHEDULE_CHANGED } from '../schedule/space-mode-schedule.types';
 
 import { SpaceActivityConfigService } from './space-activity-config.service';

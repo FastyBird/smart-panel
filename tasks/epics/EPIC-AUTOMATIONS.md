@@ -299,6 +299,8 @@ Done when: results are recorded in section 7.
 - AU-3: optional hysteresis on numeric triggers; baseline read when a save first references a property.
 - AU-4: `restart` cancels all runs of the automation; action timeouts; second rate window (200 per hour);
   counters for ignored and dropped triggers; monotonic clock for durations; Delay limit 1 h.
+- AU-5: decide how time cards behave before the system clock is trustworthy (ADR 0003, decision 17); the
+  "for" restriction of decision 5 is enforced by the trigger card on save.
 - AU-7: also remove "automation" from Buddy's scene synonyms (`SCENE_SIGNALS`, planner grammar).
 - AU-10: side panel instead of `el-drawer`; strict connection mode; tap-to-add in the palette.
 - AU-15: All is a strict AND and is rejected when fed from two triggers; Wait until timeout is mandatory.

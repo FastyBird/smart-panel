@@ -6,6 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { captureSqliteNoMutationWindow, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
+import { MINUTE_MS } from '../../../common/schedule/schedule-time';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { activationStatus } from '../activity/activity-result.utils';
 import {
@@ -20,7 +21,6 @@ import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity'
 import { ActivityDomainResultModel } from '../models/activity-result.model';
 import { claimOccupancy, prepareOccupancyValidation } from '../occupancy/occupancy-admission';
 import { OccupancyActivityAdmission } from '../occupancy/space-occupancy.types';
-import { MINUTE_MS } from '../schedule/schedule-time';
 import { ScheduledActivityAdmission } from '../schedule/space-mode-schedule.types';
 
 import { SpaceActivityConfigService } from './space-activity-config.service';

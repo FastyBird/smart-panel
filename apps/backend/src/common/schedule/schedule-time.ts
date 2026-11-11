@@ -1,8 +1,28 @@
+/**
+ * Weekly wall-clock schedule helpers shared by the space mode scheduler (`spaces-home-control`) and the
+ * automations module. Framework-free: nothing here may import NestJS or an application module.
+ */
 import { CronTime } from 'cron';
 
-import { ScheduleEntry, ScheduleOccurrence } from './space-mode-schedule.types';
-
 export const MINUTE_MS = 60_000;
+
+/** One weekly entry: a wall time on some days of the week (0 = Sunday), carrying what it switches to */
+export interface WeeklyScheduleEntry<TMode = string> {
+	id: string;
+	mode: TMode;
+	time: string;
+	days_of_week: number[];
+	enabled: boolean;
+}
+
+export interface WeeklyScheduleOccurrence<TMode = string> {
+	entry_id: string;
+	mode: TMode;
+	time: string;
+	local_date: string;
+	timezone: string;
+	occurs_at: string;
+}
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /** Accept named zones understood by both Intl and recurrence evaluation, excluding fixed numeric offsets. */
@@ -16,16 +36,19 @@ export function isScheduleTimezone(timezone: string): boolean {
 }
 
 /** Missing wall times are skipped; an ambiguous wall time belongs only to its first UTC instant. */
-export function nextScheduleOccurrence(
-	entry: ScheduleEntry,
+export function nextScheduleOccurrence<TMode>(
+	entry: WeeklyScheduleEntry<TMode>,
 	timezone: string,
 	after: number,
-): ScheduleOccurrence | null {
+): WeeklyScheduleOccurrence<TMode> | null {
 	return resolveEntry(entry, timezone)(after);
 }
 
 /** Reuse one cron resolver per entry and reject DST-adjusted wall times before choosing the first fold instant. */
-function resolveEntry(entry: ScheduleEntry, timezone: string): (after: number) => ScheduleOccurrence | null {
+function resolveEntry<TMode>(
+	entry: WeeklyScheduleEntry<TMode>,
+	timezone: string,
+): (after: number) => WeeklyScheduleOccurrence<TMode> | null {
 	if (!isScheduleTimezone(timezone)) throw new Error('Invalid schedule timezone');
 	if (!entry.enabled) return () => null;
 	const [hour, minute] = entry.time.split(':').map(Number);
@@ -54,9 +77,9 @@ function resolveEntry(entry: ScheduleEntry, timezone: string): (after: number) =
 }
 
 /** Read-only evaluation, including after restart. It never replays any of the traversed occurrences. */
-export function evaluateSchedule(entries: ScheduleEntry[], timezone: string, now: number) {
-	let current: ScheduleOccurrence | null = null;
-	let next: ScheduleOccurrence | null = null;
+export function evaluateSchedule<TMode>(entries: WeeklyScheduleEntry<TMode>[], timezone: string, now: number) {
+	let current: WeeklyScheduleOccurrence<TMode> | null = null;
+	let next: WeeklyScheduleOccurrence<TMode> | null = null;
 	for (const entry of entries) {
 		if (!entry.enabled) continue;
 		const resolve = resolveEntry(entry, timezone);
@@ -77,6 +100,8 @@ export function evaluateSchedule(entries: ScheduleEntry[], timezone: string, now
 }
 
 /** Durable local occurrence identity deduplicates both UTC representations of an autumn fold. */
-export function scheduleOccurrenceKey(occurrence: ScheduleOccurrence): string {
+export function scheduleOccurrenceKey(
+	occurrence: Pick<WeeklyScheduleOccurrence<unknown>, 'timezone' | 'local_date' | 'time'>,
+): string {
 	return `${occurrence.timezone}|${occurrence.local_date}|${occurrence.time}`;
 }
