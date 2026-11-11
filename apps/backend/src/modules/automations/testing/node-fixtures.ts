@@ -14,6 +14,7 @@ export const PROPERTY_NUMBER = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c000002';
 export const PROPERTY_ENUM = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c000003';
 export const PROPERTY_READ_ONLY = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c000004';
 export const PROPERTY_OTHER_DEVICE = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c000005';
+export const PROPERTY_LEVEL = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c000006';
 export const PROPERTY_MISSING = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0c0000ff';
 export const SCENE_ID = '0d9f0a3e-6f5c-4d7e-9a43-1f1f0d000001';
 
@@ -27,6 +28,8 @@ const property = (
 	deviceId: DEVICE_A,
 	dataType,
 	format: null,
+	invalid: null,
+	step: null,
 	permissions: [PermissionType.READ_WRITE],
 	...overrides,
 });
@@ -38,6 +41,8 @@ export const FIXTURE_PROPERTIES: DevicePropertyInfo[] = [
 	property(PROPERTY_ENUM, DataTypeType.ENUM, { format: ['off', 'heat', 'cool'] }),
 	property(PROPERTY_READ_ONLY, DataTypeType.BOOL, { permissions: [PermissionType.READ_ONLY] }),
 	property(PROPERTY_OTHER_DEVICE, DataTypeType.BOOL, { channelId: CHANNEL_B, deviceId: DEVICE_B }),
+	// A whole number from 0 to 100 in steps of 5, where 0 stands for "no reading"
+	property(PROPERTY_LEVEL, DataTypeType.UCHAR, { format: [0, 100], step: 5, invalid: 0 }),
 ];
 
 export const fixtureFindProperty: DevicePropertyLookup = (propertyId) =>

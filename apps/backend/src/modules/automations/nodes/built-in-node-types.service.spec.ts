@@ -129,7 +129,14 @@ describe('AutomationBuiltInNodeTypesService', () => {
 				deviceId: DEVICE_A,
 				dataType: DataTypeType.BOOL,
 				format: ['a', 'b'],
+				invalid: null,
+				step: null,
 				permissions: [PermissionType.READ_WRITE],
+			});
+			expect(toDevicePropertyInfo(property({ format: [0, 100], invalid: 255, step: 5 }))).toMatchObject({
+				format: [0, 100],
+				invalid: 255,
+				step: 5,
 			});
 		});
 

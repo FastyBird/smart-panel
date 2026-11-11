@@ -6,6 +6,7 @@ import {
 	DEVICE_B,
 	PROPERTY_BOOL,
 	PROPERTY_ENUM,
+	PROPERTY_LEVEL,
 	PROPERTY_MISSING,
 	PROPERTY_NUMBER,
 	PROPERTY_OTHER_DEVICE,
@@ -125,6 +126,21 @@ describe('device.property.set', () => {
 				{ field: 'writes.1.value', reason: 'This property holds a number.' },
 				{ field: 'writes.2.value', reason: 'This value is not one the property can hold.' },
 			]);
+		});
+
+		it('refuses a value the device module would refuse when the action runs', async () => {
+			const dimmer = target(PROPERTY_LEVEL);
+			const refused = async (value: number): Promise<unknown> => problems({ writes: [on, { ...dimmer, value }] });
+			const reason = (detail: string): unknown => [
+				{ field: 'writes.1.value', reason: `The device does not take this value: ${detail}.` },
+			];
+
+			expect(await refused(50)).toEqual([]);
+			expect(await refused(20.5)).toEqual(reason('Value must be an integer'));
+			expect(await refused(999)).toEqual(reason('Value must be between 0 and 255'));
+			expect(await refused(105)).toEqual(reason('Value must be less than or equal to 100'));
+			expect(await refused(52)).toEqual(reason('Value must align to step 5 from base 0'));
+			expect(await refused(0)).toEqual(reason('Value is reserved as an invalid/sentinel value'));
 		});
 
 		it('refuses a property that is not the one of the named channel and device', async () => {

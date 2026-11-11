@@ -17,6 +17,7 @@ import {
 	IsPropertyValue,
 	PROPERTY_VALUE_SCHEMA,
 	checkPropertyTarget,
+	describeCommandValueProblem,
 	describeValueMismatch,
 	devicePropertyReferences,
 	findPropertyForCheck,
@@ -137,7 +138,9 @@ export const createDevicePropertySetNodeType = (
 				continue;
 			}
 
-			const mismatch = describeValueMismatch(property, write.value);
+			// The kind of value first, for a plain reason; then what the command service will refuse when it runs
+			const mismatch =
+				describeValueMismatch(property, write.value) ?? describeCommandValueProblem(property, write.value);
 
 			if (mismatch) problems.push({ field: `${prefix}value`, reason: mismatch });
 		}

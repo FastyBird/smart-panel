@@ -5,6 +5,7 @@
 import { IsUUID, ValidateBy, ValidationOptions } from 'class-validator';
 
 import { DataTypeType, PermissionType } from '../../devices/devices.constants';
+import { validatePropertyCommandValue } from '../../devices/utils/property-command-value.utils';
 import { AutomationNodeConfigProblem, AutomationNodeReference } from '../graph/node-type';
 import { TrackedValue } from '../tracker/state-tracker';
 
@@ -90,6 +91,9 @@ export interface DevicePropertyInfo {
 	deviceId: string | null;
 	dataType: DataTypeType;
 	format: string[] | number[] | null;
+	/** The value that stands for "no reading"; it can not be set */
+	invalid: string | number | boolean | null;
+	step: number | null;
 	permissions: PermissionType[];
 }
 
@@ -155,6 +159,18 @@ export const describeValueMismatch = (property: DevicePropertyInfo, value: unkno
 		default:
 			return null;
 	}
+};
+
+/**
+ * Whether a value of the right kind is one the device module takes as a command for the property: a whole
+ * number in the range of an integer data type, inside the limits and on the step of the property. Returns
+ * the reason it is not, or null. The check is the one `PropertyCommandService` makes when the action runs,
+ * where a refused value fails every value of the same device with it.
+ */
+export const describeCommandValueProblem = (property: DevicePropertyInfo, value: unknown): string | null => {
+	const validation = validatePropertyCommandValue(property, value);
+
+	return validation.valid ? null : `The device does not take this value: ${validation.reason ?? 'it is not valid'}.`;
 };
 
 export const isWritable = (property: DevicePropertyInfo): boolean =>

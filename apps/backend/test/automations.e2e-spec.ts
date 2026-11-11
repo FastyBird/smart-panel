@@ -1433,13 +1433,17 @@ describe('Automations module (e2e)', () => {
 
 				// ---- the room empties: the light stays on until it has been empty long enough ------------
 
-				const leftAt = Date.now();
+				let leftAt = 0;
 
-				await report(occupancy, false);
-
-				expect((await light()).on).toBe(true);
-
+				// The count of runs is taken before the room empties, so the run is counted however long the
+				// reads of the light take
 				await afterRuns(automation.id, 1, async () => {
+					leftAt = Date.now();
+
+					await report(occupancy, false);
+
+					expect((await light()).on).toBe(true);
+
 					await waitFor(light, (state) => state.on === false, 'the light going off');
 				});
 

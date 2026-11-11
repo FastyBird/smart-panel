@@ -1,7 +1,7 @@
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ConnectionState, EventType as DevicesEventType } from '../../devices/devices.constants';
+import { ConnectionState, DataTypeType, EventType as DevicesEventType } from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { PropertyProducerQuality, PropertyValueState } from '../../devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
@@ -741,5 +741,44 @@ describe('AutomationStateTrackerService', () => {
 			expect(toStateSnapshot(entity('p', 5, 'unavailable').value)).toEqual({ value: 5, valid: false });
 			expect(toStateSnapshot(entity('p', 5, 'degraded').value)).toEqual({ value: 5, valid: true });
 		});
+
+		it('reads the value of a numeric property that was reported as a text as a number', () => {
+			const snapshot = (value: string | number | boolean, dataType?: DataTypeType): unknown =>
+				toStateSnapshot(new PropertyValueState(value), dataType);
+
+			expect(snapshot('20', DataTypeType.FLOAT)).toEqual({ value: 20, valid: true });
+			expect(snapshot(' 20.5 ', DataTypeType.FLOAT)).toEqual({ value: 20.5, valid: true });
+			expect(snapshot(20, DataTypeType.UCHAR)).toEqual({ value: 20, valid: true });
+
+			// Not a number: kept as reported, and not valid
+			expect(snapshot('not-a-number', DataTypeType.FLOAT)).toEqual({ value: 'not-a-number', valid: false });
+			expect(snapshot('', DataTypeType.INT)).toEqual({ value: '', valid: false });
+			expect(snapshot(true, DataTypeType.INT)).toEqual({ value: true, valid: false });
+
+			// Other data types, and a property whose data type is not known, are taken as reported
+			expect(snapshot('20', DataTypeType.STRING)).toEqual({ value: '20', valid: true });
+			expect(snapshot('20')).toEqual({ value: '20', valid: true });
+		});
+	});
+
+	it('compares a numeric property that reports its value as a text as a number', async () => {
+		addProperty('temp', 18);
+		service.watch({ propertyId: 'temp', above: 19 }, fire);
+		await service.settled();
+
+		const reported = (value: string): boolean =>
+			emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+				...entity('temp', value),
+				dataType: DataTypeType.FLOAT,
+			});
+
+		reported('20');
+
+		expect(service.read('temp')).toEqual({ status: 'ok', value: 20 });
+		expect(fired).toHaveLength(1);
+
+		reported('not-a-number');
+
+		expect(service.read('temp')).toEqual({ status: 'invalid', value: 'not-a-number' });
 	});
 });

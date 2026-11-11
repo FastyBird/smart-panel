@@ -187,6 +187,65 @@ describe('AutomationTimeSourceService', () => {
 		expect(fired).toHaveLength(1);
 	});
 
+	it('does not fire again for any day it served when the clock is set back over several days', async () => {
+		await start('2026-01-05T06:59:30Z');
+
+		service.onTimeOfDay({ time: '08:00' }, fire);
+
+		clock.advanceMinutes(2 * 24 * 60);
+		expect(fired.map((item) => item.date)).toEqual(['2026-01-05', '2026-01-06']);
+
+		// The clock turns out to have been two days ahead: both days come round again
+		clock.setTo('2026-01-05T06:59:30Z');
+		clock.advanceMinutes(2 * 24 * 60);
+
+		expect(fired.map((item) => item.date)).toEqual(['2026-01-05', '2026-01-06']);
+
+		clock.advanceMinutes(24 * 60);
+
+		expect(fired.map((item) => item.date)).toEqual(['2026-01-05', '2026-01-06', '2026-01-07']);
+	});
+
+	it('does not hand a trigger the minutes the tick catches up on from before the trigger started', async () => {
+		await start('2026-01-05T06:59:20Z');
+
+		// Keeps the shared tick running
+		service.onTimeOfDay({ time: '12:00' }, fire);
+
+		// The process stalls for three minutes, and a trigger for 08:00 is armed at 08:02:20
+		clock.step(3 * 60_000);
+		service.onTimeOfDay({ time: '08:00' }, fire);
+		service.onTimeOfDay({ time: '08:02' }, fire);
+		service.onTimeOfDay({ time: '08:03' }, fire);
+
+		// The tick catches up on 08:00 to 08:03: only the minute after the triggers started is theirs
+		clock.advanceMinutes(1);
+
+		expect(fired.map((item) => item.time)).toEqual(['08:03']);
+
+		clock.advanceMinutes(24 * 60);
+
+		expect(fired.map((item) => `${item.date} ${item.time}`)).toEqual([
+			'2026-01-05 08:03',
+			'2026-01-05 12:00',
+			'2026-01-06 08:00',
+			'2026-01-06 08:02',
+			'2026-01-06 08:03',
+		]);
+	});
+
+	it('fires a trigger that was armed before the clock was set back to an earlier time', async () => {
+		await start('2026-01-05T07:02:20Z');
+
+		// Armed at 08:02, by a clock that is an hour ahead
+		service.onTimeOfDay({ time: '08:00' }, fire);
+
+		clock.step(-60 * 60_000);
+		clock.advanceMinutes(60);
+
+		expect(fired.map((item) => `${item.date} ${item.time}`)).toEqual(['2026-01-05 08:00']);
+	});
+
 	describe('before the system clock is set', () => {
 		it('does not tell the time and fires nothing', async () => {
 			// A board without a real-time clock starts at the epoch

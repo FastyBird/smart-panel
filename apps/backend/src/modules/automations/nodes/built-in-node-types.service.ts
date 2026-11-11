@@ -41,6 +41,8 @@ export const toDevicePropertyInfo = (property: ChannelPropertyEntity): DevicePro
 		deviceId: idOf(device),
 		dataType: property.dataType,
 		format: property.format ?? null,
+		invalid: property.invalid ?? null,
+		step: property.step ?? null,
 		permissions: Array.isArray(property.permissions) ? property.permissions : [],
 	};
 };

@@ -1,6 +1,7 @@
 import { Inject, Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { MINUTE_MS } from '../../../common/schedule/schedule-time';
 import { ConfigService } from '../../config/services/config.service';
 import { getConfigTimezone } from '../../system/utils/timezone.utils';
 import { AUTOMATIONS_MODULE_NAME } from '../automations.constants';
@@ -31,12 +32,25 @@ export interface TimeOfDayFireData {
 	timezone: string;
 }
 
+/**
+ * The number of local days a time-of-day trigger remembers it fired for. It bounds the memory of a trigger
+ * that lives for years; a clock that is set back further than this many served days is not expected.
+ */
+export const TIME_OF_DAY_SERVED_DATES_KEPT = 31;
+
 interface TimeOfDaySubscription {
 	spec: TimeOfDaySpec;
 	fire: (data: TimeOfDayFireData) => void;
-	/** The local day the subscription last fired for, so one day fires once whatever the clock does */
-	lastFired?: string;
+	/**
+	 * The minute the subscription started in. The shared tick may catch up on minutes that passed before a
+	 * trigger joined it; those are not handed to that trigger. 0 once the clock was set back past it.
+	 */
+	since: number;
+	/** The local days the subscription fired for, oldest first, so one day fires once whatever the clock does */
+	served: Set<string>;
 }
+
+const minuteOf = (instant: number): number => Math.floor(instant / MINUTE_MS) * MINUTE_MS;
 
 const describeError = (error: unknown): string => (error instanceof Error ? error.message : 'unknown error');
 
@@ -93,6 +107,8 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 		const subscription: TimeOfDaySubscription = {
 			spec: { time: spec.time, ...(spec.weekdays !== undefined ? { weekdays: [...spec.weekdays] } : {}) },
 			fire,
+			since: minuteOf(this.clock.now()),
+			served: new Set(),
 		};
 
 		this.subscriptions.add(subscription);
@@ -162,15 +178,31 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 			this.logger.log('[TIME] Time triggers are served again');
 		}
 
+		const currentMinute = minuteOf(this.clock.now());
+
 		for (const subscription of [...this.subscriptions]) {
 			if (!this.subscriptions.has(subscription)) continue;
+
+			// The clock was set back to before the trigger started: no minute has "already passed" any more
+			if (currentMinute < subscription.since) subscription.since = 0;
+
+			// A minute the tick catches up on, from before this trigger joined it
+			if (minuteStart <= subscription.since) continue;
 
 			try {
 				const due = timeOfDayFiresAt(subscription.spec, minuteStart, reading.timezone);
 
-				if (!due || subscription.lastFired === due.date) continue;
+				if (!due || subscription.served.has(due.date)) continue;
 
-				subscription.lastFired = due.date;
+				subscription.served.add(due.date);
+
+				if (subscription.served.size > TIME_OF_DAY_SERVED_DATES_KEPT) {
+					for (const oldest of subscription.served) {
+						subscription.served.delete(oldest);
+						break;
+					}
+				}
+
 				subscription.fire({
 					time: subscription.spec.time,
 					date: due.date,
