@@ -1,6 +1,6 @@
 <template>
 	<el-select
-		v-if="mode === 'sensor_transform' && !outputId"
+		v-if="mode === 'sensor_transform' && !outputId && !wizard"
 		v-model="kind"
 		:disabled="busy"
 		class="mb-3"
@@ -19,6 +19,7 @@
 		v-if="kind === 'dew_point'"
 		:key="outputId ?? 'draft-dew-point'"
 		:output-id="outputId"
+		:wizard="wizard"
 		@created="emit('created', $event)"
 		@busy="setBusy"
 	/>
@@ -28,6 +29,7 @@
 		:mode="mode"
 		:output-id="outputId"
 		:temperature="temperature"
+		:wizard="wizard"
 		@created="emit('created', $event)"
 		@busy="setBusy"
 	/>
@@ -45,11 +47,16 @@ import type { MeasurementMode } from '../utils/measurement-authoring.utils';
 import VirtualDewPointEditor from './virtual-dew-point-editor.vue';
 import VirtualNumericMeasurementEditor from './virtual-numeric-measurement-editor.vue';
 
-const props = defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>();
+const props = withDefaults(defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean; wizard?: boolean; dewPoint?: boolean }>(), {
+	outputId: undefined,
+	temperature: undefined,
+});
 const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
 const { t } = useI18n(),
 	properties = injectStoresManager().getStore(channelsPropertiesStoreKey);
-const kind = ref('numeric'),
+// In the wizard the kind is chosen up front (the chooser lists dew point separately), so the
+// in-form select is hidden and the route decides.
+const kind = ref(props.dewPoint ? 'dew_point' : 'numeric'),
 	busy = ref(false);
 watch(
 	() =>

@@ -34,6 +34,33 @@
 	},
 	"wizard": {
 		"title": "Crear dispositivo virtual",
+		"selectKind": "Elige qué crear",
+		"kinds": {
+			"projection": {
+				"title": "Proyección",
+				"description": "Presenta canales de dispositivos existentes como un nuevo dispositivo de la categoría elegida."
+			},
+			"aggregate": {
+				"title": "Agregado de sensores",
+				"description": "Combina varios sensores en una sola lectura, como la temperatura media de una habitación."
+			},
+			"transform": {
+				"title": "Conversión numérica",
+				"description": "Convierte una lectura en otra, incluida la calibración y las sondas NTC."
+			},
+			"dewPoint": {
+				"title": "Punto de rocío",
+				"description": "Calcula el punto de rocío a partir de un sensor de temperatura y otro de humedad relativa."
+			},
+			"group": {
+				"title": "Grupo de actuadores",
+				"description": "Controla varias luces, interruptores, enchufes, ventiladores o persianas como un solo dispositivo."
+			},
+			"thermostat": {
+				"title": "Controlador de termostato",
+				"description": "Regula la temperatura de la habitación con relés y sensores de temperatura."
+			}
+		},
 		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
 		"breadcrumb": "Crear dispositivo virtual",
 		"viewDevice": "Ver dispositivo",
@@ -41,7 +68,14 @@
 			"category": "Categoría",
 			"mapping": "Asignación",
 			"details": "Detalles",
-			"review": "Revisión"
+			"review": "Revisión",
+			"output": "Salida",
+			"sources": "Fuentes",
+			"processing": "Procesamiento",
+			"members": "Miembros",
+			"capabilities": "Capacidades",
+			"settings": "Ajustes",
+			"actuators": "Actuadores"
 		},
 		"category": {
 			"heading": "Elija una categoría",
@@ -490,5 +524,140 @@
 		"drift": "Los ajustes observados difieren de la solicitud",
 		"release": "Liberar controlador",
 		"releaseHelp": "¿Liberar la reserva de Smart Panel? Se esperan las operaciones iniciadas, pero no se envía una orden de apagado. El termostato físico puede seguir regulando."
+	},
+	"thermostat": {
+		"title": {
+			"create": "Crear termostato virtual",
+			"edit": "Configuración del termostato"
+		},
+		"draft": {
+			"title": "Borrador del controlador",
+			"description": "La configuración y las reservas se conservan, pero la calefacción y la refrigeración no estarán disponibles hasta la cualificación del hardware y la conciliación en ejecución."
+		},
+		"name": "Nombre del termostato",
+		"revision": "Revisión de configuración {revision} · revisión del grafo {graph} · {readiness}",
+		"missingSource": "{role}: falta {identity}",
+		"requested": "Ajustes solicitados",
+		"requestedMode": "Modo solicitado (intención, no actividad notificada)",
+		"heatingSetpoint": "Consigna de calefacción (°C)",
+		"coolingSetpoint": "Consigna de refrigeración (°C)",
+		"coldTolerance": "Tolerancia al frío (°C)",
+		"hotTolerance": "Tolerancia al calor (°C)",
+		"neutralMargin": "Margen neutro calor/frío (°C)",
+		"minimumOff": "Intervalo mínimo de apagado (ms)",
+		"changeover": "Intervalo de cambio de modo (ms)",
+		"floorProtect": "Proteger la calefacción con la temperatura del suelo",
+		"floorLimit": "Máximo del suelo (°C)",
+		"floorHysteresis": "Histéresis de recuperación del suelo (°C)",
+		"trend": "Deducir ventana abierta por la tendencia ambiente, sin contacto",
+		"trendFields": {
+			"sampleWindowMs": "Ventana de muestras (ms)",
+			"minimumSamples": "Muestras mínimas",
+			"minimumSpanMs": "Intervalo mínimo (ms)",
+			"maximumSampleAgeMs": "Antigüedad máxima de la muestra (ms)",
+			"slopeThresholdCPerMinute": "Umbral de pendiente (°C/min)",
+			"confirmationMs": "Confirmación (ms)",
+			"recoveryMs": "Recuperación (ms)",
+			"maximumPauseMs": "Pausa máxima (ms)",
+			"cooldownMs": "Tiempo de espera (ms)"
+		},
+		"contactOpening": "Retardo de apertura del contacto (ms)",
+		"contactClosing": "Retardo de cierre del contacto (ms)",
+		"sources": {
+			"title": "Fuentes de temperatura y contacto",
+			"help": "Seleccione fuentes que informen de la antigüedad de su muestra original. El suelo es una entrada de protección independiente en Celsius; el contacto es opcional.",
+			"maximumAge": "Antigüedad máxima de la muestra original (segundos)",
+			"openValue": "Valor de abierto (literal JSON o texto)",
+			"closedValue": "Valor de cerrado (literal JSON o texto)",
+			"addAmbient": "Añadir ambiente",
+			"addFloor": "Añadir suelo",
+			"addContact": "Añadir contacto"
+		},
+		"remove": "Quitar",
+		"settings": {
+			"title": "Ajustes de mando locales propios",
+			"help": "El controlador crea los espacios locales de modo, consigna y bloqueo junto con sus registros.",
+			"add": "Añadir ajuste"
+		},
+		"summary": {
+			"mode": "Modo solicitado",
+			"setpoints": "Consignas (°C)",
+			"setpointsValue": "calefacción {heating} · refrigeración {cooling}",
+			"tolerances": "Tolerancias (°C)",
+			"tolerancesValue": "frío {cold} · calor {hot} · margen neutro {neutral}",
+			"timing": "Tiempos (ms)",
+			"timingValue": "apagado mínimo {off} · cambio {changeover}",
+			"sources": "Fuentes",
+			"members": "Actuadores"
+		},
+		"previewResult": "Vista previa: {readiness}; bloqueos: {count}",
+		"actions": {
+			"preview": "Vista previa de idoneidad y reservas",
+			"create": "Crear termostato",
+			"save": "Guardar configuración",
+			"release": "Solicitar apagado y liberación",
+			"reload": "Recargar"
+		},
+		"roles": {
+			"heating": "calefacción",
+			"cooling": "refrigeración",
+			"ambient": "ambiente",
+			"floor": "suelo",
+			"contact": "contacto"
+		},
+		"modes": {
+			"off": "Apagado",
+			"heat": "Calor",
+			"cool": "Frío",
+			"auto": "Automático"
+		},
+		"loadFailed": "No se pudo cargar la configuración del termostato.",
+		"requestFailed": "La solicitud del termostato ha fallado.",
+		"picker": {
+			"device": "Dispositivo",
+			"channel": "Canal",
+			"property": "Propiedad",
+			"noActuator": "No se encontró ningún actuador apto. Un miembro protegido debe ser la salida de conmutación de un dispositivo Shelly Gen2+ adoptado.",
+			"missing": "Propiedad ausente o no cargada: {id}"
+		},
+		"errors": {
+			"nameRequired": "Introduzca un nombre para el termostato.",
+			"setpointRequired": "Seleccione al menos una rama de confort y su consigna.",
+			"coldTolerance": "Introduzca una tolerancia al frío no negativa.",
+			"hotTolerance": "Introduzca una tolerancia al calor no negativa.",
+			"neutralMargin": "Introduzca un margen neutro positivo.",
+			"minimumOff": "Introduzca el intervalo mínimo de apagado en milisegundos.",
+			"changeover": "Introduzca el intervalo de cambio de modo en milisegundos.",
+			"floorPolicy": "Introduzca el límite del suelo y una histéresis de recuperación positiva en Celsius.",
+			"trendIncomplete": "Complete todos los ajustes de tendencia activados.",
+			"contactDebounce": "Introduzca ambos retardos del contacto en milisegundos.",
+			"ambientSource": "Configure exactamente una fuente de ambiente.",
+			"retainFloorPolicy": "Mantenga una política de suelo común para la protección global existente.",
+			"floorProtectionSource": "La protección del suelo requiere una fuente global o una protección local explícita para cada miembro de calefacción.",
+			"contactSourceLimit": "Configure como máximo una fuente de contacto.",
+			"sourceAge": "Introduzca una antigüedad máxima positiva para la fuente: {role}.",
+			"sourceSelect": "Seleccione una fuente: {role}.",
+			"contactValues": "Asigne los valores de abierto y cerrado del contacto.",
+			"contactValuesDiffer": "Los valores de abierto y cerrado del contacto deben ser distintos.",
+			"actuatorRequired": "Seleccione al menos un actuador físico.",
+			"branchMismatch": "El actuador debe corresponder a su rama de consigna: {role}.",
+			"memberLimit": "Se permiten como máximo ocho miembros obligatorios, incluidas las reservas conservadas.",
+			"memberDistinct": "Cada miembro físico debe ser distinto.",
+			"retainedClaim": "Repare la reserva conservada {id}; su propiedad se mantiene.",
+			"sharedFloorPolicy": "Introduzca el límite de suelo y la histéresis comunes para la protección local.",
+			"localProtection": "Cada miembro de calefacción requiere una fuente de protección local explícita.",
+			"protectionAge": "Introduzca una antigüedad máxima positiva para la fuente de protección.",
+			"actuatorRepair": "Repare el actuador antes de guardar: {role}.",
+			"lease": "Introduzca una duración de encendido positiva para el actuador: {role}.",
+			"settingUnique": "Cada rol de ajuste local solo puede registrarse una vez.",
+			"settingProperty": "Seleccione una propiedad local para cada ajuste."
+		},
+		"settingRoles": {
+			"heating_setpoint": "Consigna de calefacción",
+			"cooling_setpoint": "Consigna de refrigeración",
+			"heating_enabled": "Calefacción activada",
+			"cooling_enabled": "Refrigeración activada",
+			"locked": "Bloqueado"
+		}
 	}
 }

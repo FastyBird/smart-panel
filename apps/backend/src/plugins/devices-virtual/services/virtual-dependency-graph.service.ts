@@ -104,6 +104,30 @@ function ownGraphView<T>(value: T): T {
 }
 
 /** Database writer reservation precedes all graph validation, including across independent processes. */
+/**
+ * A validation pass that lost its admission to a newer one, or whose snapshot moved under it — as
+ * opposed to one that found a fault in the graph. Raised by type so that startup can tell contention
+ * (retry) from a defect (abort) without depending on the wording of a message.
+ */
+export class SupersededGraphValidationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'SupersededGraphValidationError';
+	}
+}
+
+/**
+ * The same contention, met after the graph was validated and published: a newer pass took over before
+ * the completion observers ran. It stays a validation exception for the write paths that already
+ * handle one, and startup retries it like any other superseded pass.
+ */
+export class SupersededCompletedGraphException extends DevicesValidationException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'SupersededCompletedGraphException';
+	}
+}
+
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
@@ -653,8 +677,38 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
-		await this.refreshQuarantine();
+		// Startup validation is not alone at startup. Other bootstrap work writes to virtual devices
+		// while it runs — the status listener stores a connection state for every non-projection
+		// device, and each such write is a structural write that starts a validation of its own and
+		// supersedes this one. A superseded pass throws ("publication expired"), and letting that
+		// escape `onApplicationBootstrap` stopped the whole backend from booting once an installation
+		// had more than a handful of virtual devices. Being superseded is contention, not a defect in
+		// the graph, so the pass is retried; if the writers still have not gone quiet, startup
+		// continues with validation pending — derived values stay unavailable (the fail-safe state)
+		// until the next structural write or index rebuild validates. Any other failure still aborts.
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.refreshQuarantine();
+				return;
+			} catch (error) {
+				if (!(error instanceof SupersededGraphValidationError) && !(error instanceof SupersededCompletedGraphException))
+					throw error;
+				if (attempt >= VirtualDependencyGraphService.BOOTSTRAP_VALIDATION_ATTEMPTS) {
+					this.logger.error(
+						'Startup graph validation kept being superseded by concurrent structural writes; derived values remain unavailable until the next successful validation.',
+						error instanceof Error ? error : new Error(String(error)),
+					);
+					return;
+				}
+				await new Promise((resolve) =>
+					setTimeout(resolve, VirtualDependencyGraphService.BOOTSTRAP_VALIDATION_DELAY_MS * attempt),
+				);
+			}
+		}
 	}
+
+	private static readonly BOOTSTRAP_VALIDATION_ATTEMPTS = 8;
+	private static readonly BOOTSTRAP_VALIDATION_DELAY_MS = 250;
 
 	/** Explicit/startup validation also refreshes activated runtime outputs. */
 	async refreshQuarantine(): Promise<void> {
@@ -720,18 +774,25 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			const snapshot = ownGraphView(await read.values.readPublicationSnapshot.call(read.receiver));
 			const snapshotBytes = JSON.stringify(snapshot);
 			const verify = async () => {
-				if (!read.current() || !admission.current()) throw new Error('Original graph publication expired');
+				if (!read.current() || !admission.current())
+					throw new SupersededGraphValidationError('Original graph publication expired');
 				const latest = await read.values.readPublicationSnapshot.call(read.receiver);
 				if (!read.current() || !admission.current() || JSON.stringify(latest) !== snapshotBytes)
-					throw new Error('Original durable graph publication changed');
+					throw new SupersededGraphValidationError('Original durable graph publication changed');
 			};
+			// A pass that was superseded while it read its snapshot lost a race, exactly like one that is
+			// superseded later, and is reported by the same type so that startup retries it. A snapshot
+			// whose revision is not the one the caller committed is a different matter and stays generic.
 			const initialEligibilityFailure =
-				!admission.current() ||
-				(admission.expectedRevision !== undefined && snapshot.revision !== admission.expectedRevision)
+				admission.expectedRevision !== undefined && snapshot.revision !== admission.expectedRevision
 					? { cause: new Error('Original graph revision changed') }
-					: undefined;
+					: !admission.current()
+						? { cause: new SupersededGraphValidationError('Original graph revision changed') }
+						: undefined;
+			// A newer pass published while this one was still reading: this snapshot is simply stale, so
+			// the pass is superseded and startup retries it with a fresh read.
 			if (snapshot.revision < this.quarantineRevision)
-				throw new Error('Graph validation snapshot is older than the applied revision');
+				throw new SupersededGraphValidationError('Graph validation snapshot is older than the applied revision');
 			const quarantined = new Set<string>();
 			const neighbors = new Map<string, Set<string>>();
 			for (const edge of snapshot.edges) {
@@ -787,7 +848,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			try {
 				await verify();
 				if (!stages.every((stage) => stage.current() && invokeCreation(stage.values.validate, stage.receiver)))
-					throw new Error('Original producer state slot changed');
+					throw new SupersededGraphValidationError('Original producer state slot changed');
 			} catch (cause: unknown) {
 				eligibilityFailure ??= { cause };
 			}
@@ -812,7 +873,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			await verify();
 			for (const stage of stages)
 				if (!stage.current() || !invokeCreation(stage.values.validate, stage.receiver))
-					throw new Error('Producer state preparation expired');
+					throw new SupersededGraphValidationError('Producer state preparation expired');
 			for (const stage of stages)
 				if (!invokeCreation(stage.values.install, stage.receiver))
 					throw new Error('Producer state installation refused');
@@ -827,7 +888,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			if (publicationFailure) throw publicationFailure.cause;
 			await verify();
 			if (!stages.every((stage) => stage.current() && invokeCreation(stage.values.validate, stage.receiver)))
-				throw new Error('Original producer state publication expired');
+				throw new SupersededGraphValidationError('Original producer state publication expired');
 			this.quarantineRevision = snapshot.revision;
 			this.validationPending = false;
 			if (activated) {
@@ -839,7 +900,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			const published = this.capturePublishGuard();
 			const current = () => admission.current() && published() && this.isRevisionCurrent(snapshot.revision);
 			for (const { pin } of invokeOrdinary ? admission.completions : []) {
-				if (!current()) throw new DevicesValidationException('Original completed graph expired.');
+				if (!current()) throw new SupersededCompletedGraphException('Original completed graph expired.');
 				await invokeCreation(pin.values.complete, pin.receiver, snapshot.revision, current);
 			}
 			if (invokeOrdinary && admission.completions.length) await verify();

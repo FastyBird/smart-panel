@@ -50,6 +50,23 @@ export interface IDeviceWizardRouteLauncher {
 	to: RouteLocationRaw;
 	/** Stable base id; the small-screen launcher appends `-small`. */
 	testId: string;
+	/**
+	 * Kinds of device the wizard can build, when it builds more than one. With these the launcher
+	 * opens a chooser first — the same dialog the adoption wizard uses to pick a plugin — and `to` is
+	 * only the fallback for a direct link. Labels and descriptions are translation keys.
+	 */
+	options?: IDeviceWizardRouteLauncherOption[];
+	/** Translation key for the chooser's title. */
+	optionsTitle?: string;
+}
+
+export interface IDeviceWizardRouteLauncherOption {
+	value: string;
+	label: string;
+	description: string;
+	icon: string;
+	to: RouteLocationRaw;
+	testId: string;
 }
 
 export type IDevicePluginRoutes = {

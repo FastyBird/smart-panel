@@ -34,6 +34,33 @@
 	},
 	"wizard": {
 		"title": "Vytvoriť virtuálne zariadenie",
+		"selectKind": "Vyberte, čo chcete vytvoriť",
+		"kinds": {
+			"projection": {
+				"title": "Projekcia",
+				"description": "Zobrazí kanály existujúcich zariadení ako jedno nové zariadenie zvolenej kategórie."
+			},
+			"aggregate": {
+				"title": "Agregovaný senzor",
+				"description": "Spojí niekoľko senzorov do jednej hodnoty, napríklad priemernej teploty v miestnosti."
+			},
+			"transform": {
+				"title": "Číselný prevod",
+				"description": "Prevedie jednu hodnotu na inú, vrátane kalibrácie a NTC snímačov."
+			},
+			"dewPoint": {
+				"title": "Rosný bod",
+				"description": "Vypočíta rosný bod zo senzora teploty a relatívnej vlhkosti."
+			},
+			"group": {
+				"title": "Skupina ovládačov",
+				"description": "Ovláda niekoľko svetiel, spínačov, zásuviek, ventilátorov alebo roliet ako jedno zariadenie."
+			},
+			"thermostat": {
+				"title": "Termostatický regulátor",
+				"description": "Reguluje teplotu v miestnosti pomocou relé a teplotných senzorov."
+			}
+		},
 		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
 		"breadcrumb": "Vytvoriť virtuálne zariadenie",
 		"viewDevice": "Zobraziť zariadenie",
@@ -41,7 +68,14 @@
 			"category": "Kategória",
 			"mapping": "Mapovanie",
 			"details": "Detaily",
-			"review": "Zhrnutie"
+			"review": "Zhrnutie",
+			"output": "Výstup",
+			"sources": "Zdroje",
+			"processing": "Spracovanie",
+			"members": "Členovia",
+			"capabilities": "Schopnosti",
+			"settings": "Nastavenia",
+			"actuators": "Akčné členy"
 		},
 		"category": {
 			"heading": "Vyberte kategóriu",
@@ -490,5 +524,140 @@
 		"drift": "Pozorované nastavenie sa líši od požiadavky",
 		"release": "Uvoľniť ovládač",
 		"releaseHelp": "Uvoľniť rezerváciu Smart Panelu? Počká na odoslané operácie, ale neposiela príkaz OFF. Fyzický termostat môže ďalej regulovať."
+	},
+	"thermostat": {
+		"title": {
+			"create": "Vytvoriť virtuálny termostat",
+			"edit": "Konfigurácia termostatu"
+		},
+		"draft": {
+			"title": "Koncept regulátora",
+			"description": "Konfigurácia a rezervácie sa uložia, ale kúrenie a chladenie zostanú nedostupné až do kvalifikácie hardvéru a zosúladenia behového stavu."
+		},
+		"name": "Názov termostatu",
+		"revision": "Revízia konfigurácie {revision} · revízia grafu {graph} · {readiness}",
+		"missingSource": "{role}: chýba {identity}",
+		"requested": "Požadované nastavenie",
+		"requestedMode": "Požadovaný režim (zámer, nie hlásená činnosť)",
+		"heatingSetpoint": "Žiadaná teplota kúrenia (°C)",
+		"coolingSetpoint": "Žiadaná teplota chladenia (°C)",
+		"coldTolerance": "Tolerancia chladu (°C)",
+		"hotTolerance": "Tolerancia tepla (°C)",
+		"neutralMargin": "Neutrálne pásmo kúrenia/chladenia (°C)",
+		"minimumOff": "Minimálny čas vypnutia (ms)",
+		"changeover": "Interval prepnutia režimu (ms)",
+		"floorProtect": "Chrániť kúrenie teplotou podlahy",
+		"floorLimit": "Maximum podlahy (°C)",
+		"floorHysteresis": "Hysteréza obnovy podlahy (°C)",
+		"trend": "Odvodiť otvorené okno z trendu teploty bez kontaktu",
+		"trendFields": {
+			"sampleWindowMs": "Okno vzoriek (ms)",
+			"minimumSamples": "Minimum vzoriek",
+			"minimumSpanMs": "Minimálne rozpätie (ms)",
+			"maximumSampleAgeMs": "Maximálny vek vzorky (ms)",
+			"slopeThresholdCPerMinute": "Prah sklonu (°C/min)",
+			"confirmationMs": "Potvrdenie (ms)",
+			"recoveryMs": "Obnova (ms)",
+			"maximumPauseMs": "Maximálna pauza (ms)",
+			"cooldownMs": "Čas pokoja (ms)"
+		},
+		"contactOpening": "Oneskorenie otvorenia kontaktu (ms)",
+		"contactClosing": "Oneskorenie zatvorenia kontaktu (ms)",
+		"sources": {
+			"title": "Zdroje teploty a kontaktu",
+			"help": "Vyberte zdroje, ktoré hlásia vek pôvodnej vzorky. Podlaha je nezávislý ochranný vstup v stupňoch Celzia; kontakt je voliteľný.",
+			"maximumAge": "Maximálny vek pôvodnej vzorky (sekundy)",
+			"openValue": "Hodnota pre otvorené (JSON literál alebo text)",
+			"closedValue": "Hodnota pre zatvorené (JSON literál alebo text)",
+			"addAmbient": "Pridať okolitú teplotu",
+			"addFloor": "Pridať podlahu",
+			"addContact": "Pridať kontakt"
+		},
+		"remove": "Odobrať",
+		"settings": {
+			"title": "Vlastné miestne povelové nastavenia",
+			"help": "Regulátor vytvorí miestne sloty pre režim, žiadanú teplotu a zámok vrátane ich registrácií.",
+			"add": "Pridať nastavenie"
+		},
+		"summary": {
+			"mode": "Požadovaný režim",
+			"setpoints": "Žiadané teploty (°C)",
+			"setpointsValue": "kúrenie {heating} · chladenie {cooling}",
+			"tolerances": "Tolerancie (°C)",
+			"tolerancesValue": "chlad {cold} · teplo {hot} · neutrálne pásmo {neutral}",
+			"timing": "Časovanie (ms)",
+			"timingValue": "minimálne vypnutie {off} · prepnutie {changeover}",
+			"sources": "Zdroje",
+			"members": "Akčné členy"
+		},
+		"previewResult": "Náhľad: {readiness}; počet prekážok: {count}",
+		"actions": {
+			"preview": "Náhľad spôsobilosti a nárokov",
+			"create": "Vytvoriť termostat",
+			"save": "Uložiť konfiguráciu",
+			"release": "Vyžiadať vypnutie a uvoľnenie",
+			"reload": "Načítať znova"
+		},
+		"roles": {
+			"heating": "kúrenie",
+			"cooling": "chladenie",
+			"ambient": "okolitá teplota",
+			"floor": "podlaha",
+			"contact": "kontakt"
+		},
+		"modes": {
+			"off": "Vypnuté",
+			"heat": "Kúrenie",
+			"cool": "Chladenie",
+			"auto": "Automaticky"
+		},
+		"loadFailed": "Konfiguráciu termostatu sa nepodarilo načítať.",
+		"requestFailed": "Požiadavka na termostat zlyhala.",
+		"picker": {
+			"device": "Zariadenie",
+			"channel": "Kanál",
+			"property": "Vlastnosť",
+			"noActuator": "Nenašiel sa žiadny vhodný akčný člen. Strážený člen musí byť spínaný výstup adoptovaného zariadenia Shelly Gen2+.",
+			"missing": "Chýbajúca alebo nenačítaná vlastnosť: {id}"
+		},
+		"errors": {
+			"nameRequired": "Zadajte názov termostatu.",
+			"setpointRequired": "Vyberte aspoň jednu vetvu komfortu a žiadanú teplotu.",
+			"coldTolerance": "Zadajte nezápornú toleranciu chladu.",
+			"hotTolerance": "Zadajte nezápornú toleranciu tepla.",
+			"neutralMargin": "Zadajte kladné neutrálne pásmo.",
+			"minimumOff": "Zadajte minimálny čas vypnutia v milisekundách.",
+			"changeover": "Zadajte interval prepnutia režimu v milisekundách.",
+			"floorPolicy": "Zadajte limit podlahy a kladnú hysterézu obnovy v stupňoch Celzia.",
+			"trendIncomplete": "Vyplňte všetky povolené nastavenia trendu.",
+			"contactDebounce": "Zadajte obe oneskorenia kontaktu v milisekundách.",
+			"ambientSource": "Nastavte práve jeden zdroj okolitej teploty.",
+			"retainFloorPolicy": "Ponechajte spoločnú politiku podlahy pre existujúcu globálnu ochranu.",
+			"floorProtectionSource": "Ochrana podlahy vyžaduje globálny zdroj alebo výslovnú miestnu ochranu pri každom vykurovacom člene.",
+			"contactSourceLimit": "Nastavte najviac jeden zdroj kontaktu.",
+			"sourceAge": "Zadajte kladný maximálny vek pre zdroj: {role}.",
+			"sourceSelect": "Vyberte zdroj: {role}.",
+			"contactValues": "Namapujte hodnoty kontaktu pre otvorené aj zatvorené.",
+			"contactValuesDiffer": "Hodnoty kontaktu pre otvorené a zatvorené sa musia líšiť.",
+			"actuatorRequired": "Vyberte aspoň jeden fyzický akčný člen.",
+			"branchMismatch": "Akčný člen musí zodpovedať svojej vetve žiadanej teploty: {role}.",
+			"memberLimit": "Povolených je najviac osem povinných členov vrátane zachovaných nárokov.",
+			"memberDistinct": "Každý fyzický člen musí byť jedinečný.",
+			"retainedClaim": "Opravte zachovaný nárok {id}; jeho vlastníctvo zostáva zachované.",
+			"sharedFloorPolicy": "Zadajte spoločný limit podlahy a hysterézu pre miestnu ochranu.",
+			"localProtection": "Každý vykurovací člen vyžaduje výslovný miestny ochranný zdroj.",
+			"protectionAge": "Zadajte kladný maximálny vek ochranného zdroja.",
+			"actuatorRepair": "Pred uložením opravte akčný člen: {role}.",
+			"lease": "Zadajte kladný čas zapnutia pre akčný člen: {role}.",
+			"settingUnique": "Každá rola miestneho nastavenia môže byť registrovaná len raz.",
+			"settingProperty": "Vyberte miestnu vlastnosť pre každé nastavenie."
+		},
+		"settingRoles": {
+			"heating_setpoint": "Žiadaná teplota kúrenia",
+			"cooling_setpoint": "Žiadaná teplota chladenia",
+			"heating_enabled": "Kúrenie povolené",
+			"cooling_enabled": "Chladenie povolené",
+			"locked": "Uzamknuté"
+		}
 	}
 }

@@ -86,19 +86,58 @@ export class LocationReplaceInterceptor implements NestInterceptor {
 		}
 
 		if (Array.isArray(value)) {
+			let changed = false;
 			const out: Array<JsonValue> = [];
 
-			for (const el of value) {
-				out.push(this.deepReplace(el, fullBaseUrl, depth + 1) as JsonValue);
+			for (const el of value as unknown[]) {
+				const replaced = this.deepReplace(el, fullBaseUrl, depth + 1) as JsonValue;
+
+				changed ||= replaced !== el;
+				out.push(replaced);
 			}
 
-			return out;
+			// Identity is preserved when nothing was replaced, so an untouched array nested in a frozen
+			// object is not mistaken for a change that has to be written back.
+			return changed ? out : value;
 		}
 
 		if (typeof value === 'object') {
-			for (const [k, v] of Object.entries(value)) {
-				value[k] = this.deepReplace(v, fullBaseUrl, depth + 1) as JsonValue;
+			const record = value as Record<string, unknown>;
+			const replacements: [string, unknown][] = [];
+
+			for (const [k, v] of Object.entries(record)) {
+				const replaced = this.deepReplace(v, fullBaseUrl, depth + 1);
+
+				if (replaced !== v) {
+					replacements.push([k, replaced]);
+				}
 			}
+
+			if (replacements.length === 0) {
+				return value;
+			}
+
+			// Responses may carry frozen objects (shared catalogs, immutable previews). Writing to one
+			// throws in strict mode and turned an otherwise successful request into a 500, so such an
+			// object is copied instead — and only when something in it actually changed. The decision is
+			// made for the object as a whole, before anything is written: every replacement lands in the
+			// copy, and the original is left exactly as it was.
+			const immutable =
+				Object.isFrozen(record) || replacements.some(([k]) => !Object.getOwnPropertyDescriptor(record, k)?.writable);
+			const target = immutable
+				? Object.assign(
+						Object.create(Object.getPrototypeOf(record) as object | null) as Record<string, unknown>,
+						record,
+					)
+				: record;
+
+			for (const [k, replaced] of replacements) {
+				// A copied non-writable property keeps its descriptor only on the original; on the copy it
+				// is an ordinary data property, so plain assignment is enough.
+				target[k] = replaced;
+			}
+
+			return target;
 		}
 
 		return value;

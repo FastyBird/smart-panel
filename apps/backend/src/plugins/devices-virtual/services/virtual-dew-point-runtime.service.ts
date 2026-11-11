@@ -317,15 +317,24 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 						? this.values.currentSampleGeneration()
 						: (this.barriers.get(property.id) ?? this.values.currentSampleGeneration());
 				this.barriers.set(property.id, barrier);
-				output = {
-					property,
-					revision: config.revision,
-					barrier,
-					lease: this.producers.register(property, config.revision, {
-						isCurrent: this.graph.capturePublishGuard(),
-						reason: 'graph_validation_pending',
-					}),
-				};
+				// Never take the slot while the graph is validating. Startup validation installs a
+				// placeholder for every derived output, publishes it and then re-checks that each slot is
+				// still exactly what it installed; registering in that window replaced the placeholder, the
+				// re-check failed ("producer state publication expired") and the backend refused to boot
+				// once a single dew point device existed. The validation observer registered in
+				// `onApplicationBootstrap` recomputes as soon as validation settles (and the one-second
+				// backstop after it), so the output is only deferred, not lost. It is deliberately not put
+				// back on `dirty`: `drain` loops while anything is dirty and would spin.
+				if (!this.graph.isValidated()) continue;
+				// Guarded like the transform and aggregate runtimes: taken only if the slot is still the
+				// one observed here.
+				const originalSlot = this.producers.captureRuntimeSlot(property.id, output?.lease);
+				const lease = this.producers.registerRuntime(property, config.revision, originalSlot, {
+					isCurrent: this.graph.capturePublishGuard(),
+					reason: 'graph_validation_pending',
+				});
+				if (!lease) continue;
+				output = { property, revision: config.revision, barrier, lease };
 				this.outputs.set(property.id, output);
 			}
 			output.property = property;

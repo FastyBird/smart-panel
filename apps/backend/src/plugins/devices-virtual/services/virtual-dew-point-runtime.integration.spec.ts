@@ -213,6 +213,27 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		expect(state.output_property).toBe(output.id);
 		expect(state.current_value).toBeCloseTo(9.255174599);
 	});
+	it('does not take the output slot while startup graph validation is still pending', async () => {
+		await configs.configure(output.id, await dto());
+		await runtime.flush();
+		runtime.onModuleDestroy();
+		// A restart: the graph has not validated yet when the runtime bootstraps alongside it.
+		graph = new VirtualDependencyGraphService(database);
+		const register = jest.spyOn(producers, 'register');
+		const registerRuntime = jest.spyOn(producers, 'registerRuntime');
+		await start();
+		expect(graph.isValidated()).toBe(false);
+		// Registering here replaced the placeholder startup validation installs for this output, which
+		// failed its publication check and stopped the backend from booting.
+		expect(register).not.toHaveBeenCalled();
+		expect(registerRuntime).not.toHaveBeenCalled();
+		await graph.refreshQuarantine();
+		await runtime.flush();
+		expect(registerRuntime).toHaveBeenCalledTimes(1);
+		await report(temperature, 20);
+		await report(humidity, 50);
+		expect(values.readQualifiedSample(output, 10000)?.value).toBeCloseTo(9.255174599);
+	});
 	it('accepts skew equality, refuses greater skew/domain/partial results and fences competing revisions', async () => {
 		const request = await dto();
 		await configs.configure(output.id, request);

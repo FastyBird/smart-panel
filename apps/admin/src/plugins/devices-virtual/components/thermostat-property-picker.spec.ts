@@ -1,8 +1,9 @@
 import { nextTick } from 'vue';
 import { defineComponent, h } from 'vue';
 
-import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { flushPromises, mount } from '@vue/test-utils';
 
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 
@@ -12,15 +13,21 @@ const mocks = vi.hoisted(() => {
 	const requests: Array<{ id: string; resolve: (result: unknown) => void }> = [];
 	return {
 		requests,
-		get: vi.fn((_: string, options: { params: { path: { id: string } } }) => new Promise((resolve) => {
-			requests.push({ id: options.params.path.id, resolve });
-		})),
+		get: vi.fn(
+			(_: string, options: { params: { path: { id: string } } }) =>
+				new Promise((resolve) => {
+					requests.push({ id: options.params.path.id, resolve });
+				})
+		),
 	};
 });
 
 const devicesStore = {
 	firstLoadFinished: vi.fn(() => true),
-	findAll: vi.fn(() => [{ id: 'device-a', name: 'A' }, { id: 'device-b', name: 'B' }]),
+	findAll: vi.fn(() => [
+		{ id: 'device-a', name: 'A' },
+		{ id: 'device-b', name: 'B' },
+	]),
 	fetch: vi.fn(),
 };
 const channelRows: Array<{ id: string; name: string; device: string }> = [];
@@ -29,19 +36,28 @@ const channelsStore = {
 	findForDevice: vi.fn((deviceId: string) => channelRows.filter((channel) => channel.device === deviceId)),
 	get: vi.fn(async ({ id }: { id: string }) => ({ id, name: id, device: `device-${id.slice(-1)}` })),
 	fetch: vi.fn(async ({ deviceId }: { deviceId: string }) => {
-		channelRows.splice(0, channelRows.length,
+		channelRows.splice(
+			0,
+			channelRows.length,
 			{ id: 'channel-a', name: 'A channel', device: deviceId },
-			{ id: 'channel-a-sibling', name: 'A sibling', device: deviceId },
+			{ id: 'channel-a-sibling', name: 'A sibling', device: deviceId }
 		);
 	}),
 };
 const propertiesStore = {
 	findById: vi.fn(() => null),
 	findForChannel: vi.fn(() => []),
-	get: vi.fn(async ({ id, channelId }: { id: string; channelId: string }) => ({ id, channel: channelId, name: id, category: 'temperature', dataType: 'float' })),
+	get: vi.fn(async ({ id, channelId }: { id: string; channelId: string }) => ({
+		id,
+		channel: channelId,
+		name: id,
+		category: 'temperature',
+		dataType: 'float',
+	})),
 	fetch: vi.fn(async () => []),
 };
 
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../common', () => ({
 	injectStoresManager: () => ({
 		getStore: (key: symbol) => {
@@ -57,27 +73,31 @@ vi.mock('../../../common', () => ({
 const binding = (property: string, suffix: string) => ({
 	data: { data: { property, channel: `channel-${suffix}`, device: `device-${suffix}` } },
 });
-const mounted = (id: string) => mount(ThermostatPropertyPicker, {
-	props: { modelValue: id, kind: 'setting' },
-	global: { stubs },
-});
+const mounted = (id: string) =>
+	mount(ThermostatPropertyPicker, {
+		props: { modelValue: id, kind: 'setting' },
+		global: { stubs },
+	});
 const stubs = {
 	// eslint-disable-next-line vue/one-component-per-file -- render select slots so the sibling channel option is observable.
 	ElSelect: defineComponent({
 		name: 'ElSelect',
 		props: { modelValue: { type: String, default: null } },
-		setup(_, { slots }) { return () => h('div', slots.default?.()); },
+		setup(_, { slots }) {
+			return () => h('div', slots.default?.());
+		},
 	}),
 	// eslint-disable-next-line vue/one-component-per-file -- render select slots so the sibling channel option is observable.
 	ElOption: defineComponent({
 		name: 'ElOption',
 		props: { value: { type: String, required: true }, label: { type: String, required: true } },
-		setup(props) { return () => h('span', { 'data-value': props.value }, props.label); },
+		setup(props) {
+			return () => h('span', { 'data-value': props.value }, props.label);
+		},
 	}),
 	ElText: true,
 };
-const selected = (wrapper: ReturnType<typeof mounted>) => wrapper.findAllComponents({ name: 'ElSelect' })
-	.map((select) => select.props('modelValue'));
+const selected = (wrapper: ReturnType<typeof mounted>) => wrapper.findAllComponents({ name: 'ElSelect' }).map((select) => select.props('modelValue'));
 
 beforeEach(() => {
 	mocks.requests.length = 0;
@@ -96,8 +116,7 @@ describe('thermostat property picker', () => {
 		expect(propertiesStore.get).toHaveBeenCalledWith({ id: 'property-a', channelId: 'channel-a' });
 		expect(selected(wrapper).slice(0, 2)).toEqual(['device-a', 'channel-a']);
 		expect(channelsStore.fetch).toHaveBeenCalledWith({ deviceId: 'device-a' });
-		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value')))
-			.toContain('channel-a-sibling');
+		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'))).toContain('channel-a-sibling');
 		wrapper.unmount();
 	});
 
@@ -137,11 +156,32 @@ describe('thermostat property picker', () => {
 		wrapper.unmount();
 	});
 
+	it('follows a new owner after a local clear that changed nothing', async () => {
+		channelRows.push({ id: 'channel-a', name: 'A', device: 'device-a', identifier: 'a' } as never);
+		const wrapper = mount(ThermostatPropertyPicker, {
+			props: { modelValue: null, ownerDeviceId: 'device-a', kind: 'setting' },
+			global: { stubs },
+		});
+		await flushPromises();
+		// The value is already empty, so the picker's own `null` is not echoed back as a prop change.
+		wrapper.findAllComponents({ name: 'ElSelect' })[1].vm.$emit('change', 'channel-a');
+		await flushPromises();
+		expect(selected(wrapper).slice(0, 2)).toEqual(['device-a', 'channel-a']);
+		await wrapper.setProps({ ownerDeviceId: 'device-b' });
+		await flushPromises();
+		expect(selected(wrapper).slice(0, 2)).toEqual(['device-b', null]);
+		wrapper.unmount();
+	});
+
 	it('keeps a newer binding when an older device channel fetch rejects', async () => {
 		let rejectOldFetch: ((error: Error) => void) | undefined;
-		channelsStore.fetch.mockImplementation(({ deviceId }: { deviceId: string }) => deviceId === 'device-a'
-			? new Promise((_, reject) => { rejectOldFetch = reject; })
-			: Promise.resolve());
+		channelsStore.fetch.mockImplementation(({ deviceId }: { deviceId: string }) =>
+			deviceId === 'device-a'
+				? new Promise((_, reject) => {
+						rejectOldFetch = reject;
+					})
+				: Promise.resolve()
+		);
 		const wrapper = mounted('property-a');
 		await flushPromises();
 		mocks.requests[0].resolve(binding('property-a', 'a'));
@@ -152,6 +192,50 @@ describe('thermostat property picker', () => {
 		rejectOldFetch?.(new Error('stale channel fetch failed'));
 		await flushPromises();
 		expect(selected(wrapper).slice(0, 2)).toEqual(['device-b', 'channel-b']);
+		wrapper.unmount();
+	});
+
+	it('keeps the device the user just picked when the cleared property is echoed back', async () => {
+		devicesStore.findAll.mockReturnValue([{ id: 'device-a', name: 'A', type: 'devices-shelly-ng' }] as never);
+		channelRows.push({ id: 'channel-a', name: 'Switch', device: 'device-a', identifier: 'switch:0' } as never);
+		// Actuator members start as an empty string, so the picker's own `null` is a real prop change.
+		const wrapper = mount(ThermostatPropertyPicker, { props: { modelValue: '', kind: 'actuator' }, global: { stubs } });
+		await flushPromises();
+		wrapper.findAllComponents({ name: 'ElSelect' })[0].vm.$emit('change', 'device-a');
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null]);
+		await wrapper.setProps({ modelValue: null });
+		await flushPromises();
+		expect(selected(wrapper)[0]).toBe('device-a');
+		wrapper.findAllComponents({ name: 'ElSelect' })[1].vm.$emit('change', 'channel-a');
+		await wrapper.setProps({ modelValue: null });
+		await flushPromises();
+		expect(selected(wrapper).slice(0, 2)).toEqual(['device-a', 'channel-a']);
+		// Already hydrated by the devices list, so nothing is fetched per device.
+		expect(channelsStore.fetch).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('offers only Shelly switch outputs as guarded actuators', async () => {
+		devicesStore.findAll.mockReturnValue([
+			{ id: 'device-a', name: 'Relay', type: 'devices-shelly-ng' },
+			{ id: 'device-b', name: 'Simulated heater', type: 'simulator' },
+		] as never);
+		channelRows.push(
+			{ id: 'channel-a', name: 'Switch', device: 'device-a', identifier: 'switch:0' } as never,
+			{ id: 'channel-info', name: 'Info', device: 'device-a', identifier: 'device_information' } as never
+		);
+		propertiesStore.findForChannel.mockReturnValue([
+			{ id: 'output', name: 'Output', category: 'on', dataType: 'bool', identifier: 'output' },
+			{ id: 'over-current', name: 'Over current', category: 'over_current', dataType: 'bool', identifier: 'over_current' },
+		] as never);
+		const wrapper = mount(ThermostatPropertyPicker, { props: { modelValue: '', kind: 'actuator' }, global: { stubs } });
+		await flushPromises();
+		const selects = wrapper.findAllComponents({ name: 'ElSelect' });
+		selects[0].vm.$emit('change', 'device-a');
+		await flushPromises();
+		selects[1].vm.$emit('change', 'channel-a');
+		await flushPromises();
+		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'))).toEqual(['device-a', 'channel-a', 'output']);
 		wrapper.unmount();
 	});
 });

@@ -447,6 +447,34 @@ The gap was real. The wizard's preview is not atomic with the write it precedes,
 
 Known shortfall, worth a follow-up: on the **nested** device-create path the guard's reason does not reach the client — that path reports its own generic "Device could not be created" envelope for every nested failure, not just this one. The single-property create and update paths are unaffected in kind (this suite asserts status rather than message throughout). The wizard previews compatibility, so an operator reaching this in practice is rare, but the message is the thing that would tell them why.
 
+### 3a.11 Admin authoring could not finish the newer kinds — repaired, with open remainder
+
+Found on an installed alpha.67 and reproduced locally with 14 simulated devices. Repaired:
+
+- **Rate-limited source loading.** The aggregate, conversion, dew-point and actuator-group editors fetched properties once per channel on top of a devices list that already embeds them — 162 requests for 14 devices against the backend's 30 requests/minute throttle. Every editor answered with 429s, an empty source list and a disabled Preview/Create. They now hydrate from the single devices request.
+- **The mode selector left the wizard.** The non-projection kinds rendered as bare forms with no header, breadcrumbs or Cancel, and the kind was switched from inside a wizard already under way. The kind is now chosen before the wizard starts, in a chooser dialog on the Devices list (the same dialog shape as the adoption wizard's plugin picker, driven by `options` on the plugin's wizard launcher), and every kind renders inside `virtual-wizard-shell.vue`.
+- **Generic numeric conversion was always refused.** An absent boolean prop made new conversions open on the generic profile pre-filled with `temperature / °C`, which the generic output slot rejects (`incompatible_output`).
+- **Dew-point preview returned 500.** `LocationReplaceInterceptor` wrote into the frozen preview response. It now leaves frozen objects alone and copies them only when a value actually changes.
+- **Thermostat actuator members could not be selected.** The property picker reset the chosen device when its own cleared value was echoed back. It also offered every boolean of every device although the backend accepts only a Shelly NG `switch:N` output, and hid the backend's refusal behind "Thermostat request failed."
+
+- **The backend refused to boot once a dew point device existed.** `VirtualDewPointRuntimeService` registered its output while startup graph validation was still publishing the placeholder for the same slot, so the publication failed its own re-check ("Original producer state publication expired") and `onApplicationBootstrap` threw. The runtime now waits for validation and takes the slot through the guarded `registerRuntime`, like the transform and aggregate runtimes.
+- **The guarded thermostat opened with a wall of validation errors.** A new thermostat is pre-filled with recommended, editable timings (tolerances 0.5 °C, neutral margin 1 °C, minimum OFF 5 min, changeover 10 min, contact debounce 30 s / 60 s, source age 300 s, ON lease 600 s) and lists what is missing only after the first edit. Editing an existing thermostat is unchanged.
+
+- **Only the projection kind was a wizard.** Every kind now walks four steps with a review at the end, in the shared step frame (`virtual-wizard-steps.vue`), with Back / Next / Create in the page header like the projection wizard: aggregate, conversion and dew point (output → sources → processing → review), actuator group (details → members → capabilities → review), thermostat (settings → sources → actuators → review). The review step previews by itself. Editing an existing device keeps the single-page editor. Dew point has its own entry in the chooser.
+- **The thermostat wizard no longer offers "Native HA / Zigbee thermostat".** It created a second, virtual thermostat for a climate unit that is already adopted and controllable as a device. The backend (`native_unit` strategy, #1456/#1457) and the editor of controllers created that way are untouched; only the creation entry is gone. Whether to remove the strategy itself is open.
+
+- **The backend also refused to boot with about twenty virtual devices.** At startup the status listener stores a connection state for every non-projection device; each such write goes through the structural write path, starts a validation of its own and supersedes the startup validation, whose "publication expired" error escaped `onApplicationBootstrap`. Startup now retries a superseded validation and, if the writers never go quiet, continues with validation pending instead of aborting; any other validation failure still aborts. Open behind it: a value-only status write on a virtual device should not be a structural write at all.
+- **The thermostat editor, property picker and thermostat validation messages were hardcoded English.** They are translated in all six locales under `devicesVirtualPlugin.thermostat`; the request builder reports problems as translation keys.
+
+Still open, deliberately not changed here:
+
+- Route `meta.title` values and the plugin's own name/description are plain English, as in every other admin module and plugin; they are not shown in the wizard.
+- **No room/zone input** on the aggregate, conversion, dew-point and both thermostat flows; the actuator group has room only. The backend accepts `room_id`/`zone_ids` on these producers.
+- **NTC/Steinhart operators** require a `voltage` property in the admin, while the backend also accepts the Shelly `analog_input/value` raw-voltage identity.
+- **Aggregate quorum defaults to 1**; the capabilities design says all configured sources.
+- **Dew-point errors are generic**: preview and create failures do not show the backend reason.
+- Not verified locally: guarded and native thermostat creation end to end (needs a Shelly Gen2+ relay, respectively a Home Assistant or Zigbee2MQTT climate unit).
+
 ## 4. Not to be done
 
 _(`assertPermissionsCompatible`'s entry moved to §3a.10 — it is now enforced at persistence. Its original point, that the rule cannot be a DTO constraint because the spec slot is not resolvable from a property DTO in isolation, still holds and is why the hooks own it instead.)_
