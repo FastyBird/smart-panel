@@ -1057,7 +1057,8 @@ async function verifyThermostatWire(
 			// This one-branch default does not require an explicit floor or cooled-surface dependency.
 			expect(await dataSource.manager.count(ThermostatMemberProtectionEntity)).toBe(hasFloor ? 1 : 0);
 			expect(await dataSource.manager.count(ThermostatCoolingDependencyEntity)).toBe(hasCooling ? 1 : 0);
-			// The creating transaction increments once; ordinary asynchronous status writes retain their legacy graph path.
+			// The creating transaction increments once. A status write is a value report and does not advance
+			// the graph; anything still taking the unconditional structural path is counted through its spy.
 			expect(result.configuration.graph_revision).toBe(revision + 1);
 			expect(await graph.revision()).toBe(
 				revision +
@@ -5392,7 +5393,15 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		let progress: ReturnType<typeof captureChannelWriterProgress> | undefined;
 		const observer = {
 			afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
-				if (event.success && /^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query)) graphWrites++;
+				// A write that may not be structural reserves the writer slot with an UPDATE that matches no
+				// row (`... WHERE 0`) and advances only if a stored field changed; that reservation is not
+				// an advance, so it is not counted as one.
+				if (
+					event.success &&
+					/^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query) &&
+					!/WHERE 0\s*$/i.test(event.query)
+				)
+					graphWrites++;
 			},
 		};
 		// Keep the checked-in Jest logger mock as the passthrough target, without adopting its call buffer.
