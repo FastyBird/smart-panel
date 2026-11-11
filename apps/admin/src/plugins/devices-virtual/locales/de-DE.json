@@ -57,8 +57,12 @@
 				"description": "Steuert mehrere Lampen, Schalter, Steckdosen, Ventilatoren oder Rollläden als ein Gerät."
 			},
 			"thermostat": {
-				"title": "Thermostatregler",
-				"description": "Regelt die Raumtemperatur mit Relais und Temperatursensoren."
+				"title": "Thermostat aus Relais",
+				"description": "Baut einen Thermostat aus Relais und Temperatursensoren. Smart Panel übernimmt die Regelung."
+			},
+			"nativeThermostat": {
+				"title": "Regler für einen vorhandenen Thermostat",
+				"description": "Setzt einen Smart-Panel-Regler auf ein Thermostatgerät, das Sie bereits haben. Unterstützt: Thermostate aus Home Assistant und Zigbee2MQTT."
 			}
 		},
 		"subtitle": "Erstellen Sie ein Gerät aus den Kanälen eines anderen Geräts",
@@ -75,7 +79,8 @@
 			"members": "Mitglieder",
 			"capabilities": "Funktionen",
 			"settings": "Einstellungen",
-			"actuators": "Aktoren"
+			"actuators": "Aktoren",
+			"device": "Gerät"
 		},
 		"category": {
 			"heading": "Kategorie wählen",
@@ -489,7 +494,7 @@
 		}
 	},
 	"nativeThermostat": {
-		"title": "Nativer HA-/Zigbee-Thermostat",
+		"title": "Regler für einen vorhandenen Thermostat",
 		"strategy": "Regelungsart",
 		"guarded": "Geschützte Relaiszweige",
 		"delegation": "Der physische Thermostat regelt die Temperatur. Kein Boden-, Kondensations- oder Gegenausgangsschutz.",
@@ -523,7 +528,26 @@
 		"released": "Freigegeben",
 		"drift": "Beobachtete Einstellungen weichen von der Anforderung ab",
 		"release": "Controller freigeben",
-		"releaseHelp": "Smart-Panel-Reservierung freigeben? Laufende Operationen werden abgewartet, aber kein AUS-Befehl gesendet. Der physische Thermostat kann weiter regeln."
+		"releaseHelp": "Smart-Panel-Reservierung freigeben? Laufende Operationen werden abgewartet, aber kein AUS-Befehl gesendet. Der physische Thermostat kann weiter regeln.",
+		"wizard": {
+			"intro": "Dieser Regler arbeitet mit einem echten Thermostatgerät. Das Gerät regelt die Temperatur weiterhin selbst; Smart Panel sendet ihm den gewünschten Modus und die Sollwerte und zeigt, was es zurückmeldet.",
+			"supported": "Derzeit werden nur Thermostate aus Home Assistant und Zigbee2MQTT unterstützt. Geräte aus anderen Integrationen werden nicht aufgelistet.",
+			"unitPlaceholder": "Thermostatgerät auswählen",
+			"noCandidates": "Es wurde kein unterstütztes Thermostatgerät gefunden. Fügen Sie zuerst einen Thermostat aus Home Assistant oder Zigbee2MQTT hinzu.",
+			"providers": {
+				"home-assistant": "Home Assistant",
+				"zigbee2mqtt": "Zigbee2MQTT"
+			},
+			"reasons": {
+				"reserved": "wird bereits von einem anderen Regler verwendet"
+			},
+			"summary": {
+				"provider": "Integration",
+				"modes": "Unterstützte Modi",
+				"range": "{minimum}–{maximum} °C, Schritt {step}",
+				"unsupported": "Nicht unterstützt"
+			}
+		}
 	},
 	"thermostat": {
 		"title": {

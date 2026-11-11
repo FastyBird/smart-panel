@@ -57,8 +57,12 @@
 				"description": "Controla varias luces, interruptores, enchufes, ventiladores o persianas como un solo dispositivo."
 			},
 			"thermostat": {
-				"title": "Controlador de termostato",
-				"description": "Regula la temperatura de la habitación con relés y sensores de temperatura."
+				"title": "Termostato con relés",
+				"description": "Crea un termostato a partir de relés y sensores de temperatura. Smart Panel realiza la regulación."
+			},
+			"nativeThermostat": {
+				"title": "Controlador para un termostato existente",
+				"description": "Añade un controlador de Smart Panel sobre un termostato que ya tiene como dispositivo. Compatibles: termostatos de Home Assistant y Zigbee2MQTT."
 			}
 		},
 		"subtitle": "Cree un dispositivo a partir de los canales de otro dispositivo",
@@ -75,7 +79,8 @@
 			"members": "Miembros",
 			"capabilities": "Capacidades",
 			"settings": "Ajustes",
-			"actuators": "Actuadores"
+			"actuators": "Actuadores",
+			"device": "Dispositivo"
 		},
 		"category": {
 			"heading": "Elija una categoría",
@@ -489,7 +494,7 @@
 		}
 	},
 	"nativeThermostat": {
-		"title": "Termostato nativo HA / Zigbee",
+		"title": "Controlador para un termostato existente",
 		"strategy": "Estrategia de control",
 		"guarded": "Ramas de relé protegidas",
 		"delegation": "El termostato físico regula la temperatura. Sin protección de suelo, condensación ni salidas opuestas.",
@@ -523,7 +528,26 @@
 		"released": "Liberado",
 		"drift": "Los ajustes observados difieren de la solicitud",
 		"release": "Liberar controlador",
-		"releaseHelp": "¿Liberar la reserva de Smart Panel? Se esperan las operaciones iniciadas, pero no se envía una orden de apagado. El termostato físico puede seguir regulando."
+		"releaseHelp": "¿Liberar la reserva de Smart Panel? Se esperan las operaciones iniciadas, pero no se envía una orden de apagado. El termostato físico puede seguir regulando.",
+		"wizard": {
+			"intro": "Este controlador funciona con un termostato real. El dispositivo sigue regulando la temperatura; Smart Panel le envía el modo y las consignas solicitados y muestra lo que el dispositivo comunica.",
+			"supported": "Por ahora solo se admiten termostatos de Home Assistant y Zigbee2MQTT. Los dispositivos de otras integraciones no aparecen en la lista.",
+			"unitPlaceholder": "Seleccione un termostato",
+			"noCandidates": "No se encontró ningún termostato compatible. Añada primero un termostato de Home Assistant o Zigbee2MQTT.",
+			"providers": {
+				"home-assistant": "Home Assistant",
+				"zigbee2mqtt": "Zigbee2MQTT"
+			},
+			"reasons": {
+				"reserved": "ya lo usa otro controlador"
+			},
+			"summary": {
+				"provider": "Integración",
+				"modes": "Modos admitidos",
+				"range": "{minimum}–{maximum} °C, paso {step}",
+				"unsupported": "No admitido"
+			}
+		}
 	},
 	"thermostat": {
 		"title": {

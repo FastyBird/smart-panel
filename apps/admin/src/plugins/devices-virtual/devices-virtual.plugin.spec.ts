@@ -239,6 +239,10 @@ describe('devicesVirtualPlugin', () => {
 							}),
 							expect.objectContaining({ value: 'group', to: { name: VirtualRouteNames.LIGHT_GROUP_WIZARD } }),
 							expect.objectContaining({ value: 'thermostat', to: { name: VirtualRouteNames.THERMOSTAT_WIZARD } }),
+							expect.objectContaining({
+								value: 'nativeThermostat',
+								to: { name: VirtualRouteNames.THERMOSTAT_WIZARD, query: { strategy: 'native_unit' } },
+							}),
 						],
 					},
 				},

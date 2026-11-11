@@ -57,8 +57,12 @@
 				"description": "Steruje kilkoma światłami, przełącznikami, gniazdami, wentylatorami lub roletami jako jednym urządzeniem."
 			},
 			"thermostat": {
-				"title": "Sterownik termostatu",
-				"description": "Reguluje temperaturę w pomieszczeniu za pomocą przekaźników i czujników temperatury."
+				"title": "Termostat z przekaźników",
+				"description": "Tworzy termostat z przekaźników i czujników temperatury. Regulację wykonuje Smart Panel."
+			},
+			"nativeThermostat": {
+				"title": "Sterownik dla istniejącego termostatu",
+				"description": "Dodaje sterownik Smart Panel do termostatu, który już masz jako urządzenie. Obsługiwane: termostaty z Home Assistant i Zigbee2MQTT."
 			}
 		},
 		"subtitle": "Utwórz urządzenie z kanałów innego urządzenia",
@@ -75,7 +79,8 @@
 			"members": "Członkowie",
 			"capabilities": "Możliwości",
 			"settings": "Ustawienia",
-			"actuators": "Elementy wykonawcze"
+			"actuators": "Elementy wykonawcze",
+			"device": "Urządzenie"
 		},
 		"category": {
 			"heading": "Wybierz kategorię",
@@ -489,7 +494,7 @@
 		}
 	},
 	"nativeThermostat": {
-		"title": "Natywny termostat HA / Zigbee",
+		"title": "Sterownik dla istniejącego termostatu",
 		"strategy": "Strategia sterowania",
 		"guarded": "Chronione gałęzie przekaźników",
 		"delegation": "Temperaturą steruje fizyczny termostat. Brak ochrony podłogi, kondensacji i przeciwstawnych wyjść.",
@@ -523,7 +528,26 @@
 		"released": "Zwolnione",
 		"drift": "Obserwowane ustawienia różnią się od żądania",
 		"release": "Zwolnij sterownik",
-		"releaseHelp": "Zwolnić rezerwację Smart Panel? Operacje w toku zostaną zakończone, ale polecenie wyłączenia nie zostanie wysłane. Fizyczny termostat może nadal regulować."
+		"releaseHelp": "Zwolnić rezerwację Smart Panel? Operacje w toku zostaną zakończone, ale polecenie wyłączenia nie zostanie wysłane. Fizyczny termostat może nadal regulować.",
+		"wizard": {
+			"intro": "Ten sterownik współpracuje z prawdziwym termostatem. Temperaturę nadal reguluje urządzenie; Smart Panel wysyła mu żądany tryb i nastawy oraz pokazuje, co urządzenie zgłasza.",
+			"supported": "Na razie obsługiwane są tylko termostaty z Home Assistant i Zigbee2MQTT. Urządzenia z innych integracji nie są wyświetlane.",
+			"unitPlaceholder": "Wybierz termostat",
+			"noCandidates": "Nie znaleziono obsługiwanego termostatu. Najpierw dodaj termostat z Home Assistant lub Zigbee2MQTT.",
+			"providers": {
+				"home-assistant": "Home Assistant",
+				"zigbee2mqtt": "Zigbee2MQTT"
+			},
+			"reasons": {
+				"reserved": "jest już używany przez inny sterownik"
+			},
+			"summary": {
+				"provider": "Integracja",
+				"modes": "Obsługiwane tryby",
+				"range": "{minimum}–{maximum} °C, krok {step}",
+				"unsupported": "Nieobsługiwane"
+			}
+		}
 	},
 	"thermostat": {
 		"title": {

@@ -57,8 +57,12 @@
 				"description": "Ovláda niekoľko svetiel, spínačov, zásuviek, ventilátorov alebo roliet ako jedno zariadenie."
 			},
 			"thermostat": {
-				"title": "Termostatický regulátor",
-				"description": "Reguluje teplotu v miestnosti pomocou relé a teplotných senzorov."
+				"title": "Termostat z relé",
+				"description": "Zostaví termostat z relé a teplotných snímačov. Reguláciu vykonáva Smart Panel."
+			},
+			"nativeThermostat": {
+				"title": "Radič pre existujúci termostat",
+				"description": "Pridá radič Smart Panelu nad termostat, ktorý už ako zariadenie máte. Podporované: termostaty z Home Assistant a Zigbee2MQTT."
 			}
 		},
 		"subtitle": "Zostavte zariadenie z kanálov iného zariadenia",
@@ -75,7 +79,8 @@
 			"members": "Členovia",
 			"capabilities": "Schopnosti",
 			"settings": "Nastavenia",
-			"actuators": "Akčné členy"
+			"actuators": "Akčné členy",
+			"device": "Zariadenie"
 		},
 		"category": {
 			"heading": "Vyberte kategóriu",
@@ -489,7 +494,7 @@
 		}
 	},
 	"nativeThermostat": {
-		"title": "Natívny HA / Zigbee termostat",
+		"title": "Radič pre existujúci termostat",
 		"strategy": "Spôsob riadenia",
 		"guarded": "Chránené reléové vetvy",
 		"delegation": "Teplotu reguluje fyzický termostat. Ochrana podlahy, kondenzácie ani protismerných výstupov sa neposkytuje.",
@@ -523,7 +528,26 @@
 		"released": "Uvoľnené",
 		"drift": "Pozorované nastavenie sa líši od požiadavky",
 		"release": "Uvoľniť ovládač",
-		"releaseHelp": "Uvoľniť rezerváciu Smart Panelu? Počká na odoslané operácie, ale neposiela príkaz OFF. Fyzický termostat môže ďalej regulovať."
+		"releaseHelp": "Uvoľniť rezerváciu Smart Panelu? Počká na odoslané operácie, ale neposiela príkaz OFF. Fyzický termostat môže ďalej regulovať.",
+		"wizard": {
+			"intro": "Tento radič pracuje so skutočným termostatom. Teplotu ďalej reguluje zariadenie; Smart Panel mu posiela požadovaný režim a teploty a zobrazuje, čo zariadenie hlási späť.",
+			"supported": "Zatiaľ sú podporované len termostaty z Home Assistant a Zigbee2MQTT. Zariadenia z iných integrácií sa v zozname nezobrazujú.",
+			"unitPlaceholder": "Vyberte termostat",
+			"noCandidates": "Nenašiel sa žiadny podporovaný termostat. Najprv pridajte termostat z Home Assistant alebo Zigbee2MQTT.",
+			"providers": {
+				"home-assistant": "Home Assistant",
+				"zigbee2mqtt": "Zigbee2MQTT"
+			},
+			"reasons": {
+				"reserved": "už ho používa iný radič"
+			},
+			"summary": {
+				"provider": "Integrácia",
+				"modes": "Podporované režimy",
+				"range": "{minimum}–{maximum} °C, krok {step}",
+				"unsupported": "Nepodporované"
+			}
+		}
 	},
 	"thermostat": {
 		"title": {
