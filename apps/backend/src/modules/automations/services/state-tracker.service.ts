@@ -76,6 +76,8 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 	private readonly baselines = new Set<Promise<void>>();
 	/** Properties that received a connection change since their device was indexed */
 	private readonly connectionSeen = new Set<string>();
+	/** Reports of properties whose device was just learned, held until its reachability is known */
+	private readonly heldReports = new Map<string, StateSnapshot[]>();
 
 	constructor(
 		private readonly propertiesService: ChannelsPropertiesService,
@@ -97,6 +99,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 		this.deviceProperties.clear();
 		this.propertyDevice.clear();
 		this.connectionSeen.clear();
+		this.heldReports.clear();
 	}
 
 	/**
@@ -206,7 +209,18 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 
 			if (options.requireState && (property.value === null || property.value === undefined)) return;
 
-			this.tracker.report(property.id, toStateSnapshot(property.value));
+			const snapshot = toStateSnapshot(property.value);
+			const held = this.heldReports.get(property.id);
+
+			// While the reachability of a newly learned device is being read, reports wait, so a "for"
+			// duration cannot start, or elapse, for a device that turns out to be offline.
+			if (held) {
+				held.push(snapshot);
+
+				return;
+			}
+
+			this.tracker.report(property.id, snapshot);
 		} catch (error) {
 			this.logFailure('a property event', error);
 		}
@@ -214,18 +228,33 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 
 	/**
 	 * Reads the reachability of a device that was learned from a property event, because a disconnect before
-	 * that event was not routed to the property. A connection change seen during the read wins.
+	 * that event was not routed to the property. A connection change seen during the read wins. Reports of
+	 * the property are held during the read and replayed in order after it.
 	 */
 	private restoreAvailability(propertyId: string, deviceId: string): void {
+		const held: StateSnapshot[] = [];
+
+		this.heldReports.set(propertyId, held);
+
 		const restore = this.connectionStateService
 			.readLatest({ id: deviceId })
 			.then((connection) => {
-				if (this.propertyDevice.get(propertyId) !== deviceId || this.connectionSeen.has(propertyId)) return;
+				if (this.heldReports.get(propertyId) !== held || this.connectionSeen.has(propertyId)) return;
 
 				this.tracker.setAvailability(propertyId, { online: isReachable(connection.status, connection.online) });
 			})
 			.catch((error: unknown) => this.logFailure(`the connection state of property id=${propertyId}`, error))
-			.finally(() => this.baselines.delete(restore));
+			.finally(() => {
+				this.baselines.delete(restore);
+
+				if (this.heldReports.get(propertyId) !== held) return;
+
+				this.heldReports.delete(propertyId);
+
+				for (const snapshot of held) {
+					this.tracker.report(propertyId, snapshot);
+				}
+			});
 
 		this.baselines.add(restore);
 	}
@@ -291,6 +320,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 
 		this.propertyDevice.delete(propertyId);
 		this.connectionSeen.delete(propertyId);
+		this.heldReports.delete(propertyId);
 
 		const propertyIds = this.deviceProperties.get(deviceId);
 

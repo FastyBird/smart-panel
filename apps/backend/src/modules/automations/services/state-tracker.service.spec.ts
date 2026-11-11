@@ -300,6 +300,7 @@ describe('AutomationStateTrackerService', () => {
 			...entity('occ', false),
 			channel: { id: 'channel', device: 'sensor' },
 		} as ChannelPropertyEntity);
+		await service.settled();
 
 		expect(service.pendingTimers()).toBe(1);
 
@@ -332,6 +333,59 @@ describe('AutomationStateTrackerService', () => {
 		clock.advanceSeconds(600);
 
 		expect(fired).toEqual([]);
+	});
+
+	it('does not let a duration elapse while the connection state of a learned device is still being read', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false, forSeconds: 120 }, fire);
+		await service.settled();
+
+		let release: (value: unknown) => void = () => undefined;
+
+		readConnection.mockReturnValueOnce(
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+		);
+
+		const withDevice = (value: Value) =>
+			({ ...entity('occ', value), channel: { id: 'channel', device: { id: 'sensor' } } }) as ChannelPropertyEntity;
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, withDevice(true));
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, withDevice(false));
+		clock.advanceSeconds(600);
+
+		expect(service.pendingTimers()).toBe(0);
+		expect(fired).toEqual([]);
+
+		release({ online: false, status: ConnectionState.DISCONNECTED, lastChanged: null });
+		await service.settled();
+		clock.advanceSeconds(600);
+
+		expect(fired).toEqual([]);
+		expect(service.read('occ')).toEqual({ status: 'offline', value: false });
+	});
+
+	it('replays the reports held during the connection read, in order, when the device is online', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false }, fire);
+		await service.settled();
+
+		connections.set('sensor', ConnectionState.CONNECTED);
+
+		const withDevice = (value: Value) =>
+			({ ...entity('occ', value), channel: { id: 'channel', device: { id: 'sensor' } } }) as ChannelPropertyEntity;
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, withDevice(true));
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, withDevice(false));
+
+		expect(fired).toEqual([]);
+
+		await service.settled();
+
+		expect(fired).toEqual([{ propertyId: 'occ', from: true, to: false }]);
 	});
 
 	it('lets a connection change seen while the connection state is restored win', async () => {
