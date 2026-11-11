@@ -20,7 +20,7 @@ export class AutomationGraphIssueModel {
 
 	@ApiProperty({
 		description:
-			'What is wrong. `unknown_node_type`, `unknown_port`, `edge_into_trigger`, `cycle` and `duplicate_edge` always stop a save; `invalid_config` and `no_trigger` stop it only when the automation would be enabled; `unreachable_node` is a warning.',
+			'What is wrong. `unknown_node_type`, `unknown_port`, `edge_into_trigger`, `cycle` and `duplicate_edge` always stop a save, and so does `safety_reducing_action` as an error: an action that would unlock, disarm or open (as a warning it says a scene would, which is refused when the automation runs); `invalid_config` and `no_trigger` stop it only when the automation would be enabled; `unreachable_node` is a warning.',
 		enum: Object.values(AutomationGraphIssueCode),
 		example: AutomationGraphIssueCode.INVALID_CONFIG,
 	})
@@ -68,7 +68,7 @@ export class AutomationGraphIssueModel {
 	node_ids?: string[];
 
 	@ApiPropertyOptional({
-		description: 'Configuration field the issue is about, dot-separated (`invalid_config`)',
+		description: 'Configuration field the issue is about, dot-separated (`invalid_config`, `safety_reducing_action`)',
 		type: 'string',
 		example: 'property_id',
 	})

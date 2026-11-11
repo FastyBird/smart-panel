@@ -33,6 +33,10 @@ const describeError = (error: unknown): string => (error instanceof Error ? erro
  *
  * It takes `done` only when every action of the scene succeeded. A scene that completed partly, failed,
  * is disabled or no longer exists takes `error`, with the reason the scenes module gave.
+ *
+ * A scene that would unlock, disarm or open is not run by an automation at all. The safety policy reads
+ * the scene named by `commands()` before the action is executed, and the scene runner is handed the same
+ * check for the very actions it is about to run, so a scene edited in between is still refused.
  */
 export const createSceneRunNodeType = (scenes: SceneRunner): AutomationActionNodeType<SceneRunConfigDto> => ({
 	type: SCENE_RUN_NODE_TYPE,
@@ -50,6 +54,8 @@ export const createSceneRunNodeType = (scenes: SceneRunner): AutomationActionNod
 		additionalProperties: false,
 	},
 	references: (config) => (typeof config.scene_id === 'string' ? [{ kind: 'scene', id: config.scene_id }] : []),
+	commands: (config) =>
+		typeof config?.scene_id === 'string' ? [{ kind: 'scene_run', sceneId: config.scene_id, field: 'scene_id' }] : [],
 	execute: async (config, context) => {
 		if (context.signal.aborted) {
 			return { success: false, reason: 'The run was cancelled before the scene was started.' };

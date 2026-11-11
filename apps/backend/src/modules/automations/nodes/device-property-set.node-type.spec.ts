@@ -284,4 +284,37 @@ describe('device.property.set', () => {
 			expect(executePropertyCommands).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('commands', () => {
+		const card = createDevicePropertySetNodeType({
+			commands: { executePropertyCommands: jest.fn() },
+			findProperty: fixtureFindProperty,
+		});
+
+		it('lists every value the action writes, with the field that holds it', () => {
+			expect(
+				card.commands?.({
+					writes: [
+						{ ...target(PROPERTY_BOOL), value: true },
+						{ ...target(PROPERTY_NUMBER), value: 20 },
+					],
+				}),
+			).toEqual([
+				{ kind: 'property_write', propertyId: PROPERTY_BOOL, value: true, field: 'writes.0.value' },
+				{ kind: 'property_write', propertyId: PROPERTY_NUMBER, value: 20, field: 'writes.1.value' },
+			]);
+		});
+
+		it('skips what it can not read and never throws', () => {
+			const broken = (config: unknown) => card.commands?.(config as DevicePropertySetConfigDto);
+
+			expect(broken({})).toEqual([]);
+			expect(broken(null)).toEqual([]);
+			expect(broken({ writes: 'all' })).toEqual([]);
+			expect(broken({ writes: [null, 5, { value: true }, { property_id: 7 }] })).toEqual([]);
+			expect(broken({ writes: [null, { property_id: PROPERTY_BOOL }] })).toEqual([
+				{ kind: 'property_write', propertyId: PROPERTY_BOOL, value: undefined, field: 'writes.1.value' },
+			]);
+		});
+	});
 });

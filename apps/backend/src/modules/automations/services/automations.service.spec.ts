@@ -29,6 +29,7 @@ import {
 	FAKE_TRIGGER_TYPE,
 } from '../testing/fake-node-types';
 
+import { AutomationSafetyService } from './automation-safety.service';
 import { AutomationsService } from './automations.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 
@@ -64,6 +65,7 @@ describe('AutomationsService', () => {
 	let spacesService: { findOne: jest.Mock };
 	let eventEmitter: { emit: jest.Mock };
 	let nodeTypeRegistry: AutomationNodeTypeRegistryService;
+	let safety: { checkGraph: jest.Mock };
 	let service: AutomationsService;
 
 	// The service accepts plain objects from in-process callers; the cast only satisfies the compiler.
@@ -86,6 +88,9 @@ describe('AutomationsService', () => {
 		};
 		eventEmitter = { emit: jest.fn() };
 
+		// Nothing is unsafe unless a test says so; the policy itself is covered in automation-safety.service.spec.ts
+		safety = { checkGraph: jest.fn(() => Promise.resolve([])) };
+
 		nodeTypeRegistry = new AutomationNodeTypeRegistryService();
 
 		for (const nodeType of FAKE_NODE_TYPES) {
@@ -97,6 +102,7 @@ describe('AutomationsService', () => {
 			spacesService as unknown as SpacesService,
 			eventEmitter as unknown as EventEmitter2,
 			nodeTypeRegistry,
+			safety as unknown as AutomationSafetyService,
 		);
 	});
 
@@ -545,6 +551,7 @@ describe('AutomationsService', () => {
 						spacesService as unknown as SpacesService,
 						eventEmitter as unknown as EventEmitter2,
 						smaller,
+						safety as unknown as AutomationSafetyService,
 					);
 				});
 
@@ -574,6 +581,78 @@ describe('AutomationsService', () => {
 				expect((await service.checkGraph(draft(), false)).valid).toBe(true);
 				expect((await service.checkGraph(draft(), true)).valid).toBe(false);
 				expect(await repository.count()).toBe(0);
+			});
+		});
+
+		describe('safety', () => {
+			const unsafe = () =>
+				safety.checkGraph.mockImplementation((nodeType: { type: string }) =>
+					Promise.resolve(
+						nodeType.type === FAKE_STRICT_ACTION_TYPE
+							? [{ severity: 'error', message: 'An automation can not unlock a lock.', field: 'level' }]
+							: [],
+					),
+				);
+
+			it('asks the safety check for the actions of a graph and for nothing else', async () => {
+				await service.checkGraph(complete(), true);
+
+				expect(safety.checkGraph).toHaveBeenCalledTimes(1);
+				expect(safety.checkGraph).toHaveBeenCalledWith(expect.objectContaining({ type: FAKE_STRICT_ACTION_TYPE }), {
+					level: 40,
+				});
+			});
+
+			it('refuses to create an automation with an unsafe action, even as a disabled draft', async () => {
+				unsafe();
+
+				for (const enabled of [false, true]) {
+					const error = await rejection(create({ name: 'A', enabled, graph: complete() }));
+
+					expect(error.issues).toEqual([
+						{
+							severity: 'error',
+							code: 'safety_reducing_action',
+							message: 'An automation can not unlock a lock.',
+							node_id: 'a',
+							field: 'level',
+							blocking: true,
+						},
+					]);
+				}
+
+				expect(await repository.count()).toBe(0);
+				expect(eventEmitter.emit).not.toHaveBeenCalled();
+			});
+
+			it('refuses to save an unsafe action into a stored automation and changes nothing', async () => {
+				const stored = await create({ name: 'A', graph: complete() });
+
+				unsafe();
+
+				const error = await rejection(update(stored.id, { revision: 1, graph: complete() }));
+
+				expect(error.issues.map((issue) => issue.code)).toEqual(['safety_reducing_action']);
+				expect((await service.getOneOrThrow(stored.id)).revision).toBe(1);
+			});
+
+			it('says so when a graph is only validated', async () => {
+				unsafe();
+
+				const check = await service.checkGraph(complete(), false);
+
+				expect(check.valid).toBe(false);
+				expect(check.issues).toEqual([
+					expect.objectContaining({ code: 'safety_reducing_action', node_id: 'a', blocking: true }),
+				]);
+			});
+
+			it('stores an automation whose scene is only warned about', async () => {
+				safety.checkGraph.mockResolvedValue([{ severity: 'warning', message: 'The scene was not run.' }]);
+
+				const automation = await create({ name: 'A', enabled: true, graph: complete() });
+
+				expect(automation.enabled).toBe(true);
 			});
 		});
 	});

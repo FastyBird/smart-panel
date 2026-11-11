@@ -294,6 +294,41 @@ Also settled with the first cards:
 - Notifications sent by automations are events with the automations module as source. They share the
   notifications module's limit of 60 per minute per source with the engine's own "suspended" notification.
 
+### 18. Safety policy
+
+Added with AU-6; the design names the rule (§ Security and safety), this records how it is built.
+
+- **What reduces safety is one list**, `modules/automations/safety/safety-rules.ts`: unlock, disarm, open. A
+  write is recognised by the category of the device, of the channel and of the property and by the value. The
+  integrations describe the same thing differently, so a rule lists every known form: a lock is unlocked by
+  `status: unlocked`, by `on: false` or by `locked: false`; a door is opened by `position: open`,
+  `command: open` or a position or percentage above zero. A rule holds for the channel category (`lock`,
+  `alarm`, `door`) on any device and for every channel of a device of that category. Garage doors and gates are
+  `door` channels. Locking, arming, closing and stopping are allowed, and so is the siren.
+- **Not covered:** valves and window coverings - irrigation and blinds are what automations are for - and a
+  garage door that an integration exposes as a `window_covering` on a device that is not a `door`. Such a device
+  has to be adopted with the door category to be protected.
+- **An action declares what it does.** An action node type lists, with `commands(config)`, the values it writes
+  and the scenes it runs. The policy judges that list, so it does not know the cards and a card of a plugin is
+  covered as soon as it declares its commands. An action that declares nothing is not judged; a card that acts on
+  the home and declares nothing is a bug in that card.
+- **Three points, one policy.** On save, an unsafe write is the error `safety_reducing_action` on its node and
+  field; it stops the save whether the automation is enabled or not, so not even a draft can hold it. Before
+  every action of a run the engine asks the policy, which reads the categories of the properties again; a
+  refusal is traced as `refused` and takes `error`. A scene is opened and all its enabled actions are read as
+  they are at that moment; one unsafe action refuses the whole scene. On save a scene that would be refused is
+  a warning only, because the scene is judged when it is run, not when the automation is saved.
+- **The scene runner checks once more.** Between the policy reading a scene and the scene running, the scene
+  can be edited. `SceneExecutorService.triggerScene` therefore takes an optional guard that is handed the very
+  actions the run is about to execute, before an intent is created; automations always pass one. Runs from the
+  panel, the admin, Buddy and MCP pass none and are unchanged.
+- **What can not be checked is refused.** A policy that throws, rejects or does not answer within the timeout
+  of the action refuses the action. A scene action that names no property - a future scene platform the policy
+  can not read - refuses the scene. A property or scene that no longer exists is not a finding: the action
+  fails on it by itself.
+- **The action policy of the engine may answer later**, since it has to read the database. A policy that
+  answers at once is not waited for, so nothing changes in the timing of an engine without one.
+
 ## Consequences
 
 - The design doc is updated to match this ADR.

@@ -4,6 +4,7 @@ import { SCENE_ID, abortedSignal, runContext } from '../testing/node-fixtures';
 import {
 	SCENE_RUN_NODE_TYPE,
 	SCENE_RUN_TIMEOUT_SECONDS,
+	SceneRunConfigDto,
 	SceneRunOutcome,
 	createSceneRunNodeType,
 } from './scene-run.node-type';
@@ -74,5 +75,15 @@ describe('scene.run', () => {
 	it('does not start the scene for a run that was cancelled before it got here', async () => {
 		expect(await execute(runContext({ signal: abortedSignal() }))).toMatchObject({ success: false });
 		expect(triggerScene).not.toHaveBeenCalled();
+	});
+
+	it('says which scene it runs, so the safety policy can open it', () => {
+		const card = createSceneRunNodeType({ triggerScene: jest.fn() });
+
+		expect(card.commands?.({ scene_id: SCENE_ID })).toEqual([
+			{ kind: 'scene_run', sceneId: SCENE_ID, field: 'scene_id' },
+		]);
+		expect(card.commands?.({} as SceneRunConfigDto)).toEqual([]);
+		expect(card.commands?.(null as unknown as SceneRunConfigDto)).toEqual([]);
 	});
 });

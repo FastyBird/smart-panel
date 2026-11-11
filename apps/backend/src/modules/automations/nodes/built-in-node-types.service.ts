@@ -6,6 +6,7 @@ import { PropertyCommandService } from '../../devices/services/property-command.
 import { NotificationsService } from '../../notifications/services/notifications.service';
 import { SceneExecutorService } from '../../scenes/services/scene-executor.service';
 import { AutomationNodeType } from '../graph/node-type';
+import { AutomationSafetyService } from '../services/automation-safety.service';
 import { AutomationStateTrackerService } from '../services/state-tracker.service';
 import { AutomationTimeSourceService } from '../services/time-source.service';
 
@@ -62,6 +63,7 @@ export class AutomationBuiltInNodeTypesService {
 		private readonly propertyCommands: PropertyCommandService,
 		private readonly sceneExecutor: SceneExecutorService,
 		private readonly notifications: NotificationsService,
+		private readonly safety: AutomationSafetyService,
 	) {}
 
 	/** The built-in node types, to be registered by the module */
@@ -89,7 +91,10 @@ export class AutomationBuiltInNodeTypesService {
 				findProperty,
 			}),
 			createSceneRunNodeType({
-				triggerScene: (sceneId, triggeredBy) => this.sceneExecutor.triggerScene(sceneId, triggeredBy),
+				// The scene runner judges the very actions it is about to execute; the intent origin of an
+				// automation is added with the execution context (AU-7)
+				triggerScene: (sceneId, triggeredBy) =>
+					this.sceneExecutor.triggerScene(sceneId, triggeredBy, undefined, { guard: this.safety.sceneGuard }),
 			}),
 			createNotificationSendNodeType(this.notifications),
 			// Flow

@@ -80,7 +80,7 @@ Flow does, and have the Smart Panel backend run them.
       cancels a pending "for" timer.
 - [ ] Device writes from automations go through `PropertyCommandService` with the `automation` intent origin; Buddy
       does not learn them as user habits.
-- [ ] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
+- [x] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
       automation was saved.
 - [ ] A runaway automation is suspended and the administrator is notified.
 - [ ] A finished or interrupted run can be inspected node by node in the admin.

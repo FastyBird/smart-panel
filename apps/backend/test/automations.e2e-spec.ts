@@ -3,13 +3,16 @@ eslint-disable @typescript-eslint/no-unsafe-argument
 */
 import { useContainer } from 'class-validator';
 import request from 'supertest';
+import { Repository } from 'typeorm';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { AppModule } from '../src/app.module';
 import { ValidationExceptionFactory } from '../src/common/validation/validation-exception-factory';
-import { AutomationMode } from '../src/modules/automations/automations.constants';
+import { AutomationMode, EventType as AutomationsEventType } from '../src/modules/automations/automations.constants';
 import { CreateAutomationDto } from '../src/modules/automations/dto/create-automation.dto';
 import { UpdateAutomationDto } from '../src/modules/automations/dto/update-automation.dto';
 import { AutomationEntity } from '../src/modules/automations/entities/automations.entity';
@@ -36,7 +39,11 @@ import {
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
 import { PropertyCommandService } from '../src/modules/devices/services/property-command.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
+import { CreateSceneDto } from '../src/modules/scenes/dto/create-scene.dto';
+import { SceneActionsService } from '../src/modules/scenes/services/scene-actions.service';
+import { ScenesService } from '../src/modules/scenes/services/scenes.service';
 import { UserRole } from '../src/modules/users/users.constants';
+import { SCENES_LOCAL_TYPE } from '../src/plugins/scenes-local/scenes-local.constants';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 
 interface AutomationBody {
@@ -1592,6 +1599,429 @@ describe('Automations module (e2e)', () => {
 
 			await automationsService.remove(automation.id);
 			await settled();
+		});
+
+		describe('safety', () => {
+			let scenesService: ScenesService;
+			let sceneActionsService: SceneActionsService;
+
+			let lockStatus: Target;
+			let alarmState: Target;
+			let doorPosition: Target;
+
+			const safetyDevice = (
+				category: DeviceCategory,
+				channel: ChannelCategory,
+				property: PropertyCategory,
+				format: string[],
+				value: string,
+			): Promise<DeviceBody> =>
+				createDevice({
+					category,
+					name: `Front ${channel}`,
+					channels: [
+						{
+							type: SIMULATOR_TYPE,
+							category: channel,
+							identifier: channel,
+							name: channel,
+							properties: [
+								{
+									type: SIMULATOR_TYPE,
+									category: property,
+									identifier: property,
+									name: property,
+									permissions: [PermissionType.READ_WRITE],
+									data_type: DataTypeType.ENUM,
+									format,
+									value,
+								},
+							],
+						},
+					],
+				});
+
+			const sceneAction = (target: Target, value: string | number | boolean) => ({
+				type: SCENES_LOCAL_TYPE,
+				...target,
+				value,
+			});
+
+			const createScene = async (name: string, actions: ReturnType<typeof sceneAction>[]): Promise<string> =>
+				(await scenesService.create({ name, actions } as unknown as CreateSceneDto)).id;
+
+			const setValue = (id: string, writes: Record<string, unknown>[]) => ({
+				id,
+				type: 'device.property.set',
+				position: { x: 200, y: 0 },
+				config: { writes },
+			});
+
+			/**
+			 * manual start → `action`; its `error` output sets the brightness to `marker`, so a run that took
+			 * `error` is told from one that took `done` by what the light shows afterwards
+			 */
+			const guardedGraph = (action: Record<string, unknown> & { id: string }, marker: number) => ({
+				version: 1,
+				nodes: [
+					{ id: 'start', type: 'manual.start', position: { x: 0, y: 0 }, config: {} },
+					action,
+					setValue('refused', [{ ...lightBrightness, value: marker }]),
+				],
+				edges: [
+					{ id: 'e1', source: 'start', source_port: 'out', target: action.id, target_port: 'in' },
+					{ id: 'e2', source: action.id, source_port: 'error', target: 'refused', target_port: 'in' },
+				],
+			});
+
+			const runScene = (sceneId: string) => ({
+				id: 'scene',
+				type: 'scene.run',
+				position: { x: 200, y: 0 },
+				config: { scene_id: sceneId },
+			});
+
+			const createAutomation = async (name: string, graph: unknown): Promise<string> => {
+				const automation = await automationsService.create({
+					name,
+					enabled: true,
+					graph,
+				} as unknown as CreateAutomationDto);
+
+				await settled();
+
+				expect(engine.runtime(automation.id)).toMatchObject({ status: 'ok', armed: true });
+
+				return automation.id;
+			};
+
+			const runOnce = async (id: string): Promise<string | null> => {
+				await afterRuns(id, 1, async () => {
+					await engine.triggerOrThrow(id);
+				});
+
+				return (await automationsService.getOneOrThrow(id)).lastRunStatus;
+			};
+
+			const remove = async (id: string): Promise<void> => {
+				await automationsService.remove(id);
+				await settled();
+			};
+
+			beforeAll(async () => {
+				scenesService = app.get(ScenesService, { strict: false });
+				sceneActionsService = app.get(SceneActionsService, { strict: false });
+
+				const lock = await safetyDevice(
+					DeviceCategory.LOCK,
+					ChannelCategory.LOCK,
+					PropertyCategory.STATUS,
+					['locked', 'unlocked'],
+					'locked',
+				);
+				const alarm = await safetyDevice(
+					DeviceCategory.ALARM,
+					ChannelCategory.ALARM,
+					PropertyCategory.STATE,
+					['disarmed', 'armed_home', 'armed_away', 'armed_night'],
+					'armed_away',
+				);
+				const door = await safetyDevice(
+					DeviceCategory.DOOR,
+					ChannelCategory.DOOR,
+					PropertyCategory.POSITION,
+					['open', 'close', 'stop'],
+					'close',
+				);
+
+				lockStatus = targetOf(lock, ChannelCategory.LOCK, PropertyCategory.STATUS);
+				alarmState = targetOf(alarm, ChannelCategory.ALARM, PropertyCategory.STATE);
+				doorPosition = targetOf(door, ChannelCategory.DOOR, PropertyCategory.POSITION);
+			}, 60_000);
+
+			/**
+			 * Puts the house into a known state and waits until that is what is read back. The value is
+			 * commanded, as a person would set it: a value a command has just written is not replaced by a report.
+			 */
+			const reset = async (target: Target, value: string | number | boolean): Promise<void> => {
+				await propertyCommands.executePropertyCommands([{ propertyId: target.property_id, value }]);
+				await waitFor(
+					() => valueOf(target),
+					(seen) => seen === value,
+					'a value to be reset',
+				);
+			};
+
+			beforeEach(async () => {
+				await reset(lockStatus, 'locked');
+				await reset(alarmState, 'armed_away');
+				await reset(doorPosition, 'close');
+				await reset(lightOn, false);
+				await reset(lightBrightness, 100);
+			});
+
+			it('refuses to save an automation that would unlock, disarm or open, node by node, even as a draft', async () => {
+				const graph = {
+					version: 1,
+					nodes: [
+						{ id: 'start', type: 'manual.start', position: { x: 0, y: 0 }, config: {} },
+						setValue('unlock', [
+							{ ...lightOn, value: true },
+							{ ...lockStatus, value: 'unlocked' },
+						]),
+						setValue('disarm', [{ ...alarmState, value: 'disarmed' }]),
+						setValue('open', [{ ...doorPosition, value: 'open' }]),
+						setValue('harmless', [{ ...lightOn, value: false }]),
+					],
+					edges: ['unlock', 'disarm', 'open', 'harmless'].map((target, index) => ({
+						id: `e${index}`,
+						source: 'start',
+						source_port: 'out',
+						target,
+						target_port: 'in',
+					})),
+				};
+
+				const before = (await automationsService.findAll()).length;
+
+				const response = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Let everybody in', enabled: false, graph } })
+					.expect(422);
+
+				const rejection = response.body as GraphRejectionBody;
+
+				expect(
+					rejection.issues.map((issue) => ({
+						code: issue.code,
+						node_id: issue.node_id,
+						field: issue.field,
+						message: issue.message,
+						blocking: issue.blocking,
+					})),
+				).toEqual([
+					{
+						code: 'safety_reducing_action',
+						node_id: 'unlock',
+						field: 'writes.1.value',
+						message: 'An automation can not unlock a lock.',
+						blocking: true,
+					},
+					{
+						code: 'safety_reducing_action',
+						node_id: 'disarm',
+						field: 'writes.0.value',
+						message: 'An automation can not disarm the alarm.',
+						blocking: true,
+					},
+					{
+						code: 'safety_reducing_action',
+						node_id: 'open',
+						field: 'writes.0.value',
+						message: 'An automation can not open a door, garage or gate.',
+						blocking: true,
+					},
+				]);
+				expect((await automationsService.findAll()).length).toBe(before);
+
+				// The editor is told the same before anything is saved
+				const validated = await request(app.getHttpServer())
+					.post(`${base}/validate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { enabled: false, graph } })
+					.expect(200);
+
+				const check = (validated.body as { data: { valid: boolean; issues: IssueBody[] } }).data;
+
+				expect(check.valid).toBe(false);
+				expect(check.issues.map((issue) => issue.node_id)).toEqual(['unlock', 'disarm', 'open']);
+			});
+
+			it('saves and runs an automation that locks, arms and closes', async () => {
+				await reset(lockStatus, 'unlocked');
+				await reset(alarmState, 'disarmed');
+				await reset(doorPosition, 'open');
+
+				const response = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({
+						data: {
+							name: 'Good night',
+							enabled: true,
+							graph: guardedGraph(
+								setValue('secure', [
+									{ ...lockStatus, value: 'locked' },
+									{ ...alarmState, value: 'armed_night' },
+									{ ...doorPosition, value: 'close' },
+								]),
+								5,
+							),
+						},
+					})
+					.expect(201);
+
+				const id = (response.body as { data: AutomationBody }).data.id;
+
+				await settled();
+
+				expect(await runOnce(id)).toBe('completed');
+				expect(await valueOf(lockStatus)).toBe('locked');
+				expect(await valueOf(alarmState)).toBe('armed_night');
+				expect(await valueOf(doorPosition)).toBe('close');
+				// The error output was not taken
+				expect(await valueOf(lightBrightness)).toBe(100);
+
+				await remove(id);
+			});
+
+			it('refuses an unsafe write when the automation runs, whatever was stored: the action takes error', async () => {
+				const id = await createAutomation(
+					'Front door',
+					guardedGraph(setValue('door', [{ ...lockStatus, value: 'locked' }]), 7),
+				);
+
+				// A graph that reached the store without passing the save check, as one written before the rule
+				// existed would have: the engine takes it as any other save
+				const repository = app.get<Repository<AutomationEntity>>(getRepositoryToken(AutomationEntity), {
+					strict: false,
+				});
+				const stored = await repository.findOneByOrFail({ id });
+
+				await repository.update(
+					{ id },
+					{
+						revision: stored.revision + 1,
+						graph: guardedGraph(
+							setValue('door', [
+								{ ...lightOn, value: true },
+								{ ...lockStatus, value: 'unlocked' },
+							]),
+							7,
+						) as unknown as AutomationEntity['graph'],
+					},
+				);
+				app
+					.get(EventEmitter2, { strict: false })
+					.emit(AutomationsEventType.AUTOMATION_UPDATED, await repository.findOneByOrFail({ id }));
+				await settled();
+
+				expect(engine.runtime(id)).toMatchObject({ status: 'ok', armed: true, revision: stored.revision + 1 });
+
+				const commands = jest.spyOn(propertyCommands, 'executePropertyCommands');
+
+				try {
+					// The refusal was handled by the error output, so the run completed
+					expect(await runOnce(id)).toBe('completed');
+
+					// Nothing of the refused action was dispatched: neither the lock nor the light next to it
+					expect(await valueOf(lockStatus)).toBe('locked');
+					expect(await valueOf(lightOn)).toBe(false);
+					expect(await valueOf(lightBrightness)).toBe(7);
+					expect(commands.mock.calls.flatMap(([writes]) => writes.map((write) => write.propertyId))).toEqual([
+						lightBrightness.property_id,
+					]);
+				} finally {
+					commands.mockRestore();
+				}
+
+				await remove(id);
+			});
+
+			it('does not run a scene that would unlock; the same scene run by hand still does', async () => {
+				const sceneId = await createScene('Come in', [sceneAction(lightOn, true), sceneAction(lockStatus, 'unlocked')]);
+				const graph = guardedGraph(runScene(sceneId), 9);
+
+				// Saving is not refused - the scene is judged when it is run - but the editor is warned
+				const validated = await request(app.getHttpServer())
+					.post(`${base}/validate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { enabled: true, graph } })
+					.expect(200);
+
+				const check = (validated.body as { data: { valid: boolean; issues: IssueBody[] } }).data;
+
+				expect(check.valid).toBe(true);
+				expect(check.issues).toEqual([
+					expect.objectContaining({
+						severity: 'warning',
+						code: 'safety_reducing_action',
+						node_id: 'scene',
+						field: 'scene_id',
+						blocking: false,
+					}),
+				]);
+
+				const id = await createAutomation('Welcome', graph);
+
+				expect(await runOnce(id)).toBe('completed');
+
+				// The whole scene was refused: not even its harmless action ran, and the error output was taken
+				expect(await valueOf(lockStatus)).toBe('locked');
+				expect(await valueOf(lightOn)).toBe(false);
+				expect(await valueOf(lightBrightness)).toBe(9);
+				expect((await scenesService.getOneOrThrow(sceneId)).lastTriggeredAt).toBeNull();
+
+				// A person may: the scene run from the admin or the panel is unchanged
+				const manual = await request(app.getHttpServer())
+					.post(`/modules/scenes/scenes/${sceneId}/trigger`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { source: 'manual' } })
+					.expect(201);
+
+				expect((manual.body as { data: { status: string; failed_actions: number } }).data).toMatchObject({
+					status: 'completed',
+				});
+				expect(await valueOf(lockStatus)).toBe('unlocked');
+				expect(await valueOf(lightOn)).toBe(true);
+
+				await remove(id);
+				await scenesService.remove(sceneId);
+			});
+
+			it('judges a scene as it is when it is run: one edited after the automation was saved is refused', async () => {
+				const sceneId = await createScene('Evening', [sceneAction(lightOn, true)]);
+				const id = await createAutomation('Evening scene', guardedGraph(runScene(sceneId), 11));
+
+				expect(await runOnce(id)).toBe('completed');
+				expect(await valueOf(lightOn)).toBe(true);
+				expect(await valueOf(lightBrightness)).toBe(100);
+
+				// The scene is edited; the automation is not saved again
+				const revision = (await automationsService.getOneOrThrow(id)).revision;
+
+				await sceneActionsService.create({
+					...sceneAction(alarmState, 'disarmed'),
+					scene: sceneId,
+				} as unknown as Parameters<SceneActionsService['create']>[0]);
+				await reset(lightOn, false);
+
+				expect(await runOnce(id)).toBe('completed');
+
+				expect(await valueOf(alarmState)).toBe('armed_away');
+				expect(await valueOf(lightOn)).toBe(false);
+				expect(await valueOf(lightBrightness)).toBe(11);
+				expect((await automationsService.getOneOrThrow(id)).revision).toBe(revision);
+
+				await remove(id);
+				await scenesService.remove(sceneId);
+			});
+
+			it('fails a run whose refusal nothing handles', async () => {
+				const sceneId = await createScene('Garage', [sceneAction(doorPosition, 'open')]);
+				const id = await createAutomation('Open up', {
+					version: 1,
+					nodes: [{ id: 'start', type: 'manual.start', position: { x: 0, y: 0 }, config: {} }, runScene(sceneId)],
+					edges: [{ id: 'e1', source: 'start', source_port: 'out', target: 'scene', target_port: 'in' }],
+				});
+
+				expect(await runOnce(id)).toBe('failed');
+				expect(await valueOf(doorPosition)).toBe('close');
+
+				await remove(id);
+				await scenesService.remove(sceneId);
+			});
 		});
 	});
 

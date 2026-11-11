@@ -30,13 +30,17 @@ const edge = (id: string, source: string, source_port: string, target: string, t
 
 describe('graph save policy', () => {
 	describe('isBlockingGraphIssue', () => {
-		it.each(['unknown_node_type', 'unknown_port', 'edge_into_trigger', 'cycle', 'duplicate_edge'])(
-			'%s always stops a save',
-			(code) => {
-				expect(isBlockingGraphIssue(issue(code), { enabled: false })).toBe(true);
-				expect(isBlockingGraphIssue(issue(code), { enabled: true })).toBe(true);
-			},
-		);
+		it.each([
+			'unknown_node_type',
+			'unknown_port',
+			'edge_into_trigger',
+			'cycle',
+			'duplicate_edge',
+			'safety_reducing_action',
+		])('%s always stops a save', (code) => {
+			expect(isBlockingGraphIssue(issue(code), { enabled: false })).toBe(true);
+			expect(isBlockingGraphIssue(issue(code), { enabled: true })).toBe(true);
+		});
 
 		it.each(['invalid_config', 'no_trigger'])('%s stops a save only when the automation would be enabled', (code) => {
 			expect(isBlockingGraphIssue(issue(code), { enabled: false })).toBe(false);
@@ -102,6 +106,33 @@ describe('graph save policy', () => {
 			nodes: [node('t', FAKE_TRIGGER_TYPE), node('a', FAKE_STRICT_ACTION_TYPE, { level: 10 })],
 			edges: [edge('e1', 't', 'out', 'a', 'sideways')],
 		};
+
+		it('refuses an action the safety check finds unsafe, even as a draft, and keeps its warnings as advice', async () => {
+			const unsafe = await checkGraphForSave(complete, lookup, {
+				enabled: false,
+				safety: () => [{ severity: 'error', message: 'An automation can not unlock a lock.', field: 'level' }],
+			});
+
+			expect(unsafe.valid).toBe(false);
+			expect(unsafe.issues).toEqual([
+				{
+					severity: 'error',
+					code: 'safety_reducing_action',
+					message: 'An automation can not unlock a lock.',
+					node_id: 'a',
+					field: 'level',
+					blocking: true,
+				},
+			]);
+
+			const advised = await checkGraphForSave(complete, lookup, {
+				enabled: true,
+				safety: () => [{ severity: 'warning', message: 'The scene was not run.' }],
+			});
+
+			expect(advised.valid).toBe(true);
+			expect(advised.issues).toEqual([expect.objectContaining({ severity: 'warning', blocking: false })]);
+		});
 
 		it('lets an empty graph be saved on a disabled automation, not on an enabled one', async () => {
 			expect((await checkGraphForSave(empty, lookup, { enabled: false })).valid).toBe(true);

@@ -2,6 +2,7 @@ import { fakeAction, fakeCondition, fakeJoin, fakeStrictAction, fakeTrigger } fr
 
 import {
 	AUTOMATION_NODE_DEFAULT_PORTS,
+	AutomationActionNodeType,
 	AutomationNodeType,
 	AutomationNodeTypeDefinitionError,
 	normalizeAutomationNodeType,
@@ -65,6 +66,16 @@ describe('normalizeAutomationNodeType', () => {
 		expect(registered.references({})).toEqual([{ kind: 'device', id: 'test.class-action' }]);
 	});
 
+	it('carries what an action does to the home; other kinds and silent actions do nothing', () => {
+		const commands = () => [{ kind: 'scene_run' as const, sceneId: 's-1' }];
+		const acting: AutomationActionNodeType = { ...fakeAction, commands };
+
+		expect(normalizeAutomationNodeType(acting).commands({})).toEqual([{ kind: 'scene_run', sceneId: 's-1' }]);
+		expect(normalizeAutomationNodeType(fakeAction).commands({})).toEqual([]);
+		// Only an action acts: what another kind declares is not passed on
+		expect(normalizeAutomationNodeType({ ...fakeTrigger, commands } as typeof fakeTrigger).commands({})).toEqual([]);
+	});
+
 	it('carries the owner of a node type, and has none when the definition names none', () => {
 		const owner = { kind: 'plugin', type: 'spaces-home-control-plugin' } as const;
 		const registered = normalizeAutomationNodeType({ ...fakeAction, owner });
@@ -86,6 +97,7 @@ describe('normalizeAutomationNodeType', () => {
 		['a missing description', { ...fakeAction, description: undefined }],
 		['a missing config validation', { ...fakeAction, validateConfig: undefined }],
 		['references that is not a function', { ...fakeAction, references: [] }],
+		['commands that is not a function', { ...fakeAction, commands: [] }],
 		['a config schema that is not an object', { ...fakeAction, configSchema: [] }],
 		['an owner that is not an object', { ...fakeAction, owner: 'some-plugin' }],
 		['an owner of an unknown kind', { ...fakeAction, owner: { kind: 'extension', type: 'some-plugin' } }],

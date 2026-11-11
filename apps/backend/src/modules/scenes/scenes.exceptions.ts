@@ -43,6 +43,18 @@ export class ScenesNotTriggerableException extends ScenesException {
 	}
 }
 
+/**
+ * A run that the caller's own guard refused before anything was executed
+ */
+export class ScenesRunRefusedException extends ScenesException {
+	public readonly status = HttpStatus.FORBIDDEN;
+
+	public constructor(message: string) {
+		super(message);
+		this.name = 'ScenesRunRefusedException';
+	}
+}
+
 export class ScenesExecutionException extends ScenesException {
 	public readonly status = HttpStatus.INTERNAL_SERVER_ERROR;
 

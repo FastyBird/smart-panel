@@ -10,6 +10,7 @@ import {
 	AutomationNodeType,
 	normalizeAutomationNodeType,
 } from '../graph/node-type';
+import { AutomationSafetyService } from '../services/automation-safety.service';
 import { AutomationStateTrackerService } from '../services/state-tracker.service';
 import { AutomationTimeSourceService } from '../services/time-source.service';
 import {
@@ -40,6 +41,7 @@ describe('AutomationBuiltInNodeTypesService', () => {
 	let executePropertyCommands: jest.Mock;
 	let triggerScene: jest.Mock;
 	let notify: jest.Mock;
+	let sceneGuard: jest.Mock;
 	let service: AutomationBuiltInNodeTypesService;
 
 	const cardOf = <T extends AutomationNodeType<any>>(type: string): T =>
@@ -50,6 +52,7 @@ describe('AutomationBuiltInNodeTypesService', () => {
 		executePropertyCommands = jest.fn(() => Promise.resolve({ success: true, results: [{ success: true }] }));
 		triggerScene = jest.fn(() => Promise.resolve({ status: 'completed', error: null }));
 		notify = jest.fn(() => Promise.resolve({ id: 'notification-1' }));
+		sceneGuard = jest.fn(() => Promise.resolve(null));
 
 		service = new AutomationBuiltInNodeTypesService(
 			{ watch: jest.fn(), read: jest.fn(), settled: jest.fn() } as unknown as AutomationStateTrackerService,
@@ -58,6 +61,7 @@ describe('AutomationBuiltInNodeTypesService', () => {
 			{ executePropertyCommands } as unknown as PropertyCommandService,
 			{ triggerScene } as unknown as SceneExecutorService,
 			{ notify } as unknown as NotificationsService,
+			{ sceneGuard } as unknown as AutomationSafetyService,
 		);
 	});
 
@@ -117,8 +121,23 @@ describe('AutomationBuiltInNodeTypesService', () => {
 			runContext(),
 		);
 
-		expect(triggerScene).toHaveBeenCalledWith(SCENE_ID, 'automation');
+		// Every scene an automation runs is handed the safety guard, for the actions it is about to execute
+		expect(triggerScene).toHaveBeenCalledWith(SCENE_ID, 'automation', undefined, { guard: sceneGuard });
 		expect(notify).toHaveBeenCalledWith(expect.objectContaining({ title: 'Hello', severity: 'info' }));
+	});
+
+	it('says what the cards that act on the home will do, so the safety policy can judge them', () => {
+		const registered = new Map(
+			service.create().map((nodeType) => [nodeType.type, normalizeAutomationNodeType(nodeType)]),
+		);
+
+		expect(
+			registered.get('device.property.set')?.commands({ writes: [{ ...target(PROPERTY_BOOL), value: true }] }),
+		).toEqual([{ kind: 'property_write', propertyId: PROPERTY_BOOL, value: true, field: 'writes.0.value' }]);
+		expect(registered.get('scene.run')?.commands({ scene_id: SCENE_ID })).toEqual([
+			{ kind: 'scene_run', sceneId: SCENE_ID, field: 'scene_id' },
+		]);
+		expect(registered.get('notification.send')?.commands({ severity: 'info', title: 'Hello' })).toEqual([]);
 	});
 
 	describe('toDevicePropertyInfo', () => {
