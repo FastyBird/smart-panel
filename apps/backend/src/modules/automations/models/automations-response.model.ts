@@ -3,8 +3,10 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { AutomationRunEntity } from '../entities/automation-runs.entity';
 import { AutomationEntity } from '../entities/automations.entity';
 
+import { AutomationRunSummaryModel } from './automation-runs.model';
 import { AutomationRuntimeModel } from './automation-runtime.model';
 import { AutomationTriggerResultModel } from './automation-trigger-result.model';
 import { AutomationSummaryModel } from './automations.model';
@@ -89,4 +91,31 @@ export class AutomationRuntimeResponseModel extends BaseSuccessResponseModel<Aut
 	})
 	@Expose()
 	declare data: AutomationRuntimeModel;
+}
+
+/**
+ * Response wrapper for array of AutomationRunSummaryModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResRuns' })
+export class AutomationRunsResponseModel extends BaseSuccessResponseModel<AutomationRunSummaryModel[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(AutomationRunSummaryModel) },
+	})
+	@Expose()
+	declare data: AutomationRunSummaryModel[];
+}
+
+/**
+ * Response wrapper for AutomationRunEntity
+ */
+@ApiSchema({ name: 'AutomationsModuleResRun' })
+export class AutomationRunResponseModel extends BaseSuccessResponseModel<AutomationRunEntity> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationRunEntity,
+	})
+	@Expose()
+	declare data: AutomationRunEntity;
 }

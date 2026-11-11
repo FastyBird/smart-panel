@@ -87,7 +87,9 @@ const toEngineAutomation = (automation: AutomationEntity): EngineAutomation => (
  * is how an event caused by the engine's own write is told from a save.
  *
  * It is a managed service of the automations module: disabling the module stops the engine, which drops
- * every subscription and ends active runs as `interrupted`.
+ * every subscription and ends active runs as `interrupted`. A run that was parked when the backend lost
+ * power is ended the same way when the engine starts next, from the `running` marker it left in the run
+ * history.
  */
 @Injectable()
 export class AutomationEngineService extends BaseManagedExtensionService {
@@ -127,6 +129,7 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 			hooks: {
 				statusChanged: (state, previous) => this.handleStatusChanged(state, previous),
 				runStarted: (record) => this.runService.runStarted(record),
+				runStep: (record, step) => this.runService.runStep(record, step),
 				runParked: (record) => this.runService.runParked(record),
 				runEnded: (record) => this.runService.runEnded(record),
 				runSettled: (record) => this.runService.runSettled(record),
@@ -146,6 +149,11 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 			this.state = 'starting';
 
 			try {
+				// No run is active yet: what the history still holds as running was cut off by a restart
+				await this.runService.interruptLeftoverRuns();
+				// The nightly prune never runs on a backend that is switched off at night
+				this.runService.pruneExpiredRuns();
+
 				const stored = new Map<string, AutomationStatus>();
 
 				const states = await this.engine.loadAll(async () => {
@@ -197,6 +205,10 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 			this.state = 'stopping';
 
 			await this.engine.clear('engine_stopped');
+			// A run that was only parked completes its trace a moment after it was ended, and is written then
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			// A node that is still executing may not return before the application is gone
+			this.runService.flush();
 			await this.runService.settled();
 			await this.writes;
 

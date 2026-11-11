@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { AUTOMATIONS_MODULE_NAME, EventType } from '../automations.constants';
+import { AutomationRunEntity } from '../entities/automation-runs.entity';
 import { AutomationEntity } from '../entities/automations.entity';
 
 @Injectable()
@@ -15,6 +16,8 @@ export class AutomationsModuleResetService {
 	constructor(
 		@InjectRepository(AutomationEntity)
 		private readonly automationsRepository: Repository<AutomationEntity>,
+		@InjectRepository(AutomationRunEntity)
+		private readonly runsRepository: Repository<AutomationRunEntity>,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -23,6 +26,8 @@ export class AutomationsModuleResetService {
 
 		try {
 			const automationsCount = await this.automationsRepository.count();
+			// The run history goes first: it belongs to the automations
+			await this.runsRepository.clear();
 			await this.automationsRepository.clear();
 
 			this.logger.log('[RESET] Automations module factory reset completed successfully');

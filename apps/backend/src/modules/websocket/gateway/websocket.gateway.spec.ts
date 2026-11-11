@@ -264,7 +264,11 @@ describe('WebsocketGateway', () => {
 			const result = await gateway.handleCommand(mockMessage, mockSocket);
 
 			expect(eventRegistry.get).toHaveBeenCalledWith(mockMessage.event);
-			expect(mockHandler.handler).toHaveBeenCalledWith(mockClientUser, mockMessage.payload);
+			expect(mockHandler.handler).toHaveBeenCalledWith(mockClientUser, mockMessage.payload, {
+				id: mockSocket.id,
+				join: expect.any(Function) as unknown,
+				leave: expect.any(Function) as unknown,
+			});
 			expect(result).toEqual({
 				status: 'ok',
 				message: 'Event handled successfully',
@@ -291,6 +295,59 @@ describe('WebsocketGateway', () => {
 						success: false,
 					},
 				],
+			});
+		});
+	});
+
+	describe('command client', () => {
+		it('lets a handler put the socket of its command into a room and take it out again', async () => {
+			const socket = {
+				...mockSocket,
+				join: jest.fn().mockResolvedValue(undefined),
+				leave: jest.fn().mockResolvedValue(undefined),
+			};
+			const mockHandler = {
+				name: 'HandlerName',
+				handler: jest.fn(
+					async (
+						_user: ClientUserDto,
+						_payload: unknown,
+						client: { id: string; join(room: string): Promise<void>; leave(room: string): Promise<void> },
+					) => {
+						await client.join('automation-1');
+						await client.leave('automation-2');
+
+						return { success: true };
+					},
+				),
+			};
+			jest.spyOn(eventRegistry, 'has').mockReturnValue(true);
+			jest.spyOn(eventRegistry, 'get').mockReturnValue([mockHandler]);
+
+			await gateway.handleCommand(
+				{ event: 'AutomationsModule.WatchAutomation', payload: {} },
+				socket as unknown as typeof mockSocket,
+			);
+
+			expect(socket.join).toHaveBeenCalledWith('automation-1');
+			expect(socket.leave).toHaveBeenCalledWith('automation-2');
+		});
+	});
+
+	describe('sendToRoom', () => {
+		it('emits the event to the sockets of that room only', () => {
+			const room = { emit: jest.fn() };
+			(mockServer.to as jest.Mock).mockReturnValueOnce(room);
+
+			gateway.sendToRoom('automation-1', 'AutomationsModule.Run.Step', { run_id: 'r', step: { seq: 1 } });
+
+			expect(mockServer.to).toHaveBeenCalledTimes(1);
+			expect(mockServer.to).toHaveBeenCalledWith('automation-1');
+			expect(mockServer.emit).not.toHaveBeenCalled();
+			expect(room.emit).toHaveBeenCalledWith('event', {
+				event: 'AutomationsModule.Run.Step',
+				payload: { run_id: 'r', step: { seq: 1 } },
+				metadata: { timestamp: expect.any(String) as unknown },
 			});
 		});
 	});

@@ -57,6 +57,7 @@ import {
 	RunPlanGatedNode,
 	RunPlanNode,
 	RunRecord,
+	RunStep,
 	RunWalker,
 	runPlanPortKey,
 } from './run-walker';
@@ -187,6 +188,8 @@ export interface EngineHooks {
 	 */
 	statusChanged?(state: EngineAutomationState, previous: EngineAutomationStatus): void;
 	runStarted?(record: RunRecord): void;
+	/** The run reached a node, or a Delay it was parked on let it go on or was cancelled */
+	runStep?(record: RunRecord, step: RunStep): void;
 	/** The run parked on a Delay for the first time, so it will outlive the current tick */
 	runParked?(record: RunRecord): void;
 	/** The outcome of the run is known */
@@ -963,6 +966,7 @@ export class AutomationEngine {
 			beforeExecute: (node) => this.gate(loaded, node, owners.get(node.id)),
 			checkAction: (node) => this.askActionPolicy(loaded, node),
 			observer: {
+				step: (record, step) => this.hook('runStep', record, step),
 				parked: (record) => this.hook('runParked', record),
 				ended: (record) => {
 					if (loaded.active.delete(walker)) {

@@ -258,7 +258,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 							this.observeAcknowledgementTrace(() =>
 								this.commandAcknowledgementTrace.recordHandlerStart(client, message, name),
 							);
-							const response = await handler(clientData.user, payload);
+							const response = await handler(clientData.user, payload, {
+								id: client.id,
+								join: async (room) => {
+									await client.join(room);
+								},
+								leave: async (room) => {
+									await client.leave(room);
+								},
+							});
 							this.observeAcknowledgementTrace(() =>
 								this.commandAcknowledgementTrace.recordHandlerSettled(
 									client,
@@ -333,6 +341,35 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		this.logger.debug(`Emitting message: ${JSON.stringify(message)}`);
 
 		this.server.emit('event', message);
+	}
+
+	/**
+	 * Sends an event to the sockets of one room only. For events that would be noise for everybody else,
+	 * e.g. the steps of a run for the clients watching that automation; a command handler puts a socket
+	 * into a room through the `CommandClient` it is given. Such an event must not also be put on the bus.
+	 */
+	public sendToRoom(room: string, event: string, payload: Record<string, any>): void {
+		if (!this.enabled) {
+			return;
+		}
+
+		if (!this.server) {
+			this.logger.warn('WebSocket server is not initialized.');
+
+			return;
+		}
+
+		const message = {
+			event,
+			payload: this.transformPayload(payload),
+			metadata: {
+				timestamp: new Date().toISOString(),
+			},
+		};
+
+		this.logger.debug(`Emitting event to room ${room}: ${this.formatMessageForLogging(message)}`);
+
+		this.server.to(room).emit('event', message);
 	}
 
 	/** The private trace must be observational even if its own bounded bookkeeping fails. */

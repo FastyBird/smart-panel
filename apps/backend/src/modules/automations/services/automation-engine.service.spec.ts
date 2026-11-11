@@ -28,6 +28,7 @@ import {
 import { FakeTrackerClock } from '../testing/fake-tracker-clock';
 
 import { AutomationEngineService } from './automation-engine.service';
+import { AutomationRunHistoryService, AutomationRunRow } from './automation-run-history.service';
 import { AutomationRunService } from './automation-run.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 import { AutomationStateTrackerService } from './state-tracker.service';
@@ -46,6 +47,13 @@ describe('AutomationEngineService', () => {
 	let tracker: { reference: jest.Mock };
 	let releaseReference: jest.Mock;
 	let runService: AutomationRunService;
+	let history: {
+		stored: AutomationRunRow[];
+		leftover: Partial<AutomationRunRow>[];
+		store: jest.Mock;
+		interruptRunning: jest.Mock;
+		pruneExpired: jest.Mock;
+	};
 	let service: AutomationEngineService;
 
 	const simple = graph([node('t', ENGINE_TRIGGER_TYPE), node('a', ENGINE_ACTION_TYPE)], ['t:out>a']);
@@ -163,7 +171,18 @@ describe('AutomationEngineService', () => {
 
 		notifications = { notify: jest.fn(() => Promise.resolve(null)), resolve: jest.fn(() => Promise.resolve(true)) };
 		tracker = { reference: jest.fn(() => releaseReference) };
-		runService = new AutomationRunService(repository, eventEmitter);
+		history = {
+			stored: [],
+			leftover: [],
+			store: jest.fn((row: AutomationRunRow) => {
+				history.stored.push(row);
+
+				return Promise.resolve();
+			}),
+			interruptRunning: jest.fn(() => Promise.resolve(history.leftover)),
+			pruneExpired: jest.fn(() => Promise.resolve(0)),
+		};
+		runService = new AutomationRunService(repository, eventEmitter, history as unknown as AutomationRunHistoryService);
 
 		service = new AutomationEngineService(
 			repository,
@@ -421,14 +440,123 @@ describe('AutomationEngineService', () => {
 				lastTriggeredAt: expect.any(Date) as Date,
 				revision: 1,
 			});
-			expect(emitted.map((item) => item.event)).toEqual([EventType.AUTOMATION_UPDATED]);
+			expect(emitted.map((item) => item.event)).toEqual([
+				EventType.RUN_STARTED,
+				EventType.AUTOMATION_UPDATED,
+				EventType.RUN_COMPLETED,
+			]);
 
 			// The event of that write comes back over the bus and changes nothing
-			service.handleAutomationUpdated(emitted[0].payload);
+			service.handleAutomationUpdated(emitted[1].payload);
 			await settle();
 
 			expect(service.runtime(ID)).toMatchObject({ armed: true, triggers: { started: 1 } });
-			expect(emitted).toHaveLength(1);
+			expect(emitted).toHaveLength(3);
+		});
+
+		it('hands a run to the history once, when it ends, with its trace', async () => {
+			await fire();
+
+			expect(history.store).toHaveBeenCalledTimes(1);
+			expect(history.stored[0]).toMatchObject({
+				automationId: ID,
+				revision: 1,
+				status: 'completed',
+				triggerNodeId: 't',
+				manual: false,
+				trace: { steps: [{ seq: 1, node_id: 'a', kind: 'action', output: 'done', result: { success: true } }] },
+			});
+			expect(emitted.at(-1)).toMatchObject({
+				event: EventType.RUN_COMPLETED,
+				payload: { id: history.stored[0].id, automation_id: ID, status: 'completed' },
+			});
+		});
+
+		it('writes the marker of a run that parks, and the run again when it ends', async () => {
+			save({ graph: delayed });
+			await settle();
+			await fire();
+
+			expect(history.stored).toHaveLength(1);
+			expect(history.stored[0]).toMatchObject({
+				status: 'running',
+				finishedAt: null,
+				trace: { steps: [{ node_id: 'wait', state: 'parked', delay_ms: 120_000 }] },
+			});
+
+			clock.advanceSeconds(120);
+			await settle();
+
+			expect(history.stored).toHaveLength(2);
+			expect(history.stored[1]).toMatchObject({
+				id: history.stored[0].id,
+				status: 'completed',
+				trace: { steps: [{ node_id: 'wait', state: 'done', output: 'out' }, { node_id: 'off' }] },
+			});
+		});
+
+		it('ends the runs a restart cut off before it loads the automations', async () => {
+			await service.stop();
+			history.interruptRunning.mockClear();
+			history.pruneExpired.mockClear();
+
+			history.leftover = [{ id: 'run-0', automationId: ID, startedAt: new Date(Date.now() + 60_000) }];
+			rows.get(ID).lastRunStatus = AutomationRunStatus.COMPLETED;
+
+			await service.start();
+
+			expect(history.interruptRunning).toHaveBeenCalledTimes(1);
+			expect(history.pruneExpired).toHaveBeenCalledTimes(1);
+			expect(rows.get(ID)?.lastRunStatus).toBe(AutomationRunStatus.INTERRUPTED);
+		});
+
+		it('writes a parked run once more when the engine stops, as interrupted', async () => {
+			save({ graph: delayed });
+			await settle();
+			await fire();
+
+			await service.stop();
+
+			expect(history.stored.map((row) => [row.status, row.endReason])).toEqual([
+				['running', null],
+				['interrupted', 'engine_stopped'],
+			]);
+			expect(history.stored[1].trace.steps).toEqual([expect.objectContaining({ node_id: 'wait', state: 'cancelled' })]);
+			expect(emitted.filter((item) => item.event === (EventType.RUN_COMPLETED as string))).toHaveLength(1);
+		});
+
+		it('writes a run whose action is still executing when the engine stops with the trace it has', async () => {
+			save({
+				graph: graph([node('t', ENGINE_TRIGGER_TYPE), node('a', ENGINE_ACTION_TYPE, { hang: true })], ['t:out>a']),
+			});
+			await settle();
+			await fire();
+
+			expect(history.stored).toEqual([]);
+
+			await service.stop();
+
+			expect(history.stored).toHaveLength(1);
+			expect(history.stored[0]).toMatchObject({
+				status: 'interrupted',
+				endReason: 'engine_stopped',
+				trace: { steps: [] },
+			});
+		});
+
+		it('tells the step listener about every step of a run', async () => {
+			const steps: string[] = [];
+
+			runService.setStepListener((record, step) => steps.push(`${record.automationId}:${step.nodeId}:${step.state}`));
+
+			save({ graph: delayed });
+			await settle();
+			await fire();
+
+			clock.advanceSeconds(120);
+			await settle();
+
+			expect(steps).toEqual([`${ID}:wait:parked`, `${ID}:wait:done`, `${ID}:off:done`]);
 		});
 
 		it('records a run that parks before it ends', async () => {
