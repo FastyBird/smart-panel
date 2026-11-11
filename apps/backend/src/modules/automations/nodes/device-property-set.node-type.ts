@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsObject, ValidateNested } from 'class-validator';
 
 import {
+	AutomationActionCommand,
 	AutomationActionNodeType,
 	AutomationNodeConfigProblem,
 	AutomationNodeConfigValidator,
@@ -100,8 +101,8 @@ const describeError = (error: unknown): string => (error instanceof Error ? erro
  * The device and the channel named with a write are handed to the command service, which refuses a write
  * whose property is no longer the one of that channel and device.
  *
- * Refusing writes that reduce safety (unlock, disarm, open) is the job of the action policy of the engine,
- * which is asked before this action is executed and sees this configuration.
+ * Refusing writes that reduce safety (unlock, disarm, open) is the job of the safety policy, which reads
+ * what this action will write from `commands()` when the graph is saved and again before every execution.
  */
 export const createDevicePropertySetNodeType = (
 	dependencies: DevicePropertySetDependencies,
@@ -190,6 +191,22 @@ export const createDevicePropertySetNodeType = (
 			}
 
 			return [...references.values()];
+		},
+		commands: (config) => {
+			const commands: AutomationActionCommand[] = [];
+			const writes: unknown[] = Array.isArray(config?.writes) ? config.writes : [];
+
+			for (const [index, write] of writes.entries()) {
+				if (typeof write !== 'object' || write === null) continue;
+
+				const { property_id: propertyId, value } = write as Partial<DevicePropertyWriteDto>;
+
+				if (typeof propertyId !== 'string') continue;
+
+				commands.push({ kind: 'property_write', propertyId, value, field: `writes.${index}.value` });
+			}
+
+			return commands;
 		},
 		execute: async (config, context) => {
 			if (context.signal.aborted) {

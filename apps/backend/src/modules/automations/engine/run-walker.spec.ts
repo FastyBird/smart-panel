@@ -1,4 +1,4 @@
-import { AutomationRunContext } from '../graph/node-type';
+import { AutomationActionResult, AutomationRunContext } from '../graph/node-type';
 import { flush } from '../testing/engine-harness';
 import { FakeTrackerClock } from '../testing/fake-tracker-clock';
 
@@ -114,7 +114,11 @@ describe('RunWalker', () => {
 
 	const walk = (
 		runPlan: RunPlan,
-		options: { beforeExecute?: (node: RunPlanGatedNode) => RunGate; maxSteps?: number } = {},
+		options: {
+			beforeExecute?: (node: RunPlanGatedNode) => RunGate;
+			checkAction?: (node: RunPlanActionNode) => RunGate | PromiseLike<RunGate>;
+			maxSteps?: number;
+		} = {},
 	): RunWalker =>
 		new RunWalker({
 			plan: runPlan,
@@ -163,6 +167,21 @@ describe('RunWalker', () => {
 
 		expect(walker.record.status).toBe('completed');
 		expect(events).toEqual(['ended:completed', 'settled']);
+	});
+
+	it('starts an action in the same tick when its check answers at once', async () => {
+		const walker = walk(plan([trigger('t'), action('a'), action('b')], ['t:out>a', 't:out>b']), {
+			checkAction: () => ({ allow: true }),
+		});
+
+		walker.start();
+
+		// The actions were called before anything was awaited
+		expect(calls).toEqual(['a', 'b']);
+
+		await flush();
+
+		expect(walker.record.status).toBe('completed');
 	});
 
 	it('parallel branches interleave: the order of completion follows the latency, not the edges', async () => {
@@ -263,6 +282,38 @@ describe('RunWalker', () => {
 		});
 		// Every error was handled by an edge
 		expect(walker.record.status).toBe('completed');
+	});
+
+	it('keeps the refusal an action reports for itself, and only for an action that did nothing', async () => {
+		const reporting = (id: string, result: unknown): RunPlanActionNode => ({
+			...action(id),
+			execute: () => Promise.resolve(result as AutomationActionResult),
+		});
+		const walker = walk(
+			plan(
+				[
+					trigger('t'),
+					reporting('inner', { success: false, reason: 'the scene was refused', refused: true }),
+					reporting('lying', { success: true, refused: true }),
+					action('handler'),
+				],
+				['t:out>inner', 't:out>lying', 'inner:error>handler'],
+			),
+		);
+
+		walker.start();
+		await flush();
+
+		expect(stepOf(walker, 'inner')).toMatchObject({
+			output: 'error',
+			refused: true,
+			reason: 'the scene was refused',
+			result: { success: false, refused: true },
+		});
+		expect(stepOf(walker, 'lying')).toMatchObject({ output: 'done', result: { success: true } });
+		expect(stepOf(walker, 'lying').refused).toBeUndefined();
+		expect(stepOf(walker, 'lying').result).not.toHaveProperty('refused');
+		expect(calls).toContain('handler');
 	});
 
 	it('an error output with no edge ends that token and fails the run; other branches continue', async () => {
@@ -630,6 +681,243 @@ describe('RunWalker', () => {
 				reason: 'The plugin this block belongs to is disabled.',
 			});
 			expect(step.output).toBeUndefined();
+		});
+	});
+
+	describe('action check', () => {
+		const graphOf = (first: RunPlanActionNode = action('unlock')): RunPlan =>
+			plan(
+				[trigger('t'), condition('c'), first, action('handler'), action('never'), action('light')],
+				['t:out>c', 'c:yes>unlock', 'unlock:error>handler', 'unlock:done>never', 'c:yes>light'],
+			);
+
+		const refuseUnlock = (node: RunPlanActionNode): RunGate =>
+			node.id === 'unlock' ? { allow: false, reason: 'An automation can not unlock a lock.' } : { allow: true };
+
+		it('is asked for actions only; a refused action is not executed, takes error and is traced as refused', async () => {
+			const asked: string[] = [];
+
+			const walker = walk(graphOf(), {
+				checkAction: (node) => {
+					asked.push(node.id);
+
+					return refuseUnlock(node);
+				},
+			});
+
+			walker.start();
+			await flush();
+
+			expect(asked.sort()).toEqual(['handler', 'light', 'unlock']);
+			expect(calls.sort()).toEqual(['c', 'handler', 'light']);
+			expect(stepOf(walker, 'unlock')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'An automation can not unlock a lock.',
+				result: { success: false, reason: 'An automation can not unlock a lock.' },
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
+
+		it('a refusal nothing handles fails the run', async () => {
+			const walker = walk(plan([trigger('t'), action('unlock')], ['t:out>unlock']), { checkAction: refuseUnlock });
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual([]);
+			expect(events).toEqual(['ended:failed', 'settled']);
+		});
+
+		it('waits for a check that takes its time', async () => {
+			const walker = walk(graphOf(), {
+				checkAction: (node) =>
+					new Promise<RunGate>((resolve) => {
+						clock.setTimeout(() => resolve(refuseUnlock(node)), 50);
+					}),
+			});
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['c']);
+			expect(walker.active).toBe(true);
+
+			clock.advance(50);
+			await flush();
+			clock.advance(50);
+			await flush();
+
+			expect(calls.sort()).toEqual(['c', 'handler', 'light']);
+			expect(stepOf(walker, 'unlock')).toMatchObject({ output: 'error', refused: true });
+			expect(events).toEqual(['ended:completed', 'settled']);
+			expect(clock.pending()).toBe(0);
+		});
+
+		it.each([
+			[
+				'throws',
+				(): RunGate => {
+					throw new Error('check broke');
+				},
+			],
+			['rejects', (): Promise<RunGate> => Promise.reject(new Error('check broke'))],
+			['answers nothing', (): RunGate => undefined as unknown as RunGate],
+			['answers something else', (): Promise<RunGate> => Promise.resolve({ allow: 'yes' } as unknown as RunGate)],
+		])('a check that %s lets nothing through', async (_name, checkAction) => {
+			const walker = walk(plan([trigger('t'), action('a')], ['t:out>a']), { checkAction });
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual([]);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The action could not be checked, so it was not executed.',
+			});
+		});
+
+		it('a check that never answers is held to the timeout of the action and refuses', async () => {
+			const walker = walk(plan([trigger('t'), action('a', { timeoutMs: 2_000 })], ['t:out>a']), {
+				checkAction: () => new Promise<RunGate>(() => undefined),
+			});
+
+			walker.start();
+			await flush();
+			clock.advance(2_000);
+			await flush();
+
+			expect(calls).toEqual([]);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The action could not be checked within 2 s.',
+			});
+			expect(events).toEqual(['ended:failed', 'settled']);
+		});
+
+		it('an action whose run was cancelled while it was being checked is not executed', async () => {
+			let answer: (gate: RunGate) => void = () => undefined;
+
+			const walker = walk(plan([trigger('t'), action('a')], ['t:out>a']), {
+				checkAction: () =>
+					new Promise<RunGate>((resolve) => {
+						answer = resolve;
+					}),
+			});
+
+			walker.start();
+			await flush();
+
+			walker.cancel('restarted');
+			await flush();
+
+			answer({ allow: true });
+			await flush();
+
+			expect(calls).toEqual([]);
+			expect(stepOf(walker, 'a')).toMatchObject({ state: 'cancelled' });
+			expect(stepOf(walker, 'a').output).toBeUndefined();
+			expect(events).toEqual(['ended:cancelled', 'settled']);
+			expect(clock.pending()).toBe(0);
+		});
+
+		it('is not asked for an action the gate already refused', async () => {
+			const checkAction = jest.fn((): RunGate => ({ allow: true }));
+
+			const walker = walk(plan([trigger('t'), action('blocked')], ['t:out>blocked']), {
+				beforeExecute: () => ({ allow: false, reason: 'The plugin this block belongs to is disabled.' }),
+				checkAction,
+			});
+
+			walker.start();
+			await flush();
+
+			expect(checkAction).not.toHaveBeenCalled();
+			expect(stepOf(walker, 'blocked')).toMatchObject({ refused: true });
+		});
+
+		it('asks the gate again after the check: an action refused while it was being checked is not executed', async () => {
+			let enabled = true;
+			let answer: (gate: RunGate) => void = () => undefined;
+
+			const walker = walk(plan([trigger('t'), action('a'), action('handler')], ['t:out>a', 'a:error>handler']), {
+				beforeExecute: (node) =>
+					enabled || node.id !== 'a'
+						? { allow: true }
+						: { allow: false, reason: 'The plugin this block belongs to is disabled.' },
+				checkAction: (node) =>
+					node.id === 'a'
+						? new Promise<RunGate>((resolve) => {
+								answer = resolve;
+							})
+						: { allow: true },
+			});
+
+			walker.start();
+			await flush();
+
+			enabled = false;
+			answer({ allow: true });
+			await flush();
+
+			expect(calls).toEqual(['handler']);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The plugin this block belongs to is disabled.',
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
+
+		it('a check whose answer can not be read lets nothing through and the action takes error', async () => {
+			const broken = Object.defineProperty({ allow: true }, 'then', {
+				get: () => {
+					throw new Error('then broke');
+				},
+			}) as RunGate;
+
+			const walker = walk(plan([trigger('t'), action('a'), action('handler')], ['t:out>a', 'a:error>handler']), {
+				checkAction: (node) => (node.id === 'a' ? broken : { allow: true }),
+			});
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['handler']);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The action could not be checked, so it was not executed.',
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
+
+		it.each([
+			['at once', (verdict: RunGate): RunGate => verdict],
+			['later', (verdict: RunGate): Promise<RunGate> => Promise.resolve(verdict)],
+		])('a verdict that can not be read, answered %s, lets nothing through', async (_label, answer) => {
+			const broken = Object.defineProperty({}, 'allow', {
+				get: () => {
+					throw new Error('allow broke');
+				},
+			}) as RunGate;
+
+			const walker = walk(plan([trigger('t'), action('a'), action('handler')], ['t:out>a', 'a:error>handler']), {
+				checkAction: (node) => (node.id === 'a' ? answer(broken) : { allow: true }),
+			});
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['handler']);
+			expect(stepOf(walker, 'a')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The action could not be checked, so it was not executed.',
+			});
+			expect(events).toEqual(['ended:completed', 'settled']);
 		});
 	});
 

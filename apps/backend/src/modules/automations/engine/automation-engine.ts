@@ -213,8 +213,11 @@ export interface AutomationEngineOptions {
 	 * uses it to keep the last-seen value of referenced properties in the state tracker.
 	 */
 	holdReference?: (reference: AutomationNodeReference) => (() => void) | undefined;
-	/** Asked before every action; a refusal takes the `error` output and is traced */
-	actionPolicy?: (request: ActionPolicyRequest) => ActionPolicyVerdict;
+	/**
+	 * Asked before every action; a refusal takes the `error` output and is traced. The policy may answer
+	 * later - it may have to read what the action is about to touch - and one that fails refuses.
+	 */
+	actionPolicy?: (request: ActionPolicyRequest) => ActionPolicyVerdict | PromiseLike<ActionPolicyVerdict>;
 	limits?: Partial<EngineLimits>;
 	hooks?: EngineHooks;
 }
@@ -958,6 +961,7 @@ export class AutomationEngine {
 			trigger: { nodeId, data, manual },
 			maxSteps: this.limits.maxRunSteps,
 			beforeExecute: (node) => this.gate(loaded, node, owners.get(node.id)),
+			checkAction: (node) => this.askActionPolicy(loaded, node),
 			observer: {
 				parked: (record) => this.hook('runParked', record),
 				ended: (record) => {
@@ -990,20 +994,51 @@ export class AutomationEngine {
 			return { allow: false, reason: `The ${owner?.kind ?? 'plugin'} this block belongs to is disabled.` };
 		}
 
-		if (node.kind === 'action' && this.options.actionPolicy) {
-			const policy = this.options.actionPolicy;
-			// A policy that fails must not let the action through
-			const verdict = this.safely<ActionPolicyVerdict>(
-				() => policy({ automationId: loaded.def.id, nodeId: node.id, type: node.type, config: node.config }),
-				{ allow: false, reason: 'The safety policy could not be checked.' },
-			);
-
-			if (!verdict || verdict.allow !== true) {
-				return { allow: false, reason: verdict?.reason ?? 'The action was refused by the safety policy.' };
-			}
-		}
-
 		return { allow: true };
+	}
+
+	/** Asked before every action the gate let through; a policy that fails must not let the action through */
+	private askActionPolicy(loaded: Loaded, node: RunPlanGatedNode): RunGate | PromiseLike<RunGate> {
+		const policy = this.options.actionPolicy;
+
+		if (!policy) return { allow: true };
+
+		const unchecked: RunGate = { allow: false, reason: 'The safety policy could not be checked.' };
+		const read = (verdict: ActionPolicyVerdict | undefined): RunGate => {
+			try {
+				return verdict?.allow === true
+					? { allow: true }
+					: { allow: false, reason: verdict?.reason ?? 'The action was refused by the safety policy.' };
+			} catch (error) {
+				this.hook('error', error, 'asking the action policy');
+
+				return unchecked;
+			}
+		};
+
+		// Reading `then` and calling it are part of asking: a verdict that can not be read is no verdict
+		try {
+			const verdict = policy({
+				automationId: loaded.def.id,
+				nodeId: node.id,
+				type: node.type,
+				config: node.config,
+			});
+
+			if (typeof (verdict as PromiseLike<ActionPolicyVerdict> | null)?.then !== 'function') {
+				return read(verdict as ActionPolicyVerdict);
+			}
+
+			return (verdict as PromiseLike<ActionPolicyVerdict>).then(read, (error: unknown) => {
+				this.hook('error', error, 'asking the action policy');
+
+				return unchecked;
+			});
+		} catch (error) {
+			this.hook('error', error, 'asking the action policy');
+
+			return unchecked;
+		}
 	}
 
 	// ---- helpers ---------------------------------------------------------------------------------------

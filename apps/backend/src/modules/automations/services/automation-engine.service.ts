@@ -47,7 +47,9 @@ import { AutomationStateTrackerService } from './state-tracker.service';
 /** Injection token for the clock of the engine; left unbound in the application, bound in tests */
 export const AUTOMATION_ENGINE_CLOCK = Symbol('AUTOMATION_ENGINE_CLOCK');
 
-export type AutomationActionPolicy = (request: ActionPolicyRequest) => ActionPolicyVerdict;
+export type AutomationActionPolicy = (
+	request: ActionPolicyRequest,
+) => ActionPolicyVerdict | PromiseLike<ActionPolicyVerdict>;
 
 const STATUS: Record<EngineAutomationStatus, AutomationStatus> = {
 	ok: AutomationStatus.OK,
@@ -266,7 +268,8 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 
 	/**
 	 * Sets the policy asked before every action. A refusal takes the `error` output of the action and is
-	 * traced. There is one policy; setting another replaces it.
+	 * traced, and so does a policy that fails. There is one policy; setting another replaces it. The module
+	 * sets the safety policy (`AutomationSafetyService`) when it starts.
 	 */
 	setActionPolicy(policy: AutomationActionPolicy | undefined): void {
 		this.actionPolicy = policy;

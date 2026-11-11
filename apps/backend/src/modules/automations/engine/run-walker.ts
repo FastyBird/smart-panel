@@ -169,6 +169,12 @@ export interface RunWalkerOptions {
 	trigger: AutomationRunTrigger;
 	/** Asked before every condition, action and delay; a refusal is traced and the node is not executed */
 	beforeExecute?: (node: RunPlanGatedNode) => RunGate;
+	/**
+	 * Asked before every action that `beforeExecute` let through. It may take its time - it may have to
+	 * read what the action is about to touch - and it is held to the timeout of the action. A check that
+	 * fails or does not answer in time refuses the action.
+	 */
+	checkAction?: (node: RunPlanActionNode) => RunGate | PromiseLike<RunGate>;
 	observer?: RunObserver;
 	maxSteps?: number;
 }
@@ -176,6 +182,8 @@ export interface RunWalkerOptions {
 type Invocation<T> = { type: 'value'; value: T } | { type: 'threw'; error: unknown } | { type: 'timeout' };
 
 const describeError = (error: unknown): string => (error instanceof Error ? error.message : 'unknown error');
+
+const ACTION_CHECK_FAILED_REASON = 'The action could not be checked, so it was not executed.';
 
 const describeSeconds = (ms: number): string => `${Math.round(ms / 100) / 10} s`;
 
@@ -187,6 +195,7 @@ export class RunWalker {
 	private readonly wallNow: () => number;
 	private readonly observer: RunObserver;
 	private readonly beforeExecute?: RunWalkerOptions['beforeExecute'];
+	private readonly checkAction?: RunWalkerOptions['checkAction'];
 	private readonly maxSteps: number;
 
 	private started = false;
@@ -208,6 +217,7 @@ export class RunWalker {
 		this.wallNow = options.wallNow ?? ((): number => Date.now());
 		this.observer = options.observer ?? {};
 		this.beforeExecute = options.beforeExecute;
+		this.checkAction = options.checkAction;
 		this.maxSteps = options.maxSteps ?? RUN_MAX_STEPS;
 
 		this.record = {
@@ -364,7 +374,26 @@ export class RunWalker {
 	}
 
 	private async runAction(node: RunPlanActionNode, edge: RunPlanEdge): Promise<void> {
-		const gate = this.beforeExecute?.(node) ?? { allow: true };
+		let gate = this.beforeExecute?.(node) ?? { allow: true };
+
+		if (gate.allow && this.checkAction) {
+			const asked = this.askActionCheck(node, this.checkAction);
+
+			// Only a check that takes its time is waited for: an answer given at once keeps the action in this tick
+			gate = asked instanceof Promise ? await asked : asked;
+
+			if (this.ended) {
+				// The run ended while the action was being checked: the action is not executed
+				this.step(node, edge, { state: 'cancelled' });
+
+				return;
+			}
+
+			if (gate.allow) {
+				// The check may have taken its time: what the gate said before it may no longer hold
+				gate = this.beforeExecute?.(node) ?? { allow: true };
+			}
+		}
 
 		let result: AutomationActionResult;
 		let timedOut = false;
@@ -392,7 +421,7 @@ export class RunWalker {
 			output,
 			result,
 			...(result.reason !== undefined ? { reason: result.reason } : {}),
-			...(gate.allow ? {} : { refused: true }),
+			...(gate.allow && result.refused !== true ? {} : { refused: true }),
 			...(timedOut ? { timedOut: true } : {}),
 		});
 
@@ -439,6 +468,81 @@ export class RunWalker {
 		step.output = 'out';
 
 		this.follow(node.id, 'out');
+	}
+
+	/**
+	 * Asks the action check. A check that answers at once is not waited for, so an action it lets through
+	 * starts in the same tick as before. The promise always resolves.
+	 */
+	private askActionCheck(
+		node: RunPlanActionNode,
+		check: NonNullable<RunWalkerOptions['checkAction']>,
+	): RunGate | Promise<RunGate> {
+		const failed: RunGate = { allow: false, reason: ACTION_CHECK_FAILED_REASON };
+		const read = (gate: unknown): RunGate => {
+			if (typeof gate !== 'object' || gate === null) return failed;
+
+			try {
+				// Reading the verdict is part of the check: a verdict that can not be read lets nothing through
+				const { allow, reason } = gate as { allow?: unknown; reason?: unknown };
+
+				if (allow === true) return { allow: true };
+
+				return { allow: false, reason: typeof reason === 'string' ? reason : ACTION_CHECK_FAILED_REASON };
+			} catch {
+				return failed;
+			}
+		};
+
+		let asked: RunGate | PromiseLike<RunGate>;
+		let pending: boolean;
+
+		try {
+			asked = check(node);
+			// Reading `then` is part of asking: an answer that can not be read is no answer
+			pending = typeof (asked as PromiseLike<RunGate> | null)?.then === 'function';
+		} catch {
+			return failed;
+		}
+
+		if (!pending) {
+			return read(asked);
+		}
+
+		return new Promise((resolve) => {
+			let finished = false;
+
+			const finish = (gate: RunGate): void => {
+				if (finished) return;
+
+				finished = true;
+				this.clock.clearTimeout(handle);
+				this.parked.delete(release);
+				resolve(gate);
+			};
+			// A cancelled run does not wait for the check
+			const release = (): void => finish(failed);
+
+			this.parked.add(release);
+
+			const handle = this.clock.setTimeout(
+				() =>
+					finish({
+						allow: false,
+						reason: `The action could not be checked within ${describeSeconds(node.timeoutMs)}.`,
+					}),
+				node.timeoutMs,
+			);
+
+			try {
+				(asked as PromiseLike<RunGate>).then(
+					(gate) => finish(read(gate)),
+					() => finish(failed),
+				);
+			} catch {
+				finish(failed);
+			}
+		});
 	}
 
 	/** Parks a token on a timer. Resolves true when the timer fired and false when the run was cancelled. */
@@ -525,9 +629,14 @@ export class RunWalker {
 			return { success: false, reason: 'The action did not return a result.' };
 		}
 
-		const { success, reason } = value as Partial<AutomationActionResult>;
+		const { success, reason, refused } = value as Partial<AutomationActionResult>;
 
-		return { success: success === true, ...(typeof reason === 'string' ? { reason } : {}) };
+		return {
+			success: success === true,
+			...(typeof reason === 'string' ? { reason } : {}),
+			// Only an action that did nothing can have been refused
+			...(success !== true && refused === true ? { refused: true } : {}),
+		};
 	}
 
 	private step(node: RunPlanNode, edge: RunPlanEdge, fields: Partial<RunStep>): RunStep {

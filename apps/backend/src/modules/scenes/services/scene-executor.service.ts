@@ -9,7 +9,11 @@ import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from '../models/scenes.model';
 import { EventType, SCENES_MODULE_NAME, SceneExecutionStatus } from '../scenes.constants';
-import { ScenesExecutionException, ScenesNotTriggerableException } from '../scenes.exceptions';
+import {
+	ScenesExecutionException,
+	ScenesNotTriggerableException,
+	ScenesRunRefusedException,
+} from '../scenes.exceptions';
 
 import { ScenesService } from './scenes.service';
 
@@ -17,6 +21,26 @@ export interface SceneExecutionContext {
 	readonly intentId: string;
 	readonly deadlineAt: number;
 }
+
+/**
+ * Looks at the enabled actions a run is about to execute and returns the reason the run must not happen,
+ * or null to let it run. It sees the very actions that would be executed, in their order.
+ */
+export type SceneRunGuard = (
+	scene: SceneEntity,
+	actions: readonly SceneActionEntity[],
+) => string | null | Promise<string | null>;
+
+export interface SceneTriggerOptions {
+	/**
+	 * Asked before anything of the scene is executed. A caller that may not do everything a person may -
+	 * an automation - passes one; a run started from the panel or the admin passes none.
+	 */
+	guard?: SceneRunGuard;
+}
+
+const enabledActionsOf = (scene: SceneEntity): SceneActionEntity[] =>
+	(scene.actions || []).filter((action) => action.enabled).sort((a, b) => a.order - b.order);
 
 /**
  * Interface for scene execution platforms.
@@ -89,12 +113,23 @@ export class SceneExecutorService {
 	}
 
 	/**
+	 * List the enabled actions of a scene as they are now, in execution order - what a run started at this
+	 * moment would execute. Read-only; null when the scene does not exist.
+	 */
+	async findEnabledActions(sceneId: string): Promise<SceneActionEntity[] | null> {
+		const scene = await this.scenesService.findOne(sceneId);
+
+		return scene ? enabledActionsOf(scene) : null;
+	}
+
+	/**
 	 * Trigger a scene execution
 	 */
 	async triggerScene(
 		sceneId: string,
 		triggeredBy?: string,
 		executionContext?: IntentContext,
+		options?: SceneTriggerOptions,
 	): Promise<SceneExecutionResultModel> {
 		const scene = await this.scenesService.getOneOrThrow(sceneId);
 
@@ -108,6 +143,16 @@ export class SceneExecutorService {
 		if (!scene.enabled) {
 			this.logger.warn(`[TRIGGER] Scene with id=${sceneId} is disabled`);
 			throw new ScenesNotTriggerableException(`Scene with id=${sceneId} is disabled.`);
+		}
+
+		if (options?.guard) {
+			// Nothing was executed and no intent exists yet, so a refusal leaves no trace of a run
+			const refusal = await options.guard(scene, enabledActionsOf(scene));
+
+			if (refusal !== null) {
+				this.logger.warn(`[TRIGGER] Scene with id=${sceneId} was refused for ${triggeredBy ?? 'its caller'}`);
+				throw new ScenesRunRefusedException(refusal);
+			}
 		}
 
 		const triggeredAt = new Date();
@@ -373,7 +418,7 @@ export class SceneExecutorService {
 		scene: SceneEntity,
 		context: SceneExecutionContext,
 	): Promise<ActionExecutionResultModel[]> {
-		const actions = (scene.actions || []).filter((a) => a.enabled).sort((a, b) => a.order - b.order);
+		const actions = enabledActionsOf(scene);
 
 		if (actions.length === 0) {
 			return [];

@@ -5,7 +5,8 @@
  *
  * - structural: the graph could not be run whatever is done to its nodes - a node type that is not
  *   available, an edge on a port that does not exist, an edge into a trigger, a cycle, a duplicate edge.
- *   These always stop a save.
+ *   These always stop a save. So does an action that would reduce safety - unlock, disarm or open - which
+ *   an automation may not hold even as a draft.
  * - completeness: the graph is drawn correctly but is not finished - a node whose configuration is not
  *   valid, or no trigger at all. These stop a save only when the automation would be enabled by it, so a
  *   half-drawn or half-configured canvas can be kept as a disabled draft and enabling it requires a
@@ -13,7 +14,12 @@
  *
  * Warnings never stop a save.
  */
-import { AutomationGraphIssue, AutomationGraphIssueCode, validateGraph } from './graph-validator';
+import {
+	AutomationGraphIssue,
+	AutomationGraphIssueCode,
+	AutomationGraphSafetyCheck,
+	validateGraph,
+} from './graph-validator';
 import { AutomationNodeTypeLookup } from './node-type';
 
 export const AUTOMATION_GRAPH_COMPLETENESS_ISSUE_CODES: ReadonlySet<string> = new Set<AutomationGraphIssueCode>([
@@ -24,6 +30,8 @@ export const AUTOMATION_GRAPH_COMPLETENESS_ISSUE_CODES: ReadonlySet<string> = ne
 export interface AutomationGraphSaveOptions {
 	/** Whether the automation would be enabled once saved */
 	enabled: boolean;
+	/** Judges what every action of the graph would do; left out, nothing is judged */
+	safety?: AutomationGraphSafetyCheck;
 }
 
 export interface AutomationGraphSaveIssue extends AutomationGraphIssue {
@@ -62,4 +70,5 @@ export const checkGraphForSave = async (
 	graph: unknown,
 	lookup: AutomationNodeTypeLookup,
 	options: AutomationGraphSaveOptions,
-): Promise<AutomationGraphSaveCheck> => applyGraphSavePolicy(await validateGraph(graph, lookup), options);
+): Promise<AutomationGraphSaveCheck> =>
+	applyGraphSavePolicy(await validateGraph(graph, lookup, { safety: options.safety }), options);

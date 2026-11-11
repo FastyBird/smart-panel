@@ -146,7 +146,31 @@ export interface AutomationConditionResult {
 export interface AutomationActionResult {
 	success: boolean;
 	reason?: string;
+	/** The action did nothing because a policy refused it, as opposed to having tried and failed */
+	refused?: boolean;
 }
+
+/**
+ * Something an action does to the home. An action node type lists what a configured node will do with
+ * `commands()`, so one safety policy can judge every action - whichever card it is and whoever provides
+ * it - without knowing the card (design § Security and safety).
+ */
+export type AutomationActionCommand =
+	| {
+			/** A value is written to a device property */
+			kind: 'property_write';
+			propertyId: string;
+			value: unknown;
+			/** Path of the configuration field that holds the value, for a per-node error */
+			field?: string;
+	  }
+	| {
+			/** A scene is run; what it does is read from the scene when the action is about to run */
+			kind: 'scene_run';
+			sceneId: string;
+			/** Path of the configuration field that names the scene */
+			field?: string;
+	  };
 
 export interface AutomationTriggerNodeType<
 	TConfig extends object = AutomationNodeConfig,
@@ -191,6 +215,12 @@ export interface AutomationActionNodeType<
 	 * one device groups them itself; a graph that needs an order chains its actions through `done`.
 	 */
 	execute(config: TConfig, context: AutomationRunContext): Promise<AutomationActionResult>;
+	/**
+	 * What executing the configured node does to the home. An action that writes device values or runs a
+	 * scene must list it here: it is how unlocking, disarming and opening are kept out of automations. It is
+	 * called with configurations that were not validated, so it skips what it can not read and never throws.
+	 */
+	commands?(config: TConfig): AutomationActionCommand[];
 	/** Overrides AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS; capped at AUTOMATION_NODE_MAX_TIMEOUT_SECONDS */
 	timeoutSeconds?: number;
 }
@@ -245,6 +275,8 @@ export interface RegisteredAutomationNodeType {
 	configSchema?: Record<string, unknown>;
 	validateConfig: AutomationNodeConfigValidator;
 	references(config: AutomationNodeConfig): AutomationNodeReference[];
+	/** What an action does to the home; empty for every other kind */
+	commands(config: AutomationNodeConfig): AutomationActionCommand[];
 	owner?: AutomationNodeTypeOwner;
 	definition: AutomationNodeTypeBase<any>;
 }
@@ -322,6 +354,12 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 		throw new AutomationNodeTypeDefinitionError(`Automation node type ${type} has references that is not a function.`);
 	}
 
+	const { commands } = definition as { commands?: unknown };
+
+	if (commands !== undefined && typeof commands !== 'function') {
+		throw new AutomationNodeTypeDefinitionError(`Automation node type ${type} has commands that is not a function.`);
+	}
+
 	if (
 		definition.configSchema !== undefined &&
 		(typeof definition.configSchema !== 'object' ||
@@ -369,7 +407,9 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 		throw new AutomationNodeTypeDefinitionError(`Automation trigger node type ${type} must not have input ports.`);
 	}
 
-	const source = nodeType as AutomationNodeTypeBase<any>;
+	const source = nodeType as AutomationNodeTypeBase<any> & {
+		commands?: (config: AutomationNodeConfig) => AutomationActionCommand[];
+	};
 
 	return {
 		type,
@@ -380,6 +420,7 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 		...(source.configSchema !== undefined ? { configSchema: source.configSchema } : {}),
 		validateConfig: (config) => source.validateConfig(config),
 		references: (config) => source.references?.(config) ?? [],
+		commands: (config) => (kind === 'action' ? (source.commands?.(config) ?? []) : []),
 		...(owner ? { owner: { kind: owner.kind, type: owner.type } } : {}),
 		definition: source,
 	};

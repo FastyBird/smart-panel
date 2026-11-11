@@ -34,6 +34,7 @@ import { AutomationGraphSaveCheck, checkGraphForSave } from '../graph/save-polic
 import { AutomationGraphModel, createEmptyAutomationGraph } from '../models/automation-graph.model';
 import { AutomationSummaryModel } from '../models/automations.model';
 
+import { AutomationSafetyService } from './automation-safety.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 
 @Injectable()
@@ -48,6 +49,7 @@ export class AutomationsService {
 		private readonly spacesService: SpacesService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly nodeTypeRegistry: AutomationNodeTypeRegistryService,
+		private readonly safety: AutomationSafetyService,
 	) {}
 
 	/**
@@ -279,12 +281,13 @@ export class AutomationsService {
 
 	/**
 	 * Validates a graph against the registered node types without saving anything.
+	 * An action that would reduce safety - unlock, disarm or open - is an error whatever `enabled` is.
 	 *
 	 * @param enabled whether the automation the graph belongs to would be enabled; an enabled automation
 	 * needs a complete graph, a disabled one may be a draft
 	 */
 	async checkGraph(graph: unknown, enabled: boolean): Promise<AutomationGraphSaveCheck> {
-		return checkGraphForSave(graph, this.nodeTypeRegistry.lookup, { enabled });
+		return checkGraphForSave(graph, this.nodeTypeRegistry.lookup, { enabled, safety: this.safety.checkGraph });
 	}
 
 	private async assertGraphCanBeSaved(graph: unknown, enabled: boolean): Promise<void> {

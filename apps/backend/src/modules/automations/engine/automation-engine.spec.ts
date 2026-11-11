@@ -20,6 +20,7 @@ import { FakeTrackerClock } from '../testing/fake-tracker-clock';
 
 import {
 	ActionPolicyRequest,
+	ActionPolicyVerdict,
 	AutomationEngine,
 	AutomationEngineOptions,
 	EngineAutomation,
@@ -45,7 +46,7 @@ describe('AutomationEngine', () => {
 	let missing: Set<string>;
 	let held: string[];
 	let releasedReferences: string[];
-	let policy: ((request: ActionPolicyRequest) => { allow: boolean; reason?: string }) | undefined;
+	let policy: ((request: ActionPolicyRequest) => ActionPolicyVerdict | PromiseLike<ActionPolicyVerdict>) | undefined;
 
 	const create = (options: Partial<AutomationEngineOptions> = {}): AutomationEngine =>
 		new AutomationEngine({
@@ -975,6 +976,63 @@ describe('AutomationEngine', () => {
 			expect(settled[0].status).toBe('failed');
 		});
 
+		it('waits for a policy that has to look something up', async () => {
+			policy = (request) =>
+				new Promise<ActionPolicyVerdict>((resolve) => {
+					clock.setTimeout(
+						() =>
+							resolve(
+								request.nodeId === 'unlock'
+									? { allow: false, reason: 'An automation can not unlock a lock.' }
+									: { allow: true },
+							),
+						20,
+					);
+				});
+
+			await engine.load(
+				automation(
+					graph(
+						[node('t', ENGINE_TRIGGER_TYPE), node('unlock', ENGINE_ACTION_TYPE), node('light', ENGINE_ACTION_TYPE)],
+						['t:out>unlock', 'unlock:error>light'],
+					),
+				),
+			);
+
+			harness.fire();
+			await flush();
+
+			expect(harness.calls).toEqual([]);
+
+			clock.advance(20);
+			await flush();
+			clock.advance(20);
+			await flush();
+
+			expect(harness.calls).toEqual(['light']);
+			expect(settled[0].steps.find((step) => step.nodeId === 'unlock')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'An automation can not unlock a lock.',
+			});
+			expect(settled[0].status).toBe('completed');
+		});
+
+		it('a policy that rejects lets nothing through', async () => {
+			policy = () => Promise.reject(new Error('database is locked'));
+
+			await engine.load(automation(simple));
+			await fire();
+
+			expect(harness.calls).toEqual([]);
+			expect(settled[0].steps[0]).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The safety policy could not be checked.',
+			});
+			expect(errors).toContain('asking the action policy');
+		});
+
 		it('a policy that fails lets nothing through', async () => {
 			policy = () => {
 				throw new Error('policy broke');
@@ -985,6 +1043,76 @@ describe('AutomationEngine', () => {
 
 			expect(harness.calls).toEqual([]);
 			expect(settled[0].steps[0]).toMatchObject({ output: 'error', refused: true });
+		});
+
+		it('a policy whose answer can not be read lets nothing through and the action takes error', async () => {
+			policy = (request) =>
+				request.nodeId === 'unlock'
+					? (Object.defineProperty({ allow: true }, 'then', {
+							get: () => {
+								throw new Error('then broke');
+							},
+						}) as ActionPolicyVerdict)
+					: { allow: true };
+
+			await engine.load(
+				automation(
+					graph(
+						[node('t', ENGINE_TRIGGER_TYPE), node('unlock', ENGINE_ACTION_TYPE), node('light', ENGINE_ACTION_TYPE)],
+						['t:out>unlock', 'unlock:error>light'],
+					),
+				),
+			);
+			await fire();
+
+			expect(harness.calls).toEqual(['light']);
+			expect(settled[0].steps.find((step) => step.nodeId === 'unlock')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The safety policy could not be checked.',
+			});
+			expect(settled[0].status).toBe('completed');
+			expect(errors).toContain('asking the action policy');
+		});
+
+		it('does not execute an action whose plugin was disabled while the policy was looking it up', async () => {
+			let answer: (verdict: ActionPolicyVerdict) => void = () => undefined;
+
+			policy = (request) =>
+				request.nodeId === 'own'
+					? new Promise<ActionPolicyVerdict>((resolve) => {
+							answer = resolve;
+						})
+					: { allow: true };
+
+			await engine.load(
+				automation(
+					graph(
+						[
+							node('t', ENGINE_TRIGGER_TYPE),
+							node('own', ENGINE_PLUGIN_ACTION_TYPE),
+							node('handler', ENGINE_ACTION_TYPE),
+						],
+						['t:out>own', 'own:error>handler'],
+					),
+				),
+			);
+
+			harness.fire();
+			await flush();
+
+			pluginEnabled = false;
+			await engine.refreshOwners();
+
+			answer({ allow: true });
+			await flush();
+
+			expect(harness.calls).toEqual(['handler']);
+			expect(settled[0].steps.find((step) => step.nodeId === 'own')).toMatchObject({
+				output: 'error',
+				refused: true,
+				reason: 'The plugin this block belongs to is disabled.',
+			});
 		});
 	});
 

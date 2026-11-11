@@ -30,6 +30,7 @@ import { AutomationsConfigModel } from './models/config.model';
 import { AutomationBuiltInNodeTypesService } from './nodes/built-in-node-types.service';
 import { AutomationEngineService } from './services/automation-engine.service';
 import { AutomationRunService } from './services/automation-run.service';
+import { AutomationSafetyService } from './services/automation-safety.service';
 import { AutomationsSeederService } from './services/automations-seeder.service';
 import { AutomationsService } from './services/automations.service';
 import { AutomationsModuleResetService } from './services/module-reset.service';
@@ -59,6 +60,7 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 		AutomationStateTrackerService,
 		AutomationTimeSourceService,
 		AutomationRunService,
+		AutomationSafetyService,
 		AutomationEngineService,
 		// Built-in cards
 		AutomationBuiltInNodeTypesService,
@@ -76,6 +78,7 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 		AutomationStateTrackerService,
 		AutomationTimeSourceService,
 		AutomationEngineService,
+		AutomationSafetyService,
 		AutomationsModuleResetService,
 	],
 })
@@ -92,6 +95,7 @@ export class AutomationsModule implements OnModuleInit {
 		private readonly builtInNodeTypes: AutomationBuiltInNodeTypesService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly engine: AutomationEngineService,
+		private readonly safety: AutomationSafetyService,
 	) {}
 
 	onModuleInit(): void {
@@ -99,6 +103,9 @@ export class AutomationsModule implements OnModuleInit {
 		for (const nodeType of this.builtInNodeTypes.create()) {
 			this.nodeTypeRegistry.register(nodeType);
 		}
+
+		// No action of any run is executed before the safety policy let it through
+		this.engine.setActionPolicy(this.safety.checkAction);
 
 		// Register the engine with the central service manager
 		this.managedServiceManager.register(this.engine);
@@ -154,6 +161,7 @@ The module stores, validates and runs automations. It provides the first set of 
 - **Shape validation** — node and edge identifiers must be unique and every edge must connect two existing nodes
 - **Node type registry** — modules and plugins register the node types ("cards") a graph can be built from; the catalogue is served to the editor
 - **Graph validation** — every saved graph is checked against the registry: unknown node types and ports, edges into a trigger, cycles and duplicate edges are refused; an enabled automation also needs a trigger and a valid configuration on every node, while a disabled one can be kept as a draft
+- **Safety** — an automation may lock, arm and close, but it can not unlock a lock, disarm the alarm or open a door, garage or gate: such a value is refused when the automation is saved and again before every write, and a scene that would do it is not run by an automation at all
 - **Safe concurrent editing** — every save carries the revision it was based on; a save based on a stale revision is refused instead of overwriting somebody else's change
 - **Engine** — a managed service that watches the triggers of every enabled automation and walks its graph when one fires: several edges from one output run in parallel, conditions continue on \`yes\` or \`no\`, actions on \`done\` or \`error\`, a Delay parks the run for up to one hour
 - **Built-in blocks** — *When*: a device value changes (to / from / any, above / below a threshold, optionally only after it stayed there for a time), a time of day on chosen weekdays, a manual start. *And*: a device value compares as asked, the time is inside a window (which may cross midnight). *Then*: set device values (values of one device are applied together), run a scene, send a notification

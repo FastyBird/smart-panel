@@ -19,6 +19,8 @@ export const AutomationGraphIssueCode = {
 	DUPLICATE_EDGE: 'duplicate_edge',
 	NO_TRIGGER: 'no_trigger',
 	UNREACHABLE_NODE: 'unreachable_node',
+	/** An action would unlock, disarm or open, which an automation may not do */
+	SAFETY_REDUCING_ACTION: 'safety_reducing_action',
 } as const;
 
 export type AutomationGraphIssueCode = (typeof AutomationGraphIssueCode)[keyof typeof AutomationGraphIssueCode];
@@ -35,6 +37,27 @@ export interface AutomationGraphIssue {
 	node_ids?: string[];
 	/** The configuration field the issue is about, for `invalid_config` */
 	field?: string;
+}
+
+/**
+ * What a safety check found on one node. An `error` is something the node itself would do; a `warning`
+ * is something that is checked again when the node runs, such as the present content of a scene.
+ */
+export interface AutomationGraphSafetyFinding {
+	severity: AutomationGraphIssueSeverity;
+	message: string;
+	field?: string;
+}
+
+/** Judges what a configured node would do; may reject when it could not be judged */
+export type AutomationGraphSafetyCheck = (
+	nodeType: RegisteredAutomationNodeType,
+	config: AutomationNodeConfig,
+) => AutomationGraphSafetyFinding[] | Promise<AutomationGraphSafetyFinding[]>;
+
+export interface AutomationGraphValidationOptions {
+	/** Asked for every action node with a readable configuration */
+	safety?: AutomationGraphSafetyCheck;
 }
 
 /** At most this many configuration problems are reported for one node */
@@ -115,6 +138,49 @@ const validateNodeConfig = async (node: ParsedNode, nodeType: RegisteredAutomati
 	} catch {
 		// What a validation hook throws may quote the configuration, so it is not passed on
 		report('The configuration could not be validated.');
+	}
+
+	return issues;
+};
+
+const validateNodeSafety = async (
+	node: ParsedNode,
+	nodeType: RegisteredAutomationNodeType,
+	check: AutomationGraphSafetyCheck,
+): Promise<AutomationGraphIssue[]> => {
+	if (nodeType.kind !== 'action' || !isRecord(node.config)) {
+		return [];
+	}
+
+	const issues: AutomationGraphIssue[] = [];
+
+	const report = (severity: AutomationGraphIssueSeverity, message: string, field?: string): void => {
+		issues.push({
+			severity,
+			code: AutomationGraphIssueCode.SAFETY_REDUCING_ACTION,
+			message,
+			node_id: node.id,
+			...(field !== undefined ? { field } : {}),
+		});
+	};
+
+	try {
+		const findings: unknown = await check(nodeType, node.config as AutomationNodeConfig);
+
+		for (const finding of asArray(findings).slice(0, AUTOMATION_GRAPH_MAX_CONFIG_ISSUES_PER_NODE)) {
+			if (isRecord(finding) && typeof finding.message === 'string') {
+				report(
+					finding.severity === 'warning' ? 'warning' : 'error',
+					finding.message,
+					typeof finding.field === 'string' ? finding.field : undefined,
+				);
+			} else {
+				report('error', 'This action is not safe for an automation.');
+			}
+		}
+	} catch {
+		// What could not be checked is not let through
+		report('error', 'The safety of this action could not be checked.');
 	}
 
 	return issues;
@@ -206,6 +272,7 @@ const findCycles = (nodes: ParsedNode[], successors: Map<ParsedNode, Set<ParsedN
 export const validateGraph = async (
 	graph: unknown,
 	lookup: AutomationNodeTypeLookup,
+	options: AutomationGraphValidationOptions = {},
 ): Promise<AutomationGraphIssue[]> => {
 	const issues: AutomationGraphIssue[] = [];
 	const document = isRecord(graph) ? graph : {};
@@ -242,6 +309,10 @@ export const validateGraph = async (
 		}
 
 		issues.push(...(await validateNodeConfig(node, node.nodeType)));
+
+		if (options.safety !== undefined) {
+			issues.push(...(await validateNodeSafety(node, node.nodeType, options.safety)));
+		}
 	}
 
 	// Edges

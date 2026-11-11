@@ -225,6 +225,95 @@ describe('validateGraph', () => {
 		});
 	});
 
+	describe('safety_reducing_action', () => {
+		const drawn = graph(
+			[node('t', FAKE_TRIGGER_TYPE), node('c', FAKE_CONDITION_TYPE), node('a', FAKE_ACTION_TYPE, { level: 1 })],
+			[e('t:out>c:in'), e('c:yes>a:in')],
+		);
+
+		it('asks the safety check for every action node, and for no other kind', async () => {
+			const asked: string[] = [];
+
+			const issues = await validateGraph(drawn, lookup, {
+				safety: (nodeType, config) => {
+					asked.push(`${nodeType.type} ${JSON.stringify(config)}`);
+
+					return [];
+				},
+			});
+
+			expect(asked).toEqual([`${FAKE_ACTION_TYPE} {"level":1}`]);
+			expect(issues).toEqual([]);
+		});
+
+		it('reports what the check finds on the node, as an error or as a warning', async () => {
+			const issues = await validateGraph(drawn, lookup, {
+				safety: () => [
+					{ severity: 'error', message: 'An automation can not unlock a lock.', field: 'writes.0.value' },
+					{ severity: 'warning', message: 'The scene was not run.' },
+				],
+			});
+
+			expect(issues).toEqual([
+				{
+					severity: 'error',
+					code: 'safety_reducing_action',
+					message: 'An automation can not unlock a lock.',
+					node_id: 'a',
+					field: 'writes.0.value',
+				},
+				{ severity: 'warning', code: 'safety_reducing_action', message: 'The scene was not run.', node_id: 'a' },
+			]);
+		});
+
+		it('does not let through what could not be checked', async () => {
+			const thrown = await validateGraph(drawn, lookup, {
+				safety: () => Promise.reject(new Error('database is locked')),
+			});
+
+			expect(thrown).toEqual([
+				{
+					severity: 'error',
+					code: 'safety_reducing_action',
+					message: 'The safety of this action could not be checked.',
+					node_id: 'a',
+				},
+			]);
+
+			const garbage = await validateGraph(drawn, lookup, {
+				safety: () => [null] as never,
+			});
+
+			expect(garbage).toEqual([expect.objectContaining({ severity: 'error', code: 'safety_reducing_action' })]);
+		});
+
+		it('is reported next to an invalid configuration, and not asked when the configuration is not an object', async () => {
+			const safety = jest.fn(() => [{ severity: 'error' as const, message: 'Not safe.' }]);
+
+			const invalid = await validateGraph(
+				graph([node('t', FAKE_TRIGGER_TYPE), node('a', FAKE_STRICT_ACTION_TYPE, { level: 250 })], [e('t:out>a:in')]),
+				lookup,
+				{ safety },
+			);
+
+			expect(codes(invalid)).toEqual(['invalid_config', 'safety_reducing_action']);
+
+			safety.mockClear();
+
+			await validateGraph(
+				graph([node('t', FAKE_TRIGGER_TYPE), node('a', FAKE_ACTION_TYPE, 'nothing')], [e('t:out>a:in')]),
+				lookup,
+				{ safety },
+			);
+
+			expect(safety).not.toHaveBeenCalled();
+		});
+
+		it('is not looked for when no check is given', async () => {
+			expect(await validateGraph(drawn, lookup)).toEqual([]);
+		});
+	});
+
 	describe('unknown_port', () => {
 		it('is an error on the source node for an output port the node type does not have', async () => {
 			const issues = await validateGraph(
