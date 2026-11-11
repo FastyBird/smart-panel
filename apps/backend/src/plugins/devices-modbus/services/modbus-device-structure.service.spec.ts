@@ -149,7 +149,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 	let events: EventEmitter2;
 	let bindings: ModbusBindingsService;
 	let runtime: { loadDevice: jest.Mock };
-	let values: { write: jest.Mock };
+	let values: { write: jest.Mock; flushHistory: jest.Mock };
 	let templates: { has: jest.Mock };
 	let endpoint: ModbusEndpointEntity;
 	let otherEndpoint: ModbusEndpointEntity;
@@ -252,7 +252,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		otherEndpoint = await endpoints.create({ name: 'Other gateway', host: '10.10.0.231' });
 
 		runtime = { loadDevice: jest.fn().mockResolvedValue(undefined) };
-		values = { write: jest.fn().mockResolvedValue(true) };
+		values = { write: jest.fn().mockResolvedValue(true), flushHistory: jest.fn().mockResolvedValue(undefined) };
 		templates = { has: jest.fn().mockReturnValue(true) };
 		bindings = new ModbusBindingsService(database.getRepository(ModbusBindingEntity));
 		service = new ModbusDeviceStructureService(
@@ -1120,6 +1120,69 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			expect(runtime.loadDevice).toHaveBeenCalledTimes(1);
 			expect(runtime.loadDevice).toHaveBeenCalledWith(device.id);
 			expect(addressSeenByRuntime).toBe(7);
+		});
+
+		it('flushes queued history before a kept property changes its data type', async () => {
+			const device = await createRelays([1]);
+			const ids = idsOf(device);
+			const emitted = jest.spyOn(events, 'emit');
+			const dataTypeAtFlush: DataTypeType[] = [];
+
+			values.flushHistory.mockImplementation(async () => {
+				dataTypeAtFlush.push(
+					(await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: ids.property })).dataType,
+				);
+			});
+
+			const relay1 = relayAt(1, 1, ids);
+			const [property] = relay1.properties as Plain[];
+			const raw = { register_type: holding, address: 1, data_type: ModbusDataType.UINT16 };
+
+			await service.update(
+				device.id,
+				toUpdate({
+					category: DeviceCategory.SWITCHER,
+					channels: [
+						{
+							...relay1,
+							properties: [
+								{
+									...property,
+									data_type: DataTypeType.UCHAR,
+									read: raw,
+									write: { ...raw, write_function: ModbusWriteFunction.SINGLE },
+								},
+							],
+						},
+					],
+				}),
+			);
+
+			expect(dataTypeAtFlush).toEqual([DataTypeType.BOOL]);
+			expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: ids.property })).dataType).toBe(
+				DataTypeType.UCHAR,
+			);
+			expect(emitted).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_UPDATED,
+				expect.objectContaining({ id: ids.property }),
+			);
+		});
+
+		it('treats a null id like an omitted one', async () => {
+			const device = await createRelays([1]);
+			const relay2 = relayAt(2, 2);
+			const [property] = relay2.properties as Plain[];
+			const body = {
+				category: DeviceCategory.SWITCHER,
+				channels: [relayAt(1, 1, idsOf(device)), { ...relay2, id: null, properties: [{ ...property, id: null }] }],
+			};
+
+			// Through the DTO transform, as the controller receives it, and as a plain object a caller might pass.
+			for (const dto of [toUpdate(body), body as unknown as UpdateModbusDeviceStructureDto]) {
+				const updated = await service.update(device.id, dto);
+
+				expect(updated.channels.filter((channel) => channel.identifier === 'relay_2')).toHaveLength(1);
+			}
 		});
 
 		it('keeps template provenance', async () => {

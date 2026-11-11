@@ -162,7 +162,17 @@ export class ModbusDeviceStructureService {
 	 * cleanup; updates and inserts are written with that manager directly, as `create()` writes, and are announced with
 	 * the core events after COMMIT. The runtime then reloads the device, which is what makes the new bindings poll.
 	 */
-	async update(id: string, dto: UpdateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
+	async update(id: string, body: UpdateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
+		// An explicit `null` id means "no id", as an omitted one does (create reads `id ?? uuid()` the same way).
+		const dto: UpdateModbusDeviceStructureDto = {
+			...body,
+			channels: body.channels.map((channel) => ({
+				...channel,
+				id: channel.id ?? undefined,
+				properties: channel.properties.map((property) => ({ ...property, id: property.id ?? undefined })),
+			})),
+		};
+
 		return this.lock.runExclusive(async () => {
 			const device = await this.devicesService.findOne<ModbusDeviceEntity>(id, DEVICES_MODBUS_TYPE);
 
@@ -203,6 +213,11 @@ export class ModbusDeviceStructureService {
 			if (issues.length > 0) {
 				throw new ModbusValidationException(issues.map((issue) => JSON.stringify(issue)));
 			}
+
+			// As the core property update does before stored fields change: queued history of the old data types and
+			// categories is written first, so it cannot land after the remapping. The runtime keeps polling the old
+			// bindings until the reload below, which is why this runs on every update rather than only on changed rows.
+			await this.propertyValues.flushHistory();
 
 			const statics: StaticValue[] = [];
 			const changes = await this.dataSource.transaction((manager) =>
