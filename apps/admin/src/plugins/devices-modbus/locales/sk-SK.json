@@ -147,6 +147,7 @@
 				"valueMapFloat": "A value map cannot be used with float32",
 				"valueMapScaled": "A value map cannot be combined with a scale or an offset",
 				"valueMapRaw": "Every value map entry needs a raw number",
+				"valueMapRawRange": "Raw values must be whole numbers this data type can hold (0 or 1 for a coil, discrete input or bit)",
 				"valueMapRawUnique": "Each raw value can appear only once in the value map",
 				"valueMapValueUnique": "Each value can appear only once in the value map",
 				"valueMapInvert": "Invert cannot be combined with a value map; express the inversion in the map",

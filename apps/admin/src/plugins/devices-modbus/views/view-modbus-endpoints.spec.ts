@@ -138,6 +138,26 @@ describe('ViewModbusEndpoints', () => {
 		expect(wrapper.findComponent({ name: 'ModbusEndpointsTable' }).exists()).toBe(false);
 	});
 
+	it('shows the endpoints and enables Add while the device list is still loading', async () => {
+		let finishDevices!: () => void;
+		devicesStore.fetch.mockReturnValue(new Promise<void>((resolve) => (finishDevices = resolve)));
+
+		const wrapper = shallowMount(ViewModbusEndpoints, {
+			global: { directives: { loading: {} }, stubs: { ViewHeader: { template: '<div><slot name="extra" /></div>' } } },
+		});
+		await flushPromises();
+
+		const add = wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.attributes('data-test-id') === 'modbus-endpoints-add');
+
+		expect(add?.props('disabled')).toBe(false);
+		expect(wrapper.findComponent({ name: 'ModbusEndpointsTable' }).exists()).toBe(true);
+
+		finishDevices();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="modbus-endpoints-devices-failed"]').exists()).toBe(false);
+	});
+
 	it('shows the table without a warning when both lists load', async () => {
 		const wrapper = await mountView();
 

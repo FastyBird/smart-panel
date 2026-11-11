@@ -428,7 +428,10 @@ const issuesOf = (kind: Kind): Partial<Record<ModbusBindingIssueField, string>> 
 		return issues;
 	}
 
-	return bindingIssues({ ...binding, address: parsed.start, registerType: parsed.registerType ?? binding.registerType }, kind);
+	const effective = { ...binding, address: parsed.start, registerType: parsed.registerType ?? binding.registerType };
+
+	// Save drops a bit the binding does not show, so it must not narrow the value map either.
+	return bindingIssues({ ...effective, bit: kind === 'read' && showBit(effective) ? effective.bit : null }, kind);
 };
 
 const issueOf = (kind: Kind, field: ModbusBindingIssueField): string | undefined => {

@@ -216,6 +216,9 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		// the user's value as its own and replace it.
 		const ownUnitId = state.unitId !== applied.unitId;
 		const ownPollInterval = state.device.pollIntervalMs !== applied.pollIntervalMs;
+		// The user can go back and change these while the preview is pending; a value changed meanwhile is kept.
+		const unitIdBefore = state.unitId;
+		const pollIntervalBefore = state.device.pollIntervalMs;
 
 		if (ownUnitId) {
 			overrides.unitId = state.unitId;
@@ -235,12 +238,18 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 			}
 
 			if (!ownUnitId) {
-				state.unitId = preview.unitId;
+				if (state.unitId === unitIdBefore) {
+					state.unitId = preview.unitId;
+				}
+
 				applied.unitId = preview.unitId;
 			}
 
 			if (preview.pollIntervalMs !== null && !ownPollInterval) {
-				state.device.pollIntervalMs = preview.pollIntervalMs;
+				if (state.device.pollIntervalMs === pollIntervalBefore) {
+					state.device.pollIntervalMs = preview.pollIntervalMs;
+				}
+
 				applied.pollIntervalMs = preview.pollIntervalMs;
 			}
 

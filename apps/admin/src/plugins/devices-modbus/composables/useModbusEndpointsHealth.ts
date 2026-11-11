@@ -19,15 +19,19 @@ export const MODBUS_HEALTH_ROUND_SIZE = MODBUS_HEALTH_REQUESTS_PER_MINUTE;
 export const healthRoundDelay = (endpointCount: number, intervalMs: number): number =>
 	Math.max(intervalMs, Math.ceil((Math.min(endpointCount, MODBUS_HEALTH_ROUND_SIZE) * 60_000) / MODBUS_HEALTH_REQUESTS_PER_MINUTE));
 
-/** The endpoints of the round starting at `offset`, wrapping around the end of the list. */
-export const healthRoundSlice = <T>(items: T[], offset: number): T[] => {
-	if (items.length <= MODBUS_HEALTH_ROUND_SIZE) {
+/** At most `size` endpoints of the round starting at `offset`, wrapping around the end of the list. */
+export const healthRoundSlice = <T>(items: T[], offset: number, size: number = MODBUS_HEALTH_ROUND_SIZE): T[] => {
+	if (size <= 0) {
+		return [];
+	}
+
+	if (items.length <= size) {
 		return items;
 	}
 
 	const start = offset % items.length;
 
-	return [...items.slice(start), ...items.slice(0, start)].slice(0, MODBUS_HEALTH_ROUND_SIZE);
+	return [...items.slice(start), ...items.slice(0, start)].slice(0, size);
 };
 
 export const useModbusEndpointsHealth = (intervalMs: number = 5000): { refresh: () => Promise<void> } => {
@@ -37,6 +41,9 @@ export const useModbusEndpointsHealth = (intervalMs: number = 5000): { refresh: 
 	let running = false;
 	let stopped = false;
 	let offset = 0;
+	// When each request of the last minute was sent. Scheduled rounds and refresh() share this one budget, so a
+	// refresh right before a scheduled round cannot double the requests of a minute.
+	const sent: number[] = [];
 
 	const round = async (): Promise<void> => {
 		if (running || stopped) {
@@ -47,8 +54,16 @@ export const useModbusEndpointsHealth = (intervalMs: number = 5000): { refresh: 
 
 		try {
 			// One failing endpoint (e.g. deleted meanwhile) must not hide the others.
+			const now = Date.now();
+
+			while (sent.length > 0 && sent[0] <= now - 60_000) {
+				sent.shift();
+			}
+
 			const endpoints = endpointsStore.findAll();
-			const slice = healthRoundSlice(endpoints, offset);
+			const slice = healthRoundSlice(endpoints, offset, MODBUS_HEALTH_REQUESTS_PER_MINUTE - sent.length);
+
+			slice.forEach(() => sent.push(now));
 
 			offset = endpoints.length === 0 ? 0 : (offset + slice.length) % endpoints.length;
 

@@ -217,6 +217,28 @@ describe('useModbusDeviceWizard', () => {
 		expect(wizard.state.unitId).toBe(7);
 	});
 
+	it('keeps a unit id and poll interval the user changed while the preview was pending', async () => {
+		let resolvePreview: (value: IModbusTemplatePreview) => void = () => undefined;
+		templatesStore.preview.mockReturnValue(new Promise((resolve) => (resolvePreview = resolve)));
+
+		const wizard = useModbusDeviceWizard();
+		const pending = wizard.applyTemplate('acme-io');
+
+		wizard.state.unitId = 12;
+		wizard.state.device.pollIntervalMs = 3000;
+		resolvePreview(preview({ unitId: 7, pollIntervalMs: 250 }));
+		await pending;
+
+		expect(wizard.state.unitId).toBe(12);
+		expect(wizard.state.device.pollIntervalMs).toBe(3000);
+
+		// The template default was still recorded, so the next template sees 12 as the user's own value.
+		templatesStore.preview.mockResolvedValue(preview({ unitId: 12 }));
+		await wizard.applyTemplate('other-io');
+
+		expect(templatesStore.preview).toHaveBeenLastCalledWith('other-io', { unitId: 12, pollIntervalMs: 3000 });
+	});
+
 	it('keeps provenance after applying a template', async () => {
 		const wizard = useModbusDeviceWizard();
 

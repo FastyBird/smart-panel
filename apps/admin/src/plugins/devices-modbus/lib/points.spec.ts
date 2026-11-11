@@ -493,3 +493,34 @@ describe('bindingIssues', () => {
 		expect(bindingIssues({ ...wide, writeFunction: WF.multiple }, 'write').writeFunction).toBeUndefined();
 	});
 });
+
+describe('bindingIssues value map raw values', () => {
+	const map = (raw: number) => [{ raw, value: 'on' }];
+	const issue = (over: Partial<ModbusPointBinding>) => bindingIssues(binding(over), 'read').valueMap;
+	const RANGE = 'devicesModbusPlugin.wizard.points.errors.valueMapRawRange';
+
+	it('refuses a fraction', () => {
+		expect(issue({ registerType: RT.holding_register, dataType: DT.uint16, valueMap: map(1.5) })).toBe(RANGE);
+	});
+
+	it('holds a coil, discrete input or single bit to 0 and 1', () => {
+		expect(issue({ valueMap: map(2) })).toBe(RANGE);
+		expect(issue({ registerType: RT.discrete_input, valueMap: map(1) })).toBeUndefined();
+		expect(issue({ registerType: RT.holding_register, bit: 3, valueMap: map(2) })).toBe(RANGE);
+	});
+
+	it('lets a register read as bool without a bit use its whole word', () => {
+		expect(issue({ registerType: RT.holding_register, valueMap: map(65535) })).toBeUndefined();
+		expect(issue({ registerType: RT.holding_register, valueMap: map(65536) })).toBe(RANGE);
+	});
+
+	it('holds each integer type to its own range', () => {
+		const register = { registerType: RT.input_register };
+
+		expect(issue({ ...register, dataType: DT.int16, valueMap: map(-32768) })).toBeUndefined();
+		expect(issue({ ...register, dataType: DT.int16, valueMap: map(40000) })).toBe(RANGE);
+		expect(issue({ ...register, dataType: DT.uint16, valueMap: map(-1) })).toBe(RANGE);
+		expect(issue({ ...register, dataType: DT.uint32, valueMap: map(4294967295) })).toBeUndefined();
+		expect(issue({ ...register, dataType: DT.int32, valueMap: map(2147483648) })).toBe(RANGE);
+	});
+});

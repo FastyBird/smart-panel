@@ -158,4 +158,25 @@ describe('useModbusEndpointsHealth', () => {
 
 		wrapper.unmount();
 	});
+
+	it('counts an immediate refresh against the same per-minute budget as the scheduled rounds', async () => {
+		store.findAll.mockReturnValue(Array.from({ length: 250 }, (_, index) => ({ id: `e${index}` })));
+
+		const wrapper = mountComposable(5000);
+		await flushPromises();
+
+		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE);
+
+		// E.g. the list reloaded or an endpoint was saved: the minute's budget is already used.
+		await refreshFn();
+		await vi.advanceTimersByTimeAsync(59_999);
+
+		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE);
+
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(store.fetchHealth).toHaveBeenCalledTimes(MODBUS_HEALTH_ROUND_SIZE * 2);
+
+		wrapper.unmount();
+	});
 });

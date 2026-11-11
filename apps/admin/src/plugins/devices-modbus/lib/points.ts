@@ -299,6 +299,35 @@ export const bindingSpan = (binding: Pick<ModbusPointBinding, 'registerType' | '
 		: 1;
 };
 
+/**
+ * Whether a value-map raw value can come from (and be written to) the binding: a coil, discrete input or single bit
+ * is 0 or 1, a register read as bool is its whole 16-bit word, and the integer types hold their own range.
+ */
+const rawFits = (raw: number, binding: ModbusPointBinding): boolean => {
+	if (!Number.isInteger(raw)) {
+		return false;
+	}
+
+	const bitTable =
+		binding.registerType === DevicesModbusPluginRegisterType.coil || binding.registerType === DevicesModbusPluginRegisterType.discrete_input;
+
+	if (bitTable || (binding.bit !== null && binding.dataType === DevicesModbusPluginDataType.bool)) {
+		return raw === 0 || raw === 1;
+	}
+
+	switch (binding.dataType) {
+		case DevicesModbusPluginDataType.int16:
+			return raw >= -0x8000 && raw <= 0x7fff;
+		case DevicesModbusPluginDataType.int32:
+			return raw >= -0x80000000 && raw <= 0x7fffffff;
+		case DevicesModbusPluginDataType.uint32:
+			return raw >= 0 && raw <= 0xffffffff;
+		default:
+			// uint16, and bool read from a whole register.
+			return raw >= 0 && raw <= 0xffff;
+	}
+};
+
 export type ModbusBindingIssueField = 'address' | 'dataType' | 'valueMap' | 'invert' | 'writeFunction';
 
 /**
@@ -331,6 +360,8 @@ export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapScaled';
 		} else if (raws.some((raw) => typeof raw !== 'number' || !Number.isFinite(raw))) {
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapRaw';
+		} else if (raws.some((raw) => !rawFits(raw, binding))) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapRawRange';
 		} else if (new Set(raws).size !== raws.length) {
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapRawUnique';
 		} else if (new Set(values).size !== values.length) {

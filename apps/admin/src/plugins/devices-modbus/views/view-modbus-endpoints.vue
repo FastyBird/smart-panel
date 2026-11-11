@@ -147,19 +147,42 @@ const modbusDevices = computed<IDevice[]>(() => devicesStore.findAll().filter((d
 
 const { refresh: refreshHealth } = useModbusEndpointsHealth();
 
+let devicesRequest = 0;
+
+// The device list only feeds the device column, so it is loaded on its own: a slow or failing device list never
+// holds back the endpoints, and a warning says the device counts are missing.
+const loadDevices = async (): Promise<void> => {
+	const request = ++devicesRequest;
+
+	try {
+		await devicesStore.fetch();
+
+		if (request === devicesRequest) {
+			devicesLoadFailed.value = false;
+		}
+	} catch {
+		if (request === devicesRequest) {
+			devicesLoadFailed.value = true;
+		}
+	}
+};
+
 // Also the Retry action of a failed load. Add stays disabled meanwhile, so a pending list cannot replace a new endpoint.
 const load = async (): Promise<void> => {
 	// The error stays until a fetch succeeds, so a pending or failed retry never shows the table it hid.
 	loading.value = true;
 
-	// The device list only feeds the device column: when it fails, the endpoints stay manageable and a warning says
-	// the device counts are missing.
-	const [endpointsResult, devicesResult] = await Promise.allSettled([endpointsStore.fetch(), devicesStore.fetch()]);
+	void loadDevices();
 
-	loadError.value = endpointsResult.status === 'rejected' ? errorText(endpointsResult.reason) : null;
+	try {
+		await endpointsStore.fetch();
 
-	devicesLoadFailed.value = devicesResult.status === 'rejected';
-	loading.value = false;
+		loadError.value = null;
+	} catch (error: unknown) {
+		loadError.value = errorText(error);
+	} finally {
+		loading.value = false;
+	}
 
 	void refreshHealth();
 };
