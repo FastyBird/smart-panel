@@ -25,6 +25,7 @@ import {
 import { UpdateModbusChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateModbusChannelDto } from './dto/update-channel.dto';
 import { ModbusUpdatePluginConfigDto } from './dto/update-config.dto';
+import { ReqUpdateModbusDeviceStructureDto, UpdateModbusDeviceStructureDto } from './dto/update-device-structure.dto';
 import { UpdateModbusDeviceDto } from './dto/update-device.dto';
 import { ReqUpdateModbusEndpointDto, UpdateModbusEndpointDto } from './dto/update-endpoint.dto';
 import { ModbusChannelEntity, ModbusChannelPropertyEntity, ModbusDeviceEntity } from './entities/devices-modbus.entity';
@@ -85,6 +86,8 @@ export const DEVICES_MODBUS_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	CreateModbusDeviceStructureChannelDto,
 	CreateModbusDeviceStructureDto,
 	ReqCreateModbusDeviceStructureDto,
+	UpdateModbusDeviceStructureDto,
+	ReqUpdateModbusDeviceStructureDto,
 	PreviewModbusTemplateDto,
 	ReqPreviewModbusTemplateDto,
 	ProbeModbusPointDto,

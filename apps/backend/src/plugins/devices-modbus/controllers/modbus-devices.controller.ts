@@ -1,6 +1,6 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
-import { Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Put, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { setLocationHeader } from '../../../modules/api/utils/location-header.utils';
@@ -17,6 +17,7 @@ import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_MODBUS_API_TAG_NAME, DEVICES_MODBUS_TYPE } from '../devices-modbus.constants';
 import { ReqCreateModbusDeviceStructureDto } from '../dto/create-device-structure.dto';
+import { ReqUpdateModbusDeviceStructureDto } from '../dto/update-device-structure.dto';
 import { ModbusBindingsResponseModel } from '../models/bindings-response.model';
 import { ModbusDeviceResponseModel } from '../models/device-response.model';
 import { ModbusBindingsService } from '../services/modbus-bindings.service';
@@ -63,6 +64,35 @@ export class ModbusDevicesController {
 		const response = new ModbusDeviceResponseModel();
 
 		response.data = device;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODBUS_API_TAG_NAME],
+		summary: 'Update the points of a Modbus device',
+		description:
+			'Replaces the channels, properties and register bindings of a Modbus device and updates its category and polling defaults in one transaction. Channels and properties sent with an id are updated in place and keep it; channels of the device that are not listed are removed and every binding is replaced. The device_information channel, name, room, endpoint, unit and template provenance are not changed. The whole request is validated first; nothing is changed when any check fails.',
+		operationId: 'update-devices-modbus-plugin-device-structure',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiBody({
+		type: ReqUpdateModbusDeviceStructureDto,
+		description: 'The category, polling defaults, channels, properties and bindings of the device',
+	})
+	@ApiSuccessResponse(ModbusDeviceResponseModel, 'The Modbus device points were successfully updated.')
+	@ApiBadRequestResponse('Invalid UUID format or invalid device structure')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Put(':id/structure')
+	async updateStructure(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqUpdateModbusDeviceStructureDto,
+	): Promise<ModbusDeviceResponseModel> {
+		const response = new ModbusDeviceResponseModel();
+
+		response.data = await this.structureService.update(id, body.data);
 
 		return response;
 	}

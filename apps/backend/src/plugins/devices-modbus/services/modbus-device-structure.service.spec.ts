@@ -11,6 +11,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
+	EventType,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -48,6 +49,7 @@ import { CreateModbusDeviceStructureDto } from '../dto/create-device-structure.d
 import { CreateModbusDeviceDto } from '../dto/create-device.dto';
 import { UpdateModbusChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { UpdateModbusChannelDto } from '../dto/update-channel.dto';
+import { UpdateModbusDeviceStructureDto } from '../dto/update-device-structure.dto';
 import { UpdateModbusDeviceDto } from '../dto/update-device.dto';
 import {
 	ModbusChannelEntity,
@@ -194,7 +196,8 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			new PropertyValueSourceRegistryService(),
 			lock,
 			{} as never,
-			{} as never,
+			// Removing a property cancels its command windows; none are open in these tests.
+			{ cancel: jest.fn() } as never,
 			database,
 			events,
 		);
@@ -261,6 +264,9 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			runtime as unknown as ModbusRuntimeService,
 			values as unknown as PropertyValueService,
 			templates as unknown as ModbusTemplatesService,
+			channels,
+			properties,
+			events,
 		);
 	});
 
@@ -855,6 +861,285 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 				PropertyCategory.SERIAL_NUMBER,
 				PropertyCategory.STATUS,
 			]);
+		});
+	});
+
+	describe('points update', () => {
+		const GENERIC_REASON = 'The generic category is reserved and cannot be used for Modbus devices.';
+
+		const toUpdate = (plain: Plain): UpdateModbusDeviceStructureDto =>
+			plainToInstance(UpdateModbusDeviceStructureDto, plain);
+
+		type PointIds = { channel: string; property: string };
+
+		/** Relay `n` of the board reading and writing `address`, optionally keeping existing channel and property IDs. */
+		const relayAt = (n: number, address: number, ids?: PointIds): Plain => {
+			const channel = relayChannel(n);
+			const [property] = channel.properties as Plain[];
+
+			return {
+				...channel,
+				id: ids?.channel,
+				properties: [
+					{
+						...property,
+						id: ids?.property,
+						read: { ...(property.read as Plain), address },
+						write: { ...(property.write as Plain), address },
+					},
+				],
+			};
+		};
+
+		const createRelays = (relays: number[], unitId = 1, extra: Plain = {}): Promise<ModbusDeviceEntity> =>
+			service.create(toDto({ ...relayBoard(endpoint.id, unitId), channels: relays.map(relayChannel), ...extra }));
+
+		const idsOf = (device: ModbusDeviceEntity, identifier = 'relay_1'): PointIds => {
+			const channel = device.channels.find((candidate) => candidate.identifier === identifier);
+
+			return { channel: channel.id, property: channel.properties[0].id };
+		};
+
+		const fieldsOf = async (promise: Promise<unknown>): Promise<string[]> =>
+			(await reasonsOf(promise)).map((issue) => issue.field);
+
+		const rows = async () => ({
+			devices: await database.manager.find(DeviceEntity, { order: { id: 'ASC' } }),
+			channels: await database.manager.find(ChannelEntity, { order: { id: 'ASC' } }),
+			properties: await database.manager.find(ChannelPropertyEntity, { order: { id: 'ASC' } }),
+			bindings: await database.manager.find(ModbusBindingEntity, { order: { id: 'ASC' } }),
+		});
+
+		it('keeps ids of updated channels and properties', async () => {
+			const device = await createRelays([1]);
+			const ids = idsOf(device);
+			const emitted = jest.spyOn(events, 'emit');
+
+			const updated = await service.update(
+				device.id,
+				toUpdate({
+					category: DeviceCategory.SWITCHER,
+					poll_interval_ms: 250,
+					channels: [relayAt(1, 11, ids), relayAt(2, 2)],
+				}),
+			);
+
+			const relay1 = updated.channels.find((channel) => channel.id === ids.channel);
+			const relay2 = updated.channels.find((channel) => channel.identifier === 'relay_2');
+
+			expect(relay1?.properties.map((property) => property.id)).toEqual([ids.property]);
+			expect(relay2).toBeDefined();
+			expect([ids.channel, ids.property]).not.toContain(relay2.id);
+			expect(updated.pollIntervalMs).toBe(250);
+
+			const pair = await bindings.findByProperty(ids.property);
+
+			expect(pair.read?.address).toBe(11);
+			expect(pair.write?.address).toBe(11);
+			expect((await bindings.findByProperty(relay2.properties[0].id)).read?.address).toBe(2);
+			expect(await counts()).toEqual({ devices: 1, channels: 3, properties: 5, bindings: 4 });
+			expect(emitted).toHaveBeenCalledWith(EventType.CHANNEL_CREATED, expect.objectContaining({ id: relay2.id }));
+			expect(emitted).toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.objectContaining({ id: device.id }));
+		});
+
+		it('swaps channel identifiers between kept channels', async () => {
+			const device = await createRelays([1, 2]);
+			const relay1 = idsOf(device, 'relay_1');
+			const relay2 = idsOf(device, 'relay_2');
+
+			const updated = await service.update(
+				device.id,
+				toUpdate({
+					category: DeviceCategory.SWITCHER,
+					channels: [
+						{ ...relayAt(1, 1, relay2), identifier: 'relay_1' },
+						{ ...relayAt(2, 2, relay1), identifier: 'relay_2' },
+					],
+				}),
+			);
+
+			expect(updated.channels.find((channel) => channel.id === relay2.channel)?.identifier).toBe('relay_1');
+			expect(updated.channels.find((channel) => channel.id === relay1.channel)?.identifier).toBe('relay_2');
+		});
+
+		it('removes channels that are not listed', async () => {
+			const device = await createRelays([1, 2]);
+			const relay2 = idsOf(device, 'relay_2');
+			const information = device.channels.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
+			const emitted = jest.spyOn(events, 'emit');
+
+			const updated = await service.update(
+				device.id,
+				toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 1, idsOf(device))] }),
+			);
+
+			expect(await database.manager.findOneBy(ChannelEntity, { id: relay2.channel })).toBeNull();
+			expect(await database.manager.findOneBy(ChannelPropertyEntity, { id: relay2.property })).toBeNull();
+			expect(await bindings.findByProperty(relay2.property)).toEqual({ read: null, write: null });
+			expect(await counts()).toEqual({ devices: 1, channels: 2, properties: 4, bindings: 2 });
+
+			const kept = updated.channels.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
+
+			expect(kept?.id).toBe(information.id);
+			expect(kept?.properties.map((property) => property.id).sort()).toEqual(
+				information.properties.map((property) => property.id).sort(),
+			);
+			expect(emitted).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, expect.objectContaining({ id: relay2.channel }));
+		});
+
+		it('refuses ids of another device', async () => {
+			const device = await createRelays([1]);
+			const other = await createRelays([1], 2);
+
+			expect(
+				await fieldsOf(
+					service.update(
+						device.id,
+						toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 1, idsOf(other))] }),
+					),
+				),
+			).toContain('channels[0].id');
+			expect(
+				await fieldsOf(
+					service.update(
+						device.id,
+						toUpdate({
+							category: DeviceCategory.SWITCHER,
+							channels: [relayAt(1, 1, { channel: idsOf(device).channel, property: idsOf(other).property })],
+						}),
+					),
+				),
+			).toContain('channels[0].properties[0].id');
+		});
+
+		it('refuses a changed channel category', async () => {
+			const device = await createRelays([1]);
+
+			expect(
+				await fieldsOf(
+					service.update(
+						device.id,
+						toUpdate({
+							category: DeviceCategory.SWITCHER,
+							channels: [{ ...relayAt(1, 1, idsOf(device)), category: ChannelCategory.LIGHT }, relayAt(2, 2)],
+						}),
+					),
+				),
+			).toContain('channels[0].category');
+		});
+
+		it('refuses a device_information channel in the body', async () => {
+			const device = await createRelays([1]);
+			const information = {
+				identifier: 'info',
+				name: 'Device Information',
+				category: ChannelCategory.DEVICE_INFORMATION,
+				properties: [PropertyCategory.MANUFACTURER, PropertyCategory.MODEL, PropertyCategory.SERIAL_NUMBER].map(
+					(category) => ({
+						category,
+						data_type: DataTypeType.STRING,
+						permissions: [PermissionType.READ_ONLY],
+						static_value: 'x',
+					}),
+				),
+			};
+
+			expect(
+				await fieldsOf(
+					service.update(
+						device.id,
+						toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 1), information] }),
+					),
+				),
+			).toContain('channels[1].category');
+		});
+
+		it('refuses the generic category', async () => {
+			const device = await createRelays([1]);
+
+			expect(
+				await reasonsOf(
+					service.update(device.id, toUpdate({ category: DeviceCategory.GENERIC, channels: [relayAt(1, 1)] })),
+				),
+			).toContainEqual({ field: 'category', reason: GENERIC_REASON });
+			expect(
+				await reasonsOf(service.create(toDto({ ...relayBoard(endpoint.id, 2), category: DeviceCategory.GENERIC }))),
+			).toContainEqual({ field: 'category', reason: GENERIC_REASON });
+		});
+
+		it('refused update changes nothing', async () => {
+			const device = await createRelays([1, 2]);
+			const before = await rows();
+
+			runtime.loadDevice.mockClear();
+
+			const relay1 = relayAt(1, 1, idsOf(device));
+			const [property] = relay1.properties as Plain[];
+
+			expect(
+				await fieldsOf(
+					service.update(
+						device.id,
+						toUpdate({
+							category: DeviceCategory.SWITCHER,
+							poll_interval_ms: 250,
+							channels: [
+								{
+									...relay1,
+									properties: [
+										{
+											...property,
+											read: {
+												register_type: ModbusRegisterType.COIL,
+												address: 1,
+												data_type: ModbusDataType.UINT16,
+											},
+										},
+									],
+								},
+							],
+						}),
+					),
+				),
+			).toContain('channels[0].properties[0].read.data_type');
+			expect(await rows()).toEqual(before);
+			expect(runtime.loadDevice).not.toHaveBeenCalled();
+		});
+
+		it('reloads the runtime after commit', async () => {
+			const device = await createRelays([1]);
+			const ids = idsOf(device);
+			let addressSeenByRuntime: number | undefined;
+
+			runtime.loadDevice.mockReset().mockImplementation(async () => {
+				addressSeenByRuntime = (await bindings.findByProperty(ids.property)).read?.address;
+			});
+
+			await service.update(device.id, toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 7, ids)] }));
+
+			expect(runtime.loadDevice).toHaveBeenCalledTimes(1);
+			expect(runtime.loadDevice).toHaveBeenCalledWith(device.id);
+			expect(addressSeenByRuntime).toBe(7);
+		});
+
+		it('keeps template provenance', async () => {
+			const device = await createRelays([1], 1, {
+				template_id: 'eletechsup-n4d8b08',
+				template_revision: '1.2.0+3f2a9c1b',
+			});
+
+			const updated = await service.update(
+				device.id,
+				toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 3, idsOf(device))] }),
+			);
+
+			expect(updated).toMatchObject({
+				name: device.name,
+				endpointId: endpoint.id,
+				unitId: 1,
+				templateId: 'eletechsup-n4d8b08',
+				templateRevision: '1.2.0+3f2a9c1b',
+			});
 		});
 	});
 

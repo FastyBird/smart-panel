@@ -2,13 +2,21 @@ import { plainToInstance } from 'class-transformer';
 import { DataSource, EntityManager, FindOptionsWhere, In, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { ChannelCategory, DeviceCategory, EventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
-import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
+import {
+	DeviceDataInput,
+	DeviceValidationService,
+	ValidationIssue,
+} from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
@@ -23,8 +31,10 @@ import { ModbusBindingDto } from '../dto/binding.dto';
 import {
 	CreateModbusDeviceStructureChannelDto,
 	CreateModbusDeviceStructureDto,
+	CreateModbusDeviceStructurePropertyDto,
 } from '../dto/create-device-structure.dto';
 import { CreateModbusDeviceDto } from '../dto/create-device.dto';
+import { UpdateModbusDeviceStructureDto } from '../dto/update-device-structure.dto';
 import {
 	ModbusChannelEntity,
 	ModbusChannelPropertyEntity,
@@ -44,6 +54,23 @@ import { ModbusRuntimeService } from './modbus-runtime.service';
 import { ModbusTemplatesService } from './modbus-templates.service';
 
 type StaticValue = { propertyId: string; value: string | number | boolean };
+
+/** Rows a points update created or changed, announced with the core events after COMMIT. */
+type PointChanges = {
+	createdChannels: string[];
+	updatedChannels: string[];
+	createdProperties: string[];
+	updatedProperties: string[];
+};
+
+/** Specification-check ID of the device_information channel a points update keeps; it is not part of the request. */
+const KEPT_INFORMATION = 'kept-device-information';
+
+const changed = (current: object, fields: object): boolean =>
+	Object.entries(fields).some(
+		([key, value]) =>
+			JSON.stringify((current as Record<string, unknown>)[key] ?? null) !== JSON.stringify(value ?? null),
+	);
 
 const isUnitCollision = (error: unknown): boolean => {
 	const message = `${error instanceof Error ? error.message : ''} ${
@@ -71,6 +98,9 @@ export class ModbusDeviceStructureService {
 		private readonly runtime: ModbusRuntimeService,
 		private readonly propertyValues: PropertyValueService,
 		private readonly templates: ModbusTemplatesService,
+		private readonly channelsService: ChannelsService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async create(dto: CreateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
@@ -81,7 +111,8 @@ export class ModbusDeviceStructureService {
 				endpoint ? `${endpoint.host}:${endpoint.port}#${dto.unit_id}` : `#${dto.unit_id}`,
 			);
 			const issues = [
-				...validateModbusStructure(structure, (input) => this.deviceValidation.validateDeviceStructure(input).issues),
+				...this.validateCategory(dto.category),
+				...validateModbusStructure(structure, (input) => this.validateSpecification(input, null)),
 				...this.validateProvenance(dto),
 				...(await this.validateAgainstDatabase(structure, endpoint)),
 			];
@@ -117,6 +148,75 @@ export class ModbusDeviceStructureService {
 			}
 
 			return (await this.devicesService.getOneOrThrow(deviceId)) as ModbusDeviceEntity;
+		});
+	}
+
+	/**
+	 * Replaces the points of a Modbus device. Channels and properties sent with an `id` are updated in place and keep
+	 * it, so virtual devices, tiles and history that refer to them keep working; channels of the device that are not
+	 * listed are removed, and every register binding is replaced by the ones in the request. The device_information
+	 * channel, name, room, endpoint, unit and template provenance are left as they are.
+	 *
+	 * The request is validated completely before the first write, and all writes share one transaction under the
+	 * structure lock. Removals go through the core services, which take the transaction's manager and run the core
+	 * cleanup; updates and inserts are written with that manager directly, as `create()` writes, and are announced with
+	 * the core events after COMMIT. The runtime then reloads the device, which is what makes the new bindings poll.
+	 */
+	async update(id: string, dto: UpdateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
+		return this.lock.runExclusive(async () => {
+			const device = await this.devicesService.findOne<ModbusDeviceEntity>(id, DEVICES_MODBUS_TYPE);
+
+			if (!device) {
+				throw new NotFoundException('Requested Modbus device does not exist');
+			}
+
+			const existing = await this.dataSource
+				.getRepository(ChannelEntity)
+				.find({ where: { device: { id } }, relations: { properties: true } });
+			const information = existing.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION) ?? null;
+			const endpoint = device.endpointId ? await this.endpoints.findOne(device.endpointId) : null;
+			// The request judged as a whole device, with the fields this endpoint does not change taken from the row.
+			const requested = Object.assign(new CreateModbusDeviceStructureDto(), {
+				id: device.id,
+				name: device.name,
+				category: dto.category,
+				endpoint_id: device.endpointId,
+				unit_id: device.unitId,
+				max_read_registers: device.maxReadRegisters ?? undefined,
+				channels: dto.channels,
+			});
+
+			// A device that lost its device_information channel gets the default one back, as on create.
+			const structure = information
+				? requested
+				: withDeviceInformation(
+						requested,
+						endpoint ? `${endpoint.host}:${endpoint.port}#${device.unitId}` : `#${device.unitId}`,
+					);
+			const issues = [
+				...this.validateCategory(dto.category),
+				...this.validateOwnership(dto, existing, information),
+				...validateModbusStructure(structure, (input) => this.validateSpecification(input, information)),
+				...(await this.validateAgainstDatabase(structure, endpoint, device)),
+			];
+
+			if (issues.length > 0) {
+				throw new ModbusValidationException(issues.map((issue) => JSON.stringify(issue)));
+			}
+
+			const statics: StaticValue[] = [];
+			const changes = await this.dataSource.transaction((manager) =>
+				this.replacePoints(manager, device.id, dto, structure.channels, existing, statics),
+			);
+
+			await this.publishPointChanges(changes);
+
+			// Announced before the reload below: the runtime's own reload on this event is superseded by it.
+			this.eventEmitter.emit(EventType.DEVICE_UPDATED, await this.devicesService.getOneOrThrow(device.id));
+
+			await this.activate(device.id, statics);
+
+			return (await this.devicesService.getOneOrThrow(device.id)) as ModbusDeviceEntity;
 		});
 	}
 
@@ -197,7 +297,7 @@ export class ModbusDeviceStructureService {
 		deviceId: string,
 		dto: CreateModbusDeviceStructureChannelDto,
 		statics: StaticValue[],
-	): Promise<void> {
+	): Promise<string> {
 		const channelId = dto.id ?? uuid();
 
 		await manager.insert(
@@ -212,38 +312,211 @@ export class ModbusDeviceStructureService {
 		);
 
 		for (const property of dto.properties) {
-			const propertyId = property.id ?? uuid();
-			const metadata = getPropertyMetadata(dto.category, property.category);
-			const specDefaults = metadata?.data_type === property.data_type ? metadata : null;
+			await this.insertProperty(manager, deviceId, channelId, dto.category, property, statics);
+		}
 
-			await manager.insert(
-				ModbusChannelPropertyEntity,
-				manager.create(ModbusChannelPropertyEntity, {
-					id: propertyId,
-					channel: channelId,
-					identifier: property.identifier ?? null,
-					name: property.name ?? null,
-					category: property.category,
-					permissions: property.permissions,
-					dataType: property.data_type,
-					unit: property.unit ?? specDefaults?.unit ?? null,
-					format: property.format ?? specDefaults?.format ?? null,
-					step: specDefaults?.step ?? null,
-				}),
-			);
+		return channelId;
+	}
 
-			if (property.static_value !== undefined && property.static_value !== null) {
-				statics.push({ propertyId, value: property.static_value });
+	private async insertProperty(
+		manager: EntityManager,
+		deviceId: string,
+		channelId: string,
+		channelCategory: ChannelCategory,
+		dto: CreateModbusDeviceStructurePropertyDto,
+		statics: StaticValue[],
+	): Promise<string> {
+		const propertyId = dto.id ?? uuid();
+
+		await manager.insert(
+			ModbusChannelPropertyEntity,
+			manager.create(ModbusChannelPropertyEntity, {
+				id: propertyId,
+				channel: channelId,
+				...this.propertyFields(channelCategory, dto),
+				unit: dto.unit ?? this.specDefaults(channelCategory, dto)?.unit ?? null,
+			}),
+		);
+
+		await this.insertBindings(manager, deviceId, propertyId, dto, statics);
+
+		return propertyId;
+	}
+
+	/** The specification's metadata of a property, when the property keeps the specified data type. */
+	private specDefaults(channelCategory: ChannelCategory, dto: CreateModbusDeviceStructurePropertyDto) {
+		const metadata = getPropertyMetadata(channelCategory, dto.category);
+
+		return metadata?.data_type === dto.data_type ? metadata : null;
+	}
+
+	/** The stored columns of a property; format and step default to the specification for its data type. */
+	private propertyFields(channelCategory: ChannelCategory, dto: CreateModbusDeviceStructurePropertyDto) {
+		const specDefaults = this.specDefaults(channelCategory, dto);
+
+		return {
+			identifier: dto.identifier ?? null,
+			name: dto.name ?? null,
+			category: dto.category,
+			permissions: dto.permissions,
+			dataType: dto.data_type,
+			format: dto.format ?? specDefaults?.format ?? null,
+			step: specDefaults?.step ?? null,
+		};
+	}
+
+	/** Stores the property's bindings, and queues its static value for after COMMIT. */
+	private async insertBindings(
+		manager: EntityManager,
+		deviceId: string,
+		propertyId: string,
+		dto: CreateModbusDeviceStructurePropertyDto,
+		statics: StaticValue[],
+	): Promise<void> {
+		if (dto.static_value !== undefined && dto.static_value !== null) {
+			statics.push({ propertyId, value: dto.static_value });
+		}
+
+		for (const [role, binding] of [
+			[ModbusBindingRole.READ, dto.read],
+			[ModbusBindingRole.WRITE, dto.write],
+		] as const) {
+			if (binding) {
+				await manager.insert(ModbusBindingEntity, this.toBinding(manager, deviceId, propertyId, role, binding));
 			}
+		}
+	}
 
-			for (const [role, binding] of [
-				[ModbusBindingRole.READ, property.read],
-				[ModbusBindingRole.WRITE, property.write],
-			] as const) {
-				if (binding) {
-					await manager.insert(ModbusBindingEntity, this.toBinding(manager, deviceId, propertyId, role, binding));
+	/** The write phase of `update()`; everything it is given has been validated. */
+	private async replacePoints(
+		manager: EntityManager,
+		deviceId: string,
+		dto: UpdateModbusDeviceStructureDto,
+		channels: CreateModbusDeviceStructureChannelDto[],
+		existing: ChannelEntity[],
+		statics: StaticValue[],
+	): Promise<PointChanges> {
+		const changes: PointChanges = {
+			createdChannels: [],
+			updatedChannels: [],
+			createdProperties: [],
+			updatedProperties: [],
+		};
+		const listed = new Map(
+			channels.filter((channel) => channel.id !== undefined).map((channel) => [channel.id, channel] as const),
+		);
+		const kept = existing.filter((channel) => listed.has(channel.id));
+
+		await manager.delete(ModbusBindingEntity, { deviceId });
+
+		for (const channel of existing) {
+			if (channel.category !== ChannelCategory.DEVICE_INFORMATION && !listed.has(channel.id)) {
+				await this.channelsService.remove(channel.id, manager);
+			}
+		}
+
+		for (const channel of kept) {
+			const ids = new Set(listed.get(channel.id).properties.map((property) => property.id));
+
+			for (const property of channel.properties) {
+				if (!ids.has(property.id)) {
+					await this.channelsPropertiesService.remove(property.id, manager);
 				}
 			}
+		}
+
+		// Identifiers are unique per device and per channel: release the ones that change first, so kept rows can swap.
+		for (const channel of kept) {
+			const request = listed.get(channel.id);
+
+			if (channel.identifier !== null && channel.identifier !== (request.identifier ?? null)) {
+				await manager.update(ChannelEntity, { id: channel.id }, { identifier: null });
+			}
+
+			for (const property of channel.properties) {
+				const next = request.properties.find((candidate) => candidate.id === property.id);
+
+				if (next && property.identifier !== null && property.identifier !== (next.identifier ?? null)) {
+					await manager.update(ChannelPropertyEntity, { id: property.id }, { identifier: null });
+				}
+			}
+		}
+
+		for (const channel of channels) {
+			const current = kept.find((candidate) => candidate.id === channel.id);
+
+			if (!current) {
+				changes.createdChannels.push(await this.insertChannel(manager, deviceId, channel, statics));
+
+				continue;
+			}
+
+			const fields = { identifier: channel.identifier ?? null, name: channel.name };
+
+			await manager.update(ChannelEntity, { id: current.id }, fields);
+
+			if (changed(current, fields)) {
+				changes.updatedChannels.push(current.id);
+			}
+
+			for (const property of channel.properties) {
+				const previous = current.properties.find((candidate) => candidate.id === property.id);
+
+				if (!previous) {
+					changes.createdProperties.push(
+						await this.insertProperty(manager, deviceId, current.id, channel.category, property, statics),
+					);
+
+					continue;
+				}
+
+				const propertyFields = this.propertyFields(channel.category, property);
+
+				await manager.update(ChannelPropertyEntity, { id: previous.id }, propertyFields);
+				await this.insertBindings(manager, deviceId, previous.id, property, statics);
+
+				if (changed(previous, propertyFields)) {
+					changes.updatedProperties.push(previous.id);
+				}
+			}
+		}
+
+		const deviceFields = Object.fromEntries(
+			Object.entries({
+				category: dto.category,
+				pollIntervalMs: dto.poll_interval_ms,
+				byteOrder: dto.byte_order,
+				wordOrder: dto.word_order,
+			}).filter(([, value]) => value !== undefined && value !== null),
+		);
+
+		await manager.update(ModbusDeviceEntity, { id: deviceId }, deviceFields);
+
+		return changes;
+	}
+
+	/** The core events a channel or property write announces, sent once the points update has committed. */
+	private async publishPointChanges(changes: PointChanges): Promise<void> {
+		for (const id of changes.createdChannels) {
+			this.eventEmitter.emit(EventType.CHANNEL_CREATED, await this.channelsService.getOneOrThrow(id));
+		}
+
+		for (const id of changes.updatedChannels) {
+			this.eventEmitter.emit(EventType.CHANNEL_UPDATED, await this.channelsService.getOneOrThrow(id));
+		}
+
+		for (const id of changes.createdProperties) {
+			this.eventEmitter.emit(
+				EventType.CHANNEL_PROPERTY_CREATED,
+				await this.channelsPropertiesService.getOneOrThrow(id),
+			);
+		}
+
+		for (const id of changes.updatedProperties) {
+			this.eventEmitter.emit(
+				EventType.CHANNEL_PROPERTY_UPDATED,
+				await this.channelsPropertiesService.getOneOrThrow(id),
+			);
 		}
 	}
 
@@ -308,11 +581,87 @@ export class ModbusDeviceStructureService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Device id=${deviceId} was created but the runtime failed to load it`, {
+			this.logger.error(`Device id=${deviceId} was stored but the runtime failed to load it`, {
 				message: err.message,
 				stack: err.stack,
 			});
 		}
+	}
+
+	/** `generic` is a reserved device category; a Modbus device always names what it is (plan ruling R7). */
+	private validateCategory(category: DeviceCategory): ModbusStructureIssue[] {
+		return category === DeviceCategory.GENERIC
+			? [{ field: 'category', reason: 'The generic category is reserved and cannot be used for Modbus devices.' }]
+			: [];
+	}
+
+	/**
+	 * R5 rules of a points update: every ID must belong to this device (a property ID to the channel it is sent in), a
+	 * kept channel keeps its category, and the device_information channel is never part of the request.
+	 */
+	private validateOwnership(
+		dto: UpdateModbusDeviceStructureDto,
+		existing: ChannelEntity[],
+		information: ChannelEntity | null,
+	): ModbusStructureIssue[] {
+		const issues: ModbusStructureIssue[] = [];
+
+		dto.channels.forEach((channel, index) => {
+			const field = `channels[${index}]`;
+			const current = channel.id === undefined ? null : (existing.find((row) => row.id === channel.id) ?? null);
+
+			if (channel.category === ChannelCategory.DEVICE_INFORMATION) {
+				issues.push({
+					field: `${field}.category`,
+					reason: 'The device_information channel is kept by the device and cannot be sent.',
+				});
+			} else if (current && current.category !== channel.category) {
+				issues.push({ field: `${field}.category`, reason: 'The category of an existing channel cannot change.' });
+			}
+
+			if (channel.id !== undefined && !current) {
+				issues.push({ field: `${field}.id`, reason: `Channel ${channel.id} does not belong to this device.` });
+			}
+
+			if (information?.identifier && channel.identifier === information.identifier) {
+				issues.push({ field: `${field}.identifier`, reason: 'Channel identifiers must be unique.' });
+			}
+
+			channel.properties.forEach((property, propertyIndex) => {
+				if (property.id !== undefined && !current?.properties.some((row) => row.id === property.id)) {
+					issues.push({
+						field: `${field}.properties[${propertyIndex}].id`,
+						reason: `Property ${property.id} does not belong to this channel.`,
+					});
+				}
+			});
+		});
+
+		return issues;
+	}
+
+	/**
+	 * The core device specification check. A points update judges the request together with the device_information
+	 * channel the device keeps; issues of that channel are reported on `channels`, as it has no index in the request.
+	 */
+	private validateSpecification(input: DeviceDataInput, information: ChannelEntity | null): ValidationIssue[] {
+		if (!information) {
+			return this.deviceValidation.validateDeviceStructure(input).issues;
+		}
+
+		const kept = {
+			id: KEPT_INFORMATION,
+			category: information.category,
+			properties: information.properties.map((property) => ({
+				category: property.category,
+				dataType: property.dataType,
+				permissions: property.permissions,
+			})),
+		};
+
+		return this.deviceValidation
+			.validateDeviceStructure({ ...input, channels: [...(input.channels ?? []), kept] })
+			.issues.map((issue) => (issue.channelId === KEPT_INFORMATION ? { ...issue, channelId: undefined } : issue));
 	}
 
 	/** The revision is required but not compared: a reload between preview and create is legitimate. */
@@ -350,9 +699,14 @@ export class ModbusDeviceStructureService {
 		};
 	}
 
+	/**
+	 * `current` is the device a points update changes: it does not collide with its own endpoint and unit, and the IDs
+	 * of its rows are judged by `validateOwnership` instead of being refused as taken.
+	 */
 	private async validateAgainstDatabase(
 		dto: CreateModbusDeviceStructureDto,
 		endpoint: ModbusEndpointEntity | null,
+		current?: ModbusDeviceEntity,
 	): Promise<ModbusStructureIssue[]> {
 		const issues: ModbusStructureIssue[] = [];
 
@@ -360,12 +714,20 @@ export class ModbusDeviceStructureService {
 			issues.push({ field: 'endpoint_id', reason: 'Endpoint does not exist.' });
 		} else {
 			const existing = await this.dataSource.getRepository(ModbusDeviceEntity).findOne({
-				where: { endpointId: dto.endpoint_id, unitId: dto.unit_id } as FindOptionsWhere<ModbusDeviceEntity>,
+				where: {
+					...(current ? { id: Not(current.id) } : {}),
+					endpointId: dto.endpoint_id,
+					unitId: dto.unit_id,
+				} as FindOptionsWhere<ModbusDeviceEntity>,
 			});
 
 			if (existing) {
 				issues.push(this.unitTaken(dto.unit_id, existing));
 			}
+		}
+
+		if (current) {
+			return issues;
 		}
 
 		const channelIds = dto.channels.map((channel, index) => ({ id: channel.id, field: `channels[${index}].id` }));

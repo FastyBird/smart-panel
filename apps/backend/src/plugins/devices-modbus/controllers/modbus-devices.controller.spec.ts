@@ -6,6 +6,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { ROLES_KEY } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import { CreateModbusDeviceStructureDto } from '../dto/create-device-structure.dto';
+import { UpdateModbusDeviceStructureDto } from '../dto/update-device-structure.dto';
 import { ModbusDeviceEntity } from '../entities/devices-modbus.entity';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusBindingsService } from '../services/modbus-bindings.service';
@@ -14,13 +15,13 @@ import { ModbusDeviceStructureService } from '../services/modbus-device-structur
 import { ModbusDevicesController } from './modbus-devices.controller';
 
 describe('ModbusDevicesController', () => {
-	let structure: { create: jest.Mock };
+	let structure: { create: jest.Mock; update: jest.Mock };
 	let bindings: { findByDevice: jest.Mock };
 	let devices: { findOne: jest.Mock };
 	let controller: ModbusDevicesController;
 
 	beforeEach(() => {
-		structure = { create: jest.fn() };
+		structure = { create: jest.fn(), update: jest.fn() };
 		bindings = { findByDevice: jest.fn().mockResolvedValue([new ModbusBindingEntity()]) };
 		devices = { findOne: jest.fn() };
 		controller = new ModbusDevicesController(
@@ -53,6 +54,18 @@ describe('ModbusDevicesController', () => {
 		expect(header).toHaveBeenCalledWith('Location', expect.stringContaining(`/devices/devices/${device.id}`));
 	});
 
+	it('updates the points of a device', async () => {
+		const device = Object.assign(new ModbusDeviceEntity(), { id: 'd1' });
+
+		structure.update.mockResolvedValue(device);
+
+		const data = new UpdateModbusDeviceStructureDto();
+		const response = await controller.updateStructure('d1', { data });
+
+		expect(structure.update).toHaveBeenCalledWith('d1', data);
+		expect(response.data).toBe(device);
+	});
+
 	it('returns the bindings of a Modbus device', async () => {
 		devices.findOne.mockResolvedValue(Object.assign(new ModbusDeviceEntity(), { id: 'd1' }));
 
@@ -76,7 +89,7 @@ describe('ModbusDevicesController', () => {
 	it('restricts every route to owners and admins', () => {
 		const proto = ModbusDevicesController.prototype;
 
-		for (const name of ['create', 'bindings'] as const) {
+		for (const name of ['create', 'updateStructure', 'bindings'] as const) {
 			expect(Reflect.getMetadata(ROLES_KEY, proto[name])).toEqual([UserRole.OWNER, UserRole.ADMIN]);
 		}
 	});

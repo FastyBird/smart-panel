@@ -27,6 +27,7 @@ import { ChannelInputOccurrencePayload } from '../src/modules/devices/models/cha
 import { ChannelInputOccurrencesService } from '../src/modules/devices/services/channel-input-occurrences.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
+import { UserRole } from '../src/modules/users/users.constants';
 import {
 	DEVICES_MODBUS_TYPE,
 	ModbusDataType,
@@ -243,6 +244,8 @@ describe('devices-modbus plugin (e2e)', () => {
 		request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${accessToken}`);
 	const authPatch = (path: string) =>
 		request(app.getHttpServer()).patch(path).set('Authorization', `Bearer ${accessToken}`);
+	const authPut = (path: string, token = accessToken) =>
+		request(app.getHttpServer()).put(path).set('Authorization', `Bearer ${token}`);
 	const authDelete = (path: string) =>
 		request(app.getHttpServer()).delete(path).set('Authorization', `Bearer ${accessToken}`);
 
@@ -552,6 +555,74 @@ describe('devices-modbus plugin (e2e)', () => {
 			endpoint_id: endpointId,
 			unit_id: 1,
 		});
+	});
+
+	it('PUT structure updates bindings and keeps ids', async () => {
+		// Relay 7 moves to register 8 and relay 8 is dropped; every other point is sent unchanged with its IDs.
+		const keptRelays = RELAYS.filter((relay) => relay !== 8);
+		const relay7Property = relayProperty(7).id;
+		const relay8Channel = relayChannelOf(8).id;
+		const information = device.channels.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
+		const channels = keptRelays.map((relay) => {
+			const point = relayChannel(relay);
+			const address = relay === 7 ? 8 : relay;
+
+			return {
+				...point,
+				id: relayChannelOf(relay).id,
+				properties: point.properties.map((property) => ({
+					...property,
+					id: relayProperty(relay).id,
+					read: { ...property.read, address },
+					write: { ...property.write, address },
+				})),
+			};
+		});
+
+		const response = await authPut(`/plugins/devices-modbus/devices/${device.id}/structure`)
+			.send({ data: { category: DeviceCategory.SWITCHER, channels } })
+			.expect(200);
+		const updated = (response.body as { data: DeviceBody }).data;
+
+		expect(updated.channels.map((channel) => channel.id).sort()).toEqual(
+			[...keptRelays.map((relay) => relayChannelOf(relay).id), information?.id].sort(),
+		);
+		expect(updated.channels.some((channel) => channel.id === relay8Channel)).toBe(false);
+
+		const bindings = await authGet(`/plugins/devices-modbus/devices/${device.id}/bindings`).expect(200);
+		const rows = (bindings.body as { data: { property_id: string; address: number }[] }).data;
+
+		expect(rows).toHaveLength(14);
+		expect(rows.filter((row) => row.property_id === relay7Property).map((row) => row.address)).toEqual([8, 8]);
+
+		device = updated;
+	});
+
+	it('PUT structure is refused for viewers', async () => {
+		// Self-registration only ever creates the owner, so a USER account is created through the users route.
+		await authPost('/modules/users/users')
+			.send({
+				data: {
+					username: 'modbusviewer',
+					password: 'securePassword123!',
+					email: 'modbusviewer@example.com',
+					role: UserRole.USER,
+				},
+			})
+			.expect(201);
+
+		const login = await request(app.getHttpServer())
+			.post('/modules/auth/auth/login')
+			.send({ data: { username: 'modbusviewer', password: 'securePassword123!' } });
+		const viewerToken = (login.body as { data: { access_token: string } }).data.access_token;
+
+		await authPut(`/plugins/devices-modbus/devices/${device.id}/structure`, viewerToken)
+			.send({ data: { category: DeviceCategory.SWITCHER, channels: [relayChannel(1)] } })
+			.expect(403);
+
+		const bindings = await authGet(`/plugins/devices-modbus/devices/${device.id}/bindings`).expect(200);
+
+		expect((bindings.body as { data: unknown[] }).data).toHaveLength(14);
 	});
 
 	it('button point emits events', async () => {
