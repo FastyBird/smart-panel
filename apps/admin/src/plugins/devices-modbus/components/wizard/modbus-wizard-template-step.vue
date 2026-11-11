@@ -83,6 +83,23 @@
 			{{ t('devicesModbusPlugin.wizard.template.none') }}
 		</div>
 
+		<el-alert
+			v-if="wizard.endpointMismatch.value"
+			type="warning"
+			:closable="false"
+			show-icon
+			class="mb-3"
+			data-test-id="template-endpoint-mismatch"
+			:title="
+				t('devicesModbusPlugin.wizard.template.endpointMismatch', {
+					expectedFraming: t(`devicesModbusPlugin.endpoints.framing.${wizard.endpointMismatch.value.expected.framing}`),
+					expectedPort: wizard.endpointMismatch.value.expected.port,
+					framing: t(`devicesModbusPlugin.endpoints.framing.${wizard.endpointMismatch.value.actual.framing}`),
+					port: wizard.endpointMismatch.value.actual.port,
+				})
+			"
+		/>
+
 		<div v-if="fileErrors.length > 0">
 			<el-alert
 				type="warning"

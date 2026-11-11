@@ -11,7 +11,7 @@ import type { IModbusTemplatePreview } from '../store/templates.types';
 
 import { useModbusDeviceWizard } from './useModbusDeviceWizard';
 
-const endpointsStore = { add: vi.fn(), edit: vi.fn(), findAll: vi.fn(() => []), fetch: vi.fn() };
+const endpointsStore = { add: vi.fn(), edit: vi.fn(), findAll: vi.fn(() => []), fetch: vi.fn(), findById: vi.fn((): unknown => null) };
 const templatesStore = { preview: vi.fn(), fetch: vi.fn(), catalog: null };
 const configPluginsStore = { findByType: vi.fn() };
 const post = vi.fn();
@@ -199,6 +199,7 @@ describe('useModbusDeviceWizard', () => {
 			maxReadRegisters: 60,
 			maxReadBits: 1000,
 			maxReadGap: 4,
+			endpointDefaults: { framing: DevicesModbusPluginFraming.rtu_over_tcp, port: 4001 },
 		});
 		expect(wizard.canContinue(1)).toBe(true);
 	});
@@ -251,6 +252,31 @@ describe('useModbusDeviceWizard', () => {
 		await pending;
 
 		expect(wizard.canContinue(1)).toBe(true);
+	});
+
+	it('warns when the template expects another framing or port than the selected endpoint', async () => {
+		templatesStore.preview.mockResolvedValue(preview());
+		endpointsStore.findById.mockReturnValue({ id: 'e1', framing: DevicesModbusPluginFraming.tcp, port: 502 });
+
+		const wizard = useModbusDeviceWizard();
+		wizard.state.endpointMode = 'existing';
+		wizard.state.endpointId = 'e1';
+
+		expect(wizard.endpointMismatch.value).toBeNull();
+
+		await wizard.applyTemplate('acme-io');
+
+		expect(wizard.endpointMismatch.value).toEqual({
+			expected: { framing: DevicesModbusPluginFraming.rtu_over_tcp, port: 4001 },
+			actual: { framing: DevicesModbusPluginFraming.tcp, port: 502 },
+		});
+
+		endpointsStore.findById.mockReturnValue({ id: 'e1', framing: DevicesModbusPluginFraming.rtu_over_tcp, port: 4001 });
+		wizard.state.endpointId = 'e2';
+		wizard.state.endpointId = 'e1';
+
+		expect(wizard.endpointMismatch.value).toBeNull();
+		expect(endpointsStore.edit).not.toHaveBeenCalled();
 	});
 
 	it('lets the later of two racing applies win', async () => {

@@ -1,4 +1,4 @@
-import { type Ref, reactive, ref } from 'vue';
+import { type ComputedRef, type Ref, computed, reactive, ref } from 'vue';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
@@ -7,7 +7,7 @@ import { DevicesModbusPluginByteOrder, type DevicesModbusPluginCreateDeviceOpera
 import { DEVICES_MODBUS_PLUGIN_NAME, DEVICES_MODBUS_PLUGIN_PREFIX, MODBUS_MIN_POLL_INTERVAL_MS } from '../devices-modbus.constants';
 import type { AddressNotation } from '../lib/address-notation';
 import { type ModbusPoint, pointsFromPreview, toCreateRequest } from '../lib/points';
-import { modbusTemplatesStoreKey } from '../store/keys';
+import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../store/keys';
 import type { IModbusTemplatePreviewOverrides } from '../store/templates.types';
 
 import { type IModbusEndpointFormModel, type IUseModbusEndpointForm, useModbusEndpointForm } from './useModbusEndpointForm';
@@ -34,6 +34,14 @@ export interface IModbusWizardTemplateDevice {
 	maxReadRegisters: number | null;
 	maxReadBits: number | null;
 	maxReadGap: number | null;
+	/** Framing and port the template expects of its endpoint. */
+	endpointDefaults: { framing: DevicesModbusPluginFraming; port: number };
+}
+
+/** The template's endpoint expectation next to the saved endpoint the device will use. */
+export interface IModbusWizardEndpointMismatch {
+	expected: { framing: DevicesModbusPluginFraming; port: number };
+	actual: { framing: DevicesModbusPluginFraming; port: number };
 }
 
 export interface IModbusWizardTemplate {
@@ -77,6 +85,11 @@ export interface IUseModbusDeviceWizard {
 	create: () => Promise<string>;
 	endpointForm: IUseModbusEndpointForm;
 	applyingTemplate: Ref<boolean>;
+	/**
+	 * Set when the applied template expects another framing or port than the saved endpoint. The wizard never edits a
+	 * saved endpoint on its own: its settings may be exactly what the user just tested, so the step only warns.
+	 */
+	endpointMismatch: ComputedRef<IModbusWizardEndpointMismatch | null>;
 	canContinue: (step: number) => boolean;
 	saveNewEndpoint: () => Promise<string>;
 	applyTemplate: (id: string) => Promise<void>;
@@ -89,6 +102,7 @@ export interface IUseModbusDeviceWizard {
 export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	const storesManager = injectStoresManager();
 	const templatesStore = storesManager.getStore(modbusTemplatesStoreKey);
+	const endpointsStore = storesManager.getStore(modbusEndpointsStoreKey);
 	const config = storesManager.getStore(configPluginsStoreKey).findByType(DEVICES_MODBUS_PLUGIN_NAME) as
 		| { defaultPollIntervalMs?: number }
 		| null
@@ -265,6 +279,10 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 				maxReadRegisters: preview.maxReadRegisters,
 				maxReadBits: preview.maxReadBits,
 				maxReadGap: preview.maxReadGap,
+				endpointDefaults: {
+					framing: preview.endpointDefaults.framing as DevicesModbusPluginFraming,
+					port: preview.endpointDefaults.port,
+				},
 			};
 			state.points = pointsFromPreview(preview);
 			state.startedEmpty = false;
@@ -396,6 +414,22 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		};
 	};
 
+	const endpointMismatch = computed<IModbusWizardEndpointMismatch | null>(() => {
+		const expected = state.templateDevice?.endpointDefaults ?? null;
+
+		if (expected === null || state.endpointMode !== 'existing' || state.endpointId === null) {
+			return null;
+		}
+
+		const endpoint = endpointsStore.findById(state.endpointId);
+
+		if (endpoint === null || (endpoint.framing === expected.framing && endpoint.port === expected.port)) {
+			return null;
+		}
+
+		return { expected, actual: { framing: endpoint.framing, port: endpoint.port } };
+	});
+
 	return {
 		state,
 		submitState,
@@ -403,6 +437,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		create,
 		endpointForm,
 		applyingTemplate,
+		endpointMismatch,
 		canContinue,
 		saveNewEndpoint,
 		applyTemplate,

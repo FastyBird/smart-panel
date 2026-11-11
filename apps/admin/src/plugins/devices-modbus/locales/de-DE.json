@@ -80,6 +80,7 @@
 		"template": {
 			"loading": "Loading templates...",
 			"none": "No device templates are available; start with an empty device.",
+			"endpointMismatch": "This template expects {expectedFraming} on port {expectedPort}, but the selected endpoint uses {framing} on port {port}. Check the endpoint settings if the device does not answer.",
 			"loadFailed": "Failed to load the device templates.",
 			"applyFailed": "Failed to apply the device template.",
 			"source": {
