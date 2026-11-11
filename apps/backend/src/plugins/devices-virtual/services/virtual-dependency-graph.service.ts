@@ -767,11 +767,15 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 				if (!read.current() || !admission.current() || JSON.stringify(latest) !== snapshotBytes)
 					throw new SupersededGraphValidationError('Original durable graph publication changed');
 			};
+			// A pass that was superseded while it read its snapshot lost a race, exactly like one that is
+			// superseded later, and is reported by the same type so that startup retries it. A snapshot
+			// whose revision is not the one the caller committed is a different matter and stays generic.
 			const initialEligibilityFailure =
-				!admission.current() ||
-				(admission.expectedRevision !== undefined && snapshot.revision !== admission.expectedRevision)
+				admission.expectedRevision !== undefined && snapshot.revision !== admission.expectedRevision
 					? { cause: new Error('Original graph revision changed') }
-					: undefined;
+					: !admission.current()
+						? { cause: new SupersededGraphValidationError('Original graph revision changed') }
+						: undefined;
 			if (snapshot.revision < this.quarantineRevision)
 				throw new Error('Graph validation snapshot is older than the applied revision');
 			const quarantined = new Set<string>();

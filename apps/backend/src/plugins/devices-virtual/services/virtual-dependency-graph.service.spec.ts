@@ -99,6 +99,41 @@ describe('actual native graph and owned producer-state publication', () => {
 		expect(refresh).toHaveBeenCalledTimes(3);
 		expect(graph.isValidated()).toBe(true);
 	});
+	it('retries a startup validation that was superseded while it read its snapshot', async () => {
+		const internals = graph as unknown as {
+			readPublicationSnapshot: () => Promise<object>;
+			validationGeneration: number;
+		};
+		const read: () => Promise<object> = internals.readPublicationSnapshot.bind(graph) as () => Promise<object>;
+		const original: () => Promise<void> = graph.refreshQuarantine.bind(graph) as () => Promise<void>;
+		const failures: unknown[] = [];
+		let armed = false;
+		// Installed before the producer state service pins the graph's methods in `onModuleInit`.
+		const refresh = jest.spyOn(graph, 'refreshQuarantine').mockImplementation(() =>
+			original().catch((cause: unknown) => {
+				failures.push(cause);
+				throw cause;
+			}),
+		);
+		jest.spyOn(internals, 'readPublicationSnapshot').mockImplementation(async () => {
+			const snapshot = await read();
+			if (armed) {
+				armed = false;
+				// What a concurrent structural write does while the startup pass is still reading: it
+				// opens a newer validation generation, which makes this pass no longer the current one.
+				internals.validationGeneration++;
+			}
+			return snapshot;
+		});
+		await state.onModuleInit();
+		refresh.mockClear();
+		armed = true;
+		await expect(graph.onApplicationBootstrap()).resolves.toBeUndefined();
+		expect(failures).toHaveLength(1);
+		expect(failures[0]).toBeInstanceOf(SupersededGraphValidationError);
+		expect(refresh).toHaveBeenCalledTimes(2);
+		expect(graph.isValidated()).toBe(true);
+	});
 	it('does not mistake an ordinary error with similar wording for contention', async () => {
 		jest.spyOn(graph, 'refreshQuarantine').mockRejectedValue(new Error('Original graph publication expired'));
 		await expect(graph.onApplicationBootstrap()).rejects.toThrow('Original graph publication expired');
