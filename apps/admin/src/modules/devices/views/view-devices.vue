@@ -226,7 +226,12 @@
 				class="devices-wizard-plugin-card"
 				:class="{ 'devices-wizard-plugin-card--disabled': item.disabled }"
 				body-class="p-4!"
+				role="button"
+				:tabindex="item.disabled ? -1 : 0"
+				:aria-disabled="item.disabled"
 				@click="!item.disabled && onStartWizard(item.value)"
+				@keydown.enter.prevent="!item.disabled && onStartWizard(item.value)"
+				@keydown.space.prevent="!item.disabled && onStartWizard(item.value)"
 			>
 				<div class="flex items-start gap-3">
 					<div class="devices-wizard-plugin-card__icon">
@@ -272,7 +277,11 @@
 				class="devices-wizard-plugin-card"
 				body-class="p-4!"
 				:data-test-id="option.testId"
+				role="button"
+				tabindex="0"
 				@click="onStartRouteWizard(option.to)"
+				@keydown.enter.prevent="onStartRouteWizard(option.to)"
+				@keydown.space.prevent="onStartRouteWizard(option.to)"
 			>
 				<div class="flex items-start gap-3">
 					<div class="devices-wizard-plugin-card__icon">
@@ -625,11 +634,17 @@ watch(
 	cursor: pointer;
 	transition: all 0.2s ease;
 
-	&:hover {
+	&:hover,
+	&:focus-visible {
 		.devices-wizard-plugin-card__chevron {
 			opacity: 1;
 			transform: translateX(2px);
 		}
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--el-color-primary);
+		outline-offset: 2px;
 	}
 }
 

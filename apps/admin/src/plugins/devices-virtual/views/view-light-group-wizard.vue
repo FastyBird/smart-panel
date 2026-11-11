@@ -295,7 +295,17 @@ const preview = async () => {
 };
 const create = async () => {
 	const result = await authoring.create({ ...draft(), device: { name: name.value.trim(), room_id: roomId.value, zone_ids: [] } });
-	if (result) await router.push({ name: DevicesRouteNames.DEVICE, params: { id: result.device.id } });
+	if (result) {
+		await router.push({ name: DevicesRouteNames.DEVICE, params: { id: result.device.id } });
+		return;
+	}
+	if (!authoring.repairConflict.value) return;
+	// A refused create leaves the preview holding the graph revision it was refused for, and nothing
+	// else on the review step takes a new one. Take it here, keeping the reason on screen, so the same
+	// draft can be created on the next attempt.
+	const reason = authoring.error.value;
+	await preview();
+	if (authoring.preview.value) authoring.error.value = reason;
 };
 onBeforeMount(async () => {
 	// The devices list embeds channels and properties, so this hydrates all three stores at once.

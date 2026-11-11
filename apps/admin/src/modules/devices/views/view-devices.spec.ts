@@ -352,9 +352,23 @@ describe('ViewDevices', () => {
 		expect(mocks.routerReplace).not.toHaveBeenCalled();
 		expect(wrapper.get('[data-test-id="kind-projection"]').text()).toContain('p.title');
 
+		// Each choice is reachable and operable from the keyboard, not only by pointer.
+		const projection = wrapper.get('[data-test-id="kind-projection"]');
+		expect(projection.attributes('role')).toBe('button');
+		expect(projection.attributes('tabindex')).toBe('0');
+		await projection.trigger('keydown', { key: 'Enter' });
+		expect(mocks.routerPush).toHaveBeenLastCalledWith({ name: 'devices_virtual-wizard' });
+
+		await wrapper.get('[data-test-id="virtual-device-wizard"]').trigger('click');
+		await flushPromises();
+		await wrapper.get('[data-test-id="kind-group"]').trigger('keydown', { key: ' ' });
+		expect(mocks.routerPush).toHaveBeenLastCalledWith({ name: 'devices_virtual-light_group_wizard' });
+
+		await wrapper.get('[data-test-id="virtual-device-wizard"]').trigger('click');
+		await flushPromises();
 		await wrapper.get('[data-test-id="kind-group"]').trigger('click');
 
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_virtual-light_group_wizard' });
+		expect(mocks.routerPush).toHaveBeenLastCalledWith({ name: 'devices_virtual-light_group_wizard' });
 	});
 
 	it('renders and navigates an enabled Simulator generation launcher alongside Virtual Devices', async () => {

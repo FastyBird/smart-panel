@@ -110,4 +110,31 @@ describe('native group authoring profile selection', () => {
 		});
 		wrapper.unmount();
 	});
+	it('takes a fresh preview after a refused create so the same draft can be retried', async () => {
+		let revision = 7;
+		mocks.POST.mockImplementation((path: string) => {
+			if (path.endsWith('light-group-candidates')) return Promise.resolve({ data: { data: catalog } });
+			if (path.endsWith('draft-preview')) return Promise.resolve({ data: { data: { ...preview, graph_revision: revision } } });
+			return Promise.resolve({ error: { message: 'Graph revision changed' }, response: { status: 409 } });
+		});
+		const wrapper = mount(Wizard);
+		await flushPromises();
+		wrapper.findAllComponents({ name: 'ElInput' })[0].vm.$emit('update:modelValue', 'Group');
+		wrapper.findComponent({ name: 'VirtualLightGroupMembers' }).vm.$emit('update:modelValue', ['a', 'b']);
+		await flushPromises();
+		const steps = wrapper.findComponent({ name: 'VirtualWizardSteps' });
+		steps.vm.$emit('update:modelValue', 3);
+		await flushPromises();
+		const creates = () => mocks.POST.mock.calls.filter(([path]) => String(path).endsWith('/light-groups'));
+		revision = 8;
+		await button(wrapper, 'create').trigger('click');
+		await flushPromises();
+		expect(creates()[0]![1]).toMatchObject({ body: { expected_graph_revision: 7 } });
+		// The refusal stays visible, and the retry carries the revision of the new preview.
+		expect(wrapper.text()).toContain('Graph revision changed');
+		await button(wrapper, 'create').trigger('click');
+		await flushPromises();
+		expect(creates()[1]![1]).toMatchObject({ body: { expected_graph_revision: 8 } });
+		wrapper.unmount();
+	});
 });

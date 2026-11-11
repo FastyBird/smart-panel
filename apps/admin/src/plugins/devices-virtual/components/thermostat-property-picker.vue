@@ -186,8 +186,10 @@ onMounted(async () => {
 });
 watch(
 	() => [props.modelValue, props.ownerDeviceId],
-	() => {
-		const own = clearedLocally && !props.modelValue;
+	(current, previous) => {
+		// Only an unchanged owner makes the empty value the picker's own echo: a new owner has to be
+		// resolved even while the value stays empty, or the previous owner's selection would remain.
+		const own = clearedLocally && !props.modelValue && current[1] === previous[1];
 		clearedLocally = false;
 		if (own) return;
 		void resolveCurrent();

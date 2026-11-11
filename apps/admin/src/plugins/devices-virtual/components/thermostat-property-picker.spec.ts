@@ -156,6 +156,23 @@ describe('thermostat property picker', () => {
 		wrapper.unmount();
 	});
 
+	it('follows a new owner after a local clear that changed nothing', async () => {
+		channelRows.push({ id: 'channel-a', name: 'A', device: 'device-a', identifier: 'a' } as never);
+		const wrapper = mount(ThermostatPropertyPicker, {
+			props: { modelValue: null, ownerDeviceId: 'device-a', kind: 'setting' },
+			global: { stubs },
+		});
+		await flushPromises();
+		// The value is already empty, so the picker's own `null` is not echoed back as a prop change.
+		wrapper.findAllComponents({ name: 'ElSelect' })[1].vm.$emit('change', 'channel-a');
+		await flushPromises();
+		expect(selected(wrapper).slice(0, 2)).toEqual(['device-a', 'channel-a']);
+		await wrapper.setProps({ ownerDeviceId: 'device-b' });
+		await flushPromises();
+		expect(selected(wrapper).slice(0, 2)).toEqual(['device-b', null]);
+		wrapper.unmount();
+	});
+
 	it('keeps a newer binding when an older device channel fetch rejects', async () => {
 		let rejectOldFetch: ((error: Error) => void) | undefined;
 		channelsStore.fetch.mockImplementation(({ deviceId }: { deviceId: string }) =>
