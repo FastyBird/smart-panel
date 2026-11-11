@@ -1,0 +1,407 @@
+{
+	"wizard": {
+		"title": "Add Modbus device",
+		"subtitle": "Connect a Modbus TCP gateway and map its registers to a device",
+		"breadcrumb": "Add Modbus device",
+		"address": {
+			"errors": {
+				"empty": "Enter an address",
+				"invalid": "Enter an address like 0, 40001 or 0-31",
+				"reversed": "The end of the range must not be lower than its start",
+				"tooMany": "A range can hold at most 256 points",
+				"outOfRange": "The address is outside 0-65535",
+				"zeroNotAllowed": "Addresses start at 1 in this notation",
+				"modiconFormat": "Use 5 digits (0xxxx, 1xxxx, 3xxxx, 4xxxx) or 6 digits (4xxxxx)",
+				"modiconMixed": "Both ends of a range must be in the same register table"
+			}
+		},
+		"probe": {
+			"errors": {
+				"connection": "The connection was refused: check the port and that the Modbus TCP server is switched on",
+				"timeout": "No answer: check the IP address, the unit ID and the framing",
+				"busy": "Another probe to this endpoint is still running; try again in a moment",
+				"rateLimited": "Too many probe requests; wait a moment and try again",
+				"illegalFunction": "The device does not support this function for the register type",
+				"illegalAddress": "The device is reachable but does not have this address; try another address",
+				"gatewayUnreachable": "The gateway could not reach the unit; check the unit ID and the serial line",
+				"unavailable": "The endpoint is waiting to reconnect after a failure; try again shortly",
+				"generic": "The probe failed"
+			},
+			"title": "Test connection",
+			"description": "Reads a few values to check that the device answers. Nothing is written or saved.",
+			"registerType": {
+				"title": "Register type",
+				"holding_register": "Holding register",
+				"input_register": "Input register",
+				"coil": "Coil",
+				"discrete_input": "Discrete input"
+			},
+			"notation": {
+				"title": "Address notation",
+				"one_based": "1-based",
+				"pdu": "0-based (PDU)",
+				"modicon": "Modicon (4xxxx)"
+			},
+			"address": {
+				"title": "Address",
+				"stored": "Stored as address {address} ({registerType})"
+			},
+			"count": {
+				"title": "Count",
+				"invalid": "Zadejte celé číslo od 1 do {max}"
+			},
+			"run": "Test connection",
+			"success": "Read {count} value(s) in {ms} ms"
+		},
+		"steps": {
+			"endpoint": "Endpoint",
+			"template": "Template",
+			"points": "Points",
+			"device": "Device",
+			"review": "Review"
+		},
+		"endpoint": {
+			"mode": {
+				"existing": "Use a saved endpoint",
+				"new": "Add a new endpoint"
+			},
+			"select": {
+				"title": "Endpoint",
+				"placeholder": "Select an endpoint",
+				"refresh": "Refresh",
+				"manage": "Manage endpoints (opens in a new tab)",
+				"loadFailed": "Failed to load the Modbus endpoints."
+			},
+			"unitId": {
+				"title": "Unit ID",
+				"hint": "Modbus unit (slave) ID, 0-255. Most TCP devices use 1.",
+				"broadcastWarning": "Unit ID 0 is the broadcast address on RTU lines: devices do not answer it, so reads will time out."
+			}
+		},
+		"template": {
+			"loading": "Loading templates...",
+			"none": "No device templates are available; start with an empty device.",
+			"endpointMismatch": "This template expects {expectedFraming} on port {expectedPort}, but the selected endpoint uses {framing} on port {port}. Check the endpoint settings if the device does not answer.",
+			"loadFailed": "Failed to load the device templates.",
+			"applyFailed": "Failed to apply the device template.",
+			"source": {
+				"builtin": "Built-in",
+				"user": "Custom"
+			},
+			"overrides": "Overrides a built-in template",
+			"counts": "{channels} channels, {points} points",
+			"fileErrors": "Some template files could not be loaded",
+			"startEmpty": {
+				"title": "Start empty",
+				"description": "Define the points yourself."
+			}
+		},
+		"points": {
+			"customNotice": "The points differ from the template, so the device will be created as a custom device.",
+			"readNow": "Read now",
+			"autoRefresh": "Auto refresh",
+			"empty": "No points yet. Add the addresses to read or switch above.",
+			"needsRead": "Add at least one point with a read binding: a device needs something to read.",
+			"yes": "yes",
+			"pduAddress": "PDU {address}",
+			"add": {
+				"title": "Add points",
+				"address": "Address or range",
+				"placeholder": "e.g. 0, 40001 or 0-31",
+				"namePrefix": "Name prefix",
+				"defaultPrefix": "Point",
+				"button": "Add",
+				"preview": "{count} point(s) from stored address {address} ({registerType})"
+			},
+			"columns": {
+				"name": "Name",
+				"capability": "Capability",
+				"registerType": "Register type",
+				"address": "Address",
+				"dataType": "Data type",
+				"bit": "Bit",
+				"orders": "Byte / word order",
+				"byteOrder": "Byte order",
+				"wordOrder": "Word order",
+				"scale": "Scale / offset",
+				"offset": "Offset",
+				"invert": "Invert",
+				"valueMap": "Value map",
+				"writeFunction": "Write function",
+				"live": "Live value",
+				"raw": "Raw value",
+				"error": "Error",
+				"actions": "Actions"
+			},
+			"actions": {
+				"edit": "Edit",
+				"testWrite": "Test write",
+				"delete": "Delete"
+			},
+			"errors": {
+				"registerType": "This capability cannot use that register table",
+				"writeRegisterType": "A write binding must use a coil or holding register",
+				"tooManyTotal": "A device can have at most {max} points ({free} more can be added)",
+				"bitTableBool": "Coils and discrete inputs use the bool data type",
+				"bitRange": "The bit must be a whole number from 0 to 15",
+				"beyondAddressSpace": "This runs past the last address (65535)",
+				"valueMapFloat": "A value map cannot be used with float32",
+				"valueMapScaled": "A value map cannot be combined with a scale or an offset",
+				"valueMapRaw": "Every value map entry needs a raw number",
+				"valueMapRawRange": "Raw values must be whole numbers this data type can hold (0 or 1 for a coil, discrete input or bit)",
+				"valueMapRawUnique": "Each raw value can appear only once in the value map",
+				"valueMapValueUnique": "Each value can appear only once in the value map",
+				"valueMapInvert": "Invert cannot be combined with a value map; express the inversion in the map",
+				"singleWrite32": "A 32-bit value spans two registers and needs the multiple write function"
+			},
+			"editor": {
+				"title": "Edit point",
+				"readBinding": "Read binding",
+				"writeBinding": "Write binding",
+				"deviceOrder": "Device setting",
+				"defaultFunction": "Default",
+				"singleAddress": "Enter a single address",
+				"raw": "Raw value",
+				"addEntry": "Add entry",
+				"removeEntry": "Remove",
+				"cancel": "Cancel",
+				"save": "Save"
+			},
+			"testWrite": {
+				"title": "Test write: {name}",
+				"description": "Writes the value to the real device once. Nothing is sent until you confirm.",
+				"on": "On",
+				"off": "Off",
+				"run": "Write...",
+				"close": "Close",
+				"newDevice": "new device",
+				"confirmTitle": "Write to the device?",
+				"confirm": "Write {value} to {device}? Unit ID {unit}, {registerType}, stored (PDU) address {address} (shown as {shown}). This changes the real device.",
+				"confirmButton": "Write",
+				"cancelButton": "Cancel",
+				"done": "The value was written."
+			}
+		},
+		"device": {
+			"name": {
+				"title": "Device name",
+				"placeholder": "e.g. Relay box"
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Select a category",
+				"hint": "Devices with a writable point are usually switchers; read-only devices are input controllers."
+			},
+			"pollInterval": {
+				"title": "Poll interval (ms)",
+				"hint": "How often the device is read, at least 100 ms.",
+				"buttonHint": "Button inputs are short pulses: a poll interval of 100-250 ms catches them."
+			},
+			"byteOrder": {
+				"title": "Byte order"
+			},
+			"wordOrder": {
+				"title": "Word order"
+			},
+			"order": {
+				"big": "Big endian",
+				"little": "Little endian"
+			}
+		},
+		"review": {
+			"failed": "The device could not be created",
+			"endpoint": "Endpoint",
+			"unitId": "Unit ID",
+			"name": "Name",
+			"category": "Category",
+			"room": "Room",
+			"noRoom": "No room",
+			"pollInterval": "Poll interval",
+			"orders": "Byte / word order",
+			"source": "Source",
+			"fromTemplate": "Template {id} (revision {revision})",
+			"custom": "Custom device",
+			"read": "read",
+			"write": "write",
+			"inverted": "inverted",
+			"create": "Create device",
+			"created": "Device \"{name}\" was created."
+		}
+	},
+	"endpoints": {
+		"title": "Modbus endpoints",
+		"subtitle": "Gateways the Modbus devices are polled through",
+		"breadcrumb": "Modbus endpoints",
+		"empty": "No Modbus endpoints yet",
+		"confirmRemove": "Remove the endpoint \"{name}\"?",
+		"framing": {
+			"tcp": "Modbus TCP",
+			"rtuOverTcp": "RTU over TCP"
+		},
+		"state": {
+			"connected": "Connected",
+			"connecting": "Connecting",
+			"backoff": "Retrying",
+			"stopped": "Stopped",
+			"unknown": "Unknown"
+		},
+		"table": {
+			"name": "Name",
+			"address": "Address",
+			"framing": "Framing",
+			"enabled": "Enabled",
+			"state": "State",
+			"lastError": "Last error",
+			"latency": "Avg. latency",
+			"requests": "Requests / timeouts",
+			"overloaded": "Overloaded",
+			"devices": "Devices",
+			"actions": "Actions"
+		},
+		"actions": {
+			"add": "Add endpoint",
+			"edit": "Edit",
+			"remove": "Remove",
+			"save": "Save",
+			"cancel": "Cancel",
+			"retry": "Zkusit znovu"
+		},
+		"dialog": {
+			"add": "Add Modbus endpoint",
+			"edit": "Edit Modbus endpoint"
+		},
+		"messages": {
+			"saved": "Endpoint saved.",
+			"notSaved": "Failed to save the endpoint.",
+			"removed": "Endpoint removed.",
+			"notRemoved": "Failed to remove the endpoint."
+		},
+		"form": {
+			"name": {
+				"title": "Name",
+				"required": "Enter a name."
+			},
+			"host": {
+				"title": "Host",
+				"required": "Enter a host or IP address."
+			},
+			"port": {
+				"title": "Port"
+			},
+			"framing": {
+				"title": "Framing"
+			},
+			"connectTimeoutMs": {
+				"title": "Connect timeout (ms)"
+			},
+			"requestTimeoutMs": {
+				"title": "Request timeout (ms)"
+			},
+			"interRequestDelayMs": {
+				"title": "Delay between requests (ms)"
+			},
+			"maxInFlight": {
+				"title": "Max requests in flight",
+				"rtuHint": "RTU over TCP allows one request at a time."
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		},
+		"devicesLoadFailed": "Zařízení se nepodařilo načíst, sloupec zařízení je proto prázdný. Endpointy lze přesto spravovat."
+	},
+	"config": {
+		"about": {
+			"title": "Modbus defaults",
+			"text": "These values prefill new endpoints and the device wizard. Existing endpoints and devices keep their own settings."
+		},
+		"enabled": {
+			"title": "Enabled"
+		},
+		"defaultConnectTimeoutMs": {
+			"title": "Default connect timeout (ms)",
+			"required": "Enter the connect timeout.",
+			"range": "Enter a whole number from 1 to 60000."
+		},
+		"defaultRequestTimeoutMs": {
+			"title": "Default request timeout (ms)",
+			"required": "Enter the request timeout.",
+			"range": "Enter a whole number from 1 to 60000."
+		},
+		"defaultPollIntervalMs": {
+			"title": "Default poll interval (ms)",
+			"required": "Enter the poll interval.",
+			"range": "Enter a whole number from 100 to 86400000."
+		},
+		"manageEndpoints": "Manage Modbus endpoints",
+		"messages": {
+			"edited": "Modbus settings saved.",
+			"notEdited": "Failed to save the Modbus settings."
+		}
+	},
+	"catalog": {
+		"heading": "Device templates",
+		"description": "Templates describe the registers of a known device. Built-in templates ship with Smart Panel; yours are loaded from the templates folder.",
+		"reload": "Reload templates",
+		"empty": "No templates loaded",
+		"loadFailed": "Failed to load the Modbus device templates.",
+		"reloadFailed": "Failed to reload the Modbus device templates.",
+		"reloaded": "Reloaded {templates} template(s) from {files} file(s): {errors} error(s), {warnings} warning(s).",
+		"table": {
+			"name": "Template",
+			"source": "Source",
+			"revision": "Revision",
+			"points": "Points"
+		},
+		"source": {
+			"builtin": "Built-in",
+			"user": "Custom"
+		},
+		"overridesBuiltin": "Overrides a built-in template",
+		"files": {
+			"heading": "Template files",
+			"loaded": "{count} loaded",
+			"errors": "Errors",
+			"warnings": "Warnings",
+			"clean": "No problems"
+		}
+	},
+	"section": {
+		"heading": "Modbus",
+		"endpoint": "Endpoint",
+		"endpointUnknown": "Endpoint not found",
+		"manageEndpoints": "Open endpoints",
+		"unitId": "Unit ID",
+		"pollInterval": "Poll interval",
+		"pollDefault": "Default",
+		"pollValue": "{ms} ms",
+		"template": "Template",
+		"templateCustom": "Custom",
+		"templateValue": "{id} (revision {revision})",
+		"bindings": {
+			"heading": "Register bindings",
+			"empty": "This device has no register bindings",
+			"loadFailed": "Failed to load the register bindings.",
+			"property": "Property",
+			"role": "Role",
+			"registerType": "Register type",
+			"address": "PDU address",
+			"dataType": "Data type",
+			"bit": "Bit",
+			"maps": "Mapping",
+			"roles": {
+				"read": "Read",
+				"write": "Write"
+			},
+			"valueMap": "{count} value mapping(s)",
+			"scaleOffset": "x{scale} + {offset}",
+			"invert": "inverted",
+			"raw": "Raw",
+			"decoded": "Decoded"
+		},
+		"readNow": "Read now",
+		"readNowHint": "Reads the saved read bindings once through the endpoint. Nothing is written.",
+		"readFailed": "The read failed: {reason}",
+		"readNoUnit": "This device has no endpoint or unit ID to read from."
+	}
+}

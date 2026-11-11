@@ -51,6 +51,11 @@ export interface IDeviceWizardRouteLauncher {
 	/** Stable base id; the small-screen launcher appends `-small`. */
 	testId: string;
 	/**
+	 * The wizard is the only way to create the plugin's devices: the generic Add device picker does not offer an
+	 * element of this plugin unless it has its own `deviceAddForm`.
+	 */
+	exclusive?: boolean;
+	/**
 	 * Kinds of device the wizard can build, when it builds more than one. With these the launcher
 	 * opens a chooser first — the same dialog the adoption wizard uses to pick a plugin — and `to` is
 	 * only the fallback for a direct link. Labels and descriptions are translation keys.

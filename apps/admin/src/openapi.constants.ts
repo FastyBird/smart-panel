@@ -289,6 +289,57 @@ export type DevicesThirdPartyPluginCreateChannelPropertySchema = components['sch
 export type DevicesThirdPartyPluginUpdateChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginUpdateChannelProperty'];
 export type DevicesThirdPartyPluginChannelPropertySchema = components['schemas']['DevicesThirdPartyPluginDataChannelProperty'];
 
+// Devices Modbus Plugin Schemas
+export type DevicesModbusPluginUpdateConfigSchema = components['schemas']['DevicesModbusPluginUpdateConfig'];
+export type DevicesModbusPluginConfigSchema = components['schemas']['DevicesModbusPluginDataConfig'];
+export type DevicesModbusPluginCreateEndpointSchema = components['schemas']['DevicesModbusPluginCreateEndpoint'];
+export type DevicesModbusPluginUpdateEndpointSchema = components['schemas']['DevicesModbusPluginUpdateEndpoint'];
+export type DevicesModbusPluginEndpointSchema = components['schemas']['DevicesModbusPluginDataEndpoint'];
+export type DevicesModbusPluginEndpointHealthSchema = components['schemas']['DevicesModbusPluginDataEndpointHealth'];
+export type DevicesModbusPluginCreateDeviceSchema = components['schemas']['DevicesModbusPluginCreateDevice'];
+export type DevicesModbusPluginUpdateDeviceSchema = components['schemas']['DevicesModbusPluginUpdateDevice'];
+export type DevicesModbusPluginDeviceSchema = components['schemas']['DevicesModbusPluginDataDevice'];
+export type DevicesModbusPluginCreateChannelSchema = components['schemas']['DevicesModbusPluginCreateChannel'];
+export type DevicesModbusPluginUpdateChannelSchema = components['schemas']['DevicesModbusPluginUpdateChannel'];
+export type DevicesModbusPluginChannelSchema = components['schemas']['DevicesModbusPluginDataChannel'];
+export type DevicesModbusPluginCreateChannelPropertySchema = components['schemas']['DevicesModbusPluginCreateChannelProperty'];
+export type DevicesModbusPluginUpdateChannelPropertySchema = components['schemas']['DevicesModbusPluginUpdateChannelProperty'];
+export type DevicesModbusPluginChannelPropertySchema = components['schemas']['DevicesModbusPluginDataChannelProperty'];
+export type DevicesModbusPluginCreateBindingSchema = components['schemas']['DevicesModbusPluginCreateBinding'];
+export type DevicesModbusPluginCreateValueMapEntrySchema = components['schemas']['DevicesModbusPluginCreateValueMapEntry'];
+export type DevicesModbusPluginCreateDeviceStructureSchema = components['schemas']['DevicesModbusPluginCreateDeviceStructure'];
+export type DevicesModbusPluginCreateDeviceStructureChannelSchema = components['schemas']['DevicesModbusPluginCreateDeviceStructureChannel'];
+export type DevicesModbusPluginCreateDeviceStructurePropertySchema = components['schemas']['DevicesModbusPluginCreateDeviceStructureProperty'];
+export type DevicesModbusPluginBindingSchema = components['schemas']['DevicesModbusPluginDataBinding'];
+export type DevicesModbusPluginTemplateSummarySchema = components['schemas']['DevicesModbusPluginDataTemplateSummary'];
+export type DevicesModbusPluginTemplateFileSchema = components['schemas']['DevicesModbusPluginDataTemplateFile'];
+export type DevicesModbusPluginTemplateCatalogSchema = components['schemas']['DevicesModbusPluginDataTemplateCatalog'];
+export type DevicesModbusPluginPreviewTemplateSchema = components['schemas']['DevicesModbusPluginPreviewTemplate'];
+export type DevicesModbusPluginTemplatePreviewSchema = components['schemas']['DevicesModbusPluginDataTemplatePreview'];
+export type DevicesModbusPluginTemplatePreviewChannelSchema = components['schemas']['DevicesModbusPluginDataTemplatePreviewChannel'];
+export type DevicesModbusPluginTemplatePreviewPropertySchema = components['schemas']['DevicesModbusPluginDataTemplatePreviewProperty'];
+export type DevicesModbusPluginTemplatePreviewBindingSchema = components['schemas']['DevicesModbusPluginDataTemplatePreviewBinding'];
+export type DevicesModbusPluginProbeReadRequestSchema = components['schemas']['DevicesModbusPluginProbeRead'];
+export type DevicesModbusPluginProbeReadSchema = components['schemas']['DevicesModbusPluginDataProbeRead'];
+export type DevicesModbusPluginProbePointRequestSchema = components['schemas']['DevicesModbusPluginProbePoint'];
+export type DevicesModbusPluginProbePointsRequestSchema = components['schemas']['DevicesModbusPluginProbePoints'];
+export type DevicesModbusPluginProbePointSchema = components['schemas']['DevicesModbusPluginDataProbePoint'];
+export type DevicesModbusPluginProbePointsSchema = components['schemas']['DevicesModbusPluginDataProbePoints'];
+export type DevicesModbusPluginProbeWriteRequestSchema = components['schemas']['DevicesModbusPluginProbeWrite'];
+export type DevicesModbusPluginProbeWriteSchema = components['schemas']['DevicesModbusPluginDataProbeWrite'];
+export type DevicesModbusPluginProbeErrorSchema = components['schemas']['DevicesModbusPluginDataProbeError'];
+export type ApiCreateModbusDeviceStructure = operations['create-devices-modbus-plugin-device']['requestBody']['content']['application/json'];
+export {
+	DevicesModbusPluginCreateBindingByte_order as DevicesModbusPluginByteOrder,
+	DevicesModbusPluginCreateBindingData_type as DevicesModbusPluginDataType,
+	DevicesModbusPluginCreateBindingRegister_type as DevicesModbusPluginRegisterType,
+	DevicesModbusPluginCreateBindingWrite_function as DevicesModbusPluginWriteFunction,
+	DevicesModbusPluginCreateEndpointFraming as DevicesModbusPluginFraming,
+	DevicesModbusPluginDataBindingRole as DevicesModbusPluginBindingRole,
+	DevicesModbusPluginDataEndpointHealthState as DevicesModbusPluginEndpointHealthState,
+	DevicesModbusPluginDataProbeErrorKind as DevicesModbusPluginProbeErrorKind,
+} from './openapi';
+
 // Devices Virtual Plugin Schemas
 export type DevicesVirtualPluginCreateDeviceSchema = components['schemas']['DevicesVirtualPluginCreateDevice'];
 export type DevicesVirtualPluginUpdateDeviceSchema = components['schemas']['DevicesVirtualPluginUpdateDevice'];
@@ -526,6 +577,23 @@ export type DevicesWledPluginRescanDiscoveryOperation = operations['rescan-devic
 export type DevicesWledPluginProbeDiscoveryOperation = operations['probe-devices-wled-plugin-discovery'];
 export type DevicesWledPluginAdoptDiscoveryOperation = operations['adopt-devices-wled-plugin-discovery'];
 export { DevicesWledPluginAdoptDeviceCategory } from './openapi';
+
+// Devices Modbus Plugin Operations
+export type DevicesModbusPluginGetEndpointsOperation = operations['get-devices-modbus-plugin-endpoints'];
+export type DevicesModbusPluginCreateEndpointOperation = operations['create-devices-modbus-plugin-endpoint'];
+export type DevicesModbusPluginGetEndpointOperation = operations['get-devices-modbus-plugin-endpoint'];
+export type DevicesModbusPluginDeleteEndpointOperation = operations['delete-devices-modbus-plugin-endpoint'];
+export type DevicesModbusPluginUpdateEndpointOperation = operations['update-devices-modbus-plugin-endpoint'];
+export type DevicesModbusPluginGetEndpointHealthOperation = operations['get-devices-modbus-plugin-endpoint-health'];
+export type DevicesModbusPluginCreateDeviceOperation = operations['create-devices-modbus-plugin-device'];
+export type DevicesModbusPluginGetDeviceBindingsOperation = operations['get-devices-modbus-plugin-device-bindings'];
+export type DevicesModbusPluginGetTemplatesOperation = operations['get-devices-modbus-plugin-templates'];
+export type DevicesModbusPluginGetTemplateOperation = operations['get-devices-modbus-plugin-template'];
+export type DevicesModbusPluginPreviewTemplateOperation = operations['create-devices-modbus-plugin-template-preview'];
+export type DevicesModbusPluginReloadTemplatesOperation = operations['create-devices-modbus-plugin-templates-reload'];
+export type DevicesModbusPluginProbeReadOperation = operations['create-devices-modbus-plugin-probe-read'];
+export type DevicesModbusPluginProbePointsOperation = operations['create-devices-modbus-plugin-probe-points'];
+export type DevicesModbusPluginProbeWriteOperation = operations['create-devices-modbus-plugin-probe-write'];
 
 // Devices Virtual Plugin Operations
 export type DevicesVirtualPluginCheckCompatibilityOperation = operations['check-devices-virtual-plugin-devices-compatibility'];

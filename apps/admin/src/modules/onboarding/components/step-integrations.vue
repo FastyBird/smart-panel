@@ -272,6 +272,7 @@ const pluginIcons: Record<string, string> = {
 	'devices-shelly-ng-plugin': 'mdi:chip',
 	'devices-zigbee2mqtt-plugin': 'mdi:zigbee',
 	'devices-wled-plugin': 'mdi:led-strip-variant',
+	'devices-modbus-plugin': 'mdi:lan-connect',
 	'devices-third-party-plugin': 'mdi:api',
 	'simulator-plugin': 'mdi:test-tube',
 };
