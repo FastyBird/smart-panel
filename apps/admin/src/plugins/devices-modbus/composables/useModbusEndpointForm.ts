@@ -94,7 +94,18 @@ export const useModbusEndpointForm = (endpoint?: IModbusEndpoint): IUseModbusEnd
 		formAlert.value = null;
 	};
 
-	const submit = async (): Promise<IModbusEndpoint> => {
+	let pending: Promise<IModbusEndpoint> | null = null;
+
+	// A second submit while one is saving joins it instead of sending another POST/PATCH.
+	const submit = (): Promise<IModbusEndpoint> => {
+		pending ??= save().finally(() => {
+			pending = null;
+		});
+
+		return pending;
+	};
+
+	const save = async (): Promise<IModbusEndpoint> => {
 		clearErrors();
 		submitting.value = true;
 

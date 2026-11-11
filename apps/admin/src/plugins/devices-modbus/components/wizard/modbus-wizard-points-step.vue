@@ -441,7 +441,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -647,6 +647,12 @@ const onEditorSave = (saved: ModbusPoint): void => {
 
 // --- Test write ---
 
+let disposed = false;
+
+onBeforeUnmount(() => {
+	disposed = true;
+});
+
 const writeKey = ref<string | null>(null);
 const writeValue = ref<string | number | boolean>(false);
 const writing = ref<boolean>(false);
@@ -688,15 +694,19 @@ const onTestWrite = async (): Promise<void> => {
 		return;
 	}
 
+	// Everything the confirmation names is captured now: the write may wait for a read in flight, and the user can go
+	// Back and change the unit meanwhile. The write goes to the unit that was confirmed, or not at all.
 	const binding = point.write;
 	const value = writeValue.value;
+	const unitId = state.unitId;
+	const orders = deviceOrders();
 	const deviceName = state.device.name.trim() !== '' ? state.device.name.trim() : t('devicesModbusPlugin.wizard.points.testWrite.newDevice');
 
 	try {
 		await ElMessageBox.confirm(
 			t('devicesModbusPlugin.wizard.points.testWrite.confirm', {
 				device: deviceName,
-				unit: state.unitId,
+				unit: unitId,
 				registerType: t(`devicesModbusPlugin.wizard.probe.registerType.${binding.registerType}`),
 				address: binding.address,
 				shown: formatAddress(binding.address, binding.registerType, state.notation),
@@ -719,7 +729,12 @@ const onTestWrite = async (): Promise<void> => {
 	try {
 		// Waits for an auto-refresh read in flight and holds the timer until the read-back is done.
 		await live.whilePaused(async () => {
-			const result = await probe.write(target, state.unitId, binding, value, deviceOrders());
+			if (disposed) {
+				// The step was left while the write waited: a write nobody can see must not be sent.
+				return;
+			}
+
+			const result = await probe.write(target, unitId, binding, value, orders);
 
 			if (!result.ok) {
 				flashMessage.error(result.error ? t(explainProbeError(result.error)) : t('devicesModbusPlugin.wizard.probe.errors.generic'));

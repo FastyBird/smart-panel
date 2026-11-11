@@ -274,3 +274,12 @@ export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDevice
 		},
 	};
 }
+
+const NUMERIC_DATA_TYPES: readonly string[] = ['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float'];
+
+/**
+ * The value-map value typed into a text input. Only a numeric property turns "1" into 1; a string or enum property
+ * keeps the text as typed, including a leading zero such as "01".
+ */
+export const valueMapValueFromText = (text: string, dataType: string): string | number =>
+	NUMERIC_DATA_TYPES.includes(dataType) && text.trim() !== '' && Number.isFinite(Number(text)) ? Number(text) : text;

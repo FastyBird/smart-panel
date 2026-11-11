@@ -1,4 +1,4 @@
-import { defineComponent, h, ref } from 'vue';
+import { type Ref, defineComponent, h, isRef, ref } from 'vue';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -52,12 +52,15 @@ const okResult = (): IModbusProbePointsResult => ({
 	durationMs: 3,
 });
 
-const host = (points: ModbusPoint[], readFn: (inputs: { key: string; read: ModbusPointBinding }[]) => Promise<IModbusProbePointsResult>) => {
+const host = (
+	points: ModbusPoint[] | Ref<ModbusPoint[]>,
+	readFn: (inputs: { key: string; read: ModbusPointBinding }[]) => Promise<IModbusProbePointsResult>
+) => {
 	let live!: IUseModbusLiveValues;
 	const wrapper = mount(
 		defineComponent({
 			setup() {
-				live = useModbusLiveValues(ref(points), readFn, 2000);
+				live = useModbusLiveValues(isRef(points) ? points : ref(points), readFn, 2000);
 
 				return () => h('div');
 			},
@@ -137,6 +140,55 @@ describe('useModbusLiveValues', () => {
 		await held;
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(readFn.mock.calls.length).toBeGreaterThan(callsBefore);
+	});
+
+	it('does not start an automatic read while paused work runs', async () => {
+		let release!: () => void;
+		const readFn = vi.fn().mockResolvedValue(okResult());
+		const { live } = host([point('a', binding(0))], readFn);
+
+		const held = live.whilePaused(() => new Promise<void>((resolve) => (release = resolve)));
+
+		await vi.advanceTimersByTimeAsync(0);
+		live.autoRefresh.value = true;
+		await vi.advanceTimersByTimeAsync(10);
+
+		expect(readFn).not.toHaveBeenCalled();
+
+		release();
+		await held;
+		await vi.advanceTimersByTimeAsync(2000);
+
+		expect(readFn).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops the shown reading of a point whose binding changes', async () => {
+		const points = ref([point('a', binding(0)), point('b', binding(1))]);
+		const readFn = vi.fn().mockResolvedValue(okResult());
+		const { live } = host(points, readFn);
+
+		await live.readNow();
+		expect(Object.keys(live.results.value)).toEqual(['a', 'b']);
+
+		points.value = [point('a', binding(7)), point('b', binding(1))];
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(Object.keys(live.results.value)).toEqual(['b']);
+	});
+
+	it('discards an in-flight reading of a point edited before it arrived', async () => {
+		const points = ref([point('a', binding(0)), point('b', binding(1))]);
+		let release!: (value: IModbusProbePointsResult) => void;
+		const readFn = vi.fn().mockImplementationOnce(() => new Promise<IModbusProbePointsResult>((resolve) => (release = resolve)));
+		const { live } = host(points, readFn);
+
+		const reading = live.readNow();
+
+		points.value = [point('a', binding(7)), point('b', binding(1))];
+		release(okResult());
+		await reading;
+
+		expect(Object.keys(live.results.value)).toEqual(['b']);
 	});
 
 	it('does not call the reader when no point has a read binding', async () => {

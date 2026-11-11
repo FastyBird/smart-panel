@@ -269,6 +269,51 @@ describe('ModbusWizardPointsStep', () => {
 			expect(readPoints).toHaveBeenCalledTimes(2);
 		});
 
+		it('writes to the confirmed unit when the unit changes while the write waits', async () => {
+			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
+			let release!: () => void;
+			readPoints.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = () => resolve({ ok: true, points: [], error: null, durationMs: 1 });
+					})
+			);
+			const { wizard, wrapper } = await setup();
+
+			await wrapper.find('[data-test-id="points-read-now"]').trigger('click');
+			await wrapper.find('[data-test-id="points-test-write-run"]').trigger('click');
+			await flushPromises();
+
+			wizard.state.unitId = 9;
+			release();
+			await flushPromises();
+
+			expect(write).toHaveBeenCalledTimes(1);
+			expect(write.mock.calls[0][1]).toBe(5);
+		});
+
+		it('drops a queued write when the step is left while it waits', async () => {
+			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
+			let release!: () => void;
+			readPoints.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = () => resolve({ ok: true, points: [], error: null, durationMs: 1 });
+					})
+			);
+			const { wrapper } = await setup();
+
+			await wrapper.find('[data-test-id="points-read-now"]').trigger('click');
+			await wrapper.find('[data-test-id="points-test-write-run"]').trigger('click');
+			await flushPromises();
+
+			wrapper.unmount();
+			release();
+			await flushPromises();
+
+			expect(write).not.toHaveBeenCalled();
+		});
+
 		it('does not read back when the write fails', async () => {
 			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
 			write.mockResolvedValue({ ok: false, error: { kind: 'timeout', exceptionCode: null, message: 'x' }, durationMs: 1 });

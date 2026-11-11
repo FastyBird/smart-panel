@@ -15,6 +15,7 @@ import {
 	samePoints,
 	suggestCategory,
 	toCreateRequest,
+	valueMapValueFromText,
 } from './points';
 
 const binding = (over: Partial<ModbusPointBinding> = {}): ModbusPointBinding => ({
@@ -404,5 +405,22 @@ describe('toCreateRequest', () => {
 
 		expect(data.channels).toHaveLength(1);
 		expect(data.channels[0].properties.map((p) => p.category)).toEqual(['on', 'state']);
+	});
+});
+
+describe('valueMapValueFromText', () => {
+	it('turns numeric text into a number for a numeric property', () => {
+		expect(valueMapValueFromText('1', 'uchar')).toBe(1);
+		expect(valueMapValueFromText('2.5', 'float')).toBe(2.5);
+	});
+
+	it('keeps the text of a string or enum property, leading zeros included', () => {
+		expect(valueMapValueFromText('01', 'string')).toBe('01');
+		expect(valueMapValueFromText('1', 'enum')).toBe('1');
+	});
+
+	it('keeps text that is not a number, and an empty input, as text', () => {
+		expect(valueMapValueFromText('on', 'uint')).toBe('on');
+		expect(valueMapValueFromText('', 'int')).toBe('');
 	});
 });

@@ -271,7 +271,7 @@ import {
 } from '../../../../openapi.constants';
 import { type ParsedAddress, formatAddress, parseAddressInput } from '../../lib/address-notation';
 import { CUSTOM_CAPABILITIES, applyCapability, capabilityKeyOf } from '../../lib/capabilities';
-import type { ModbusPoint, ModbusPointBinding } from '../../lib/points';
+import { type ModbusPoint, type ModbusPointBinding, valueMapValueFromText } from '../../lib/points';
 
 import type { IModbusPointEditorProps } from './modbus-point-editor.types';
 
@@ -409,7 +409,7 @@ const hasValueMap = (binding: ModbusPointBinding): boolean => binding.valueMap !
 
 const toOrder = (value: string): DevicesModbusPluginByteOrder | null => (value === DEVICE_ORDER ? null : (value as DevicesModbusPluginByteOrder));
 
-const toMapValue = (text: string): string | number => (text.trim() !== '' && Number.isFinite(Number(text)) ? Number(text) : text);
+const toMapValue = (text: string): string | number => valueMapValueFromText(text, draft.value?.dataType ?? '');
 
 const addMapEntry = (binding: ModbusPointBinding): void => {
 	binding.valueMap = [...(binding.valueMap ?? []), { raw: 0, value: draft.value?.dataType === 'bool' ? true : '' }];

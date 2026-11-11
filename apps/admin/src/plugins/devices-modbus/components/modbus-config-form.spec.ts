@@ -121,4 +121,30 @@ describe('ModbusConfigForm', () => {
 		expect(templatesStore.reload).toHaveBeenCalledTimes(1);
 		expect(flash.success).toHaveBeenCalledWith('devicesModbusPlugin.catalog.reloaded {"templates":1,"files":2,"errors":1,"warnings":2}');
 	});
+
+	it('does not reload while the initial fetch is still loading', async () => {
+		let finishFetch!: () => void;
+		templatesStore.fetch.mockImplementationOnce(() => new Promise<void>((resolve) => (finishFetch = resolve)));
+		templatesStore.reload.mockResolvedValue({ templates: [], files: [] });
+
+		const wrapper = mount(ModbusConfigForm, { props: { config: config() as never } });
+		await flushPromises();
+
+		const reload = wrapper.get('[data-test-id="modbus-templates-reload"]');
+
+		expect(reload.attributes('disabled')).toBeDefined();
+
+		await reload.trigger('click');
+		await flushPromises();
+		expect(templatesStore.reload).not.toHaveBeenCalled();
+
+		finishFetch();
+		await flushPromises();
+
+		expect(reload.attributes('disabled')).toBeUndefined();
+
+		await reload.trigger('click');
+		await flushPromises();
+		expect(templatesStore.reload).toHaveBeenCalledTimes(1);
+	});
 });

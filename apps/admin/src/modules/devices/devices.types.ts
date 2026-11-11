@@ -50,6 +50,11 @@ export interface IDeviceWizardRouteLauncher {
 	to: RouteLocationRaw;
 	/** Stable base id; the small-screen launcher appends `-small`. */
 	testId: string;
+	/**
+	 * The wizard is the only way to create the plugin's devices: the generic Add device picker does not offer an
+	 * element of this plugin unless it has its own `deviceAddForm`.
+	 */
+	exclusive?: boolean;
 }
 
 export type IDevicePluginRoutes = {

@@ -5,6 +5,7 @@
 			<el-button
 				size="small"
 				:loading="reloading"
+				:disabled="loading"
 				data-test-id="modbus-templates-reload"
 				@click="onReload"
 			>
@@ -169,7 +170,13 @@ onMounted(async (): Promise<void> => {
 	}
 });
 
+// Reload waits for the initial fetch (the button is disabled meanwhile), so a late fetch result or error can never
+// replace the reloaded catalog.
 const onReload = async (): Promise<void> => {
+	if (loading.value || reloading.value) {
+		return;
+	}
+
 	reloading.value = true;
 
 	try {

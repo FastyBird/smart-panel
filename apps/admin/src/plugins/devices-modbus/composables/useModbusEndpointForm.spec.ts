@@ -110,6 +110,32 @@ describe('useModbusEndpointForm', () => {
 		expect(endpointsStore.edit).toHaveBeenCalledWith('e1', expect.objectContaining({ name: 'Gateway' }));
 	});
 
+	it('joins a second submit to the save in flight instead of sending another request', async () => {
+		let release!: (endpoint: unknown) => void;
+		const saved = { id: 'new' };
+
+		endpointsStore.add.mockImplementationOnce(() => new Promise((resolve) => (release = resolve)));
+
+		const { model, submit } = useModbusEndpointForm();
+
+		model.name = 'Gateway';
+		model.host = '10.0.0.5';
+
+		const first = submit();
+		const second = submit();
+
+		release(saved);
+
+		expect(await first).toBe(saved);
+		expect(await second).toBe(saved);
+		expect(endpointsStore.add).toHaveBeenCalledTimes(1);
+
+		endpointsStore.add.mockResolvedValueOnce({ id: 'again' });
+
+		expect(await submit()).toEqual({ id: 'again' });
+		expect(endpointsStore.add).toHaveBeenCalledTimes(2);
+	});
+
 	it('maps a backend host error onto the host field', async () => {
 		endpointsStore.add.mockRejectedValue(
 			new DevicesModbusApiException('An endpoint with this host and port already exists.', 400, [

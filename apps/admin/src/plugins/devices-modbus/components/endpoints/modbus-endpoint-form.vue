@@ -180,24 +180,29 @@ const rules = reactive<FormRules>({
 	host: [required('devicesModbusPlugin.endpoints.form.host.required')],
 });
 
+let busy = false;
+
+// Locked before the validation is awaited, so a second Save click while validating does not start a second save.
 const onSubmit = async (): Promise<void> => {
-	if (!formEl.value) {
+	if (!formEl.value || busy) {
 		return;
 	}
 
-	const valid = await formEl.value.validate().catch(() => false);
-
-	if (!valid) {
-		return;
-	}
-
+	busy = true;
 	emit('update:submitting', true);
 
 	try {
+		const valid = await formEl.value.validate().catch(() => false);
+
+		if (!valid) {
+			return;
+		}
+
 		emit('saved', await submit());
 	} catch {
 		// Field errors and the form alert are set by the composable.
 	} finally {
+		busy = false;
 		emit('update:submitting', false);
 	}
 };

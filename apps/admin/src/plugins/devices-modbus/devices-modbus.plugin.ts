@@ -142,6 +142,8 @@ export default {
 								icon: 'mdi:lan-connect',
 								to: { name: RouteNames.WIZARD },
 								testId: 'modbus-device-wizard',
+								// Endpoint and unit ID are collected only by the wizard; the generic form cannot create a device.
+								exclusive: true,
 							},
 						},
 					}

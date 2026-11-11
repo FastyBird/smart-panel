@@ -200,6 +200,33 @@ describe('useDevicesPlugins', () => {
 		]);
 	});
 
+	it('excludes an element whose plugin has an exclusive route wizard and no add form', () => {
+		const exclusive = {
+			...mockPluginList[0],
+			type: 'exclusive-plugin',
+			name: 'Exclusive Plugin',
+			routes: { wizard: { ...mockPluginList[0]!.routes!.wizard, exclusive: true } },
+			elements: [{ type: 'exclusive-type', schemas: { deviceSchema } }],
+		};
+		const withAddForm = {
+			...exclusive,
+			type: 'exclusive-form-plugin',
+			name: 'Exclusive Form Plugin',
+			elements: [{ type: 'exclusive-form-type', components: { deviceAddForm: { template: '<div />' } }, schemas: { deviceSchema } }],
+		};
+
+		mockPluginList.push(exclusive, withAddForm);
+
+		try {
+			const { options, wizardRouteOptions } = useDevicesPlugins();
+
+			expect(options.value.map((item) => item.value)).toEqual(['exclusive-form-type', 'test-type']);
+			expect(wizardRouteOptions.value.map((item) => item.value)).toContain('exclusive-plugin');
+		} finally {
+			mockPluginList.splice(-2);
+		}
+	});
+
 	it('excludes wizard-only elements from regular device type options', () => {
 		const { options } = useDevicesPlugins();
 

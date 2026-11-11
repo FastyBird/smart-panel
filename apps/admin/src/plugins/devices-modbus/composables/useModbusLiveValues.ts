@@ -43,16 +43,31 @@ export const useModbusLiveValues = (
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let disposed = false;
 	let pauseDepth = 0;
+	// The binding each shown result was read with. Editing a point keeps its key, so a result is only valid while the
+	// point still has that binding.
+	let readWith = new Map<string, string>();
+
+	const signatureOf = (read: ModbusPointBinding): string => JSON.stringify(read);
+
+	const currentSignatures = (): Map<string, string> =>
+		new Map(toValue(points).flatMap((point) => (point.read === null ? [] : [[point.key, signatureOf(point.read)] as const])));
+
+	const show = (shown: IModbusProbePointResult[], signatures: Map<string, string>): void => {
+		results.value = Object.fromEntries(shown.map((result) => [result.key, result]));
+		readWith = new Map(shown.map((result) => [result.key, signatures.get(result.key) ?? '']));
+	};
 
 	const run = async (): Promise<void> => {
 		const inputs = toValue(points).flatMap((point) => (point.read === null ? [] : [{ key: point.key, read: point.read }]));
 
 		if (inputs.length === 0) {
-			results.value = {};
+			show([], new Map());
 			error.value = null;
 
 			return;
 		}
+
+		const sent = new Map(inputs.map((input) => [input.key, signatureOf(input.read)]));
 
 		reading.value = true;
 
@@ -65,11 +80,17 @@ export const useModbusLiveValues = (
 
 			// Per-point raw values and errors are kept even when nothing decoded (illegal address, value map miss);
 			// only a top-level error (the whole read failed) is an alert.
+			// A point edited while the read was in flight gets no result: it was read with its old binding.
+			const current = currentSignatures();
+
 			error.value = response.error;
-			results.value = Object.fromEntries(response.points.map((result) => [result.key, result]));
+			show(
+				response.points.filter((result) => sent.get(result.key) === current.get(result.key)),
+				sent
+			);
 		} catch (caught: unknown) {
 			if (!disposed) {
-				results.value = {};
+				show([], new Map());
 				error.value = { kind: 'request', exceptionCode: null, message: caught instanceof Error ? caught.message : String(caught) };
 			}
 		} finally {
@@ -109,6 +130,19 @@ export const useModbusLiveValues = (
 		}
 	};
 
+	// Drops the shown result of every point whose binding changed (or that lost its read binding).
+	watch(
+		() => [...currentSignatures()].map(([key, signature]) => `${key}\u0000${signature}`).join('\u0001'),
+		() => {
+			const current = currentSignatures();
+			const kept = Object.values(results.value).filter((result) => readWith.get(result.key) === current.get(result.key));
+
+			if (kept.length !== Object.keys(results.value).length) {
+				show(kept, readWith);
+			}
+		}
+	);
+
 	const stopTimer = (): void => {
 		if (timer !== null) {
 			clearInterval(timer);
@@ -125,7 +159,10 @@ export const useModbusLiveValues = (
 				return;
 			}
 
-			void readNow();
+			// Paused work (a test write) does its own read-back; the first automatic read must not overlap it.
+			if (pauseDepth === 0) {
+				void readNow();
+			}
 
 			timer = setInterval(() => {
 				if (inFlight === null && pauseDepth === 0) {

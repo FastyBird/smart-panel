@@ -63,7 +63,10 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 				return (plugin.elements ?? [])
 					.filter((el) => el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME))
 					.filter((el) => {
-						const isWizardOnly = !!el.components?.deviceWizardAdapter && !el.components.deviceAddForm;
+						// Devices created only through a wizard (an adoption adapter, or an exclusive route launcher) cannot be
+						// created by the generic form, so they are not offered here.
+						const hasExclusiveWizard = !!el.components?.deviceWizardAdapter || plugin.routes?.wizard?.exclusive === true;
+						const isWizardOnly = hasExclusiveWizard && !el.components?.deviceAddForm;
 
 						if (isWizardOnly) {
 							return false;
