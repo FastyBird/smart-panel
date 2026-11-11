@@ -65,6 +65,15 @@ describe('normalizeAutomationNodeType', () => {
 		expect(registered.references({})).toEqual([{ kind: 'device', id: 'test.class-action' }]);
 	});
 
+	it('carries the owner of a node type, and has none when the definition names none', () => {
+		const owner = { kind: 'plugin', type: 'spaces-home-control-plugin' } as const;
+		const registered = normalizeAutomationNodeType({ ...fakeAction, owner });
+
+		expect(registered.owner).toEqual(owner);
+		expect(registered.owner).not.toBe(owner);
+		expect(normalizeAutomationNodeType(fakeAction)).not.toHaveProperty('owner');
+	});
+
 	it.each([
 		['something that is not an object', null],
 		['a missing type', { ...fakeAction, type: undefined }],
@@ -78,6 +87,9 @@ describe('normalizeAutomationNodeType', () => {
 		['a missing config validation', { ...fakeAction, validateConfig: undefined }],
 		['references that is not a function', { ...fakeAction, references: [] }],
 		['a config schema that is not an object', { ...fakeAction, configSchema: [] }],
+		['an owner that is not an object', { ...fakeAction, owner: 'some-plugin' }],
+		['an owner of an unknown kind', { ...fakeAction, owner: { kind: 'extension', type: 'some-plugin' } }],
+		['an owner without a type', { ...fakeAction, owner: { kind: 'plugin', type: '' } }],
 		['a flow type without ports', { ...fakeJoin, ports: undefined }],
 		['ports that are not lists', { ...fakeJoin, ports: { inputs: 'in', outputs: ['out'] } }],
 		['an empty port name', { ...fakeJoin, ports: { inputs: [''], outputs: ['out'] } }],

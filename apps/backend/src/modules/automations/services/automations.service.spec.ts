@@ -650,6 +650,26 @@ describe('AutomationsService', () => {
 			expect(updated.revision).toBe(3);
 		});
 
+		it('resumes an automation the overload guard suspended, whatever the save changes', async () => {
+			const automation = await create({ name: 'Motion light', graph: graph() });
+
+			await repository.update({ id: automation.id }, { status: AutomationStatus.SUSPENDED });
+
+			const updated = await update(automation.id, { revision: 1, name: 'Renamed' });
+
+			expect(updated.status).toBe(AutomationStatus.OK);
+		});
+
+		it('leaves an invalid status to the engine', async () => {
+			const automation = await create({ name: 'Motion light', graph: graph() });
+
+			await repository.update({ id: automation.id }, { status: AutomationStatus.INVALID });
+
+			const updated = await update(automation.id, { revision: 1, name: 'Renamed' });
+
+			expect(updated.status).toBe(AutomationStatus.INVALID);
+		});
+
 		it('emits the updated automation, graph included', async () => {
 			const automation = await create({ name: 'Motion light', graph: graph() });
 			eventEmitter.emit.mockClear();

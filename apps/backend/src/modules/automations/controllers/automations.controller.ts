@@ -42,18 +42,25 @@ import {
 	AutomationsException,
 	AutomationsGraphValidationException,
 	AutomationsNotFoundException,
+	AutomationsNotTriggerableException,
 	AutomationsRevisionConflictException,
 } from '../automations.exceptions';
 import { ReqCreateAutomationDto } from '../dto/create-automation.dto';
+import { ReqTriggerAutomationDto } from '../dto/trigger-automation.dto';
 import { ReqUpdateAutomationDto } from '../dto/update-automation.dto';
 import { ReqValidateAutomationGraphDto } from '../dto/validate-graph.dto';
 import { AutomationEntity } from '../entities/automations.entity';
+import { createAutomationRuntimeModel } from '../models/automation-runtime.model';
+import { createAutomationTriggerResultModel } from '../models/automation-trigger-result.model';
 import {
 	AutomationGraphValidationResponseModel,
 	AutomationResponseModel,
+	AutomationRuntimeResponseModel,
+	AutomationTriggerResultResponseModel,
 	AutomationsResponseModel,
 } from '../models/automations-response.model';
 import { createAutomationGraphValidationModel } from '../models/graph-validation.model';
+import { AutomationEngineService } from '../services/automation-engine.service';
 import { AutomationsService } from '../services/automations.service';
 
 @ApiTags(AUTOMATIONS_MODULE_API_TAG_NAME)
@@ -62,7 +69,10 @@ import { AutomationsService } from '../services/automations.service';
 export class AutomationsController {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'AutomationsController');
 
-	constructor(private readonly automationsService: AutomationsService) {}
+	constructor(
+		private readonly automationsService: AutomationsService,
+		private readonly engine: AutomationEngineService,
+	) {}
 
 	@ApiOperation({
 		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
@@ -247,6 +257,77 @@ export class AutomationsController {
 
 			throw error;
 		}
+	}
+
+	@ApiOperation({
+		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
+		summary: 'Run an automation by hand',
+		description:
+			'Starts a run of the automation without waiting for one of its triggers. The run starts at the given trigger node, or at the first trigger of the graph, and it may start only at a trigger node. The run mode and the overload guard apply as they do to a trigger that fired, so the answer may be that no run was started: `ignored` (a run is active and the mode is `single`), `dropped` (a limit of runs is reached) or `suspended`. The request is refused with 422 while the automation is disabled, `invalid` or `suspended`, and when the engine is not running. The response does not wait for the run to finish. Requires the owner or admin role.',
+		operationId: 'trigger-automations-module-automation',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Automation ID' })
+	@ApiBody({ type: ReqTriggerAutomationDto, description: 'Optional start node', required: false })
+	@ApiSuccessResponse(
+		AutomationTriggerResultResponseModel,
+		'The request was handled. The response tells whether a run was started and, when it was not, why.',
+	)
+	@ApiBadRequestResponse('Invalid UUID format or request data')
+	@ApiForbiddenResponse('Only owners and admins can run automations')
+	@ApiNotFoundResponse('Automation not found')
+	@ApiUnprocessableEntityResponse(
+		'The automation cannot be run by hand: it is disabled, invalid or suspended, the node is not a trigger, or the engine is not running.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post(':id/trigger')
+	@HttpCode(200)
+	async trigger(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() triggerDto: ReqTriggerAutomationDto,
+	): Promise<AutomationTriggerResultResponseModel> {
+		try {
+			const outcome = await this.engine.triggerOrThrow(id, triggerDto?.data?.node_id);
+
+			this.logger.debug(`[TRIGGER] Manual run of automation id=${id}: ${outcome.outcome}`);
+
+			const response = new AutomationTriggerResultResponseModel();
+			response.data = createAutomationTriggerResultModel(id, outcome);
+
+			return response;
+		} catch (error) {
+			if (error instanceof AutomationsNotFoundException) {
+				throw new NotFoundException('Requested automation does not exist');
+			}
+
+			if (error instanceof AutomationsNotTriggerableException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@ApiOperation({
+		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve what the engine holds for an automation',
+		description:
+			'Fetches the live state of one automation in the engine: whether its triggers are being watched, how many runs are active, how many triggers started a run, were ignored or were dropped since the backend started, the last trigger that did not start a run, and - for an invalid automation - which node or edge is the reason. Nothing of it is stored. Requires the owner or admin role.',
+		operationId: 'get-automations-module-automation-runtime',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Automation ID' })
+	@ApiSuccessResponse(AutomationRuntimeResponseModel, 'The live state of the automation was successfully retrieved.')
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiForbiddenResponse('Only owners and admins can read automations')
+	@ApiNotFoundResponse('Automation not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/runtime')
+	async runtime(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<AutomationRuntimeResponseModel> {
+		const automation = await this.getOneOrThrow(id);
+
+		const response = new AutomationRuntimeResponseModel();
+		response.data = createAutomationRuntimeModel(automation, this.engine.runtime(id));
+
+		return response;
 	}
 
 	@ApiOperation({
