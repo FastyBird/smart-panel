@@ -532,12 +532,11 @@ describe('devices-modbus plugin (e2e)', () => {
 
 	it('applies and validates Modbus fields of a core device PATCH', async () => {
 		const updated = await authPatch(`/modules/devices/devices/${device.id}`)
-			.send({ data: { type: DEVICES_MODBUS_TYPE, max_read_registers: 100, template_revision: '1.0.0+abc123' } })
+			.send({ data: { type: DEVICES_MODBUS_TYPE, max_read_registers: 100 } })
 			.expect(200);
 
 		expect((updated.body as { data: Record<string, unknown> }).data).toMatchObject({
 			max_read_registers: 100,
-			template_revision: '1.0.0+abc123',
 		});
 
 		const refused = await authPatch(`/modules/devices/devices/${device.id}`)

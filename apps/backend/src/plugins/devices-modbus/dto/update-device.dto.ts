@@ -1,16 +1,5 @@
 import { Expose } from 'class-transformer';
-import {
-	IsEnum,
-	IsInt,
-	IsNotEmpty,
-	IsOptional,
-	IsString,
-	IsUUID,
-	Max,
-	MaxLength,
-	Min,
-	ValidateIf,
-} from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -141,33 +130,4 @@ export class UpdateModbusDeviceDto extends UpdateDeviceDto {
 	@IsInt({ message: '[{"field":"max_read_gap","reason":"Value must be an integer."}]' })
 	@Min(0, { message: '[{"field":"max_read_gap","reason":"Value must be at least 0."}]' })
 	max_read_gap?: number;
-
-	@ApiPropertyOptional({
-		name: 'template_id',
-		description: 'Template the device was created from',
-		type: 'string',
-		example: 'template',
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"template_id","reason":"Value must be a string."}]' })
-	template_id?: string;
-
-	@ApiPropertyOptional({
-		name: 'template_revision',
-		description:
-			'Template revision applied: the first 16 lowercase hex characters of the SHA-256 of the template content',
-		type: 'string',
-		example: '3f2a9c1b7d4e6a05',
-		minLength: 1,
-		maxLength: MODBUS_LIMITS.TEMPLATE_REVISION_MAX_LENGTH,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"template_revision","reason":"Value must be a non-empty string."}]' })
-	@IsNotEmpty({ message: '[{"field":"template_revision","reason":"Value must be a non-empty string."}]' })
-	@MaxLength(MODBUS_LIMITS.TEMPLATE_REVISION_MAX_LENGTH, {
-		message: '[{"field":"template_revision","reason":"Value must be at most 128 characters."}]',
-	})
-	template_revision?: string;
 }

@@ -38,6 +38,16 @@ const ENDPOINT_DTOS: Array<[string, DtoClass]> = [
 
 describe('Modbus DTO validation', () => {
 	describe.each(DEVICE_DTOS)('%s', (_name, dto) => {
+		it('caps the poll interval at one day', async () => {
+			expect(await fieldErrors(dto, 'poll_interval_ms', 86_400_000)).toEqual([]);
+			expect(await fieldErrors(dto, 'poll_interval_ms', 86_400_001)).not.toEqual([]);
+		});
+	});
+
+	describe.each([
+		['CreateModbusDeviceDto', CreateModbusDeviceDto],
+		['CreateModbusDeviceStructureDto', CreateModbusDeviceStructureDto],
+	] as Array<[string, DtoClass]>)('%s template revision', (_name, dto) => {
 		it('accepts a template revision (16 hex characters)', async () => {
 			expect(await fieldErrors(dto, 'template_revision', '3f2a9c1b7d4e6a05')).toEqual([]);
 		});
@@ -49,14 +59,15 @@ describe('Modbus DTO validation', () => {
 		])('refuses a template revision that is %s', async (_case, value) => {
 			expect(await fieldErrors(dto, 'template_revision', value)).not.toEqual([]);
 		});
-
-		it('caps the poll interval at one day', async () => {
-			expect(await fieldErrors(dto, 'poll_interval_ms', 86_400_000)).toEqual([]);
-			expect(await fieldErrors(dto, 'poll_interval_ms', 86_400_001)).not.toEqual([]);
-		});
 	});
 
 	describe('UpdateModbusDeviceDto', () => {
+		it.each(['template_id', 'template_revision'])('does not declare %s (provenance is read-only)', (field) => {
+			expect(
+				Object.keys(plainToInstance(UpdateModbusDeviceDto, { [field]: 'x' }, { excludeExtraneousValues: true })),
+			).not.toContain(field);
+		});
+
 		it.each(['endpoint_id', 'unit_id'])('accepts an omitted %s', async (field) => {
 			expect(await fieldErrors(UpdateModbusDeviceDto, field, undefined)).toEqual([]);
 		});
