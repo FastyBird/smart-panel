@@ -114,6 +114,15 @@ export class ModbusConnectionsService {
 		return this.connections.get(endpointId)?.connection ?? null;
 	}
 
+	/**
+	 * Whether the running connection of `endpoint` was built from its current settings. After an update the new
+	 * settings are stored before the queued reconcile rebuilds the connection; until then the old one still points at
+	 * the previous destination.
+	 */
+	isCurrent(endpoint: ModbusEndpointEntity): boolean {
+		return this.connections.get(endpoint.id)?.fingerprint === fingerprint(endpoint);
+	}
+
 	/** The slowest request timeout and inter-request delay over the loaded endpoints, or `null` when none is loaded. */
 	getTimingEnvelope(): { requestTimeoutMs: number; interRequestDelayMs: number } | null {
 		const running = [...this.connections.values()];

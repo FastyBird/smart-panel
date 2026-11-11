@@ -131,6 +131,26 @@ describe('ModbusConnectionsService', () => {
 		expect(listener.endpointChanged).toHaveBeenCalledWith('a');
 	});
 
+	it('reports a running connection as not current once its endpoint changed and until the reconcile', async () => {
+		endpoints = [endpoint('a')];
+
+		service.attach(listener as ModbusConnectionsListener);
+		await service.reconcile();
+
+		expect(service.isCurrent(endpoints[0])).toBe(true);
+		expect(service.isCurrent(endpoint('a', { name: 'renamed' }))).toBe(true);
+
+		const updated = endpoint('a', { host: '10.10.10.10' });
+
+		expect(service.isCurrent(updated)).toBe(false);
+
+		endpoints = [updated];
+		await service.reconcile();
+
+		expect(service.isCurrent(updated)).toBe(true);
+		expect(service.isCurrent(endpoint('missing'))).toBe(false);
+	});
+
 	it('stops the old connection before starting the new one and tells the listener first', async () => {
 		endpoints = [endpoint('a')];
 		service.attach(listener as ModbusConnectionsListener);
