@@ -78,7 +78,7 @@ import {
 } from './entities/thermostat-installation.entity';
 import { ThermostatMemberProtectionEntity } from './entities/thermostat-member-protection.entity';
 import { ThermostatOverrideClockEntity } from './entities/thermostat-override-clock.entity';
-import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
+import { VIRTUAL_PRODUCER_ENTITIES, VirtualGraphRevisionEntity } from './entities/virtual-producer.entity';
 import {
 	VirtualThermostatBranchRuntimeEntity,
 	VirtualThermostatCommandEntity,
@@ -265,6 +265,29 @@ export class DevicesVirtualPlugin {
 		private readonly thermostats: VirtualThermostatConfigService,
 	) {}
 
+	/** Managers whose pending property update was found to change no stored field; see `withStructuralWrite`. */
+	private readonly unchangedPropertyWrites = new WeakSet<EntityManager>();
+
+	/**
+	 * Whether saving `next` over `stored` would write nothing: every persisted column carries the same
+	 * value. The reported value is not a column — it lives in the property's series — so a value report
+	 * compares equal. Timestamps the save itself maintains are not a difference.
+	 */
+	private storesSameProperty(
+		manager: EntityManager,
+		stored: VirtualChannelPropertyEntity,
+		next: VirtualChannelPropertyEntity,
+	): boolean {
+		const image = (value: unknown): string => JSON.stringify(value ?? null);
+		return manager.connection
+			.getMetadata(VirtualChannelPropertyEntity)
+			.columns.filter(
+				(column) =>
+					column.isSelect && !column.isCreateDate && !column.isUpdateDate && !column.isVersion && !column.isVirtual,
+			)
+			.every((column) => image(column.getEntityValue(stored)) === image(column.getEntityValue(next)));
+	}
+
 	onModuleInit() {
 		this.configMapper.registerMapping<VirtualConfigModel, VirtualUpdatePluginConfigDto>({
 			type: DEVICES_VIRTUAL_PLUGIN_NAME,
@@ -375,7 +398,19 @@ export class DevicesVirtualPlugin {
 			// reports a DevicesException as an unprocessable entity and anything else as a 500, and a
 			// refused payload is not a server fault. Any other exception is re-thrown untouched.
 			withStructuralWrite: async (operation) => {
-				const result = await this.graph.withStructuralWrite(operation);
+				// Core routes every update of a virtual property through here, value reports included,
+				// because this type has update hooks. A report that changes no stored field of the row is
+				// not a change to the graph: it must not advance the revision, or each connection-state
+				// write would start a validation of its own and supersede whichever one is running.
+				// `beforeUpdate` below is the one place that sees both the stored and the merged row, so
+				// it says when nothing differs; anything it did not clear — every create, and any update
+				// it could not compare — advances as before.
+				const result = await this.graph.withConditionalStructuralWrite(async (manager, advanceGraph) => {
+					const value = await operation(manager);
+					const unchanged = this.unchangedPropertyWrites.delete(manager);
+					if (!unchanged || !(await manager.existsBy(VirtualGraphRevisionEntity, { id: 1 }))) await advanceGraph();
+					return value;
+				});
 				// Install synchronously from the committed catalog row before core hydrates/returns it.
 				// All value and structure events remain after commit, under core's existing lock.
 				if (result instanceof VirtualChannelPropertyEntity) this.producerState.initializeOutput(result);
@@ -439,12 +474,19 @@ export class DevicesVirtualPlugin {
 			beforeUpdate: async (property: VirtualChannelPropertyEntity, manager?: EntityManager): Promise<void> => {
 				try {
 					if (manager) {
-						const previous = await manager.findOneBy(VirtualChannelPropertyEntity, { id: property.id });
+						// Relation ids rather than relations: the stored row is only compared, never walked.
+						const previous = await manager.findOne(VirtualChannelPropertyEntity, {
+							where: { id: property.id },
+							loadRelationIds: true,
+						});
 						if (previous?.isDerived && !property.isDerived)
 							throw new DevicesValidationException(
 								'Materialized producer output origin is immutable; remove the output rather than converting its series to an alias.',
 							);
 						await this.graph.validateProperty(manager, property);
+						if (previous && this.storesSameProperty(manager, previous, property))
+							this.unchangedPropertyWrites.add(manager);
+						else this.unchangedPropertyWrites.delete(manager);
 					}
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
 					if (!(await this.thermostats.isRegisteredSetting(property, manager)))
