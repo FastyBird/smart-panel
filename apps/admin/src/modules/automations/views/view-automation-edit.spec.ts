@@ -1,5 +1,6 @@
 import type { Ref } from 'vue';
 
+import { ElMessageBox } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -12,6 +13,8 @@ import ViewAutomationEdit from './view-automation-edit.vue';
 
 const mocks = vi.hoisted(() => ({
 	fetchAutomation: vi.fn(),
+	routerPush: vi.fn(),
+	routerReplace: vi.fn(),
 	formMounted: vi.fn(),
 	// Assigned by the mock factories below, which is the first place `ref` is available
 	automation: null as unknown as Ref<IAutomation | null>,
@@ -24,7 +27,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
 }));
 
 vi.mock('../../../common', async () => {
@@ -236,6 +239,81 @@ describe('ViewAutomationEdit', (): void => {
 		await flushPromises();
 
 		expect(footerSave(wrapper).attributes('disabled')).toBeUndefined();
+	});
+
+	const footerButton = (wrapper: VueWrapper, title: string) => {
+		return wrapper.findAll('button').find((button) => button.text() === title);
+	};
+
+	const appBarBack = (wrapper: VueWrapper) => {
+		return wrapper.findAllComponents({ name: 'AppBarButton' }).find((button) => button.props('align') === 'left')!;
+	};
+
+	it('does not let a changed form be discarded while its save is on its way', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
+
+		await mountView();
+
+		const form = wrapper.findComponent(AutomationEditForm);
+
+		form.vm.$emit('update:remote-form-changed', true);
+		form.vm.$emit('update:remote-form-result', FormResult.WORKING);
+
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true]]);
+
+		const discard = footerButton(wrapper, 'automations.buttons.discard.title')!;
+
+		expect(discard.attributes('disabled')).toBeDefined();
+
+		// Also when the click gets through, e.g. from the keyboard
+		await discard.trigger('click');
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
+
+		// The save was refused: the form is the user's again
+		form.vm.$emit('update:remote-form-result', FormResult.ERROR);
+
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true], [false]]);
+
+		await footerButton(wrapper, 'automations.buttons.discard.title')!.trigger('click');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
+	});
+
+	it('does not let the view be left from the app bar while a save is on its way, and closes it once it is saved', async (): Promise<void> => {
+		mocks.isMDDevice.value = false;
+
+		await mountView();
+
+		const form = wrapper.findComponent(AutomationEditForm);
+
+		form.vm.$emit('update:remote-form-result', FormResult.WORKING);
+
+		await flushPromises();
+
+		expect(appBarBack(wrapper).props('disabled')).toBe(true);
+
+		appBarBack(wrapper).vm.$emit('click');
+
+		await flushPromises();
+
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
+
+		form.vm.$emit('update:remote-form-result', FormResult.OK);
+
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not let the save in the app bar be used while a submit is on its way', async (): Promise<void> => {

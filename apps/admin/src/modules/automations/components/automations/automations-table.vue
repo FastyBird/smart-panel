@@ -197,7 +197,7 @@
 							icon="mdi:filter-plus"
 						/>
 					</el-icon>
-					{{ getSpaceName(scope.row.spaceId) ?? t('automations.fields.wholeHome') }}
+					{{ getSpaceLabel(scope.row.spaceId) }}
 				</el-link>
 			</template>
 		</el-table-column>
@@ -214,7 +214,7 @@
 					<el-switch
 						:model-value="scope.row.enabled"
 						:loading="props.updating.includes(scope.row.id)"
-						:aria-label="t('automations.fields.enabled')"
+						:aria-label="t('automations.aria.enabled', { automation: scope.row.name })"
 						data-test-id="toggle-automation"
 						@change="(value: string | number | boolean): void => emit('toggle-enabled', scope.row.id, value === true)"
 					/>
@@ -286,6 +286,7 @@
 				<el-button
 					size="small"
 					plain
+					:aria-label="t('automations.aria.edit', { automation: scope.row.name })"
 					data-test-id="edit-automation"
 					@click.stop="emit('edit', scope.row.id)"
 				>
@@ -298,6 +299,7 @@
 					type="warning"
 					plain
 					class="ml-1!"
+					:aria-label="t('automations.aria.remove', { automation: scope.row.name })"
 					data-test-id="remove-automation"
 					@click.stop="emit('remove', scope.row.id)"
 				>
@@ -351,7 +353,7 @@ const emit = defineEmits<{
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const { getSpaceName } = useAutomationSpaces();
 
@@ -361,8 +363,19 @@ const innerFilters = useVModel(props, 'filters', emit);
 
 const tableHeight = computed<number>(() => props.tableHeight);
 
+// "Whole home" is what an automation without a space belongs to; a space that cannot be named
+// (not loaded, or gone) is still a space
+const getSpaceLabel = (spaceId: IAutomation['spaceId']): string => {
+	if (spaceId === null) {
+		return t('automations.fields.wholeHome');
+	}
+
+	return getSpaceName(spaceId) ?? t('automations.fields.unknownSpace');
+};
+
+// In the language of the application, which is not always the one of the browser
 const formatDate = (date: Date): string => {
-	return new Intl.DateTimeFormat(undefined, {
+	return new Intl.DateTimeFormat(locale.value, {
 		dateStyle: 'medium',
 		timeStyle: 'short',
 	}).format(date);

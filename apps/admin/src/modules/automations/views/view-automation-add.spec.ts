@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { ElMessageBox } from 'element-plus';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
@@ -7,12 +8,16 @@ import { AutomationAddForm } from '../components/components';
 
 import ViewAutomationAdd from './view-automation-add.vue';
 
+const mocks = vi.hoisted(() => ({
+	routerPush: vi.fn(),
+}));
+
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	useRouter: () => ({ push: mocks.routerPush, replace: vi.fn() }),
 }));
 
 vi.mock('../../../common', async () => {
@@ -70,6 +75,90 @@ describe('ViewAutomationAdd', (): void => {
 	const appBarSave = (wrapper: VueWrapper) => {
 		return wrapper.findAllComponents({ name: 'AppBarButton' }).find((button) => button.props('align') === 'right')!;
 	};
+
+	const appBarBack = (wrapper: VueWrapper) => {
+		return wrapper.findAllComponents({ name: 'AppBarButton' }).find((button) => button.props('align') === 'left')!;
+	};
+
+	beforeEach((): void => {
+		vi.clearAllMocks();
+	});
+
+	it('leaves an untouched form without asking', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm');
+
+		const wrapper = mount(ViewAutomationAdd);
+
+		appBarBack(wrapper).vm.$emit('click');
+
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
+	});
+
+	it('asks before it leaves a form with something typed in, and stays when the answer is no', async (): Promise<void> => {
+		const confirm = vi
+			.spyOn(ElMessageBox, 'confirm')
+			.mockRejectedValueOnce('cancel')
+			.mockResolvedValueOnce('confirm' as never);
+
+		const wrapper = mount(ViewAutomationAdd);
+
+		wrapper.findComponent(AutomationAddForm).vm.$emit('update:remote-form-changed', true);
+
+		await flushPromises();
+
+		appBarBack(wrapper).vm.$emit('click');
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+
+		appBarBack(wrapper).vm.$emit('click');
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
+	});
+
+	it('does not let the view be left while the automation is being created, and closes it without asking once it is', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
+
+		const wrapper = mount(ViewAutomationAdd);
+
+		const form = wrapper.findComponent(AutomationAddForm);
+
+		form.vm.$emit('update:remote-form-changed', true);
+		form.vm.$emit('update:remote-form-result', FormResult.WORKING);
+
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true]]);
+		expect(appBarBack(wrapper).props('disabled')).toBe(true);
+
+		appBarBack(wrapper).vm.$emit('click');
+
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+
+		form.vm.$emit('update:remote-form-result', FormResult.OK);
+
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
+	});
 
 	it('does not let the save in the app bar be used while a submit is on its way', async (): Promise<void> => {
 		const wrapper = mount(ViewAutomationAdd);

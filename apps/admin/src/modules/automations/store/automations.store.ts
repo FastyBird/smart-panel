@@ -108,23 +108,41 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		//  1. The revision. It moves with every save, so the higher one is the newer automation: a lower
 		//     one never overwrites a higher one, a higher one always replaces a lower one.
 		//  2. A local sequence, for what the revision cannot tell: removals, and the writes of the engine
-		//     (status, last run), which keep the revision. Every write and every removal of an id, whatever
-		//     it comes from, is numbered in `changedAt` - also for ids that are not held, and a reset of the
-		//     module counts as a removal of them all. A request notes the sequence when it STARTS; an id
-		//     changed after that was "overtaken", and for it the response is older than what the store
-		//     has heard since:
-		//       - the automation is not held: it was removed meanwhile, the response is dropped;
-		//       - the revision is the same: the engine fields held stay, and the response only adds what
-		//         is missing (the graph of a detail read);
-		//       - the response says it is gone (404, or a list without it): it stays; if it really is
-		//         gone, its removal is announced.
-		//     An event is as new as it gets, so nothing has overtaken it.
+		//     (status, last run), which keep the revision. Every request takes a number when it STARTS,
+		//     every event when it arrives, and every write and removal of an id when it is done. Two
+		//     questions are answered with it, and they are not the same question:
+		//
+		//     a) Is the automation there? Decided by what was DONE since the request started: every write
+		//        and every removal of an id, whatever it comes from, is numbered in `changedAt` - also for
+		//        ids that are not held. An id changed after a request started was "overtaken" for it:
+		//          - the automation is not held: it was removed meanwhile, the response is dropped;
+		//          - the response says it is gone (404, or a list without it): it stays; if it really is
+		//            gone, its removal is announced.
+		//        The start of a request says nothing here: a list started after a creation may have been
+		//        served before it, and must not remove what the creation has brought since.
+		//        A reset of the module removes them all and ends the revisions with them, so a response
+		//        from before it is dropped whole, also for an id that is held again by then.
+		//        A list also stands for the removal of an id that is not held and that a detail read,
+		//        started before the list, is still out for: the read is older and would bring it back.
+		//
+		//     b) Whose engine fields are newer, at the same revision? Decided by where the fields held
+		//        CAME from: `engineAt` keeps the number of the event, or of the start of the request, that
+		//        brought them. A response started before that keeps the engine fields held and only adds
+		//        what is missing (the graph of a detail read); one started after it replaces them. So of
+		//        two reads the one started later wins whichever is answered first, and an event wins over
+		//        every read started before it. What a later read can miss this way happened after it was
+		//        started, so it is announced by an event of its own.
 		//
 		// A read that has to be newer than some moment (after a conflict, after a module reset) never
 		// joins a request started before it: it waits for that one to finish and reads again.
 		let sequence = 0;
 
 		const changedAt = new Map<IAutomation['id'], number>();
+
+		const engineAt = new Map<IAutomation['id'], number>();
+
+		// Detail reads on their way, with the number they started at
+		const reading = new Map<IAutomation['id'], number>();
 
 		let allRemovedAt = 0;
 
@@ -138,16 +156,20 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		};
 
 		/**
-		 * The only place an automation is written. `startedAt` is the sequence noted when the request the
-		 * data answers was started; an event has none and is taken as of now. Returns null when the
-		 * automation was removed since, so the data is about something that is no longer there.
+		 * The only place an automation is written. `startedAt` is the number taken when the request the
+		 * data answers was started, or by the event when it arrived. Returns null when the automation was
+		 * removed since, so the data is about something that is no longer there.
 		 */
-		const commit = (id: IAutomation['id'], incoming: IAutomationsSetActionPayload['data'], startedAt: number = sequence): IAutomation | null => {
+		const commit = (id: IAutomation['id'], incoming: IAutomationsSetActionPayload['data'], startedAt: number): IAutomation | null => {
 			const held = data.value.get(id);
-			const stale = overtaken(id, startedAt);
+
+			// From before a reset: about an automation of that id that is gone, whatever is held now
+			if (allRemovedAt > startedAt) {
+				return held ?? null;
+			}
 
 			if (!held) {
-				if (stale) {
+				if (overtaken(id, startedAt)) {
 					return null;
 				}
 			} else if (typeof incoming.revision === 'number' && incoming.revision < held.revision) {
@@ -156,7 +178,9 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			const candidate: Record<string, unknown> = held ? { ...held, ...incoming } : { ...incoming, id };
 
-			if (held && stale && candidate.revision === held.revision) {
+			const olderEngineFields = held !== undefined && candidate.revision === held.revision && (engineAt.get(id) ?? 0) > startedAt;
+
+			if (olderEngineFields) {
 				for (const field of ENGINE_FIELDS) {
 					candidate[field] = held[field];
 				}
@@ -180,11 +204,16 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			changedAt.set(parsed.data.id, ++sequence);
 
+			if (!olderEngineFields) {
+				engineAt.set(parsed.data.id, startedAt);
+			}
+
 			return parsed.data;
 		};
 
+		// An event, or a write made locally: as new as it gets, so nothing has overtaken it
 		const set = (payload: IAutomationsSetActionPayload): IAutomation => {
-			return commit(payload.id, payload.data) as IAutomation;
+			return commit(payload.id, payload.data, ++sequence) as IAutomation;
 		};
 
 		// Numbered also for an id that is not held: a read of it may be on its way
@@ -225,7 +254,9 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			}
 
 			const getPromise = (async (): Promise<IAutomation> => {
-				const startedAt = sequence;
+				const startedAt = ++sequence;
+
+				reading.set(id, startedAt);
 
 				semaphore.value.fetching.item.push(id);
 
@@ -269,6 +300,8 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 				}
 			})().finally((): void => {
 				delete pendingGetPromises[id];
+
+				reading.delete(id);
 			});
 
 			pendingGetPromises[id] = getPromise;
@@ -294,7 +327,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			}
 
 			const fetchPromise = (async (): Promise<IAutomation[]> => {
-				const startedAt = sequence;
+				const startedAt = ++sequence;
 
 				semaphore.value.fetching.items = true;
 
@@ -330,8 +363,11 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 					// The response is the whole collection, so anything missing from it is gone.
 					// Merging alone would keep a deleted automation on screen whenever its event was
 					// missed - which is exactly the case after the browser has been asleep. What was written
-					// while the list was on its way (created meanwhile above all) stays.
-					for (const knownId of [...data.value.keys()]) {
+					// while the list was on its way (created meanwhile above all) stays. An id a detail read
+					// started before the list is still out for is gone the same way, held or not.
+					const readBefore = [...reading].filter(([, readStartedAt]) => readStartedAt < startedAt).map(([readId]) => readId);
+
+					for (const knownId of new Set([...data.value.keys(), ...readBefore])) {
 						if (!fetched.has(knownId)) {
 							unsetUnlessOvertaken(knownId, startedAt);
 						}
@@ -387,7 +423,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			semaphore.value.creating.push(id);
 
-			const startedAt = sequence;
+			const startedAt = ++sequence;
 
 			try {
 				const createData = transformAutomationCreateRequest({ ...automationData, id });
@@ -440,7 +476,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 			semaphore.value.updating.push(id);
 
-			const startedAt = sequence;
+			const startedAt = ++sequence;
 
 			try {
 				const updateData = transformAutomationUpdateRequest({ ...automationData, revision: revision ?? existingRecord.revision });

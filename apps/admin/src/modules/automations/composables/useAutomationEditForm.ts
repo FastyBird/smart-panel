@@ -75,6 +75,20 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 		formChanged.value = false;
 	};
 
+	// Moves the draft over a newer record without losing it: what was changed in the form stays as it
+	// was typed, what was left alone follows the record - sent as it was, it would undo the other
+	// change without anybody having seen it.
+	const carryOver = (record: IAutomation): void => {
+		if (model.name === base.name) model.name = record.name;
+		if ((model.description ?? '') === (base.description ?? '')) model.description = record.description ?? '';
+		if ((model.spaceId ?? null) === base.spaceId) model.spaceId = record.spaceId;
+		if (model.mode === base.mode) model.mode = record.mode;
+
+		base = record;
+
+		formChanged.value = isChanged();
+	};
+
 	let pending: Promise<'saved'> | null = null;
 
 	// A submit asked for while another one is on its way joins it instead of sending the update twice
@@ -122,9 +136,14 @@ export const useAutomationEditForm = ({ automation }: IUseAutomationEditFormProp
 			timer = window.setTimeout(clear, 2000);
 
 			if (error instanceof AutomationsRevisionConflictException) {
-				// The store has read the automation again. The draft was made over what is no longer there,
-				// so it starts over from what is - saving it as it is would undo the other change.
-				rebase(automationsStore.findById(base.id) ?? base);
+				// The store has tried to read the automation again. When it holds a newer one, the draft
+				// moves over it and stays for review: the next save is then a deliberate one over the other
+				// change. When the read failed, nothing newer is known, and the next save conflicts again.
+				const held = automationsStore.findById(base.id);
+
+				if (held !== null && held.revision > base.revision) {
+					carryOver(held);
+				}
 
 				flashMessage.warning(t('automations.messages.changedElsewhere', { automation: name }));
 			} else if (error instanceof AutomationsApiException && error.code === 422) {

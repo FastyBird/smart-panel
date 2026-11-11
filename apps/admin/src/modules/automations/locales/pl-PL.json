@@ -45,6 +45,7 @@
 			"lastRun": "Ostatnie uruchomienie",
 			"neverRun": "Nigdy",
 			"wholeHome": "Cały dom",
+			"unknownSpace": "Nieznana przestrzeń",
 			"search": {
 				"placeholder": "Szukaj automatyzacji..."
 			}
@@ -112,6 +113,11 @@
 				"title": "Po wyzwoleniu w trakcie działania"
 			}
 		},
+		"aria": {
+			"edit": "Edytuj automatyzację „{automation}”",
+			"remove": "Usuń automatyzację „{automation}”",
+			"enabled": "Automatyzacja „{automation}” włączona"
+		},
 		"buttons": {
 			"add": {
 				"title": "Dodaj automatyzację"
@@ -159,7 +165,7 @@
 			"notEnabled": "Nie udało się włączyć automatyzacji „{automation}”.",
 			"notDisabled": "Nie udało się wyłączyć automatyzacji „{automation}”.",
 			"notEnabledIncomplete": "Automatyzacji „{automation}” nie można włączyć: jej przebieg nie jest kompletny. Potrzebuje co najmniej jednego wyzwalacza i konfiguracji każdego bloku.",
-			"changedElsewhere": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Została wczytana ponownie, spróbuj jeszcze raz."
+			"changedElsewhere": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Twoje zmiany zostały zachowane: sprawdź je i zapisz ponownie."
 		}
 	}
 }

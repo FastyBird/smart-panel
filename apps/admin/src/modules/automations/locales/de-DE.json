@@ -45,6 +45,7 @@
 			"lastRun": "Letzte Ausführung",
 			"neverRun": "Nie",
 			"wholeHome": "Ganzes Zuhause",
+			"unknownSpace": "Unbekannter Bereich",
 			"search": {
 				"placeholder": "Automationen suchen..."
 			}
@@ -112,6 +113,11 @@
 				"title": "Bei Auslösung während der Ausführung"
 			}
 		},
+		"aria": {
+			"edit": "Automation „{automation}“ bearbeiten",
+			"remove": "Automation „{automation}“ entfernen",
+			"enabled": "Automation „{automation}“ aktiviert"
+		},
 		"buttons": {
 			"add": {
 				"title": "Automation hinzufügen"
@@ -159,7 +165,7 @@
 			"notEnabled": "Die Automation „{automation}“ konnte nicht aktiviert werden.",
 			"notDisabled": "Die Automation „{automation}“ konnte nicht deaktiviert werden.",
 			"notEnabledIncomplete": "Die Automation „{automation}“ kann nicht aktiviert werden: Ihr Ablauf ist unvollständig. Sie braucht mindestens einen Auslöser und jeder Block muss konfiguriert sein.",
-			"changedElsewhere": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Sie wurde neu geladen, bitte versuchen Sie es erneut."
+			"changedElsewhere": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Ihre Änderungen wurden beibehalten: Prüfen Sie sie und speichern Sie erneut."
 		}
 	}
 }

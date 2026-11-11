@@ -1,5 +1,6 @@
-import type { Ref } from 'vue';
+import { type Ref, defineComponent, markRaw } from 'vue';
 
+import { ElMessageBox } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -11,6 +12,9 @@ import ViewAutomations from './view-automations.vue';
 const mocks = vi.hoisted(() => ({
 	fetchAutomations: vi.fn(),
 	fetchSpaces: vi.fn(),
+	routerPush: vi.fn(),
+	routerReplace: vi.fn(),
+	route: null as unknown as { name: string; path: string; matched: { name: string }[] },
 	// Assigned by the mock factories below, which is the first place `ref` is available
 	loadFailed: null as unknown as Ref<boolean>,
 	isLGDevice: null as unknown as Ref<boolean>,
@@ -24,14 +28,28 @@ vi.mock('vue-meta', () => ({
 	useMeta: () => ({ meta: {} }),
 }));
 
-vi.mock('vue-router', () => ({
-	useRoute: () => ({ name: 'automations_module-automations', path: '/automations', matched: [] }),
-	useRouter: () => ({
-		push: vi.fn(),
-		replace: vi.fn(),
-		resolve: (to: unknown) => to,
-	}),
-}));
+vi.mock('vue-router', async () => {
+	const { reactive } = await import('vue');
+
+	mocks.route = reactive({ name: 'automations_module-automations', path: '/automations', matched: [] });
+
+	return {
+		useRoute: () => mocks.route,
+		useRouter: () => ({
+			push: mocks.routerPush,
+			replace: mocks.routerReplace,
+			resolve: (to: unknown) => to,
+		}),
+	};
+});
+
+// What the router shows in the drawer: it reports its form the way the detail views do
+const DetailView = defineComponent({
+	name: 'DetailView',
+	props: { remoteFormChanged: { type: Boolean, default: false } },
+	emits: ['update:remote-form-changed', 'update:remote-form-saving'],
+	template: '<div />',
+});
 
 vi.mock('../../../common', async () => {
 	const { defineComponent: defineVueComponent, h, ref } = await import('vue');
@@ -115,10 +133,14 @@ describe('ViewAutomations', (): void => {
 					// The real drawer renders into the body; all that matters here is whether it is there and open
 					ElDrawer: {
 						name: 'ElDrawer',
-						props: { modelValue: { type: Boolean, default: false } },
+						props: { modelValue: { type: Boolean, default: false }, beforeClose: { type: Function, default: undefined } },
 						template: '<div v-if="modelValue"><slot /></div>',
 					},
-					RouterView: true,
+					RouterView: {
+						name: 'RouterView',
+						data: () => ({ detail: markRaw(DetailView) }),
+						template: '<slot :Component="detail" />',
+					},
 				},
 			},
 		});
@@ -139,6 +161,110 @@ describe('ViewAutomations', (): void => {
 		mocks.fetchSpaces.mockResolvedValue(undefined);
 		mocks.loadFailed.value = false;
 		mocks.isLGDevice.value = true;
+
+		openRoute(listRoute);
+	});
+
+	const listRoute = { name: 'automations_module-automations', path: '/automations' };
+	const addRoute = { name: 'automations_module-automations_add', path: '/automations/add' };
+	const editRoute = { name: 'automations_module-automations_edit', path: '/automations/1' };
+
+	const openRoute = (route: { name: string; path: string }): void => {
+		Object.assign(mocks.route, route, { matched: [{ name: listRoute.name }, { name: route.name }] });
+	};
+
+	const closeDrawer = (wrapper: VueWrapper): void => {
+		(wrapper.findComponent({ name: 'ElDrawer' }).props('beforeClose') as () => void)();
+	};
+
+	it('does not hand the changed state of a form that was left to the next one', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
+
+		openRoute(editRoute);
+
+		await mountView();
+
+		wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+		await flushPromises();
+
+		expect(wrapper.findComponent(DetailView).props('remoteFormChanged')).toBe(true);
+
+		// Discarded from inside the form, or saved: the view goes back to the list on its own
+		openRoute(listRoute);
+
+		await flushPromises();
+
+		openRoute(addRoute);
+
+		await flushPromises();
+
+		expect(wrapper.findComponent(DetailView).props('remoteFormChanged')).toBe(false);
+
+		closeDrawer(wrapper);
+
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
+	});
+
+	it('asks before it closes the drawer over a changed form', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel');
+
+		openRoute(addRoute);
+
+		await mountView();
+
+		wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+		await flushPromises();
+
+		closeDrawer(wrapper);
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
+
+		confirm.mockRestore();
+	});
+
+	it('does not close the drawer while the form in it is being saved', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
+
+		openRoute(editRoute);
+
+		await mountView();
+
+		const detail = wrapper.findComponent(DetailView);
+
+		detail.vm.$emit('update:remote-form-changed', true);
+		detail.vm.$emit('update:remote-form-saving', true);
+
+		await flushPromises();
+
+		closeDrawer(wrapper);
+
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
+
+		detail.vm.$emit('update:remote-form-saving', false);
+
+		await flushPromises();
+
+		closeDrawer(wrapper);
+
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+
+		confirm.mockRestore();
 	});
 
 	it.each([

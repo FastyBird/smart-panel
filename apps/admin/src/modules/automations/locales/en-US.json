@@ -45,6 +45,7 @@
 			"lastRun": "Last run",
 			"neverRun": "Never",
 			"wholeHome": "Whole home",
+			"unknownSpace": "Unknown space",
 			"search": {
 				"placeholder": "Search automations..."
 			}
@@ -112,6 +113,11 @@
 				"title": "When triggered while already running"
 			}
 		},
+		"aria": {
+			"edit": "Edit automation \"{automation}\"",
+			"remove": "Remove automation \"{automation}\"",
+			"enabled": "Automation \"{automation}\" enabled"
+		},
 		"buttons": {
 			"add": {
 				"title": "Add automation"
@@ -159,7 +165,7 @@
 			"notEnabled": "Automation \"{automation}\" could not be enabled.",
 			"notDisabled": "Automation \"{automation}\" could not be disabled.",
 			"notEnabledIncomplete": "Automation \"{automation}\" cannot be enabled: its flow is not complete. It needs at least one trigger and every block configured.",
-			"changedElsewhere": "Automation \"{automation}\" was changed elsewhere in the meantime. It was reloaded, please try again."
+			"changedElsewhere": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes were kept: review them and save again to apply them."
 		}
 	}
 }

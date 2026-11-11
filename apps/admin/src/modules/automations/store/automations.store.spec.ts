@@ -942,6 +942,170 @@ describe('Automations Store', () => {
 			expect(mockBackendClient.GET).not.toHaveBeenCalled();
 		});
 
+		it('does not put a response from before a reset over an automation created again under the same id', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ name: 'Before the reset', revision: 5 }) });
+
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(read.promise);
+
+			const pendingRead = store.get({ id: automationId });
+
+			store.unsetAll();
+
+			// Restored under the id it had, and its revisions start over
+			store.onEvent({ id: automationId, data: detailRes({ name: 'After the reset', revision: 1 }) });
+
+			read.resolve({ data: { data: detailRes({ name: 'Before the reset', revision: 5 }) }, response: { status: 200 } });
+
+			await expect(pendingRead).resolves.toMatchObject({ name: 'After the reset', revision: 1 });
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'After the reset', revision: 1 });
+
+			// And what is read from now on is not held back by a revision that is gone
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [summaryRes({ name: 'After the reset', revision: 2 })] },
+				response: { status: 200 },
+			});
+
+			await store.fetch();
+
+			expect(store.findById(automationId)).toMatchObject({ revision: 2 });
+		});
+
+		it('does not put the response of a save from before a reset over an automation created again under the same id', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 5 }) });
+
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pendingEdit = store.edit({ id: automationId, data: { name: 'Before the reset' } });
+
+			store.unsetAll();
+			store.onEvent({ id: automationId, data: detailRes({ name: 'After the reset', revision: 1 }) });
+
+			save.resolve({ data: { data: detailRes({ name: 'Before the reset', revision: 6 }) }, response: { status: 200 } });
+
+			await pendingEdit;
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'After the reset', revision: 1 });
+		});
+
+		it.each([
+			['the earlier read is answered first', true],
+			['the refresh is answered first', false],
+		])('takes the engine fields of a refresh over those of a read started before it when %s', async (_, readAnsweredFirst) => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2 }) });
+
+			const read = deferred();
+			const listing = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(read.promise).mockReturnValueOnce(listing.promise);
+
+			// The read was served before a run whose event was missed, the refresh after it
+			const pendingRead = store.get({ id: automationId });
+			const pendingRefresh = store.refresh();
+
+			const answerRead = async (): Promise<void> => {
+				read.resolve({ data: { data: detailRes({ revision: 2 }) }, response: { status: 200 } });
+
+				await pendingRead;
+			};
+
+			const answerRefresh = async (): Promise<void> => {
+				listing.resolve({ data: { data: [summaryRes({ revision: 2, ...ran })] }, response: { status: 200 } });
+
+				await pendingRefresh;
+			};
+
+			if (readAnsweredFirst) {
+				await answerRead();
+				await answerRefresh();
+			} else {
+				await answerRefresh();
+				await answerRead();
+			}
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, graph, revision: 2 });
+		});
+
+		it('keeps what an event wrote over a refresh started before it, also once an earlier read was answered', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2 }) });
+
+			const read = deferred();
+			const listing = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(read.promise).mockReturnValueOnce(listing.promise);
+
+			const pendingRead = store.get({ id: automationId });
+			const pendingRefresh = store.refresh();
+
+			store.onEvent({ id: automationId, data: summaryRes({ revision: 2, ...ran }) });
+
+			read.resolve({ data: { data: detailRes({ revision: 2 }) }, response: { status: 200 } });
+
+			await pendingRead;
+
+			listing.resolve({ data: { data: [summaryRes({ revision: 2 })] }, response: { status: 200 } });
+
+			await pendingRefresh;
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, graph, revision: 2 });
+		});
+
+		it('takes the engine fields of a read started after the last event', async () => {
+			store.onEvent({ id: automationId, data: detailRes({ revision: 2 }) });
+
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: detailRes({ revision: 2, ...ran }) }, response: { status: 200 } });
+
+			await store.get({ id: automationId });
+
+			expect(store.findById(automationId)).toMatchObject({ ...ranState, revision: 2 });
+		});
+
+		it('drops a read of an automation not held when a list started after it has found the automation gone', async () => {
+			const read = deferred();
+			const listing = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(read.promise).mockReturnValueOnce(listing.promise);
+
+			const pendingRead = store.get({ id: automationId });
+			const pendingList = store.fetch();
+
+			// Removed between the two, and nobody announced it
+			listing.resolve({ data: { data: [] }, response: { status: 200 } });
+
+			await pendingList;
+
+			read.resolve({ data: { data: detailRes() }, response: { status: 200 } });
+
+			await expect(pendingRead).rejects.toMatchObject({ code: 404 });
+
+			expect(store.findById(automationId)).toBeNull();
+		});
+
+		it('keeps a read of an automation not held when the list that misses it was started before the read', async () => {
+			const listing = deferred();
+			const read = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(listing.promise).mockReturnValueOnce(read.promise);
+
+			const pendingList = store.fetch();
+			const pendingRead = store.get({ id: automationId });
+
+			// The list was served before the automation was created, the read after
+			listing.resolve({ data: { data: [] }, response: { status: 200 } });
+
+			await pendingList;
+
+			read.resolve({ data: { data: detailRes() }, response: { status: 200 } });
+
+			await expect(pendingRead).resolves.toMatchObject({ id: automationId });
+
+			expect(store.findById(automationId)).not.toBeNull();
+		});
+
 		it('does not recover from a conflict with a read begun before it', async () => {
 			store.onEvent({ id: automationId, data: detailRes({ revision: 3 }) });
 

@@ -9,10 +9,15 @@ import type { IAutomation } from '../../store/automations.store.types';
 import type { IAutomationsTableProps } from './automations-table.types';
 import AutomationsTable from './automations-table.vue';
 
+const mocks = vi.hoisted(() => ({
+	locale: { value: 'en-US' },
+}));
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
-		t: (key: string) => key,
+		t: (key: string, params?: { automation?: string }) => `${key}${params?.automation ? ' ' + params.automation : ''}`,
+		locale: mocks.locale,
 	}),
 }));
 
@@ -78,6 +83,8 @@ describe('AutomationsTable', (): void => {
 
 	afterEach((): void => {
 		wrapper.unmount();
+
+		mocks.locale.value = 'en-US';
 	});
 
 	it('renders a row per automation with its space, status and last run', async (): Promise<void> => {
@@ -97,6 +104,46 @@ describe('AutomationsTable', (): void => {
 		expect(rows[1]!.text()).toContain('automations.fields.wholeHome');
 		expect(rows[1]!.text()).toContain('automations.statuses.suspended.title');
 		expect(rows[1]!.text()).toContain('automations.fields.neverRun');
+	});
+
+	it('does not call a space it cannot name the whole home', async (): Promise<void> => {
+		await createWrapper({ items: [automation({ spaceId: 'space-gone' })], totalRows: 1 });
+
+		const row = wrapper.findAll('tbody tr')[0]!;
+
+		expect(row.text()).toContain('automations.fields.unknownSpace');
+		expect(row.text()).not.toContain('automations.fields.wholeHome');
+	});
+
+	it('writes the last run in the language of the application', async (): Promise<void> => {
+		const format = (locale: string): string =>
+			new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date('2026-01-02T08:30:00.000Z'));
+
+		// Otherwise the test would say nothing
+		expect(format('cs-CZ')).not.toBe(format('en-US'));
+
+		mocks.locale.value = 'cs-CZ';
+
+		await createWrapper();
+
+		expect(wrapper.findAll('tbody tr')[0]!.text()).toContain(format('cs-CZ'));
+	});
+
+	it('names the automation each control of a row is for', async (): Promise<void> => {
+		await createWrapper();
+
+		expect(wrapper.findAll('[data-test-id="edit-automation"]').map((button) => button.attributes('aria-label'))).toEqual([
+			'automations.aria.edit Hallway motion light',
+			'automations.aria.edit Night mode',
+		]);
+		expect(wrapper.findAll('[data-test-id="remove-automation"]').map((button) => button.attributes('aria-label'))).toEqual([
+			'automations.aria.remove Hallway motion light',
+			'automations.aria.remove Night mode',
+		]);
+		expect(wrapper.findAllComponents(ElSwitch).map((item) => item.find('input').attributes('aria-label'))).toEqual([
+			'automations.aria.enabled Hallway motion light',
+			'automations.aria.enabled Night mode',
+		]);
 	});
 
 	it('shows the enabled state and asks for the opposite one when the switch is used', async (): Promise<void> => {

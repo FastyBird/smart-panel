@@ -22,6 +22,7 @@
 			v-if="props.filtersActive"
 			plain
 			class="px-2! mt-1 mr-1"
+			:aria-label="t('automations.buttons.resetFilters.title')"
 			data-test-id="reset-filters"
 			@click="emit('reset-filters')"
 		>
@@ -31,6 +32,7 @@
 		<el-button
 			plain
 			class="px-2! mt-1 mr-1"
+			:aria-label="t('automations.headings.adjustFilters')"
 			data-test-id="adjust-list"
 			@click="emit('adjust-list')"
 		>

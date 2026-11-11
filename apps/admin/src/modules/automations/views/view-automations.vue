@@ -154,6 +154,7 @@
 							<component
 								:is="Component"
 								v-model:remote-form-changed="remoteFormChanged"
+								@update:remote-form-saving="onFormSaving"
 							/>
 						</router-view>
 					</suspense>
@@ -221,6 +222,7 @@ const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
+const remoteFormSaving = ref<boolean>(false);
 
 const isAutomationsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.AUTOMATIONS;
@@ -249,6 +251,10 @@ const navigate = (name: string, params?: { id: IAutomation['id'] }): void => {
 	}
 };
 
+const onFormSaving = (saving: boolean): void => {
+	remoteFormSaving.value = saving;
+};
+
 const onCloseDrawer = (done?: () => void): void => {
 	if (adjustList.value) {
 		showDrawer.value = false;
@@ -256,6 +262,11 @@ const onCloseDrawer = (done?: () => void): void => {
 
 		done?.();
 
+		return;
+	}
+
+	// A save on its way cannot be taken back, so the form stays until it is known how it went
+	if (remoteFormSaving.value) {
 		return;
 	}
 
@@ -335,6 +346,10 @@ watch(
 	(): string => route.path,
 	(): void => {
 		showDrawer.value = isDetailRouteOpen();
+
+		// What the form of the previous route reported is not about the next one: it starts unchanged
+		remoteFormChanged.value = false;
+		remoteFormSaving.value = false;
 	}
 );
 </script>

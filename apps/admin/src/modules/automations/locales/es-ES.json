@@ -45,6 +45,7 @@
 			"lastRun": "Última ejecución",
 			"neverRun": "Nunca",
 			"wholeHome": "Toda la casa",
+			"unknownSpace": "Espacio desconocido",
 			"search": {
 				"placeholder": "Buscar automatizaciones..."
 			}
@@ -112,6 +113,11 @@
 				"title": "Al dispararse mientras ya se ejecuta"
 			}
 		},
+		"aria": {
+			"edit": "Editar la automatización «{automation}»",
+			"remove": "Eliminar la automatización «{automation}»",
+			"enabled": "Automatización «{automation}» activada"
+		},
 		"buttons": {
 			"add": {
 				"title": "Añadir automatización"
@@ -159,7 +165,7 @@
 			"notEnabled": "No se pudo habilitar la automatización «{automation}».",
 			"notDisabled": "No se pudo deshabilitar la automatización «{automation}».",
 			"notEnabledIncomplete": "La automatización «{automation}» no se puede habilitar: su flujo no está completo. Necesita al menos un disparador y todos los bloques configurados.",
-			"changedElsewhere": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Se ha vuelto a cargar, inténtelo de nuevo."
+			"changedElsewhere": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Sus cambios se han conservado: revíselos y guarde de nuevo."
 		}
 	}
 }

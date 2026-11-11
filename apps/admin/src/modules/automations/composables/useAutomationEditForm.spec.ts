@@ -150,7 +150,7 @@ describe('useAutomationEditForm', () => {
 		expect(mockStore.edit).toHaveBeenCalledWith(expect.objectContaining({ id: automation.id, revision: 2 }));
 	});
 
-	it('starts the draft over from the reloaded automation after a conflict', async () => {
+	it('keeps what was typed after a conflict and moves it over the reloaded automation', async () => {
 		const { model, formEl, formChanged, submit } = useAutomationEditForm({ automation });
 
 		formEl.value = createFormEl();
@@ -163,23 +163,22 @@ describe('useAutomationEditForm', () => {
 
 		// The store reads the automation again before it reports the conflict
 		mockStore.edit.mockImplementationOnce(async (): Promise<never> => {
-			mockStore.findById.mockReturnValue({ ...automation, description: 'Changed elsewhere', revision: 3 });
+			mockStore.findById.mockReturnValue({ ...automation, name: 'Corridor light', description: 'Changed elsewhere', revision: 3 });
 
 			throw new AutomationsRevisionConflictException('Conflict');
 		});
 
 		await expect(submit()).rejects.toThrow(AutomationsRevisionConflictException);
 
+		// The name was typed here and stays; the description was left alone and follows the other change
 		expect(model).toEqual({
 			id: automation.id,
-			name: 'Hallway motion light',
+			name: 'Hallway light',
 			description: 'Changed elsewhere',
 			spaceId,
 			mode: AutomationMode.restart,
 		});
-		expect(formChanged.value).toBe(false);
-
-		model.name = 'Hallway light';
+		expect(formChanged.value).toBe(true);
 
 		await submit();
 
@@ -188,6 +187,50 @@ describe('useAutomationEditForm', () => {
 			revision: 3,
 			data: { name: 'Hallway light', description: 'Changed elsewhere', spaceId, mode: AutomationMode.restart },
 		});
+	});
+
+	it('counts a draft as unchanged after a conflict when the other change made the same of it', async () => {
+		const { model, formEl, formChanged, submit } = useAutomationEditForm({ automation });
+
+		formEl.value = createFormEl();
+
+		model.name = 'Hallway light';
+
+		mockStore.edit.mockImplementationOnce(async (): Promise<never> => {
+			mockStore.findById.mockReturnValue({ ...automation, name: 'Hallway light', revision: 3 });
+
+			throw new AutomationsRevisionConflictException('Conflict');
+		});
+
+		await expect(submit()).rejects.toThrow(AutomationsRevisionConflictException);
+
+		expect(model.name).toBe('Hallway light');
+		expect(formChanged.value).toBe(false);
+	});
+
+	it('leaves the draft and what it is based on alone when the automation could not be read again after a conflict', async () => {
+		const { model, formEl, formChanged, submit } = useAutomationEditForm({ automation });
+
+		formEl.value = createFormEl();
+
+		model.name = 'Hallway light';
+
+		await nextTick();
+
+		// The store still holds what the draft was started from
+		mockStore.findById.mockReturnValue(automation);
+		mockStore.edit.mockRejectedValueOnce(new AutomationsRevisionConflictException('Conflict'));
+
+		await expect(submit()).rejects.toThrow(AutomationsRevisionConflictException);
+
+		expect(model.name).toBe('Hallway light');
+		expect(formChanged.value).toBe(true);
+
+		await submit();
+
+		expect(mockStore.edit).toHaveBeenLastCalledWith(
+			expect.objectContaining({ revision: 2, data: expect.objectContaining({ name: 'Hallway light' }) })
+		);
 	});
 
 	it('bases a further save on what the previous one returned', async () => {

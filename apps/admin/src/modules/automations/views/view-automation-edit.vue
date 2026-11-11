@@ -19,6 +19,7 @@
 	<app-bar-button
 		v-if="!isMDDevice"
 		:align="AppBarButtonAlign.LEFT"
+		:disabled="saving"
 		teleport
 		small
 		@click="formChanged ? onDiscard() : onClose()"
@@ -96,6 +97,7 @@
 				<div class="p-2">
 					<el-button
 						v-if="formChanged"
+						:disabled="saving"
 						link
 						class="mr-2"
 						@click="onDiscard"
@@ -104,6 +106,7 @@
 					</el-button>
 					<el-button
 						v-if="!formChanged"
+						:disabled="saving"
 						link
 						class="mr-2"
 						@click="onClose"
@@ -126,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -151,6 +154,7 @@ const props = withDefaults(defineProps<IViewAutomationEditProps>(), {
 
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
+	(e: 'update:remote-form-saving', saving: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -167,7 +171,14 @@ const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const formChanged = ref<boolean>(props.remoteFormChanged);
 
+const saving = computed<boolean>((): boolean => remoteFormResult.value === FormResult.WORKING);
+
+// A save on its way cannot be taken back: leaving now would look like discarding what is then saved anyway
 const onClose = (): void => {
+	if (saving.value) {
+		return;
+	}
+
 	if (isLGDevice.value) {
 		router.replace({ name: RouteNames.AUTOMATIONS });
 	} else {
@@ -176,6 +187,10 @@ const onClose = (): void => {
 };
 
 const onDiscard = (): void => {
+	if (saving.value) {
+		return;
+	}
+
 	ElMessageBox.confirm(t('automations.texts.confirmDiscard'), t('automations.headings.discard'), {
 		confirmButtonText: t('automations.buttons.yes.title'),
 		cancelButtonText: t('automations.buttons.no.title'),
@@ -195,6 +210,13 @@ watch(
 		if (val === FormResult.OK) {
 			onClose();
 		}
+	}
+);
+
+watch(
+	(): boolean => saving.value,
+	(val: boolean): void => {
+		emit('update:remote-form-saving', val);
 	}
 );
 

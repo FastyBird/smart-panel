@@ -45,6 +45,7 @@
 			"lastRun": "Poslední spuštění",
 			"neverRun": "Nikdy",
 			"wholeHome": "Celý dům",
+			"unknownSpace": "Neznámý prostor",
 			"search": {
 				"placeholder": "Hledat automatizace..."
 			}
@@ -112,6 +113,11 @@
 				"title": "Při spuštění během běhu"
 			}
 		},
+		"aria": {
+			"edit": "Upravit automatizaci „{automation}“",
+			"remove": "Odstranit automatizaci „{automation}“",
+			"enabled": "Automatizace „{automation}“ povolena"
+		},
 		"buttons": {
 			"add": {
 				"title": "Přidat automatizaci"
@@ -159,7 +165,7 @@
 			"notEnabled": "Automatizaci „{automation}“ se nepodařilo povolit.",
 			"notDisabled": "Automatizaci „{automation}“ se nepodařilo zakázat.",
 			"notEnabledIncomplete": "Automatizaci „{automation}“ nelze povolit: její průběh není úplný. Potřebuje alespoň jeden spouštěč a nastavení každého bloku.",
-			"changedElsewhere": "Automatizace „{automation}“ byla mezitím změněna jinde. Byla znovu načtena, zkuste to prosím znovu."
+			"changedElsewhere": "Automatizace „{automation}“ byla mezitím změněna jinde. Vaše změny zůstaly zachovány: zkontrolujte je a uložte znovu."
 		}
 	}
 }
