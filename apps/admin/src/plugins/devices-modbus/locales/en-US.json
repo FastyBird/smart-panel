@@ -47,7 +47,8 @@
 				"stored": "Stored as address {address} ({registerType})"
 			},
 			"count": {
-				"title": "Count"
+				"title": "Count",
+				"invalid": "Enter a whole number from 1 to {max}"
 			},
 			"run": "Test connection",
 			"success": "Read {count} value(s) in {ms} ms"
@@ -294,7 +295,8 @@
 			"enabled": {
 				"title": "Enabled"
 			}
-		}
+		},
+		"devicesLoadFailed": "The devices could not be loaded, so the device column is empty. The endpoints can still be managed."
 	},
 	"config": {
 		"about": {

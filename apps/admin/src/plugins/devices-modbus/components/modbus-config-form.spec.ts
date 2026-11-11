@@ -1,3 +1,4 @@
+import { ElMessageBox } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -11,6 +12,7 @@ import { modbusTemplatesStoreKey } from '../store/keys';
 import ModbusConfigForm from './modbus-config-form.vue';
 
 const edit = vi.fn();
+const push = vi.fn();
 const flash = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() };
 const templatesStore = {
 	catalog: null as unknown,
@@ -32,7 +34,16 @@ vi.mock('vue-i18n', async () => {
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 
-	return { ...actual, useRouter: () => ({ push: vi.fn() }) };
+	return { ...actual, useRouter: () => ({ push }) };
+});
+
+vi.mock('element-plus', async () => {
+	const actual = await vi.importActual<typeof import('element-plus')>('element-plus');
+
+	return {
+		...actual,
+		ElMessageBox: { ...actual.ElMessageBox, confirm: vi.fn() },
+	};
 });
 
 vi.mock('../../../modules/config/composables/usePlugins', () => ({
@@ -146,5 +157,34 @@ describe('ModbusConfigForm', () => {
 		await reload.trigger('click');
 		await flushPromises();
 		expect(templatesStore.reload).toHaveBeenCalledTimes(1);
+	});
+
+	it('asks before leaving for the endpoints page with unsaved changes', async () => {
+		push.mockResolvedValue(undefined);
+		const wrapper = await mountForm();
+		const link = wrapper.get('[data-test-id="modbus-config-endpoints-link"]');
+
+		await link.trigger('click');
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).not.toHaveBeenCalled();
+		expect(push).toHaveBeenCalledTimes(1);
+
+		push.mockClear();
+		await wrapper.find('input[name="defaultPollIntervalMs"]').setValue('2500');
+		await flushPromises();
+
+		vi.mocked(ElMessageBox.confirm).mockRejectedValueOnce('cancel');
+		await link.trigger('click');
+		await flushPromises();
+
+		expect(ElMessageBox.confirm).toHaveBeenCalledTimes(1);
+		expect(push).not.toHaveBeenCalled();
+
+		vi.mocked(ElMessageBox.confirm).mockResolvedValueOnce('confirm' as never);
+		await link.trigger('click');
+		await flushPromises();
+
+		expect(push).toHaveBeenCalledTimes(1);
 	});
 });

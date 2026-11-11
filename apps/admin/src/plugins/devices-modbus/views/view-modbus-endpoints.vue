@@ -29,13 +29,23 @@
 			class="mb-4"
 		/>
 
+		<el-alert
+			v-if="!loadError && devicesLoadFailed"
+			:title="t('devicesModbusPlugin.endpoints.devicesLoadFailed')"
+			type="warning"
+			:closable="false"
+			show-icon
+			class="mb-4"
+			data-test-id="modbus-endpoints-devices-failed"
+		/>
+
 		<el-empty
-			v-else-if="!loading && endpoints.length === 0"
+			v-if="!loadError && !loading && endpoints.length === 0"
 			:description="t('devicesModbusPlugin.endpoints.empty')"
 		/>
 
 		<modbus-endpoints-table
-			v-else
+			v-else-if="!loadError"
 			:endpoints="endpoints"
 			:health="endpointsStore.health"
 			:devices="modbusDevices"
@@ -113,6 +123,9 @@ useMeta({
 
 const loading = ref<boolean>(true);
 const loadError = ref<string | null>(null);
+const devicesLoadFailed = ref<boolean>(false);
+
+const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const dialogVisible = ref<boolean>(false);
 const submitting = ref<boolean>(false);
 const editing = ref<IModbusEndpoint | null>(null);
@@ -124,13 +137,16 @@ const modbusDevices = computed<IDevice[]>(() => devicesStore.findAll().filter((d
 const { refresh: refreshHealth } = useModbusEndpointsHealth();
 
 onMounted(async (): Promise<void> => {
-	try {
-		await Promise.all([endpointsStore.fetch(), devicesStore.fetch()]);
-	} catch (error: unknown) {
-		loadError.value = error instanceof Error ? error.message : String(error);
-	} finally {
-		loading.value = false;
+	// The device list only feeds the device column: when it fails, the endpoints stay manageable and a warning says
+	// the device counts are missing.
+	const [endpointsResult, devicesResult] = await Promise.allSettled([endpointsStore.fetch(), devicesStore.fetch()]);
+
+	if (endpointsResult.status === 'rejected') {
+		loadError.value = errorText(endpointsResult.reason);
 	}
+
+	devicesLoadFailed.value = devicesResult.status === 'rejected';
+	loading.value = false;
 
 	void refreshHealth();
 });

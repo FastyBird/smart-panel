@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import { modbusEndpointsStoreKey } from '../store/keys';
 
-import { useModbusEndpointsHealth } from './useModbusEndpointsHealth';
+import { healthRoundDelay, useModbusEndpointsHealth } from './useModbusEndpointsHealth';
 
 const store = {
 	findAll: vi.fn(),
@@ -68,6 +68,25 @@ describe('useModbusEndpointsHealth', () => {
 		wrapper.unmount();
 		await vi.advanceTimersByTimeAsync(20000);
 		expect(store.fetchHealth).toHaveBeenCalledTimes(4);
+	});
+
+	it('stretches the pause so many endpoints stay within the health request budget', async () => {
+		expect(healthRoundDelay(2, 5000)).toBe(5000);
+		expect(healthRoundDelay(21, 5000)).toBe(10_500);
+
+		store.findAll.mockReturnValue(Array.from({ length: 30 }, (_, index) => ({ id: `e${index}` })));
+
+		const wrapper = mountComposable(5000);
+		await flushPromises();
+		expect(store.fetchHealth).toHaveBeenCalledTimes(30);
+
+		await vi.advanceTimersByTimeAsync(14_999);
+		expect(store.fetchHealth).toHaveBeenCalledTimes(30);
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(store.fetchHealth).toHaveBeenCalledTimes(60);
+
+		wrapper.unmount();
 	});
 
 	it('never overlaps rounds', async () => {

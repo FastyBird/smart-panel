@@ -86,7 +86,7 @@ import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInputNumber, ElMessageBox, ElSwitch, type FormRules } from 'element-plus';
 
 import { useLogger } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
@@ -142,7 +142,20 @@ const rules = reactive<FormRules<IModbusConfigEditForm>>({
 	defaultPollIntervalMs: rangeRule('defaultPollIntervalMs', 100, 86_400_000),
 });
 
-const onOpenEndpoints = (): void => {
+const onOpenEndpoints = async (): Promise<void> => {
+	// Leaving unmounts the form, so unsaved defaults would be lost without a word: ask first, as the settings page does.
+	if (formChanged.value) {
+		try {
+			await ElMessageBox.confirm(t('configModule.texts.misc.confirmDiscard'), t('configModule.headings.misc.discard'), {
+				confirmButtonText: t('configModule.buttons.yes.title'),
+				cancelButtonText: t('configModule.buttons.no.title'),
+				type: 'warning',
+			});
+		} catch {
+			return;
+		}
+	}
+
 	router.push({ name: RouteNames.ENDPOINTS }).catch((err: unknown): void => logger.error('Failed to open the Modbus endpoints page', err));
 };
 

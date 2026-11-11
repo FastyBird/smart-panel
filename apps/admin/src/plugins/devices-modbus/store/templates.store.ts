@@ -20,12 +20,24 @@ const BASE = `/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/templates` as c
 export const useModbusTemplates = defineStore('devices_modbus_plugin-templates', () => {
 	const backend = useBackend();
 	const catalog = ref<IModbusTemplateCatalog | null>(null);
+	// Fetch and reload both replace the catalog; only the most recently started request may, so an older fetch that
+	// finishes late (for example one started by a component that has since unmounted) cannot undo a reload.
+	let latestRequest = 0;
+
+	const apply = (request: number, next: IModbusTemplateCatalog): IModbusTemplateCatalog => {
+		if (request === latestRequest) {
+			catalog.value = next;
+		}
+
+		return next;
+	};
 
 	const fetch = async (): Promise<IModbusTemplateCatalog> => {
+		const request = ++latestRequest;
 		const { data: responseData, error, response } = await backend.client.GET(BASE);
 
 		if (responseData) {
-			return (catalog.value = transformModbusTemplateCatalog(responseData.data));
+			return apply(request, transformModbusTemplateCatalog(responseData.data));
 		}
 
 		throw new DevicesModbusApiException(
@@ -35,10 +47,11 @@ export const useModbusTemplates = defineStore('devices_modbus_plugin-templates',
 	};
 
 	const reload = async (): Promise<IModbusTemplateCatalog> => {
+		const request = ++latestRequest;
 		const { data: responseData, error, response } = await backend.client.POST(`${BASE}/reload`);
 
 		if (responseData) {
-			return (catalog.value = transformModbusTemplateCatalog(responseData.data));
+			return apply(request, transformModbusTemplateCatalog(responseData.data));
 		}
 
 		throw new DevicesModbusApiException(

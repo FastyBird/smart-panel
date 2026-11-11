@@ -56,6 +56,45 @@ describe('ModbusWizardProbePanel', () => {
 		read.mockResolvedValue({ ok: true, values: [1], error: null, durationMs: 4 });
 	});
 
+	const formErrors = (wrapper: ReturnType<typeof mountPanel>): string[] =>
+		wrapper
+			.findAllComponents({ name: 'ElFormItem' })
+			.map((item) => item.props('error') as string | undefined)
+			.filter((error): error is string => typeof error === 'string');
+
+	const mountPanel = () => {
+		const wizard = useModbusDeviceWizard();
+
+		wizard.state.endpointId = 'e1';
+
+		return mount(ModbusWizardProbePanel, { props: { wizard }, global: { stubs: { teleport: true, transition: false } } });
+	};
+
+	it('refuses an address range instead of reading only its first address', async () => {
+		const wrapper = mountPanel();
+
+		await wrapper.find('input[name="probeAddress"]').setValue('1-10');
+		await wrapper.find('[data-test-id="probe-run"]').trigger('click');
+		await flushPromises();
+
+		expect(formErrors(wrapper)).toContain('devicesModbusPlugin.wizard.points.editor.singleAddress');
+		expect(wrapper.find('[data-test-id="probe-run"]').attributes('disabled')).toBeDefined();
+		expect(read).not.toHaveBeenCalled();
+	});
+
+	it('does not run with a cleared count', async () => {
+		const wrapper = mountPanel();
+
+		wrapper.findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', null);
+		await flushPromises();
+		await wrapper.find('[data-test-id="probe-run"]').trigger('click');
+		await flushPromises();
+
+		expect(formErrors(wrapper).some((error) => error.startsWith('devicesModbusPlugin.wizard.probe.count.invalid'))).toBe(true);
+		expect(wrapper.find('[data-test-id="probe-run"]').attributes('disabled')).toBeDefined();
+		expect(read).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		['the selected endpoint', (wizard: IUseModbusDeviceWizard) => (wizard.state.endpointId = 'e2')],
 		['the unit id', (wizard: IUseModbusDeviceWizard) => (wizard.state.unitId = 9)],

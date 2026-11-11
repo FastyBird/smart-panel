@@ -153,7 +153,10 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 			return (health.value[id] = transformModbusEndpointHealth(responseData.data));
 		}
 
-		delete health.value[id];
+		// Too many requests says nothing about the endpoint: keep its last known state.
+		if (response.status !== 429) {
+			delete health.value[id];
+		}
 
 		throw new DevicesModbusApiException(
 			getErrorReason<DevicesModbusPluginGetEndpointHealthOperation>(error, 'Failed to load the Modbus endpoint health.'),

@@ -65,7 +65,10 @@
 					</div>
 				</el-form-item>
 
-				<el-form-item :label="t('devicesModbusPlugin.wizard.probe.count.title')">
+				<el-form-item
+					:label="t('devicesModbusPlugin.wizard.probe.count.title')"
+					:error="countError ?? undefined"
+				>
 					<el-input-number
 						v-model="count"
 						:min="1"
@@ -136,7 +139,7 @@ const { t } = useI18n();
 const probe = useModbusProbe();
 
 const registerType = ref<DevicesModbusPluginRegisterType>(DevicesModbusPluginRegisterType.holding_register);
-const count = ref<number>(1);
+const count = ref<number | null | undefined>(1);
 const running = ref<boolean>(false);
 const result = ref<IModbusProbeReadResult | null>(null);
 
@@ -167,6 +170,11 @@ type Parsed = { ok: true; start: number; registerType: DevicesModbusPluginRegist
 const parse = (text: string, mode: AddressNotation, type: DevicesModbusPluginRegisterType): Parsed => {
 	try {
 		const parsedAddress = parseAddressInput(text, mode, type);
+
+		// The Count field sets how many are read; a range here would be accepted and then silently read as one address.
+		if (parsedAddress.count !== 1) {
+			return { ok: false, error: 'devicesModbusPlugin.wizard.points.editor.singleAddress' };
+		}
 
 		return { ok: true, start: parsedAddress.start, registerType: parsedAddress.registerType ?? type };
 	} catch (error: unknown) {
@@ -211,12 +219,25 @@ watch(
 	}
 );
 
-const canRun = computed<boolean>(() => parsed.value.ok && props.wizard.probeTarget() !== null && !running.value);
+// A cleared input leaves null in the model; the backend needs a whole number within the protocol limit.
+const validCount = computed<number | null>(() => {
+	const value = count.value;
+
+	return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= maxCount.value ? value : null;
+});
+
+const countError = computed<string | null>(() =>
+	validCount.value === null ? t('devicesModbusPlugin.wizard.probe.count.invalid', { max: maxCount.value }) : null
+);
+
+const canRun = computed<boolean>(() => parsed.value.ok && validCount.value !== null && props.wizard.probeTarget() !== null && !running.value);
 
 const onRun = async (): Promise<void> => {
 	const target = props.wizard.probeTarget();
 
-	if (!parsed.value.ok || target === null || running.value) {
+	const amount = validCount.value;
+
+	if (!parsed.value.ok || amount === null || target === null || running.value) {
 		return;
 	}
 
@@ -225,7 +246,7 @@ const onRun = async (): Promise<void> => {
 	const generation = targetGeneration;
 
 	try {
-		const outcome = await probe.read(target, props.wizard.state.unitId, effectiveRegisterType.value, parsed.value.start, count.value);
+		const outcome = await probe.read(target, props.wizard.state.unitId, effectiveRegisterType.value, parsed.value.start, amount);
 
 		if (generation === targetGeneration) {
 			result.value = outcome;

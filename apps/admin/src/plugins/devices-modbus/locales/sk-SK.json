@@ -47,7 +47,8 @@
 				"stored": "Stored as address {address} ({registerType})"
 			},
 			"count": {
-				"title": "Count"
+				"title": "Count",
+				"invalid": "Zadajte celé číslo od 1 do {max}"
 			},
 			"run": "Test connection",
 			"success": "Read {count} value(s) in {ms} ms"
@@ -294,7 +295,8 @@
 			"enabled": {
 				"title": "Enabled"
 			}
-		}
+		},
+		"devicesLoadFailed": "Zariadenia sa nepodarilo načítať, stĺpec zariadení je preto prázdny. Endpointy je napriek tomu možné spravovať."
 	},
 	"config": {
 		"about": {

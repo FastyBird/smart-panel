@@ -87,6 +87,26 @@ describe('Modbus templates store', () => {
 		expect(store.catalog?.templates).toHaveLength(1);
 	});
 
+	it('an older fetch that finishes after a reload does not replace the reloaded catalog', async () => {
+		let finishFetch!: () => void;
+		get.mockImplementationOnce(
+			() => new Promise((resolve) => (finishFetch = () => resolve({ data: { data: wireCatalog }, response: { status: 200 } })))
+		);
+		post.mockResolvedValue({ data: { data: { ...wireCatalog, templates: [] } }, response: { status: 200 } });
+		const store = useModbusTemplates();
+
+		const pending = store.fetch();
+		await store.reload();
+
+		expect(store.catalog?.templates).toEqual([]);
+
+		finishFetch();
+		const fetched = await pending;
+
+		expect(fetched.templates).toHaveLength(1);
+		expect(store.catalog?.templates).toEqual([]);
+	});
+
 	it('preview passes the overrides in the data wrapper and keeps channels, properties and bindings', async () => {
 		post.mockResolvedValue({
 			data: {

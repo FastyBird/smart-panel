@@ -47,7 +47,8 @@
 				"stored": "Stored as address {address} ({registerType})"
 			},
 			"count": {
-				"title": "Count"
+				"title": "Count",
+				"invalid": "Wpisz liczbę całkowitą od 1 do {max}"
 			},
 			"run": "Test connection",
 			"success": "Read {count} value(s) in {ms} ms"
@@ -294,7 +295,8 @@
 			"enabled": {
 				"title": "Enabled"
 			}
-		}
+		},
+		"devicesLoadFailed": "Nie udało się wczytać urządzeń, dlatego kolumna urządzeń jest pusta. Punktami końcowymi nadal można zarządzać."
 	},
 	"config": {
 		"about": {

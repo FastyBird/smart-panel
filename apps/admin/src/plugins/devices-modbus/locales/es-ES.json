@@ -47,7 +47,8 @@
 				"stored": "Stored as address {address} ({registerType})"
 			},
 			"count": {
-				"title": "Count"
+				"title": "Count",
+				"invalid": "Introduce un número entero de 1 a {max}"
 			},
 			"run": "Test connection",
 			"success": "Read {count} value(s) in {ms} ms"
@@ -294,7 +295,8 @@
 			"enabled": {
 				"title": "Enabled"
 			}
-		}
+		},
+		"devicesLoadFailed": "No se pudieron cargar los dispositivos, por eso la columna de dispositivos está vacía. Los endpoints se pueden seguir gestionando."
 	},
 	"config": {
 		"about": {

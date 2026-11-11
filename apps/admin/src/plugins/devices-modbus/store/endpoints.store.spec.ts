@@ -178,6 +178,25 @@ describe('Modbus endpoints store', () => {
 		expect(store.health['4a2515a6-7e87-4e51-96cc-832698237613']).toBeUndefined();
 	});
 
+	it('keeps the last known health when the health request is throttled', async () => {
+		get.mockResolvedValueOnce({
+			data: {
+				data: { state: 'connected', last_error: null, last_error_at: null, average_latency_ms: 12.5, requests: 3, timeouts: 0, overloaded: false },
+			},
+			response: { status: 200 },
+		});
+		const store = useModbusEndpoints();
+		await store.fetchHealth('ep');
+
+		get.mockResolvedValueOnce({ error: { reason: 'Too many requests' }, response: { status: 429 } });
+		await expect(store.fetchHealth('ep')).rejects.toThrow();
+		expect(store.health.ep?.state).toBe('connected');
+
+		get.mockResolvedValueOnce({ error: { reason: 'Gone' }, response: { status: 404 } });
+		await expect(store.fetchHealth('ep')).rejects.toThrow();
+		expect(store.health.ep).toBeUndefined();
+	});
+
 	it('remove keeps the entry and throws when the backend refuses', async () => {
 		get.mockResolvedValue({ data: { data: [wireEndpoint()] }, response: { status: 200 } });
 		del.mockResolvedValue({ error: { reason: 'Endpoint is used by devices.' }, response: { status: 400 } });
