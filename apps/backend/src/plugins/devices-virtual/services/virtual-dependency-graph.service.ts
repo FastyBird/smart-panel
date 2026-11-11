@@ -264,6 +264,31 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.structuralWrite(operation, expectedGraphRevision);
 	}
 
+	/**
+	 * The same outer writer for a write that may turn out not to be structural. The caller decides inside
+	 * the transaction and calls `advanceGraph` when the catalog changed; a write that does not call it
+	 * leaves the graph revision and the published validation untouched, and fails if the revision moved
+	 * under it.
+	 */
+	async withConditionalStructuralWrite<T>(
+		operation: (manager: EntityManager, advanceGraph: () => Promise<number>) => Promise<T>,
+	): Promise<T> {
+		return this.structuralWrite(
+			(manager, advanceGraph) => {
+				if (!advanceGraph) throw new Error('Deferred graph mutation is unavailable');
+				return operation(manager, advanceGraph);
+			},
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			undefined,
+			undefined,
+			true,
+		);
+	}
+
 	/** Existing configuration consumers borrow this exact outer writer; no second transaction or owner. */
 	withProducerConfigurationWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
