@@ -57,8 +57,12 @@
 				"description": "Control several lights, switches, outlets, fans or covers as one device."
 			},
 			"thermostat": {
-				"title": "Thermostat controller",
-				"description": "Regulate room temperature with relays and temperature sensors."
+				"title": "Thermostat from relays",
+				"description": "Build a thermostat from relays and temperature sensors. Smart Panel does the regulation."
+			},
+			"nativeThermostat": {
+				"title": "Controller for an existing thermostat",
+				"description": "Put a Smart Panel controller on top of a thermostat device you already have. Supported: Home Assistant and Zigbee2MQTT thermostats."
 			}
 		},
 		"subtitle": "Build a device from another device's channels",
@@ -75,7 +79,8 @@
 			"members": "Members",
 			"capabilities": "Capabilities",
 			"settings": "Settings",
-			"actuators": "Actuators"
+			"actuators": "Actuators",
+			"device": "Device"
 		},
 		"category": {
 			"heading": "Choose a category",
@@ -489,7 +494,7 @@
 		}
 	},
 	"nativeThermostat": {
-		"title": "Native HA / Zigbee thermostat",
+		"title": "Controller for an existing thermostat",
 		"strategy": "Control strategy",
 		"guarded": "Guarded relay branches",
 		"delegation": "The physical thermostat regulates temperature. No floor, condensation or opposed-output protection is provided.",
@@ -523,7 +528,26 @@
 		"released": "Released",
 		"drift": "Observed settings differ from the request",
 		"release": "Release controller",
-		"releaseHelp": "Release the Smart Panel reservation? This waits for issued work but sends no OFF command. The physical thermostat may continue regulating."
+		"releaseHelp": "Release the Smart Panel reservation? This waits for issued work but sends no OFF command. The physical thermostat may continue regulating.",
+		"wizard": {
+			"intro": "This controller works with a real thermostat device. The device keeps regulating the temperature; Smart Panel sends it the requested mode and setpoints and shows what it reports back.",
+			"supported": "Only thermostats from Home Assistant and Zigbee2MQTT are supported for now. Devices from other integrations are not listed.",
+			"unitPlaceholder": "Select a thermostat device",
+			"noCandidates": "No supported thermostat device was found. Add a Home Assistant or Zigbee2MQTT thermostat first.",
+			"providers": {
+				"home-assistant": "Home Assistant",
+				"zigbee2mqtt": "Zigbee2MQTT"
+			},
+			"reasons": {
+				"reserved": "already used by another controller"
+			},
+			"summary": {
+				"provider": "Integration",
+				"modes": "Supported modes",
+				"range": "{minimum}–{maximum} °C, step {step}",
+				"unsupported": "Not supported"
+			}
+		}
 	},
 	"thermostat": {
 		"title": {

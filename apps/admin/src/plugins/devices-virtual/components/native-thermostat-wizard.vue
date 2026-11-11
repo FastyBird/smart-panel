@@ -1,0 +1,230 @@
+<template>
+	<virtual-wizard-steps
+		v-model="step"
+		:steps="stepLabels"
+		:can-advance="canAdvance"
+		:disabled="busy"
+		enabled
+	>
+		<el-alert
+			v-if="error"
+			:title="error"
+			type="error"
+			:closable="false"
+			class="mb-3"
+			data-test-id="native-wizard-error"
+		/>
+
+		<div v-show="step === 0">
+			<el-alert
+				:title="tt('intro')"
+				:description="tt('supported')"
+				type="info"
+				:closable="false"
+				show-icon
+				class="mb-3"
+			/>
+			<el-form label-position="top">
+				<el-form-item :label="label('unit')">
+					<el-select
+						v-model="source"
+						:disabled="busy"
+						:loading="loading"
+						:placeholder="tt('unitPlaceholder')"
+						filterable
+						class="w-full"
+						data-test-id="native-wizard-unit"
+						@change="onSource"
+					>
+						<el-option-group
+							v-for="group in groups"
+							:key="group.provider"
+							:label="providerLabel(group.provider)"
+						>
+							<el-option
+								v-for="candidate in group.candidates"
+								:key="candidate.device"
+								:value="candidate.device"
+								:disabled="candidate.reasons.length > 0"
+								:label="candidate.reasons.length ? `${candidate.name} — ${reasonLabel(candidate.reasons[0]!)}` : candidate.name"
+							/>
+						</el-option-group>
+					</el-select>
+				</el-form-item>
+			</el-form>
+			<el-empty
+				v-if="!loading && !error && !candidates.length"
+				:description="tt('noCandidates')"
+				data-test-id="native-wizard-empty"
+			/>
+		</div>
+
+		<div v-show="step === 1">
+			<el-form label-position="top">
+				<el-form-item :label="label('name')">
+					<el-input
+						v-model="name"
+						:disabled="busy"
+						data-test-id="native-wizard-name"
+					/>
+				</el-form-item>
+			</el-form>
+			<el-alert
+				:title="label('delegation')"
+				type="info"
+				:closable="false"
+			/>
+		</div>
+
+		<div v-show="step === 2">
+			<el-descriptions
+				:column="1"
+				border
+				class="mb-3"
+				data-test-id="native-wizard-summary"
+			>
+				<el-descriptions-item :label="label('name')">{{ name }}</el-descriptions-item>
+				<el-descriptions-item :label="label('unit')">{{ selected?.name ?? '—' }}</el-descriptions-item>
+				<el-descriptions-item :label="tt('summary.provider')">{{ selected ? providerLabel(selected.provider) : '—' }}</el-descriptions-item>
+				<el-descriptions-item :label="tt('summary.modes')">
+					{{ selected?.capabilities.modes.map((mode) => t(`devicesVirtualPlugin.thermostat.modes.${mode}`)).join(', ') || '—' }}
+				</el-descriptions-item>
+				<el-descriptions-item :label="label('heating')">{{ rangeLabel(selected?.capabilities.heating) }}</el-descriptions-item>
+				<el-descriptions-item :label="label('cooling')">{{ rangeLabel(selected?.capabilities.cooling) }}</el-descriptions-item>
+			</el-descriptions>
+			<el-alert
+				:title="label('acceptance')"
+				type="info"
+				:closable="false"
+			/>
+		</div>
+
+		<template #final>
+			<el-button
+				type="primary"
+				:loading="creating"
+				:disabled="busy || !name.trim() || !selected || selected.reasons.length > 0"
+				data-test-id="native-wizard-create"
+				@click="create"
+			>
+				{{ label('create') }}
+			</el-button>
+		</template>
+	</virtual-wizard-steps>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import {
+	ElAlert,
+	ElButton,
+	ElDescriptions,
+	ElDescriptionsItem,
+	ElEmpty,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElOption,
+	ElOptionGroup,
+	ElSelect,
+} from 'element-plus';
+
+import { useBackend } from '../../../common';
+import { type NativeCandidate, type NativeRange, nativeThermostatTransport } from '../services/native-thermostat';
+
+import VirtualWizardSteps from './wizard/virtual-wizard-steps.vue';
+
+defineOptions({
+	name: 'NativeThermostatWizard',
+});
+
+// Puts a Smart Panel controller on top of a thermostat that already exists as a device. The backend
+// decides which devices qualify — today the Home Assistant and Zigbee2MQTT climate adapters — so the
+// list is whatever it returns, grouped by the integration that owns the device; a unit another
+// controller already holds stays visible but cannot be chosen.
+const emit = defineEmits<{ created: [id: string]; busy: [value: boolean] }>();
+const { t, te } = useI18n();
+const label = (key: string): string => t(`devicesVirtualPlugin.nativeThermostat.${key}`);
+const tt = (key: string, params: Record<string, unknown> = {}): string => t(`devicesVirtualPlugin.nativeThermostat.wizard.${key}`, params);
+const known = (prefix: string, value: string): string => {
+	const key = `devicesVirtualPlugin.nativeThermostat.wizard.${prefix}.${value}`;
+	return te(key) ? t(key) : value;
+};
+const providerLabel = (provider: string): string => known('providers', provider);
+const reasonLabel = (reason: string): string => known('reasons', reason);
+const rangeLabel = (range: NativeRange | null | undefined): string =>
+	range ? tt('summary.range', { minimum: range.minimum, maximum: range.maximum, step: range.step }) : tt('summary.unsupported');
+
+const transport = nativeThermostatTransport(useBackend());
+const candidates = ref<NativeCandidate[]>([]);
+const source = ref('');
+const name = ref('');
+const step = ref(0);
+const loading = ref(false);
+const creating = ref(false);
+const error = ref<string | null>(null);
+const busy = computed<boolean>(() => loading.value || creating.value);
+const selected = computed(() => candidates.value.find((candidate) => candidate.device === source.value));
+const groups = computed(() => {
+	const byProvider = new Map<string, NativeCandidate[]>();
+	for (const candidate of candidates.value) byProvider.set(candidate.provider, [...(byProvider.get(candidate.provider) ?? []), candidate]);
+	return [...byProvider].map(([provider, list]) => ({ provider, candidates: list })).sort((a, b) => a.provider.localeCompare(b.provider));
+});
+const stepLabels = computed<string[]>(() => ['device', 'details', 'review'].map((key) => t(`devicesVirtualPlugin.wizard.steps.${key}`)));
+const canAdvance = computed<boolean>(() => {
+	if (step.value === 0) return !!selected.value && !selected.value.reasons.length;
+	return !!name.value.trim();
+});
+
+// The name starts as the device's own, and follows the selection until the user types one.
+let suggested = '';
+const onSource = (): void => {
+	if (name.value.trim() && name.value !== suggested) return;
+	suggested = selected.value?.name ?? '';
+	name.value = suggested;
+};
+
+let alive = true;
+const controller = new AbortController();
+const load = async (): Promise<void> => {
+	loading.value = true;
+	error.value = null;
+	try {
+		const result = await transport.candidates(controller.signal);
+		if (alive) candidates.value = result;
+	} catch {
+		if (alive) error.value = label('readFailed');
+	} finally {
+		if (alive) loading.value = false;
+	}
+};
+const create = async (): Promise<void> => {
+	const unit = selected.value;
+	if (busy.value || !unit || unit.reasons.length || !name.value.trim()) return;
+	creating.value = true;
+	error.value = null;
+	try {
+		const result = await transport.create(name.value.trim(), unit.device, controller.signal);
+		if (!alive) return;
+		creating.value = false;
+		// Let the shell see the request has ended before it is asked to navigate away.
+		await nextTick();
+		emit('created', result.controller);
+	} catch {
+		// The request may have been applied; the list says whether the unit is now taken.
+		if (alive) {
+			creating.value = false;
+			await load();
+			if (alive) error.value = label('uncertain');
+		}
+	}
+};
+watch(creating, (value) => emit('busy', value));
+onMounted(load);
+onBeforeUnmount(() => {
+	alive = false;
+	controller.abort();
+});
+</script>

@@ -63,6 +63,7 @@ export const VIRTUAL_WIZARD_KINDS = [
 	},
 	{ value: 'group', icon: 'mdi:lightbulb-group', to: { name: RouteNames.LIGHT_GROUP_WIZARD } },
 	{ value: 'thermostat', icon: 'mdi:thermostat', to: { name: RouteNames.THERMOSTAT_WIZARD } },
+	{ value: 'nativeThermostat', icon: 'mdi:thermostat-box', to: { name: RouteNames.THERMOSTAT_WIZARD, query: { strategy: 'native_unit' } } },
 ].map((kind) => ({
 	...kind,
 	label: `devicesVirtualPlugin.wizard.kinds.${kind.value}.title`,
