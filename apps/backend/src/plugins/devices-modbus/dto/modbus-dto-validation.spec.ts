@@ -5,6 +5,13 @@ import { ModbusBindingDto } from './binding.dto';
 import { CreateModbusDeviceStructureDto } from './create-device-structure.dto';
 import { CreateModbusDeviceDto } from './create-device.dto';
 import { CreateModbusEndpointDto } from './create-endpoint.dto';
+import {
+	ProbeModbusPointDto,
+	ProbeModbusWriteDto,
+	ReqProbeModbusPointsDto,
+	ReqProbeModbusReadDto,
+	ReqProbeModbusWriteDto,
+} from './probe.dto';
 import { ModbusUpdatePluginConfigDto } from './update-config.dto';
 import { UpdateModbusDeviceDto } from './update-device.dto';
 import { UpdateModbusEndpointDto } from './update-endpoint.dto';
@@ -80,6 +87,28 @@ describe('Modbus DTO validation', () => {
 		it('caps max_in_flight at 16', async () => {
 			expect(await fieldErrors(dto, 'max_in_flight', 16)).toEqual([]);
 			expect(await fieldErrors(dto, 'max_in_flight', 17)).not.toEqual([]);
+		});
+	});
+
+	describe('probe requests', () => {
+		it.each([
+			['ReqProbeModbusReadDto', ReqProbeModbusReadDto],
+			['ReqProbeModbusPointsDto', ReqProbeModbusPointsDto],
+			['ReqProbeModbusWriteDto', ReqProbeModbusWriteDto],
+		] as Array<[string, DtoClass]>)('%s refuses a body without data', async (_name, dto) => {
+			const errors = await validate(plainToInstance(dto, {}));
+
+			expect(errors.map((error) => error.property)).toEqual(['data']);
+		});
+
+		it('refuses a write without a binding', async () => {
+			expect(await fieldErrors(ProbeModbusWriteDto, 'binding', undefined)).not.toEqual([]);
+		});
+
+		it('refuses a point without a binding', async () => {
+			const errors = await validate(plainToInstance(ProbeModbusPointDto, { key: 'a' }));
+
+			expect(errors.map((error) => error.property)).toEqual(['binding']);
 		});
 	});
 

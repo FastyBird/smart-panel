@@ -27,23 +27,26 @@ import {
 import { ModbusProbePointsModel, ModbusProbeReadModel, ModbusProbeWriteModel } from '../models/probe.model';
 import { ModbusProbeBinding, ModbusProbeService, ModbusProbeTarget } from '../services/modbus-probe.service';
 
-type TargetFields = Pick<
-	ProbeModbusReadDto,
-	'endpoint_id' | 'host' | 'port' | 'framing' | 'connect_timeout_ms' | 'request_timeout_ms'
->;
+type TargetKey = 'endpoint_id' | 'host' | 'port' | 'framing' | 'connect_timeout_ms' | 'request_timeout_ms';
+
+/** The target fields as they arrive: IsOptional accepts null as well as a missing value. */
+type TargetFields = { [K in TargetKey]?: ProbeModbusReadDto[K] | null };
 
 const TARGET_ERROR = 'Provide either endpoint_id or host, port and framing, not both.';
 
 const targetError = (): ModbusValidationException =>
 	new ModbusValidationException([JSON.stringify({ field: 'endpoint_id', reason: TARGET_ERROR })]);
 
-/** Exactly one of the two target forms: a saved endpoint, or complete unsaved connection details. */
+/**
+ * Exactly one of the two target forms: a saved endpoint, or complete unsaved connection details. A null field counts
+ * as absent (IsOptional lets null through the DTO validation), so it can never reach the service as a value.
+ */
 function toTarget(dto: TargetFields): ModbusProbeTarget {
 	const hasDetails = [dto.host, dto.port, dto.framing, dto.connect_timeout_ms, dto.request_timeout_ms].some(
-		(value) => value !== undefined,
+		(value) => value !== undefined && value !== null,
 	);
 
-	if (dto.endpoint_id !== undefined) {
+	if (dto.endpoint_id !== undefined && dto.endpoint_id !== null) {
 		if (hasDetails) {
 			throw targetError();
 		}
@@ -51,7 +54,14 @@ function toTarget(dto: TargetFields): ModbusProbeTarget {
 		return { endpointId: dto.endpoint_id };
 	}
 
-	if (dto.host === undefined || dto.port === undefined || dto.framing === undefined) {
+	if (
+		dto.host === undefined ||
+		dto.host === null ||
+		dto.port === undefined ||
+		dto.port === null ||
+		dto.framing === undefined ||
+		dto.framing === null
+	) {
 		throw targetError();
 	}
 
@@ -59,8 +69,8 @@ function toTarget(dto: TargetFields): ModbusProbeTarget {
 		host: dto.host,
 		port: dto.port,
 		framing: dto.framing,
-		connectTimeoutMs: dto.connect_timeout_ms,
-		requestTimeoutMs: dto.request_timeout_ms,
+		connectTimeoutMs: dto.connect_timeout_ms ?? undefined,
+		requestTimeoutMs: dto.request_timeout_ms ?? undefined,
 	};
 }
 
