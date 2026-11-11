@@ -74,6 +74,8 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 	private readonly deviceProperties = new Map<string, Set<string>>();
 	private readonly propertyDevice = new Map<string, string>();
 	private readonly baselines = new Set<Promise<void>>();
+	/** Properties that received a connection change since their device was indexed */
+	private readonly connectionSeen = new Set<string>();
 
 	constructor(
 		private readonly propertiesService: ChannelsPropertiesService,
@@ -94,6 +96,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 		this.tracker.dispose();
 		this.deviceProperties.clear();
 		this.propertyDevice.clear();
+		this.connectionSeen.clear();
 	}
 
 	/**
@@ -177,6 +180,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 			const online = isReachable(payload?.state);
 
 			for (const propertyId of [...propertyIds]) {
+				this.connectionSeen.add(propertyId);
 				this.tracker.setAvailability(propertyId, { online });
 			}
 		} catch (error) {
@@ -194,7 +198,10 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 			if (!this.propertyDevice.has(property.id)) {
 				const deviceId = deviceIdOf(property);
 
-				if (deviceId) this.rememberDevice(property.id, deviceId);
+				if (deviceId) {
+					this.rememberDevice(property.id, deviceId);
+					this.restoreAvailability(property.id, deviceId);
+				}
 			}
 
 			if (options.requireState && (property.value === null || property.value === undefined)) return;
@@ -203,6 +210,24 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 		} catch (error) {
 			this.logFailure('a property event', error);
 		}
+	}
+
+	/**
+	 * Reads the reachability of a device that was learned from a property event, because a disconnect before
+	 * that event was not routed to the property. A connection change seen during the read wins.
+	 */
+	private restoreAvailability(propertyId: string, deviceId: string): void {
+		const restore = this.connectionStateService
+			.readLatest({ id: deviceId })
+			.then((connection) => {
+				if (this.propertyDevice.get(propertyId) !== deviceId || this.connectionSeen.has(propertyId)) return;
+
+				this.tracker.setAvailability(propertyId, { online: isReachable(connection.status, connection.online) });
+			})
+			.catch((error: unknown) => this.logFailure(`the connection state of property id=${propertyId}`, error))
+			.finally(() => this.baselines.delete(restore));
+
+		this.baselines.add(restore);
 	}
 
 	private startBaseline(propertyId: string): void {
@@ -265,6 +290,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 		if (!deviceId) return;
 
 		this.propertyDevice.delete(propertyId);
+		this.connectionSeen.delete(propertyId);
 
 		const propertyIds = this.deviceProperties.get(deviceId);
 

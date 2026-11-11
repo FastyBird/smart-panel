@@ -309,6 +309,49 @@ describe('AutomationStateTrackerService', () => {
 		expect(service.read('occ')).toEqual({ status: 'offline', value: false });
 	});
 
+	it('restores the connection state when the device is learned from an event after it went offline', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false, forSeconds: 120 }, fire);
+		await service.settled();
+
+		// Not routed: the property is not indexed under its device yet
+		connections.set('sensor', ConnectionState.DISCONNECTED);
+		connectionChanged('sensor', ConnectionState.DISCONNECTED);
+
+		const withDevice = (value: Value) =>
+			({ ...entity('occ', value), channel: { id: 'channel', device: { id: 'sensor' } } }) as ChannelPropertyEntity;
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, withDevice(true));
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, withDevice(false));
+		await service.settled();
+
+		expect(service.pendingTimers()).toBe(0);
+		expect(service.read('occ')).toEqual({ status: 'offline', value: false });
+
+		clock.advanceSeconds(600);
+
+		expect(fired).toEqual([]);
+	});
+
+	it('lets a connection change seen while the connection state is restored win', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false, forSeconds: 120 }, fire);
+		await service.settled();
+
+		connections.set('sensor', ConnectionState.CONNECTED);
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+			...entity('occ', true),
+			channel: { id: 'channel', device: { id: 'sensor' } },
+		} as ChannelPropertyEntity);
+		connectionChanged('sensor', ConnectionState.DISCONNECTED);
+		await service.settled();
+
+		expect(service.read('occ')).toEqual({ status: 'offline', value: true });
+	});
+
 	it('cancels a "for" duration when the device goes offline and restarts it only on a fresh report', async () => {
 		addProperty('occ', true, 'sensor');
 		connections.set('sensor', ConnectionState.CONNECTED);
