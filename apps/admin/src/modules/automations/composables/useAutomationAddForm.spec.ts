@@ -40,7 +40,8 @@ describe('useAutomationAddForm', () => {
 	const createFormEl = (valid: boolean = true): FormInstance =>
 		({
 			clearValidate: vi.fn(),
-			validate: vi.fn().mockResolvedValue(valid),
+			// As Element Plus does without a callback: an invalid form rejects with its invalid fields
+			validate: valid ? vi.fn().mockResolvedValue(true) : vi.fn().mockRejectedValue({ name: [{ message: 'required', field: 'name' }] }),
 		}) as unknown as FormInstance;
 
 	beforeEach(() => {

@@ -69,7 +69,8 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 
 		formEl.value!.clearValidate();
 
-		const valid = await formEl.value!.validate();
+		// Without a callback, Element Plus rejects with the invalid fields instead of resolving false
+		const valid = await formEl.value!.validate().catch((): boolean => false);
 
 		if (!valid) throw new AutomationsValidationException('Form not valid');
 
