@@ -119,6 +119,23 @@ describe('AutomationsService', () => {
 			expect(await repository.count()).toBe(1);
 		});
 
+		it('lets only one of two concurrent creates take the last free slot', async () => {
+			for (let index = 0; index < AUTOMATIONS_MAX_COUNT - 1; index += 1) {
+				await create({ name: `Automation ${index}` });
+			}
+
+			const results = await Promise.allSettled([create({ name: 'First' }), create({ name: 'Second' })]);
+
+			expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+			expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+			expect(await repository.count()).toBe(AUTOMATIONS_MAX_COUNT);
+		});
+
+		it('still creates automations after a create was refused', async () => {
+			await expect(create({ name: 'Bad space', space_id: '2f0d5d0e-6f3c-4a55-9f5c-1b9d4e1c7a10' })).rejects.toThrow();
+			await expect(create({ name: 'Good one' })).resolves.toBeInstanceOf(AutomationEntity);
+		});
+
 		it('creates a disabled automation in restart mode with an empty graph at revision 1', async () => {
 			const automation = await create({ name: 'Motion light' });
 

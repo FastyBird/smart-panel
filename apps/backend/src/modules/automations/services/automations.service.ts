@@ -40,6 +40,8 @@ import { AutomationNodeTypeRegistryService } from './node-type-registry.service'
 export class AutomationsService {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'AutomationsService');
 
+	private createQueue: Promise<void> = Promise.resolve();
+
 	constructor(
 		@InjectRepository(AutomationEntity)
 		private readonly repository: Repository<AutomationEntity>,
@@ -116,12 +118,6 @@ export class AutomationsService {
 			throw new AutomationsValidationException(`Automation with id=${dtoInstance.id} already exists.`);
 		}
 
-		if ((await this.repository.count()) >= AUTOMATIONS_MAX_COUNT) {
-			throw new AutomationsValidationException(
-				`The limit of ${AUTOMATIONS_MAX_COUNT} automations is reached. Remove an automation before adding another.`,
-			);
-		}
-
 		if (dtoInstance.space_id) {
 			await this.validateSpace(dtoInstance.space_id);
 		}
@@ -131,21 +127,31 @@ export class AutomationsService {
 
 		await this.assertGraphCanBeSaved(graph, dtoInstance.enabled ?? false);
 
-		// The entity is assembled by hand, not through toInstance(): that helper rewrites every object key
-		// to snake_case, which would also rewrite the keys of the opaque node configuration.
-		await this.repository.insert({
-			id,
-			name: dtoInstance.name,
-			description: dtoInstance.description ?? null,
-			icon: dtoInstance.icon ?? null,
-			enabled: dtoInstance.enabled ?? false,
-			spaceId: dtoInstance.space_id ?? null,
-			mode: dtoInstance.mode ?? AutomationMode.RESTART,
-			graph,
-			revision: 1,
-			status: AutomationStatus.OK,
-			lastTriggeredAt: null,
-			lastRunStatus: null,
+		// The limit check and the insert run as one serialized step, so concurrent creates cannot both pass
+		// the check and exceed the limit.
+		await this.serializeCreate(async () => {
+			if ((await this.repository.count()) >= AUTOMATIONS_MAX_COUNT) {
+				throw new AutomationsValidationException(
+					`The limit of ${AUTOMATIONS_MAX_COUNT} automations is reached. Remove an automation before adding another.`,
+				);
+			}
+
+			// The entity is assembled by hand, not through toInstance(): that helper rewrites every object key
+			// to snake_case, which would also rewrite the keys of the opaque node configuration.
+			await this.repository.insert({
+				id,
+				name: dtoInstance.name,
+				description: dtoInstance.description ?? null,
+				icon: dtoInstance.icon ?? null,
+				enabled: dtoInstance.enabled ?? false,
+				spaceId: dtoInstance.space_id ?? null,
+				mode: dtoInstance.mode ?? AutomationMode.RESTART,
+				graph,
+				revision: 1,
+				status: AutomationStatus.OK,
+				lastTriggeredAt: null,
+				lastRunStatus: null,
+			});
 		});
 
 		const automation = await this.getOneOrThrow(id);
@@ -155,6 +161,21 @@ export class AutomationsService {
 		this.eventEmitter.emit(EventType.AUTOMATION_CREATED, automation);
 
 		return automation;
+	}
+
+	/**
+	 * Runs the given step after every earlier create step has settled. The backend is a single process, so an
+	 * in-process queue is enough to make "check the limit, then insert" atomic.
+	 */
+	private serializeCreate<T>(step: () => Promise<T>): Promise<T> {
+		const result = this.createQueue.then(step);
+
+		this.createQueue = result.then(
+			(): void => undefined,
+			(): void => undefined,
+		);
+
+		return result;
 	}
 
 	/**
