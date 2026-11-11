@@ -45,6 +45,17 @@ export const toStateSnapshot = (state: PropertyValueState | null | undefined): S
 	return { value, valid: value !== null && state?.producer?.quality !== 'unavailable' };
 };
 
+/** The id of the device a property belongs to, when the entity carries its channel */
+const deviceIdOf = (property: ChannelPropertyEntity): string | null => {
+	const channel = property.channel && typeof property.channel === 'object' ? property.channel : null;
+
+	if (!channel) return null;
+
+	if (channel.device && typeof channel.device === 'object') return channel.device.id ?? null;
+
+	return typeof channel.device === 'string' ? channel.device : null;
+};
+
 /**
  * The state tracker of the automations module: a thin adapter (ADR 0003, decision 15) that feeds device
  * events into the framework-free `StateTracker` and reads the baseline of a property when it is first
@@ -143,7 +154,10 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 	 */
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	handlePropertyUpdated(property: ChannelPropertyEntity | null): void {
-		this.ingest(property);
+		// A metadata update may carry an entity whose value state was not read back. That says nothing about
+		// the value, so it must not invalidate what is tracked; a state that is present still counts, also
+		// when its value is null.
+		this.ingest(property, { requireState: true });
 	}
 
 	/** The value state of a derived property changed: its quality, and possibly its value */
@@ -170,10 +184,20 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 		}
 	}
 
-	private ingest(property: ChannelPropertyEntity | null): void {
+	private ingest(property: ChannelPropertyEntity | null, options: { requireState?: boolean } = {}): void {
 		try {
 			// The bus is synchronous: nothing thrown here may reach the service that emitted the event
 			if (!property || typeof property.id !== 'string' || !this.tracker.isTracked(property.id)) return;
+
+			// The baseline read normally indexes the device. When it failed, learn it from the event, so a
+			// device going offline still reaches this property.
+			if (!this.propertyDevice.has(property.id)) {
+				const deviceId = deviceIdOf(property);
+
+				if (deviceId) this.rememberDevice(property.id, deviceId);
+			}
+
+			if (options.requireState && (property.value === null || property.value === undefined)) return;
 
 			this.tracker.report(property.id, toStateSnapshot(property.value));
 		} catch (error) {
@@ -198,9 +222,7 @@ export class AutomationStateTrackerService implements OnModuleDestroy {
 
 		if (!property || !this.tracker.isTracked(propertyId)) return;
 
-		const channel = typeof property.channel === 'object' ? property.channel : null;
-		const device = channel && typeof channel.device === 'object' ? channel.device : null;
-		const deviceId = device?.id ?? (channel && typeof channel.device === 'string' ? channel.device : null);
+		const deviceId = deviceIdOf(property);
 
 		let online: boolean | undefined;
 

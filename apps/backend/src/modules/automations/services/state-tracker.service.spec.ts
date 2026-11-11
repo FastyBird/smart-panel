@@ -257,6 +257,58 @@ describe('AutomationStateTrackerService', () => {
 		expect(fired).toEqual([]);
 	});
 
+	it('keeps the tracked value when a property-updated event carries no value state', async () => {
+		addProperty('occ', true, 'sensor');
+		service.watch({ propertyId: 'occ', to: false, forSeconds: 120 }, fire);
+		await service.settled();
+
+		valueSet('occ', false);
+		clock.advanceSeconds(60);
+
+		// A metadata update whose value was not read back
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_UPDATED, { id: 'occ', value: null } as ChannelPropertyEntity);
+
+		expect(service.read('occ')).toEqual({ status: 'ok', value: false });
+		expect(service.pendingTimers()).toBe(1);
+
+		clock.advanceSeconds(60);
+
+		expect(fired).toEqual([{ propertyId: 'occ', to: false, heldForMs: 120_000 }]);
+	});
+
+	it('still invalidates the value when a property-updated event carries a state without a value', async () => {
+		addProperty('occ', true);
+		service.watch({ propertyId: 'occ', to: false }, fire);
+		await service.settled();
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_UPDATED, entity('occ', null));
+
+		expect(service.read('occ')).toEqual({ status: 'invalid', value: null });
+	});
+
+	it('learns the device from a property event when the baseline read failed', async () => {
+		findOne.mockRejectedValueOnce(new Error('database is gone'));
+
+		service.watch({ propertyId: 'occ', to: false, forSeconds: 120 }, fire);
+		await service.settled();
+
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+			...entity('occ', true),
+			channel: { id: 'channel', device: { id: 'sensor' } },
+		} as ChannelPropertyEntity);
+		emitter.emit(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET, {
+			...entity('occ', false),
+			channel: { id: 'channel', device: 'sensor' },
+		} as ChannelPropertyEntity);
+
+		expect(service.pendingTimers()).toBe(1);
+
+		connectionChanged('sensor', ConnectionState.DISCONNECTED);
+
+		expect(service.pendingTimers()).toBe(0);
+		expect(service.read('occ')).toEqual({ status: 'offline', value: false });
+	});
+
 	it('cancels a "for" duration when the device goes offline and restarts it only on a fresh report', async () => {
 		addProperty('occ', true, 'sensor');
 		connections.set('sensor', ConnectionState.CONNECTED);
