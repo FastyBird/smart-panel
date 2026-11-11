@@ -95,6 +95,20 @@ describe('ModbusWizardProbePanel', () => {
 		expect(read).not.toHaveBeenCalled();
 	});
 
+	it('does not run a read that extends past the last address', async () => {
+		const wrapper = mountPanel();
+
+		await wrapper.find('input[name="probeAddress"]').setValue('65536');
+		wrapper.findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', 2);
+		await flushPromises();
+		await wrapper.find('[data-test-id="probe-run"]').trigger('click');
+		await flushPromises();
+
+		expect(formErrors(wrapper)).toContain('devicesModbusPlugin.wizard.points.errors.beyondAddressSpace');
+		expect(wrapper.find('[data-test-id="probe-run"]').attributes('disabled')).toBeDefined();
+		expect(read).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		['the selected endpoint', (wizard: IUseModbusDeviceWizard) => (wizard.state.endpointId = 'e2')],
 		['the unit id', (wizard: IUseModbusDeviceWizard) => (wizard.state.unitId = 9)],

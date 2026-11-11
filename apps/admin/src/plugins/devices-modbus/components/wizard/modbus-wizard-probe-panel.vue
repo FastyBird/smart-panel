@@ -226,18 +226,27 @@ const validCount = computed<number | null>(() => {
 	return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= maxCount.value ? value : null;
 });
 
-const countError = computed<string | null>(() =>
-	validCount.value === null ? t('devicesModbusPlugin.wizard.probe.count.invalid', { max: maxCount.value }) : null
-);
+// The read must end within the address space; the backend refuses it otherwise.
+const withinAddressSpace = computed<boolean>(() => !parsed.value.ok || validCount.value === null || parsed.value.start + validCount.value <= 65536);
 
-const canRun = computed<boolean>(() => parsed.value.ok && validCount.value !== null && props.wizard.probeTarget() !== null && !running.value);
+const countError = computed<string | null>(() => {
+	if (validCount.value === null) {
+		return t('devicesModbusPlugin.wizard.probe.count.invalid', { max: maxCount.value });
+	}
+
+	return withinAddressSpace.value ? null : t('devicesModbusPlugin.wizard.points.errors.beyondAddressSpace');
+});
+
+const canRun = computed<boolean>(
+	() => parsed.value.ok && validCount.value !== null && withinAddressSpace.value && props.wizard.probeTarget() !== null && !running.value
+);
 
 const onRun = async (): Promise<void> => {
 	const target = props.wizard.probeTarget();
 
 	const amount = validCount.value;
 
-	if (!parsed.value.ok || amount === null || target === null || running.value) {
+	if (!parsed.value.ok || amount === null || !withinAddressSpace.value || target === null || running.value) {
 		return;
 	}
 

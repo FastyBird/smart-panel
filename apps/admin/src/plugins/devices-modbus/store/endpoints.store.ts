@@ -45,15 +45,59 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 	const data = ref<Record<string, IModbusEndpoint>>({});
 	const health = ref<Record<string, IModbusEndpointHealth>>({});
 
+	// Every add, edit and remove gets a number; a list response replaces only the endpoints nobody changed while it
+	// was in flight, so a slow list cannot bring back an old name, drop a new endpoint or restore a removed one.
+	let mutationCount = 0;
+	const lastMutation = new Map<string, number>();
+
+	const markMutated = (id: string): void => {
+		lastMutation.set(id, ++mutationCount);
+	};
+
+	// Changes to one endpoint run one after another, so their responses arrive in order and the cache always ends
+	// with the state of the last change, e.g. when a toggle and an edit of the same endpoint overlap.
+	const queues = new Map<string, Promise<unknown>>();
+
+	const enqueue = <T>(id: string, task: () => Promise<T>): Promise<T> => {
+		const run = (queues.get(id) ?? Promise.resolve()).catch(() => undefined).then(task);
+
+		queues.set(id, run);
+
+		void run
+			.catch(() => undefined)
+			.finally(() => {
+				if (queues.get(id) === run) {
+					queues.delete(id);
+				}
+			});
+
+		return run;
+	};
+
 	const findAll = (): IModbusEndpoint[] => Object.values(data.value);
 	const findById = (id: string): IModbusEndpoint | null => data.value[id] ?? null;
 
 	const fetch = async (): Promise<IModbusEndpoint[]> => {
+		const startedAt = mutationCount;
 		const { data: responseData, error, response } = await backend.client.GET(BASE);
 
 		if (responseData) {
 			const endpoints = responseData.data.map(transformModbusEndpoint);
-			data.value = Object.fromEntries(endpoints.map((endpoint) => [endpoint.id, endpoint]));
+			const next: Record<string, IModbusEndpoint> = Object.fromEntries(endpoints.map((endpoint) => [endpoint.id, endpoint]));
+
+			for (const [id, mutatedAt] of lastMutation) {
+				if (mutatedAt <= startedAt) {
+					continue;
+				}
+
+				if (id in data.value) {
+					next[id] = data.value[id];
+				} else {
+					delete next[id];
+				}
+			}
+
+			data.value = next;
 			health.value = Object.fromEntries(Object.entries(health.value).filter(([id]) => id in data.value));
 
 			return endpoints;
@@ -88,6 +132,8 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		});
 
 		if (responseData) {
+			markMutated(responseData.data.id);
+
 			return (data.value[responseData.data.id] = transformModbusEndpoint(responseData.data));
 		}
 
@@ -98,7 +144,7 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		);
 	};
 
-	const edit = async (id: string, payload: IModbusEndpointUpdate): Promise<IModbusEndpoint> => {
+	const sendEdit = async (id: string, payload: IModbusEndpointUpdate): Promise<IModbusEndpoint> => {
 		const {
 			data: responseData,
 			error,
@@ -109,6 +155,8 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		});
 
 		if (responseData) {
+			markMutated(id);
+
 			return (data.value[id] = transformModbusEndpoint(responseData.data));
 		}
 
@@ -119,7 +167,9 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 		);
 	};
 
-	const remove = async (id: string): Promise<void> => {
+	const edit = (id: string, payload: IModbusEndpointUpdate): Promise<IModbusEndpoint> => enqueue(id, () => sendEdit(id, payload));
+
+	const sendRemove = async (id: string): Promise<void> => {
 		const { error, response } = await backend.client.DELETE(`${BASE}/{id}`, { params: { path: { id } } });
 
 		if (error) {
@@ -129,9 +179,12 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 			);
 		}
 
+		markMutated(id);
 		delete data.value[id];
 		delete health.value[id];
 	};
+
+	const remove = (id: string): Promise<void> => enqueue(id, () => sendRemove(id));
 
 	const requestHealth = async (id: string) => backend.client.GET(`${BASE}/{id}/health`, { params: { path: { id } } });
 

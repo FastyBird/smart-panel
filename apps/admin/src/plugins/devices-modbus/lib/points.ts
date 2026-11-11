@@ -1,6 +1,6 @@
-import type {
-	ApiCreateModbusDeviceStructure,
-	DevicesModbusPluginByteOrder,
+import {
+	type ApiCreateModbusDeviceStructure,
+	type DevicesModbusPluginByteOrder,
 	DevicesModbusPluginDataType,
 	DevicesModbusPluginRegisterType,
 	DevicesModbusPluginWriteFunction,
@@ -283,3 +283,68 @@ const NUMERIC_DATA_TYPES: readonly string[] = ['char', 'uchar', 'short', 'ushort
  */
 export const valueMapValueFromText = (text: string, dataType: string): string | number =>
 	NUMERIC_DATA_TYPES.includes(dataType) && text.trim() !== '' && Number.isFinite(Number(text)) ? Number(text) : text;
+
+const ADDRESS_SPACE = 65536;
+
+/** Registers (or coils) a binding occupies: 32-bit values take two registers. */
+export const bindingSpan = (binding: Pick<ModbusPointBinding, 'registerType' | 'dataType'>): number => {
+	if (binding.registerType === DevicesModbusPluginRegisterType.coil || binding.registerType === DevicesModbusPluginRegisterType.discrete_input) {
+		return 1;
+	}
+
+	return binding.dataType === DevicesModbusPluginDataType.int32 ||
+		binding.dataType === DevicesModbusPluginDataType.uint32 ||
+		binding.dataType === DevicesModbusPluginDataType.float32
+		? 2
+		: 1;
+};
+
+export type ModbusBindingIssueField = 'address' | 'dataType' | 'valueMap' | 'invert' | 'writeFunction';
+
+/**
+ * The binding rules the backend applies when the device is created, as translation keys per field, so the point
+ * editor can refuse a combination before the wizard reaches Create. `binding` carries the parsed address and table.
+ */
+export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write'): Partial<Record<ModbusBindingIssueField, string>> {
+	const issues: Partial<Record<ModbusBindingIssueField, string>> = {};
+	const bitTable =
+		binding.registerType === DevicesModbusPluginRegisterType.coil || binding.registerType === DevicesModbusPluginRegisterType.discrete_input;
+	const span = bindingSpan(binding);
+
+	if (bitTable && binding.dataType !== DevicesModbusPluginDataType.bool) {
+		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.bitTableBool';
+	}
+
+	if (binding.address + span > ADDRESS_SPACE) {
+		issues.address = 'devicesModbusPlugin.wizard.points.errors.beyondAddressSpace';
+	}
+
+	const valueMap = binding.valueMap ?? [];
+
+	if (valueMap.length > 0) {
+		const raws = valueMap.map((entry) => entry.raw);
+		const values = valueMap.map((entry) => entry.value);
+
+		if (binding.dataType === DevicesModbusPluginDataType.float32) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapFloat';
+		} else if (binding.scale !== 1 || binding.offset !== 0) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapScaled';
+		} else if (raws.some((raw) => typeof raw !== 'number' || !Number.isFinite(raw))) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapRaw';
+		} else if (new Set(raws).size !== raws.length) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapRawUnique';
+		} else if (new Set(values).size !== values.length) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapValueUnique';
+		}
+
+		if (binding.invert) {
+			issues.invert = 'devicesModbusPlugin.wizard.points.errors.valueMapInvert';
+		}
+	}
+
+	if (kind === 'write' && binding.writeFunction === DevicesModbusPluginWriteFunction.single && span > 1) {
+		issues.writeFunction = 'devicesModbusPlugin.wizard.points.errors.singleWrite32';
+	}
+
+	return issues;
+}

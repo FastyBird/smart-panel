@@ -2,7 +2,7 @@
 	<el-form
 		ref="formEl"
 		:model="model"
-		:disabled="disabled"
+		:disabled="disabled || busy"
 		:rules="rules"
 		label-position="top"
 		status-icon
@@ -181,15 +181,15 @@ const rules = reactive<FormRules>({
 	host: [required('devicesModbusPlugin.endpoints.form.host.required')],
 });
 
-let busy = false;
-
-// Locked before the validation is awaited, so a second Save click while validating does not start a second save.
+// Locked before the validation is awaited, so a second Save click while validating does not start a second save. The
+// fields are locked too: the request carries the values from when Save was clicked, so a later edit would be lost.
+const busy = ref<boolean>(false);
 const onSubmit = async (): Promise<void> => {
-	if (!formEl.value || busy) {
+	if (!formEl.value || busy.value) {
 		return;
 	}
 
-	busy = true;
+	busy.value = true;
 	emit('update:submitting', true);
 
 	try {
@@ -203,7 +203,7 @@ const onSubmit = async (): Promise<void> => {
 	} catch {
 		// Field errors and the form alert are set by the composable.
 	} finally {
-		busy = false;
+		busy.value = false;
 		emit('update:submitting', false);
 	}
 };

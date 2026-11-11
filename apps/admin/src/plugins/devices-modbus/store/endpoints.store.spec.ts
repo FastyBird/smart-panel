@@ -259,4 +259,86 @@ describe('Modbus endpoints store', () => {
 		});
 		expect(store.health['abc']).toEqual(health);
 	});
+
+	it('sends a second change of the same endpoint only after the first one answered, so the last change wins', async () => {
+		const id = '4a2515a6-7e87-4e51-96cc-832698237613';
+		let answerToggle!: (value: unknown) => void;
+
+		patch.mockReturnValueOnce(new Promise((resolve) => (answerToggle = resolve)));
+		patch.mockResolvedValueOnce({ data: { data: wireEndpoint({ name: 'Renamed', enabled: false }) }, response: { status: 200 } });
+
+		const store = useModbusEndpoints();
+
+		const toggle = store.edit(id, { enabled: false });
+		const rename = store.edit(id, { name: 'Renamed' });
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(patch).toHaveBeenCalledTimes(1);
+
+		answerToggle({ data: { data: wireEndpoint({ enabled: false }) }, response: { status: 200 } });
+		await Promise.all([toggle, rename]);
+
+		expect(patch).toHaveBeenCalledTimes(2);
+		expect(store.findById(id)).toMatchObject({ name: 'Renamed', enabled: false });
+	});
+
+	it('runs the next change even when the previous one of the same endpoint failed', async () => {
+		const id = '4a2515a6-7e87-4e51-96cc-832698237613';
+
+		patch.mockResolvedValueOnce({ data: undefined, error: { reason: 'Nope' }, response: { status: 422 } });
+		patch.mockResolvedValueOnce({ data: { data: wireEndpoint({ name: 'Renamed' }) }, response: { status: 200 } });
+
+		const store = useModbusEndpoints();
+
+		await expect(store.edit(id, { enabled: false })).rejects.toThrow('Nope');
+		await expect(store.edit(id, { name: 'Renamed' })).resolves.toMatchObject({ name: 'Renamed' });
+	});
+
+	it('keeps endpoints added, edited or removed while a list load was in flight', async () => {
+		const kept = wireEndpoint();
+		const removed = wireEndpoint({ id: 'removed-id', name: 'Removed' });
+		let answerList!: (value: unknown) => void;
+
+		get.mockResolvedValueOnce({ data: { data: [kept, removed] }, response: { status: 200 } });
+
+		const store = useModbusEndpoints();
+
+		await store.fetch();
+
+		get.mockReturnValueOnce(new Promise((resolve) => (answerList = resolve)));
+
+		const loading = store.fetch();
+
+		post.mockResolvedValueOnce({ data: { data: wireEndpoint({ id: 'new-id', name: 'New' }) }, response: { status: 201 } });
+		patch.mockResolvedValueOnce({ data: { data: { ...kept, name: 'Renamed' } }, response: { status: 200 } });
+		del.mockResolvedValueOnce({ response: { status: 204 } });
+
+		await store.add({ name: 'New', host: '10.0.0.9' } as never);
+		await store.edit(kept.id, { name: 'Renamed' });
+		await store.remove('removed-id');
+
+		// The list was read before those changes.
+		answerList({ data: { data: [kept, removed] }, response: { status: 200 } });
+		await loading;
+
+		expect(store.findById(kept.id)?.name).toBe('Renamed');
+		expect(store.findById('new-id')?.name).toBe('New');
+		expect(store.findById('removed-id')).toBeNull();
+	});
+
+	it('lets a list load started after a change replace the cached endpoints', async () => {
+		const endpoint = wireEndpoint();
+
+		patch.mockResolvedValueOnce({ data: { data: { ...endpoint, name: 'Renamed' } }, response: { status: 200 } });
+		get.mockResolvedValueOnce({ data: { data: [{ ...endpoint, name: 'Renamed elsewhere' }] }, response: { status: 200 } });
+
+		const store = useModbusEndpoints();
+
+		await store.edit(endpoint.id, { name: 'Renamed' });
+		await store.fetch();
+
+		expect(store.findById(endpoint.id)?.name).toBe('Renamed elsewhere');
+	});
 });

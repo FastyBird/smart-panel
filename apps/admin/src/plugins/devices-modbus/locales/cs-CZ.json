@@ -141,7 +141,16 @@
 			"errors": {
 				"registerType": "This capability cannot use that register table",
 				"writeRegisterType": "A write binding must use a coil or holding register",
-				"tooManyTotal": "A device can have at most {max} points ({free} more can be added)"
+				"tooManyTotal": "A device can have at most {max} points ({free} more can be added)",
+				"bitTableBool": "Coils and discrete inputs use the bool data type",
+				"beyondAddressSpace": "This runs past the last address (65535)",
+				"valueMapFloat": "A value map cannot be used with float32",
+				"valueMapScaled": "A value map cannot be combined with a scale or an offset",
+				"valueMapRaw": "Every value map entry needs a raw number",
+				"valueMapRawUnique": "Each raw value can appear only once in the value map",
+				"valueMapValueUnique": "Each value can appear only once in the value map",
+				"valueMapInvert": "Invert cannot be combined with a value map; express the inversion in the map",
+				"singleWrite32": "A 32-bit value spans two registers and needs the multiple write function"
 			},
 			"editor": {
 				"title": "Edit point",

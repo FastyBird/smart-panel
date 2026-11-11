@@ -4,12 +4,14 @@ import {
 	DevicesModbusPluginByteOrder as BO,
 	DevicesModbusPluginDataType as DT,
 	DevicesModbusPluginRegisterType as RT,
+	DevicesModbusPluginWriteFunction as WF,
 } from '../../../openapi.constants';
 import type { IModbusTemplatePreview } from '../store/templates.types';
 
 import {
 	type ModbusPoint,
 	type ModbusPointBinding,
+	bindingIssues,
 	pointsFromPreview,
 	pointsFromRange,
 	samePoints,
@@ -422,5 +424,72 @@ describe('valueMapValueFromText', () => {
 	it('keeps text that is not a number, and an empty input, as text', () => {
 		expect(valueMapValueFromText('on', 'uint')).toBe('on');
 		expect(valueMapValueFromText('', 'int')).toBe('');
+	});
+});
+
+describe('bindingIssues', () => {
+	it('accepts a plain binding', () => {
+		expect(bindingIssues(binding(), 'write')).toEqual({});
+	});
+
+	it('requires the bool data type on coils and discrete inputs', () => {
+		expect(bindingIssues(binding({ dataType: DT.uint16 }), 'read').dataType).toBe('devicesModbusPlugin.wizard.points.errors.bitTableBool');
+	});
+
+	it('refuses a 32-bit value on the last register', () => {
+		const last = binding({ registerType: RT.holding_register, dataType: DT.uint32, address: 65535 });
+
+		expect(bindingIssues(last, 'read').address).toBe('devicesModbusPlugin.wizard.points.errors.beyondAddressSpace');
+		expect(bindingIssues({ ...last, dataType: DT.uint16 }, 'read').address).toBeUndefined();
+	});
+
+	it('refuses a value map combined with invert, float32, scale or repeated entries', () => {
+		const mapped = binding({
+			registerType: RT.holding_register,
+			dataType: DT.uint16,
+			valueMap: [
+				{ raw: 0, value: 'off' },
+				{ raw: 1, value: 'on' },
+			],
+		});
+
+		expect(bindingIssues(mapped, 'read')).toEqual({});
+		expect(bindingIssues({ ...mapped, invert: true }, 'read').invert).toBe('devicesModbusPlugin.wizard.points.errors.valueMapInvert');
+		expect(bindingIssues({ ...mapped, dataType: DT.float32 }, 'read').valueMap).toBe('devicesModbusPlugin.wizard.points.errors.valueMapFloat');
+		expect(bindingIssues({ ...mapped, scale: 10 }, 'read').valueMap).toBe('devicesModbusPlugin.wizard.points.errors.valueMapScaled');
+		expect(
+			bindingIssues(
+				{
+					...mapped,
+					valueMap: [
+						{ raw: 1, value: 'off' },
+						{ raw: 1, value: 'on' },
+					],
+				},
+				'read'
+			).valueMap
+		).toBe('devicesModbusPlugin.wizard.points.errors.valueMapRawUnique');
+		expect(
+			bindingIssues(
+				{
+					...mapped,
+					valueMap: [
+						{ raw: 0, value: 'on' },
+						{ raw: 1, value: 'on' },
+					],
+				},
+				'read'
+			).valueMap
+		).toBe('devicesModbusPlugin.wizard.points.errors.valueMapValueUnique');
+		expect(bindingIssues({ ...mapped, valueMap: [{ raw: null as unknown as number, value: 'on' }] }, 'read').valueMap).toBe(
+			'devicesModbusPlugin.wizard.points.errors.valueMapRaw'
+		);
+	});
+
+	it('refuses the single write function for a 32-bit value', () => {
+		const wide = binding({ registerType: RT.holding_register, dataType: DT.int32, writeFunction: WF.single });
+
+		expect(bindingIssues(wide, 'write').writeFunction).toBe('devicesModbusPlugin.wizard.points.errors.singleWrite32');
+		expect(bindingIssues({ ...wide, writeFunction: WF.multiple }, 'write').writeFunction).toBeUndefined();
 	});
 });

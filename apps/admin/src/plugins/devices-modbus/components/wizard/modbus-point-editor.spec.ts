@@ -108,4 +108,47 @@ describe('ModbusPointEditor', () => {
 		expect(saved.read?.address).toBe(7);
 		expect(saved.write?.address).toBe(7);
 	}, 15_000);
+
+	it('refuses to save a coil read as uint16 and shows why', async () => {
+		const wrapper = mountEditor();
+		await flushPromises();
+
+		const dataTypeItem = () =>
+			wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('label') === 'devicesModbusPlugin.wizard.points.columns.dataType')!;
+
+		dataTypeItem().findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', DevicesModbusPluginDataType.uint16);
+		await flushPromises();
+
+		expect(dataTypeItem().props('error')).toBe('devicesModbusPlugin.wizard.points.errors.bitTableBool');
+		expect(wrapper.find('[data-test-id="point-editor-save"]').attributes('disabled')).toBeDefined();
+
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		expect(wrapper.emitted('save')).toBeUndefined();
+	}, 15_000);
+
+	it('refuses to save a value map combined with invert', async () => {
+		const mapped: ModbusPointBinding = {
+			...binding(4),
+			registerType: DevicesModbusPluginRegisterType.holding_register,
+			dataType: DevicesModbusPluginDataType.uint16,
+			invert: true,
+			valueMap: [
+				{ raw: 0, value: false },
+				{ raw: 1, value: true },
+			],
+		};
+		const wrapper = mount(ModbusPointEditor, {
+			props: { visible: true, point: { ...relay(), read: mapped, write: null, permissions: ['ro'] }, notation: 'pdu', capabilityEditable: true },
+			global: { stubs: { ElDialog: { template: '<div><slot /><slot name="footer" /></div>' } } },
+		});
+		await flushPromises();
+
+		const invertItem = wrapper
+			.findAllComponents({ name: 'ElFormItem' })
+			.find((item) => item.props('label') === 'devicesModbusPlugin.wizard.points.columns.invert')!;
+
+		expect(invertItem.props('error')).toBe('devicesModbusPlugin.wizard.points.errors.valueMapInvert');
+		expect(wrapper.find('[data-test-id="point-editor-save"]').attributes('disabled')).toBeDefined();
+	}, 15_000);
 });

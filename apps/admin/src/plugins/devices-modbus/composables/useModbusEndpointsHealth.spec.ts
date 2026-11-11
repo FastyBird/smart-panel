@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import { modbusEndpointsStoreKey } from '../store/keys';
 
-import { healthRoundDelay, useModbusEndpointsHealth } from './useModbusEndpointsHealth';
+import { MODBUS_HEALTH_ROUND_SIZE, healthRoundDelay, useModbusEndpointsHealth } from './useModbusEndpointsHealth';
 
 const store = {
 	findAll: vi.fn(),
@@ -129,6 +129,33 @@ describe('useModbusEndpointsHealth', () => {
 		await flushPromises();
 
 		expect(store.fetchHealth).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+	});
+
+	it('asks at most one round size of endpoints per round and continues with the rest in the next rounds', async () => {
+		const endpoints = Array.from({ length: 250 }, (_, index) => ({ id: `e${index}` }));
+		store.findAll.mockReturnValue(endpoints);
+
+		expect(healthRoundDelay(250, 5000)).toBe(60_000);
+
+		const asked = (): string[] => store.fetchHealth.mock.calls.map(([id]) => id as string);
+
+		const wrapper = mountComposable(5000);
+		await flushPromises();
+
+		expect(asked()).toHaveLength(MODBUS_HEALTH_ROUND_SIZE);
+		expect(asked()[0]).toBe('e0');
+
+		await vi.advanceTimersByTimeAsync(60_000);
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		const all = asked();
+
+		expect(all).toHaveLength(MODBUS_HEALTH_ROUND_SIZE * 3);
+		// The third round wraps around to the start of the list.
+		expect(all[MODBUS_HEALTH_ROUND_SIZE]).toBe(`e${MODBUS_HEALTH_ROUND_SIZE}`);
+		expect(new Set(all).size).toBe(250);
+
 		wrapper.unmount();
 	});
 });

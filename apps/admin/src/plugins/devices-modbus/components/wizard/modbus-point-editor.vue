@@ -81,7 +81,10 @@
 						</div>
 					</el-form-item>
 
-					<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.dataType')">
+					<el-form-item
+						:label="t('devicesModbusPlugin.wizard.points.columns.dataType')"
+						:error="issueOf(section.kind, 'dataType')"
+					>
 						<el-select
 							v-model="section.binding.dataType"
 							class="w-[120px]!"
@@ -140,7 +143,7 @@
 						</el-select>
 					</el-form-item>
 
-					<template v-if="!hasValueMap(section.binding)">
+					<template v-if="!hasValueMap(section.binding) || section.binding.scale !== 1 || section.binding.offset !== 0">
 						<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.scale')">
 							<el-input-number
 								v-model="section.binding.scale"
@@ -158,13 +161,17 @@
 						</el-form-item>
 					</template>
 
-					<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.invert')">
+					<el-form-item
+						:label="t('devicesModbusPlugin.wizard.points.columns.invert')"
+						:error="issueOf(section.kind, 'invert')"
+					>
 						<el-switch v-model="section.binding.invert" />
 					</el-form-item>
 
 					<el-form-item
 						v-if="section.kind === 'write'"
 						:label="t('devicesModbusPlugin.wizard.points.columns.writeFunction')"
+						:error="issueOf(section.kind, 'writeFunction')"
 					>
 						<el-select
 							:model-value="section.binding.writeFunction ?? DEVICE_ORDER"
@@ -187,7 +194,10 @@
 					</el-form-item>
 				</div>
 
-				<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.valueMap')">
+				<el-form-item
+					:label="t('devicesModbusPlugin.wizard.points.columns.valueMap')"
+					:error="issueOf(section.kind, 'valueMap')"
+				>
 					<div class="flex flex-col gap-1 w-full">
 						<div
 							v-for="(entry, index) in section.binding.valueMap ?? []"
@@ -271,7 +281,7 @@ import {
 } from '../../../../openapi.constants';
 import { type ParsedAddress, formatAddress, parseAddressInput } from '../../lib/address-notation';
 import { CUSTOM_CAPABILITIES, applyCapability, capabilityKeyOf } from '../../lib/capabilities';
-import { type ModbusPoint, type ModbusPointBinding, valueMapValueFromText } from '../../lib/points';
+import { type ModbusBindingIssueField, type ModbusPoint, type ModbusPointBinding, bindingIssues, valueMapValueFromText } from '../../lib/points';
 
 import type { IModbusPointEditorProps } from './modbus-point-editor.types';
 
@@ -354,6 +364,11 @@ const onRegisterTypeChange = (kind: Kind, type: DevicesModbusPluginRegisterType)
 
 	binding.registerType = type;
 
+	// Coils and discrete inputs hold a single bit.
+	if (type === DevicesModbusPluginRegisterType.coil || type === DevicesModbusPluginRegisterType.discrete_input) {
+		binding.dataType = DevicesModbusPluginDataType.bool;
+	}
+
 	if (parsed !== null) {
 		addressTexts[kind] = formatAddress(parsed.start, type, props.notation);
 	}
@@ -394,10 +409,41 @@ const parseKind = (kind: Kind): { parsed: ParsedAddress | null; error: string | 
 
 const parsedAddress = (kind: Kind): ParsedAddress | null => parseKind(kind).parsed;
 
-const addressError = (kind: Kind): string | null => parseKind(kind).error;
+// The rules the backend checks on Create, applied to the binding as it would be saved (parsed address and table).
+const issuesOf = (kind: Kind): Partial<Record<ModbusBindingIssueField, string>> => {
+	const binding = draft.value?.[kind] ?? null;
+
+	if (binding === null) {
+		return {};
+	}
+
+	const parsed = parsedAddress(kind);
+
+	if (parsed === null) {
+		// The address field already shows why it does not parse.
+		const issues = bindingIssues(binding, kind);
+
+		delete issues.address;
+
+		return issues;
+	}
+
+	return bindingIssues({ ...binding, address: parsed.start, registerType: parsed.registerType ?? binding.registerType }, kind);
+};
+
+const issueOf = (kind: Kind, field: ModbusBindingIssueField): string | undefined => {
+	const key = issuesOf(kind)[field];
+
+	return key === undefined ? undefined : t(key);
+};
+
+const addressError = (kind: Kind): string | null => parseKind(kind).error ?? issueOf(kind, 'address') ?? null;
 
 const canSave = computed<boolean>(
-	() => draft.value !== null && draft.value.name.trim() !== '' && sections.value.every((section) => parseKind(section.kind).error === null)
+	() =>
+		draft.value !== null &&
+		draft.value.name.trim() !== '' &&
+		sections.value.every((section) => parseKind(section.kind).error === null && Object.keys(issuesOf(section.kind)).length === 0)
 );
 
 const showBit = (binding: ModbusPointBinding): boolean =>
