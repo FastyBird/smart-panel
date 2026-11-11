@@ -82,7 +82,8 @@ export type IntentOrigin =
 	| 'panel.scenes'
 	| 'panel.spaces'
 	| 'admin'
-	| 'api';
+	| 'api'
+	| 'automation';
 
 /**
  * All valid intent origin values for validation
@@ -98,4 +99,6 @@ export const INTENT_ORIGINS: IntentOrigin[] = [
 	'panel.spaces',
 	'admin',
 	'api',
+	// Set by the backend for what an automation did; a client never sends it
+	'automation',
 ];
