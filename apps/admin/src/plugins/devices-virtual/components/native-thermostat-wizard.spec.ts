@@ -120,4 +120,59 @@ describe('native thermostat wizard', () => {
 		expect(mocks.candidates).toHaveBeenCalledTimes(3);
 		wrapper.unmount();
 	});
+
+	it('offers nothing to create again until the list is read after an uncertain create', async () => {
+		mocks.create.mockRejectedValue(new Error('native_request_failed'));
+		const wrapper = mounted();
+		await flushPromises();
+		const select = wrapper.findComponent({ name: 'ElSelect' });
+		select.vm.$emit('update:modelValue', 'z');
+		select.vm.$emit('change', 'z');
+		await flushPromises();
+		wrapper.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 2);
+		await flushPromises();
+		mocks.candidates.mockRejectedValueOnce(new Error('native_request_failed'));
+		await wrapper.get('[data-test-id="native-wizard-create"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="native-wizard-error"]').text()).toContain(en.nativeThermostat.uncertain);
+		expect(wrapper.findAllComponents({ name: 'ElOption' })).toHaveLength(0);
+		expect(wrapper.get('[data-test-id="native-wizard-create"]').attributes('disabled')).toBeDefined();
+		await wrapper.get('[data-test-id="native-wizard-refresh"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.findAllComponents({ name: 'ElOption' })).toHaveLength(3);
+		expect(wrapper.get('[data-test-id="native-wizard-create"]').attributes('disabled')).toBeUndefined();
+		wrapper.unmount();
+	});
+
+	it('gives up on a create that never answers instead of holding the page', async () => {
+		vi.useFakeTimers();
+		try {
+			let aborted = false;
+			mocks.create.mockImplementation(
+				(_name: string, _source: string, signal: AbortSignal) =>
+					new Promise(() => {
+						signal.addEventListener('abort', () => (aborted = true));
+					})
+			);
+			const wrapper = mounted();
+			await flushPromises();
+			const select = wrapper.findComponent({ name: 'ElSelect' });
+			select.vm.$emit('update:modelValue', 'h');
+			select.vm.$emit('change', 'h');
+			await flushPromises();
+			wrapper.findComponent({ name: 'VirtualWizardSteps' }).vm.$emit('update:modelValue', 2);
+			await flushPromises();
+			await wrapper.get('[data-test-id="native-wizard-create"]').trigger('click');
+			await flushPromises();
+			expect(wrapper.emitted('busy')).toEqual([[true]]);
+			await vi.advanceTimersByTimeAsync(10_000);
+			await flushPromises();
+			expect(aborted).toBe(true);
+			expect(wrapper.emitted('busy')).toEqual([[true], [false]]);
+			expect(wrapper.get('[data-test-id="native-wizard-error"]').text()).toContain(en.nativeThermostat.uncertain);
+			wrapper.unmount();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 });

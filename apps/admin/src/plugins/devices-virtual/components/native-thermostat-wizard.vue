@@ -14,6 +14,15 @@
 			class="mb-3"
 			data-test-id="native-wizard-error"
 		/>
+		<el-button
+			v-if="error"
+			:disabled="busy"
+			class="mb-3"
+			data-test-id="native-wizard-refresh"
+			@click="load"
+		>
+			{{ label('refresh') }}
+		</el-button>
 
 		<div v-show="step === 0">
 			<el-alert
@@ -187,15 +196,46 @@ const onSource = (): void => {
 };
 
 let alive = true;
-const controller = new AbortController();
-const load = async (): Promise<void> => {
+const requests = new Set<AbortController>();
+const REQUEST_DEADLINE_MS = 10_000;
+/**
+ * The shared client has no deadline of its own, and while a create is pending the shell refuses to
+ * leave the page — so a stalled response would trap the user here. Every request is bounded; one
+ * that runs out is aborted and handled like any other failure.
+ */
+const bounded = async <T,>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+	const request = new AbortController();
+	requests.add(request);
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			operation(request.signal),
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => {
+					request.abort();
+					reject(new Error('deadline'));
+				}, REQUEST_DEADLINE_MS);
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+		requests.delete(request);
+	}
+};
+const load = async (): Promise<boolean> => {
 	loading.value = true;
 	error.value = null;
 	try {
-		const result = await transport.candidates(controller.signal);
+		const result = await bounded((signal) => transport.candidates(signal));
 		if (alive) candidates.value = result;
+		return true;
 	} catch {
-		if (alive) error.value = label('readFailed');
+		if (alive) {
+			// A list that could not be read says nothing about what is eligible now.
+			candidates.value = [];
+			error.value = label('readFailed');
+		}
+		return false;
 	} finally {
 		if (alive) loading.value = false;
 	}
@@ -206,25 +246,25 @@ const create = async (): Promise<void> => {
 	creating.value = true;
 	error.value = null;
 	try {
-		const result = await transport.create(name.value.trim(), unit.device, controller.signal);
+		const result = await bounded((signal) => transport.create(name.value.trim(), unit.device, signal));
 		if (!alive) return;
 		creating.value = false;
 		// Let the shell see the request has ended before it is asked to navigate away.
 		await nextTick();
 		emit('created', result.controller);
 	} catch {
-		// The request may have been applied; the list says whether the unit is now taken.
-		if (alive) {
-			creating.value = false;
-			await load();
-			if (alive) error.value = label('uncertain');
-		}
+		if (!alive) return;
+		creating.value = false;
+		// The request may have been applied. Only a fresh list can say whether the unit is now taken,
+		// so another attempt waits for one: a failed refresh leaves nothing to choose from.
+		await load();
+		if (alive) error.value = label('uncertain');
 	}
 };
 watch(creating, (value) => emit('busy', value));
 onMounted(load);
 onBeforeUnmount(() => {
 	alive = false;
-	controller.abort();
+	for (const request of requests) request.abort();
 });
 </script>
