@@ -47,6 +47,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../src/modules/devices/entities/devices.entity';
 import type { NativeClimateUnit } from '../src/modules/devices/platforms/native-climate.contract';
 import { ChannelsPropertiesTypeMapperService } from '../src/modules/devices/services/channels.properties-type-mapper.service';
+import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
 import { ClimateAutomationLedgerService } from '../src/modules/devices/services/climate-automation-ledger.service';
 import { ClimateAutomationRegistryService } from '../src/modules/devices/services/climate-automation.registry.service';
 import { ControllerPublicationContext } from '../src/modules/devices/services/controller-publication-context';
@@ -1056,7 +1057,8 @@ async function verifyThermostatWire(
 			// This one-branch default does not require an explicit floor or cooled-surface dependency.
 			expect(await dataSource.manager.count(ThermostatMemberProtectionEntity)).toBe(hasFloor ? 1 : 0);
 			expect(await dataSource.manager.count(ThermostatCoolingDependencyEntity)).toBe(hasCooling ? 1 : 0);
-			// The creating transaction increments once; ordinary asynchronous status writes retain their legacy graph path.
+			// The creating transaction increments once. A status write is a value report and does not advance
+			// the graph; anything still taking the unconditional structural path is counted through its spy.
 			expect(result.configuration.graph_revision).toBe(revision + 1);
 			expect(await graph.revision()).toBe(
 				revision +
@@ -3228,6 +3230,58 @@ describe('devices-virtual plugin (e2e)', () => {
 		});
 	});
 
+	describe('a value report on a virtual property', () => {
+		it('does not advance the graph revision, while a change to the row still does', async () => {
+			const created = await authPost('/modules/devices/devices')
+				.send({
+					data: { type: DEVICES_VIRTUAL_TYPE, category: DeviceCategory.LIGHTING, name: 'E2E Value Report Light' },
+				})
+				.expect(201);
+			const deviceId = (created.body as { data: DeviceBody }).data.id;
+			const statusPropertyId = await waitUntil<string>(async () => {
+				const response = await authGet(`/modules/devices/devices/${deviceId}/channels`);
+				const status =
+					response.status === 200
+						? (response.body as { data: ChannelBody[] }).data
+								.find((candidate) => candidate.category === String(ChannelCategory.DEVICE_INFORMATION))
+								?.properties.find((property) => property.category === PropertyCategory.STATUS)
+						: undefined;
+
+				return { done: !!status, value: status?.id ?? '' };
+			}, 'the synthesized connection state property');
+			const revision = async (): Promise<number> =>
+				(
+					await dataSource.query<{ revision: number }[]>(
+						'SELECT "revision" FROM "devices_virtual_graph_revision" WHERE "id" = 1',
+					)
+				)[0]?.revision ?? 0;
+			const properties = moduleRef.get<ChannelsPropertiesService>(ChannelsPropertiesService);
+			// The device information synthesis that follows creation is fire-and-forget and each of its
+			// rows is a structural write, so the baseline is the revision once it has stopped moving.
+			let before = await revision();
+			for (let quiet = 0; quiet < 4; ) {
+				await new Promise((resolve) => setTimeout(resolve, 250));
+				const current = await revision();
+				quiet = current === before ? quiet + 1 : 0;
+				before = current;
+			}
+
+			// The write DeviceConnectivityService issues for every status change: type and value only.
+			for (const state of [ConnectionState.DISCONNECTED, ConnectionState.CONNECTED, ConnectionState.DISCONNECTED])
+				await properties.update(statusPropertyId, { type: DEVICES_VIRTUAL_TYPE, value: String(state) });
+
+			expect((await properties.getOneOrThrow(statusPropertyId)).value?.value).toBe(
+				String(ConnectionState.DISCONNECTED),
+			);
+			expect(await revision()).toBe(before);
+
+			// A stored field of the same row is a change to the catalog and keeps advancing.
+			await properties.update(statusPropertyId, { type: DEVICES_VIRTUAL_TYPE, name: 'Renamed status' });
+
+			expect(await revision()).toBe(before + 1);
+		});
+	});
+
 	describe('unhiding an abandoned source device', () => {
 		let ownSourceDeviceId: string;
 		let ownSourcePropertyId: string;
@@ -5105,7 +5159,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		});
 		try {
 			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
-			expect(expectedNames).toHaveLength(56);
+			expect(expectedNames).toHaveLength(57);
 			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
 			expect(expectedNames).toContain('AddSpaceModeSchedules1000000000050');
 			expect(expectedNames).toContain('AddSpaceOccupancy1000000000051');
@@ -5113,6 +5167,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			expect(expectedNames).toContain('AddThermostatOverrideClocks1000000000053');
 			expect(expectedNames).toContain('AddModbusDevices1000000000054');
 			expect(expectedNames).toContain('FixWledHardwareIdentityIndex1000000000055');
+			expect(expectedNames).toContain('AddAutomations1000000000056');
 			const applied = await prepared.runMigrations({ transaction: 'each' });
 			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {
@@ -5338,7 +5393,15 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		let progress: ReturnType<typeof captureChannelWriterProgress> | undefined;
 		const observer = {
 			afterQuery(event: import('typeorm').AfterQueryEvent<unknown>) {
-				if (event.success && /^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query)) graphWrites++;
+				// A write that may not be structural reserves the writer slot with an UPDATE that matches no
+				// row (`... WHERE 0`) and advances only if a stored field changed; that reservation is not
+				// an advance, so it is not counted as one.
+				if (
+					event.success &&
+					/^UPDATE ["`]?devices_virtual_graph_revision/i.test(event.query) &&
+					!/WHERE 0\s*$/i.test(event.query)
+				)
+					graphWrites++;
 			},
 		};
 		// Keep the checked-in Jest logger mock as the passthrough target, without adopting its call buffer.

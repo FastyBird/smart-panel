@@ -34,6 +34,37 @@
 	},
 	"wizard": {
 		"title": "Create virtual device",
+		"selectKind": "Choose what to create",
+		"kinds": {
+			"projection": {
+				"title": "Projection",
+				"description": "Present channels of existing devices as one new device of a chosen category."
+			},
+			"aggregate": {
+				"title": "Sensor aggregate",
+				"description": "Combine several sensors into one reading, such as an average room temperature."
+			},
+			"transform": {
+				"title": "Numeric conversion",
+				"description": "Convert one reading into another, including calibration and NTC probes."
+			},
+			"dewPoint": {
+				"title": "Dew point",
+				"description": "Calculate the dew point from a temperature and a relative humidity sensor."
+			},
+			"group": {
+				"title": "Actuator group",
+				"description": "Control several lights, switches, outlets, fans or covers as one device."
+			},
+			"thermostat": {
+				"title": "Thermostat from relays",
+				"description": "Build a thermostat from relays and temperature sensors. Smart Panel does the regulation."
+			},
+			"nativeThermostat": {
+				"title": "Controller for an existing thermostat",
+				"description": "Put a Smart Panel controller on top of a thermostat device you already have. Supported: Home Assistant and Zigbee2MQTT thermostats."
+			}
+		},
 		"subtitle": "Build a device from another device's channels",
 		"breadcrumb": "Create virtual device",
 		"viewDevice": "View device",
@@ -41,7 +72,15 @@
 			"category": "Category",
 			"mapping": "Mapping",
 			"details": "Details",
-			"review": "Review"
+			"review": "Review",
+			"output": "Output",
+			"sources": "Sources",
+			"processing": "Processing",
+			"members": "Members",
+			"capabilities": "Capabilities",
+			"settings": "Settings",
+			"actuators": "Actuators",
+			"device": "Device"
 		},
 		"category": {
 			"heading": "Choose a category",
@@ -455,7 +494,7 @@
 		}
 	},
 	"nativeThermostat": {
-		"title": "Native HA / Zigbee thermostat",
+		"title": "Controller for an existing thermostat",
 		"strategy": "Control strategy",
 		"guarded": "Guarded relay branches",
 		"delegation": "The physical thermostat regulates temperature. No floor, condensation or opposed-output protection is provided.",
@@ -489,6 +528,160 @@
 		"released": "Released",
 		"drift": "Observed settings differ from the request",
 		"release": "Release controller",
-		"releaseHelp": "Release the Smart Panel reservation? This waits for issued work but sends no OFF command. The physical thermostat may continue regulating."
+		"releaseHelp": "Release the Smart Panel reservation? This waits for issued work but sends no OFF command. The physical thermostat may continue regulating.",
+		"wizard": {
+			"intro": "This controller works with a real thermostat device. The device keeps regulating the temperature; Smart Panel sends it the requested mode and setpoints and shows what it reports back.",
+			"supported": "Only thermostats from Home Assistant and Zigbee2MQTT are supported for now. Devices from other integrations are not listed.",
+			"unitPlaceholder": "Select a thermostat device",
+			"noCandidates": "No supported thermostat device was found. Add a Home Assistant or Zigbee2MQTT thermostat first.",
+			"providers": {
+				"home-assistant": "Home Assistant",
+				"zigbee2mqtt": "Zigbee2MQTT"
+			},
+			"reasons": {
+				"reserved": "already used by another controller"
+			},
+			"summary": {
+				"provider": "Integration",
+				"modes": "Supported modes",
+				"range": "{minimum}–{maximum} °C, step {step}",
+				"unsupported": "Not supported"
+			}
+		}
+	},
+	"thermostat": {
+		"title": {
+			"create": "Create virtual thermostat",
+			"edit": "Thermostat configuration"
+		},
+		"draft": {
+			"title": "Draft controller",
+			"description": "Configuration and reservations persist, but heating and cooling remain unavailable until hardware qualification and runtime reconciliation."
+		},
+		"name": "Thermostat name",
+		"revision": "Configuration revision {revision} · graph revision {graph} · {readiness}",
+		"missingSource": "{role}: missing {identity}",
+		"requested": "Requested settings",
+		"requestedMode": "Requested mode (intent, not reported activity)",
+		"heatingSetpoint": "Heating setpoint (°C)",
+		"coolingSetpoint": "Cooling setpoint (°C)",
+		"coldTolerance": "Cold tolerance (°C)",
+		"hotTolerance": "Hot tolerance (°C)",
+		"neutralMargin": "Neutral heat/cool margin (°C)",
+		"minimumOff": "Minimum OFF interval (ms)",
+		"changeover": "Changeover interval (ms)",
+		"floorProtect": "Protect heating with floor temperature",
+		"floorLimit": "Floor maximum (°C)",
+		"floorHysteresis": "Floor recovery hysteresis (°C)",
+		"trend": "Use ambient trend to infer open window without contact",
+		"trendFields": {
+			"sampleWindowMs": "Sample window (ms)",
+			"minimumSamples": "Minimum samples",
+			"minimumSpanMs": "Minimum span (ms)",
+			"maximumSampleAgeMs": "Maximum sample age (ms)",
+			"slopeThresholdCPerMinute": "Slope threshold (°C/min)",
+			"confirmationMs": "Confirmation (ms)",
+			"recoveryMs": "Recovery (ms)",
+			"maximumPauseMs": "Maximum pause (ms)",
+			"cooldownMs": "Cooldown (ms)"
+		},
+		"contactOpening": "Contact opening debounce (ms)",
+		"contactClosing": "Contact closing debounce (ms)",
+		"sources": {
+			"title": "Temperature and contact sources",
+			"help": "Select sources that report the age of their original sample. Floor is an independent Celsius protection input; contact is optional.",
+			"maximumAge": "Maximum original sample age (seconds)",
+			"openValue": "Open value (JSON literal or text)",
+			"closedValue": "Closed value (JSON literal or text)",
+			"addAmbient": "Add ambient",
+			"addFloor": "Add floor",
+			"addContact": "Add contact"
+		},
+		"remove": "Remove",
+		"settings": {
+			"title": "Owned local command settings",
+			"help": "The controller creates local mode, setpoint and lock slots together with their registrations.",
+			"add": "Add setting"
+		},
+		"summary": {
+			"mode": "Requested mode",
+			"setpoints": "Setpoints (°C)",
+			"setpointsValue": "heating {heating} · cooling {cooling}",
+			"tolerances": "Tolerances (°C)",
+			"tolerancesValue": "cold {cold} · hot {hot} · neutral margin {neutral}",
+			"timing": "Timing (ms)",
+			"timingValue": "minimum OFF {off} · changeover {changeover}",
+			"sources": "Sources",
+			"members": "Actuator members"
+		},
+		"previewResult": "Preview: {readiness}; {count} blocker(s)",
+		"actions": {
+			"preview": "Preview eligibility and claims",
+			"create": "Create thermostat",
+			"save": "Save configuration",
+			"release": "Request OFF and release",
+			"reload": "Reload"
+		},
+		"roles": {
+			"heating": "heating",
+			"cooling": "cooling",
+			"ambient": "ambient",
+			"floor": "floor",
+			"contact": "contact"
+		},
+		"modes": {
+			"off": "Off",
+			"heat": "Heat",
+			"cool": "Cool",
+			"auto": "Auto"
+		},
+		"loadFailed": "Could not load thermostat configuration.",
+		"requestFailed": "Thermostat request failed.",
+		"picker": {
+			"device": "Device",
+			"channel": "Channel",
+			"property": "Property",
+			"noActuator": "No eligible actuator found. A guarded member must be the switch output of an adopted Shelly Gen2+ device.",
+			"missing": "Missing or unloaded property: {id}"
+		},
+		"errors": {
+			"nameRequired": "Enter a thermostat name.",
+			"setpointRequired": "Select at least one comfort branch and setpoint.",
+			"coldTolerance": "Enter a nonnegative cold tolerance.",
+			"hotTolerance": "Enter a nonnegative hot tolerance.",
+			"neutralMargin": "Enter a positive neutral margin.",
+			"minimumOff": "Enter the minimum OFF interval in milliseconds.",
+			"changeover": "Enter the changeover interval in milliseconds.",
+			"floorPolicy": "Enter the floor limit and positive recovery hysteresis in Celsius.",
+			"trendIncomplete": "Complete every enabled trend setting.",
+			"contactDebounce": "Enter both contact debounce intervals in milliseconds.",
+			"ambientSource": "Configure exactly one ambient source.",
+			"retainFloorPolicy": "Retain a common floor policy for the existing global guard.",
+			"floorProtectionSource": "Floor protection requires a global source or an explicit local guard for every heating member.",
+			"contactSourceLimit": "Configure at most one contact source.",
+			"sourceAge": "Enter a positive maximum age for the source: {role}.",
+			"sourceSelect": "Select a source: {role}.",
+			"contactValues": "Map both contact open and closed values.",
+			"contactValuesDiffer": "Contact open and closed values must differ.",
+			"actuatorRequired": "Select at least one physical actuator.",
+			"branchMismatch": "The actuator must match its comfort setpoint branch: {role}.",
+			"memberLimit": "At most eight mandatory members, including retained claims, are allowed.",
+			"memberDistinct": "Each physical member must be distinct.",
+			"retainedClaim": "Repair retained claim {id}; its ownership is preserved.",
+			"sharedFloorPolicy": "Enter the shared floor limit and hysteresis for local protection.",
+			"localProtection": "Every heating member requires an explicit local protective source.",
+			"protectionAge": "Enter a positive protective source maximum age.",
+			"actuatorRepair": "Repair the actuator before saving: {role}.",
+			"lease": "Enter a positive ON lease for the actuator: {role}.",
+			"settingUnique": "Each local setting role may be registered once.",
+			"settingProperty": "Select a local property for each setting."
+		},
+		"settingRoles": {
+			"heating_setpoint": "Heating setpoint",
+			"cooling_setpoint": "Cooling setpoint",
+			"heating_enabled": "Heating enabled",
+			"cooling_enabled": "Cooling enabled",
+			"locked": "Locked"
+		}
 	}
 }

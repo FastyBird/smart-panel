@@ -105,9 +105,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 		return orderBy(flat, [(o) => o.label], ['asc']);
 	});
 
-	const wizardRouteOptions = computed<
-		{ value: IPlugin['type']; label: string; icon: string; to: IDeviceWizardRouteLauncher['to']; testId: string; disabled: boolean }[]
-	>(() => {
+	const wizardRouteOptions = computed<(IDeviceWizardRouteLauncher & { value: IPlugin['type']; disabled: boolean })[]>(() => {
 		const flat = plugins.value.flatMap((plugin) => {
 			const launcher = plugin.routes?.wizard;
 

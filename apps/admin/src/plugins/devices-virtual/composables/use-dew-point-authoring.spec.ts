@@ -132,4 +132,22 @@ describe('dedicated dew point authoring lifecycle', () => {
 		expect(a.canSave.value).toBe(false);
 		wrapper.unmount();
 	});
+	it('places a new dew point device and reports why the backend refused a preview', async () => {
+		const { authoring: a, wrapper } = editor();
+		a.model.name = 'Dew point';
+		a.model.dryBulb = 'temperature';
+		a.model.humidity = 'humidity';
+		a.model.roomId = 'room';
+		a.model.zoneIds = ['zone'];
+		client.POST.mockResolvedValue({ error: { error: { details: { reason: 'Source is not a relative humidity' } } } });
+		await a.check();
+		expect(client.POST.mock.calls[0][1].body.device).toMatchObject({ name: 'Dew point', room_id: 'room', zone_ids: ['zone'] });
+		expect(a.error.value).toBe('preview');
+		expect(a.reason.value).toBe('Source is not a relative humidity');
+		client.POST.mockResolvedValue({ data: { data: state() } });
+		await a.check();
+		expect(a.error.value).toBeNull();
+		expect(a.reason.value).toBeNull();
+		wrapper.unmount();
+	});
 });

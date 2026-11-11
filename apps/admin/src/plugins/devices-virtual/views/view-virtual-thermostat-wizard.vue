@@ -1,46 +1,38 @@
 <template>
-	<div class="p-4 overflow-auto">
-		<el-button
-			class="mb-3"
-			@click="router.push({ name: VirtualRouteNames.WIZARD })"
-		>
-			Back
-		</el-button>
-		<el-radio-group
-			v-model="strategy"
-			class="mb-3"
-			:aria-label="t('devicesVirtualPlugin.nativeThermostat.strategy')"
-		>
-			<el-radio-button value="guarded_branches">{{ t('devicesVirtualPlugin.nativeThermostat.guarded') }}</el-radio-button>
-			<el-radio-button value="native_unit">{{ t('devicesVirtualPlugin.nativeThermostat.title') }}</el-radio-button>
-		</el-radio-group>
+	<virtual-wizard-shell :busy="busy">
+		<native-thermostat-wizard
+			v-if="native"
+			@created="onCreated"
+			@busy="busy = $event"
+		/>
 		<virtual-thermostat-editor
-			v-show="strategy === 'guarded_branches'"
+			v-else
 			create
 			@created="onCreated"
+			@busy="busy = $event"
 		/>
-		<native-thermostat-editor
-			v-show="strategy === 'native_unit'"
-			create
-			@created="onCreated"
-		/>
-	</div>
+	</virtual-wizard-shell>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
-
-import { ElButton, ElRadioButton, ElRadioGroup } from 'element-plus';
+import { computed, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import { RouteNames as DeviceRouteNames } from '../../../modules/devices';
-import NativeThermostatEditor from '../components/NativeThermostatEditor.vue';
+import NativeThermostatWizard from '../components/native-thermostat-wizard.vue';
 import VirtualThermostatEditor from '../components/virtual-thermostat-editor.vue';
-import { RouteNames as VirtualRouteNames } from '../devices-virtual.constants';
+import VirtualWizardShell from '../components/wizard/virtual-wizard-shell.vue';
 
-const router = useRouter();
-const { t } = useI18n();
-const strategy = ref<'guarded_branches' | 'native_unit'>('guarded_branches');
+defineOptions({
+	name: 'ViewVirtualThermostatWizard',
+});
+
+// Two thermostats are created here, and the chooser on the Devices list says which before the
+// wizard starts: one built from relays and sensors that Smart Panel regulates itself, and a
+// controller put on top of a thermostat that already exists as a device (`?strategy=native_unit`).
+const router = useRouter(),
+	route = useRoute();
+const busy = ref(false);
+const native = computed<boolean>(() => route.query.strategy === 'native_unit');
 const onCreated = (id: string) => router.push({ name: DeviceRouteNames.DEVICE, params: { id } });
 </script>

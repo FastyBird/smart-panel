@@ -7,14 +7,60 @@ import {
 	DevicesVirtualPluginThermostatSourceRole as SourceRole,
 } from '../../../openapi';
 
-import { type ThermostatConfiguration, buildThermostatRequest, draftFromConfiguration, emptyThermostatDraft } from './thermostat-authoring';
+import {
+	type ThermostatConfiguration,
+	buildThermostatRequest,
+	draftFromConfiguration,
+	emptyThermostatDraft,
+	newThermostatDraft,
+	thermostatError,
+	translateThermostatError,
+} from './thermostat-authoring';
+
+describe('thermostat validation messages', () => {
+	const t = (key: string, params?: Record<string, unknown>) => (params ? `${key}${JSON.stringify(params)}` : key);
+
+	it('reports problems as translation keys and translates the role they name', () => {
+		expect(thermostatError('ambientSource')).toBe('devicesVirtualPlugin.thermostat.errors.ambientSource');
+		expect(translateThermostatError(t, thermostatError('ambientSource'))).toBe('devicesVirtualPlugin.thermostat.errors.ambientSource');
+		expect(translateThermostatError(t, thermostatError('lease', { role: 'heating' }))).toBe(
+			'devicesVirtualPlugin.thermostat.errors.lease{"role":"devicesVirtualPlugin.thermostat.roles.heating"}'
+		);
+		expect(translateThermostatError(t, thermostatError('retainedClaim', { id: 'claim-1' }))).toBe(
+			'devicesVirtualPlugin.thermostat.errors.retainedClaim{"id":"claim-1"}'
+		);
+	});
+
+	it('leaves a backend reason that is not a key untouched', () => {
+		expect(translateThermostatError(t, 'graph_ineligible')).toBe('graph_ineligible');
+	});
+
+	it('never emits prose from the request builder', () => {
+		const { errors } = buildThermostatRequest(emptyThermostatDraft(), 0);
+
+		expect(errors.length).toBeGreaterThan(0);
+		expect(errors.every((error) => error.startsWith('devicesVirtualPlugin.'))).toBe(true);
+	});
+});
 
 describe('thermostat authoring payload', () => {
-	it('does not invent safety thresholds or actuator leases for a new draft', () => {
+	it('does not invent safety thresholds or actuator leases for an empty draft', () => {
 		const result = buildThermostatRequest(emptyThermostatDraft(), 0);
 		expect(result.request).toBeUndefined();
-		expect(result.errors).toContain('Enter the minimum OFF interval in milliseconds.');
-		expect(result.errors).toContain('Select at least one physical actuator.');
+		expect(result.errors).toContain('devicesVirtualPlugin.thermostat.errors.minimumOff');
+		expect(result.errors).toContain('devicesVirtualPlugin.thermostat.errors.actuatorRequired');
+	});
+
+	it('pre-fills a new thermostat with recommended timings but still asks for the room-specific choices', () => {
+		const draft = newThermostatDraft();
+		expect(draft.policy).toMatchObject({ coldTolerance: 0.5, hotTolerance: 0.5, neutralMargin: 1, minimumOffMs: 300_000, changeoverMs: 600_000 });
+		expect(draft.policy.heatingSetpoint).toBeNull();
+		expect(draft.policy.coolingSetpoint).toBeNull();
+		expect(buildThermostatRequest(draft, 0).errors).toEqual([
+			'devicesVirtualPlugin.thermostat.errors.setpointRequired',
+			'devicesVirtualPlugin.thermostat.errors.ambientSource',
+			'devicesVirtualPlugin.thermostat.errors.actuatorRequired',
+		]);
 	});
 
 	it('preserves missing binding identity and exact revisions for repair', () => {
@@ -75,8 +121,8 @@ describe('thermostat authoring payload', () => {
 			cooldownMs: null,
 		};
 		const result = buildThermostatRequest(draft, 0);
-		expect(result.errors).toContain('Enter the floor limit and positive recovery hysteresis in Celsius.');
-		expect(result.errors).toContain('Complete every enabled trend setting.');
+		expect(result.errors).toContain('devicesVirtualPlugin.thermostat.errors.floorPolicy');
+		expect(result.errors).toContain('devicesVirtualPlugin.thermostat.errors.trendIncomplete');
 	});
 
 	it('requires an independent floor source and matching comfort actuator', () => {
@@ -92,8 +138,8 @@ describe('thermostat authoring payload', () => {
 		draft.contact_closing_ms = 0;
 		draft.sources.push({ role: SourceRole.ambient, source_property: 'ambient', maximum_age_seconds: 60 });
 		const incomplete = buildThermostatRequest(draft, 0);
-		expect(incomplete.errors).toContain('Floor protection requires a global source or an explicit local guard for every heating member.');
-		expect(incomplete.errors).toContain('heating actuator must match its comfort setpoint branch.');
+		expect(incomplete.errors).toContain('devicesVirtualPlugin.thermostat.errors.floorProtectionSource');
+		expect(incomplete.errors).toContain('devicesVirtualPlugin.thermostat.errors.branchMismatch?{"role":"heating"}');
 		draft.sources.push({ role: SourceRole.floor, source_property: 'floor', maximum_age_seconds: 60 });
 		draft.actuators.push({ role: ActuatorRole.heating, source_property: 'switch', lease_seconds: 60 });
 		expect(buildThermostatRequest(draft, 0).errors).toEqual([]);

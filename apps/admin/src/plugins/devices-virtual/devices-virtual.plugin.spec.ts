@@ -221,6 +221,29 @@ describe('devicesVirtualPlugin', () => {
 						icon: 'mdi:call-split',
 						to: { name: VirtualRouteNames.WIZARD },
 						testId: 'virtual-device-wizard',
+						optionsTitle: 'devicesVirtualPlugin.wizard.selectKind',
+						// One entry per kind, chosen in the Devices view before the wizard starts.
+						options: [
+							expect.objectContaining({ value: 'projection', to: { name: VirtualRouteNames.WIZARD } }),
+							expect.objectContaining({
+								value: 'aggregate',
+								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_aggregate' } },
+							}),
+							expect.objectContaining({
+								value: 'transform',
+								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform' } },
+							}),
+							expect.objectContaining({
+								value: 'dewPoint',
+								to: { name: VirtualRouteNames.MEASUREMENT_WIZARD, query: { mode: 'sensor_transform', kind: 'dew_point' } },
+							}),
+							expect.objectContaining({ value: 'group', to: { name: VirtualRouteNames.LIGHT_GROUP_WIZARD } }),
+							expect.objectContaining({ value: 'thermostat', to: { name: VirtualRouteNames.THERMOSTAT_WIZARD } }),
+							expect.objectContaining({
+								value: 'nativeThermostat',
+								to: { name: VirtualRouteNames.THERMOSTAT_WIZARD, query: { strategy: 'native_unit' } },
+							}),
+						],
 					},
 				},
 			})

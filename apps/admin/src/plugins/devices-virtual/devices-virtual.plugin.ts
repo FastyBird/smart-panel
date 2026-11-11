@@ -20,7 +20,7 @@ import {
 
 import { VirtualDeviceAddForm, VirtualDeviceEditForm } from './components/components';
 import VirtualDeviceSources from './components/virtual-device-sources.vue';
-import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE, RouteNames } from './devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE, RouteNames, VIRTUAL_WIZARD_KINDS } from './devices-virtual.constants';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
 import { VirtualDeviceAddFormSchema, VirtualDeviceEditFormSchema } from './schemas/devices.schemas';
@@ -123,6 +123,8 @@ export default {
 								icon: 'mdi:call-split',
 								to: { name: RouteNames.WIZARD },
 								testId: 'virtual-device-wizard',
+								optionsTitle: 'devicesVirtualPlugin.wizard.selectKind',
+								options: VIRTUAL_WIZARD_KINDS,
 							},
 						},
 					}

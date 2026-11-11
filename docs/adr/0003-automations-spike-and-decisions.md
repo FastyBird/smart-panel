@@ -214,6 +214,121 @@ The walker, state tracker core, mode policy, rate guard, graph validator and tim
 framework-free code taking an injected clock, unit-tested like the prototype. Nest services are thin adapters
 around them. The run service is split into a pure walker and a service that persists traces.
 
+### 16. Writes from parallel branches
+
+Added with the engine (AU-4); the spike left it open.
+
+- The engine neither orders nor merges what parallel branches write. Each action node is one call of its
+  handler, made when its token arrives. Two branches that write to the same device produce two independent
+  commands, and for the same property the later command wins.
+- The only order the engine keeps is the start order: the edges leaving one output are followed in the order
+  they have in the graph document, and a handler is called before the next edge is followed. Behind a node that
+  waits (a condition, an action, a Delay) the order between branches is not defined.
+- Grouping is the job of one action, not of the engine: an action that writes several values groups them per
+  device before it calls `PropertyCommandService.executePropertyCommands`, which rejects a batch spanning
+  several devices. Values that must be applied together belong to one action node; a required order is a chain
+  through `done`.
+- The engine does not serialise actions per device. Serialising would make one slow or offline device hold up
+  unrelated branches for up to the action timeout, and the reference scenarios do not need it.
+
+Also settled with the engine:
+
+- A cancelled run ends at once for the mode policy and the caps. A node of it that is still executing gets its
+  abort signal, and the trace is complete once that node returns or reaches its timeout (30 s by default, 300 s
+  at most, for conditions as well as actions).
+- A save that only moves nodes on the canvas counts as a metadata-only save: positions are not part of what
+  decides how an automation runs.
+- A manual run of a disabled automation is refused: a disabled automation holds no timers and no runs.
+- One run takes at most 1,000 steps. A graph that fans in executes a node once per arriving token, so tokens
+  can multiply far beyond the node count; a run that reaches the limit ends as `failed`.
+- Active runs end as `interrupted` when the engine stops in an orderly way. Recognising runs lost to a power
+  cut needs the `running` marker of the run history (AU-13).
+
+### 17. Time before the system clock is trustworthy
+
+Added with the first cards (AU-5); the spike left it open. A Raspberry Pi has no real-time clock: after a power
+cut it starts at the epoch, at the build date of its image, or at the time `fake-hwclock` saved at the last
+orderly shutdown, and stays there until the network sets the time.
+
+- **Unknown is not true, for time as for device values.** While the wall clock reads earlier than
+  2026-01-01 UTC it is not trusted: no time-of-day trigger fires, and a time-window condition evaluates to `no`
+  with the reason recorded. The floor is a constant (`MIN_TRUSTED_WALL_CLOCK_MS`); a clock before it can only be
+  one that was never set. The same holds while the house timezone in the system configuration is not a zone the
+  runtime knows.
+- **A set clock is not replayed.** The minute tick follows the wall clock and is re-aligned after every tick.
+  When the clock jumps forward by more than 5 minutes (the network setting the time, a long suspend) only the
+  current minute is served; the times the jump skipped do not fire, exactly as after a restart. A stall of up
+  to 5 minutes is caught up minute by minute, so a busy event loop does not lose a trigger.
+- **A corrected clock does not fire twice.** When the clock is set back the tick continues from the new time,
+  and a time-of-day trigger does not fire again for any of the last 31 local dates it fired for
+  (`TIME_OF_DAY_SERVED_DATES_KEPT`). The guarantee is counted in fired dates, not in elapsed time: a date that
+  has dropped out of those 31 can fire again. A set of dates is kept instead of a high-water mark, because a clock
+  briefly set far ahead would otherwise silence the trigger until that date. The memory is per subscription and
+  is lost when the trigger is re-armed or the backend restarts.
+- **Durations are not affected.** Delays, "for" durations, timeouts and the rate windows run on the monotonic
+  clock (decision 6), so none of them changes when the wall clock is set.
+- **What is not detected:** a clock that is wrong but plausible - `fake-hwclock` restoring a time some hours or
+  days old that is later than the floor. Until the network corrects it, time cards act on that time; the
+  correction is then handled by the two rules above. Detecting it needs the synchronisation state of the
+  operating system (`timedatectl`), which is not available in a container or on every platform, and the window
+  is the few seconds between the start of the backend and the first time sync. Left as a follow-up for the
+  hardware verification (AU-27) should it show up there.
+
+Also settled with the first cards:
+
+- The time helpers shared with the space mode scheduler live in `apps/backend/src/common/schedule/`. The
+  scheduler keeps its rule that a schedule entry inside a skipped hour is skipped that day; an automation
+  time-of-day trigger fires at the first valid minute after it (decision 6). The two rules differ on purpose:
+  a schedule entry sets a state that the next entry replaces, a trigger starts something that would otherwise
+  not happen that day.
+- A device card stores the device, channel and property ids together. The engine can then mark the automation
+  `invalid` when any of the three is removed, and a write is refused by the command service when the property
+  is no longer the one of that channel and device.
+- A card configuration is checked on save against the property it points at: operators and thresholds by data
+  type, values by data type and enum format, and writes against the permissions. A property that does not exist
+  is not a configuration error; it marks the automation `invalid` in the engine, with the node named.
+- "Set device value" takes up to 20 writes. They are grouped per device, one command batch per device, and
+  devices are written side by side so an offline device does not hold up the others.
+- A condition waits for the baseline of a property that was referenced a moment ago before it answers
+  `unknown`, so a run right after a save does not see "no value" for a property that has one.
+- Notifications sent by automations are events with the automations module as source. They share the
+  notifications module's limit of 60 per minute per source with the engine's own "suspended" notification.
+
+### 18. Safety policy
+
+Added with AU-6; the design names the rule (§ Security and safety), this records how it is built.
+
+- **What reduces safety is one list**, `modules/automations/safety/safety-rules.ts`: unlock, disarm, open. A
+  write is recognised by the category of the device, of the channel and of the property and by the value. The
+  integrations describe the same thing differently, so a rule lists every known form: a lock is unlocked by
+  `status: unlocked`, by `on: false` or by `locked: false`; a door is opened by `position: open`,
+  `command: open` or a position or percentage above zero. A rule holds for the channel category (`lock`,
+  `alarm`, `door`) on any device and for every channel of a device of that category. Garage doors and gates are
+  `door` channels. Locking, arming, closing and stopping are allowed, and so is the siren.
+- **Not covered:** valves and window coverings - irrigation and blinds are what automations are for - and a
+  garage door that an integration exposes as a `window_covering` on a device that is not a `door`. Such a device
+  has to be adopted with the door category to be protected.
+- **An action declares what it does.** An action node type lists, with `commands(config)`, the values it writes
+  and the scenes it runs. The policy judges that list, so it does not know the cards and a card of a plugin is
+  covered as soon as it declares its commands. An action that declares nothing is not judged; a card that acts on
+  the home and declares nothing is a bug in that card.
+- **Three points, one policy.** On save, an unsafe write is the error `safety_reducing_action` on its node and
+  field; it stops the save whether the automation is enabled or not, so not even a draft can hold it. Before
+  every action of a run the engine asks the policy, which reads the categories of the properties again; a
+  refusal is traced as `refused` and takes `error`. A scene is opened and all its enabled actions are read as
+  they are at that moment; one unsafe action refuses the whole scene. On save a scene that would be refused is
+  a warning only, because the scene is judged when it is run, not when the automation is saved.
+- **The scene runner checks once more.** Between the policy reading a scene and the scene running, the scene
+  can be edited. `SceneExecutorService.triggerScene` therefore takes an optional guard that is handed the very
+  actions the run is about to execute, before an intent is created; automations always pass one. Runs from the
+  panel, the admin, Buddy and MCP pass none and are unchanged.
+- **What can not be checked is refused.** A policy that throws, rejects or does not answer within the timeout
+  of the action refuses the action. A scene action that names no property - a future scene platform the policy
+  can not read - refuses the scene. A property or scene that no longer exists is not a finding: the action
+  fails on it by itself.
+- **The action policy of the engine may answer later**, since it has to read the database. A policy that
+  answers at once is not waited for, so nothing changes in the timing of an engine without one.
+
 ## Consequences
 
 - The design doc is updated to match this ADR.
@@ -221,9 +336,10 @@ around them. The run service is split into a pure walker and a service that pers
   `spaces-home-control` (AU-18), the Buddy synonym fix and text corrections (AU-7 and AU-22), action timeouts and
   the second rate window (AU-4), hysteresis (AU-3).
 - Scope reduced: the Delay limit drops to one hour.
-- Open after this ADR: write grouping when parallel branches target the same device; behaviour of time conditions
-  before the system clock is trustworthy on hardware without a real-time clock; verification on Firefox, Safari
-  and a physical touch device. These are settled in AU-4, AU-5 and AU-27.
+- Open after this ADR: write grouping when parallel branches target the same device (settled in AU-4, see
+  decision 16); behaviour of time conditions before the system clock is trustworthy on hardware without a
+  real-time clock (settled in AU-5, see decision 17); verification on Firefox, Safari and a physical touch
+  device (AU-27).
 
 ## Environment note
 

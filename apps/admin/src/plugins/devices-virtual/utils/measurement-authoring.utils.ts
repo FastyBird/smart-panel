@@ -123,6 +123,15 @@ export function measurementDraft(
 	};
 }
 
+/** Room and zones are sent only when chosen, so an unplaced draft keeps the payload it always had. */
+export function withPlacement<T extends object>(device: T, placement: { roomId: string | null; zoneIds: string[] }): T {
+	return {
+		...device,
+		...(placement.roomId ? { room_id: placement.roomId } : {}),
+		...(placement.zoneIds.length ? { zone_ids: [...placement.zoneIds] } : {}),
+	};
+}
+
 /** Materialize the backend capability contract without inferring units or numeric types. */
 export function aggregateDraft(
 	profile: AggregateProfile,

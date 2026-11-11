@@ -18,6 +18,8 @@ import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { DisplayAwareThrottlerGuard } from './modules/auth/guards/display-aware-throttler.guard';
+import { AUTOMATIONS_MODULE_PREFIX } from './modules/automations/automations.constants';
+import { AutomationsModule } from './modules/automations/automations.module';
 import { BUDDY_MODULE_PREFIX } from './modules/buddy/buddy.constants';
 import { BuddyModule } from './modules/buddy/buddy.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
@@ -313,6 +315,10 @@ export class AppModule {
 								module: NotificationsModule,
 							},
 							{
+								path: AUTOMATIONS_MODULE_PREFIX,
+								module: AutomationsModule,
+							},
+							{
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
@@ -484,6 +490,7 @@ export class AppModule {
 				BuddyModule,
 				McpModule,
 				NotificationsModule,
+				AutomationsModule,
 				SpacesModule,
 				SeedModule,
 				StatsModule,

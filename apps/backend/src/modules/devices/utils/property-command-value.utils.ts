@@ -96,8 +96,11 @@ export const matchesInvalidValue = (invalidValue: string | number | boolean, val
 	return false;
 };
 
+/** The part of a property the validation of a command value reads */
+export type PropertyCommandValueConstraints = Pick<ChannelPropertyEntity, 'dataType' | 'format' | 'invalid' | 'step'>;
+
 export const validatePropertyCommandValue = (
-	property: ChannelPropertyEntity,
+	property: PropertyCommandValueConstraints,
 	rawValue: unknown,
 ): PropertyCommandValueValidation => {
 	if (!isSupportedPropertyCommandDataType(property.dataType)) {

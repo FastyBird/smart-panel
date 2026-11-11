@@ -7,11 +7,11 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { MINUTE_MS, evaluateSchedule, scheduleOccurrenceKey } from '../../../common/schedule/schedule-time';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity';
 import { ScheduleRuntimeStatus, SpaceModeScheduleStateModel } from '../models/space-mode-schedule.model';
-import { MINUTE_MS, evaluateSchedule, scheduleOccurrenceKey } from '../schedule/schedule-time';
 import {
 	SPACE_SCHEDULE_CHANGED,
 	ScheduleOccurrence,

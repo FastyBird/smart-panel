@@ -80,7 +80,7 @@ Flow does, and have the Smart Panel backend run them.
       cancels a pending "for" timer.
 - [ ] Device writes from automations go through `PropertyCommandService` with the `automation` intent origin; Buddy
       does not learn them as user habits.
-- [ ] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
+- [x] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
       automation was saved.
 - [ ] A runaway automation is suspended and the administrator is notified.
 - [ ] A finished or interrupted run can be inspected node by node in the admin.
@@ -112,7 +112,7 @@ acceptance criteria; the notes below are the summary.
 | AU-13 | #1570 | 2 | `feat(backend): record automation runs and traces` | AU-4 |
 | AU-14 | #1571 | 2 | `feat(admin): test automations and show live and past runs` | AU-10, AU-13 |
 | AU-15 | #1572 | 2 | `feat(backend): add any, all and wait-until automation blocks` | AU-4 |
-| AU-16 | #1573 | 2 | `feat(backend): add sunrise and sunset automation cards` | AU-5 |
+| AU-16 | #1573 | 2 | `feat(cross): add sunrise and sunset automation cards` | AU-5 |
 | AU-17 | #1574 | 2 | `feat(backend): add button, connection, house mode and security automation cards` | AU-5 |
 | AU-18 | #1575 | 2 | `feat(backend): add space occupancy and activity mode automation cards` | AU-5 |
 | AU-19 | #1584 | 2 | `feat(admin): add forms for phase 2 automation cards` | AU-11, AU-15 … AU-18 |
@@ -233,7 +233,7 @@ Done when: a failed condition or action can be located from the UI without readi
 Scope: Any and All joins; Wait until a trigger-style event with a timeout output.
 Done when: unit tests cover joins with partial arrivals, timeouts and cancellation on restart mode.
 
-**AU-16 — `feat(backend): add sunrise and sunset automation cards`**
+**AU-16 — `feat(cross): add sunrise and sunset automation cards`**
 Scope: local sun calculation from the configured location (per AU-0 decision), sunrise/sunset triggers with offset,
 day/night condition, correct across DST and at high latitudes where the sun does not rise or set.
 Done when: unit tests compare against known times for several locations and dates.
@@ -299,6 +299,8 @@ Done when: results are recorded in section 7.
 - AU-3: optional hysteresis on numeric triggers; baseline read when a save first references a property.
 - AU-4: `restart` cancels all runs of the automation; action timeouts; second rate window (200 per hour);
   counters for ignored and dropped triggers; monotonic clock for durations; Delay limit 1 h.
+- AU-5: decide how time cards behave before the system clock is trustworthy (ADR 0003, decision 17); the
+  "for" restriction of decision 5 is enforced by the trigger card on save.
 - AU-7: also remove "automation" from Buddy's scene synonyms (`SCENE_SIGNALS`, planner grammar).
 - AU-10: side panel instead of `el-drawer`; strict connection mode; tap-to-add in the palette.
 - AU-15: All is a strict AND and is rejected when fed from two triggers; Wait until timeout is mandatory.

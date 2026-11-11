@@ -240,6 +240,9 @@ These rules decide whether automations feel reliable, so they are fixed up front
 - **Unknown is not true.** A condition on a property with no value, an invalid value or an offline device
   evaluates to `no` and the trace records why.
 - **Missed times are not replayed** after a restart, matching `SpaceModeSchedulerService`.
+- **An unset clock is not a time.** Until the system clock is set (a board without a real-time clock, before
+  the first time sync) time-of-day triggers do not fire and a time-window condition evaluates to `no`. The
+  times a clock jump skips are not replayed (ADR 0003, decision 17).
 
 ### Runs
 
@@ -397,7 +400,7 @@ during the phase 2 spike.
 | `modules/intents` | Add `'automation'` to `IntentOrigin`, and carry the automation id in `context.extra`, so the panel and Buddy can tell automated changes from user actions. | tiny |
 | `modules/buddy` | `ActionObserverService` must ignore intents with the `automation` origin, otherwise automated actions are learned as user habits and suggested back. | small |
 | `plugins/spaces-home-control` | Register mode and occupancy node types. Decide how an automation-activated mode ranks against manual, schedule and occupancy activation (see [Decisions to confirm](#decisions-to-confirm-during-review)). Move `schedule/schedule-time.ts` to a shared location so both schedulers use it. | medium |
-| `modules/scenes` | None for execution. The engine calls `triggerScene(id, 'automation', { origin: 'automation', extra: { automationId } })`: the second argument is only the `triggeredBy` label, and the intent context comes from the third, so the origin must be passed there for the Buddy filter to see scene runs. A read-only helper that lists a scene's enabled actions is needed for the safety check below. | small |
+| `modules/scenes` | None for execution. The engine calls `triggerScene(id, 'automation', { origin: 'automation', extra: { automationId } })`: the second argument is only the `triggeredBy` label, and the intent context comes from the third, so the origin must be passed there for the Buddy filter to see scene runs. A read-only helper that lists a scene's enabled actions is needed for the safety check below, and `triggerScene` takes an optional guard that judges the actions a run is about to execute (ADR 0003, decision 18). | small |
 | `modules/security` | Expose a typed bus event for armed/alarm state transitions; today `security:status` carries the whole status model, so the trigger would diff it. | small |
 | `modules/tools`, `modules/mcp`, `modules/home-context` | Tool provider (`list_automations`, `run_automation`, `set_automation_enabled`), MCP wrappers, and automations in the home-context snapshot. Phase 4. | medium |
 | `apps/admin` devices module | Extract a reusable `device-property-picker` (device → channel → property) and a `property-value-input` from the scenes-local forms; use them in scenes, data sources and automation node forms. | medium |

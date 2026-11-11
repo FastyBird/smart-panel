@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 
-import { ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
+import { ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -325,6 +325,25 @@ describe('trusted numeric operator form', () => {
 		wrapper.unmount();
 	});
 
+	it('opens a new conversion on the temperature profile and never carries temperature into the generic one', async () => {
+		mocks.GET.mockResolvedValue({ data: { data: [] } });
+		const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform } });
+		await flushPromises();
+		const profile = wrapper
+			.findAllComponents(ElSelect)
+			.find((select) => select.findAllComponents(ElOption).some((option) => option.props('value') === true))!;
+		// An absent boolean prop is cast to `false`; the editor must still default to temperature.
+		expect(profile.props('modelValue')).toBe(true);
+		expect(wrapper.findAllComponents(ElInput).some((input) => input.props('modelValue') === 'temperature')).toBe(false);
+		profile.vm.$emit('update:modelValue', false);
+		await flushPromises();
+		// The generic output slot rejects `temperature`, so the quantity and unit start empty.
+		const values = wrapper.findAllComponents(ElInput).map((input) => input.props('modelValue'));
+		expect(values).not.toContain('temperature');
+		expect(values).not.toContain('°C');
+		wrapper.unmount();
+	});
+
 	it('renders actual bounded numeric inputs and canonical domains from the catalogue', async () => {
 		mocks.GET.mockResolvedValue({
 			data: {
@@ -392,5 +411,29 @@ describe('measurement editor dedicated quantity routing', () => {
 		expect(wrapper.text()).toContain('retained-rh');
 		expect(mocks.GET.mock.calls.map((call) => call[0])).toEqual(['/plugins/devices-virtual/producers/dew-points/{id}']);
 		wrapper.unmount();
+	});
+
+	describe('new aggregate defaults', () => {
+		it('asks for every configured source until the user chooses a quorum', async () => {
+			const wrapper = await mountEditor();
+			const add = () =>
+				wrapper
+					.findAll('button')
+					.find((button) => button.text().includes('.addInput'))!
+					.trigger('click');
+			const quorum = () =>
+				wrapper.findAllComponents({ name: 'ElInputNumber' }).find((input) => input.attributes('data-test-id') === 'aggregate-quorum')!;
+			await add();
+			await add();
+			await add();
+			await flushPromises();
+			expect(quorum().props('modelValue')).toBe(3);
+			quorum().vm.$emit('update:modelValue', 2);
+			quorum().vm.$emit('change', 2, 3);
+			await add();
+			await flushPromises();
+			expect(quorum().props('modelValue')).toBe(2);
+			wrapper.unmount();
+		});
 	});
 });

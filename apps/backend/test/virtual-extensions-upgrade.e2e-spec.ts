@@ -91,7 +91,7 @@ it('upgrades an actual alpha64 migration prefix through all virtual extensions a
 		database = await createSqliteDataSource({ ...options, migrations });
 		const upgraded = await database.runMigrations({ transaction: 'each' });
 		expect(upgraded.length).toBe(migrations.length - baseline.length);
-		expect(upgraded.at(-1).name).toBe('FixWledHardwareIdentityIndex1000000000055');
+		expect(upgraded.at(-1).name).toBe('AddAutomations1000000000056');
 		expect(await database.query('SELECT id,name,type,displayOrder,statusWidgets FROM spaces_module_spaces')).toEqual(
 			originalRooms,
 		);

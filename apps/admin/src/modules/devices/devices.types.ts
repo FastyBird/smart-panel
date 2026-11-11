@@ -55,6 +55,23 @@ export interface IDeviceWizardRouteLauncher {
 	 * element of this plugin unless it has its own `deviceAddForm`.
 	 */
 	exclusive?: boolean;
+	/**
+	 * Kinds of device the wizard can build, when it builds more than one. With these the launcher
+	 * opens a chooser first — the same dialog the adoption wizard uses to pick a plugin — and `to` is
+	 * only the fallback for a direct link. Labels and descriptions are translation keys.
+	 */
+	options?: IDeviceWizardRouteLauncherOption[];
+	/** Translation key for the chooser's title. */
+	optionsTitle?: string;
+}
+
+export interface IDeviceWizardRouteLauncherOption {
+	value: string;
+	label: string;
+	description: string;
+	icon: string;
+	to: RouteLocationRaw;
+	testId: string;
 }
 
 export type IDevicePluginRoutes = {
