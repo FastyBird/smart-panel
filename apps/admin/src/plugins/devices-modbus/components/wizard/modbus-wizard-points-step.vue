@@ -464,7 +464,7 @@ import {
 import { useFlashMessage } from '../../../../common';
 import { DevicesModbusPluginRegisterType } from '../../../../openapi.constants';
 import { useModbusLiveValues } from '../../composables/useModbusLiveValues';
-import { type IModbusProbePointsResult, useModbusProbe } from '../../composables/useModbusProbe';
+import { type IModbusProbePointsResult, type ModbusProbeTarget, useModbusProbe } from '../../composables/useModbusProbe';
 import { type AddressNotation, AddressNotationError, type ParsedAddress, formatAddress, parseAddressInput } from '../../lib/address-notation';
 import { CUSTOM_CAPABILITIES, capabilityKeyOf, defaultRegisterTypeFor, pointBaseFor, registerTypesFor } from '../../lib/capabilities';
 import { type ModbusPoint, type ModbusPointBinding, pointsFromRange, samePoints } from '../../lib/points';
@@ -694,9 +694,19 @@ const onTestWrite = async (): Promise<void> => {
 		return;
 	}
 
+	// Locked from the first click, so repeated clicks cannot queue a second confirmation and write.
+	writing.value = true;
+
+	try {
+		await confirmAndWrite(point.write, target);
+	} finally {
+		writing.value = false;
+	}
+};
+
+const confirmAndWrite = async (binding: ModbusPointBinding, target: ModbusProbeTarget): Promise<void> => {
 	// Everything the confirmation names is captured now: the write may wait for a read in flight, and the user can go
 	// Back and change the unit meanwhile. The write goes to the unit that was confirmed, or not at all.
-	const binding = point.write;
 	const value = writeValue.value;
 	const unitId = state.unitId;
 	const orders = deviceOrders();
@@ -724,30 +734,24 @@ const onTestWrite = async (): Promise<void> => {
 		return;
 	}
 
-	writing.value = true;
+	// Waits for an auto-refresh read in flight and holds the timer until the read-back is done.
+	await live.whilePaused(async () => {
+		if (disposed) {
+			// The step was left while the write waited: a write nobody can see must not be sent.
+			return;
+		}
 
-	try {
-		// Waits for an auto-refresh read in flight and holds the timer until the read-back is done.
-		await live.whilePaused(async () => {
-			if (disposed) {
-				// The step was left while the write waited: a write nobody can see must not be sent.
-				return;
-			}
+		const result = await probe.write(target, unitId, binding, value, orders);
 
-			const result = await probe.write(target, unitId, binding, value, orders);
+		if (!result.ok) {
+			flashMessage.error(result.error ? t(explainProbeError(result.error)) : t('devicesModbusPlugin.wizard.probe.errors.generic'));
 
-			if (!result.ok) {
-				flashMessage.error(result.error ? t(explainProbeError(result.error)) : t('devicesModbusPlugin.wizard.probe.errors.generic'));
+			return;
+		}
 
-				return;
-			}
+		flashMessage.success(t('devicesModbusPlugin.wizard.points.testWrite.done'));
 
-			flashMessage.success(t('devicesModbusPlugin.wizard.points.testWrite.done'));
-
-			await live.readNow();
-		});
-	} finally {
-		writing.value = false;
-	}
+		await live.readNow();
+	});
 };
 </script>

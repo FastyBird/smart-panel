@@ -428,14 +428,20 @@ const onCapabilityChange = (key: string): void => {
 		return;
 	}
 
+	const had: Record<Kind, boolean> = { read: draft.value.read !== null, write: draft.value.write !== null };
+
 	draft.value = applyCapability(draft.value, capability);
 
-	// A binding that was just created starts at the address of the one it was copied from.
 	for (const kind of ['read', 'write'] as const) {
 		const binding = draft.value[kind];
+		const other: Kind = kind === 'read' ? 'write' : 'read';
 
-		if (binding !== null && addressTexts[kind] === '') {
-			addressTexts[kind] = formatAddress(binding.address, binding.registerType, props.notation);
+		if (binding === null) {
+			// A removed binding forgets its address, so recreating it later cannot bring back a stale one.
+			addressTexts[kind] = '';
+		} else if (!had[kind]) {
+			// A new binding is a copy of the other one, so it starts at the address typed for that one.
+			addressTexts[kind] = had[other] ? addressTexts[other] : formatAddress(binding.address, binding.registerType, props.notation);
 		}
 	}
 };

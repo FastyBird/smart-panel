@@ -269,6 +269,24 @@ describe('ModbusWizardPointsStep', () => {
 			expect(readPoints).toHaveBeenCalledTimes(2);
 		});
 
+		it('opens one confirmation for repeated clicks while it is pending', async () => {
+			let accept!: () => void;
+			vi.mocked(ElMessageBox.confirm).mockImplementation(() => new Promise((resolve) => (accept = () => resolve('confirm' as never))));
+			const { wrapper } = await setup();
+			const run = wrapper.find('[data-test-id="points-test-write-run"]');
+
+			await run.trigger('click');
+			await run.trigger('click');
+			await flushPromises();
+
+			expect(ElMessageBox.confirm).toHaveBeenCalledTimes(1);
+
+			accept();
+			await flushPromises();
+
+			expect(write).toHaveBeenCalledTimes(1);
+		});
+
 		it('writes to the confirmed unit when the unit changes while the write waits', async () => {
 			vi.mocked(ElMessageBox.confirm).mockResolvedValue('confirm' as never);
 			let release!: () => void;

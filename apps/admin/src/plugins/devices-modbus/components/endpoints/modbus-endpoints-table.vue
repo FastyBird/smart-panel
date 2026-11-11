@@ -122,8 +122,8 @@
 						v-for="(device, index) in devicesOf(row.id)"
 						:key="device.id"
 					>
+						<span v-if="index > 0">,</span>
 						<router-link :to="{ name: DevicesRouteNames.DEVICE, params: { id: device.id } }">{{ device.name }}</router-link>
-						<span v-if="index < devicesOf(row.id).length - 1">,</span>
 					</template>
 				</template>
 				<span v-else>0</span>
@@ -155,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElSwitch, ElTable, ElTableColumn, ElTag } from 'element-plus';
@@ -191,6 +192,26 @@ const stateTagType = (state: DevicesModbusPluginEndpointHealthState): 'success' 
 	}
 };
 
-const devicesOf = (endpointId: string): IDevice[] =>
-	props.devices.filter((device) => (device as IDevice & { endpointId?: string | null }).endpointId === endpointId);
+// Grouped once per device list, so rendering a row is a lookup instead of a filter over every device.
+const devicesByEndpoint = computed<Map<string, IDevice[]>>(() => {
+	const grouped = new Map<string, IDevice[]>();
+
+	for (const device of props.devices) {
+		const endpointId = (device as IDevice & { endpointId?: string | null }).endpointId;
+
+		if (endpointId) {
+			const list = grouped.get(endpointId);
+
+			if (list) {
+				list.push(device);
+			} else {
+				grouped.set(endpointId, [device]);
+			}
+		}
+	}
+
+	return grouped;
+});
+
+const devicesOf = (endpointId: string): IDevice[] => devicesByEndpoint.value.get(endpointId) ?? [];
 </script>
