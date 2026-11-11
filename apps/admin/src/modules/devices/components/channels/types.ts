@@ -25,3 +25,4 @@ export * from './list-channels-adjust.types';
 export * from './list-channels-properties.types';
 export * from './list-channels-properties-adjust.types';
 export * from './select-channel-plugin.types';
+export * from './property-value-input.types';

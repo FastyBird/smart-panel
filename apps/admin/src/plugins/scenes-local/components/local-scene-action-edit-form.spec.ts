@@ -11,15 +11,18 @@ import LocalSceneActionEditForm from './local-scene-action-edit-form.vue';
 
 const groupDevice = { id: 'group', name: 'Cover group', type: 'virtual' };
 const mockDevices = ref<(typeof groupDevice)[]>([groupDevice]);
+const mockDevicesLoaded = ref<boolean>(true);
+const mockFetchDevices = vi.fn();
 
 vi.mock('vue-i18n', async (original) => ({ ...(await original<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }));
-vi.mock('../../../modules/devices', () => ({
-	DevicesException: Error,
+// The device property picker reads the composables from their own module, so that is the one to mock
+vi.mock('../../../modules/devices/composables/composables', async (original) => ({
+	...(await original<typeof import('../../../modules/devices/composables/composables')>()),
 	useDevices: () => ({
 		devices: mockDevices,
-		fetchDevices: vi.fn(),
+		fetchDevices: mockFetchDevices,
 		areLoading: ref(false),
-		loaded: ref(true),
+		loaded: mockDevicesLoaded,
 	}),
 	useChannels: () => ({ channels: ref([{ id: 'cover', device: 'group', name: 'Covers' }]), fetchChannels: vi.fn(), areLoading: ref(false) }),
 	useChannelsProperties: () => ({
@@ -49,6 +52,25 @@ const action = {
 describe('local scene action edit form', () => {
 	beforeEach(() => {
 		mockDevices.value = [groupDevice];
+		mockDevicesLoaded.value = true;
+		mockFetchDevices.mockReset();
+	});
+
+	it('loads the devices itself when they were not loaded yet, as the empty state hides the picker', async () => {
+		mockDevices.value = [];
+		mockDevicesLoaded.value = false;
+		mockFetchDevices.mockImplementation((): Promise<void> => {
+			mockDevices.value = [groupDevice];
+			mockDevicesLoaded.value = true;
+
+			return Promise.resolve();
+		});
+		const wrapper = mount(LocalSceneActionEditForm, { props: { sceneId: 'scene', action } });
+		await flushPromises();
+		expect(mockFetchDevices).toHaveBeenCalledTimes(1);
+		expect(wrapper.findComponent(ElResult).exists()).toBe(false);
+		expect(wrapper.findComponent(ElForm).exists()).toBe(true);
+		wrapper.unmount();
 	});
 
 	it('renders the imported Element Plus alert and qualified group refusal in the actual edit form', async () => {
