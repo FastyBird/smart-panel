@@ -242,6 +242,11 @@ export class AutomationsService {
 			changes.graph = graph as QueryDeepPartialEntity<AutomationGraphModel>;
 		}
 
+		// Saving an automation the overload guard stopped resumes it (ADR 0003, decision 3)
+		if (existing.status === AutomationStatus.SUSPENDED) {
+			changes.status = AutomationStatus.OK;
+		}
+
 		const result = await this.repository.update({ id, revision: dtoInstance.revision }, changes);
 
 		if (result.affected !== 1) {

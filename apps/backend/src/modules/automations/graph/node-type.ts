@@ -36,6 +36,17 @@ export interface AutomationNodeReference {
 export type AutomationNodeConfig = Record<string, unknown>;
 
 /**
+ * The module or plugin a node type belongs to. A node type of a disabled plugin stays registered, so the
+ * engine asks for the owner's `enabled` flag before it arms a trigger or executes a node (ADR 0003,
+ * decision 13). Node types of the automations module itself leave it out and are always available.
+ */
+export interface AutomationNodeTypeOwner {
+	kind: 'module' | 'plugin';
+	/** The extension type, e.g. `spaces-home-control-plugin` */
+	type: string;
+}
+
+/**
  * One reason a node configuration was refused. A reason is shown to the caller, so it must describe the
  * rule that was broken and must not repeat the submitted value.
  */
@@ -71,22 +82,60 @@ export interface AutomationNodeTypeBase<TConfig extends object = AutomationNodeC
 	configSchema?: Record<string, unknown>;
 	/** Entities the configured node depends on */
 	references?(config: TConfig): AutomationNodeReference[];
-}
-
-/**
- * What a node is given when it runs. The engine (AU-4) extends this; nothing produces it yet.
- */
-export interface AutomationRunContext {
-	automationId: string;
-	runId: string;
-	/** Aborted when the run is cancelled */
-	signal?: AbortSignal;
+	/** The module or plugin the node type belongs to; left out by the automations module itself */
+	owner?: AutomationNodeTypeOwner;
 }
 
 export interface AutomationTriggerData {
 	/** Why the trigger fired, in a form that can be put into the run trace */
 	[key: string]: unknown;
 }
+
+/**
+ * What started the run a node is executed in.
+ */
+export interface AutomationRunTrigger {
+	/** The trigger node the run started at */
+	nodeId: string;
+	/** What the trigger handed to `fire`; `{ manual: true }` for a manual run */
+	data: AutomationTriggerData;
+	/** Whether the run was started by hand instead of by the trigger itself */
+	manual: boolean;
+}
+
+/**
+ * What a condition or an action is given when the engine executes it.
+ */
+export interface AutomationRunContext {
+	automationId: string;
+	runId: string;
+	/** The node being executed */
+	nodeId: string;
+	/**
+	 * Aborted when the run is cancelled or the node ran into its timeout. A handler that can stop early
+	 * should; one that cannot is still traced when it returns, and its output is not followed.
+	 */
+	signal: AbortSignal;
+	trigger: AutomationRunTrigger;
+}
+
+/**
+ * What a trigger is given when the engine arms it.
+ */
+export interface AutomationTriggerContext {
+	automationId: string;
+	/** The trigger node being armed */
+	nodeId: string;
+}
+
+/** The longest a condition or an action may run when its node type does not say otherwise */
+export const AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS = 30;
+
+/** The longest timeout a node type may ask for */
+export const AUTOMATION_NODE_MAX_TIMEOUT_SECONDS = 300;
+
+/** The longest a Delay may park a run (ADR 0003, decision 7) */
+export const AUTOMATION_DELAY_MAX_SECONDS = 60 * 60;
 
 export interface AutomationConditionResult {
 	result: boolean;
@@ -103,32 +152,76 @@ export interface AutomationTriggerNodeType<
 	TConfig extends object = AutomationNodeConfig,
 > extends AutomationNodeTypeBase<TConfig> {
 	kind: 'trigger';
-	/** Starts watching for the event and returns the function that stops it */
-	subscribe(config: TConfig, fire: (data: AutomationTriggerData) => void): () => void;
+	/**
+	 * Starts watching for the event and returns the function that stops it. Called only for an enabled,
+	 * valid automation; `fire` must not be called from inside this call. Whatever the trigger keeps (a
+	 * state watch, a timer, a "for" duration) belongs to the subscription and has to be released by the
+	 * returned function: no run mode touches it.
+	 */
+	subscribe(
+		config: TConfig,
+		fire: (data: AutomationTriggerData) => void,
+		context?: AutomationTriggerContext,
+	): () => void;
 }
 
 export interface AutomationConditionNodeType<
 	TConfig extends object = AutomationNodeConfig,
 > extends AutomationNodeTypeBase<TConfig> {
 	kind: 'condition';
+	/**
+	 * Decides between the `yes` and the `no` output. A condition that throws, or does not answer within
+	 * its timeout, evaluates to `no` with the reason recorded: a broken condition is never true.
+	 */
 	evaluate(config: TConfig, context: AutomationRunContext): Promise<AutomationConditionResult>;
+	/** Overrides AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS; capped at AUTOMATION_NODE_MAX_TIMEOUT_SECONDS */
+	timeoutSeconds?: number;
 }
 
 export interface AutomationActionNodeType<
 	TConfig extends object = AutomationNodeConfig,
 > extends AutomationNodeTypeBase<TConfig> {
 	kind: 'action';
+	/**
+	 * Does the work and decides between the `done` and the `error` output. An action that throws, or does
+	 * not answer within its timeout, takes `error`.
+	 *
+	 * Several branches of one run execute in parallel and in no guaranteed order, and the engine neither
+	 * orders nor merges what they write (ADR 0003, decision 16). An action that writes several values to
+	 * one device groups them itself; a graph that needs an order chains its actions through `done`.
+	 */
 	execute(config: TConfig, context: AutomationRunContext): Promise<AutomationActionResult>;
+	/** Overrides AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS; capped at AUTOMATION_NODE_MAX_TIMEOUT_SECONDS */
+	timeoutSeconds?: number;
 }
 
+/** The flow behaviours the engine knows how to run */
+export const AUTOMATION_FLOW_BEHAVIOURS = ['delay'] as const;
+
+export type AutomationFlowBehaviour = (typeof AUTOMATION_FLOW_BEHAVIOURS)[number];
+
 /**
- * Flow types (Delay, Wait until, Any, All) are run by the engine itself, so they carry no handler.
+ * Flow types (Delay, Wait until, Any, All) are run by the engine itself, so they carry no handler: they
+ * name the behaviour the engine is to apply. A flow type without a behaviour the engine knows can be
+ * drawn, but an automation using it cannot run.
  */
 export interface AutomationFlowNodeType<
 	TConfig extends object = AutomationNodeConfig,
 > extends AutomationNodeTypeBase<TConfig> {
 	kind: 'flow';
 	ports: AutomationNodePorts;
+	flow?: AutomationFlowBehaviour;
+}
+
+/**
+ * Parks the token for a time and then continues on `out`.
+ */
+export interface AutomationDelayNodeType<
+	TConfig extends object = AutomationNodeConfig,
+> extends AutomationFlowNodeType<TConfig> {
+	flow: 'delay';
+	/** How long to park, in seconds; the engine caps it at AUTOMATION_DELAY_MAX_SECONDS */
+	delaySeconds(config: TConfig): number;
 }
 
 /**
@@ -152,6 +245,7 @@ export interface RegisteredAutomationNodeType {
 	configSchema?: Record<string, unknown>;
 	validateConfig: AutomationNodeConfigValidator;
 	references(config: AutomationNodeConfig): AutomationNodeReference[];
+	owner?: AutomationNodeTypeOwner;
 	definition: AutomationNodeTypeBase<any>;
 }
 
@@ -239,6 +333,21 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 		);
 	}
 
+	const owner = definition.owner as Partial<AutomationNodeTypeOwner> | null | undefined;
+
+	if (
+		owner !== undefined &&
+		(typeof owner !== 'object' ||
+			owner === null ||
+			(owner.kind !== 'module' && owner.kind !== 'plugin') ||
+			typeof owner.type !== 'string' ||
+			owner.type === '')
+	) {
+		throw new AutomationNodeTypeDefinitionError(
+			`Automation node type ${type} has an owner that does not name a module or a plugin.`,
+		);
+	}
+
 	const declared = definition.ports ?? (kind === 'flow' ? undefined : AUTOMATION_NODE_DEFAULT_PORTS[kind]);
 
 	if (declared === undefined) {
@@ -271,6 +380,7 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 		...(source.configSchema !== undefined ? { configSchema: source.configSchema } : {}),
 		validateConfig: (config) => source.validateConfig(config),
 		references: (config) => source.references?.(config) ?? [],
+		...(owner ? { owner: { kind: owner.kind, type: owner.type } } : {}),
 		definition: source,
 	};
 };

@@ -214,6 +214,36 @@ The walker, state tracker core, mode policy, rate guard, graph validator and tim
 framework-free code taking an injected clock, unit-tested like the prototype. Nest services are thin adapters
 around them. The run service is split into a pure walker and a service that persists traces.
 
+### 16. Writes from parallel branches
+
+Added with the engine (AU-4); the spike left it open.
+
+- The engine neither orders nor merges what parallel branches write. Each action node is one call of its
+  handler, made when its token arrives. Two branches that write to the same device produce two independent
+  commands, and for the same property the later command wins.
+- The only order the engine keeps is the start order: the edges leaving one output are followed in the order
+  they have in the graph document, and a handler is called before the next edge is followed. Behind a node that
+  waits (a condition, an action, a Delay) the order between branches is not defined.
+- Grouping is the job of one action, not of the engine: an action that writes several values groups them per
+  device before it calls `PropertyCommandService.executePropertyCommands`, which rejects a batch spanning
+  several devices. Values that must be applied together belong to one action node; a required order is a chain
+  through `done`.
+- The engine does not serialise actions per device. Serialising would make one slow or offline device hold up
+  unrelated branches for up to the action timeout, and the reference scenarios do not need it.
+
+Also settled with the engine:
+
+- A cancelled run ends at once for the mode policy and the caps. A node of it that is still executing gets its
+  abort signal, and the trace is complete once that node returns or reaches its timeout (30 s by default, 300 s
+  at most, for conditions as well as actions).
+- A save that only moves nodes on the canvas counts as a metadata-only save: positions are not part of what
+  decides how an automation runs.
+- A manual run of a disabled automation is refused: a disabled automation holds no timers and no runs.
+- One run takes at most 1,000 steps. A graph that fans in executes a node once per arriving token, so tokens
+  can multiply far beyond the node count; a run that reaches the limit ends as `failed`.
+- Active runs end as `interrupted` when the engine stops in an orderly way. Recognising runs lost to a power
+  cut needs the `running` marker of the run history (AU-13).
+
 ## Consequences
 
 - The design doc is updated to match this ADR.
@@ -221,9 +251,10 @@ around them. The run service is split into a pure walker and a service that pers
   `spaces-home-control` (AU-18), the Buddy synonym fix and text corrections (AU-7 and AU-22), action timeouts and
   the second rate window (AU-4), hysteresis (AU-3).
 - Scope reduced: the Delay limit drops to one hour.
-- Open after this ADR: write grouping when parallel branches target the same device; behaviour of time conditions
-  before the system clock is trustworthy on hardware without a real-time clock; verification on Firefox, Safari
-  and a physical touch device. These are settled in AU-4, AU-5 and AU-27.
+- Open after this ADR: write grouping when parallel branches target the same device (settled in AU-4, see
+  decision 16); behaviour of time conditions before the system clock is trustworthy on hardware without a
+  real-time clock; verification on Firefox, Safari and a physical touch device. The last two are settled in AU-5
+  and AU-27.
 
 ## Environment note
 

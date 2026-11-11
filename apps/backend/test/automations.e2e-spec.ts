@@ -9,6 +9,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
 import { ValidationExceptionFactory } from '../src/common/validation/validation-exception-factory';
+import { AutomationMode } from '../src/modules/automations/automations.constants';
+import { CreateAutomationDto } from '../src/modules/automations/dto/create-automation.dto';
+import { UpdateAutomationDto } from '../src/modules/automations/dto/update-automation.dto';
+import { AutomationEntity } from '../src/modules/automations/entities/automations.entity';
+import { AutomationEngineService } from '../src/modules/automations/services/automation-engine.service';
+import { AutomationsService } from '../src/modules/automations/services/automations.service';
 import { AutomationNodeTypeRegistryService } from '../src/modules/automations/services/node-type-registry.service';
 import {
 	FAKE_ACTION_TYPE,
@@ -731,6 +737,281 @@ describe('Automations module (e2e)', () => {
 		});
 	});
 
+	describe('engine', () => {
+		interface TriggerBody {
+			automation_id: string;
+			started: boolean;
+			outcome: string;
+			run_id: string | null;
+			reason: string | null;
+		}
+
+		interface RuntimeBody {
+			automation_id: string;
+			loaded: boolean;
+			status: string;
+			armed: boolean;
+			armed_triggers: number;
+			active_runs: number;
+			triggers: { started: number; ignored: number; dropped: number };
+			last_skipped: { outcome: string; reason: string; node_id: string; at: string } | null;
+			problems: { code: string; message: string; node_id?: string }[];
+			suspended_reason: string | null;
+		}
+
+		const delayGraph = {
+			version: 1,
+			nodes: [
+				{ id: 't', type: FAKE_TRIGGER_TYPE, position: { x: 0, y: 0 }, config: {} },
+				{ id: 'wait', type: 'flow.delay', position: { x: 200, y: 0 }, config: { seconds: 60 } },
+				{ id: 'a', type: FAKE_ACTION_TYPE, position: { x: 400, y: 0 }, config: {} },
+			],
+			edges: [
+				{ id: 'e1', source: 't', source_port: 'out', target: 'wait', target_port: 'in' },
+				{ id: 'e2', source: 'wait', source_port: 'out', target: 'a', target_port: 'in' },
+			],
+		};
+
+		// The throttler allows 30 requests a minute per route, so only the routes under test go over HTTP:
+		// automations are created, saved and read through the service, and the engine is awaited directly
+		// instead of being polled.
+		let automationsService: AutomationsService;
+		let engine: AutomationEngineService;
+
+		beforeAll(() => {
+			automationsService = app.get(AutomationsService, { strict: false });
+			engine = app.get(AutomationEngineService, { strict: false });
+		});
+
+		const createAutomation = (
+			data: Omit<CreateAutomationDto, 'graph'> & { graph?: unknown },
+		): Promise<AutomationEntity> => automationsService.create(data as CreateAutomationDto);
+
+		const save = (
+			id: string,
+			data: Omit<UpdateAutomationDto, 'graph'> & { graph?: unknown },
+		): Promise<AutomationEntity> => automationsService.update(id, data as UpdateAutomationDto);
+
+		/** The automation once the engine has followed every save and recorded every run */
+		const settled = async (id: string): Promise<AutomationEntity> => {
+			await engine.settled();
+
+			return automationsService.getOneOrThrow(id);
+		};
+
+		const runtime = async (id: string): Promise<RuntimeBody> => {
+			const response = await request(app.getHttpServer())
+				.get(`${base}/${id}/runtime`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			return (response.body as { data: RuntimeBody }).data;
+		};
+
+		const trigger = (id: string, body?: Record<string, unknown>): request.Test =>
+			request(app.getHttpServer())
+				.post(`${base}/${id}/trigger`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send(body);
+
+		it('lists the Delay block the module provides', async () => {
+			const response = await request(app.getHttpServer())
+				.get(nodeTypesBase)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			expect((response.body as { data: NodeTypeBody[] }).data.find((item) => item.type === 'flow.delay')).toMatchObject(
+				{
+					kind: 'flow',
+					name: 'Delay',
+					ports: { inputs: ['in'], outputs: ['out'] },
+					config_schema: { properties: { seconds: { type: 'integer', minimum: 1, maximum: 3600 } } },
+				},
+			);
+		});
+
+		it('refuses a delay longer than one hour on an enabled automation', async () => {
+			const tooLong = {
+				...delayGraph,
+				nodes: delayGraph.nodes.map((item) => (item.id === 'wait' ? { ...item, config: { seconds: 3601 } } : item)),
+			};
+
+			const response = await request(app.getHttpServer())
+				.post(`${base}/validate`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({ data: { enabled: true, graph: tooLong } })
+				.expect(200);
+
+			expect((response.body as { data: { valid: boolean; issues: IssueBody[] } }).data).toMatchObject({
+				valid: false,
+				issues: [{ code: 'invalid_config', node_id: 'wait', field: 'seconds', blocking: true }],
+			});
+		});
+
+		it('runs an enabled automation by hand and records the run without moving the revision', async () => {
+			const automation = await createAutomation({ name: 'Manual run', enabled: true, graph });
+
+			const response = await trigger(automation.id).expect(200);
+			const result = (response.body as { data: TriggerBody }).data;
+
+			expect(result).toEqual({
+				automation_id: automation.id,
+				started: true,
+				outcome: 'started',
+				run_id: expect.any(String) as string,
+				reason: null,
+			});
+
+			const after = await settled(automation.id);
+
+			expect(after).toMatchObject({ lastRunStatus: 'completed', revision: 1, status: 'ok' });
+			expect(after.lastTriggeredAt).toBeInstanceOf(Date);
+			expect(after.updatedAt ?? null).toEqual(automation.updatedAt ?? null);
+
+			expect(await runtime(automation.id)).toMatchObject({
+				automation_id: automation.id,
+				loaded: true,
+				status: 'ok',
+				armed: true,
+				armed_triggers: 1,
+				active_runs: 0,
+				triggers: { started: 1, ignored: 0, dropped: 0 },
+				last_skipped: null,
+				problems: [],
+				suspended_reason: null,
+			});
+		});
+
+		it('starts at the trigger node asked for and only at a trigger node', async () => {
+			const automation = await createAutomation({
+				name: 'Start node',
+				enabled: true,
+				mode: AutomationMode.PARALLEL,
+				graph,
+			});
+
+			await trigger(automation.id, { data: { node_id: 'n1' } }).expect(200);
+			const refused = await trigger(automation.id, { data: { node_id: 'n2' } }).expect(422);
+
+			expect(refused.body).toMatchObject({ code: 'not_a_trigger', message: 'A run can start only at a trigger node.' });
+
+			await trigger(automation.id, { data: { node_id: 'nowhere' } }).expect(422);
+			await trigger(automation.id, { data: { node_id: '' } }).expect(400);
+			await trigger(automation.id, { data: { node_id: 'n1', extra: true } }).expect(400);
+		});
+
+		it('refuses to run a disabled automation and answers 404 for one that does not exist', async () => {
+			const automation = await createAutomation({ name: 'Disabled', graph });
+
+			const response = await trigger(automation.id).expect(422);
+
+			// As the controller throws it; in production the 422 filter moves these into error.details
+			expect(response.body).toMatchObject({ code: 'disabled', message: 'The automation is disabled.' });
+			expect(await runtime(automation.id)).toMatchObject({ loaded: true, armed: false, armed_triggers: 0 });
+
+			await trigger(placeholderId).expect(404);
+			await request(app.getHttpServer())
+				.get(`${base}/${placeholderId}/runtime`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(404);
+			await trigger('not-a-uuid').expect(400);
+		});
+
+		it('applies the mode: a single automation ignores a second trigger while its run is parked, and disabling cancels the run', async () => {
+			const automation = await createAutomation({
+				name: 'Parked',
+				enabled: true,
+				mode: AutomationMode.SINGLE,
+				graph: delayGraph,
+			});
+
+			expect(((await trigger(automation.id).expect(200)).body as { data: TriggerBody }).data.started).toBe(true);
+
+			const second = ((await trigger(automation.id).expect(200)).body as { data: TriggerBody }).data;
+
+			expect(second).toMatchObject({
+				started: false,
+				outcome: 'ignored',
+				run_id: null,
+				reason: 'A run is already active and the mode is single.',
+			});
+			expect(await runtime(automation.id)).toMatchObject({
+				active_runs: 1,
+				triggers: { started: 1, ignored: 1, dropped: 0 },
+				last_skipped: { outcome: 'ignored', node_id: 't' },
+			});
+
+			// The run parked, so when it was triggered is already recorded
+			expect(await settled(automation.id)).toMatchObject({
+				lastTriggeredAt: expect.any(Date) as Date,
+				lastRunStatus: null,
+			});
+
+			await save(automation.id, { revision: 1, enabled: false });
+
+			expect(await settled(automation.id)).toMatchObject({ lastRunStatus: 'cancelled', enabled: false, revision: 2 });
+			expect(await runtime(automation.id)).toMatchObject({ armed: false, active_runs: 0 });
+		});
+
+		it('a save that changes only the name leaves a parked run alone; a changed graph cancels it', async () => {
+			const automation = await createAutomation({ name: 'Edited', enabled: true, graph: delayGraph });
+
+			await trigger(automation.id).expect(200);
+
+			await save(automation.id, { revision: 1, name: 'Renamed' });
+			await engine.settled();
+
+			expect(await runtime(automation.id)).toMatchObject({ active_runs: 1 });
+
+			await save(automation.id, { revision: 2, graph });
+
+			expect((await settled(automation.id)).lastRunStatus).toBe('cancelled');
+			expect(await runtime(automation.id)).toMatchObject({ armed: true, active_runs: 0 });
+		});
+
+		it('marks an automation invalid when it refers to something that does not exist, and says which node', async () => {
+			const automation = await createAutomation({
+				name: 'Broken reference',
+				enabled: true,
+				graph: {
+					...completeGraph,
+					nodes: [
+						completeGraph.nodes[0],
+						{ ...completeGraph.nodes[1], config: { level: 40, scene_id: '22222222-2222-4222-8222-222222222222' } },
+					],
+				},
+			});
+
+			expect(await settled(automation.id)).toMatchObject({ status: 'invalid', revision: 1 });
+			expect(await runtime(automation.id)).toMatchObject({
+				status: 'invalid',
+				armed: false,
+				problems: [
+					{ code: 'missing_reference', node_id: 'a', message: 'The scene this block refers to no longer exists.' },
+				],
+			});
+
+			expect((await trigger(automation.id).expect(422)).body).toMatchObject({ code: 'invalid' });
+
+			// Saving a graph without the broken reference heals it
+			await save(automation.id, { revision: 1, graph: completeGraph });
+
+			expect(await settled(automation.id)).toMatchObject({ status: 'ok', revision: 2 });
+			await trigger(automation.id).expect(200);
+		});
+
+		it('forgets an automation that is deleted', async () => {
+			const automation = await createAutomation({ name: 'Deleted', enabled: true, graph: delayGraph });
+
+			await trigger(automation.id).expect(200);
+			await automationsService.remove(automation.id);
+			await engine.settled();
+
+			expect(engine.runtime(automation.id)).toBeUndefined();
+			await trigger(automation.id).expect(404);
+		});
+	});
+
 	describe('role enforcement', () => {
 		const calls: Array<[string, (token?: string) => request.Test]> = [
 			['GET /automations', (token) => authorize(request(app.getHttpServer()).get(base), token)],
@@ -757,6 +1038,14 @@ describe('Automations module (e2e)', () => {
 					}),
 			],
 			['GET /node-types', (token) => authorize(request(app.getHttpServer()).get(nodeTypesBase), token)],
+			[
+				'POST /automations/:id/trigger',
+				(token) => authorize(request(app.getHttpServer()).post(`${base}/${placeholderId}/trigger`), token).send({}),
+			],
+			[
+				'GET /automations/:id/runtime',
+				(token) => authorize(request(app.getHttpServer()).get(`${base}/${placeholderId}/runtime`), token),
+			],
 			[
 				'DELETE /automations/:id',
 				(token) => authorize(request(app.getHttpServer()).delete(`${base}/${placeholderId}`), token),

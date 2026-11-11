@@ -5,6 +5,8 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { AutomationEntity } from '../entities/automations.entity';
 
+import { AutomationRuntimeModel } from './automation-runtime.model';
+import { AutomationTriggerResultModel } from './automation-trigger-result.model';
 import { AutomationSummaryModel } from './automations.model';
 import { AutomationGraphValidationModel } from './graph-validation.model';
 import { AutomationNodeTypeModel } from './node-types.model';
@@ -61,4 +63,30 @@ export class AutomationNodeTypesResponseModel extends BaseSuccessResponseModel<A
 	})
 	@Expose()
 	declare data: AutomationNodeTypeModel[];
+}
+
+/**
+ * Response wrapper for AutomationTriggerResultModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResTriggerResult' })
+export class AutomationTriggerResultResponseModel extends BaseSuccessResponseModel<AutomationTriggerResultModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationTriggerResultModel,
+	})
+	@Expose()
+	declare data: AutomationTriggerResultModel;
+}
+
+/**
+ * Response wrapper for AutomationRuntimeModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResAutomationRuntime' })
+export class AutomationRuntimeResponseModel extends BaseSuccessResponseModel<AutomationRuntimeModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationRuntimeModel,
+	})
+	@Expose()
+	declare data: AutomationRuntimeModel;
 }
