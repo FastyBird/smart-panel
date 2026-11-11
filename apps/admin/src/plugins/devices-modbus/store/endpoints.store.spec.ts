@@ -341,4 +341,22 @@ describe('Modbus endpoints store', () => {
 
 		expect(store.findById(endpoint.id)?.name).toBe('Renamed elsewhere');
 	});
+
+	it('ignores an older list response that answers after a newer one', async () => {
+		const endpoint = wireEndpoint();
+		let answerOld!: (value: unknown) => void;
+
+		get.mockReturnValueOnce(new Promise((resolve) => (answerOld = resolve)));
+		get.mockResolvedValueOnce({ data: { data: [{ ...endpoint, name: 'Renamed elsewhere' }] }, response: { status: 200 } });
+
+		const store = useModbusEndpoints();
+
+		const older = store.fetch();
+		await store.fetch();
+
+		answerOld({ data: { data: [endpoint] }, response: { status: 200 } });
+		await older;
+
+		expect(store.findById(endpoint.id)?.name).toBe('Renamed elsewhere');
+	});
 });

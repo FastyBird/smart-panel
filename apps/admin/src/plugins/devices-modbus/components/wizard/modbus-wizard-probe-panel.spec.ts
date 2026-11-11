@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
+import { DevicesModbusPluginRegisterType } from '../../../../openapi.constants';
 import { type IUseModbusDeviceWizard, useModbusDeviceWizard } from '../../composables/useModbusDeviceWizard';
 import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../../store/keys';
 
@@ -133,6 +134,53 @@ describe('ModbusWizardProbePanel', () => {
 		await flushPromises();
 
 		expect(wrapper.find('.el-alert').exists()).toBe(false);
+	});
+
+	it('clears the previous result when the address or the count changes', async () => {
+		const wizard = useModbusDeviceWizard();
+
+		wizard.state.endpointId = 'e1';
+
+		const wrapper = await run(wizard);
+
+		expect(wrapper.find('.el-alert').exists()).toBe(true);
+
+		await wrapper.find('input[name="probeAddress"]').setValue('5');
+		await flushPromises();
+
+		expect(wrapper.find('.el-alert').exists()).toBe(false);
+
+		await wrapper.find('[data-test-id="probe-run"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('.el-alert').exists()).toBe(true);
+
+		wrapper.findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', 3);
+		await flushPromises();
+
+		expect(wrapper.find('.el-alert').exists()).toBe(false);
+	});
+
+	it('keeps the table a Modicon address named when only the notation changes', async () => {
+		const wizard = useModbusDeviceWizard();
+
+		wizard.state.endpointId = 'e1';
+		wizard.setNotation('modicon');
+
+		const wrapper = mount(ModbusWizardProbePanel, { props: { wizard }, global: { stubs: { teleport: true, transition: false } } });
+		await flushPromises();
+
+		await wrapper.find('input[name="probeAddress"]').setValue('30001');
+
+		wizard.setNotation('pdu');
+		await flushPromises();
+
+		expect((wrapper.find('input[name="probeAddress"]').element as HTMLInputElement).value).toBe('0');
+
+		await wrapper.find('[data-test-id="probe-run"]').trigger('click');
+		await flushPromises();
+
+		expect(read).toHaveBeenCalledWith(expect.anything(), expect.anything(), DevicesModbusPluginRegisterType.input_register, 0, 1);
 	});
 
 	it('drops a result that arrives after the target changed', async () => {

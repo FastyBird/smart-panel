@@ -143,6 +143,7 @@
 				"writeRegisterType": "A write binding must use a coil or holding register",
 				"tooManyTotal": "A device can have at most {max} points ({free} more can be added)",
 				"bitTableBool": "Coils and discrete inputs use the bool data type",
+				"bitRange": "The bit must be a whole number from 0 to 15",
 				"beyondAddressSpace": "This runs past the last address (65535)",
 				"valueMapFloat": "A value map cannot be used with float32",
 				"valueMapScaled": "A value map cannot be combined with a scale or an offset",

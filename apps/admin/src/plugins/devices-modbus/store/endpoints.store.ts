@@ -77,12 +77,21 @@ export const useModbusEndpoints = defineStore('devices_modbus_plugin-endpoints',
 	const findAll = (): IModbusEndpoint[] => Object.values(data.value);
 	const findById = (id: string): IModbusEndpoint | null => data.value[id] ?? null;
 
+	// Only the latest list request replaces the cache; an older one that answers later would bring back old state.
+	let latestList = 0;
+
 	const fetch = async (): Promise<IModbusEndpoint[]> => {
+		const request = ++latestList;
 		const startedAt = mutationCount;
 		const { data: responseData, error, response } = await backend.client.GET(BASE);
 
 		if (responseData) {
 			const endpoints = responseData.data.map(transformModbusEndpoint);
+
+			if (request !== latestList) {
+				return endpoints;
+			}
+
 			const next: Record<string, IModbusEndpoint> = Object.fromEntries(endpoints.map((endpoint) => [endpoint.id, endpoint]));
 
 			for (const [id, mutatedAt] of lastMutation) {

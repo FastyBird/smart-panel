@@ -101,11 +101,14 @@
 					<el-form-item
 						v-if="section.kind === 'read' && showBit(section.binding)"
 						:label="t('devicesModbusPlugin.wizard.points.columns.bit')"
+						:error="issueOf(section.kind, 'bit')"
 					>
 						<el-input-number
 							v-model="section.binding.bit"
 							:min="0"
 							:max="15"
+							:step="1"
+							:precision="0"
 							:value-on-clear="null"
 							controls-position="right"
 						/>

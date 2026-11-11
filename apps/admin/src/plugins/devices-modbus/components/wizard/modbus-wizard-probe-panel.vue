@@ -197,21 +197,39 @@ const isBitTable = computed<boolean>(
 const maxCount = computed<number>(() => (isBitTable.value ? 2000 : 125));
 
 // Keeps what the user typed meaningful when the notation or the table changes: re-expresses the same stored
-// address in the new notation, or falls back to address 0 when the text does not parse.
+// address in the new notation, or falls back to address 0 when the text does not parse. When only the notation
+// changes, the table stays the one the text named (a Modicon prefix can name another table than the selector), and
+// the selector follows it; a table the user picks replaces it.
 watch([notation, registerType], ([newNotation, newType], [oldNotation, oldType]) => {
 	const previous = parse(addressText.value, oldNotation, oldType);
+	const type = newType === oldType && previous.ok ? previous.registerType : newType;
 
-	addressText.value = formatAddress(previous.ok ? previous.start : 0, newType, newNotation);
+	addressText.value = formatAddress(previous.ok ? previous.start : 0, type, newNotation);
+
+	if (registerType.value !== type) {
+		registerType.value = type;
+	}
 });
 
-// A result describes the target it was read from; drop it when the target changes, including one still in flight.
+// A result describes the target and the registers it was read from; drop it when either changes, including one
+// still in flight.
 let targetGeneration = 0;
 
 watch(
 	() => {
 		const { endpointMode, endpointId, newEndpoint, unitId } = props.wizard.state;
 
-		return [endpointMode, endpointId, newEndpoint.host, newEndpoint.port, newEndpoint.framing, unitId];
+		return [
+			endpointMode,
+			endpointId,
+			newEndpoint.host,
+			newEndpoint.port,
+			newEndpoint.framing,
+			unitId,
+			parsed.value.ok ? parsed.value.start : null,
+			effectiveRegisterType.value,
+			count.value,
+		];
 	},
 	() => {
 		result.value = null;

@@ -486,6 +486,14 @@ describe('bindingIssues', () => {
 		);
 	});
 
+	it('refuses a bit index that is not a whole number from 0 to 15', () => {
+		const bitRead = binding({ registerType: RT.holding_register, bit: 3 });
+
+		expect(bindingIssues(bitRead, 'read').bit).toBeUndefined();
+		expect(bindingIssues({ ...bitRead, bit: 1.5 }, 'read').bit).toBe('devicesModbusPlugin.wizard.points.errors.bitRange');
+		expect(bindingIssues({ ...bitRead, bit: 16 }, 'read').bit).toBe('devicesModbusPlugin.wizard.points.errors.bitRange');
+	});
+
 	it('refuses the single write function for a 32-bit value', () => {
 		const wide = binding({ registerType: RT.holding_register, dataType: DT.int32, writeFunction: WF.single });
 

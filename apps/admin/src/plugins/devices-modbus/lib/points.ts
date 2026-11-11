@@ -328,7 +328,7 @@ const rawFits = (raw: number, binding: ModbusPointBinding): boolean => {
 	}
 };
 
-export type ModbusBindingIssueField = 'address' | 'dataType' | 'valueMap' | 'invert' | 'writeFunction';
+export type ModbusBindingIssueField = 'address' | 'dataType' | 'bit' | 'valueMap' | 'invert' | 'writeFunction';
 
 /**
  * The binding rules the backend applies when the device is created, as translation keys per field, so the point
@@ -342,6 +342,10 @@ export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write
 
 	if (bitTable && binding.dataType !== DevicesModbusPluginDataType.bool) {
 		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.bitTableBool';
+	}
+
+	if (binding.bit !== null && (!Number.isInteger(binding.bit) || binding.bit < 0 || binding.bit > 15)) {
+		issues.bit = 'devicesModbusPlugin.wizard.points.errors.bitRange';
 	}
 
 	if (binding.address + span > ADDRESS_SPACE) {
