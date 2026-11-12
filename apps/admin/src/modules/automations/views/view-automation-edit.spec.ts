@@ -274,6 +274,31 @@ describe('ViewAutomationEdit', (): void => {
 		return wrapper.findAllComponents({ name: 'AppBarButton' }).find((button) => button.props('align') === 'left')!;
 	};
 
+	it('can be left again when the automation disappears while its save is on its way', async (): Promise<void> => {
+		await mountView();
+
+		wrapper.findComponent(AutomationEditForm).vm.$emit('update:remote-form-result', FormResult.WORKING);
+
+		await flushPromises();
+
+		// Removed meanwhile: the form goes with it before it can say how the save ended
+		mocks.automation.value = null;
+
+		await flushPromises();
+
+		expect(wrapper.findComponent(AutomationEditForm).exists()).toBe(false);
+		expect(wrapper.text()).toContain('automations.messages.notFound');
+		expect(wrapper.emitted('update:remote-form-saving')).toEqual([[true], [false]]);
+
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'automations.buttons.backToList.title')!
+			.trigger('click');
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not let a changed form be discarded while its save is on its way', async (): Promise<void> => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
 

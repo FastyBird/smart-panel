@@ -238,6 +238,18 @@ watch(
 	}
 );
 
+// The automation is gone (removed elsewhere, or the save itself was answered with 404), and the form
+// went with it before it could report how its save ended. Nothing can be saved into it any more, so the
+// view stops waiting, or it could never be left again.
+watch(
+	(): boolean => automation.value === null,
+	(gone: boolean): void => {
+		if (gone && saving.value) {
+			remoteFormResult.value = FormResult.NONE;
+		}
+	}
+);
+
 watch(
 	(): boolean => saving.value,
 	(val: boolean): void => {
