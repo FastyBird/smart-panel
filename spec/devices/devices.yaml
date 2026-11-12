@@ -638,12 +638,12 @@ camera:
     en:
       - The camera channel is required for video/image functionality.
       - Motion detection helps reduce bandwidth and storage usage.
-      - Light channel can control built-in IR or status LEDs.
+      - The indicator channel controls the status LED; several camera channels represent several lenses.
   channels:
     camera:
       category: camera
       required: true
-      multiple: false
+      multiple: true
       description:
         en: Provides video and image data streams from surveillance or monitoring cameras. This channel supports configuration and control of camera devices, such as surveillance cameras or babysitting monitors.
     device_information:
@@ -658,6 +658,12 @@ camera:
       multiple: false
       description:
         en: Reports the status of a device's battery, including level, charging state, and operational health.
+    carbon_monoxide:
+      category: carbon_monoxide
+      required: false
+      multiple: false
+      description:
+        en: Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces.
     contact:
       category: contact
       required: false
@@ -670,6 +676,18 @@ camera:
       multiple: false
       description:
         en: Measures the relative humidity in the environment, reported as a percentage.
+    illuminance:
+      category: illuminance
+      required: false
+      multiple: false
+      description:
+        en: Detects ambient light levels, typically measured in lux, to monitor brightness in a space.
+    indicator:
+      category: indicator
+      required: false
+      multiple: false
+      description:
+        en: Represents a status indicator LED output. Controls on/off state, brightness, and color of hardware indicator LEDs. Used for system status feedback on host devices or external indicator peripherals.
     light:
       category: light
       required: false
@@ -688,6 +706,24 @@ camera:
       multiple: false
       description:
         en: Detects motion in an area to trigger alerts or automate responses.
+    object_detection:
+      category: object_detection
+      required: false
+      multiple: true
+      description:
+        en: Reports whether a camera or sensor currently detects an object of one type, such as a person or a vehicle.
+    smoke:
+      category: smoke
+      required: false
+      multiple: false
+      description:
+        en: Detects smoke in the environment, triggering alarms or alerts for fire safety.
+    sound_detection:
+      category: sound_detection
+      required: false
+      multiple: true
+      description:
+        en: Reports whether a camera or sensor currently hears a sound of one type, such as breaking glass or a siren.
     speaker:
       category: speaker
       required: false
@@ -749,15 +785,33 @@ doorbell:
     camera:
       category: camera
       required: false
-      multiple: false
+      multiple: true
       description:
         en: Provides video and image data streams from surveillance or monitoring cameras. This channel supports configuration and control of camera devices, such as surveillance cameras or babysitting monitors.
+    carbon_monoxide:
+      category: carbon_monoxide
+      required: false
+      multiple: false
+      description:
+        en: Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces.
     contact:
       category: contact
       required: false
       multiple: false
       description:
         en: Tracks the open or closed state of a contact point, such as a door, window, or cabinet.
+    illuminance:
+      category: illuminance
+      required: false
+      multiple: false
+      description:
+        en: Detects ambient light levels, typically measured in lux, to monitor brightness in a space.
+    indicator:
+      category: indicator
+      required: false
+      multiple: false
+      description:
+        en: Represents a status indicator LED output. Controls on/off state, brightness, and color of hardware indicator LEDs. Used for system status feedback on host devices or external indicator peripherals.
     light:
       category: light
       required: false
@@ -782,6 +836,24 @@ doorbell:
       multiple: false
       description:
         en: Detects motion in an area to trigger alerts or automate responses.
+    object_detection:
+      category: object_detection
+      required: false
+      multiple: true
+      description:
+        en: Reports whether a camera or sensor currently detects an object of one type, such as a person or a vehicle.
+    smoke:
+      category: smoke
+      required: false
+      multiple: false
+      description:
+        en: Detects smoke in the environment, triggering alarms or alerts for fire safety.
+    sound_detection:
+      category: sound_detection
+      required: false
+      multiple: true
+      description:
+        en: Reports whether a camera or sensor currently hears a sound of one type, such as breaking glass or a siren.
     speaker:
       category: speaker
       required: false

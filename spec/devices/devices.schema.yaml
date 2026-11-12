@@ -200,6 +200,7 @@ patternProperties:
                   - microphone
                   - motion
                   - nitrogen_dioxide
+                  - object_detection
                   - occupancy
                   - outlet
                   - ozone
@@ -207,6 +208,7 @@ patternProperties:
                   - projector
                   - robot_vacuum
                   - smoke
+                  - sound_detection
                   - speaker
                   - sulphur_dioxide
                   - switcher

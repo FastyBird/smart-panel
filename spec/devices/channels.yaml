@@ -1252,6 +1252,106 @@ occupancy:
       unit: null
       format: null
 
+object_detection:
+  category: object_detection
+  name:
+    en: Object detection
+  description:
+    en: >-
+      Reports whether a camera or sensor currently detects an object of one type, such as a person or a vehicle.
+  docGroup: security
+  properties:
+    detected:
+      category: detected
+      required: true
+      description:
+        en: Binary detection state (true = detected)
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    object_type:
+      category: object_type
+      required: true
+      description:
+        en: Type of object this channel reports
+      permissions:
+        - ro
+      data_type: enum
+      unit: null
+      format: ["person","vehicle","animal","package","license_plate","face","unknown"]
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the channel/sensor is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    tampered:
+      category: tampered
+      required: false
+      description:
+        en: Indicates if the device has been tampered with
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+sound_detection:
+  category: sound_detection
+  name:
+    en: Sound detection
+  description:
+    en: >-
+      Reports whether a camera or sensor currently hears a sound of one type, such as breaking glass or a siren.
+  docGroup: security
+  properties:
+    detected:
+      category: detected
+      required: true
+      description:
+        en: Binary detection state (true = detected)
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    sound_type:
+      category: sound_type
+      required: true
+      description:
+        en: Type of sound this channel reports
+      permissions:
+        - ro
+      data_type: enum
+      unit: null
+      format: ["glass_break","burglar_alarm","siren","baby_cry","speech","dog_bark","car_horn","unknown"]
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the channel/sensor is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    tampered:
+      category: tampered
+      required: false
+      description:
+        en: Indicates if the device has been tampered with
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
 smoke:
   category: smoke
   name:
@@ -2644,7 +2744,7 @@ camera:
       category: source
       required: true
       description:
-        en: Input source selection
+        en: Stable, non-secret identifier of the stream source; never a URL or credential
       permissions:
         - ro
       data_type: string
