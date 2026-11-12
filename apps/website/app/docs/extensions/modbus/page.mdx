@@ -1,0 +1,270 @@
+import { Callout } from "nextra/components";
+
+# Modbus
+
+The Modbus integration lets Smart Panel read and switch wired I/O modules: digital input boards, relay boards, analog
+input modules and valve controllers. Smart Panel is always the Modbus master (client). Modbus has no discovery and no
+self-description, so you tell Smart Panel where a device is and what its registers mean, either by picking a
+**template** or by defining the points yourself.
+
+The plugin never scans addresses or unit IDs. It only talks to the endpoints and devices you configured.
+
+## Endpoints and devices
+
+```text
+Endpoint   host:port, framing, timeouts      (one TCP connection)
+ └─ Device  unit ID, poll interval            (one physical module)
+     └─ channel and properties                (inputs, relays, sensors, valves)
+```
+
+An **endpoint** is a network address Smart Panel connects to. It is either a device that speaks Modbus TCP itself, or a
+gateway with several RS485 slaves behind it, each answering to its own **unit ID**. Unit IDs are unique per endpoint;
+two endpoints may both have a unit 1.
+
+Endpoints are managed on the **Modbus endpoints** page of the admin app. Each endpoint has a framing:
+
+| Framing          | Use it for                                                                                 | Notes                                              |
+| ---------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| **Modbus TCP**   | Devices with a native Modbus TCP server, and gateways in Modbus TCP to RTU conversion mode | Requests are matched to replies by transaction ID. |
+| **RTU over TCP** | Gateways in transparent mode, which pass raw RTU frames to the serial line                 | One request at a time, no transaction IDs.         |
+
+Smart Panel keeps **one connection per endpoint** and queues the requests of all its devices through it, with a delay
+between requests. Many cheap RS485 gateways accept only one client at a time and lock up under parallel sockets, so do
+not point a second master (another Smart Panel, a PLC or a test tool) at the same gateway while Smart Panel is using
+it. If an endpoint stops answering, Smart Panel retries with a growing delay (1 s up to 60 s) and marks its devices as
+lost until it is back.
+
+The endpoint page shows the connection state, last error, average latency and whether the endpoint is overloaded
+(planned reads do not fit in their poll intervals; lengthen the poll interval or move devices to another gateway).
+
+## Adding a device
+
+Open **Devices**, choose to add a device, and pick **Modbus**. The wizard has five steps.
+
+1. **Endpoint.** Use a saved endpoint or add a new one (name, host, port, framing, timeouts), then enter the **Unit ID**.
+   **Test connection** reads a few values you choose and shows the raw result or the Modbus exception with a hint
+   (connection refused means a wrong port or the TCP server is switched off; no answer means a wrong IP address, unit
+   ID or framing; illegal address means the device is reachable and you should try another address). Nothing is written
+   or saved by the test. Unit ID 0 is the RTU broadcast address and devices do not answer it.
+2. **Template.** Choose a built-in or custom template, or **Start empty**. A template supplies the points for the next
+   step and warns you when the selected endpoint does not match the framing or port it expects.
+3. **Points.** The table of points: name, capability, register type, address, data type, bit, byte and word order,
+   scale and offset, invert, value map and write function. **Read now** (and **Auto refresh**) show the decoded live
+   value and the raw value of every point, read through the real endpoint. Use it to check addresses, byte order and
+   word order. Writable points have an explicit **Test write**, which asks for confirmation every time; nothing else
+   writes. If you change the points of a template, the device is created as a custom device.
+4. **Device.** Name, room, category and poll interval.
+5. **Review.** A summary of everything that will be created. **Create device** sends one request.
+
+### Device categories
+
+The category is suggested from the points and can be changed:
+
+| Category           | Use it for                                              |
+| ------------------ | ------------------------------------------------------- |
+| `switcher`         | Relay or other writable outputs, optionally with inputs |
+| `input_controller` | Inputs only (binary inputs, buttons)                    |
+| `sensor`           | Measured values only (analog inputs, temperature, ...)  |
+| `valve`            | A single on/off valve                                   |
+
+### Address notation
+
+Modbus addresses are stored **0-based** (the address on the wire, called the PDU address). The wizard accepts the
+notation your device manual uses and shows the stored address next to what you typed:
+
+- a plain number is a 0-based PDU address (`0`);
+- the **1-based** option counts from 1, so `1` is stored as `0`;
+- Modicon notation with the register table in the first digit: `0xxxx` coils, `1xxxx` discrete inputs, `3xxxx` input
+  registers and `4xxxx` holding registers (for example `40001` is holding register 0);
+- a range such as `0-31` creates one point for each address, up to 256 at a time.
+
+If the first value you read looks wrong, an off-by-one in the notation is the usual cause. Use **Read now** to check.
+
+### Value formats
+
+A point reads `bool`, `int16`, `uint16`, `int32`, `uint32` or `float32` values. 32-bit values span two registers, and
+the **byte order** and **word order** (big or little endian) must match the device. Coils and discrete inputs are
+always `bool`; use **Bit** to take a single bit (0 to 15) of a register. **Scale** and **offset** convert raw numbers,
+**invert** flips a boolean, and a **value map** translates raw numbers to values (a value map cannot be combined with a
+scale, an offset, invert or float32).
+
+## Inputs, sensors and valves
+
+- **Binary input** channels report the level of a coil, discrete input or register bit as on or off.
+- **Analog input** and the measured-quantity channels (temperature, humidity, pressure, illuminance, electrical power)
+  read a register with scale and offset. The **unit** of a value comes from the device specification and is not
+  editable in the wizard; an analog input can carry a static `unit` property in a template.
+- **Valve** channels switch a valve on a coil or holding register. A custom valve's static `type` property is
+  read-only because the device cannot write it.
+
+The `generic` device category is reserved and is not used for Modbus devices.
+
+### Buttons
+
+A **button** point reads a level (a coil, a discrete input or a register bit) and turns the changes between polls into
+button events:
+
+| Event        | When                                      |
+| ------------ | ----------------------------------------- |
+| `down`       | The level goes active                     |
+| `up`         | The level goes inactive                   |
+| `press`      | Released before the long-press threshold  |
+| `long_press` | The threshold is reached while still held |
+
+The long-press threshold is set per point, from 100 to 10000 ms, **800 ms by default** (`long_press_ms` in templates).
+
+<Callout type="warning">
+  **Button timing is only as fine as the poll interval.** Use a poll interval of
+  **100 to 250 ms** for devices with button points. A press that is shorter than
+  one poll interval can be missed completely. The first reading after Smart
+  Panel starts or an endpoint reconnects only sets a baseline and produces no
+  events, so a button held during a reconnect does not fire.
+</Callout>
+
+## Connection state
+
+A device is **connected** after a successful poll and **lost** when its endpoint is in back-off, or when its requests
+time out three polls in a row while the endpoint still answers for other units (for example the relay board is
+unplugged but the gateway is up). Disabling an endpoint disconnects its devices. While a device is lost or
+disconnected, its property values are marked invalid instead of showing stale values.
+
+## Editing points
+
+Open the device in the admin app and choose **Edit points** in its **Modbus** section. The editor is the same table as
+the wizard.
+
+- Channels and properties **keep their IDs**, so virtual devices, tiles and history keep working after an edit.
+- An existing channel **cannot change its capability**. To change it, remove the point and add a new one.
+- Name, room, endpoint, unit ID and unit are changed in the normal device edit form, not in the points editor.
+- Template provenance is fixed when the device is created. If the template has a newer revision, a **Template
+  updated** tag appears on the device. Existing devices are never changed by template edits.
+
+## Templates
+
+A template describes a Modbus device model: its channels, properties and register bindings. Templates are
+declarative: no formulas or expressions, and unknown keys are rejected.
+
+Smart Panel ships built-in templates for the Qingjun 32-channel digital input board and the Eletechsup N4D8B08 relay
+board. You can add your own as YAML files.
+
+### Where templates are loaded from
+
+1. **Built-in** templates shipped with the app.
+2. **Custom templates** in the Smart Panel configuration directory (`FB_CONFIG_PATH`, falling back to `var/data`), as
+   flat files named `plugin.devices-modbus.<name>.yaml`.
+3. If `FB_MODBUS_TEMPLATES_PATH` is set, every `*.yaml` and `*.yml` file under that directory (recursively) is read
+   **instead of** the files in the configuration directory.
+
+A custom template with the same `id` as a built-in one overrides it. A file that fails validation is reported with its
+errors and is not offered in the wizard. Templates are read at startup. After editing a file, press **Reload
+templates** in the Modbus plugin settings; the result lists every file with its errors and warnings.
+
+### File format
+
+```yaml
+version: "1.0"
+templates:
+  - id: my-board # lowercase letters, digits, - and _
+    name: My board
+    manufacturer: Acme
+    model: B1
+    category: switcher
+    defaults:
+      framing: tcp # tcp | rtu_over_tcp
+      port: 502
+      unit_id: { default: 1, min: 1, max: 247, hint: "Shown next to the field" }
+      poll_interval_ms: 500
+    channels:
+      - category: switcher
+        identifier: relay
+        name: Relay
+        properties:
+          - category: "on"
+            read: { register_type: coil, address: 0, data_type: bool }
+            write: { register_type: coil, address: 0, data_type: bool }
+```
+
+`id`, `name`, `manufacturer`, `model`, `category` and `channels` are required. A property has a `category` and optional
+`identifier`, `name`, `data_type`, `permissions`, `unit`, `format`, `static_value`, `read` and `write`. A binding has:
+
+| Field                       | Meaning                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| `register_type`             | `coil`, `discrete_input`, `input_register` or `holding_register`                      |
+| `address`                   | 0-based PDU address (0 to 65535)                                                      |
+| `data_type`                 | `bool`, `int16`, `uint16`, `int32`, `uint32` or `float32`                             |
+| `bit`                       | Bit 0 to 15 of a register                                                             |
+| `byte_order`, `word_order`  | `big` or `little`                                                                     |
+| `scale`, `offset`, `invert` | Numeric conversion and boolean inversion                                              |
+| `value_map`                 | List of `{ raw, value }` pairs                                                        |
+| `write_function`            | `single` or `multiple`                                                                |
+| `poll_interval_ms`          | Poll this point on its own interval                                                   |
+| `long_press_ms`             | 100 to 10000; only on the `read` binding of a `button` `event` property (default 800) |
+
+A channel with `repeat: { count: N }` (1 to 256) expands into N channels. `{i}` (from 0) and `{n}` (from 1) are replaced
+in identifiers and names. An address can be `{ base, step, every }` and a bit `{ base, step, modulo }`, which gives one
+point per address or one point per bit of consecutive registers. A file may hold 64 templates, and a template may expand
+to at most 512 channels.
+
+For example, 32 inputs packed into two registers, least significant bit first:
+
+```yaml
+- repeat: { count: 32 }
+  identifier: "di_{n}"
+  name: "DI {n}"
+  category: binary_input
+  properties:
+    - category: state
+      read:
+        register_type: holding_register
+        address: { base: 4, every: 16 } # register 4 for items 0-15, register 5 for 16-31
+        data_type: bool
+        bit: { modulo: 16 }
+```
+
+A button with a 1.5 second long-press threshold:
+
+```yaml
+- category: button
+  identifier: button_1
+  name: Button 1
+  properties:
+    - category: event
+      read:
+        register_type: discrete_input
+        address: 0
+        data_type: bool
+        long_press_ms: 1500
+```
+
+### Revisions
+
+Each template has a **revision**, a hash of its content. Creating a device copies the channels and bindings into the
+device and records the template ID and revision. Later template edits never change existing devices; the admin only
+shows the **Template updated** tag.
+
+## Splitting a module with virtual devices
+
+One unit ID is exactly one Smart Panel device. Some modules do not fit a single device category: an 8-zone valve board,
+a relay board where some relays drive lights and others valves, or a four-probe temperature module. Create the module
+as a plain I/O device (`switcher` for relays, `input_controller` for inputs, `sensor` for analog inputs), optionally
+hide it, then build [virtual devices](/docs/admin-management/virtual-devices) from its properties. The virtual devices
+become the valves, lights and sensors that rooms and the panel use, and Smart Panel still polls the module only once.
+
+## Hardware setup notes
+
+- **Waveshare RS485 to Ethernet gateways** offer several modes. In transparent mode use the **RTU over TCP** framing; in
+  Modbus TCP to RTU conversion mode use **Modbus TCP**. Set the serial side to the device's settings (9600 8N1 for the
+  Eletechsup board) and make sure the gateway accepts one client connection reliably.
+- **Qingjun 32DI:** Modbus TCP on port 8080. The unit ID is set by DIP switches, and the board must be restarted after
+  changing them.
+- **Eletechsup N4D8B08:** relays at PDU 1 to 8 (read `1` or `0`, written with `256` for on and `512` for off) and
+  inputs at PDU 81 to 88.
+
+See also the [hardware acceptance checklist](https://github.com/FastyBird/smart-panel/blob/main/docs/modbus-hardware-acceptance.md)
+used to verify new hardware.
+
+## What's Next?
+
+- [**Device integrations**](/docs/extensions/device-integrations) — other device plugins
+- [**Virtual devices**](/docs/admin-management/virtual-devices) — split a module into valves, lights and sensors
+- [**Devices**](/docs/admin-management/devices) — manage devices in the admin app
