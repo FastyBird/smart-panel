@@ -119,7 +119,7 @@
 								:disabled="!canUndo"
 								:aria-label="t('automations.editor.buttons.undo.title')"
 								data-test-id="undo"
-								@click="undo"
+								@click="onUndo"
 							>
 								<template #icon>
 									<icon icon="mdi:undo" />
@@ -134,7 +134,7 @@
 								:disabled="!canRedo"
 								:aria-label="t('automations.editor.buttons.redo.title')"
 								data-test-id="redo"
-								@click="redo"
+								@click="onRedo"
 							>
 								<template #icon>
 									<icon icon="mdi:redo" />
@@ -298,14 +298,18 @@
 					/>
 				</div>
 
-				<!-- Rebuilt when text that did not parse is given up for the saved version -->
+				<!--
+					Rebuilt when text that did not parse is given up. Below the `md` breakpoint it is only hidden, so
+					what is typed in it is still there once there is room to edit again.
+				-->
 				<automation-node-panel
 					v-if="panelNode"
+					v-show="!readonly"
 					:key="`${panelNode.id}:${draftResets}`"
 					:node="panelNode"
 					:node-type="getNodeType(panelNode.type)"
 					:issues="panelIssues"
-					:disabled="reloading"
+					:disabled="reloading || readonly"
 					@update:config="onConfigUpdate"
 					@update:invalid="setDraftInvalid"
 					@remove="onRemoveNode"
@@ -385,6 +389,7 @@ const {
 	updateGraph,
 	updateNodeConfig,
 	setDraftInvalid,
+	discardDraft,
 	undo,
 	redo,
 	save,
@@ -431,8 +436,9 @@ const selectedEdgeIds = ref<string[]>([]);
 // is not left behind without asking: until the user agrees, the form stays open with it.
 const panelFor = ref<string | null>(null);
 
+// Kept while the view is read-only, hidden: text typed into the form must not be lost to a narrowed window
 const panelNode = computed<IAutomationGraphNode | null>((): IAutomationGraphNode | null =>
-	!readonly.value && panelFor.value !== null ? (graph.value.nodes.find((node) => node.id === panelFor.value) ?? null) : null
+	panelFor.value !== null ? (graph.value.nodes.find((node) => node.id === panelFor.value) ?? null) : null
 );
 
 const panelIssues = computed<IAutomationGraphIssue[]>((): IAutomationGraphIssue[] => {
@@ -445,7 +451,7 @@ const panelIssues = computed<IAutomationGraphIssue[]>((): IAutomationGraphIssue[
 watch(
 	(): string | null => panelNode.value?.id ?? null,
 	(id: string | null): void => {
-		if (id !== null) {
+		if (id !== null && !readonly.value) {
 			void nextTick((): void => {
 				canvas.value?.revealNode(id);
 			});
@@ -484,6 +490,11 @@ const showPanel = async (nodeId: string | null): Promise<void> => {
 	const keeping = panelFor.value;
 
 	if (nodeId === keeping) {
+		return;
+	}
+
+	// The form cannot be seen while the view is read-only: it is not asked about, and stays as it is
+	if (readonly.value && draftInvalid.value) {
 		return;
 	}
 
@@ -537,13 +548,35 @@ const onRemoveNode = (): void => {
 const onFocusNode = async (nodeId: string): Promise<void> => {
 	await showPanel(nodeId);
 
-	if (panelFor.value === nodeId) {
+	if (readonly.value || panelFor.value === nodeId) {
 		canvas.value?.focusNode(nodeId);
 	}
 };
 
 const onReject = (reason: AutomationConnectionRejection): void => {
 	flashMessage.warning(t(`automations.editor.rejections.${reason}`));
+};
+
+// A step back or forth replaces the configuration the form shows: text in it that does not parse would
+// be lost without asking, so it is given up only once the user agrees
+const stepHistory = async (step: () => void): Promise<void> => {
+	if (draftInvalid.value) {
+		if (!(await confirmDiscardDraft())) {
+			return;
+		}
+
+		discardDraft();
+	}
+
+	step();
+};
+
+const onUndo = (): void => {
+	void stepHistory(undo);
+};
+
+const onRedo = (): void => {
+	void stepHistory(redo);
 };
 
 /*
@@ -630,11 +663,11 @@ useEventListener(window, 'keydown', (event: KeyboardEvent): void => {
 	if (key === 'z' && !event.shiftKey) {
 		event.preventDefault();
 
-		undo();
+		onUndo();
 	} else if (key === 'y' || (key === 'z' && event.shiftKey)) {
 		event.preventDefault();
 
-		redo();
+		onRedo();
 	}
 });
 

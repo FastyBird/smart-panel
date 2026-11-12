@@ -225,6 +225,22 @@ describe('AutomationNodeGenericForm', (): void => {
 		await vi.waitFor((): void => expect(field('writes').text()).not.toContain('automations.editor.form.invalidJson'));
 	});
 
+	it('keeps JSON that parses to an empty list or null as the value typed, and unsets a field only once its text is emptied', async (): Promise<void> => {
+		await createWrapper({ config: { title: 'Hello', writes: [{ value: 1 }] } });
+
+		await field('writes').find('textarea').setValue('[]');
+
+		expect(lastUpdate()).toEqual([{ title: 'Hello', writes: [] }, 'writes']);
+
+		await field('writes').find('textarea').setValue('null');
+
+		expect(lastUpdate()).toEqual([{ title: 'Hello', writes: null }, 'writes']);
+
+		await field('writes').find('textarea').setValue('  ');
+
+		expect(lastUpdate()).toEqual([{ title: 'Hello' }, 'writes']);
+	});
+
 	it('does not rewrite JSON being typed, but follows a change from outside', async (): Promise<void> => {
 		await createWrapper();
 

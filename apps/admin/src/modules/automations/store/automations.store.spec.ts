@@ -440,6 +440,23 @@ describe('Automations Store', () => {
 			expect(store.semaphore.updating).toEqual([]);
 		});
 
+		it('answers with the revision the save produced, not a later one held already', async () => {
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = store.edit({ id: automationId, data: { enabled: true } });
+
+			// Saved again elsewhere, and its event got here before the response of this save
+			store.onEvent({ id: automationId, data: detailRes({ enabled: true, name: 'Renamed elsewhere', revision: 5 }) });
+
+			save.resolve({ data: { data: detailRes({ enabled: true, revision: 4 }) }, response: { status: 200 } });
+
+			await expect(pending).resolves.toMatchObject({ enabled: true, name: 'Hallway motion light', revision: 4 });
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed elsewhere', revision: 5 });
+		});
+
 		it('sends the revision the caller based its change on, not the one held', async () => {
 			// The automation has moved on since the caller copied it at revision 2
 			mockBackendClient.PATCH.mockResolvedValue({ data: undefined, error: errorEnvelope({ reason: 'Changed' }), response: { status: 409 } });

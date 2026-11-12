@@ -52,6 +52,7 @@ interface IEditorMock {
 	updateGraph: ReturnType<typeof vi.fn>;
 	updateNodeConfig: ReturnType<typeof vi.fn>;
 	setDraftInvalid: ReturnType<typeof vi.fn>;
+	discardDraft: ReturnType<typeof vi.fn>;
 	undo: ReturnType<typeof vi.fn>;
 	redo: ReturnType<typeof vi.fn>;
 	save: ReturnType<typeof vi.fn>;
@@ -86,7 +87,17 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('../../../common', async () => {
-	const { defineComponent, h, computed: vueComputed } = await import('vue');
+	const { defineComponent, h, computed: vueComputed, ref: vueRef } = await import('vue');
+
+	// The breakpoint can change while the view is open
+	const md = vueRef<boolean>(mocks.isMDDevice);
+
+	Object.defineProperty(mocks, 'isMDDevice', {
+		get: (): boolean => md.value,
+		set: (value: boolean): void => {
+			md.value = value;
+		},
+	});
 
 	const Stub = defineComponent({
 		inheritAttrs: false,
@@ -106,7 +117,7 @@ vi.mock('../../../common', async () => {
 			emits: ['back'],
 			template: '<div data-test-id="not-found">{{ message }}</div>',
 		}),
-		useBreakpoints: () => ({ isMDDevice: vueComputed(() => mocks.isMDDevice) }),
+		useBreakpoints: () => ({ isMDDevice: vueComputed(() => md.value) }),
 		useFlashMessage: () => mocks.flash,
 	};
 });
@@ -168,6 +179,7 @@ vi.mock('../components/components', async () => {
 const createEditor = (): IEditorMock => {
 	const isDirty = ref(false);
 	const draftInvalid = ref(false);
+	const draftResets = ref(0);
 
 	return {
 		automation: ref<IAutomation | null>({
@@ -193,7 +205,7 @@ const createEditor = (): IEditorMock => {
 		conflict: ref(false),
 		isDirty,
 		draftInvalid,
-		draftResets: ref(0),
+		draftResets,
 		hasUnsaved: computed(() => isDirty.value || draftInvalid.value),
 		hasSeparateFlows: ref(false),
 		canUndo: ref(false),
@@ -203,6 +215,12 @@ const createEditor = (): IEditorMock => {
 		updateNodeConfig: vi.fn(),
 		setDraftInvalid: vi.fn((invalid: boolean): void => {
 			draftInvalid.value = invalid;
+		}),
+		discardDraft: vi.fn((): void => {
+			if (draftInvalid.value) {
+				draftInvalid.value = false;
+				draftResets.value += 1;
+			}
 		}),
 		undo: vi.fn(),
 		redo: vi.fn(),
@@ -322,7 +340,7 @@ describe('ViewAutomationFlow', (): void => {
 
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="panel-stub"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="panel-stub"]').isVisible()).toBe(false);
 
 		press('s');
 		press('z');
@@ -451,6 +469,98 @@ describe('ViewAutomationFlow', (): void => {
 		expect(editor.undo).toHaveBeenCalledTimes(2);
 
 		input.remove();
+	});
+
+	it('asks before an undo or a redo replaces text in the form that does not parse', async (): Promise<void> => {
+		editor.canUndo.value = true;
+		editor.canRedo.value = true;
+
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel').mockRejectedValueOnce('cancel');
+
+		await createWrapper();
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$emit('update:invalid', true);
+		await flushPromises();
+
+		// Turned down: nothing changes, and the text stays
+		await wrapper.find('[data-test-id="undo"]').trigger('click');
+		await flushPromises();
+
+		press('y');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(editor.undo).not.toHaveBeenCalled();
+		expect(editor.redo).not.toHaveBeenCalled();
+		expect(editor.discardDraft).not.toHaveBeenCalled();
+		expect(editor.draftInvalid.value).toBe(true);
+
+		// Agreed: the text is given up, the form rebuilt, and the step taken
+		confirm.mockResolvedValueOnce('confirm' as never);
+
+		const before = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		press('z');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(3);
+		expect(editor.discardDraft).toHaveBeenCalledTimes(1);
+		expect(editor.undo).toHaveBeenCalledTimes(1);
+		expect(editor.draftInvalid.value).toBe(false);
+		expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$.uid).not.toBe(before.vm.$.uid);
+	});
+
+	it('keeps text in the form that does not parse while the window is narrowed and widened again', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm');
+
+		await createWrapper();
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		const before = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		before.vm.$emit('update:invalid', true);
+		await flushPromises();
+
+		mocks.isMDDevice = false;
+		await flushPromises();
+
+		// Out of sight and out of reach, but still there, and still unsaved
+		const hidden = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		expect(hidden.vm.$.uid).toBe(before.vm.$.uid);
+		expect(hidden.isVisible()).toBe(false);
+		expect(hidden.props('disabled')).toBe(true);
+		expect(editor.draftInvalid.value).toBe(true);
+		expect(wrapper.find('[data-test-id="unsaved-tag"]').exists()).toBe(true);
+
+		// Looking at another card does not ask about a form that cannot be seen
+		canvas().vm.$emit('select', ['t1'], []);
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(editor.draftInvalid.value).toBe(true);
+
+		mocks.isMDDevice = true;
+		await flushPromises();
+
+		const after = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		expect(after.vm.$.uid).toBe(before.vm.$.uid);
+		expect(after.isVisible()).toBe(true);
+		expect(after.props('node')).toEqual(graph.nodes[1]);
+		expect(after.props('disabled')).toBe(false);
+		expect(editor.draftInvalid.value).toBe(true);
+
+		// Leaving still asks
+		confirm.mockRejectedValueOnce('cancel');
+
+		await expect(mocks.leaveGuard?.()).resolves.toBe(false);
+		expect(confirm).toHaveBeenCalledTimes(1);
 	});
 
 	it('removes the selection from the toolbar', async (): Promise<void> => {

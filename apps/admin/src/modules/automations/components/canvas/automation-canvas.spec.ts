@@ -2,9 +2,10 @@ import { nextTick } from 'vue';
 
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { AUTOMATION_GRAPH_MAX_NODES, AutomationNodeKind } from '../../automations.constants';
+import { AUTOMATION_GRAPH_MAX_NODES, AUTOMATION_GRAPH_POSITION_LIMIT, AutomationNodeKind } from '../../automations.constants';
 import type { IAutomationGraph } from '../../store/automations.store.types';
 import type { IAutomationNodeType } from '../../store/node-types.store.types';
 
@@ -204,6 +205,41 @@ describe('AutomationCanvas', (): void => {
 		expect(canvas.getGraph()).toEqual(edited);
 		expect(wrapper.find('.vue-flow__node[data-id="a1"] [data-test-id="node-summary"]').text()).toBe('title: Changed');
 		expect(wrapper.emitted('update:graph')).toBeUndefined();
+	});
+
+	it('puts a card dragged beyond the limit where it is stored, not where it was dropped', async (): Promise<void> => {
+		await createWrapper();
+
+		const flow = useVueFlow(wrapper.findComponent(VueFlow).props('id') as string);
+
+		// The end of a drag, as the library reports it
+		flow.updateNodePositions(
+			[
+				{
+					id: 'a1',
+					position: { x: AUTOMATION_GRAPH_POSITION_LIMIT + 5_000, y: -AUTOMATION_GRAPH_POSITION_LIMIT - 20 },
+					from: { x: 760, y: 0 },
+					distance: { x: 0, y: 0 },
+					dimensions: { width: 280, height: 56 },
+				},
+			],
+			true,
+			false
+		);
+		await flushPromises();
+
+		const limit = { x: AUTOMATION_GRAPH_POSITION_LIMIT, y: -AUTOMATION_GRAPH_POSITION_LIMIT };
+
+		expect(lastGraph()?.nodes.find((node) => node.id === 'a1')?.position).toEqual(limit);
+		expect(flow.findNode('a1')?.position).toEqual(limit);
+		expect(wrapper.find('.vue-flow__node[data-id="a1"]').attributes('style')).toContain(`translate(${limit.x}px,${limit.y}px)`);
+
+		// The echo of what was told is not news to the canvas
+		await wrapper.setProps({ graph: lastGraph() });
+		await flushPromises();
+
+		expect(flow.findNode('a1')?.position).toEqual(limit);
+		expect(wrapper.emitted('update:graph')).toHaveLength(1);
 	});
 
 	it('rebuilds itself from a graph with another structure, edges included', async (): Promise<void> => {

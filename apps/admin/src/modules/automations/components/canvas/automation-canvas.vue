@@ -335,6 +335,16 @@ const emitGraph = (): void => {
 		const graph = readGraph();
 		const serialised = JSON.stringify(graph);
 
+		// What is told is clamped to the limit and rounded. A card dropped beyond it is put where it is stored,
+		// as the echo of the graph is not patched in: it would otherwise jump there only once read again.
+		for (const node of graph.nodes) {
+			const existing = findNode<IAutomationCanvasNodeData>(node.id);
+
+			if (existing && (existing.position.x !== node.position.x || existing.position.y !== node.position.y)) {
+				existing.position = { ...node.position };
+			}
+		}
+
 		if (serialised === lastSynced) {
 			return;
 		}

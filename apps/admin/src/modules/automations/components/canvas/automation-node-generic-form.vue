@@ -371,7 +371,8 @@ const onJsonInput = (key: string, text: string): void => {
 		return;
 	}
 
-	const config = setConfigValue(props.config, key, parsed.value);
+	// What parses is taken as typed, `null` and `[]` included; only a field whose text was emptied is unset
+	const config = typeof parsed.value === 'undefined' ? setConfigValue(props.config, key, undefined) : { ...props.config, [key]: parsed.value };
 
 	jsonErrors[key] = false;
 	jsonSeen[key] = JSON.stringify(config[key]);

@@ -93,6 +93,16 @@ const detailRes = (overrides: Partial<IAutomationRes> = {}): IAutomationRes => (
 
 const ok = (data: unknown): { data: { data: unknown }; response: { status: number } } => ({ data: { data }, response: { status: 200 } });
 
+const deferred = (): { promise: Promise<unknown>; resolve: (value: unknown) => void } => {
+	let resolve: (value: unknown) => void = () => {};
+
+	const promise = new Promise<unknown>((res) => {
+		resolve = res;
+	});
+
+	return { promise, resolve };
+};
+
 const refused = (status: number, details: unknown = null): { data: undefined; error: unknown; response: { status: number } } => ({
 	data: undefined,
 	error: { error: { code: 'Error', message: 'Refused', details } },
@@ -416,6 +426,74 @@ describe('useAutomationEditor', () => {
 
 			expect(editor.isDirty.value).toBe(true);
 			expect(editor.graph.value.nodes[4]?.config).toEqual({ seconds: 30 });
+		});
+		it('raises a conflict for a save made elsewhere whose event got here before the response of this save', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = editor.save();
+
+			await vi.waitFor(() => expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1));
+
+			// Saved elsewhere over this save; meanwhile something more is drawn here
+			automationsStore.onEvent({ id: automationId, data: detailRes({ revision: 5, graph: cloneGraph(graph) }) });
+
+			editor.updateNodeConfig('d1', { seconds: 30 });
+
+			save.resolve(ok(detailRes({ revision: 4, graph: withDelay() })));
+
+			await expect(pending).resolves.toBe('saved');
+			await flushPromises();
+
+			expect(editor.conflict.value).toBe(true);
+			expect(editor.graph.value.nodes[4]?.config).toEqual({ seconds: 30 });
+
+			mockBackendClient.PATCH.mockResolvedValue(refused(409));
+			mockBackendClient.GET.mockResolvedValue(ok(detailRes({ revision: 5, graph: cloneGraph(graph) })));
+
+			await editor.save();
+
+			// The next save is based on the revision this save produced, so it cannot pass over the other one
+			expect(mockBackendClient.PATCH.mock.calls[1]?.[1].body.data.revision).toBe(4);
+		});
+
+		it('follows a save made elsewhere whose event got here before the response of this save when nothing more was drawn', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = editor.save();
+
+			await vi.waitFor(() => expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1));
+
+			automationsStore.onEvent({ id: automationId, data: detailRes({ revision: 5, graph: cloneGraph(graph) }) });
+
+			mockBackendClient.GET.mockResolvedValueOnce(ok(detailRes({ revision: 5, graph: cloneGraph(graph) })));
+
+			save.resolve(ok(detailRes({ revision: 4, graph: withDelay() })));
+
+			await expect(pending).resolves.toBe('saved');
+			await vi.waitFor(() => expect(editor.graph.value).toEqual(graph));
+
+			expect(editor.conflict.value).toBe(false);
+			expect(editor.isDirty.value).toBe(false);
+
+			mockBackendClient.PATCH.mockResolvedValueOnce(ok(detailRes({ revision: 6 })));
+
+			editor.updateGraph(withDelay());
+
+			await editor.save();
+
+			expect(mockBackendClient.PATCH.mock.calls[1]?.[1].body.data.revision).toBe(5);
 		});
 	});
 
@@ -826,6 +904,30 @@ describe('useAutomationEditor', () => {
 			expect(editor.conflict.value).toBe(false);
 			expect(editor.graph.value).toEqual(withDelay());
 			expect(editor.isDirty.value).toBe(true);
+		});
+
+		it('raises a conflict for a save made elsewhere whose event got here before the response of enabling', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = editor.setEnabled(true);
+
+			await vi.waitFor(() => expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1));
+
+			automationsStore.onEvent({ id: automationId, data: detailRes({ enabled: true, revision: 5 }) });
+
+			save.resolve(ok(detailRes({ enabled: true, revision: 4 })));
+
+			await expect(pending).resolves.toBe(true);
+			await flushPromises();
+
+			expect(editor.conflict.value).toBe(true);
+			expect(editor.graph.value).toEqual(withDelay());
 		});
 
 		it('shows why an incomplete flow cannot be enabled', async () => {

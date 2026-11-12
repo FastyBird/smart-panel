@@ -136,7 +136,7 @@ export interface IUseAutomationEditor {
 	isDirty: ComputedRef<boolean>;
 	// The open form holds text that does not parse, so it has not reached the graph
 	draftInvalid: Ref<boolean>;
-	// Moves each time such text is given up for a saved version: the form is to be rebuilt from the graph
+	// Moves each time such text is given up: the form is to be rebuilt from the graph
 	draftResets: Ref<number>;
 	// What is drawn or typed and not saved
 	hasUnsaved: ComputedRef<boolean>;
@@ -147,6 +147,8 @@ export interface IUseAutomationEditor {
 	updateGraph: (graph: IAutomationGraph, coalesceKey?: string) => void;
 	updateNodeConfig: (nodeId: IAutomationGraphNode['id'], config: IAutomationGraphNode['config'], field?: string) => void;
 	setDraftInvalid: (invalid: boolean) => void;
+	// Gives up text in the form that does not parse, which rebuilds the form from the graph
+	discardDraft: () => void;
 	undo: () => void;
 	redo: () => void;
 	save: () => Promise<AutomationEditorSaveResult>;

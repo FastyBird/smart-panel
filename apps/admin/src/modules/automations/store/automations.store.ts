@@ -465,6 +465,10 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		 * the update is a compare-and-swap on the revision, so there is no optimistic state to roll back when
 		 * it is refused. The revision compared is the one the change was based on: a caller that edits a
 		 * copy passes the revision it copied, otherwise it is the revision held.
+		 *
+		 * Resolves with the automation as this save left it, at the revision it produced - not with what is
+		 * held, which may already be a later save made elsewhere whose event got here first. A caller that
+		 * bases further changes on the result is then refused instead of passing over that save unseen.
 		 */
 		const edit = async (payload: IAutomationsEditActionPayload): Promise<IAutomation> => {
 			const parsedPayload = AutomationsEditActionPayloadSchema.safeParse(payload);
@@ -516,8 +520,11 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 				const transformed = transformAutomationResponse(responseData.data, AutomationSchema);
 
-				// Removed before the answer got here: it was saved, it just is not held any more
-				return commit(transformed.id, transformed, startedAt) ?? transformed;
+				// Removed before the answer got here, or already saved over elsewhere: either way it is what
+				// this save produced that the caller hears about
+				const held = commit(transformed.id, transformed, startedAt);
+
+				return held === null || held.revision !== transformed.revision ? transformed : held;
 			} catch (e) {
 				throw toApiException(e, 'Failed to update automation.');
 			} finally {
