@@ -281,6 +281,14 @@ describe('automation card forms', (): void => {
 			expect(lastConfig()).toEqual({ writes: [{ device_id: 'd-1' }] });
 		});
 
+		it('keeps an empty value that is configured when another value is edited', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [{ ...lockWrite, value: false }, {}] } });
+
+			wrapper.find('[data-test-write="0"]').findComponent(AutomationPropertyValueInput).vm.$emit('update:modelValue', true);
+
+			expect(lastConfig()).toEqual({ writes: [{ ...lockWrite, value: true }, {}] });
+		});
+
 		it('lets a single entry that is not a value be removed', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [null] } });
 

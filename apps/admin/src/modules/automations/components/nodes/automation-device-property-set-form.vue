@@ -256,12 +256,13 @@ const entries = (): unknown[] => [...writes.value, ...Array.from({ length: blank
 
 const isBlank = (entry: unknown): boolean => isRow(entry) && Object.keys(entry).length === 0;
 
-const emitRows = (next: unknown[], field: string): void => {
+// `configured` is how many of `next` come from the configuration: only blank rows after those are the
+// form's own and stay off it; an empty entry that was configured keeps its place and its errors
+const emitRows = (next: unknown[], configured: number, field: string): void => {
 	const kept = next.map((entry: unknown): unknown => (isRow(entry) ? withoutEmpty(entry) : entry));
-	// Blank rows at the end are the form's own; a blank row in the middle keeps its place
 	let end = kept.length;
 
-	while (end > 0 && isBlank(kept[end - 1])) end -= 1;
+	while (end > configured && isBlank(kept[end - 1])) end -= 1;
 
 	blankRows.value = kept.length - end;
 
@@ -271,6 +272,7 @@ const emitRows = (next: unknown[], field: string): void => {
 const onRow = (index: number, patch: Row, field: string): void => {
 	emitRows(
 		entries().map((entry: unknown, entryIndex: number): unknown => (entryIndex === index ? { ...(isRow(entry) ? entry : {}), ...patch } : entry)),
+		writes.value.length,
 		field
 	);
 };
@@ -294,6 +296,7 @@ const onAdd = (): void => {
 const onRemove = (index: number): void => {
 	emitRows(
 		entries().filter((_entry: unknown, entryIndex: number): boolean => entryIndex !== index),
+		index < writes.value.length ? writes.value.length - 1 : writes.value.length,
 		'writes'
 	);
 };
