@@ -27,7 +27,7 @@ describe('AutomationsModuleResetService', () => {
 		repository = dataSource.getRepository(AutomationEntity);
 		eventEmitter = { emit: jest.fn() };
 		runsRepository = dataSource.getRepository(AutomationRunEntity);
-		service = new AutomationsModuleResetService(repository, runsRepository, eventEmitter as unknown as EventEmitter2);
+		service = new AutomationsModuleResetService(repository, eventEmitter as unknown as EventEmitter2);
 	});
 
 	afterEach(async () => {
@@ -64,6 +64,33 @@ describe('AutomationsModuleResetService', () => {
 
 		expect(await runsRepository.count()).toBe(0);
 		expect(await repository.count()).toBe(0);
+	});
+
+	it('keeps the run history when the automations can not be deleted', async () => {
+		const automation = await repository.save(repository.create({ name: 'First' }));
+
+		await runsRepository.insert({
+			automationId: automation.id,
+			revision: 1,
+			status: AutomationRunRecordStatus.COMPLETED,
+			triggerNodeId: 't',
+			startedAt: new Date(),
+			finishedAt: new Date(),
+			durationMs: 3,
+			endReason: null,
+			trace: { trigger: { node_id: 't', manual: true, data: {} }, steps: [], truncated: false },
+		});
+		await dataSource.query(
+			`CREATE TRIGGER refuse_delete BEFORE DELETE ON ${repository.metadata.tableName} BEGIN SELECT RAISE(ABORT, 'refused'); END`,
+		);
+
+		const result = await service.reset();
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toContain('refused');
+		expect(await runsRepository.count()).toBe(1);
+		expect(await repository.count()).toBe(1);
+		expect(eventEmitter.emit).not.toHaveBeenCalled();
 	});
 
 	it('reports a failure instead of throwing', async () => {

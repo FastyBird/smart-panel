@@ -190,7 +190,7 @@ export interface EngineHooks {
 	runStarted?(record: RunRecord): void;
 	/** The run reached a node, or a Delay it was parked on let it go on or was cancelled */
 	runStep?(record: RunRecord, step: RunStep): void;
-	/** The run parked on a Delay for the first time, so it will outlive the current tick */
+	/** The run parked on a Delay, so it will outlive the current tick; called for every park */
 	runParked?(record: RunRecord): void;
 	/** The outcome of the run is known */
 	runEnded?(record: RunRecord): void;

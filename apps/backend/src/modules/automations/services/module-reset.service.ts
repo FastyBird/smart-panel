@@ -16,8 +16,6 @@ export class AutomationsModuleResetService {
 	constructor(
 		@InjectRepository(AutomationEntity)
 		private readonly automationsRepository: Repository<AutomationEntity>,
-		@InjectRepository(AutomationRunEntity)
-		private readonly runsRepository: Repository<AutomationRunEntity>,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -26,9 +24,12 @@ export class AutomationsModuleResetService {
 
 		try {
 			const automationsCount = await this.automationsRepository.count();
-			// The run history goes first: it belongs to the automations
-			await this.runsRepository.clear();
-			await this.automationsRepository.clear();
+			// One transaction: should the automations not go, their run history stays as well
+			await this.automationsRepository.manager.transaction(async (manager) => {
+				// The run history goes first: it belongs to the automations
+				await manager.clear(AutomationRunEntity);
+				await manager.clear(AutomationEntity);
+			});
 
 			this.logger.log('[RESET] Automations module factory reset completed successfully');
 

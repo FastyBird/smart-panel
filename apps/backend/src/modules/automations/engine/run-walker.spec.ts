@@ -487,18 +487,41 @@ describe('RunWalker', () => {
 			expect(events).toEqual(['parked', 'ended:completed', 'settled']);
 		});
 
-		it('reports parking once, whatever the number of delays', async () => {
-			const walker = walk(
-				plan([trigger('t'), delay('one', 10), delay('two', 20)], ['t:out>one', 't:out>two', 'one:out>two']),
-			);
+		it('reports every park, so the latest one says where the run waits', async () => {
+			const parkedOn: string[] = [];
+			const walker = new RunWalker({
+				plan: plan([trigger('t'), delay('one', 10), delay('two', 20)], ['t:out>one', 'one:out>two']),
+				clock,
+				wallNow: () => wall,
+				runId: 'run-1',
+				automationId: 'automation-1',
+				revision: 3,
+				trigger: { nodeId: 't', data: {}, manual: false },
+				observer: {
+					parked: (record: RunRecord) =>
+						parkedOn.push(
+							record.steps
+								.filter((item) => item.state === 'parked')
+								.map((item) => item.nodeId)
+								.join(),
+						),
+				},
+			});
 
 			walker.start();
-			clock.advance(100);
-			await flush();
-			clock.advance(100);
 			await flush();
 
-			expect(events.filter((event) => event === 'parked')).toHaveLength(1);
+			expect(parkedOn).toEqual(['one']);
+
+			clock.advance(10);
+			await flush();
+
+			expect(parkedOn).toEqual(['one', 'two']);
+
+			clock.advance(20);
+			await flush();
+
+			expect(parkedOn).toEqual(['one', 'two']);
 			expect(walker.record.status).toBe('completed');
 		});
 

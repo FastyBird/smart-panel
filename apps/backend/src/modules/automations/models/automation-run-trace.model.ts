@@ -228,9 +228,12 @@ export const AUTOMATION_RUN_RECORD_STATUS: Record<RunRecord['status'], Automatio
 	interrupted: AutomationRunRecordStatus.INTERRUPTED,
 };
 
+/** The size of a value as stored: serialised JSON, in UTF-8 bytes */
 const jsonLength = (value: unknown): number => {
 	try {
-		return JSON.stringify(value)?.length ?? 0;
+		const serialized = JSON.stringify(value);
+
+		return serialized === undefined ? 0 : Buffer.byteLength(serialized, 'utf8');
 	} catch {
 		// What can not be serialised can not be stored either
 		return Number.POSITIVE_INFINITY;

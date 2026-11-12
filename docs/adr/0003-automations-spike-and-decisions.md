@@ -364,23 +364,25 @@ Added with AU-13; decision 12 names the storage and the limits, this records how
   `last_run_status` of the automation is still written when the outcome is known, so a run costs two small
   writes: the automation row and the history row.
 - **The `running` marker carries the trace up to the Delay.** A run that parks is written at that moment as
-  `running`, with the steps it took so far, and rewritten when it ends. After a power cut the record therefore
-  still says which Delay never let the run go on.
+  `running`, with the steps it took so far, rewritten every time it parks again and when it ends. After a power
+  cut the record therefore still says which Delay never let the run go on.
 - **Leftover `running` rows become `interrupted` before the engine loads the automations**, with the reason
   `backend_restarted` and no end time: when the run stopped is not known. `last_run_status` of the automation
   follows, unless a later run has ended since. A run that is active when the engine stops in an orderly way is
   ended by the engine itself, with the reason `engine_stopped` and an end time.
 - **Retention.** The last 50 runs of an automation are kept, enforced on every write of that automation; runs
   older than 30 days are deleted nightly and when the engine starts, whatever the count.
-- **Trace size.** A stored trace takes at most 128 KB as JSON. A value a card reported - what a condition
-  observed, the data of a trigger - that takes more than 2 KB is replaced by a note; when the document is
-  still too long, the last steps are left out. Either marks the trace as `truncated`. A run of the 1,000
+- **Trace size.** A stored trace takes at most 128 KB as JSON, counted in UTF-8 bytes. A value a card
+  reported - what a condition observed, the data of a trigger - that takes more than 2 KB is replaced by a
+  note; when the document is still too long, the last steps are left out. Either marks the trace as `truncated`. A run of the 1,000
   steps the walker allows does not fit and is stored truncated; such a run has failed at the step limit.
 - **A run that never waited and is still executing has no record.** The history lists what ended or parked.
   The live state is the `runtime` endpoint and the events below.
 - **Events.** `AutomationsModule.Run.Started` and `AutomationsModule.Run.Completed` go over the bus, and so to
   every owner and admin socket, with the run but without its trace. `Run.Completed` is sent after the row is
-  written, also when the write failed, so a client that follows a run always learns that it is over.
+  written, also when the write failed, so a client that follows a run always learns that it is over. It is
+  sent once per run: a run written by an engine that stopped and rewritten when it settles is not announced
+  again.
 - **Step events never go over the bus.** `AutomationsModule.Run.Step` is sent straight to the websocket room
   of one automation. A client enters the room with the `AutomationsModule.WatchAutomation` command and leaves
   it with `AutomationsModule.UnwatchAutomation` or by disconnecting; both commands are owner and admin only,

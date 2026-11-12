@@ -153,7 +153,7 @@ export interface RunObserver {
 	 * `cancelled`. The step is the one in the record and may still change.
 	 */
 	step?(record: RunRecord, step: RunStep): void;
-	/** The run parked a token for the first time and will outlive the current tick */
+	/** The run parked a token on a Delay and will outlive the current tick; reported for every park */
 	parked?(record: RunRecord): void;
 	/** The outcome of the run is known */
 	ended?(record: RunRecord): void;
@@ -206,7 +206,6 @@ export class RunWalker {
 	private started = false;
 	private ended = false;
 	private settledReported = false;
-	private parkedReported = false;
 	private startedMono = 0;
 	private tokens = 0;
 	/** Every token ever put on an edge; unlike `seq` it moves before the node of the token is executed */
@@ -461,10 +460,8 @@ export class RunWalker {
 		const step = this.step(node, edge, { state: 'parked', delayMs: node.delayMs });
 		const resumed = this.park(node.delayMs);
 
-		if (!this.parkedReported) {
-			this.parkedReported = true;
-			this.notify('parked');
-		}
+		// Every park is reported, so what is stored of a parked run names the Delay it waits on now
+		this.notify('parked');
 
 		if (!(await resumed)) {
 			step.state = 'cancelled';

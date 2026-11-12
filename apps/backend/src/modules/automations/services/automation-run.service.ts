@@ -51,14 +51,15 @@ export const createAutomationRunEventPayload = (row: Omit<AutomationRunRow, 'tra
  *
  * - `runStarted`: `AutomationsModule.Run.Started` is announced; nothing is written;
  * - `runParked`: the run will outlive the current tick, so its `running` marker is written, with the trace
- *   up to the Delay it parked on;
+ *   up to the Delay it parked on. Every park rewrites it, so it names the Delay the run waits on now;
  * - `runEnded`: the outcome is known and is written to the automation;
  * - `runSettled`: nothing of the run is executing any more and its trace is complete. The run is written
  *   to the history - once, for a run that never parked - and `AutomationsModule.Run.Completed` is
  *   announced.
  *
  * A cancelled run settles later than it ends when one of its nodes is still executing. Should the engine
- * stop in between, `flush()` writes such runs with the trace they have.
+ * stop in between, `flush()` writes such runs with the trace they have and announces them; when such a run
+ * settles after all, its complete trace is written without announcing it a second time.
  *
  * Writes are queued, so they reach the database in the order the runs reported them, and a failed write
  * never reaches the engine.
@@ -74,6 +75,9 @@ export class AutomationRunService {
 
 	/** Runs whose outcome is known and whose trace is not complete yet */
 	private readonly unsettled = new Map<string, RunRecord>();
+
+	/** Runs `flush()` wrote and announced before their trace was complete */
+	private readonly flushed = new Set<string>();
 
 	private stepListener: AutomationRunStepListener | undefined;
 
@@ -124,7 +128,8 @@ export class AutomationRunService {
 	runSettled(record: RunRecord): void {
 		this.unsettled.delete(record.id);
 
-		this.storeRun(record);
+		// A run that was flushed has been announced as over already
+		this.storeRun(record, !this.flushed.delete(record.id));
 	}
 
 	/** A run reached a node, or a Delay let it go on. Nothing is stored: the trace is written when the run ends. */
@@ -146,7 +151,8 @@ export class AutomationRunService {
 	 */
 	flush(): void {
 		for (const record of this.unsettled.values()) {
-			this.storeRun(record);
+			this.flushed.add(record.id);
+			this.storeRun(record, true);
 		}
 
 		// A run that settles after all is written once more, then with its complete trace
@@ -213,7 +219,7 @@ export class AutomationRunService {
 		} while (awaited !== this.writes);
 	}
 
-	private storeRun(record: RunRecord): void {
+	private storeRun(record: RunRecord, announce: boolean): void {
 		const row = createAutomationRunRow(record);
 
 		this.enqueue(`recording a run of automation id=${record.automationId}`, async () => {
@@ -224,7 +230,9 @@ export class AutomationRunService {
 				}
 			} finally {
 				// A client following the run must learn that it is over even when it could not be stored
-				this.eventEmitter.emit(EventType.RUN_COMPLETED, createAutomationRunEventPayload(row));
+				if (announce) {
+					this.eventEmitter.emit(EventType.RUN_COMPLETED, createAutomationRunEventPayload(row));
+				}
 			}
 		});
 	}

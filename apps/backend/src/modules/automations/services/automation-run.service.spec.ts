@@ -297,6 +297,36 @@ describe('AutomationRunService', () => {
 			]);
 		});
 
+		it('rewrites the marker every time the run parks, so it shows the Delay the run is parked on now', async () => {
+			const run = record('running', {
+				steps: [step({ nodeId: 'one', kind: 'flow', state: 'parked', output: undefined, result: undefined })],
+			});
+
+			service.runParked(run);
+			await service.settled();
+
+			// The first Delay lets the run go on, and the second one parks it again
+			run.steps[0].state = 'done';
+			run.steps.push(
+				step({ seq: 2, nodeId: 'two', kind: 'flow', state: 'parked', output: undefined, result: undefined }),
+			);
+			service.runParked(run);
+			await service.settled();
+
+			expect(history.store).toHaveBeenCalledTimes(2);
+			expect(rows[1]).toMatchObject({
+				status: 'running',
+				trace: {
+					steps: [
+						{ node_id: 'one', state: 'done' },
+						{ node_id: 'two', state: 'parked' },
+					],
+				},
+			});
+			// The automation was written when the run first parked; a later park only stores the marker
+			expect(update).toHaveBeenCalledTimes(1);
+		});
+
 		it('keeps no run of an automation that was deleted meanwhile, and still says that the run is over', async () => {
 			stored = null;
 
@@ -341,6 +371,10 @@ describe('AutomationRunService', () => {
 
 			expect(rows).toHaveLength(2);
 			expect(rows[1].trace.steps).toEqual([expect.objectContaining({ node_id: 'a', after_cancel: true })]);
+			// The run was announced as over when it was flushed, and only then
+			expect(events(EventType.RUN_COMPLETED)).toEqual([
+				expect.objectContaining({ id: 'run-1', status: 'interrupted' }),
+			]);
 		});
 
 		it('does not flush a run whose trace is complete', async () => {

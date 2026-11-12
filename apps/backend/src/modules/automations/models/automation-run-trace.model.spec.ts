@@ -146,7 +146,7 @@ describe('automation run trace model', () => {
 			expect(trace.steps.length).toBeGreaterThan(0);
 			expect(trace.steps.length).toBeLessThan(200);
 			expect(trace.steps.map((item) => item.seq)).toEqual(trace.steps.map((_, index) => index + 1));
-			expect(JSON.stringify(trace).length).toBeLessThanOrEqual(4000);
+			expect(Buffer.byteLength(JSON.stringify(trace), 'utf8')).toBeLessThanOrEqual(4000);
 		});
 
 		it('keeps the longest run a walker can produce within the default limit or marks it', () => {
@@ -155,8 +155,25 @@ describe('automation run trace model', () => {
 			);
 			const trace = createAutomationRunTraceModel(record(steps));
 
-			expect(JSON.stringify(trace).length).toBeLessThanOrEqual(128 * 1024);
+			expect(Buffer.byteLength(JSON.stringify(trace), 'utf8')).toBeLessThanOrEqual(128 * 1024);
 			expect(trace.truncated).toBe(trace.steps.length < 1000);
+		});
+
+		it('measures a value in UTF-8 bytes, as it is stored', () => {
+			// 1,502 characters, but 3,002 bytes
+			const trace = createAutomationRunTraceModel(record([step(1, { observed: 'é'.repeat(1500) })]));
+
+			expect(trace.steps[0].observed).toBe(AUTOMATION_RUN_TRACE_VALUE_OMITTED);
+			expect(trace.truncated).toBe(true);
+		});
+
+		it('measures the whole trace in UTF-8 bytes, as it is stored', () => {
+			const steps = Array.from({ length: 50 }, (_, index) => step(index + 1, { reason: 'é'.repeat(40) }));
+			const trace = createAutomationRunTraceModel(record(steps), { maxLength: 4000 });
+
+			expect(trace.truncated).toBe(true);
+			expect(trace.steps.length).toBeGreaterThan(0);
+			expect(Buffer.byteLength(JSON.stringify(trace), 'utf8')).toBeLessThanOrEqual(4000);
 		});
 
 		it('survives a value that can not be serialised', () => {

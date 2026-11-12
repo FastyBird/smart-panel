@@ -61,6 +61,12 @@ interface WatchAutomationPayload {
 export class WebsocketExchangeListener implements OnModuleInit {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'WebsocketExchangeListener');
 
+	/**
+	 * The watches still looking up their automation, per socket and room. An unwatch drops them, so a watch
+	 * that finishes its lookup after the socket stopped watching does not put it back into the room.
+	 */
+	private readonly pendingWatches = new Map<string, Set<symbol>>();
+
 	constructor(
 		private readonly commandEventRegistry: CommandEventRegistryService,
 		private readonly engine: AutomationEngineService,
@@ -167,12 +173,35 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: 'Automation ID is required' };
 			}
 
-			// A room is joined only for an automation that exists, so a client can not open rooms at will
-			if (!(await this.automationsService.findOne(automationId))) {
-				return { success: false, reason: `Automation with id=${automationId} was not found.` };
-			}
+			const room = automationWatchRoom(automationId);
+			const key = this.watchKey(client, room);
+			const watch = Symbol(key);
+			const pending = this.pendingWatches.get(key) ?? new Set<symbol>();
 
-			await client.join(automationWatchRoom(automationId));
+			pending.add(watch);
+			this.pendingWatches.set(key, pending);
+
+			try {
+				// A room is joined only for an automation that exists, so a client can not open rooms at will
+				if (!(await this.automationsService.findOne(automationId))) {
+					return { success: false, reason: `Automation with id=${automationId} was not found.` };
+				}
+
+				// The socket stopped watching while the automation was looked up
+				if (!this.pendingWatches.get(key)?.has(watch)) {
+					return { success: false, reason: 'Watching the automation was stopped before it started' };
+				}
+
+				await client.join(room);
+			} finally {
+				const current = this.pendingWatches.get(key);
+
+				current?.delete(watch);
+
+				if (current?.size === 0) {
+					this.pendingWatches.delete(key);
+				}
+			}
 
 			return { success: true, data: { automation_id: automationId, watching: true } };
 		} catch (error) {
@@ -200,8 +229,13 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: 'Automation ID is required' };
 			}
 
+			const room = automationWatchRoom(automationId);
+
+			// A watch of this socket that is still looking up the automation must not join after this
+			this.pendingWatches.delete(this.watchKey(client, room));
+
 			// The automation may be gone by now; leaving a room that was never joined does nothing
-			await client.leave(automationWatchRoom(automationId));
+			await client.leave(room);
 
 			return { success: true, data: { automation_id: automationId, watching: false } };
 		} catch (error) {
@@ -232,6 +266,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 			this.logger.warn(`[WS EXCHANGE LISTENER] Failed to send a run step: ${err.message}`);
 		}
+	}
+
+	private watchKey(client: CommandClient, room: string): string {
+		return `${client.id}|${room}`;
 	}
 
 	private readAutomationId(payload: unknown): string | undefined {

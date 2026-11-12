@@ -75,9 +75,9 @@ export const AUTOMATION_SUSPENDED_NOTIFICATION_KEY_PREFIX = 'automation-suspende
 // Run history (ADR 0003, decision 12)
 export const AUTOMATION_RUNS_KEPT_PER_AUTOMATION = 50;
 export const AUTOMATION_RUNS_RETENTION_DAYS = 30;
-/** The most a stored trace may take, as serialised JSON */
+/** The most a stored trace may take, as serialised JSON in UTF-8 bytes */
 export const AUTOMATION_RUN_TRACE_MAX_LENGTH = 128 * 1024;
-/** The most one observed value or the data of a trigger may take in a trace, as serialised JSON */
+/** The most one observed value or the data of a trigger may take in a trace, as serialised JSON in UTF-8 bytes */
 export const AUTOMATION_RUN_TRACE_VALUE_MAX_LENGTH = 2048;
 /** Why a run found as `running` when the engine starts was interrupted */
 export const AUTOMATION_RUN_INTERRUPTED_BY_RESTART = 'backend_restarted';

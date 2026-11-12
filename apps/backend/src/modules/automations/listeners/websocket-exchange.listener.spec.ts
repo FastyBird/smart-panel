@@ -199,6 +199,48 @@ describe('Automations WebsocketExchangeListener', () => {
 			expect(findOne).not.toHaveBeenCalled();
 		});
 
+		it('does not join the room when the socket stopped watching while the automation was looked up', async () => {
+			let found: (value: { id: string }) => void = () => undefined;
+
+			findOne.mockReturnValueOnce(new Promise((resolve) => (found = resolve)));
+
+			const pending = watch(user(UserRole.OWNER), { automation_id: ID }, client);
+
+			expect(await unwatch(user(UserRole.OWNER), { automation_id: ID }, client)).toEqual({
+				success: true,
+				data: { automation_id: ID, watching: false },
+			});
+
+			found({ id: ID });
+
+			expect(await pending).toEqual({
+				success: false,
+				reason: 'Watching the automation was stopped before it started',
+			});
+			expect(client.join).not.toHaveBeenCalled();
+
+			// A later watch of the same socket is not affected
+			expect(await watch(user(UserRole.OWNER), { automation_id: ID }, client)).toMatchObject({ success: true });
+			expect(client.join).toHaveBeenCalledWith(ROOM);
+		});
+
+		it('an unwatch of another socket or automation leaves a pending watch alone', async () => {
+			let found: (value: { id: string }) => void = () => undefined;
+
+			findOne.mockReturnValueOnce(new Promise((resolve) => (found = resolve)));
+
+			const pending = watch(user(UserRole.OWNER), { automation_id: ID }, client);
+			const other = { id: 'socket-2', join: jest.fn(() => Promise.resolve()), leave: jest.fn(() => Promise.resolve()) };
+
+			await unwatch(user(UserRole.OWNER), { automation_id: ID }, other);
+			await unwatch(user(UserRole.OWNER), { automation_id: '22222222-2222-4222-8222-222222222222' }, client);
+
+			found({ id: ID });
+
+			expect(await pending).toMatchObject({ success: true });
+			expect(client.join).toHaveBeenCalledWith(ROOM);
+		});
+
 		it('opens no room for users without the role, displays and anonymous clients', async () => {
 			const refused = { success: false, reason: 'Unauthorized: insufficient permissions' };
 			const display = user(UserRole.ADMIN, { type: 'token', ownerType: TokenOwnerType.DISPLAY });
