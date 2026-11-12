@@ -5,7 +5,12 @@ import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { CAMERAS_MODULE_NAME } from '../cameras.constants';
-import { CameraProfileUnavailableException, CamerasNotFoundException } from '../cameras.exceptions';
+import {
+	CameraProfileUnavailableException,
+	CameraUpstreamException,
+	CamerasException,
+	CamerasNotFoundException,
+} from '../cameras.exceptions';
 import { CameraModel, CameraStreamProfileModel } from '../models/camera.model';
 import { CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
@@ -65,7 +70,7 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId?: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(provider.listProfiles(device));
+		const profiles = await this.withTimeout(() => provider.listProfiles(device));
 
 		const profile = profileId ? profiles.find((p) => p.id === profileId) : profiles.find((p) => p.available);
 
@@ -86,7 +91,7 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(provider.listProfiles(device));
+		const profiles = await this.withTimeout(() => provider.listProfiles(device));
 		const profile = profiles.find((p) => p.id === profileId);
 
 		if (!profile) {
@@ -108,7 +113,7 @@ export class CamerasService {
 
 		if (provider) {
 			try {
-				const profiles = await this.withTimeout(provider.listProfiles(device));
+				const profiles = await this.withTimeout(() => provider.listProfiles(device));
 
 				model.profiles = profiles.map((profile) => this.toProfileModel(profile));
 			} catch (error) {
@@ -138,16 +143,25 @@ export class CamerasService {
 		return model;
 	}
 
-	private async withTimeout<T>(promise: Promise<T>): Promise<T> {
+	private async withTimeout<T>(call: () => Promise<T>): Promise<T> {
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
 			return await Promise.race([
-				promise,
+				call(),
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(() => reject(new CameraProviderTimeoutError()), CAMERA_PROVIDER_TIMEOUT_MS);
 				}),
 			]);
+		} catch (error) {
+			if (error instanceof CamerasException || error instanceof CameraProviderTimeoutError) {
+				throw error;
+			}
+
+			// Never log or forward the error message: a provider may embed a source URL in it.
+			this.logger.warn(`Camera provider call failed error=${error instanceof Error ? error.name : 'UnknownError'}`);
+
+			throw new CameraUpstreamException('Camera did not respond');
 		} finally {
 			if (timer) clearTimeout(timer);
 		}

@@ -1,7 +1,11 @@
 import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
-import { CameraProfileUnavailableException, CamerasNotFoundException } from '../cameras.exceptions';
+import {
+	CameraProfileUnavailableException,
+	CameraUpstreamException,
+	CamerasNotFoundException,
+} from '../cameras.exceptions';
 import { ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
 import { CameraStreamProviderRegistryService } from './camera-stream-provider.registry.service';
@@ -122,5 +126,24 @@ describe('CamerasService', () => {
 		} finally {
 			jest.useRealTimers();
 		}
+	});
+
+	it('wraps an untyped provider error without leaking its message', async () => {
+		providerA.listProfiles.mockRejectedValue(new Error('rtsps://fake-console:7441/SECRET'));
+
+		const resolved = service.resolveProfile(camera, providerA).catch((e: Error) => e);
+		const found = service.findProfileById(camera, providerA, 'high').catch((e: Error) => e);
+
+		for (const error of [await resolved, await found] as Error[]) {
+			expect(error).toBeInstanceOf(CameraUpstreamException);
+			expect(error.message).toBe('Camera did not respond');
+			expect(JSON.stringify([error.name, error.message])).not.toContain('SECRET');
+		}
+	});
+
+	it('keeps cameras exceptions thrown by a provider unwrapped', async () => {
+		providerA.listProfiles.mockRejectedValue(new CamerasNotFoundException('gone'));
+
+		await expect(service.resolveProfile(camera, providerA)).rejects.toBeInstanceOf(CamerasNotFoundException);
 	});
 });
