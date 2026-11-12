@@ -116,6 +116,7 @@ import {
 import {
 	type IAutomationConnectionCandidate,
 	createGraphId,
+	findFreePosition,
 	mapIssueSeverities,
 	normalizePosition,
 	resolveNodePorts,
@@ -520,22 +521,17 @@ onNodesInitialized((): void => {
  * a tap on a palette item, which puts the card in the middle of what is visible.
  */
 
-const freePosition = (position: { x: number; y: number }): { x: number; y: number } => {
-	const next = normalizePosition(position);
-
-	// A card added by a tap must not land on top of another one: it moves down until it has room
-	while (
-		getNodes.value.some(
-			(node) =>
-				Math.abs(node.position.x - next.x) < (node.dimensions.width || 280) + 20 &&
-				Math.abs(node.position.y - next.y) < (node.dimensions.height || 56) + 20
-		)
-	) {
-		next.y += 80;
-	}
-
-	return next;
-};
+// A card added by a tap must not land on top of another one
+const freePosition = (position: { x: number; y: number }): { x: number; y: number } =>
+	findFreePosition(
+		position,
+		getNodes.value.map((node) => ({
+			x: node.position.x,
+			y: node.position.y,
+			width: node.dimensions.width || 280,
+			height: node.dimensions.height || 56,
+		}))
+	);
 
 const addNode = (type: string, position?: { x: number; y: number }): string | null => {
 	if (props.readonly || lookup(type) === null) {

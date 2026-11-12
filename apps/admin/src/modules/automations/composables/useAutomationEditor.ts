@@ -49,9 +49,17 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 
 	const loaded = ref<boolean>(false);
 	const saving = ref<boolean>(false);
+	const reloading = ref<boolean>(false);
 	const conflict = ref<boolean>(false);
 
+	// The open form holds text that does not parse: it has not reached the graph, yet it is as unsaved as
+	// anything drawn. Each time it is given up for a saved version the count moves, so the form is rebuilt.
+	const draftInvalid = ref<boolean>(false);
+	const draftResets = ref<number>(0);
+
 	const isDirty = computed<boolean>((): boolean => loaded.value && canonicalGraph(history.graph.value) !== savedGraph.value);
+
+	const hasUnsaved = computed<boolean>((): boolean => isDirty.value || draftInvalid.value);
 
 	// Under `restart` a trigger of one flow cancels the runs of every other flow on the canvas (ADR 0003,
 	// decision 2), so unrelated flows belong to separate automations
@@ -67,7 +75,16 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		issues.value = [];
 		conflict.value = false;
 
+		if (draftInvalid.value) {
+			draftInvalid.value = false;
+			draftResets.value += 1;
+		}
+
 		history.reset(graph);
+	};
+
+	const setDraftInvalid = (invalid: boolean): void => {
+		draftInvalid.value = invalid;
 	};
 
 	const load = async (): Promise<void> => {
@@ -133,14 +150,13 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		return 'error';
 	};
 
-	const save = async (): Promise<AutomationEditorSaveResult> => {
-		if (saving.value || baseRevision.value === null || automation.value === null) {
+	// Sends the working copy; the caller holds `saving`
+	const persist = async (): Promise<AutomationEditorSaveResult> => {
+		if (baseRevision.value === null || automation.value === null) {
 			return 'error';
 		}
 
 		const graph = cloneGraph(history.graph.value);
-
-		saving.value = true;
 
 		try {
 			// Asked first because it also names what would not stop the save, such as a block no trigger
@@ -169,6 +185,18 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			return 'saved';
 		} catch (error: unknown) {
 			return handleSaveError(error);
+		}
+	};
+
+	const save = async (): Promise<AutomationEditorSaveResult> => {
+		if (saving.value) {
+			return 'error';
+		}
+
+		saving.value = true;
+
+		try {
+			return await persist();
 		} finally {
 			saving.value = false;
 		}
@@ -220,6 +248,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 
 		// Nothing is saved while the read is on its way: what it brings replaces the revision a save is based on
 		saving.value = true;
+		reloading.value = true;
 
 		try {
 			// What is on its way may be from before the other save, so it is read anew
@@ -236,6 +265,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			adopt(latest);
 		} finally {
 			saving.value = false;
+			reloading.value = false;
 		}
 	};
 
@@ -243,20 +273,31 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 	 * After a conflict: saves the working copy over what the backend holds now.
 	 */
 	const overwrite = async (): Promise<AutomationEditorSaveResult> => {
+		// A read or a save already under way would move the revision this one is based on
+		if (saving.value) {
+			flashMessage.warning(t('automations.editor.messages.busy'));
+
+			return 'error';
+		}
+
+		saving.value = true;
+
 		try {
 			// Based on a read from before the other save, the overwrite would only be refused again
 			const latest = await automationsStore.get({ id, fresh: true });
 
 			baseRevision.value = latest.revision;
+
+			return await persist();
 		} catch (error: unknown) {
 			return handleSaveError(error);
+		} finally {
+			saving.value = false;
 		}
-
-		return save();
 	};
 
-	// The automation was saved elsewhere while the editor is open. With nothing drawn since the last save
-	// the editor simply follows; otherwise the working copy is kept and the user is told.
+	// The automation was saved elsewhere while the editor is open. With nothing drawn or typed since the last
+	// save the editor simply follows; otherwise the working copy is kept and the user is told.
 	watch(
 		(): number | undefined => automation.value?.revision,
 		(revision: number | undefined): void => {
@@ -264,7 +305,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 				return;
 			}
 
-			if (isDirty.value) {
+			if (hasUnsaved.value) {
 				conflict.value = true;
 
 				return;
@@ -282,14 +323,19 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		issues,
 		loaded,
 		saving,
+		reloading,
 		conflict,
 		isDirty,
+		draftInvalid,
+		draftResets,
+		hasUnsaved,
 		hasSeparateFlows,
 		canUndo: history.canUndo,
 		canRedo: history.canRedo,
 		load,
 		updateGraph,
 		updateNodeConfig,
+		setDraftInvalid,
 		undo,
 		redo,
 		save,

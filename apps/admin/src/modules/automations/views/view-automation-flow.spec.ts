@@ -39,14 +39,19 @@ interface IEditorMock {
 	graph: Ref<IAutomationGraph>;
 	issues: Ref<IAutomationGraphIssue[]>;
 	saving: Ref<boolean>;
+	reloading: Ref<boolean>;
 	conflict: Ref<boolean>;
 	isDirty: Ref<boolean>;
+	draftInvalid: Ref<boolean>;
+	draftResets: Ref<number>;
+	hasUnsaved: Ref<boolean>;
 	hasSeparateFlows: Ref<boolean>;
 	canUndo: Ref<boolean>;
 	canRedo: Ref<boolean>;
 	load: ReturnType<typeof vi.fn>;
 	updateGraph: ReturnType<typeof vi.fn>;
 	updateNodeConfig: ReturnType<typeof vi.fn>;
+	setDraftInvalid: ReturnType<typeof vi.fn>;
 	undo: ReturnType<typeof vi.fn>;
 	redo: ReturnType<typeof vi.fn>;
 	save: ReturnType<typeof vi.fn>;
@@ -146,6 +151,7 @@ vi.mock('../components/components', async () => {
 				node: { type: Object, required: true },
 				nodeType: { type: Object, required: false, default: null },
 				issues: { type: Array, required: true },
+				disabled: { type: Boolean, default: false },
 			},
 			emits: ['update:config', 'update:invalid', 'remove', 'close'],
 			template: '<div data-test-id="panel-stub" />',
@@ -159,41 +165,53 @@ vi.mock('../components/components', async () => {
 	};
 });
 
-const createEditor = (): IEditorMock => ({
-	automation: ref<IAutomation | null>({
-		id: automationId,
-		name: 'Hallway motion light',
-		description: null,
-		icon: null,
-		enabled: false,
-		spaceId: null,
-		mode: AutomationMode.restart,
-		graph,
-		revision: 3,
-		status: AutomationStatus.ok,
-		lastTriggeredAt: null,
-		lastRunStatus: null,
-		createdAt: new Date(),
-		updatedAt: null,
-	}),
-	graph: ref(graph),
-	issues: ref([]),
-	saving: ref(false),
-	conflict: ref(false),
-	isDirty: ref(false),
-	hasSeparateFlows: ref(false),
-	canUndo: ref(false),
-	canRedo: ref(false),
-	load: vi.fn().mockResolvedValue(undefined),
-	updateGraph: vi.fn(),
-	updateNodeConfig: vi.fn(),
-	undo: vi.fn(),
-	redo: vi.fn(),
-	save: vi.fn().mockResolvedValue('saved'),
-	setEnabled: vi.fn().mockResolvedValue(true),
-	reloadLatest: vi.fn().mockResolvedValue(undefined),
-	overwrite: vi.fn().mockResolvedValue('saved'),
-});
+const createEditor = (): IEditorMock => {
+	const isDirty = ref(false);
+	const draftInvalid = ref(false);
+
+	return {
+		automation: ref<IAutomation | null>({
+			id: automationId,
+			name: 'Hallway motion light',
+			description: null,
+			icon: null,
+			enabled: false,
+			spaceId: null,
+			mode: AutomationMode.restart,
+			graph,
+			revision: 3,
+			status: AutomationStatus.ok,
+			lastTriggeredAt: null,
+			lastRunStatus: null,
+			createdAt: new Date(),
+			updatedAt: null,
+		}),
+		graph: ref(graph),
+		issues: ref([]),
+		saving: ref(false),
+		reloading: ref(false),
+		conflict: ref(false),
+		isDirty,
+		draftInvalid,
+		draftResets: ref(0),
+		hasUnsaved: computed(() => isDirty.value || draftInvalid.value),
+		hasSeparateFlows: ref(false),
+		canUndo: ref(false),
+		canRedo: ref(false),
+		load: vi.fn().mockResolvedValue(undefined),
+		updateGraph: vi.fn(),
+		updateNodeConfig: vi.fn(),
+		setDraftInvalid: vi.fn((invalid: boolean): void => {
+			draftInvalid.value = invalid;
+		}),
+		undo: vi.fn(),
+		redo: vi.fn(),
+		save: vi.fn().mockResolvedValue('saved'),
+		setEnabled: vi.fn().mockResolvedValue(true),
+		reloadLatest: vi.fn().mockResolvedValue(undefined),
+		overwrite: vi.fn().mockResolvedValue('saved'),
+	};
+};
 
 describe('ViewAutomationFlow', (): void => {
 	let wrapper: VueWrapper;
@@ -252,6 +270,21 @@ describe('ViewAutomationFlow', (): void => {
 		expect(wrapper.find('[data-test-id="not-found"]').text()).toBe('automations.messages.notFound');
 		expect(wrapper.find('[data-test-id="load-failed"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="canvas-stub"]').exists()).toBe(false);
+	});
+
+	it('does not take a catalogue that cannot be read for a missing automation', async (): Promise<void> => {
+		mocks.fetchNodeTypes.mockRejectedValueOnce(new AutomationsApiException('Failed to fetch automation node types.', 404));
+
+		await createWrapper();
+
+		expect(wrapper.find('[data-test-id="not-found"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="load-failed"]').exists()).toBe(true);
+
+		await wrapper.find('[data-test-id="retry-load"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.fetchNodeTypes).toHaveBeenCalledTimes(2);
+		expect(wrapper.find('[data-test-id="canvas-stub"]').exists()).toBe(true);
 	});
 
 	it('tells a failed read apart from a missing automation and reads again when asked to', async (): Promise<void> => {
@@ -563,6 +596,115 @@ describe('ViewAutomationFlow', (): void => {
 		press('s');
 
 		expect(editor.save).toHaveBeenCalledTimes(1);
+	});
+
+	it('asks before the form is closed or left for another card while it holds JSON that does not parse', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel').mockRejectedValueOnce('cancel');
+
+		await createWrapper();
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		const panel = () => wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		panel().vm.$emit('update:invalid', true);
+		await flushPromises();
+
+		expect(editor.setDraftInvalid).toHaveBeenLastCalledWith(true);
+
+		// Another card is picked on the canvas: the form stays, and so does what is typed in it
+		canvas().vm.$emit('select', ['t1'], []);
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(panel().props('node')).toEqual(graph.nodes[1]);
+		expect(mocks.canvas.focusNode).toHaveBeenCalledWith('a1');
+		expect(editor.draftInvalid.value).toBe(true);
+		expect(wrapper.find('[data-test-id="unsaved-tag"]').exists()).toBe(true);
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		panel().vm.$emit('close');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(2);
+		expect(panel().exists()).toBe(true);
+		expect(editor.draftInvalid.value).toBe(true);
+
+		// Once the user agrees, the text goes with the form and nothing is left unsaved
+		confirm.mockResolvedValueOnce('confirm' as never);
+
+		canvas().vm.$emit('select', ['t1'], []);
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(3);
+		expect(panel().props('node')).toEqual(graph.nodes[0]);
+		expect(editor.draftInvalid.value).toBe(false);
+		expect(wrapper.find('[data-test-id="unsaved-tag"]').exists()).toBe(false);
+		await expect(mocks.leaveGuard?.()).resolves.toBe(true);
+	});
+
+	it('closes and changes the form without asking while nothing in it is left unparsed', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm');
+
+		await createWrapper();
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		canvas().vm.$emit('select', ['t1'], []);
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).props('node')).toEqual(graph.nodes[0]);
+
+		wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$emit('close');
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="panel-stub"]').exists()).toBe(false);
+		expect(confirm).not.toHaveBeenCalled();
+	});
+
+	it('keeps the form from being typed into while the saved version is read, and rebuilds it once text is given up', async (): Promise<void> => {
+		await createWrapper();
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		const before = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		expect(before.props('disabled')).toBe(false);
+
+		editor.reloading.value = true;
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AutomationNodePanel' }).props('disabled')).toBe(true);
+
+		editor.reloading.value = false;
+		editor.draftResets.value += 1;
+		await flushPromises();
+
+		const after = wrapper.findComponent({ name: 'AutomationNodePanel' });
+
+		expect(after.props('disabled')).toBe(false);
+		expect(after.vm.$.uid).not.toBe(before.vm.$.uid);
+	});
+
+	it('asks before the saved version replaces text in the form that does not parse', async (): Promise<void> => {
+		editor.conflict.value = true;
+
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel');
+
+		await createWrapper();
+
+		editor.draftInvalid.value = true;
+
+		await wrapper.find('[data-test-id="conflict-reload"]').trigger('click');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(editor.reloadLatest).not.toHaveBeenCalled();
 	});
 
 	it('asks before going from one flow straight to another, as before any other way out', async (): Promise<void> => {

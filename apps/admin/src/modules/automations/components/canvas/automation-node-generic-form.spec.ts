@@ -1,4 +1,4 @@
-import { ElInput, ElInputNumber, ElSelect } from 'element-plus';
+import { ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -149,6 +149,29 @@ describe('AutomationNodeGenericForm', (): void => {
 
 		expect(field('to').find('[data-test-id="unset-field"]').exists()).toBe(false);
 		expect(field('to').findComponent(ElInput).find('input').attributes('placeholder')).toBe('automations.editor.form.notSet');
+	});
+
+	it('gives options of the same text but another type keys of their own', async (): Promise<void> => {
+		await createWrapper({
+			nodeType: nodeType({
+				type: 'object',
+				properties: {
+					level: { enum: [1, '1', true, 'true'] },
+					levels: { type: 'array', items: { enum: [1, '1'] } },
+				},
+			}),
+			config: { level: '1', levels: ['1'] },
+		});
+
+		for (const key of ['level', 'levels']) {
+			const keys = field(key)
+				.findComponent(ElSelect)
+				.findAllComponents(ElOption)
+				.map((option) => option.vm.$.vnode.key);
+
+			expect(keys.length).toBeGreaterThan(1);
+			expect(new Set(keys).size).toBe(keys.length);
+		}
 	});
 
 	it('stores a list of numbers as numbers', async (): Promise<void> => {

@@ -129,6 +129,40 @@ describe('useAutomationGraphHistory', (): void => {
 		expect(history.graph.value).toEqual(withTitle(''));
 	});
 
+	it('drops a step typed back to where it began, so an undo always shows a change', (): void => {
+		const typedBack = (): ReturnType<typeof useAutomationGraphHistory> => {
+			const history = useAutomationGraphHistory(graphWith());
+
+			history.commit(withTitle(''));
+			history.commit(withTitle('a'), 'config:n1:title');
+			vi.advanceTimersByTime(200);
+			history.commit(withTitle(''), 'config:n1:title');
+
+			return history;
+		};
+
+		const history = typedBack();
+
+		expect(history.graph.value).toEqual(withTitle(''));
+		expect(history.canRedo.value).toBe(false);
+
+		history.undo();
+
+		expect(history.graph.value).toEqual(graphWith());
+		expect(history.canUndo.value).toBe(false);
+
+		// What is typed next is a step of its own, not folded into the step before
+		const again = typedBack();
+
+		vi.advanceTimersByTime(200);
+		again.commit(withTitle('b'), 'config:n1:title');
+
+		again.undo();
+		expect(again.graph.value).toEqual(withTitle(''));
+		again.undo();
+		expect(again.graph.value).toEqual(graphWith());
+	});
+
 	it('never folds an edit into the starting point', (): void => {
 		const history = useAutomationGraphHistory(withTitle(''));
 

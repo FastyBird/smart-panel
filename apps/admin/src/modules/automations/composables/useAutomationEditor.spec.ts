@@ -680,6 +680,117 @@ describe('useAutomationEditor', () => {
 			expect(editor.automation.value).toMatchObject({ name: 'Renamed elsewhere', revision: 5, enabled: false });
 		});
 
+		it('keeps the version of the user out of a read of the saved version already under way, and says so', async () => {
+			const editor = await conflictingSave();
+
+			let answer: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answer = res;
+				})
+			);
+
+			const reloading = editor.reloadLatest();
+
+			await expect(editor.overwrite()).resolves.toBe('error');
+
+			expect(mockFlash.warning).toHaveBeenLastCalledWith('automations.editor.messages.busy');
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(3);
+
+			answer(ok(detailRes({ name: 'Renamed elsewhere', revision: 6 })));
+
+			await reloading;
+
+			expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1);
+			expect(editor.saving.value).toBe(false);
+			expect(editor.graph.value).toEqual(graph);
+		});
+
+		it('holds every other change back while the version of the user is being saved over the latest one', async () => {
+			const editor = await conflictingSave();
+
+			let answer: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answer = res;
+				})
+			);
+			mockBackendClient.PATCH.mockResolvedValueOnce(ok(detailRes({ name: 'Renamed elsewhere', revision: 7, graph: withDelay() })));
+
+			const overwriting = editor.overwrite();
+
+			expect(editor.saving.value).toBe(true);
+
+			await editor.reloadLatest();
+			await expect(editor.save()).resolves.toBe('error');
+
+			answer(ok(detailRes({ name: 'Renamed elsewhere', revision: 6 })));
+
+			await expect(overwriting).resolves.toBe('saved');
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(3);
+			expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(2);
+			expect(mockBackendClient.PATCH).toHaveBeenLastCalledWith('/modules/automations/automations/{id}', {
+				params: { path: { id: automationId } },
+				body: { data: { revision: 6, graph: withDelay() } },
+			});
+			expect(editor.saving.value).toBe(false);
+		});
+
+		it('does not follow a save made elsewhere over text typed into the form that does not parse', async () => {
+			const editor = await createEditor();
+
+			editor.setDraftInvalid(true);
+
+			expect(editor.isDirty.value).toBe(false);
+			expect(editor.hasUnsaved.value).toBe(true);
+
+			automationsStore.onEvent({ id: automationId, data: detailRes({ revision: 4, graph: withDelay() }) });
+
+			await nextTick();
+			await flushPromises();
+
+			expect(editor.conflict.value).toBe(true);
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+			expect(editor.graph.value).toEqual(graph);
+			expect(editor.draftInvalid.value).toBe(true);
+		});
+
+		it('gives up text that does not parse with the rest of the copy, and keeps the form from being typed into meanwhile', async () => {
+			const editor = await createEditor();
+
+			editor.setDraftInvalid(true);
+
+			automationsStore.onEvent({ id: automationId, data: detailRes({ revision: 4 }) });
+
+			await nextTick();
+
+			let answer: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answer = res;
+				})
+			);
+
+			const reloading = editor.reloadLatest();
+
+			expect(editor.reloading.value).toBe(true);
+
+			answer(ok(detailRes({ revision: 4 })));
+
+			await reloading;
+
+			expect(editor.reloading.value).toBe(false);
+			expect(editor.conflict.value).toBe(false);
+			expect(editor.draftInvalid.value).toBe(false);
+			expect(editor.hasUnsaved.value).toBe(false);
+			// The configuration it was typed into is the same: the form is told to start over all the same
+			expect(editor.draftResets.value).toBe(1);
+		});
+
 		it('is not raised by a write of the engine, which keeps the revision', async () => {
 			const editor = await createEditor();
 

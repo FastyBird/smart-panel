@@ -40,6 +40,18 @@ export const useAutomationGraphHistory = (initial: IAutomationGraph = createEmpt
 		const continues =
 			typeof coalesceKey === 'string' && coalescing !== null && coalescing.key === coalesceKey && now - coalescing.at < COALESCE_WINDOW_MS;
 
+		if (continues && index.value > 0 && entries.value[index.value - 1] === serialised) {
+			// Typed back to where the step began: that is no step at all, and what is typed next starts one anew
+			// rather than folding into the step before it
+			entries.value = entries.value.slice(0, index.value);
+			index.value = entries.value.length - 1;
+			coalescing = null;
+
+			show();
+
+			return true;
+		}
+
 		if (continues && index.value > 0) {
 			// Replace the step being typed instead of adding one
 			entries.value = [...entries.value.slice(0, index.value), serialised];

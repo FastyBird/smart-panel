@@ -43,7 +43,17 @@ export const useAutomationNodeTypesStore = defineStore<'automations_module-node_
 
 		let pendingFetchPromise: Promise<IAutomationNodeType[]> | null = null;
 
-		const fetch = async (): Promise<IAutomationNodeType[]> => {
+		const fetch = (): Promise<IAutomationNodeType[]> => read();
+
+		// `fresh`: asked for because something may have changed since a read already on its way was started
+		// (a reconnect), so that read is not the answer - it is waited for and the catalogue read again
+		const read = async (fresh: boolean = false): Promise<IAutomationNodeType[]> => {
+			if (pendingFetchPromise && fresh) {
+				await pendingFetchPromise.catch((): void => {});
+
+				return read();
+			}
+
 			if (pendingFetchPromise) {
 				return pendingFetchPromise;
 			}
@@ -83,20 +93,20 @@ export const useAutomationNodeTypesStore = defineStore<'automations_module-node_
 				} finally {
 					semaphore.value.fetching = false;
 				}
-			})();
+			})().finally((): void => {
+				// Let go of before anyone waiting for it goes on, so a fresh read never joins it again
+				pendingFetchPromise = null;
+			});
 
 			pendingFetchPromise = fetchPromise;
 
-			try {
-				return await fetchPromise;
-			} finally {
-				pendingFetchPromise = null;
-			}
+			return fetchPromise;
 		};
 
-		const isLoaded = (): boolean => firstLoadFinished();
+		// Reconnect refresh contract: a first read still on its way counts, its answer may be from before the gap
+		const isLoaded = (): boolean => firstLoadFinished() || fetching();
 
-		const refresh = (): Promise<unknown> => fetch();
+		const refresh = (): Promise<unknown> => read(true);
 
 		return {
 			isLoaded,

@@ -142,6 +142,48 @@ describe('Automation node types store', () => {
 		expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
 	});
 
+	it('reads the catalogue anew after a reconnect, also while the first read is still on its way', async () => {
+		let answerFirst: (value: unknown) => void = () => {};
+
+		mockBackendClient.GET.mockReturnValueOnce(
+			new Promise((res) => {
+				answerFirst = res;
+			})
+		);
+
+		const first = store.fetch();
+
+		// Answered from before the reconnect: whatever it says may already be out of date
+		expect(store.isLoaded()).toBe(true);
+
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [nodeTypeRes({ type: 'plugin.card' })] }, response: { status: 200 } });
+
+		const refreshing = store.refresh();
+
+		answerFirst({ data: { data: [nodeTypeRes()] }, response: { status: 200 } });
+
+		await first;
+		await refreshing;
+
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+		expect(store.findAll().map((nodeType) => nodeType.type)).toEqual(['plugin.card']);
+	});
+
+	it('reads anew after a reconnect even when the read before it failed', async () => {
+		mockBackendClient.GET.mockResolvedValueOnce({ data: undefined, error: undefined, response: { status: 500 } });
+
+		const first = store.fetch();
+
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [nodeTypeRes()] }, response: { status: 200 } });
+
+		const refreshing = store.refresh();
+
+		await expect(first).rejects.toMatchObject({ code: 500 });
+		await refreshing;
+
+		expect(store.findAll()).toHaveLength(1);
+	});
+
 	it('throws and keeps what it holds when the fetch fails', async () => {
 		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [nodeTypeRes()] }, response: { status: 200 } });
 

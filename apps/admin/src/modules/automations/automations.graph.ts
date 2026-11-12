@@ -36,6 +36,38 @@ export const normalizePosition = (position: { x: number; y: number }): { x: numb
 	y: clampPosition(position.y),
 });
 
+export interface IAutomationOccupiedArea {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+// How far a card is moved at a time to find room for it
+const FREE_POSITION_STEP = 80;
+
+/**
+ * Where a card added at `position` does not land on top of another one: further down, or - once the
+ * bottom of the positions the backend accepts is reached - further up. Always a position as the backend
+ * accepts it, so what is shown is what is saved.
+ */
+export const findFreePosition = (position: { x: number; y: number }, occupied: IAutomationOccupiedArea[]): { x: number; y: number } => {
+	const start = normalizePosition(position);
+
+	const isFree = (y: number): boolean =>
+		!occupied.some((area) => Math.abs(area.x - start.x) < area.width + 20 && Math.abs(area.y - y) < area.height + 20);
+
+	for (const step of [FREE_POSITION_STEP, -FREE_POSITION_STEP]) {
+		for (let y = start.y; Math.abs(y) <= AUTOMATION_GRAPH_POSITION_LIMIT; y += step) {
+			if (isFree(y)) {
+				return { x: start.x, y };
+			}
+		}
+	}
+
+	return start;
+};
+
 const sortKeys = (value: unknown): unknown => {
 	if (Array.isArray(value)) {
 		return value.map(sortKeys);
@@ -310,7 +342,10 @@ export const pruneIssues = (issues: IAutomationGraphIssue[], graph: Pick<IAutoma
 	);
 };
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// `id`, `device_id`, `space_ids`, `deviceId`: what such a key holds points at something, it says nothing itself
+const IDENTIFIER_KEY_PATTERNS = [/(?:^|[_-])ids?$/i, /[a-z0-9]Ids?$/];
+
+const isIdentifierKey = (key: string): boolean => IDENTIFIER_KEY_PATTERNS.some((pattern) => pattern.test(key));
 
 export const humanizeKey = (key: string): string => {
 	const words = key.replace(/[_-]+/g, ' ').trim();
@@ -326,14 +361,14 @@ export const summarizeConfig = (config: Record<string, unknown>): string => {
 	const parts: string[] = [];
 
 	for (const [key, value] of Object.entries(config)) {
-		if (value === null || typeof value === 'undefined' || value === '') {
+		if (value === null || typeof value === 'undefined' || value === '' || isIdentifierKey(key)) {
 			continue;
 		}
 
 		const label = humanizeKey(key).toLowerCase();
 
 		if (typeof value === 'string') {
-			if (!UUID_PATTERN.test(value)) parts.push(`${label}: ${value}`);
+			parts.push(`${label}: ${value}`);
 		} else if (typeof value === 'number' || typeof value === 'boolean') {
 			parts.push(`${label}: ${String(value)}`);
 		} else if (Array.isArray(value)) {

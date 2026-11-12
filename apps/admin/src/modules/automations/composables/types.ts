@@ -129,15 +129,24 @@ export interface IUseAutomationEditor {
 	loaded: Ref<boolean>;
 	// A save, or a read of the saved version that is to replace the working copy, is under way
 	saving: Ref<boolean>;
+	// The saved version is being read to replace the working copy: nothing may be typed meanwhile
+	reloading: Ref<boolean>;
 	// The automation was changed elsewhere since the working copy was read
 	conflict: Ref<boolean>;
 	isDirty: ComputedRef<boolean>;
+	// The open form holds text that does not parse, so it has not reached the graph
+	draftInvalid: Ref<boolean>;
+	// Moves each time such text is given up for a saved version: the form is to be rebuilt from the graph
+	draftResets: Ref<number>;
+	// What is drawn or typed and not saved
+	hasUnsaved: ComputedRef<boolean>;
 	hasSeparateFlows: ComputedRef<boolean>;
 	canUndo: ComputedRef<boolean>;
 	canRedo: ComputedRef<boolean>;
 	load: () => Promise<void>;
 	updateGraph: (graph: IAutomationGraph, coalesceKey?: string) => void;
 	updateNodeConfig: (nodeId: IAutomationGraphNode['id'], config: IAutomationGraphNode['config'], field?: string) => void;
+	setDraftInvalid: (invalid: boolean) => void;
 	undo: () => void;
 	redo: () => void;
 	save: () => Promise<AutomationEditorSaveResult>;

@@ -6,6 +6,7 @@ import {
 	cloneGraph,
 	createEmptyGraph,
 	createGraphId,
+	findFreePosition,
 	findSeparateFlows,
 	isSameGraph,
 	issueNodeIds,
@@ -222,6 +223,22 @@ describe('automations.graph', (): void => {
 		});
 	});
 
+	describe('findFreePosition', (): void => {
+		const card = (x: number, y: number): { x: number; y: number; width: number; height: number } => ({ x, y, width: 280, height: 56 });
+
+		it('keeps a free position and moves a taken one down until there is room', (): void => {
+			expect(findFreePosition({ x: 10.4, y: 20 }, [card(1000, 0)])).toEqual({ x: 10, y: 20 });
+			expect(findFreePosition({ x: 0, y: 0 }, [card(0, 0), card(0, 80)])).toEqual({ x: 0, y: 160 });
+		});
+
+		it('stays inside the positions the backend accepts, moving up once the bottom is reached', (): void => {
+			const position = findFreePosition({ x: 0, y: 2_000_000 }, [card(0, 1_000_000)]);
+
+			expect(position).toEqual({ x: 0, y: 1_000_000 - 80 });
+			expect(normalizePosition(position)).toEqual(position);
+		});
+	});
+
 	describe('createGraphId', (): void => {
 		it('creates an identifier with the prefix that is not taken', (): void => {
 			const taken = new Set<string>();
@@ -304,6 +321,18 @@ describe('automations.graph', (): void => {
 					empty: '',
 				})
 			).toBe('to: detected · for seconds: 120 · enabled: false · weekdays: 1, 2, 3 · writes: 2×');
+		});
+
+		it('leaves identifiers out by their key, and shows a value that only looks like one', (): void => {
+			expect(
+				summarizeConfig({
+					id: 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a01',
+					deviceId: 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a01',
+					space_ids: ['b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a01'],
+					to: 'c9e1a0b4-2f43-4f7e-8a51-0d4c2e7b9f10',
+					paid: true,
+				})
+			).toBe('to: c9e1a0b4-2f43-4f7e-8a51-0d4c2e7b9f10 · paid: true');
 		});
 
 		it('is empty for a configuration without plain values', (): void => {

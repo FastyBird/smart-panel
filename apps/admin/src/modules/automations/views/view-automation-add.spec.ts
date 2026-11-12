@@ -10,6 +10,7 @@ import ViewAutomationAdd from './view-automation-add.vue';
 
 const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
+	routerReplace: vi.fn(),
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -17,7 +18,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: mocks.routerPush, replace: vi.fn() }),
+	useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
 }));
 
 vi.mock('../../../common', async () => {
@@ -149,15 +150,18 @@ describe('ViewAutomationAdd', (): void => {
 
 		expect(confirm).not.toHaveBeenCalled();
 		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
 
 		form.vm.$emit('update:remote-form-result', FormResult.OK);
 
 		await flushPromises();
 
 		expect(confirm).not.toHaveBeenCalled();
-		// A new automation has an empty flow: drawing it is the next thing to do
-		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
-		expect(mocks.routerPush).toHaveBeenCalledWith({
+		// A new automation has an empty flow: drawing it is the next thing to do. It takes the place of the
+		// creation form, so going back leads to the list and not to a form for yet another automation.
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+		expect(mocks.routerReplace).toHaveBeenCalledWith({
 			name: RouteNames.AUTOMATIONS_FLOW,
 			params: { id: form.props('id') },
 		});

@@ -109,8 +109,8 @@
 				@update:model-value="(value: AutomationConfigScalar | null): void => onValue(field, value)"
 			>
 				<el-option
-					v-for="option in field.options"
-					:key="String(option)"
+					v-for="(option, index) in field.options"
+					:key="optionKey(option, index)"
 					:label="String(option)"
 					:value="option"
 				/>
@@ -131,8 +131,8 @@
 				@update:model-value="(value: unknown[]): void => onValue(field, normalizeListValue(field, value))"
 			>
 				<el-option
-					v-for="option in field.options ?? listValue(field.key)"
-					:key="String(option)"
+					v-for="(option, index) in field.options ?? listValue(field.key)"
+					:key="optionKey(option, index)"
 					:label="String(option)"
 					:value="option"
 				/>
@@ -446,6 +446,9 @@ const listValue = (key: string): AutomationConfigScalar[] => {
 		? value.filter((item): item is AutomationConfigScalar => typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')
 		: [];
 };
+
+// `1` and `'1'` read the same but are different options, and a list typed in may hold a value twice
+const optionKey = (option: AutomationConfigScalar, index: number): string => `${index}:${typeof option}:${String(option)}`;
 
 const onValue = (field: IAutomationConfigField, value: unknown): void => {
 	emit('update:config', setConfigValue(props.config, field.key, value), field.key);

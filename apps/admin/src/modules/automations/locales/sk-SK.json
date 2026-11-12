@@ -261,6 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Na malej obrazovke len na čítanie",
+				"confirmDiscardDraft": "Text vo formulári tohto bloku nie je platný JSON, a preto nebol použitý. Chcete ho zahodiť?",
 				"unsaved": "Neuložené zmeny",
 				"noNodeTypes": "Nie sú k dispozícii žiadne bloky.",
 				"notConfigured": "Zatiaľ nenastavené",
@@ -327,7 +328,8 @@
 			"messages": {
 				"conflict": "Automatizácia „{automation}“ bola medzitým zmenená inde. Vaše zmeny zostali zachované; vyberte, ktorú verziu zachovať.",
 				"invalid": "Priebeh automatizácie „{automation}“ zatiaľ nemožno uložiť. Skontrolujte problémy uvedené pod plátnom.",
-				"invalidDraft": "Časť textu vo formulári vybraného bloku nie je platný JSON. Pred uložením ju opravte alebo vráťte späť."
+				"invalidDraft": "Časť textu vo formulári vybraného bloku nie je platný JSON. Pred uložením ju opravte alebo vráťte späť.",
+				"busy": "Automatizácia sa stále načítava alebo ukladá. Skúste to znova, keď to bude hotové."
 			}
 		}
 	}

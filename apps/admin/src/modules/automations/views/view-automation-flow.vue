@@ -216,7 +216,7 @@
 					v-if="!readonly"
 					type="primary"
 					:loading="saving"
-					:disabled="saving || !isDirty || hasInvalidDraft"
+					:disabled="saving || !isDirty || draftInvalid"
 					data-test-id="save-flow"
 					@click="onSave"
 				>
@@ -298,15 +298,18 @@
 					/>
 				</div>
 
+				<!-- Rebuilt when text that did not parse is given up for the saved version -->
 				<automation-node-panel
 					v-if="panelNode"
+					:key="`${panelNode.id}:${draftResets}`"
 					:node="panelNode"
 					:node-type="getNodeType(panelNode.type)"
 					:issues="panelIssues"
+					:disabled="reloading"
 					@update:config="onConfigUpdate"
-					@update:invalid="onDraftInvalid"
+					@update:invalid="setDraftInvalid"
 					@remove="onRemoveNode"
-					@close="panelDismissedFor = panelNode.id"
+					@close="onClosePanel"
 				/>
 			</div>
 		</div>
@@ -369,14 +372,19 @@ const {
 	graph,
 	issues,
 	saving,
+	reloading,
 	conflict,
 	isDirty,
+	draftInvalid,
+	draftResets,
+	hasUnsaved,
 	hasSeparateFlows,
 	canUndo,
 	canRedo,
 	load,
 	updateGraph,
 	updateNodeConfig,
+	setDraftInvalid,
 	undo,
 	redo,
 	save,
@@ -418,14 +426,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 const selectedNodeIds = ref<string[]>([]);
 const selectedEdgeIds = ref<string[]>([]);
-const panelDismissedFor = ref<string | null>(null);
 
-const selectedNode = computed<IAutomationGraphNode | null>((): IAutomationGraphNode | null =>
-	selectedNodeIds.value.length === 1 ? (graph.value.nodes.find((node) => node.id === selectedNodeIds.value[0]) ?? null) : null
-);
+// The node whose form is open. It follows the selection, but text typed into the form that does not parse
+// is not left behind without asking: until the user agrees, the form stays open with it.
+const panelFor = ref<string | null>(null);
 
 const panelNode = computed<IAutomationGraphNode | null>((): IAutomationGraphNode | null =>
-	!readonly.value && selectedNode.value !== null && panelDismissedFor.value !== selectedNode.value.id ? selectedNode.value : null
+	!readonly.value && panelFor.value !== null ? (graph.value.nodes.find((node) => node.id === panelFor.value) ?? null) : null
 );
 
 const panelIssues = computed<IAutomationGraphIssue[]>((): IAutomationGraphIssue[] => {
@@ -446,22 +453,61 @@ watch(
 	}
 );
 
-// The form of the panel holds text that does not parse: it has not reached the graph, so the graph is not
-// saved without it, and leaving would lose it. The text goes with the form, so only the open panel counts.
-const invalidDraftFor = ref<string | null>(null);
+// The text that did not parse goes with the form that held it: once the form is gone (the user agreed, the
+// node was removed), nothing is waiting to be saved any more
+watch(
+	(): string | null => panelNode.value?.id ?? null,
+	(): void => {
+		setDraftInvalid(false);
+	}
+);
 
-const hasInvalidDraft = computed<boolean>((): boolean => panelNode.value !== null && invalidDraftFor.value === panelNode.value.id);
+const confirmDiscardDraft = async (): Promise<boolean> => {
+	if (!draftInvalid.value) {
+		return true;
+	}
 
-const hasUnsaved = computed<boolean>((): boolean => isDirty.value || hasInvalidDraft.value);
+	try {
+		await ElMessageBox.confirm(t('automations.editor.texts.confirmDiscardDraft'), t('automations.headings.discard'), {
+			confirmButtonText: t('automations.buttons.yes.title'),
+			cancelButtonText: t('automations.buttons.no.title'),
+			type: 'warning',
+		});
 
-const onDraftInvalid = (invalid: boolean): void => {
-	invalidDraftFor.value = invalid && panelNode.value !== null ? panelNode.value.id : null;
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const showPanel = async (nodeId: string | null): Promise<void> => {
+	const keeping = panelFor.value;
+
+	if (nodeId === keeping) {
+		return;
+	}
+
+	if (!(await confirmDiscardDraft())) {
+		// The form stays with what is typed in it, and the canvas goes back to its card
+		if (keeping !== null && (selectedNodeIds.value.length !== 1 || selectedNodeIds.value[0] !== keeping)) {
+			canvas.value?.focusNode(keeping);
+		}
+
+		return;
+	}
+
+	panelFor.value = nodeId;
 };
 
 const onSelect = (nodeIds: string[], edgeIds: string[]): void => {
 	selectedNodeIds.value = nodeIds;
 	selectedEdgeIds.value = edgeIds;
-	panelDismissedFor.value = null;
+
+	void showPanel(nodeIds.length === 1 ? (nodeIds[0] as string) : null);
+};
+
+const onClosePanel = (): void => {
+	void showPanel(null);
 };
 
 /*
@@ -488,10 +534,12 @@ const onRemoveNode = (): void => {
 	}
 };
 
-const onFocusNode = (nodeId: string): void => {
-	panelDismissedFor.value = null;
+const onFocusNode = async (nodeId: string): Promise<void> => {
+	await showPanel(nodeId);
 
-	canvas.value?.focusNode(nodeId);
+	if (panelFor.value === nodeId) {
+		canvas.value?.focusNode(nodeId);
+	}
 };
 
 const onReject = (reason: AutomationConnectionRejection): void => {
@@ -504,11 +552,11 @@ const onReject = (reason: AutomationConnectionRejection): void => {
 
 // Saving now would save the graph without what is typed in the form, and report it saved
 const refuseInvalidDraft = (): boolean => {
-	if (hasInvalidDraft.value) {
+	if (draftInvalid.value) {
 		flashMessage.error(t('automations.editor.messages.invalidDraft'));
 	}
 
-	return hasInvalidDraft.value;
+	return draftInvalid.value;
 };
 
 const onSave = (): void => {
@@ -645,14 +693,17 @@ const loadEditor = async (): Promise<void> => {
 	loadFailed.value = false;
 	notFound.value = false;
 
-	try {
-		await Promise.all([fetchNodeTypes(), load()]);
-	} catch (error: unknown) {
-		notFound.value = error instanceof AutomationsApiException && error.code === 404;
+	// Only the automation can be missing: a catalogue that cannot be read is a read to try again
+	const [catalogue, automationRead] = await Promise.allSettled([fetchNodeTypes(), load()]);
+
+	if (automationRead.status === 'rejected') {
+		notFound.value = automationRead.reason instanceof AutomationsApiException && automationRead.reason.code === 404;
 		loadFailed.value = !notFound.value;
-	} finally {
-		ready.value = true;
+	} else {
+		loadFailed.value = catalogue.status === 'rejected';
 	}
+
+	ready.value = true;
 };
 
 onBeforeMount(loadEditor);
