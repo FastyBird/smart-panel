@@ -246,6 +246,52 @@ describe('ModbusPointEditor', () => {
 		expect((wrapper.emitted('save')?.[0]?.[0] as ModbusPoint).unit).toBe('K');
 	}, 15_000);
 
+	it('treats an enum template point on a discrete input with a value map as neither bool nor number', async () => {
+		const mode: ModbusPoint = {
+			...relay(),
+			channelCategory: 'heater',
+			propertyCategory: 'mode',
+			dataType: 'enum',
+			permissions: ['ro'],
+			format: ['eco', 'comfort'],
+			read: {
+				...binding(6),
+				registerType: DevicesModbusPluginRegisterType.discrete_input,
+				valueMap: [
+					{ raw: 0, value: 'eco' },
+					{ raw: 1, value: 'comfort' },
+				],
+			},
+			write: null,
+		};
+		const wrapper = mountPoint(mode);
+		await flushPromises();
+
+		const optionsOf = (column: string) =>
+			itemByLabel(wrapper, column)[0]
+				.findAllComponents({ name: 'ElOption' })
+				.map((option) => option.props('value'));
+
+		expect(itemByLabel(wrapper, 'dataType')[0].props('error')).toBeUndefined();
+		expect(optionsOf('dataType')).toContain(DevicesModbusPluginDataType.bool);
+		expect(optionsOf('registerType')).toContain(DevicesModbusPluginRegisterType.discrete_input);
+		expect(itemByLabel(wrapper, 'unit')).toHaveLength(0);
+		expect(wrapper.find('[data-test-id="point-editor-save"]').attributes('disabled')).toBeUndefined();
+	}, 15_000);
+
+	it('keeps the coil option of a number point read from a coil', async () => {
+		const point = temperature();
+		point.read = { ...binding(5), registerType: DevicesModbusPluginRegisterType.coil };
+		const wrapper = mountPoint(point);
+		await flushPromises();
+
+		const registerTypes = itemByLabel(wrapper, 'registerType')[0]
+			.findAllComponents({ name: 'ElOption' })
+			.map((option) => option.props('value'));
+
+		expect(registerTypes).toEqual(['coil', 'input_register', 'holding_register']);
+	}, 15_000);
+
 	it('refuses to save a zero scale', async () => {
 		const point = temperature();
 		point.read!.scale = 0;

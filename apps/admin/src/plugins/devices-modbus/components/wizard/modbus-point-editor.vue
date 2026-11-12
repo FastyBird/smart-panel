@@ -192,6 +192,8 @@
 						:label="t('devicesModbusPlugin.wizard.points.columns.longPressMs')"
 						:error="issueOf(section.kind, 'longPressMs')"
 					>
+						<!-- ElInputNumber clamps a typed value into min..max, so the range error only shows for a value that came from
+						elsewhere (a template or the stored binding); bindingIssues is what enforces the range. -->
 						<el-input-number
 							v-model="section.binding.longPressMs"
 							:min="MIN_LONG_PRESS_MS"
@@ -431,14 +433,19 @@ watch(
 	{ immediate: true }
 );
 
-const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] => {
-	if (kind === 'write') {
-		return [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register];
-	}
+const WRITE_REGISTER_TYPES = [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register];
 
-	return pointKind.value === 'number'
-		? [DevicesModbusPluginRegisterType.input_register, DevicesModbusPluginRegisterType.holding_register]
-		: Object.values(DevicesModbusPluginRegisterType);
+// The tables a binding offers: a write needs a writable one, a number a register; the current one always stays.
+const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] => {
+	const offered =
+		kind === 'write'
+			? WRITE_REGISTER_TYPES
+			: pointKind.value === 'number'
+				? [DevicesModbusPluginRegisterType.input_register, DevicesModbusPluginRegisterType.holding_register]
+				: Object.values(DevicesModbusPluginRegisterType);
+	const current = draft.value?.[kind]?.registerType;
+
+	return current === undefined || offered.includes(current) ? offered : [current, ...offered];
 };
 
 // In Modicon notation the address prefix names the register table, so the text must follow the selected type, or
@@ -480,7 +487,7 @@ const parseKind = (kind: Kind): { parsed: ParsedAddress | null; error: string | 
 
 		const registerType = parsed.registerType ?? binding.registerType;
 
-		if (kind === 'write' && !registerTypeOptions('write').includes(registerType)) {
+		if (kind === 'write' && !WRITE_REGISTER_TYPES.includes(registerType)) {
 			return { parsed: null, error: t('devicesModbusPlugin.wizard.points.errors.writeRegisterType') };
 		}
 

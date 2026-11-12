@@ -1,6 +1,6 @@
 import { DevicesModbusPluginDataType, DevicesModbusPluginRegisterType } from '../../../openapi.constants';
 
-import { type ModbusPoint, type ModbusPointBase, type ModbusPointBinding, nextPointKey } from './points';
+import { type ModbusPoint, type ModbusPointBase, type ModbusPointBinding, NUMERIC_DATA_TYPES, nextPointKey } from './points';
 
 /** bool: an on/off or state point; number: a measured value; button: events synthesised from a boolean level. */
 export type ModbusCapabilityKind = 'bool' | 'number' | 'button';
@@ -178,10 +178,21 @@ export function pointBaseFor(capability: ModbusCapability, registerType: Devices
 	];
 }
 
-/** The kind of a point: its capability's, or a guess from its permissions and data type for a template point. */
-export const capabilityKindOf = (point: ModbusPoint): ModbusCapabilityKind =>
-	CUSTOM_CAPABILITIES.find((capability) => capability.key === capabilityKeyOf(point))?.kind ??
-	(point.permissions.includes('ev') ? 'button' : point.dataType === 'bool' ? 'bool' : 'number');
+/**
+ * The kind of a point, from its spec data type: a button event, a bool, or a number for the numeric types. Any other
+ * point (an enum or string of a template, say) has no kind, so no kind-specific rule applies to it.
+ */
+export const capabilityKindOf = (point: ModbusPoint): ModbusCapabilityKind | null => {
+	if (capabilityKeyOf(point) === 'button.event') {
+		return 'button';
+	}
+
+	if (point.dataType === 'bool') {
+		return 'bool';
+	}
+
+	return NUMERIC_DATA_TYPES.includes(point.dataType) ? 'number' : null;
+};
 
 /**
  * Switches a custom point to another capability. Within one kind the read binding is kept and a write binding is

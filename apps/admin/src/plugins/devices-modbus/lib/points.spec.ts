@@ -8,6 +8,7 @@ import {
 } from '../../../openapi.constants';
 import type { IModbusTemplatePreview } from '../store/templates.types';
 
+import { deviceBindingFromWire, pointsFromDevice } from './device-points';
 import {
 	type ModbusPoint,
 	type ModbusPointBase,
@@ -651,6 +652,60 @@ describe('toUpdateRequest', () => {
 				],
 			},
 		});
+	});
+
+	const storedChannel = (identifier: string | null) => ({
+		id: '5f0c2a8e-1b7d-4c3e-9a61-2d4b8f7e6c10',
+		identifier,
+		name: 'Heater',
+		category: 'heater',
+		properties: [
+			{ id: 'p-on', identifier: null, name: null, category: 'on', dataType: 'bool', permissions: ['rw'], unit: null, format: null, value: null },
+			{
+				id: 'p-name',
+				identifier: 'label',
+				name: null,
+				category: 'generic',
+				dataType: 'string',
+				permissions: ['ro'],
+				unit: null,
+				format: null,
+				value: null,
+			},
+		],
+	});
+
+	const storedBindings = [
+		deviceBindingFromWire({ id: 'b1', property_id: 'p-on', role: 'read', register_type: 'coil', address: 0, data_type: 'bool' }),
+		deviceBindingFromWire({ id: 'b2', property_id: 'p-on', role: 'write', register_type: 'coil', address: 0, data_type: 'bool' }),
+	];
+
+	const updateOf = (points: ModbusPoint[]) =>
+		toUpdateRequest({ category: 'switcher', pollIntervalMs: 250, byteOrder: BO.big, wordOrder: BO.big, points });
+
+	it('keeps a static property without a stored value by its id, without sending a value', () => {
+		const [channel] = updateOf(pointsFromDevice([storedChannel('heater_1')], storedBindings)).data.channels;
+		const label = channel.properties.find((property) => property.id === 'p-name');
+
+		expect(label).toEqual({ id: 'p-name', identifier: 'label', category: 'generic', data_type: 'string', permissions: ['ro'] });
+		expect(label).not.toHaveProperty('static_value');
+	});
+
+	it('does not send the id of a channel without an identifier as its identifier', () => {
+		const stored = storedChannel(null);
+		const { channels } = updateOf(pointsFromDevice([stored], storedBindings)).data;
+
+		expect(channels).toHaveLength(1);
+		expect(channels[0].id).toBe(stored.id);
+		expect(channels[0]).not.toHaveProperty('identifier');
+		expect(channels[0].properties.map((property) => property.id)).toEqual(['p-on', 'p-name']);
+
+		// Also when the first point of the channel is a new one that does not carry the channel id.
+		const [on, label] = pointsFromDevice([stored], storedBindings);
+		const reordered = updateOf([{ ...label, propertyId: null, channelId: null }, on]).data.channels;
+
+		expect(reordered[0].id).toBe(stored.id);
+		expect(reordered[0]).not.toHaveProperty('identifier');
 	});
 
 	it('throws when points sharing a channel disagree on its id', () => {

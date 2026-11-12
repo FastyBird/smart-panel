@@ -154,7 +154,7 @@ const { isLGDevice } = useBreakpoints();
 // The edit route carries the device id; the add route has none.
 const editing = computed<boolean>((): boolean => typeof props.id === 'string' && props.id !== '');
 
-useMeta({
+const { meta } = useMeta({
 	title: editing.value ? t('devicesModbusPlugin.wizard.edit.title') : t('devicesModbusPlugin.wizard.title'),
 });
 
@@ -178,10 +178,18 @@ const onRetryLoad = (): void => {
 
 onBeforeMount(loadDevice);
 
-// The view stays mounted when the route switches to another device.
+// The view stays mounted when the route switches to another device, or from editing one to adding a device.
 watch(
 	() => props.id,
-	(): void => loadDevice()
+	(): void => {
+		meta.title = editing.value ? t('devicesModbusPlugin.wizard.edit.title') : t('devicesModbusPlugin.wizard.title');
+
+		if (editing.value) {
+			loadDevice();
+		} else {
+			wizard.startCreate();
+		}
+	}
 );
 
 // True while a step transition does work (saving a new endpoint when leaving step 1).

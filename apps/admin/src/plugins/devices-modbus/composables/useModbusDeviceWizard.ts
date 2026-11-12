@@ -129,6 +129,8 @@ export interface IUseModbusDeviceWizard {
 	/** Alias of `submit`, kept for existing callers. */
 	create: () => Promise<string>;
 	loadDevice: (id: string) => Promise<void>;
+	/** Leaves edit mode for a fresh create wizard, e.g. when the view goes from the edit route to the add route. */
+	startCreate: () => void;
 	endpointForm: IUseModbusEndpointForm;
 	applyingTemplate: Ref<boolean>;
 	/** True while a new endpoint is being saved; the endpoint step is locked so the save cannot replace a newer choice. */
@@ -163,7 +165,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	const backend = useBackend();
 	const endpointForm = useModbusEndpointForm();
 
-	const state = reactive<IModbusWizardState>({
+	const initialState = (): IModbusWizardState => ({
 		step: 0,
 		endpointMode: 'existing',
 		endpointId: null,
@@ -185,6 +187,8 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		edit: null,
 	});
 
+	const state = reactive<IModbusWizardState>(initialState());
+
 	const mode = ref<ModbusWizardMode>('create');
 	const loading = ref<boolean>(false);
 	const loadError = ref<string | null>(null);
@@ -194,7 +198,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 
 	// The defaults last applied to each field. A field still holding its applied default has not been changed by
 	// the user, so the next template may replace it; a differing value is the user's and is kept.
-	const applied = {
+	const initialApplied = () => ({
 		unitId: state.unitId,
 		pollIntervalMs: state.device.pollIntervalMs,
 		byteOrder: state.device.byteOrder,
@@ -202,7 +206,9 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		port: state.newEndpoint.port,
 		framing: state.newEndpoint.framing,
 		name: '',
-	};
+	});
+
+	const applied = initialApplied();
 
 	const isValidUnitId = (unitId: number): boolean => Number.isInteger(unitId) && unitId >= 0 && unitId <= MAX_UNIT_ID;
 
@@ -680,6 +686,23 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		}
 	};
 
+	const startCreate = (): void => {
+		// A load or template preview still pending is ignored once it returns.
+		loadToken++;
+		applyToken++;
+
+		Object.assign(state, initialState());
+		Object.assign(applied, initialApplied());
+
+		mode.value = 'create';
+		loading.value = false;
+		loadError.value = null;
+		applyingTemplate.value = false;
+		submitState.value = 'idle';
+		createError.value = null;
+		createdId = null;
+	};
+
 	const setEndpointMode = (endpointMode: IModbusWizardState['endpointMode']): void => {
 		state.endpointMode = endpointMode;
 	};
@@ -734,6 +757,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		submit,
 		create: submit,
 		loadDevice,
+		startCreate,
 		endpointForm,
 		applyingTemplate,
 		savingEndpoint,

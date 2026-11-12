@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { DevicesModbusPluginDataType, DevicesModbusPluginRegisterType } from '../../../openapi.constants';
 
-import { CUSTOM_CAPABILITIES, applyCapability, defaultRegisterTypeFor, pointBaseFor, registerTypesFor, withCapabilityStatics } from './capabilities';
+import {
+	CUSTOM_CAPABILITIES,
+	applyCapability,
+	capabilityKindOf,
+	defaultRegisterTypeFor,
+	pointBaseFor,
+	registerTypesFor,
+	withCapabilityStatics,
+} from './capabilities';
 import { pointsFromRange } from './points';
 
 const capability = (key: string) => {
@@ -250,5 +258,20 @@ describe('custom capability helpers', () => {
 				back
 			).map((p) => p.propertyCategory)
 		).toEqual(['on', 'on']);
+	});
+
+	it('gives a point a kind only for bool, numeric and button event properties', () => {
+		const [point] = pointsFromRange(
+			pointBaseFor(binaryInput, DevicesModbusPluginRegisterType.coil),
+			{ registerType: null, start: 0, count: 1 },
+			'Point'
+		);
+		const kindOf = (fields: Partial<typeof point>) => capabilityKindOf({ ...point, ...fields });
+
+		expect(kindOf({})).toBe('bool');
+		expect(kindOf({ channelCategory: 'analog_input', propertyCategory: 'value', dataType: 'ushort' })).toBe('number');
+		expect(kindOf({ channelCategory: 'button', propertyCategory: 'event', dataType: 'enum', permissions: ['ev'] })).toBe('button');
+		expect(kindOf({ channelCategory: 'heater', propertyCategory: 'mode', dataType: 'enum' })).toBeNull();
+		expect(kindOf({ channelCategory: 'heater', propertyCategory: 'name', dataType: 'string' })).toBeNull();
 	});
 });

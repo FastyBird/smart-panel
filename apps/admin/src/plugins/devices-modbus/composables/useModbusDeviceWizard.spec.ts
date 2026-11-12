@@ -776,6 +776,54 @@ describe('useModbusDeviceWizard', () => {
 			expect(devicesStore.get).toHaveBeenCalledTimes(1);
 		});
 
+		it('returns to a fresh create wizard when the edit is left for the add route', async () => {
+			post.mockResolvedValue({ data: { data: { id: 'd9' } } });
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			wizard.startCreate();
+
+			expect(wizard.mode.value).toBe('create');
+			expect(wizard.state.edit).toBeNull();
+			expect(wizard.state.step).toBe(0);
+			expect(wizard.state.points).toEqual([]);
+			expect(wizard.state.endpointId).toBeNull();
+			expect(wizard.state.unitId).toBe(1);
+			expect(wizard.state.device).toEqual({
+				name: '',
+				category: null,
+				roomId: null,
+				pollIntervalMs: 1500,
+				byteOrder: DevicesModbusPluginByteOrder.big,
+				wordOrder: DevicesModbusPluginByteOrder.big,
+			});
+			expect(wizard.loading.value).toBe(false);
+			expect(wizard.loadError.value).toBeNull();
+			expect(wizard.submitState.value).toBe('idle');
+
+			// A load still pending when the add route opened is ignored.
+			let resolveLoad: (device: unknown) => void = () => undefined;
+
+			devicesStore.get.mockReturnValueOnce(new Promise((resolve) => (resolveLoad = resolve)));
+
+			const pending = wizard.loadDevice('d1');
+
+			wizard.startCreate();
+			resolveLoad(storedDevice());
+			await pending;
+
+			expect(wizard.mode.value).toBe('create');
+			expect(wizard.state.points).toEqual([]);
+			expect(wizard.loading.value).toBe(false);
+
+			wizard.state.endpointId = 'e1';
+			await wizard.applyTemplate('acme-io');
+			await expect(wizard.submit()).resolves.toBe('d9');
+			expect(put).not.toHaveBeenCalled();
+		});
+
 		it('creates through submit in create mode', async () => {
 			post.mockResolvedValue({ data: { data: { id: 'd9' } } });
 

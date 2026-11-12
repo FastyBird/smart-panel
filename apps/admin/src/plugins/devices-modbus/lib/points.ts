@@ -38,6 +38,10 @@ export interface ModbusPoint {
 	/** ID of the existing property the point maps; null for a property the request creates */
 	propertyId: string | null;
 	channelCategory: string;
+	/**
+	 * Groups the points into channels and is sent as the channel identifier. A stored channel without an identifier is
+	 * grouped by its id instead, which is not sent as its identifier.
+	 */
 	channelIdentifier: string;
 	propertyCategory: string;
 	propertyIdentifier: string | null;
@@ -322,13 +326,18 @@ const toRequestChannels = (points: ModbusPoint[]): Channel[] => {
 
 			if (existing.id === undefined && point.channelId !== null) {
 				existing.id = point.channelId;
+
+				if (existing.identifier === point.channelId) {
+					delete existing.identifier;
+				}
 			}
 
 			existing.properties.push(toRequestProperty(point));
 		} else {
 			channels.set(point.channelIdentifier, {
 				...(point.channelId !== null ? { id: point.channelId } : {}),
-				identifier: point.channelIdentifier,
+				// A stored channel without an identifier is grouped by its id; generated identifiers are slugs, never an id.
+				...(point.channelIdentifier !== point.channelId ? { identifier: point.channelIdentifier } : {}),
 				name: point.name,
 				category: point.channelCategory as Channel['category'],
 				properties: [toRequestProperty(point)],
@@ -378,7 +387,8 @@ export function toUpdateRequest(input: ModbusUpdateInput): ApiUpdateModbusDevice
 	};
 }
 
-const NUMERIC_DATA_TYPES: readonly string[] = ['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float'];
+/** The spec data types of a numeric property. */
+export const NUMERIC_DATA_TYPES: readonly string[] = ['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float'];
 
 /**
  * The value-map value typed into a text input. Only a numeric property turns "1" into 1; a string or enum property
