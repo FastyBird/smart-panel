@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { useContainer } from 'class-validator';
+import { EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -1000,6 +1001,71 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 				information.properties.map((property) => property.id).sort(),
 			);
 			expect(emitted).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, expect.objectContaining({ id: relay2.channel }));
+		});
+
+		it('keeps the bindings of a device_information channel the device was created with', async () => {
+			const information = {
+				identifier: 'info',
+				name: 'Info',
+				category: ChannelCategory.DEVICE_INFORMATION,
+				properties: [
+					...[PropertyCategory.MANUFACTURER, PropertyCategory.SERIAL_NUMBER].map((category) => ({
+						category,
+						data_type: DataTypeType.STRING,
+						permissions: [PermissionType.READ_ONLY],
+						static_value: `custom ${category}`,
+					})),
+					{
+						category: PropertyCategory.MODEL,
+						data_type: DataTypeType.STRING,
+						permissions: [PermissionType.READ_ONLY],
+						read: {
+							register_type: holding,
+							address: 100,
+							data_type: ModbusDataType.UINT16,
+							value_map: [{ raw: 1, value: 'N4D8B08' }],
+						},
+					},
+				],
+			};
+			const device = await service.create(
+				toDto({ ...relayBoard(endpoint.id), channels: [relayChannel(1), information] }),
+			);
+			const model = device.channels
+				.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION)
+				.properties.find((property) => property.category === PropertyCategory.MODEL);
+
+			await service.update(
+				device.id,
+				toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 1, idsOf(device))] }),
+			);
+
+			expect((await bindings.findByProperty(model.id)).read?.address).toBe(100);
+		});
+
+		it('lets a new channel take the identifier of a removed one, removing it only after the writes', async () => {
+			const device = await createRelays([1, 2]);
+			const relay2 = idsOf(device, 'relay_2');
+			const insert = jest.spyOn(EntityManager.prototype, 'insert');
+			const emitted = jest.spyOn(events, 'emit');
+
+			const updated = await service.update(
+				device.id,
+				toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 1, idsOf(device)), relayAt(2, 2)] }),
+			);
+
+			const replacement = updated.channels.find((channel) => channel.identifier === 'relay_2');
+			const deletion = emitted.mock.calls.findIndex(
+				([event, payload]) => event === EventType.CHANNEL_DELETED && (payload as ChannelEntity).id === relay2.channel,
+			);
+
+			expect(replacement?.id).not.toBe(relay2.channel);
+			expect(await database.manager.findOneBy(ChannelEntity, { id: relay2.channel })).toBeNull();
+			expect(deletion).toBeGreaterThanOrEqual(0);
+			expect(insert).toHaveBeenCalled();
+			expect(emitted.mock.invocationCallOrder[deletion]).toBeGreaterThan(Math.max(...insert.mock.invocationCallOrder));
+
+			insert.mockRestore();
 		});
 
 		it('refuses ids of another device', async () => {

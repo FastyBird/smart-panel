@@ -81,7 +81,12 @@ export class CreateModbusDeviceStructurePropertyDto {
 	})
 	permissions: PermissionType[];
 
-	@ApiPropertyOptional({ description: 'Property unit', type: 'string', example: '°C' })
+	@ApiPropertyOptional({
+		description:
+			'Property unit. Not stored: the device reports the unit of the property specification for its channel.',
+		type: 'string',
+		example: '°C',
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"unit","reason":"Unit must be a string."}]' })

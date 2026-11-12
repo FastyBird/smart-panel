@@ -356,7 +356,6 @@ export class ModbusDeviceStructureService {
 				id: propertyId,
 				channel: channelId,
 				...this.propertyFields(channelCategory, dto),
-				unit: dto.unit ?? this.specDefaults(channelCategory, dto)?.unit ?? null,
 			}),
 		);
 
@@ -428,28 +427,37 @@ export class ModbusDeviceStructureService {
 			channels.filter((channel) => channel.id !== undefined).map((channel) => [channel.id, channel] as const),
 		);
 		const kept = existing.filter((channel) => listed.has(channel.id));
-
-		await manager.delete(ModbusBindingEntity, { deviceId });
-
-		for (const channel of existing) {
-			if (channel.category !== ChannelCategory.DEVICE_INFORMATION && !listed.has(channel.id)) {
-				await this.channelsService.remove(channel.id, manager);
-			}
-		}
-
-		for (const channel of kept) {
+		// The device_information channel is never part of the request, so its rows, bindings included, stay as they are.
+		const removedChannels = existing.filter(
+			(channel) => channel.category !== ChannelCategory.DEVICE_INFORMATION && !listed.has(channel.id),
+		);
+		const removedProperties = kept.flatMap((channel) => {
 			const ids = new Set(listed.get(channel.id).properties.map((property) => property.id));
 
-			for (const property of channel.properties) {
-				if (!ids.has(property.id)) {
-					await this.channelsPropertiesService.remove(property.id, manager);
-				}
+			return channel.properties.filter((property) => !ids.has(property.id));
+		});
+		const informationPropertyIds = existing
+			.filter((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION)
+			.flatMap((channel) => channel.properties.map((property) => property.id));
+
+		await manager.delete(
+			ModbusBindingEntity,
+			informationPropertyIds.length > 0 ? { deviceId, propertyId: Not(In(informationPropertyIds)) } : { deviceId },
+		);
+
+		// Identifiers are unique per device and per channel: release the ones that change first, so kept rows can swap,
+		// and the ones a removed row holds that the request reuses, since the removal itself only comes last.
+		const requestedChannelIdentifiers = new Set(channels.map((channel) => channel.identifier ?? null));
+
+		for (const channel of removedChannels) {
+			if (channel.identifier !== null && requestedChannelIdentifiers.has(channel.identifier)) {
+				await manager.update(ChannelEntity, { id: channel.id }, { identifier: null });
 			}
 		}
 
-		// Identifiers are unique per device and per channel: release the ones that change first, so kept rows can swap.
 		for (const channel of kept) {
 			const request = listed.get(channel.id);
+			const requestedPropertyIdentifiers = new Set(request.properties.map((property) => property.identifier ?? null));
 
 			if (channel.identifier !== null && channel.identifier !== (request.identifier ?? null)) {
 				await manager.update(ChannelEntity, { id: channel.id }, { identifier: null });
@@ -457,8 +465,11 @@ export class ModbusDeviceStructureService {
 
 			for (const property of channel.properties) {
 				const next = request.properties.find((candidate) => candidate.id === property.id);
+				const released = next
+					? property.identifier !== (next.identifier ?? null)
+					: requestedPropertyIdentifiers.has(property.identifier);
 
-				if (next && property.identifier !== null && property.identifier !== (next.identifier ?? null)) {
+				if (property.identifier !== null && released) {
 					await manager.update(ChannelPropertyEntity, { id: property.id }, { identifier: null });
 				}
 			}
@@ -517,6 +528,16 @@ export class ModbusDeviceStructureService {
 		);
 
 		await manager.update(ModbusDeviceEntity, { id: deviceId }, deviceFields);
+
+		// The core announces a removal as soon as it happens, even inside a transaction: removing last leaves only the
+		// commit able to fail after a deletion was announced.
+		for (const property of removedProperties) {
+			await this.channelsPropertiesService.remove(property.id, manager);
+		}
+
+		for (const channel of removedChannels) {
+			await this.channelsService.remove(channel.id, manager);
+		}
 
 		return changes;
 	}
