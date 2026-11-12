@@ -10,7 +10,9 @@ import { type IGraph, type IStoredAutomation, mockBackend } from './support/mock
  *
  *   occupancy becomes detected → illuminance < 50 lx → time is 22:00–06:00 → light on at 20 %
  *                                                                        └ no → light on at 100 %
- *   occupancy becomes clear → Delay 2 min → light off
+ *   occupancy becomes clear → Delay 2 min → occupancy still clear → light off
+ *
+ * The re-check after the Delay is what the design asks of a Delay before a state-changing action (§ Runs).
  *
  * The backend is answered in the browser (`support/mock-backend.ts`), so nothing but the admin is started.
  */
@@ -39,7 +41,7 @@ const LIGHT_BRIGHTNESS = {
 	property_id: '00000000-0000-4000-8000-000000000008',
 };
 
-type CardName = 'occupied' | 'dark' | 'night' | 'dimmed' | 'full' | 'clear' | 'wait' | 'off';
+type CardName = 'occupied' | 'dark' | 'night' | 'dimmed' | 'full' | 'clear' | 'wait' | 'vacant' | 'off';
 
 /** The scenario, with the cards named as above instead of the ids the editor gives them */
 const EXPECTED: { nodes: Record<CardName, { type: string; config: Record<string, unknown> }>; edges: string[] } = {
@@ -67,6 +69,7 @@ const EXPECTED: { nodes: Record<CardName, { type: string; config: Record<string,
 		},
 		clear: { type: 'device.property.changed', config: { ...OCCUPANCY, to: false } },
 		wait: { type: 'flow.delay', config: { seconds: 120 } },
+		vacant: { type: 'device.property.compare', config: { ...OCCUPANCY, operator: 'eq', value: false } },
 		off: { type: 'device.property.set', config: { writes: [{ ...LIGHT_ON, value: false }] } },
 	},
 	edges: [
@@ -75,7 +78,8 @@ const EXPECTED: { nodes: Record<CardName, { type: string; config: Record<string,
 		'night:yes -> dimmed:in',
 		'night:no -> full:in',
 		'clear:out -> wait:in',
-		'wait:out -> off:in',
+		'wait:out -> vacant:in',
+		'vacant:yes -> off:in',
 	],
 };
 
@@ -152,6 +156,18 @@ test.describe('automation editor: the reference scenario', () => {
 
 		return (await added.getAttribute('data-id')) as string;
 	};
+
+	/** Where each card is on the canvas, by id, in the coordinates of the flow (not of the screen) */
+	const cardPositions = async (): Promise<Record<string, { x: number; y: number }>> =>
+		Object.fromEntries(
+			await canvas.locator('.vue-flow__node').evaluateAll((elements) =>
+				elements.map((element) => {
+					const match = /translate\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px\s*\)/.exec(element.getAttribute('style') ?? '');
+
+					return [element.getAttribute('data-id'), match ? { x: Number(match[1]), y: Number(match[2]) } : null];
+				})
+			)
+		) as Record<string, { x: number; y: number }>;
 
 	const handle = (nodeId: string, port: string, type: 'source' | 'target'): Locator =>
 		canvas.locator(`.vue-flow__handle.${type}[data-nodeid="${nodeId}"][data-handleid="${port}"]`);
@@ -251,7 +267,7 @@ test.describe('automation editor: the reference scenario', () => {
 			await fillNumber(second.locator('[data-test-field="writes.1.value"]'), brightness);
 		}
 
-		// ---- When the room is clear: wait, then the light off ----------------------------------------------
+		// ---- When the room is clear: wait, check it is still clear, then the light off -----------------------
 
 		await add('clear', 'device.property.changed', 40, 420);
 		await pickProperty(panel, '', 'Hallway sensor', 'Occupancy', 'Detected');
@@ -262,7 +278,12 @@ test.describe('automation editor: the reference scenario', () => {
 		await choose(panel, 'seconds-unit', 'minutes');
 		await fillNumber(panel.locator('[data-test-field="seconds"]'), 2);
 
-		await add('off', 'device.property.set', 680, 420);
+		await add('vacant', 'device.property.compare', 680, 420);
+		await pickProperty(panel, '', 'Hallway sensor', 'Occupancy', 'Detected');
+		await choose(panel, 'operator', 'is equal to');
+		await choose(panel.locator('[data-test-field="value"]'), 'value', 'No');
+
+		await add('off', 'device.property.set', 1000, 420);
 		await pickProperty(panel, 'writes.0.', 'Hallway light', 'Light', 'On');
 		await choose(panel, 'writes.0.value', 'No');
 
@@ -278,11 +299,16 @@ test.describe('automation editor: the reference scenario', () => {
 		await connect(ids.night, 'yes', ids.dimmed);
 		await connect(ids.night, 'no', ids.full);
 		await connect(ids.clear, 'out', ids.wait);
-		await connect(ids.wait, 'out', ids.off);
+		await connect(ids.wait, 'out', ids.vacant);
+		await connect(ids.vacant, 'yes', ids.off);
 
 		// ---- Save -------------------------------------------------------------------------------------------
 
 		const cardsAsDrawn = await canvas.locator('[data-test-id="node-summary"]').allInnerTexts();
+		const positionsAsDrawn = await cardPositions();
+
+		expect(Object.keys(positionsAsDrawn).sort()).toEqual(Object.values(ids).sort());
+		expect(Object.values(positionsAsDrawn)).not.toContain(null);
 
 		const save = page.locator('[data-test-id="save-flow"]');
 
@@ -298,8 +324,8 @@ test.describe('automation editor: the reference scenario', () => {
 
 		expect(stored.revision).toBe(2);
 		expect(describeGraph(stored.graph, names)).toEqual(EXPECTED);
-		// The cards stay where they were put
-		expect(stored.graph.nodes.every((node) => Number.isFinite(node.position.x) && Number.isFinite(node.position.y))).toBe(true);
+		// The cards are stored where they were put
+		expect(Object.fromEntries(stored.graph.nodes.map((node) => [node.id, node.position]))).toEqual(positionsAsDrawn);
 
 		// ---- Reload: the canvas shows what was stored ---------------------------------------------------------
 
@@ -317,6 +343,8 @@ test.describe('automation editor: the reference scenario', () => {
 		}
 
 		expect(await canvas.locator('[data-test-id="node-summary"]').allInnerTexts()).toEqual(cardsAsDrawn);
+		// ... and are shown where they were put
+		expect(await cardPositions()).toEqual(positionsAsDrawn);
 
 		// Nothing to save: what was read is what is stored
 		await expect(save).toBeDisabled();

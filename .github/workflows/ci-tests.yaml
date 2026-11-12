@@ -253,6 +253,33 @@ jobs:
           path: "apps/admin/coverage/"
           retention-days: 7
 
+  admin-e2e:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
+    name: "Admin end-to-end tests"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [ "24" ]
+        pnpm-version: [ "10.12.0" ]
+        # Pinned: the Playwright the admin uses does not support the Ubuntu that ubuntu-latest points to
+        operating-system: [ "ubuntu-24.04" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Check E2E Types"
+        run: "pnpm --filter @fastybird/smart-panel-admin exec tsc -p e2e/tsconfig.json"
+
       - name: "Install Playwright Chromium"
         run: "pnpm --filter @fastybird/smart-panel-admin exec playwright install --with-deps chromium"
 

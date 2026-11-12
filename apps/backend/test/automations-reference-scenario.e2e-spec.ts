@@ -33,6 +33,7 @@ import { FakeWallClock } from '../src/modules/automations/testing/fake-wall-cloc
 import { localTimeAt } from '../src/modules/automations/time/house-time';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	PermissionType,
@@ -48,7 +49,10 @@ import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
  *
  *   occupancy becomes detected → illuminance < 50 lx → time is 22:00–06:00 → light on at 20 %
  *                                                                        └ no → light on at 100 %
- *   occupancy becomes clear → Delay 2 min → light off
+ *   occupancy becomes clear → Delay 2 min → occupancy still clear → light off
+ *
+ * The re-check after the Delay is what the design asks of a Delay before a state-changing action (§ Runs): the
+ * sensor may have changed, or dropped offline, while the run waited.
  *
  * Time is not waited for. The engine runs its Delays on a fake monotonic clock and the time window reads a
  * fake wall clock; both are bound through the injection tokens the module leaves unbound in the application.
@@ -206,6 +210,24 @@ describe('Automations reference scenario (e2e)', () => {
 	};
 
 	/** Sets the wall clock to a local time of the house on the day of the test */
+	const runHistory = (): AutomationRunHistoryService => app.get(AutomationRunHistoryService, { strict: false });
+
+	/** The trace of the newest run of the automation */
+	const lastTrace = async () => {
+		const [newest] = await runHistory().findAllForAutomation(automationId);
+
+		return (await runHistory().findOne(newest.id))?.trace;
+	};
+
+	/** Tells the backend the sensor is reachable or not, as the simulator plugin does on request */
+	const setSensorConnection = async (state: ConnectionState): Promise<void> => {
+		await request(app.getHttpServer())
+			.post(`/plugins/simulator/simulator/${occupancy.device_id}/simulate-connection`)
+			.set('Authorization', `Bearer ${ownerToken}`)
+			.send({ data: { state } })
+			.expect(201);
+	};
+
 	const setHouseTime = (hours: number, minutes: number): void => {
 		const reading = timeSource.houseNow();
 
@@ -281,9 +303,15 @@ describe('Automations reference scenario (e2e)', () => {
 			},
 			{ id: 'wait', type: DELAY_NODE_TYPE, position: { x: 260, y: 300 }, config: { seconds: DELAY_SECONDS } },
 			{
+				id: 'vacant',
+				type: DEVICE_PROPERTY_COMPARE_NODE_TYPE,
+				position: { x: 520, y: 300 },
+				config: { ...occupancy, operator: 'eq', value: false },
+			},
+			{
 				id: 'off',
 				type: DEVICE_PROPERTY_SET_NODE_TYPE,
-				position: { x: 520, y: 300 },
+				position: { x: 780, y: 300 },
 				config: { writes: [{ ...lightOn, value: false }] },
 			},
 		],
@@ -293,7 +321,8 @@ describe('Automations reference scenario (e2e)', () => {
 			{ id: 'e3', source: 'night', source_port: 'yes', target: 'dimmed', target_port: 'in' },
 			{ id: 'e4', source: 'night', source_port: 'no', target: 'full', target_port: 'in' },
 			{ id: 'e5', source: 'clear', source_port: 'out', target: 'wait', target_port: 'in' },
-			{ id: 'e6', source: 'wait', source_port: 'out', target: 'off', target_port: 'in' },
+			{ id: 'e6', source: 'wait', source_port: 'out', target: 'vacant', target_port: 'in' },
+			{ id: 'e7', source: 'vacant', source_port: 'yes', target: 'off', target_port: 'in' },
 		],
 	});
 
@@ -480,6 +509,12 @@ describe('Automations reference scenario (e2e)', () => {
 		await runsFinished(runs + 1);
 
 		expect(engineClock.pending()).toBe(0);
+
+		// The room was still clear when the Delay ended, so the re-check let the light go off
+		expect(await lastTrace()).toMatchObject({
+			trigger: { node_id: 'clear' },
+			steps: [{ node_id: 'wait' }, { node_id: 'vacant', output: 'yes' }, { node_id: 'off' }],
+		});
 	});
 
 	it('turns on the full light when somebody walks into the dark room by day', async () => {
@@ -515,7 +550,7 @@ describe('Automations reference scenario (e2e)', () => {
 		expect(await light()).toEqual({ on: true, brightness: 100 });
 
 		// The history says so: the waiting run was cancelled, the new one completed
-		const history = app.get(AutomationRunHistoryService, { strict: false });
+		const history = runHistory();
 		const [newest, cancelled] = await history.findAllForAutomation(automationId);
 
 		expect(newest.status).toBe(AutomationRunRecordStatus.COMPLETED);
@@ -535,5 +570,50 @@ describe('Automations reference scenario (e2e)', () => {
 
 		await waitFor(light, (state) => state.on === false, 'the light going off');
 		await runsFinished(runs + 3);
+	});
+
+	it('leaves the light on when the sensor drops offline while the Delay is running', async () => {
+		const runs = started();
+
+		await report(occupancy, true);
+		await runsFinished(runs + 1);
+
+		expect(await light()).toEqual({ on: true, brightness: 100 });
+
+		await report(occupancy, false);
+		await parkedOnDelay(runs + 2);
+
+		// The sensor stops answering. Nothing is triggered by it: its last valid value is still "clear".
+		await setSensorConnection(ConnectionState.LOST);
+		await waitFor(
+			() => stateTracker.read(occupancy.property_id).status,
+			(status) => status === 'offline',
+			'the sensor to be seen offline',
+		);
+
+		expect(started()).toBe(runs + 2);
+		expect(engine.runtime(automationId)?.activeRuns).toBe(1);
+
+		engineClock.advanceSeconds(DELAY_SECONDS);
+		await runsFinished(runs + 2);
+
+		// Without the re-check the light would be off now: whether the room is empty is not known
+		expect(await light()).toEqual({ on: true, brightness: 100 });
+		expect(await lastTrace()).toMatchObject({
+			trigger: { node_id: 'clear' },
+			steps: [{ node_id: 'wait' }, { node_id: 'vacant', output: 'no', reason: 'The device is offline.' }],
+		});
+		expect((await lastTrace())?.steps).toHaveLength(2);
+
+		await setSensorConnection(ConnectionState.CONNECTED);
+		await waitFor(
+			() => stateTracker.read(occupancy.property_id).status,
+			(status) => status === 'ok',
+			'the sensor to be seen online',
+		);
+		await settled();
+
+		// Coming back with the value it had is not a change, so nothing runs
+		expect(started()).toBe(runs + 2);
 	});
 });
