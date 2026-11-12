@@ -1,17 +1,11 @@
 import type { IDevice } from '../../../modules/devices';
-import type { DevicesModbusPluginBindingRole } from '../../../openapi.constants';
-import type { ModbusPointBinding } from '../lib/points';
+import type { ModbusDeviceBinding } from '../lib/device-points';
 
 export interface IModbusDeviceSectionProps {
 	device: IDevice;
 }
 
-export interface IModbusDeviceBinding {
-	id: string;
-	propertyId: string;
-	role: DevicesModbusPluginBindingRole;
-	binding: ModbusPointBinding;
-}
+export type IModbusDeviceBinding = ModbusDeviceBinding;
 
 export interface IModbusBindingReading {
 	raw: (number | boolean)[] | null;

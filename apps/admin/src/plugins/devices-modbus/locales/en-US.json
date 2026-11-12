@@ -173,7 +173,8 @@
 				"addEntry": "Add entry",
 				"removeEntry": "Remove",
 				"cancel": "Cancel",
-				"save": "Save"
+				"save": "Save",
+				"capabilityLocked": "An existing channel keeps its category; remove the point and add a new one to change it."
 			},
 			"testWrite": {
 				"title": "Test write: {name}",
@@ -269,6 +270,18 @@
 			"inverted": "inverted",
 			"create": "Create device",
 			"created": "Device \"{name}\" was created."
+		},
+		"edit": {
+			"title": "Edit Modbus points",
+			"subtitle": "Change the registers, capabilities and polling of an existing Modbus device",
+			"breadcrumb": "Edit points",
+			"device": "Device",
+			"loadFailed": "The device could not be loaded for editing",
+			"retry": "Try again",
+			"deviceHint": "The name and room of the device are changed in the device settings.",
+			"save": "Save points",
+			"saved": "The points of \"{name}\" were saved.",
+			"saveFailed": "The points could not be saved"
 		}
 	},
 	"endpoints": {
@@ -445,6 +458,9 @@
 		"readNow": "Read now",
 		"readNowHint": "Reads the saved read bindings once through the endpoint. Nothing is written.",
 		"readFailed": "The read failed: {reason}",
-		"readNoUnit": "This device has no endpoint or unit ID to read from."
+		"readNoUnit": "This device has no endpoint or unit ID to read from.",
+		"editPoints": "Edit points",
+		"templateUpdated": "Template updated",
+		"templateUpdatedHint": "The template has revision {revision}; this device was created from an older one."
 	}
 }

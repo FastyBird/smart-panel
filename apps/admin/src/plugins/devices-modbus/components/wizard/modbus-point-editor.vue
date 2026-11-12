@@ -46,8 +46,16 @@
 							:key="option"
 							:label="capabilityLabel(option)"
 							:value="option"
+							:disabled="!capabilityAllowed(option)"
 						/>
 					</el-select>
+					<div
+						v-if="capabilityEditable && lockedChannelCategory"
+						class="text-xs text-gray-500 mt-1 w-[200px]"
+						data-test-id="point-editor-capability-locked"
+					>
+						{{ t('devicesModbusPlugin.wizard.points.editor.capabilityLocked') }}
+					</div>
 				</el-form-item>
 			</div>
 
@@ -381,6 +389,15 @@ const capabilityOptions = computed<string[]>(() => {
 	return draft.value !== null && !keys.includes(capabilityKeyOf(draft.value)) ? [capabilityKeyOf(draft.value), ...keys] : keys;
 });
 
+// An existing channel keeps its category, so only capabilities of that category (and the current one) are allowed.
+const capabilityAllowed = (key: string): boolean => {
+	if (!props.lockedChannelCategory || draft.value === null || key === capabilityKeyOf(draft.value)) {
+		return true;
+	}
+
+	return CUSTOM_CAPABILITIES.find((capability) => capability.key === key)?.channelCategory === props.lockedChannelCategory;
+};
+
 const pointKind = computed<ModbusBindingPointKind | null>(() => (draft.value === null ? null : capabilityKindOf(draft.value)));
 
 const sections = computed<{ kind: Kind; binding: ModbusPointBinding }[]>(() => {
@@ -546,7 +563,7 @@ const removeMapEntry = (binding: ModbusPointBinding, index: number): void => {
 const onCapabilityChange = (key: string): void => {
 	const capability = CUSTOM_CAPABILITIES.find((candidate) => candidate.key === key);
 
-	if (!draft.value || !capability) {
+	if (!draft.value || !capability || !capabilityAllowed(key)) {
 		return;
 	}
 

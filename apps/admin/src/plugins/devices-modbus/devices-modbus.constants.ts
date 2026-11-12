@@ -21,5 +21,6 @@ export const MODBUS_PROBE_MAX_POINTS = 256;
 
 export const RouteNames = {
 	WIZARD: 'devices_modbus-wizard',
+	EDIT: 'devices_modbus-edit',
 	ENDPOINTS: 'devices_modbus-endpoints',
 };

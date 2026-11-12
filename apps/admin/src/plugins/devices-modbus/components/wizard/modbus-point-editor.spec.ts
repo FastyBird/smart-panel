@@ -305,4 +305,34 @@ describe('ModbusPointEditor', () => {
 			name: 'Garden valve',
 		});
 	}, 15_000);
+
+	it('keeps an existing channel on its category: other capabilities are disabled and refused', async () => {
+		const wrapper = mount(ModbusPointEditor, {
+			props: {
+				visible: true,
+				point: { ...relay(), channelId: 'c1', propertyId: 'p1' },
+				notation: 'pdu',
+				capabilityEditable: true,
+				lockedChannelCategory: 'switcher',
+			},
+			global: { stubs: { ElDialog: { template: '<div><slot /><slot name="footer" /></div>' } } },
+		});
+		await flushPromises();
+
+		const capability = wrapper.findAllComponents({ name: 'ElSelect' })[0];
+		const disabled = Object.fromEntries(
+			capability.findAllComponents({ name: 'ElOption' }).map((option) => [option.props('value'), option.props('disabled')])
+		);
+
+		expect(disabled['switcher.on']).toBe(false);
+		expect(disabled['valve.on']).toBe(true);
+		expect(disabled['binary_input.state']).toBe(true);
+		expect(wrapper.find('[data-test-id="point-editor-capability-locked"]').exists()).toBe(true);
+
+		capability.vm.$emit('update:model-value', 'binary_input.state');
+		await flushPromises();
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({ channelCategory: 'switcher', propertyCategory: 'on', channelId: 'c1' });
+	}, 15_000);
 });

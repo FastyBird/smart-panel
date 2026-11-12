@@ -173,7 +173,8 @@
 				"addEntry": "Add entry",
 				"removeEntry": "Remove",
 				"cancel": "Cancel",
-				"save": "Save"
+				"save": "Save",
+				"capabilityLocked": "Existujúci kanál si ponecháva svoju kategóriu; na zmenu bod odstráňte a pridajte nový."
 			},
 			"testWrite": {
 				"title": "Test write: {name}",
@@ -269,6 +270,18 @@
 			"inverted": "inverted",
 			"create": "Create device",
 			"created": "Device \"{name}\" was created."
+		},
+		"edit": {
+			"title": "Upraviť body Modbus",
+			"subtitle": "Zmeňte registre, schopnosti a dotazovanie existujúceho zariadenia Modbus",
+			"breadcrumb": "Upraviť body",
+			"device": "Zariadenie",
+			"loadFailed": "Zariadenie sa nepodarilo načítať na úpravu",
+			"retry": "Skúsiť znova",
+			"deviceHint": "Názov a miestnosť zariadenia sa menia v nastaveniach zariadenia.",
+			"save": "Uložiť body",
+			"saved": "Body zariadenia \"{name}\" boli uložené.",
+			"saveFailed": "Body sa nepodarilo uložiť"
 		}
 	},
 	"endpoints": {
@@ -445,6 +458,9 @@
 		"readNow": "Read now",
 		"readNowHint": "Reads the saved read bindings once through the endpoint. Nothing is written.",
 		"readFailed": "The read failed: {reason}",
-		"readNoUnit": "This device has no endpoint or unit ID to read from."
+		"readNoUnit": "This device has no endpoint or unit ID to read from.",
+		"editPoints": "Upraviť body",
+		"templateUpdated": "Šablóna aktualizovaná",
+		"templateUpdatedHint": "Šablóna má revíziu {revision}; toto zariadenie bolo vytvorené zo staršej."
 	}
 }

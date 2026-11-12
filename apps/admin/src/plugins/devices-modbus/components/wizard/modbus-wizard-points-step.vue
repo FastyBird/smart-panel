@@ -436,6 +436,7 @@
 			:point="editing"
 			:notation="wizard.state.notation"
 			:capability-editable="editing !== null && !isTemplateRow(editing) && !isStatic(editing)"
+			:locked-channel-category="editing !== null ? lockedChannelCategoryOf(editing) : null"
 			@save="onEditorSave"
 		/>
 	</div>
@@ -515,10 +516,13 @@ const readPoints = async (inputs: { key: string; read: ModbusPointBinding }[]): 
 		return { ok: false, points: [], error: { kind: 'request', exceptionCode: null, message: 'No endpoint is selected.' }, durationMs: 0 };
 	}
 
+	// An edited device reads with its own limits, a new one with those of its template.
+	const limits = state.edit ?? state.templateDevice;
+
 	return probe.readPoints(target, state.unitId, inputs, deviceOrders(), {
-		maxReadRegisters: state.templateDevice?.maxReadRegisters,
-		maxReadBits: state.templateDevice?.maxReadBits,
-		maxReadGap: state.templateDevice?.maxReadGap,
+		maxReadRegisters: limits?.maxReadRegisters,
+		maxReadBits: limits?.maxReadBits,
+		maxReadGap: limits?.maxReadGap,
 	});
 };
 
@@ -535,6 +539,10 @@ const isTemplateRow = (point: ModbusPoint): boolean =>
 	(state.template?.points ?? []).some(
 		(candidate) => candidate.channelIdentifier === point.channelIdentifier && candidate.propertyCategory === point.propertyCategory
 	);
+
+// A row of an existing channel keeps the channel's category: the points update cannot change it.
+const lockedChannelCategoryOf = (point: ModbusPoint): string | null =>
+	point.channelId !== null ? (state.edit?.channelCategories[point.channelId] ?? point.channelCategory) : null;
 
 const capabilityLabel = (key: string): string => {
 	const path = `devicesModbusPlugin.wizard.points.capabilities.${key}`;
