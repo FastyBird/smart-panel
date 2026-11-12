@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Read-only on a small screen",
-				"confirmDiscardDraft": "The text in the form of this block is not valid JSON, so it has not been applied. Do you want to discard it?",
+				"confirmDiscardDraft": "Something entered in the form of this block is incomplete or not valid JSON, so it has not been applied. Do you want to discard it?",
 				"unsaved": "Unsaved changes",
 				"noNodeTypes": "No blocks are available.",
 				"notConfigured": "Not configured yet",
@@ -330,7 +330,7 @@
 			"messages": {
 				"conflict": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes are kept; choose which version to keep.",
 				"invalid": "The flow of automation \"{automation}\" cannot be saved yet. Check the problems listed below the canvas.",
-				"invalidDraft": "Some text in the form of the selected block is not valid JSON. Correct it or undo it before saving.",
+				"invalidDraft": "Something entered in the form of the selected block is incomplete or not valid JSON. Complete or correct it, or undo it, before saving.",
 				"busy": "The automation is still being read or saved. Try again once that is done.",
 				"unsafe": "The flow of automation \"{automation}\" cannot be saved: an action would unlock, disarm or open something, which an automation is not allowed to do."
 			},

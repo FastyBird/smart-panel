@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Auf kleinen Bildschirmen schreibgeschützt",
-				"confirmDiscardDraft": "Der Text im Formular dieses Blocks ist kein gültiges JSON und wurde daher nicht übernommen. Möchten Sie ihn verwerfen?",
+				"confirmDiscardDraft": "Eine Eingabe im Formular dieses Blocks ist unvollständig oder kein gültiges JSON und wurde daher nicht übernommen. Möchten Sie sie verwerfen?",
 				"unsaved": "Ungespeicherte Änderungen",
 				"noNodeTypes": "Es sind keine Blöcke verfügbar.",
 				"notConfigured": "Noch nicht konfiguriert",
@@ -330,7 +330,7 @@
 			"messages": {
 				"conflict": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Ihre Änderungen bleiben erhalten; wählen Sie, welche Version behalten werden soll.",
 				"invalid": "Der Ablauf der Automation „{automation}“ kann noch nicht gespeichert werden. Prüfen Sie die Probleme unter der Arbeitsfläche.",
-				"invalidDraft": "Ein Text im Formular des ausgewählten Blocks ist kein gültiges JSON. Korrigieren oder verwerfen Sie ihn vor dem Speichern.",
+				"invalidDraft": "Eine Eingabe im Formular des ausgewählten Blocks ist unvollständig oder kein gültiges JSON. Vervollständigen, korrigieren oder verwerfen Sie sie vor dem Speichern.",
 				"busy": "Die Automatisierung wird noch gelesen oder gespeichert. Versuchen Sie es erneut, sobald das erledigt ist.",
 				"unsafe": "Der Ablauf der Automation „{automation}“ kann nicht gespeichert werden: Eine Aktion würde etwas entriegeln, unscharf schalten oder öffnen, was eine Automation nicht darf."
 			},

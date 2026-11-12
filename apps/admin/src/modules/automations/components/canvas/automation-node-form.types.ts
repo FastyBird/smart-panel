@@ -5,8 +5,9 @@ import type { IAutomationNodeType } from '../../store/node-types.store.types';
  * What every form of a card is given and what it answers with, whether it is the generic form or the form
  * an admin element brings for its card (`automationNodeForm`, resolved by `useAutomationNodePlugins`):
  *   emits `update:config` (config: Record<string, unknown>, field: string)
- *   emits `update:invalid` (invalid: boolean) while text typed into it does not parse and so has not reached
- *   the configuration; the editor does not save until it does
+ *   emits `update:invalid` (invalid: boolean) while something entered into it has not reached the
+ *   configuration - text that does not parse, a choice that still lacks its value; the editor does not save
+ *   until it does
  */
 export interface IAutomationNodeFormProps {
 	nodeType: IAutomationNodeType;
@@ -22,8 +23,9 @@ export interface IAutomationNodeFormProps {
 export const automationNodeFormEmits = {
 	// `field` names what was edited, so a run of keystrokes in one field can be undone as one step
 	'update:config': (config: Record<string, unknown>, field: string): boolean => typeof config === 'object' && typeof field === 'string',
-	// Only a form that can hold text which does not parse yet emits it; the built-in forms commit every
-	// value through inputs that only ever hold a valid one (a number, a time, a choice, plain text)
+	// Only a form that can hold such a draft emits it; the built-in forms commit every value through inputs
+	// that only ever hold a valid one (a number, a time, a choice, plain text), and the value trigger also
+	// emits it while the way to start chosen lacks its value
 	'update:invalid': (invalid: boolean): boolean => typeof invalid === 'boolean',
 };
 

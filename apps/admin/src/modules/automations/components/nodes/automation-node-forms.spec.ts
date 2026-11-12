@@ -13,6 +13,8 @@ import type { IAutomationNodeType } from '../../store/node-types.store.types';
 import AutomationDevicePropertyChangedForm from './automation-device-property-changed-form.vue';
 import AutomationDevicePropertyCompareForm from './automation-device-property-compare-form.vue';
 import AutomationDevicePropertySetForm from './automation-device-property-set-form.vue';
+import AutomationNotificationSendForm from './automation-notification-send-form.vue';
+import AutomationPropertyValueInput from './automation-property-value-input.vue';
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
@@ -240,6 +242,76 @@ describe('automation card forms', (): void => {
 			expect(lastConfig()).toEqual({ device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature' });
 		});
 
+		const target = { device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature' };
+
+		const chooseMode = (mode: string): void => {
+			wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', mode);
+		};
+
+		const enter = (field: string, value: unknown): void => {
+			wrapper.find(`[data-test-field="${field}"]`).findComponent(AutomationPropertyValueInput).vm.$emit('update:modelValue', value);
+		};
+
+		// The editor hands back what the form emitted, as it does with every edit
+		const handBack = async (): Promise<void> => {
+			await wrapper.setProps({ config: lastConfig() });
+		};
+
+		const lastInvalid = (): unknown => (wrapper.emitted('update:invalid') ?? []).at(-1)?.[0];
+
+		it('keeps a way to start that takes two values while they are entered one by one', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config: { ...target } });
+
+			chooseMode('fromTo');
+			await handBack();
+
+			enter('from', 18);
+			await handBack();
+
+			expect(wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).props('modelValue')).toBe('fromTo');
+			expect(wrapper.find('[data-test-field="to"]').exists()).toBe(true);
+
+			enter('to', 22);
+			await handBack();
+
+			expect(lastConfig()).toEqual({ ...target, from: 18, to: 22 });
+		});
+
+		it('keeps the editor from saving while the way to start chosen lacks its value', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config: { ...target } });
+
+			expect(lastInvalid()).toBe(false);
+
+			chooseMode('to');
+			await handBack();
+
+			// Saved now, the trigger would start on any change
+			expect(lastInvalid()).toBe(true);
+
+			enter('to', 21);
+			await handBack();
+
+			expect(lastInvalid()).toBe(false);
+
+			// A value cleared again leaves the way to start chosen, and unfinished
+			enter('to', undefined);
+			await handBack();
+
+			expect(wrapper.find('[data-test-field="to"]').exists()).toBe(true);
+			expect(lastInvalid()).toBe(true);
+		});
+
+		it('follows a configuration changed from outside, back to any change', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config: { ...target, to: 21 } });
+
+			// An undo, say
+			await wrapper.setProps({ config: { ...target } });
+
+			expect(wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).props('modelValue')).toBe('any');
+			expect(wrapper.find('[data-test-field="to"]').exists()).toBe(false);
+			expect(lastInvalid()).toBe(false);
+		});
+
 		it('shows the problems of a field as it is filled in', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertyChangedForm, {
 				nodeType: changed,
@@ -294,6 +366,36 @@ describe('automation card forms', (): void => {
 			wrapper.findComponent(DevicePropertyPicker).vm.$emit('update:propertyId', 'p-detected');
 
 			expect(lastConfig()).toEqual({ device_id: 'd-1', channel_id: 'c-1', property_id: 'p-detected' });
+		});
+	});
+
+	describe('every card form', (): void => {
+		it('disables the whole form, the device picked included, while the editor can not take edits', async (): Promise<void> => {
+			const forms: [unknown, string, Record<string, unknown>][] = [
+				[AutomationDevicePropertySetForm, 'device.property.set', { writes: [{ ...lockWrite }] }],
+				[AutomationDevicePropertyChangedForm, 'device.property.changed', { ...lockWrite }],
+				[AutomationDevicePropertyCompareForm, 'device.property.compare', { ...lockWrite }],
+				[AutomationNotificationSendForm, 'notification.send', {}],
+			];
+
+			for (const [component, type, config] of forms) {
+				await mountForm(component, { nodeType: nodeType(type, AutomationNodeKind.action), config, disabled: true });
+
+				expect(wrapper.findComponent({ name: 'ElForm' }).props('disabled'), type).toBe(true);
+
+				wrapper.unmount();
+			}
+
+			// Left mounted for the unmount after each test
+			await mountForm(AutomationNotificationSendForm, { nodeType: nodeType('notification.send', AutomationNodeKind.action), config: {} });
+		});
+	});
+
+	describe('send notification', (): void => {
+		it('shows the hint under the message as text', async (): Promise<void> => {
+			await mountForm(AutomationNotificationSendForm, { nodeType: nodeType('notification.send', AutomationNodeKind.action), config: {} });
+
+			expect(wrapper.find('[data-test-field="message"] .el-text').text()).toBe('automations.editor.fields.notification.hint');
 		});
 	});
 });

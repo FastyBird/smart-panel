@@ -83,7 +83,8 @@
 				<!--
 					A card with an admin element brings its own form (`automationNodeForm`, resolved by
 					`useAutomationNodePlugins`); it takes the same props and emits the same events as the generic form,
-					so it is disabled with the panel and keeps the editor from saving while it holds text that does not parse.
+					so it is disabled with the panel and keeps the editor from saving while it holds what has not reached the
+					configuration yet.
 				-->
 				<component
 					:is="props.form ?? AutomationNodeGenericForm"
@@ -148,7 +149,7 @@ const props = withDefaults(defineProps<IAutomationNodePanelProps>(), {
 
 const emit = defineEmits<{
 	(e: 'update:config', config: Record<string, unknown>, field: string): void;
-	// Text typed into the form does not parse, so the configuration does not hold it yet
+	// Something entered into the form (text that does not parse, a choice lacking its value) is not in the configuration yet
 	(e: 'update:invalid', invalid: boolean): void;
 	(e: 'remove'): void;
 	(e: 'close'): void;

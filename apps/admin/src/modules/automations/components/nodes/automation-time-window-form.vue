@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-time-window-form"
 		data-test-id="automation-time-window-form"
 		@submit.prevent

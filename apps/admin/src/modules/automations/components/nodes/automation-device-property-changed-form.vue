@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-device-property-changed-form"
 		data-test-id="automation-device-property-changed-form"
 		@submit.prevent
@@ -186,6 +187,16 @@ const OPERANDS: Record<AutomationChangedMode, OperandKey[]> = {
 	below: ['below', 'hysteresis', 'for_seconds'],
 };
 
+// The values a way to start can not do without
+const REQUIRED: Record<AutomationChangedMode, OperandKey[]> = {
+	any: [],
+	to: ['to'],
+	from: ['from'],
+	fromTo: ['from', 'to'],
+	above: ['above'],
+	below: ['below'],
+};
+
 const props = withDefaults(defineProps<IAutomationNodeFormProps>(), {
 	fieldErrors: () => ({}),
 	issues: () => [],
@@ -196,7 +207,16 @@ const emit = defineEmits(automationNodeFormEmits);
 
 const { t } = useI18n();
 
-const form = useAutomationNodeForm(props, emit, DevicePropertyChangedConfigSchema);
+// What this form emitted last, until the configuration comes back with it (see `mode` below)
+let emitted: string | null = null;
+
+const onConfig = (event: 'update:config', config: Record<string, unknown>, field: string): void => {
+	emitted = JSON.stringify(config);
+
+	emit(event, config, field);
+};
+
+const form = useAutomationNodeForm(props, onConfig, DevicePropertyChangedConfigSchema);
 
 const { errorsAt, errorText } = form;
 
@@ -220,17 +240,37 @@ const modes = computed<AutomationChangedMode[]>((): AutomationChangedMode[] => c
 
 /*
  * The way to start is kept here as well as read from the configuration: "becomes" chosen with no value
- * entered yet looks like "any change" in the configuration.
+ * entered yet looks like "any change" in the configuration, and "changes from ... to" with only one of its
+ * values entered looks like the way to start that takes that value alone. So an edit made here keeps the
+ * way chosen, while a configuration changed from outside (an undo, a reload) is read again.
  */
 const mode = ref<AutomationChangedMode>(changedModeOf(props.config));
 
 watch(
-	(): AutomationChangedMode => changedModeOf(props.config),
-	(read: AutomationChangedMode): void => {
-		if (read !== 'any') {
-			mode.value = read;
+	(): Record<string, unknown> => props.config,
+	(config: Record<string, unknown>): void => {
+		const own = emitted !== null && JSON.stringify(config) === emitted;
+
+		emitted = null;
+
+		if (!own) {
+			mode.value = changedModeOf(config);
 		}
 	}
+);
+
+/*
+ * The way chosen lacks a value it needs: saved as it is, the trigger would start on more than was chosen.
+ * Like text that does not parse yet, it keeps the editor from saving until it is entered or given up.
+ */
+const incomplete = computed<boolean>((): boolean => REQUIRED[mode.value].some((key) => typeof props.config[key] === 'undefined'));
+
+watch(
+	incomplete,
+	(value: boolean): void => {
+		emit('update:invalid', value);
+	},
+	{ immediate: true }
 );
 
 const forSeconds = computed<number | undefined>((): number | undefined =>

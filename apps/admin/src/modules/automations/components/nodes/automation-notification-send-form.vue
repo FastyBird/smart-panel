@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-notification-send-form"
 		data-test-id="automation-notification-send-form"
 		@submit.prevent
@@ -77,7 +78,7 @@
  */
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElOption, ElSelect } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElText } from 'element-plus';
 
 import { useAutomationNodeForm } from '../../composables/useAutomationNodeForm';
 import {

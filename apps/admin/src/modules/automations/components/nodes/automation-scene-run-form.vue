@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-scene-run-form"
 		data-test-id="automation-scene-run-form"
 		@submit.prevent

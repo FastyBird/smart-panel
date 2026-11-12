@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-delay-form"
 		data-test-id="automation-delay-form"
 		@submit.prevent

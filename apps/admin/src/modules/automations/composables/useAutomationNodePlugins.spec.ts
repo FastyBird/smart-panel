@@ -12,6 +12,7 @@ import { useAutomationNodePlugins } from './useAutomationNodePlugins';
 const SpaceForm: Component = { name: 'SpaceForm' };
 const SpaceCard: Component = { name: 'SpaceCard' };
 const BetterDelayForm: Component = { name: 'BetterDelayForm' };
+const BetterSceneCard: Component = { name: 'BetterSceneCard' };
 const spaceSchema = z.object({ space_id: z.string() });
 
 const links = { documentation: '', devDocumentation: '', bugsTracking: '' };
@@ -40,6 +41,7 @@ mocks.plugins = [
 			// An element of the plugin for another module is not a card, even with a matching type
 			{ type: 'spaces.mode.set', components: { automationNodeForm: SpaceForm }, modules: ['scenes-module'] },
 			{ type: 'flow.delay', components: { automationNodeForm: BetterDelayForm }, modules: [AUTOMATIONS_MODULE_NAME] },
+			{ type: 'scene.run', components: { automationNodeCard: BetterSceneCard }, modules: [AUTOMATIONS_MODULE_NAME] },
 		],
 		modules: [AUTOMATIONS_MODULE_NAME],
 		isCore: false,
@@ -79,6 +81,22 @@ describe('useAutomationNodePlugins', (): void => {
 
 	it('asks the plugins first, so a plugin can bring a better form for a card of a module', (): void => {
 		expect(useAutomationNodePlugins().getFormComponent('flow.delay')).toBe(BetterDelayForm);
+	});
+
+	it('keeps what the module brings for a card where the plugin brings nothing in its place', (): void => {
+		const { getFormComponent, getCardComponent, getConfigSchema, getElement } = useAutomationNodePlugins();
+
+		const builtIn = (type: string) => AUTOMATION_BUILT_IN_NODE_ELEMENTS.find((element) => element.type === type);
+
+		// Only the form is the plugin's: the summary and the schema stay the module's
+		expect(getFormComponent('flow.delay')).toBe(BetterDelayForm);
+		expect(getCardComponent('flow.delay')).toBe(builtIn('flow.delay')?.components?.automationNodeCard);
+		expect(getConfigSchema('flow.delay')).toBe(builtIn('flow.delay')?.schemas?.automationNodeConfigSchema);
+
+		// Only the summary is the plugin's: the form stays the module's
+		expect(getCardComponent('scene.run')).toBe(BetterSceneCard);
+		expect(getFormComponent('scene.run')).toBe(builtIn('scene.run')?.components?.automationNodeForm);
+		expect(getElement('scene.run')?.components?.automationNodeForm).toBe(builtIn('scene.run')?.components?.automationNodeForm);
 	});
 
 	it('leaves a card without an element of the automations module to the generic form', (): void => {

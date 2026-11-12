@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-time-of-day-form"
 		data-test-id="automation-time-of-day-form"
 		@submit.prevent

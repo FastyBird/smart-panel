@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Solo lectura en pantallas pequeñas",
-				"confirmDiscardDraft": "El texto del formulario de este bloque no es JSON válido, por lo que no se ha aplicado. ¿Desea descartarlo?",
+				"confirmDiscardDraft": "Parte de lo introducido en el formulario de este bloque está incompleto o no es JSON válido, por lo que no se ha aplicado. ¿Desea descartarlo?",
 				"unsaved": "Cambios sin guardar",
 				"noNodeTypes": "No hay bloques disponibles.",
 				"notConfigured": "Aún sin configurar",
@@ -330,7 +330,7 @@
 			"messages": {
 				"conflict": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Sus cambios se conservan; elija qué versión conservar.",
 				"invalid": "El flujo de la automatización «{automation}» aún no se puede guardar. Revise los problemas indicados bajo el lienzo.",
-				"invalidDraft": "Parte del texto del formulario del bloque seleccionado no es JSON válido. Corríjalo o deshágalo antes de guardar.",
+				"invalidDraft": "Parte de lo introducido en el formulario del bloque seleccionado está incompleto o no es JSON válido. Complételo, corríjalo o deshágalo antes de guardar.",
 				"busy": "La automatización todavía se está leyendo o guardando. Inténtelo de nuevo cuando haya terminado.",
 				"unsafe": "El flujo de la automatización «{automation}» no se puede guardar: una acción desbloquearía, desarmaría o abriría algo, lo que una automatización no tiene permitido."
 			},

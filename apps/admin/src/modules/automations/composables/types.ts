@@ -165,7 +165,7 @@ export type IAutomationNodeElement =
 	| IModuleElement<IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas>;
 
 export interface IUseAutomationNodePlugins {
-	// The element of every card that has one, by node type
+	// The element of every card that has one, by node type; what a plugin leaves out is filled in from the module
 	elements: ComputedRef<Map<string, IAutomationNodeElement>>;
 	getElement: (type: string) => IAutomationNodeElement | undefined;
 	getFormComponent: (type: string) => Component | null;

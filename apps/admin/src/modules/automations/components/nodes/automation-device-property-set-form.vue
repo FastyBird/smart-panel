@@ -1,6 +1,7 @@
 <template>
 	<el-form
 		label-position="top"
+		:disabled="props.disabled"
 		class="automation-device-property-set-form"
 		data-test-id="automation-device-property-set-form"
 		@submit.prevent
