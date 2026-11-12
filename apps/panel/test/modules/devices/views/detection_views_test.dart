@@ -157,6 +157,16 @@ void main() {
       expect(device.cameraChannel.identifier, 'front');
     });
 
+    test('cameraChannel picks an identifier equal to main over earlier channels', () {
+      final device = buildCameraView(cameraChannelIdentifiers: ['package', 'main']);
+      expect(device.cameraChannel.identifier, 'main');
+    });
+
+    test('cameraChannel does not treat a mere suffix like xmain as main', () {
+      final device = buildCameraView(cameraChannelIdentifiers: ['xmain', 'front']);
+      expect(device.cameraChannel.identifier, 'xmain');
+    });
+
     test('a camera lists every object detection channel', () {
       final device = buildCameraView(objectTypes: ['person', 'vehicle', 'animal']);
       expect(device.objectDetectionChannels.map((c) => c.objectType), ['person', 'vehicle', 'animal']);

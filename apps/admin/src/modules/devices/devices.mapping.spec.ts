@@ -8,7 +8,7 @@ describe('Devices mapping', (): void => {
 	it.each([DevicesModuleDeviceCategory.camera, DevicesModuleDeviceCategory.doorbell])('orders detection channels for %s', (category): void => {
 		const order: string[] = deviceChannelsSortingSpecification[category];
 
-		for (const channel of ['object_detection', 'sound_detection', 'indicator', 'illuminance', 'smoke', 'carbon_monoxide']) {
+		for (const channel of ['motion', 'object_detection', 'sound_detection', 'indicator', 'illuminance', 'smoke', 'carbon_monoxide']) {
 			expect(order).toContain(channel);
 		}
 
@@ -16,8 +16,8 @@ describe('Devices mapping', (): void => {
 		expect(order.indexOf('object_detection')).toBeLessThan(order.indexOf('sound_detection'));
 	});
 
-	it('marks camera and detection channels as multiple on cameras', (): void => {
-		const spec = deviceChannelsSpecificationMappers[DevicesModuleDeviceCategory.camera];
+	it.each([DevicesModuleDeviceCategory.camera, DevicesModuleDeviceCategory.doorbell])('marks camera and detection channels as multiple on %s', (category): void => {
+		const spec = deviceChannelsSpecificationMappers[category];
 
 		expect(spec.multiple).toEqual(expect.arrayContaining(['camera', 'object_detection', 'sound_detection']));
 	});

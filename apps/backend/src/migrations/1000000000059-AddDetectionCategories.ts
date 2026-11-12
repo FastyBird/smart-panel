@@ -9,6 +9,9 @@ import { extendCategoryCheck, reduceCategoryCheck } from './utils/category-check
  * changing a CHECK without touching table content). The tables are deliberately not rebuilt: the catalogBirth column,
  * its allocation triggers and the thermostat creation catalog verifier depend on stable rowids and on the exact
  * stored table and trigger SQL (migrations 048, 049 and 054).
+ *
+ * Ordering hazard: the stored CHECK lists must be rewritten before any row is written in the same transaction. A schema
+ * reload after writes that fire the FTS5 home search triggers can make integrity_check report a malformed search index.
  */
 const CATEGORIES: readonly (readonly [string, readonly string[]])[] = [
 	['devices_module_channels', ['object_detection', 'sound_detection']],
@@ -30,10 +33,7 @@ export class AddDetectionCategories1000000000059 implements MigrationInterface {
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await this.inTransaction(queryRunner, async () => {
-			// The stored schema is edited before any row is touched: reloading the schema in the middle of a
-			// transaction that already wrote to the FTS5 search index (through the home search triggers) makes
-			// integrity_check report a malformed inverted index. Updating a row only validates its new values, so
-			// rows still holding a removed category can be remapped after the narrower CHECK is in place.
+			// Rewrite the CHECK lists before touching rows (see the FTS5 ordering note in the class docblock).
 			await this.rewriteChecks(queryRunner, reduceCategoryCheck);
 
 			for (const [table, values] of CATEGORIES) {

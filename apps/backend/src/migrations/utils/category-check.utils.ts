@@ -1,3 +1,5 @@
+// Callers must rewrite the stored CHECK lists before writing any rows in the same transaction: a schema reload after
+// FTS5-triggering writes can make integrity_check report a malformed search index.
 const CATEGORY_CHECK = /("category" varchar CHECK\( "category" IN \()([^)]*)(\) \))/g;
 const VALUE = /^[a-z][a-z0-9_]*$/;
 
