@@ -28,6 +28,10 @@ export const useChannelPropertyIcon = ({ id }: IUseChannelPropertyIconProps): IU
 				return 'mdi:ruler';
 			case DevicesModuleChannelPropertyCategory.value:
 				return 'mdi:numeric';
+			case DevicesModuleChannelPropertyCategory.object_type:
+				return 'mdi:shape';
+			case DevicesModuleChannelPropertyCategory.sound_type:
+				return 'mdi:waveform';
 			default:
 				return 'mdi:tune';
 		}

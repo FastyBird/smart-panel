@@ -292,7 +292,9 @@
 				"thermostat": "Verwaltet Klimatisierungssysteme und ermöglicht Anpassungen der Heizungs-, Kühlungs- und Lüftereinstellungen.",
 				"valve": "Steuert Fluid- oder Gasventile, verwaltet Öffnungs-/Schließzustände oder Durchflussraten.",
 				"volatile_organic_compounds": "Überwacht die Konzentration von VOCs in der Luft, um Verschmutzung oder Luftqualität zu verfolgen.",
-				"window_covering": "Steuert Abdeckungen wie Jalousien, Vorhänge und Rollläden, einschließlich Positions- und Neigungseinstellungen."
+				"window_covering": "Steuert Abdeckungen wie Jalousien, Vorhänge und Rollläden, einschließlich Positions- und Neigungseinstellungen.",
+				"object_detection": "Meldet, ob eine Kamera oder ein Sensor gerade ein Objekt eines Typs erkennt, etwa eine Person oder ein Fahrzeug.",
+				"sound_detection": "Meldet, ob eine Kamera oder ein Sensor gerade ein Geräusch eines Typs hört, etwa Glasbruch oder eine Sirene."
 			},
 			"selectPlugin": "Um einen neuen Kanal zu erstellen, wählen Sie bitte ein kompatibles Plugin aus der Liste. Plugins bieten die notwendigen Konfigurationsoptionen für bestimmte Kanaltypen."
 		},
@@ -837,7 +839,9 @@
 			"volatile_organic_compounds": "Flüchtige organische Verbindungen",
 			"window_covering": "Jalousie/Rollladen",
 			"analog_input": "Analoger Eingang",
-			"binary_input": "Binärer Eingang"
+			"binary_input": "Binärer Eingang",
+			"object_detection": "Objekterkennung",
+			"sound_detection": "Geräuscherkennung"
 		},
 		"channelsProperties": {
 			"generic": "Generisch",
@@ -943,7 +947,9 @@
 			"water_tank_level": "Füllstand des Wassertanks",
 			"zoom": "Zoom",
 			"unit": "Einheit",
-			"value": "Wert"
+			"value": "Wert",
+			"object_type": "Objekttyp",
+			"sound_type": "Geräuschtyp"
 		}
 	},
 	"hidden": {

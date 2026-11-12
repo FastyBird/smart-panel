@@ -292,7 +292,9 @@
 				"thermostat": "Gestiona sistemas de control climático, permitiendo ajustes de calefacción, refrigeración y ventilación.",
 				"valve": "Controla válvulas de fluido o gas, gestionando estados de apertura/cierre o tasas de flujo.",
 				"volatile_organic_compounds": "Monitoriza la concentración de COV en el aire para rastrear la contaminación o calidad del aire.",
-				"window_covering": "Controla cubiertas como persianas, cortinas y estores, incluyendo ajustes de posición e inclinación."
+				"window_covering": "Controla cubiertas como persianas, cortinas y estores, incluyendo ajustes de posición e inclinación.",
+				"object_detection": "Indica si una cámara o sensor detecta en este momento un objeto de un tipo, como una persona o un vehículo.",
+				"sound_detection": "Indica si una cámara o sensor oye en este momento un sonido de un tipo, como cristales rotos o una sirena."
 			},
 			"selectPlugin": "Para crear un nuevo canal, por favor seleccione un plugin compatible de la lista. Los plugins proporcionan las opciones de configuración necesarias para tipos de canal específicos."
 		},
@@ -837,7 +839,9 @@
 			"volatile_organic_compounds": "Compuestos orgánicos volátiles",
 			"window_covering": "Cubierta de ventana",
 			"analog_input": "Entrada analógica",
-			"binary_input": "Entrada binaria"
+			"binary_input": "Entrada binaria",
+			"object_detection": "Detección de objetos",
+			"sound_detection": "Detección de sonido"
 		},
 		"channelsProperties": {
 			"generic": "Genérico",
@@ -943,7 +947,9 @@
 			"water_tank_level": "Nivel del depósito de agua",
 			"zoom": "Zoom",
 			"unit": "Unidad",
-			"value": "Valor"
+			"value": "Valor",
+			"object_type": "Tipo de objeto",
+			"sound_type": "Tipo de sonido"
 		}
 	},
 	"hidden": {

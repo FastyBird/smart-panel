@@ -38,7 +38,7 @@ export type DeviceSpec = {
 	channels: DeviceChannelSpec[];
 };
 
-const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, DevicesModuleChannelCategory[]> = {
+export const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, DevicesModuleChannelCategory[]> = {
 	[DevicesModuleDeviceCategory.generic]: [],
 	[DevicesModuleDeviceCategory.air_conditioner]: [
 		DevicesModuleChannelCategory.cooler,
@@ -92,12 +92,18 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 	[DevicesModuleDeviceCategory.camera]: [
 		DevicesModuleChannelCategory.camera,
 		DevicesModuleChannelCategory.motion,
+		DevicesModuleChannelCategory.object_detection,
+		DevicesModuleChannelCategory.sound_detection,
+		DevicesModuleChannelCategory.smoke,
+		DevicesModuleChannelCategory.carbon_monoxide,
 		DevicesModuleChannelCategory.microphone,
 		DevicesModuleChannelCategory.speaker,
 		DevicesModuleChannelCategory.contact,
 		DevicesModuleChannelCategory.light,
 		DevicesModuleChannelCategory.temperature,
 		DevicesModuleChannelCategory.humidity,
+		DevicesModuleChannelCategory.indicator,
+		DevicesModuleChannelCategory.illuminance,
 		DevicesModuleChannelCategory.battery,
 		DevicesModuleChannelCategory.device_information,
 	],
@@ -114,10 +120,16 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.camera,
 		DevicesModuleChannelCategory.lock,
 		DevicesModuleChannelCategory.motion,
+		DevicesModuleChannelCategory.object_detection,
+		DevicesModuleChannelCategory.sound_detection,
+		DevicesModuleChannelCategory.smoke,
+		DevicesModuleChannelCategory.carbon_monoxide,
 		DevicesModuleChannelCategory.microphone,
 		DevicesModuleChannelCategory.speaker,
 		DevicesModuleChannelCategory.contact,
 		DevicesModuleChannelCategory.light,
+		DevicesModuleChannelCategory.indicator,
+		DevicesModuleChannelCategory.illuminance,
 		DevicesModuleChannelCategory.battery,
 		DevicesModuleChannelCategory.device_information,
 	],

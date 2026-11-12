@@ -26,6 +26,10 @@ export const useChannelIcon = ({ id }: IUseChannelIconProps): IUseChannelIcon =>
 				return 'mdi:toggle-switch';
 			case DevicesModuleChannelCategory.analog_input:
 				return 'mdi:tune-vertical';
+			case DevicesModuleChannelCategory.object_detection:
+				return 'mdi:account-search';
+			case DevicesModuleChannelCategory.sound_detection:
+				return 'mdi:ear-hearing';
 			default:
 				return 'mdi:chip';
 		}

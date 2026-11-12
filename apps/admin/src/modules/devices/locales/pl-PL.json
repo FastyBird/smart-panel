@@ -292,7 +292,9 @@
 				"thermostat": "Zarządza systemami klimatyzacji, umożliwiając regulację ogrzewania, chłodzenia i ustawień wentylatora.",
 				"valve": "Steruje zaworami cieczy lub gazu, zarządzając stanami otwarcia/zamknięcia lub natężeniem przepływu.",
 				"volatile_organic_compounds": "Monitoruje stężenie LZO w powietrzu, aby śledzić zanieczyszczenie lub jakość powietrza.",
-				"window_covering": "Steruje zasłonami, takimi jak żaluzje, zasłony i okiennice, łącznie z regulacją położenia i pochylenia."
+				"window_covering": "Steruje zasłonami, takimi jak żaluzje, zasłony i okiennice, łącznie z regulacją położenia i pochylenia.",
+				"object_detection": "Informuje, czy kamera lub czujnik aktualnie wykrywa obiekt jednego typu, na przykład osobę lub pojazd.",
+				"sound_detection": "Informuje, czy kamera lub czujnik aktualnie słyszy dźwięk jednego typu, na przykład tłuczone szkło lub syrenę."
 			},
 			"selectPlugin": "Aby utworzyć nowy kanał, wybierz kompatybilną wtyczkę z listy. Wtyczki zapewniają niezbędne opcje konfiguracji dla określonego typu kanału."
 		},
@@ -837,7 +839,9 @@
 			"volatile_organic_compounds": "Lotne związki organiczne",
 			"window_covering": "Osłona okienna",
 			"analog_input": "Wejście analogowe",
-			"binary_input": "Wejście binarne"
+			"binary_input": "Wejście binarne",
+			"object_detection": "Wykrywanie obiektów",
+			"sound_detection": "Wykrywanie dźwięku"
 		},
 		"channelsProperties": {
 			"generic": "Ogólny",
@@ -943,7 +947,9 @@
 			"water_tank_level": "Poziom zbiornika wody",
 			"zoom": "Brzęczenie",
 			"unit": "Jednostka",
-			"value": "Wartość"
+			"value": "Wartość",
+			"object_type": "Typ obiektu",
+			"sound_type": "Typ dźwięku"
 		}
 	},
 	"hidden": {
