@@ -7,9 +7,10 @@ import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { CAMERAS_MODULE_NAME } from '../cameras.constants';
 import {
 	CameraOfflineException,
+	CameraProfileUnavailableException,
 	CameraRateLimitedException,
 	CameraUpstreamException,
-	CamerasException,
+	sanitizeProviderError,
 } from '../cameras.exceptions';
 import { CameraSnapshot, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
@@ -34,11 +35,20 @@ interface CacheEntry {
 	fetchedAt: number;
 }
 
+type FailureKind = 'offline' | 'rate_limited' | 'upstream';
+
+/** A failed fetch, replayed to later requests until `until` so that polling does not hammer a failing camera. */
+interface FailureEntry {
+	kind: FailureKind;
+	until: number;
+}
+
 @Injectable()
 export class CameraSnapshotService {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'CameraSnapshotService');
 
 	private readonly cache = new Map<string, CacheEntry>();
+	private readonly failures = new Map<string, FailureEntry>();
 	private readonly inFlight = new Map<string, Promise<CameraSnapshotResult>>();
 
 	constructor(private readonly camerasService: CamerasService) {}
@@ -53,9 +63,21 @@ export class CameraSnapshotService {
 		const key = `${deviceId}:${options.profileId ?? 'default'}:${highQuality}`;
 		const now = Date.now();
 		const entry = this.liveEntry(key, now);
+		const minIntervalMs = this.minIntervalMs(provider, device);
 
-		if (entry && now - entry.fetchedAt < this.minIntervalMs(provider, device)) {
+		if (entry && now - entry.fetchedAt < minIntervalMs) {
 			return { contentType: entry.contentType, data: entry.data, ageMs: now - entry.fetchedAt, stale: false };
+		}
+
+		// A recent failure is replayed without calling the provider. A usable cached image is never hidden by it.
+		const failure = this.activeFailure(key, now);
+
+		if (failure) {
+			if (failure.kind === 'rate_limited' && entry) {
+				return { contentType: entry.contentType, data: entry.data, ageMs: now - entry.fetchedAt, stale: true };
+			}
+
+			throw this.replayFailure(failure.kind);
 		}
 
 		const running = this.inFlight.get(key);
@@ -70,6 +92,7 @@ export class CameraSnapshotService {
 					key,
 					deviceId,
 					options.profileId,
+					minIntervalMs,
 					() => this.inFlight.get(key) === request,
 					async () => {
 						// The profile lookup is part of the coalesced fetch: cache hits and joiners never reach the provider.
@@ -100,6 +123,10 @@ export class CameraSnapshotService {
 			if (key.startsWith(prefix)) this.cache.delete(key);
 		}
 
+		for (const key of [...this.failures.keys()]) {
+			if (key.startsWith(prefix)) this.failures.delete(key);
+		}
+
 		for (const key of [...this.inFlight.keys()]) {
 			if (key.startsWith(prefix)) this.inFlight.delete(key);
 		}
@@ -114,6 +141,7 @@ export class CameraSnapshotService {
 		key: string,
 		deviceId: string,
 		profileId: string | undefined,
+		minIntervalMs: number,
 		isCurrent: () => boolean,
 		call: () => Promise<CameraSnapshot>,
 	): Promise<CameraSnapshotResult> {
@@ -122,49 +150,97 @@ export class CameraSnapshotService {
 		try {
 			snapshot = await call();
 		} catch (error) {
-			if (error instanceof CameraRateLimitedException) {
+			// Only offline, rate limited and profile unavailable keep their meaning; the rest becomes an upstream failure
+			// with a fixed message. Never log the error message: a provider may embed a source URL in it.
+			const sanitized = sanitizeProviderError(error);
+
+			if (sanitized instanceof CameraRateLimitedException) {
+				this.recordFailure(key, 'rate_limited', minIntervalMs, isCurrent);
+
 				const stale = this.liveEntry(key, Date.now());
 
 				if (stale) {
 					return { contentType: stale.contentType, data: stale.data, ageMs: Date.now() - stale.fetchedAt, stale: true };
 				}
 
-				throw error;
+				throw sanitized;
 			}
 
-			if (error instanceof CameraOfflineException) {
+			if (sanitized instanceof CameraOfflineException) {
 				this.cache.delete(key);
+				this.recordFailure(key, 'offline', minIntervalMs, isCurrent);
 
-				throw error;
+				throw sanitized;
 			}
 
-			// Unknown profile and other module exceptions keep their own meaning.
-			if (error instanceof CamerasException && !(error instanceof CameraUpstreamException)) {
-				throw error;
+			// An unknown profile says nothing about the camera, so it is not remembered.
+			if (sanitized instanceof CameraProfileUnavailableException) {
+				throw sanitized;
 			}
 
-			// Never log the error message: a provider may embed a source URL in it.
 			this.logger.warn(
 				`Camera snapshot failed deviceId=${deviceId} profileId=${profileId ?? 'default'} error=${errorName(error)}`,
 			);
+			this.recordFailure(key, 'upstream', minIntervalMs, isCurrent);
 
-			throw new CameraUpstreamException('Camera did not respond');
+			throw sanitized;
 		}
 
-		if (!snapshot || !ACCEPTED_CONTENT_TYPES.includes(snapshot.contentType) || !snapshot.data?.length) {
+		const contentType = acceptedMediaType(snapshot?.contentType);
+
+		if (!snapshot || contentType === null || !snapshot.data?.length) {
 			this.logger.warn(
 				`Camera snapshot rejected deviceId=${deviceId} profileId=${profileId ?? 'default'} error=InvalidImage`,
 			);
+			this.recordFailure(key, 'upstream', minIntervalMs, isCurrent);
 
 			throw new CameraUpstreamException('Camera returned an invalid image');
 		}
 
 		// An eviction while the call was running removes it from the in-flight map; do not resurrect the entry.
 		if (isCurrent()) {
-			this.cache.set(key, { contentType: snapshot.contentType, data: snapshot.data, fetchedAt: Date.now() });
+			this.cache.set(key, { contentType, data: snapshot.data, fetchedAt: Date.now() });
+			this.failures.delete(key);
 		}
 
-		return { contentType: snapshot.contentType, data: snapshot.data, ageMs: 0, stale: false };
+		return { contentType, data: snapshot.data, ageMs: 0, stale: false };
+	}
+
+	private recordFailure(key: string, kind: FailureKind, minIntervalMs: number, isCurrent: () => boolean): void {
+		// An eviction while the call was running must not be undone by its failure.
+		if (!isCurrent()) return;
+
+		const now = Date.now();
+
+		// Keys carry caller-chosen profile ids, so drop expired entries to keep the map small.
+		for (const [failedKey, failure] of this.failures) {
+			if (failure.until <= now) this.failures.delete(failedKey);
+		}
+
+		this.failures.set(key, { kind, until: now + minIntervalMs });
+	}
+
+	private activeFailure(key: string, now: number): FailureEntry | undefined {
+		const failure = this.failures.get(key);
+
+		if (failure && failure.until <= now) {
+			this.failures.delete(key);
+
+			return undefined;
+		}
+
+		return failure;
+	}
+
+	private replayFailure(kind: FailureKind): Error {
+		switch (kind) {
+			case 'offline':
+				return new CameraOfflineException('Camera is offline');
+			case 'rate_limited':
+				return new CameraRateLimitedException('Camera is busy');
+			case 'upstream':
+				return new CameraUpstreamException('Camera did not respond');
+		}
 	}
 
 	private liveEntry(key: string, now: number): CacheEntry | undefined {
@@ -211,6 +287,15 @@ export class CameraSnapshotService {
 			if (timer) clearTimeout(timer);
 		}
 	}
+}
+
+/** The media type of an accepted image content type, without parameters (`image/jpeg; charset=binary` is a JPEG). */
+function acceptedMediaType(contentType: unknown): string | null {
+	if (typeof contentType !== 'string') return null;
+
+	const mediaType = contentType.split(';')[0].trim().toLowerCase();
+
+	return ACCEPTED_CONTENT_TYPES.includes(mediaType) ? mediaType : null;
 }
 
 function errorName(error: unknown): string {

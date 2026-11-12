@@ -1,9 +1,14 @@
 import { DeviceCategory } from '../../devices/devices.constants';
+import { DeviceHiddenFilter } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import {
+	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraRateLimitedException,
 	CameraUpstreamException,
+	CamerasException,
+	CamerasForbiddenException,
 	CamerasNotFoundException,
 } from '../cameras.exceptions';
 import { ICameraStreamProvider } from '../platforms/camera-stream.provider';
@@ -50,6 +55,18 @@ describe('CamerasService', () => {
 
 	it('lists only camera and doorbell devices', async () => {
 		expect((await service.findAll()).map((c) => c.deviceId)).toEqual(['c1', 'd1']);
+	});
+
+	it('lists visible devices only', async () => {
+		await service.findAll();
+
+		expect(devicesService.findAll).toHaveBeenCalledWith(undefined, DeviceHiddenFilter.FALSE);
+	});
+
+	it('still resolves a hidden camera by id', async () => {
+		devicesService.findOne.mockResolvedValue({ ...camera, hidden: true });
+
+		await expect(service.getOneOrThrow('c1')).resolves.toMatchObject({ device: { id: 'c1' }, provider: providerA });
 	});
 
 	it('reports live_view and profiles from the provider', async () => {
@@ -141,9 +158,74 @@ describe('CamerasService', () => {
 		}
 	});
 
-	it('keeps cameras exceptions thrown by a provider unwrapped', async () => {
-		providerA.listProfiles.mockRejectedValue(new CamerasNotFoundException('gone'));
+	it.each([
+		['offline', new CameraOfflineException('alias SENTINELALIAS'), CameraOfflineException, 'Camera is offline'],
+		[
+			'rate limited',
+			new CameraRateLimitedException('alias SENTINELALIAS'),
+			CameraRateLimitedException,
+			'Camera is busy',
+		],
+		[
+			'profile unavailable',
+			new CameraProfileUnavailableException('alias SENTINELALIAS'),
+			CameraProfileUnavailableException,
+			'Stream profile is not available',
+		],
+	])('passes a provider %s exception through with a fixed message', async (_name, thrown, expected, message) => {
+		providerA.listProfiles.mockRejectedValue(thrown);
 
-		await expect(service.resolveProfile(camera, providerA)).rejects.toBeInstanceOf(CamerasNotFoundException);
+		const error = await service.resolveProfile(camera, providerA).catch((e: Error) => e);
+
+		expect(error).toBeInstanceOf(expected);
+		expect((error as Error).message).toBe(message);
+	});
+
+	it.each([
+		['not found', new CamerasNotFoundException('alias SENTINELALIAS')],
+		['forbidden', new CamerasForbiddenException('alias SENTINELALIAS')],
+		['base', new CamerasException('alias SENTINELALIAS')],
+		['upstream', new CameraUpstreamException('alias SENTINELALIAS')],
+	])('wraps a provider %s exception as CameraUpstreamException', async (_name, thrown) => {
+		providerA.listProfiles.mockRejectedValue(thrown);
+
+		for (const error of [
+			await service.resolveProfile(camera, providerA).catch((e: Error) => e),
+			await service.findProfileById(camera, providerA, 'high').catch((e: Error) => e),
+		]) {
+			expect(error).toBeInstanceOf(CameraUpstreamException);
+			expect((error as Error).constructor).toBe(CameraUpstreamException);
+			expect((error as Error).message).toBe('Camera did not respond');
+		}
+	});
+
+	it('logs the device id but never the error message when a provider call fails', async () => {
+		const warn = jest.fn();
+
+		(service as unknown as { logger: { warn: jest.Mock } }).logger = { warn };
+		providerA.listProfiles.mockRejectedValue(new CamerasForbiddenException('alias SENTINELALIAS'));
+
+		await service.resolveProfile(camera, providerA).catch(() => undefined);
+
+		const line = (warn.mock.calls as string[][]).map((call) => call[0]).join('\n');
+
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(line).toContain('deviceId=c1');
+		expect(line).toContain('CamerasForbiddenException');
+		expect(JSON.stringify(warn.mock.calls)).not.toContain('SENTINELALIAS');
+	});
+
+	it('unrefs the provider timeout timer so that it cannot keep the process alive', async () => {
+		const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+
+		try {
+			await service.resolveProfile(camera, providerA).catch(() => undefined);
+
+			const timer = setTimeoutSpy.mock.results.map((r) => r.value as NodeJS.Timeout).find((t) => t !== undefined);
+
+			expect(timer?.hasRef()).toBe(false);
+		} finally {
+			setTimeoutSpy.mockRestore();
+		}
 	});
 });

@@ -4,6 +4,8 @@ import {
 	CameraProfileUnavailableException,
 	CameraRateLimitedException,
 	CameraUpstreamException,
+	CamerasException,
+	CamerasForbiddenException,
 	CamerasNotFoundException,
 } from '../cameras.exceptions';
 import { CameraSnapshot, CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
@@ -305,6 +307,7 @@ describe('CameraSnapshotService', () => {
 
 		await jest.advanceTimersByTimeAsync(10_000);
 		await assertion;
+		await jest.advanceTimersByTimeAsync(2000);
 
 		expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
 	});
@@ -317,7 +320,7 @@ describe('CameraSnapshotService', () => {
 		await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
 
 		getSnapshot.mockRejectedValueOnce(new CameraRateLimitedException('x'));
-		jest.advanceTimersByTime(1000);
+		jest.advanceTimersByTime(2000);
 
 		expect(await service.getSnapshot('c1', {})).toMatchObject({ stale: true });
 	});
@@ -394,6 +397,24 @@ describe('CameraSnapshotService', () => {
 		await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
 	});
 
+	it.each(['image/jpeg; charset=binary', ' IMAGE/JPEG ;q=1', 'Image/Jpeg'])(
+		'accepts the content type %p by its media type',
+		async (contentType) => {
+			getSnapshot.mockResolvedValueOnce({ contentType, data: Buffer.from([1]) });
+
+			expect((await service.getSnapshot('c1', {})).contentType).toBe('image/jpeg');
+		},
+	);
+
+	it.each(['text/html; charset=utf-8', 'image/jpegx', 'image/gif; q=1', ''])(
+		'still rejects the content type %p',
+		async (contentType) => {
+			getSnapshot.mockResolvedValueOnce({ contentType, data: Buffer.from([1]) });
+
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+		},
+	);
+
 	it('accepts png and webp results', async () => {
 		getSnapshot.mockResolvedValueOnce({ contentType: 'image/png', data: Buffer.from([1]) });
 		expect((await service.getSnapshot('c1', {})).contentType).toBe('image/png');
@@ -401,5 +422,200 @@ describe('CameraSnapshotService', () => {
 		service.evict('c1');
 		getSnapshot.mockResolvedValueOnce({ contentType: 'image/webp', data: Buffer.from([1]) });
 		expect((await service.getSnapshot('c1', {})).contentType).toBe('image/webp');
+	});
+
+	describe('provider error text', () => {
+		it.each([
+			['offline', new CameraOfflineException('alias SENTINELALIAS'), CameraOfflineException],
+			['rate limited', new CameraRateLimitedException('alias SENTINELALIAS'), CameraRateLimitedException],
+		])('passes a provider %s exception through without its message', async (_name, thrown, expected) => {
+			getSnapshot.mockRejectedValue(thrown);
+
+			const error = await service.getSnapshot('c1', {}).catch((e: Error) => e);
+
+			expect(error).toBeInstanceOf(expected);
+			expect((error as Error).message).not.toContain('SENTINELALIAS');
+		});
+
+		it('passes a provider profile unavailable exception through without its message', async () => {
+			getSnapshot.mockRejectedValue(new CameraProfileUnavailableException('alias SENTINELALIAS'));
+
+			const error = await service.getSnapshot('c1', {}).catch((e: Error) => e);
+
+			expect(error).toBeInstanceOf(CameraProfileUnavailableException);
+			expect((error as Error).message).toBe('Stream profile is not available');
+		});
+
+		it.each([
+			['not found', new CamerasNotFoundException('alias SENTINELALIAS')],
+			['forbidden', new CamerasForbiddenException('alias SENTINELALIAS')],
+			['base', new CamerasException('alias SENTINELALIAS')],
+			['upstream', new CameraUpstreamException('alias SENTINELALIAS')],
+		])('wraps a provider %s exception as CameraUpstreamException', async (_name, thrown) => {
+			const warn = jest.fn();
+
+			(service as unknown as { logger: { warn: jest.Mock } }).logger = { warn };
+			getSnapshot.mockRejectedValue(thrown);
+
+			const error = await service.getSnapshot('c1', {}).catch((e: Error) => e);
+
+			expect((error as Error).constructor).toBe(CameraUpstreamException);
+			expect((error as Error).message).toBe('Camera did not respond');
+			expect(JSON.stringify(warn.mock.calls)).not.toContain('SENTINELALIAS');
+		});
+	});
+
+	describe('failure memory', () => {
+		it('asks an offline camera once per interval and replays the offline error meanwhile', async () => {
+			getSnapshot.mockRejectedValue(new CameraOfflineException('x'));
+
+			for (let i = 0; i < 3; i++) {
+				await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraOfflineException);
+				jest.advanceTimersByTime(500);
+			}
+
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(500);
+
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraOfflineException);
+			expect(getSnapshot).toHaveBeenCalledTimes(2);
+		});
+
+		it('replays the offline error with a fixed message and no provider call', async () => {
+			getSnapshot.mockRejectedValue(new CameraOfflineException('alias SENTINELALIAS'));
+
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+
+			const replayed = await service.getSnapshot('c1', {}).catch((e: Error) => e);
+
+			expect(replayed).toBeInstanceOf(CameraOfflineException);
+			expect((replayed as Error).message).toBe('Camera is offline');
+		});
+
+		it('throttles upstream failures the same way', async () => {
+			getSnapshot.mockRejectedValue(new Error('boom'));
+
+			for (let i = 0; i < 3; i++) {
+				await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+				jest.advanceTimersByTime(500);
+			}
+
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(500);
+
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+			expect(getSnapshot).toHaveBeenCalledTimes(2);
+		});
+
+		it('throttles an invalid image the same way', async () => {
+			getSnapshot.mockResolvedValue({ contentType: 'text/html', data: Buffer.from('<html>') });
+
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+		});
+
+		it('throttles a rate limited camera without an image', async () => {
+			getSnapshot.mockRejectedValue(new CameraRateLimitedException('x'));
+
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraRateLimitedException);
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraRateLimitedException);
+
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+		});
+
+		it('uses the provider interval for the failure window', async () => {
+			provider.getSnapshotMinIntervalMs = jest.fn().mockReturnValue(5000);
+			getSnapshot.mockRejectedValue(new CameraOfflineException('x'));
+
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+			jest.advanceTimersByTime(4999);
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(2);
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+
+			expect(getSnapshot).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps failures per profile and quality', async () => {
+			getSnapshot.mockRejectedValue(new CameraOfflineException('x'));
+
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+			await service.getSnapshot('c1', { highQuality: true }).catch(() => undefined);
+			await service.getSnapshot('c1', { profileId: 'package' }).catch(() => undefined);
+
+			expect(getSnapshot).toHaveBeenCalledTimes(3);
+		});
+
+		it('clears the failure on the next success', async () => {
+			getSnapshot.mockRejectedValueOnce(new CameraOfflineException('x')).mockResolvedValue(jpeg(2));
+
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+			jest.advanceTimersByTime(2000);
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+
+			// Past the cache window the camera is asked again rather than replaying the old failure.
+			jest.advanceTimersByTime(2000);
+			getSnapshot.mockResolvedValueOnce(jpeg(3));
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(3);
+		});
+
+		it('does not remember an unknown profile', async () => {
+			camerasService.findProfileById.mockRejectedValue(new CameraProfileUnavailableException('nope'));
+
+			await expect(service.getSnapshot('c1', { profileId: 'nope' })).rejects.toBeInstanceOf(
+				CameraProfileUnavailableException,
+			);
+
+			camerasService.findProfileById.mockResolvedValue({ id: 'nope', channelId: 'ch', available: true });
+
+			expect((await service.getSnapshot('c1', { profileId: 'nope' })).data[2]).toBe(1);
+		});
+
+		it('still returns the stale image when a rate limit is remembered', async () => {
+			getSnapshot.mockResolvedValueOnce(jpeg(1)).mockRejectedValueOnce(new CameraRateLimitedException('x'));
+
+			await service.getSnapshot('c1', {});
+			jest.advanceTimersByTime(3000);
+
+			expect(await service.getSnapshot('c1', {})).toMatchObject({ stale: true });
+			jest.advanceTimersByTime(500);
+
+			// Inside the failure window: the provider is not called again and the image is still served.
+			expect(await service.getSnapshot('c1', {})).toMatchObject({ stale: true, ageMs: 3500 });
+			expect(getSnapshot).toHaveBeenCalledTimes(2);
+		});
+
+		it('evict clears remembered failures', async () => {
+			getSnapshot.mockRejectedValueOnce(new CameraOfflineException('x')).mockResolvedValue(jpeg(2));
+
+			await service.getSnapshot('c1', {}).catch(() => undefined);
+			service.evict('c1');
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		});
+
+		it('does not remember a failure that finishes after the device was evicted', async () => {
+			let fail!: (e: Error) => void;
+
+			getSnapshot.mockReturnValueOnce(new Promise((_, reject) => (fail = reject))).mockResolvedValue(jpeg(2));
+
+			const pending = service.getSnapshot('c1', {}).catch(() => undefined);
+
+			await flush();
+			service.evict('c1');
+			fail(new CameraOfflineException('x'));
+			await pending;
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		});
 	});
 });

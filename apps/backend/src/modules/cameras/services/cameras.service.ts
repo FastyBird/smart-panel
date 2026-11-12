@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { DeviceCategory } from '../../devices/devices.constants';
+import { DeviceCategory, DeviceHiddenFilter } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { CAMERAS_MODULE_NAME } from '../cameras.constants';
 import {
+	CameraOfflineException,
 	CameraProfileUnavailableException,
-	CameraUpstreamException,
-	CamerasException,
+	CameraRateLimitedException,
 	CamerasNotFoundException,
+	sanitizeProviderError,
 } from '../cameras.exceptions';
 import { CameraModel, CameraStreamProfileModel } from '../models/camera.model';
 import { CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
@@ -36,8 +37,9 @@ export class CamerasService {
 		private readonly registry: CameraStreamProviderRegistryService,
 	) {}
 
+	/** Lists visible camera devices only; a hidden device stays reachable by its id. */
 	async findAll(): Promise<CameraModel[]> {
-		const devices = (await this.devicesService.findAll()).filter((device) =>
+		const devices = (await this.devicesService.findAll(undefined, DeviceHiddenFilter.FALSE)).filter((device) =>
 			CAMERA_CATEGORIES.includes(device.category),
 		);
 
@@ -70,13 +72,13 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId?: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(() => provider.listProfiles(device));
+		const profiles = await this.withTimeout(device.id, () => provider.listProfiles(device));
 
 		const profile = profileId ? profiles.find((p) => p.id === profileId) : profiles.find((p) => p.available);
 
 		if (!profile || !profile.available) {
 			throw new CameraProfileUnavailableException(
-				profileId ? `Profile ${profileId} is not available` : 'No stream profile is available',
+				profileId ? 'Stream profile is not available' : 'No stream profile is available',
 			);
 		}
 
@@ -91,11 +93,11 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(() => provider.listProfiles(device));
+		const profiles = await this.withTimeout(device.id, () => provider.listProfiles(device));
 		const profile = profiles.find((p) => p.id === profileId);
 
 		if (!profile) {
-			throw new CameraProfileUnavailableException(`Profile ${profileId} is not available`);
+			throw new CameraProfileUnavailableException('Stream profile is not available');
 		}
 
 		return profile;
@@ -113,7 +115,7 @@ export class CamerasService {
 
 		if (provider) {
 			try {
-				const profiles = await this.withTimeout(() => provider.listProfiles(device));
+				const profiles = await this.withTimeout(device.id, () => provider.listProfiles(device));
 
 				model.profiles = profiles.map((profile) => this.toProfileModel(profile));
 			} catch (error) {
@@ -143,7 +145,7 @@ export class CamerasService {
 		return model;
 	}
 
-	private async withTimeout<T>(call: () => Promise<T>): Promise<T> {
+	private async withTimeout<T>(deviceId: string, call: () => Promise<T>): Promise<T> {
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
@@ -151,17 +153,29 @@ export class CamerasService {
 				call(),
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(() => reject(new CameraProviderTimeoutError()), CAMERA_PROVIDER_TIMEOUT_MS);
+					timer.unref();
 				}),
 			]);
 		} catch (error) {
-			if (error instanceof CamerasException || error instanceof CameraProviderTimeoutError) {
+			if (error instanceof CameraProviderTimeoutError) {
 				throw error;
 			}
 
-			// Never log or forward the error message: a provider may embed a source URL in it.
-			this.logger.warn(`Camera provider call failed error=${error instanceof Error ? error.name : 'UnknownError'}`);
+			// Only offline, rate limited and profile unavailable keep their meaning. Never log or forward the error
+			// message: a provider may embed a source URL in it.
+			if (
+				!(
+					error instanceof CameraOfflineException ||
+					error instanceof CameraRateLimitedException ||
+					error instanceof CameraProfileUnavailableException
+				)
+			) {
+				this.logger.warn(
+					`Camera provider call failed deviceId=${deviceId} error=${error instanceof Error ? error.name : 'UnknownError'}`,
+				);
+			}
 
-			throw new CameraUpstreamException('Camera did not respond');
+			throw sanitizeProviderError(error);
 		} finally {
 			if (timer) clearTimeout(timer);
 		}

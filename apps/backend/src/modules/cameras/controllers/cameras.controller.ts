@@ -13,6 +13,7 @@ import {
 	Req,
 	Res,
 	ServiceUnavailableException,
+	UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
@@ -39,6 +40,7 @@ import {
 import { CameraSessionOwner, resolveCameraOwner } from '../cameras.utils';
 import { ReqCreateCameraSessionDto } from '../dto/create-session.dto';
 import { SnapshotQueryDto } from '../dto/snapshot-query.dto';
+import { CamerasModuleEnabledGuard } from '../guards/cameras-module-enabled.guard';
 import {
 	CameraResponseModel,
 	CameraSessionResponseModel,
@@ -47,10 +49,12 @@ import {
 import { CameraSessionModel } from '../models/session.model';
 import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotResult, CameraSnapshotService } from '../services/camera-snapshot.service';
-import { CameraProviderTimeoutError } from '../services/cameras.service';
-import { CamerasService } from '../services/cameras.service';
+import { CameraProviderTimeoutError, CamerasService } from '../services/cameras.service';
+
+const PROFILE_UNAVAILABLE_MESSAGE = 'Stream profile is not available';
 
 @ApiTags(CAMERAS_MODULE_API_TAG_NAME)
+@UseGuards(CamerasModuleEnabledGuard)
 @Controller('cameras')
 export class CamerasController {
 	constructor(
@@ -153,8 +157,13 @@ export class CamerasController {
 				highQuality: query.hq === 'true',
 			});
 		} catch (error) {
-			if (error instanceof CamerasNotFoundException || error instanceof CameraProfileUnavailableException) {
+			// Provider errors are sanitised at the provider boundary; only the module's own not-found keeps its text.
+			if (error instanceof CamerasNotFoundException) {
 				throw new NotFoundException(error.message);
+			}
+
+			if (error instanceof CameraProfileUnavailableException) {
+				throw new NotFoundException(PROFILE_UNAVAILABLE_MESSAGE);
 			}
 
 			if (error instanceof CameraOfflineException) {
@@ -220,8 +229,12 @@ export class CamerasController {
 				owner,
 			});
 		} catch (error) {
-			if (error instanceof CamerasNotFoundException || error instanceof CameraProfileUnavailableException) {
+			if (error instanceof CamerasNotFoundException) {
 				throw new NotFoundException(error.message);
+			}
+
+			if (error instanceof CameraProfileUnavailableException) {
+				throw new NotFoundException(PROFILE_UNAVAILABLE_MESSAGE);
 			}
 
 			if (

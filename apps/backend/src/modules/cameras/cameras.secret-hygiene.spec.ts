@@ -10,6 +10,7 @@ import { DeviceEntity } from '../devices/entities/devices.entity';
 import { DevicesService } from '../devices/services/devices.service';
 import { UserRole } from '../users/users.constants';
 
+import { CameraProfileUnavailableException, CamerasForbiddenException } from './cameras.exceptions';
 import { CamerasController } from './controllers/cameras.controller';
 import { CameraSessionService } from './services/camera-session.service';
 import { CameraSnapshotService } from './services/camera-snapshot.service';
@@ -104,6 +105,36 @@ describe('Cameras secret hygiene', () => {
 
 		expect(emitted).not.toContain('SENTINELALIAS');
 		expect(emitted).not.toContain('fake-console:7441');
+		expect(errors[4]).not.toBeNull();
+	});
+
+	it.each([
+		['profile unavailable', () => new CameraProfileUnavailableException('alias SENTINELALIAS')],
+		['forbidden', () => new CamerasForbiddenException('alias SENTINELALIAS')],
+	])('never emits the text of a typed %s exception thrown by a provider', async (_name, make) => {
+		const thrown = make();
+
+		jest.spyOn(provider, 'listProfiles').mockRejectedValue(thrown);
+		jest.spyOn(provider, 'getSnapshot').mockRejectedValue(thrown);
+
+		const res = { header: jest.fn(), send: jest.fn() };
+		const errors = [
+			await caught(() => service.findAll()),
+			await caught(() => controller.findOne(userReq, id)),
+			await caught(() => controller.getSnapshot(userReq, id, { profile: 'medium' }, res as never)),
+			await caught(() => controller.getSnapshot(userReq, id, {}, res as never)),
+			await caught(() => controller.createSession(userReq, id, { data: { transport: 'mse' } } as never)),
+		];
+
+		const emitted = JSON.stringify([
+			logSpies.map((spy): unknown[] => spy.mock.calls as unknown[]),
+			responseSpy.mock.calls,
+			await service.findAll(),
+			errors.filter((e): e is Error => e !== null).map((e) => [e.name, e.message]),
+		]);
+
+		expect(emitted).not.toContain('SENTINELALIAS');
+		expect(errors[2]).not.toBeNull();
 		expect(errors[4]).not.toBeNull();
 	});
 

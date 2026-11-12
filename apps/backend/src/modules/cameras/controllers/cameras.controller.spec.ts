@@ -11,6 +11,7 @@ import {
 } from '../cameras.exceptions';
 import { resolveCameraOwner } from '../cameras.utils';
 import { ReqCreateCameraSessionDto } from '../dto/create-session.dto';
+import { SnapshotQueryDto } from '../dto/snapshot-query.dto';
 import { CameraModel } from '../models/camera.model';
 import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotService } from '../services/camera-snapshot.service';
@@ -92,6 +93,18 @@ describe('CamerasController', () => {
 
 		const headers = () => Object.fromEntries(res.header.mock.calls.map(([k, v]: [string, string]) => [k, v]));
 
+		it('validates the profile query as 1 to 64 characters', async () => {
+			const pipe = new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true });
+			const transform = (query: Record<string, string>) =>
+				pipe.transform(query, { type: 'query', metatype: SnapshotQueryDto });
+
+			await expect(transform({ profile: '' })).rejects.toBeDefined();
+			await expect(transform({ profile: 'x'.repeat(65) })).rejects.toBeDefined();
+			await expect(transform({ profile: 'x' })).resolves.toBeDefined();
+			await expect(transform({ profile: 'x'.repeat(64) })).resolves.toBeDefined();
+			await expect(transform({})).resolves.toBeDefined();
+		});
+
 		it('sends the image with its headers and no age header when fresh', async () => {
 			snapshots.getSnapshot.mockResolvedValue({ contentType: 'image/jpeg', data, ageMs: 0, stale: false });
 
@@ -131,6 +144,25 @@ describe('CamerasController', () => {
 				NotFoundException,
 			);
 			expect(res.send).not.toHaveBeenCalled();
+		});
+
+		it('answers an unknown profile with a fixed message that does not echo the profile id', async () => {
+			snapshots.getSnapshot.mockRejectedValue(new CameraProfileUnavailableException('Profile SENTINELPROFILE nope'));
+
+			const error = await controller
+				.getSnapshot(userReq, id, { profile: 'SENTINELPROFILE' }, res as never)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NotFoundException);
+			expect((error as NotFoundException).message).toBe('Stream profile is not available');
+		});
+
+		it("keeps the module's own not-found message", async () => {
+			snapshots.getSnapshot.mockRejectedValue(new CamerasNotFoundException(`Camera ${id} not found`));
+
+			const error = await controller.getSnapshot(userReq, id, {}, res as never).catch((e: unknown) => e);
+
+			expect((error as NotFoundException).message).toBe(`Camera ${id} not found`);
 		});
 
 		it('maps an offline camera to 503 Camera is offline', async () => {
@@ -230,6 +262,15 @@ describe('CamerasController', () => {
 				await expect(controller.createSession(userReq, id, body)).rejects.toBeInstanceOf(ServiceUnavailableException);
 			},
 		);
+
+		it('answers an unavailable profile with a fixed message that does not echo the profile id', async () => {
+			service.resolveProfile.mockRejectedValue(new CameraProfileUnavailableException('Profile SENTINELPROFILE nope'));
+
+			const error = await controller.createSession(userReq, id, body).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NotFoundException);
+			expect((error as NotFoundException).message).toBe('Stream profile is not available');
+		});
 
 		it('rejects a third-party token with 403 before touching the camera', async () => {
 			await expect(controller.createSession(thirdPartyReq, id, body)).rejects.toBeInstanceOf(ForbiddenException);

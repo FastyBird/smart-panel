@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -12,6 +12,7 @@ export class SnapshotQueryDto {
 	@Expose()
 	@IsOptional()
 	@IsString()
+	@MinLength(1)
 	@MaxLength(64)
 	profile?: string;
 

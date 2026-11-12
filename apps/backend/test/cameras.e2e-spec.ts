@@ -274,6 +274,16 @@ describe('Cameras module (e2e)', () => {
 		expect(response.body).toMatchObject({ statusCode: 503, message: 'Camera is offline' });
 	});
 
+	it('does not call an offline camera again while the failure is remembered', async () => {
+		provider.mode = 'offline';
+
+		await get(url(`/${cameraId}/snapshot`), userToken).expect(503);
+		await get(url(`/${cameraId}/snapshot`), userToken).expect(503);
+		await get(url(`/${cameraId}/snapshot`), displayToken).expect(503);
+
+		expect(provider.snapshotCalls).toBe(1);
+	});
+
 	it('returns the last image with an age header when the camera is rate limited', async () => {
 		await get(url(`/${cameraId}/snapshot`), userToken).expect(200);
 
