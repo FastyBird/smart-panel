@@ -137,13 +137,15 @@ describe('CameraSnapshotService', () => {
 		expect(getSnapshot).toHaveBeenCalledTimes(1);
 	});
 
-	it('keeps separate entries per profile channel and quality', async () => {
+	it('keeps separate entries per profile and quality', async () => {
 		await service.getSnapshot('c1', { highQuality: true });
 		await service.getSnapshot('c1', { highQuality: false });
 		await service.getSnapshot('c1', { profileId: 'package', highQuality: false });
+		await service.getSnapshot('c1', { profileId: 'high', highQuality: false });
 		await service.getSnapshot('c1', { highQuality: true });
+		await service.getSnapshot('c1', { profileId: 'package', highQuality: false });
 
-		expect(getSnapshot).toHaveBeenCalledTimes(3);
+		expect(getSnapshot).toHaveBeenCalledTimes(4);
 	});
 
 	it('passes channelId of the requested profile and highQuality to the provider', async () => {
@@ -151,6 +153,55 @@ describe('CameraSnapshotService', () => {
 
 		expect(camerasService.findProfileById).toHaveBeenCalledWith(device, provider, 'package');
 		expect(getSnapshot).toHaveBeenCalledWith(device, { channelId: 'ch-package', highQuality: true });
+	});
+
+	it('does not look the profile up again inside the minimum interval', async () => {
+		await service.getSnapshot('c1', { profileId: 'package' });
+		jest.advanceTimersByTime(1000);
+
+		const cached = await service.getSnapshot('c1', { profileId: 'package' });
+
+		expect(cached).toMatchObject({ stale: false, ageMs: 1000 });
+		expect(camerasService.findProfileById).toHaveBeenCalledTimes(1);
+		expect(getSnapshot).toHaveBeenCalledTimes(1);
+	});
+
+	it('looks the profile up once for concurrent requests', async () => {
+		let release!: (v: CameraStreamProfile) => void;
+
+		camerasService.findProfileById.mockReturnValue(new Promise((r) => (release = r)));
+
+		const all = Promise.all([
+			service.getSnapshot('c1', { profileId: 'package' }),
+			service.getSnapshot('c1', { profileId: 'package' }),
+			service.getSnapshot('c1', { profileId: 'package' }),
+		]);
+
+		await flush();
+		release({ id: 'package', channelId: 'ch-package', available: false });
+		await all;
+
+		expect(camerasService.findProfileById).toHaveBeenCalledTimes(1);
+		expect(getSnapshot).toHaveBeenCalledTimes(1);
+	});
+
+	it('serves the stale image when the profile lookup is rate limited', async () => {
+		await service.getSnapshot('c1', { profileId: 'package' });
+		jest.advanceTimersByTime(7000);
+		camerasService.findProfileById.mockRejectedValueOnce(new CameraRateLimitedException('x'));
+
+		const result = await service.getSnapshot('c1', { profileId: 'package' });
+
+		expect(result).toMatchObject({ stale: true, ageMs: 7000 });
+		expect(getSnapshot).toHaveBeenCalledTimes(1);
+	});
+
+	it('rethrows a rate limited profile lookup when nothing is cached', async () => {
+		camerasService.findProfileById.mockRejectedValue(new CameraRateLimitedException('x'));
+
+		await expect(service.getSnapshot('c1', { profileId: 'package' })).rejects.toBeInstanceOf(
+			CameraRateLimitedException,
+		);
 	});
 
 	it('never lists profiles without a profile id and passes an undefined channelId', async () => {
@@ -168,6 +219,13 @@ describe('CameraSnapshotService', () => {
 			CameraProfileUnavailableException,
 		);
 		expect(getSnapshot).not.toHaveBeenCalled();
+
+		// An unknown profile never creates a cache entry.
+		getSnapshot.mockRejectedValue(new CameraRateLimitedException('x'));
+		camerasService.findProfileById.mockImplementation((_d, _p, id: string) =>
+			Promise.resolve({ id, channelId: `ch-${id}`, available: true }),
+		);
+		await expect(service.getSnapshot('c1', { profileId: 'nope' })).rejects.toBeInstanceOf(CameraRateLimitedException);
 	});
 
 	it('maps a profile lookup timeout or failure to CameraUpstreamException', async () => {

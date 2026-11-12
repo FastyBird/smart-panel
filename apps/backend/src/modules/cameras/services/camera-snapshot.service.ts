@@ -13,7 +13,7 @@ import {
 } from '../cameras.exceptions';
 import { CameraSnapshot, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
-import { CAMERA_PROVIDER_TIMEOUT_MS, CamerasService } from './cameras.service';
+import { CAMERA_PROVIDER_TIMEOUT_MS, CameraProviderTimeoutError, CamerasService } from './cameras.service';
 
 export const CAMERA_SNAPSHOT_DEFAULT_MIN_INTERVAL_MS = 2000;
 export const CAMERA_SNAPSHOT_MIN_ALLOWED_INTERVAL_MS = 250;
@@ -50,25 +50,7 @@ export class CameraSnapshotService {
 		const { device, provider } = await this.camerasService.getProviderOrThrow(deviceId);
 		const highQuality = options.highQuality === true;
 
-		let channelId: string | undefined;
-
-		if (options.profileId !== undefined) {
-			try {
-				channelId = (await this.camerasService.findProfileById(device, provider, options.profileId)).channelId;
-			} catch (error) {
-				if (error instanceof CamerasException) {
-					throw error;
-				}
-
-				this.logger.warn(
-					`Failed to look up camera profile deviceId=${deviceId} profileId=${options.profileId} error=${errorName(error)}`,
-				);
-
-				throw new CameraUpstreamException('Camera did not respond');
-			}
-		}
-
-		const key = `${deviceId}:${channelId ?? 'default'}:${highQuality}`;
+		const key = `${deviceId}:${options.profileId ?? 'default'}:${highQuality}`;
 		const now = Date.now();
 		const entry = this.liveEntry(key, now);
 
@@ -89,7 +71,15 @@ export class CameraSnapshotService {
 					deviceId,
 					options.profileId,
 					() => this.inFlight.get(key) === request,
-					() => this.withTimeout(provider.getSnapshot(device, { channelId, highQuality })),
+					async () => {
+						// The profile lookup is part of the coalesced fetch: cache hits and joiners never reach the provider.
+						const channelId =
+							options.profileId === undefined
+								? undefined
+								: (await this.camerasService.findProfileById(device, provider, options.profileId)).channelId;
+
+						return this.withTimeout(provider.getSnapshot(device, { channelId, highQuality }));
+					},
 				);
 			} finally {
 				if (this.inFlight.get(key) === request) {
@@ -148,6 +138,11 @@ export class CameraSnapshotService {
 				throw error;
 			}
 
+			// Unknown profile and other module exceptions keep their own meaning.
+			if (error instanceof CamerasException && !(error instanceof CameraUpstreamException)) {
+				throw error;
+			}
+
 			// Never log the error message: a provider may embed a source URL in it.
 			this.logger.warn(
 				`Camera snapshot failed deviceId=${deviceId} profileId=${profileId ?? 'default'} error=${errorName(error)}`,
@@ -199,7 +194,7 @@ export class CameraSnapshotService {
 			return await Promise.race([
 				promise,
 				new Promise<never>((_, reject) => {
-					timer = setTimeout(() => reject(new Error('Camera snapshot timed out')), CAMERA_PROVIDER_TIMEOUT_MS);
+					timer = setTimeout(() => reject(new CameraProviderTimeoutError()), CAMERA_PROVIDER_TIMEOUT_MS);
 					timer.unref();
 				}),
 			]);
