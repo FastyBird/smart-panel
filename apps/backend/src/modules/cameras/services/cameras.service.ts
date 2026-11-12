@@ -1,0 +1,137 @@
+import { Injectable } from '@nestjs/common';
+
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DeviceCategory } from '../../devices/devices.constants';
+import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DevicesService } from '../../devices/services/devices.service';
+import { CAMERAS_MODULE_NAME } from '../cameras.constants';
+import { CameraProfileUnavailableException, CamerasNotFoundException } from '../cameras.exceptions';
+import { CameraModel, CameraStreamProfileModel } from '../models/camera.model';
+import { CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
+
+import { CameraStreamProviderRegistryService } from './camera-stream-provider.registry.service';
+
+export const CAMERA_PROVIDER_TIMEOUT_MS = 10_000;
+
+const CAMERA_CATEGORIES: DeviceCategory[] = [DeviceCategory.CAMERA, DeviceCategory.DOORBELL];
+
+class CameraProviderTimeoutError extends Error {
+	constructor() {
+		super('Camera provider call timed out');
+		this.name = 'CameraProviderTimeoutError';
+	}
+}
+
+@Injectable()
+export class CamerasService {
+	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'CamerasService');
+
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly registry: CameraStreamProviderRegistryService,
+	) {}
+
+	async findAll(): Promise<CameraModel[]> {
+		const devices = (await this.devicesService.findAll()).filter((device) =>
+			CAMERA_CATEGORIES.includes(device.category),
+		);
+
+		return Promise.all(devices.map((device) => this.toModel(device, this.registry.get(device))));
+	}
+
+	async getOneOrThrow(deviceId: string): Promise<{ device: DeviceEntity; provider: ICameraStreamProvider | null }> {
+		const device = await this.devicesService.findOne(deviceId);
+
+		if (!device || !CAMERA_CATEGORIES.includes(device.category)) {
+			throw new CamerasNotFoundException(`Camera ${deviceId} not found`);
+		}
+
+		return { device, provider: this.registry.get(device) };
+	}
+
+	async getProviderOrThrow(deviceId: string): Promise<{ device: DeviceEntity; provider: ICameraStreamProvider }> {
+		const { device, provider } = await this.getOneOrThrow(deviceId);
+
+		if (!provider) {
+			throw new CamerasNotFoundException(`Camera ${deviceId} does not support live view`);
+		}
+
+		return { device, provider };
+	}
+
+	/** Picks the requested profile, or the first available one; the profile must be available. */
+	async resolveProfile(
+		device: DeviceEntity,
+		provider: ICameraStreamProvider,
+		profileId?: string,
+	): Promise<CameraStreamProfile> {
+		const profiles = await this.withTimeout(provider.listProfiles(device));
+
+		const profile = profileId ? profiles.find((p) => p.id === profileId) : profiles.find((p) => p.available);
+
+		if (!profile || !profile.available) {
+			throw new CameraProfileUnavailableException(
+				profileId ? `Profile ${profileId} is not available` : 'No stream profile is available',
+			);
+		}
+
+		return profile;
+	}
+
+	async toModel(device: DeviceEntity, provider: ICameraStreamProvider | null): Promise<CameraModel> {
+		const model = new CameraModel();
+
+		model.deviceId = device.id;
+		model.name = device.name;
+		model.category = device.category;
+		model.type = device.type;
+		model.liveView = provider !== null;
+		model.profiles = [];
+
+		if (provider) {
+			try {
+				const profiles = await this.withTimeout(provider.listProfiles(device));
+
+				model.profiles = profiles.map((profile) => this.toProfileModel(profile));
+			} catch (error) {
+				// Never log the error message: a provider may embed a source URL in it.
+				this.logger.warn(
+					`Failed to list camera profiles deviceId=${device.id} error=${error instanceof Error ? error.name : 'UnknownError'}`,
+				);
+			}
+		}
+
+		return model;
+	}
+
+	private toProfileModel(profile: CameraStreamProfile): CameraStreamProfileModel {
+		const model = new CameraStreamProfileModel();
+
+		model.id = profile.id;
+		model.channelId = profile.channelId ?? null;
+		model.width = profile.width ?? null;
+		model.height = profile.height ?? null;
+		model.fps = profile.fps ?? null;
+		model.videoCodec = profile.videoCodec ?? null;
+		model.audioCodec = profile.audioCodec ?? null;
+		model.available = profile.available;
+		model.unavailableReason = profile.unavailableReason ?? null;
+
+		return model;
+	}
+
+	private async withTimeout<T>(promise: Promise<T>): Promise<T> {
+		let timer: NodeJS.Timeout | undefined;
+
+		try {
+			return await Promise.race([
+				promise,
+				new Promise<never>((_, reject) => {
+					timer = setTimeout(() => reject(new CameraProviderTimeoutError()), CAMERA_PROVIDER_TIMEOUT_MS);
+				}),
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
+	}
+}
