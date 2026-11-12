@@ -281,8 +281,23 @@ export const createAutomationRunTraceModel = (
 
 	let truncated = false;
 
+	// A copy, measured as it will be stored: the run goes on after the trace is taken and may change the
+	// objects it hands over, and the row is written later
 	const bounded = (value: unknown): unknown => {
-		if (jsonLength(value) <= valueMaxLength) return value;
+		let serialized: string | undefined;
+
+		try {
+			serialized = JSON.stringify(value);
+		} catch {
+			// What can not be serialised can not be stored either
+			truncated = true;
+
+			return AUTOMATION_RUN_TRACE_VALUE_OMITTED;
+		}
+
+		if (serialized === undefined) return value;
+
+		if (Buffer.byteLength(serialized, 'utf8') <= valueMaxLength) return JSON.parse(serialized) as unknown;
 
 		truncated = true;
 

@@ -127,6 +127,18 @@ describe('automation run trace model', () => {
 			expect(trace.steps).toEqual([expect.objectContaining({ state: 'parked' })]);
 		});
 
+		it('copies the trigger data and the observed values, so a later change of those objects does not reach it', () => {
+			const data = { property_id: 'p', value: { level: 1 } };
+			const observed = { reading: { level: 1 } };
+			const trace = createAutomationRunTraceModel(record([step(1, { observed })], data));
+
+			data.value.level = 99;
+			observed.reading.level = 99;
+
+			expect(trace.trigger.data).toEqual({ property_id: 'p', value: { level: 1 } });
+			expect(trace.steps[0].observed).toEqual({ reading: { level: 1 } });
+		});
+
 		it('replaces a value that is too large by a note and says so', () => {
 			const trace = createAutomationRunTraceModel(
 				record([step(1, { observed: 'x'.repeat(100) }), step(2, { observed: 'short' })], { blob: 'y'.repeat(100) }),
