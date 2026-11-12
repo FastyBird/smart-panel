@@ -763,6 +763,44 @@ describe('bindingIssues', () => {
 	});
 });
 
+describe('bindingIssues numeric and button points', () => {
+	const E = 'devicesModbusPlugin.wizard.points.errors.';
+	const press = (over: Partial<ModbusPointBinding> = {}) => binding({ registerType: RT.discrete_input, ...over });
+	const reg = (over: Partial<ModbusPointBinding> = {}) => binding({ registerType: RT.input_register, dataType: DT.int16, ...over });
+
+	it('holds a long press to a whole number from 100 to 10000 ms', () => {
+		expect(bindingIssues(press({ longPressMs: 50 }), 'read', 'button').longPressMs).toBe(`${E}longPressRange`);
+		expect(bindingIssues(press({ longPressMs: 20000 }), 'read', 'button').longPressMs).toBe(`${E}longPressRange`);
+		expect(bindingIssues(press({ longPressMs: 150.5 }), 'read', 'button').longPressMs).toBe(`${E}longPressRange`);
+		expect(bindingIssues(press({ longPressMs: 100 }), 'read', 'button')).toEqual({});
+		expect(bindingIssues(press({ longPressMs: 10000 }), 'read', 'button')).toEqual({});
+		expect(bindingIssues(press(), 'read', 'button')).toEqual({});
+	});
+
+	it('takes a long press on the read binding of a button event only', () => {
+		expect(bindingIssues(press({ longPressMs: 800 }), 'read', 'bool').longPressMs).toBe(`${E}longPressNotButton`);
+		expect(bindingIssues(press({ longPressMs: 800 }), 'read').longPressMs).toBe(`${E}longPressNotButton`);
+		expect(bindingIssues(binding({ longPressMs: 800 }), 'write', 'button').longPressMs).toBe(`${E}longPressNotButton`);
+	});
+
+	it('reads a button level from a bit table or a register bit, without a value map', () => {
+		const word = reg({ dataType: DT.bool });
+
+		expect(bindingIssues(word, 'read', 'button').dataType).toBe(`${E}buttonLevel`);
+		expect(bindingIssues({ ...word, bit: 2 }, 'read', 'button')).toEqual({});
+		expect(bindingIssues(reg({ bit: 2 }), 'read', 'button').dataType).toBe(`${E}buttonLevel`);
+		expect(bindingIssues(press({ valueMap: [{ raw: 1, value: true }] }), 'read', 'button').valueMap).toBe(`${E}buttonValueMap`);
+	});
+
+	it('refuses a number read as bool unless a bit is set, and a zero scale', () => {
+		expect(bindingIssues(reg({ dataType: DT.bool }), 'read', 'number').dataType).toBe(`${E}numberBool`);
+		expect(bindingIssues(reg({ dataType: DT.bool, bit: 1 }), 'read', 'number').dataType).toBeUndefined();
+		expect(bindingIssues(reg({ dataType: DT.float32 }), 'read', 'number')).toEqual({});
+		expect(bindingIssues(reg({ scale: 0 }), 'read', 'number').scale).toBe(`${E}scaleZero`);
+		expect(bindingIssues(reg({ scale: 0.1, offset: -3 }), 'read', 'number')).toEqual({});
+	});
+});
+
 describe('bindingIssues value map raw values', () => {
 	const map = (raw: number) => [{ raw, value: 'on' }];
 	const issue = (over: Partial<ModbusPointBinding>) => bindingIssues(binding(over), 'read').valueMap;

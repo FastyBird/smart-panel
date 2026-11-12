@@ -131,7 +131,9 @@
 				"live": "Live value",
 				"raw": "Raw value",
 				"error": "Error",
-				"actions": "Actions"
+				"actions": "Actions",
+				"unit": "Unit",
+				"longPressMs": "Long press (ms)"
 			},
 			"actions": {
 				"edit": "Edit",
@@ -152,7 +154,13 @@
 				"valueMapRawUnique": "Each raw value can appear only once in the value map",
 				"valueMapValueUnique": "Each value can appear only once in the value map",
 				"valueMapInvert": "Invert cannot be combined with a value map; express the inversion in the map",
-				"singleWrite32": "A 32-bit value spans two registers and needs the multiple write function"
+				"singleWrite32": "A 32-bit value spans two registers and needs the multiple write function",
+				"longPressRange": "The long press time must be a whole number from 100 to 10000 ms",
+				"longPressNotButton": "A long press time applies to the read binding of a button event only",
+				"buttonLevel": "A button reads a boolean level: use a coil, a discrete input or a register bit",
+				"buttonValueMap": "A button reads a boolean level and takes no value map; use invert to flip it",
+				"numberBool": "A numeric value cannot be read as bool unless a bit is set",
+				"scaleZero": "The scale cannot be 0, it would turn every value into 0"
 			},
 			"editor": {
 				"title": "Edit point",

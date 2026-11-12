@@ -101,4 +101,22 @@ describe('ModbusWizardDeviceStep', () => {
 		expect(categoryValues(wrapper)).toEqual(['switcher', 'input_controller', 'sensor', 'valve', 'thermostat']);
 		expect(wizard.state.device.category).toBe('thermostat');
 	});
+
+	it('hints at a fast poll interval when a point is a button event, and not for other points', () => {
+		const hint = (capabilityKey: string, registerType: DevicesModbusPluginRegisterType) => {
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.points = pointsFromRange(
+				pointBaseFor(CUSTOM_CAPABILITIES.find((capability) => capability.key === capabilityKey)!, registerType),
+				{ registerType: null, start: 0, count: 1 },
+				'Point'
+			);
+
+			return mountStep(wizard).find('.el-alert').exists();
+		};
+
+		expect(hint('button.event', DevicesModbusPluginRegisterType.discrete_input)).toBe(true);
+		expect(hint('temperature.temperature', DevicesModbusPluginRegisterType.input_register)).toBe(false);
+		expect(hint('switcher.on', DevicesModbusPluginRegisterType.coil)).toBe(false);
+	});
 });

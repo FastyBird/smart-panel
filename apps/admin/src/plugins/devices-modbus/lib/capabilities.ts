@@ -178,7 +178,8 @@ export function pointBaseFor(capability: ModbusCapability, registerType: Devices
 	];
 }
 
-const kindOf = (point: ModbusPoint): ModbusCapabilityKind =>
+/** The kind of a point: its capability's, or a guess from its permissions and data type for a template point. */
+export const capabilityKindOf = (point: ModbusPoint): ModbusCapabilityKind =>
 	CUSTOM_CAPABILITIES.find((capability) => capability.key === capabilityKeyOf(point))?.kind ??
 	(point.permissions.includes('ev') ? 'button' : point.dataType === 'bool' ? 'bool' : 'number');
 
@@ -191,7 +192,7 @@ export function applyCapability(point: ModbusPoint, capability: ModbusCapability
 	let read: ModbusPointBinding | null;
 	let write: ModbusPointBinding | null;
 
-	if (kindOf(point) === capability.kind) {
+	if (capabilityKindOf(point) === capability.kind) {
 		read = capability.readable ? (point.read ?? point.write) : null;
 		write = capability.writable ? (point.write ?? (read ? { ...read, valueMap: null, writeFunction: null, longPressMs: null } : null)) : null;
 	} else {

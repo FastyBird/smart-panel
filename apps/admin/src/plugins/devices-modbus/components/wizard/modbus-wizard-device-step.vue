@@ -170,7 +170,9 @@ const roomOptions = computed<{ value: string; label: string }[]>(() =>
 );
 
 // Button events come from short pulses, which a slow poll misses.
-const hasButtonPoints = computed<boolean>(() => wizard.state.points.some((point) => point.channelCategory === 'button'));
+const hasButtonPoints = computed<boolean>(() =>
+	wizard.state.points.some((point) => point.channelCategory === 'button' && point.propertyCategory === 'event')
+);
 
 onBeforeMount((): void => {
 	if (wizard.state.device.category === null || wizard.state.device.category === RESERVED_CATEGORY) {

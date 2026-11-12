@@ -22,6 +22,18 @@
 					/>
 				</el-form-item>
 
+				<el-form-item
+					v-if="pointKind === 'number'"
+					:label="t('devicesModbusPlugin.wizard.points.columns.unit')"
+				>
+					<el-input
+						:model-value="draft.unit ?? ''"
+						class="w-[100px]!"
+						name="pointUnit"
+						@update:model-value="(value: string) => (draft!.unit = value.trim() === '' ? null : value)"
+					/>
+				</el-form-item>
+
 				<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.capability')">
 					<el-select
 						:model-value="capabilityKeyOf(draft)"
@@ -90,7 +102,7 @@
 							class="w-[120px]!"
 						>
 							<el-option
-								v-for="type in dataTypeOptions"
+								v-for="type in dataTypeOptions(section.binding)"
 								:key="type"
 								:label="type"
 								:value="type"
@@ -147,7 +159,10 @@
 					</el-form-item>
 
 					<template v-if="!hasValueMap(section.binding) || section.binding.scale !== 1 || section.binding.offset !== 0">
-						<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.scale')">
+						<el-form-item
+							:label="t('devicesModbusPlugin.wizard.points.columns.scale')"
+							:error="issueOf(section.kind, 'scale')"
+						>
 							<el-input-number
 								v-model="section.binding.scale"
 								:step="0.1"
@@ -163,6 +178,23 @@
 							/>
 						</el-form-item>
 					</template>
+
+					<el-form-item
+						v-if="pointKind === 'button' && section.kind === 'read'"
+						:label="t('devicesModbusPlugin.wizard.points.columns.longPressMs')"
+						:error="issueOf(section.kind, 'longPressMs')"
+					>
+						<el-input-number
+							v-model="section.binding.longPressMs"
+							:min="MIN_LONG_PRESS_MS"
+							:max="MAX_LONG_PRESS_MS"
+							:step="100"
+							:precision="0"
+							:value-on-clear="null"
+							placeholder="800"
+							controls-position="right"
+						/>
+					</el-form-item>
 
 					<el-form-item
 						:label="t('devicesModbusPlugin.wizard.points.columns.invert')"
@@ -198,6 +230,7 @@
 				</div>
 
 				<el-form-item
+					v-if="pointKind !== 'button'"
 					:label="t('devicesModbusPlugin.wizard.points.columns.valueMap')"
 					:error="issueOf(section.kind, 'valueMap')"
 				>
@@ -283,8 +316,17 @@ import {
 	DevicesModbusPluginWriteFunction,
 } from '../../../../openapi.constants';
 import { type ParsedAddress, formatAddress, parseAddressInput } from '../../lib/address-notation';
-import { CUSTOM_CAPABILITIES, applyCapability, capabilityKeyOf } from '../../lib/capabilities';
-import { type ModbusBindingIssueField, type ModbusPoint, type ModbusPointBinding, bindingIssues, valueMapValueFromText } from '../../lib/points';
+import { CUSTOM_CAPABILITIES, applyCapability, capabilityKeyOf, capabilityKindOf } from '../../lib/capabilities';
+import {
+	MAX_LONG_PRESS_MS,
+	MIN_LONG_PRESS_MS,
+	type ModbusBindingIssueField,
+	type ModbusBindingPointKind,
+	type ModbusPoint,
+	type ModbusPointBinding,
+	bindingIssues,
+	valueMapValueFromText,
+} from '../../lib/points';
 
 import type { IModbusPointEditorProps } from './modbus-point-editor.types';
 
@@ -308,7 +350,21 @@ const { t } = useI18n();
 const draft = ref<ModbusPoint | null>(null);
 const addressTexts = reactive<Record<Kind, string>>({ read: '', write: '' });
 
-const dataTypeOptions = Object.values(DevicesModbusPluginDataType);
+const NUMBER_DATA_TYPES = [
+	DevicesModbusPluginDataType.int16,
+	DevicesModbusPluginDataType.uint16,
+	DevicesModbusPluginDataType.int32,
+	DevicesModbusPluginDataType.uint32,
+	DevicesModbusPluginDataType.float32,
+];
+
+// The data types a binding offers: a number reads a numeric type, a button a bool level; the current one always stays.
+const dataTypeOptions = (binding: ModbusPointBinding): DevicesModbusPluginDataType[] => {
+	const all = Object.values(DevicesModbusPluginDataType);
+	const offered = pointKind.value === 'number' ? NUMBER_DATA_TYPES : pointKind.value === 'button' ? [DevicesModbusPluginDataType.bool] : all;
+
+	return offered.includes(binding.dataType) ? offered : [binding.dataType, ...offered];
+};
 const orderOptions = [DEVICE_ORDER, ...Object.values(DevicesModbusPluginByteOrder)];
 const writeFunctionOptions = Object.values(DevicesModbusPluginWriteFunction);
 
@@ -324,6 +380,8 @@ const capabilityOptions = computed<string[]>(() => {
 
 	return draft.value !== null && !keys.includes(capabilityKeyOf(draft.value)) ? [capabilityKeyOf(draft.value), ...keys] : keys;
 });
+
+const pointKind = computed<ModbusBindingPointKind | null>(() => (draft.value === null ? null : capabilityKindOf(draft.value)));
 
 const sections = computed<{ kind: Kind; binding: ModbusPointBinding }[]>(() => {
 	if (draft.value === null) {
@@ -356,10 +414,15 @@ watch(
 	{ immediate: true }
 );
 
-const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] =>
-	kind === 'write'
-		? [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register]
+const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] => {
+	if (kind === 'write') {
+		return [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register];
+	}
+
+	return pointKind.value === 'number'
+		? [DevicesModbusPluginRegisterType.input_register, DevicesModbusPluginRegisterType.holding_register]
 		: Object.values(DevicesModbusPluginRegisterType);
+};
 
 // In Modicon notation the address prefix names the register table, so the text must follow the selected type, or
 // saving would silently restore the type the prefix names.
@@ -431,7 +494,7 @@ const issuesOf = (kind: Kind): Partial<Record<ModbusBindingIssueField, string>> 
 
 	if (parsed === null) {
 		// The address field already shows why it does not parse.
-		const issues = bindingIssues(binding, kind);
+		const issues = bindingIssues(binding, kind, pointKind.value);
 
 		delete issues.address;
 
@@ -441,7 +504,7 @@ const issuesOf = (kind: Kind): Partial<Record<ModbusBindingIssueField, string>> 
 	const effective = { ...binding, address: parsed.start, registerType: parsed.registerType ?? binding.registerType };
 
 	// Save drops a bit the binding does not show, so it must not narrow the value map either.
-	return bindingIssues({ ...effective, bit: kind === 'read' && showBit(effective) ? effective.bit : null }, kind);
+	return bindingIssues({ ...effective, bit: kind === 'read' && showBit(effective) ? effective.bit : null }, kind, pointKind.value);
 };
 
 const issueOf = (kind: Kind, field: ModbusBindingIssueField): string | undefined => {
@@ -535,6 +598,11 @@ const onSave = (): void => {
 			// Bit-in-register bindings are read-only; a write binding copied from a bit read must not keep the bit.
 			if (kind === 'write' || !showBit(binding)) {
 				binding.bit = null;
+			}
+
+			// Only the read binding of a button event holds a long press.
+			if (kind === 'write' || pointKind.value !== 'button') {
+				binding.longPressMs = null;
 			}
 		}
 	}

@@ -188,4 +188,121 @@ describe('ModbusPointEditor', () => {
 		expect(invertItem.props('error')).toBe('devicesModbusPlugin.wizard.points.errors.valueMapInvert');
 		expect(wrapper.find('[data-test-id="point-editor-save"]').attributes('disabled')).toBeDefined();
 	}, 15_000);
+
+	const mountPoint = (point: ModbusPoint) =>
+		mount(ModbusPointEditor, {
+			props: { visible: true, point, notation: 'pdu', capabilityEditable: true },
+			global: { stubs: { ElDialog: { template: '<div><slot /><slot name="footer" /></div>' } } },
+		});
+
+	const itemByLabel = (wrapper: ReturnType<typeof mountPoint>, column: string) =>
+		wrapper.findAllComponents({ name: 'ElFormItem' }).filter((item) => item.props('label') === `devicesModbusPlugin.wizard.points.columns.${column}`);
+
+	const temperature = (): ModbusPoint => ({
+		...relay(),
+		channelCategory: 'temperature',
+		propertyCategory: 'temperature',
+		dataType: 'float',
+		permissions: ['ro'],
+		unit: '°C',
+		read: { ...binding(5), registerType: DevicesModbusPluginRegisterType.input_register, dataType: DevicesModbusPluginDataType.int16, scale: 0.1 },
+		write: null,
+	});
+
+	const buttonPoint = (longPressMs: number | null = null): ModbusPoint => ({
+		...relay(),
+		channelCategory: 'button',
+		propertyCategory: 'event',
+		dataType: 'enum',
+		permissions: ['ev'],
+		format: ['press', 'long_press', 'down', 'up'],
+		read: { ...binding(3), registerType: DevicesModbusPluginRegisterType.discrete_input, longPressMs },
+		write: null,
+	});
+
+	it('edits scale, offset and unit of a temperature point, offering the numeric data types only', async () => {
+		const wrapper = mountPoint(temperature());
+		await flushPromises();
+
+		expect(itemByLabel(wrapper, 'scale')).toHaveLength(1);
+		expect(itemByLabel(wrapper, 'offset')).toHaveLength(1);
+		expect(itemByLabel(wrapper, 'unit')).toHaveLength(1);
+
+		const dataTypes = itemByLabel(wrapper, 'dataType')[0]
+			.findAllComponents({ name: 'ElOption' })
+			.map((option) => option.props('value'));
+
+		expect(dataTypes).toEqual(['int16', 'uint16', 'int32', 'uint32', 'float32']);
+
+		const registerTypes = itemByLabel(wrapper, 'registerType')[0]
+			.findAllComponents({ name: 'ElOption' })
+			.map((option) => option.props('value'));
+
+		expect(registerTypes).toEqual(['input_register', 'holding_register']);
+
+		await wrapper.find('input[name="pointUnit"]').setValue('K');
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		expect((wrapper.emitted('save')?.[0]?.[0] as ModbusPoint).unit).toBe('K');
+	}, 15_000);
+
+	it('refuses to save a zero scale', async () => {
+		const point = temperature();
+		point.read!.scale = 0;
+		const wrapper = mountPoint(point);
+		await flushPromises();
+
+		expect(itemByLabel(wrapper, 'scale')[0].props('error')).toBe('devicesModbusPlugin.wizard.points.errors.scaleZero');
+		expect(wrapper.find('[data-test-id="point-editor-save"]').attributes('disabled')).toBeDefined();
+	}, 15_000);
+
+	it('offers a long press time for a button event only, between 100 and 10000 ms', async () => {
+		const wrapper = mountPoint(buttonPoint());
+		await flushPromises();
+
+		const field = itemByLabel(wrapper, 'longPressMs');
+
+		expect(field).toHaveLength(1);
+
+		const input = field[0].findComponent({ name: 'ElInputNumber' });
+
+		expect(input.props()).toMatchObject({ min: 100, max: 10000, step: 100, precision: 0, placeholder: '800' });
+
+		expect(itemByLabel(mountPoint(relay()), 'longPressMs')).toHaveLength(0);
+		expect(itemByLabel(mountPoint(temperature()), 'longPressMs')).toHaveLength(0);
+	}, 15_000);
+
+	it('saves the long press time, and an empty one as the default', async () => {
+		const wrapper = mountPoint(buttonPoint(1200));
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		expect((wrapper.emitted('save')?.[0]?.[0] as ModbusPoint).read?.longPressMs).toBe(1200);
+
+		const cleared = mountPoint(buttonPoint(1200));
+		await flushPromises();
+
+		itemByLabel(cleared, 'longPressMs')[0].findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', null);
+		await flushPromises();
+		await cleared.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		expect((cleared.emitted('save')?.[0]?.[0] as ModbusPoint).read?.longPressMs).toBeNull();
+	}, 15_000);
+
+	it('keeps the channel of a saved valve point, so its static type sibling stays with it', async () => {
+		const valve: ModbusPoint = { ...relay(), channelCategory: 'valve', channelIdentifier: 'valve_1', name: 'Valve 1' };
+		const wrapper = mountPoint(valve);
+		await flushPromises();
+
+		await wrapper.find('input[name="pointName"]').setValue('Garden valve');
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({
+			channelCategory: 'valve',
+			propertyCategory: 'on',
+			channelIdentifier: 'valve_1',
+			name: 'Garden valve',
+		});
+	}, 15_000);
 });

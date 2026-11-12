@@ -431,20 +431,49 @@ const rawFits = (raw: number, binding: ModbusPointBinding): boolean => {
 	}
 };
 
-export type ModbusBindingIssueField = 'address' | 'dataType' | 'bit' | 'valueMap' | 'invert' | 'writeFunction';
+export type ModbusBindingIssueField = 'address' | 'dataType' | 'bit' | 'valueMap' | 'invert' | 'writeFunction' | 'scale' | 'longPressMs';
+
+/** What the binding's point is: a number (scaled value), a button event (boolean level) or an on/off state. */
+export type ModbusBindingPointKind = 'bool' | 'number' | 'button';
+
+export const MIN_LONG_PRESS_MS = 100;
+export const MAX_LONG_PRESS_MS = 10000;
 
 /**
  * The binding rules the backend applies when the device is created, as translation keys per field, so the point
- * editor can refuse a combination before the wizard reaches Create. `binding` carries the parsed address and table.
+ * editor can refuse a combination before the wizard reaches Create. `binding` carries the parsed address and table;
+ * `pointKind` is the kind of the point it belongs to, when known.
  */
-export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write'): Partial<Record<ModbusBindingIssueField, string>> {
+export function bindingIssues(
+	binding: ModbusPointBinding,
+	kind: 'read' | 'write',
+	pointKind: ModbusBindingPointKind | null = null
+): Partial<Record<ModbusBindingIssueField, string>> {
 	const issues: Partial<Record<ModbusBindingIssueField, string>> = {};
 	const bitTable =
 		binding.registerType === DevicesModbusPluginRegisterType.coil || binding.registerType === DevicesModbusPluginRegisterType.discrete_input;
 	const span = bindingSpan(binding);
+	const buttonEvent = pointKind === 'button' && kind === 'read';
+	const hasBit = binding.bit !== null;
 
 	if (bitTable && binding.dataType !== DevicesModbusPluginDataType.bool) {
 		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.bitTableBool';
+	} else if (buttonEvent && !(bitTable || (hasBit && binding.dataType === DevicesModbusPluginDataType.bool))) {
+		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.buttonLevel';
+	} else if (pointKind === 'number' && binding.dataType === DevicesModbusPluginDataType.bool && !hasBit) {
+		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.numberBool';
+	}
+
+	if (binding.scale === 0) {
+		issues.scale = 'devicesModbusPlugin.wizard.points.errors.scaleZero';
+	}
+
+	if (binding.longPressMs !== null) {
+		if (!buttonEvent) {
+			issues.longPressMs = 'devicesModbusPlugin.wizard.points.errors.longPressNotButton';
+		} else if (!Number.isInteger(binding.longPressMs) || binding.longPressMs < MIN_LONG_PRESS_MS || binding.longPressMs > MAX_LONG_PRESS_MS) {
+			issues.longPressMs = 'devicesModbusPlugin.wizard.points.errors.longPressRange';
+		}
 	}
 
 	if (binding.bit !== null && (!Number.isInteger(binding.bit) || binding.bit < 0 || binding.bit > 15)) {
@@ -461,7 +490,9 @@ export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write
 		const raws = valueMap.map((entry) => entry.raw);
 		const values = valueMap.map((entry) => entry.value);
 
-		if (binding.dataType === DevicesModbusPluginDataType.float32) {
+		if (buttonEvent) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.buttonValueMap';
+		} else if (binding.dataType === DevicesModbusPluginDataType.float32) {
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapFloat';
 		} else if (binding.scale !== 1 || binding.offset !== 0) {
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapScaled';

@@ -219,6 +219,30 @@ describe('ModbusWizardPointsStep', () => {
 		expect(wizard.state.points.map((point) => [point.channelCategory, point.propertyCategory])).toEqual([['switcher', 'on']]);
 	});
 
+	it('keeps the static type of a valve when the valve point is edited', async () => {
+		const wizard = wizardWithEndpoint();
+		wizard.setNotation('pdu');
+		const wrapper = mountStep(wizard);
+
+		wrapper
+			.findAllComponents({ name: 'ElSelect' })
+			.find((select) => select.props('name') === 'pointsCapability')!
+			.vm.$emit('update:modelValue', 'valve.on');
+		await flushPromises();
+		await addRange(wrapper, '4');
+
+		const [valve, type] = wizard.state.points;
+
+		await wrapper.find(`[data-test-id="point-edit-${valve.key}"]`).trigger('click');
+		wrapper.findComponent({ name: 'ModbusPointEditor' }).vm.$emit('save', { ...valve, name: 'Garden valve' });
+		await flushPromises();
+
+		expect(wizard.state.points.map((point) => [point.key, point.name, point.propertyCategory, point.staticValue])).toEqual([
+			[valve.key, 'Garden valve', 'on', null],
+			[type.key, 'Garden valve', 'type', 'generic'],
+		]);
+	});
+
 	it('does not continue without a read binding', () => {
 		const wizard = wizardWithEndpoint();
 
