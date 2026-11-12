@@ -231,6 +231,12 @@ describe('automations.graph', (): void => {
 			expect(findFreePosition({ x: 0, y: 0 }, [card(0, 0), card(0, 80)])).toEqual({ x: 0, y: 160 });
 		});
 
+		it('keeps the whole new card clear of the others, not only its top edge', (): void => {
+			// Fits for a card of the default height, overlaps the one below for a taller card
+			expect(findFreePosition({ x: 0, y: 0 }, [card(0, 80)])).toEqual({ x: 0, y: 0 });
+			expect(findFreePosition({ x: 0, y: 0 }, [card(0, 80)], { width: 280, height: 100 })).toEqual({ x: 0, y: 160 });
+		});
+
 		it('stays inside the positions the backend accepts, moving up once the bottom is reached', (): void => {
 			const position = findFreePosition({ x: 0, y: 2_000_000 }, [card(0, 1_000_000)]);
 

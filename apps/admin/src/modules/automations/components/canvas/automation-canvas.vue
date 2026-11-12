@@ -532,16 +532,20 @@ onNodesInitialized((): void => {
  */
 
 // A card added by a tap must not land on top of another one
-const freePosition = (position: { x: number; y: number }): { x: number; y: number } =>
-	findFreePosition(
-		position,
-		getNodes.value.map((node) => ({
-			x: node.position.x,
-			y: node.position.y,
-			width: node.dimensions.width || 280,
-			height: node.dimensions.height || 56,
-		}))
-	);
+// The size of the new card is not known before it is drawn, so the largest card drawn so far stands in for it
+const freePosition = (position: { x: number; y: number }): { x: number; y: number } => {
+	const occupied = getNodes.value.map((node) => ({
+		x: node.position.x,
+		y: node.position.y,
+		width: node.dimensions.width || 280,
+		height: node.dimensions.height || 56,
+	}));
+
+	return findFreePosition(position, occupied, {
+		width: Math.max(280, ...occupied.map((area) => area.width)),
+		height: Math.max(56, ...occupied.map((area) => area.height)),
+	});
+};
 
 const addNode = (type: string, position?: { x: number; y: number }): string | null => {
 	if (props.readonly || lookup(type) === null) {

@@ -47,15 +47,23 @@ export interface IAutomationOccupiedArea {
 const FREE_POSITION_STEP = 80;
 
 /**
- * Where a card added at `position` does not land on top of another one: further down, or - once the
+ * Where a card of `size` added at `position` does not land on top of another one: further down, or - once the
  * bottom of the positions the backend accepts is reached - further up. Always a position as the backend
  * accepts it, so what is shown is what is saved.
  */
-export const findFreePosition = (position: { x: number; y: number }, occupied: IAutomationOccupiedArea[]): { x: number; y: number } => {
+export const findFreePosition = (
+	position: { x: number; y: number },
+	occupied: IAutomationOccupiedArea[],
+	size: { width: number; height: number } = { width: 280, height: 56 }
+): { x: number; y: number } => {
 	const start = normalizePosition(position);
 
+	// The two cards, each with 20 units of room around it, must not overlap on both axes at once
 	const isFree = (y: number): boolean =>
-		!occupied.some((area) => Math.abs(area.x - start.x) < area.width + 20 && Math.abs(area.y - y) < area.height + 20);
+		!occupied.some(
+			(area) =>
+				start.x < area.x + area.width + 20 && area.x < start.x + size.width + 20 && y < area.y + area.height + 20 && area.y < y + size.height + 20
+		);
 
 	for (const step of [FREE_POSITION_STEP, -FREE_POSITION_STEP]) {
 		for (let y = start.y; Math.abs(y) <= AUTOMATION_GRAPH_POSITION_LIMIT; y += step) {
