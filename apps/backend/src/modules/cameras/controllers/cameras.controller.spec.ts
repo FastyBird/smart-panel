@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
@@ -9,9 +9,12 @@ import {
 	CameraUpstreamException,
 	CamerasNotFoundException,
 } from '../cameras.exceptions';
+import { resolveCameraOwner } from '../cameras.utils';
+import { ReqCreateCameraSessionDto } from '../dto/create-session.dto';
 import { CameraModel } from '../models/camera.model';
+import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotService } from '../services/camera-snapshot.service';
-import { CamerasService } from '../services/cameras.service';
+import { CameraProviderTimeoutError, CamerasService } from '../services/cameras.service';
 
 import { CamerasController } from './cameras.controller';
 
@@ -22,16 +25,31 @@ describe('CamerasController', () => {
 	} as never;
 	const id = '8f0f2a3c-5c1e-4a56-9d3b-1c2d3e4f5a6b';
 
-	let service: { findAll: jest.Mock; getOneOrThrow: jest.Mock; toModel: jest.Mock };
+	let service: {
+		findAll: jest.Mock;
+		getOneOrThrow: jest.Mock;
+		toModel: jest.Mock;
+		getProviderOrThrow: jest.Mock;
+		resolveProfile: jest.Mock;
+	};
+	let sessions: { create: jest.Mock };
 	let snapshots: { getSnapshot: jest.Mock };
 	let controller: CamerasController;
 
 	beforeEach(() => {
-		service = { findAll: jest.fn(), getOneOrThrow: jest.fn(), toModel: jest.fn() };
+		service = {
+			findAll: jest.fn(),
+			getOneOrThrow: jest.fn(),
+			toModel: jest.fn(),
+			getProviderOrThrow: jest.fn(),
+			resolveProfile: jest.fn(),
+		};
+		sessions = { create: jest.fn() };
 		snapshots = { getSnapshot: jest.fn() };
 		controller = new CamerasController(
 			service as unknown as CamerasService,
 			snapshots as unknown as CameraSnapshotService,
+			sessions as unknown as CameraSessionService,
 		);
 	});
 
@@ -155,6 +173,86 @@ describe('CamerasController', () => {
 				ForbiddenException,
 			);
 			expect(snapshots.getSnapshot).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createSession', () => {
+		const device = { id };
+		const provider = {};
+		const body = { data: { profile: 'medium', transport: 'mse' } } as ReqCreateCameraSessionDto;
+		const expiresAt = Date.now() + 60_000;
+
+		beforeEach(() => {
+			service.getProviderOrThrow.mockResolvedValue({ device, provider });
+			service.resolveProfile.mockResolvedValue({ id: 'medium', available: true });
+			sessions.create.mockReturnValue({ session: { id: 'sid', expiresAt }, token: 'tok' });
+		});
+
+		it('creates a session for the resolved profile and owner', async () => {
+			const response = await controller.createSession(userReq, id, body);
+
+			expect(service.resolveProfile).toHaveBeenCalledWith(device, provider, 'medium');
+			expect(sessions.create).toHaveBeenCalledWith({
+				deviceId: id,
+				profileId: 'medium',
+				transport: 'mse',
+				owner: resolveCameraOwner(userReq),
+			});
+			expect(response.data.sessionId).toBe('sid');
+			expect(response.data.url).toBe('/api/v1/modules/cameras/live?session=tok');
+			expect(response.data.expiresAt).toBe(new Date(expiresAt).toISOString());
+		});
+
+		it('defaults the profile through resolveProfile', async () => {
+			service.resolveProfile.mockResolvedValue({ id: 'high', available: true });
+
+			await controller.createSession(userReq, id, { data: { transport: 'mse' } } as ReqCreateCameraSessionDto);
+
+			expect(service.resolveProfile).toHaveBeenCalledWith(device, provider, undefined);
+			expect(sessions.create).toHaveBeenCalledWith(expect.objectContaining({ profileId: 'high' }));
+		});
+
+		it.each([
+			['an unknown camera or one without a provider', new CamerasNotFoundException('x'), 'getProviderOrThrow'],
+			['an unavailable profile', new CameraProfileUnavailableException('x'), 'resolveProfile'],
+		])('maps %s to 404', async (_name, error, method) => {
+			(service as unknown as Record<string, jest.Mock>)[method].mockRejectedValue(error);
+
+			await expect(controller.createSession(userReq, id, body)).rejects.toBeInstanceOf(NotFoundException);
+			expect(sessions.create).not.toHaveBeenCalled();
+		});
+
+		it.each([new CameraProviderTimeoutError(), new CameraUpstreamException('x'), new CameraOfflineException('x')])(
+			'maps the provider failure %#  to 503',
+			async (error) => {
+				service.resolveProfile.mockRejectedValue(error);
+
+				await expect(controller.createSession(userReq, id, body)).rejects.toBeInstanceOf(ServiceUnavailableException);
+			},
+		);
+
+		it('rejects a third-party token with 403 before touching the camera', async () => {
+			await expect(controller.createSession(thirdPartyReq, id, body)).rejects.toBeInstanceOf(ForbiddenException);
+			expect(service.getProviderOrThrow).not.toHaveBeenCalled();
+		});
+
+		it('rejects transport hls through the validation pipe', async () => {
+			const pipe = new ValidationPipe({
+				transform: true,
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				transformOptions: { enableImplicitConversion: true },
+			});
+
+			await expect(
+				pipe.transform({ data: { transport: 'hls' } }, { type: 'body', metatype: ReqCreateCameraSessionDto }),
+			).rejects.toBeDefined();
+			await expect(
+				pipe.transform(
+					{ data: { profile: 'medium', transport: 'mse' } },
+					{ type: 'body', metatype: ReqCreateCameraSessionDto },
+				),
+			).resolves.toBeDefined();
 		});
 	});
 });

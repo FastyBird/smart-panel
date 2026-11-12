@@ -1,12 +1,14 @@
 import { FastifyReply as Response } from 'fastify';
 
 import {
+	Body,
 	Controller,
 	ForbiddenException,
 	Get,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
+	Post,
 	Query,
 	Req,
 	Res,
@@ -17,11 +19,13 @@ import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
 	ApiBinarySuccessResponse,
+	ApiCreatedSuccessResponse,
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { CAMERAS_MODULE_API_TAG_NAME } from '../cameras.constants';
 import {
@@ -32,10 +36,18 @@ import {
 	CamerasForbiddenException,
 	CamerasNotFoundException,
 } from '../cameras.exceptions';
-import { resolveCameraOwner } from '../cameras.utils';
+import { CameraSessionOwner, resolveCameraOwner } from '../cameras.utils';
+import { ReqCreateCameraSessionDto } from '../dto/create-session.dto';
 import { SnapshotQueryDto } from '../dto/snapshot-query.dto';
-import { CameraResponseModel, CamerasResponseModel } from '../models/cameras-response.model';
+import {
+	CameraResponseModel,
+	CameraSessionResponseModel,
+	CamerasResponseModel,
+} from '../models/cameras-response.model';
+import { CameraSessionModel } from '../models/session.model';
+import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotResult, CameraSnapshotService } from '../services/camera-snapshot.service';
+import { CameraProviderTimeoutError } from '../services/cameras.service';
 import { CamerasService } from '../services/cameras.service';
 
 @ApiTags(CAMERAS_MODULE_API_TAG_NAME)
@@ -44,6 +56,7 @@ export class CamerasController {
 	constructor(
 		private readonly camerasService: CamerasService,
 		private readonly snapshotService: CameraSnapshotService,
+		private readonly sessionService: CameraSessionService,
 	) {}
 
 	@ApiOperation({
@@ -170,9 +183,73 @@ export class CamerasController {
 		void res.send(snapshot.data);
 	}
 
-	private requireOwner(req: AuthenticatedRequest): void {
+	@ApiOperation({
+		tags: [CAMERAS_MODULE_API_TAG_NAME],
+		summary: 'Open a live view session',
+		description:
+			'Creates a short-lived, single-use live view session for a camera stream profile. The returned relative URL must be opened within a minute.',
+		operationId: 'create-cameras-module-camera-session',
+	})
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Camera device identifier' })
+	@ApiCreatedSuccessResponse(CameraSessionResponseModel, 'Session created successfully')
+	@ApiForbiddenResponse('Cameras are not available to this caller')
+	@ApiNotFoundResponse('Camera or stream profile not found')
+	@ApiUnprocessableEntityResponse('Invalid session request')
+	@ApiServiceUnavailableResponse('Camera did not respond')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post(':deviceId/sessions')
+	async createSession(
+		@Req() req: AuthenticatedRequest,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Body() body: ReqCreateCameraSessionDto,
+	): Promise<CameraSessionResponseModel> {
+		const owner = this.requireOwner(req);
+
+		let created: ReturnType<CameraSessionService['create']>;
+
 		try {
-			resolveCameraOwner(req);
+			const { device, provider } = await this.camerasService.getProviderOrThrow(deviceId);
+			const profile = await this.camerasService.resolveProfile(device, provider, body.data.profile);
+
+			created = this.sessionService.create({
+				deviceId: device.id,
+				profileId: profile.id,
+				transport: body.data.transport,
+				owner,
+			});
+		} catch (error) {
+			if (error instanceof CamerasNotFoundException || error instanceof CameraProfileUnavailableException) {
+				throw new NotFoundException(error.message);
+			}
+
+			if (
+				error instanceof CameraProviderTimeoutError ||
+				error instanceof CameraOfflineException ||
+				error instanceof CameraRateLimitedException ||
+				error instanceof CameraUpstreamException
+			) {
+				throw new ServiceUnavailableException('Camera did not respond');
+			}
+
+			throw error;
+		}
+
+		const model = new CameraSessionModel();
+
+		model.sessionId = created.session.id;
+		model.url = `/api/v1/modules/cameras/live?session=${created.token}`;
+		model.expiresAt = new Date(created.session.expiresAt).toISOString();
+
+		const response = new CameraSessionResponseModel();
+
+		response.data = model;
+
+		return response;
+	}
+
+	private requireOwner(req: AuthenticatedRequest): CameraSessionOwner {
+		try {
+			return resolveCameraOwner(req);
 		} catch (error) {
 			if (error instanceof CamerasForbiddenException) {
 				throw new ForbiddenException(error.message);
