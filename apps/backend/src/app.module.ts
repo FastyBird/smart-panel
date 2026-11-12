@@ -22,6 +22,8 @@ import { AUTOMATIONS_MODULE_PREFIX } from './modules/automations/automations.con
 import { AutomationsModule } from './modules/automations/automations.module';
 import { BUDDY_MODULE_PREFIX } from './modules/buddy/buddy.constants';
 import { BuddyModule } from './modules/buddy/buddy.module';
+import { CAMERAS_MODULE_PREFIX } from './modules/cameras/cameras.constants';
+import { CamerasModule } from './modules/cameras/cameras.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
 import { ConfigModule } from './modules/config/config.module';
 import { DASHBOARD_MODULE_PREFIX } from './modules/dashboard/dashboard.constants';
@@ -315,6 +317,10 @@ export class AppModule {
 								module: NotificationsModule,
 							},
 							{
+								path: CAMERAS_MODULE_PREFIX,
+								module: CamerasModule,
+							},
+							{
 								path: AUTOMATIONS_MODULE_PREFIX,
 								module: AutomationsModule,
 							},
@@ -490,6 +496,7 @@ export class AppModule {
 				BuddyModule,
 				McpModule,
 				NotificationsModule,
+				CamerasModule,
 				AutomationsModule,
 				SpacesModule,
 				SeedModule,
