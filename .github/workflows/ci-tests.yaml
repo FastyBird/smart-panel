@@ -253,6 +253,25 @@ jobs:
           path: "apps/admin/coverage/"
           retention-days: 7
 
+      - name: "Install Playwright Chromium"
+        run: "pnpm --filter @fastybird/smart-panel-admin exec playwright install --with-deps chromium"
+
+      - name: "Build Admin"
+        run: "pnpm --filter @fastybird/smart-panel-admin build:no-check"
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: "Run E2E Tests"
+        run: "pnpm --filter @fastybird/smart-panel-admin test:e2e --project=chromium"
+
+      - name: "Upload Playwright Report"
+        if: failure()
+        uses: "actions/upload-artifact@v7"
+        with:
+          name: "admin-playwright-report"
+          path: "apps/admin/playwright-report/"
+          retention-days: 14
+
   panel-analyze:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'

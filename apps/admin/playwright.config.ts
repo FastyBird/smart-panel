@@ -2,6 +2,9 @@ import process from 'node:process';
 
 import { defineConfig, devices } from '@playwright/test';
 
+// The admin the tests open is served on a port of its own
+const PORT = 4173;
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -35,13 +38,10 @@ export default defineConfig({
 		/* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
 		actionTimeout: 0,
 		/* Base URL to use in actions like `await page.goto('/')`. */
-		baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:3003',
+		baseURL: `http://localhost:${PORT}`,
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		trace: 'on-first-retry',
-
-		/* Only on CI systems run the tests headless */
-		headless: !!process.env.CI,
 	},
 
 	/* Configure projects for major browsers */
@@ -50,6 +50,10 @@ export default defineConfig({
 			name: 'chromium',
 			use: {
 				...devices['Desktop Chrome'],
+				/* A Chromium of your own instead of the one `playwright install` downloads */
+				...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+					? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } }
+					: {}),
 			},
 		},
 		{
@@ -104,8 +108,8 @@ export default defineConfig({
 		 * Use the preview server on CI for more realistic testing.
 		 * Playwright will re-use the local server if there is already a dev-server running.
 		 */
-		command: process.env.CI ? 'pnpm run start:preview' : 'pnpm run start:dev',
-		port: process.env.CI ? 4173 : 3003,
+		command: `${process.env.CI ? 'pnpm run start:preview' : 'pnpm run start:dev'} --port ${PORT} --strictPort`,
+		port: PORT,
 		reuseExistingServer: !process.env.CI,
 	},
 });
