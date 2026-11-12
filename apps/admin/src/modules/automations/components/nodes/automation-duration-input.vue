@@ -45,6 +45,8 @@ import { useI18n } from 'vue-i18n';
 
 import { ElInputNumber, ElOption, ElSelect } from 'element-plus';
 
+import { type IAutomationNumberBounds, numberInputBounds } from '../../nodes/nodes.values';
+
 import type { IAutomationDurationInputProps } from './automation-duration-input.types';
 
 defineOptions({
@@ -93,13 +95,9 @@ const amount = computed<number | undefined>((): number | undefined =>
 	typeof props.modelValue === 'number' ? props.modelValue / UNIT_SECONDS[unit.value] : undefined
 );
 
-const taken = computed<boolean>(
-	(): boolean =>
-		typeof props.modelValue !== 'number' || (Number.isInteger(props.modelValue) && props.modelValue >= 1 && props.modelValue <= props.max)
-);
-
-const bounds = computed<{ min?: number; max?: number; precision?: number }>((): { min?: number; max?: number; precision?: number } =>
-	taken.value ? { min: 1, max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit.value])), precision: 0 } : {}
+const bounds = computed<IAutomationNumberBounds>(
+	(): IAutomationNumberBounds =>
+		numberInputBounds(amount.value, { min: 1, max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit.value])), precision: 0 })
 );
 
 const onAmount = (value: number | null | undefined): void => {

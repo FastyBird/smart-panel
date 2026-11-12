@@ -424,7 +424,8 @@
 					"write": "Wartość {number}",
 					"value": "Ustaw na",
 					"add": "Dodaj wartość",
-					"remove": "Usuń tę wartość"
+					"remove": "Usuń tę wartość",
+					"malformed": "Ten wpis nie jest prawidłową wartością. Wybierz właściwość, aby go zastąpić, lub go usuń."
 				},
 				"time": {
 					"at": "O",

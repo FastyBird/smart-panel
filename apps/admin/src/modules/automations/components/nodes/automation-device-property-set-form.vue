@@ -18,7 +18,7 @@
 		</el-text>
 
 		<div
-			v-for="({ row, index }, position) in rows"
+			v-for="({ row, index, malformed }, position) in rows"
 			:key="index"
 			class="automation-device-property-set-form__write"
 			:data-test-write="index"
@@ -32,7 +32,7 @@
 					{{ t('automations.editor.fields.set.write', { number: position + 1 }) }}
 				</el-text>
 				<el-button
-					v-if="rows.length > 1 && !props.disabled"
+					v-if="(rows.length > 1 || malformed) && !props.disabled"
 					link
 					size="small"
 					type="danger"
@@ -45,6 +45,28 @@
 					</template>
 				</el-button>
 			</div>
+
+			<el-alert
+				v-if="malformed"
+				:title="t('automations.editor.fields.set.malformed')"
+				type="error"
+				:closable="false"
+				show-icon
+				class="mb-3!"
+				data-test-id="write-malformed"
+			/>
+
+			<el-text
+				v-for="(error, errorIndex) in otherErrorsAt(index)"
+				:key="`error-${errorIndex}`"
+				tag="div"
+				type="danger"
+				size="small"
+				class="leading-4! mb-3"
+				data-test-id="write-errors"
+			>
+				{{ error }}
+			</el-text>
 
 			<el-alert
 				v-for="(refusal, refusalIndex) in form.refusalsAt(`writes.${index}`)"
@@ -143,10 +165,12 @@ defineOptions({
 
 type Row = Record<string, unknown>;
 
-// A value on the form, at the index it has among the writes configured
+// A value on the form, at the index it has among the writes configured; an entry there that is not a
+// value at all is shown empty, to be removed or replaced by what is picked in it
 interface IWriteRow {
 	row: Row;
 	index: number;
+	malformed: boolean;
 }
 
 const props = withDefaults(defineProps<IAutomationNodeFormProps>(), {
@@ -176,7 +200,9 @@ const isRow = (write: unknown): write is Row => typeof write === 'object' && wri
 const writes = computed<unknown[]>((): unknown[] => (Array.isArray(props.config.writes) ? props.config.writes : []));
 
 const given = computed<IWriteRow[]>((): IWriteRow[] =>
-	writes.value.flatMap((write: unknown, index: number): IWriteRow[] => (isRow(write) ? [{ row: write, index }] : []))
+	writes.value.map(
+		(write: unknown, index: number): IWriteRow => (isRow(write) ? { row: write, index, malformed: false } : { row: {}, index, malformed: true })
+	)
 );
 
 // A row added with "Add value" stays on the form while nothing is picked in it yet
@@ -189,13 +215,22 @@ const blanks = computed<number>((): number =>
 
 const rows = computed<IWriteRow[]>((): IWriteRow[] => [
 	...given.value,
-	...Array.from({ length: blanks.value }, (_blank, offset): IWriteRow => ({ row: {}, index: writes.value.length + offset })),
+	...Array.from({ length: blanks.value }, (_blank, offset): IWriteRow => ({ row: {}, index: writes.value.length + offset, malformed: false })),
 ]);
 
 const full = computed<boolean>((): boolean => writes.value.length + blanks.value >= AUTOMATION_SET_MAX_WRITES);
 
 // The problems shown on a row are not repeated above the rows
 const rowErrors = computed<Set<string>>((): Set<string> => new Set(rows.value.flatMap(({ index }) => errorsAt(`writes.${index}`))));
+
+const FIELDS: string[] = ['device_id', 'channel_id', 'property_id', 'value'];
+
+// The problems of a row that none of its fields shows - the entry as a whole, a key it does not take
+const otherErrorsAt = (index: number): string[] => {
+	const shown = new Set<string>(FIELDS.flatMap((field: string): string[] => errorsAt(`writes.${index}.${field}`)));
+
+	return errorsAt(`writes.${index}`).filter((error: string): boolean => !shown.has(error));
+};
 
 const propertyOf = (row: Row): AutomationLookupProperty | null => {
 	const id = text(row.property_id);

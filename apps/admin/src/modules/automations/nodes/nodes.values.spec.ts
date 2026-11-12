@@ -8,6 +8,7 @@ import {
 	changedModesFor,
 	compareOperatorsFor,
 	enumValuesOf,
+	numberInputBounds,
 	numberRangeOf,
 	propertyValueKind,
 	valueFitsProperty,
@@ -72,6 +73,18 @@ describe('automation card values', (): void => {
 		expect(enumValuesOf(of(DevicesModuleChannelPropertyDataType.int, [0, 100]))).toEqual([]);
 		expect(numberRangeOf(of(DevicesModuleChannelPropertyDataType.int, [0, 100]))).toEqual({ min: 0, max: 100 });
 		expect(numberRangeOf(of(DevicesModuleChannelPropertyDataType.int, [null, 100]))).toEqual({ max: 100 });
+	});
+
+	it('hands a number input its bounds only while the number shown is one they take', (): void => {
+		const bounds = { min: 1, max: 60, precision: 0 };
+
+		expect(numberInputBounds(undefined, bounds)).toEqual(bounds);
+		expect(numberInputBounds(30, bounds)).toEqual(bounds);
+		expect(numberInputBounds(0, bounds)).toEqual({});
+		expect(numberInputBounds(61, bounds)).toEqual({});
+		expect(numberInputBounds(1.5, bounds)).toEqual({});
+		expect(numberInputBounds(-1, { min: 0 })).toEqual({});
+		expect(numberInputBounds(0.25, { min: 0 })).toEqual({ min: 0 });
 	});
 });
 

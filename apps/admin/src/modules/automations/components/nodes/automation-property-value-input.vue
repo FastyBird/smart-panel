@@ -89,7 +89,13 @@ import { ElAlert, ElInputNumber, ElOption, ElSelect, ElText } from 'element-plus
 
 import PropertyValueInput from '../../../devices/components/channels/property-value-input.vue';
 import { type AutomationSafetyReducingKind, classifySafetyReducingWrite, isAboveZeroUnsafe } from '../../nodes/nodes.safety';
-import { type AutomationPropertyValue, numberRangeOf, propertyValueKind } from '../../nodes/nodes.values';
+import {
+	type AutomationPropertyValue,
+	type IAutomationNumberBounds,
+	numberInputBounds,
+	numberRangeOf,
+	propertyValueKind,
+} from '../../nodes/nodes.values';
 
 import type { IAutomationPropertyValueInputProps } from './automation-property-value-input.types';
 
@@ -138,7 +144,7 @@ const outOfRange = computed<boolean>((): boolean => {
 	return (typeof range.value.min === 'number' && value < range.value.min) || (typeof range.value.max === 'number' && value > range.value.max);
 });
 
-const bounds = computed<{ min?: number; max?: number }>((): { min?: number; max?: number } => (outOfRange.value ? {} : range.value));
+const bounds = computed<IAutomationNumberBounds>((): IAutomationNumberBounds => numberInputBounds(props.modelValue, range.value));
 
 const rangeText = computed<string>((): string => {
 	const { min, max } = range.value;

@@ -142,3 +142,27 @@ export const numberRangeOf = (property: Pick<IChannelProperty, 'dataType' | 'for
 		...(typeof max === 'number' ? { max } : {}),
 	};
 };
+
+export interface IAutomationNumberBounds {
+	min?: number;
+	max?: number;
+	precision?: number;
+}
+
+/**
+ * The bounds to hand to a number input, or none while the number it shows is outside them: the input
+ * replaces such a number by the nearest one it takes as soon as it is shown, without anything being
+ * edited, and even while disabled. The bounds apply again once the number is one they take.
+ */
+export const numberInputBounds = (value: unknown, bounds: IAutomationNumberBounds): IAutomationNumberBounds => {
+	if (typeof value !== 'number') return bounds;
+
+	const { min, max, precision } = bounds;
+
+	const taken =
+		(typeof min !== 'number' || value >= min) &&
+		(typeof max !== 'number' || value <= max) &&
+		(typeof precision !== 'number' || Number(value.toFixed(precision)) === value);
+
+	return taken ? bounds : {};
+};

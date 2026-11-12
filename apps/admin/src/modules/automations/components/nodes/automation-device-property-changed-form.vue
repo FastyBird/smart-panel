@@ -89,8 +89,8 @@
 				data-test-field="hysteresis"
 			>
 				<el-input-number
-					:model-value="typeof props.config.hysteresis === 'number' ? props.config.hysteresis : undefined"
-					:min="0"
+					:model-value="hysteresis"
+					:min="hysteresisBounds.min"
 					:disabled="props.disabled"
 					:value-on-clear="null"
 					name="hysteresis"
@@ -159,10 +159,12 @@ import { DevicePropertyChangedConfigSchema } from '../../nodes/nodes.schemas';
 import type { AutomationLookupProperty } from '../../nodes/nodes.summaries';
 import {
 	type AutomationPropertyValue,
+	type IAutomationNumberBounds,
 	changedModeOf,
 	changedModesFor,
 	isOperandGiven,
 	isPropertyValue,
+	numberInputBounds,
 	propertyValueKind,
 	valueFitsProperty,
 } from '../../nodes/nodes.values';
@@ -279,6 +281,13 @@ watch(
 const forSeconds = computed<number | undefined>((): number | undefined =>
 	typeof props.config.for_seconds === 'number' ? props.config.for_seconds : undefined
 );
+
+const hysteresis = computed<number | undefined>((): number | undefined =>
+	typeof props.config.hysteresis === 'number' ? props.config.hysteresis : undefined
+);
+
+// A hysteresis saved below zero is shown as it is, with the error beside it, until it is edited
+const hysteresisBounds = computed<IAutomationNumberBounds>((): IAutomationNumberBounds => numberInputBounds(hysteresis.value, { min: 0 }));
 
 const holdsState = computed<boolean>((): boolean => OPERANDS[mode.value].includes('for_seconds'));
 

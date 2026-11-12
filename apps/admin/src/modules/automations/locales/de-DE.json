@@ -424,7 +424,8 @@
 					"write": "Wert {number}",
 					"value": "Zu setzender Wert",
 					"add": "Wert hinzufügen",
-					"remove": "Diesen Wert entfernen"
+					"remove": "Diesen Wert entfernen",
+					"malformed": "Dieser Eintrag ist kein gültiger Wert. Wählen Sie eine Eigenschaft, um ihn zu ersetzen, oder entfernen Sie ihn."
 				},
 				"time": {
 					"at": "Um",

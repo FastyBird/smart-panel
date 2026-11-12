@@ -424,7 +424,8 @@
 					"write": "Value {number}",
 					"value": "Value to set",
 					"add": "Add value",
-					"remove": "Remove this value"
+					"remove": "Remove this value",
+					"malformed": "This entry is not a valid value. Pick a property to replace it, or remove it."
 				},
 				"time": {
 					"at": "At",

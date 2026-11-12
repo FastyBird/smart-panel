@@ -424,7 +424,8 @@
 					"write": "Hodnota {number}",
 					"value": "Nastaviť na",
 					"add": "Pridať hodnotu",
-					"remove": "Odobrať túto hodnotu"
+					"remove": "Odobrať túto hodnotu",
+					"malformed": "Táto položka nie je platná hodnota. Vyberte vlastnosť, ktorou ju nahradíte, alebo ju odoberte."
 				},
 				"time": {
 					"at": "O",

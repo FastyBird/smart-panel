@@ -240,12 +240,70 @@ describe('automation card forms', (): void => {
 				issues: [issue({ code: 'safety_reducing_action', field: 'writes.1.value', message: 'An automation can not unlock a lock.' })],
 			});
 
-			expect(wrapper.findAll('[data-test-write]')).toHaveLength(1);
+			expect(wrapper.findAll('[data-test-write]')).toHaveLength(2);
 			expect(wrapper.find('[data-test-write="1"] [data-test-id="write-refused"]').text()).toContain('An automation can not unlock a lock.');
 
 			wrapper.find('[data-test-write="1"]').findComponent(AutomationPropertyValueInput).vm.$emit('update:modelValue', true);
 
 			expect(lastConfig()).toEqual({ writes: [null, { ...lockWrite, value: true }] });
+		});
+
+		it('shows an entry that is not a value at its place, to be removed or replaced', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, {
+				nodeType: set,
+				config: { writes: [null, { ...lockWrite, value: false }] },
+			});
+
+			expect(wrapper.findAll('[data-test-write]')).toHaveLength(2);
+			expect(wrapper.find('[data-test-write="0"] [data-test-id="write-malformed"]').exists()).toBe(true);
+			expect(wrapper.find('[data-test-write="1"] [data-test-id="write-malformed"]').exists()).toBe(false);
+
+			await wrapper.find('[data-test-write="0"] [data-test-id="remove-write"]').trigger('click');
+
+			expect(lastConfig()).toEqual({ writes: [{ ...lockWrite, value: false }] });
+		});
+
+		it('replaces an entry that is not a value by the property picked in its place', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [null, { ...lockWrite, value: false }] } });
+
+			wrapper.find('[data-test-write="0"]').findComponent(DevicePropertyPicker).vm.$emit('update:deviceId', 'd-1');
+
+			expect(lastConfig()).toEqual({ writes: [{ device_id: 'd-1' }, { ...lockWrite, value: false }] });
+		});
+
+		it('lets a single entry that is not a value be removed', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [null] } });
+
+			expect(wrapper.findAll('[data-test-write]')).toHaveLength(1);
+
+			await wrapper.find('[data-test-write="0"] [data-test-id="remove-write"]').trigger('click');
+
+			expect(lastConfig()).toEqual({});
+		});
+
+		it('shows every entry when all of them are not values, the limit reached', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: Array.from({ length: 20 }, () => null) } });
+
+			expect(wrapper.findAll('[data-test-write]')).toHaveLength(20);
+			expect(wrapper.findAll('[data-test-id="remove-write"]')).toHaveLength(20);
+			expect(wrapper.find('[data-test-id="add-write"]').attributes('disabled')).toBeDefined();
+		});
+
+		it('shows a problem of a value that no field of its row is about on that row, once', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, {
+				nodeType: set,
+				config: { writes: [{ ...lockWrite, value: true, extra: true }] },
+				issues: [issue({ field: 'writes.0', message: 'This value is broken.' })],
+			});
+
+			const rowErrors = wrapper
+				.find('[data-test-write="0"]')
+				.findAll('[data-test-id="write-errors"]')
+				.map((error) => error.text());
+
+			expect(rowErrors).toEqual(['This value is broken.', 'automations.editor.validation.unknownField']);
+			expect(wrapper.text().split('automations.editor.validation.unknownField')).toHaveLength(2);
+			expect(wrapper.text().split('This value is broken.')).toHaveLength(2);
 		});
 
 		it('drops a value the newly picked property can not hold', async (): Promise<void> => {
@@ -395,6 +453,21 @@ describe('automation card forms', (): void => {
 			expect(wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).props('modelValue')).toBe('any');
 			expect(wrapper.find('[data-test-field="to"]').exists()).toBe(false);
 			expect(lastInvalid()).toBe(false);
+		});
+
+		it('does not change a stored hysteresis below zero when it is shown', async (): Promise<void> => {
+			const config = { device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature', above: 25, hysteresis: -1 };
+
+			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config });
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+
+			// An undo back to it does not change it either
+			await wrapper.setProps({ config: { ...config, hysteresis: 1 } });
+			await wrapper.setProps({ config });
+			await flushPromises();
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
 		});
 
 		it('shows the problems of a field as it is filled in', async (): Promise<void> => {

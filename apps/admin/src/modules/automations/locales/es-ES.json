@@ -424,7 +424,8 @@
 					"write": "Valor {number}",
 					"value": "Valor a fijar",
 					"add": "Añadir valor",
-					"remove": "Quitar este valor"
+					"remove": "Quitar este valor",
+					"malformed": "Esta entrada no es un valor válido. Elige una propiedad para reemplazarla o quítala."
 				},
 				"time": {
 					"at": "A las",
