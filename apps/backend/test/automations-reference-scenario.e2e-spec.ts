@@ -479,6 +479,50 @@ describe('Automations reference scenario (e2e)', () => {
 		await app.close();
 	});
 
+	// Every case starts in a dark, empty room by day, the light off, the sensor online and nothing running,
+	// whatever ran before it - so a case can be run on its own or retried
+	beforeEach(async () => {
+		if (stateTracker.read(occupancy.property_id).status !== 'ok') {
+			await setSensorConnection(ConnectionState.CONNECTED);
+			await waitFor(
+				() => stateTracker.read(occupancy.property_id).status,
+				(status) => status === 'ok',
+				'the sensor to be seen online',
+			);
+		}
+
+		setHouseTime(12, 0);
+
+		if ((await valueOf(occupancy)) === true) {
+			const runs = started();
+
+			await report(occupancy, false);
+			await parkedOnDelay(runs + 1);
+
+			engineClock.advanceSeconds(DELAY_SECONDS);
+			await runsFinished(runs + 1);
+		}
+
+		if ((await light()).on !== false) {
+			await report(lightOn, false);
+		}
+
+		await settled();
+
+		expect(engine.runtime(automationId)?.activeRuns ?? 0).toBe(0);
+		expect(engineClock.pending()).toBe(0);
+	});
+
+	/** Somebody walks in and the light comes on: the state the cases about leaving the room start from */
+	const occupied = async (): Promise<void> => {
+		const runs = started();
+
+		await report(occupancy, true);
+		await runsFinished(runs + 1);
+
+		expect((await light()).on).toBe(true);
+	};
+
 	it('turns on a dimmed light when somebody walks into the dark room at night', async () => {
 		setHouseTime(23, 0);
 
@@ -491,6 +535,8 @@ describe('Automations reference scenario (e2e)', () => {
 	});
 
 	it('turns the light off once the room has been clear for the length of the Delay', async () => {
+		await occupied();
+
 		const runs = started();
 
 		await report(occupancy, false);
@@ -529,6 +575,8 @@ describe('Automations reference scenario (e2e)', () => {
 	});
 
 	it('keeps the light on when somebody comes back while the Delay is running', async () => {
+		await occupied();
+
 		const runs = started();
 
 		await report(occupancy, false);
@@ -573,12 +621,11 @@ describe('Automations reference scenario (e2e)', () => {
 	});
 
 	it('leaves the light on when the sensor drops offline while the Delay is running', async () => {
-		const runs = started();
-
-		await report(occupancy, true);
-		await runsFinished(runs + 1);
+		await occupied();
 
 		expect(await light()).toEqual({ on: true, brightness: 100 });
+
+		const runs = started() - 1;
 
 		await report(occupancy, false);
 		await parkedOnDelay(runs + 2);

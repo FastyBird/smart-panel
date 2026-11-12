@@ -258,6 +258,10 @@ jobs:
     if: needs.check-skip.outputs.skip == 'false'
     name: "Admin end-to-end tests"
     runs-on: "${{ matrix.operating-system }}"
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
 
     strategy:
       fail-fast: false
