@@ -349,11 +349,25 @@ describe('findRunAttention', (): void => {
 		expect(findRunAttention({ status: AutomationRunRecordStatus.failed, endReason: null }, steps, later)?.nodeId).toBe('a1');
 	});
 
-	it('falls back on the graph when the run went along edges that are not on the canvas any more', (): void => {
+	it('does not take an edge connected since for a failure handled when the run went along an edge since removed', (): void => {
 		reset();
 
-		// The run went on from the error output of `a1` along an edge since removed: the trace cannot say where
-		// it led, and the graph still tells the failure as handled by `e5`
+		// `a1` failed and nothing went on from it. A parallel branch went on to `a2` along `e-gone`, since removed,
+		// and the error edge `e5` was connected later: neither tells the failure of `a1` as handled
+		const steps = [
+			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
+			step('a1', AutomationNodeKind.action, { via: 'e2', output: 'error', result: { success: false, reason: 'Offline' } }),
+			step('a2', AutomationNodeKind.action, { via: 'e-gone', output: 'done', result: { success: true } }),
+		];
+
+		expect(findRunAttention({ status: AutomationRunRecordStatus.failed, endReason: null }, steps, graph)?.nodeId).toBe('a1');
+	});
+
+	it('points at the last failure not known to be handled when the run went along edges that are not on the canvas any more', (): void => {
+		reset();
+
+		// The run went on from `a1` along an edge since removed: whether it went on from the error output is not
+		// known, so the last such failure, the one the run ended on, is the card shown
 		const steps = [
 			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
 			step('a1', AutomationNodeKind.action, { via: 'e2', output: 'error', result: { success: false, reason: 'Offline' } }),

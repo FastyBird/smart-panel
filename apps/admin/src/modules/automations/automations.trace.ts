@@ -232,10 +232,10 @@ export const mapTraceToOverlay = (graph: Pick<IAutomationGraph, 'nodes' | 'edges
 };
 
 /**
- * Whether the run went on from a failing output: what the run did is read from its own trace, which names the
- * edge every step arrived on. An edge connected after the run does not make its failure handled. The graph
- * of the editor is the last resort, for a run that went along edges no longer on the canvas: the trace cannot
- * say where those left from.
+ * Whether the run is known to have gone on from a failing output: what the run did is read from its own trace,
+ * which names the edge every step arrived on. Only a step that arrived on an edge leaving that output proves it.
+ * An edge connected after the run proves nothing, and neither does an edge since removed: the trace cannot say
+ * where that one left from.
  */
 const wentOnFrom = (failed: IAutomationRunStep, steps: IAutomationRunStep[], graph: Pick<IAutomationGraph, 'edges'>): boolean => {
 	if (typeof failed.output !== 'string') {
@@ -247,23 +247,19 @@ const wentOnFrom = (failed: IAutomationRunStep, steps: IAutomationRunStep[], gra
 	const edges = new Map(graph.edges.map((edge) => [edge.id, edge]));
 	const arrivedOn = steps.filter((step) => step.seq > failed.seq && typeof step.via === 'string').map((step) => edges.get(step.via as string));
 
-	if (arrivedOn.some((edge) => edge !== undefined && leaving(edge))) {
-		return true;
-	}
-
-	return arrivedOn.includes(undefined) && graph.edges.some(leaving);
+	return arrivedOn.some((edge) => edge !== undefined && leaving(edge));
 };
 
 /**
- * Of a failed run, the card it failed on: the failure nothing handled. A card the run went on from through
- * its failing output recovered, and a later card is the one the run failed on. Without the graph, the last
- * failure is the one the run ended on. A run that failed for another reason (it reached the step limit) and
- * has no unhandled failure is pointed at the last card it reached.
+ * Of a failed run, the card it failed on: the last failure the run is not known to have gone on from. A card
+ * the run went on from through its failing output recovered. Without the graph, the last failure is the one the
+ * run ended on. A run that failed for another reason (it reached the step limit) and has no such failure is
+ * pointed at the last card it reached.
  */
 const findFailedNodeId = (steps: IAutomationRunStep[], graph: Pick<IAutomationGraph, 'edges'> | undefined): string | null => {
 	const failed = steps.filter((step) => stepState(step) === 'failed');
 
-	const unhandled = graph ? failed.find((step) => !wentOnFrom(step, steps, graph)) : failed.at(-1);
+	const unhandled = graph ? failed.filter((step) => !wentOnFrom(step, steps, graph)).at(-1) : failed.at(-1);
 
 	return unhandled?.node_id ?? steps.at(-1)?.node_id ?? null;
 };
