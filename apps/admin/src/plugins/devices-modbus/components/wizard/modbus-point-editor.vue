@@ -22,17 +22,13 @@
 					/>
 				</el-form-item>
 
-				<el-form-item
-					v-if="pointKind === 'number'"
-					:label="t('devicesModbusPlugin.wizard.points.columns.unit')"
+				<div
+					v-if="pointKind === 'number' && draft.unit"
+					class="text-sm self-center"
+					data-test-id="point-editor-unit"
 				>
-					<el-input
-						:model-value="draft.unit ?? ''"
-						class="w-[100px]!"
-						name="pointUnit"
-						@update:model-value="(value: string) => (draft!.unit = value.trim() === '' ? null : value)"
-					/>
-				</el-form-item>
+					{{ t('devicesModbusPlugin.wizard.points.columns.unit') }}: {{ draft.unit }}
+				</div>
 
 				<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.capability')">
 					<el-select

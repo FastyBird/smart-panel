@@ -220,13 +220,15 @@ describe('ModbusPointEditor', () => {
 		write: null,
 	});
 
-	it('edits scale, offset and unit of a temperature point, offering the numeric data types only', async () => {
+	it('edits scale and offset of a temperature point and shows its unit read-only, offering the numeric data types only', async () => {
 		const wrapper = mountPoint(temperature());
 		await flushPromises();
 
 		expect(itemByLabel(wrapper, 'scale')).toHaveLength(1);
 		expect(itemByLabel(wrapper, 'offset')).toHaveLength(1);
-		expect(itemByLabel(wrapper, 'unit')).toHaveLength(1);
+		expect(wrapper.find('[data-test-id="point-editor-unit"]').text()).toBe('devicesModbusPlugin.wizard.points.columns.unit: °C');
+		expect(wrapper.find('input[name="pointUnit"]').exists()).toBe(false);
+		expect(itemByLabel(wrapper, 'unit')).toHaveLength(0);
 
 		const dataTypes = itemByLabel(wrapper, 'dataType')[0]
 			.findAllComponents({ name: 'ElOption' })
@@ -240,10 +242,9 @@ describe('ModbusPointEditor', () => {
 
 		expect(registerTypes).toEqual(['input_register', 'holding_register']);
 
-		await wrapper.find('input[name="pointUnit"]').setValue('K');
 		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
 
-		expect((wrapper.emitted('save')?.[0]?.[0] as ModbusPoint).unit).toBe('K');
+		expect((wrapper.emitted('save')?.[0]?.[0] as ModbusPoint).unit).toBe('°C');
 	}, 15_000);
 
 	it('treats an enum template point on a discrete input with a value map as neither bool nor number', async () => {
@@ -275,7 +276,7 @@ describe('ModbusPointEditor', () => {
 		expect(itemByLabel(wrapper, 'dataType')[0].props('error')).toBeUndefined();
 		expect(optionsOf('dataType')).toContain(DevicesModbusPluginDataType.bool);
 		expect(optionsOf('registerType')).toContain(DevicesModbusPluginRegisterType.discrete_input);
-		expect(itemByLabel(wrapper, 'unit')).toHaveLength(0);
+		expect(wrapper.find('[data-test-id="point-editor-unit"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="point-editor-save"]').attributes('disabled')).toBeUndefined();
 	}, 15_000);
 
