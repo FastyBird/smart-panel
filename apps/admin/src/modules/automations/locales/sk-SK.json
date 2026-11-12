@@ -646,7 +646,8 @@
 					"unknown": "Nestihol dobehnúť do konca."
 				},
 				"failed": {
-					"text": "Akcia zlyhala a nič v priebehu jej chybu neošetrilo, preto sa beh tu zastavil."
+					"text": "Akcia zlyhala a nič v priebehu jej chybu neošetrilo, preto sa beh tu zastavil.",
+					"stopped": "Beh nedobehol do konca. {reason}"
 				},
 				"cancelled": {
 					"text": "Tento beh bol zrušený skôr, než skončil: {cause}"
@@ -655,6 +656,10 @@
 					"restarted": "automatizácia bola znova spustená a začala od začiatku.",
 					"backend_restarted": "server sa reštartoval.",
 					"engine_stopped": "automatizácie na serveri boli zastavené.",
+					"automation_updated": "automatizácia bola uložená so zmenami.",
+					"automation_disabled": "automatizácia bola zakázaná.",
+					"automation_invalid": "automatizácia už nemôže bežať, napríklad preto, že bolo odstránené niečo, čo používa.",
+					"suspended": "automatizácia bola pozastavená, pretože v krátkom čase bežala príliš často.",
 					"unknown": "automatizácia bola uložená, zakázaná alebo znova spustená."
 				},
 				"suspended": {

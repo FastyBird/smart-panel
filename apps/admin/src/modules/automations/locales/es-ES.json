@@ -646,7 +646,8 @@
 					"unknown": "No llegó a terminar."
 				},
 				"failed": {
-					"text": "Una acción falló y nada en el flujo gestionó su error, así que la ejecución se detuvo ahí."
+					"text": "Una acción falló y nada en el flujo gestionó su error, así que la ejecución se detuvo ahí.",
+					"stopped": "La ejecución no terminó. {reason}"
 				},
 				"cancelled": {
 					"text": "Esta ejecución se canceló antes de terminar: {cause}"
@@ -655,6 +656,10 @@
 					"restarted": "la automatización se volvió a disparar y empezó de nuevo.",
 					"backend_restarted": "el servidor se reinició.",
 					"engine_stopped": "las automatizaciones se detuvieron en el servidor.",
+					"automation_updated": "la automatización se guardó con cambios.",
+					"automation_disabled": "la automatización se deshabilitó.",
+					"automation_invalid": "la automatización ya no puede ejecutarse, por ejemplo porque se eliminó algo que usa.",
+					"suspended": "la automatización se suspendió porque se ejecutó demasiadas veces en poco tiempo.",
 					"unknown": "la automatización se guardó, se deshabilitó o se volvió a disparar."
 				},
 				"suspended": {

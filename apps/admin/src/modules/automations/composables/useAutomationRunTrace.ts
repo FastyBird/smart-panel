@@ -2,7 +2,7 @@ import { type Ref, computed, ref, watch } from 'vue';
 
 import { injectStoresManager } from '../../../common';
 import { AutomationRunRecordStatus } from '../automations.constants';
-import { findRunAttention, mapTraceToOverlay } from '../automations.trace';
+import { findRunAttention, mapTraceToOverlay, newerRunStep } from '../automations.trace';
 import type { IAutomation, IAutomationGraph } from '../store/automations.store.types';
 import { automationRunsStoreKey } from '../store/keys';
 import type { IAutomationRun, IAutomationRunStep, IAutomationTriggerResult } from '../store/runs.store.types';
@@ -25,7 +25,7 @@ interface IOverlaySource {
 
 /**
  * The steps of a run as far as they are known: the stored trace and the steps the live view received. Both
- * number their steps the same way, so a step is in it once whichever brought it.
+ * number their steps the same way, so a step is in it once whichever brought it, as it was last known.
  */
 export const mergeRunSteps = (stored: IAutomationRunStep[], live: IAutomationRunStep[]): IAutomationRunStep[] => {
 	const bySeq = new Map<number, IAutomationRunStep>();
@@ -34,9 +34,9 @@ export const mergeRunSteps = (stored: IAutomationRunStep[], live: IAutomationRun
 		bySeq.set(step.seq, step);
 	}
 
-	// What was stored is what the run ended with
+	// What was stored is what the run ended with, or - for a run that is still going - where it waited last
 	for (const step of stored) {
-		bySeq.set(step.seq, step);
+		bySeq.set(step.seq, newerRunStep(bySeq.get(step.seq), step));
 	}
 
 	return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
@@ -128,18 +128,59 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		{ immediate: true }
 	);
 
+	// A run that started while the run followed was still going: it is followed once that one is over. Its
+	// end is announced after it is stored, so the steps of a short run that came next can arrive before it.
+	let waitingRunId: string | null = null;
+
 	// A run started while the view is open is followed, unless a past run is being looked at or the run
 	// followed is still going
 	watch(
 		(): string | null => live.latestRunId.value,
 		(runId: string | null): void => {
+			waitingRunId = null;
+
 			if (runId === null || source.value?.runId === runId || source.value?.kind === 'replay') {
 				return;
 			}
 
 			if (source.value === null || isEnded(shownRecord.value)) {
 				source.value = { kind: 'live', runId, pick: ++picks };
+			} else {
+				waitingRunId = runId;
 			}
+		}
+	);
+
+	watch(
+		(): boolean => source.value?.kind === 'live' && isEnded(shownRecord.value),
+		(ended: boolean): void => {
+			const runId = waitingRunId;
+
+			waitingRunId = null;
+
+			if (ended && runId !== null && runId === live.latestRunId.value && source.value?.runId !== runId) {
+				source.value = { kind: 'live', runId, pick: ++picks };
+			}
+		}
+	);
+
+	/*
+	 * The steps a run took while the socket was down are not sent again: once the automation is watched again,
+	 * what a run that is still going stored so far is read, and the live steps go on from there. A run that
+	 * has not stored anything yet (it never waited) has nothing to read, and is followed live as it was.
+	 */
+	watch(
+		(): boolean => live.watching.value,
+		(watching: boolean, wasWatching: boolean): void => {
+			const current = source.value;
+
+			if (!watching || wasWatching || !current || isEnded(shownRecord.value)) {
+				return;
+			}
+
+			void runsStore.get({ id: current.runId, fresh: true }).catch((): void => {
+				// Nothing stored yet, or not readable now: the live steps are what there is
+			});
 		}
 	);
 
@@ -161,7 +202,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			steps,
 			overlay: mapTraceToOverlay(graph.value, steps),
 			ended,
-			attention: run && ended ? findRunAttention(run, steps) : null,
+			attention: run && ended ? findRunAttention(run, steps, graph.value) : null,
 			loading: runsStore.getting(current.runId),
 			failed: failedReads.value.has(readKey(current.runId, run)),
 			truncated: run?.trace?.truncated ?? false,
@@ -191,6 +232,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		const result = await runsStore.trigger({ automationId: id, ...(typeof nodeId === 'string' ? { nodeId } : {}) });
 
 		if (result.started && result.runId !== null) {
+			waitingRunId = null;
 			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
 		}
 
@@ -201,10 +243,12 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		// Picked again after a read that failed: it is tried again
 		failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
 
+		waitingRunId = null;
 		source.value = { kind: 'replay', runId, pick: ++picks };
 	};
 
 	const close = (): void => {
+		waitingRunId = null;
 		source.value = null;
 	};
 

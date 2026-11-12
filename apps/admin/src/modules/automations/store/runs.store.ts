@@ -103,6 +103,9 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 		let allRemovedAt = 0;
 
+		// What events brought for an automation whose first list is on its way: there is no history to put it in yet
+		const awaitingFirstList = new Map<IAutomationRun['automationId'], Map<IAutomationRun['id'], IAutomationRun>>();
+
 		const dropped = (automationId: IAutomationRun['automationId'], startedAt: number): boolean =>
 			Math.max(removedAt.get(automationId) ?? 0, allRemovedAt) > startedAt;
 
@@ -176,11 +179,21 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			}
 
 			// The history of an automation that was never looked at is not started by an event: it would look
-			// read while it holds only the runs since
+			// read while it holds only the runs since. While its first list is on its way, the run is kept for it.
 			if (!data.value.has(parsed.data.automationId) && !traces.value.has(parsed.data.id)) {
 				changedAt.set(parsed.data.id, ++sequence);
 
-				return null;
+				const awaiting = awaitingFirstList.get(parsed.data.automationId);
+
+				if (!awaiting) {
+					return null;
+				}
+
+				const kept = mergeAutomationRun(awaiting.get(parsed.data.id), parsed.data);
+
+				awaiting.set(kept.id, kept);
+
+				return kept;
 			}
 
 			return commit(parsed.data);
@@ -208,6 +221,12 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 				semaphore.value.fetching.push(automationId);
 
+				const first = !data.value.has(automationId);
+
+				if (first) {
+					awaitingFirstList.set(automationId, new Map());
+				}
+
 				try {
 					const {
 						data: responseData,
@@ -234,7 +253,7 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 					const fetched = responseData.data.map((run) => transformAutomationRunResponse(run as unknown as Record<string, unknown>));
 					const fetchedIds = new Set(fetched.map((run) => run.id));
 
-					const held = data.value.get(automationId) ?? [];
+					const held = data.value.get(automationId) ?? [...(awaitingFirstList.get(automationId)?.values() ?? [])];
 
 					// What an event brought while the list was on its way is newer than the list
 					const newer = held.filter((run) => (changedAt.get(run.id) ?? 0) > startedAt);
@@ -251,6 +270,13 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 					for (const run of runs) {
 						changedAt.set(run.id, Math.max(changedAt.get(run.id) ?? 0, startedAt));
+
+						// A trace held for a run the list says has moved on is let go of, as an event would: it is read again
+						const traced = traces.value.get(run.id);
+
+						if (traced && traced.status !== run.status) {
+							traces.value.delete(run.id);
+						}
 					}
 
 					loaded.value.add(automationId);
@@ -259,6 +285,10 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 				} catch (e) {
 					throw toApiException(e, 'Failed to fetch automation runs.');
 				} finally {
+					if (first) {
+						awaitingFirstList.delete(automationId);
+					}
+
 					semaphore.value.fetching = semaphore.value.fetching.filter((item) => item !== automationId);
 				}
 			})().finally((): void => {
@@ -287,40 +317,50 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 				return existingPromise;
 			}
 
-			const getPromise = (async (): Promise<IAutomationRun> => {
+			// One read of the run. The record kept is what the store holds after it, the record read is what was served
+			const read = async (): Promise<{ kept: IAutomationRun; served: IAutomationRun }> => {
 				const startedAt = ++sequence;
 
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/runs/{runId}`, {
+					params: { path: { runId: id } },
+				});
+
+				if (typeof responseData === 'undefined') {
+					let errorReason: string = 'Failed to get automation run.';
+
+					if (error) {
+						errorReason = getErrorReason<GetRunOperation>(error, errorReason);
+					}
+
+					throw new AutomationsApiException(errorReason, response?.status ?? null);
+				}
+
+				const served = transformAutomationRunResponse(responseData.data as unknown as Record<string, unknown>);
+
+				if (dropped(served.automationId, startedAt)) {
+					throw new AutomationsApiException('Automation run was removed.', 404);
+				}
+
+				return { kept: commit(served), served };
+			};
+
+			const getPromise = (async (): Promise<IAutomationRun> => {
 				semaphore.value.getting.push(id);
 
 				try {
-					const {
-						data: responseData,
-						error,
-						response,
-					} = await backend.client.GET(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/runs/{runId}`, {
-						params: { path: { runId: id } },
-					});
+					let result = await read();
 
-					if (typeof responseData === 'undefined') {
-						let errorReason: string = 'Failed to get automation run.';
-
-						if (error) {
-							errorReason = getErrorReason<GetRunOperation>(error, errorReason);
-						}
-
-						throw new AutomationsApiException(errorReason, response?.status ?? null);
+					// An event that ended the run while the read was on its way left the trace behind: it is read
+					// again - once, as the backend may not have stored the end yet
+					if (result.kept.trace === null && result.served.trace !== null) {
+						result = await read();
 					}
 
-					const run = transformAutomationRunResponse(responseData.data as unknown as Record<string, unknown>);
-
-					if (dropped(run.automationId, startedAt)) {
-						throw new AutomationsApiException('Automation run was removed.', 404);
-					}
-
-					const merged = commit(run);
-
-					// An event that ended the run while the read was on its way left the trace behind: it is read again
-					return merged.trace !== null ? merged : run;
+					return result.kept.trace !== null ? result.kept : result.served;
 				} catch (e) {
 					throw toApiException(e, 'Failed to get automation run.');
 				} finally {

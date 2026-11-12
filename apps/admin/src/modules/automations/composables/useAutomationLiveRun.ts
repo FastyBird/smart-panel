@@ -4,6 +4,7 @@ import { tryOnScopeDispose } from '@vueuse/core';
 
 import { useLogger, useSockets } from '../../../common';
 import { AUTOMATION_LIVE_RUNS_BUFFERED, CommandHandlerName, CommandType, EventType } from '../automations.constants';
+import { newerRunStep } from '../automations.trace';
 import type { IAutomation } from '../store/automations.store.types';
 import type { IAutomationRunStep } from '../store/runs.store.types';
 import { transformAutomationRunStep } from '../store/runs.transformers';
@@ -94,12 +95,16 @@ export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAu
 		const next = new Map(runs.value);
 		const steps = next.get(payload.run_id) ?? [];
 
-		// A step that arrives twice (a reconnect in the middle of a run) is not shown twice
-		if (!steps.some((item) => item.seq === step.seq)) {
+		// A step that arrives twice (a reconnect in the middle of a run, a Delay that let the run go on) is
+		// not shown twice: the newer report of it is kept
+		const held = steps.find((item) => item.seq === step.seq);
+		const kept = newerRunStep(held, step);
+
+		if (kept !== held) {
 			next.delete(payload.run_id);
 			next.set(
 				payload.run_id,
-				[...steps, step].sort((a, b) => a.seq - b.seq)
+				[...steps.filter((item) => item.seq !== step.seq), kept].sort((a, b) => a.seq - b.seq)
 			);
 		}
 

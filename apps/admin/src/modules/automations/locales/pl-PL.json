@@ -646,7 +646,8 @@
 					"unknown": "Nie zdążyło się zakończyć."
 				},
 				"failed": {
-					"text": "Akcja nie powiodła się i nic w przebiegu nie obsłużyło jej błędu, więc uruchomienie zatrzymało się tutaj."
+					"text": "Akcja nie powiodła się i nic w przebiegu nie obsłużyło jej błędu, więc uruchomienie zatrzymało się tutaj.",
+					"stopped": "Uruchomienie nie zostało dokończone. {reason}"
 				},
 				"cancelled": {
 					"text": "To uruchomienie zostało anulowane przed końcem: {cause}"
@@ -655,6 +656,10 @@
 					"restarted": "automatyzacja została ponownie wyzwolona i zaczęła od początku.",
 					"backend_restarted": "serwer został uruchomiony ponownie.",
 					"engine_stopped": "automatyzacje zostały zatrzymane na serwerze.",
+					"automation_updated": "automatyzacja została zapisana ze zmianami.",
+					"automation_disabled": "automatyzacja została wyłączona.",
+					"automation_invalid": "automatyzacja nie może już działać, na przykład dlatego, że usunięto coś, czego używa.",
+					"suspended": "automatyzacja została wstrzymana, ponieważ w krótkim czasie uruchamiała się zbyt często.",
 					"unknown": "automatyzacja została zapisana, wyłączona lub ponownie wyzwolona."
 				},
 				"suspended": {

@@ -284,6 +284,39 @@ describe('findRunAttention', (): void => {
 		});
 	});
 
+	it('points a failed run at the failure nothing handled, not at one its error output recovered from', (): void => {
+		reset();
+
+		const steps = [
+			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
+			step('c1', AutomationNodeKind.condition, { output: 'yes' }),
+			step('a1', AutomationNodeKind.action, { via: 'e2', output: 'error', result: { success: false, reason: 'Offline' } }),
+			step('a3', AutomationNodeKind.action, { via: 'e5', output: 'error', result: { success: false, reason: 'No recipients' } }),
+		];
+
+		const run = { status: AutomationRunRecordStatus.failed, endReason: null };
+
+		expect(findRunAttention(run, steps, graph)?.nodeId).toBe('a3');
+		// Without the graph, the last failure is the one the run ended on
+		expect(findRunAttention(run, steps)?.nodeId).toBe('a3');
+	});
+
+	it('points a run stopped by the step limit at the last card it reached', (): void => {
+		reset();
+
+		const steps = [
+			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
+			step('a1', AutomationNodeKind.action, { via: 'e2', output: 'error', result: { success: false, reason: 'Offline' } }),
+			step('a3', AutomationNodeKind.action, { via: 'e5', output: 'done', result: { success: true } }),
+		];
+
+		expect(findRunAttention({ status: AutomationRunRecordStatus.failed, endReason: 'The run was stopped after 1000 steps.' }, steps, graph)).toEqual({
+			kind: 'failed',
+			nodeId: 'a3',
+			endReason: 'The run was stopped after 1000 steps.',
+		});
+	});
+
 	it('points a cancelled run at the card it did not finish', (): void => {
 		reset();
 

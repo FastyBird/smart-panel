@@ -1,7 +1,8 @@
 import { useI18n } from 'vue-i18n';
 
 import {
-	AUTOMATION_RUN_END_REASONS,
+	AUTOMATION_RUN_CANCEL_REASONS,
+	AUTOMATION_RUN_INTERRUPT_REASONS,
 	AUTOMATION_TRIGGER_REFUSALS,
 	AutomationNodeKind,
 	type AutomationRunRecordStatus,
@@ -21,6 +22,9 @@ const PREFIX = 'automations.runs';
 
 // The outputs a card takes when all went as it should: saying so on the card adds nothing
 const PLAIN_OUTPUTS = ['out', 'done'];
+
+// A reason that is a code (`automation_updated`) rather than a sentence
+const END_REASON_CODE = /^[a-z][a-z0-9_]*$/;
 
 /**
  * How a run is put into words: its status, what each card did in it, and - for what went wrong - what
@@ -106,9 +110,14 @@ export const useAutomationRunPresentation = (): IUseAutomationRunPresentation =>
 		}
 	};
 
-	const endCause = (prefix: string, endReason: string | null): string => {
-		if (endReason !== null && (AUTOMATION_RUN_END_REASONS as readonly string[]).includes(endReason)) {
+	// A code the engine ends runs with is put into words; a reason the backend wrote out is shown as it is
+	const endCause = (prefix: string, endReason: string | null, codes: readonly string[]): string => {
+		if (endReason !== null && codes.includes(endReason)) {
 			return t(`${PREFIX}.explanations.${prefix}.${endReason}`);
+		}
+
+		if (endReason !== null && endReason.trim() !== '' && !END_REASON_CODE.test(endReason)) {
+			return endReason;
 		}
 
 		return t(`${PREFIX}.explanations.${prefix}.unknown`);
@@ -117,13 +126,18 @@ export const useAutomationRunPresentation = (): IUseAutomationRunPresentation =>
 	const attentionText = (attention: IAutomationRunAttention): string => {
 		switch (attention.kind) {
 			case 'interrupted':
-				return t(`${PREFIX}.explanations.interrupted.text`, { cause: endCause('interruptedCauses', attention.endReason) });
+				return t(`${PREFIX}.explanations.interrupted.text`, {
+					cause: endCause('interruptedCauses', attention.endReason, AUTOMATION_RUN_INTERRUPT_REASONS),
+				});
 
 			case 'cancelled':
-				return t(`${PREFIX}.explanations.cancelled.text`, { cause: endCause('cancelledCauses', attention.endReason) });
+				return t(`${PREFIX}.explanations.cancelled.text`, { cause: endCause('cancelledCauses', attention.endReason, AUTOMATION_RUN_CANCEL_REASONS) });
 
 			default:
-				return t(`${PREFIX}.explanations.failed.text`);
+				// A run can fail without an action failing - it reached the step limit - and then the backend says why
+				return attention.endReason !== null && attention.endReason.trim() !== ''
+					? t(`${PREFIX}.explanations.failed.stopped`, { reason: attention.endReason })
+					: t(`${PREFIX}.explanations.failed.text`);
 		}
 	};
 

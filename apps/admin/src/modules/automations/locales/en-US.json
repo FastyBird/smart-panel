@@ -646,7 +646,8 @@
 					"unknown": "It did not get to finish."
 				},
 				"failed": {
-					"text": "An action failed and nothing in the flow handled its error, so the run stopped there."
+					"text": "An action failed and nothing in the flow handled its error, so the run stopped there.",
+					"stopped": "The run did not finish. {reason}"
 				},
 				"cancelled": {
 					"text": "This run was cancelled before it ended: {cause}"
@@ -655,6 +656,10 @@
 					"restarted": "the automation was triggered again and started over.",
 					"backend_restarted": "the server restarted.",
 					"engine_stopped": "automations were stopped on the server.",
+					"automation_updated": "the automation was saved with changes.",
+					"automation_disabled": "the automation was disabled.",
+					"automation_invalid": "the automation can no longer run, for example because something it uses was removed.",
+					"suspended": "the automation was suspended because it ran too often in a short time.",
 					"unknown": "the automation was saved, disabled or triggered again."
 				},
 				"suspended": {

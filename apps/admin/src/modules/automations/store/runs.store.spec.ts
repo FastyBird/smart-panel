@@ -210,6 +210,126 @@ describe('Automation runs store', (): void => {
 		]);
 	});
 
+	it('keeps the runs events brought while the first list of the automation was on its way', async (): Promise<void> => {
+		const pending = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(pending.promise);
+
+		const fetching = store.fetch({ automationId });
+
+		// The list was served before these runs started and ended
+		store.onEvent({ data: runRes(1, { status: 'running', finished_at: null, duration_ms: null }) });
+		store.onEvent({ data: runRes(1) });
+		store.onEvent({ data: runRes(2, { status: 'running', finished_at: null, duration_ms: null }) });
+
+		pending.resolve({
+			data: { data: [runRes(0), runRes(2, { status: 'running', finished_at: null, duration_ms: null })] },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const runs = await fetching;
+
+		expect(runs.map((run) => [run.id, run.status])).toEqual([
+			[runIds[2], AutomationRunRecordStatus.running],
+			[runIds[1], AutomationRunRecordStatus.completed],
+			[runIds[0], AutomationRunRecordStatus.completed],
+		]);
+	});
+
+	it('does not keep the runs of an automation whose first list failed or that was removed meanwhile', async (): Promise<void> => {
+		mockBackendClient.GET.mockResolvedValueOnce({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+
+		const failing = store.fetch({ automationId });
+
+		store.onEvent({ data: runRes(1) });
+
+		await expect(failing).rejects.toBeInstanceOf(AutomationsApiException);
+
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [runRes(0)] }, error: undefined, response: { status: 200 } });
+
+		await store.fetch({ automationId });
+
+		expect(store.findForAutomation(automationId).map((run) => run.id)).toEqual([runIds[0]]);
+	});
+
+	it('lets go of the trace of a running run once a list says it has ended', async (): Promise<void> => {
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [] }, error: undefined, response: { status: 200 } });
+
+		await store.fetch({ automationId });
+
+		mockBackendClient.GET.mockResolvedValueOnce({
+			data: { data: { ...runRes(0, { status: 'running', finished_at: null, duration_ms: null }), trace } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await store.get({ id: runIds[0] as string });
+
+		// The run ended while the socket was down: only the list read after the reconnect knows
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [runRes(0)] }, error: undefined, response: { status: 200 } });
+
+		await store.refresh();
+
+		expect(store.findById(runIds[0] as string)).toMatchObject({ status: AutomationRunRecordStatus.completed, trace: null });
+		expect(store.traces.has(runIds[0] as string)).toBe(false);
+	});
+
+	it('reads a run again when it ended while its read was on its way', async (): Promise<void> => {
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [] }, error: undefined, response: { status: 200 } });
+
+		await store.fetch({ automationId });
+
+		const pending = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(pending.promise);
+
+		const getting = store.get({ id: runIds[0] as string });
+
+		store.onEvent({ data: runRes(0) });
+
+		const completed = { ...runRes(0), trace };
+
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: completed }, error: undefined, response: { status: 200 } });
+
+		pending.resolve({
+			data: { data: { ...runRes(0, { status: 'running', finished_at: null, duration_ms: null }), trace } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const run = await getting;
+
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(3);
+		expect(run).toMatchObject({ status: AutomationRunRecordStatus.completed });
+		expect(run.trace?.steps).toHaveLength(2);
+		expect(store.findById(runIds[0] as string)?.trace).not.toBeNull();
+		expect(store.getting(runIds[0] as string)).toBe(false);
+	});
+
+	it('reads a run again only once, even when the backend still says it is running', async (): Promise<void> => {
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [] }, error: undefined, response: { status: 200 } });
+
+		await store.fetch({ automationId });
+
+		const running = { ...runRes(0, { status: 'running', finished_at: null, duration_ms: null }), trace };
+		const pending = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(pending.promise);
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: running }, error: undefined, response: { status: 200 } });
+
+		const getting = store.get({ id: runIds[0] as string });
+
+		store.onEvent({ data: runRes(0) });
+
+		pending.resolve({ data: { data: running }, error: undefined, response: { status: 200 } });
+
+		await getting;
+
+		expect(mockBackendClient.GET).toHaveBeenCalledTimes(3);
+		expect(store.findById(runIds[0] as string)).toMatchObject({ status: AutomationRunRecordStatus.completed, trace: null });
+	});
+
 	it('does not take a run back to running when the list is older than the event that ended it', async (): Promise<void> => {
 		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [] }, error: undefined, response: { status: 200 } });
 

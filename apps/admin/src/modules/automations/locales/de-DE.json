@@ -646,7 +646,8 @@
 					"unknown": "Er kam nicht bis zum Ende."
 				},
 				"failed": {
-					"text": "Eine Aktion ist fehlgeschlagen und nichts im Ablauf hat ihren Fehler behandelt, daher stoppte der Lauf dort."
+					"text": "Eine Aktion ist fehlgeschlagen und nichts im Ablauf hat ihren Fehler behandelt, daher stoppte der Lauf dort.",
+					"stopped": "Der Lauf wurde nicht zu Ende geführt. {reason}"
 				},
 				"cancelled": {
 					"text": "Dieser Lauf wurde abgebrochen, bevor er zu Ende war: {cause}"
@@ -655,6 +656,10 @@
 					"restarted": "Die Automation wurde erneut ausgelöst und begann von vorn.",
 					"backend_restarted": "Der Server wurde neu gestartet.",
 					"engine_stopped": "Automationen wurden auf dem Server gestoppt.",
+					"automation_updated": "Die Automation wurde mit Änderungen gespeichert.",
+					"automation_disabled": "Die Automation wurde deaktiviert.",
+					"automation_invalid": "Die Automation kann nicht mehr laufen, zum Beispiel weil etwas entfernt wurde, das sie verwendet.",
+					"suspended": "Die Automation wurde ausgesetzt, weil sie in kurzer Zeit zu oft lief.",
 					"unknown": "Die Automation wurde gespeichert, deaktiviert oder erneut ausgelöst."
 				},
 				"suspended": {

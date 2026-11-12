@@ -137,6 +137,14 @@ export const stepState = (step: IAutomationRunStep): AutomationRunNodeState => {
 	return 'passed';
 };
 
+/**
+ * Of two reports of the same step (the same `seq`), the one to keep. A step is reported again when it
+ * changes, and the only step that changes is a Delay: from waiting (`parked`) to how it went on. A step is
+ * therefore never taken back to waiting; otherwise the report that came last is kept.
+ */
+export const newerRunStep = (held: IAutomationRunStep | undefined, incoming: IAutomationRunStep): IAutomationRunStep =>
+	held && held.state !== AutomationRunStepState.parked && incoming.state === AutomationRunStepState.parked ? held : incoming;
+
 const bySeq = (steps: IAutomationRunStep[]): IAutomationRunStep[] => [...steps].sort((a, b) => a.seq - b.seq);
 
 /**
@@ -223,12 +231,32 @@ export const mapTraceToOverlay = (graph: Pick<IAutomationGraph, 'nodes' | 'edges
 };
 
 /**
+ * Of a failed run, the card it failed on: the failure nothing handled. A card whose failing output leads on
+ * in the graph recovered (its `error` output is connected), and a later card is the one the run failed on.
+ * Without the graph, the last failure is the one the run ended on. A run that failed for another reason (it
+ * reached the step limit) and has no unhandled failure is pointed at the last card it reached.
+ */
+const findFailedNodeId = (steps: IAutomationRunStep[], graph: Pick<IAutomationGraph, 'edges'> | undefined): string | null => {
+	const failed = steps.filter((step) => stepState(step) === 'failed');
+
+	const unhandled = graph
+		? failed.find(
+				(step) => typeof step.output !== 'string' || !graph.edges.some((edge) => edge.source === step.node_id && edge.source_port === step.output)
+			)
+		: failed.at(-1);
+
+	return unhandled?.node_id ?? steps.at(-1)?.node_id ?? null;
+};
+
+/**
  * Of a run that ended in a way that needs explaining, what happened and the card it is about. A run that
- * completed, or is still running, needs none.
+ * completed, or is still running, needs none. The graph, when given, tells a failure the flow handled from
+ * one it did not.
  */
 export const findRunAttention = (
 	run: Pick<IAutomationRun, 'status' | 'endReason'>,
-	runSteps: IAutomationRunStep[]
+	runSteps: IAutomationRunStep[],
+	graph?: Pick<IAutomationGraph, 'edges'>
 ): IAutomationRunAttention | null => {
 	const steps = bySeq(runSteps);
 
@@ -249,7 +277,7 @@ export const findRunAttention = (
 		case AutomationRunRecordStatus.failed:
 			return {
 				kind: 'failed',
-				nodeId: steps.find((step) => stepState(step) === 'failed')?.node_id ?? steps.at(-1)?.node_id ?? null,
+				nodeId: findFailedNodeId(steps, graph),
 				endReason: run.endReason,
 			};
 

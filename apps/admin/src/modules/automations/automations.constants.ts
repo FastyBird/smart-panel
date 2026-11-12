@@ -118,8 +118,19 @@ export const AUTOMATION_TRIGGER_REFUSALS: AutomationTriggerRefusal[] = [
 	'not_found',
 ];
 
-// Why a run ended early, as the backend names it in `end_reason`; anything else is a sentence in English
-export const AUTOMATION_RUN_END_REASONS = ['restarted', 'engine_stopped', 'backend_restarted'] as const;
+// Why a run ended early, as the backend names it in `end_reason`; anything else is a sentence in English.
+// An interrupted run was stopped by the server, a cancelled one by the engine (see its `teardown` reasons).
+export const AUTOMATION_RUN_INTERRUPT_REASONS = ['restarted', 'engine_stopped', 'backend_restarted'] as const;
+
+export const AUTOMATION_RUN_CANCEL_REASONS = [
+	'restarted',
+	'engine_stopped',
+	'backend_restarted',
+	'automation_updated',
+	'automation_disabled',
+	'automation_invalid',
+	'suspended',
+] as const;
 
 // How many runs the live view keeps the steps of while it waits to learn which one it follows
 export const AUTOMATION_LIVE_RUNS_BUFFERED = 5;

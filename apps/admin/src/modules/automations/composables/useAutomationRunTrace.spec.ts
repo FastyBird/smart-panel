@@ -186,6 +186,17 @@ describe('useAutomationLiveRun', (): void => {
 		expect(live.latestRunId.value).toBe(runId);
 	});
 
+	it('takes the newer state of a step it has, as a Delay that let the run go on', (): void => {
+		const live = create();
+
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'parked', delay_ms: 60_000 }));
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'done', output: 'done', delay_ms: 60_000 }));
+		// A step is never taken back to waiting
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'parked', delay_ms: 60_000 }));
+
+		expect(live.stepsOf(runId).map((step) => [step.seq, step.state])).toEqual([[2, 'done']]);
+	});
+
 	it('keeps the steps of the last few runs only', (): void => {
 		const live = create();
 
@@ -209,6 +220,13 @@ describe('mergeRunSteps', (): void => {
 
 		expect(merged.map((step) => step.seq)).toEqual([1, 2]);
 		expect(merged[1]?.delay_ms).toBe(60_000);
+	});
+
+	it('does not take a stored step that waits over a live one that went on', (): void => {
+		const live = [stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'done', output: 'done' })];
+		const stored = [stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'parked', delay_ms: 60_000 })];
+
+		expect(mergeRunSteps(stored as never, live as never)[0]).toMatchObject({ state: 'done', output: 'done' });
 	});
 });
 
@@ -389,6 +407,110 @@ describe('useAutomationRunTrace', (): void => {
 		await nextTick();
 
 		expect(trace.shown.value).toMatchObject({ runId, source: 'replay' });
+	});
+
+	it('follows a run that started while the run followed was ending, once that one is over', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		expect(trace.shown.value).toMatchObject({ runId, source: 'live' });
+
+		// The next run sends its steps before the end of the first one is announced
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		await nextTick();
+
+		expect(trace.shown.value?.runId).toBe(runId);
+
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await nextTick();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
+	});
+
+	it('does not follow a waiting run once the run followed ends, after it was closed or another run was picked', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		await nextTick();
+
+		trace.close();
+		await nextTick();
+
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await nextTick();
+
+		expect(trace.shown.value).toBeNull();
+	});
+
+	it('reads what a running run stored after a reconnect, and goes on with the steps that come live', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.POST.mockResolvedValueOnce({
+			data: { data: { automation_id: automationId, started: true, outcome: 'started', run_id: runId, reason: null } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await trace.test();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }));
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked', delay_ms: 60_000 }));
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(1);
+
+		emit('disconnect');
+
+		// While the socket was down the Delay let the run go on, and the run parked again
+		mocks.backend.GET.mockResolvedValueOnce({
+			data: {
+				data: {
+					...runRes(runId, 'running'),
+					trace: {
+						trigger: { node_id: 'n1', manual: true, data: {} },
+						steps: [
+							stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }),
+							stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'done', output: 'done', delay_ms: 60_000 }),
+							stepRes(3, 'n3', AutomationNodeKind.action, { via: 'e2', state: 'done', output: 'done', result: { success: true } }),
+						],
+						truncated: false,
+					},
+				},
+			},
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		emit('connect');
+		await flushPromises();
+
+		expect(mocks.backend.GET).toHaveBeenLastCalledWith('/modules/automations/runs/{runId}', { params: { path: { runId } } });
+		expect(trace.shown.value?.overlay.nodes.n2?.state).toBe('passed');
+		expect(trace.shown.value?.overlay.nodes.n3?.state).toBe('passed');
+		expect(trace.shown.value).toMatchObject({ ended: false, failed: false });
+
+		// A run that has not stored anything yet is simply followed live
+		emit('disconnect');
+
+		mocks.backend.GET.mockResolvedValueOnce({ data: undefined, error: { error: { message: 'Gone' } }, response: { status: 404 } });
+
+		emit('connect');
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId, ended: false, failed: false });
+		expect(trace.shown.value?.overlay.nodes.n3?.state).toBe('passed');
 	});
 
 	it('says when the history cannot be read', async (): Promise<void> => {
