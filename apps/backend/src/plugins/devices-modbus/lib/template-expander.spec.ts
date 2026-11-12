@@ -228,4 +228,25 @@ describe('expandModbusTemplate', () => {
 			expect(expandModbusTemplate(repeated([256, 256]), 'rev').channels).toHaveLength(512);
 		});
 	});
+
+	it('carries long_press_ms into the preview binding', () => {
+		const expansion = expandModbusTemplate(
+			single({
+				category: 'button',
+				identifier: 'button_{n}',
+				name: 'Button {n}',
+				properties: [
+					{
+						category: 'event',
+						read: { register_type: 'discrete_input', address: { base: 0 }, data_type: 'bool', long_press_ms: 1200 },
+					},
+				],
+			}),
+			'rev',
+		);
+
+		const [property] = expansion.channels[0].properties as unknown as { read: { long_press_ms?: number } }[];
+
+		expect(property.read.long_press_ms).toBe(1200);
+	});
 });

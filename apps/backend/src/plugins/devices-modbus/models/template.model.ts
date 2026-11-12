@@ -319,6 +319,14 @@ export class ModbusTemplatePreviewBindingModel {
 	})
 	@Expose()
 	poll_interval_ms?: number;
+
+	@ApiPropertyOptional({
+		description: 'Hold time in milliseconds after which a button press counts as a long press',
+		type: 'integer',
+		example: MODBUS_DEFAULTS.LONG_PRESS_MS,
+	})
+	@Expose()
+	long_press_ms?: number;
 }
 
 @ApiSchema({ name: 'DevicesModbusPluginDataTemplatePreviewProperty' })

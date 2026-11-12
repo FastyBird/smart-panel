@@ -1,7 +1,13 @@
 import { createExtensionLogger } from '../../../common/logger';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
-import { DEVICES_MODBUS_PLUGIN_NAME, ModbusByteOrder, ModbusRegisterType } from '../devices-modbus.constants';
+import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
+import {
+	DEVICES_MODBUS_PLUGIN_NAME,
+	MODBUS_DEFAULTS,
+	ModbusByteOrder,
+	ModbusRegisterType,
+} from '../devices-modbus.constants';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
+import { ButtonSynthesizer, ModbusButtonEvent } from '../lib/button-synthesizer';
 import { ModbusPropertyValue, decodeBit, decodeRegisters, registerSpan } from '../lib/codec';
 import { ModbusEndpointUnavailableError, ModbusExceptionError } from '../lib/errors';
 import { ReadBlock, ReadLimits, ReadPoint, planReadBlocks, sliceForPoint, splitBlock } from '../lib/read-planner';
@@ -16,7 +22,16 @@ export interface ModbusDeviceSnapshot {
 	byteOrder: ModbusByteOrder;
 	wordOrder: ModbusByteOrder;
 	limits: ReadLimits;
-	reads: Array<{ propertyId: string; binding: ModbusBindingEntity }>;
+	/**
+	 * `dataType` is the property's core data type; `button` is set for the level of a button channel's event property,
+	 * whose value is turned into events and never reported as a sample.
+	 */
+	reads: Array<{
+		propertyId: string;
+		binding: ModbusBindingEntity;
+		dataType: DataTypeType;
+		button: { channelId: string } | null;
+	}>;
 }
 
 export interface PollerCallbacks {
@@ -26,6 +41,8 @@ export interface PollerCallbacks {
 	isCurrent(): boolean;
 	/** The poller's overload flag changed (see `isOverloaded()`). */
 	setOverloaded(overloaded: boolean): void;
+	/** A button point produced an event. */
+	occurrence(propertyId: string, channelId: string, event: ModbusButtonEvent, at: Date): Promise<void>;
 }
 
 /** Polls failing in a row before the device is reported `lost`. */
@@ -40,6 +57,24 @@ const FUNCTION_CODES: Record<ModbusRegisterType, number> = {
 
 const isBitTable = (registerType: ModbusRegisterType): boolean =>
 	registerType === ModbusRegisterType.COIL || registerType === ModbusRegisterType.DISCRETE_INPUT;
+
+const INTEGER_DATA_TYPES = new Set<DataTypeType>([
+	DataTypeType.CHAR,
+	DataTypeType.UCHAR,
+	DataTypeType.SHORT,
+	DataTypeType.USHORT,
+	DataTypeType.INT,
+	DataTypeType.UINT,
+]);
+
+/** A decoded number reported to an integer property is rounded (a scaled register may yield a fraction); no clamping. */
+const coerce = (value: ModbusPropertyValue | null, dataType: DataTypeType): ModbusPropertyValue | null =>
+	typeof value === 'number' && INTEGER_DATA_TYPES.has(dataType) ? Math.round(value) : value;
+
+interface ButtonPoint {
+	channelId: string;
+	synthesizer: ButtonSynthesizer;
+}
 
 interface Schedule {
 	intervalMs: number;
@@ -57,7 +92,12 @@ type ReadOutcome = { kind: 'ok' } | { kind: 'stale' } | { kind: 'failed'; error:
  * - Points are grouped by effective interval (binding override or device interval); every group has its own read
  *   plan and timer, and at most one poll in flight. A tick that finds its poll still running is skipped and flags
  *   the poller overloaded until a poll of that group completes within its interval.
- * - A value is reported only when it differs from the last value reported for the property.
+ * - A value is reported only when it differs from the last value reported for the property. A number reported to an
+ *   integer property is rounded first.
+ * - A button point (the level of a button channel's event property) is never reported: its level feeds a
+ *   `ButtonSynthesizer` and every event it yields goes to `callbacks.occurrence`. Wherever a sample would be
+ *   invalidated (decode failure, illegal-request exception, `lost`), the button's baseline is cleared instead, so the
+ *   next level read is a fresh baseline without events. `pollNow` never reads button points.
  * - An illegal function / data address / data value exception (0x01-0x03) invalidates the block's properties and
  *   splits the block into single points for the next poll, so one bad point cannot hide its neighbours. Every other
  *   exception (busy, acknowledge, server failure, gateway, unknown) is transient: like timeouts, connection errors
@@ -68,18 +108,22 @@ type ReadOutcome = { kind: 'ok' } | { kind: 'stale' } | { kind: 'failed'; error:
  * - `connected` is passed to `callbacks.setConnectionState` after every successful poll and `lost` after every failed
  *   poll while lost; the owner deduplicates, so a state its store missed once is stored by a later poll.
  * - Nothing is reported once `stop()` was called or `callbacks.isCurrent()` turned `false`. Callback failures are
- *   logged and never stop the loop.
+ *   logged (report and occurrence failures once per property until one succeeds) and never stop the loop.
  */
 export class DevicePoller {
 	private readonly logger = createExtensionLogger(DEVICES_MODBUS_PLUGIN_NAME, 'DevicePoller');
 
 	private readonly bindings = new Map<string, ModbusBindingEntity>();
+	private readonly dataTypes = new Map<string, DataTypeType>();
+	private readonly buttons = new Map<string, ButtonPoint>();
 	private readonly points: ReadPoint[] = [];
 	private readonly schedules: Schedule[] = [];
 
 	private readonly lastReported = new Map<string, ModbusPropertyValue | null>();
 	/** Properties whose last report failed; the failure is logged once until a report succeeds again. */
 	private readonly failingReports = new Set<string>();
+	/** Button properties whose last event failed to publish; logged once until one publishes again. */
+	private readonly failingOccurrences = new Set<string>();
 	/** Exception code (0x01-0x03) each property's last read answered with; logged once per code until it reads again. */
 	private readonly requestErrors = new Map<string, number>();
 	/** Properties whose last value failed to decode; logged once per message until one decodes again. */
@@ -97,7 +141,7 @@ export class DevicePoller {
 	) {
 		const groups = new Map<number, ReadPoint[]>();
 
-		for (const { propertyId, binding } of device.reads) {
+		for (const { propertyId, binding, dataType, button } of device.reads) {
 			const point: ReadPoint = {
 				key: propertyId,
 				registerType: binding.registerType,
@@ -107,7 +151,16 @@ export class DevicePoller {
 			const intervalMs = binding.pollIntervalMs ?? device.pollIntervalMs;
 
 			this.bindings.set(propertyId, binding);
+			this.dataTypes.set(propertyId, dataType);
 			this.points.push(point);
+
+			if (button) {
+				this.buttons.set(propertyId, {
+					channelId: button.channelId,
+					synthesizer: new ButtonSynthesizer(binding.longPressMs ?? MODBUS_DEFAULTS.LONG_PRESS_MS),
+				});
+			}
+
 			groups.set(intervalMs, [...(groups.get(intervalMs) ?? []), point]);
 		}
 
@@ -156,6 +209,7 @@ export class DevicePoller {
 
 	/**
 	 * Reads the given read-bound properties (all when omitted) right away and reports them even when unchanged.
+	 * Button points are skipped: an extra level read between polls would distort their timing.
 	 * Rejects when the endpoint did not answer; does not affect the device's connection state.
 	 */
 	async pollNow(propertyIds?: string[]): Promise<void> {
@@ -164,7 +218,9 @@ export class DevicePoller {
 		}
 
 		const wanted = propertyIds ? new Set(propertyIds) : null;
-		const points = this.points.filter((point) => wanted === null || wanted.has(point.key));
+		const points = this.points.filter(
+			(point) => !this.buttons.has(point.key) && (wanted === null || wanted.has(point.key)),
+		);
 
 		if (points.length === 0) {
 			return;
@@ -384,6 +440,7 @@ export class DevicePoller {
 		await this.setState(ConnectionState.LOST, reason);
 	}
 
+	/** Hands a decoded value (`null` = invalid) to its property: a button's synthesizer or the sample report. */
 	private async publish(
 		propertyId: string,
 		value: ModbusPropertyValue | null,
@@ -394,6 +451,61 @@ export class DevicePoller {
 			return;
 		}
 
+		const button = this.buttons.get(propertyId);
+
+		if (button) {
+			await this.emitButtonEvents(propertyId, button, value, sampledAt);
+
+			return;
+		}
+
+		await this.report(
+			propertyId,
+			coerce(value, this.dataTypes.get(propertyId) ?? DataTypeType.UNKNOWN),
+			sampledAt,
+			force,
+		);
+	}
+
+	private async emitButtonEvents(
+		propertyId: string,
+		button: ButtonPoint,
+		value: ModbusPropertyValue | null,
+		sampledAt: Date,
+	): Promise<void> {
+		const events = button.synthesizer.observe(value === null ? null : value === true, sampledAt.getTime());
+
+		// Not reported, but remembered like a sample so an invalid level is warned about once (see `decode`).
+		this.lastReported.set(propertyId, value);
+
+		for (const event of events) {
+			if (!this.isCurrent()) {
+				return;
+			}
+
+			try {
+				await this.callbacks.occurrence(propertyId, button.channelId, event, sampledAt);
+
+				this.failingOccurrences.delete(propertyId);
+			} catch (error) {
+				if (!this.failingOccurrences.has(propertyId)) {
+					this.failingOccurrences.add(propertyId);
+
+					this.logger.warn(
+						`Failed to publish event ${event} of property id=${propertyId} of device id=${this.device.deviceId}: ` +
+							(error as Error).message,
+					);
+				}
+			}
+		}
+	}
+
+	private async report(
+		propertyId: string,
+		value: ModbusPropertyValue | null,
+		sampledAt: Date,
+		force: boolean,
+	): Promise<void> {
 		if (!force && this.lastReported.has(propertyId) && this.lastReported.get(propertyId) === value) {
 			return;
 		}

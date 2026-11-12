@@ -111,9 +111,10 @@ lights and valves, a 4-probe temperature module. The spec's categories would rej
 (`valve` has a single valve channel, `sensor` a single `temperature`, `switcher` cannot mix `outlet` and `switcher`).
 
 This is the problem `devices-virtual` already solves for multi-channel Shelly devices: the Modbus module is created as
-a plain I/O device (`switcher` for relays with optional inputs, `input_controller` for inputs, `generic` for analog
-inputs), optionally hidden, and virtual devices built from its properties become the valves, lights and temperature
-sensors that rooms and the panel use. Modbus itself never creates more than one device per unit.
+a plain I/O device (`switcher` for relays with optional inputs, `input_controller` for inputs, `sensor` for analog
+inputs; never the reserved `generic` category), optionally hidden, and virtual devices built from its properties
+become the valves, lights and temperature sensors that rooms and the panel use. Modbus itself never creates more
+than one device per unit.
 
 The builder should confirm that the virtual-device compatibility rules accept the pairings this relies on (relay
 `switcher.on` as `valve.on` and as a light's `on`; `analog_input.value` through the numeric converter as a

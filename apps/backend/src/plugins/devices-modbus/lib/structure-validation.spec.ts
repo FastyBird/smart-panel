@@ -80,10 +80,162 @@ describe('structure validation', () => {
 		expect(validateModbusStructure(structure, () => [])).toEqual([]);
 	});
 
+	it('rejects long_press_ms on a write binding', () => {
+		const structure = withDeviceInformation(singleRelay(), SERIAL);
+		const property = structure.channels[0].properties[0];
+
+		property.write = { ...property.write, long_press_ms: 800 };
+
+		expect(validateModbusStructure(structure, () => []).map((issue) => issue.field)).toEqual([
+			'channels[0].properties[0].write.long_press_ms',
+		]);
+	});
+
 	it('rejects a readable property without a read binding', () => {
 		const structure = withDeviceInformation(singleRelay(true), SERIAL);
 		const issues = validateModbusStructure(structure, () => []);
 
 		expect(issues.filter((issue) => issue.field === 'channels[0].properties[0].read')).toHaveLength(1);
+	});
+
+	describe('button events and long press', () => {
+		const READ = 'channels[0].properties[0].read';
+
+		const withRead = (channel: ChannelCategory, property: PropertyCategory, dataType: DataTypeType, read: object) =>
+			withDeviceInformation(
+				plainToInstance(CreateModbusDeviceStructureDto, {
+					name: 'Input board',
+					category: DeviceCategory.SWITCHER,
+					endpoint_id: 'endpoint',
+					unit_id: 1,
+					channels: [
+						{
+							identifier: 'channel_1',
+							name: 'Channel 1',
+							category: channel,
+							properties: [
+								{
+									category: property,
+									data_type: dataType,
+									permissions:
+										property === PropertyCategory.EVENT ? [PermissionType.EVENT_ONLY] : [PermissionType.READ_ONLY],
+									read,
+								},
+							],
+						},
+					],
+				}),
+				SERIAL,
+			);
+
+		const button = (read: object) => withRead(ChannelCategory.BUTTON, PropertyCategory.EVENT, DataTypeType.ENUM, read);
+		const state = (read: object) =>
+			withRead(ChannelCategory.BINARY_INPUT, PropertyCategory.STATE, DataTypeType.BOOL, read);
+
+		const level = { register_type: ModbusRegisterType.DISCRETE_INPUT, address: 0, data_type: ModbusDataType.BOOL };
+		const issuesOn = (structure: CreateModbusDeviceStructureDto) =>
+			validateModbusStructure(structure, () => []).filter((issue) => issue.field.startsWith(READ));
+
+		it('accepts a bool read binding on button.event', () => {
+			expect(issuesOn(button(level))).toEqual([]);
+		});
+
+		it('accepts a bit-in-register read binding on button.event', () => {
+			expect(
+				issuesOn(
+					button({
+						register_type: ModbusRegisterType.HOLDING_REGISTER,
+						address: 0,
+						data_type: ModbusDataType.BOOL,
+						bit: 3,
+					}),
+				),
+			).toEqual([]);
+		});
+
+		it('refuses a read binding on another ev property', () => {
+			const structure = withRead(ChannelCategory.BUTTON, PropertyCategory.EVENT, DataTypeType.ENUM, level);
+
+			structure.channels[0].properties[0].category = PropertyCategory.LAST_EVENT;
+
+			const issues = issuesOn(structure);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0].field).toBe(READ);
+			expect(issues[0].reason).toContain('button event');
+		});
+
+		it('refuses a non-bool level for button.event', () => {
+			const issues = issuesOn(
+				button({ register_type: ModbusRegisterType.HOLDING_REGISTER, address: 0, data_type: ModbusDataType.UINT16 }),
+			);
+
+			expect(issues.map((issue) => issue.field)).toEqual([`${READ}.data_type`]);
+		});
+
+		it('refuses a value map on the read binding of button.event, but allows invert', () => {
+			const valueMap = [
+				{ raw: 1, value: true },
+				{ raw: 0, value: false },
+			];
+
+			expect(issuesOn(button({ ...level, value_map: valueMap })).map((issue) => issue.field)).toEqual([
+				`${READ}.value_map`,
+			]);
+			expect(issuesOn(button({ ...level, invert: true }))).toEqual([]);
+		});
+
+		it('refuses a read binding on an ev property outside a button channel', () => {
+			const issues = issuesOn(withRead(ChannelCategory.BINARY_INPUT, PropertyCategory.EVENT, DataTypeType.ENUM, level));
+
+			expect(issues.map((issue) => issue.field)).toEqual([READ]);
+			expect(issues[0].reason).toContain('button event');
+		});
+
+		describe('button event format', () => {
+			const formatIssues = (format: string[] | undefined) => {
+				const structure = button(level);
+
+				structure.channels[0].properties[0].format = format;
+
+				return validateModbusStructure(structure, () => []).filter((issue) => issue.field.endsWith('.format'));
+			};
+
+			it('accepts no format and a format with all four synthesised events and extras', () => {
+				expect(formatIssues(undefined)).toEqual([]);
+				expect(formatIssues(['down', 'up', 'press', 'long_press'])).toEqual([]);
+				expect(formatIssues(['press', 'double_press', 'long_press', 'up', 'down'])).toEqual([]);
+			});
+
+			it('refuses a format missing a synthesised event', () => {
+				const issues = formatIssues(['press', 'long_press']);
+
+				expect(issues.map((issue) => issue.field)).toEqual(['channels[0].properties[0].format']);
+				expect(issues[0].reason).toContain('down');
+				expect(issues[0].reason).toContain('up');
+			});
+		});
+
+		it('refuses long_press_ms outside button.event', () => {
+			const issues = issuesOn(state({ ...level, long_press_ms: 800 }));
+
+			expect(issues.map((issue) => issue.field)).toEqual([`${READ}.long_press_ms`]);
+		});
+
+		it.each([99, 10001, 150.5])('refuses long_press_ms %s', (value) => {
+			expect(issuesOn(button({ ...level, long_press_ms: value })).map((issue) => issue.field)).toEqual([
+				`${READ}.long_press_ms`,
+			]);
+		});
+
+		it.each([100, 10000])('accepts long_press_ms %s', (value) => {
+			expect(issuesOn(button({ ...level, long_press_ms: value }))).toEqual([]);
+		});
+
+		it('refuses scale 0', () => {
+			const read = { register_type: ModbusRegisterType.INPUT_REGISTER, address: 0, data_type: ModbusDataType.UINT16 };
+
+			expect(issuesOn(state({ ...read, scale: 0 })).map((issue) => issue.field)).toEqual([`${READ}.scale`]);
+		});
 	});
 });

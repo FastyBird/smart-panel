@@ -1,5 +1,5 @@
 import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
 import { ModbusBindingRole, ModbusByteOrder, ModbusDataType, ModbusRegisterType } from '../devices-modbus.constants';
 import { ModbusBindingEntity } from '../entities/modbus-binding.entity';
 import { ModbusConnectionError, ModbusExceptionError, ModbusTimeoutError } from '../lib/errors';
@@ -43,12 +43,35 @@ const binding = (overrides: Partial<ModbusBindingEntity> = {}): ModbusBindingEnt
 		valueMap: null,
 		writeFunction: null,
 		pollIntervalMs: null,
+		longPressMs: null,
 		...overrides,
 	}) as ModbusBindingEntity;
 
-const read = (propertyId: string, overrides: Partial<ModbusBindingEntity> = {}) => ({
+const read = (
+	propertyId: string,
+	overrides: Partial<ModbusBindingEntity> = {},
+	dataType: DataTypeType = DataTypeType.FLOAT,
+): ModbusDeviceSnapshot['reads'][number] => ({
 	propertyId,
 	binding: binding({ propertyId, ...overrides }),
+	dataType,
+	button: null,
+});
+
+/** The level of a button on a discrete input; its events go to `occurrence`, never to `report`. */
+const buttonRead = (
+	propertyId: string,
+	overrides: Partial<ModbusBindingEntity> = {},
+): ModbusDeviceSnapshot['reads'][number] => ({
+	propertyId,
+	binding: binding({
+		propertyId,
+		registerType: ModbusRegisterType.DISCRETE_INPUT,
+		dataType: ModbusDataType.BOOL,
+		...overrides,
+	}),
+	dataType: DataTypeType.ENUM,
+	button: { channelId: `channel-${propertyId}` },
 });
 
 const snapshot = (
@@ -76,6 +99,7 @@ const makeCallbacks = () => ({
 	setConnectionState: jest.fn<Promise<void>, [ConnectionState, string?]>().mockResolvedValue(undefined),
 	isCurrent: jest.fn(() => true),
 	setOverloaded: jest.fn<void, [boolean]>(),
+	occurrence: jest.fn<Promise<void>, [string, string, string, Date]>().mockResolvedValue(undefined),
 });
 
 describe('DevicePoller', () => {
@@ -95,6 +119,9 @@ describe('DevicePoller', () => {
 
 	const reported = (): Map<string, unknown> =>
 		new Map(callbacks.report.mock.calls.map(([propertyId, value]) => [propertyId, value]));
+
+	const occurrences = (): Array<[string, string, string]> =>
+		callbacks.occurrence.mock.calls.map(([propertyId, channelId, event]) => [propertyId, channelId, event]);
 
 	beforeEach(() => {
 		jest.useFakeTimers();
@@ -588,6 +615,143 @@ describe('DevicePoller', () => {
 		await expect(poller?.pollNow(['p1'])).rejects.toBeInstanceOf(ModbusTimeoutError);
 	});
 
+	describe('button points', () => {
+		it('emits button events instead of samples', async () => {
+			connection.read.mockResolvedValueOnce([false]).mockResolvedValueOnce([true]).mockResolvedValue([false]);
+
+			// Released one 200 ms poll after the press: well within the default 800 ms long-press time.
+			create(snapshot([buttonRead('button')], { pollIntervalMs: 200 })).start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			// The first level only sets the baseline.
+			expect(callbacks.occurrence).not.toHaveBeenCalled();
+
+			await jest.advanceTimersByTimeAsync(200);
+			await jest.advanceTimersByTimeAsync(200);
+
+			expect(occurrences()).toEqual([
+				['button', 'channel-button', 'down'],
+				['button', 'channel-button', 'up'],
+				['button', 'channel-button', 'press'],
+			]);
+			expect(callbacks.occurrence.mock.calls.map(([, , , at]) => at)).toEqual([
+				expect.any(Date),
+				expect.any(Date),
+				expect.any(Date),
+			]);
+			expect(callbacks.report).not.toHaveBeenCalled();
+		});
+
+		it('uses the binding long-press time', async () => {
+			connection.read.mockResolvedValueOnce([false]).mockResolvedValueOnce([true]).mockResolvedValue([true]);
+
+			create(snapshot([buttonRead('button', { longPressMs: 2000 })])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(2000);
+
+			expect(occurrences().map(([, , event]) => event)).toEqual(['down']);
+
+			await jest.advanceTimersByTimeAsync(1000);
+
+			expect(occurrences().map(([, , event]) => event)).toEqual(['down', 'long_press']);
+		});
+
+		it('invalid level resets the button baseline', async () => {
+			connection.read
+				.mockResolvedValueOnce([true])
+				.mockRejectedValueOnce(new ModbusTimeoutError())
+				.mockRejectedValueOnce(new ModbusTimeoutError())
+				.mockRejectedValueOnce(new ModbusTimeoutError())
+				.mockResolvedValue([false]);
+
+			create(snapshot([buttonRead('button')])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(3000);
+
+			expect(callbacks.setConnectionState).toHaveBeenLastCalledWith(ConnectionState.LOST, expect.any(String));
+
+			await jest.advanceTimersByTimeAsync(2000);
+
+			expect(callbacks.setConnectionState).toHaveBeenLastCalledWith(ConnectionState.CONNECTED, undefined);
+			expect(callbacks.occurrence).not.toHaveBeenCalled();
+			expect(callbacks.report).not.toHaveBeenCalled();
+		});
+
+		it('resets the button baseline when its block answers an illegal-address exception', async () => {
+			connection.read
+				.mockResolvedValueOnce([false])
+				.mockResolvedValueOnce([true])
+				.mockRejectedValueOnce(new ModbusExceptionError(0x02))
+				.mockResolvedValue([false]);
+
+			create(snapshot([buttonRead('button')])).start();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(3000);
+
+			// down, then the exception clears the baseline: the release is a fresh baseline, not an `up`.
+			expect(occurrences().map(([, , event]) => event)).toEqual(['down']);
+			expect(callbacks.report).not.toHaveBeenCalled();
+		});
+
+		it('pollNow skips button points', async () => {
+			connection.read.mockImplementation((request) =>
+				Promise.resolve(
+					request.registerType === ModbusRegisterType.DISCRETE_INPUT
+						? (Array(request.count).fill(true) as boolean[])
+						: (Array(request.count).fill(4) as number[]),
+				),
+			);
+
+			create(snapshot([read('p1', { address: 0 }), buttonRead('button')])).start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			connection.read.mockClear();
+			callbacks.report.mockClear();
+
+			await poller?.pollNow();
+			await poller?.pollNow(['button']);
+
+			expect(connection.read).toHaveBeenCalledTimes(1);
+			expect(connection.read).toHaveBeenCalledWith(
+				expect.objectContaining({ registerType: ModbusRegisterType.HOLDING_REGISTER }),
+			);
+			expect(callbacks.report).toHaveBeenCalledTimes(1);
+			expect(callbacks.report).toHaveBeenCalledWith('p1', 4, expect.any(Date));
+			expect(callbacks.occurrence).not.toHaveBeenCalled();
+		});
+	});
+
+	it('rounds decoded values for integer properties', async () => {
+		connection.read.mockResolvedValue([456, 456]);
+
+		create(
+			snapshot([
+				read('humidity', { address: 0, scale: 0.1 }, DataTypeType.UCHAR),
+				read('reading', { address: 1, scale: 0.1 }, DataTypeType.FLOAT),
+			]),
+		).start();
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(callbacks.report).toHaveBeenCalledWith('humidity', 46, expect.any(Date));
+		expect(callbacks.report).toHaveBeenCalledWith('reading', 45.6, expect.any(Date));
+	});
+
+	it.each([
+		DataTypeType.CHAR,
+		DataTypeType.UCHAR,
+		DataTypeType.SHORT,
+		DataTypeType.USHORT,
+		DataTypeType.INT,
+		DataTypeType.UINT,
+	])('rounds a scaled value reported to a %s property', async (dataType) => {
+		connection.read.mockResolvedValue([25]);
+
+		create(snapshot([read('p1', { scale: 0.1 }, dataType)])).start();
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(callbacks.report).toHaveBeenCalledWith('p1', 3, expect.any(Date));
+	});
+
 	describe('warnings', () => {
 		let warn: jest.SpyInstance;
 
@@ -630,6 +794,34 @@ describe('DevicePoller', () => {
 
 			expect(warnings('Modbus exception 2')).toBe(1);
 			expect(warnings('Modbus exception 3')).toBe(1);
+		});
+
+		it('keeps polling after an occurrence fails and logs it once until one succeeds', async () => {
+			let level = false;
+
+			connection.read.mockImplementation(() => Promise.resolve([level]));
+			callbacks.occurrence.mockRejectedValue(new Error('device is disabled'));
+
+			create(snapshot([buttonRead('button')], { pollIntervalMs: 200 })).start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			for (const next of [true, false, true, false]) {
+				level = next;
+				await jest.advanceTimersByTimeAsync(200);
+			}
+
+			expect(connection.read).toHaveBeenCalledTimes(5);
+			// down, up, press per cycle; each one failed.
+			expect(callbacks.occurrence).toHaveBeenCalledTimes(6);
+			expect(warnings('Failed to publish event')).toBe(1);
+
+			callbacks.occurrence.mockResolvedValueOnce(undefined).mockRejectedValue(new Error('device is disabled'));
+			level = true;
+			await jest.advanceTimersByTimeAsync(200);
+			level = false;
+			await jest.advanceTimersByTimeAsync(200);
+
+			expect(warnings('Failed to publish event')).toBe(2);
 		});
 
 		it('logs a decode failure once per property until it decodes again', async () => {

@@ -15,6 +15,7 @@ import {
 import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import {
 	MODBUS_DEFAULTS,
+	MODBUS_LIMITS,
 	ModbusBindingRole,
 	ModbusDataType,
 	ModbusRegisterType,
@@ -27,6 +28,7 @@ import {
 	CreateModbusDeviceStructurePropertyDto,
 } from '../dto/create-device-structure.dto';
 
+import type { ModbusButtonEvent } from './button-synthesizer';
 import { registerSpan } from './codec';
 
 export type ModbusStructureIssue = { field: string; reason: string };
@@ -123,9 +125,14 @@ export function withDeviceInformation(
 	return { ...dto, channels: [...dto.channels, channel] };
 }
 
+/**
+ * `keptStatic` names the properties a points update keeps as stored static values: sent with their ID, without a
+ * value and without bindings. They are not read from the device, so they need no read binding.
+ */
 export function validateModbusStructure(
 	dto: CreateModbusDeviceStructureDto,
 	validateSpecification: SpecificationValidator,
+	keptStatic: ReadonlySet<string> = new Set(),
 ): ModbusStructureIssue[] {
 	const issues: ModbusStructureIssue[] = [];
 	const writes: { binding: ModbusBindingDto; field: string }[] = [];
@@ -175,15 +182,20 @@ export function validateModbusStructure(
 				propertyIdentifiers.add(property.identifier);
 			}
 
-			issues.push(...validateProperty(property, field));
+			issues.push(
+				...validateProperty(channel, property, field, property.id !== undefined && keptStatic.has(property.id)),
+			);
 
 			if (property.read) {
 				readBindings.push(property.read);
 				issues.push(...validateBinding(property.read, ModbusBindingRole.READ, `${field}.read`));
+				issues.push(...validateLongPress(property.read, isButtonEvent(channel, property), `${field}.read`));
 			}
 
 			if (property.write) {
 				issues.push(...validateBinding(property.write, ModbusBindingRole.WRITE, `${field}.write`));
+				// Only the read binding of a button event takes a long-press time; a write binding never does.
+				issues.push(...validateLongPress(property.write, false, `${field}.write`));
 				writes.push({ binding: property.write, field: `${field}.write` });
 			}
 		});
@@ -211,7 +223,24 @@ export function validateModbusStructure(
 	return issues;
 }
 
-function validateProperty(property: CreateModbusDeviceStructurePropertyDto, field: string): ModbusStructureIssue[] {
+/** The events the runtime synthesises from a button level; a declared format has to offer all of them. */
+const BUTTON_EVENTS: readonly ModbusButtonEvent[] = ['down', 'up', 'press', 'long_press'];
+
+/** The one `ev` property that may be read: the level the button events are synthesised from. */
+const isButtonEvent = (
+	channel: CreateModbusDeviceStructureChannelDto,
+	property: CreateModbusDeviceStructurePropertyDto,
+): boolean =>
+	channel.category === ChannelCategory.BUTTON &&
+	property.category === PropertyCategory.EVENT &&
+	(property.permissions ?? []).includes(PermissionType.EVENT_ONLY);
+
+function validateProperty(
+	channel: CreateModbusDeviceStructureChannelDto,
+	property: CreateModbusDeviceStructurePropertyDto,
+	field: string,
+	keptStatic: boolean,
+): ModbusStructureIssue[] {
 	const issues: ModbusStructureIssue[] = [];
 	const permissions = property.permissions ?? [];
 	const canRead = permissions.some((p) => p === PermissionType.READ_ONLY || p === PermissionType.READ_WRITE);
@@ -236,19 +265,78 @@ function validateProperty(property: CreateModbusDeviceStructurePropertyDto, fiel
 		return issues;
 	}
 
-	if (canRead && !property.read) {
+	const buttonEvent = isButtonEvent(channel, property);
+
+	if (buttonEvent && property.format !== undefined && property.format !== null) {
+		const missing = BUTTON_EVENTS.filter((event) => !(property.format as unknown[]).includes(event));
+
+		if (missing.length > 0) {
+			issues.push({
+				field: `${field}.format`,
+				reason: `A button event format must contain every synthesised event; missing: ${missing.join(', ')}.`,
+			});
+		}
+	}
+
+	if (canRead && !property.read && !keptStatic) {
 		issues.push({
 			field: `${field}.read`,
 			reason: 'A readable property needs a read binding, so every command is confirmed by reading the device.',
 		});
 	}
 
-	if (property.read && !canRead) {
-		issues.push({ field: `${field}.read`, reason: 'A read binding needs the ro or rw permission.' });
+	if (property.read && !canRead && !buttonEvent) {
+		issues.push({
+			field: `${field}.read`,
+			reason: permissions.includes(PermissionType.EVENT_ONLY)
+				? 'Only the button event property takes a read binding among event properties.'
+				: 'A read binding needs the ro or rw permission.',
+		});
 	}
 
 	if (property.write && !canWrite) {
 		issues.push({ field: `${field}.write`, reason: 'A write binding needs the rw or wo permission.' });
+	}
+
+	return issues;
+}
+
+/** A button event is synthesised from a boolean level, and only that binding takes a long-press time. */
+function validateLongPress(binding: ModbusBindingDto, buttonEvent: boolean, field: string): ModbusStructureIssue[] {
+	const issues: ModbusStructureIssue[] = [];
+	const bitTable = BIT_TABLES.has(binding.register_type);
+	const hasBit = binding.bit !== undefined && binding.bit !== null;
+
+	if (buttonEvent && !(bitTable || (hasBit && binding.data_type === ModbusDataType.BOOL))) {
+		issues.push({
+			field: `${field}.data_type`,
+			reason: 'A button event reads a boolean level: use a coil, a discrete input or a register bit.',
+		});
+	}
+
+	if (buttonEvent && binding.value_map) {
+		issues.push({
+			field: `${field}.value_map`,
+			reason: 'A button event reads a boolean level and takes no value map; use invert to flip it.',
+		});
+	}
+
+	if (binding.long_press_ms !== undefined && binding.long_press_ms !== null) {
+		if (!buttonEvent) {
+			issues.push({
+				field: `${field}.long_press_ms`,
+				reason: 'A long-press time applies to the read binding of a button event only.',
+			});
+		} else if (
+			!Number.isInteger(binding.long_press_ms) ||
+			binding.long_press_ms < MODBUS_LIMITS.MIN_LONG_PRESS_MS ||
+			binding.long_press_ms > MODBUS_LIMITS.MAX_LONG_PRESS_MS
+		) {
+			issues.push({
+				field: `${field}.long_press_ms`,
+				reason: `Long press must be an integer between ${MODBUS_LIMITS.MIN_LONG_PRESS_MS} and ${MODBUS_LIMITS.MAX_LONG_PRESS_MS} ms.`,
+			});
+		}
 	}
 
 	return issues;
@@ -292,6 +380,10 @@ function validateBinding(binding: ModbusBindingDto, role: ModbusBindingRole, fie
 		} else if (!Number.isInteger(binding.bit) || binding.bit < 0 || binding.bit > 15) {
 			issues.push({ field: `${field}.bit`, reason: 'Bit must be between 0 and 15.' });
 		}
+	}
+
+	if (binding.scale === 0) {
+		issues.push({ field: `${field}.scale`, reason: 'Scale cannot be 0, it would turn every value into 0.' });
 	}
 
 	if (binding.address + span(binding) > ADDRESS_SPACE) {

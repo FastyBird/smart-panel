@@ -188,4 +188,18 @@ export class ModbusBindingEntity extends BaseEntity {
 	@Transform(fromEither<number | null>('poll_interval_ms', 'pollIntervalMs'), { toClassOnly: true })
 	@Column({ type: 'integer', nullable: true })
 	pollIntervalMs: number | null;
+
+	@ApiPropertyOptional({
+		name: 'long_press_ms',
+		description: 'Hold time in milliseconds after which a button press counts as a long press; null means the default',
+		type: 'integer',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'long_press_ms' })
+	@IsOptional()
+	@IsInt()
+	@Transform(fromEither<number | null>('long_press_ms', 'longPressMs'), { toClassOnly: true })
+	@Column({ type: 'integer', nullable: true })
+	longPressMs: number | null;
 }

@@ -144,6 +144,8 @@ describe('devices-modbus templates (e2e)', () => {
 		request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${accessToken}`);
 	const authPost = (path: string) =>
 		request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${accessToken}`);
+	const authPatch = (path: string) =>
+		request(app.getHttpServer()).patch(path).set('Authorization', `Bearer ${accessToken}`);
 
 	/** Reads a `di_*` state in-process (HTTP polling would exhaust the throttler); `undefined` until a live sample exists. */
 	const inputState = async (identifier: string): Promise<unknown> => {
@@ -305,6 +307,25 @@ describe('devices-modbus templates (e2e)', () => {
 			templateRevision: string;
 		};
 
+		expect(entity.templateRevision).toBe(builtinRevision);
+	});
+
+	it('PATCH cannot change template provenance', async () => {
+		// The validation pipe runs with `forbidNonWhitelisted`, so the removed fields are refused rather than ignored.
+		for (const field of [{ template_id: 'other' }, { template_revision: 'other' }]) {
+			const refused = await authPatch(`/modules/devices/devices/${device.id}`)
+				.send({ data: { type: 'devices-modbus', ...field } })
+				.expect(400);
+
+			expect(JSON.stringify(refused.body)).toContain(Object.keys(field)[0]);
+		}
+
+		const entity = (await moduleRef.get(DevicesService).getOneOrThrow(device.id)) as unknown as {
+			templateId: string;
+			templateRevision: string;
+		};
+
+		expect(entity.templateId).toBe('qingjun-32di');
 		expect(entity.templateRevision).toBe(builtinRevision);
 	});
 

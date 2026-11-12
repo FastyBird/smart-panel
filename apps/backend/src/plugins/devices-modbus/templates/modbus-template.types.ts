@@ -25,6 +25,7 @@ export interface ModbusTemplateBinding {
 	value_map?: { raw: number; value: string | number | boolean }[];
 	write_function?: ModbusWriteFunction;
 	poll_interval_ms?: number;
+	long_press_ms?: number;
 }
 
 export interface ModbusTemplateProperty {

@@ -81,7 +81,12 @@ export class CreateModbusDeviceStructurePropertyDto {
 	})
 	permissions: PermissionType[];
 
-	@ApiPropertyOptional({ description: 'Property unit', type: 'string', example: '°C' })
+	@ApiPropertyOptional({
+		description:
+			'Property unit. Not stored: the device reports the unit of the property specification for its channel.',
+		type: 'string',
+		example: '°C',
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"unit","reason":"Unit must be a string."}]' })
@@ -178,7 +183,11 @@ export class CreateModbusDeviceStructureDto {
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
 
-	@ApiProperty({ description: 'Device category', enum: DeviceCategory, example: DeviceCategory.SWITCHER })
+	@ApiProperty({
+		description: 'Device category. The generic category is reserved and refused.',
+		enum: DeviceCategory,
+		example: DeviceCategory.SWITCHER,
+	})
 	@Expose()
 	@IsEnum(DeviceCategory, { message: '[{"field":"category","reason":"Category must be a valid device category."}]' })
 	category: DeviceCategory;

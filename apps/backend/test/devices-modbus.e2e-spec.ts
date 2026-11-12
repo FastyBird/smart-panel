@@ -23,8 +23,11 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../src/modules/devices/devices.constants';
+import { ChannelInputOccurrencePayload } from '../src/modules/devices/models/channel-input-occurrence.model';
+import { ChannelInputOccurrencesService } from '../src/modules/devices/services/channel-input-occurrences.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
+import { UserRole } from '../src/modules/users/users.constants';
 import {
 	DEVICES_MODBUS_TYPE,
 	ModbusDataType,
@@ -83,12 +86,17 @@ const freePort = (): Promise<number> =>
 		});
 	});
 
+/** Discrete input of the simulated board that the button device reads as its level. */
+const BUTTON_INPUT = 0;
+
 /**
  * Simulated Eletechsup N4D8B08 relay board on a Modbus TCP server: holding registers 1–8 read `1` (on) or `0` (off);
- * a write of `256` to register n switches relay n on, `512` switches it off. Every write is recorded.
+ * a write of `256` to register n switches relay n on, `512` switches it off. Every write is recorded. Discrete input
+ * `BUTTON_INPUT` is a push button. The server answers every unit id, so a second device can use another unit.
  */
 class RelayBoardSimulator {
 	readonly registers = new Map<number, number>(RELAYS.map((relay) => [relay, 0]));
+	readonly discreteInputs = new Map<number, boolean>([[BUTTON_INPUT, false]]);
 	readonly writes: { address: number; value: number }[] = [];
 
 	private server: ServerTCP | null = null;
@@ -99,6 +107,15 @@ class RelayBoardSimulator {
 		return new Promise((resolve, reject) => {
 			const server = new ServerTCP(
 				{
+					getDiscreteInput: (address: number): boolean => {
+						const value = this.discreteInputs.get(address);
+
+						if (value === undefined) {
+							throw Object.assign(new Error('Illegal data address'), { modbusErrorCode: 0x02 });
+						}
+
+						return value;
+					},
 					getHoldingRegister: (address: number): number => this.read(address),
 					getMultipleHoldingRegisters: (address: number, length: number): number[] =>
 						Array.from({ length }, (_, index) => this.read(address + index)),
@@ -116,7 +133,8 @@ class RelayBoardSimulator {
 						}
 					},
 				},
-				{ host: '127.0.0.1', port: this.port, unitID: 1 },
+				// 255: answer every unit id.
+				{ host: '127.0.0.1', port: this.port, unitID: 255 },
 			);
 
 			server.on('initialized', () => resolve());
@@ -226,6 +244,8 @@ describe('devices-modbus plugin (e2e)', () => {
 		request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${accessToken}`);
 	const authPatch = (path: string) =>
 		request(app.getHttpServer()).patch(path).set('Authorization', `Bearer ${accessToken}`);
+	const authPut = (path: string, token = accessToken) =>
+		request(app.getHttpServer()).put(path).set('Authorization', `Bearer ${token}`);
 	const authDelete = (path: string) =>
 		request(app.getHttpServer()).delete(path).set('Authorization', `Bearer ${accessToken}`);
 
@@ -512,12 +532,11 @@ describe('devices-modbus plugin (e2e)', () => {
 
 	it('applies and validates Modbus fields of a core device PATCH', async () => {
 		const updated = await authPatch(`/modules/devices/devices/${device.id}`)
-			.send({ data: { type: DEVICES_MODBUS_TYPE, max_read_registers: 100, template_revision: '1.0.0+abc123' } })
+			.send({ data: { type: DEVICES_MODBUS_TYPE, max_read_registers: 100 } })
 			.expect(200);
 
 		expect((updated.body as { data: Record<string, unknown> }).data).toMatchObject({
 			max_read_registers: 100,
-			template_revision: '1.0.0+abc123',
 		});
 
 		const refused = await authPatch(`/modules/devices/devices/${device.id}`)
@@ -535,6 +554,181 @@ describe('devices-modbus plugin (e2e)', () => {
 			endpoint_id: endpointId,
 			unit_id: 1,
 		});
+	});
+
+	it('PATCH cannot set the generic category', async () => {
+		const before = (await fetchDevice()) as unknown as { category: string };
+		const refused = await authPatch(`/modules/devices/devices/${device.id}`)
+			.send({ data: { type: DEVICES_MODBUS_TYPE, category: DeviceCategory.GENERIC } })
+			.expect(400);
+
+		expect(JSON.stringify(refused.body)).toContain('generic category is reserved');
+		expect(((await fetchDevice()) as unknown as { category: string }).category).toBe(before.category);
+	});
+
+	it('PUT structure updates bindings and keeps ids', async () => {
+		// Relay 7 moves to register 8 and relay 8 is dropped; every other point is sent unchanged with its IDs.
+		const keptRelays = RELAYS.filter((relay) => relay !== 8);
+		const relay7Property = relayProperty(7).id;
+		const relay8Channel = relayChannelOf(8).id;
+		const information = device.channels.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
+		const channels = keptRelays.map((relay) => {
+			const point = relayChannel(relay);
+			const address = relay === 7 ? 8 : relay;
+
+			return {
+				...point,
+				id: relayChannelOf(relay).id,
+				properties: point.properties.map((property) => ({
+					...property,
+					id: relayProperty(relay).id,
+					read: { ...property.read, address },
+					write: { ...property.write, address },
+				})),
+			};
+		});
+
+		const response = await authPut(`/plugins/devices-modbus/devices/${device.id}/structure`)
+			.send({ data: { category: DeviceCategory.SWITCHER, channels } })
+			.expect(200);
+		const updated = (response.body as { data: DeviceBody }).data;
+
+		expect(updated.channels.map((channel) => channel.id).sort()).toEqual(
+			[...keptRelays.map((relay) => relayChannelOf(relay).id), information?.id].sort(),
+		);
+		expect(updated.channels.some((channel) => channel.id === relay8Channel)).toBe(false);
+
+		const bindings = await authGet(`/plugins/devices-modbus/devices/${device.id}/bindings`).expect(200);
+		const rows = (bindings.body as { data: { property_id: string; address: number }[] }).data;
+
+		expect(rows).toHaveLength(14);
+		expect(rows.filter((row) => row.property_id === relay7Property).map((row) => row.address)).toEqual([8, 8]);
+
+		device = updated;
+	});
+
+	it('PUT structure is refused for viewers', async () => {
+		// Self-registration only ever creates the owner, so a USER account is created through the users route.
+		await authPost('/modules/users/users')
+			.send({
+				data: {
+					username: 'modbusviewer',
+					password: 'securePassword123!',
+					email: 'modbusviewer@example.com',
+					role: UserRole.USER,
+				},
+			})
+			.expect(201);
+
+		const login = await request(app.getHttpServer())
+			.post('/modules/auth/auth/login')
+			.send({ data: { username: 'modbusviewer', password: 'securePassword123!' } });
+		const viewerToken = (login.body as { data: { access_token: string } }).data.access_token;
+
+		await authPut(`/plugins/devices-modbus/devices/${device.id}/structure`, viewerToken)
+			.send({ data: { category: DeviceCategory.SWITCHER, channels: [relayChannel(1)] } })
+			.expect(403);
+
+		const bindings = await authGet(`/plugins/devices-modbus/devices/${device.id}/bindings`).expect(200);
+
+		expect((bindings.body as { data: unknown[] }).data).toHaveLength(14);
+	});
+
+	it('button point emits events', async () => {
+		const occurrences: ChannelInputOccurrencePayload[] = [];
+		const unsubscribe = moduleRef
+			.get(ChannelInputOccurrencesService)
+			.subscribe((occurrence) => void occurrences.push(occurrence));
+		let buttonDeviceId: string | null = null;
+
+		try {
+			const response = await authPost('/plugins/devices-modbus/devices')
+				.send({
+					data: {
+						name: 'Push button',
+						category: DeviceCategory.INPUT_CONTROLLER,
+						endpoint_id: endpointId,
+						unit_id: 2,
+						poll_interval_ms: POLL_INTERVAL_MS,
+						channels: [
+							{
+								identifier: 'button_1',
+								name: 'Button 1',
+								category: ChannelCategory.BUTTON,
+								properties: [
+									{
+										category: PropertyCategory.EVENT,
+										data_type: DataTypeType.ENUM,
+										permissions: [PermissionType.EVENT_ONLY],
+										format: ['press', 'long_press', 'double_press', 'triple_press', 'down', 'up'],
+										read: {
+											register_type: ModbusRegisterType.DISCRETE_INPUT,
+											address: BUTTON_INPUT,
+											data_type: ModbusDataType.BOOL,
+											// The longest allowed: a loaded test machine never turns the short press into a long one.
+											long_press_ms: 10_000,
+										},
+									},
+								],
+							},
+						],
+					},
+				})
+				.expect(201);
+			const buttonDevice = (response.body as { data: DeviceBody }).data;
+
+			buttonDeviceId = buttonDevice.id;
+			const buttonChannel = buttonDevice.channels.find((channel) => channel.category === ChannelCategory.BUTTON);
+			const eventProperty = buttonChannel?.properties.find((property) => property.category === PropertyCategory.EVENT);
+
+			if (!buttonChannel || !eventProperty) {
+				throw new Error('Button device has no button event property');
+			}
+
+			const status = async (): Promise<ConnectionState> =>
+				(await moduleRef.get(DevicesService).getOneOrThrow(buttonDevice.id)).status.status;
+
+			// Connected means the first poll ran: the released level is the baseline.
+			await waitFor(
+				'button device connected',
+				async () => ((await status()) === ConnectionState.CONNECTED ? true : undefined),
+				5000,
+			);
+
+			const events = (): string[] =>
+				occurrences
+					.filter((occurrence) => occurrence.propertyId === eventProperty.id)
+					.map((occurrence) => occurrence.event);
+
+			expect(events()).toEqual([]);
+
+			simulator.discreteInputs.set(BUTTON_INPUT, true);
+
+			await waitFor('down event', () => Promise.resolve(events().includes('down') ? true : undefined), 2000, 20);
+
+			simulator.discreteInputs.set(BUTTON_INPUT, false);
+
+			await waitFor('press event', () => Promise.resolve(events().includes('press') ? true : undefined), 2000, 20);
+
+			expect(events()).toEqual(['down', 'up', 'press']);
+			expect(occurrences.find((occurrence) => occurrence.event === 'down')).toMatchObject({
+				deviceId: buttonDevice.id,
+				channelId: buttonChannel.id,
+				propertyId: eventProperty.id,
+				channelCategory: ChannelCategory.BUTTON,
+				propertyCategory: PropertyCategory.EVENT,
+				integration: DEVICES_MODBUS_TYPE,
+				sourceOccurrenceId: expect.any(String) as string,
+				sourceTimestamp: expect.any(String) as string,
+			});
+		} finally {
+			unsubscribe();
+
+			// Removed even when an assertion failed, so the endpoint test below still runs against one device.
+			if (buttonDeviceId) {
+				await authDelete(`/modules/devices/devices/${buttonDeviceId}`).expect(204);
+			}
+		}
 	});
 
 	it('refuses deleting the endpoint while the device exists', async () => {
