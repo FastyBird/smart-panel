@@ -55,6 +55,8 @@ interface LoadedDevice {
 	readPropertyIds: string[];
 	/** Channels of the device the load resolved metadata from; a structure event on one of them reloads it. */
 	channelIds: Set<string>;
+	/** Properties of the device's channels; a deleted property arrives without its channel relation. */
+	propertyIds: Set<string>;
 	poller: DevicePoller | null;
 	/** The device may be commanded over its endpoint connection. */
 	commandable: boolean;
@@ -223,7 +225,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
 	async onChannelPropertyChanged(property: ChannelPropertyEntity): Promise<void> {
 		const channelId = idOf(property.channel);
-		const deviceId = channelId ? this.loadedDeviceOfChannel(channelId) : null;
+		const deviceId = channelId ? this.loadedDeviceOfChannel(channelId) : this.loadedDeviceOfProperty(property.id);
 
 		if (deviceId && this.isRunning()) {
 			await this.loadSafely(deviceId);
@@ -238,6 +240,16 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		if (deviceId && this.devices.has(deviceId) && this.isRunning()) {
 			await this.loadSafely(deviceId);
 		}
+	}
+
+	private loadedDeviceOfProperty(propertyId: string): string | null {
+		for (const [deviceId, entry] of this.devices) {
+			if (entry.propertyIds.has(propertyId)) {
+				return deviceId;
+			}
+		}
+
+		return null;
 	}
 
 	private loadedDeviceOfChannel(channelId: string): string | null {
@@ -323,6 +335,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 			endpointId: device.endpointId,
 			readPropertyIds: reads.filter((read) => read.button === null).map((read) => read.propertyId),
 			channelIds: new Set(channels.map((channel) => channel.id)),
+			propertyIds: new Set(channels.flatMap((channel) => (channel.properties ?? []).map((property) => property.id))),
 			poller: null,
 			commandable: false,
 		};

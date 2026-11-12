@@ -950,6 +950,10 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			expect((await bindings.findByProperty(relay2.properties[0].id)).read?.address).toBe(2);
 			expect(await counts()).toEqual({ devices: 1, channels: 3, properties: 5, bindings: 4 });
 			expect(emitted).toHaveBeenCalledWith(EventType.CHANNEL_CREATED, expect.objectContaining({ id: relay2.id }));
+			expect(emitted).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_CREATED,
+				expect.objectContaining({ id: relay2.properties[0].id }),
+			);
 			expect(emitted).toHaveBeenCalledWith(EventType.DEVICE_UPDATED, expect.objectContaining({ id: device.id }));
 		});
 

@@ -317,7 +317,7 @@ export class ModbusDeviceStructureService {
 		deviceId: string,
 		dto: CreateModbusDeviceStructureChannelDto,
 		statics: StaticValue[],
-	): Promise<string> {
+	): Promise<{ channelId: string; propertyIds: string[] }> {
 		const channelId = dto.id ?? uuid();
 
 		await manager.insert(
@@ -331,11 +331,13 @@ export class ModbusDeviceStructureService {
 			}),
 		);
 
+		const propertyIds: string[] = [];
+
 		for (const property of dto.properties) {
-			await this.insertProperty(manager, deviceId, channelId, dto.category, property, statics);
+			propertyIds.push(await this.insertProperty(manager, deviceId, channelId, dto.category, property, statics));
 		}
 
-		return channelId;
+		return { channelId, propertyIds };
 	}
 
 	private async insertProperty(
@@ -466,7 +468,11 @@ export class ModbusDeviceStructureService {
 			const current = kept.find((candidate) => candidate.id === channel.id);
 
 			if (!current) {
-				changes.createdChannels.push(await this.insertChannel(manager, deviceId, channel, statics));
+				const inserted = await this.insertChannel(manager, deviceId, channel, statics);
+
+				// The core announces every property of a new channel, so the points update does too.
+				changes.createdChannels.push(inserted.channelId);
+				changes.createdProperties.push(...inserted.propertyIds);
 
 				continue;
 			}

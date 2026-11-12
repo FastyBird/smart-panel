@@ -80,6 +80,17 @@ describe('structure validation', () => {
 		expect(validateModbusStructure(structure, () => [])).toEqual([]);
 	});
 
+	it('rejects long_press_ms on a write binding', () => {
+		const structure = withDeviceInformation(singleRelay(), SERIAL);
+		const property = structure.channels[0].properties[0];
+
+		property.write = { ...property.write, long_press_ms: 800 };
+
+		expect(validateModbusStructure(structure, () => []).map((issue) => issue.field)).toEqual([
+			'channels[0].properties[0].write.long_press_ms',
+		]);
+	});
+
 	it('rejects a readable property without a read binding', () => {
 		const structure = withDeviceInformation(singleRelay(true), SERIAL);
 		const issues = validateModbusStructure(structure, () => []);

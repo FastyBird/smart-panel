@@ -478,6 +478,13 @@ describe('ModbusRuntimeService', () => {
 			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
 		});
 
+		it('reloads a loaded device when a deleted property arrives without its channel', async () => {
+			// The core removal emits the property row as loaded, without its channel relation.
+			await runtime.onChannelPropertyChanged({ id: 'p1' } as unknown as ChannelPropertyEntity);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+		});
+
 		it('reloads a loaded device when a channel is created or deleted', async () => {
 			await runtime.onChannelChanged({ id: 'channel-2', device: 'device-1' } as unknown as ChannelEntity);
 			await runtime.onChannelChanged({ id: 'channel-1', device: { id: 'device-1' } } as unknown as ChannelEntity);

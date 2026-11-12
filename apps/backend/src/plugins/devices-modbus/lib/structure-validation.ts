@@ -194,6 +194,8 @@ export function validateModbusStructure(
 
 			if (property.write) {
 				issues.push(...validateBinding(property.write, ModbusBindingRole.WRITE, `${field}.write`));
+				// Only the read binding of a button event takes a long-press time; a write binding never does.
+				issues.push(...validateLongPress(property.write, false, `${field}.write`));
 				writes.push({ binding: property.write, field: `${field}.write` });
 			}
 		});
