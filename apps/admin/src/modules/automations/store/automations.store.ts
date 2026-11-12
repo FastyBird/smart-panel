@@ -246,7 +246,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			}
 		};
 
-		const get = (payload: IAutomationsGetActionPayload): Promise<IAutomation> => read(payload.id);
+		const get = (payload: IAutomationsGetActionPayload): Promise<IAutomation> => read(payload.id, payload.fresh === true);
 
 		const read = async (id: IAutomation['id'], fresh: boolean = false): Promise<IAutomation> => {
 			const existingPromise = pendingGetPromises[id];

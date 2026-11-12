@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { flushPromises } from '@vue/test-utils';
+
 import { injectStoresManager } from '../../../common';
 import { AutomationMode, AutomationNodeKind, AutomationStatus } from '../automations.constants';
 import { cloneGraph } from '../automations.graph';
@@ -458,6 +460,73 @@ describe('useAutomationEditor', () => {
 			expect(editor.isDirty.value).toBe(false);
 		});
 
+		it('does not base the kept version on a read started before the user chose it', async () => {
+			const editor = await conflictingSave();
+
+			let answerEarlier: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answerEarlier = res;
+				})
+			);
+
+			// A read of the automation already on its way, e.g. from another view
+			const earlier = automationsStore.get({ id: automationId });
+
+			mockBackendClient.GET.mockResolvedValueOnce(ok(detailRes({ name: 'Renamed elsewhere', revision: 6 })));
+			mockBackendClient.PATCH.mockResolvedValueOnce(ok(detailRes({ name: 'Renamed elsewhere', revision: 7, graph: withDelay() })));
+
+			const overwriting = editor.overwrite();
+
+			await flushPromises();
+
+			// Not joined: the overwrite waits for it and then reads on its own
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(3);
+			expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1);
+
+			answerEarlier(ok(detailRes({ name: 'Renamed elsewhere', revision: 5 })));
+
+			await earlier;
+			await expect(overwriting).resolves.toBe('saved');
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(4);
+			expect(mockBackendClient.PATCH).toHaveBeenLastCalledWith('/modules/automations/automations/{id}', {
+				params: { path: { id: automationId } },
+				body: { data: { revision: 6, graph: withDelay() } },
+			});
+		});
+
+		it('does not take the saved version from a read started before the user chose it', async () => {
+			const editor = await conflictingSave();
+
+			let answerEarlier: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answerEarlier = res;
+				})
+			);
+
+			const earlier = automationsStore.get({ id: automationId });
+
+			const theirs: IAutomationGraph = { ...cloneGraph(graph), nodes: graph.nodes.slice(0, 2), edges: graph.edges.slice(0, 1) };
+
+			mockBackendClient.GET.mockResolvedValueOnce(ok(detailRes({ name: 'Renamed elsewhere', revision: 6, graph: theirs })));
+
+			const reloading = editor.reloadLatest();
+
+			answerEarlier(ok(detailRes({ name: 'Renamed elsewhere', revision: 5 })));
+
+			await earlier;
+			await reloading;
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(4);
+			expect(editor.automation.value?.revision).toBe(6);
+			expect(editor.graph.value).toEqual(theirs);
+			expect(editor.isDirty.value).toBe(false);
+		});
+
 		it('takes the saved version when the user gives up theirs', async () => {
 			const editor = await conflictingSave();
 
@@ -501,6 +570,30 @@ describe('useAutomationEditor', () => {
 
 			expect(editor.conflict.value).toBe(false);
 			expect(editor.isDirty.value).toBe(false);
+		});
+
+		it('stays on its copy after a conflict on a clean canvas, and asks which version to keep', async () => {
+			const editor = await createEditor();
+
+			const theirs: IAutomationGraph = withDelay();
+
+			mockBackendClient.PATCH.mockResolvedValueOnce(refused(409));
+			// The store reads the automation again after the conflict
+			mockBackendClient.GET.mockResolvedValueOnce(ok(detailRes({ name: 'Renamed elsewhere', revision: 5, graph: theirs })));
+
+			await expect(editor.setEnabled(true)).resolves.toBe(false);
+
+			await flushPromises();
+			await nextTick();
+
+			// The newer revision arrives while the save is still under way, so the editor does not follow it on
+			// its own: nothing is read again, the copy stays as it was and the user chooses
+			expect(mockFlash.warning).toHaveBeenCalledWith('automations.editor.messages.conflict Renamed elsewhere');
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+			expect(editor.conflict.value).toBe(true);
+			expect(editor.isDirty.value).toBe(false);
+			expect(editor.graph.value).toEqual(graph);
+			expect(editor.automation.value).toMatchObject({ name: 'Renamed elsewhere', revision: 5, enabled: false });
 		});
 
 		it('is not raised by a write of the engine, which keeps the revision', async () => {

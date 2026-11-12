@@ -210,7 +210,8 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 	 * After a conflict: gives up the working copy for what the backend holds now.
 	 */
 	const reloadLatest = async (): Promise<void> => {
-		adopt(await automationsStore.get({ id }));
+		// What is on its way may be from before the other save, so it is read anew
+		adopt(await automationsStore.get({ id, fresh: true }));
 	};
 
 	/**
@@ -218,7 +219,8 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 	 */
 	const overwrite = async (): Promise<AutomationEditorSaveResult> => {
 		try {
-			const latest = await automationsStore.get({ id });
+			// Based on a read from before the other save, the overwrite would only be refused again
+			const latest = await automationsStore.get({ id, fresh: true });
 
 			baseRevision.value = latest.revision;
 		} catch (error: unknown) {

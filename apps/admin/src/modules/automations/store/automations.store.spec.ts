@@ -2,6 +2,8 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { flushPromises } from '@vue/test-utils';
+
 import { AutomationMode, AutomationRunStatus, AutomationStatus } from '../automations.constants';
 import {
 	AutomationsApiException,
@@ -324,6 +326,43 @@ describe('Automations Store', () => {
 			await expect(pending).resolves.toMatchObject({ name: 'Renamed', revision: 4 });
 
 			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed', revision: 4 });
+		});
+
+		it('joins a read already on its way unless a fresh one is asked for', async () => {
+			const earlier = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(earlier.promise);
+
+			const first = store.get({ id: automationId });
+			const joined = store.get({ id: automationId });
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+
+			const later = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(later.promise);
+
+			const fresh = store.get({ id: automationId, fresh: true });
+
+			await flushPromises();
+
+			// The read started before is not the answer: nothing new is asked until it is done
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+
+			earlier.resolve({ data: { data: detailRes({ revision: 3 }) }, response: { status: 200 } });
+
+			await expect(first).resolves.toMatchObject({ revision: 3 });
+			await expect(joined).resolves.toMatchObject({ revision: 3 });
+
+			await flushPromises();
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+
+			later.resolve({ data: { data: detailRes({ name: 'Renamed elsewhere', revision: 5 }) }, response: { status: 200 } });
+
+			await expect(fresh).resolves.toMatchObject({ name: 'Renamed elsewhere', revision: 5 });
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed elsewhere', revision: 5 });
 		});
 
 		it('removes the automation from the store when it no longer exists', async () => {

@@ -123,6 +123,9 @@ export const AutomationsUnsetActionPayloadSchema = z.object({
 
 export const AutomationsGetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
+	// Has to be newer than the moment it is asked for (after a conflict above all): a read already on its
+	// way may be from before, so it is not joined
+	fresh: z.boolean().optional(),
 });
 
 export const AutomationsAddActionPayloadSchema = z.object({
