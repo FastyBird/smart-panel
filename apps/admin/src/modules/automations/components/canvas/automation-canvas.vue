@@ -85,7 +85,7 @@
  *   in:  `graph`         { version, nodes: [{ id, type, position, config }], edges: [{ id, source, source_port, target, target_port }] }
  *   out: `update:graph`  after every edit made on the canvas (a finished drag, a connection, a removal, an added node)
  */
-import { computed, nextTick, onMounted, ref, useId, watch } from 'vue';
+import { computed, markRaw, nextTick, onMounted, ref, useId, watch } from 'vue';
 
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
@@ -147,6 +147,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<IAutomationCanvasProps>(), {
 	issues: () => [],
+	summaryComponent: undefined,
 	readonly: false,
 	initialView: 'fit',
 });
@@ -205,6 +206,13 @@ const portsOf = (id: string, type: string): IAutomationNodeTypePorts => resolveN
 
 const handleOffset = (index: number, count: number): string => `${((index + 1) / (count + 1)) * 100}%`;
 
+// The summary a card with an admin element brings (`automationNodeCard`) instead of the generic one
+const summaryOf = (data: IAutomationCanvasNodeData, nodeType: IAutomationNodeType): Partial<IAutomationNodeCardProps> => {
+	const component = props.summaryComponent?.(data.type) ?? null;
+
+	return component === null ? {} : { summaryComponent: markRaw(component), summaryProps: { nodeType, config: data.config } };
+};
+
 const cardOf = (data: IAutomationCanvasNodeData): IAutomationNodeCardProps => {
 	const nodeType = lookup(data.type);
 
@@ -214,6 +222,7 @@ const cardOf = (data: IAutomationCanvasNodeData): IAutomationNodeCardProps => {
 		icon: nodeIcon(data.type, nodeType),
 		title: nodeTitle(data.type, nodeType),
 		summary: nodeSummary(data, nodeType),
+		...(nodeType !== null && props.summaryComponent ? summaryOf(data, nodeType) : {}),
 	};
 };
 

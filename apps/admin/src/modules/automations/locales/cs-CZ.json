@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Na malé obrazovce jen pro čtení",
-				"confirmDiscardDraft": "Text ve formuláři tohoto bloku není platný JSON, a proto nebyl použit. Chcete jej zahodit?",
+				"confirmDiscardDraft": "Část údajů ve formuláři tohoto bloku je neúplná nebo není platný JSON, a proto nebyla použita. Chcete ji zahodit?",
 				"unsaved": "Neuložené změny",
 				"noNodeTypes": "Nejsou k dispozici žádné bloky.",
 				"notConfigured": "Zatím nenastaveno",
@@ -290,6 +290,7 @@
 				"nothingToConfigure": "Tento blok nemá co nastavovat.",
 				"invalidJson": "Toto není platný JSON.",
 				"notSet": "Nenastaveno",
+				"outOfRange": "Mimo rozsah, který vlastnost přijímá ({range})",
 				"unset": "Zrušit nastavení",
 				"yes": "Ano",
 				"no": "Ne",
@@ -298,7 +299,8 @@
 					"string": "Text",
 					"number": "Číslo",
 					"boolean": "Ano / Ne"
-				}
+				},
+				"value": "Hodnota"
 			},
 			"rejections": {
 				"unknown_node": "Tyto bloky nelze propojit.",
@@ -316,7 +318,8 @@
 				"cycle": "Průběh se vrací sám do sebe.",
 				"duplicate_edge": "Dvě propojení spojují tytéž dva body.",
 				"no_trigger": "Automatizace potřebuje alespoň jeden spouštěč, který ji spustí.",
-				"unreachable_node": "K tomuto bloku nevede žádný spouštěč, proto se nikdy neprovede."
+				"unreachable_node": "K tomuto bloku nevede žádný spouštěč, proto se nikdy neprovede.",
+				"self_triggering_write": "Tato akce nastavuje hodnotu, kterou sleduje spouštěč téže automatizace, takže každý běh ji může spustit znovu. Pokud to není záměr, nastavte jinou hodnotu nebo sledujte jinou."
 			},
 			"conflict": {
 				"title": "Automatizace byla změněna jinde",
@@ -328,8 +331,214 @@
 			"messages": {
 				"conflict": "Automatizace „{automation}“ byla mezitím změněna jinde. Vaše změny zůstaly zachovány; vyberte, kterou verzi zachovat.",
 				"invalid": "Průběh automatizace „{automation}“ zatím nelze uložit. Zkontrolujte problémy uvedené pod plátnem.",
-				"invalidDraft": "Část textu ve formuláři vybraného bloku není platný JSON. Před uložením ji opravte nebo vraťte zpět.",
-				"busy": "Automatizace se stále načítá nebo ukládá. Zkuste to znovu, až to bude hotové."
+				"invalidDraft": "Část údajů ve formuláři vybraného bloku je neúplná nebo není platný JSON. Před uložením ji doplňte, opravte nebo vraťte zpět.",
+				"busy": "Automatizace se stále načítá nebo ukládá. Zkuste to znovu, až to bude hotové.",
+				"unsafe": "Průběh automatizace „{automation}“ nelze uložit: akce by něco odemkla, odjistila nebo otevřela, což automatizace dělat nesmí."
+			},
+			"safety": {
+				"refused": "V automatizaci není dovoleno",
+				"checkedOnRun": "Kontroluje se znovu při každém běhu",
+				"notOffered": "Automatizace jedná bez přítomnosti člověka, proto smí zamykat, zajišťovat a zavírat, ale ne odemykat, odjišťovat nebo otevírat. Zvolte jinou hodnotu.",
+				"kinds": {
+					"unlock": "Tato hodnota by odemkla zámek",
+					"disarm": "Tato hodnota by odjistila alarm",
+					"open": "Tato hodnota by otevřela dveře, garáž nebo bránu"
+				}
+			},
+			"severities": {
+				"info": "Informace",
+				"warning": "Varování",
+				"error": "Chyba",
+				"critical": "Kritické"
+			},
+			"weekdays": {
+				"short": {
+					"0": "Ne",
+					"1": "Po",
+					"2": "Út",
+					"3": "St",
+					"4": "Čt",
+					"5": "Pá",
+					"6": "So"
+				}
+			},
+			"fields": {
+				"duration": {
+					"unit": "Jednotka",
+					"units": {
+						"seconds": "sekundy",
+						"minutes": "minuty",
+						"hours": "hodiny"
+					}
+				},
+				"weekdays": {
+					"title": "Dny",
+					"everyDay": "Žádný den nevybrán: každý den.",
+					"hint": "Jen ve vybrané dny."
+				},
+				"changed": {
+					"mode": "Spustit, když hodnota",
+					"modes": {
+						"any": "se jakkoli změní",
+						"to": "nabude hodnoty",
+						"from": "se změní z hodnoty",
+						"fromTo": "se změní z jedné hodnoty na jinou",
+						"above": "stoupne nad práh",
+						"below": "klesne pod práh"
+					},
+					"from": "Z",
+					"to": "Na",
+					"above": "Nad",
+					"below": "Pod",
+					"hysteresis": {
+						"title": "Hystereze",
+						"hint": "O kolik se hodnota musí vrátit, než překročení prahu automatizaci spustí znovu. Ponechte prázdné pro žádnou."
+					},
+					"for": {
+						"title": "Až když takto vydrží po dobu",
+						"hint": "Hodnota musí zůstat v novém stavu po celou dobu; když ho opustí nebo se zařízení odpojí, čekání začne znovu."
+					}
+				},
+				"compare": {
+					"operator": "Porovnání",
+					"operators": {
+						"eq": "je rovna",
+						"neq": "není rovna",
+						"gt": "je větší než",
+						"gte": "je větší nebo rovna",
+						"lt": "je menší než",
+						"lte": "je menší nebo rovna",
+						"between": "je mezi",
+						"in": "je jednou z"
+					},
+					"value": "Hodnota",
+					"min": "Od (včetně)",
+					"max": "Do (včetně)",
+					"values": {
+						"title": "Hodnoty",
+						"placeholder": "Napište hodnotu a stiskněte Enter",
+						"notNumber": "Nejde o číslo, proto nepřidáno: {value}"
+					}
+				},
+				"set": {
+					"write": "Hodnota {number}",
+					"value": "Nastavit na",
+					"add": "Přidat hodnotu",
+					"remove": "Odebrat tuto hodnotu",
+					"malformed": "Tato položka není platná hodnota. Vyberte vlastnost, kterou ji nahradíte, nebo ji odeberte."
+				},
+				"time": {
+					"at": "V",
+					"placeholder": "HH:mm",
+					"houseClock": "Ve 24hodinovém čase časového pásma domu."
+				},
+				"window": {
+					"from": "Od (včetně)",
+					"to": "Do (bez)",
+					"hint": "Okno se řídí hodinami domu.",
+					"overnight": "Okno přechází přes půlnoc; dny jsou dny, kdy začíná."
+				},
+				"manual": {
+					"hint": "Automatizace začne zde, když ji někdo spustí ručně ze seznamu automatizací."
+				},
+				"scene": {
+					"title": "Scéna",
+					"placeholder": "Vyberte scénu",
+					"empty": "Zatím nejsou žádné scény",
+					"hint": "Při každém běhu se scéna znovu zkontroluje: scéna, která by něco odemkla, odjistila nebo otevřela, se nespustí."
+				},
+				"notification": {
+					"severity": "Závažnost",
+					"title": "Nadpis",
+					"message": "Zpráva",
+					"hint": "Prostý text, odeslaný tak, jak je napsán."
+				},
+				"delay": {
+					"title": "Počkat",
+					"hint": "Nejvýše jednu hodinu. Čekání nepřežije restart serveru."
+				}
+			},
+			"summaries": {
+				"target": "{device} · {property}",
+				"unknownDevice": "Neznámé zařízení",
+				"unknownProperty": "neznámá vlastnost",
+				"unknownScene": "neznámou scénu",
+				"changed": {
+					"any": "{target} se změní",
+					"to": "{target} nabude {to}",
+					"from": "{target} se změní z {from}",
+					"fromTo": "{target} se změní z {from} na {to}",
+					"above": "{target} stoupne nad {value}",
+					"below": "{target} klesne pod {value}",
+					"for": "{summary} po dobu {duration}"
+				},
+				"compare": {
+					"operator": "{target} {operator} {value}",
+					"between": "{target} mezi {min} a {max}",
+					"in": "{target} je jednou z {values}"
+				},
+				"set": {
+					"one": "{target} → {value}",
+					"many": "{target} → {value} a {count} další"
+				},
+				"timeOfDay": "V {time}, {days}",
+				"timeWindow": "{from} – {to}, {days}",
+				"timeWindowOvernight": "{from} – {to} přes noc, {days}",
+				"sceneRun": "Spustit {scene}",
+				"notification": "{severity}: {title}",
+				"delay": "Počkat {duration}",
+				"manualStart": "Při ručním spuštění",
+				"duration": {
+					"hours": "{count} h",
+					"minutes": "{count} min",
+					"seconds": "{count} s"
+				},
+				"days": {
+					"everyDay": "každý den",
+					"workdays": "Po – Pá",
+					"weekend": "o víkendech"
+				}
+			},
+			"validation": {
+				"unknownField": "Toto pole blok nezná.",
+				"device": "Je třeba vybrat zařízení.",
+				"channel": "Je třeba vybrat kanál.",
+				"property": "Je třeba vybrat vlastnost.",
+				"value": "Hodnota musí být text, číslo nebo ano/ne.",
+				"number": "Musí to být číslo.",
+				"required": "Tato hodnota je potřeba.",
+				"hysteresis": "Hystereze musí být číslo, které není záporné.",
+				"duration": "Doba musí být celý počet sekund.",
+				"durationMin": "Doba musí být alespoň 1 sekunda.",
+				"forMax": "Doba může být nejvýše 7 dní.",
+				"delayMax": "Čekání může být nejvýše 1 hodinu.",
+				"aboveAndBelow": "„Nad“ a „pod“ nelze použít zároveň.",
+				"thresholdAndValue": "Práh nelze kombinovat s hodnotou, na kterou nebo ze které se mění.",
+				"hysteresisNeedsThreshold": "Hystereze potřebuje práh.",
+				"forNeedsState": "Čekání potřebuje stav, který trvá: hodnotu, jíž nabude, nebo práh. Nelze ho použít se „z“.",
+				"operator": "Zvolte způsob porovnání.",
+				"values": "Hodnoty musí být seznam.",
+				"valuesEmpty": "Je potřeba alespoň jedna hodnota.",
+				"valuesMax": "Povoleno je nejvýše 50 hodnot.",
+				"notUsedByOperator": "Toto porovnání tuto hodnotu nepoužívá.",
+				"maxBelowMin": "Horní mez nesmí být pod dolní mezí.",
+				"orderNeedsNumber": "Toto porovnání potřebuje číslo.",
+				"writes": "Nastavované hodnoty musí být seznam.",
+				"writesEmpty": "Je potřeba alespoň jedna hodnota k nastavení.",
+				"writesMax": "Jedna akce může nastavit nejvýše 20 hodnot.",
+				"propertyTwice": "Tato akce nastavuje stejnou vlastnost dvakrát.",
+				"time": "Čas musí být zapsán jako HH:mm.",
+				"weekday": "Den musí být jedním z dnů v týdnu.",
+				"weekdays": "Dny musí být seznam.",
+				"weekdaysEmpty": "Je potřeba alespoň jeden den.",
+				"weekdaysTwice": "Den lze vybrat jen jednou.",
+				"windowEmpty": "Konec se musí lišit od začátku.",
+				"scene": "Je třeba vybrat scénu.",
+				"severity": "Zvolte, jak naléhavé oznámení je.",
+				"title": "Nadpis je povinný.",
+				"titleMax": "Nadpis může mít nejvýše 120 znaků.",
+				"message": "Zpráva musí být text.",
+				"messageMax": "Zpráva může mít nejvýše 1000 znaků."
 			}
 		}
 	}

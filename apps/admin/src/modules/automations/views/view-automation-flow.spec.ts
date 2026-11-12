@@ -129,6 +129,10 @@ vi.mock('../composables/composables', () => ({
 		fetchNodeTypes: mocks.fetchNodeTypes,
 		getNodeType: () => null,
 	}),
+	useAutomationNodePlugins: () => ({
+		getFormComponent: () => null,
+		getCardComponent: () => null,
+	}),
 }));
 
 vi.mock('../components/components', async () => {

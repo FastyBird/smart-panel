@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Solo lectura en pantallas pequeñas",
-				"confirmDiscardDraft": "El texto del formulario de este bloque no es JSON válido, por lo que no se ha aplicado. ¿Desea descartarlo?",
+				"confirmDiscardDraft": "Parte de lo introducido en el formulario de este bloque está incompleto o no es JSON válido, por lo que no se ha aplicado. ¿Desea descartarlo?",
 				"unsaved": "Cambios sin guardar",
 				"noNodeTypes": "No hay bloques disponibles.",
 				"notConfigured": "Aún sin configurar",
@@ -290,6 +290,7 @@
 				"nothingToConfigure": "Este bloque no tiene nada que configurar.",
 				"invalidJson": "Esto no es JSON válido.",
 				"notSet": "Sin establecer",
+				"outOfRange": "Fuera del rango que admite la propiedad ({range})",
 				"unset": "Quitar valor",
 				"yes": "Sí",
 				"no": "No",
@@ -298,7 +299,8 @@
 					"string": "Texto",
 					"number": "Número",
 					"boolean": "Sí / No"
-				}
+				},
+				"value": "Valor"
 			},
 			"rejections": {
 				"unknown_node": "Estos bloques no se pueden conectar.",
@@ -316,7 +318,8 @@
 				"cycle": "El flujo vuelve sobre sí mismo.",
 				"duplicate_edge": "Dos conexiones unen los mismos dos puntos.",
 				"no_trigger": "La automatización necesita al menos un disparador que la inicie.",
-				"unreachable_node": "Ningún disparador lleva a este bloque, por lo que nunca se ejecuta."
+				"unreachable_node": "Ningún disparador lleva a este bloque, por lo que nunca se ejecuta.",
+				"self_triggering_write": "Esta acción fija un valor que observa un disparador de la misma automatización, por lo que cada ejecución puede volver a iniciarla. Si no es lo que se pretende, fije otro valor u observe otro."
 			},
 			"conflict": {
 				"title": "La automatización se modificó en otro lugar",
@@ -328,8 +331,214 @@
 			"messages": {
 				"conflict": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Sus cambios se conservan; elija qué versión conservar.",
 				"invalid": "El flujo de la automatización «{automation}» aún no se puede guardar. Revise los problemas indicados bajo el lienzo.",
-				"invalidDraft": "Parte del texto del formulario del bloque seleccionado no es JSON válido. Corríjalo o deshágalo antes de guardar.",
-				"busy": "La automatización todavía se está leyendo o guardando. Inténtelo de nuevo cuando haya terminado."
+				"invalidDraft": "Parte de lo introducido en el formulario del bloque seleccionado está incompleto o no es JSON válido. Complételo, corríjalo o deshágalo antes de guardar.",
+				"busy": "La automatización todavía se está leyendo o guardando. Inténtelo de nuevo cuando haya terminado.",
+				"unsafe": "El flujo de la automatización «{automation}» no se puede guardar: una acción desbloquearía, desarmaría o abriría algo, lo que una automatización no tiene permitido."
+			},
+			"safety": {
+				"refused": "No permitido en una automatización",
+				"checkedOnRun": "Se vuelve a comprobar en cada ejecución",
+				"notOffered": "Una automatización actúa sin nadie presente, así que puede bloquear, armar y cerrar, pero no desbloquear, desarmar ni abrir. Elija otro valor.",
+				"kinds": {
+					"unlock": "Este valor desbloquearía una cerradura",
+					"disarm": "Este valor desarmaría la alarma",
+					"open": "Este valor abriría una puerta, un garaje o un portón"
+				}
+			},
+			"severities": {
+				"info": "Información",
+				"warning": "Advertencia",
+				"error": "Error",
+				"critical": "Crítico"
+			},
+			"weekdays": {
+				"short": {
+					"0": "dom",
+					"1": "lun",
+					"2": "mar",
+					"3": "mié",
+					"4": "jue",
+					"5": "vie",
+					"6": "sáb"
+				}
+			},
+			"fields": {
+				"duration": {
+					"unit": "Unidad",
+					"units": {
+						"seconds": "segundos",
+						"minutes": "minutos",
+						"hours": "horas"
+					}
+				},
+				"weekdays": {
+					"title": "Días",
+					"everyDay": "Ningún día elegido: todos los días.",
+					"hint": "Solo los días elegidos."
+				},
+				"changed": {
+					"mode": "Iniciar cuando el valor",
+					"modes": {
+						"any": "cambie de cualquier forma",
+						"to": "pase a un valor",
+						"from": "cambie desde un valor",
+						"fromTo": "cambie de un valor a otro",
+						"above": "suba por encima de un umbral",
+						"below": "baje por debajo de un umbral"
+					},
+					"from": "Desde",
+					"to": "A",
+					"above": "Por encima de",
+					"below": "Por debajo de",
+					"hysteresis": {
+						"title": "Histéresis",
+						"hint": "Cuánto tiene que volver el valor antes de que cruzar el umbral vuelva a iniciar la automatización. Déjelo vacío para ninguna."
+					},
+					"for": {
+						"title": "Solo cuando se mantenga así durante",
+						"hint": "El valor tiene que permanecer en el nuevo estado todo el tiempo; si lo abandona o el dispositivo se desconecta, la espera empieza de nuevo."
+					}
+				},
+				"compare": {
+					"operator": "Comparación",
+					"operators": {
+						"eq": "es igual a",
+						"neq": "no es igual a",
+						"gt": "es mayor que",
+						"gte": "es mayor o igual que",
+						"lt": "es menor que",
+						"lte": "es menor o igual que",
+						"between": "está entre",
+						"in": "es uno de"
+					},
+					"value": "Valor",
+					"min": "Desde (incluido)",
+					"max": "Hasta (incluido)",
+					"values": {
+						"title": "Valores",
+						"placeholder": "Escriba un valor y pulse Intro",
+						"notNumber": "No es un número, así que no se ha añadido: {value}"
+					}
+				},
+				"set": {
+					"write": "Valor {number}",
+					"value": "Valor a fijar",
+					"add": "Añadir valor",
+					"remove": "Quitar este valor",
+					"malformed": "Esta entrada no es un valor válido. Elige una propiedad para reemplazarla o quítala."
+				},
+				"time": {
+					"at": "A las",
+					"placeholder": "HH:mm",
+					"houseClock": "En el reloj de 24 horas de la zona horaria de la casa."
+				},
+				"window": {
+					"from": "Desde (incluido)",
+					"to": "Hasta (no incluido)",
+					"hint": "La franja sigue el reloj de la casa.",
+					"overnight": "La franja cruza la medianoche; los días son los días en que empieza."
+				},
+				"manual": {
+					"hint": "La automatización empieza aquí cuando alguien la ejecuta a mano desde la lista de automatizaciones."
+				},
+				"scene": {
+					"title": "Escena",
+					"placeholder": "Seleccione una escena",
+					"empty": "Aún no hay escenas",
+					"hint": "En cada ejecución la escena se vuelve a comprobar: una escena que desbloquearía, desarmaría o abriría algo no se ejecuta."
+				},
+				"notification": {
+					"severity": "Gravedad",
+					"title": "Título",
+					"message": "Mensaje",
+					"hint": "Texto sin formato, enviado tal como está escrito."
+				},
+				"delay": {
+					"title": "Esperar",
+					"hint": "Como máximo una hora. Una espera no sobrevive a un reinicio del servidor."
+				}
+			},
+			"summaries": {
+				"target": "{device} · {property}",
+				"unknownDevice": "Dispositivo desconocido",
+				"unknownProperty": "propiedad desconocida",
+				"unknownScene": "una escena desconocida",
+				"changed": {
+					"any": "{target} cambia",
+					"to": "{target} pasa a {to}",
+					"from": "{target} cambia desde {from}",
+					"fromTo": "{target} cambia de {from} a {to}",
+					"above": "{target} sube por encima de {value}",
+					"below": "{target} baja por debajo de {value}",
+					"for": "{summary} durante {duration}"
+				},
+				"compare": {
+					"operator": "{target} {operator} {value}",
+					"between": "{target} entre {min} y {max}",
+					"in": "{target} es uno de {values}"
+				},
+				"set": {
+					"one": "{target} → {value}",
+					"many": "{target} → {value} y {count} más"
+				},
+				"timeOfDay": "A las {time}, {days}",
+				"timeWindow": "{from} – {to}, {days}",
+				"timeWindowOvernight": "{from} – {to} durante la noche, {days}",
+				"sceneRun": "Ejecutar {scene}",
+				"notification": "{severity}: {title}",
+				"delay": "Esperar {duration}",
+				"manualStart": "Al ejecutarla a mano",
+				"duration": {
+					"hours": "{count} h",
+					"minutes": "{count} min",
+					"seconds": "{count} s"
+				},
+				"days": {
+					"everyDay": "todos los días",
+					"workdays": "lun – vie",
+					"weekend": "los fines de semana"
+				}
+			},
+			"validation": {
+				"unknownField": "El bloque no conoce este campo.",
+				"device": "Hay que elegir un dispositivo.",
+				"channel": "Hay que elegir un canal.",
+				"property": "Hay que elegir una propiedad.",
+				"value": "El valor debe ser un texto, un número o sí/no.",
+				"number": "Debe ser un número.",
+				"required": "Este valor es necesario.",
+				"hysteresis": "La histéresis debe ser un número no negativo.",
+				"duration": "La duración debe ser un número entero de segundos.",
+				"durationMin": "La duración debe ser de al menos 1 segundo.",
+				"forMax": "La duración puede ser como máximo de 7 días.",
+				"delayMax": "Una espera puede ser como máximo de 1 hora.",
+				"aboveAndBelow": "«Por encima» y «por debajo» no se pueden usar juntos.",
+				"thresholdAndValue": "Un umbral no se puede combinar con un valor al que o desde el que se cambia.",
+				"hysteresisNeedsThreshold": "Una histéresis necesita un umbral.",
+				"forNeedsState": "Esperar necesita un estado que se mantenga: un valor al que pasa o un umbral. No se puede usar con «desde».",
+				"operator": "Elija cómo comparar.",
+				"values": "Los valores deben ser una lista.",
+				"valuesEmpty": "Se necesita al menos un valor.",
+				"valuesMax": "Se permiten como máximo 50 valores.",
+				"notUsedByOperator": "Esta comparación no usa este valor.",
+				"maxBelowMin": "El extremo superior no puede estar por debajo del inferior.",
+				"orderNeedsNumber": "Esta comparación necesita un número.",
+				"writes": "Los valores a fijar deben ser una lista.",
+				"writesEmpty": "Se necesita al menos un valor a fijar.",
+				"writesMax": "Una acción puede fijar como máximo 20 valores.",
+				"propertyTwice": "Esta acción fija la misma propiedad dos veces.",
+				"time": "La hora debe escribirse como HH:mm.",
+				"weekday": "Un día debe ser uno de los días de la semana.",
+				"weekdays": "Los días deben ser una lista.",
+				"weekdaysEmpty": "Se necesita al menos un día.",
+				"weekdaysTwice": "Un día solo se puede elegir una vez.",
+				"windowEmpty": "El final debe ser distinto del inicio.",
+				"scene": "Hay que elegir una escena.",
+				"severity": "Elija lo urgente que es la notificación.",
+				"title": "Se necesita un título.",
+				"titleMax": "El título puede tener como máximo 120 caracteres.",
+				"message": "El mensaje debe ser un texto.",
+				"messageMax": "El mensaje puede tener como máximo 1000 caracteres."
 			}
 		}
 	}

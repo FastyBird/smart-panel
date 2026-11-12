@@ -378,6 +378,21 @@ describe('useAutomationEditor', () => {
 			expect(mockFlash.error).toHaveBeenCalledWith('automations.editor.messages.invalid Hallway motion light');
 		});
 
+		it('says so when the graph is refused because an action would reduce safety', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const unsafe = { ...invalidConfig, code: 'safety_reducing_action', message: 'An automation can not unlock a lock.', field: 'writes.0.value' };
+
+			mockBackendClient.POST.mockResolvedValue(ok({ valid: false, issues: [unsafe] }));
+
+			await expect(editor.save()).resolves.toBe('invalid');
+
+			expect(editor.issues.value).toEqual([unsafe]);
+			expect(mockFlash.error).toHaveBeenCalledWith('automations.editor.messages.unsafe Hallway motion light');
+		});
+
 		it('shows the issues of a save the backend refuses', async () => {
 			const editor = await createEditor();
 
@@ -449,6 +464,29 @@ describe('useAutomationEditor', () => {
 			await expect(saving).resolves.toBe('invalid');
 
 			expect(editor.issues.value).toEqual([]);
+		});
+
+		it('drops what the backend said about the entries of a list once the list is changed as a whole', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const entry = { ...invalidConfig, node_id: 'a1', field: 'writes.0.value' };
+			const other = { ...invalidConfig, node_id: 'a1', field: 'title' };
+
+			mockBackendClient.POST.mockResolvedValue(ok({ valid: false, issues: [entry, other] }));
+
+			await editor.save();
+
+			// An edit of one field of an entry keeps what was said about the entries
+			editor.updateNodeConfig('a1', { title: 'Hello', writes: [{ value: 1 }] }, 'writes.0.value');
+
+			expect(editor.issues.value).toEqual([entry, other]);
+
+			// An entry removed moves the next one into its place
+			editor.updateNodeConfig('a1', { title: 'Hello', writes: [] }, 'writes');
+
+			expect(editor.issues.value).toEqual([other]);
 		});
 
 		it('still counts as unsaved what was drawn while the save was under way', async () => {

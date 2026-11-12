@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Na małym ekranie tylko do odczytu",
-				"confirmDiscardDraft": "Tekst w formularzu tego bloku nie jest poprawnym JSON, więc nie został zastosowany. Czy chcesz go odrzucić?",
+				"confirmDiscardDraft": "Część danych w formularzu tego bloku jest niekompletna lub nie jest poprawnym JSON, więc nie została zastosowana. Czy chcesz ją odrzucić?",
 				"unsaved": "Niezapisane zmiany",
 				"noNodeTypes": "Brak dostępnych bloków.",
 				"notConfigured": "Jeszcze nie skonfigurowano",
@@ -290,6 +290,7 @@
 				"nothingToConfigure": "Ten blok nie ma nic do skonfigurowania.",
 				"invalidJson": "To nie jest poprawny JSON.",
 				"notSet": "Nie ustawiono",
+				"outOfRange": "Poza zakresem, który przyjmuje właściwość ({range})",
 				"unset": "Usuń wartość",
 				"yes": "Tak",
 				"no": "Nie",
@@ -298,7 +299,8 @@
 					"string": "Tekst",
 					"number": "Liczba",
 					"boolean": "Tak / Nie"
-				}
+				},
+				"value": "Wartość"
 			},
 			"rejections": {
 				"unknown_node": "Tych bloków nie można połączyć.",
@@ -316,7 +318,8 @@
 				"cycle": "Przebieg wraca sam do siebie.",
 				"duplicate_edge": "Dwa połączenia łączą te same dwa punkty.",
 				"no_trigger": "Automatyzacja potrzebuje co najmniej jednego wyzwalacza, który ją uruchomi.",
-				"unreachable_node": "Do tego bloku nie prowadzi żaden wyzwalacz, dlatego nigdy się nie wykona."
+				"unreachable_node": "Do tego bloku nie prowadzi żaden wyzwalacz, dlatego nigdy się nie wykona.",
+				"self_triggering_write": "Ta akcja ustawia wartość, którą obserwuje wyzwalacz tej samej automatyzacji, więc każde uruchomienie może ją uruchomić ponownie. Jeśli nie jest to zamierzone, ustaw inną wartość lub obserwuj inną."
 			},
 			"conflict": {
 				"title": "Automatyzacja została zmieniona w innym miejscu",
@@ -328,8 +331,214 @@
 			"messages": {
 				"conflict": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Twoje zmiany zostały zachowane; wybierz, którą wersję zachować.",
 				"invalid": "Przebiegu automatyzacji „{automation}” nie można jeszcze zapisać. Sprawdź problemy wymienione pod płótnem.",
-				"invalidDraft": "Część tekstu w formularzu wybranego bloku nie jest poprawnym JSON. Popraw ją lub cofnij przed zapisaniem.",
-				"busy": "Automatyzacja jest nadal odczytywana lub zapisywana. Spróbuj ponownie, gdy to się zakończy."
+				"invalidDraft": "Część danych w formularzu wybranego bloku jest niekompletna lub nie jest poprawnym JSON. Uzupełnij ją, popraw lub cofnij przed zapisaniem.",
+				"busy": "Automatyzacja jest nadal odczytywana lub zapisywana. Spróbuj ponownie, gdy to się zakończy.",
+				"unsafe": "Przebiegu automatyzacji „{automation}” nie można zapisać: akcja odblokowałaby, rozbroiła lub otworzyła coś, czego automatyzacja robić nie może."
+			},
+			"safety": {
+				"refused": "Niedozwolone w automatyzacji",
+				"checkedOnRun": "Sprawdzane ponownie przy każdym uruchomieniu",
+				"notOffered": "Automatyzacja działa bez obecności człowieka, więc może zamykać na klucz, uzbrajać i zamykać, ale nie odblokowywać, rozbrajać ani otwierać. Wybierz inną wartość.",
+				"kinds": {
+					"unlock": "Ta wartość odblokowałaby zamek",
+					"disarm": "Ta wartość rozbroiłaby alarm",
+					"open": "Ta wartość otworzyłaby drzwi, garaż lub bramę"
+				}
+			},
+			"severities": {
+				"info": "Informacja",
+				"warning": "Ostrzeżenie",
+				"error": "Błąd",
+				"critical": "Krytyczne"
+			},
+			"weekdays": {
+				"short": {
+					"0": "Nd",
+					"1": "Pn",
+					"2": "Wt",
+					"3": "Śr",
+					"4": "Cz",
+					"5": "Pt",
+					"6": "So"
+				}
+			},
+			"fields": {
+				"duration": {
+					"unit": "Jednostka",
+					"units": {
+						"seconds": "sekundy",
+						"minutes": "minuty",
+						"hours": "godziny"
+					}
+				},
+				"weekdays": {
+					"title": "Dni",
+					"everyDay": "Nie wybrano dnia: codziennie.",
+					"hint": "Tylko w wybrane dni."
+				},
+				"changed": {
+					"mode": "Uruchom, gdy wartość",
+					"modes": {
+						"any": "zmieni się w dowolny sposób",
+						"to": "przyjmie wartość",
+						"from": "zmieni się z wartości",
+						"fromTo": "zmieni się z jednej wartości na inną",
+						"above": "wzrośnie powyżej progu",
+						"below": "spadnie poniżej progu"
+					},
+					"from": "Z",
+					"to": "Na",
+					"above": "Powyżej",
+					"below": "Poniżej",
+					"hysteresis": {
+						"title": "Histereza",
+						"hint": "O ile wartość musi wrócić, zanim przekroczenie progu ponownie uruchomi automatyzację. Pozostaw puste, aby nie stosować."
+					},
+					"for": {
+						"title": "Dopiero gdy utrzyma się tak przez",
+						"hint": "Wartość musi pozostać w nowym stanie przez cały czas; gdy go opuści lub urządzenie przejdzie w tryb offline, czekanie zaczyna się od nowa."
+					}
+				},
+				"compare": {
+					"operator": "Porównanie",
+					"operators": {
+						"eq": "jest równa",
+						"neq": "nie jest równa",
+						"gt": "jest większa niż",
+						"gte": "jest większa lub równa",
+						"lt": "jest mniejsza niż",
+						"lte": "jest mniejsza lub równa",
+						"between": "jest pomiędzy",
+						"in": "jest jedną z"
+					},
+					"value": "Wartość",
+					"min": "Od (włącznie)",
+					"max": "Do (włącznie)",
+					"values": {
+						"title": "Wartości",
+						"placeholder": "Wpisz wartość i naciśnij Enter",
+						"notNumber": "To nie jest liczba, więc nie dodano: {value}"
+					}
+				},
+				"set": {
+					"write": "Wartość {number}",
+					"value": "Ustaw na",
+					"add": "Dodaj wartość",
+					"remove": "Usuń tę wartość",
+					"malformed": "Ten wpis nie jest prawidłową wartością. Wybierz właściwość, aby go zastąpić, lub go usuń."
+				},
+				"time": {
+					"at": "O",
+					"placeholder": "HH:mm",
+					"houseClock": "W 24-godzinnym czasie strefy czasowej domu."
+				},
+				"window": {
+					"from": "Od (włącznie)",
+					"to": "Do (wyłącznie)",
+					"hint": "Okno odnosi się do zegara domu.",
+					"overnight": "Okno przechodzi przez północ; dni to dni, w które się zaczyna."
+				},
+				"manual": {
+					"hint": "Automatyzacja zaczyna się tutaj, gdy ktoś uruchomi ją ręcznie z listy automatyzacji."
+				},
+				"scene": {
+					"title": "Scena",
+					"placeholder": "Wybierz scenę",
+					"empty": "Nie ma jeszcze scen",
+					"hint": "Przy każdym uruchomieniu scena jest sprawdzana ponownie: scena, która by coś odblokowała, rozbroiła lub otworzyła, nie zostanie uruchomiona."
+				},
+				"notification": {
+					"severity": "Ważność",
+					"title": "Tytuł",
+					"message": "Wiadomość",
+					"hint": "Zwykły tekst, wysłany tak, jak został napisany."
+				},
+				"delay": {
+					"title": "Czekaj",
+					"hint": "Najwyżej godzinę. Opóźnienie nie przetrwa ponownego uruchomienia serwera."
+				}
+			},
+			"summaries": {
+				"target": "{device} · {property}",
+				"unknownDevice": "Nieznane urządzenie",
+				"unknownProperty": "nieznana właściwość",
+				"unknownScene": "nieznaną scenę",
+				"changed": {
+					"any": "{target} się zmienia",
+					"to": "{target} przyjmuje {to}",
+					"from": "{target} zmienia się z {from}",
+					"fromTo": "{target} zmienia się z {from} na {to}",
+					"above": "{target} rośnie powyżej {value}",
+					"below": "{target} spada poniżej {value}",
+					"for": "{summary} przez {duration}"
+				},
+				"compare": {
+					"operator": "{target} {operator} {value}",
+					"between": "{target} pomiędzy {min} a {max}",
+					"in": "{target} jest jedną z {values}"
+				},
+				"set": {
+					"one": "{target} → {value}",
+					"many": "{target} → {value} i {count} więcej"
+				},
+				"timeOfDay": "O {time}, {days}",
+				"timeWindow": "{from} – {to}, {days}",
+				"timeWindowOvernight": "{from} – {to} przez noc, {days}",
+				"sceneRun": "Uruchom {scene}",
+				"notification": "{severity}: {title}",
+				"delay": "Czekaj {duration}",
+				"manualStart": "Po ręcznym uruchomieniu",
+				"duration": {
+					"hours": "{count} h",
+					"minutes": "{count} min",
+					"seconds": "{count} s"
+				},
+				"days": {
+					"everyDay": "codziennie",
+					"workdays": "Pn – Pt",
+					"weekend": "w weekendy"
+				}
+			},
+			"validation": {
+				"unknownField": "Blok nie zna tego pola.",
+				"device": "Trzeba wybrać urządzenie.",
+				"channel": "Trzeba wybrać kanał.",
+				"property": "Trzeba wybrać właściwość.",
+				"value": "Wartość musi być tekstem, liczbą albo tak/nie.",
+				"number": "To musi być liczba.",
+				"required": "Ta wartość jest potrzebna.",
+				"hysteresis": "Histereza musi być liczbą nieujemną.",
+				"duration": "Czas musi być całkowitą liczbą sekund.",
+				"durationMin": "Czas musi wynosić co najmniej 1 sekundę.",
+				"forMax": "Czas może wynosić najwyżej 7 dni.",
+				"delayMax": "Opóźnienie może wynosić najwyżej 1 godzinę.",
+				"aboveAndBelow": "„Powyżej” i „poniżej” nie mogą być użyte razem.",
+				"thresholdAndValue": "Progu nie można łączyć z wartością, na którą lub z której następuje zmiana.",
+				"hysteresisNeedsThreshold": "Histereza wymaga progu.",
+				"forNeedsState": "Czekanie wymaga stanu, który trwa: wartości, którą przyjmie, albo progu. Nie można go użyć z „z”.",
+				"operator": "Wybierz sposób porównania.",
+				"values": "Wartości muszą być listą.",
+				"valuesEmpty": "Potrzebna jest co najmniej jedna wartość.",
+				"valuesMax": "Dozwolonych jest najwyżej 50 wartości.",
+				"notUsedByOperator": "To porównanie nie używa tej wartości.",
+				"maxBelowMin": "Górna granica nie może być poniżej dolnej.",
+				"orderNeedsNumber": "To porównanie wymaga liczby.",
+				"writes": "Ustawiane wartości muszą być listą.",
+				"writesEmpty": "Potrzebna jest co najmniej jedna wartość do ustawienia.",
+				"writesMax": "Jedna akcja może ustawić najwyżej 20 wartości.",
+				"propertyTwice": "Ta akcja ustawia tę samą właściwość dwa razy.",
+				"time": "Godzina musi być zapisana jako HH:mm.",
+				"weekday": "Dzień musi być jednym z dni tygodnia.",
+				"weekdays": "Dni muszą być listą.",
+				"weekdaysEmpty": "Potrzebny jest co najmniej jeden dzień.",
+				"weekdaysTwice": "Dzień można wybrać tylko raz.",
+				"windowEmpty": "Koniec musi różnić się od początku.",
+				"scene": "Trzeba wybrać scenę.",
+				"severity": "Wybierz, jak pilne jest powiadomienie.",
+				"title": "Tytuł jest wymagany.",
+				"titleMax": "Tytuł może mieć najwyżej 120 znaków.",
+				"message": "Wiadomość musi być tekstem.",
+				"messageMax": "Wiadomość może mieć najwyżej 1000 znaków."
 			}
 		}
 	}

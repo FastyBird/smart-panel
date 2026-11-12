@@ -280,7 +280,8 @@
 							ref="canvas"
 							:graph="graph"
 							:node-types="nodeTypes"
-							:issues="issues"
+							:issues="shownIssues"
+							:summary-component="getCardComponent"
 							:readonly="readonly"
 							:initial-view="readonly ? 'first-trigger' : 'fit'"
 							@update:graph="onGraphUpdate"
@@ -290,8 +291,8 @@
 					</div>
 
 					<automation-issues-list
-						v-if="issues.length > 0"
-						:issues="issues"
+						v-if="shownIssues.length > 0"
+						:issues="shownIssues"
 						:graph="graph"
 						:node-types="nodeTypes"
 						@focus="onFocusNode"
@@ -309,6 +310,7 @@
 					:node="panelNode"
 					:node-type="getNodeType(panelNode.type)"
 					:issues="panelIssues"
+					:form="getFormComponent(panelNode.type)"
 					:disabled="reloading || readonly"
 					@update:config="onConfigUpdate"
 					@update:invalid="setDraftInvalid"
@@ -351,7 +353,8 @@ import {
 import { AutomationsApiException } from '../automations.exceptions';
 import { issueNodeIds } from '../automations.graph';
 import { AutomationCanvas, AutomationIssuesList, AutomationNodePanel, AutomationPalette } from '../components/components';
-import { useAutomationEditor, useAutomationNodeTypes } from '../composables/composables';
+import { useAutomationEditor, useAutomationNodePlugins, useAutomationNodeTypes } from '../composables/composables';
+import { findSelfTriggeringWrites } from '../nodes/nodes.rules';
 import type { IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../store/automations.store.types';
 
 import type { IViewAutomationFlowProps } from './view-automation-flow.types';
@@ -370,6 +373,8 @@ const flashMessage = useFlashMessage();
 const { isMDDevice } = useBreakpoints();
 
 const { nodeTypes, fetchNodeTypes, getNodeType } = useAutomationNodeTypes();
+
+const { getFormComponent, getCardComponent } = useAutomationNodePlugins();
 
 const {
 	automation,
@@ -441,10 +446,13 @@ const panelNode = computed<IAutomationGraphNode | null>((): IAutomationGraphNode
 	panelFor.value !== null ? (graph.value.nodes.find((node) => node.id === panelFor.value) ?? null) : null
 );
 
+// What the backend reported on the last save or check, and what the editor sees in the flow as it is drawn
+const shownIssues = computed<IAutomationGraphIssue[]>((): IAutomationGraphIssue[] => [...issues.value, ...findSelfTriggeringWrites(graph.value)]);
+
 const panelIssues = computed<IAutomationGraphIssue[]>((): IAutomationGraphIssue[] => {
 	const id = panelNode.value?.id;
 
-	return typeof id === 'string' ? issues.value.filter((issue) => issueNodeIds(issue).includes(id)) : [];
+	return typeof id === 'string' ? shownIssues.value.filter((issue) => issueNodeIds(issue).includes(id)) : [];
 });
 
 // The panel takes its room from the canvas; a card that ends up behind it is brought back into view

@@ -261,7 +261,7 @@
 			},
 			"texts": {
 				"readonly": "Read-only on a small screen",
-				"confirmDiscardDraft": "The text in the form of this block is not valid JSON, so it has not been applied. Do you want to discard it?",
+				"confirmDiscardDraft": "Something entered in the form of this block is incomplete or not valid JSON, so it has not been applied. Do you want to discard it?",
 				"unsaved": "Unsaved changes",
 				"noNodeTypes": "No blocks are available.",
 				"notConfigured": "Not configured yet",
@@ -290,6 +290,7 @@
 				"nothingToConfigure": "This block has nothing to configure.",
 				"invalidJson": "This is not valid JSON.",
 				"notSet": "Not set",
+				"outOfRange": "Outside the range the property takes ({range})",
 				"unset": "Unset",
 				"yes": "Yes",
 				"no": "No",
@@ -298,7 +299,8 @@
 					"string": "Text",
 					"number": "Number",
 					"boolean": "Yes / No"
-				}
+				},
+				"value": "Value"
 			},
 			"rejections": {
 				"unknown_node": "These blocks cannot be connected.",
@@ -316,7 +318,8 @@
 				"cycle": "The flow loops back on itself.",
 				"duplicate_edge": "Two connections join the same two points.",
 				"no_trigger": "The automation needs at least one trigger to start it.",
-				"unreachable_node": "No trigger leads to this block, so it never runs."
+				"unreachable_node": "No trigger leads to this block, so it never runs.",
+				"self_triggering_write": "This action sets a value that a trigger of the same automation watches, so every run can start the automation again. If that is not meant, set another value or watch another one."
 			},
 			"conflict": {
 				"title": "The automation was changed elsewhere",
@@ -328,8 +331,214 @@
 			"messages": {
 				"conflict": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes are kept; choose which version to keep.",
 				"invalid": "The flow of automation \"{automation}\" cannot be saved yet. Check the problems listed below the canvas.",
-				"invalidDraft": "Some text in the form of the selected block is not valid JSON. Correct it or undo it before saving.",
-				"busy": "The automation is still being read or saved. Try again once that is done."
+				"invalidDraft": "Something entered in the form of the selected block is incomplete or not valid JSON. Complete or correct it, or undo it, before saving.",
+				"busy": "The automation is still being read or saved. Try again once that is done.",
+				"unsafe": "The flow of automation \"{automation}\" cannot be saved: an action would unlock, disarm or open something, which an automation is not allowed to do."
+			},
+			"safety": {
+				"refused": "Not allowed in an automation",
+				"checkedOnRun": "Checked again whenever it runs",
+				"notOffered": "An automation acts without anybody present, so it may lock, arm and close, but not unlock, disarm or open. Choose another value.",
+				"kinds": {
+					"unlock": "This value would unlock a lock",
+					"disarm": "This value would disarm the alarm",
+					"open": "This value would open a door, garage or gate"
+				}
+			},
+			"severities": {
+				"info": "Information",
+				"warning": "Warning",
+				"error": "Error",
+				"critical": "Critical"
+			},
+			"weekdays": {
+				"short": {
+					"0": "Sun",
+					"1": "Mon",
+					"2": "Tue",
+					"3": "Wed",
+					"4": "Thu",
+					"5": "Fri",
+					"6": "Sat"
+				}
+			},
+			"fields": {
+				"duration": {
+					"unit": "Unit",
+					"units": {
+						"seconds": "seconds",
+						"minutes": "minutes",
+						"hours": "hours"
+					}
+				},
+				"weekdays": {
+					"title": "Days",
+					"everyDay": "No day picked: every day.",
+					"hint": "Only on the days picked."
+				},
+				"changed": {
+					"mode": "Start when the value",
+					"modes": {
+						"any": "changes in any way",
+						"to": "becomes a value",
+						"from": "changes from a value",
+						"fromTo": "changes from one value to another",
+						"above": "rises above a threshold",
+						"below": "falls below a threshold"
+					},
+					"from": "From",
+					"to": "To",
+					"above": "Above",
+					"below": "Below",
+					"hysteresis": {
+						"title": "Hysteresis",
+						"hint": "How far the value has to come back before crossing the threshold starts the automation again. Leave empty for none."
+					},
+					"for": {
+						"title": "Only once it has stayed like this for",
+						"hint": "The value has to stay in the new state the whole time; leaving it, or the device going offline, starts the wait again."
+					}
+				},
+				"compare": {
+					"operator": "Comparison",
+					"operators": {
+						"eq": "is equal to",
+						"neq": "is not equal to",
+						"gt": "is greater than",
+						"gte": "is greater than or equal to",
+						"lt": "is less than",
+						"lte": "is less than or equal to",
+						"between": "is between",
+						"in": "is one of"
+					},
+					"value": "Value",
+					"min": "From (included)",
+					"max": "To (included)",
+					"values": {
+						"title": "Values",
+						"placeholder": "Type a value and press Enter",
+						"notNumber": "Not a number, so not added: {value}"
+					}
+				},
+				"set": {
+					"write": "Value {number}",
+					"value": "Value to set",
+					"add": "Add value",
+					"remove": "Remove this value",
+					"malformed": "This entry is not a valid value. Pick a property to replace it, or remove it."
+				},
+				"time": {
+					"at": "At",
+					"placeholder": "HH:mm",
+					"houseClock": "On the 24-hour clock of the house timezone."
+				},
+				"window": {
+					"from": "From (included)",
+					"to": "To (not included)",
+					"hint": "The window is on the house clock.",
+					"overnight": "The window crosses midnight; the days are the days it starts on."
+				},
+				"manual": {
+					"hint": "The automation starts here when somebody runs it by hand from the list of automations."
+				},
+				"scene": {
+					"title": "Scene",
+					"placeholder": "Select a scene",
+					"empty": "There are no scenes yet",
+					"hint": "Every time it runs, the scene is checked again: a scene that would unlock, disarm or open something is not run."
+				},
+				"notification": {
+					"severity": "Severity",
+					"title": "Title",
+					"message": "Message",
+					"hint": "Plain text, sent as written."
+				},
+				"delay": {
+					"title": "Wait for",
+					"hint": "At most one hour. A delay does not survive a restart of the server."
+				}
+			},
+			"summaries": {
+				"target": "{device} · {property}",
+				"unknownDevice": "Unknown device",
+				"unknownProperty": "unknown property",
+				"unknownScene": "an unknown scene",
+				"changed": {
+					"any": "{target} changes",
+					"to": "{target} becomes {to}",
+					"from": "{target} changes from {from}",
+					"fromTo": "{target} changes from {from} to {to}",
+					"above": "{target} rises above {value}",
+					"below": "{target} falls below {value}",
+					"for": "{summary} for {duration}"
+				},
+				"compare": {
+					"operator": "{target} {operator} {value}",
+					"between": "{target} between {min} and {max}",
+					"in": "{target} is one of {values}"
+				},
+				"set": {
+					"one": "{target} → {value}",
+					"many": "{target} → {value} and {count} more"
+				},
+				"timeOfDay": "At {time}, {days}",
+				"timeWindow": "{from} – {to}, {days}",
+				"timeWindowOvernight": "{from} – {to} overnight, {days}",
+				"sceneRun": "Run {scene}",
+				"notification": "{severity}: {title}",
+				"delay": "Wait {duration}",
+				"manualStart": "When run by hand",
+				"duration": {
+					"hours": "{count} h",
+					"minutes": "{count} min",
+					"seconds": "{count} s"
+				},
+				"days": {
+					"everyDay": "every day",
+					"workdays": "Mon – Fri",
+					"weekend": "weekends"
+				}
+			},
+			"validation": {
+				"unknownField": "This field is not known to the block.",
+				"device": "A device must be chosen.",
+				"channel": "A channel must be chosen.",
+				"property": "A property must be chosen.",
+				"value": "The value must be a text, a number or yes/no.",
+				"number": "This must be a number.",
+				"required": "This value is needed.",
+				"hysteresis": "The hysteresis must be a number that is not negative.",
+				"duration": "The duration must be a whole number of seconds.",
+				"durationMin": "The duration must be at least 1 second.",
+				"forMax": "The duration can be at most 7 days.",
+				"delayMax": "A delay can be at most 1 hour.",
+				"aboveAndBelow": "\"Above\" and \"below\" cannot be used together.",
+				"thresholdAndValue": "A threshold cannot be combined with a value to change to or from.",
+				"hysteresisNeedsThreshold": "A hysteresis needs a threshold.",
+				"forNeedsState": "Waiting needs a state to hold: a value it becomes, or a threshold. It cannot be used with \"from\".",
+				"operator": "Choose how to compare.",
+				"values": "The values must be a list.",
+				"valuesEmpty": "At least one value is needed.",
+				"valuesMax": "At most 50 values are allowed.",
+				"notUsedByOperator": "This comparison does not use this value.",
+				"maxBelowMin": "The upper end must not be below the lower end.",
+				"orderNeedsNumber": "This comparison needs a number.",
+				"writes": "The values to set must be a list.",
+				"writesEmpty": "At least one value to set is needed.",
+				"writesMax": "At most 20 values can be set by one action.",
+				"propertyTwice": "The same property is set twice by this action.",
+				"time": "The time must be written as HH:mm.",
+				"weekday": "A day must be one of the days of the week.",
+				"weekdays": "The days must be a list.",
+				"weekdaysEmpty": "At least one day is needed.",
+				"weekdaysTwice": "A day can be picked only once.",
+				"windowEmpty": "The end must differ from the start.",
+				"scene": "A scene must be chosen.",
+				"severity": "Choose how urgent the notification is.",
+				"title": "A title is needed.",
+				"titleMax": "The title can be at most 120 characters long.",
+				"message": "The message must be a text.",
+				"messageMax": "The message can be at most 1000 characters long."
 			}
 		}
 	}

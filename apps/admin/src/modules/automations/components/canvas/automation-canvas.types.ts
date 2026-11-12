@@ -1,3 +1,5 @@
+import type { Component } from 'vue';
+
 import type { AutomationIssueSeverity } from '../../automations.graph';
 import type { IAutomationGraph, IAutomationGraphIssue } from '../../store/automations.store.types';
 import type { IAutomationNodeType } from '../../store/node-types.store.types';
@@ -13,6 +15,8 @@ export interface IAutomationCanvasProps {
 	nodeTypes: IAutomationNodeType[];
 	// What the backend found wrong with the graph; the nodes and edges named are outlined
 	issues?: IAutomationGraphIssue[];
+	// The summary component of a card that brings one (`automationNodeCard`), null for the generic summary
+	summaryComponent?: (type: string) => Component | null;
 	readonly?: boolean;
 	initialView?: AutomationCanvasInitialView;
 }

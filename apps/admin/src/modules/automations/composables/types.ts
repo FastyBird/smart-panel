@@ -1,10 +1,13 @@
-import type { ComputedRef, Reactive, Ref } from 'vue';
+import type { Component, ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
-import { z } from 'zod';
+import { type ZodType, z } from 'zod';
 
+import type { IModuleElement, IPluginElement } from '../../../common';
 import type { ISpace } from '../../spaces/store/spaces.store.types';
 import type { AutomationMode, AutomationNodeKind, FormResultType } from '../automations.constants';
+import type { IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas } from '../automations.types';
+import type { IAutomationNodeLookups } from '../nodes/nodes.summaries';
 import type { IAutomationAddForm, IAutomationEditForm } from '../schemas/automations.types';
 import type { IAutomation, IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../store/automations.store.types';
 import type { IAutomationNodeType } from '../store/node-types.store.types';
@@ -155,4 +158,35 @@ export interface IUseAutomationEditor {
 	setEnabled: (enabled: boolean) => Promise<boolean>;
 	reloadLatest: () => Promise<void>;
 	overwrite: () => Promise<AutomationEditorSaveResult>;
+}
+
+export type IAutomationNodeElement =
+	| IPluginElement<IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas>
+	| IModuleElement<IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas>;
+
+export interface IUseAutomationNodePlugins {
+	// The element of every card that has one, by node type; what a plugin leaves out is filled in from the module
+	elements: ComputedRef<Map<string, IAutomationNodeElement>>;
+	getElement: (type: string) => IAutomationNodeElement | undefined;
+	getFormComponent: (type: string) => Component | null;
+	getCardComponent: (type: string) => Component | null;
+	getConfigSchema: (type: string) => ZodType | null;
+}
+
+export interface IUseAutomationNodeForm {
+	// Sets the fields given, leaving the others; `field` names what was edited, for the undo history
+	update: (patch: Record<string, unknown>, field: string) => void;
+	// The problems of a field and of its parts (`writes` covers `writes.0.value`), worded
+	errorsAt: (path: string) => string[];
+	errorText: (path: string) => string | undefined;
+	warningsAt: (path: string) => IAutomationGraphIssue[];
+	// What the backend refused because it would reduce safety
+	refusalsAt: (path: string) => IAutomationGraphIssue[];
+}
+
+export interface IUseAutomationNodeLookups extends IAutomationNodeLookups {
+	// Reads the devices (with their channels and properties) once, unless they are read already
+	ensureDevices: () => Promise<void>;
+	// Reads the scenes once, unless they are read already
+	ensureScenes: () => Promise<void>;
 }

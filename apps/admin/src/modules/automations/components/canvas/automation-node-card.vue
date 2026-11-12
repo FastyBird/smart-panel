@@ -30,10 +30,17 @@
 			</div>
 			<div
 				class="automation-node-card__summary"
-				:title="props.summary"
+				:title="props.summaryComponent ? undefined : props.summary"
 				data-test-id="node-summary"
 			>
-				{{ props.summary }}
+				<component
+					:is="props.summaryComponent"
+					v-if="props.summaryComponent && props.summaryProps"
+					v-bind="props.summaryProps"
+				/>
+				<template v-else>
+					{{ props.summary }}
+				</template>
 			</div>
 		</div>
 
@@ -62,6 +69,8 @@ const props = withDefaults(defineProps<IAutomationNodeCardProps>(), {
 	kind: null,
 	selected: false,
 	issue: undefined,
+	summaryComponent: undefined,
+	summaryProps: undefined,
 });
 </script>
 
