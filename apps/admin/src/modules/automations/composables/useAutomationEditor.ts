@@ -159,7 +159,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		}
 
 		if (error instanceof AutomationsGraphInvalidException) {
-			issues.value = error.issues;
+			issues.value = pruneIssues(error.issues, history.graph.value);
 
 			flashMessage.error(t('automations.editor.messages.invalid', { automation: name() }));
 
@@ -185,7 +185,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			const validation = await automationsStore.validate({ graph, enabled: automation.value.enabled }).catch((): null => null);
 
 			if (validation !== null) {
-				issues.value = validation.issues;
+				issues.value = pruneIssues(validation.issues, history.graph.value);
 
 				if (!validation.valid) {
 					flashMessage.error(t('automations.editor.messages.invalid', { automation: name() }));
@@ -246,7 +246,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			baseRevision.value = saved.revision;
 		} catch (error: unknown) {
 			if (error instanceof AutomationsGraphInvalidException) {
-				issues.value = error.issues;
+				issues.value = pruneIssues(error.issues, history.graph.value);
 
 				flashMessage.error(t('automations.messages.notEnabledIncomplete', { automation: name() }));
 			} else if (error instanceof AutomationsRevisionConflictException) {

@@ -431,6 +431,26 @@ describe('useAutomationEditor', () => {
 			expect(editor.issues.value).toEqual([]);
 		});
 
+		it('does not bring back the issues of a node removed while the validation was on its way', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const validation = deferred();
+
+			mockBackendClient.POST.mockReturnValueOnce(validation.promise);
+
+			const saving = editor.save();
+
+			editor.updateGraph(cloneGraph(graph));
+
+			validation.resolve(ok({ valid: false, issues: [invalidConfig] }));
+
+			await expect(saving).resolves.toBe('invalid');
+
+			expect(editor.issues.value).toEqual([]);
+		});
+
 		it('still counts as unsaved what was drawn while the save was under way', async () => {
 			const editor = await createEditor();
 
