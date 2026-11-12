@@ -94,6 +94,17 @@ describe('CamerasService', () => {
 		);
 	});
 
+	it('findProfileById returns a profile even when it is unavailable and rejects unknown ids', async () => {
+		providerA.listProfiles.mockResolvedValue([
+			{ id: 'high', channelId: 'ch1', available: false, unavailableReason: 'stream_not_enabled' },
+		]);
+
+		expect((await service.findProfileById(camera, providerA, 'high')).channelId).toBe('ch1');
+		await expect(service.findProfileById(camera, providerA, 'nope')).rejects.toBeInstanceOf(
+			CameraProfileUnavailableException,
+		);
+	});
+
 	it('gives up on a provider that does not answer within the timeout', async () => {
 		jest.useFakeTimers();
 

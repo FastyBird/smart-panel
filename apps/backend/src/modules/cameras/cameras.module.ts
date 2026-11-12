@@ -16,6 +16,7 @@ import { CAMERAS_SWAGGER_EXTRA_MODELS } from './cameras.openapi';
 import { CamerasController } from './controllers/cameras.controller';
 import { UpdateCamerasConfigDto } from './dto/update-config.dto';
 import { CamerasConfigModel } from './models/config.model';
+import { CameraSnapshotService } from './services/camera-snapshot.service';
 import { CameraStreamProviderRegistryService } from './services/camera-stream-provider.registry.service';
 import { CamerasService } from './services/cameras.service';
 
@@ -26,9 +27,9 @@ import { CamerasService } from './services/cameras.service';
 })
 @Module({
 	imports: [DevicesModule, SwaggerModule],
-	providers: [CameraStreamProviderRegistryService, CamerasService],
+	providers: [CameraStreamProviderRegistryService, CamerasService, CameraSnapshotService],
 	controllers: [CamerasController],
-	exports: [CameraStreamProviderRegistryService, CamerasService],
+	exports: [CameraStreamProviderRegistryService, CamerasService, CameraSnapshotService],
 })
 export class CamerasModule implements OnModuleInit {
 	constructor(

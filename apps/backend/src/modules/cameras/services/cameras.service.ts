@@ -15,7 +15,7 @@ export const CAMERA_PROVIDER_TIMEOUT_MS = 10_000;
 
 const CAMERA_CATEGORIES: DeviceCategory[] = [DeviceCategory.CAMERA, DeviceCategory.DOORBELL];
 
-class CameraProviderTimeoutError extends Error {
+export class CameraProviderTimeoutError extends Error {
 	constructor() {
 		super('Camera provider call timed out');
 		this.name = 'CameraProviderTimeoutError';
@@ -73,6 +73,24 @@ export class CamerasService {
 			throw new CameraProfileUnavailableException(
 				profileId ? `Profile ${profileId} is not available` : 'No stream profile is available',
 			);
+		}
+
+		return profile;
+	}
+
+	/**
+	 * Looks a profile up by id regardless of its availability. Used by snapshots, which work without an enabled stream.
+	 */
+	async findProfileById(
+		device: DeviceEntity,
+		provider: ICameraStreamProvider,
+		profileId: string,
+	): Promise<CameraStreamProfile> {
+		const profiles = await this.withTimeout(provider.listProfiles(device));
+		const profile = profiles.find((p) => p.id === profileId);
+
+		if (!profile) {
+			throw new CameraProfileUnavailableException(`Profile ${profileId} is not available`);
 		}
 
 		return profile;
