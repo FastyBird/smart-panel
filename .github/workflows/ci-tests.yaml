@@ -253,6 +253,56 @@ jobs:
           path: "apps/admin/coverage/"
           retention-days: 7
 
+  admin-e2e:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
+    name: "Admin end-to-end tests"
+    runs-on: "${{ matrix.operating-system }}"
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [ "24" ]
+        pnpm-version: [ "10.12.0" ]
+        # Pinned: the Playwright the admin uses does not support the Ubuntu that ubuntu-latest points to
+        operating-system: [ "ubuntu-24.04" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Check E2E Types"
+        run: "pnpm --filter @fastybird/smart-panel-admin exec tsc -p e2e/tsconfig.json"
+
+      - name: "Install Playwright Chromium"
+        run: "pnpm --filter @fastybird/smart-panel-admin exec playwright install --with-deps chromium"
+
+      - name: "Build Admin"
+        run: "pnpm --filter @fastybird/smart-panel-admin build:no-check"
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: "Run E2E Tests"
+        run: "pnpm --filter @fastybird/smart-panel-admin test:e2e --project=chromium"
+
+      - name: "Upload Playwright Report"
+        if: failure()
+        uses: "actions/upload-artifact@v7"
+        with:
+          name: "admin-playwright-report"
+          path: "apps/admin/playwright-report/"
+          retention-days: 14
+
   panel-analyze:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'

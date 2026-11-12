@@ -1,0 +1,340 @@
+[
+	{
+		"type": "device.property.changed",
+		"kind": "trigger",
+		"name": "Device value changes",
+		"description": "Starts when a device value changes: to or from a value, above or below a threshold, optionally only after it has stayed there for a time.",
+		"ports": {
+			"inputs": [],
+			"outputs": ["out"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"device_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The device the property belongs to."
+				},
+				"channel_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The channel the property belongs to."
+				},
+				"property_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The property."
+				},
+				"to": {
+					"type": ["string", "number", "boolean"],
+					"description": "Start when the value becomes this."
+				},
+				"from": {
+					"type": ["string", "number", "boolean"],
+					"description": "Start only when the value was this before the change."
+				},
+				"above": {
+					"type": "number",
+					"description": "Start when a numeric value rises above this."
+				},
+				"below": {
+					"type": "number",
+					"description": "Start when a numeric value falls below this."
+				},
+				"hysteresis": {
+					"type": "number",
+					"minimum": 0,
+					"description": "How far the value has to come back before the threshold can start a run again."
+				},
+				"for_seconds": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 604800,
+					"description": "Start only after the value has stayed in the target state this long. Needs \"to\", \"above\" or \"below\"."
+				}
+			},
+			"required": ["device_id", "channel_id", "property_id"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "device.property.compare",
+		"kind": "condition",
+		"name": "Device value is",
+		"description": "Continues on \"yes\" when a device value compares as asked, and on \"no\" when it does not or when the value is not known.",
+		"ports": {
+			"inputs": ["in"],
+			"outputs": ["yes", "no"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"device_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The device the property belongs to."
+				},
+				"channel_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The channel the property belongs to."
+				},
+				"property_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The property."
+				},
+				"operator": {
+					"type": "string",
+					"enum": ["eq", "neq", "gt", "gte", "lt", "lte", "between", "in"],
+					"description": "How to compare. Which operators are offered depends on what the property holds."
+				},
+				"value": {
+					"type": ["string", "number", "boolean"],
+					"description": "The value to compare with; for every operator but \"between\" and \"in\"."
+				},
+				"min": {
+					"type": "number",
+					"description": "Lower end of \"between\", inclusive."
+				},
+				"max": {
+					"type": "number",
+					"description": "Upper end of \"between\", inclusive."
+				},
+				"values": {
+					"type": "array",
+					"items": {
+						"type": ["string", "number", "boolean"]
+					},
+					"minItems": 1,
+					"maxItems": 50,
+					"description": "The values of \"in\"."
+				}
+			},
+			"required": ["device_id", "channel_id", "property_id", "operator"],
+			"additionalProperties": false,
+			"x-operators-by-value-kind": {
+				"number": ["eq", "neq", "gt", "gte", "lt", "lte", "between", "in"],
+				"boolean": ["eq", "neq"],
+				"string": ["eq", "neq", "in"],
+				"enum": ["eq", "neq", "in"],
+				"unknown": ["eq", "neq", "gt", "gte", "lt", "lte", "between", "in"]
+			}
+		}
+	},
+	{
+		"type": "device.property.set",
+		"kind": "action",
+		"name": "Set device value",
+		"description": "Sets one or more device values. Values of the same device are applied together.",
+		"ports": {
+			"inputs": ["in"],
+			"outputs": ["done", "error"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"writes": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 20,
+					"description": "The values to set. Values of the same device are applied together.",
+					"items": {
+						"type": "object",
+						"properties": {
+							"device_id": {
+								"type": "string",
+								"format": "uuid",
+								"description": "The device the property belongs to."
+							},
+							"channel_id": {
+								"type": "string",
+								"format": "uuid",
+								"description": "The channel the property belongs to."
+							},
+							"property_id": {
+								"type": "string",
+								"format": "uuid",
+								"description": "The property."
+							},
+							"value": {
+								"type": ["string", "number", "boolean"],
+								"description": "The value to set."
+							}
+						},
+						"required": ["device_id", "channel_id", "property_id", "value"],
+						"additionalProperties": false
+					}
+				}
+			},
+			"required": ["writes"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "flow.delay",
+		"kind": "flow",
+		"name": "Delay",
+		"description": "Waits for a time, at most one hour, and then continues.",
+		"ports": {
+			"inputs": ["in"],
+			"outputs": ["out"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"seconds": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 3600
+				}
+			},
+			"required": ["seconds"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "manual.start",
+		"kind": "trigger",
+		"name": "Manual start",
+		"description": "Starts only when the automation is run by hand.",
+		"ports": {
+			"inputs": [],
+			"outputs": ["out"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {},
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "notification.send",
+		"kind": "action",
+		"name": "Send notification",
+		"description": "Raises a notification with a severity, a title and an optional message.",
+		"ports": {
+			"inputs": ["in"],
+			"outputs": ["done", "error"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"severity": {
+					"type": "string",
+					"enum": ["info", "warning", "error", "critical"],
+					"description": "How urgent the notification is."
+				},
+				"title": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 120,
+					"description": "Plain text."
+				},
+				"message": {
+					"type": "string",
+					"maxLength": 1000,
+					"description": "Plain text; new lines are kept."
+				}
+			},
+			"required": ["severity", "title"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "scene.run",
+		"kind": "action",
+		"name": "Run scene",
+		"description": "Runs a scene and waits until it has finished.",
+		"ports": {
+			"inputs": ["in"],
+			"outputs": ["done", "error"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"scene_id": {
+					"type": "string",
+					"format": "uuid",
+					"description": "The scene to run."
+				}
+			},
+			"required": ["scene_id"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "time.of-day",
+		"kind": "trigger",
+		"name": "Time of day",
+		"description": "Starts at a time of day, on every day or on chosen weekdays, in the house timezone.",
+		"ports": {
+			"inputs": [],
+			"outputs": ["out"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"time": {
+					"type": "string",
+					"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+					"description": "The time, HH:mm on the 24-hour house clock."
+				},
+				"weekdays": {
+					"type": "array",
+					"items": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 6
+					},
+					"minItems": 1,
+					"maxItems": 7,
+					"uniqueItems": true,
+					"description": "The days to start on: 0 is Sunday, 6 is Saturday. Left out means every day."
+				}
+			},
+			"required": ["time"],
+			"additionalProperties": false
+		}
+	},
+	{
+		"type": "time.window",
+		"kind": "condition",
+		"name": "Time is between",
+		"description": "Continues on \"yes\" while the house clock is inside a time window, on every day or on chosen weekdays. The window may cross midnight.",
+		"ports": {
+			"inputs": ["in"],
+			"outputs": ["yes", "no"]
+		},
+		"config_schema": {
+			"type": "object",
+			"properties": {
+				"from": {
+					"type": "string",
+					"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+					"description": "Start of the window, HH:mm, included."
+				},
+				"to": {
+					"type": "string",
+					"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+					"description": "End of the window, HH:mm, not included. Earlier than the start for a window over midnight."
+				},
+				"weekdays": {
+					"type": "array",
+					"items": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 6
+					},
+					"minItems": 1,
+					"maxItems": 7,
+					"uniqueItems": true,
+					"description": "The days the window starts on: 0 is Sunday, 6 is Saturday. Left out means every day."
+				}
+			},
+			"required": ["from", "to"],
+			"additionalProperties": false
+		}
+	}
+]
