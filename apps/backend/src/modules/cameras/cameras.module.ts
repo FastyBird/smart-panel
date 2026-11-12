@@ -15,6 +15,7 @@ import {
 import { CAMERAS_SWAGGER_EXTRA_MODELS } from './cameras.openapi';
 import { UpdateCamerasConfigDto } from './dto/update-config.dto';
 import { CamerasConfigModel } from './models/config.model';
+import { CameraStreamProviderRegistryService } from './services/camera-stream-provider.registry.service';
 
 @ApiTag({
 	tagName: CAMERAS_MODULE_NAME,
@@ -23,8 +24,8 @@ import { CamerasConfigModel } from './models/config.model';
 })
 @Module({
 	imports: [DevicesModule, SwaggerModule],
-	providers: [],
-	exports: [],
+	providers: [CameraStreamProviderRegistryService],
+	exports: [CameraStreamProviderRegistryService],
 })
 export class CamerasModule implements OnModuleInit {
 	constructor(
