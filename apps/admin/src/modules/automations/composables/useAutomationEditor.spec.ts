@@ -190,6 +190,36 @@ describe('useAutomationEditor', () => {
 			expect(editor.automation.value?.name).toBe('Hallway motion light');
 		});
 
+		it('reads again when a list at a later revision overtook the read, instead of taking it for an empty flow', async () => {
+			const first = deferred();
+			const theirs: IAutomationGraph = withDelay();
+
+			mockBackendClient.GET.mockReturnValueOnce(first.promise);
+
+			const editor = useAutomationEditor({ id: automationId });
+
+			const loading = editor.load();
+
+			// The list comes without graphs, at a revision saved elsewhere meanwhile
+			const summary: Partial<IAutomationRes> = detailRes({ revision: 4 });
+
+			delete summary.graph;
+
+			mockBackendClient.GET.mockResolvedValueOnce(ok([summary]));
+
+			await automationsStore.fetch();
+
+			mockBackendClient.GET.mockResolvedValueOnce(ok(detailRes({ revision: 4, graph: theirs })));
+
+			first.resolve(ok(detailRes()));
+
+			await loading;
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(3);
+			expect(editor.graph.value).toEqual(theirs);
+			expect(editor.isDirty.value).toBe(false);
+		});
+
 		it('rejects when the automation cannot be read', async () => {
 			mockBackendClient.GET.mockResolvedValueOnce(refused(404));
 

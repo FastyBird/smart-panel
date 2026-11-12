@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { AutomationMode } from '../automations.constants';
-import { AutomationsGraphInvalidException, AutomationsRevisionConflictException } from '../automations.exceptions';
+import { AutomationsApiException, AutomationsGraphInvalidException, AutomationsRevisionConflictException } from '../automations.exceptions';
 import { canonicalGraph, cloneGraph, createEmptyGraph, findSeparateFlows, pruneIssues } from '../automations.graph';
 import type { IAutomation, IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../store/automations.store.types';
 import { automationNodeTypesStoreKey, automationsStoreKey } from '../store/keys';
@@ -91,9 +91,26 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		draftInvalid.value = invalid;
 	};
 
+	// A read on its own always brings the graph, yet it answers with the newest record held: a list read at a
+	// later revision that overtook it brings that revision without its graph. That is not an empty flow, so
+	// the automation is read again until the revision held comes with its graph.
+	const readWithGraph = async (fresh: boolean): Promise<IAutomation> => {
+		let fetched = await automationsStore.get({ id, fresh });
+
+		for (let attempt = 0; fetched.graph === null && attempt < 2; attempt++) {
+			fetched = await automationsStore.get({ id, fresh: true });
+		}
+
+		if (fetched.graph === null) {
+			throw new AutomationsApiException('Failed to read the automation graph.');
+		}
+
+		return fetched;
+	};
+
 	const load = async (): Promise<void> => {
 		// Always read on its own: only that response carries the graph, and the list may hold an older revision
-		const fetched = await automationsStore.get({ id });
+		const fetched = await readWithGraph(false);
 
 		adopt(fetched);
 
@@ -268,7 +285,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 
 		try {
 			// What is on its way may be from before the other save, so it is read anew
-			const latest = await automationsStore.get({ id, fresh: true });
+			const latest = await readWithGraph(true);
 
 			if (history.graph.value !== drawing) {
 				// Drawn after the user gave up their copy or after the editor set out to follow a save made
