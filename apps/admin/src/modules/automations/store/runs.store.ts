@@ -110,9 +110,19 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 		// The read of the runtime of each automation started last: an earlier one answered later is out of date
 		const runtimeReadAt = new Map<IAutomationRun['automationId'], number>();
 
+		// The runs marked while the first list of their automation was on its way, by an event or a run read alone
+		const markedAwaitingFirstList = new Map<IAutomationRun['automationId'], Set<IAutomationRun['id']>>();
+
 		const stamp = (run: Pick<IAutomationRun, 'id' | 'automationId'>, at: number): void => {
-			if (data.value.has(run.automationId) || awaitingFirstList.has(run.automationId)) {
+			if (data.value.has(run.automationId)) {
 				changedAt.set(run.id, at);
+			} else if (awaitingFirstList.has(run.automationId)) {
+				changedAt.set(run.id, at);
+
+				const marked = markedAwaitingFirstList.get(run.automationId) ?? new Set<IAutomationRun['id']>();
+
+				marked.add(run.id);
+				markedAwaitingFirstList.set(run.automationId, marked);
 			}
 		};
 
@@ -316,12 +326,13 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 						// The marks of what came while a first list was on its way that no history took in: it failed or was let go of
 						const kept = new Set((data.value.get(automationId) ?? []).map((run) => run.id));
 
-						for (const runId of awaitingFirstList.get(automationId)?.keys() ?? []) {
+						for (const runId of markedAwaitingFirstList.get(automationId) ?? []) {
 							if (!kept.has(runId)) {
 								changedAt.delete(runId);
 							}
 						}
 
+						markedAwaitingFirstList.delete(automationId);
 						awaitingFirstList.delete(automationId);
 					}
 

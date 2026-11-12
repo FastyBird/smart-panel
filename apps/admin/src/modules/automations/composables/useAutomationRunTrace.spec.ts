@@ -577,6 +577,33 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
 	});
 
+	it('follows each run that waited in turn when they ended before the run followed', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		const third = 'a1f0c1d2-0000-4000-8000-000000000003';
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), third);
+		store().onEvent({ data: runRes(otherRunId, 'completed') });
+		store().onEvent({ data: runRes(third, 'completed') });
+		await nextTick();
+
+		expect(trace.shown.value?.runId).toBe(runId);
+
+		// The one taken up is over already: the next one that waited is taken up too, the latest last
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await nextTick();
+		await nextTick();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
+	});
+
 	it('keeps showing all the run followed did while other runs of the automation send their steps', async (): Promise<void> => {
 		const trace = await create();
 

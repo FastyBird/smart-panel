@@ -159,10 +159,11 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		}
 	});
 
+	// Watched by the pick that ended, not by whether one did: a run taken up that is over already ends in turn
 	watch(
-		(): boolean => source.value?.kind === 'live' && isEnded(shownRecord.value),
-		(ended: boolean): void => {
-			if (!ended) {
+		(): number | null => (source.value?.kind === 'live' && isEnded(shownRecord.value) ? source.value.pick : null),
+		(ended: number | null): void => {
+			if (ended === null) {
 				return;
 			}
 
