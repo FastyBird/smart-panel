@@ -291,7 +291,6 @@
 				v-if="automation.status !== AutomationStatus.ok"
 				:status="automation.status"
 				:runtime="runtime"
-				:suspended-node-id="runs[0]?.triggerNodeId ?? null"
 				:graph="graph"
 				:node-types="nodeTypes"
 				@focus="onFocusNode"

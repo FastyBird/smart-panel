@@ -209,10 +209,10 @@ export interface IUseAutomationNodeLookups extends IAutomationNodeLookups {
 export interface IUseAutomationLiveRun {
 	// The backend sends the steps of the automation's runs to this client
 	watching: Ref<boolean>;
-	// The run a step arrived for last
-	latestRunId: Ref<string | null>;
 	// The steps of a run received so far, in order
 	stepsOf: (runId: string) => IAutomationRunStep[];
+	// Calls the listener with the run of every step received, as it arrives
+	onStep: (listener: (runId: string) => void) => void;
 }
 
 // `live`: a run followed as it happens (started with Test, or by a trigger while the view is open);

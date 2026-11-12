@@ -155,7 +155,8 @@ const bySeq = (steps: IAutomationRunStep[]): IAutomationRunStep[] => [...steps].
 export const mapTraceToOverlay = (graph: Pick<IAutomationGraph, 'nodes' | 'edges'>, steps: IAutomationRunStep[]): IAutomationRunOverlay => {
 	const nodeIds = new Set(graph.nodes.map((node) => node.id));
 
-	const nodes: Record<string, IAutomationRunNodeOverlay> = {};
+	// Keyed by node id, which can be any text: nothing is inherited, so a card the run did not reach has no entry
+	const nodes = Object.create(null) as Record<string, IAutomationRunNodeOverlay>;
 	const missing = new Set<string>();
 
 	// The outputs each card took and went on from, for the edges that leave them
@@ -231,27 +232,46 @@ export const mapTraceToOverlay = (graph: Pick<IAutomationGraph, 'nodes' | 'edges
 };
 
 /**
- * Of a failed run, the card it failed on: the failure nothing handled. A card whose failing output leads on
- * in the graph recovered (its `error` output is connected), and a later card is the one the run failed on.
- * Without the graph, the last failure is the one the run ended on. A run that failed for another reason (it
- * reached the step limit) and has no unhandled failure is pointed at the last card it reached.
+ * Whether the run went on from a failing output: what the run did is read from its own trace, which names the
+ * edge every step arrived on. An edge connected after the run does not make its failure handled. The graph
+ * of the editor is the last resort, for a run that went along edges no longer on the canvas: the trace cannot
+ * say where those left from.
+ */
+const wentOnFrom = (failed: IAutomationRunStep, steps: IAutomationRunStep[], graph: Pick<IAutomationGraph, 'edges'>): boolean => {
+	if (typeof failed.output !== 'string') {
+		return false;
+	}
+
+	const leaving = (edge: IAutomationGraph['edges'][number]): boolean => edge.source === failed.node_id && edge.source_port === failed.output;
+
+	const edges = new Map(graph.edges.map((edge) => [edge.id, edge]));
+	const arrivedOn = steps.filter((step) => step.seq > failed.seq && typeof step.via === 'string').map((step) => edges.get(step.via as string));
+
+	if (arrivedOn.some((edge) => edge !== undefined && leaving(edge))) {
+		return true;
+	}
+
+	return arrivedOn.includes(undefined) && graph.edges.some(leaving);
+};
+
+/**
+ * Of a failed run, the card it failed on: the failure nothing handled. A card the run went on from through
+ * its failing output recovered, and a later card is the one the run failed on. Without the graph, the last
+ * failure is the one the run ended on. A run that failed for another reason (it reached the step limit) and
+ * has no unhandled failure is pointed at the last card it reached.
  */
 const findFailedNodeId = (steps: IAutomationRunStep[], graph: Pick<IAutomationGraph, 'edges'> | undefined): string | null => {
 	const failed = steps.filter((step) => stepState(step) === 'failed');
 
-	const unhandled = graph
-		? failed.find(
-				(step) => typeof step.output !== 'string' || !graph.edges.some((edge) => edge.source === step.node_id && edge.source_port === step.output)
-			)
-		: failed.at(-1);
+	const unhandled = graph ? failed.find((step) => !wentOnFrom(step, steps, graph)) : failed.at(-1);
 
 	return unhandled?.node_id ?? steps.at(-1)?.node_id ?? null;
 };
 
 /**
  * Of a run that ended in a way that needs explaining, what happened and the card it is about. A run that
- * completed, or is still running, needs none. The graph, when given, tells a failure the flow handled from
- * one it did not.
+ * completed, or is still running, needs none. The graph, when given, tells which card each edge of the
+ * trace leaves, and so a failure the run recovered from, from one nothing handled.
  */
 export const findRunAttention = (
 	run: Pick<IAutomationRun, 'status' | 'endReason'>,

@@ -607,6 +607,7 @@
 				"empty": "Esta automatización aún no se ha ejecutado.",
 				"loading": "Cargando ejecuciones...",
 				"loadFailed": "No se pudieron cargar las ejecuciones.",
+				"reloadFailed": "No se pudieron cargar las últimas ejecuciones; puede que la lista no esté al día.",
 				"manual": "A mano desde {trigger}",
 				"unknownTrigger": "Un disparador que ya no está en el flujo",
 				"startedFor": "{time}, duró {duration}",
@@ -664,8 +665,7 @@
 				},
 				"suspended": {
 					"title": "La automatización está suspendida",
-					"text": "Se ejecutó demasiadas veces en poco tiempo y se detuvo para que no siguiera ejecutándose en bucle. Normalmente significa que una de sus acciones fija un valor que vigila uno de sus disparadores. Revise el flujo y luego guárdelo o vuelva a habilitar la automatización para reanudarla.",
-					"trigger": "El disparador que se activaba una y otra vez:"
+					"text": "Se ejecutó demasiadas veces en poco tiempo y se detuvo para que no siguiera ejecutándose en bucle. Normalmente significa que una de sus acciones fija un valor que vigila uno de sus disparadores. Revise el flujo y luego guárdelo o vuelva a habilitar la automatización para reanudarla."
 				},
 				"invalid": {
 					"title": "La automatización no puede ejecutarse",

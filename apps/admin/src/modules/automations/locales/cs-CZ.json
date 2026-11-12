@@ -607,6 +607,7 @@
 				"empty": "Tato automatizace ještě neběžela.",
 				"loading": "Načítání běhů...",
 				"loadFailed": "Běhy se nepodařilo načíst.",
+				"reloadFailed": "Nejnovější běhy se nepodařilo načíst, seznam nemusí být aktuální.",
 				"manual": "Ručně od {trigger}",
 				"unknownTrigger": "Spouštěč, který už v průběhu není",
 				"startedFor": "{time}, trvalo {duration}",
@@ -664,8 +665,7 @@
 				},
 				"suspended": {
 					"title": "Automatizace je pozastavena",
-					"text": "Během krátké doby se spustila příliš často, a proto byla zastavena, aby nemohla běžet ve smyčce. Obvykle to znamená, že některá z jejích akcí nastavuje hodnotu, kterou sleduje některý z jejích spouštěčů. Zkontrolujte průběh a poté jej uložte nebo automatizaci znovu povolte, aby se obnovila.",
-					"trigger": "Spouštěč, který se stále ozýval:"
+					"text": "Během krátké doby se spustila příliš často, a proto byla zastavena, aby nemohla běžet ve smyčce. Obvykle to znamená, že některá z jejích akcí nastavuje hodnotu, kterou sleduje některý z jejích spouštěčů. Zkontrolujte průběh a poté jej uložte nebo automatizaci znovu povolte, aby se obnovila."
 				},
 				"invalid": {
 					"title": "Automatizaci nelze spustit",

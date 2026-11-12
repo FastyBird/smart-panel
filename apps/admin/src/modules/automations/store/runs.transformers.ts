@@ -46,15 +46,11 @@ export const transformAutomationTriggerResultResponse = (response: Record<string
 
 export const transformAutomationRuntimeResponse = (response: Record<string, unknown>): IAutomationRuntime => {
 	// The problems are addressed to nodes and edges of the graph, whose keys are snake_case as well
-	const { problems, last_skipped: lastSkipped, ...rest } = response;
+	const { problems, ...rest } = response;
 
 	const parsed = AutomationRuntimeSchema.safeParse({
 		...snakeToCamel(rest),
 		problems: Array.isArray(problems) ? problems : [],
-		lastSkippedNodeId:
-			typeof lastSkipped === 'object' && lastSkipped !== null && typeof (lastSkipped as Record<string, unknown>).node_id === 'string'
-				? (lastSkipped as Record<string, unknown>).node_id
-				: null,
 	});
 
 	if (!parsed.success) {

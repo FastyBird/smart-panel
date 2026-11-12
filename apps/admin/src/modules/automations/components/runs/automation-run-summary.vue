@@ -57,15 +57,16 @@
 			</el-icon>
 			<div class="min-w-0">
 				<span>{{ attentionText(props.shown.attention) }}</span>
-				<el-link
+				<el-button
 					v-if="attentionNode !== null"
-					underline="always"
-					class="ml-1"
+					link
+					type="primary"
+					class="automation-run-summary__node ml-1"
 					data-test-id="run-attention-node"
 					@click="emit('focus', attentionNode.id)"
 				>
 					{{ t('automations.runs.buttons.showNode.title', { node: attentionNode.label }) }}
-				</el-link>
+				</el-button>
 			</div>
 		</div>
 
@@ -88,7 +89,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElLink, ElTag } from 'element-plus';
+import { ElButton, ElIcon, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -175,6 +176,14 @@ const notes = computed<SummaryNote[]>((): SummaryNote[] => {
 		gap: 8px;
 		padding: 6px 12px;
 		color: var(--el-text-color-primary);
+	}
+
+	// A button that reads as a link in the text
+	&__node {
+		height: auto;
+		padding: 0;
+		font-size: inherit;
+		vertical-align: baseline;
 	}
 
 	&__time {

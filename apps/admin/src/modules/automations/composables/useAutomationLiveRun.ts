@@ -13,6 +13,8 @@ import type { IUseAutomationLiveRun } from './types';
 
 interface IUseAutomationLiveRunProps {
 	id: IAutomation['id'];
+	// The run whose steps are never let go of: the one shown, however many other runs send theirs
+	keep?: () => string | null;
 }
 
 interface ISocketEvent {
@@ -25,10 +27,10 @@ interface ISocketEvent {
  * watch the automation (`AutomationsModule.WatchAutomation`), so the view watches it for as long as it is
  * open - and again after every reconnect, as a new socket is in no room - and stops when it is left.
  *
- * The steps are kept per run, for the last few runs: a step can arrive before the answer to the request
- * that started the run says which run it is.
+ * The steps are kept per run, for the last few runs and the run shown: a step can arrive before the answer
+ * to the request that started the run says which run it is.
  */
-export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAutomationLiveRun => {
+export const useAutomationLiveRun = ({ id, keep }: IUseAutomationLiveRunProps): IUseAutomationLiveRun => {
 	const { sockets, sendCommand } = useSockets();
 	const logger = useLogger();
 
@@ -37,19 +39,23 @@ export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAu
 	// Replaced as a whole on every step, so whoever reads the steps of a run is told
 	const runs = shallowRef<Map<string, IAutomationRunStep[]>>(new Map());
 
-	// The run a step arrived for last
-	const latestRunId = ref<string | null>(null);
+	// Told of every step, as it arrives: several can arrive before anything that reads them runs
+	const stepListeners: ((runId: string) => void)[] = [];
 
 	let disposed = false;
 
+	// A watch was asked for on this socket: the backend may join the room even when no answer came in time, so
+	// it is unwatched when the view is left whatever the answer was
+	let attempted = false;
+
 	const watch = async (): Promise<void> => {
+		attempted = true;
+
 		try {
 			const result = await sendCommand(CommandType.WATCH_AUTOMATION, { automation_id: id }, CommandHandlerName.WATCH_AUTOMATION);
 
-			// The view may have been left while the answer was on its way
+			// The view was left while the answer was on its way, and the watch was stopped then
 			if (disposed) {
-				void unwatch();
-
 				return;
 			}
 
@@ -67,6 +73,7 @@ export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAu
 
 	const unwatch = async (): Promise<void> => {
 		watching.value = false;
+		attempted = false;
 
 		try {
 			await sendCommand(CommandType.UNWATCH_AUTOMATION, { automation_id: id }, CommandHandlerName.UNWATCH_AUTOMATION);
@@ -108,19 +115,19 @@ export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAu
 			);
 		}
 
-		// The oldest runs are let go of
-		while (next.size > AUTOMATION_LIVE_RUNS_BUFFERED) {
-			const oldest = next.keys().next().value;
+		// The runs that sent nothing for longest are let go of, but never the run shown
+		const shownRunId = keep?.() ?? null;
+		const evictable = [...next.keys()].filter((runId) => runId !== shownRunId);
 
-			if (typeof oldest !== 'string') {
-				break;
-			}
-
-			next.delete(oldest);
+		while (next.size > AUTOMATION_LIVE_RUNS_BUFFERED + (shownRunId !== null && next.has(shownRunId) ? 1 : 0) && evictable.length > 0) {
+			next.delete(evictable.shift() as string);
 		}
 
 		runs.value = next;
-		latestRunId.value = payload.run_id;
+
+		for (const listener of stepListeners) {
+			listener(payload.run_id);
+		}
 	};
 
 	const onConnect = (): void => {
@@ -128,10 +135,16 @@ export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAu
 	};
 
 	const onDisconnect = (): void => {
+		// A socket that is gone has left every room
 		watching.value = false;
+		attempted = false;
 	};
 
 	const stepsOf = (runId: string): IAutomationRunStep[] => runs.value.get(runId) ?? [];
+
+	const onStep = (listener: (runId: string) => void): void => {
+		stepListeners.push(listener);
+	};
 
 	sockets.on('event', onEvent);
 	sockets.on('connect', onConnect);
@@ -148,14 +161,14 @@ export const useAutomationLiveRun = ({ id }: IUseAutomationLiveRunProps): IUseAu
 		sockets.off('connect', onConnect);
 		sockets.off('disconnect', onDisconnect);
 
-		if (watching.value) {
+		if (attempted) {
 			void unwatch();
 		}
 	});
 
 	return {
 		watching,
-		latestRunId,
 		stepsOf,
+		onStep,
 	};
 };

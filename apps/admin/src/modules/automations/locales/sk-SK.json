@@ -607,6 +607,7 @@
 				"empty": "Táto automatizácia ešte nebežala.",
 				"loading": "Načítavanie behov...",
 				"loadFailed": "Behy sa nepodarilo načítať.",
+				"reloadFailed": "Najnovšie behy sa nepodarilo načítať, zoznam nemusí byť aktuálny.",
 				"manual": "Ručne od {trigger}",
 				"unknownTrigger": "Spúšťač, ktorý už v priebehu nie je",
 				"startedFor": "{time}, trvalo {duration}",
@@ -664,8 +665,7 @@
 				},
 				"suspended": {
 					"title": "Automatizácia je pozastavená",
-					"text": "Počas krátkeho času sa spustila príliš často, a preto bola zastavená, aby nemohla bežať v slučke. Zvyčajne to znamená, že niektorá z jej akcií nastavuje hodnotu, ktorú sleduje niektorý z jej spúšťačov. Skontrolujte priebeh a potom ho uložte alebo automatizáciu znova povoľte, aby sa obnovila.",
-					"trigger": "Spúšťač, ktorý sa stále ozýval:"
+					"text": "Počas krátkeho času sa spustila príliš často, a preto bola zastavená, aby nemohla bežať v slučke. Zvyčajne to znamená, že niektorá z jej akcií nastavuje hodnotu, ktorú sleduje niektorý z jej spúšťačov. Skontrolujte priebeh a potom ho uložte alebo automatizáciu znova povoľte, aby sa obnovila."
 				},
 				"invalid": {
 					"title": "Automatizáciu nemožno spustiť",

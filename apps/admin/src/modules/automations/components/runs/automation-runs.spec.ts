@@ -205,7 +205,15 @@ describe('automation run components', (): void => {
 
 			await wrapper.setProps({ loading: false, failed: true });
 
-			expect(wrapper.find('[data-test-id="runs-load-failed"]').exists()).toBe(true);
+			expect(wrapper.find('[data-test-id="runs-load-failed"]').text()).toBe('automations.runs.texts.loadFailed');
+			expect(wrapper.find('[data-test-id="runs-empty"]').exists()).toBe(false);
+		});
+
+		it('says the runs listed may be out of date when reading them again failed', (): void => {
+			wrapper = mount(AutomationRunHistory, { props: { runs: [run()], graph, nodeTypes, failed: true } });
+
+			expect(wrapper.find('[data-test-id="runs-load-failed"]').text()).toBe('automations.runs.texts.reloadFailed');
+			expect(wrapper.findAll('[data-test-id="run-item"]')).toHaveLength(1);
 		});
 	});
 
@@ -225,6 +233,8 @@ describe('automation run components', (): void => {
 			const link = wrapper.find('[data-test-id="run-attention-node"]');
 
 			expect(link.text()).toBe('automations.runs.buttons.showNode.title {"node":"Delay"}');
+			// Reached and used from the keyboard
+			expect(link.element.tagName).toBe('BUTTON');
 
 			await link.trigger('click');
 			await wrapper.find('[data-test-id="close-run"]').trigger('click');
@@ -270,16 +280,18 @@ describe('automation run components', (): void => {
 	});
 
 	describe('AutomationStatusExplanation', (): void => {
-		it('explains a suspended automation and leads to the trigger that kept firing', async (): Promise<void> => {
+		it('explains a suspended automation without naming a trigger the engine did not name', (): void => {
 			wrapper = mount(AutomationStatusExplanation, {
-				props: { status: AutomationStatus.suspended, runtime: null, suspendedNodeId: 't1', graph, nodeTypes },
+				props: {
+					status: AutomationStatus.suspended,
+					runtime: { automationId, loaded: true, status: AutomationStatus.suspended, problems: [], suspendedReason: 'Too often.' },
+					graph,
+					nodeTypes,
+				},
 			});
 
 			expect(wrapper.text()).toContain('automations.runs.explanations.suspended.text');
-
-			await wrapper.find('[data-test-id="status-node"]').trigger('click');
-
-			expect(wrapper.emitted('focus')).toEqual([['t1']]);
+			expect(wrapper.find('[data-test-id="status-node"]').exists()).toBe(false);
 		});
 
 		it('lists why an invalid automation cannot run, each with the card concerned', async (): Promise<void> => {
@@ -295,7 +307,6 @@ describe('automation run components', (): void => {
 							{ code: 'no_trigger', message: 'No trigger.' },
 						],
 						suspendedReason: null,
-						lastSkippedNodeId: null,
 					},
 					graph,
 					nodeTypes,
@@ -309,6 +320,8 @@ describe('automation run components', (): void => {
 			// No word of its own: the editor's, or the backend's
 			expect(problems[1]?.text()).toContain('No trigger.');
 			expect(problems[1]?.find('[data-test-id="status-node"]').exists()).toBe(false);
+
+			expect(problems[0]?.find('[data-test-id="status-node"]').element.tagName).toBe('BUTTON');
 
 			await problems[0]?.find('[data-test-id="status-node"]').trigger('click');
 

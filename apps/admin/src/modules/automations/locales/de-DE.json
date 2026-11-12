@@ -607,6 +607,7 @@
 				"empty": "Diese Automation ist noch nicht gelaufen.",
 				"loading": "Läufe werden geladen...",
 				"loadFailed": "Die Läufe konnten nicht geladen werden.",
+				"reloadFailed": "Die neuesten Läufe konnten nicht geladen werden; die Liste ist möglicherweise nicht aktuell.",
 				"manual": "Von Hand ab {trigger}",
 				"unknownTrigger": "Ein Auslöser, der nicht mehr im Ablauf ist",
 				"startedFor": "{time}, dauerte {duration}",
@@ -664,8 +665,7 @@
 				},
 				"suspended": {
 					"title": "Die Automation ist angehalten",
-					"text": "Sie lief in kurzer Zeit zu oft und wurde gestoppt, damit sie nicht in einer Schleife weiterläuft. Meist setzt eine ihrer Aktionen einen Wert, den einer ihrer Auslöser beobachtet. Prüfen Sie den Ablauf und speichern oder aktivieren Sie die Automation dann erneut, um sie fortzusetzen.",
-					"trigger": "Der Auslöser, der immer wieder ansprach:"
+					"text": "Sie lief in kurzer Zeit zu oft und wurde gestoppt, damit sie nicht in einer Schleife weiterläuft. Meist setzt eine ihrer Aktionen einen Wert, den einer ihrer Auslöser beobachtet. Prüfen Sie den Ablauf und speichern oder aktivieren Sie die Automation dann erneut, um sie fortzusetzen."
 				},
 				"invalid": {
 					"title": "Die Automation kann nicht laufen",

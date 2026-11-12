@@ -112,10 +112,10 @@ describe('useAutomationLiveRun', (): void => {
 		scope?.stop();
 	});
 
-	const create = (): IUseAutomationLiveRun => {
+	const create = (keep?: () => string | null): IUseAutomationLiveRun => {
 		scope = effectScope();
 
-		return scope.run(() => useAutomationLiveRun({ id: automationId })) as IUseAutomationLiveRun;
+		return scope.run(() => useAutomationLiveRun({ id: automationId, ...(keep ? { keep } : {}) })) as IUseAutomationLiveRun;
 	};
 
 	it('watches the automation while it is open, again after a reconnect, and stops when it is left', async (): Promise<void> => {
@@ -169,6 +169,39 @@ describe('useAutomationLiveRun', (): void => {
 		await flushPromises();
 
 		expect(mocks.sendCommand).toHaveBeenLastCalledWith(CommandType.UNWATCH_AUTOMATION, expect.anything(), CommandHandlerName.UNWATCH_AUTOMATION);
+		expect(mocks.sendCommand.mock.calls.filter(([command]) => command === CommandType.UNWATCH_AUTOMATION)).toHaveLength(1);
+	});
+
+	it('stops watching when left after the answer to the watch did not come in time', async (): Promise<void> => {
+		// The backend may still join the room once it has looked the automation up
+		mocks.sendCommand.mockRejectedValueOnce(new Error('Command timed out'));
+
+		const live = create();
+
+		await flushPromises();
+
+		expect(live.watching.value).toBe(false);
+
+		scope.stop();
+		await flushPromises();
+
+		expect(mocks.sendCommand).toHaveBeenLastCalledWith(
+			CommandType.UNWATCH_AUTOMATION,
+			{ automation_id: automationId },
+			CommandHandlerName.UNWATCH_AUTOMATION
+		);
+	});
+
+	it('does not stop watching when left after the socket went down, as a socket that is gone is in no room', async (): Promise<void> => {
+		create();
+
+		await flushPromises();
+
+		emit('disconnect');
+		scope.stop();
+		await flushPromises();
+
+		expect(mocks.sendCommand).not.toHaveBeenCalledWith(CommandType.UNWATCH_AUTOMATION, expect.anything(), expect.anything());
 	});
 
 	it('keeps the steps of each run in order, once each, and only for this automation', async (): Promise<void> => {
@@ -183,7 +216,23 @@ describe('useAutomationLiveRun', (): void => {
 
 		expect(live.stepsOf(runId).map((step) => step.seq)).toEqual([1, 2]);
 		expect(live.stepsOf(otherRunId)).toEqual([]);
-		expect(live.latestRunId.value).toBe(runId);
+	});
+
+	it('tells of every step it keeps, with the run it belongs to', (): void => {
+		const live = create();
+
+		const told: string[] = [];
+
+		live.onStep((id: string): void => {
+			told.push(id);
+		});
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'parked' }), runId);
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId, 'another-automation');
+
+		expect(told).toEqual([runId, otherRunId, runId]);
 	});
 
 	it('takes the newer state of a step it has, as a Delay that let the run go on', (): void => {
@@ -208,6 +257,24 @@ describe('useAutomationLiveRun', (): void => {
 
 		expect(live.stepsOf(ids[0] as string)).toEqual([]);
 		expect(live.stepsOf(ids[6] as string)).toHaveLength(1);
+	});
+
+	it('never lets go of the steps of the run shown, however many other runs send theirs', (): void => {
+		const live = create(() => runId);
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { state: 'parked', delay_ms: 60_000 }), runId);
+
+		// A parallel automation runs up to ten at once
+		const ids = Array.from({ length: 9 }, (_, index) => `a1f0c1d2-0000-4000-8000-00000000002${index}`);
+
+		for (const id of ids) {
+			sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), id);
+		}
+
+		expect(live.stepsOf(runId).map((step) => step.seq)).toEqual([1, 2]);
+		expect(live.stepsOf(ids[0] as string)).toEqual([]);
+		expect(live.stepsOf(ids[8] as string)).toHaveLength(1);
 	});
 });
 
@@ -430,6 +497,78 @@ describe('useAutomationRunTrace', (): void => {
 		await nextTick();
 
 		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
+	});
+
+	it('does not lose a run waiting to be followed when the steps of the runs interleave', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		await nextTick();
+
+		// The run followed goes on after the other one started
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked', delay_ms: 60_000 }), runId);
+		await nextTick();
+
+		expect(trace.shown.value?.runId).toBe(runId);
+
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await nextTick();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
+	});
+
+	it('follows the latest run still going once the run followed ends, of runs whose steps came at once', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		const third = 'a1f0c1d2-0000-4000-8000-000000000003';
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		// Both in one update: neither is missed
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), third);
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked' }), runId);
+		await nextTick();
+
+		// The latest one is over already: the one still going is followed
+		store().onEvent({ data: runRes(third, 'completed') });
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await nextTick();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
+	});
+
+	it('keeps showing all the run followed did while other runs of the automation send their steps', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked', delay_ms: 60_000 }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		for (let index = 0; index < 9; index++) {
+			sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), `a1f0c1d2-0000-4000-8000-00000000003${index}`);
+		}
+
+		// The Delay lets the run go on
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'done', output: 'done', delay_ms: 60_000 }), runId);
+		await nextTick();
+
+		expect(trace.shown.value?.runId).toBe(runId);
+		expect(trace.shown.value?.overlay.nodes.n1?.state).toBe('passed');
+		expect(trace.shown.value?.overlay.nodes.n2?.state).toBe('passed');
 	});
 
 	it('does not follow a waiting run once the run followed ends, after it was closed or another run was picked', async (): Promise<void> => {

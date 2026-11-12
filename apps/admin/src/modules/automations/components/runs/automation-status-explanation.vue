@@ -13,20 +13,6 @@
 
 		<p class="my-0">{{ t(`automations.runs.explanations.${props.status}.text`) }}</p>
 
-		<p
-			v-if="props.status === AutomationStatus.suspended && suspended !== null"
-			class="mt-1 mb-0"
-		>
-			{{ t('automations.runs.explanations.suspended.trigger') }}
-			<el-link
-				underline="always"
-				data-test-id="status-node"
-				@click="emit('focus', suspended.id)"
-			>
-				{{ t('automations.runs.buttons.showNode.title', { node: suspended.label }) }}
-			</el-link>
-		</p>
-
 		<ul
 			v-if="props.status === AutomationStatus.invalid && problems.length > 0"
 			class="automation-status-explanation__problems"
@@ -38,15 +24,16 @@
 				:data-test-code="problem.code"
 			>
 				<span>{{ problem.text }}</span>
-				<el-link
+				<el-button
 					v-if="problem.node !== null"
-					underline="always"
-					class="ml-1"
+					link
+					type="primary"
+					class="automation-status-explanation__node ml-1"
 					data-test-id="status-node"
 					@click="emit('focus', problem.node.id)"
 				>
 					{{ t('automations.runs.buttons.showNode.title', { node: problem.node.label }) }}
-				</el-link>
+				</el-button>
 			</li>
 		</ul>
 	</el-alert>
@@ -56,7 +43,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElLink } from 'element-plus';
+import { ElAlert, ElButton } from 'element-plus';
 
 import { AutomationStatus } from '../../automations.constants';
 import { problemNodeId } from '../../automations.trace';
@@ -79,9 +66,7 @@ interface IProblemItem {
 	node: INodeLink | null;
 }
 
-const props = withDefaults(defineProps<IAutomationStatusExplanationProps>(), {
-	suspendedNodeId: null,
-});
+const props = defineProps<IAutomationStatusExplanationProps>();
 
 const emit = defineEmits<{
 	(e: 'focus', nodeId: string): void;
@@ -96,11 +81,6 @@ const link = (nodeId: string | null): INodeLink | null => {
 
 	return nodeId !== null && label !== null ? { id: nodeId, label } : null;
 };
-
-// The trigger that kept firing: the one the last run started at, or the last one the engine turned away
-const suspended = computed<INodeLink | null>(
-	(): INodeLink | null => link(props.suspendedNodeId ?? null) ?? link(props.runtime?.lastSkippedNodeId ?? null)
-);
 
 const problems = computed<IProblemItem[]>((): IProblemItem[] =>
 	(props.runtime?.problems ?? []).map(
@@ -117,6 +97,14 @@ const problems = computed<IProblemItem[]>((): IProblemItem[] =>
 .automation-status-explanation {
 	flex: none;
 	border-radius: 0;
+
+	// A button that reads as a link in the text
+	&__node {
+		height: auto;
+		padding: 0;
+		font-size: inherit;
+		vertical-align: baseline;
+	}
 
 	&__problems {
 		margin: 4px 0 0;

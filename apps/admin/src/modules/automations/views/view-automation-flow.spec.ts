@@ -250,7 +250,6 @@ vi.mock('../components/components', async () => {
 			props: {
 				status: { type: String, required: true },
 				runtime: { type: Object, required: false, default: null },
-				suspendedNodeId: { type: String, required: false, default: null },
 			},
 			emits: ['focus'],
 			template: '<div data-test-id="status-explanation-stub" />',
@@ -1174,7 +1173,9 @@ describe('ViewAutomationFlow', (): void => {
 
 			const explanation = wrapper.findComponent({ name: 'AutomationStatusExplanation' });
 
-			expect(explanation.props()).toMatchObject({ status: AutomationStatus.suspended, suspendedNodeId: 't1' });
+			expect(explanation.props()).toMatchObject({ status: AutomationStatus.suspended });
+			// The last run is no word on the trigger that made the engine suspend the automation
+			expect(explanation.attributes('suspended-node-id')).toBeUndefined();
 
 			explanation.vm.$emit('focus', 't1');
 			await flushPromises();

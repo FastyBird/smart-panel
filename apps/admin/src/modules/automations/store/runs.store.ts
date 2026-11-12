@@ -96,6 +96,7 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 		// list was asked for is newer than the list
 		let sequence = 0;
 
+		// Only for the runs a list may be merged with: those of a history held, or of a first list on its way
 		const changedAt = new Map<IAutomationRun['id'], number>();
 
 		// A reset or a removed automation ends what was on its way for it
@@ -105,6 +106,26 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 		// What events brought for an automation whose first list is on its way: there is no history to put it in yet
 		const awaitingFirstList = new Map<IAutomationRun['automationId'], Map<IAutomationRun['id'], IAutomationRun>>();
+
+		// The read of the runtime of each automation started last: an earlier one answered later is out of date
+		const runtimeReadAt = new Map<IAutomationRun['automationId'], number>();
+
+		const stamp = (run: Pick<IAutomationRun, 'id' | 'automationId'>, at: number): void => {
+			if (data.value.has(run.automationId) || awaitingFirstList.has(run.automationId)) {
+				changedAt.set(run.id, at);
+			}
+		};
+
+		// The marks of the runs a history no longer holds
+		const forgetChanges = (before: IAutomationRun[], after: IAutomationRun[]): void => {
+			const kept = new Set(after.map((run) => run.id));
+
+			for (const run of before) {
+				if (!kept.has(run.id)) {
+					changedAt.delete(run.id);
+				}
+			}
+		};
 
 		const dropped = (automationId: IAutomationRun['automationId'], startedAt: number): boolean =>
 			Math.max(removedAt.get(automationId) ?? 0, allRemovedAt) > startedAt;
@@ -152,11 +173,17 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 			const merged = mergeAutomationRun(held, incoming);
 
+			stamp(merged, ++sequence);
+
 			// A history that was not read is not started here: it would look read while it holds one run
 			if (runs) {
 				const others = runs.filter((run) => run.id !== merged.id);
+				const sorted = sortRuns([withoutTrace(merged), ...others]);
 
-				data.value.set(incoming.automationId, sortRuns([withoutTrace(merged), ...others]));
+				data.value.set(incoming.automationId, sorted);
+
+				// Too old to be kept: no list is merged with it any more
+				forgetChanges([merged, ...others], sorted);
 			}
 
 			if (merged.trace !== null) {
@@ -164,8 +191,6 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			} else if (tracedHeld && tracedHeld.status !== merged.status) {
 				traces.value.delete(merged.id);
 			}
-
-			changedAt.set(merged.id, ++sequence);
 
 			return merged;
 		};
@@ -181,13 +206,13 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			// The history of an automation that was never looked at is not started by an event: it would look
 			// read while it holds only the runs since. While its first list is on its way, the run is kept for it.
 			if (!data.value.has(parsed.data.automationId) && !traces.value.has(parsed.data.id)) {
-				changedAt.set(parsed.data.id, ++sequence);
-
 				const awaiting = awaitingFirstList.get(parsed.data.automationId);
 
 				if (!awaiting) {
 					return null;
 				}
+
+				stamp(parsed.data, ++sequence);
 
 				const kept = mergeAutomationRun(awaiting.get(parsed.data.id), parsed.data);
 
@@ -199,12 +224,12 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			return commit(parsed.data);
 		};
 
-		const pendingFetchPromises: Record<string, Promise<IAutomationRun[]>> = {};
+		const pendingFetchPromises = new Map<string, Promise<IAutomationRun[]>>();
 
 		const fetch = async (payload: IAutomationRunsFetchActionPayload): Promise<IAutomationRun[]> => {
 			const { automationId } = payload;
 
-			const existingPromise = pendingFetchPromises[automationId];
+			const existingPromise = pendingFetchPromises.get(automationId);
 
 			if (existingPromise && payload.fresh === true) {
 				await existingPromise.catch((): void => {});
@@ -268,6 +293,8 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 					data.value.set(automationId, runs);
 
+					forgetChanges(held, runs);
+
 					for (const run of runs) {
 						changedAt.set(run.id, Math.max(changedAt.get(run.id) ?? 0, startedAt));
 
@@ -292,20 +319,20 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 					semaphore.value.fetching = semaphore.value.fetching.filter((item) => item !== automationId);
 				}
 			})().finally((): void => {
-				delete pendingFetchPromises[automationId];
+				pendingFetchPromises.delete(automationId);
 			});
 
-			pendingFetchPromises[automationId] = fetchPromise;
+			pendingFetchPromises.set(automationId, fetchPromise);
 
 			return fetchPromise;
 		};
 
-		const pendingGetPromises: Record<string, Promise<IAutomationRun>> = {};
+		const pendingGetPromises = new Map<string, Promise<IAutomationRun>>();
 
 		const get = async (payload: IAutomationRunsGetActionPayload): Promise<IAutomationRun> => {
 			const { id } = payload;
 
-			const existingPromise = pendingGetPromises[id];
+			const existingPromise = pendingGetPromises.get(id);
 
 			if (existingPromise && payload.fresh === true) {
 				await existingPromise.catch((): void => {});
@@ -367,10 +394,10 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 					semaphore.value.getting = semaphore.value.getting.filter((item) => item !== id);
 				}
 			})().finally((): void => {
-				delete pendingGetPromises[id];
+				pendingGetPromises.delete(id);
 			});
 
-			pendingGetPromises[id] = getPromise;
+			pendingGetPromises.set(id, getPromise);
 
 			return getPromise;
 		};
@@ -426,6 +453,8 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 			const startedAt = ++sequence;
 
+			runtimeReadAt.set(automationId, startedAt);
+
 			try {
 				const {
 					data: responseData,
@@ -447,18 +476,25 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 				const runtime = transformAutomationRuntimeResponse(responseData.data as unknown as Record<string, unknown>);
 
-				if (!dropped(automationId, startedAt)) {
+				// Only the read started last is kept: one started earlier may have been served before a change
+				if (runtimeReadAt.get(automationId) === startedAt && !dropped(automationId, startedAt)) {
 					runtimes.value.set(automationId, runtime);
 				}
 
 				return runtime;
 			} catch (e) {
 				throw toApiException(e, 'Failed to fetch automation runtime.');
+			} finally {
+				if (runtimeReadAt.get(automationId) === startedAt) {
+					runtimeReadAt.delete(automationId);
+				}
 			}
 		};
 
 		// The automation is gone, and its history with it
 		const unset = (payload: IAutomationRunsUnsetActionPayload): void => {
+			forgetChanges(findForAutomation(payload.automationId), []);
+
 			data.value.delete(payload.automationId);
 			runtimes.value.delete(payload.automationId);
 			loaded.value.delete(payload.automationId);
@@ -474,6 +510,8 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 		// The module was reset: every automation is gone, and every run
 		const reset = (): void => {
+			changedAt.clear();
+
 			data.value.clear();
 			traces.value.clear();
 			runtimes.value.clear();

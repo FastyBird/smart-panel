@@ -130,7 +130,6 @@ describe('runs transformers', (): void => {
 			status: AutomationStatus.invalid,
 			problems: [{ code: 'missing_reference', message: 'Gone.', node_id: 'n2' }],
 			suspendedReason: null,
-			lastSkippedNodeId: 'n1',
 		});
 	});
 });
@@ -499,6 +498,56 @@ describe('Automation runs store', (): void => {
 		await store.fetchRuntime({ automationId });
 
 		expect(store.findRuntime(automationId)).toMatchObject({ status: AutomationStatus.suspended, suspendedReason: 'More than 30 runs in a minute.' });
+	});
+
+	it('keeps what the latest read of the engine says, whatever order the reads are answered in', async (): Promise<void> => {
+		const runtimeRes = (status: string): Record<string, unknown> => ({
+			data: {
+				data: {
+					automation_id: automationId,
+					loaded: true,
+					status,
+					armed: false,
+					armed_triggers: 0,
+					active_runs: 0,
+					triggers: { started: 0, ignored: 0, dropped: 0 },
+					last_skipped: null,
+					problems: status === 'invalid' ? [{ code: 'no_trigger', message: 'No trigger.' }] : [],
+					suspended_reason: null,
+				},
+			},
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const older = deferred<unknown>();
+		const newer = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+
+		const first = store.fetchRuntime({ automationId });
+		const second = store.fetchRuntime({ automationId });
+
+		newer.resolve(runtimeRes('invalid'));
+		await second;
+
+		// Served before the automation became invalid, and answered last
+		older.resolve(runtimeRes('ok'));
+		await first;
+
+		expect(store.findRuntime(automationId)).toMatchObject({ status: AutomationStatus.invalid, problems: [{ code: 'no_trigger' }] });
+	});
+
+	it('keeps no mark of a run of an automation whose history it does not hold', (): void => {
+		const set = vi.spyOn(Map.prototype, 'set');
+
+		try {
+			store.onEvent({ data: { ...runRes(1, { status: 'running', finished_at: null, duration_ms: null }), automation_id: otherAutomationId } });
+
+			expect(set.mock.calls.some(([key]) => key === runIds[1])).toBe(false);
+		} finally {
+			set.mockRestore();
+		}
 	});
 
 	it('forgets the runs of an automation that is gone, and every run on a reset', async (): Promise<void> => {

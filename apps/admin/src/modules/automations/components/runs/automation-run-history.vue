@@ -36,12 +36,14 @@
 			</el-button>
 		</div>
 
+		<!-- The runs read before stay listed when a later read fails: they may be out of date -->
 		<div
-			v-if="props.failed && props.runs.length === 0"
+			v-if="props.failed"
 			class="automation-run-history__empty"
+			role="alert"
 			data-test-id="runs-load-failed"
 		>
-			{{ t('automations.runs.texts.loadFailed') }}
+			{{ props.runs.length === 0 ? t('automations.runs.texts.loadFailed') : t('automations.runs.texts.reloadFailed') }}
 		</div>
 
 		<div
@@ -53,7 +55,7 @@
 		</div>
 
 		<el-scrollbar
-			v-else
+			v-if="props.runs.length > 0"
 			max-height="200px"
 		>
 			<ul class="automation-run-history__items">

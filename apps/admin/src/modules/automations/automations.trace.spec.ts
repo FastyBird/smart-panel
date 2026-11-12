@@ -226,6 +226,34 @@ describe('mapTraceToOverlay', (): void => {
 		expect(overlay.lastNodeId).toBe('gone');
 	});
 
+	it('lays over a card only what the run did there, whatever the card is called', (): void => {
+		reset();
+
+		const named: IAutomationGraph = {
+			...graph,
+			nodes: [
+				...graph.nodes,
+				{ id: 'constructor', type: 'notification.send', position: { x: 0, y: 400 }, config: {} },
+				{ id: '__proto__', type: 'notification.send', position: { x: 0, y: 600 }, config: {} },
+			],
+			edges: [...graph.edges, { id: 'e7', source: 't1', source_port: 'out', target: '__proto__', target_port: 'in' }],
+		};
+
+		const untouched = mapTraceToOverlay(named, [step('t1', AutomationNodeKind.trigger, { output: 'out' })]);
+
+		expect(untouched.nodes['constructor']).toBeUndefined();
+		expect(untouched.nodes['toString']).toBeUndefined();
+
+		const reached = mapTraceToOverlay(named, [
+			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
+			step('__proto__', AutomationNodeKind.action, { via: 'e7', output: 'done', result: { success: true } }),
+		]);
+
+		expect(Object.keys(reached.nodes)).toEqual(['t1', '__proto__']);
+		expect(reached.nodes['__proto__']?.state).toBe('passed');
+		expect(reached.nodes['constructor']).toBeUndefined();
+	});
+
 	it('lays nothing over a run without steps', (): void => {
 		expect(mapTraceToOverlay(graph, [])).toEqual({ nodes: {}, takenEdges: [], missingNodeIds: [], lastNodeId: null });
 	});
@@ -299,6 +327,40 @@ describe('findRunAttention', (): void => {
 		expect(findRunAttention(run, steps, graph)?.nodeId).toBe('a3');
 		// Without the graph, the last failure is the one the run ended on
 		expect(findRunAttention(run, steps)?.nodeId).toBe('a3');
+	});
+
+	it('reads from the run itself whether a failure was handled, not from an edge added since', (): void => {
+		reset();
+
+		// `a1` failed and nothing went on from it, while a parallel branch went on to `a2`. The error edge `e5`
+		// was connected after the run: it does not make the failure handled.
+		const steps = [
+			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
+			step('a1', AutomationNodeKind.action, { via: 'e2', output: 'error', result: { success: false, reason: 'Offline' } }),
+			step('d1', AutomationNodeKind.flow, { via: 'e8', output: 'done' }),
+			step('a2', AutomationNodeKind.action, { via: 'e6', output: 'done', result: { success: true } }),
+		];
+
+		const later: IAutomationGraph = {
+			...graph,
+			edges: [...graph.edges, { id: 'e8', source: 't1', source_port: 'out', target: 'd1', target_port: 'in' }],
+		};
+
+		expect(findRunAttention({ status: AutomationRunRecordStatus.failed, endReason: null }, steps, later)?.nodeId).toBe('a1');
+	});
+
+	it('falls back on the graph when the run went along edges that are not on the canvas any more', (): void => {
+		reset();
+
+		// The run went on from the error output of `a1` along an edge since removed: the trace cannot say where
+		// it led, and the graph still tells the failure as handled by `e5`
+		const steps = [
+			step('t1', AutomationNodeKind.trigger, { output: 'out' }),
+			step('a1', AutomationNodeKind.action, { via: 'e2', output: 'error', result: { success: false, reason: 'Offline' } }),
+			step('a3', AutomationNodeKind.action, { via: 'e-gone', output: 'error', result: { success: false, reason: 'No recipients' } }),
+		];
+
+		expect(findRunAttention({ status: AutomationRunRecordStatus.failed, endReason: null }, steps, graph)?.nodeId).toBe('a3');
 	});
 
 	it('points a run stopped by the step limit at the last card it reached', (): void => {

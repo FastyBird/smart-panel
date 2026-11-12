@@ -54,9 +54,9 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 	const runsStore = storesManager.getStore(automationRunsStoreKey);
 
-	const live = useAutomationLiveRun({ id });
-
 	const source = ref<IOverlaySource | null>(null);
+
+	const live = useAutomationLiveRun({ id, keep: (): string | null => source.value?.runId ?? null });
 
 	let picks = 0;
 
@@ -128,37 +128,50 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		{ immediate: true }
 	);
 
-	// A run that started while the run followed was still going: it is followed once that one is over. Its
-	// end is announced after it is stored, so the steps of a short run that came next can arrive before it.
-	let waitingRunId: string | null = null;
+	/*
+	 * The runs that sent steps while the run followed was still going, the latest last: the latest of them still
+	 * going is followed once that one is over (or the latest of them, when all are over: the end of a run is
+	 * announced after it is stored, so the steps of a short run that came next can arrive before it).
+	 */
+	let waitingRunIds: string[] = [];
+
+	// The run the step before came from: a run closed or turned down is not taken up again by its next step
+	let previousStepRunId: string | null = null;
 
 	// A run started while the view is open is followed, unless a past run is being looked at or the run
-	// followed is still going
-	watch(
-		(): string | null => live.latestRunId.value,
-		(runId: string | null): void => {
-			waitingRunId = null;
+	// followed is still going. Every step is looked at as it arrives, so no run is missed when several arrive
+	// at once or the steps of the runs interleave.
+	live.onStep((runId: string): void => {
+		const previous = previousStepRunId;
 
-			if (runId === null || source.value?.runId === runId || source.value?.kind === 'replay') {
-				return;
-			}
+		previousStepRunId = runId;
 
-			if (source.value === null || isEnded(shownRecord.value)) {
-				source.value = { kind: 'live', runId, pick: ++picks };
-			} else {
-				waitingRunId = runId;
-			}
+		if (source.value?.runId === runId || source.value?.kind === 'replay') {
+			return;
 		}
-	);
+
+		if (source.value === null ? runId !== previous : isEnded(shownRecord.value)) {
+			waitingRunIds = waitingRunIds.filter((item) => item !== runId);
+			source.value = { kind: 'live', runId, pick: ++picks };
+		} else if (source.value !== null) {
+			// Only the runs whose steps are still held can be followed
+			waitingRunIds = [...waitingRunIds.filter((item) => item !== runId && live.stepsOf(item).length > 0), runId];
+		}
+	});
 
 	watch(
 		(): boolean => source.value?.kind === 'live' && isEnded(shownRecord.value),
 		(ended: boolean): void => {
-			const runId = waitingRunId;
+			if (!ended) {
+				return;
+			}
 
-			waitingRunId = null;
+			const candidates = waitingRunIds.filter((runId) => runId !== source.value?.runId && live.stepsOf(runId).length > 0);
+			const runId = [...candidates].reverse().find((item) => !isEnded(runsStore.findById(item))) ?? candidates.at(-1) ?? null;
 
-			if (ended && runId !== null && runId === live.latestRunId.value && source.value?.runId !== runId) {
+			waitingRunIds = [];
+
+			if (runId !== null) {
 				source.value = { kind: 'live', runId, pick: ++picks };
 			}
 		}
@@ -232,7 +245,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		const result = await runsStore.trigger({ automationId: id, ...(typeof nodeId === 'string' ? { nodeId } : {}) });
 
 		if (result.started && result.runId !== null) {
-			waitingRunId = null;
+			waitingRunIds = [];
 			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
 		}
 
@@ -243,12 +256,12 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		// Picked again after a read that failed: it is tried again
 		failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
 
-		waitingRunId = null;
+		waitingRunIds = [];
 		source.value = { kind: 'replay', runId, pick: ++picks };
 	};
 
 	const close = (): void => {
-		waitingRunId = null;
+		waitingRunIds = [];
 		source.value = null;
 	};
 

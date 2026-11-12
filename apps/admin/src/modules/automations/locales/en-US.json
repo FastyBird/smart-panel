@@ -607,6 +607,7 @@
 				"empty": "This automation has not run yet.",
 				"loading": "Loading runs...",
 				"loadFailed": "The runs could not be loaded.",
+				"reloadFailed": "The latest runs could not be loaded; the list may be out of date.",
 				"manual": "By hand from {trigger}",
 				"unknownTrigger": "A trigger that is no longer in the flow",
 				"startedFor": "{time}, took {duration}",
@@ -664,8 +665,7 @@
 				},
 				"suspended": {
 					"title": "The automation is suspended",
-					"text": "It ran too often in a short time and was stopped so that it could not keep running in a loop. This usually means that one of its actions sets a value that one of its triggers watches. Check the flow, then save it or enable the automation again to resume it.",
-					"trigger": "The trigger that kept firing:"
+					"text": "It ran too often in a short time and was stopped so that it could not keep running in a loop. This usually means that one of its actions sets a value that one of its triggers watches. Check the flow, then save it or enable the automation again to resume it."
 				},
 				"invalid": {
 					"title": "The automation cannot run",

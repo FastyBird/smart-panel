@@ -607,6 +607,7 @@
 				"empty": "Ta automatyzacja jeszcze się nie uruchomiła.",
 				"loading": "Wczytywanie uruchomień...",
 				"loadFailed": "Nie udało się wczytać uruchomień.",
+				"reloadFailed": "Nie udało się wczytać najnowszych uruchomień; lista może być nieaktualna.",
 				"manual": "Ręcznie od {trigger}",
 				"unknownTrigger": "Wyzwalacz, którego nie ma już w przebiegu",
 				"startedFor": "{time}, trwało {duration}",
@@ -664,8 +665,7 @@
 				},
 				"suspended": {
 					"title": "Automatyzacja jest wstrzymana",
-					"text": "W krótkim czasie uruchamiała się zbyt często, więc została zatrzymana, aby nie działała w pętli. Zwykle oznacza to, że jedna z jej akcji ustawia wartość obserwowaną przez jeden z jej wyzwalaczy. Sprawdź przebieg, a następnie zapisz go lub ponownie włącz automatyzację, aby ją wznowić.",
-					"trigger": "Wyzwalacz, który ciągle się uruchamiał:"
+					"text": "W krótkim czasie uruchamiała się zbyt często, więc została zatrzymana, aby nie działała w pętli. Zwykle oznacza to, że jedna z jej akcji ustawia wartość obserwowaną przez jeden z jej wyzwalaczy. Sprawdź przebieg, a następnie zapisz go lub ponownie włącz automatyzację, aby ją wznowić."
 				},
 				"invalid": {
 					"title": "Automatyzacja nie może działać",

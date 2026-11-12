@@ -7,8 +7,6 @@ export interface IAutomationStatusExplanationProps {
 	status: AutomationStatus;
 	// What the engine says about the automation; null while it is not read, or when it cannot be
 	runtime: IAutomationRuntime | null;
-	// The trigger that fired too often, for a suspended automation: the one its last run started at
-	suspendedNodeId?: string | null;
 	graph: IAutomationGraph;
 	nodeTypes: IAutomationNodeType[];
 }

@@ -101,7 +101,6 @@ export const AutomationRuntimeSchema = z.object({
 	status: z.nativeEnum(AutomationStatus),
 	problems: z.array(AutomationRuntimeProblemSchema).default([]),
 	suspendedReason: z.string().nullable().default(null),
-	lastSkippedNodeId: z.string().nullable().default(null),
 });
 
 export const AutomationRunsStateSemaphoreSchema = z.object({
