@@ -134,6 +134,12 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			},
 			`config:${nodeId}:${field ?? ''}`
 		);
+
+		// A part of the configuration replaced as a whole - an entry added to a list or removed from it: what
+		// the backend said about what is under it names entries by their place, which now holds another one
+		if (typeof field === 'string' && field !== '') {
+			issues.value = issues.value.filter((issue) => issue.node_id !== nodeId || !issue.field?.startsWith(`${field}.`));
+		}
 	};
 
 	const undo = (): void => {

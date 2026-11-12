@@ -466,6 +466,29 @@ describe('useAutomationEditor', () => {
 			expect(editor.issues.value).toEqual([]);
 		});
 
+		it('drops what the backend said about the entries of a list once the list is changed as a whole', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const entry = { ...invalidConfig, node_id: 'a1', field: 'writes.0.value' };
+			const other = { ...invalidConfig, node_id: 'a1', field: 'title' };
+
+			mockBackendClient.POST.mockResolvedValue(ok({ valid: false, issues: [entry, other] }));
+
+			await editor.save();
+
+			// An edit of one field of an entry keeps what was said about the entries
+			editor.updateNodeConfig('a1', { title: 'Hello', writes: [{ value: 1 }] }, 'writes.0.value');
+
+			expect(editor.issues.value).toEqual([entry, other]);
+
+			// An entry removed moves the next one into its place
+			editor.updateNodeConfig('a1', { title: 'Hello', writes: [] }, 'writes');
+
+			expect(editor.issues.value).toEqual([other]);
+		});
+
 		it('still counts as unsaved what was drawn while the save was under way', async () => {
 			const editor = await createEditor();
 
