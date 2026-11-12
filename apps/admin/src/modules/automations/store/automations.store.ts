@@ -11,6 +11,7 @@ import type {
 	AutomationsModuleGetAutomationOperation,
 	AutomationsModuleGetAutomationsOperation,
 	AutomationsModuleUpdateAutomationOperation,
+	AutomationsModuleValidateGraphOperation,
 } from '../../../openapi.constants';
 import { AUTOMATIONS_MODULE_PREFIX, AUTOMATION_GRAPH_INVALID_ERROR_CODE } from '../automations.constants';
 import {
@@ -21,9 +22,16 @@ import {
 	AutomationsValidationException,
 } from '../automations.exceptions';
 
-import { AutomationSchema, AutomationsAddActionPayloadSchema, AutomationsEditActionPayloadSchema } from './automations.store.schemas';
+import {
+	AutomationGraphValidationSchema,
+	AutomationSchema,
+	AutomationsAddActionPayloadSchema,
+	AutomationsEditActionPayloadSchema,
+	AutomationsValidateActionPayloadSchema,
+} from './automations.store.schemas';
 import type {
 	IAutomation,
+	IAutomationGraphValidation,
 	IAutomationsAddActionPayload,
 	IAutomationsEditActionPayload,
 	IAutomationsGetActionPayload,
@@ -34,6 +42,7 @@ import type {
 	IAutomationsStoreActions,
 	IAutomationsStoreState,
 	IAutomationsUnsetActionPayload,
+	IAutomationsValidateActionPayload,
 } from './automations.store.types';
 import {
 	transformAutomationCreateRequest,
@@ -549,6 +558,52 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			}
 		};
 
+		/**
+		 * Asks the backend what it makes of a graph without saving it. Unlike a refused save this also
+		 * returns the issues that would not stop a save, such as a block no trigger leads to.
+		 */
+		const validate = async (payload: IAutomationsValidateActionPayload): Promise<IAutomationGraphValidation> => {
+			const parsedPayload = AutomationsValidateActionPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success) {
+				logger.error('Schema validation failed with:', parsedPayload.error);
+
+				throw new AutomationsValidationException('Failed to validate automation graph.');
+			}
+
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/automations/validate`, {
+					body: { data: parsedPayload.data },
+				});
+
+				if (typeof responseData === 'undefined') {
+					let errorReason: string = 'Failed to validate automation graph.';
+
+					if (error) {
+						errorReason = getErrorReason<AutomationsModuleValidateGraphOperation>(error, errorReason);
+					}
+
+					throw new AutomationsApiException(errorReason, response?.status ?? null);
+				}
+
+				const parsed = AutomationGraphValidationSchema.safeParse(responseData.data);
+
+				if (!parsed.success) {
+					logger.error('Schema validation failed with:', parsed.error);
+
+					throw new AutomationsValidationException('Failed to validate received graph validation data.');
+				}
+
+				return parsed.data;
+			} catch (e) {
+				throw toApiException(e, 'Failed to validate automation graph.');
+			}
+		};
+
 		// Reconnect refresh contract: the store itself says whether it holds anything worth
 		// re-reading, so the caller never has to guess from a flag it does not maintain.
 		const isLoaded = (): boolean => firstLoadFinished() || findAll().length > 0;
@@ -590,6 +645,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			add,
 			edit,
 			remove,
+			validate,
 		};
 	}
 );

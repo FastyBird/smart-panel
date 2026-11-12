@@ -9,15 +9,18 @@
 			"edit": "Upraviť automatizáciu",
 			"remove": "Odstrániť automatizáciu",
 			"discard": "Zahodiť zmeny",
-			"adjustFilters": "Upraviť filtre"
+			"adjustFilters": "Upraviť filtre",
+			"flow": "Priebeh automatizácie"
 		},
 		"subHeadings": {
 			"list": "Nechajte inteligentnú domácnosť konať samostatne",
 			"add": "Teraz ju pomenujte, priebeh nakreslíte potom",
-			"adjustFilters": "Filtrujte automatizácie podľa rôznych kritérií"
+			"adjustFilters": "Filtrujte automatizácie podľa rôznych kritérií",
+			"flow": "Umiestnite bloky na plátno a prepojte ich"
 		},
 		"breadcrumbs": {
-			"automations": "Automatizácie"
+			"automations": "Automatizácie",
+			"flow": "Priebeh"
 		},
 		"filters": {
 			"enabled": {
@@ -115,6 +118,7 @@
 		},
 		"aria": {
 			"edit": "Upraviť automatizáciu „{automation}“",
+			"flow": "Upraviť priebeh automatizácie „{automation}“",
 			"remove": "Odstrániť automatizáciu „{automation}“",
 			"enabled": "Automatizácia „{automation}“ povolená"
 		},
@@ -148,6 +152,9 @@
 			},
 			"retry": {
 				"title": "Skúsiť znova"
+			},
+			"flow": {
+				"title": "Upraviť priebeh"
 			}
 		},
 		"messages": {
@@ -167,6 +174,159 @@
 			"notDisabled": "Automatizáciu „{automation}“ sa nepodarilo zakázať.",
 			"notEnabledIncomplete": "Automatizáciu „{automation}“ nemožno povoliť: jej priebeh nie je úplný. Potrebuje aspoň jeden spúšťač a nastavenie každého bloku.",
 			"changedElsewhere": "Automatizácia „{automation}“ bola medzitým zmenená inde. Vaše zmeny zostali zachované: skontrolujte ich a uložte znova."
+		},
+		"editor": {
+			"headings": {
+				"issues": "Problémy"
+			},
+			"kinds": {
+				"trigger": {
+					"label": "Keď",
+					"title": "Spúšťače"
+				},
+				"condition": {
+					"label": "A",
+					"title": "Podmienky"
+				},
+				"action": {
+					"label": "Potom",
+					"title": "Akcie"
+				},
+				"flow": {
+					"label": "Priebeh",
+					"title": "Riadenie priebehu"
+				},
+				"unknown": {
+					"label": "Neznámy"
+				}
+			},
+			"ports": {
+				"yes": "áno",
+				"no": "nie",
+				"done": "hotovo",
+				"error": "chyba",
+				"timeout": "vypršalo"
+			},
+			"nodeTypes": {
+				"device": {
+					"property": {
+						"changed": {
+							"name": "Hodnota zariadenia sa zmení",
+							"description": "Spustí automatizáciu, keď sa zmení hodnota zariadenia."
+						},
+						"compare": {
+							"name": "Hodnota zariadenia je",
+							"description": "Pokračuje výstupom „áno“, keď hodnota zariadenia vyhovuje porovnaniu, inak výstupom „nie“."
+						},
+						"set": {
+							"name": "Nastaviť hodnotu zariadenia",
+							"description": "Nastaví jednu alebo viac hodnôt zariadení."
+						}
+					}
+				},
+				"manual": {
+					"start": {
+						"name": "Ručné spustenie",
+						"description": "Spustí automatizáciu, keď ju niekto spustí ručne."
+					}
+				},
+				"notification": {
+					"send": {
+						"name": "Odoslať oznámenie",
+						"description": "Odošle oznámenie."
+					}
+				},
+				"scene": {
+					"run": {
+						"name": "Spustiť scénu",
+						"description": "Spustí scénu."
+					}
+				},
+				"time": {
+					"of-day": {
+						"name": "Denný čas",
+						"description": "Spustí automatizáciu v určený čas."
+					},
+					"window": {
+						"name": "Čas je medzi",
+						"description": "Pokračuje výstupom „áno“, keď je čas vnútri zadaného okna, inak výstupom „nie“."
+					}
+				},
+				"flow": {
+					"delay": {
+						"name": "Oneskorenie",
+						"description": "Chvíľu počká, kým priebeh pokračuje."
+					}
+				}
+			},
+			"texts": {
+				"readonly": "Na malej obrazovke len na čítanie",
+				"unsaved": "Neuložené zmeny",
+				"noNodeTypes": "Nie sú k dispozícii žiadne bloky.",
+				"notConfigured": "Zatiaľ nenastavené",
+				"unknownNodeType": "Tento blok už nie je k dispozícii",
+				"unknownNodeTypeHint": "Typ bloku „{type}“ sa už neponúka, najskôr preto, že bol odobratý alebo zakázaný plugin, ktorý ho poskytoval. Blok odoberte, alebo plugin vráťte.",
+				"separateFlows": "Táto automatizácia obsahuje niekoľko priebehov, ktoré nie sú navzájom prepojené. V režime Reštartovať spúšťač jedného priebehu zastaví aj ostatné, preto nesúvisiace priebehy patria do samostatných automatizácií.",
+				"errorCount": "Chyby: {count}",
+				"warningCount": "Varovania: {count}"
+			},
+			"buttons": {
+				"undo": {
+					"title": "Späť"
+				},
+				"redo": {
+					"title": "Znova"
+				},
+				"removeSelected": {
+					"title": "Odobrať"
+				},
+				"removeNode": {
+					"title": "Odobrať blok"
+				}
+			},
+			"form": {
+				"configuration": "Nastavenie (JSON)",
+				"nothingToConfigure": "Tento blok nemá čo nastavovať.",
+				"invalidJson": "Toto nie je platný JSON.",
+				"notSet": "Nenastavené",
+				"yes": "Áno",
+				"no": "Nie",
+				"valueType": {
+					"title": "Typ hodnoty",
+					"string": "Text",
+					"number": "Číslo",
+					"boolean": "Áno / Nie"
+				}
+			},
+			"rejections": {
+				"unknown_node": "Tieto bloky nemožno prepojiť.",
+				"unknown_port": "Tieto dva body nemožno prepojiť.",
+				"into_trigger": "Spúšťač automatizáciu spúšťa, preto doň nemôže nič viesť.",
+				"self": "Blok nemožno prepojiť sám so sebou.",
+				"duplicate": "Tieto dva body už prepojené sú.",
+				"cycle": "Týmto prepojením by sa priebeh vrátil sám do seba.",
+				"limit": "Do priebehu sa už nezmestia ďalšie bloky ani prepojenia."
+			},
+			"issues": {
+				"unknown_node_type": "Tento blok už nie je k dispozícii.",
+				"unknown_port": "Prepojenie používa bod, ktorý tento blok nemá.",
+				"edge_into_trigger": "Spúšťač automatizáciu spúšťa, preto doň nemôže nič viesť.",
+				"cycle": "Priebeh sa vracia sám do seba.",
+				"duplicate_edge": "Dve prepojenia spájajú tie isté dva body.",
+				"no_trigger": "Automatizácia potrebuje aspoň jeden spúšťač, ktorý ju spustí.",
+				"unreachable_node": "K tomuto bloku nevedie žiadny spúšťač, preto sa nikdy nevykoná."
+			},
+			"conflict": {
+				"title": "Automatizácia bola zmenená inde",
+				"description": "Táto automatizácia bola uložená inde, kým ste ju upravovali. Nič z toho, čo ste nakreslili, sa nestratilo. Vyberte, ktorú verziu zachovať.",
+				"reload": "Načítať uloženú verziu",
+				"overwrite": "Uložiť moju verziu",
+				"confirmReload": "Vaše neuložené zmeny priebehu budú zahodené. Chcete pokračovať?"
+			},
+			"messages": {
+				"conflict": "Automatizácia „{automation}“ bola medzitým zmenená inde. Vaše zmeny zostali zachované; vyberte, ktorú verziu zachovať.",
+				"invalid": "Priebeh automatizácie „{automation}“ zatiaľ nemožno uložiť. Skontrolujte problémy uvedené pod plátnom."
+			}
 		}
 	}
 }

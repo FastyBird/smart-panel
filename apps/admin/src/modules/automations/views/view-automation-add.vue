@@ -158,7 +158,8 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			onClose();
+			// A new automation has an empty flow: drawing it is the next thing to do
+			router.push({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: automationId.value } });
 		}
 	}
 );

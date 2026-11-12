@@ -279,13 +279,31 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="120"
+			:width="160"
 			align="right"
 		>
 			<template #default="scope">
+				<el-tooltip
+					:content="t('automations.buttons.flow.title')"
+					placement="top"
+				>
+					<el-button
+						size="small"
+						type="primary"
+						plain
+						:aria-label="t('automations.aria.flow', { automation: scope.row.name })"
+						data-test-id="flow-automation"
+						@click.stop="emit('flow', scope.row.id)"
+					>
+						<template #icon>
+							<icon :icon="AUTOMATION_FLOW_ICON" />
+						</template>
+					</el-button>
+				</el-tooltip>
 				<el-button
 					size="small"
 					plain
+					class="ml-1!"
 					:aria-label="t('automations.aria.edit', { automation: scope.row.name })"
 					data-test-id="edit-automation"
 					@click.stop="emit('edit', scope.row.id)"
@@ -324,6 +342,7 @@ import { useVModel } from '@vueuse/core';
 import { IconWithChild } from '../../../../common';
 import {
 	AUTOMATION_DEFAULT_ICON,
+	AUTOMATION_FLOW_ICON,
 	AUTOMATION_RUN_STATUS_COLORS,
 	AUTOMATION_STATUS_COLORS,
 	type AutomationRunStatus,
@@ -344,6 +363,7 @@ const props = defineProps<IAutomationsTableProps>();
 
 const emit = defineEmits<{
 	(e: 'edit', id: IAutomation['id']): void;
+	(e: 'flow', id: IAutomation['id']): void;
 	(e: 'remove', id: IAutomation['id']): void;
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
 	(e: 'reset-filters'): void;

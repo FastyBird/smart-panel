@@ -67,6 +67,12 @@ export const AutomationGraphIssueSchema = z.object({
 	field: z.string().optional(),
 });
 
+// What the backend makes of a graph without saving it
+export const AutomationGraphValidationSchema = z.object({
+	valid: z.boolean(),
+	issues: z.array(AutomationGraphIssueSchema),
+});
+
 // STORE STATE
 // ===========
 
@@ -149,6 +155,12 @@ export const AutomationsEditActionPayloadSchema = z.object({
 
 export const AutomationsRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
+});
+
+export const AutomationsValidateActionPayloadSchema = z.object({
+	graph: AutomationGraphSchema,
+	// Whether the automation would be enabled: an enabled automation needs a complete graph
+	enabled: z.boolean().optional(),
 });
 
 // BACKEND API

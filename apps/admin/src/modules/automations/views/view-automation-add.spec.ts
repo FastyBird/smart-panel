@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { FormResult } from '../automations.constants';
+import { FormResult, RouteNames } from '../automations.constants';
 import { AutomationAddForm } from '../components/components';
 
 import ViewAutomationAdd from './view-automation-add.vue';
@@ -128,7 +128,7 @@ describe('ViewAutomationAdd', (): void => {
 		confirm.mockRestore();
 	});
 
-	it('does not let the view be left while the automation is being created, and closes it without asking once it is', async (): Promise<void> => {
+	it('does not let the view be left while the automation is being created, and opens its flow without asking once it is', async (): Promise<void> => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
 
 		const wrapper = mount(ViewAutomationAdd);
@@ -155,7 +155,12 @@ describe('ViewAutomationAdd', (): void => {
 		await flushPromises();
 
 		expect(confirm).not.toHaveBeenCalled();
+		// A new automation has an empty flow: drawing it is the next thing to do
 		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: RouteNames.AUTOMATIONS_FLOW,
+			params: { id: form.props('id') },
+		});
 
 		confirm.mockRestore();
 	});

@@ -9,15 +9,18 @@
 			"edit": "Editar automatización",
 			"remove": "Eliminar automatización",
 			"discard": "Descartar cambios",
-			"adjustFilters": "Ajustar filtros"
+			"adjustFilters": "Ajustar filtros",
+			"flow": "Flujo de la automatización"
 		},
 		"subHeadings": {
 			"list": "Deje que su hogar inteligente actúe por sí solo",
 			"add": "Póngale nombre ahora y dibuje su flujo después",
-			"adjustFilters": "Filtre las automatizaciones según varios criterios"
+			"adjustFilters": "Filtre las automatizaciones según varios criterios",
+			"flow": "Coloque bloques en el lienzo y conéctelos"
 		},
 		"breadcrumbs": {
-			"automations": "Automatizaciones"
+			"automations": "Automatizaciones",
+			"flow": "Flujo"
 		},
 		"filters": {
 			"enabled": {
@@ -115,6 +118,7 @@
 		},
 		"aria": {
 			"edit": "Editar la automatización «{automation}»",
+			"flow": "Editar el flujo de la automatización «{automation}»",
 			"remove": "Eliminar la automatización «{automation}»",
 			"enabled": "Automatización «{automation}» activada"
 		},
@@ -148,6 +152,9 @@
 			},
 			"retry": {
 				"title": "Reintentar"
+			},
+			"flow": {
+				"title": "Editar flujo"
 			}
 		},
 		"messages": {
@@ -167,6 +174,159 @@
 			"notDisabled": "No se pudo deshabilitar la automatización «{automation}».",
 			"notEnabledIncomplete": "La automatización «{automation}» no se puede habilitar: su flujo no está completo. Necesita al menos un disparador y todos los bloques configurados.",
 			"changedElsewhere": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Sus cambios se han conservado: revíselos y guarde de nuevo."
+		},
+		"editor": {
+			"headings": {
+				"issues": "Problemas"
+			},
+			"kinds": {
+				"trigger": {
+					"label": "Cuando",
+					"title": "Disparadores"
+				},
+				"condition": {
+					"label": "Y",
+					"title": "Condiciones"
+				},
+				"action": {
+					"label": "Entonces",
+					"title": "Acciones"
+				},
+				"flow": {
+					"label": "Flujo",
+					"title": "Control del flujo"
+				},
+				"unknown": {
+					"label": "Desconocido"
+				}
+			},
+			"ports": {
+				"yes": "sí",
+				"no": "no",
+				"done": "hecho",
+				"error": "error",
+				"timeout": "tiempo agotado"
+			},
+			"nodeTypes": {
+				"device": {
+					"property": {
+						"changed": {
+							"name": "El valor de un dispositivo cambia",
+							"description": "Inicia la automatización cuando cambia un valor de un dispositivo."
+						},
+						"compare": {
+							"name": "El valor de un dispositivo es",
+							"description": "Continúa por «sí» cuando un valor de un dispositivo cumple la comparación; si no, por «no»."
+						},
+						"set": {
+							"name": "Establecer valor de dispositivo",
+							"description": "Establece uno o varios valores de dispositivos."
+						}
+					}
+				},
+				"manual": {
+					"start": {
+						"name": "Inicio manual",
+						"description": "Inicia la automatización cuando alguien la ejecuta a mano."
+					}
+				},
+				"notification": {
+					"send": {
+						"name": "Enviar notificación",
+						"description": "Envía una notificación."
+					}
+				},
+				"scene": {
+					"run": {
+						"name": "Ejecutar escena",
+						"description": "Ejecuta una escena."
+					}
+				},
+				"time": {
+					"of-day": {
+						"name": "Hora del día",
+						"description": "Inicia la automatización a una hora del día."
+					},
+					"window": {
+						"name": "La hora está entre",
+						"description": "Continúa por «sí» cuando la hora está dentro de la franja; si no, por «no»."
+					}
+				},
+				"flow": {
+					"delay": {
+						"name": "Retardo",
+						"description": "Espera un momento antes de que el flujo continúe."
+					}
+				}
+			},
+			"texts": {
+				"readonly": "Solo lectura en pantallas pequeñas",
+				"unsaved": "Cambios sin guardar",
+				"noNodeTypes": "No hay bloques disponibles.",
+				"notConfigured": "Aún sin configurar",
+				"unknownNodeType": "Este bloque ya no está disponible",
+				"unknownNodeTypeHint": "El tipo de bloque «{type}» ya no se ofrece, probablemente porque el plugin que lo proporcionaba se eliminó o se deshabilitó. Elimine el bloque o restaure el plugin.",
+				"separateFlows": "Esta automatización contiene varios flujos que no están conectados entre sí. En el modo Reiniciar, un disparador de un flujo detiene también los demás, por lo que los flujos no relacionados deben ir en automatizaciones separadas.",
+				"errorCount": "Errores: {count}",
+				"warningCount": "Advertencias: {count}"
+			},
+			"buttons": {
+				"undo": {
+					"title": "Deshacer"
+				},
+				"redo": {
+					"title": "Rehacer"
+				},
+				"removeSelected": {
+					"title": "Eliminar"
+				},
+				"removeNode": {
+					"title": "Eliminar bloque"
+				}
+			},
+			"form": {
+				"configuration": "Configuración (JSON)",
+				"nothingToConfigure": "Este bloque no tiene nada que configurar.",
+				"invalidJson": "Esto no es JSON válido.",
+				"notSet": "Sin establecer",
+				"yes": "Sí",
+				"no": "No",
+				"valueType": {
+					"title": "Tipo de valor",
+					"string": "Texto",
+					"number": "Número",
+					"boolean": "Sí / No"
+				}
+			},
+			"rejections": {
+				"unknown_node": "Estos bloques no se pueden conectar.",
+				"unknown_port": "Estos dos puntos no se pueden conectar.",
+				"into_trigger": "Un disparador inicia la automatización, por lo que nada puede llegar a él.",
+				"self": "Un bloque no se puede conectar consigo mismo.",
+				"duplicate": "Estos dos puntos ya están conectados.",
+				"cycle": "Con esta conexión el flujo volvería sobre sí mismo.",
+				"limit": "El flujo no admite más bloques ni conexiones."
+			},
+			"issues": {
+				"unknown_node_type": "Este bloque ya no está disponible.",
+				"unknown_port": "Una conexión usa un punto que este bloque no tiene.",
+				"edge_into_trigger": "Un disparador inicia la automatización, por lo que nada puede llegar a él.",
+				"cycle": "El flujo vuelve sobre sí mismo.",
+				"duplicate_edge": "Dos conexiones unen los mismos dos puntos.",
+				"no_trigger": "La automatización necesita al menos un disparador que la inicie.",
+				"unreachable_node": "Ningún disparador lleva a este bloque, por lo que nunca se ejecuta."
+			},
+			"conflict": {
+				"title": "La automatización se modificó en otro lugar",
+				"description": "Esta automatización se guardó en otro lugar mientras la editaba. No se ha perdido nada de lo que ha dibujado. Elija qué versión conservar.",
+				"reload": "Cargar la versión guardada",
+				"overwrite": "Guardar mi versión",
+				"confirmReload": "Se descartarán los cambios sin guardar del flujo. ¿Desea continuar?"
+			},
+			"messages": {
+				"conflict": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Sus cambios se conservan; elija qué versión conservar.",
+				"invalid": "El flujo de la automatización «{automation}» aún no se puede guardar. Revise los problemas indicados bajo el lienzo."
+			}
 		}
 	}
 }

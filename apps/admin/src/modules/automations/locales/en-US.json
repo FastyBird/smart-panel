@@ -9,15 +9,18 @@
 			"edit": "Edit automation",
 			"remove": "Remove automation",
 			"discard": "Discard changes",
-			"adjustFilters": "Adjust filters"
+			"adjustFilters": "Adjust filters",
+			"flow": "Automation flow"
 		},
 		"subHeadings": {
 			"list": "Let your smart home act on its own",
 			"add": "Name it now, draw its flow afterwards",
-			"adjustFilters": "Filter automations by various criteria"
+			"adjustFilters": "Filter automations by various criteria",
+			"flow": "Place blocks on the canvas and connect them"
 		},
 		"breadcrumbs": {
-			"automations": "Automations"
+			"automations": "Automations",
+			"flow": "Flow"
 		},
 		"filters": {
 			"enabled": {
@@ -115,6 +118,7 @@
 		},
 		"aria": {
 			"edit": "Edit automation \"{automation}\"",
+			"flow": "Edit flow of automation \"{automation}\"",
 			"remove": "Remove automation \"{automation}\"",
 			"enabled": "Automation \"{automation}\" enabled"
 		},
@@ -148,6 +152,9 @@
 			},
 			"retry": {
 				"title": "Try again"
+			},
+			"flow": {
+				"title": "Edit flow"
 			}
 		},
 		"messages": {
@@ -167,6 +174,159 @@
 			"notDisabled": "Automation \"{automation}\" could not be disabled.",
 			"notEnabledIncomplete": "Automation \"{automation}\" cannot be enabled: its flow is not complete. It needs at least one trigger and every block configured.",
 			"changedElsewhere": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes were kept: review them and save again to apply them."
+		},
+		"editor": {
+			"headings": {
+				"issues": "Problems"
+			},
+			"kinds": {
+				"trigger": {
+					"label": "When",
+					"title": "Triggers"
+				},
+				"condition": {
+					"label": "And",
+					"title": "Conditions"
+				},
+				"action": {
+					"label": "Then",
+					"title": "Actions"
+				},
+				"flow": {
+					"label": "Flow",
+					"title": "Flow control"
+				},
+				"unknown": {
+					"label": "Unknown"
+				}
+			},
+			"ports": {
+				"yes": "yes",
+				"no": "no",
+				"done": "done",
+				"error": "error",
+				"timeout": "timeout"
+			},
+			"nodeTypes": {
+				"device": {
+					"property": {
+						"changed": {
+							"name": "Device value changes",
+							"description": "Starts the automation when a value of a device changes."
+						},
+						"compare": {
+							"name": "Device value is",
+							"description": "Continues on \"yes\" when a value of a device meets the comparison, otherwise on \"no\"."
+						},
+						"set": {
+							"name": "Set device value",
+							"description": "Sets one or more values of devices."
+						}
+					}
+				},
+				"manual": {
+					"start": {
+						"name": "Manual start",
+						"description": "Starts the automation when somebody runs it by hand."
+					}
+				},
+				"notification": {
+					"send": {
+						"name": "Send notification",
+						"description": "Sends a notification."
+					}
+				},
+				"scene": {
+					"run": {
+						"name": "Run scene",
+						"description": "Runs a scene."
+					}
+				},
+				"time": {
+					"of-day": {
+						"name": "Time of day",
+						"description": "Starts the automation at a time of day."
+					},
+					"window": {
+						"name": "Time is between",
+						"description": "Continues on \"yes\" when the time is inside the window, otherwise on \"no\"."
+					}
+				},
+				"flow": {
+					"delay": {
+						"name": "Delay",
+						"description": "Waits for a while before the flow continues."
+					}
+				}
+			},
+			"texts": {
+				"readonly": "Read-only on a small screen",
+				"unsaved": "Unsaved changes",
+				"noNodeTypes": "No blocks are available.",
+				"notConfigured": "Not configured yet",
+				"unknownNodeType": "This block is no longer available",
+				"unknownNodeTypeHint": "The block type \"{type}\" is not offered any more, most likely because the plugin that provided it was removed or disabled. Remove the block, or bring the plugin back.",
+				"separateFlows": "This automation holds several flows that are not connected to each other. In the Restart mode a trigger of one flow also stops the others, so unrelated flows belong to separate automations.",
+				"errorCount": "Errors: {count}",
+				"warningCount": "Warnings: {count}"
+			},
+			"buttons": {
+				"undo": {
+					"title": "Undo"
+				},
+				"redo": {
+					"title": "Redo"
+				},
+				"removeSelected": {
+					"title": "Remove"
+				},
+				"removeNode": {
+					"title": "Remove block"
+				}
+			},
+			"form": {
+				"configuration": "Configuration (JSON)",
+				"nothingToConfigure": "This block has nothing to configure.",
+				"invalidJson": "This is not valid JSON.",
+				"notSet": "Not set",
+				"yes": "Yes",
+				"no": "No",
+				"valueType": {
+					"title": "Value type",
+					"string": "Text",
+					"number": "Number",
+					"boolean": "Yes / No"
+				}
+			},
+			"rejections": {
+				"unknown_node": "These blocks cannot be connected.",
+				"unknown_port": "These two points cannot be connected.",
+				"into_trigger": "A trigger starts the automation, so nothing can lead into it.",
+				"self": "A block cannot be connected to itself.",
+				"duplicate": "These two points are connected already.",
+				"cycle": "This connection would make the flow loop back on itself.",
+				"limit": "The flow cannot hold any more blocks or connections."
+			},
+			"issues": {
+				"unknown_node_type": "This block is no longer available.",
+				"unknown_port": "A connection uses a point this block does not have.",
+				"edge_into_trigger": "A trigger starts the automation, so nothing can lead into it.",
+				"cycle": "The flow loops back on itself.",
+				"duplicate_edge": "Two connections join the same two points.",
+				"no_trigger": "The automation needs at least one trigger to start it.",
+				"unreachable_node": "No trigger leads to this block, so it never runs."
+			},
+			"conflict": {
+				"title": "The automation was changed elsewhere",
+				"description": "This automation was saved somewhere else while you were editing it. Nothing you have drawn is lost. Choose which version to keep.",
+				"reload": "Load the saved version",
+				"overwrite": "Save my version",
+				"confirmReload": "Your unsaved changes to the flow will be discarded. Do you want to continue?"
+			},
+			"messages": {
+				"conflict": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes are kept; choose which version to keep.",
+				"invalid": "The flow of automation \"{automation}\" cannot be saved yet. Check the problems listed below the canvas."
+			}
 		}
 	}
 }

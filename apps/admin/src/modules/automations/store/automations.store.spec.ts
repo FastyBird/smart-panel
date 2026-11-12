@@ -416,6 +416,11 @@ describe('Automations Store', () => {
 			});
 		});
 
+		it('refuses a revision that is not one', async () => {
+			await expect(store.edit({ id: automationId, revision: 0, data: { graph } })).rejects.toBeInstanceOf(AutomationsValidationException);
+			expect(mockBackendClient.PATCH).not.toHaveBeenCalled();
+		});
+
 		it('does not let a late response of a save put an older revision over a newer one', async () => {
 			let resolve: (value: unknown) => void = () => {};
 
@@ -522,6 +527,56 @@ describe('Automations Store', () => {
 				params: { path: { id: automationId } },
 				body: { data: { revision: 3, graph } },
 			});
+		});
+	});
+
+	describe('validate', () => {
+		it('asks the backend about a graph and returns every issue, blocking or not', async () => {
+			mockBackendClient.POST.mockResolvedValue({
+				data: {
+					data: {
+						valid: true,
+						issues: [{ severity: 'warning', code: 'unreachable_node', message: 'No trigger leads to this node.', node_id: 'n2', blocking: false }],
+					},
+				},
+				response: { status: 200 },
+			});
+
+			const validation = await store.validate({ graph, enabled: true });
+
+			expect(mockBackendClient.POST).toHaveBeenCalledWith('/modules/automations/automations/validate', {
+				body: { data: { graph, enabled: true } },
+			});
+			expect(validation).toEqual({
+				valid: true,
+				issues: [{ severity: 'warning', code: 'unreachable_node', message: 'No trigger leads to this node.', node_id: 'n2', blocking: false }],
+			});
+		});
+
+		it('does not touch the stored automations', async () => {
+			store.set({ id: automationId, data: { name: 'Hallway motion light', revision: 3, createdAt: new Date() } });
+
+			mockBackendClient.POST.mockResolvedValue({ data: { data: { valid: false, issues: [] } }, response: { status: 200 } });
+
+			await store.validate({ graph });
+
+			expect(store.findById(automationId)).toMatchObject({ revision: 3, graph: null });
+		});
+
+		it('throws when the backend could not be asked', async () => {
+			mockBackendClient.POST.mockResolvedValue({ data: undefined, error: errorEnvelope({ reason: 'Nope' }), response: { status: 400 } });
+
+			await expect(store.validate({ graph })).rejects.toMatchObject({ code: 400 });
+
+			mockBackendClient.POST.mockRejectedValue(new Error('offline'));
+
+			await expect(store.validate({ graph })).rejects.toBeInstanceOf(AutomationsApiException);
+		});
+
+		it('throws for an answer it cannot read', async () => {
+			mockBackendClient.POST.mockResolvedValue({ data: { data: { valid: 'yes' } }, response: { status: 200 } });
+
+			await expect(store.validate({ graph })).rejects.toBeInstanceOf(AutomationsValidationException);
 		});
 	});
 

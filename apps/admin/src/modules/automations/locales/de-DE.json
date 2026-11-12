@@ -9,15 +9,18 @@
 			"edit": "Automation bearbeiten",
 			"remove": "Automation entfernen",
 			"discard": "Änderungen verwerfen",
-			"adjustFilters": "Filter anpassen"
+			"adjustFilters": "Filter anpassen",
+			"flow": "Ablauf der Automation"
 		},
 		"subHeadings": {
 			"list": "Lassen Sie Ihr Smart Home selbstständig handeln",
 			"add": "Jetzt benennen, den Ablauf danach zeichnen",
-			"adjustFilters": "Automationen nach verschiedenen Kriterien filtern"
+			"adjustFilters": "Automationen nach verschiedenen Kriterien filtern",
+			"flow": "Blöcke auf der Arbeitsfläche platzieren und verbinden"
 		},
 		"breadcrumbs": {
-			"automations": "Automationen"
+			"automations": "Automationen",
+			"flow": "Ablauf"
 		},
 		"filters": {
 			"enabled": {
@@ -115,6 +118,7 @@
 		},
 		"aria": {
 			"edit": "Automation „{automation}“ bearbeiten",
+			"flow": "Ablauf der Automation „{automation}“ bearbeiten",
 			"remove": "Automation „{automation}“ entfernen",
 			"enabled": "Automation „{automation}“ aktiviert"
 		},
@@ -148,6 +152,9 @@
 			},
 			"retry": {
 				"title": "Erneut versuchen"
+			},
+			"flow": {
+				"title": "Ablauf bearbeiten"
 			}
 		},
 		"messages": {
@@ -167,6 +174,159 @@
 			"notDisabled": "Die Automation „{automation}“ konnte nicht deaktiviert werden.",
 			"notEnabledIncomplete": "Die Automation „{automation}“ kann nicht aktiviert werden: Ihr Ablauf ist unvollständig. Sie braucht mindestens einen Auslöser und jeder Block muss konfiguriert sein.",
 			"changedElsewhere": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Ihre Änderungen wurden beibehalten: Prüfen Sie sie und speichern Sie erneut."
+		},
+		"editor": {
+			"headings": {
+				"issues": "Probleme"
+			},
+			"kinds": {
+				"trigger": {
+					"label": "Wenn",
+					"title": "Auslöser"
+				},
+				"condition": {
+					"label": "Und",
+					"title": "Bedingungen"
+				},
+				"action": {
+					"label": "Dann",
+					"title": "Aktionen"
+				},
+				"flow": {
+					"label": "Ablauf",
+					"title": "Ablaufsteuerung"
+				},
+				"unknown": {
+					"label": "Unbekannt"
+				}
+			},
+			"ports": {
+				"yes": "ja",
+				"no": "nein",
+				"done": "fertig",
+				"error": "Fehler",
+				"timeout": "Zeitüberschreitung"
+			},
+			"nodeTypes": {
+				"device": {
+					"property": {
+						"changed": {
+							"name": "Gerätewert ändert sich",
+							"description": "Startet die Automation, wenn sich ein Wert eines Geräts ändert."
+						},
+						"compare": {
+							"name": "Gerätewert ist",
+							"description": "Fährt bei „ja“ fort, wenn ein Wert eines Geräts den Vergleich erfüllt, sonst bei „nein“."
+						},
+						"set": {
+							"name": "Gerätewert setzen",
+							"description": "Setzt einen oder mehrere Werte von Geräten."
+						}
+					}
+				},
+				"manual": {
+					"start": {
+						"name": "Manueller Start",
+						"description": "Startet die Automation, wenn sie jemand von Hand ausführt."
+					}
+				},
+				"notification": {
+					"send": {
+						"name": "Benachrichtigung senden",
+						"description": "Sendet eine Benachrichtigung."
+					}
+				},
+				"scene": {
+					"run": {
+						"name": "Szene ausführen",
+						"description": "Führt eine Szene aus."
+					}
+				},
+				"time": {
+					"of-day": {
+						"name": "Uhrzeit",
+						"description": "Startet die Automation zu einer Uhrzeit."
+					},
+					"window": {
+						"name": "Zeit liegt zwischen",
+						"description": "Fährt bei „ja“ fort, wenn die Zeit im Zeitfenster liegt, sonst bei „nein“."
+					}
+				},
+				"flow": {
+					"delay": {
+						"name": "Verzögerung",
+						"description": "Wartet eine Weile, bevor der Ablauf fortgesetzt wird."
+					}
+				}
+			},
+			"texts": {
+				"readonly": "Auf kleinen Bildschirmen schreibgeschützt",
+				"unsaved": "Ungespeicherte Änderungen",
+				"noNodeTypes": "Es sind keine Blöcke verfügbar.",
+				"notConfigured": "Noch nicht konfiguriert",
+				"unknownNodeType": "Dieser Block ist nicht mehr verfügbar",
+				"unknownNodeTypeHint": "Der Blocktyp „{type}“ wird nicht mehr angeboten, vermutlich weil das Plugin, das ihn bereitgestellt hat, entfernt oder deaktiviert wurde. Entfernen Sie den Block oder stellen Sie das Plugin wieder her.",
+				"separateFlows": "Diese Automation enthält mehrere Abläufe, die nicht miteinander verbunden sind. Im Modus „Neu starten“ stoppt ein Auslöser eines Ablaufs auch die anderen, daher gehören unabhängige Abläufe in getrennte Automationen.",
+				"errorCount": "Fehler: {count}",
+				"warningCount": "Warnungen: {count}"
+			},
+			"buttons": {
+				"undo": {
+					"title": "Rückgängig"
+				},
+				"redo": {
+					"title": "Wiederholen"
+				},
+				"removeSelected": {
+					"title": "Entfernen"
+				},
+				"removeNode": {
+					"title": "Block entfernen"
+				}
+			},
+			"form": {
+				"configuration": "Konfiguration (JSON)",
+				"nothingToConfigure": "Dieser Block hat nichts zu konfigurieren.",
+				"invalidJson": "Das ist kein gültiges JSON.",
+				"notSet": "Nicht gesetzt",
+				"yes": "Ja",
+				"no": "Nein",
+				"valueType": {
+					"title": "Werttyp",
+					"string": "Text",
+					"number": "Zahl",
+					"boolean": "Ja / Nein"
+				}
+			},
+			"rejections": {
+				"unknown_node": "Diese Blöcke können nicht verbunden werden.",
+				"unknown_port": "Diese beiden Punkte können nicht verbunden werden.",
+				"into_trigger": "Ein Auslöser startet die Automation, daher kann nichts in ihn hineinführen.",
+				"self": "Ein Block kann nicht mit sich selbst verbunden werden.",
+				"duplicate": "Diese beiden Punkte sind bereits verbunden.",
+				"cycle": "Mit dieser Verbindung würde der Ablauf zu sich selbst zurückführen.",
+				"limit": "Der Ablauf kann keine weiteren Blöcke oder Verbindungen aufnehmen."
+			},
+			"issues": {
+				"unknown_node_type": "Dieser Block ist nicht mehr verfügbar.",
+				"unknown_port": "Eine Verbindung nutzt einen Punkt, den dieser Block nicht hat.",
+				"edge_into_trigger": "Ein Auslöser startet die Automation, daher kann nichts in ihn hineinführen.",
+				"cycle": "Der Ablauf führt zu sich selbst zurück.",
+				"duplicate_edge": "Zwei Verbindungen verbinden dieselben beiden Punkte.",
+				"no_trigger": "Die Automation braucht mindestens einen Auslöser, der sie startet.",
+				"unreachable_node": "Zu diesem Block führt kein Auslöser, daher wird er nie ausgeführt."
+			},
+			"conflict": {
+				"title": "Die Automation wurde an anderer Stelle geändert",
+				"description": "Diese Automation wurde an anderer Stelle gespeichert, während Sie sie bearbeitet haben. Nichts von dem, was Sie gezeichnet haben, ist verloren. Wählen Sie, welche Version behalten werden soll.",
+				"reload": "Gespeicherte Version laden",
+				"overwrite": "Meine Version speichern",
+				"confirmReload": "Ihre ungespeicherten Änderungen am Ablauf werden verworfen. Möchten Sie fortfahren?"
+			},
+			"messages": {
+				"conflict": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Ihre Änderungen bleiben erhalten; wählen Sie, welche Version behalten werden soll.",
+				"invalid": "Der Ablauf der Automation „{automation}“ kann noch nicht gespeichert werden. Prüfen Sie die Probleme unter der Arbeitsfläche."
+			}
 		}
 	}
 }

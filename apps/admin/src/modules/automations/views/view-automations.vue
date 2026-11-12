@@ -88,6 +88,7 @@
 			:filters-active="filtersActive"
 			:updating="updating"
 			@edit="onAutomationEdit"
+			@flow="onAutomationFlow"
 			@remove="onAutomationRemove"
 			@toggle-enabled="onAutomationToggleEnabled"
 			@adjust-list="onAdjustList"
@@ -295,6 +296,11 @@ const onCloseDrawer = (done?: () => void): void => {
 
 const onAutomationEdit = (id: IAutomation['id']): void => {
 	navigate(RouteNames.AUTOMATIONS_EDIT, { id });
+};
+
+const onAutomationFlow = (id: IAutomation['id']): void => {
+	// The flow editor is a page of its own, so the list stays in the history to come back to
+	router.push({ name: RouteNames.AUTOMATIONS_FLOW, params: { id } });
 };
 
 const onAutomationRemove = (id: IAutomation['id']): void => {
