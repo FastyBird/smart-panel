@@ -28,7 +28,7 @@ class SoundDetectionChannelView extends ChannelView
   SoundTypeChannelPropertyView get soundTypeProp =>
       properties.whereType<SoundTypeChannelPropertyView>().first;
 
-  /// Kind of sound the channel detects (e.g. person), if reported.
+  /// Kind of sound the channel detects (e.g. glass_break), if reported.
   String? get soundType => soundTypeProp.soundTypeValue;
 
   @override

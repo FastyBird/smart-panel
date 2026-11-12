@@ -1,6 +1,8 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/channels/generic_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/camera.dart';
@@ -158,6 +160,30 @@ void main() {
     test('a camera lists every object detection channel', () {
       final device = buildCameraView(objectTypes: ['person', 'vehicle', 'animal']);
       expect(device.objectDetectionChannels.map((c) => c.objectType), ['person', 'vehicle', 'animal']);
+    });
+  });
+
+  group('Channel identifier propagation', () {
+    Map<String, dynamic> channelJson({String? identifier}) => {
+          'id': '2b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e',
+          'type': 'test',
+          'category': 'camera',
+          'device': '9f8c1d2e-3a4b-4c5d-8e6f-0a1b2c3d4e5f',
+          'properties': <String>[],
+          'controls': <String>[],
+          if (identifier != null) 'identifier': identifier,
+        };
+
+    test('fromJson reads the identifier, and leaves it null when absent', () {
+      expect(GenericChannelModel.fromJson(channelJson(identifier: 'x')).identifier, 'x');
+      expect(GenericChannelModel.fromJson(channelJson()).identifier, isNull);
+    });
+
+    test('buildChannelView copies the model identifier onto the view', () {
+      final model = GenericChannelModel.fromJson(channelJson(identifier: 'camera.main'));
+      final view = buildChannelView(model, const []);
+      expect(view, isA<CameraChannelView>());
+      expect(view.identifier, 'camera.main');
     });
   });
 }
