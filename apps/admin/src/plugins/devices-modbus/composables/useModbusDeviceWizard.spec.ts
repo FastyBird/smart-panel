@@ -824,6 +824,33 @@ describe('useModbusDeviceWizard', () => {
 			expect(put).not.toHaveBeenCalled();
 		});
 
+		it('ignores a template preview that returns after the wizard switched to editing a device', async () => {
+			let resolvePreview: (value: IModbusTemplatePreview) => void = () => undefined;
+
+			templatesStore.preview.mockReturnValueOnce(new Promise((resolve) => (resolvePreview = resolve)));
+
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.endpointId = 'e1';
+
+			const pending = wizard.applyTemplate('acme-io');
+
+			expect(wizard.applyingTemplate.value).toBe(true);
+
+			await wizard.loadDevice('d1');
+
+			const loaded = wizard.state.points.map((point) => point.propertyId);
+
+			expect(wizard.applyingTemplate.value).toBe(false);
+
+			resolvePreview(preview());
+			await pending;
+
+			expect(wizard.mode.value).toBe('edit');
+			expect(wizard.state.template).toBeNull();
+			expect(wizard.state.points.map((point) => point.propertyId)).toEqual(loaded);
+		});
+
 		it('creates through submit in create mode', async () => {
 			post.mockResolvedValue({ data: { data: { id: 'd9' } } });
 

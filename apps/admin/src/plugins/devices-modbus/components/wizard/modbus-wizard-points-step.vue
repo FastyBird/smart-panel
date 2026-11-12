@@ -674,8 +674,8 @@ const onEditorSave = (saved: ModbusPoint): void => {
 		return original !== null && point.channelIdentifier === original.channelIdentifier ? { ...point, name: saved.name } : point;
 	});
 
-	// A new capability brings its own static siblings (a valve its type) and drops those of the old one.
-	state.points = original !== null && capabilityKeyOf(original) !== capabilityKeyOf(saved) ? withCapabilityStatics(points, saved) : points;
+	// A new capability brings its own static siblings (a valve its type) and drops those only the old one needed.
+	state.points = original !== null && capabilityKeyOf(original) !== capabilityKeyOf(saved) ? withCapabilityStatics(points, original, saved) : points;
 };
 
 // --- Test write ---

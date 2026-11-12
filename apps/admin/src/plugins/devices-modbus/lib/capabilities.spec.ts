@@ -241,7 +241,7 @@ describe('custom capability helpers', () => {
 		);
 
 		const valve = applyCapability(relay, capability('valve.on'));
-		const withType = withCapabilityStatics([valve, other], valve);
+		const withType = withCapabilityStatics([valve, other], relay, valve);
 
 		expect(withType.map((p) => [p.channelIdentifier, p.channelCategory, p.propertyCategory, p.staticValue])).toEqual([
 			['relay_1', 'valve', 'on', null],
@@ -255,9 +255,37 @@ describe('custom capability helpers', () => {
 		expect(
 			withCapabilityStatics(
 				withType.map((p) => (p.key === back.key ? back : p)),
+				withType[0],
 				back
 			).map((p) => p.propertyCategory)
 		).toEqual(['on', 'on']);
+	});
+
+	it('keeps the stored static siblings of an existing channel when its point changes capability', () => {
+		const [position] = pointsFromRange(
+			pointBaseFor(capability('analog_input.value'), DevicesModbusPluginRegisterType.holding_register),
+			{ registerType: null, start: 4, count: 1 },
+			'Valve'
+		);
+		const stored = { ...position, channelId: 'c1', propertyId: 'p-position', channelCategory: 'valve', propertyCategory: 'position' };
+		const type = {
+			...stored,
+			key: 'type',
+			propertyId: 'p-type',
+			propertyCategory: 'type',
+			dataType: 'enum',
+			staticValue: 'irrigation',
+			read: null,
+			write: null,
+		};
+		const on = applyCapability(stored, capability('valve.on'));
+
+		const points = withCapabilityStatics([on, type], stored, on);
+
+		expect(points.map((p) => [p.propertyCategory, p.propertyId, p.staticValue])).toEqual([
+			['on', 'p-position', null],
+			['type', 'p-type', 'irrigation'],
+		]);
 	});
 
 	it('gives a point a kind only for bool, numeric and button event properties', () => {

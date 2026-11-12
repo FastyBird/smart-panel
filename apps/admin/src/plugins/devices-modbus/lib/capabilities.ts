@@ -230,27 +230,33 @@ export function applyCapability(point: ModbusPoint, capability: ModbusCapability
 }
 
 /**
- * The points after the capability of `point` changed: the static points of its channel (those of the old capability)
- * are replaced by the static siblings of the new one, placed right after the point.
+ * The points after the capability of a point changed from `previous` to `point`. The static siblings the old custom
+ * capability brought are dropped unless the new one needs them too; any other static point of the channel (a stored or
+ * template property) is kept with its ID and value. The new capability's statics the channel lacks follow the point.
  */
-export function withCapabilityStatics(points: ModbusPoint[], point: ModbusPoint): ModbusPoint[] {
+export function withCapabilityStatics(points: ModbusPoint[], previous: ModbusPoint, point: ModbusPoint): ModbusPoint[] {
+	const staticsOf = (key: string): ModbusCapabilityStatic[] => CUSTOM_CAPABILITIES.find((candidate) => candidate.key === key)?.statics ?? [];
+	const required = new Set(staticsOf(capabilityKeyOf(point)).map((entry) => entry.propertyCategory));
+	const dropped = new Set(
+		staticsOf(capabilityKeyOf(previous))
+			.map((entry) => entry.propertyCategory)
+			.filter((category) => !required.has(category))
+	);
+	const isStaticSibling = (candidate: ModbusPoint): boolean =>
+		candidate.key !== point.key && candidate.channelIdentifier === point.channelIdentifier && candidate.read === null && candidate.write === null;
+	const kept = points.filter((candidate) => !(isStaticSibling(candidate) && dropped.has(candidate.propertyCategory)));
+	const present = new Set(kept.filter(isStaticSibling).map((candidate) => candidate.propertyCategory));
 	const capability = CUSTOM_CAPABILITIES.find((candidate) => candidate.key === capabilityKeyOf(point));
-	const statics: ModbusPoint[] = (capability ? staticBasesFor(capability) : []).map((base) => ({
-		...base,
-		key: nextPointKey(),
-		name: point.name,
-		channelId: point.channelId,
-		propertyId: null,
-		channelIdentifier: point.channelIdentifier,
-	}));
+	const added: ModbusPoint[] = (capability ? staticBasesFor(capability) : [])
+		.filter((base) => !present.has(base.propertyCategory))
+		.map((base) => ({
+			...base,
+			key: nextPointKey(),
+			name: point.name,
+			channelId: point.channelId,
+			propertyId: null,
+			channelIdentifier: point.channelIdentifier,
+		}));
 
-	return points.flatMap((candidate) => {
-		if (candidate.key === point.key) {
-			return [candidate, ...statics];
-		}
-
-		const staticSibling = candidate.channelIdentifier === point.channelIdentifier && candidate.read === null && candidate.write === null;
-
-		return staticSibling ? [] : [candidate];
-	});
+	return kept.flatMap((candidate) => (candidate.key === point.key ? [candidate, ...added] : [candidate]));
 }

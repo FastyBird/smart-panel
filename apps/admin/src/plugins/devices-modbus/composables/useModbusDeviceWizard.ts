@@ -586,6 +586,10 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		const token = ++loadToken;
 		const fallback = 'Failed to load the Modbus device.';
 
+		// A template preview still pending is ignored once it returns: it must not replace the loaded device's points.
+		applyToken++;
+		applyingTemplate.value = false;
+
 		mode.value = 'edit';
 		loading.value = true;
 		loadError.value = null;
