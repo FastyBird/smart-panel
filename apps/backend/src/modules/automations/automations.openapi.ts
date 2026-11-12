@@ -5,6 +5,7 @@ import { AutomationGraphDto, AutomationGraphEdgeDto, AutomationGraphNodeDto } fr
 import { ReqTriggerAutomationDto, TriggerAutomationDto } from './dto/trigger-automation.dto';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
 import { ReqValidateAutomationGraphDto, ValidateAutomationGraphDto } from './dto/validate-graph.dto';
+import { AutomationRunEntity } from './entities/automation-runs.entity';
 import { AutomationEntity } from './entities/automations.entity';
 import {
 	AutomationGraphEdgeModel,
@@ -12,6 +13,13 @@ import {
 	AutomationGraphNodeModel,
 	AutomationGraphNodePositionModel,
 } from './models/automation-graph.model';
+import {
+	AutomationRunStepModel,
+	AutomationRunStepResultModel,
+	AutomationRunTraceModel,
+	AutomationRunTriggerModel,
+} from './models/automation-run-trace.model';
+import { AutomationRunSummaryModel } from './models/automation-runs.model';
 import {
 	AutomationProblemModel,
 	AutomationRuntimeModel,
@@ -23,6 +31,8 @@ import {
 	AutomationGraphValidationResponseModel,
 	AutomationNodeTypesResponseModel,
 	AutomationResponseModel,
+	AutomationRunResponseModel,
+	AutomationRunsResponseModel,
 	AutomationRuntimeResponseModel,
 	AutomationTriggerResultResponseModel,
 	AutomationsResponseModel,
@@ -51,6 +61,8 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	AutomationNodeTypesResponseModel,
 	AutomationTriggerResultResponseModel,
 	AutomationRuntimeResponseModel,
+	AutomationRunsResponseModel,
+	AutomationRunResponseModel,
 	// Data models
 	AutomationSummaryModel,
 	AutomationGraphModel,
@@ -66,6 +78,12 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	AutomationTriggerCountersModel,
 	AutomationSkippedTriggerModel,
 	AutomationProblemModel,
+	AutomationRunSummaryModel,
+	AutomationRunTraceModel,
+	AutomationRunTriggerModel,
+	AutomationRunStepModel,
+	AutomationRunStepResultModel,
 	// Entities
 	AutomationEntity,
+	AutomationRunEntity,
 ];

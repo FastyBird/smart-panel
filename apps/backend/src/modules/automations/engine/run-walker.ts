@@ -148,7 +148,12 @@ export interface RunRecord {
 export type RunGate = { allow: true } | { allow: false; reason: string };
 
 export interface RunObserver {
-	/** The run parked a token for the first time and will outlive the current tick */
+	/**
+	 * A step was added to the trace, or a parked step was released: its `state` is then `done` or
+	 * `cancelled`. The step is the one in the record and may still change.
+	 */
+	step?(record: RunRecord, step: RunStep): void;
+	/** The run parked a token on a Delay and will outlive the current tick; reported for every park */
 	parked?(record: RunRecord): void;
 	/** The outcome of the run is known */
 	ended?(record: RunRecord): void;
@@ -201,7 +206,6 @@ export class RunWalker {
 	private started = false;
 	private ended = false;
 	private settledReported = false;
-	private parkedReported = false;
 	private startedMono = 0;
 	private tokens = 0;
 	/** Every token ever put on an edge; unlike `seq` it moves before the node of the token is executed */
@@ -290,7 +294,8 @@ export class RunWalker {
 				.catch((error: unknown) => {
 					// Nothing in process() is expected to throw; a token lost to a bug must still fail the run
 					this.unhandledErrors += 1;
-					this.record.steps.push({
+
+					const step: RunStep = {
 						seq: ++this.seq,
 						at: this.wallNow(),
 						elapsedMs: this.elapsed(),
@@ -301,7 +306,10 @@ export class RunWalker {
 						state: 'done',
 						reason: `The engine failed on this node: ${describeError(error)}`,
 						...(this.ended ? { afterCancel: true } : {}),
-					});
+					};
+
+					this.record.steps.push(step);
+					this.notifyStep(step);
 				})
 				.finally(() => {
 					this.tokens -= 1;
@@ -356,19 +364,19 @@ export class RunWalker {
 		}
 
 		const output = result.result ? 'yes' : 'no';
-		const step = this.step(node, edge, {
+		// The run may have ended while the condition was asked: it is recorded and nothing follows
+		const late = this.ended;
+
+		this.step(node, edge, {
 			output,
 			...(result.observed !== undefined ? { observed: result.observed } : {}),
 			...(result.reason !== undefined ? { reason: result.reason } : {}),
 			...(gate.allow ? {} : { refused: true }),
 			...(timedOut ? { timedOut: true } : {}),
+			...(late ? { afterCancel: true } : {}),
 		});
 
-		if (this.ended) {
-			step.afterCancel = true;
-
-			return;
-		}
+		if (late) return;
 
 		this.follow(node.id, output);
 	}
@@ -417,20 +425,19 @@ export class RunWalker {
 		}
 
 		const output = result.success ? 'done' : 'error';
-		const step = this.step(node, edge, {
+		// The side effect already happened and cannot be recalled: it is recorded and nothing follows
+		const late = this.ended;
+
+		this.step(node, edge, {
 			output,
 			result,
 			...(result.reason !== undefined ? { reason: result.reason } : {}),
 			...(gate.allow && result.refused !== true ? {} : { refused: true }),
 			...(timedOut ? { timedOut: true } : {}),
+			...(late ? { afterCancel: true } : {}),
 		});
 
-		if (this.ended) {
-			// The side effect already happened and cannot be recalled: it is recorded and nothing follows
-			step.afterCancel = true;
-
-			return;
-		}
+		if (late) return;
 
 		const followed = this.follow(node.id, output);
 
@@ -453,19 +460,19 @@ export class RunWalker {
 		const step = this.step(node, edge, { state: 'parked', delayMs: node.delayMs });
 		const resumed = this.park(node.delayMs);
 
-		if (!this.parkedReported) {
-			this.parkedReported = true;
-			this.notify('parked');
-		}
+		// Every park is reported, so what is stored of a parked run names the Delay it waits on now
+		this.notify('parked');
 
 		if (!(await resumed)) {
 			step.state = 'cancelled';
+			this.notifyStep(step);
 
 			return;
 		}
 
 		step.state = 'done';
 		step.output = 'out';
+		this.notifyStep(step);
 
 		this.follow(node.id, 'out');
 	}
@@ -653,6 +660,7 @@ export class RunWalker {
 		};
 
 		this.record.steps.push(step);
+		this.notifyStep(step);
 
 		return step;
 	}
@@ -686,8 +694,16 @@ export class RunWalker {
 	}
 
 	private notify(event: 'parked' | 'ended' | 'settled'): void {
+		this.observe(() => this.observer[event]?.(this.record));
+	}
+
+	private notifyStep(step: RunStep): void {
+		this.observe(() => this.observer.step?.(this.record, step));
+	}
+
+	private observe(report: () => void): void {
 		try {
-			this.observer[event]?.(this.record);
+			report();
 		} catch (error) {
 			try {
 				this.observer.error?.(error);

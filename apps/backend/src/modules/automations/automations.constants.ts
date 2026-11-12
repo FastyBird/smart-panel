@@ -12,7 +12,18 @@ export enum EventType {
 	AUTOMATION_UPDATED = 'AutomationsModule.Automation.Updated',
 	AUTOMATION_DELETED = 'AutomationsModule.Automation.Deleted',
 	MODULE_RESET = 'AutomationsModule.All.Reset',
+	RUN_STARTED = 'AutomationsModule.Run.Started',
+	RUN_COMPLETED = 'AutomationsModule.Run.Completed',
 }
+
+/**
+ * Sent over the websocket only, and only to the clients watching the automation: it never goes over the bus,
+ * so the exchange stays quiet while nobody looks at a run.
+ */
+export const AUTOMATION_RUN_STEP_EVENT = 'AutomationsModule.Run.Step';
+
+/** The websocket room of the clients watching one automation */
+export const automationWatchRoom = (automationId: string): string => `automation-${automationId}`;
 
 export enum AutomationMode {
 	SINGLE = 'single',
@@ -27,6 +38,15 @@ export enum AutomationStatus {
 }
 
 export enum AutomationRunStatus {
+	COMPLETED = 'completed',
+	FAILED = 'failed',
+	CANCELLED = 'cancelled',
+	INTERRUPTED = 'interrupted',
+}
+
+/** The status of a stored run: `running` marks a run that parked and has not ended yet */
+export enum AutomationRunRecordStatus {
+	RUNNING = 'running',
 	COMPLETED = 'completed',
 	FAILED = 'failed',
 	CANCELLED = 'cancelled',
@@ -51,6 +71,16 @@ export const AUTOMATION_GRAPH_POSITION_LIMIT = 1_000_000;
 // Engine
 export const AUTOMATION_ENGINE_SERVICE_ID = 'engine';
 export const AUTOMATION_SUSPENDED_NOTIFICATION_KEY_PREFIX = 'automation-suspended:';
+
+// Run history (ADR 0003, decision 12)
+export const AUTOMATION_RUNS_KEPT_PER_AUTOMATION = 50;
+export const AUTOMATION_RUNS_RETENTION_DAYS = 30;
+/** The most a stored trace may take, as serialised JSON in UTF-8 bytes */
+export const AUTOMATION_RUN_TRACE_MAX_LENGTH = 128 * 1024;
+/** The most one observed value or the data of a trigger may take in a trace, as serialised JSON in UTF-8 bytes */
+export const AUTOMATION_RUN_TRACE_VALUE_MAX_LENGTH = 2048;
+/** Why a run found as `running` when the engine starts was interrupted */
+export const AUTOMATION_RUN_INTERRUPTED_BY_RESTART = 'backend_restarted';
 
 // Application error code of a save refused because of its graph (error.details.code of the 422 response)
 export const AUTOMATION_GRAPH_INVALID_ERROR_CODE = 'automation-graph-invalid';

@@ -55,12 +55,14 @@ import { createAutomationTriggerResultModel } from '../models/automation-trigger
 import {
 	AutomationGraphValidationResponseModel,
 	AutomationResponseModel,
+	AutomationRunsResponseModel,
 	AutomationRuntimeResponseModel,
 	AutomationTriggerResultResponseModel,
 	AutomationsResponseModel,
 } from '../models/automations-response.model';
 import { createAutomationGraphValidationModel } from '../models/graph-validation.model';
 import { AutomationEngineService } from '../services/automation-engine.service';
+import { AutomationRunHistoryService } from '../services/automation-run-history.service';
 import { AutomationsService } from '../services/automations.service';
 
 @ApiTags(AUTOMATIONS_MODULE_API_TAG_NAME)
@@ -72,6 +74,7 @@ export class AutomationsController {
 	constructor(
 		private readonly automationsService: AutomationsService,
 		private readonly engine: AutomationEngineService,
+		private readonly runHistory: AutomationRunHistoryService,
 	) {}
 
 	@ApiOperation({
@@ -327,6 +330,29 @@ export class AutomationsController {
 
 		const response = new AutomationRuntimeResponseModel();
 		response.data = createAutomationRuntimeModel(automation, this.engine.runtime(id));
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve the run history of an automation',
+		description:
+			'Fetches the stored runs of one automation, newest first and without their traces. The last 50 runs of an automation are kept, and none for longer than 30 days. A run that never waited is stored when it ends; a run parked on a Delay is listed as `running`, and as `interrupted` when the backend restarted before it ended. Requires the owner or admin role.',
+		operationId: 'get-automations-module-automation-runs',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Automation ID' })
+	@ApiSuccessResponse(AutomationRunsResponseModel, 'The runs of the automation were successfully retrieved.')
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiForbiddenResponse('Only owners and admins can read automations')
+	@ApiNotFoundResponse('Automation not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/runs')
+	async runs(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<AutomationRunsResponseModel> {
+		await this.getOneOrThrow(id);
+
+		const response = new AutomationRunsResponseModel();
+		response.data = await this.runHistory.findAllForAutomation(id);
 
 		return response;
 	}

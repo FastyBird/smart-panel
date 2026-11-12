@@ -12,11 +12,18 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { AppModule } from '../src/app.module';
 import { ValidationExceptionFactory } from '../src/common/validation/validation-exception-factory';
-import { AutomationMode, EventType as AutomationsEventType } from '../src/modules/automations/automations.constants';
+import {
+	AUTOMATION_RUNS_KEPT_PER_AUTOMATION,
+	AutomationMode,
+	AutomationRunRecordStatus,
+	EventType as AutomationsEventType,
+} from '../src/modules/automations/automations.constants';
 import { CreateAutomationDto } from '../src/modules/automations/dto/create-automation.dto';
 import { UpdateAutomationDto } from '../src/modules/automations/dto/update-automation.dto';
+import { AutomationRunEntity } from '../src/modules/automations/entities/automation-runs.entity';
 import { AutomationEntity } from '../src/modules/automations/entities/automations.entity';
 import { AutomationEngineService } from '../src/modules/automations/services/automation-engine.service';
+import { AutomationRunHistoryService } from '../src/modules/automations/services/automation-run-history.service';
 import { AutomationsService } from '../src/modules/automations/services/automations.service';
 import { AutomationNodeTypeRegistryService } from '../src/modules/automations/services/node-type-registry.service';
 import { AutomationStateTrackerService } from '../src/modules/automations/services/state-tracker.service';
@@ -63,6 +70,42 @@ interface AutomationBody {
 	updated_at: string | null;
 }
 
+interface RunStepBody {
+	seq: number;
+	at: string;
+	elapsed_ms: number;
+	node_id: string;
+	type: string;
+	kind: string;
+	via?: string;
+	state: string;
+	output?: string;
+	observed?: unknown;
+	reason?: string;
+	result?: { success: boolean; reason?: string; refused?: boolean };
+	delay_ms?: number;
+}
+
+interface RunBody {
+	id: string;
+	automation_id: string;
+	revision: number;
+	status: string;
+	trigger_node_id: string;
+	manual: boolean;
+	started_at: string;
+	finished_at: string | null;
+	duration_ms: number | null;
+	end_reason: string | null;
+	created_at: string;
+	updated_at: string | null;
+	trace?: {
+		trigger: { node_id: string; manual: boolean; data: Record<string, unknown> };
+		steps: RunStepBody[];
+		truncated: boolean;
+	};
+}
+
 interface IssueBody {
 	severity: string;
 	code: string;
@@ -101,6 +144,7 @@ describe('Automations module (e2e)', () => {
 
 	const base = '/modules/automations/automations';
 	const nodeTypesBase = '/modules/automations/node-types';
+	const runsBase = '/modules/automations/runs';
 
 	// Guards run before the route handler even looks the id up, so a well-formed but
 	// non-existent id is enough to prove the role denial happens before anything else.
@@ -1021,6 +1065,290 @@ describe('Automations module (e2e)', () => {
 			await trigger(automation.id).expect(200);
 		});
 
+		describe('run history', () => {
+			let history: AutomationRunHistoryService;
+			let runsRepository: Repository<AutomationRunEntity>;
+			let eventEmitter: EventEmitter2;
+
+			beforeAll(() => {
+				history = app.get(AutomationRunHistoryService, { strict: false });
+				runsRepository = app.get<Repository<AutomationRunEntity>>(getRepositoryToken(AutomationRunEntity), {
+					strict: false,
+				});
+				eventEmitter = app.get(EventEmitter2, { strict: false });
+			});
+
+			const listRuns = async (id: string): Promise<RunBody[]> => {
+				const response = await request(app.getHttpServer())
+					.get(`${base}/${id}/runs`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				return (response.body as { data: RunBody[] }).data;
+			};
+
+			const readRun = async (runId: string): Promise<RunBody> => {
+				const response = await request(app.getHttpServer())
+					.get(`${runsBase}/${runId}`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				return (response.body as { data: RunBody }).data;
+			};
+
+			/** Resolves when the next run of the automation is announced as over, which is after it was written */
+			const whenCompleted = (automationId: string): Promise<void> =>
+				new Promise<void>((resolve) => {
+					const listener = (payload: { automation_id?: string }): void => {
+						if (payload.automation_id !== automationId) return;
+
+						eventEmitter.off(AutomationsEventType.RUN_COMPLETED, listener);
+						resolve();
+					};
+
+					eventEmitter.on(AutomationsEventType.RUN_COMPLETED, listener);
+				});
+
+			/** Collects what the bus carries for the runs of one automation while `work` runs */
+			const runEvents = async (
+				automationId: string,
+				work: () => Promise<void>,
+			): Promise<[string, Record<string, unknown>][]> => {
+				const seen: [string, Record<string, unknown>][] = [];
+				const listener = (event: string | string[], payload: Record<string, unknown>): void => {
+					if (
+						typeof event === 'string' &&
+						event.startsWith('AutomationsModule.Run.') &&
+						payload.automation_id === automationId
+					) {
+						seen.push([event, payload]);
+					}
+				};
+
+				eventEmitter.onAny(listener);
+
+				try {
+					await work();
+				} finally {
+					eventEmitter.offAny(listener);
+				}
+
+				return seen;
+			};
+
+			it('records a run with its trace, lists it without the trace and announces it', async () => {
+				const automation = await createAutomation({ name: 'Traced', enabled: true, graph });
+
+				let runId = '';
+
+				const events = await runEvents(automation.id, async () => {
+					const completed = whenCompleted(automation.id);
+
+					runId = ((await trigger(automation.id).expect(200)).body as { data: TriggerBody }).data.run_id ?? '';
+
+					await completed;
+				});
+
+				const listed = await listRuns(automation.id);
+
+				expect(listed).toEqual([
+					{
+						id: runId,
+						automation_id: automation.id,
+						revision: 1,
+						status: 'completed',
+						trigger_node_id: 'n1',
+						manual: true,
+						started_at: expect.any(String) as string,
+						finished_at: expect.any(String) as string,
+						duration_ms: expect.any(Number) as number,
+						end_reason: null,
+						created_at: expect.any(String) as string,
+						updated_at: null,
+					},
+				]);
+				expect(new Date(listed[0].started_at).toISOString()).toBe(listed[0].started_at);
+
+				const run = await readRun(runId);
+
+				expect(run).toMatchObject({ ...listed[0], updated_at: run.updated_at });
+				expect(run.trace).toEqual({
+					trigger: { node_id: 'n1', manual: true, data: { manual: true } },
+					steps: [
+						{
+							seq: 1,
+							at: expect.any(String) as string,
+							elapsed_ms: expect.any(Number) as number,
+							node_id: 'n2',
+							type: FAKE_ACTION_TYPE,
+							kind: 'action',
+							via: 'e1',
+							state: 'done',
+							output: 'done',
+							result: { success: true },
+						},
+					],
+					truncated: false,
+				});
+
+				expect(events.map(([event]) => event)).toEqual([
+					'AutomationsModule.Run.Started',
+					'AutomationsModule.Run.Completed',
+				]);
+				expect(events[0][1]).toMatchObject({ id: runId, automation_id: automation.id, status: 'running' });
+				expect(events[1][1]).toMatchObject({ id: runId, automation_id: automation.id, status: 'completed' });
+				expect(events[1][1]).not.toHaveProperty('trace');
+			});
+
+			it('stores a run that parks as running, with the Delay it waits on, and rewrites it when it is cancelled', async () => {
+				const automation = await createAutomation({ name: 'Parked trace', enabled: true, graph: delayGraph });
+
+				const runId = ((await trigger(automation.id).expect(200)).body as { data: TriggerBody }).data.run_id ?? '';
+
+				await engine.settled();
+
+				const parked = await readRun(runId);
+
+				expect(parked).toMatchObject({ status: 'running', finished_at: null, duration_ms: null, end_reason: null });
+				expect(parked.trace?.steps).toEqual([
+					expect.objectContaining({ node_id: 'wait', kind: 'flow', state: 'parked', delay_ms: 60_000 }),
+				]);
+
+				await save(automation.id, { revision: 1, enabled: false });
+				await engine.settled();
+
+				const cancelled = await readRun(runId);
+
+				expect(cancelled).toMatchObject({
+					status: 'cancelled',
+					finished_at: expect.any(String) as string,
+					duration_ms: expect.any(Number) as number,
+				});
+				expect(cancelled.end_reason).toEqual(expect.any(String));
+				expect(cancelled.trace?.steps).toEqual([expect.objectContaining({ node_id: 'wait', state: 'cancelled' })]);
+				expect(await listRuns(automation.id)).toHaveLength(1);
+			});
+
+			it('shows a run the backend was restarted under as interrupted', async () => {
+				const automation = await createAutomation({ name: 'Cut off', enabled: true, graph: delayGraph });
+				const startedAt = new Date(Date.now() - 5 * 60_000);
+
+				// What a power loss leaves behind: the marker of a run that parked and never ended
+				await history.store({
+					id: '99999999-9999-4999-8999-999999999999',
+					automationId: automation.id,
+					revision: 1,
+					status: AutomationRunRecordStatus.RUNNING,
+					triggerNodeId: 't',
+					manual: false,
+					startedAt,
+					finishedAt: null,
+					durationMs: null,
+					endReason: null,
+					trace: {
+						trigger: { node_id: 't', manual: false, data: {} },
+						steps: [
+							{
+								seq: 1,
+								at: startedAt.toISOString(),
+								elapsed_ms: 0,
+								node_id: 'wait',
+								type: 'flow.delay',
+								kind: 'flow',
+								via: 'e1',
+								state: 'parked',
+								delay_ms: 60_000,
+							},
+						],
+						truncated: false,
+					},
+				});
+
+				// A run that is parked while the engine stops in an orderly way is ended by the engine itself
+				const runId = ((await trigger(automation.id).expect(200)).body as { data: TriggerBody }).data.run_id ?? '';
+
+				await engine.settled();
+				await engine.stop();
+				await engine.start();
+
+				const runs = await listRuns(automation.id);
+
+				expect(runs.map((run) => [run.id, run.status, run.end_reason, run.finished_at === null])).toEqual([
+					[runId, 'interrupted', 'engine_stopped', false],
+					['99999999-9999-4999-8999-999999999999', 'interrupted', 'backend_restarted', true],
+				]);
+
+				// The trace still says which Delay never let the run go on
+				expect((await readRun('99999999-9999-4999-8999-999999999999')).trace?.steps).toEqual([
+					expect.objectContaining({ node_id: 'wait', state: 'parked', delay_ms: 60_000 }),
+				]);
+				expect((await settled(automation.id)).lastRunStatus).toBe('interrupted');
+				expect(await runtime(automation.id)).toMatchObject({ loaded: true, armed: true, active_runs: 0 });
+			});
+
+			it('keeps the last runs of an automation only', async () => {
+				const automation = await createAutomation({
+					name: 'Busy',
+					enabled: true,
+					mode: AutomationMode.PARALLEL,
+					graph,
+				});
+
+				// Written straight to the history: the overload guard allows 30 runs a minute and the throttler 30 requests
+				const startedAt = Date.now() - 3_600_000;
+
+				for (let index = 0; index < AUTOMATION_RUNS_KEPT_PER_AUTOMATION; index += 1) {
+					await history.store({
+						id: `88888888-8888-4888-8888-${String(index).padStart(12, '0')}`,
+						automationId: automation.id,
+						revision: 1,
+						status: AutomationRunRecordStatus.COMPLETED,
+						triggerNodeId: 'n1',
+						manual: false,
+						startedAt: new Date(startedAt + index * 1000),
+						finishedAt: new Date(startedAt + index * 1000 + 5),
+						durationMs: 5,
+						endReason: null,
+						trace: { trigger: { node_id: 'n1', manual: false, data: {} }, steps: [], truncated: false },
+					});
+				}
+
+				const completed = whenCompleted(automation.id);
+				const outcome = await engine.triggerOrThrow(automation.id);
+
+				await completed;
+
+				const runs = await listRuns(automation.id);
+
+				expect(runs).toHaveLength(AUTOMATION_RUNS_KEPT_PER_AUTOMATION);
+				expect(runs[0].id).toBe(outcome.outcome === 'started' ? outcome.runId : '');
+				expect(runs.map((run) => run.id)).not.toContain('88888888-8888-4888-8888-000000000000');
+				expect(runs.at(-1)?.id).toBe('88888888-8888-4888-8888-000000000001');
+			});
+
+			it('deletes the runs of an automation with it and answers 404 and 400 where it should', async () => {
+				const automation = await createAutomation({ name: 'Short lived', enabled: true, graph });
+				const completed = whenCompleted(automation.id);
+				const runId = ((await trigger(automation.id).expect(200)).body as { data: TriggerBody }).data.run_id ?? '';
+
+				await completed;
+				await readRun(runId);
+
+				await automationsService.remove(automation.id);
+				await engine.settled();
+
+				expect(await runsRepository.countBy({ automationId: automation.id })).toBe(0);
+
+				const get = (path: string): request.Test =>
+					request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${ownerToken}`);
+
+				await get(`${runsBase}/${runId}`).expect(404);
+				await get(`${base}/${automation.id}/runs`).expect(404);
+				await get(`${runsBase}/not-a-uuid`).expect(400);
+				await get(`${base}/not-a-uuid/runs`).expect(400);
+			});
+		});
+
 		it('forgets an automation that is deleted', async () => {
 			const automation = await createAutomation({ name: 'Deleted', enabled: true, graph: delayGraph });
 
@@ -1509,6 +1837,27 @@ describe('Automations module (e2e)', () => {
 				expect(commands).toHaveBeenCalledTimes(before);
 				expect((await light()).on).toBe(false);
 				expect((await automationsService.getOneOrThrow(automation.id)).lastRunStatus).toBe('completed');
+
+				// ---- the history explains every run: what the conditions saw and what the actions answered --
+
+				const runHistory = app.get(AutomationRunHistoryService, { strict: false });
+				const runs = await runHistory.findAllForAutomation(automation.id);
+				const traces = await Promise.all(runs.map(async (run) => (await runHistory.findOne(run.id))?.trace));
+				const steps = traces.flatMap((trace) => trace?.steps ?? []);
+
+				expect(runs.length).toBeGreaterThanOrEqual(4);
+				expect(runs.every((run) => run.manual === false)).toBe(true);
+				expect(traces.every((trace) => trace?.truncated === false)).toBe(true);
+				// The newest run is the one of the bright room: it ended at the "no" of a condition, which saw the light level
+				expect(traces[0]?.trigger.node_id).toEqual(expect.any(String));
+				expect(traces[0]?.steps.at(-1)).toMatchObject({ kind: 'condition', state: 'done', output: 'no' });
+				expect(traces[0]?.steps.at(-1)).toHaveProperty('observed');
+				expect(steps.some((step) => step.kind === 'condition' && step.output === 'yes' && 'observed' in step)).toBe(
+					true,
+				);
+				expect(steps.some((step) => step.kind === 'action' && step.output === 'done' && step.result?.success)).toBe(
+					true,
+				);
 
 				// ---- cleanup ---------------------------------------------------------------------------------
 
@@ -2062,6 +2411,14 @@ describe('Automations module (e2e)', () => {
 			[
 				'GET /automations/:id/runtime',
 				(token) => authorize(request(app.getHttpServer()).get(`${base}/${placeholderId}/runtime`), token),
+			],
+			[
+				'GET /automations/:id/runs',
+				(token) => authorize(request(app.getHttpServer()).get(`${base}/${placeholderId}/runs`), token),
+			],
+			[
+				'GET /runs/:runId',
+				(token) => authorize(request(app.getHttpServer()).get(`${runsBase}/${placeholderId}`), token),
 			],
 			[
 				'DELETE /automations/:id',

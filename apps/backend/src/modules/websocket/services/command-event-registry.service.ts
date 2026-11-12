@@ -3,9 +3,21 @@ import { Injectable } from '@nestjs/common';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 
+/**
+ * The socket a command came from, as far as a handler may use it: it can put the socket into a room, so
+ * events sent to that room with `WebsocketGateway.sendToRoom` reach it, and take it out again. A socket
+ * leaves its rooms by itself when it disconnects.
+ */
+export interface CommandClient {
+	id: string;
+	join(room: string): Promise<void>;
+	leave(room: string): Promise<void>;
+}
+
 type CommandEventHandler = (
 	user: ClientUserDto,
 	payload: unknown,
+	client?: CommandClient,
 ) => Promise<{ success: boolean; reason?: string } | null>;
 
 interface RegisteredHandler {

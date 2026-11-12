@@ -487,18 +487,41 @@ describe('RunWalker', () => {
 			expect(events).toEqual(['parked', 'ended:completed', 'settled']);
 		});
 
-		it('reports parking once, whatever the number of delays', async () => {
-			const walker = walk(
-				plan([trigger('t'), delay('one', 10), delay('two', 20)], ['t:out>one', 't:out>two', 'one:out>two']),
-			);
+		it('reports every park, so the latest one says where the run waits', async () => {
+			const parkedOn: string[] = [];
+			const walker = new RunWalker({
+				plan: plan([trigger('t'), delay('one', 10), delay('two', 20)], ['t:out>one', 'one:out>two']),
+				clock,
+				wallNow: () => wall,
+				runId: 'run-1',
+				automationId: 'automation-1',
+				revision: 3,
+				trigger: { nodeId: 't', data: {}, manual: false },
+				observer: {
+					parked: (record: RunRecord) =>
+						parkedOn.push(
+							record.steps
+								.filter((item) => item.state === 'parked')
+								.map((item) => item.nodeId)
+								.join(),
+						),
+				},
+			});
 
 			walker.start();
-			clock.advance(100);
-			await flush();
-			clock.advance(100);
 			await flush();
 
-			expect(events.filter((event) => event === 'parked')).toHaveLength(1);
+			expect(parkedOn).toEqual(['one']);
+
+			clock.advance(10);
+			await flush();
+
+			expect(parkedOn).toEqual(['one', 'two']);
+
+			clock.advance(20);
+			await flush();
+
+			expect(parkedOn).toEqual(['one', 'two']);
 			expect(walker.record.status).toBe('completed');
 		});
 
@@ -987,5 +1010,123 @@ describe('RunWalker', () => {
 
 		expect(calls).toEqual(['a', 'b', 'c']);
 		expect(walker.record.status).toBe('completed');
+	});
+
+	describe('step observer', () => {
+		let seen: string[];
+
+		const describeStep = (step: RunStep): string =>
+			[step.seq, step.nodeId, step.state, step.output ?? '-', ...(step.afterCancel ? ['late'] : [])].join(':');
+
+		const observed = (runPlan: RunPlan, onStep?: (record: RunRecord, step: RunStep) => void): RunWalker =>
+			new RunWalker({
+				plan: runPlan,
+				clock,
+				wallNow: () => wall,
+				runId: 'run-1',
+				automationId: 'automation-1',
+				revision: 3,
+				trigger: { nodeId: 't', data: {}, manual: true },
+				observer: {
+					step: (record, step) => {
+						events.push(`step:${step.nodeId}`);
+						seen.push(describeStep(step));
+						onStep?.(record, step);
+					},
+					parked: () => events.push('parked'),
+					ended: (record) => events.push(`ended:${record.status}`),
+					settled: () => events.push('settled'),
+					error: () => events.push('error'),
+				},
+			});
+
+		beforeEach(() => {
+			seen = [];
+		});
+
+		it('reports every node the run reaches, with the output it took, before the run ends', async () => {
+			const walker = observed(
+				plan(
+					[trigger('t'), condition('c', { result: false, observed: 4 }), action('yes'), action('no', { fail: true })],
+					['t:out>c', 'c:yes>yes', 'c:no>no'],
+				),
+			);
+
+			walker.start();
+			await flush();
+
+			expect(seen).toEqual(['1:c:done:no', '2:no:done:error']);
+			expect(events).toEqual(['step:c', 'step:no', 'ended:failed', 'settled']);
+		});
+
+		it('hands over the step of the record itself', async () => {
+			const steps: RunStep[] = [];
+			const walker = observed(plan([trigger('t'), action('a')], ['t:out>a']), (record, step) => {
+				expect(record).toBe(walker.record);
+				steps.push(step);
+			});
+
+			walker.start();
+			await flush();
+
+			expect(steps).toEqual(walker.record.steps);
+			expect(steps[0]).toBe(walker.record.steps[0]);
+		});
+
+		it('reports a Delay when it parks the run and again when it lets it go on', async () => {
+			const walker = observed(plan([trigger('t'), delay('wait', 60_000), action('a')], ['t:out>wait', 'wait:out>a']));
+
+			walker.start();
+			await flush();
+
+			expect(seen).toEqual(['1:wait:parked:-']);
+			expect(events).toEqual(['step:wait', 'parked']);
+
+			clock.advance(60_000);
+			await flush();
+
+			expect(seen).toEqual(['1:wait:parked:-', '1:wait:done:out', '2:a:done:done']);
+		});
+
+		it('reports a parked Delay as cancelled when the run is cancelled', async () => {
+			const walker = observed(plan([trigger('t'), delay('wait', 60_000), action('a')], ['t:out>wait', 'wait:out>a']));
+
+			walker.start();
+			await flush();
+			walker.cancel('restarted');
+			await flush();
+
+			expect(seen).toEqual(['1:wait:parked:-', '1:wait:cancelled:-']);
+			expect(walker.settled).toBe(true);
+		});
+
+		it('reports a node that finishes after the run was cancelled as late, once', async () => {
+			const walker = observed(
+				plan([trigger('t'), action('slow', { latencyMs: 500 }), action('next')], ['t:out>slow', 'slow:done>next']),
+			);
+
+			walker.start();
+			await flush();
+			walker.cancel('restarted');
+			clock.advance(500);
+			await flush();
+
+			expect(seen).toEqual(['1:slow:done:done:late']);
+			expect(stepOf(walker, 'slow').afterCancel).toBe(true);
+			expect(calls).toEqual(['slow']);
+		});
+
+		it('carries on when the observer throws on a step', async () => {
+			const walker = observed(plan([trigger('t'), action('a'), action('b')], ['t:out>a', 'a:done>b']), () => {
+				throw new Error('nobody is listening');
+			});
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['a', 'b']);
+			expect(walker.record.status).toBe('completed');
+			expect(events.filter((event) => event === 'error')).toHaveLength(2);
+		});
 	});
 });

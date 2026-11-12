@@ -370,8 +370,10 @@ Prefix `/api/v1/modules/automations`. All routes require `owner` or `admin`.
 | `GET` | `/node-types` | Catalogue: type, kind, ports, config JSON schema. |
 
 Events on the bus (and therefore the websocket): `AutomationsModule.Automation.Created|Updated|Deleted`,
-`AutomationsModule.Run.Started|Completed`. Per-node step events are sent only to clients that opened the live
-view of that automation, to keep the exchange quiet.
+`AutomationsModule.Run.Started|Completed`. Per-node step events (`AutomationsModule.Run.Step`) are sent only to
+clients that opened the live view of that automation, to keep the exchange quiet: the client sends the
+`AutomationsModule.WatchAutomation` command when it opens the view and `AutomationsModule.UnwatchAutomation` when
+it leaves it.
 
 Schema names follow the convention: `AutomationsModuleResAutomations`, `AutomationsModuleCreateAutomation`,
 `AutomationsModuleDataGraph`, and so on.
@@ -381,8 +383,9 @@ Schema names follow the convention: `AutomationsModuleResAutomations`, `Automati
 SQLite, one incremental migration (next free number after `1000000000055`):
 
 - `automations_module_automations` — columns as in [Automation](#automation); `graph` as `simple-json`.
-- `automations_module_runs` — `automation_id`, `started_at`, `finished_at`, `status`, `trigger_node_id`,
-  `trace` (`simple-json`); pruned to the last N per automation.
+- `automations_module_runs` — `automation_id`, `revision`, `started_at`, `finished_at`, `duration_ms`, `status`,
+  `end_reason`, `trigger_node_id`, `manual`, `trace` (`simple-json`); pruned to the last 50 per automation and
+  after 30 days (ADR 0003, decisions 12 and 19).
 
 ### Sunrise and sunset
 

@@ -22,13 +22,16 @@ import {
 import { AUTOMATIONS_SWAGGER_EXTRA_MODELS } from './automations.openapi';
 import { AutomationsController } from './controllers/automations.controller';
 import { AutomationNodeTypesController } from './controllers/node-types.controller';
+import { AutomationRunsController } from './controllers/runs.controller';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
+import { AutomationRunEntity } from './entities/automation-runs.entity';
 import { AutomationEntity } from './entities/automations.entity';
 import { ReferenceCleanupListener } from './listeners/reference-cleanup.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { AutomationsConfigModel } from './models/config.model';
 import { AutomationBuiltInNodeTypesService } from './nodes/built-in-node-types.service';
 import { AutomationEngineService } from './services/automation-engine.service';
+import { AutomationRunHistoryService } from './services/automation-run-history.service';
 import { AutomationRunService } from './services/automation-run.service';
 import { AutomationSafetyService } from './services/automation-safety.service';
 import { AutomationsSeederService } from './services/automations-seeder.service';
@@ -45,20 +48,21 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([AutomationEntity]),
+		TypeOrmModule.forFeature([AutomationEntity, AutomationRunEntity]),
 		DevicesModule,
 		SpacesModule,
 		ScenesModule,
 		WebsocketModule,
 		SeedModule,
 	],
-	controllers: [AutomationsController, AutomationNodeTypesController],
+	controllers: [AutomationsController, AutomationNodeTypesController, AutomationRunsController],
 	providers: [
 		// Core services
 		AutomationsService,
 		AutomationNodeTypeRegistryService,
 		AutomationStateTrackerService,
 		AutomationTimeSourceService,
+		AutomationRunHistoryService,
 		AutomationRunService,
 		AutomationSafetyService,
 		AutomationEngineService,
@@ -171,6 +175,9 @@ The module stores, validates and runs automations. It provides the first set of 
 - **Overload guard** — an automation that starts more than 30 times a minute or 200 times an hour is suspended and a notification is raised; saving or enabling it again resumes it
 - **Self-checking status** — an automation is marked \`invalid\` and stopped when a device, property, scene or space it refers to is removed, or when one of its block types is no longer available
 - **Manual run** — an automation can be started by hand through the API or the \`AutomationsModule.TriggerAutomation\` websocket command
+- **Run history** — every run leaves a record with its trace: what started it, the blocks it reached, the output each took, the value each condition saw and what each action answered. The last 50 runs of an automation are kept, for at most 30 days
+- **Interrupted runs stay visible** — a run waiting on a Delay is stored as \`running\`; when the backend restarts or loses power before it ends, it is shown as \`interrupted\`, which tells why a delayed action never happened
+- **Live runs** — \`AutomationsModule.Run.Started\` and \`AutomationsModule.Run.Completed\` are announced to owners and admins; the steps of a run (\`AutomationsModule.Run.Step\`) are sent only to the clients that watch that automation with the \`AutomationsModule.WatchAutomation\` websocket command
 - **Space assignment** — an automation can be assigned to a room or zone for filtering
 - **Owner and admin only** — automations can be read and changed only by owners and admins
 - **Factory reset & seed hooks** — registers itself with the platform reset / seed pipeline
@@ -185,7 +192,9 @@ The module stores, validates and runs automations. It provides the first set of 
 - \`PATCH /api/v1/modules/automations/automations/:id\` — update an automation (requires the current revision)
 - \`DELETE /api/v1/modules/automations/automations/:id\` — delete an automation
 - \`POST /api/v1/modules/automations/automations/:id/trigger\` — run an automation by hand
-- \`GET /api/v1/modules/automations/automations/:id/runtime\` — read what the engine holds for an automation`,
+- \`GET /api/v1/modules/automations/automations/:id/runtime\` — read what the engine holds for an automation
+- \`GET /api/v1/modules/automations/automations/:id/runs\` — list the stored runs of an automation, newest first
+- \`GET /api/v1/modules/automations/runs/:runId\` — read a single run with its trace`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

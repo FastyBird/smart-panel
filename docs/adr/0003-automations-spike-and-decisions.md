@@ -349,6 +349,47 @@ Added with AU-7.
   Morning automation" is asked about instead of running a scene, and next to a device noun ("start the garage
   door in automation mode") the request is a plain device request.
 
+### 20. Run history as built
+
+Added with AU-13; decision 12 names the storage and the limits, this records how the history is written.
+
+- **One row per run**, in `automations_module_runs`, with the identifier the engine gave the run - the `run_id`
+  a manual trigger answers with leads straight to the record. The trace is one JSON document in the wire
+  format: what started the run, and per node reached the edge it arrived on, the output taken, what a condition
+  observed, what an action answered, and whether it was refused, timed out or finished after the run had ended.
+  The runs of an automation are deleted with it (foreign key, cascade).
+- **Written once, when the trace is complete**, not when the outcome is known. For a run that was not cancelled
+  both come together. A cancelled run whose node is still executing is written when that node returns or
+  reaches its timeout; should the engine stop before that, the run is written with the trace it has.
+  `last_run_status` of the automation is still written when the outcome is known, so a run costs two small
+  writes: the automation row and the history row.
+- **The `running` marker carries the trace up to the Delay.** A run that parks is written at that moment as
+  `running`, with the steps it took so far, rewritten every time it parks again and when it ends. After a power
+  cut the record therefore still says which Delay never let the run go on.
+- **Leftover `running` rows become `interrupted` before the engine loads the automations**, with the reason
+  `backend_restarted` and no end time: when the run stopped is not known. `last_run_status` of the automation
+  follows, unless a later run has ended since. A run that is active when the engine stops in an orderly way is
+  ended by the engine itself, with the reason `engine_stopped` and an end time.
+- **Retention.** The last 50 runs of an automation are kept, enforced on every write of that automation; runs
+  older than 30 days are deleted nightly and when the engine starts, whatever the count.
+- **Trace size.** A stored trace takes at most 128 KB as JSON, counted in UTF-8 bytes. A value a card
+  reported - what a condition observed, the data of a trigger - that takes more than 2 KB is replaced by a
+  note; when the document is still too long, the last steps are left out. Either marks the trace as `truncated`. A run of the 1,000
+  steps the walker allows does not fit and is stored truncated; such a run has failed at the step limit.
+- **A run that never waited and is still executing has no record.** The history lists what ended or parked.
+  The live state is the `runtime` endpoint and the events below.
+- **Events.** `AutomationsModule.Run.Started` and `AutomationsModule.Run.Completed` go over the bus, and so to
+  every owner and admin socket, with the run but without its trace. `Run.Completed` is sent after the row is
+  written, also when the write failed, so a client that follows a run always learns that it is over. It is
+  sent once per run: a run written by an engine that stopped and rewritten when it settles is not announced
+  again.
+- **Step events never go over the bus.** `AutomationsModule.Run.Step` is sent straight to the websocket room
+  of one automation. A client enters the room with the `AutomationsModule.WatchAutomation` command and leaves
+  it with `AutomationsModule.UnwatchAutomation` or by disconnecting; both commands are owner and admin only,
+  and a room is opened only for an automation that exists. While nobody watches, a step costs one look at an
+  empty room. For this the websocket module gained two small things: a command handler is handed the socket
+  of its command as far as joining and leaving a room goes, and the gateway can send an event to one room.
+
 ## Consequences
 
 - The design doc is updated to match this ADR.
@@ -358,8 +399,9 @@ Added with AU-7.
 - Scope reduced: the Delay limit drops to one hour.
 - Open after this ADR: write grouping when parallel branches target the same device (settled in AU-4, see
   decision 16); behaviour of time conditions before the system clock is trustworthy on hardware without a
-  real-time clock (settled in AU-5, see decision 17); verification on Firefox, Safari and a physical touch
-  device (AU-27).
+  real-time clock (settled in AU-5, see decision 17); how the run history is written and how step events
+  reach only the clients watching (settled in AU-13, see decision 20); verification on Firefox, Safari and a
+  physical touch device (AU-27).
 
 ## Environment note
 

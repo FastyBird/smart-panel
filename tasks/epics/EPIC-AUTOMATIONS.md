@@ -83,7 +83,8 @@ Flow does, and have the Smart Panel backend run them.
 - [x] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
       automation was saved.
 - [ ] A runaway automation is suspended and the administrator is notified.
-- [ ] A finished or interrupted run can be inspected node by node in the admin.
+- [ ] A finished or interrupted run can be inspected node by node in the admin. (Backend done with AU-13: runs
+      and traces are recorded and served; the admin view is AU-14.)
 - [ ] Deleting a referenced device, property, scene or space marks the automation invalid and shows the broken node.
 - [ ] Only `owner` and `admin` can create, edit or run automations.
 - [ ] Unit and e2e tests cover the engine semantics; the editor has a Playwright test for the reference scenario.
