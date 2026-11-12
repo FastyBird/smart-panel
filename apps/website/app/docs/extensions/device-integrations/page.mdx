@@ -20,6 +20,7 @@ device → channel → property hierarchy.
 |--------|----------|-----------|-------------|
 | **Home Assistant** | WebSocket | Automatic | Imports devices and entities from a Home Assistant instance. Bidirectional real-time sync — state changes and commands flow both ways instantly. Requires a long-lived access token. |
 | [**Homey SHS**](/docs/extensions/homey) | Local API / Socket.IO | Manual server, automatic device inventory | Connects to Homey Self-Hosted Server for reviewed adoption, real-time synchronization, availability reconciliation, and supported controls. Basic reads/session behavior were verified on SHS 13.4.0; the complete local matrix passed on SHS 13.4.1 over HTTP. |
+| [**Modbus**](/docs/extensions/modbus) | Modbus TCP / RTU over TCP | Manual | Reads and switches wired I/O modules (digital inputs, relays, analog inputs, valves) through Modbus TCP devices and RS485 gateways. Built-in templates for known boards, or define the registers yourself. |
 | **Shelly NG** | mDNS / RPC | Automatic | Discovers and controls Shelly Next-Generation devices (Plus, Pro, BLU series) on the local network. No cloud dependency — all communication stays local. |
 | **Shelly v1** | HTTP / CoAP | Automatic | Support for first-generation Shelly devices using the original HTTP and CoAP APIs. |
 | **WLED** | HTTP | Automatic | Controls WLED-based LED strips and lights discovered on the local network. |
@@ -62,4 +63,5 @@ API tokens, or polling intervals.
 
 - [**Building Extensions**](/docs/extensions/building-extensions) — create your own device plugin
 - [**Homey setup**](/docs/extensions/homey) — connect, adopt, and troubleshoot Homey devices
+- [**Modbus setup**](/docs/extensions/modbus) — endpoints, templates, buttons and wiring notes
 - [**API Reference**](https://fastybird.stoplight.io/docs/smart-panel) — full endpoint documentation for plugin APIs
