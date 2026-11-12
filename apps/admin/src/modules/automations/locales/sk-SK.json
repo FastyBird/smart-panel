@@ -1,0 +1,172 @@
+{
+	"automations": {
+		"menu": {
+			"title": "Automatizácie"
+		},
+		"headings": {
+			"list": "Automatizácie",
+			"add": "Pridať automatizáciu",
+			"edit": "Upraviť automatizáciu",
+			"remove": "Odstrániť automatizáciu",
+			"discard": "Zahodiť zmeny",
+			"adjustFilters": "Upraviť filtre"
+		},
+		"subHeadings": {
+			"list": "Nechajte inteligentnú domácnosť konať samostatne",
+			"add": "Teraz ju pomenujte, priebeh nakreslíte potom",
+			"adjustFilters": "Filtrujte automatizácie podľa rôznych kritérií"
+		},
+		"breadcrumbs": {
+			"automations": "Automatizácie"
+		},
+		"filters": {
+			"enabled": {
+				"title": "Povolené",
+				"values": {
+					"enabled": "Povolené",
+					"disabled": "Zakázané",
+					"all": "Všetko"
+				}
+			},
+			"status": {
+				"title": "Stav",
+				"placeholder": "Všetky stavy"
+			},
+			"space": {
+				"title": "Priestor",
+				"placeholder": "Všetky priestory"
+			}
+		},
+		"fields": {
+			"name": "Názov",
+			"space": "Priestor",
+			"enabled": "Povolené",
+			"status": "Stav",
+			"lastRun": "Posledné spustenie",
+			"neverRun": "Nikdy",
+			"wholeHome": "Celý dom",
+			"unknownSpace": "Neznámy priestor",
+			"search": {
+				"placeholder": "Hľadať automatizácie..."
+			}
+		},
+		"statuses": {
+			"ok": {
+				"title": "V poriadku",
+				"description": "Automatizácia je v poriadku a beží, ak je povolená."
+			},
+			"invalid": {
+				"title": "Neplatná",
+				"description": "Automatizácia nemôže bežať: niektorý z jej blokov nie je správne nastavený alebo odkazuje na niečo, čo už neexistuje."
+			},
+			"suspended": {
+				"title": "Pozastavená",
+				"description": "Automatizácia bola zastavená, pretože sa spúšťala príliš často. Skontrolujte jej priebeh a potom ju znova povoľte."
+			}
+		},
+		"runStatuses": {
+			"completed": "Dokončené",
+			"failed": "Zlyhalo",
+			"cancelled": "Zrušené",
+			"interrupted": "Prerušené"
+		},
+		"modes": {
+			"single": {
+				"title": "Raz",
+				"description": "Kým automatizácia beží, ďalšie spustenia sa ignorujú."
+			},
+			"restart": {
+				"title": "Reštartovať",
+				"description": "Nové spustenie zastaví bežiacu automatizáciu a spustí ju znova."
+			},
+			"parallel": {
+				"title": "Súbežne",
+				"description": "Každé spustenie začne vlastný beh popri tých, ktoré už bežia."
+			}
+		},
+		"texts": {
+			"loadingAutomations": "Načítavanie automatizácií...",
+			"noAutomations": "Zatiaľ nemáte žiadnu automatizáciu",
+			"noFilteredAutomations": "Vašim filtrom nezodpovedá žiadna automatizácia",
+			"loadFailed": "Automatizácie sa nepodarilo načítať.",
+			"confirmDiscard": "Máte neuložené zmeny. Naozaj ich chcete zahodiť?",
+			"confirmRemove": "Naozaj chcete odstrániť automatizáciu „{automation}“?",
+			"addHint": "Nová automatizácia sa vytvorí zakázaná a s prázdnym priebehom. Povoliť ju možno, keď jej priebeh obsahuje aspoň jeden spúšťač."
+		},
+		"form": {
+			"name": {
+				"title": "Názov",
+				"placeholder": "Zadajte názov automatizácie",
+				"validation": {
+					"required": "Názov automatizácie je povinný"
+				}
+			},
+			"description": {
+				"title": "Popis",
+				"placeholder": "Voliteľný popis toho, čo automatizácia robí"
+			},
+			"space": {
+				"title": "Priestor",
+				"hint": "Slúži len na vyhľadanie automatizácie v zoznamoch. Neobmedzuje, čo smie automatizácia ovládať."
+			},
+			"mode": {
+				"title": "Pri spustení počas behu"
+			}
+		},
+		"aria": {
+			"edit": "Upraviť automatizáciu „{automation}“",
+			"remove": "Odstrániť automatizáciu „{automation}“",
+			"enabled": "Automatizácia „{automation}“ povolená"
+		},
+		"buttons": {
+			"add": {
+				"title": "Pridať automatizáciu"
+			},
+			"save": {
+				"title": "Uložiť"
+			},
+			"cancel": {
+				"title": "Zrušiť"
+			},
+			"yes": {
+				"title": "Áno"
+			},
+			"no": {
+				"title": "Nie"
+			},
+			"close": {
+				"title": "Zavrieť"
+			},
+			"discard": {
+				"title": "Zahodiť"
+			},
+			"backToList": {
+				"title": "Späť na zoznam"
+			},
+			"resetFilters": {
+				"title": "Resetovať filtre"
+			},
+			"retry": {
+				"title": "Skúsiť znova"
+			}
+		},
+		"messages": {
+			"requestError": "Pri načítavaní automatizácie sa niečo pokazilo.",
+			"notFound": "Automatizácia nebola nájdená.",
+			"loadFailed": "Automatizáciu sa nepodarilo načítať.",
+			"created": "Automatizácia „{automation}“ bola vytvorená.",
+			"notCreated": "Automatizáciu „{automation}“ sa nepodarilo vytvoriť.",
+			"edited": "Automatizácia „{automation}“ bola uložená.",
+			"notEdited": "Automatizáciu „{automation}“ sa nepodarilo uložiť.",
+			"removed": "Automatizácia „{automation}“ bola odstránená.",
+			"notRemoved": "Automatizáciu „{automation}“ sa nepodarilo odstrániť.",
+			"removeCanceled": "Odstránenie automatizácie „{automation}“ bolo zrušené.",
+			"enabled": "Automatizácia „{automation}“ bola povolená.",
+			"disabled": "Automatizácia „{automation}“ bola zakázaná.",
+			"notEnabled": "Automatizáciu „{automation}“ sa nepodarilo povoliť.",
+			"notDisabled": "Automatizáciu „{automation}“ sa nepodarilo zakázať.",
+			"notEnabledIncomplete": "Automatizáciu „{automation}“ nemožno povoliť: jej priebeh nie je úplný. Potrebuje aspoň jeden spúšťač a nastavenie každého bloku.",
+			"changedElsewhere": "Automatizácia „{automation}“ bola medzitým zmenená inde. Vaše zmeny zostali zachované: skontrolujte ich a uložte znova."
+		}
+	}
+}

@@ -677,6 +677,27 @@ export type ScenesModuleSceneExecutionResultSchema = components['schemas']['Scen
 export { ScenesModuleCreateSceneCategory as SceneCategory } from './openapi';
 export { ScenesModuleDataSceneExecutionResultStatus as SceneExecutionResultStatus } from './openapi';
 
+// Automations Module Types
+// =========================
+export type AutomationsModuleAutomationSchema = components['schemas']['AutomationsModuleDataAutomation'];
+export type AutomationsModuleAutomationSummarySchema = components['schemas']['AutomationsModuleDataAutomationSummary'];
+export type AutomationsModuleCreateAutomationSchema = components['schemas']['AutomationsModuleCreateAutomation'];
+export type AutomationsModuleUpdateAutomationSchema = components['schemas']['AutomationsModuleUpdateAutomation'];
+export type AutomationsModuleGraphSchema = components['schemas']['AutomationsModuleDataGraph'];
+export type AutomationsModuleGraphIssueSchema = components['schemas']['AutomationsModuleDataGraphIssue'];
+
+// Automations Module Operations
+export type AutomationsModuleGetAutomationsOperation = operations['get-automations-module-automations'];
+export type AutomationsModuleGetAutomationOperation = operations['get-automations-module-automation'];
+export type AutomationsModuleCreateAutomationOperation = operations['create-automations-module-automation'];
+export type AutomationsModuleUpdateAutomationOperation = operations['update-automations-module-automation'];
+export type AutomationsModuleDeleteAutomationOperation = operations['delete-automations-module-automation'];
+
+// Automations Module Enums
+export { AutomationsModuleCreateAutomationMode as AutomationMode } from './openapi';
+export { AutomationsModuleDataAutomationStatus as AutomationStatus } from './openapi';
+export { AutomationsModuleDataAutomationLast_run_status as AutomationRunStatus } from './openapi';
+
 // Weather Module Types
 // ====================
 export type WeatherModuleForecastHourSchema = components['schemas']['WeatherModuleDataForecastHour'];

@@ -1,0 +1,172 @@
+{
+	"automations": {
+		"menu": {
+			"title": "Automations"
+		},
+		"headings": {
+			"list": "Automations",
+			"add": "Add automation",
+			"edit": "Edit automation",
+			"remove": "Remove automation",
+			"discard": "Discard changes",
+			"adjustFilters": "Adjust filters"
+		},
+		"subHeadings": {
+			"list": "Let your smart home act on its own",
+			"add": "Name it now, draw its flow afterwards",
+			"adjustFilters": "Filter automations by various criteria"
+		},
+		"breadcrumbs": {
+			"automations": "Automations"
+		},
+		"filters": {
+			"enabled": {
+				"title": "Enabled",
+				"values": {
+					"enabled": "Enabled",
+					"disabled": "Disabled",
+					"all": "All"
+				}
+			},
+			"status": {
+				"title": "Status",
+				"placeholder": "All statuses"
+			},
+			"space": {
+				"title": "Space",
+				"placeholder": "All spaces"
+			}
+		},
+		"fields": {
+			"name": "Name",
+			"space": "Space",
+			"enabled": "Enabled",
+			"status": "Status",
+			"lastRun": "Last run",
+			"neverRun": "Never",
+			"wholeHome": "Whole home",
+			"unknownSpace": "Unknown space",
+			"search": {
+				"placeholder": "Search automations..."
+			}
+		},
+		"statuses": {
+			"ok": {
+				"title": "OK",
+				"description": "The automation is in order and runs when it is enabled."
+			},
+			"invalid": {
+				"title": "Invalid",
+				"description": "The automation cannot run: one of its blocks is not configured correctly or refers to something that no longer exists."
+			},
+			"suspended": {
+				"title": "Suspended",
+				"description": "The automation was stopped because it was running too often. Check its flow, then enable it again."
+			}
+		},
+		"runStatuses": {
+			"completed": "Completed",
+			"failed": "Failed",
+			"cancelled": "Cancelled",
+			"interrupted": "Interrupted"
+		},
+		"modes": {
+			"single": {
+				"title": "Single",
+				"description": "While the automation is running, new triggers are ignored."
+			},
+			"restart": {
+				"title": "Restart",
+				"description": "A new trigger stops the running automation and starts it again."
+			},
+			"parallel": {
+				"title": "Parallel",
+				"description": "Every trigger starts its own run, next to the ones already running."
+			}
+		},
+		"texts": {
+			"loadingAutomations": "Loading automations...",
+			"noAutomations": "You don't have any automation yet",
+			"noFilteredAutomations": "No automations match your filters",
+			"loadFailed": "The automations could not be loaded.",
+			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+			"confirmRemove": "Are you sure you want to remove the automation \"{automation}\"?",
+			"addHint": "A new automation is created disabled and with an empty flow. It can be enabled once its flow has at least one trigger."
+		},
+		"form": {
+			"name": {
+				"title": "Name",
+				"placeholder": "Enter automation name",
+				"validation": {
+					"required": "Automation name is required"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Optional description of what the automation does"
+			},
+			"space": {
+				"title": "Space",
+				"hint": "Only used to find the automation in lists. It does not limit what the automation may control."
+			},
+			"mode": {
+				"title": "When triggered while already running"
+			}
+		},
+		"aria": {
+			"edit": "Edit automation \"{automation}\"",
+			"remove": "Remove automation \"{automation}\"",
+			"enabled": "Automation \"{automation}\" enabled"
+		},
+		"buttons": {
+			"add": {
+				"title": "Add automation"
+			},
+			"save": {
+				"title": "Save"
+			},
+			"cancel": {
+				"title": "Cancel"
+			},
+			"yes": {
+				"title": "Yes"
+			},
+			"no": {
+				"title": "No"
+			},
+			"close": {
+				"title": "Close"
+			},
+			"discard": {
+				"title": "Discard"
+			},
+			"backToList": {
+				"title": "Back to list"
+			},
+			"resetFilters": {
+				"title": "Reset filters"
+			},
+			"retry": {
+				"title": "Try again"
+			}
+		},
+		"messages": {
+			"requestError": "Something went wrong while loading the automation.",
+			"notFound": "The automation was not found.",
+			"loadFailed": "The automation could not be loaded.",
+			"created": "Automation \"{automation}\" was created.",
+			"notCreated": "Automation \"{automation}\" could not be created.",
+			"edited": "Automation \"{automation}\" was saved.",
+			"notEdited": "Automation \"{automation}\" could not be saved.",
+			"removed": "Automation \"{automation}\" was removed.",
+			"notRemoved": "Automation \"{automation}\" could not be removed.",
+			"removeCanceled": "Removing of automation \"{automation}\" was canceled.",
+			"enabled": "Automation \"{automation}\" was enabled.",
+			"disabled": "Automation \"{automation}\" was disabled.",
+			"notEnabled": "Automation \"{automation}\" could not be enabled.",
+			"notDisabled": "Automation \"{automation}\" could not be disabled.",
+			"notEnabledIncomplete": "Automation \"{automation}\" cannot be enabled: its flow is not complete. It needs at least one trigger and every block configured.",
+			"changedElsewhere": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes were kept: review them and save again to apply them."
+		}
+	}
+}
