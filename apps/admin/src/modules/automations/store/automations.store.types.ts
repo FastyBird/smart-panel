@@ -4,8 +4,11 @@ import type { z } from 'zod';
 
 import type {
 	AutomationCreateReqSchema,
+	AutomationGraphEdgeSchema,
 	AutomationGraphIssueSchema,
+	AutomationGraphNodeSchema,
 	AutomationGraphSchema,
+	AutomationGraphValidationSchema,
 	AutomationResSchema,
 	AutomationSchema,
 	AutomationSummaryResSchema,
@@ -18,13 +21,20 @@ import type {
 	AutomationsSetActionPayloadSchema,
 	AutomationsStateSemaphoreSchema,
 	AutomationsUnsetActionPayloadSchema,
+	AutomationsValidateActionPayloadSchema,
 } from './automations.store.schemas';
 
 export type IAutomation = z.infer<typeof AutomationSchema>;
 
 export type IAutomationGraph = z.infer<typeof AutomationGraphSchema>;
 
+export type IAutomationGraphNode = z.infer<typeof AutomationGraphNodeSchema>;
+
+export type IAutomationGraphEdge = z.infer<typeof AutomationGraphEdgeSchema>;
+
 export type IAutomationGraphIssue = z.infer<typeof AutomationGraphIssueSchema>;
+
+export type IAutomationGraphValidation = z.infer<typeof AutomationGraphValidationSchema>;
 
 export type IAutomationsStateSemaphore = z.infer<typeof AutomationsStateSemaphoreSchema>;
 
@@ -41,6 +51,8 @@ export type IAutomationsAddActionPayload = z.input<typeof AutomationsAddActionPa
 export type IAutomationsEditActionPayload = z.input<typeof AutomationsEditActionPayloadSchema>;
 
 export type IAutomationsRemoveActionPayload = z.infer<typeof AutomationsRemoveActionPayloadSchema>;
+
+export type IAutomationsValidateActionPayload = z.infer<typeof AutomationsValidateActionPayloadSchema>;
 
 export type IAutomationCreateReq = z.infer<typeof AutomationCreateReqSchema>;
 
@@ -75,6 +87,7 @@ export interface IAutomationsStoreActions {
 	add: (payload: IAutomationsAddActionPayload) => Promise<IAutomation>;
 	edit: (payload: IAutomationsEditActionPayload) => Promise<IAutomation>;
 	remove: (payload: IAutomationsRemoveActionPayload) => Promise<void>;
+	validate: (payload: IAutomationsValidateActionPayload) => Promise<IAutomationGraphValidation>;
 	isLoaded: () => boolean;
 	refresh: () => Promise<unknown>;
 }

@@ -689,6 +689,8 @@ export type AutomationsModuleCreateAutomationSchema = components['schemas']['Aut
 export type AutomationsModuleUpdateAutomationSchema = components['schemas']['AutomationsModuleUpdateAutomation'];
 export type AutomationsModuleGraphSchema = components['schemas']['AutomationsModuleDataGraph'];
 export type AutomationsModuleGraphIssueSchema = components['schemas']['AutomationsModuleDataGraphIssue'];
+export type AutomationsModuleGraphValidationSchema = components['schemas']['AutomationsModuleDataGraphValidation'];
+export type AutomationsModuleNodeTypeSchema = components['schemas']['AutomationsModuleDataNodeType'];
 
 // Automations Module Operations
 export type AutomationsModuleGetAutomationsOperation = operations['get-automations-module-automations'];
@@ -696,11 +698,14 @@ export type AutomationsModuleGetAutomationOperation = operations['get-automation
 export type AutomationsModuleCreateAutomationOperation = operations['create-automations-module-automation'];
 export type AutomationsModuleUpdateAutomationOperation = operations['update-automations-module-automation'];
 export type AutomationsModuleDeleteAutomationOperation = operations['delete-automations-module-automation'];
+export type AutomationsModuleValidateGraphOperation = operations['validate-automations-module-automation-graph'];
+export type AutomationsModuleGetNodeTypesOperation = operations['get-automations-module-node-types'];
 
 // Automations Module Enums
 export { AutomationsModuleCreateAutomationMode as AutomationMode } from './openapi';
 export { AutomationsModuleDataAutomationStatus as AutomationStatus } from './openapi';
 export { AutomationsModuleDataAutomationLast_run_status as AutomationRunStatus } from './openapi';
+export { AutomationsModuleDataNodeTypeKind as AutomationNodeKind } from './openapi';
 
 // Weather Module Types
 // ====================

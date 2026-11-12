@@ -158,7 +158,9 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			onClose();
+			// A new automation has an empty flow: drawing it is the next thing to do. The flow takes the place of
+			// the form, so going back leads to the list and not to a form for yet another automation.
+			router.replace({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: automationId.value } });
 		}
 	}
 );

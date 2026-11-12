@@ -11,6 +11,7 @@ import type {
 	AutomationsModuleGetAutomationOperation,
 	AutomationsModuleGetAutomationsOperation,
 	AutomationsModuleUpdateAutomationOperation,
+	AutomationsModuleValidateGraphOperation,
 } from '../../../openapi.constants';
 import { AUTOMATIONS_MODULE_PREFIX, AUTOMATION_GRAPH_INVALID_ERROR_CODE } from '../automations.constants';
 import {
@@ -21,9 +22,16 @@ import {
 	AutomationsValidationException,
 } from '../automations.exceptions';
 
-import { AutomationSchema, AutomationsAddActionPayloadSchema, AutomationsEditActionPayloadSchema } from './automations.store.schemas';
+import {
+	AutomationGraphValidationSchema,
+	AutomationSchema,
+	AutomationsAddActionPayloadSchema,
+	AutomationsEditActionPayloadSchema,
+	AutomationsValidateActionPayloadSchema,
+} from './automations.store.schemas';
 import type {
 	IAutomation,
+	IAutomationGraphValidation,
 	IAutomationsAddActionPayload,
 	IAutomationsEditActionPayload,
 	IAutomationsGetActionPayload,
@@ -34,6 +42,7 @@ import type {
 	IAutomationsStoreActions,
 	IAutomationsStoreState,
 	IAutomationsUnsetActionPayload,
+	IAutomationsValidateActionPayload,
 } from './automations.store.types';
 import {
 	transformAutomationCreateRequest,
@@ -237,7 +246,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			}
 		};
 
-		const get = (payload: IAutomationsGetActionPayload): Promise<IAutomation> => read(payload.id);
+		const get = (payload: IAutomationsGetActionPayload): Promise<IAutomation> => read(payload.id, payload.fresh === true);
 
 		const read = async (id: IAutomation['id'], fresh: boolean = false): Promise<IAutomation> => {
 			const existingPromise = pendingGetPromises[id];
@@ -456,6 +465,10 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 		 * the update is a compare-and-swap on the revision, so there is no optimistic state to roll back when
 		 * it is refused. The revision compared is the one the change was based on: a caller that edits a
 		 * copy passes the revision it copied, otherwise it is the revision held.
+		 *
+		 * Resolves with the automation as this save left it, at the revision it produced - not with what is
+		 * held, which may already be a later save made elsewhere whose event got here first. A caller that
+		 * bases further changes on the result is then refused instead of passing over that save unseen.
 		 */
 		const edit = async (payload: IAutomationsEditActionPayload): Promise<IAutomation> => {
 			const parsedPayload = AutomationsEditActionPayloadSchema.safeParse(payload);
@@ -507,8 +520,11 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 
 				const transformed = transformAutomationResponse(responseData.data, AutomationSchema);
 
-				// Removed before the answer got here: it was saved, it just is not held any more
-				return commit(transformed.id, transformed, startedAt) ?? transformed;
+				// Removed before the answer got here, or already saved over elsewhere: either way it is what
+				// this save produced that the caller hears about
+				const held = commit(transformed.id, transformed, startedAt);
+
+				return held === null || held.revision !== transformed.revision ? transformed : held;
 			} catch (e) {
 				throw toApiException(e, 'Failed to update automation.');
 			} finally {
@@ -546,6 +562,52 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 				throw toApiException(e, 'Failed to remove automation.');
 			} finally {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+			}
+		};
+
+		/**
+		 * Asks the backend what it makes of a graph without saving it. Unlike a refused save this also
+		 * returns the issues that would not stop a save, such as a block no trigger leads to.
+		 */
+		const validate = async (payload: IAutomationsValidateActionPayload): Promise<IAutomationGraphValidation> => {
+			const parsedPayload = AutomationsValidateActionPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success) {
+				logger.error('Schema validation failed with:', parsedPayload.error);
+
+				throw new AutomationsValidationException('Failed to validate automation graph.');
+			}
+
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${AUTOMATIONS_MODULE_PREFIX}/automations/validate`, {
+					body: { data: parsedPayload.data },
+				});
+
+				if (typeof responseData === 'undefined') {
+					let errorReason: string = 'Failed to validate automation graph.';
+
+					if (error) {
+						errorReason = getErrorReason<AutomationsModuleValidateGraphOperation>(error, errorReason);
+					}
+
+					throw new AutomationsApiException(errorReason, response?.status ?? null);
+				}
+
+				const parsed = AutomationGraphValidationSchema.safeParse(responseData.data);
+
+				if (!parsed.success) {
+					logger.error('Schema validation failed with:', parsed.error);
+
+					throw new AutomationsValidationException('Failed to validate received graph validation data.');
+				}
+
+				return parsed.data;
+			} catch (e) {
+				throw toApiException(e, 'Failed to validate automation graph.');
 			}
 		};
 
@@ -590,6 +652,7 @@ export const useAutomationsStore = defineStore<'automations_module-automations',
 			add,
 			edit,
 			remove,
+			validate,
 		};
 	}
 );

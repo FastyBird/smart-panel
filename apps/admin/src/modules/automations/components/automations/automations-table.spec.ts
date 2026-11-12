@@ -136,6 +136,10 @@ describe('AutomationsTable', (): void => {
 			'automations.aria.edit Hallway motion light',
 			'automations.aria.edit Night mode',
 		]);
+		expect(wrapper.findAll('[data-test-id="flow-automation"]').map((button) => button.attributes('aria-label'))).toEqual([
+			'automations.aria.flow Hallway motion light',
+			'automations.aria.flow Night mode',
+		]);
 		expect(wrapper.findAll('[data-test-id="remove-automation"]').map((button) => button.attributes('aria-label'))).toEqual([
 			'automations.aria.remove Hallway motion light',
 			'automations.aria.remove Night mode',
@@ -174,6 +178,15 @@ describe('AutomationsTable', (): void => {
 
 		expect(wrapper.emitted('edit')).toEqual([['1']]);
 		expect(wrapper.emitted('remove')).toEqual([['2']]);
+	});
+
+	it('emits flow for a row without opening its details', async (): Promise<void> => {
+		await createWrapper();
+
+		await wrapper.findAll('[data-test-id="flow-automation"]')[1]!.trigger('click');
+
+		expect(wrapper.emitted('flow')).toEqual([['2']]);
+		expect(wrapper.emitted('edit')).toBeUndefined();
 	});
 
 	it('filters by the space of a row and removes the filter again', async (): Promise<void> => {

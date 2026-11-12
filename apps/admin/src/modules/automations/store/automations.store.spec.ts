@@ -2,6 +2,8 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { flushPromises } from '@vue/test-utils';
+
 import { AutomationMode, AutomationRunStatus, AutomationStatus } from '../automations.constants';
 import {
 	AutomationsApiException,
@@ -326,6 +328,43 @@ describe('Automations Store', () => {
 			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed', revision: 4 });
 		});
 
+		it('joins a read already on its way unless a fresh one is asked for', async () => {
+			const earlier = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(earlier.promise);
+
+			const first = store.get({ id: automationId });
+			const joined = store.get({ id: automationId });
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+
+			const later = deferred();
+
+			mockBackendClient.GET.mockReturnValueOnce(later.promise);
+
+			const fresh = store.get({ id: automationId, fresh: true });
+
+			await flushPromises();
+
+			// The read started before is not the answer: nothing new is asked until it is done
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(1);
+
+			earlier.resolve({ data: { data: detailRes({ revision: 3 }) }, response: { status: 200 } });
+
+			await expect(first).resolves.toMatchObject({ revision: 3 });
+			await expect(joined).resolves.toMatchObject({ revision: 3 });
+
+			await flushPromises();
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+
+			later.resolve({ data: { data: detailRes({ name: 'Renamed elsewhere', revision: 5 }) }, response: { status: 200 } });
+
+			await expect(fresh).resolves.toMatchObject({ name: 'Renamed elsewhere', revision: 5 });
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed elsewhere', revision: 5 });
+		});
+
 		it('removes the automation from the store when it no longer exists', async () => {
 			store.set({ id: automationId, data: { name: 'Gone', createdAt: new Date() } });
 
@@ -401,6 +440,23 @@ describe('Automations Store', () => {
 			expect(store.semaphore.updating).toEqual([]);
 		});
 
+		it('answers with the revision the save produced, not a later one held already', async () => {
+			const save = deferred();
+
+			mockBackendClient.PATCH.mockReturnValue(save.promise);
+
+			const pending = store.edit({ id: automationId, data: { enabled: true } });
+
+			// Saved again elsewhere, and its event got here before the response of this save
+			store.onEvent({ id: automationId, data: detailRes({ enabled: true, name: 'Renamed elsewhere', revision: 5 }) });
+
+			save.resolve({ data: { data: detailRes({ enabled: true, revision: 4 }) }, response: { status: 200 } });
+
+			await expect(pending).resolves.toMatchObject({ enabled: true, name: 'Hallway motion light', revision: 4 });
+
+			expect(store.findById(automationId)).toMatchObject({ name: 'Renamed elsewhere', revision: 5 });
+		});
+
 		it('sends the revision the caller based its change on, not the one held', async () => {
 			// The automation has moved on since the caller copied it at revision 2
 			mockBackendClient.PATCH.mockResolvedValue({ data: undefined, error: errorEnvelope({ reason: 'Changed' }), response: { status: 409 } });
@@ -414,6 +470,11 @@ describe('Automations Store', () => {
 				params: { path: { id: automationId } },
 				body: { data: { revision: 2, name: 'Hallway light' } },
 			});
+		});
+
+		it('refuses a revision that is not one', async () => {
+			await expect(store.edit({ id: automationId, revision: 0, data: { graph } })).rejects.toBeInstanceOf(AutomationsValidationException);
+			expect(mockBackendClient.PATCH).not.toHaveBeenCalled();
 		});
 
 		it('does not let a late response of a save put an older revision over a newer one', async () => {
@@ -522,6 +583,56 @@ describe('Automations Store', () => {
 				params: { path: { id: automationId } },
 				body: { data: { revision: 3, graph } },
 			});
+		});
+	});
+
+	describe('validate', () => {
+		it('asks the backend about a graph and returns every issue, blocking or not', async () => {
+			mockBackendClient.POST.mockResolvedValue({
+				data: {
+					data: {
+						valid: true,
+						issues: [{ severity: 'warning', code: 'unreachable_node', message: 'No trigger leads to this node.', node_id: 'n2', blocking: false }],
+					},
+				},
+				response: { status: 200 },
+			});
+
+			const validation = await store.validate({ graph, enabled: true });
+
+			expect(mockBackendClient.POST).toHaveBeenCalledWith('/modules/automations/automations/validate', {
+				body: { data: { graph, enabled: true } },
+			});
+			expect(validation).toEqual({
+				valid: true,
+				issues: [{ severity: 'warning', code: 'unreachable_node', message: 'No trigger leads to this node.', node_id: 'n2', blocking: false }],
+			});
+		});
+
+		it('does not touch the stored automations', async () => {
+			store.set({ id: automationId, data: { name: 'Hallway motion light', revision: 3, createdAt: new Date() } });
+
+			mockBackendClient.POST.mockResolvedValue({ data: { data: { valid: false, issues: [] } }, response: { status: 200 } });
+
+			await store.validate({ graph });
+
+			expect(store.findById(automationId)).toMatchObject({ revision: 3, graph: null });
+		});
+
+		it('throws when the backend could not be asked', async () => {
+			mockBackendClient.POST.mockResolvedValue({ data: undefined, error: errorEnvelope({ reason: 'Nope' }), response: { status: 400 } });
+
+			await expect(store.validate({ graph })).rejects.toMatchObject({ code: 400 });
+
+			mockBackendClient.POST.mockRejectedValue(new Error('offline'));
+
+			await expect(store.validate({ graph })).rejects.toBeInstanceOf(AutomationsApiException);
+		});
+
+		it('throws for an answer it cannot read', async () => {
+			mockBackendClient.POST.mockResolvedValue({ data: { data: { valid: 'yes' } }, response: { status: 200 } });
+
+			await expect(store.validate({ graph })).rejects.toBeInstanceOf(AutomationsValidationException);
 		});
 	});
 

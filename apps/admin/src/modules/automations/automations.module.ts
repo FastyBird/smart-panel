@@ -19,7 +19,8 @@ import { AUTOMATIONS_MODULE_EVENT_PREFIX, AUTOMATIONS_MODULE_NAME, EventType } f
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
 import { registerAutomationsStore } from './store/automations.store';
-import { automationsStoreKey } from './store/keys';
+import { automationNodeTypesStoreKey, automationsStoreKey } from './store/keys';
+import { registerAutomationNodeTypesStore } from './store/node-types.store';
 
 const automationsAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Automations');
 
@@ -42,6 +43,11 @@ export default {
 		app.provide(automationsStoreKey, automationsStore);
 		storesManager.addStore(automationsStoreKey, automationsStore);
 
+		const nodeTypesStore = registerAutomationNodeTypesStore(options.store);
+
+		app.provide(automationNodeTypesStoreKey, nodeTypesStore);
+		storesManager.addStore(automationNodeTypesStoreKey, nodeTypesStore);
+
 		modulesManager.addModule(automationsAdminModuleKey, {
 			type: AUTOMATIONS_MODULE_NAME,
 			name: 'Automations',
@@ -59,7 +65,7 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(automationsAdminModuleKey, (): Promise<void> => refreshLoadedStores([automationsStore]));
+		dataRefreshRegistry.register(automationsAdminModuleKey, (): Promise<void> => refreshLoadedStores([automationsStore, nodeTypesStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(AUTOMATIONS_MODULE_EVENT_PREFIX)) {

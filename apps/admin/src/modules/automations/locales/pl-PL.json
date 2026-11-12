@@ -9,15 +9,18 @@
 			"edit": "Edytuj automatyzację",
 			"remove": "Usuń automatyzację",
 			"discard": "Odrzuć zmiany",
-			"adjustFilters": "Dostosuj filtry"
+			"adjustFilters": "Dostosuj filtry",
+			"flow": "Przebieg automatyzacji"
 		},
 		"subHeadings": {
 			"list": "Pozwól, aby inteligentny dom działał samodzielnie",
 			"add": "Teraz nadaj nazwę, przebieg narysujesz później",
-			"adjustFilters": "Filtruj automatyzacje według różnych kryteriów"
+			"adjustFilters": "Filtruj automatyzacje według różnych kryteriów",
+			"flow": "Umieść bloki na płótnie i połącz je"
 		},
 		"breadcrumbs": {
-			"automations": "Automatyzacje"
+			"automations": "Automatyzacje",
+			"flow": "Przebieg"
 		},
 		"filters": {
 			"enabled": {
@@ -115,6 +118,7 @@
 		},
 		"aria": {
 			"edit": "Edytuj automatyzację „{automation}”",
+			"flow": "Edytuj przebieg automatyzacji „{automation}”",
 			"remove": "Usuń automatyzację „{automation}”",
 			"enabled": "Automatyzacja „{automation}” włączona"
 		},
@@ -148,6 +152,9 @@
 			},
 			"retry": {
 				"title": "Spróbuj ponownie"
+			},
+			"flow": {
+				"title": "Edytuj przebieg"
 			}
 		},
 		"messages": {
@@ -167,6 +174,163 @@
 			"notDisabled": "Nie udało się wyłączyć automatyzacji „{automation}”.",
 			"notEnabledIncomplete": "Automatyzacji „{automation}” nie można włączyć: jej przebieg nie jest kompletny. Potrzebuje co najmniej jednego wyzwalacza i konfiguracji każdego bloku.",
 			"changedElsewhere": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Twoje zmiany zostały zachowane: sprawdź je i zapisz ponownie."
+		},
+		"editor": {
+			"headings": {
+				"issues": "Problemy"
+			},
+			"kinds": {
+				"trigger": {
+					"label": "Gdy",
+					"title": "Wyzwalacze"
+				},
+				"condition": {
+					"label": "I",
+					"title": "Warunki"
+				},
+				"action": {
+					"label": "Wtedy",
+					"title": "Akcje"
+				},
+				"flow": {
+					"label": "Przebieg",
+					"title": "Sterowanie przebiegiem"
+				},
+				"unknown": {
+					"label": "Nieznany"
+				}
+			},
+			"ports": {
+				"yes": "tak",
+				"no": "nie",
+				"done": "gotowe",
+				"error": "błąd",
+				"timeout": "upłynął czas"
+			},
+			"nodeTypes": {
+				"device": {
+					"property": {
+						"changed": {
+							"name": "Wartość urządzenia się zmienia",
+							"description": "Uruchamia automatyzację, gdy zmieni się wartość urządzenia."
+						},
+						"compare": {
+							"name": "Wartość urządzenia jest",
+							"description": "Przechodzi dalej wyjściem „tak”, gdy wartość urządzenia spełnia porównanie, w przeciwnym razie wyjściem „nie”."
+						},
+						"set": {
+							"name": "Ustaw wartość urządzenia",
+							"description": "Ustawia jedną lub więcej wartości urządzeń."
+						}
+					}
+				},
+				"manual": {
+					"start": {
+						"name": "Ręczne uruchomienie",
+						"description": "Uruchamia automatyzację, gdy ktoś uruchomi ją ręcznie."
+					}
+				},
+				"notification": {
+					"send": {
+						"name": "Wyślij powiadomienie",
+						"description": "Wysyła powiadomienie."
+					}
+				},
+				"scene": {
+					"run": {
+						"name": "Uruchom scenę",
+						"description": "Uruchamia scenę."
+					}
+				},
+				"time": {
+					"of-day": {
+						"name": "Pora dnia",
+						"description": "Uruchamia automatyzację o określonej godzinie."
+					},
+					"window": {
+						"name": "Czas jest między",
+						"description": "Przechodzi dalej wyjściem „tak”, gdy czas mieści się w podanym oknie, w przeciwnym razie wyjściem „nie”."
+					}
+				},
+				"flow": {
+					"delay": {
+						"name": "Opóźnienie",
+						"description": "Czeka chwilę, zanim przebieg będzie kontynuowany."
+					}
+				}
+			},
+			"texts": {
+				"readonly": "Na małym ekranie tylko do odczytu",
+				"confirmDiscardDraft": "Tekst w formularzu tego bloku nie jest poprawnym JSON, więc nie został zastosowany. Czy chcesz go odrzucić?",
+				"unsaved": "Niezapisane zmiany",
+				"noNodeTypes": "Brak dostępnych bloków.",
+				"notConfigured": "Jeszcze nie skonfigurowano",
+				"unknownNodeType": "Ten blok nie jest już dostępny",
+				"unknownNodeTypeHint": "Typ bloku „{type}” nie jest już oferowany, najpewniej dlatego, że wtyczka, która go dostarczała, została usunięta lub wyłączona. Usuń blok albo przywróć wtyczkę.",
+				"separateFlows": "Ta automatyzacja zawiera kilka przebiegów, które nie są ze sobą połączone. W trybie „Uruchom ponownie” wyzwalacz jednego przebiegu zatrzymuje także pozostałe, dlatego niepowiązane przebiegi powinny być osobnymi automatyzacjami.",
+				"errorCount": "Błędy: {count}",
+				"warningCount": "Ostrzeżenia: {count}"
+			},
+			"buttons": {
+				"undo": {
+					"title": "Cofnij"
+				},
+				"redo": {
+					"title": "Ponów"
+				},
+				"removeSelected": {
+					"title": "Usuń"
+				},
+				"removeNode": {
+					"title": "Usuń blok"
+				}
+			},
+			"form": {
+				"configuration": "Konfiguracja (JSON)",
+				"nothingToConfigure": "Ten blok nie ma nic do skonfigurowania.",
+				"invalidJson": "To nie jest poprawny JSON.",
+				"notSet": "Nie ustawiono",
+				"unset": "Usuń wartość",
+				"yes": "Tak",
+				"no": "Nie",
+				"valueType": {
+					"title": "Typ wartości",
+					"string": "Tekst",
+					"number": "Liczba",
+					"boolean": "Tak / Nie"
+				}
+			},
+			"rejections": {
+				"unknown_node": "Tych bloków nie można połączyć.",
+				"unknown_port": "Tych dwóch punktów nie można połączyć.",
+				"into_trigger": "Wyzwalacz uruchamia automatyzację, dlatego nic nie może do niego prowadzić.",
+				"self": "Bloku nie można połączyć z samym sobą.",
+				"duplicate": "Te dwa punkty są już połączone.",
+				"cycle": "Przez to połączenie przebieg wracałby sam do siebie.",
+				"limit": "Przebieg nie pomieści więcej bloków ani połączeń."
+			},
+			"issues": {
+				"unknown_node_type": "Ten blok nie jest już dostępny.",
+				"unknown_port": "Połączenie używa punktu, którego ten blok nie ma.",
+				"edge_into_trigger": "Wyzwalacz uruchamia automatyzację, dlatego nic nie może do niego prowadzić.",
+				"cycle": "Przebieg wraca sam do siebie.",
+				"duplicate_edge": "Dwa połączenia łączą te same dwa punkty.",
+				"no_trigger": "Automatyzacja potrzebuje co najmniej jednego wyzwalacza, który ją uruchomi.",
+				"unreachable_node": "Do tego bloku nie prowadzi żaden wyzwalacz, dlatego nigdy się nie wykona."
+			},
+			"conflict": {
+				"title": "Automatyzacja została zmieniona w innym miejscu",
+				"description": "Ta automatyzacja została zapisana w innym miejscu, gdy ją edytowano. Nic z tego, co narysowano, nie zostało utracone. Wybierz, którą wersję zachować.",
+				"reload": "Wczytaj zapisaną wersję",
+				"overwrite": "Zapisz moją wersję",
+				"confirmReload": "Niezapisane zmiany przebiegu zostaną odrzucone. Czy chcesz kontynuować?"
+			},
+			"messages": {
+				"conflict": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Twoje zmiany zostały zachowane; wybierz, którą wersję zachować.",
+				"invalid": "Przebiegu automatyzacji „{automation}” nie można jeszcze zapisać. Sprawdź problemy wymienione pod płótnem.",
+				"invalidDraft": "Część tekstu w formularzu wybranego bloku nie jest poprawnym JSON. Popraw ją lub cofnij przed zapisaniem.",
+				"busy": "Automatyzacja jest nadal odczytywana lub zapisywana. Spróbuj ponownie, gdy to się zakończy."
+			}
 		}
 	}
 }

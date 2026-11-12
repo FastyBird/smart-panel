@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { FormResult } from '../automations.constants';
+import { FormResult, RouteNames } from '../automations.constants';
 import { AutomationAddForm } from '../components/components';
 
 import ViewAutomationAdd from './view-automation-add.vue';
 
 const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
+	routerReplace: vi.fn(),
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -17,7 +18,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: mocks.routerPush, replace: vi.fn() }),
+	useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
 }));
 
 vi.mock('../../../common', async () => {
@@ -128,7 +129,7 @@ describe('ViewAutomationAdd', (): void => {
 		confirm.mockRestore();
 	});
 
-	it('does not let the view be left while the automation is being created, and closes it without asking once it is', async (): Promise<void> => {
+	it('does not let the view be left while the automation is being created, and opens its flow without asking once it is', async (): Promise<void> => {
 		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm' as never);
 
 		const wrapper = mount(ViewAutomationAdd);
@@ -149,13 +150,21 @@ describe('ViewAutomationAdd', (): void => {
 
 		expect(confirm).not.toHaveBeenCalled();
 		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
 
 		form.vm.$emit('update:remote-form-result', FormResult.OK);
 
 		await flushPromises();
 
 		expect(confirm).not.toHaveBeenCalled();
-		expect(mocks.routerPush).toHaveBeenCalledTimes(1);
+		// A new automation has an empty flow: drawing it is the next thing to do. It takes the place of the
+		// creation form, so going back leads to the list and not to a form for yet another automation.
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.routerReplace).toHaveBeenCalledTimes(1);
+		expect(mocks.routerReplace).toHaveBeenCalledWith({
+			name: RouteNames.AUTOMATIONS_FLOW,
+			params: { id: form.props('id') },
+		});
 
 		confirm.mockRestore();
 	});

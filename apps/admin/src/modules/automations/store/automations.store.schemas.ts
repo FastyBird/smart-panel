@@ -67,6 +67,12 @@ export const AutomationGraphIssueSchema = z.object({
 	field: z.string().optional(),
 });
 
+// What the backend makes of a graph without saving it
+export const AutomationGraphValidationSchema = z.object({
+	valid: z.boolean(),
+	issues: z.array(AutomationGraphIssueSchema),
+});
+
 // STORE STATE
 // ===========
 
@@ -117,6 +123,9 @@ export const AutomationsUnsetActionPayloadSchema = z.object({
 
 export const AutomationsGetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
+	// Has to be newer than the moment it is asked for (after a conflict above all): a read already on its
+	// way may be from before, so it is not joined
+	fresh: z.boolean().optional(),
 });
 
 export const AutomationsAddActionPayloadSchema = z.object({
@@ -149,6 +158,12 @@ export const AutomationsEditActionPayloadSchema = z.object({
 
 export const AutomationsRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
+});
+
+export const AutomationsValidateActionPayloadSchema = z.object({
+	graph: AutomationGraphSchema,
+	// Whether the automation would be enabled: an enabled automation needs a complete graph
+	enabled: z.boolean().optional(),
 });
 
 // BACKEND API

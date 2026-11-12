@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
+import { RouteNames } from '../automations.constants';
 import { ListAutomations, ListAutomationsAdjust } from '../components/components';
 
 import ViewAutomations from './view-automations.vue';
@@ -87,7 +88,7 @@ vi.mock('../components/components', async () => {
 				loading: { type: Boolean, default: false },
 				loadFailed: { type: Boolean, default: false },
 			},
-			emits: ['adjust-list', 'retry'],
+			emits: ['adjust-list', 'retry', 'flow'],
 			template: '<div />',
 		}),
 		ListAutomationsAdjust: defineVueComponent({
@@ -302,6 +303,18 @@ describe('ViewAutomations', (): void => {
 		await flushPromises();
 
 		expect(mocks.fetchAutomations).toHaveBeenCalledTimes(2);
+	});
+
+	it('opens the flow editor of an automation as a page of its own', async (): Promise<void> => {
+		await mountView();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('flow', 'automation-1');
+
+		await flushPromises();
+
+		// Pushed even on a large screen: the list stays in the history to come back to
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: 'automation-1' } });
+		expect(mocks.routerReplace).not.toHaveBeenCalled();
 	});
 
 	it('shows the list even when the spaces could not be loaded', async (): Promise<void> => {
