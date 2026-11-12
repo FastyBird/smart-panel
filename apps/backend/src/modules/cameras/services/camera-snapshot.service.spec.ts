@@ -137,6 +137,27 @@ describe('CameraSnapshotService', () => {
 		expect(getSnapshot).toHaveBeenCalledTimes(1);
 	});
 
+	it('falls back to the default interval when the interval hook throws and does not log its message', async () => {
+		provider.getSnapshotMinIntervalMs = jest.fn().mockImplementation(() => {
+			throw new Error('rtsps://x:7441/SENTINEL');
+		}) as () => number;
+
+		const warn = jest.fn();
+
+		(service as unknown as { logger: { warn: jest.Mock } }).logger = { warn };
+
+		const first = await service.getSnapshot('c1', {});
+
+		jest.advanceTimersByTime(1999);
+		await service.getSnapshot('c1', {});
+
+		expect(first.stale).toBe(false);
+		expect(getSnapshot).toHaveBeenCalledTimes(1);
+		expect(warn).toHaveBeenCalled();
+		expect(JSON.stringify(warn.mock.calls)).not.toContain('SENTINEL');
+		expect(JSON.stringify(warn.mock.calls)).toContain('Error');
+	});
+
 	it('keeps separate entries per profile and quality', async () => {
 		await service.getSnapshot('c1', { highQuality: true });
 		await service.getSnapshot('c1', { highQuality: false });

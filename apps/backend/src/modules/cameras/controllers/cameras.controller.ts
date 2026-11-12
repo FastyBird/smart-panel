@@ -18,6 +18,7 @@ import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
+	ApiBadRequestResponse,
 	ApiBinarySuccessResponse,
 	ApiCreatedSuccessResponse,
 	ApiForbiddenResponse,
@@ -25,7 +26,6 @@ import {
 	ApiNotFoundResponse,
 	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
-	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { CAMERAS_MODULE_API_TAG_NAME } from '../cameras.constants';
 import {
@@ -87,6 +87,7 @@ export class CamerasController {
 	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Camera device identifier' })
 	@ApiSuccessResponse(CameraResponseModel, 'Camera retrieved successfully')
+	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiForbiddenResponse('Cameras are not available to this caller')
 	@ApiNotFoundResponse('Camera not found')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -130,6 +131,7 @@ export class CamerasController {
 		},
 		'Camera snapshot image',
 	)
+	@ApiBadRequestResponse('Invalid UUID format or query parameters')
 	@ApiForbiddenResponse('Cameras are not available to this caller')
 	@ApiNotFoundResponse('Camera or stream profile not found')
 	@ApiServiceUnavailableResponse('Camera is offline, busy or did not respond')
@@ -194,7 +196,7 @@ export class CamerasController {
 	@ApiCreatedSuccessResponse(CameraSessionResponseModel, 'Session created successfully')
 	@ApiForbiddenResponse('Cameras are not available to this caller')
 	@ApiNotFoundResponse('Camera or stream profile not found')
-	@ApiUnprocessableEntityResponse('Invalid session request')
+	@ApiBadRequestResponse('Invalid session request or invalid UUID format')
 	@ApiServiceUnavailableResponse('Camera did not respond')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':deviceId/sessions')

@@ -180,7 +180,16 @@ export class CameraSnapshotService {
 	}
 
 	private minIntervalMs(provider: ICameraStreamProvider, device: DeviceEntity): number {
-		const value = provider.getSnapshotMinIntervalMs?.(device);
+		let value: number | undefined;
+
+		try {
+			value = provider.getSnapshotMinIntervalMs?.(device);
+		} catch (error) {
+			// Never log the error message: a provider may embed a source URL in it.
+			this.logger.warn(`Camera snapshot interval hook failed deviceId=${device.id} error=${errorName(error)}`);
+
+			return CAMERA_SNAPSHOT_DEFAULT_MIN_INTERVAL_MS;
+		}
 
 		return typeof value === 'number' && Number.isFinite(value) && value >= CAMERA_SNAPSHOT_MIN_ALLOWED_INTERVAL_MS
 			? value
