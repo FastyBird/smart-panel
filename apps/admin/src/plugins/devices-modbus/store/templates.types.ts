@@ -70,6 +70,7 @@ export interface IModbusTemplatePreviewBinding {
 	valueMap?: IModbusTemplatePreviewValueMapEntry[];
 	writeFunction?: DevicesModbusPluginWriteFunction;
 	pollIntervalMs?: number;
+	longPressMs?: number;
 }
 
 export interface IModbusTemplatePreviewProperty {

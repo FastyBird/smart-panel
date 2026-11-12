@@ -1,5 +1,6 @@
 import {
 	type ApiCreateModbusDeviceStructure,
+	type ApiUpdateModbusDeviceStructure,
 	type DevicesModbusPluginByteOrder,
 	DevicesModbusPluginDataType,
 	DevicesModbusPluginRegisterType,
@@ -24,12 +25,18 @@ export interface ModbusPointBinding {
 	valueMap: { raw: number; value: string | number | boolean }[] | null;
 	writeFunction: DevicesModbusPluginWriteFunction | null;
 	pollIntervalMs: number | null;
+	/** Hold time of a long press; only the read binding of a button event has one. null = the backend default (800 ms) */
+	longPressMs: number | null;
 }
 
 export interface ModbusPoint {
 	/** Local identity of the row, not part of the point's content */
 	key: string;
 	name: string;
+	/** ID of the existing channel the point belongs to; null for a channel the request creates */
+	channelId: string | null;
+	/** ID of the existing property the point maps; null for a property the request creates */
+	propertyId: string | null;
 	channelCategory: string;
 	channelIdentifier: string;
 	propertyCategory: string;
@@ -44,11 +51,13 @@ export interface ModbusPoint {
 	write: ModbusPointBinding | null;
 }
 
-type PointBase = Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'>;
+/** The content of a new point before it is placed in a channel. */
+export type ModbusPointBase = Omit<ModbusPoint, 'key' | 'name' | 'channelId' | 'propertyId' | 'channelIdentifier'>;
 
 let keySequence = 0;
 
-const nextKey = (): string => `point-${++keySequence}`;
+/** A new local row key. */
+export const nextPointKey = (): string => `point-${++keySequence}`;
 
 const slug = (text: string): string =>
 	text
@@ -71,7 +80,16 @@ const uniqueIdentifier = (wanted: string, taken: Set<string>): string => {
 	return candidate;
 };
 
-export function pointsFromRange(base: PointBase, parsed: ParsedAddress, namePrefix: string, existingIdentifiers: string[] = []): ModbusPoint[] {
+/**
+ * One new channel per address of the range. Every base becomes a point of each channel: the bound ones at the
+ * channel's address, the static ones (no bindings) as they are.
+ */
+export function pointsFromRange(
+	bases: ModbusPointBase | ModbusPointBase[],
+	parsed: ParsedAddress,
+	namePrefix: string,
+	existingIdentifiers: string[] = []
+): ModbusPoint[] {
 	const taken = new Set(existingIdentifiers);
 	const points: ModbusPoint[] = [];
 
@@ -86,21 +104,47 @@ export function pointsFromRange(base: PointBase, parsed: ParsedAddress, namePref
 						valueMap: binding.valueMap === null ? null : binding.valueMap.map((entry) => ({ ...entry })),
 					};
 
-		points.push({
-			...base,
-			permissions: [...base.permissions],
-			read: shift(base.read),
-			write: shift(base.write),
-			key: nextKey(),
-			propertyIdentifier: base.propertyIdentifier ?? null,
-			propertyName: base.propertyName ?? null,
-			format: base.format ? [...base.format] : null,
-			name: `${namePrefix} ${i + 1}`,
-			channelIdentifier: uniqueIdentifier(slug(`${namePrefix} ${i + 1}`), taken),
-		});
+		const name = `${namePrefix} ${i + 1}`;
+		const channelIdentifier = uniqueIdentifier(slug(name), taken);
+
+		for (const base of Array.isArray(bases) ? bases : [bases]) {
+			points.push({
+				...base,
+				permissions: [...base.permissions],
+				read: shift(base.read),
+				write: shift(base.write),
+				key: nextPointKey(),
+				channelId: null,
+				propertyId: null,
+				propertyIdentifier: base.propertyIdentifier ?? null,
+				propertyName: base.propertyName ?? null,
+				format: base.format ? [...base.format] : null,
+				name,
+				channelIdentifier,
+			});
+		}
 	}
 
 	return points;
+}
+
+const isBound = (point: ModbusPoint): boolean => point.read !== null || point.write !== null;
+
+/**
+ * Removes a point. The static points of its channel go with it when no bound point is left in the channel, so a
+ * valve never keeps its type without its state; a channel of static points only is left alone.
+ */
+export function removePoint(points: ModbusPoint[], key: string): ModbusPoint[] {
+	const removed = points.find((point) => point.key === key);
+	const rest = points.filter((point) => point.key !== key);
+
+	if (removed === undefined || !isBound(removed)) {
+		return rest;
+	}
+
+	const sameChannel = (point: ModbusPoint): boolean => point.channelIdentifier === removed.channelIdentifier;
+
+	return rest.some((point) => sameChannel(point) && isBound(point)) ? rest : rest.filter((point) => !sameChannel(point));
 }
 
 const bindingFromPreview = (binding: IModbusTemplatePreviewBinding | undefined): ModbusPointBinding | null =>
@@ -120,13 +164,16 @@ const bindingFromPreview = (binding: IModbusTemplatePreviewBinding | undefined):
 				valueMap: binding.valueMap?.length ? binding.valueMap.map((entry) => ({ raw: entry.raw, value: entry.value })) : null,
 				writeFunction: binding.writeFunction ?? null,
 				pollIntervalMs: binding.pollIntervalMs ?? null,
+				longPressMs: binding.longPressMs ?? null,
 			};
 
 export function pointsFromPreview(preview: IModbusTemplatePreview): ModbusPoint[] {
 	return preview.channels.flatMap((channel) =>
 		channel.properties.map((property) => ({
-			key: nextKey(),
+			key: nextPointKey(),
 			name: channel.name,
+			channelId: null,
+			propertyId: null,
 			channelCategory: channel.category,
 			channelIdentifier: channel.identifier,
 			propertyCategory: property.category,
@@ -173,8 +220,24 @@ export function samePoints(a: ModbusPoint[], b: ModbusPoint[]): boolean {
 	return a.length === b.length && a.every((point, index) => deepEqual(withoutKey(point), withoutKey(b[index])));
 }
 
-export function suggestCategory(points: ModbusPoint[]): 'switcher' | 'input_controller' {
-	return points.some((point) => point.write !== null) ? 'switcher' : 'input_controller';
+/** Channels whose points measure a quantity; a device of only these is a sensor. */
+const MEASURED_CHANNELS: readonly string[] = ['temperature', 'humidity', 'electrical_power', 'pressure', 'illuminance', 'analog_input'];
+
+export type ModbusSuggestedCategory = 'valve' | 'switcher' | 'sensor' | 'input_controller';
+
+/** The device category the points suggest. Static points (no bindings) say nothing about the device. */
+export function suggestCategory(points: ModbusPoint[]): ModbusSuggestedCategory {
+	if (points.some((point) => point.channelCategory === 'valve' && point.propertyCategory === 'on')) {
+		return 'valve';
+	}
+
+	if (points.some((point) => point.write !== null)) {
+		return 'switcher';
+	}
+
+	const bound = points.filter(isBound);
+
+	return bound.length > 0 && bound.every((point) => MEASURED_CHANNELS.includes(point.channelCategory)) ? 'sensor' : 'input_controller';
 }
 
 type Body = ApiCreateModbusDeviceStructure['data'];
@@ -198,9 +261,11 @@ export const toRequestBinding = (binding: ModbusPointBinding): RequestBinding =>
 	...(binding.invert ? { invert: true } : {}),
 	...(binding.writeFunction !== null ? { write_function: binding.writeFunction } : {}),
 	...(binding.pollIntervalMs !== null ? { poll_interval_ms: binding.pollIntervalMs } : {}),
+	...(binding.longPressMs !== null ? { long_press_ms: binding.longPressMs } : {}),
 });
 
 const toRequestProperty = (point: ModbusPoint): Property => ({
+	...(point.propertyId !== null ? { id: point.propertyId } : {}),
 	...(point.propertyIdentifier !== null ? { identifier: point.propertyIdentifier } : {}),
 	...(point.propertyName !== null ? { name: point.propertyName } : {}),
 	category: point.propertyCategory as Property['category'],
@@ -231,20 +296,38 @@ export interface ModbusCreateInput {
 	maxReadGap?: number | null;
 }
 
-export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDeviceStructure {
+export interface ModbusUpdateInput {
+	category: string;
+	pollIntervalMs: number;
+	byteOrder: DevicesModbusPluginByteOrder;
+	wordOrder: DevicesModbusPluginByteOrder;
+	points: ModbusPoint[];
+}
+
+/** Groups the points into request channels by channel identifier; an existing channel or property keeps its id. */
+const toRequestChannels = (points: ModbusPoint[]): Channel[] => {
 	const channels = new Map<string, Channel>();
 
-	for (const point of input.points) {
+	for (const point of points) {
 		const existing = channels.get(point.channelIdentifier);
 
 		if (existing) {
-			if (existing.name !== point.name || existing.category !== point.channelCategory) {
-				throw new Error(`Points of channel "${point.channelIdentifier}" disagree on the channel name or category`);
+			if (
+				existing.name !== point.name ||
+				existing.category !== point.channelCategory ||
+				(existing.id !== undefined && point.channelId !== null && existing.id !== point.channelId)
+			) {
+				throw new Error(`Points of channel "${point.channelIdentifier}" disagree on the channel id, name or category`);
+			}
+
+			if (existing.id === undefined && point.channelId !== null) {
+				existing.id = point.channelId;
 			}
 
 			existing.properties.push(toRequestProperty(point));
 		} else {
 			channels.set(point.channelIdentifier, {
+				...(point.channelId !== null ? { id: point.channelId } : {}),
 				identifier: point.channelIdentifier,
 				name: point.name,
 				category: point.channelCategory as Channel['category'],
@@ -252,6 +335,12 @@ export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDevice
 			});
 		}
 	}
+
+	return [...channels.values()];
+};
+
+export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDeviceStructure {
+	const channels = toRequestChannels(input.points);
 
 	const fromTemplate = input.template !== null && samePoints(input.points, input.template.points);
 
@@ -271,7 +360,20 @@ export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDevice
 			...(input.manufacturer !== undefined ? { manufacturer: input.manufacturer } : {}),
 			...(input.model !== undefined ? { model: input.model } : {}),
 			...(fromTemplate && input.template ? { template_id: input.template.id, template_revision: input.template.revision } : {}),
-			channels: [...channels.values()],
+			channels,
+		},
+	};
+}
+
+/** The points update of an existing device; template provenance is not part of it. */
+export function toUpdateRequest(input: ModbusUpdateInput): ApiUpdateModbusDeviceStructure {
+	return {
+		data: {
+			category: input.category as ApiUpdateModbusDeviceStructure['data']['category'],
+			poll_interval_ms: input.pollIntervalMs,
+			byte_order: input.byteOrder,
+			word_order: input.wordOrder,
+			channels: toRequestChannels(input.points),
 		},
 	};
 }

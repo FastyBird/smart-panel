@@ -132,7 +132,9 @@ defineOptions({
 const props = defineProps<IModbusWizardDeviceStepProps>();
 
 const ORDERS = [DevicesModbusPluginByteOrder.big, DevicesModbusPluginByteOrder.little];
-const BASE_CATEGORIES = ['switcher', 'input_controller'];
+const BASE_CATEGORIES = ['switcher', 'input_controller', 'sensor', 'valve'];
+// Reserved by the core and refused for Modbus devices: never offered, not even as the current or template category.
+const RESERVED_CATEGORY = 'generic';
 
 const { t } = useI18n();
 const logger = useLogger();
@@ -151,7 +153,7 @@ const categoryOptions = computed<{ value: string; label: string }[]>(() => {
 	const values = [...BASE_CATEGORIES];
 
 	for (const extra of [wizard.state.templateDevice?.category, wizard.state.device.category]) {
-		if (extra && !values.includes(extra)) {
+		if (extra && extra !== RESERVED_CATEGORY && !values.includes(extra)) {
 			values.push(extra);
 		}
 	}
@@ -167,11 +169,11 @@ const roomOptions = computed<{ value: string; label: string }[]>(() =>
 	).map((space: ISpace): { value: string; label: string } => ({ value: space.id, label: space.name }))
 );
 
-// No point in this plan has a button capability; the hint stays keyed for the plan that adds them.
+// Button events come from short pulses, which a slow poll misses.
 const hasButtonPoints = computed<boolean>(() => wizard.state.points.some((point) => point.channelCategory === 'button'));
 
 onBeforeMount((): void => {
-	if (wizard.state.device.category === null) {
+	if (wizard.state.device.category === null || wizard.state.device.category === RESERVED_CATEGORY) {
 		wizard.state.device.category = suggestCategory(wizard.state.points);
 	}
 

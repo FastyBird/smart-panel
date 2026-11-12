@@ -180,6 +180,41 @@
 				"confirmButton": "Write",
 				"cancelButton": "Cancel",
 				"done": "The value was written."
+			},
+			"capabilities": {
+				"binary_input": {
+					"state": "Binary input"
+				},
+				"switcher": {
+					"on": "Switch"
+				},
+				"outlet": {
+					"on": "Outlet"
+				},
+				"valve": {
+					"on": "Valve"
+				},
+				"button": {
+					"event": "Button"
+				},
+				"analog_input": {
+					"value": "Analog input"
+				},
+				"temperature": {
+					"temperature": "Temperature"
+				},
+				"humidity": {
+					"humidity": "Humidity"
+				},
+				"electrical_power": {
+					"power": "Electrical power"
+				},
+				"pressure": {
+					"pressure": "Pressure"
+				},
+				"illuminance": {
+					"illuminance": "Illuminance"
+				}
 			}
 		},
 		"device": {
@@ -190,7 +225,7 @@
 			"category": {
 				"title": "Category",
 				"placeholder": "Select a category",
-				"hint": "Devices with a writable point are usually switchers; read-only devices are input controllers."
+				"hint": "Devices with a valve point are usually valves, other devices with a writable point switchers; devices that only measure values are sensors, other read-only devices input controllers."
 			},
 			"pollInterval": {
 				"title": "Poll interval (ms)",

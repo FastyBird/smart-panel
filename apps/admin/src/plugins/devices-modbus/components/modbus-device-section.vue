@@ -334,6 +334,7 @@ const toBinding = (wire: Record<string, unknown>): IModbusDeviceBinding => {
 			valueMap: camel.valueMap ?? null,
 			writeFunction: camel.writeFunction ?? null,
 			pollIntervalMs: camel.pollIntervalMs ?? null,
+			longPressMs: camel.longPressMs ?? null,
 		},
 	};
 };

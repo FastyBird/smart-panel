@@ -32,7 +32,7 @@
 						<el-option
 							v-for="option in capabilityOptions"
 							:key="option"
-							:label="option"
+							:label="capabilityLabel(option)"
 							:value="option"
 						/>
 					</el-select>
@@ -312,6 +312,13 @@ const dataTypeOptions = Object.values(DevicesModbusPluginDataType);
 const orderOptions = [DEVICE_ORDER, ...Object.values(DevicesModbusPluginByteOrder)];
 const writeFunctionOptions = Object.values(DevicesModbusPluginWriteFunction);
 
+const capabilityLabel = (key: string): string => {
+	const path = `devicesModbusPlugin.wizard.points.capabilities.${key}`;
+	const label = t(path);
+
+	return label === path ? key : label;
+};
+
 const capabilityOptions = computed<string[]>(() => {
 	const keys = CUSTOM_CAPABILITIES.map((capability) => capability.key);
 
@@ -481,12 +488,17 @@ const onCapabilityChange = (key: string): void => {
 	}
 
 	const had: Record<Kind, boolean> = { read: draft.value.read !== null, write: draft.value.write !== null };
+	const before: Record<Kind, { registerType: DevicesModbusPluginRegisterType | null; start: number | null }> = {
+		read: { registerType: draft.value.read?.registerType ?? null, start: parsedAddress('read')?.start ?? null },
+		write: { registerType: draft.value.write?.registerType ?? null, start: parsedAddress('write')?.start ?? null },
+	};
 
 	draft.value = applyCapability(draft.value, capability);
 
 	for (const kind of ['read', 'write'] as const) {
 		const binding = draft.value[kind];
 		const other: Kind = kind === 'read' ? 'write' : 'read';
+		const previous = before[kind];
 
 		if (binding === null) {
 			// A removed binding forgets its address, so recreating it later cannot bring back a stale one.
@@ -494,6 +506,9 @@ const onCapabilityChange = (key: string): void => {
 		} else if (!had[kind]) {
 			// A new binding is a copy of the other one, so it starts at the address typed for that one.
 			addressTexts[kind] = had[other] ? addressTexts[other] : formatAddress(binding.address, binding.registerType, props.notation);
+		} else if (binding.registerType !== previous.registerType && previous.start !== null) {
+			// A new kind can move the binding to another table; in Modicon notation the text names the table.
+			addressTexts[kind] = formatAddress(previous.start, binding.registerType, props.notation);
 		}
 	}
 };

@@ -5,6 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 
 import { DevicesModbusPluginDataType, DevicesModbusPluginRegisterType } from '../../../../openapi.constants';
 import { type IUseModbusDeviceWizard, useModbusDeviceWizard } from '../../composables/useModbusDeviceWizard';
+import { CUSTOM_CAPABILITIES, applyCapability } from '../../lib/capabilities';
 import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../../store/keys';
 
 import ModbusWizardPointsStep from './modbus-wizard-points-step.vue';
@@ -159,6 +160,65 @@ describe('ModbusWizardPointsStep', () => {
 		}
 	});
 
+	it('adds valves with their static type and removes the type together with the valve', async () => {
+		const wizard = wizardWithEndpoint();
+		wizard.setNotation('pdu');
+		const wrapper = mountStep(wizard);
+
+		wrapper
+			.findAllComponents({ name: 'ElSelect' })
+			.find((select) => select.props('name') === 'pointsCapability')!
+			.vm.$emit('update:modelValue', 'valve.on');
+		await flushPromises();
+		await addRange(wrapper, '0-1');
+
+		const [on, type, second, secondType] = wizard.state.points;
+
+		expect(wizard.state.points.map((point) => [point.propertyCategory, point.staticValue])).toEqual([
+			['on', null],
+			['type', 'generic'],
+			['on', null],
+			['type', 'generic'],
+		]);
+		expect(type.channelIdentifier).toBe(on.channelIdentifier);
+		expect(secondType.channelIdentifier).toBe(second.channelIdentifier);
+		expect(second.channelIdentifier).not.toBe(on.channelIdentifier);
+
+		expect(wrapper.find(`[data-test-id="point-delete-${type.key}"]`).exists()).toBe(false);
+
+		await wrapper.find(`[data-test-id="point-delete-${on.key}"]`).trigger('click');
+
+		expect(wizard.state.points.map((point) => point.key)).toEqual([second.key, secondType.key]);
+	});
+
+	it('gives a point the static type of a valve when its capability becomes valve, and drops it again', async () => {
+		const wizard = wizardWithEndpoint();
+		wizard.setNotation('pdu');
+		const wrapper = mountStep(wizard);
+
+		await addRange(wrapper, '3');
+
+		const [input] = wizard.state.points;
+		const editor = () => wrapper.findComponent({ name: 'ModbusPointEditor' });
+
+		await wrapper.find(`[data-test-id="point-edit-${input.key}"]`).trigger('click');
+		editor().vm.$emit('save', applyCapability(input, CUSTOM_CAPABILITIES.find((capability) => capability.key === 'valve.on')!));
+		await flushPromises();
+
+		expect(wizard.state.points.map((point) => [point.channelCategory, point.propertyCategory, point.staticValue])).toEqual([
+			['valve', 'on', null],
+			['valve', 'type', 'generic'],
+		]);
+
+		const [valve] = wizard.state.points;
+
+		await wrapper.find(`[data-test-id="point-edit-${valve.key}"]`).trigger('click');
+		editor().vm.$emit('save', applyCapability(valve, CUSTOM_CAPABILITIES.find((capability) => capability.key === 'switcher.on')!));
+		await flushPromises();
+
+		expect(wizard.state.points.map((point) => [point.channelCategory, point.propertyCategory])).toEqual([['switcher', 'on']]);
+	});
+
 	it('does not continue without a read binding', () => {
 		const wizard = wizardWithEndpoint();
 
@@ -176,6 +236,8 @@ describe('ModbusWizardPointsStep', () => {
 				{
 					key: 'p1',
 					name: 'Relay 1',
+					channelId: null,
+					propertyId: null,
 					channelCategory: 'switcher',
 					channelIdentifier: 'relay_1',
 					propertyCategory: 'on',
@@ -209,6 +271,7 @@ describe('ModbusWizardPointsStep', () => {
 			valueMap: null,
 			writeFunction: null,
 			pollIntervalMs: null,
+			longPressMs: null,
 		});
 
 		it('does not write when the confirmation is cancelled', async () => {

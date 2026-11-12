@@ -31,11 +31,14 @@ const binding = (address: number): ModbusPointBinding => ({
 	valueMap: null,
 	writeFunction: null,
 	pollIntervalMs: null,
+	longPressMs: null,
 });
 
 const relay = (): ModbusPoint => ({
 	key: 'p1',
 	name: 'Relay 1',
+	channelId: null,
+	propertyId: null,
 	channelCategory: 'switcher',
 	channelIdentifier: 'relay_1',
 	propertyCategory: 'on',
@@ -107,6 +110,40 @@ describe('ModbusPointEditor', () => {
 
 		expect(saved.read?.address).toBe(7);
 		expect(saved.write?.address).toBe(7);
+	}, 15_000);
+
+	it('moves the address text to the table of a new kind, so Modicon notation keeps the new table', async () => {
+		const input: ModbusPoint = {
+			...relay(),
+			channelCategory: 'binary_input',
+			propertyCategory: 'state',
+			permissions: ['ro'],
+			read: { ...binding(7), registerType: DevicesModbusPluginRegisterType.discrete_input },
+			write: null,
+		};
+		const wrapper = mount(ModbusPointEditor, {
+			props: { visible: true, point: input, notation: 'modicon', capabilityEditable: true },
+			global: { stubs: { ElDialog: { template: '<div><slot /><slot name="footer" /></div>' } } },
+		});
+		await flushPromises();
+
+		expect((wrapper.find('input[name="readAddress"]').element as HTMLInputElement).value).toBe('10008');
+
+		wrapper.findAllComponents({ name: 'ElSelect' })[0].vm.$emit('update:model-value', 'temperature.temperature');
+		await flushPromises();
+
+		expect((wrapper.find('input[name="readAddress"]').element as HTMLInputElement).value).toBe('30008');
+
+		await wrapper.find('[data-test-id="point-editor-save"]').trigger('click');
+
+		const saved = wrapper.emitted('save')?.[0]?.[0] as ModbusPoint;
+
+		expect(saved).toMatchObject({ channelCategory: 'temperature', dataType: 'float', unit: '°C' });
+		expect(saved.read).toMatchObject({
+			registerType: DevicesModbusPluginRegisterType.input_register,
+			address: 7,
+			dataType: DevicesModbusPluginDataType.int16,
+		});
 	}, 15_000);
 
 	it('refuses to save a coil read as uint16 and shows why', async () => {

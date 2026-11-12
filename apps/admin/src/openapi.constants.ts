@@ -310,6 +310,7 @@ export type DevicesModbusPluginCreateValueMapEntrySchema = components['schemas']
 export type DevicesModbusPluginCreateDeviceStructureSchema = components['schemas']['DevicesModbusPluginCreateDeviceStructure'];
 export type DevicesModbusPluginCreateDeviceStructureChannelSchema = components['schemas']['DevicesModbusPluginCreateDeviceStructureChannel'];
 export type DevicesModbusPluginCreateDeviceStructurePropertySchema = components['schemas']['DevicesModbusPluginCreateDeviceStructureProperty'];
+export type DevicesModbusPluginUpdateDeviceStructureSchema = components['schemas']['DevicesModbusPluginUpdateDeviceStructure'];
 export type DevicesModbusPluginBindingSchema = components['schemas']['DevicesModbusPluginDataBinding'];
 export type DevicesModbusPluginTemplateSummarySchema = components['schemas']['DevicesModbusPluginDataTemplateSummary'];
 export type DevicesModbusPluginTemplateFileSchema = components['schemas']['DevicesModbusPluginDataTemplateFile'];
@@ -329,6 +330,8 @@ export type DevicesModbusPluginProbeWriteRequestSchema = components['schemas']['
 export type DevicesModbusPluginProbeWriteSchema = components['schemas']['DevicesModbusPluginDataProbeWrite'];
 export type DevicesModbusPluginProbeErrorSchema = components['schemas']['DevicesModbusPluginDataProbeError'];
 export type ApiCreateModbusDeviceStructure = operations['create-devices-modbus-plugin-device']['requestBody']['content']['application/json'];
+export type ApiUpdateModbusDeviceStructure =
+	operations['update-devices-modbus-plugin-device-structure']['requestBody']['content']['application/json'];
 export {
 	DevicesModbusPluginCreateBindingByte_order as DevicesModbusPluginByteOrder,
 	DevicesModbusPluginCreateBindingData_type as DevicesModbusPluginDataType,
@@ -586,6 +589,7 @@ export type DevicesModbusPluginDeleteEndpointOperation = operations['delete-devi
 export type DevicesModbusPluginUpdateEndpointOperation = operations['update-devices-modbus-plugin-endpoint'];
 export type DevicesModbusPluginGetEndpointHealthOperation = operations['get-devices-modbus-plugin-endpoint-health'];
 export type DevicesModbusPluginCreateDeviceOperation = operations['create-devices-modbus-plugin-device'];
+export type DevicesModbusPluginUpdateDeviceStructureOperation = operations['update-devices-modbus-plugin-device-structure'];
 export type DevicesModbusPluginGetDeviceBindingsOperation = operations['get-devices-modbus-plugin-device-bindings'];
 export type DevicesModbusPluginGetTemplatesOperation = operations['get-devices-modbus-plugin-templates'];
 export type DevicesModbusPluginGetTemplateOperation = operations['get-devices-modbus-plugin-template'];
