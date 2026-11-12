@@ -2,9 +2,9 @@
 	<div class="flex flex-row gap-2 w-full">
 		<el-input-number
 			:model-value="amount"
-			:min="1"
-			:max="Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit]))"
-			:precision="0"
+			:min="bounds.min"
+			:max="bounds.max"
+			:precision="bounds.precision"
 			:name="props.name"
 			:disabled="props.disabled"
 			:value-on-clear="null"
@@ -35,6 +35,10 @@
 <script setup lang="ts">
 /*
  * A duration in whole seconds, entered in seconds, minutes or hours. The configuration holds seconds.
+ *
+ * A duration saved that is not one taken - none, a part of a second, longer than the limit - is shown as
+ * it is, and the form says why: the number input would otherwise replace it as soon as it is shown,
+ * without anything being edited. The limits apply again once the duration is one taken.
  */
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -87,6 +91,15 @@ watch(
 
 const amount = computed<number | undefined>((): number | undefined =>
 	typeof props.modelValue === 'number' ? props.modelValue / UNIT_SECONDS[unit.value] : undefined
+);
+
+const taken = computed<boolean>(
+	(): boolean =>
+		typeof props.modelValue !== 'number' || (Number.isInteger(props.modelValue) && props.modelValue >= 1 && props.modelValue <= props.max)
+);
+
+const bounds = computed<{ min?: number; max?: number; precision?: number }>((): { min?: number; max?: number; precision?: number } =>
+	taken.value ? { min: 1, max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit.value])), precision: 0 } : {}
 );
 
 const onAmount = (value: number | null | undefined): void => {

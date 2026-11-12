@@ -208,11 +208,11 @@ const emit = defineEmits(automationNodeFormEmits);
 
 const { t } = useI18n();
 
-// What this form emitted last, until the configuration comes back with it (see `mode` below)
-let emitted: string | null = null;
+// The contents of the configuration this form last saw or emitted (see `mode` below)
+let seen: string = JSON.stringify(props.config);
 
 const onConfig = (event: 'update:config', config: Record<string, unknown>, field: string): void => {
-	emitted = JSON.stringify(config);
+	seen = JSON.stringify(config);
 
 	emit(event, config, field);
 };
@@ -243,20 +243,22 @@ const modes = computed<AutomationChangedMode[]>((): AutomationChangedMode[] => c
  * The way to start is kept here as well as read from the configuration: "becomes" chosen with no value
  * entered yet looks like "any change" in the configuration, and "changes from ... to" with only one of its
  * values entered looks like the way to start that takes that value alone. So an edit made here keeps the
- * way chosen, while a configuration changed from outside (an undo, a reload) is read again.
+ * way chosen, while a configuration changed from outside (an undo, a reload) is read again. The editor
+ * reads the whole graph again with every edit, a card moved included, so a configuration handed over with
+ * the contents it had is no change.
  */
 const mode = ref<AutomationChangedMode>(changedModeOf(props.config));
 
 watch(
 	(): Record<string, unknown> => props.config,
 	(config: Record<string, unknown>): void => {
-		const own = emitted !== null && JSON.stringify(config) === emitted;
+		const contents = JSON.stringify(config);
 
-		emitted = null;
-
-		if (!own) {
+		if (contents !== seen) {
 			mode.value = changedModeOf(config);
 		}
+
+		seen = contents;
 	}
 );
 

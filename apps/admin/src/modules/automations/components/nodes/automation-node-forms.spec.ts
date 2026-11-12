@@ -233,6 +233,21 @@ describe('automation card forms', (): void => {
 			expect(wrapper.find('[data-test-id="value-unsafe"]').exists()).toBe(true);
 		});
 
+		it('keeps each value at its place in the configuration, past an entry that is not a value', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, {
+				nodeType: set,
+				config: { writes: [null, { ...lockWrite, value: false }] },
+				issues: [issue({ code: 'safety_reducing_action', field: 'writes.1.value', message: 'An automation can not unlock a lock.' })],
+			});
+
+			expect(wrapper.findAll('[data-test-write]')).toHaveLength(1);
+			expect(wrapper.find('[data-test-write="1"] [data-test-id="write-refused"]').text()).toContain('An automation can not unlock a lock.');
+
+			wrapper.find('[data-test-write="1"]').findComponent(AutomationPropertyValueInput).vm.$emit('update:modelValue', true);
+
+			expect(lastConfig()).toEqual({ writes: [null, { ...lockWrite, value: true }] });
+		});
+
 		it('drops a value the newly picked property can not hold', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertySetForm, {
 				nodeType: set,
@@ -345,6 +360,30 @@ describe('automation card forms', (): void => {
 			await handBack();
 
 			expect(lastInvalid()).toBe(true);
+		});
+
+		it('keeps the way to start chosen while the graph is handed over again unchanged', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config: { ...target } });
+
+			chooseMode('fromTo');
+			await handBack();
+
+			enter('from', 18);
+			await handBack();
+
+			// A card moved: the editor reads the whole graph again, every configuration a new object
+			await wrapper.setProps({ config: { ...target, from: 18 } });
+			await wrapper.setProps({ config: { ...target, from: 18 } });
+
+			expect(wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).props('modelValue')).toBe('fromTo');
+			expect(wrapper.find('[data-test-field="to"]').exists()).toBe(true);
+			expect(lastInvalid()).toBe(true);
+
+			// An undo that changes the configuration is read again
+			await wrapper.setProps({ config: { ...target } });
+
+			expect(wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).props('modelValue')).toBe('any');
+			expect(lastInvalid()).toBe(false);
 		});
 
 		it('follows a configuration changed from outside, back to any change', async (): Promise<void> => {
@@ -483,6 +522,21 @@ describe('automation card forms', (): void => {
 			wrapper.find('[data-test-id="duration-unit"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', 'hours');
 
 			expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([3600]);
+		});
+		it.each([
+			['none at all', 0, 3600],
+			['a part of a second', 1.5, 3600],
+			['longer than taken', 7200, 3600],
+		])('does not change a stored duration of %s when it is shown', async (_name: string, seconds: number, max: number): Promise<void> => {
+			await mountForm(AutomationDurationInput, { modelValue: seconds, max });
+
+			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+
+			// An undo back to it does not change it either
+			await wrapper.setProps({ modelValue: 60 });
+			await wrapper.setProps({ modelValue: seconds });
+
+			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 		});
 	});
 

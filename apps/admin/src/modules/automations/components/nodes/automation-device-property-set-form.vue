@@ -18,7 +18,7 @@
 		</el-text>
 
 		<div
-			v-for="(row, index) in rows"
+			v-for="({ row, index }, position) in rows"
 			:key="index"
 			class="automation-device-property-set-form__write"
 			:data-test-write="index"
@@ -29,7 +29,7 @@
 					size="small"
 					class="font-600! grow-1"
 				>
-					{{ t('automations.editor.fields.set.write', { number: index + 1 }) }}
+					{{ t('automations.editor.fields.set.write', { number: position + 1 }) }}
 				</el-text>
 				<el-button
 					v-if="rows.length > 1 && !props.disabled"
@@ -98,7 +98,7 @@
 
 		<el-button
 			v-if="!props.disabled"
-			:disabled="rows.length >= AUTOMATION_SET_MAX_WRITES"
+			:disabled="full"
 			size="small"
 			data-test-id="add-write"
 			@click="onAdd"
@@ -143,6 +143,12 @@ defineOptions({
 
 type Row = Record<string, unknown>;
 
+// A value on the form, at the index it has among the writes configured
+interface IWriteRow {
+	row: Row;
+	index: number;
+}
+
 const props = withDefaults(defineProps<IAutomationNodeFormProps>(), {
 	fieldErrors: () => ({}),
 	issues: () => [],
@@ -163,22 +169,33 @@ const lookups = useAutomationNodeLookups();
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
-const writes = computed<Row[]>((): Row[] =>
-	Array.isArray(props.config.writes) ? props.config.writes.filter((write): write is Row => typeof write === 'object' && write !== null) : []
+const isRow = (write: unknown): write is Row => typeof write === 'object' && write !== null;
+
+// The writes as configured, an entry that is not one included: what the backend says about a write
+// names it by its index there, and an edit keeps the other entries where they are
+const writes = computed<unknown[]>((): unknown[] => (Array.isArray(props.config.writes) ? props.config.writes : []));
+
+const given = computed<IWriteRow[]>((): IWriteRow[] =>
+	writes.value.flatMap((write: unknown, index: number): IWriteRow[] => (isRow(write) ? [{ row: write, index }] : []))
 );
 
 // A row added with "Add value" stays on the form while nothing is picked in it yet
 const blankRows = ref<number>(0);
 
 // An action with nothing to set yet still shows the first value to fill in
-const rows = computed<Row[]>((): Row[] => {
-	const blanks = Math.max(writes.value.length === 0 ? 1 : 0, blankRows.value);
+const blanks = computed<number>((): number =>
+	Math.max(0, Math.min(Math.max(given.value.length === 0 ? 1 : 0, blankRows.value), AUTOMATION_SET_MAX_WRITES - writes.value.length))
+);
 
-	return [...writes.value, ...Array.from({ length: Math.min(blanks, AUTOMATION_SET_MAX_WRITES - writes.value.length) }, (): Row => ({}))];
-});
+const rows = computed<IWriteRow[]>((): IWriteRow[] => [
+	...given.value,
+	...Array.from({ length: blanks.value }, (_blank, offset): IWriteRow => ({ row: {}, index: writes.value.length + offset })),
+]);
+
+const full = computed<boolean>((): boolean => writes.value.length + blanks.value >= AUTOMATION_SET_MAX_WRITES);
 
 // The problems shown on a row are not repeated above the rows
-const rowErrors = computed<Set<string>>((): Set<string> => new Set(rows.value.flatMap((_row, index) => errorsAt(`writes.${index}`))));
+const rowErrors = computed<Set<string>>((): Set<string> => new Set(rows.value.flatMap(({ index }) => errorsAt(`writes.${index}`))));
 
 const propertyOf = (row: Row): AutomationLookupProperty | null => {
 	const id = text(row.property_id);
@@ -199,12 +216,17 @@ const withoutEmpty = (row: Row): Row =>
 		Object.entries(row).filter(([key, value]) => typeof value !== 'undefined' && value !== null && (value !== '' || key === 'value'))
 	);
 
-const emitRows = (next: Row[], field: string): void => {
-	const kept = next.map(withoutEmpty);
+// The writes with the form's blank rows after them, each at its index
+const entries = (): unknown[] => [...writes.value, ...Array.from({ length: blanks.value }, (): Row => ({}))];
+
+const isBlank = (entry: unknown): boolean => isRow(entry) && Object.keys(entry).length === 0;
+
+const emitRows = (next: unknown[], field: string): void => {
+	const kept = next.map((entry: unknown): unknown => (isRow(entry) ? withoutEmpty(entry) : entry));
 	// Blank rows at the end are the form's own; a blank row in the middle keeps its place
 	let end = kept.length;
 
-	while (end > 0 && Object.keys(kept[end - 1] ?? {}).length === 0) end -= 1;
+	while (end > 0 && isBlank(kept[end - 1])) end -= 1;
 
 	blankRows.value = kept.length - end;
 
@@ -213,13 +235,13 @@ const emitRows = (next: Row[], field: string): void => {
 
 const onRow = (index: number, patch: Row, field: string): void => {
 	emitRows(
-		rows.value.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)),
+		entries().map((entry: unknown, entryIndex: number): unknown => (entryIndex === index ? { ...(isRow(entry) ? entry : {}), ...patch } : entry)),
 		field
 	);
 };
 
 const onTarget = (index: number, patch: Row, field: string): void => {
-	const row = rows.value[index] ?? {};
+	const row = rows.value.find((item: IWriteRow): boolean => item.index === index)?.row ?? {};
 	const next = typeof patch.property_id === 'string' ? lookups.property(patch.property_id) : null;
 
 	// A value entered for the old property stays only when the new one can hold it
@@ -229,14 +251,14 @@ const onTarget = (index: number, patch: Row, field: string): void => {
 };
 
 const onAdd = (): void => {
-	if (rows.value.length < AUTOMATION_SET_MAX_WRITES) {
-		blankRows.value = rows.value.length - writes.value.length + 1;
+	if (!full.value) {
+		blankRows.value = blanks.value + 1;
 	}
 };
 
 const onRemove = (index: number): void => {
 	emitRows(
-		rows.value.filter((_row, rowIndex) => rowIndex !== index),
+		entries().filter((_entry: unknown, entryIndex: number): boolean => entryIndex !== index),
 		'writes'
 	);
 };
