@@ -1006,6 +1006,8 @@
   "sensor_label_voc": "LZO",
   "sensor_label_particulate_matter": "Pyły zawieszone",
   "sensor_label_motion": "Ruch",
+  "sensor_label_object_detection": "Wykrywanie obiektów",
+  "sensor_label_sound_detection": "Wykrywanie dźwięku",
   "sensor_label_occupancy": "Obecność",
   "sensor_label_contact": "Kontakt",
   "sensor_label_leak": "Wyciek",

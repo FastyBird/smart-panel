@@ -85,6 +85,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart
 import 'package:fastybird_smart_panel/modules/devices/views/properties/timer.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/track.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/triggered.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/object_type.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/sound_type.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/value.dart';
@@ -326,6 +328,10 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, TrackChannelPropertyView.new);
     case DevicesModulePropertyCategory.type:
       return _createPropertyView(property, TypeChannelPropertyView.new);
+    case DevicesModulePropertyCategory.objectType:
+      return _createPropertyView(property, ObjectTypeChannelPropertyView.new);
+    case DevicesModulePropertyCategory.soundType:
+      return _createPropertyView(property, SoundTypeChannelPropertyView.new);
     case DevicesModulePropertyCategory.unit:
       return _createPropertyView(property, UnitChannelPropertyView.new);
     case DevicesModulePropertyCategory.value:
@@ -430,6 +436,8 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.triggered: () => MdiIcons.alarmLightOutline,
   DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.objectType: () => MdiIcons.shape,
+  DevicesModulePropertyCategory.soundType: () => MdiIcons.waveform,
   DevicesModulePropertyCategory.unit: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.value: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,

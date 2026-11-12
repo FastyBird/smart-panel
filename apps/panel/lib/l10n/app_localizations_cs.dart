@@ -3378,6 +3378,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_label_motion => 'Pohyb';
 
   @override
+  String get sensor_label_object_detection => 'Detekce objektů';
+
+  @override
+  String get sensor_label_sound_detection => 'Detekce zvuku';
+
+  @override
   String get sensor_label_occupancy => 'Přítomnost';
 
   @override

@@ -3901,6 +3901,8 @@
   "sensor_label_voc": "VOC",
   "sensor_label_particulate_matter": "Particulate Matter",
   "sensor_label_motion": "Motion",
+  "sensor_label_object_detection": "Object detection",
+  "sensor_label_sound_detection": "Sound detection",
   "sensor_label_occupancy": "Occupancy",
   "sensor_label_contact": "Contact",
   "sensor_label_leak": "Leak",

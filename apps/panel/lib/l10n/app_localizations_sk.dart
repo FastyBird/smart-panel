@@ -3380,6 +3380,12 @@ class AppLocalizationsSk extends AppLocalizations {
   String get sensor_label_motion => 'Pohyb';
 
   @override
+  String get sensor_label_object_detection => 'Detekcia objektov';
+
+  @override
+  String get sensor_label_sound_detection => 'Detekcia zvuku';
+
+  @override
   String get sensor_label_occupancy => 'Prítomnosť';
 
   @override

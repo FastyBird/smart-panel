@@ -1006,6 +1006,8 @@
   "sensor_label_voc": "COV",
   "sensor_label_particulate_matter": "Partículas en suspensión",
   "sensor_label_motion": "Movimiento",
+  "sensor_label_object_detection": "Detección de objetos",
+  "sensor_label_sound_detection": "Detección de sonido",
   "sensor_label_occupancy": "Ocupación",
   "sensor_label_contact": "Contacto",
   "sensor_label_leak": "Fuga",

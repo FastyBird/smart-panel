@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/analog_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/binary_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/button.dart';
@@ -130,6 +131,15 @@ mixin DeviceBatteryMixin {
   bool get hasBatteryFault => batteryChannel?.hasFault ?? false;
 
   num? get batteryFaultCode => batteryChannel?.faultCode;
+}
+
+/// Picks the primary camera channel: the one whose identifier is `main` or ends
+/// with `.main`, otherwise the first one.
+CameraChannelView? selectMainCameraChannel(List<CameraChannelView> cameras) {
+  return cameras.firstWhereOrNull(
+        (c) => c.identifier == 'main' || (c.identifier?.endsWith('.main') ?? false),
+      ) ??
+      cameras.firstOrNull;
 }
 
 mixin DeviceCameraMixin {
