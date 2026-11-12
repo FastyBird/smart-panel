@@ -59,8 +59,6 @@ export const ModbusDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdat
 		max_read_registers: z.number().int().optional(),
 		max_read_bits: z.number().int().optional(),
 		max_read_gap: z.number().int().optional(),
-		template_id: z.string().optional(),
-		template_revision: z.string().optional(),
 	})
 );
 
