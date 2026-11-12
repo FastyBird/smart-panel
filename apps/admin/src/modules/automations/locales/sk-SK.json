@@ -540,6 +540,140 @@
 				"message": "Správa musí byť text.",
 				"messageMax": "Správa môže mať najviac 1000 znakov."
 			}
+		},
+		"runs": {
+			"headings": {
+				"history": "Behy"
+			},
+			"buttons": {
+				"test": {
+					"title": "Otestovať",
+					"description": "Spustí uložený priebeh hneď teraz, ako keby sa ozval jeho spúšťač, a ukáže ho na plátne.",
+					"startAt": "Začať od: {trigger}"
+				},
+				"history": {
+					"title": "História behov"
+				},
+				"reload": {
+					"title": "Načítať znova"
+				},
+				"close": {
+					"title": "Skryť beh"
+				},
+				"showNode": {
+					"title": "Ukázať {node}"
+				}
+			},
+			"test": {
+				"disabled": {
+					"unsaved": "Najprv priebeh uložte: test spúšťa uloženú verziu.",
+					"disabled": "Na otestovanie automatizáciu povoľte.",
+					"invalid": "Automatizáciu nemožno spustiť, kým nebudú opravené jej problémy.",
+					"suspended": "Automatizácia je pozastavená. Uložte ju alebo ju znova povoľte, aby sa obnovila.",
+					"noTrigger": "Priebeh potrebuje spúšťač, od ktorého začne."
+				}
+			},
+			"outcomes": {
+				"started": "Testovací beh bol spustený.",
+				"ignored": "Test sa nespustil: jeden beh už prebieha a automatizácia medzitým nové spúšťače ignoruje.",
+				"dropped": "Test sa nespustil: práve prebieha príliš veľa behov.",
+				"suspended": "Test sa nespustil: automatizácia sa spúšťala príliš často a bola pozastavená."
+			},
+			"refusals": {
+				"disabled": "Automatizácia je zakázaná, a preto ju nemožno spustiť.",
+				"invalid": "Automatizáciu nemožno spustiť, kým nebudú opravené jej problémy.",
+				"suspended": "Automatizácia je pozastavená. Uložte ju alebo ju znova povoľte, aby sa obnovila.",
+				"not_a_trigger": "Blok zvolený ako začiatok nie je spúšťač.",
+				"no_trigger": "Priebeh nemá žiadny spúšťač, od ktorého by mohol začať.",
+				"not_running": "Automatizácie na serveri práve nebežia.",
+				"not_found": "Server túto automatizáciu ešte nenačítal. Skúste to o chvíľu znova.",
+				"unknown": "Automatizáciu sa nepodarilo spustiť."
+			},
+			"messages": {
+				"testFailed": "Test sa nepodarilo spustiť."
+			},
+			"statuses": {
+				"running": "Prebieha",
+				"completed": "Dokončené",
+				"failed": "Zlyhalo",
+				"cancelled": "Zrušené",
+				"interrupted": "Prerušené"
+			},
+			"sources": {
+				"live": "Živý beh",
+				"replay": "Minulý beh"
+			},
+			"texts": {
+				"empty": "Táto automatizácia ešte nebežala.",
+				"loading": "Načítavanie behov...",
+				"loadFailed": "Behy sa nepodarilo načítať.",
+				"manual": "Ručne od {trigger}",
+				"unknownTrigger": "Spúšťač, ktorý už v priebehu nie je",
+				"startedFor": "{time}, trvalo {duration}",
+				"milliseconds": "{count} ms",
+				"waitingForSteps": "Čaká sa, kým beh dôjde k prvému bloku...",
+				"traceLoading": "Načítava sa, čo beh urobil...",
+				"traceFailed": "Záznam tohto behu sa nepodarilo načítať; zobrazuje sa len to, čo bolo vidieť naživo.",
+				"truncated": "Tento beh toho urobil príliš veľa, než aby sa dal uložiť celý: posledné bloky, ku ktorým došiel, môžu chýbať.",
+				"otherRevision": "Tento beh prešiel staršou verziou priebehu; bloky zmenené odvtedy nemusia zodpovedať tomu, čo urobil.",
+				"unsaved": "Priebeh na plátne má neuložené zmeny; beh prešiel uloženou verziou.",
+				"missingNodes": "Niektoré bloky, ku ktorým tento beh došiel, už v priebehu nie sú."
+			},
+			"nodes": {
+				"started": "Spustil beh",
+				"running": "Prebieha...",
+				"waiting": "Čaká {duration}",
+				"waited": "Čakal {duration}",
+				"waitingStopped": "Tu čakal, keď sa beh zastavil",
+				"observed": "Zistil {value}",
+				"output": "→ {output}",
+				"done": "Hotovo",
+				"failed": "Zlyhalo: {reason}",
+				"failedNoReason": "Zlyhalo",
+				"refused": "Nepovolené: {reason}",
+				"refusedNoReason": "Nepovolené",
+				"timedOut": "Neodpovedal včas",
+				"skipped": "Nedokončené: beh už skončil"
+			},
+			"explanations": {
+				"interrupted": {
+					"text": "Tento beh sa zastavil skôr, než skončil. {cause} To, čo malo nasledovať po tomto mieste, sa nikdy nestalo."
+				},
+				"interruptedCauses": {
+					"backend_restarted": "Server sa reštartoval, zatiaľ čo beh čakal.",
+					"engine_stopped": "Automatizácie na serveri boli zastavené, zatiaľ čo beh prebiehal.",
+					"restarted": "Automatizácia bola spustená znova.",
+					"unknown": "Nestihol dobehnúť do konca."
+				},
+				"failed": {
+					"text": "Akcia zlyhala a nič v priebehu jej chybu neošetrilo, preto sa beh tu zastavil."
+				},
+				"cancelled": {
+					"text": "Tento beh bol zrušený skôr, než skončil: {cause}"
+				},
+				"cancelledCauses": {
+					"restarted": "automatizácia bola znova spustená a začala od začiatku.",
+					"backend_restarted": "server sa reštartoval.",
+					"engine_stopped": "automatizácie na serveri boli zastavené.",
+					"unknown": "automatizácia bola uložená, zakázaná alebo znova spustená."
+				},
+				"suspended": {
+					"title": "Automatizácia je pozastavená",
+					"text": "Počas krátkeho času sa spustila príliš často, a preto bola zastavená, aby nemohla bežať v slučke. Zvyčajne to znamená, že niektorá z jej akcií nastavuje hodnotu, ktorú sleduje niektorý z jej spúšťačov. Skontrolujte priebeh a potom ho uložte alebo automatizáciu znova povoľte, aby sa obnovila.",
+					"trigger": "Spúšťač, ktorý sa stále ozýval:"
+				},
+				"invalid": {
+					"title": "Automatizáciu nemožno spustiť",
+					"text": "Je povolená, ale server ju nemôže spustiť, kým nebudú opravené tieto problémy:"
+				}
+			},
+			"problems": {
+				"invalid_config": "Tento blok nie je správne nastavený.",
+				"not_runnable": "Server nevie, ako tento blok vykonať.",
+				"missing_reference": "Tento blok odkazuje na zariadenie, vlastnosť, scénu alebo priestor, ktorý už neexistuje.",
+				"trigger_failed": "Tento spúšťač sa nepodarilo spustiť.",
+				"safety_reducing_action": "Táto akcia by odomkla, odistila alebo otvorila niečo, čo automatizácia nesmie."
+			}
 		}
 	}
 }

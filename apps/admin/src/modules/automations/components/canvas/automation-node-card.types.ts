@@ -2,6 +2,7 @@ import type { Component } from 'vue';
 
 import type { AutomationNodeKind } from '../../automations.constants';
 import type { AutomationIssueSeverity } from '../../automations.graph';
+import type { AutomationRunNodeState } from '../../automations.trace';
 
 import type { IAutomationNodeSummaryProps } from './automation-node-form.types';
 
@@ -17,4 +18,13 @@ export interface IAutomationNodeCardProps {
 	summaryProps?: IAutomationNodeSummaryProps;
 	selected?: boolean;
 	issue?: AutomationIssueSeverity;
+	// What the card did in the run laid over the canvas; null for a card the run did not reach
+	run?: IAutomationNodeCardRun | null;
+}
+
+export interface IAutomationNodeCardRun {
+	state: AutomationRunNodeState;
+	text: string;
+	// How many times the run reached the card
+	visits: number;
 }

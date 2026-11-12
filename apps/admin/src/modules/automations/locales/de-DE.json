@@ -540,6 +540,140 @@
 				"message": "Die Nachricht muss ein Text sein.",
 				"messageMax": "Die Nachricht darf höchstens 1000 Zeichen lang sein."
 			}
+		},
+		"runs": {
+			"headings": {
+				"history": "Läufe"
+			},
+			"buttons": {
+				"test": {
+					"title": "Testen",
+					"description": "Führt den gespeicherten Ablauf jetzt aus, als hätte sein Auslöser angesprochen, und zeigt ihn auf der Arbeitsfläche.",
+					"startAt": "Starten bei: {trigger}"
+				},
+				"history": {
+					"title": "Verlauf der Läufe"
+				},
+				"reload": {
+					"title": "Erneut laden"
+				},
+				"close": {
+					"title": "Lauf ausblenden"
+				},
+				"showNode": {
+					"title": "{node} zeigen"
+				}
+			},
+			"test": {
+				"disabled": {
+					"unsaved": "Speichern Sie den Ablauf zuerst: Ein Test führt die gespeicherte Version aus.",
+					"disabled": "Aktivieren Sie die Automation, um sie zu testen.",
+					"invalid": "Die Automation kann erst laufen, wenn ihre Probleme behoben sind.",
+					"suspended": "Die Automation ist angehalten. Speichern oder aktivieren Sie sie erneut, um sie fortzusetzen.",
+					"noTrigger": "Der Ablauf braucht einen Auslöser, bei dem er beginnt."
+				}
+			},
+			"outcomes": {
+				"started": "Der Testlauf wurde gestartet.",
+				"ignored": "Der Test wurde nicht gestartet: Ein Lauf ist bereits aktiv und die Automation ignoriert neue Auslöser so lange.",
+				"dropped": "Der Test wurde nicht gestartet: Gerade laufen zu viele Läufe.",
+				"suspended": "Der Test wurde nicht gestartet: Die Automation lief zu oft und wurde angehalten."
+			},
+			"refusals": {
+				"disabled": "Die Automation ist deaktiviert und kann daher nicht ausgeführt werden.",
+				"invalid": "Die Automation kann erst laufen, wenn ihre Probleme behoben sind.",
+				"suspended": "Die Automation ist angehalten. Speichern oder aktivieren Sie sie erneut, um sie fortzusetzen.",
+				"not_a_trigger": "Der als Start gewählte Block ist kein Auslöser.",
+				"no_trigger": "Der Ablauf hat keinen Auslöser, bei dem er beginnen könnte.",
+				"not_running": "Automationen laufen auf dem Server gerade nicht.",
+				"not_found": "Der Server hat diese Automation noch nicht geladen. Versuchen Sie es gleich noch einmal.",
+				"unknown": "Die Automation konnte nicht gestartet werden."
+			},
+			"messages": {
+				"testFailed": "Der Test konnte nicht gestartet werden."
+			},
+			"statuses": {
+				"running": "Läuft",
+				"completed": "Abgeschlossen",
+				"failed": "Fehlgeschlagen",
+				"cancelled": "Abgebrochen",
+				"interrupted": "Unterbrochen"
+			},
+			"sources": {
+				"live": "Live-Lauf",
+				"replay": "Vergangener Lauf"
+			},
+			"texts": {
+				"empty": "Diese Automation ist noch nicht gelaufen.",
+				"loading": "Läufe werden geladen...",
+				"loadFailed": "Die Läufe konnten nicht geladen werden.",
+				"manual": "Von Hand ab {trigger}",
+				"unknownTrigger": "Ein Auslöser, der nicht mehr im Ablauf ist",
+				"startedFor": "{time}, dauerte {duration}",
+				"milliseconds": "{count} ms",
+				"waitingForSteps": "Warten, bis der Lauf seinen ersten Block erreicht...",
+				"traceLoading": "Was der Lauf getan hat, wird geladen...",
+				"traceFailed": "Die Aufzeichnung dieses Laufs konnte nicht geladen werden; es wird nur gezeigt, was live zu sehen war.",
+				"truncated": "Dieser Lauf hat zu viel getan, um alles aufzubewahren: Die letzten Blöcke, die er erreicht hat, können fehlen.",
+				"otherRevision": "Dieser Lauf ging durch eine frühere Version des Ablaufs; seitdem geänderte Blöcke passen evtl. nicht zu dem, was er getan hat.",
+				"unsaved": "Der Ablauf auf der Arbeitsfläche hat ungespeicherte Änderungen; der Lauf ging durch die gespeicherte Version.",
+				"missingNodes": "Einige Blöcke, die dieser Lauf erreicht hat, sind nicht mehr im Ablauf."
+			},
+			"nodes": {
+				"started": "Hat den Lauf gestartet",
+				"running": "Läuft...",
+				"waiting": "Wartet {duration}",
+				"waited": "Hat {duration} gewartet",
+				"waitingStopped": "Hat hier gewartet, als der Lauf stoppte",
+				"observed": "Sah {value}",
+				"output": "→ {output}",
+				"done": "Erledigt",
+				"failed": "Fehlgeschlagen: {reason}",
+				"failedNoReason": "Fehlgeschlagen",
+				"refused": "Nicht erlaubt: {reason}",
+				"refusedNoReason": "Nicht erlaubt",
+				"timedOut": "Hat nicht rechtzeitig geantwortet",
+				"skipped": "Nicht beendet: Der Lauf war schon vorbei"
+			},
+			"explanations": {
+				"interrupted": {
+					"text": "Dieser Lauf stoppte, bevor er zu Ende war. {cause} Was nach dieser Stelle geschehen sollte, ist nie geschehen."
+				},
+				"interruptedCauses": {
+					"backend_restarted": "Der Server wurde neu gestartet, während der Lauf wartete.",
+					"engine_stopped": "Automationen wurden auf dem Server gestoppt, während der Lauf aktiv war.",
+					"restarted": "Die Automation wurde erneut gestartet.",
+					"unknown": "Er kam nicht bis zum Ende."
+				},
+				"failed": {
+					"text": "Eine Aktion ist fehlgeschlagen und nichts im Ablauf hat ihren Fehler behandelt, daher stoppte der Lauf dort."
+				},
+				"cancelled": {
+					"text": "Dieser Lauf wurde abgebrochen, bevor er zu Ende war: {cause}"
+				},
+				"cancelledCauses": {
+					"restarted": "Die Automation wurde erneut ausgelöst und begann von vorn.",
+					"backend_restarted": "Der Server wurde neu gestartet.",
+					"engine_stopped": "Automationen wurden auf dem Server gestoppt.",
+					"unknown": "Die Automation wurde gespeichert, deaktiviert oder erneut ausgelöst."
+				},
+				"suspended": {
+					"title": "Die Automation ist angehalten",
+					"text": "Sie lief in kurzer Zeit zu oft und wurde gestoppt, damit sie nicht in einer Schleife weiterläuft. Meist setzt eine ihrer Aktionen einen Wert, den einer ihrer Auslöser beobachtet. Prüfen Sie den Ablauf und speichern oder aktivieren Sie die Automation dann erneut, um sie fortzusetzen.",
+					"trigger": "Der Auslöser, der immer wieder ansprach:"
+				},
+				"invalid": {
+					"title": "Die Automation kann nicht laufen",
+					"text": "Sie ist aktiviert, aber der Server kann sie erst ausführen, wenn diese Probleme behoben sind:"
+				}
+			},
+			"problems": {
+				"invalid_config": "Dieser Block ist nicht richtig eingestellt.",
+				"not_runnable": "Der Server weiß nicht, wie er diesen Block ausführen soll.",
+				"missing_reference": "Dieser Block verweist auf ein Gerät, eine Eigenschaft, eine Szene oder einen Bereich, die es nicht mehr gibt.",
+				"trigger_failed": "Dieser Auslöser konnte nicht gestartet werden.",
+				"safety_reducing_action": "Diese Aktion würde etwas entriegeln, unscharf schalten oder öffnen, was eine Automation nicht darf."
+			}
 		}
 	}
 }

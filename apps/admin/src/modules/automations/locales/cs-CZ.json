@@ -540,6 +540,140 @@
 				"message": "Zpráva musí být text.",
 				"messageMax": "Zpráva může mít nejvýše 1000 znaků."
 			}
+		},
+		"runs": {
+			"headings": {
+				"history": "Běhy"
+			},
+			"buttons": {
+				"test": {
+					"title": "Otestovat",
+					"description": "Spustí uložený průběh hned teď, jako by se ozval jeho spouštěč, a ukáže ho na plátně.",
+					"startAt": "Začít od: {trigger}"
+				},
+				"history": {
+					"title": "Historie běhů"
+				},
+				"reload": {
+					"title": "Načíst znovu"
+				},
+				"close": {
+					"title": "Skrýt běh"
+				},
+				"showNode": {
+					"title": "Ukázat {node}"
+				}
+			},
+			"test": {
+				"disabled": {
+					"unsaved": "Nejprve průběh uložte: test spouští uloženou verzi.",
+					"disabled": "Pro otestování automatizaci povolte.",
+					"invalid": "Automatizaci nelze spustit, dokud nebudou opraveny její problémy.",
+					"suspended": "Automatizace je pozastavena. Uložte ji nebo ji znovu povolte, aby se obnovila.",
+					"noTrigger": "Průběh potřebuje spouštěč, od kterého začne."
+				}
+			},
+			"outcomes": {
+				"started": "Testovací běh byl spuštěn.",
+				"ignored": "Test se nespustil: jeden běh už probíhá a automatizace mezitím nové spouštěče ignoruje.",
+				"dropped": "Test se nespustil: právě probíhá příliš mnoho běhů.",
+				"suspended": "Test se nespustil: automatizace se spouštěla příliš často a byla pozastavena."
+			},
+			"refusals": {
+				"disabled": "Automatizace je zakázaná, a proto ji nelze spustit.",
+				"invalid": "Automatizaci nelze spustit, dokud nebudou opraveny její problémy.",
+				"suspended": "Automatizace je pozastavena. Uložte ji nebo ji znovu povolte, aby se obnovila.",
+				"not_a_trigger": "Blok zvolený jako začátek není spouštěč.",
+				"no_trigger": "Průběh nemá žádný spouštěč, od kterého by mohl začít.",
+				"not_running": "Automatizace na serveru právě neběží.",
+				"not_found": "Server tuto automatizaci ještě nenačetl. Zkuste to za chvíli znovu.",
+				"unknown": "Automatizaci se nepodařilo spustit."
+			},
+			"messages": {
+				"testFailed": "Test se nepodařilo spustit."
+			},
+			"statuses": {
+				"running": "Probíhá",
+				"completed": "Dokončeno",
+				"failed": "Selhalo",
+				"cancelled": "Zrušeno",
+				"interrupted": "Přerušeno"
+			},
+			"sources": {
+				"live": "Živý běh",
+				"replay": "Minulý běh"
+			},
+			"texts": {
+				"empty": "Tato automatizace ještě neběžela.",
+				"loading": "Načítání běhů...",
+				"loadFailed": "Běhy se nepodařilo načíst.",
+				"manual": "Ručně od {trigger}",
+				"unknownTrigger": "Spouštěč, který už v průběhu není",
+				"startedFor": "{time}, trvalo {duration}",
+				"milliseconds": "{count} ms",
+				"waitingForSteps": "Čeká se, až běh dojde k prvnímu bloku...",
+				"traceLoading": "Načítá se, co běh udělal...",
+				"traceFailed": "Záznam tohoto běhu se nepodařilo načíst; zobrazuje se jen to, co bylo vidět živě.",
+				"truncated": "Tento běh toho udělal příliš mnoho, než aby se dal uložit celý: poslední bloky, ke kterým došel, mohou chybět.",
+				"otherRevision": "Tento běh prošel starší verzí průběhu; bloky změněné od té doby nemusí odpovídat tomu, co udělal.",
+				"unsaved": "Průběh na plátně má neuložené změny; běh prošel uloženou verzí.",
+				"missingNodes": "Některé bloky, ke kterým tento běh došel, už v průběhu nejsou."
+			},
+			"nodes": {
+				"started": "Spustil běh",
+				"running": "Probíhá...",
+				"waiting": "Čeká {duration}",
+				"waited": "Čekal {duration}",
+				"waitingStopped": "Zde čekal, když se běh zastavil",
+				"observed": "Zjistil {value}",
+				"output": "→ {output}",
+				"done": "Hotovo",
+				"failed": "Selhalo: {reason}",
+				"failedNoReason": "Selhalo",
+				"refused": "Nepovoleno: {reason}",
+				"refusedNoReason": "Nepovoleno",
+				"timedOut": "Neodpověděl včas",
+				"skipped": "Nedokončeno: běh už skončil"
+			},
+			"explanations": {
+				"interrupted": {
+					"text": "Tento běh se zastavil dřív, než skončil. {cause} To, co mělo následovat po tomto místě, se nikdy nestalo."
+				},
+				"interruptedCauses": {
+					"backend_restarted": "Server se restartoval, zatímco běh čekal.",
+					"engine_stopped": "Automatizace na serveru byly zastaveny, zatímco běh probíhal.",
+					"restarted": "Automatizace byla spuštěna znovu.",
+					"unknown": "Nestihl doběhnout do konce."
+				},
+				"failed": {
+					"text": "Akce selhala a nic v průběhu její chybu neošetřilo, proto se běh zde zastavil."
+				},
+				"cancelled": {
+					"text": "Tento běh byl zrušen dřív, než skončil: {cause}"
+				},
+				"cancelledCauses": {
+					"restarted": "automatizace byla znovu spuštěna a začala od začátku.",
+					"backend_restarted": "server se restartoval.",
+					"engine_stopped": "automatizace na serveru byly zastaveny.",
+					"unknown": "automatizace byla uložena, zakázána nebo znovu spuštěna."
+				},
+				"suspended": {
+					"title": "Automatizace je pozastavena",
+					"text": "Během krátké doby se spustila příliš často, a proto byla zastavena, aby nemohla běžet ve smyčce. Obvykle to znamená, že některá z jejích akcí nastavuje hodnotu, kterou sleduje některý z jejích spouštěčů. Zkontrolujte průběh a poté jej uložte nebo automatizaci znovu povolte, aby se obnovila.",
+					"trigger": "Spouštěč, který se stále ozýval:"
+				},
+				"invalid": {
+					"title": "Automatizaci nelze spustit",
+					"text": "Je povolená, ale server ji nemůže spustit, dokud nebudou opraveny tyto problémy:"
+				}
+			},
+			"problems": {
+				"invalid_config": "Tento blok není správně nastaven.",
+				"not_runnable": "Server neví, jak tento blok provést.",
+				"missing_reference": "Tento blok odkazuje na zařízení, vlastnost, scénu nebo prostor, který už neexistuje.",
+				"trigger_failed": "Tento spouštěč se nepodařilo spustit.",
+				"safety_reducing_action": "Tato akce by odemkla, odjistila nebo otevřela něco, co automatizace nesmí."
+			}
 		}
 	}
 }

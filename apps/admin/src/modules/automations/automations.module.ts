@@ -20,8 +20,9 @@ import { locales } from './locales';
 import { AUTOMATION_BUILT_IN_NODE_ELEMENTS } from './nodes/nodes.elements';
 import { ModuleRoutes } from './router';
 import { registerAutomationsStore } from './store/automations.store';
-import { automationNodeTypesStoreKey, automationsStoreKey } from './store/keys';
+import { automationNodeTypesStoreKey, automationRunsStoreKey, automationsStoreKey } from './store/keys';
 import { registerAutomationNodeTypesStore } from './store/node-types.store';
+import { registerAutomationRunsStore } from './store/runs.store';
 
 const automationsAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Automations');
 
@@ -49,6 +50,11 @@ export default {
 		app.provide(automationNodeTypesStoreKey, nodeTypesStore);
 		storesManager.addStore(automationNodeTypesStoreKey, nodeTypesStore);
 
+		const runsStore = registerAutomationRunsStore(options.store);
+
+		app.provide(automationRunsStoreKey, runsStore);
+		storesManager.addStore(automationRunsStoreKey, runsStore);
+
 		modulesManager.addModule(automationsAdminModuleKey, {
 			type: AUTOMATIONS_MODULE_NAME,
 			name: 'Automations',
@@ -67,7 +73,7 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(automationsAdminModuleKey, (): Promise<void> => refreshLoadedStores([automationsStore, nodeTypesStore]));
+		dataRefreshRegistry.register(automationsAdminModuleKey, (): Promise<void> => refreshLoadedStores([automationsStore, nodeTypesStore, runsStore]));
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(AUTOMATIONS_MODULE_EVENT_PREFIX)) {
@@ -77,6 +83,8 @@ export default {
 			// A reset wipes every automation at once and names none of them. They are dropped right away, so
 			// nothing read before the reset can bring one back; the list is then read for what was created since.
 			if (data.event === EventType.MODULE_RESET) {
+				runsStore.reset();
+
 				automationsStore.reset().catch((error: unknown): void => {
 					console.warn(`Failed to process ${data.event} event:`, error);
 				});
@@ -104,6 +112,17 @@ export default {
 				case EventType.AUTOMATION_DELETED:
 					automationsStore.unset({
 						id: data.payload.id,
+					});
+					runsStore.unset({
+						automationId: data.payload.id,
+					});
+					break;
+
+				// The payload is the run, without its trace; `id` is the run's
+				case EventType.RUN_STARTED:
+				case EventType.RUN_COMPLETED:
+					runsStore.onEvent({
+						data: data.payload,
 					});
 					break;
 

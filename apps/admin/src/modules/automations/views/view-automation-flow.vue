@@ -212,6 +212,31 @@
 					@change="(value: string | number | boolean): void => onToggleEnabled(value === true)"
 				/>
 
+				<automation-test-button
+					:triggers="testTriggers"
+					:disabled-reason="testDisabledReason"
+					:loading="testing"
+					@test="onTest"
+				/>
+
+				<el-tooltip
+					:content="t('automations.runs.buttons.history.title')"
+					placement="bottom"
+				>
+					<el-button
+						:type="showHistory ? 'primary' : 'default'"
+						:plain="showHistory"
+						:aria-label="t('automations.runs.buttons.history.title')"
+						:aria-pressed="showHistory"
+						data-test-id="toggle-run-history"
+						@click="onToggleHistory"
+					>
+						<template #icon>
+							<icon icon="mdi:history" />
+						</template>
+					</el-button>
+				</el-tooltip>
+
 				<el-button
 					v-if="!readonly"
 					type="primary"
@@ -262,6 +287,16 @@
 				data-test-id="separate-flows-alert"
 			/>
 
+			<automation-status-explanation
+				v-if="automation.status !== AutomationStatus.ok"
+				:status="automation.status"
+				:runtime="runtime"
+				:suspended-node-id="runs[0]?.triggerNodeId ?? null"
+				:graph="graph"
+				:node-types="nodeTypes"
+				@focus="onFocusNode"
+			/>
+
 			<div class="flex flex-row grow-1 min-h-0">
 				<el-scrollbar
 					v-if="!readonly"
@@ -274,6 +309,18 @@
 				</el-scrollbar>
 
 				<div class="flex flex-col grow-1 min-w-0 min-h-0">
+					<!-- A run laid over the canvas is only looked at: it never reaches the graph or its undo history -->
+					<automation-run-summary
+						v-if="shown"
+						:shown="shown"
+						:graph="graph"
+						:node-types="nodeTypes"
+						:revision="automation.revision"
+						:unsaved="hasUnsaved"
+						@focus="onFocusNode"
+						@close="closeRun"
+					/>
+
 					<div class="grow-1 min-h-0">
 						<automation-canvas
 							:key="`${automation.id}-${readonly ? 'view' : 'edit'}`"
@@ -284,6 +331,7 @@
 							:summary-component="getCardComponent"
 							:readonly="readonly"
 							:initial-view="readonly ? 'first-trigger' : 'fit'"
+							:run="canvasRun"
 							@update:graph="onGraphUpdate"
 							@select="onSelect"
 							@reject="onReject"
@@ -296,6 +344,18 @@
 						:graph="graph"
 						:node-types="nodeTypes"
 						@focus="onFocusNode"
+					/>
+
+					<automation-run-history
+						v-if="showHistory"
+						:runs="runs"
+						:selected-run-id="shown?.runId ?? null"
+						:loading="runsLoading"
+						:failed="runsLoadFailed"
+						:graph="graph"
+						:node-types="nodeTypes"
+						@select="onReplay"
+						@reload="fetchRuns"
 					/>
 				</div>
 
@@ -347,13 +407,31 @@ import {
 	AUTOMATION_FLOW_ICON,
 	AUTOMATION_STATUS_COLORS,
 	type AutomationConnectionRejection,
+	AutomationNodeKind,
 	AutomationStatus,
 	RouteNames,
 } from '../automations.constants';
-import { AutomationsApiException } from '../automations.exceptions';
+import { AutomationsApiException, AutomationsTriggerRefusedException } from '../automations.exceptions';
 import { issueNodeIds } from '../automations.graph';
-import { AutomationCanvas, AutomationIssuesList, AutomationNodePanel, AutomationPalette } from '../components/components';
-import { useAutomationEditor, useAutomationNodePlugins, useAutomationNodeTypes } from '../composables/composables';
+import {
+	AutomationCanvas,
+	AutomationIssuesList,
+	AutomationNodePanel,
+	AutomationPalette,
+	AutomationRunHistory,
+	AutomationRunSummary,
+	AutomationStatusExplanation,
+	AutomationTestButton,
+	type IAutomationCanvasRun,
+	type IAutomationTestTrigger,
+} from '../components/components';
+import {
+	useAutomationEditor,
+	useAutomationNodePlugins,
+	useAutomationNodeTypes,
+	useAutomationRunPresentation,
+	useAutomationRunTrace,
+} from '../composables/composables';
 import { findSelfTriggeringWrites } from '../nodes/nodes.rules';
 import type { IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../store/automations.store.types';
 
@@ -402,6 +480,25 @@ const {
 	reloadLatest,
 	overwrite,
 } = useAutomationEditor({ id: props.id });
+
+const {
+	runs,
+	runsLoading,
+	runsLoadFailed,
+	runtime,
+	testing,
+	shown,
+	fetchRuns,
+	fetchRuntime,
+	test,
+	replay,
+	close: closeRun,
+} = useAutomationRunTrace({
+	id: props.id,
+	graph,
+});
+
+const { nodeLabel, outcomeText, refusalText } = useAutomationRunPresentation();
 
 useMeta({
 	title: t('automations.headings.flow'),
@@ -641,6 +738,99 @@ const onOverwrite = (): void => {
 };
 
 /*
+ * Test and trace. The backend runs the flow it has saved, so a test is offered only for what is saved; the
+ * run it starts is followed on the canvas, and a past run can be laid over it from the history.
+ */
+
+const showHistory = ref<boolean>(false);
+
+// Only looked at by the canvas: it is worked out from the trace and never written into the graph
+const canvasRun = computed<IAutomationCanvasRun | null>((): IAutomationCanvasRun | null =>
+	shown.value ? { overlay: shown.value.overlay, ended: shown.value.ended } : null
+);
+
+// The triggers of the flow, in the order they were placed; the backend starts at the first one by default
+const testTriggers = computed<IAutomationTestTrigger[]>((): IAutomationTestTrigger[] =>
+	graph.value.nodes
+		.filter((node) => getNodeType(node.type)?.kind === AutomationNodeKind.trigger)
+		.map((node) => ({ id: node.id, label: nodeLabel(node.id, graph.value, nodeTypes.value) ?? node.id }))
+);
+
+const testDisabledReason = computed<string | null>((): string | null => {
+	if (!automation.value) {
+		return null;
+	}
+
+	if (hasUnsaved.value) {
+		return t('automations.runs.test.disabled.unsaved');
+	}
+
+	if (!automation.value.enabled) {
+		return t('automations.runs.test.disabled.disabled');
+	}
+
+	if (automation.value.status !== AutomationStatus.ok) {
+		return t(`automations.runs.test.disabled.${automation.value.status}`);
+	}
+
+	if (testTriggers.value.length === 0) {
+		return t('automations.runs.test.disabled.noTrigger');
+	}
+
+	return null;
+});
+
+const onTest = async (nodeId?: string): Promise<void> => {
+	if (testDisabledReason.value !== null) {
+		return;
+	}
+
+	try {
+		const result = await test(nodeId);
+
+		if (!result.started) {
+			flashMessage.warning(outcomeText(result.outcome));
+		}
+	} catch (error) {
+		if (error instanceof AutomationsTriggerRefusedException) {
+			flashMessage.error(refusalText(error.reason));
+		} else {
+			flashMessage.error(t('automations.runs.messages.testFailed'));
+		}
+	}
+};
+
+const onToggleHistory = (): void => {
+	showHistory.value = !showHistory.value;
+
+	if (showHistory.value && runsLoadFailed.value) {
+		void fetchRuns();
+	}
+};
+
+const onReplay = (runId: string): void => {
+	// Picked again: laid off the canvas
+	if (shown.value?.runId === runId && shown.value.source === 'replay') {
+		closeRun();
+
+		return;
+	}
+
+	replay(runId);
+};
+
+// Why the automation does not run is read from the engine, with the cards it is about
+watch(
+	(): AutomationStatus | null => automation.value?.status ?? null,
+	(status: AutomationStatus | null): void => {
+		if (status === AutomationStatus.invalid || status === AutomationStatus.suspended) {
+			void fetchRuntime();
+		}
+	},
+	{ immediate: true }
+);
+
+/*
  * Keyboard. Inside a text field the browser's own undo is what the user expects, so the shortcuts of the
  * canvas stand back there; saving works from anywhere.
  */
@@ -742,6 +932,10 @@ const loadEditor = async (): Promise<void> => {
 		loadFailed.value = !notFound.value;
 	} else {
 		loadFailed.value = catalogue.status === 'rejected';
+
+		// The history is read along: the events of new runs are merged into it, and a suspension is about the
+		// trigger of the last run
+		void fetchRuns();
 	}
 
 	ready.value = true;

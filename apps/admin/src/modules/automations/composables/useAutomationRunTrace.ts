@@ -1,0 +1,225 @@
+import { type Ref, computed, ref, watch } from 'vue';
+
+import { injectStoresManager } from '../../../common';
+import { AutomationRunRecordStatus } from '../automations.constants';
+import { findRunAttention, mapTraceToOverlay } from '../automations.trace';
+import type { IAutomation, IAutomationGraph } from '../store/automations.store.types';
+import { automationRunsStoreKey } from '../store/keys';
+import type { IAutomationRun, IAutomationRunStep, IAutomationTriggerResult } from '../store/runs.store.types';
+
+import type { AutomationRunOverlaySource, IAutomationShownRun, IUseAutomationRunTrace } from './types';
+import { useAutomationLiveRun } from './useAutomationLiveRun';
+
+interface IUseAutomationRunTraceProps {
+	id: IAutomation['id'];
+	// The graph the run is laid over: the working copy of the editor, read and never changed
+	graph: Ref<IAutomationGraph>;
+}
+
+interface IOverlaySource {
+	kind: AutomationRunOverlaySource;
+	runId: string;
+	// Moves each time a run is picked, so a run picked again is read again
+	pick: number;
+}
+
+/**
+ * The steps of a run as far as they are known: the stored trace and the steps the live view received. Both
+ * number their steps the same way, so a step is in it once whichever brought it.
+ */
+export const mergeRunSteps = (stored: IAutomationRunStep[], live: IAutomationRunStep[]): IAutomationRunStep[] => {
+	const bySeq = new Map<number, IAutomationRunStep>();
+
+	for (const step of live) {
+		bySeq.set(step.seq, step);
+	}
+
+	// What was stored is what the run ended with
+	for (const step of stored) {
+		bySeq.set(step.seq, step);
+	}
+
+	return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
+};
+
+/**
+ * Testing an automation and looking at what its runs did (design § Editor, "Test and trace"): the history
+ * of its runs, a manual run followed live on the canvas, and a past run replayed from its trace.
+ *
+ * What is laid over the canvas is read-only: it is worked out from the trace and the graph, and never
+ * written into the graph or its undo history.
+ */
+export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps): IUseAutomationRunTrace => {
+	const storesManager = injectStoresManager();
+
+	const runsStore = storesManager.getStore(automationRunsStoreKey);
+
+	const live = useAutomationLiveRun({ id });
+
+	const source = ref<IOverlaySource | null>(null);
+
+	let picks = 0;
+
+	const runsLoadFailed = ref<boolean>(false);
+
+	// The reads of a trace that failed, by run and the status it was read for: not tried again on their own
+	const failedReads = ref<Set<string>>(new Set());
+
+	const runs = computed<IAutomationRun[]>((): IAutomationRun[] => runsStore.findForAutomation(id));
+
+	const runsLoading = computed<boolean>((): boolean => runsStore.fetching(id));
+
+	const runtime = computed(() => runsStore.findRuntime(id));
+
+	const testing = computed<boolean>((): boolean => runsStore.triggering(id));
+
+	const isEnded = (run: IAutomationRun | null): boolean => run !== null && run.status !== AutomationRunRecordStatus.running;
+
+	const shownRecord = computed<IAutomationRun | null>((): IAutomationRun | null => (source.value ? runsStore.findById(source.value.runId) : null));
+
+	const readKey = (runId: string, run: IAutomationRun | null): string => `${runId}:${run?.status ?? 'unknown'}`;
+
+	/*
+	 * The stored trace is read for a run picked from the history, and for a followed run once it is over: while
+	 * it runs, its steps come from the live view. A record whose status moved on since its trace was read has
+	 * lost the trace in the store, and it is read again.
+	 */
+	const readTrace = async (runId: string): Promise<void> => {
+		const key = readKey(runId, runsStore.findById(runId));
+
+		try {
+			await runsStore.get({ id: runId, fresh: true });
+		} catch {
+			failedReads.value = new Set([...failedReads.value, key]);
+		}
+	};
+
+	watch(
+		(): string | null => {
+			if (!source.value) {
+				return null;
+			}
+
+			const run = shownRecord.value;
+
+			return `${source.value.kind}:${source.value.pick}:${readKey(source.value.runId, run)}:${run?.trace ? 'traced' : 'bare'}`;
+		},
+		(): void => {
+			const current = source.value;
+
+			if (!current) {
+				return;
+			}
+
+			const run = shownRecord.value;
+
+			if (run?.trace) {
+				return;
+			}
+
+			const wanted = current.kind === 'replay' || isEnded(run);
+
+			if (!wanted || runsStore.getting(current.runId) || failedReads.value.has(readKey(current.runId, run))) {
+				return;
+			}
+
+			void readTrace(current.runId);
+		},
+		{ immediate: true }
+	);
+
+	// A run started while the view is open is followed, unless a past run is being looked at or the run
+	// followed is still going
+	watch(
+		(): string | null => live.latestRunId.value,
+		(runId: string | null): void => {
+			if (runId === null || source.value?.runId === runId || source.value?.kind === 'replay') {
+				return;
+			}
+
+			if (source.value === null || isEnded(shownRecord.value)) {
+				source.value = { kind: 'live', runId, pick: ++picks };
+			}
+		}
+	);
+
+	const shown = computed<IAutomationShownRun | null>((): IAutomationShownRun | null => {
+		const current = source.value;
+
+		if (!current) {
+			return null;
+		}
+
+		const run = shownRecord.value;
+		const steps = mergeRunSteps(run?.trace?.steps ?? [], live.stepsOf(current.runId));
+		const ended = isEnded(run);
+
+		return {
+			runId: current.runId,
+			source: current.kind,
+			run,
+			steps,
+			overlay: mapTraceToOverlay(graph.value, steps),
+			ended,
+			attention: run && ended ? findRunAttention(run, steps) : null,
+			loading: runsStore.getting(current.runId),
+			failed: failedReads.value.has(readKey(current.runId, run)),
+			truncated: run?.trace?.truncated ?? false,
+		};
+	});
+
+	const fetchRuns = async (): Promise<void> => {
+		runsLoadFailed.value = false;
+
+		try {
+			await runsStore.fetch({ automationId: id, fresh: true });
+		} catch {
+			runsLoadFailed.value = true;
+		}
+	};
+
+	// Only explains the status of the automation; when it cannot be read the status is still shown
+	const fetchRuntime = async (): Promise<void> => {
+		try {
+			await runsStore.fetchRuntime({ automationId: id });
+		} catch {
+			// Nothing more to say than the status itself
+		}
+	};
+
+	const test = async (nodeId?: string): Promise<IAutomationTriggerResult> => {
+		const result = await runsStore.trigger({ automationId: id, ...(typeof nodeId === 'string' ? { nodeId } : {}) });
+
+		if (result.started && result.runId !== null) {
+			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
+		}
+
+		return result;
+	};
+
+	const replay = (runId: string): void => {
+		// Picked again after a read that failed: it is tried again
+		failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
+
+		source.value = { kind: 'replay', runId, pick: ++picks };
+	};
+
+	const close = (): void => {
+		source.value = null;
+	};
+
+	return {
+		runs,
+		runsLoading,
+		runsLoadFailed,
+		runtime,
+		testing,
+		watching: live.watching,
+		shown,
+		fetchRuns,
+		fetchRuntime,
+		test,
+		replay,
+		close,
+	};
+};

@@ -5,7 +5,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { AUTOMATION_GRAPH_MAX_NODES, AUTOMATION_GRAPH_POSITION_LIMIT, AutomationNodeKind } from '../../automations.constants';
+import { AUTOMATION_GRAPH_MAX_NODES, AUTOMATION_GRAPH_POSITION_LIMIT, AutomationNodeKind, AutomationRunStepState } from '../../automations.constants';
+import { mapTraceToOverlay } from '../../automations.trace';
 import type { IAutomationGraph } from '../../store/automations.store.types';
 import type { IAutomationNodeType } from '../../store/node-types.store.types';
 
@@ -297,5 +298,78 @@ describe('AutomationCanvas', (): void => {
 		expect(issueOf('c1')).toBe('error');
 		expect(issueOf('a1')).toBe('error');
 		expect(issueOf('a2')).toBe('warning');
+	});
+
+	it('lays a run over the graph without changing it: the cards it reached and the edges it went along', async (): Promise<void> => {
+		const overlay = mapTraceToOverlay(graph, [
+			{
+				seq: 1,
+				at: '2026-11-11T07:30:00.000Z',
+				elapsed_ms: 0,
+				node_id: 't1',
+				type: 'manual.start',
+				kind: AutomationNodeKind.trigger,
+				state: AutomationRunStepState.done,
+				output: 'out',
+			},
+			{
+				seq: 2,
+				at: '2026-11-11T07:30:00.010Z',
+				elapsed_ms: 10,
+				node_id: 'c1',
+				type: 'time.window',
+				kind: AutomationNodeKind.condition,
+				via: 'e1',
+				state: AutomationRunStepState.done,
+				output: 'no',
+				observed: { time: '12:00' },
+			},
+			{
+				seq: 3,
+				at: '2026-11-11T07:30:00.020Z',
+				elapsed_ms: 20,
+				node_id: 'a2',
+				type: 'notification.send',
+				kind: AutomationNodeKind.action,
+				via: 'e3',
+				state: AutomationRunStepState.done,
+				output: 'error',
+				result: { success: false, reason: 'No channel.' },
+			},
+		]);
+
+		const canvas = await createWrapper({ run: { overlay, ended: true } });
+
+		await nextTick();
+
+		const card = (id: string): ReturnType<VueWrapper['find']> => wrapper.find(`.vue-flow__node[data-id="${id}"] .automation-node-card`);
+
+		expect(card('t1').attributes('data-test-run-state')).toBe('passed');
+		expect(card('c1').attributes('data-test-run-state')).toBe('passed');
+		expect(card('c1').find('[data-test-id="node-run"]').text()).toContain('automations.runs.nodes.observed');
+		expect(card('a2').attributes('data-test-run-state')).toBe('failed');
+		expect(card('a2').find('[data-test-id="node-run"]').text()).toContain('automations.runs.nodes.failed');
+		// Not reached: steps back, says nothing
+		expect(card('a1').attributes('data-test-run-state')).toBe('none');
+		expect(card('a1').find('[data-test-id="node-run"]').exists()).toBe(false);
+
+		const flow = useVueFlow(wrapper.findComponent(VueFlow).props('id') as string);
+		const edgeClass = (id: string): string => String(flow.getEdges.value.find((edge) => edge.id === id)?.class ?? '');
+
+		expect(edgeClass('e1')).toContain('automation-canvas__edge--taken');
+		expect(edgeClass('e3')).toContain('automation-canvas__edge--taken');
+		expect(edgeClass('e2')).toContain('automation-canvas__edge--not-taken');
+
+		expect(canvas.getGraph()).toEqual(graph);
+		expect(wrapper.emitted('update:graph')).toBeUndefined();
+
+		// Laid off again, the canvas is as it was
+		await wrapper.setProps({ run: null });
+		await nextTick();
+
+		expect(card('t1').attributes('data-test-run-state')).toBeUndefined();
+		expect(edgeClass('e1')).not.toContain('automation-canvas__edge--taken');
+		expect(edgeClass('e2')).not.toContain('automation-canvas__edge--not-taken');
+		expect(wrapper.emitted('update:graph')).toBeUndefined();
 	});
 });
