@@ -378,6 +378,21 @@ describe('useAutomationEditor', () => {
 			expect(mockFlash.error).toHaveBeenCalledWith('automations.editor.messages.invalid Hallway motion light');
 		});
 
+		it('says so when the graph is refused because an action would reduce safety', async () => {
+			const editor = await createEditor();
+
+			editor.updateGraph(withDelay());
+
+			const unsafe = { ...invalidConfig, code: 'safety_reducing_action', message: 'An automation can not unlock a lock.', field: 'writes.0.value' };
+
+			mockBackendClient.POST.mockResolvedValue(ok({ valid: false, issues: [unsafe] }));
+
+			await expect(editor.save()).resolves.toBe('invalid');
+
+			expect(editor.issues.value).toEqual([unsafe]);
+			expect(mockFlash.error).toHaveBeenCalledWith('automations.editor.messages.unsafe Hallway motion light');
+		});
+
 		it('shows the issues of a save the backend refuses', async () => {
 			const editor = await createEditor();
 

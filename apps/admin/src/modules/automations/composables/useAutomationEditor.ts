@@ -7,6 +7,7 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { AutomationMode } from '../automations.constants';
 import { AutomationsApiException, AutomationsGraphInvalidException, AutomationsRevisionConflictException } from '../automations.exceptions';
 import { canonicalGraph, cloneGraph, createEmptyGraph, findSeparateFlows, pruneIssues } from '../automations.graph';
+import { AUTOMATION_SAFETY_ISSUE_CODE } from '../nodes/nodes.constants';
 import type { IAutomation, IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../store/automations.store.types';
 import { automationNodeTypesStoreKey, automationsStoreKey } from '../store/keys';
 
@@ -149,6 +150,14 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 
 	const name = (): string => automation.value?.name ?? '';
 
+	// A save refused because an action would unlock, disarm or open says so: it is not something left
+	// unfinished, and no other change makes it savable
+	const flashInvalid = (refused: IAutomationGraphIssue[]): void => {
+		const unsafe = refused.some((issue) => issue.code === AUTOMATION_SAFETY_ISSUE_CODE && issue.severity === 'error');
+
+		flashMessage.error(t(unsafe ? 'automations.editor.messages.unsafe' : 'automations.editor.messages.invalid', { automation: name() }));
+	};
+
 	const handleSaveError = (error: unknown): AutomationEditorSaveResult => {
 		if (error instanceof AutomationsRevisionConflictException) {
 			conflict.value = true;
@@ -161,7 +170,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		if (error instanceof AutomationsGraphInvalidException) {
 			issues.value = pruneIssues(error.issues, history.graph.value);
 
-			flashMessage.error(t('automations.editor.messages.invalid', { automation: name() }));
+			flashInvalid(error.issues);
 
 			return 'invalid';
 		}
@@ -188,7 +197,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 				issues.value = pruneIssues(validation.issues, history.graph.value);
 
 				if (!validation.valid) {
-					flashMessage.error(t('automations.editor.messages.invalid', { automation: name() }));
+					flashInvalid(validation.issues);
 
 					return 'invalid';
 				}

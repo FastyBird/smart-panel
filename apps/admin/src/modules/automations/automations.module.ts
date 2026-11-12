@@ -17,6 +17,7 @@ import {
 
 import { AUTOMATIONS_MODULE_EVENT_PREFIX, AUTOMATIONS_MODULE_NAME, EventType } from './automations.constants';
 import { locales } from './locales';
+import { AUTOMATION_BUILT_IN_NODE_ELEMENTS } from './nodes/nodes.elements';
 import { ModuleRoutes } from './router';
 import { registerAutomationsStore } from './store/automations.store';
 import { automationNodeTypesStoreKey, automationsStoreKey } from './store/keys';
@@ -52,7 +53,8 @@ export default {
 			type: AUTOMATIONS_MODULE_NAME,
 			name: 'Automations',
 			description: 'Let your smart home act on its own: when something happens, and the conditions hold, then do something.',
-			elements: [],
+			// The forms and summaries of the module's own cards, found by `useAutomationNodePlugins`
+			elements: AUTOMATION_BUILT_IN_NODE_ELEMENTS,
 			isCore: true,
 		});
 

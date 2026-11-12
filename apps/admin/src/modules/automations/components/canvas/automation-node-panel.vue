@@ -59,11 +59,17 @@
 				<el-alert
 					v-for="(issue, index) in generalIssues"
 					:key="index"
-					:title="issueText(issue)"
+					:title="
+						issue.code === AUTOMATION_SAFETY_ISSUE_CODE
+							? t(`automations.editor.safety.${issue.severity === 'error' ? 'refused' : 'checkedOnRun'}`)
+							: issueText(issue)
+					"
+					:description="issue.code === AUTOMATION_SAFETY_ISSUE_CODE ? issue.message : undefined"
 					:type="issue.severity === 'error' ? 'error' : 'warning'"
 					:closable="false"
 					show-icon
 					class="mb-3!"
+					:data-test-issue="issue.code"
 				/>
 
 				<el-alert
@@ -75,15 +81,18 @@
 				/>
 
 				<!--
-					Seam for AU-11: a card with an admin element brings its own form (`automationNodeForm`, resolved
-					by `useAutomationNodePlugins`); it takes the same props and emits the same event as the generic form.
+					A card with an admin element brings its own form (`automationNodeForm`, resolved by
+					`useAutomationNodePlugins`); it takes the same props and emits the same events as the generic form,
+					so it is disabled with the panel and keeps the editor from saving while it holds text that does not parse.
 				-->
-				<automation-node-generic-form
+				<component
+					:is="props.form ?? AutomationNodeGenericForm"
 					v-else
 					:key="props.node.id"
 					:node-type="props.nodeType"
 					:config="props.node.config"
 					:field-errors="fieldErrors"
+					:issues="props.form ? props.issues : undefined"
 					:disabled="props.disabled"
 					@update:config="(config: Record<string, unknown>, field: string): void => emit('update:config', config, field)"
 					@update:invalid="(invalid: boolean): void => emit('update:invalid', invalid)"
@@ -121,6 +130,7 @@ import { Icon } from '@iconify/vue';
 
 import { describeConfigSchema, issueFieldKey } from '../../automations.config-schema';
 import { useAutomationNodePresentation } from '../../composables/useAutomationNodePresentation';
+import { AUTOMATION_SAFETY_ISSUE_CODE } from '../../nodes/nodes.constants';
 import type { IAutomationGraphIssue } from '../../store/automations.store.types';
 
 import AutomationNodeGenericForm from './automation-node-generic-form.vue';
@@ -132,6 +142,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<IAutomationNodePanelProps>(), {
 	issues: () => [],
+	form: null,
 	disabled: false,
 });
 

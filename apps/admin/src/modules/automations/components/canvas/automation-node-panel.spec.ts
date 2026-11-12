@@ -1,3 +1,5 @@
+import { defineComponent } from 'vue';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -39,6 +41,20 @@ const issue = (overrides: Partial<IAutomationGraphIssue>): IAutomationGraphIssue
 	blocking: true,
 	node_id: 'd1',
 	...overrides,
+});
+
+// The form an admin element brings for its card
+const OwnForm = defineComponent({
+	name: 'OwnForm',
+	props: {
+		nodeType: { type: Object, required: true },
+		config: { type: Object, required: true },
+		fieldErrors: { type: Object, default: () => ({}) },
+		issues: { type: Array, default: () => [] },
+		disabled: { type: Boolean, default: false },
+	},
+	emits: ['update:config', 'update:invalid'],
+	template: '<div data-test-id="own-form" />',
 });
 
 describe('AutomationNodePanel', (): void => {
@@ -109,6 +125,45 @@ describe('AutomationNodePanel', (): void => {
 
 		// A structural problem is worded by the admin, a problem of the configuration by the backend
 		expect(alerts).toEqual(['No trigger leads to this block.', 'Something about a field the form does not show.']);
+	});
+
+	it('shows the form the admin element of the card brings, with every issue of the card', async (): Promise<void> => {
+		const refusal = issue({ code: 'safety_reducing_action', field: 'seconds', message: 'Not safe.' });
+
+		await createWrapper({ form: OwnForm, issues: [refusal] });
+
+		expect(wrapper.findComponent(AutomationNodeGenericForm).exists()).toBe(false);
+		expect(wrapper.findComponent(OwnForm).props()).toMatchObject({ nodeType: delay, config: { seconds: 30 }, issues: [refusal] });
+
+		wrapper.findComponent(OwnForm).vm.$emit('update:config', { seconds: 5 }, 'seconds');
+
+		expect(wrapper.emitted('update:config')).toEqual([[{ seconds: 5 }, 'seconds']]);
+	});
+
+	it('disables the form of the card with the panel and passes on text in it that does not parse', async (): Promise<void> => {
+		await createWrapper({ form: OwnForm, disabled: true });
+
+		expect(wrapper.findComponent(OwnForm).props('disabled')).toBe(true);
+
+		wrapper.findComponent(OwnForm).vm.$emit('update:invalid', true);
+
+		expect(wrapper.emitted('update:invalid')).toEqual([[true]]);
+	});
+
+	it('says plainly that an action was refused for safety, with the reason the backend gave', async (): Promise<void> => {
+		await createWrapper({
+			issues: [
+				issue({ code: 'safety_reducing_action', message: 'An automation can not unlock a lock.' }),
+				issue({ severity: 'warning', code: 'safety_reducing_action', message: 'The scene would open the garage.' }),
+			],
+		});
+
+		const alerts = wrapper.findAll('[data-test-issue="safety_reducing_action"]').map((alert) => alert.text());
+
+		expect(alerts).toEqual([
+			'automations.editor.safety.refusedAn automation can not unlock a lock.',
+			'automations.editor.safety.checkedOnRunThe scene would open the garage.',
+		]);
 	});
 
 	it('explains a card that is no longer offered instead of showing a form', async (): Promise<void> => {
