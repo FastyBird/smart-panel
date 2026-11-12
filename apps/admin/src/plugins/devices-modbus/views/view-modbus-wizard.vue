@@ -2,12 +2,38 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<view-header
-		:heading="t('devicesModbusPlugin.wizard.title')"
-		:sub-heading="t('devicesModbusPlugin.wizard.subtitle')"
+		:heading="editing ? t('devicesModbusPlugin.wizard.edit.title') : t('devicesModbusPlugin.wizard.title')"
+		:sub-heading="editing ? t('devicesModbusPlugin.wizard.edit.subtitle') : t('devicesModbusPlugin.wizard.subtitle')"
 		icon="mdi:lan-connect"
 	/>
 
-	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
+	<div
+		v-if="editing && (wizard.loading.value || wizard.loadError.value !== null)"
+		v-loading="wizard.loading.value"
+		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 mt-2 min-h-[200px]"
+	>
+		<el-result
+			v-if="wizard.loadError.value !== null"
+			icon="error"
+			:title="t('devicesModbusPlugin.wizard.edit.loadFailed')"
+			:sub-title="wizard.loadError.value"
+			data-test-id="wizard-load-error"
+		>
+			<template #extra>
+				<el-button
+					type="primary"
+					@click="onRetryLoad"
+				>
+					{{ t('devicesModbusPlugin.wizard.edit.retry') }}
+				</el-button>
+			</template>
+		</el-result>
+	</div>
+
+	<div
+		v-else
+		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+	>
 		<el-card
 			shadow="never"
 			class="max-h-full flex flex-col overflow-hidden box-border"
@@ -15,12 +41,14 @@
 		>
 			<template #header>
 				<el-steps
-					:active="wizard.state.step"
+					:active="wizard.state.step - firstStep"
 					finish-status="success"
 					align-center
 				>
-					<el-step :title="t('devicesModbusPlugin.wizard.steps.endpoint')" />
-					<el-step :title="t('devicesModbusPlugin.wizard.steps.template')" />
+					<template v-if="!editing">
+						<el-step :title="t('devicesModbusPlugin.wizard.steps.endpoint')" />
+						<el-step :title="t('devicesModbusPlugin.wizard.steps.template')" />
+					</template>
 					<el-step :title="t('devicesModbusPlugin.wizard.steps.points')" />
 					<el-step :title="t('devicesModbusPlugin.wizard.steps.device')" />
 					<el-step :title="t('devicesModbusPlugin.wizard.steps.review')" />
@@ -61,7 +89,7 @@
 
 	<div class="mt-2 flex justify-end lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2">
 		<el-button
-			v-if="wizard.state.step > 0"
+			v-if="wizard.state.step > firstStep"
 			:disabled="busy"
 			data-test-id="wizard-back"
 			@click="onBack"
@@ -78,7 +106,7 @@
 			{{ t('devicesModule.wizard.actions.cancel') }}
 		</el-button>
 		<el-button
-			v-if="!isLastStep"
+			v-if="!isLastStep && !blocked"
 			type="primary"
 			class="ml-2!"
 			:disabled="!canAdvance"
@@ -92,14 +120,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElScrollbar, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElCard, ElResult, ElScrollbar, ElStep, ElSteps, vLoading } from 'element-plus';
 
-import { AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBreadcrumbs, ViewHeader, useBreakpoints, useLogger } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import ModbusWizardDeviceStep from '../components/wizard/modbus-wizard-device-step.vue';
 import ModbusWizardEndpointStep from '../components/wizard/modbus-wizard-endpoint-step.vue';
@@ -113,15 +141,56 @@ defineOptions({
 	name: 'ViewModbusWizard',
 });
 
+const props = defineProps<{
+	/** The device whose points are edited; absent when a device is added. */
+	id?: string;
+}>();
+
 const { t } = useI18n();
 const router = useRouter();
+const logger = useLogger();
 const { isLGDevice } = useBreakpoints();
 
-useMeta({
-	title: t('devicesModbusPlugin.wizard.title'),
+// The edit route carries the device id; the add route has none.
+const editing = computed<boolean>((): boolean => typeof props.id === 'string' && props.id !== '');
+
+const { meta } = useMeta({
+	title: editing.value ? t('devicesModbusPlugin.wizard.edit.title') : t('devicesModbusPlugin.wizard.title'),
 });
 
 const wizard = useModbusDeviceWizard();
+
+// Editing skips the endpoint and template steps: the device keeps its endpoint and unit, and has no template step.
+const firstStep = computed<number>((): number => (editing.value ? MODBUS_WIZARD_STEP.POINTS : 0));
+
+// Nothing can move on while the edited device is loading or failed to load.
+const blocked = computed<boolean>((): boolean => editing.value && (wizard.loading.value || wizard.loadError.value !== null));
+
+const loadDevice = (): void => {
+	if (props.id) {
+		wizard.loadDevice(props.id).catch((error: unknown): void => logger.error('Failed to load the Modbus device', error));
+	}
+};
+
+const onRetryLoad = (): void => {
+	loadDevice();
+};
+
+onBeforeMount(loadDevice);
+
+// The view stays mounted when the route switches to another device, or from editing one to adding a device.
+watch(
+	() => props.id,
+	(): void => {
+		meta.title = editing.value ? t('devicesModbusPlugin.wizard.edit.title') : t('devicesModbusPlugin.wizard.title');
+
+		if (editing.value) {
+			loadDevice();
+		} else {
+			wizard.startCreate();
+		}
+	}
+);
 
 // True while a step transition does work (saving a new endpoint when leaving step 1).
 const stepBusy = ref<boolean>(false);
@@ -131,7 +200,7 @@ const busy = computed<boolean>((): boolean => stepBusy.value || wizard.submitSta
 
 const isLastStep = computed<boolean>((): boolean => wizard.state.step === MODBUS_WIZARD_STEP_COUNT - 1);
 
-const canAdvance = computed<boolean>((): boolean => !stepBusy.value && wizard.canContinue(wizard.state.step));
+const canAdvance = computed<boolean>((): boolean => !stepBusy.value && !blocked.value && wizard.canContinue(wizard.state.step));
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => [
@@ -139,10 +208,23 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			label: t('devicesModule.breadcrumbs.devices.list'),
 			route: router.resolve({ name: DevicesRouteNames.DEVICES }),
 		},
-		{
-			label: t('devicesModbusPlugin.wizard.breadcrumb'),
-			route: router.resolve({ name: RouteNames.WIZARD }),
-		},
+		...(editing.value
+			? [
+					{
+						label: wizard.state.device.name !== '' ? wizard.state.device.name : t('devicesModbusPlugin.wizard.edit.device'),
+						route: router.resolve({ name: DevicesRouteNames.DEVICE, params: { id: props.id } }),
+					},
+					{
+						label: t('devicesModbusPlugin.wizard.edit.breadcrumb'),
+						route: router.resolve({ name: RouteNames.EDIT, params: { id: props.id } }),
+					},
+				]
+			: [
+					{
+						label: t('devicesModbusPlugin.wizard.breadcrumb'),
+						route: router.resolve({ name: RouteNames.WIZARD }),
+					},
+				]),
 	]
 );
 
@@ -151,15 +233,18 @@ const onCancel = (): void => {
 		return;
 	}
 
+	// Leaving the points editor goes back to the device it edits.
+	const target = editing.value ? { name: DevicesRouteNames.DEVICE, params: { id: props.id } } : { name: DevicesRouteNames.DEVICES };
+
 	if (isLGDevice.value) {
-		router.replace({ name: DevicesRouteNames.DEVICES });
+		router.replace(target);
 	} else {
-		router.push({ name: DevicesRouteNames.DEVICES });
+		router.push(target);
 	}
 };
 
 const onBack = (): void => {
-	if (busy.value || wizard.state.step === 0) {
+	if (busy.value || wizard.state.step <= firstStep.value) {
 		return;
 	}
 

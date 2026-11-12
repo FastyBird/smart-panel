@@ -1,10 +1,12 @@
+import { computed } from 'vue';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
 import type { IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../../../modules/devices/store/keys';
-import { modbusEndpointsStoreKey } from '../store/keys';
+import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../store/keys';
 
 import ModbusDeviceSection from './modbus-device-section.vue';
 
@@ -19,6 +21,15 @@ const endpointsStore = {
 };
 const channelsStore = { findForDevice: () => [{ id: 'c1' }] };
 const propertiesStore = { findForChannel: () => [{ id: 'p1', name: 'Power', identifier: 'on', category: 'on' }] };
+const templatesStore = {
+	catalog: null as { templates: { id: string; revision: string }[] } | null,
+	fetch: vi.fn(),
+};
+const session = { role: 'owner' };
+
+vi.mock('../../../modules/auth/composables/useSession', () => ({
+	useSession: () => ({ profile: computed(() => ({ role: session.role })) }),
+}));
 
 vi.mock('vue-i18n', async () => {
 	const actual = await vi.importActual('vue-i18n');
@@ -53,6 +64,7 @@ vi.mock('../../../common', async () => {
 				if (key === modbusEndpointsStoreKey) return endpointsStore;
 				if (key === channelsStoreKey) return channelsStore;
 				if (key === channelsPropertiesStoreKey) return propertiesStore;
+				if (key === modbusTemplatesStoreKey) return templatesStore;
 
 				return {};
 			},
@@ -99,6 +111,9 @@ describe('ModbusDeviceSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		get.mockResolvedValue({ data: { data: [wireBinding] } });
+		session.role = 'owner';
+		templatesStore.catalog = { templates: [{ id: 'relay-board', revision: '3' }] };
+		templatesStore.fetch.mockImplementation(() => Promise.resolve(templatesStore.catalog));
 	});
 
 	it('renders bindings from the api', async () => {
@@ -174,5 +189,59 @@ describe('ModbusDeviceSection', () => {
 
 		expect(wrapper.get('[data-test-id="modbus-section-template"]').text()).toBe('devicesModbusPlugin.section.templateCustom');
 		expect(wrapper.get('[data-test-id="modbus-section-poll"]').text()).toBe('devicesModbusPlugin.section.pollDefault');
+	});
+
+	it.each(['owner', 'admin'])('lets an %s edit the points of the device', async (role) => {
+		session.role = role;
+		const wrapper = await mountSection(device());
+
+		await wrapper.get('[data-test-id="modbus-section-edit-points"]').trigger('click');
+
+		expect(push).toHaveBeenCalledWith({ name: 'devices_modbus-edit', params: { id: 'd1' } });
+	});
+
+	it('hides the points editing from other users', async () => {
+		session.role = 'user';
+		const wrapper = await mountSection(device());
+
+		expect(wrapper.find('[data-test-id="modbus-section-edit-points"]').exists()).toBe(false);
+	});
+
+	it('tags a device whose template has a newer revision in the catalog', async () => {
+		templatesStore.catalog = { templates: [{ id: 'relay-board', revision: '4' }] };
+		const wrapper = await mountSection(device());
+
+		expect(wrapper.find('[data-test-id="modbus-section-template-updated"]').exists()).toBe(true);
+		expect(templatesStore.fetch).not.toHaveBeenCalled();
+	});
+
+	it('does not tag a device whose template revision is current or no longer in the catalog', async () => {
+		const current = await mountSection(device());
+
+		expect(current.find('[data-test-id="modbus-section-template-updated"]').exists()).toBe(false);
+
+		templatesStore.catalog = { templates: [{ id: 'other', revision: '9' }] };
+		const missing = await mountSection(device());
+
+		expect(missing.find('[data-test-id="modbus-section-template-updated"]').exists()).toBe(false);
+	});
+
+	it('loads the template catalog when it is not loaded yet', async () => {
+		templatesStore.catalog = null;
+		templatesStore.fetch.mockImplementation(() => {
+			templatesStore.catalog = { templates: [{ id: 'relay-board', revision: '5' }] };
+
+			return Promise.resolve(templatesStore.catalog);
+		});
+		await mountSection(device());
+
+		expect(templatesStore.fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not load the template catalog for a custom device', async () => {
+		templatesStore.catalog = null;
+		await mountSection(device({ templateId: null, templateRevision: null }));
+
+		expect(templatesStore.fetch).not.toHaveBeenCalled();
 	});
 });

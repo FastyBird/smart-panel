@@ -131,7 +131,9 @@
 				"live": "Live value",
 				"raw": "Raw value",
 				"error": "Error",
-				"actions": "Actions"
+				"actions": "Actions",
+				"unit": "Unit",
+				"longPressMs": "Long press (ms)"
 			},
 			"actions": {
 				"edit": "Edit",
@@ -152,7 +154,13 @@
 				"valueMapRawUnique": "Each raw value can appear only once in the value map",
 				"valueMapValueUnique": "Each value can appear only once in the value map",
 				"valueMapInvert": "Invert cannot be combined with a value map; express the inversion in the map",
-				"singleWrite32": "A 32-bit value spans two registers and needs the multiple write function"
+				"singleWrite32": "A 32-bit value spans two registers and needs the multiple write function",
+				"longPressRange": "The long press time must be a whole number from 100 to 10000 ms",
+				"longPressNotButton": "A long press time applies to the read binding of a button event only",
+				"buttonLevel": "A button reads a boolean level: use a coil, a discrete input or a register bit",
+				"buttonValueMap": "A button reads a boolean level and takes no value map; use invert to flip it",
+				"numberBool": "A numeric value cannot be read as bool unless a bit is set",
+				"scaleZero": "The scale cannot be 0, it would turn every value into 0"
 			},
 			"editor": {
 				"title": "Edit point",
@@ -165,7 +173,8 @@
 				"addEntry": "Add entry",
 				"removeEntry": "Remove",
 				"cancel": "Cancel",
-				"save": "Save"
+				"save": "Save",
+				"capabilityLocked": "Existující kanál si ponechává svou kategorii; pro změnu bod odstraňte a přidejte nový."
 			},
 			"testWrite": {
 				"title": "Test write: {name}",
@@ -180,6 +189,41 @@
 				"confirmButton": "Write",
 				"cancelButton": "Cancel",
 				"done": "The value was written."
+			},
+			"capabilities": {
+				"binary_input": {
+					"state": "Binary input"
+				},
+				"switcher": {
+					"on": "Switch"
+				},
+				"outlet": {
+					"on": "Outlet"
+				},
+				"valve": {
+					"on": "Valve"
+				},
+				"button": {
+					"event": "Button"
+				},
+				"analog_input": {
+					"value": "Analog input"
+				},
+				"temperature": {
+					"temperature": "Temperature"
+				},
+				"humidity": {
+					"humidity": "Humidity"
+				},
+				"electrical_power": {
+					"power": "Electrical power"
+				},
+				"pressure": {
+					"pressure": "Pressure"
+				},
+				"illuminance": {
+					"illuminance": "Illuminance"
+				}
 			}
 		},
 		"device": {
@@ -190,7 +234,7 @@
 			"category": {
 				"title": "Category",
 				"placeholder": "Select a category",
-				"hint": "Devices with a writable point are usually switchers; read-only devices are input controllers."
+				"hint": "Devices with a valve point are usually valves, other devices with a writable point switchers; devices that only measure values are sensors, other read-only devices input controllers."
 			},
 			"pollInterval": {
 				"title": "Poll interval (ms)",
@@ -226,6 +270,18 @@
 			"inverted": "inverted",
 			"create": "Create device",
 			"created": "Device \"{name}\" was created."
+		},
+		"edit": {
+			"title": "Upravit body Modbus",
+			"subtitle": "Změňte registry, schopnosti a dotazování existujícího zařízení Modbus",
+			"breadcrumb": "Upravit body",
+			"device": "Zařízení",
+			"loadFailed": "Zařízení se nepodařilo načíst k úpravě",
+			"retry": "Zkusit znovu",
+			"deviceHint": "Název a místnost zařízení se mění v nastavení zařízení.",
+			"save": "Uložit body",
+			"saved": "Body zařízení \"{name}\" byly uloženy.",
+			"saveFailed": "Body se nepodařilo uložit"
 		}
 	},
 	"endpoints": {
@@ -402,6 +458,9 @@
 		"readNow": "Read now",
 		"readNowHint": "Reads the saved read bindings once through the endpoint. Nothing is written.",
 		"readFailed": "The read failed: {reason}",
-		"readNoUnit": "This device has no endpoint or unit ID to read from."
+		"readNoUnit": "This device has no endpoint or unit ID to read from.",
+		"editPoints": "Upravit body",
+		"templateUpdated": "Šablona aktualizována",
+		"templateUpdatedHint": "Šablona má revizi {revision}; toto zařízení bylo vytvořeno ze starší."
 	}
 }

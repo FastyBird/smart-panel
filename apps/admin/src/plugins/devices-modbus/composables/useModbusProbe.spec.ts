@@ -42,6 +42,7 @@ const coil = (address: number): ModbusPointBinding => ({
 	valueMap: null,
 	writeFunction: null,
 	pollIntervalMs: null,
+	longPressMs: null,
 });
 
 const orders = { byteOrder: DevicesModbusPluginByteOrder.big, wordOrder: DevicesModbusPluginByteOrder.big };
@@ -88,6 +89,7 @@ describe('useModbusProbe', () => {
 			valueMap: null,
 			writeFunction: null,
 			pollIntervalMs: null,
+			longPressMs: null,
 		} satisfies ModbusPointBinding;
 
 		const result = await useModbusProbe().write({ endpoint_id: 'e1' }, 1, binding, true, {
@@ -189,6 +191,7 @@ describe('useModbusProbe', () => {
 			valueMap: null,
 			writeFunction: null,
 			pollIntervalMs: null,
+			longPressMs: null,
 		};
 
 		const result = await useModbusProbe().readPoints({ endpoint_id: 'e1' }, 1, [{ key: 'k1', read: binding }], {
@@ -263,6 +266,7 @@ describe('useModbusProbe', () => {
 			valueMap: null,
 			writeFunction: null,
 			pollIntervalMs: null,
+			longPressMs: null,
 		};
 
 		const result = await useModbusProbe().write({ endpoint_id: 'e1' }, 2, binding, true, {

@@ -66,7 +66,7 @@
 						<el-option
 							v-for="capability in CUSTOM_CAPABILITIES"
 							:key="capability.key"
-							:label="capability.key"
+							:label="capabilityLabel(capability.key)"
 							:value="capability.key"
 						/>
 					</el-select>
@@ -177,7 +177,7 @@
 				min-width="140"
 			>
 				<template #default="{ row }">
-					{{ capabilityKeyOf(row) }}
+					{{ capabilityLabel(capabilityKeyOf(row)) }}
 				</template>
 			</el-table-column>
 
@@ -361,6 +361,7 @@
 						{{ t('devicesModbusPlugin.wizard.points.actions.testWrite') }}
 					</el-button>
 					<el-button
+						v-if="!isStaticSibling(row)"
 						link
 						type="danger"
 						:data-test-id="`point-delete-${row.key}`"
@@ -434,7 +435,8 @@
 			v-model:visible="editorVisible"
 			:point="editing"
 			:notation="wizard.state.notation"
-			:capability-editable="editing !== null && !isTemplateRow(editing)"
+			:capability-editable="editing !== null && !isTemplateRow(editing) && !isStatic(editing)"
+			:locked-channel-category="editing !== null ? lockedChannelCategoryOf(editing) : null"
 			@save="onEditorSave"
 		/>
 	</div>
@@ -466,8 +468,15 @@ import { DevicesModbusPluginRegisterType } from '../../../../openapi.constants';
 import { useModbusLiveValues } from '../../composables/useModbusLiveValues';
 import { type IModbusProbePointsResult, type ModbusProbeTarget, useModbusProbe } from '../../composables/useModbusProbe';
 import { type AddressNotation, AddressNotationError, type ParsedAddress, formatAddress, parseAddressInput } from '../../lib/address-notation';
-import { CUSTOM_CAPABILITIES, capabilityKeyOf, defaultRegisterTypeFor, pointBaseFor, registerTypesFor } from '../../lib/capabilities';
-import { type ModbusPoint, type ModbusPointBinding, pointsFromRange, samePoints } from '../../lib/points';
+import {
+	CUSTOM_CAPABILITIES,
+	capabilityKeyOf,
+	defaultRegisterTypeFor,
+	pointBaseFor,
+	registerTypesFor,
+	withCapabilityStatics,
+} from '../../lib/capabilities';
+import { type ModbusPoint, type ModbusPointBinding, pointsFromRange, removePoint, samePoints } from '../../lib/points';
 import { explainProbeError } from '../../lib/probe-messages';
 
 import ModbusPointEditor from './modbus-point-editor.vue';
@@ -507,10 +516,13 @@ const readPoints = async (inputs: { key: string; read: ModbusPointBinding }[]): 
 		return { ok: false, points: [], error: { kind: 'request', exceptionCode: null, message: 'No endpoint is selected.' }, durationMs: 0 };
 	}
 
+	// An edited device reads with its own limits, a new one with those of its template.
+	const limits = state.edit ?? state.templateDevice;
+
 	return probe.readPoints(target, state.unitId, inputs, deviceOrders(), {
-		maxReadRegisters: state.templateDevice?.maxReadRegisters,
-		maxReadBits: state.templateDevice?.maxReadBits,
-		maxReadGap: state.templateDevice?.maxReadGap,
+		maxReadRegisters: limits?.maxReadRegisters,
+		maxReadBits: limits?.maxReadBits,
+		maxReadGap: limits?.maxReadGap,
 	});
 };
 
@@ -527,6 +539,24 @@ const isTemplateRow = (point: ModbusPoint): boolean =>
 	(state.template?.points ?? []).some(
 		(candidate) => candidate.channelIdentifier === point.channelIdentifier && candidate.propertyCategory === point.propertyCategory
 	);
+
+// A row of an existing channel keeps the channel's category: the points update cannot change it.
+const lockedChannelCategoryOf = (point: ModbusPoint): string | null =>
+	point.channelId !== null ? (state.edit?.channelCategories[point.channelId] ?? point.channelCategory) : null;
+
+const capabilityLabel = (key: string): string => {
+	const path = `devicesModbusPlugin.wizard.points.capabilities.${key}`;
+	const label = t(path);
+
+	return label === path ? key : label;
+};
+
+// A static point has a fixed value and no bindings, e.g. the type of a valve.
+const isStatic = (point: ModbusPoint): boolean => point.read === null && point.write === null;
+
+// Static points of a channel with a bound point belong to that point: they are removed together with it.
+const isStaticSibling = (point: ModbusPoint): boolean =>
+	isStatic(point) && state.points.some((candidate) => candidate.channelIdentifier === point.channelIdentifier && !isStatic(candidate));
 
 const bindingsOf = (point: ModbusPoint): { kind: 'read' | 'write'; binding: ModbusPointBinding }[] =>
 	[
@@ -615,7 +645,7 @@ const onAdd = (): void => {
 };
 
 const onDelete = (point: ModbusPoint): void => {
-	state.points = state.points.filter((candidate) => candidate.key !== point.key);
+	state.points = removePoint(state.points, point.key);
 
 	if (writeKey.value === point.key) {
 		writeKey.value = null;
@@ -635,7 +665,7 @@ const onEdit = (point: ModbusPoint): void => {
 const onEditorSave = (saved: ModbusPoint): void => {
 	const original = editing.value;
 
-	state.points = state.points.map((point) => {
+	const points = state.points.map((point) => {
 		if (point.key === saved.key) {
 			return saved;
 		}
@@ -643,6 +673,9 @@ const onEditorSave = (saved: ModbusPoint): void => {
 		// Points of one channel share its name; renaming one renames them all.
 		return original !== null && point.channelIdentifier === original.channelIdentifier ? { ...point, name: saved.name } : point;
 	});
+
+	// A new capability brings its own static siblings (a valve its type) and drops those only the old one needed.
+	state.points = original !== null && capabilityKeyOf(original) !== capabilityKeyOf(saved) ? withCapabilityStatics(points, original, saved) : points;
 };
 
 // --- Test write ---

@@ -3,7 +3,7 @@
 		<el-alert
 			v-if="wizard.createError.value !== null"
 			type="error"
-			:title="t('devicesModbusPlugin.wizard.review.failed')"
+			:title="editing ? t('devicesModbusPlugin.wizard.edit.saveFailed') : t('devicesModbusPlugin.wizard.review.failed')"
 			:description="wizard.createError.value"
 			:closable="false"
 			show-icon
@@ -35,7 +35,10 @@
 			<el-descriptions-item :label="t('devicesModbusPlugin.wizard.review.orders')">
 				{{ wizard.state.device.byteOrder }} / {{ wizard.state.device.wordOrder }}
 			</el-descriptions-item>
-			<el-descriptions-item :label="t('devicesModbusPlugin.wizard.review.source')">
+			<el-descriptions-item
+				v-if="!editing"
+				:label="t('devicesModbusPlugin.wizard.review.source')"
+			>
 				<span data-test-id="review-source">{{ sourceText }}</span>
 			</el-descriptions-item>
 		</el-descriptions>
@@ -67,7 +70,7 @@
 				data-test-id="review-create"
 				@click="onCreate"
 			>
-				{{ t('devicesModbusPlugin.wizard.review.create') }}
+				{{ editing ? t('devicesModbusPlugin.wizard.edit.save') : t('devicesModbusPlugin.wizard.review.create') }}
 			</el-button>
 		</div>
 	</div>
@@ -107,6 +110,8 @@ const endpointsStore = storesManager.getStore(modbusEndpointsStoreKey);
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const wizard = props.wizard;
+
+const editing = computed<boolean>((): boolean => wizard.mode.value === 'edit');
 
 const endpointText = computed<string>((): string => {
 	const endpoint = wizard.state.endpointId !== null ? endpointsStore.findById(wizard.state.endpointId) : null;
@@ -181,9 +186,15 @@ const channels = computed<IReviewChannel[]>((): IReviewChannel[] => {
 	return [...grouped.values()];
 });
 
-// Create stays disabled while a request is pending and once the device exists, so it can never be submitted twice.
+// Create stays disabled while a request is pending and once the device exists or its points are saved, so it can
+// never be submitted twice.
 const canCreate = computed<boolean>(
-	(): boolean => wizard.submitState.value !== 'submitting' && wizard.submitState.value !== 'created' && wizard.canContinue(3) && wizard.canContinue(2)
+	(): boolean =>
+		wizard.submitState.value !== 'submitting' &&
+		wizard.submitState.value !== 'created' &&
+		wizard.submitState.value !== 'saved' &&
+		wizard.canContinue(3) &&
+		wizard.canContinue(2)
 );
 
 const onCreate = async (): Promise<void> => {
@@ -194,9 +205,18 @@ const onCreate = async (): Promise<void> => {
 	let id: string;
 
 	try {
-		id = await wizard.create();
+		id = await wizard.submit();
 	} catch (error: unknown) {
-		logger.error('Failed to create the Modbus device', error);
+		logger.error(editing.value ? 'Failed to update the Modbus device points' : 'Failed to create the Modbus device', error);
+
+		return;
+	}
+
+	if (editing.value) {
+		// The wizard refreshed the device, its channels and properties after the update.
+		flashMessage.success(t('devicesModbusPlugin.wizard.edit.saved', { name: wizard.state.device.name.trim() }));
+
+		await router.push({ name: DevicesRouteNames.DEVICE, params: { id } });
 
 		return;
 	}

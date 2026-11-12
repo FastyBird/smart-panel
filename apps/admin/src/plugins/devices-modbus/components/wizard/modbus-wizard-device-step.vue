@@ -3,7 +3,20 @@
 		label-position="top"
 		@submit.prevent
 	>
-		<el-form-item :label="t('devicesModbusPlugin.wizard.device.name.title')">
+		<el-alert
+			v-if="editing"
+			type="info"
+			:title="t('devicesModbusPlugin.wizard.edit.deviceHint')"
+			:closable="false"
+			show-icon
+			class="mb-4"
+			data-test-id="device-step-edit-hint"
+		/>
+
+		<el-form-item
+			v-if="!editing"
+			:label="t('devicesModbusPlugin.wizard.device.name.title')"
+		>
 			<el-input
 				v-model="wizard.state.device.name"
 				:placeholder="t('devicesModbusPlugin.wizard.device.name.placeholder')"
@@ -30,7 +43,10 @@
 			</div>
 		</el-form-item>
 
-		<el-form-item :label="t('devicesModule.fields.devices.room.title')">
+		<el-form-item
+			v-if="!editing"
+			:label="t('devicesModule.fields.devices.room.title')"
+		>
 			<el-select
 				v-model="wizard.state.device.roomId"
 				:placeholder="t('devicesModule.fields.devices.room.placeholder')"
@@ -132,13 +148,18 @@ defineOptions({
 const props = defineProps<IModbusWizardDeviceStepProps>();
 
 const ORDERS = [DevicesModbusPluginByteOrder.big, DevicesModbusPluginByteOrder.little];
-const BASE_CATEGORIES = ['switcher', 'input_controller'];
+const BASE_CATEGORIES = ['switcher', 'input_controller', 'sensor', 'valve'];
+// Reserved by the core and refused for Modbus devices: never offered, not even as the current or template category.
+const RESERVED_CATEGORY = 'generic';
 
 const { t } = useI18n();
 const logger = useLogger();
 const spacesStore = injectStoresManager().getStore(spacesStoreKey);
 
 const wizard = props.wizard;
+
+// Name and room of an existing device belong to the core device form; the points update does not change them.
+const editing = computed<boolean>(() => wizard.mode.value === 'edit');
 
 const categoryLabel = (category: string): string => {
 	const key = `devicesModule.categories.devices.${category}`;
@@ -151,7 +172,7 @@ const categoryOptions = computed<{ value: string; label: string }[]>(() => {
 	const values = [...BASE_CATEGORIES];
 
 	for (const extra of [wizard.state.templateDevice?.category, wizard.state.device.category]) {
-		if (extra && !values.includes(extra)) {
+		if (extra && extra !== RESERVED_CATEGORY && !values.includes(extra)) {
 			values.push(extra);
 		}
 	}
@@ -167,14 +188,18 @@ const roomOptions = computed<{ value: string; label: string }[]>(() =>
 	).map((space: ISpace): { value: string; label: string } => ({ value: space.id, label: space.name }))
 );
 
-// No point in this plan has a button capability; the hint stays keyed for the plan that adds them.
-const hasButtonPoints = computed<boolean>(() => wizard.state.points.some((point) => point.channelCategory === 'button'));
+// Button events come from short pulses, which a slow poll misses.
+const hasButtonPoints = computed<boolean>(() =>
+	wizard.state.points.some((point) => point.channelCategory === 'button' && point.propertyCategory === 'event')
+);
 
 onBeforeMount((): void => {
-	if (wizard.state.device.category === null) {
+	if (wizard.state.device.category === null || wizard.state.device.category === RESERVED_CATEGORY) {
 		wizard.state.device.category = suggestCategory(wizard.state.points);
 	}
 
-	spacesStore.fetch().catch((error: unknown): void => logger.error('Failed to load rooms', error));
+	if (!editing.value) {
+		spacesStore.fetch().catch((error: unknown): void => logger.error('Failed to load rooms', error));
+	}
 });
 </script>

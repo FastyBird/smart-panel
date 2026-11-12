@@ -73,6 +73,7 @@ const binding = (address: number) => ({
 	valueMap: null,
 	writeFunction: null,
 	pollIntervalMs: null,
+	longPressMs: null,
 });
 
 const readyWizard = (): IUseModbusDeviceWizard => {
@@ -87,6 +88,8 @@ const readyWizard = (): IUseModbusDeviceWizard => {
 		{
 			key: 'p1',
 			name: 'Relay 1',
+			channelId: null,
+			propertyId: null,
 			channelCategory: 'switcher',
 			channelIdentifier: 'relay_1',
 			propertyCategory: 'on',

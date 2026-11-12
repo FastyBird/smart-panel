@@ -23,11 +23,14 @@ const binding = (address: number): ModbusPointBinding => ({
 	valueMap: null,
 	writeFunction: null,
 	pollIntervalMs: null,
+	longPressMs: null,
 });
 
 const point = (key: string, read: ModbusPointBinding | null): ModbusPoint => ({
 	key,
 	name: key,
+	channelId: null,
+	propertyId: null,
 	channelCategory: 'switcher',
 	channelIdentifier: key,
 	propertyCategory: 'on',

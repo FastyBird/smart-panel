@@ -8,16 +8,20 @@ import {
 } from '../../../openapi.constants';
 import type { IModbusTemplatePreview } from '../store/templates.types';
 
+import { deviceBindingFromWire, pointsFromDevice } from './device-points';
 import {
 	type ModbusPoint,
+	type ModbusPointBase,
 	type ModbusPointBinding,
 	bindingIssues,
 	pointsFromPreview,
 	pointsFromRange,
+	removePoint,
 	samePoints,
 	suggestCategory,
 	toCreateRequest,
 	toRequestBinding,
+	toUpdateRequest,
 	valueMapValueFromText,
 } from './points';
 
@@ -34,12 +38,11 @@ const binding = (over: Partial<ModbusPointBinding> = {}): ModbusPointBinding => 
 	valueMap: null,
 	writeFunction: null,
 	pollIntervalMs: null,
+	longPressMs: null,
 	...over,
 });
 
-const base = (
-	over: Partial<Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'>> = {}
-): Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'> => ({
+const base = (over: Partial<ModbusPointBase> = {}): ModbusPointBase => ({
 	channelCategory: 'switcher',
 	propertyCategory: 'on',
 	propertyIdentifier: null,
@@ -200,6 +203,36 @@ describe('suggestCategory', () => {
 		expect(suggestCategory(pointsFromRange(base({ write: null }), { registerType: null, start: 0, count: 2 }, 'A'))).toBe('input_controller');
 		expect(suggestCategory([])).toBe('input_controller');
 	});
+
+	it('suggests valve for any valve point, even next to other writable points', () => {
+		expect(
+			suggestCategory([
+				...pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A'),
+				...pointsFromRange(base({ channelCategory: 'valve' }), { registerType: null, start: 1, count: 1 }, 'V'),
+			])
+		).toBe('valve');
+	});
+
+	it('suggests sensor when every bound point measures a quantity, ignoring static points', () => {
+		const measured = ['temperature', 'humidity', 'electrical_power', 'pressure', 'illuminance', 'analog_input'].flatMap((category, index) =>
+			pointsFromRange(
+				base({ channelCategory: category, propertyCategory: 'value', dataType: 'float', permissions: ['ro'], write: null }),
+				{ registerType: null, start: index, count: 1 },
+				category
+			)
+		);
+		const information = pointsFromRange(
+			base({ channelCategory: 'device_information', propertyCategory: 'manufacturer', staticValue: 'Acme', read: null, write: null }),
+			{ registerType: null, start: 0, count: 1 },
+			'Info'
+		);
+
+		expect(suggestCategory([...measured, ...information])).toBe('sensor');
+		expect(
+			suggestCategory([...measured, ...pointsFromRange(base({ write: null, permissions: ['ro'] }), { registerType: null, start: 9, count: 1 }, 'A')])
+		).toBe('input_controller');
+		expect(suggestCategory(information)).toBe('input_controller');
+	});
 });
 
 describe('samePoints', () => {
@@ -234,6 +267,98 @@ describe('pointsFromPreview', () => {
 		expect(points[1].read).toMatchObject({ scale: 0.1, offset: -5, bit: 2, invert: true, valueMap: null });
 		expect(points[2]).toMatchObject({ staticValue: 'Acme', read: null, write: null });
 		expect(new Set(points.map((p) => p.key)).size).toBe(3);
+		expect(points.every((p) => p.channelId === null && p.propertyId === null)).toBe(true);
+		expect(points[0].read?.longPressMs).toBeNull();
+	});
+
+	it('takes the long press of a template button', () => {
+		const [point] = pointsFromPreview({
+			...preview,
+			channels: [
+				{
+					identifier: 'button_1',
+					name: 'Button 1',
+					category: 'button',
+					properties: [
+						{
+							category: 'event',
+							dataType: 'enum',
+							permissions: ['ev'],
+							read: { registerType: RT.discrete_input, address: 2, dataType: DT.bool, longPressMs: 1500 },
+						},
+					],
+				},
+			],
+		});
+
+		expect(point.read?.longPressMs).toBe(1500);
+		expect(toRequestBinding(point.read!)).toEqual({ register_type: 'discrete_input', address: 2, data_type: 'bool', long_press_ms: 1500 });
+	});
+});
+
+describe('pointsFromRange ids', () => {
+	it('starts new points without channel and property ids', () => {
+		const [point] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A');
+
+		expect([point.channelId, point.propertyId]).toEqual([null, null]);
+	});
+});
+
+describe('toRequestBinding long press', () => {
+	it('sends the long press only when it is set', () => {
+		expect(toRequestBinding(binding({ registerType: RT.discrete_input, longPressMs: 1200 }))).toEqual({
+			register_type: 'discrete_input',
+			address: 0,
+			data_type: 'bool',
+			long_press_ms: 1200,
+		});
+		expect(toRequestBinding(binding())).not.toHaveProperty('long_press_ms');
+	});
+});
+
+describe('removePoint', () => {
+	const valve = (start: number, prefix: string): ModbusPoint[] => [
+		...pointsFromRange(
+			[
+				base({ channelCategory: 'valve' }),
+				base({
+					channelCategory: 'valve',
+					propertyCategory: 'type',
+					dataType: 'enum',
+					permissions: ['ro'],
+					staticValue: 'generic',
+					read: null,
+					write: null,
+				}),
+			],
+			{ registerType: null, start, count: 1 },
+			prefix
+		),
+	];
+
+	it('removes the static siblings with the last bound point of their channel', () => {
+		const points = [...valve(0, 'A'), ...valve(1, 'B')];
+
+		expect(removePoint(points, points[0].key).map((p) => [p.channelIdentifier, p.propertyCategory])).toEqual([
+			['b_1', 'on'],
+			['b_1', 'type'],
+		]);
+	});
+
+	it('keeps a channel that still has a bound point, and static-only channels', () => {
+		const [on, type] = valve(0, 'A');
+		const state: ModbusPoint = { ...on, key: 'state', propertyCategory: 'state', write: null, permissions: ['ro'] };
+		const [information, model] = pointsFromRange(
+			[
+				base({ channelCategory: 'device_information', propertyCategory: 'manufacturer', staticValue: 'Acme', read: null, write: null }),
+				base({ channelCategory: 'device_information', propertyCategory: 'model', staticValue: 'R8', read: null, write: null }),
+			],
+			{ registerType: null, start: 0, count: 1 },
+			'Info'
+		);
+
+		expect(removePoint([on, type, state], on.key).map((p) => p.propertyCategory)).toEqual(['type', 'state']);
+		expect(removePoint([on, type, information, model], information.key).map((p) => p.propertyCategory)).toEqual(['on', 'type', 'model']);
 	});
 });
 
@@ -444,6 +569,16 @@ describe('toCreateRequest', () => {
 		expect(() => toCreateRequest(input([a, { ...a, key: 'x', channelCategory: 'outlet' }]))).toThrow(/disagree/);
 	});
 
+	it('sends channel and property ids only when the point has them', () => {
+		const [a] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A');
+		const { data } = toCreateRequest(input([a, { ...a, key: 'b', channelIdentifier: 'b', channelId: 'ch-b', propertyId: 'pr-b' }]));
+
+		expect(data.channels[0]).not.toHaveProperty('id');
+		expect(data.channels[0].properties[0]).not.toHaveProperty('id');
+		expect(data.channels[1].id).toBe('ch-b');
+		expect(data.channels[1].properties[0].id).toBe('pr-b');
+	});
+
 	it('merges points sharing a channel identifier into one channel', () => {
 		const [a] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A');
 		const b: ModbusPoint = { ...a, key: 'other', propertyCategory: 'state', write: null, permissions: ['ro'] };
@@ -451,6 +586,143 @@ describe('toCreateRequest', () => {
 
 		expect(data.channels).toHaveLength(1);
 		expect(data.channels[0].properties.map((p) => p.category)).toEqual(['on', 'state']);
+	});
+});
+
+describe('toUpdateRequest', () => {
+	it('sends the device settings and the channels, keeping the ids of existing channels and properties', () => {
+		const [relay] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'Relay');
+		const existing: ModbusPoint = { ...relay, channelId: 'ch-1', propertyId: 'pr-1' };
+		const added: ModbusPoint = {
+			...relay,
+			key: 'state',
+			propertyCategory: 'state',
+			write: null,
+			permissions: ['ro'],
+			channelId: 'ch-1',
+			propertyId: null,
+		};
+		const [fresh] = pointsFromRange(base(), { registerType: null, start: 1, count: 1 }, 'New');
+
+		expect(
+			toUpdateRequest({ category: 'switcher', pollIntervalMs: 250, byteOrder: BO.big, wordOrder: BO.little, points: [existing, added, fresh] })
+		).toEqual({
+			data: {
+				category: 'switcher',
+				poll_interval_ms: 250,
+				byte_order: 'big',
+				word_order: 'little',
+				channels: [
+					{
+						id: 'ch-1',
+						identifier: 'relay_1',
+						name: 'Relay 1',
+						category: 'switcher',
+						properties: [
+							{
+								id: 'pr-1',
+								category: 'on',
+								data_type: 'bool',
+								permissions: ['rw'],
+								read: { register_type: 'coil', address: 0, data_type: 'bool' },
+								write: { register_type: 'coil', address: 0, data_type: 'bool' },
+							},
+							{
+								category: 'state',
+								data_type: 'bool',
+								permissions: ['ro'],
+								read: { register_type: 'coil', address: 0, data_type: 'bool' },
+							},
+						],
+					},
+					{
+						identifier: 'new_1',
+						name: 'New 1',
+						category: 'switcher',
+						properties: [
+							{
+								category: 'on',
+								data_type: 'bool',
+								permissions: ['rw'],
+								read: { register_type: 'coil', address: 1, data_type: 'bool' },
+								write: { register_type: 'coil', address: 1, data_type: 'bool' },
+							},
+						],
+					},
+				],
+			},
+		});
+	});
+
+	const storedChannel = (identifier: string | null) => ({
+		id: '5f0c2a8e-1b7d-4c3e-9a61-2d4b8f7e6c10',
+		identifier,
+		name: 'Heater',
+		category: 'heater',
+		properties: [
+			{ id: 'p-on', identifier: null, name: null, category: 'on', dataType: 'bool', permissions: ['rw'], unit: null, format: null, value: null },
+			{
+				id: 'p-name',
+				identifier: 'label',
+				name: null,
+				category: 'generic',
+				dataType: 'string',
+				permissions: ['ro'],
+				unit: null,
+				format: null,
+				value: null,
+			},
+		],
+	});
+
+	const storedBindings = [
+		deviceBindingFromWire({ id: 'b1', property_id: 'p-on', role: 'read', register_type: 'coil', address: 0, data_type: 'bool' }),
+		deviceBindingFromWire({ id: 'b2', property_id: 'p-on', role: 'write', register_type: 'coil', address: 0, data_type: 'bool' }),
+	];
+
+	const updateOf = (points: ModbusPoint[]) =>
+		toUpdateRequest({ category: 'switcher', pollIntervalMs: 250, byteOrder: BO.big, wordOrder: BO.big, points });
+
+	it('keeps a static property without a stored value by its id, without sending a value', () => {
+		const [channel] = updateOf(pointsFromDevice([storedChannel('heater_1')], storedBindings)).data.channels;
+		const label = channel.properties.find((property) => property.id === 'p-name');
+
+		expect(label).toEqual({ id: 'p-name', identifier: 'label', category: 'generic', data_type: 'string', permissions: ['ro'] });
+		expect(label).not.toHaveProperty('static_value');
+	});
+
+	it('does not send the id of a channel without an identifier as its identifier', () => {
+		const stored = storedChannel(null);
+		const { channels } = updateOf(pointsFromDevice([stored], storedBindings)).data;
+
+		expect(channels).toHaveLength(1);
+		expect(channels[0].id).toBe(stored.id);
+		expect(channels[0]).not.toHaveProperty('identifier');
+		expect(channels[0].properties.map((property) => property.id)).toEqual(['p-on', 'p-name']);
+
+		// Also when the first point of the channel is a new one that does not carry the channel id.
+		const [on, label] = pointsFromDevice([stored], storedBindings);
+		const reordered = updateOf([{ ...label, propertyId: null, channelId: null }, on]).data.channels;
+
+		expect(reordered[0].id).toBe(stored.id);
+		expect(reordered[0]).not.toHaveProperty('identifier');
+	});
+
+	it('throws when points sharing a channel disagree on its id', () => {
+		const [a] = pointsFromRange(base(), { registerType: null, start: 0, count: 1 }, 'A');
+
+		expect(() =>
+			toUpdateRequest({
+				category: 'switcher',
+				pollIntervalMs: 250,
+				byteOrder: BO.big,
+				wordOrder: BO.big,
+				points: [
+					{ ...a, channelId: 'ch-1' },
+					{ ...a, key: 'x', channelId: 'ch-2' },
+				],
+			})
+		).toThrow(/disagree/);
 	});
 });
 
@@ -543,6 +815,44 @@ describe('bindingIssues', () => {
 
 		expect(bindingIssues(wide, 'write').writeFunction).toBe('devicesModbusPlugin.wizard.points.errors.singleWrite32');
 		expect(bindingIssues({ ...wide, writeFunction: WF.multiple }, 'write').writeFunction).toBeUndefined();
+	});
+});
+
+describe('bindingIssues numeric and button points', () => {
+	const E = 'devicesModbusPlugin.wizard.points.errors.';
+	const press = (over: Partial<ModbusPointBinding> = {}) => binding({ registerType: RT.discrete_input, ...over });
+	const reg = (over: Partial<ModbusPointBinding> = {}) => binding({ registerType: RT.input_register, dataType: DT.int16, ...over });
+
+	it('holds a long press to a whole number from 100 to 10000 ms', () => {
+		expect(bindingIssues(press({ longPressMs: 50 }), 'read', 'button').longPressMs).toBe(`${E}longPressRange`);
+		expect(bindingIssues(press({ longPressMs: 20000 }), 'read', 'button').longPressMs).toBe(`${E}longPressRange`);
+		expect(bindingIssues(press({ longPressMs: 150.5 }), 'read', 'button').longPressMs).toBe(`${E}longPressRange`);
+		expect(bindingIssues(press({ longPressMs: 100 }), 'read', 'button')).toEqual({});
+		expect(bindingIssues(press({ longPressMs: 10000 }), 'read', 'button')).toEqual({});
+		expect(bindingIssues(press(), 'read', 'button')).toEqual({});
+	});
+
+	it('takes a long press on the read binding of a button event only', () => {
+		expect(bindingIssues(press({ longPressMs: 800 }), 'read', 'bool').longPressMs).toBe(`${E}longPressNotButton`);
+		expect(bindingIssues(press({ longPressMs: 800 }), 'read').longPressMs).toBe(`${E}longPressNotButton`);
+		expect(bindingIssues(binding({ longPressMs: 800 }), 'write', 'button').longPressMs).toBe(`${E}longPressNotButton`);
+	});
+
+	it('reads a button level from a bit table or a register bit, without a value map', () => {
+		const word = reg({ dataType: DT.bool });
+
+		expect(bindingIssues(word, 'read', 'button').dataType).toBe(`${E}buttonLevel`);
+		expect(bindingIssues({ ...word, bit: 2 }, 'read', 'button')).toEqual({});
+		expect(bindingIssues(reg({ bit: 2 }), 'read', 'button').dataType).toBe(`${E}buttonLevel`);
+		expect(bindingIssues(press({ valueMap: [{ raw: 1, value: true }] }), 'read', 'button').valueMap).toBe(`${E}buttonValueMap`);
+	});
+
+	it('refuses a number read as bool unless a bit is set, and a zero scale', () => {
+		expect(bindingIssues(reg({ dataType: DT.bool }), 'read', 'number').dataType).toBe(`${E}numberBool`);
+		expect(bindingIssues(reg({ dataType: DT.bool, bit: 1 }), 'read', 'number').dataType).toBeUndefined();
+		expect(bindingIssues(reg({ dataType: DT.float32 }), 'read', 'number')).toEqual({});
+		expect(bindingIssues(reg({ scale: 0 }), 'read', 'number').scale).toBe(`${E}scaleZero`);
+		expect(bindingIssues(reg({ scale: 0.1, offset: -3 }), 'read', 'number')).toEqual({});
 	});
 });
 

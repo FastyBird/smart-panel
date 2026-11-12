@@ -16,6 +16,18 @@ export const PluginRoutes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: 'devices-modbus/:id/points',
+		name: RouteNames.EDIT,
+		component: () => import('../views/view-modbus-wizard.vue'),
+		props: true,
+		meta: {
+			devicesWizard: true,
+			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
+			title: 'Edit Modbus points',
+			icon: 'mdi:lan-connect',
+		},
+	},
+	{
 		path: 'devices-modbus/endpoints',
 		name: RouteNames.ENDPOINTS,
 		component: () => import('../views/view-modbus-endpoints.vue'),

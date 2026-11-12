@@ -8,6 +8,15 @@
 			<div class="flex items-center gap-2">
 				<icon icon="mdi:lan-connect" />
 				<strong>{{ t('devicesModbusPlugin.section.heading') }}</strong>
+				<el-button
+					v-if="canEdit"
+					size="small"
+					class="ml-auto"
+					data-test-id="modbus-section-edit-points"
+					@click="onEditPoints"
+				>
+					{{ t('devicesModbusPlugin.section.editPoints') }}
+				</el-button>
 			</div>
 		</template>
 
@@ -59,6 +68,19 @@
 							: t('devicesModbusPlugin.section.templateCustom')
 					}}
 				</span>
+				<el-tooltip
+					v-if="templateUpdate !== null"
+					:content="t('devicesModbusPlugin.section.templateUpdatedHint', { revision: templateUpdate })"
+				>
+					<el-tag
+						class="ml-2"
+						type="warning"
+						size="small"
+						data-test-id="modbus-section-template-updated"
+					>
+						{{ t('devicesModbusPlugin.section.templateUpdated') }}
+					</el-tag>
+				</el-tooltip>
 			</el-descriptions-item>
 		</el-descriptions>
 
@@ -196,21 +218,41 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElLink, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCard,
+	ElDescriptions,
+	ElDescriptionsItem,
+	ElLink,
+	ElTable,
+	ElTableColumn,
+	ElTag,
+	ElText,
+	ElTooltip,
+	vLoading,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getErrorReason, injectStoresManager, snakeToCamel, useBackend, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { useSession } from '../../../modules/auth/composables/useSession';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../../../modules/devices/store/keys';
 import type { DevicesModbusPluginGetDeviceBindingsOperation } from '../../../openapi.constants';
-import { DevicesModbusPluginByteOrder, DevicesModbusPluginEndpointHealthState, DevicesModbusPluginFraming } from '../../../openapi.constants';
+import {
+	DevicesModbusPluginByteOrder,
+	DevicesModbusPluginEndpointHealthState,
+	DevicesModbusPluginFraming,
+	UsersModuleUserRole,
+} from '../../../openapi.constants';
 import { useModbusProbe } from '../composables/useModbusProbe';
 import { DEVICES_MODBUS_PLUGIN_PREFIX, RouteNames } from '../devices-modbus.constants';
 import { formatAddress } from '../lib/address-notation';
+import { deviceBindingFromWire } from '../lib/device-points';
 import type { ModbusPointBinding } from '../lib/points';
 import { explainProbeError } from '../lib/probe-messages';
-import { modbusEndpointsStoreKey } from '../store/keys';
+import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../store/keys';
 
 import type { IModbusBindingReading, IModbusDeviceBinding, IModbusDeviceSectionProps } from './modbus-device-section.types';
 
@@ -226,8 +268,10 @@ const backend = useBackend();
 const logger = useLogger();
 const probe = useModbusProbe();
 const storesManager = injectStoresManager();
+const { profile } = useSession();
 
 const endpointsStore = storesManager.getStore(modbusEndpointsStoreKey);
+const templatesStore = storesManager.getStore(modbusTemplatesStoreKey);
 const channelsStore = storesManager.getStore(channelsStoreKey);
 const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
@@ -247,6 +291,23 @@ const modbusDevice = computed(
 			maxReadGap?: number | null;
 		}
 );
+
+// Points are edited by owners and admins only, as the edit route allows.
+const canEdit = computed<boolean>(() => profile.value?.role === UsersModuleUserRole.owner || profile.value?.role === UsersModuleUserRole.admin);
+
+// The catalog's revision of the device's template when it differs from the one the device was created from; null when
+// the device has no template, it is not in the catalog or the revisions match.
+const templateUpdate = computed<string | null>(() => {
+	const templateId = modbusDevice.value.templateId;
+
+	if (!templateId) {
+		return null;
+	}
+
+	const revision = templatesStore.catalog?.templates.find((template) => template.id === templateId)?.revision ?? null;
+
+	return revision !== null && revision !== (modbusDevice.value.templateRevision ?? null) ? revision : null;
+});
 
 const endpoint = computed(() => (modbusDevice.value.endpointId ? endpointsStore.findById(modbusDevice.value.endpointId) : null));
 const endpointHealth = computed(() => (modbusDevice.value.endpointId ? (endpointsStore.health[modbusDevice.value.endpointId] ?? null) : null));
@@ -312,32 +373,6 @@ const mappingSummary = (binding: ModbusPointBinding): string => {
 	return parts.length > 0 ? parts.join(', ') : '-';
 };
 
-const toBinding = (wire: Record<string, unknown>): IModbusDeviceBinding => {
-	const camel = snakeToCamel(wire) as Partial<ModbusPointBinding> &
-		Pick<ModbusPointBinding, 'registerType' | 'address' | 'dataType'> &
-		Pick<IModbusDeviceBinding, 'id' | 'role'> & { propertyId: string };
-
-	return {
-		id: camel.id,
-		propertyId: camel.propertyId,
-		role: camel.role,
-		binding: {
-			registerType: camel.registerType,
-			address: camel.address,
-			dataType: camel.dataType,
-			bit: camel.bit ?? null,
-			byteOrder: camel.byteOrder ?? null,
-			wordOrder: camel.wordOrder ?? null,
-			scale: camel.scale ?? 1,
-			offset: camel.offset ?? 0,
-			invert: camel.invert ?? false,
-			valueMap: camel.valueMap ?? null,
-			writeFunction: camel.writeFunction ?? null,
-			pollIntervalMs: camel.pollIntervalMs ?? null,
-		},
-	};
-};
-
 const fetchBindings = async (): Promise<void> => {
 	loading.value = true;
 	loadError.value = null;
@@ -353,7 +388,7 @@ const fetchBindings = async (): Promise<void> => {
 			return;
 		}
 
-		bindings.value = responseData.data.map((item) => toBinding(item as unknown as Record<string, unknown>));
+		bindings.value = responseData.data.map((item) => deviceBindingFromWire(item as unknown as Record<string, unknown>));
 	} catch (err: unknown) {
 		logger.error('Failed to load the Modbus device bindings', err);
 
@@ -425,6 +460,12 @@ const onReadNow = async (): Promise<void> => {
 	}
 };
 
+const onEditPoints = (): void => {
+	router
+		.push({ name: RouteNames.EDIT, params: { id: props.device.id } })
+		.catch((err: unknown): void => logger.error('Failed to open the Modbus points editor', err));
+};
+
 const onOpenEndpoints = (): void => {
 	router.push({ name: RouteNames.ENDPOINTS }).catch((err: unknown): void => logger.error('Failed to open the Modbus endpoints page', err));
 };
@@ -446,4 +487,17 @@ onMounted(async (): Promise<void> => {
 });
 
 onMounted(fetchBindings);
+
+onMounted(async (): Promise<void> => {
+	// The "template updated" tag needs the catalog; a custom device has nothing to compare.
+	if (!modbusDevice.value.templateId || templatesStore.catalog !== null) {
+		return;
+	}
+
+	try {
+		await templatesStore.fetch();
+	} catch (err: unknown) {
+		logger.error('Failed to load the Modbus template catalog', err);
+	}
+});
 </script>

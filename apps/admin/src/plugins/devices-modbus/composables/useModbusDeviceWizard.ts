@@ -3,15 +3,24 @@ import { type ComputedRef, type Ref, computed, reactive, ref } from 'vue';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import { configPluginsStoreKey } from '../../../modules/config';
-import { DevicesModbusPluginByteOrder, type DevicesModbusPluginCreateDeviceOperation, DevicesModbusPluginFraming } from '../../../openapi.constants';
+import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
+import {
+	DevicesModbusPluginByteOrder,
+	type DevicesModbusPluginCreateDeviceOperation,
+	DevicesModbusPluginFraming,
+	type DevicesModbusPluginGetDeviceBindingsOperation,
+	type DevicesModbusPluginUpdateDeviceStructureOperation,
+} from '../../../openapi.constants';
 import {
 	DEVICES_MODBUS_PLUGIN_NAME,
 	DEVICES_MODBUS_PLUGIN_PREFIX,
+	DEVICES_MODBUS_TYPE,
 	MODBUS_MAX_POLL_INTERVAL_MS,
 	MODBUS_MIN_POLL_INTERVAL_MS,
 } from '../devices-modbus.constants';
 import type { AddressNotation } from '../lib/address-notation';
-import { type ModbusPoint, pointsFromPreview, toCreateRequest } from '../lib/points';
+import { type ModbusDeviceChannelInput, deviceBindingFromWire, pointsFromDevice } from '../lib/device-points';
+import { type ModbusPoint, pointsFromPreview, toCreateRequest, toUpdateRequest } from '../lib/points';
 import { modbusEndpointsStoreKey, modbusTemplatesStoreKey } from '../store/keys';
 import type { IModbusTemplatePreviewOverrides } from '../store/templates.types';
 
@@ -66,6 +75,24 @@ export interface IModbusWizardDevice {
 	wordOrder: DevicesModbusPluginByteOrder;
 }
 
+/** The device whose points the wizard edits (edit mode). */
+export interface IModbusWizardEdit {
+	deviceId: string;
+	/** Category of each existing channel: the points update cannot change it, so a row of that channel keeps it. */
+	channelCategories: Record<string, string>;
+	/** Read limits of the device, used by the probe on the points step. */
+	maxReadRegisters: number | null;
+	maxReadBits: number | null;
+	maxReadGap: number | null;
+	/**
+	 * Poll interval stored on the device; null when the device follows the plugin default, which the device step then
+	 * shows. The update leaves it out until the user changes the shown value.
+	 */
+	storedPollIntervalMs: number | null;
+}
+
+export type ModbusWizardMode = 'create' | 'edit';
+
 export interface IModbusWizardState {
 	step: number;
 	endpointMode: 'existing' | 'new';
@@ -79,15 +106,31 @@ export interface IModbusWizardState {
 	points: ModbusPoint[];
 	device: IModbusWizardDevice;
 	notation: AddressNotation;
+	/** Set by `loadDevice`; null while creating a device. */
+	edit: IModbusWizardEdit | null;
 }
 
-export type ModbusWizardSubmitState = 'idle' | 'submitting' | 'created' | 'error';
+/** `created` after a new device was posted, `saved` after the points of an existing one were updated. */
+export type ModbusWizardSubmitState = 'idle' | 'submitting' | 'created' | 'saved' | 'error';
 
 export interface IUseModbusDeviceWizard {
 	state: IModbusWizardState;
+	/** `edit` once `loadDevice` started: the endpoint and template steps are skipped and submit updates the points. */
+	mode: Ref<ModbusWizardMode>;
+	/** True while `loadDevice` runs. */
+	loading: Ref<boolean>;
+	/** Why the device could not be loaded for editing; the editor is not shown then. */
+	loadError: Ref<string | null>;
 	submitState: Ref<ModbusWizardSubmitState>;
+	/** The reason the last submit failed, create or update. */
 	createError: Ref<string | null>;
+	/** Creates the device (create mode) or updates its points (edit mode); resolves to the device id. */
+	submit: () => Promise<string>;
+	/** Alias of `submit`, kept for existing callers. */
 	create: () => Promise<string>;
+	loadDevice: (id: string) => Promise<void>;
+	/** Leaves edit mode for a fresh create wizard, e.g. when the view goes from the edit route to the add route. */
+	startCreate: () => void;
 	endpointForm: IUseModbusEndpointForm;
 	applyingTemplate: Ref<boolean>;
 	/** True while a new endpoint is being saved; the endpoint step is locked so the save cannot replace a newer choice. */
@@ -115,10 +158,14 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		| null
 		| undefined;
 
+	const devicesStore = storesManager.getStore(devicesStoreKey);
+	const channelsStore = storesManager.getStore(channelsStoreKey);
+	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+
 	const backend = useBackend();
 	const endpointForm = useModbusEndpointForm();
 
-	const state = reactive<IModbusWizardState>({
+	const initialState = (): IModbusWizardState => ({
 		step: 0,
 		endpointMode: 'existing',
 		endpointId: null,
@@ -137,14 +184,21 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 			wordOrder: DevicesModbusPluginByteOrder.big,
 		},
 		notation: 'one_based',
+		edit: null,
 	});
+
+	const state = reactive<IModbusWizardState>(initialState());
+
+	const mode = ref<ModbusWizardMode>('create');
+	const loading = ref<boolean>(false);
+	const loadError = ref<string | null>(null);
 
 	const applyingTemplate = ref<boolean>(false);
 	const savingEndpoint = ref<boolean>(false);
 
 	// The defaults last applied to each field. A field still holding its applied default has not been changed by
 	// the user, so the next template may replace it; a differing value is the user's and is kept.
-	const applied = {
+	const initialApplied = () => ({
 		unitId: state.unitId,
 		pollIntervalMs: state.device.pollIntervalMs,
 		byteOrder: state.device.byteOrder,
@@ -152,15 +206,28 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		port: state.newEndpoint.port,
 		framing: state.newEndpoint.framing,
 		name: '',
-	};
+	});
+
+	const applied = initialApplied();
 
 	const isValidUnitId = (unitId: number): boolean => Number.isInteger(unitId) && unitId >= 0 && unitId <= MAX_UNIT_ID;
 
 	const canContinue = (step: number): boolean => {
+		const editing = mode.value === 'edit';
+
 		switch (step) {
+			// An edited device keeps its endpoint and unit, and has no template step.
 			case MODBUS_WIZARD_STEP.ENDPOINT:
+				if (editing) {
+					return true;
+				}
+
 				return isValidUnitId(state.unitId) && (state.endpointMode === 'existing' ? state.endpointId !== null : endpointForm.requiredFilled.value);
 			case MODBUS_WIZARD_STEP.TEMPLATE:
+				if (editing) {
+					return true;
+				}
+
 				// A pending preview would replace the points after the user moved on.
 				return !applyingTemplate.value && (state.template !== null || state.startedEmpty);
 			case MODBUS_WIZARD_STEP.POINTS:
@@ -168,7 +235,8 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 				return state.points.length > 0 && state.points.some((point) => point.read !== null);
 			case MODBUS_WIZARD_STEP.DEVICE:
 				return (
-					state.device.name.trim() !== '' &&
+					// The name is edited on the core device form, not here.
+					(editing || state.device.name.trim() !== '') &&
 					state.device.category !== null &&
 					state.device.category !== '' &&
 					// The create request needs a whole number of milliseconds within the backend's range.
@@ -184,6 +252,9 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	const submitState = ref<ModbusWizardSubmitState>('idle');
 	const createError = ref<string | null>(null);
 
+	// Bumped by `loadDevice` and `startCreate`: a request of an earlier wizard session must not change the current one.
+	let session = 0;
+
 	let saving: Promise<string> | null = null;
 
 	// Called when the user leaves step 1: device creation needs an endpoint id. It is a no-op once the endpoint exists,
@@ -194,19 +265,31 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		}
 
 		if (saving === null) {
+			const started = session;
+
 			savingEndpoint.value = true;
-			saving = endpointForm
+
+			const pending: Promise<string> = endpointForm
 				.submit()
 				.then((saved) => {
+					// The endpoint exists either way; a later session (another device's edit, say) keeps its own.
+					if (started !== session) {
+						throw new Error('The wizard moved on while the endpoint was saved.');
+					}
+
 					state.endpointId = saved.id;
 					state.endpointMode = 'existing';
 
 					return saved.id;
 				})
 				.finally(() => {
-					saving = null;
-					savingEndpoint.value = false;
+					if (saving === pending) {
+						saving = null;
+						savingEndpoint.value = false;
+					}
 				});
+
+			saving = pending;
 		}
 
 		return saving;
@@ -336,7 +419,7 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	let creating: Promise<string> | null = null;
 	let createdId: string | null = null;
 
-	const create = (): Promise<string> => {
+	const createDevice = (): Promise<string> => {
 		if (createdId !== null) {
 			return Promise.resolve(createdId);
 		}
@@ -381,7 +464,12 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		submitState.value = 'submitting';
 		createError.value = null;
 
-		creating = (async (): Promise<string> => {
+		const started = session;
+		const current = (): boolean => started === session;
+
+		let pending: Promise<string> | null = null;
+
+		pending = (async (): Promise<string> => {
 			try {
 				const { data: responseData, error } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices`, {
 					body,
@@ -391,25 +479,288 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 					throw new Error(error ? getErrorReason<DevicesModbusPluginCreateDeviceOperation>(error, fallback) : fallback);
 				}
 
-				submitState.value = 'created';
-				createdId = responseData.data.id;
+				if (current()) {
+					submitState.value = 'created';
+					createdId = responseData.data.id;
+				}
 
 				return responseData.data.id;
 			} catch (error: unknown) {
-				createError.value = error instanceof Error ? error.message : fallback;
-				submitState.value = 'error';
+				if (current()) {
+					createError.value = error instanceof Error ? error.message : fallback;
+					submitState.value = 'error';
+				}
 
 				throw error;
 			} finally {
-				creating = null;
+				if (creating === pending) {
+					creating = null;
+				}
 			}
 		})();
 
-		return creating;
+		creating = pending;
+
+		return pending;
 	};
 
-	const setEndpointMode = (mode: IModbusWizardState['endpointMode']): void => {
-		state.endpointMode = mode;
+	// Removes from the devices module stores what the points update deleted; the stores only add and update on a read.
+	const forgetRemoved = (deviceId: string, kept: { id: string; properties?: { id: string }[] }[]): void => {
+		const keptProperties = new Map(kept.map((channel) => [channel.id, new Set((channel.properties ?? []).map((property) => property.id))]));
+
+		for (const channel of channelsStore.findForDevice(deviceId)) {
+			const properties = keptProperties.get(channel.id);
+
+			if (properties === undefined) {
+				propertiesStore.unset({ channelId: channel.id });
+				channelsStore.unset({ id: channel.id });
+
+				continue;
+			}
+
+			for (const property of propertiesStore.findForChannel(channel.id)) {
+				if (!properties.has(property.id)) {
+					propertiesStore.unset({ id: property.id });
+				}
+			}
+		}
+	};
+
+	// Replaces the points of the edited device. A second call of the same session while one is pending returns that
+	// outcome; a save still pending from an earlier session (another device) neither answers nor changes this one.
+	let updating: { session: number; promise: Promise<string> } | null = null;
+
+	const updatePoints = (edit: IModbusWizardEdit): Promise<string> => {
+		if (updating !== null && updating.session === session) {
+			return updating.promise;
+		}
+
+		const fallback = 'Failed to update the points of the Modbus device.';
+
+		if (state.device.category === null) {
+			return Promise.reject(new Error(fallback));
+		}
+
+		let body: ReturnType<typeof toUpdateRequest>;
+
+		try {
+			body = toUpdateRequest({
+				category: state.device.category,
+				pollIntervalMs: state.device.pollIntervalMs,
+				byteOrder: state.device.byteOrder,
+				wordOrder: state.device.wordOrder,
+				points: state.points,
+			});
+		} catch (error: unknown) {
+			createError.value = error instanceof Error ? error.message : fallback;
+			submitState.value = 'error';
+
+			return Promise.reject(error);
+		}
+
+		// A device following the plugin default keeps doing so unless the user changed the shown default.
+		if (edit.storedPollIntervalMs === null && state.device.pollIntervalMs === (config?.defaultPollIntervalMs ?? FALLBACK_POLL_INTERVAL_MS)) {
+			delete body.data.poll_interval_ms;
+		}
+
+		submitState.value = 'submitting';
+		createError.value = null;
+
+		const started = session;
+		const current = (): boolean => started === session;
+
+		let pending: Promise<string> | null = null;
+
+		pending = (async (): Promise<string> => {
+			try {
+				const { data: responseData, error } = await backend.client.PUT(`/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices/{id}/structure`, {
+					params: { path: { id: edit.deviceId } },
+					body,
+				});
+
+				if (!responseData) {
+					throw new Error(error ? getErrorReason<DevicesModbusPluginUpdateDeviceStructureOperation>(error, fallback) : fallback);
+				}
+
+				if (current()) {
+					submitState.value = 'saved';
+				}
+
+				forgetRemoved(edit.deviceId, (responseData.data.channels ?? []) as { id: string; properties?: { id: string }[] }[]);
+
+				// The points are saved either way. A failed refresh leaves the device, its channels and properties behind
+				// only until the next read; the device detail the wizard returns to reads them again.
+				await devicesStore.get({ id: edit.deviceId }).catch((): void => undefined);
+
+				return edit.deviceId;
+			} catch (error: unknown) {
+				if (current()) {
+					createError.value = error instanceof Error ? error.message : fallback;
+					submitState.value = 'error';
+				}
+
+				throw error;
+			} finally {
+				if (updating?.promise === pending) {
+					updating = null;
+				}
+			}
+		})();
+
+		updating = { session: started, promise: pending };
+
+		return pending;
+	};
+
+	const startSession = (): void => {
+		session++;
+		saving = null;
+		creating = null;
+		savingEndpoint.value = false;
+	};
+
+	const submit = (): Promise<string> => {
+		if (mode.value === 'create') {
+			return createDevice();
+		}
+
+		// Edit mode never falls back to creating a device, not even when the device failed to load.
+		return state.edit !== null ? updatePoints(state.edit) : Promise.reject(new Error('The Modbus device is not loaded.'));
+	};
+
+	// Bumped by every load; a load that finishes after a newer one started is ignored.
+	let loadToken = 0;
+
+	const loadDevice = async (id: string): Promise<void> => {
+		const token = ++loadToken;
+		const fallback = 'Failed to load the Modbus device.';
+
+		// A template preview, endpoint save, creation or update still pending belongs to the session this load ends: it
+		// must not replace the loaded device's points, endpoint or save state once it returns.
+		applyToken++;
+		applyingTemplate.value = false;
+		startSession();
+
+		mode.value = 'edit';
+		loading.value = true;
+		loadError.value = null;
+
+		try {
+			const [device, bindingsResponse] = await Promise.all([
+				devicesStore.get({ id }),
+				backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices/{id}/bindings`, { params: { path: { id } } }),
+			]);
+
+			if (token !== loadToken) {
+				return;
+			}
+
+			if (!bindingsResponse.data) {
+				throw new Error(
+					bindingsResponse.error ? getErrorReason<DevicesModbusPluginGetDeviceBindingsOperation>(bindingsResponse.error, fallback) : fallback
+				);
+			}
+
+			if (device.type !== DEVICES_MODBUS_TYPE) {
+				throw new Error('The device is not a Modbus device.');
+			}
+
+			const modbus = device as typeof device & {
+				endpointId?: string | null;
+				unitId?: number | null;
+				pollIntervalMs?: number | null;
+				byteOrder?: DevicesModbusPluginByteOrder;
+				wordOrder?: DevicesModbusPluginByteOrder;
+				maxReadRegisters?: number | null;
+				maxReadBits?: number | null;
+				maxReadGap?: number | null;
+			};
+
+			const channels: ModbusDeviceChannelInput[] = channelsStore.findForDevice(id).map((channel) => ({
+				id: channel.id,
+				identifier: channel.identifier,
+				name: channel.name,
+				category: channel.category,
+				properties: propertiesStore.findForChannel(channel.id).map((property) => ({
+					id: property.id,
+					identifier: property.identifier,
+					name: property.name,
+					category: property.category,
+					dataType: property.dataType,
+					permissions: [...property.permissions],
+					unit: property.unit ?? null,
+					format: property.format,
+					value: property.value?.value ?? null,
+				})),
+			}));
+
+			const points = pointsFromDevice(
+				channels,
+				bindingsResponse.data.data.map((item) => deviceBindingFromWire(item as unknown as Record<string, unknown>))
+			);
+
+			state.edit = {
+				deviceId: id,
+				channelCategories: Object.fromEntries(channels.map((channel) => [channel.id, channel.category])),
+				maxReadRegisters: modbus.maxReadRegisters ?? null,
+				maxReadBits: modbus.maxReadBits ?? null,
+				maxReadGap: modbus.maxReadGap ?? null,
+				storedPollIntervalMs: modbus.pollIntervalMs ?? null,
+			};
+			state.endpointMode = 'existing';
+			state.endpointId = modbus.endpointId ?? null;
+			state.unitId = modbus.unitId ?? DEFAULT_UNIT_ID;
+			state.template = null;
+			state.templateDevice = null;
+			state.startedEmpty = false;
+			state.points = points;
+			state.device = {
+				name: device.name,
+				// The reserved category is never kept; the device step suggests one instead.
+				category: device.category === 'generic' ? null : device.category,
+				roomId: device.roomId ?? null,
+				pollIntervalMs: modbus.pollIntervalMs ?? config?.defaultPollIntervalMs ?? FALLBACK_POLL_INTERVAL_MS,
+				byteOrder: modbus.byteOrder ?? DevicesModbusPluginByteOrder.big,
+				wordOrder: modbus.wordOrder ?? DevicesModbusPluginByteOrder.big,
+			};
+			state.step = MODBUS_WIZARD_STEP.POINTS;
+			submitState.value = 'idle';
+			createError.value = null;
+		} catch (error: unknown) {
+			if (token !== loadToken) {
+				return;
+			}
+
+			state.edit = null;
+			state.points = [];
+			loadError.value = error instanceof Error && error.message !== '' ? error.message : fallback;
+		} finally {
+			if (token === loadToken) {
+				loading.value = false;
+			}
+		}
+	};
+
+	const startCreate = (): void => {
+		// A load, template preview, endpoint save, creation or update still pending is ignored once it returns.
+		loadToken++;
+		applyToken++;
+		startSession();
+
+		Object.assign(state, initialState());
+		Object.assign(applied, initialApplied());
+
+		mode.value = 'create';
+		loading.value = false;
+		loadError.value = null;
+		applyingTemplate.value = false;
+		submitState.value = 'idle';
+		createError.value = null;
+		createdId = null;
+	};
+
+	const setEndpointMode = (endpointMode: IModbusWizardState['endpointMode']): void => {
+		state.endpointMode = endpointMode;
 	};
 
 	const setNotation = (notation: AddressNotation): void => {
@@ -454,9 +805,15 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 
 	return {
 		state,
+		mode,
+		loading,
+		loadError,
 		submitState,
 		createError,
-		create,
+		submit,
+		create: submit,
+		loadDevice,
+		startCreate,
 		endpointForm,
 		applyingTemplate,
 		savingEndpoint,

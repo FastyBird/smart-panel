@@ -22,6 +22,14 @@
 					/>
 				</el-form-item>
 
+				<div
+					v-if="pointKind === 'number' && draft.unit"
+					class="text-sm self-center"
+					data-test-id="point-editor-unit"
+				>
+					{{ t('devicesModbusPlugin.wizard.points.columns.unit') }}: {{ draft.unit }}
+				</div>
+
 				<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.capability')">
 					<el-select
 						:model-value="capabilityKeyOf(draft)"
@@ -32,10 +40,18 @@
 						<el-option
 							v-for="option in capabilityOptions"
 							:key="option"
-							:label="option"
+							:label="capabilityLabel(option)"
 							:value="option"
+							:disabled="!capabilityAllowed(option)"
 						/>
 					</el-select>
+					<div
+						v-if="capabilityEditable && lockedChannelCategory"
+						class="text-xs text-gray-500 mt-1 w-[200px]"
+						data-test-id="point-editor-capability-locked"
+					>
+						{{ t('devicesModbusPlugin.wizard.points.editor.capabilityLocked') }}
+					</div>
 				</el-form-item>
 			</div>
 
@@ -90,7 +106,7 @@
 							class="w-[120px]!"
 						>
 							<el-option
-								v-for="type in dataTypeOptions"
+								v-for="type in dataTypeOptions(section.binding)"
 								:key="type"
 								:label="type"
 								:value="type"
@@ -147,7 +163,10 @@
 					</el-form-item>
 
 					<template v-if="!hasValueMap(section.binding) || section.binding.scale !== 1 || section.binding.offset !== 0">
-						<el-form-item :label="t('devicesModbusPlugin.wizard.points.columns.scale')">
+						<el-form-item
+							:label="t('devicesModbusPlugin.wizard.points.columns.scale')"
+							:error="issueOf(section.kind, 'scale')"
+						>
 							<el-input-number
 								v-model="section.binding.scale"
 								:step="0.1"
@@ -163,6 +182,25 @@
 							/>
 						</el-form-item>
 					</template>
+
+					<el-form-item
+						v-if="pointKind === 'button' && section.kind === 'read'"
+						:label="t('devicesModbusPlugin.wizard.points.columns.longPressMs')"
+						:error="issueOf(section.kind, 'longPressMs')"
+					>
+						<!-- ElInputNumber clamps a typed value into min..max, so the range error only shows for a value that came from
+						elsewhere (a template or the stored binding); bindingIssues is what enforces the range. -->
+						<el-input-number
+							v-model="section.binding.longPressMs"
+							:min="MIN_LONG_PRESS_MS"
+							:max="MAX_LONG_PRESS_MS"
+							:step="100"
+							:precision="0"
+							:value-on-clear="null"
+							placeholder="800"
+							controls-position="right"
+						/>
+					</el-form-item>
 
 					<el-form-item
 						:label="t('devicesModbusPlugin.wizard.points.columns.invert')"
@@ -198,6 +236,7 @@
 				</div>
 
 				<el-form-item
+					v-if="pointKind !== 'button'"
 					:label="t('devicesModbusPlugin.wizard.points.columns.valueMap')"
 					:error="issueOf(section.kind, 'valueMap')"
 				>
@@ -283,8 +322,17 @@ import {
 	DevicesModbusPluginWriteFunction,
 } from '../../../../openapi.constants';
 import { type ParsedAddress, formatAddress, parseAddressInput } from '../../lib/address-notation';
-import { CUSTOM_CAPABILITIES, applyCapability, capabilityKeyOf } from '../../lib/capabilities';
-import { type ModbusBindingIssueField, type ModbusPoint, type ModbusPointBinding, bindingIssues, valueMapValueFromText } from '../../lib/points';
+import { CUSTOM_CAPABILITIES, applyCapability, capabilityKeyOf, capabilityKindOf } from '../../lib/capabilities';
+import {
+	MAX_LONG_PRESS_MS,
+	MIN_LONG_PRESS_MS,
+	type ModbusBindingIssueField,
+	type ModbusBindingPointKind,
+	type ModbusPoint,
+	type ModbusPointBinding,
+	bindingIssues,
+	valueMapValueFromText,
+} from '../../lib/points';
 
 import type { IModbusPointEditorProps } from './modbus-point-editor.types';
 
@@ -308,15 +356,47 @@ const { t } = useI18n();
 const draft = ref<ModbusPoint | null>(null);
 const addressTexts = reactive<Record<Kind, string>>({ read: '', write: '' });
 
-const dataTypeOptions = Object.values(DevicesModbusPluginDataType);
+const NUMBER_DATA_TYPES = [
+	DevicesModbusPluginDataType.int16,
+	DevicesModbusPluginDataType.uint16,
+	DevicesModbusPluginDataType.int32,
+	DevicesModbusPluginDataType.uint32,
+	DevicesModbusPluginDataType.float32,
+];
+
+// The data types a binding offers: a number reads a numeric type, a button a bool level; the current one always stays.
+const dataTypeOptions = (binding: ModbusPointBinding): DevicesModbusPluginDataType[] => {
+	const all = Object.values(DevicesModbusPluginDataType);
+	const offered = pointKind.value === 'number' ? NUMBER_DATA_TYPES : pointKind.value === 'button' ? [DevicesModbusPluginDataType.bool] : all;
+
+	return offered.includes(binding.dataType) ? offered : [binding.dataType, ...offered];
+};
 const orderOptions = [DEVICE_ORDER, ...Object.values(DevicesModbusPluginByteOrder)];
 const writeFunctionOptions = Object.values(DevicesModbusPluginWriteFunction);
+
+const capabilityLabel = (key: string): string => {
+	const path = `devicesModbusPlugin.wizard.points.capabilities.${key}`;
+	const label = t(path);
+
+	return label === path ? key : label;
+};
 
 const capabilityOptions = computed<string[]>(() => {
 	const keys = CUSTOM_CAPABILITIES.map((capability) => capability.key);
 
 	return draft.value !== null && !keys.includes(capabilityKeyOf(draft.value)) ? [capabilityKeyOf(draft.value), ...keys] : keys;
 });
+
+// An existing channel keeps its category, so only capabilities of that category (and the current one) are allowed.
+const capabilityAllowed = (key: string): boolean => {
+	if (!props.lockedChannelCategory || draft.value === null || key === capabilityKeyOf(draft.value)) {
+		return true;
+	}
+
+	return CUSTOM_CAPABILITIES.find((capability) => capability.key === key)?.channelCategory === props.lockedChannelCategory;
+};
+
+const pointKind = computed<ModbusBindingPointKind | null>(() => (draft.value === null ? null : capabilityKindOf(draft.value)));
 
 const sections = computed<{ kind: Kind; binding: ModbusPointBinding }[]>(() => {
 	if (draft.value === null) {
@@ -349,10 +429,20 @@ watch(
 	{ immediate: true }
 );
 
-const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] =>
-	kind === 'write'
-		? [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register]
-		: Object.values(DevicesModbusPluginRegisterType);
+const WRITE_REGISTER_TYPES = [DevicesModbusPluginRegisterType.coil, DevicesModbusPluginRegisterType.holding_register];
+
+// The tables a binding offers: a write needs a writable one, a number a register; the current one always stays.
+const registerTypeOptions = (kind: Kind): DevicesModbusPluginRegisterType[] => {
+	const offered =
+		kind === 'write'
+			? WRITE_REGISTER_TYPES
+			: pointKind.value === 'number'
+				? [DevicesModbusPluginRegisterType.input_register, DevicesModbusPluginRegisterType.holding_register]
+				: Object.values(DevicesModbusPluginRegisterType);
+	const current = draft.value?.[kind]?.registerType;
+
+	return current === undefined || offered.includes(current) ? offered : [current, ...offered];
+};
 
 // In Modicon notation the address prefix names the register table, so the text must follow the selected type, or
 // saving would silently restore the type the prefix names.
@@ -393,7 +483,7 @@ const parseKind = (kind: Kind): { parsed: ParsedAddress | null; error: string | 
 
 		const registerType = parsed.registerType ?? binding.registerType;
 
-		if (kind === 'write' && !registerTypeOptions('write').includes(registerType)) {
+		if (kind === 'write' && !WRITE_REGISTER_TYPES.includes(registerType)) {
 			return { parsed: null, error: t('devicesModbusPlugin.wizard.points.errors.writeRegisterType') };
 		}
 
@@ -424,7 +514,7 @@ const issuesOf = (kind: Kind): Partial<Record<ModbusBindingIssueField, string>> 
 
 	if (parsed === null) {
 		// The address field already shows why it does not parse.
-		const issues = bindingIssues(binding, kind);
+		const issues = bindingIssues(binding, kind, pointKind.value);
 
 		delete issues.address;
 
@@ -434,7 +524,7 @@ const issuesOf = (kind: Kind): Partial<Record<ModbusBindingIssueField, string>> 
 	const effective = { ...binding, address: parsed.start, registerType: parsed.registerType ?? binding.registerType };
 
 	// Save drops a bit the binding does not show, so it must not narrow the value map either.
-	return bindingIssues({ ...effective, bit: kind === 'read' && showBit(effective) ? effective.bit : null }, kind);
+	return bindingIssues({ ...effective, bit: kind === 'read' && showBit(effective) ? effective.bit : null }, kind, pointKind.value);
 };
 
 const issueOf = (kind: Kind, field: ModbusBindingIssueField): string | undefined => {
@@ -476,17 +566,22 @@ const removeMapEntry = (binding: ModbusPointBinding, index: number): void => {
 const onCapabilityChange = (key: string): void => {
 	const capability = CUSTOM_CAPABILITIES.find((candidate) => candidate.key === key);
 
-	if (!draft.value || !capability) {
+	if (!draft.value || !capability || !capabilityAllowed(key)) {
 		return;
 	}
 
 	const had: Record<Kind, boolean> = { read: draft.value.read !== null, write: draft.value.write !== null };
+	const before: Record<Kind, { registerType: DevicesModbusPluginRegisterType | null; start: number | null }> = {
+		read: { registerType: draft.value.read?.registerType ?? null, start: parsedAddress('read')?.start ?? null },
+		write: { registerType: draft.value.write?.registerType ?? null, start: parsedAddress('write')?.start ?? null },
+	};
 
 	draft.value = applyCapability(draft.value, capability);
 
 	for (const kind of ['read', 'write'] as const) {
 		const binding = draft.value[kind];
 		const other: Kind = kind === 'read' ? 'write' : 'read';
+		const previous = before[kind];
 
 		if (binding === null) {
 			// A removed binding forgets its address, so recreating it later cannot bring back a stale one.
@@ -494,6 +589,9 @@ const onCapabilityChange = (key: string): void => {
 		} else if (!had[kind]) {
 			// A new binding is a copy of the other one, so it starts at the address typed for that one.
 			addressTexts[kind] = had[other] ? addressTexts[other] : formatAddress(binding.address, binding.registerType, props.notation);
+		} else if (binding.registerType !== previous.registerType && previous.start !== null) {
+			// A new kind can move the binding to another table; in Modicon notation the text names the table.
+			addressTexts[kind] = formatAddress(previous.start, binding.registerType, props.notation);
 		}
 	}
 };
@@ -520,6 +618,11 @@ const onSave = (): void => {
 			// Bit-in-register bindings are read-only; a write binding copied from a bit read must not keep the bit.
 			if (kind === 'write' || !showBit(binding)) {
 				binding.bit = null;
+			}
+
+			// Only the read binding of a button event holds a long press.
+			if (kind === 'write' || pointKind.value !== 'button') {
+				binding.longPressMs = null;
 			}
 		}
 	}

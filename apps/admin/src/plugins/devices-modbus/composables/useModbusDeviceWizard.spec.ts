@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import {
 	DevicesModbusPluginByteOrder,
 	DevicesModbusPluginDataType,
@@ -15,17 +16,26 @@ const endpointsStore = { add: vi.fn(), edit: vi.fn(), findAll: vi.fn(() => []), 
 const templatesStore = { preview: vi.fn(), fetch: vi.fn(), catalog: null };
 const configPluginsStore = { findByType: vi.fn() };
 const post = vi.fn();
+const get = vi.fn();
+const put = vi.fn();
+const devicesStore = { get: vi.fn() };
+const channelsStore = { findForDevice: vi.fn((): unknown[] => []), unset: vi.fn() };
+const propertiesStore = { findForChannel: vi.fn<(channelId: string) => unknown[]>(() => []), unset: vi.fn() };
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
 
 	return {
 		...actual,
-		useBackend: () => ({ client: { POST: post } }),
+		useBackend: () => ({ client: { POST: post, GET: get, PUT: put } }),
+		useLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
 		injectStoresManager: () => ({
 			getStore: (key: symbol) => {
 				if (key === modbusEndpointsStoreKey) return endpointsStore;
 				if (key === modbusTemplatesStoreKey) return templatesStore;
+				if (key === devicesStoreKey) return devicesStore;
+				if (key === channelsStoreKey) return channelsStore;
+				if (key === channelsPropertiesStoreKey) return propertiesStore;
 
 				return configPluginsStore;
 			},
@@ -504,6 +514,408 @@ describe('useModbusDeviceWizard', () => {
 			wizard.state.device.pollIntervalMs = 86_400_000;
 
 			expect(wizard.canContinue(3)).toBe(true);
+		});
+	});
+
+	describe('edit', () => {
+		const storedDevice = (extra: Record<string, unknown> = {}) => ({
+			id: 'd1',
+			type: 'devices-modbus',
+			name: 'Relay box',
+			category: 'switcher',
+			roomId: 'r1',
+			endpointId: 'e1',
+			unitId: 7,
+			pollIntervalMs: 500,
+			byteOrder: 'little',
+			wordOrder: 'big',
+			maxReadRegisters: 40,
+			maxReadBits: null,
+			maxReadGap: 3,
+			templateId: 'acme-io',
+			templateRevision: 'r1',
+			...extra,
+		});
+
+		const channels = [
+			{ id: 'c0', device: 'd1', identifier: 'device_information', name: 'Device information', category: 'device_information' },
+			{ id: 'c1', device: 'd1', identifier: 'relay_1', name: 'Relay 1', category: 'switcher' },
+			{ id: 'c2', device: 'd1', identifier: 'valve_1', name: 'Valve 1', category: 'valve' },
+		];
+
+		const property = (id: string, channel: string, extra: Record<string, unknown>) => ({
+			id,
+			channel,
+			identifier: null,
+			name: null,
+			unit: null,
+			format: null,
+			value: null,
+			...extra,
+		});
+
+		const properties: Record<string, unknown[]> = {
+			c0: [property('p0', 'c0', { category: 'manufacturer', dataType: 'string', permissions: ['ro'], value: { value: 'Acme' } })],
+			c1: [property('p1', 'c1', { category: 'on', dataType: 'bool', permissions: ['rw'], identifier: 'on' })],
+			c2: [
+				property('p2', 'c2', { category: 'on', dataType: 'bool', permissions: ['rw'] }),
+				property('p3', 'c2', {
+					category: 'type',
+					dataType: 'enum',
+					permissions: ['ro'],
+					format: ['generic', 'irrigation', 'shower_head', 'water_faucet'],
+					value: { value: 'irrigation' },
+				}),
+			],
+		};
+
+		const wire = (id: string, propertyId: string, role: 'read' | 'write', address: number) => ({
+			id,
+			property_id: propertyId,
+			device_id: 'd1',
+			role,
+			register_type: 'coil',
+			address,
+			data_type: 'bool',
+			bit: null,
+			scale: 1,
+			offset: 0,
+			invert: false,
+		});
+
+		const bindings = [wire('b1', 'p1', 'read', 0), wire('b2', 'p1', 'write', 0), wire('b3', 'p2', 'read', 5), wire('b4', 'p2', 'write', 5)];
+
+		beforeEach(() => {
+			devicesStore.get.mockResolvedValue(storedDevice());
+			channelsStore.findForDevice.mockReturnValue(channels);
+			propertiesStore.findForChannel.mockImplementation((channelId: string) => properties[channelId] ?? []);
+			get.mockResolvedValue({ data: { data: bindings } });
+		});
+
+		it('loads one point per bound or static property of the device, without the device information', async () => {
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			expect(devicesStore.get).toHaveBeenCalledWith({ id: 'd1' });
+			expect(get).toHaveBeenCalledWith('/plugins/devices-modbus/devices/{id}/bindings', { params: { path: { id: 'd1' } } });
+			expect(wizard.mode.value).toBe('edit');
+			expect(wizard.loadError.value).toBeNull();
+			expect(wizard.state.step).toBe(2);
+
+			expect(wizard.state.points.map((point) => [point.channelId, point.propertyId])).toEqual([
+				['c1', 'p1'],
+				['c2', 'p2'],
+				['c2', 'p3'],
+			]);
+
+			const [relay, valve, valveType] = wizard.state.points;
+
+			expect(relay).toMatchObject({
+				name: 'Relay 1',
+				channelCategory: 'switcher',
+				channelIdentifier: 'relay_1',
+				propertyCategory: 'on',
+				propertyIdentifier: 'on',
+				dataType: 'bool',
+				permissions: ['rw'],
+				staticValue: null,
+				read: { registerType: 'coil', address: 0, dataType: 'bool', bit: null, scale: 1, longPressMs: null },
+				write: { registerType: 'coil', address: 0, dataType: 'bool' },
+			});
+			expect(valve.read?.address).toBe(5);
+			expect(valveType).toMatchObject({ propertyCategory: 'type', staticValue: 'irrigation', read: null, write: null });
+
+			expect(wizard.state.endpointMode).toBe('existing');
+			expect(wizard.state.endpointId).toBe('e1');
+			expect(wizard.state.unitId).toBe(7);
+			expect(wizard.state.device).toMatchObject({
+				name: 'Relay box',
+				category: 'switcher',
+				roomId: 'r1',
+				pollIntervalMs: 500,
+				byteOrder: 'little',
+				wordOrder: 'big',
+			});
+			expect(wizard.state.template).toBeNull();
+			expect(wizard.probeTarget()).toEqual({ endpoint_id: 'e1' });
+		});
+
+		it('never needs the endpoint or template steps in edit mode', async () => {
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			expect(wizard.canContinue(0)).toBe(true);
+			expect(wizard.canContinue(1)).toBe(true);
+			expect(wizard.canContinue(2)).toBe(true);
+			expect(wizard.canContinue(3)).toBe(true);
+		});
+
+		it('shows a load error instead of an empty editor', async () => {
+			get.mockResolvedValue({ error: { error: { message: 'Device not found' }, status: 404 }, response: { status: 404 } });
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			expect(wizard.loadError.value).toBeTruthy();
+			expect(wizard.state.points).toEqual([]);
+		});
+
+		it('refuses to edit a device of another type', async () => {
+			devicesStore.get.mockResolvedValue(storedDevice({ type: 'devices-shelly-ng' }));
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			expect(wizard.loadError.value).toBeTruthy();
+			expect(wizard.state.points).toEqual([]);
+		});
+
+		it('sends the points update with the ids and without provenance, then refreshes the device', async () => {
+			put.mockResolvedValue({
+				data: {
+					data: {
+						id: 'd1',
+						channels: [
+							{ id: 'c0', properties: [{ id: 'p0' }] },
+							{ id: 'c1', properties: [{ id: 'p1' }] },
+							{ id: 'c3', properties: [{ id: 'p5' }] },
+						],
+					},
+				},
+			});
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			// The valve goes away, a new switcher is added next to the relay.
+			wizard.state.points = wizard.state.points.filter((point) => point.channelId !== 'c2');
+			wizard.state.points.push({
+				...wizard.state.points[0],
+				key: 'new',
+				channelId: null,
+				propertyId: null,
+				channelIdentifier: 'relay_2',
+				name: 'Relay 2',
+			});
+
+			// The store still holds what the device had before the update.
+			propertiesStore.findForChannel.mockImplementation((channelId: string) =>
+				channelId === 'c1' ? [...(properties.c1 ?? []), property('p9', 'c1', { category: 'on' })] : (properties[channelId] ?? [])
+			);
+
+			await expect(wizard.submit()).resolves.toBe('d1');
+
+			expect(post).not.toHaveBeenCalled();
+			expect(put).toHaveBeenCalledTimes(1);
+
+			const [path, options] = put.mock.calls[0];
+
+			expect(path).toBe('/plugins/devices-modbus/devices/{id}/structure');
+			expect(options.params).toEqual({ path: { id: 'd1' } });
+			expect(options.body.data).toEqual({
+				category: 'switcher',
+				poll_interval_ms: 500,
+				byte_order: 'little',
+				word_order: 'big',
+				channels: [
+					expect.objectContaining({ id: 'c1', identifier: 'relay_1', properties: [expect.objectContaining({ id: 'p1', category: 'on' })] }),
+					expect.objectContaining({ identifier: 'relay_2', properties: [expect.not.objectContaining({ id: expect.anything() })] }),
+				],
+			});
+			expect(options.body.data.channels[1].id).toBeUndefined();
+			expect(wizard.submitState.value).toBe('saved');
+
+			expect(devicesStore.get).toHaveBeenCalledTimes(2);
+			expect(channelsStore.unset).toHaveBeenCalledWith({ id: 'c2' });
+			expect(channelsStore.unset).not.toHaveBeenCalledWith({ id: 'c1' });
+			expect(propertiesStore.unset).toHaveBeenCalledWith({ channelId: 'c2' });
+			expect(propertiesStore.unset).toHaveBeenCalledWith({ id: 'p9' });
+			expect(propertiesStore.unset).not.toHaveBeenCalledWith({ id: 'p1' });
+		});
+
+		it('keeps an inherited poll interval out of the update until the user changes it', async () => {
+			devicesStore.get.mockResolvedValue(storedDevice({ pollIntervalMs: null }));
+			put.mockResolvedValue({ data: { data: { id: 'd1', channels: [] } } });
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			expect(wizard.state.device.pollIntervalMs).toBe(1500);
+
+			await wizard.submit();
+
+			expect(put.mock.calls[0][1].body.data.poll_interval_ms).toBeUndefined();
+
+			wizard.state.device.pollIntervalMs = 200;
+
+			await wizard.submit();
+
+			expect(put.mock.calls[1][1].body.data.poll_interval_ms).toBe(200);
+		});
+
+		it('keeps the backend reason when the update is refused', async () => {
+			put.mockResolvedValue({
+				error: { error: { message: 'Channel category cannot change' }, status: 422 },
+				response: { status: 422 },
+			});
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			await expect(wizard.submit()).rejects.toThrow();
+
+			expect(wizard.submitState.value).toBe('error');
+			expect(wizard.createError.value).toBeTruthy();
+			expect(devicesStore.get).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns to a fresh create wizard when the edit is left for the add route', async () => {
+			post.mockResolvedValue({ data: { data: { id: 'd9' } } });
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			wizard.startCreate();
+
+			expect(wizard.mode.value).toBe('create');
+			expect(wizard.state.edit).toBeNull();
+			expect(wizard.state.step).toBe(0);
+			expect(wizard.state.points).toEqual([]);
+			expect(wizard.state.endpointId).toBeNull();
+			expect(wizard.state.unitId).toBe(1);
+			expect(wizard.state.device).toEqual({
+				name: '',
+				category: null,
+				roomId: null,
+				pollIntervalMs: 1500,
+				byteOrder: DevicesModbusPluginByteOrder.big,
+				wordOrder: DevicesModbusPluginByteOrder.big,
+			});
+			expect(wizard.loading.value).toBe(false);
+			expect(wizard.loadError.value).toBeNull();
+			expect(wizard.submitState.value).toBe('idle');
+
+			// A load still pending when the add route opened is ignored.
+			let resolveLoad: (device: unknown) => void = () => undefined;
+
+			devicesStore.get.mockReturnValueOnce(new Promise((resolve) => (resolveLoad = resolve)));
+
+			const pending = wizard.loadDevice('d1');
+
+			wizard.startCreate();
+			resolveLoad(storedDevice());
+			await pending;
+
+			expect(wizard.mode.value).toBe('create');
+			expect(wizard.state.points).toEqual([]);
+			expect(wizard.loading.value).toBe(false);
+
+			wizard.state.endpointId = 'e1';
+			await wizard.applyTemplate('acme-io');
+			await expect(wizard.submit()).resolves.toBe('d9');
+			expect(put).not.toHaveBeenCalled();
+		});
+
+		it('ignores a template preview that returns after the wizard switched to editing a device', async () => {
+			let resolvePreview: (value: IModbusTemplatePreview) => void = () => undefined;
+
+			templatesStore.preview.mockReturnValueOnce(new Promise((resolve) => (resolvePreview = resolve)));
+
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.endpointId = 'e1';
+
+			const pending = wizard.applyTemplate('acme-io');
+
+			expect(wizard.applyingTemplate.value).toBe(true);
+
+			await wizard.loadDevice('d1');
+
+			const loaded = wizard.state.points.map((point) => point.propertyId);
+
+			expect(wizard.applyingTemplate.value).toBe(false);
+
+			resolvePreview(preview());
+			await pending;
+
+			expect(wizard.mode.value).toBe('edit');
+			expect(wizard.state.template).toBeNull();
+			expect(wizard.state.points.map((point) => point.propertyId)).toEqual(loaded);
+		});
+
+		it('keeps a new endpoint saved by the create wizard out of a device loaded meanwhile', async () => {
+			let release!: (endpoint: { id: string }) => void;
+			endpointsStore.add.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+
+			const wizard = useModbusDeviceWizard();
+			wizard.state.endpointMode = 'new';
+			wizard.state.newEndpoint.name = 'Gateway';
+			wizard.state.newEndpoint.host = '10.0.0.5';
+
+			const saving = wizard.saveNewEndpoint();
+
+			await wizard.loadDevice('d1');
+
+			const loadedEndpoint = wizard.state.endpointId;
+
+			expect(wizard.savingEndpoint.value).toBe(false);
+
+			release({ id: 'e9' });
+
+			// The caller stays on its step: the save belongs to the session the load ended.
+			await expect(saving).rejects.toThrow();
+			expect(wizard.state.endpointId).toBe(loadedEndpoint);
+		});
+
+		it('sends the points of a device loaded while the save of another one is pending', async () => {
+			let releaseFirst!: (value: unknown) => void;
+
+			put.mockReturnValueOnce(new Promise((resolve) => (releaseFirst = resolve)));
+			put.mockResolvedValueOnce({ data: { data: { id: 'd2', channels: [] } } });
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			const first = wizard.submit();
+
+			devicesStore.get.mockResolvedValue(storedDevice({ id: 'd2' }));
+			await wizard.loadDevice('d2');
+
+			expect(wizard.submitState.value).toBe('idle');
+
+			await expect(wizard.submit()).resolves.toBe('d2');
+			expect(put).toHaveBeenCalledTimes(2);
+			expect(put.mock.calls[1][1].params).toEqual({ path: { id: 'd2' } });
+			expect(wizard.submitState.value).toBe('saved');
+
+			releaseFirst({ error: { error: { message: 'Gone' }, status: 404 }, response: { status: 404 } });
+			await expect(first).rejects.toThrow();
+
+			// The first device's failure does not touch the second device's wizard.
+			expect(wizard.submitState.value).toBe('saved');
+			expect(wizard.createError.value).toBeNull();
+		});
+
+		it('creates through submit in create mode', async () => {
+			post.mockResolvedValue({ data: { data: { id: 'd9' } } });
+
+			const wizard = useModbusDeviceWizard();
+
+			wizard.state.endpointId = 'e1';
+			await wizard.applyTemplate('acme-io');
+
+			expect(wizard.mode.value).toBe('create');
+			await expect(wizard.submit()).resolves.toBe('d9');
+			expect(put).not.toHaveBeenCalled();
 		});
 	});
 });

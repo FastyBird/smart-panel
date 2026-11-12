@@ -1,5 +1,6 @@
 import {
 	type ApiCreateModbusDeviceStructure,
+	type ApiUpdateModbusDeviceStructure,
 	type DevicesModbusPluginByteOrder,
 	DevicesModbusPluginDataType,
 	DevicesModbusPluginRegisterType,
@@ -24,13 +25,23 @@ export interface ModbusPointBinding {
 	valueMap: { raw: number; value: string | number | boolean }[] | null;
 	writeFunction: DevicesModbusPluginWriteFunction | null;
 	pollIntervalMs: number | null;
+	/** Hold time of a long press; only the read binding of a button event has one. null = the backend default (800 ms) */
+	longPressMs: number | null;
 }
 
 export interface ModbusPoint {
 	/** Local identity of the row, not part of the point's content */
 	key: string;
 	name: string;
+	/** ID of the existing channel the point belongs to; null for a channel the request creates */
+	channelId: string | null;
+	/** ID of the existing property the point maps; null for a property the request creates */
+	propertyId: string | null;
 	channelCategory: string;
+	/**
+	 * Groups the points into channels and is sent as the channel identifier. A stored channel without an identifier is
+	 * grouped by its id instead, which is not sent as its identifier.
+	 */
 	channelIdentifier: string;
 	propertyCategory: string;
 	propertyIdentifier: string | null;
@@ -44,11 +55,13 @@ export interface ModbusPoint {
 	write: ModbusPointBinding | null;
 }
 
-type PointBase = Omit<ModbusPoint, 'key' | 'name' | 'channelIdentifier'>;
+/** The content of a new point before it is placed in a channel. */
+export type ModbusPointBase = Omit<ModbusPoint, 'key' | 'name' | 'channelId' | 'propertyId' | 'channelIdentifier'>;
 
 let keySequence = 0;
 
-const nextKey = (): string => `point-${++keySequence}`;
+/** A new local row key. */
+export const nextPointKey = (): string => `point-${++keySequence}`;
 
 const slug = (text: string): string =>
 	text
@@ -71,7 +84,16 @@ const uniqueIdentifier = (wanted: string, taken: Set<string>): string => {
 	return candidate;
 };
 
-export function pointsFromRange(base: PointBase, parsed: ParsedAddress, namePrefix: string, existingIdentifiers: string[] = []): ModbusPoint[] {
+/**
+ * One new channel per address of the range. Every base becomes a point of each channel: the bound ones at the
+ * channel's address, the static ones (no bindings) as they are.
+ */
+export function pointsFromRange(
+	bases: ModbusPointBase | ModbusPointBase[],
+	parsed: ParsedAddress,
+	namePrefix: string,
+	existingIdentifiers: string[] = []
+): ModbusPoint[] {
 	const taken = new Set(existingIdentifiers);
 	const points: ModbusPoint[] = [];
 
@@ -86,21 +108,47 @@ export function pointsFromRange(base: PointBase, parsed: ParsedAddress, namePref
 						valueMap: binding.valueMap === null ? null : binding.valueMap.map((entry) => ({ ...entry })),
 					};
 
-		points.push({
-			...base,
-			permissions: [...base.permissions],
-			read: shift(base.read),
-			write: shift(base.write),
-			key: nextKey(),
-			propertyIdentifier: base.propertyIdentifier ?? null,
-			propertyName: base.propertyName ?? null,
-			format: base.format ? [...base.format] : null,
-			name: `${namePrefix} ${i + 1}`,
-			channelIdentifier: uniqueIdentifier(slug(`${namePrefix} ${i + 1}`), taken),
-		});
+		const name = `${namePrefix} ${i + 1}`;
+		const channelIdentifier = uniqueIdentifier(slug(name), taken);
+
+		for (const base of Array.isArray(bases) ? bases : [bases]) {
+			points.push({
+				...base,
+				permissions: [...base.permissions],
+				read: shift(base.read),
+				write: shift(base.write),
+				key: nextPointKey(),
+				channelId: null,
+				propertyId: null,
+				propertyIdentifier: base.propertyIdentifier ?? null,
+				propertyName: base.propertyName ?? null,
+				format: base.format ? [...base.format] : null,
+				name,
+				channelIdentifier,
+			});
+		}
 	}
 
 	return points;
+}
+
+const isBound = (point: ModbusPoint): boolean => point.read !== null || point.write !== null;
+
+/**
+ * Removes a point. The static points of its channel go with it when no bound point is left in the channel, so a
+ * valve never keeps its type without its state; a channel of static points only is left alone.
+ */
+export function removePoint(points: ModbusPoint[], key: string): ModbusPoint[] {
+	const removed = points.find((point) => point.key === key);
+	const rest = points.filter((point) => point.key !== key);
+
+	if (removed === undefined || !isBound(removed)) {
+		return rest;
+	}
+
+	const sameChannel = (point: ModbusPoint): boolean => point.channelIdentifier === removed.channelIdentifier;
+
+	return rest.some((point) => sameChannel(point) && isBound(point)) ? rest : rest.filter((point) => !sameChannel(point));
 }
 
 const bindingFromPreview = (binding: IModbusTemplatePreviewBinding | undefined): ModbusPointBinding | null =>
@@ -120,13 +168,16 @@ const bindingFromPreview = (binding: IModbusTemplatePreviewBinding | undefined):
 				valueMap: binding.valueMap?.length ? binding.valueMap.map((entry) => ({ raw: entry.raw, value: entry.value })) : null,
 				writeFunction: binding.writeFunction ?? null,
 				pollIntervalMs: binding.pollIntervalMs ?? null,
+				longPressMs: binding.longPressMs ?? null,
 			};
 
 export function pointsFromPreview(preview: IModbusTemplatePreview): ModbusPoint[] {
 	return preview.channels.flatMap((channel) =>
 		channel.properties.map((property) => ({
-			key: nextKey(),
+			key: nextPointKey(),
 			name: channel.name,
+			channelId: null,
+			propertyId: null,
 			channelCategory: channel.category,
 			channelIdentifier: channel.identifier,
 			propertyCategory: property.category,
@@ -173,8 +224,24 @@ export function samePoints(a: ModbusPoint[], b: ModbusPoint[]): boolean {
 	return a.length === b.length && a.every((point, index) => deepEqual(withoutKey(point), withoutKey(b[index])));
 }
 
-export function suggestCategory(points: ModbusPoint[]): 'switcher' | 'input_controller' {
-	return points.some((point) => point.write !== null) ? 'switcher' : 'input_controller';
+/** Channels whose points measure a quantity; a device of only these is a sensor. */
+const MEASURED_CHANNELS: readonly string[] = ['temperature', 'humidity', 'electrical_power', 'pressure', 'illuminance', 'analog_input'];
+
+export type ModbusSuggestedCategory = 'valve' | 'switcher' | 'sensor' | 'input_controller';
+
+/** The device category the points suggest. Static points (no bindings) say nothing about the device. */
+export function suggestCategory(points: ModbusPoint[]): ModbusSuggestedCategory {
+	if (points.some((point) => point.channelCategory === 'valve' && point.propertyCategory === 'on')) {
+		return 'valve';
+	}
+
+	if (points.some((point) => point.write !== null)) {
+		return 'switcher';
+	}
+
+	const bound = points.filter(isBound);
+
+	return bound.length > 0 && bound.every((point) => MEASURED_CHANNELS.includes(point.channelCategory)) ? 'sensor' : 'input_controller';
 }
 
 type Body = ApiCreateModbusDeviceStructure['data'];
@@ -198,9 +265,11 @@ export const toRequestBinding = (binding: ModbusPointBinding): RequestBinding =>
 	...(binding.invert ? { invert: true } : {}),
 	...(binding.writeFunction !== null ? { write_function: binding.writeFunction } : {}),
 	...(binding.pollIntervalMs !== null ? { poll_interval_ms: binding.pollIntervalMs } : {}),
+	...(binding.longPressMs !== null ? { long_press_ms: binding.longPressMs } : {}),
 });
 
 const toRequestProperty = (point: ModbusPoint): Property => ({
+	...(point.propertyId !== null ? { id: point.propertyId } : {}),
 	...(point.propertyIdentifier !== null ? { identifier: point.propertyIdentifier } : {}),
 	...(point.propertyName !== null ? { name: point.propertyName } : {}),
 	category: point.propertyCategory as Property['category'],
@@ -231,27 +300,56 @@ export interface ModbusCreateInput {
 	maxReadGap?: number | null;
 }
 
-export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDeviceStructure {
+export interface ModbusUpdateInput {
+	category: string;
+	pollIntervalMs: number;
+	byteOrder: DevicesModbusPluginByteOrder;
+	wordOrder: DevicesModbusPluginByteOrder;
+	points: ModbusPoint[];
+}
+
+/** Groups the points into request channels by channel identifier; an existing channel or property keeps its id. */
+const toRequestChannels = (points: ModbusPoint[]): Channel[] => {
 	const channels = new Map<string, Channel>();
 
-	for (const point of input.points) {
+	for (const point of points) {
 		const existing = channels.get(point.channelIdentifier);
 
 		if (existing) {
-			if (existing.name !== point.name || existing.category !== point.channelCategory) {
-				throw new Error(`Points of channel "${point.channelIdentifier}" disagree on the channel name or category`);
+			if (
+				existing.name !== point.name ||
+				existing.category !== point.channelCategory ||
+				(existing.id !== undefined && point.channelId !== null && existing.id !== point.channelId)
+			) {
+				throw new Error(`Points of channel "${point.channelIdentifier}" disagree on the channel id, name or category`);
+			}
+
+			if (existing.id === undefined && point.channelId !== null) {
+				existing.id = point.channelId;
+
+				if (existing.identifier === point.channelId) {
+					delete existing.identifier;
+				}
 			}
 
 			existing.properties.push(toRequestProperty(point));
 		} else {
 			channels.set(point.channelIdentifier, {
-				identifier: point.channelIdentifier,
+				...(point.channelId !== null ? { id: point.channelId } : {}),
+				// A stored channel without an identifier is grouped by its id; generated identifiers are slugs, never an id.
+				...(point.channelIdentifier !== point.channelId ? { identifier: point.channelIdentifier } : {}),
 				name: point.name,
 				category: point.channelCategory as Channel['category'],
 				properties: [toRequestProperty(point)],
 			});
 		}
 	}
+
+	return [...channels.values()];
+};
+
+export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDeviceStructure {
+	const channels = toRequestChannels(input.points);
 
 	const fromTemplate = input.template !== null && samePoints(input.points, input.template.points);
 
@@ -271,12 +369,26 @@ export function toCreateRequest(input: ModbusCreateInput): ApiCreateModbusDevice
 			...(input.manufacturer !== undefined ? { manufacturer: input.manufacturer } : {}),
 			...(input.model !== undefined ? { model: input.model } : {}),
 			...(fromTemplate && input.template ? { template_id: input.template.id, template_revision: input.template.revision } : {}),
-			channels: [...channels.values()],
+			channels,
 		},
 	};
 }
 
-const NUMERIC_DATA_TYPES: readonly string[] = ['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float'];
+/** The points update of an existing device; template provenance is not part of it. */
+export function toUpdateRequest(input: ModbusUpdateInput): ApiUpdateModbusDeviceStructure {
+	return {
+		data: {
+			category: input.category as ApiUpdateModbusDeviceStructure['data']['category'],
+			poll_interval_ms: input.pollIntervalMs,
+			byte_order: input.byteOrder,
+			word_order: input.wordOrder,
+			channels: toRequestChannels(input.points),
+		},
+	};
+}
+
+/** The spec data types of a numeric property. */
+export const NUMERIC_DATA_TYPES: readonly string[] = ['char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float'];
 
 /**
  * The value-map value typed into a text input. Only a numeric property turns "1" into 1; a string or enum property
@@ -329,20 +441,49 @@ const rawFits = (raw: number, binding: ModbusPointBinding): boolean => {
 	}
 };
 
-export type ModbusBindingIssueField = 'address' | 'dataType' | 'bit' | 'valueMap' | 'invert' | 'writeFunction';
+export type ModbusBindingIssueField = 'address' | 'dataType' | 'bit' | 'valueMap' | 'invert' | 'writeFunction' | 'scale' | 'longPressMs';
+
+/** What the binding's point is: a number (scaled value), a button event (boolean level) or an on/off state. */
+export type ModbusBindingPointKind = 'bool' | 'number' | 'button';
+
+export const MIN_LONG_PRESS_MS = 100;
+export const MAX_LONG_PRESS_MS = 10000;
 
 /**
  * The binding rules the backend applies when the device is created, as translation keys per field, so the point
- * editor can refuse a combination before the wizard reaches Create. `binding` carries the parsed address and table.
+ * editor can refuse a combination before the wizard reaches Create. `binding` carries the parsed address and table;
+ * `pointKind` is the kind of the point it belongs to, when known.
  */
-export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write'): Partial<Record<ModbusBindingIssueField, string>> {
+export function bindingIssues(
+	binding: ModbusPointBinding,
+	kind: 'read' | 'write',
+	pointKind: ModbusBindingPointKind | null = null
+): Partial<Record<ModbusBindingIssueField, string>> {
 	const issues: Partial<Record<ModbusBindingIssueField, string>> = {};
 	const bitTable =
 		binding.registerType === DevicesModbusPluginRegisterType.coil || binding.registerType === DevicesModbusPluginRegisterType.discrete_input;
 	const span = bindingSpan(binding);
+	const buttonEvent = pointKind === 'button' && kind === 'read';
+	const hasBit = binding.bit !== null;
 
 	if (bitTable && binding.dataType !== DevicesModbusPluginDataType.bool) {
 		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.bitTableBool';
+	} else if (buttonEvent && !(bitTable || (hasBit && binding.dataType === DevicesModbusPluginDataType.bool))) {
+		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.buttonLevel';
+	} else if (pointKind === 'number' && binding.dataType === DevicesModbusPluginDataType.bool && !hasBit) {
+		issues.dataType = 'devicesModbusPlugin.wizard.points.errors.numberBool';
+	}
+
+	if (binding.scale === 0) {
+		issues.scale = 'devicesModbusPlugin.wizard.points.errors.scaleZero';
+	}
+
+	if (binding.longPressMs !== null) {
+		if (!buttonEvent) {
+			issues.longPressMs = 'devicesModbusPlugin.wizard.points.errors.longPressNotButton';
+		} else if (!Number.isInteger(binding.longPressMs) || binding.longPressMs < MIN_LONG_PRESS_MS || binding.longPressMs > MAX_LONG_PRESS_MS) {
+			issues.longPressMs = 'devicesModbusPlugin.wizard.points.errors.longPressRange';
+		}
 	}
 
 	if (binding.bit !== null && (!Number.isInteger(binding.bit) || binding.bit < 0 || binding.bit > 15)) {
@@ -359,7 +500,9 @@ export function bindingIssues(binding: ModbusPointBinding, kind: 'read' | 'write
 		const raws = valueMap.map((entry) => entry.raw);
 		const values = valueMap.map((entry) => entry.value);
 
-		if (binding.dataType === DevicesModbusPluginDataType.float32) {
+		if (buttonEvent) {
+			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.buttonValueMap';
+		} else if (binding.dataType === DevicesModbusPluginDataType.float32) {
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapFloat';
 		} else if (binding.scale !== 1 || binding.offset !== 0) {
 			issues.valueMap = 'devicesModbusPlugin.wizard.points.errors.valueMapScaled';

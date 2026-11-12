@@ -106,20 +106,21 @@ describe('DevicesModbusPlugin', () => {
 	});
 
 	it.each([
-		[RouteNames.WIZARD, '/devices/devices-modbus/wizard'],
-		[RouteNames.ENDPOINTS, '/devices/devices-modbus/endpoints'],
-	])('adds the %s route under the devices route and gates it on the plugin being enabled', async (name, path) => {
+		[RouteNames.WIZARD, {}, '/devices/devices-modbus/wizard'],
+		[RouteNames.EDIT, { id: 'd1' }, '/devices/devices-modbus/d1/points'],
+		[RouteNames.ENDPOINTS, {}, '/devices/devices-modbus/endpoints'],
+	])('adds the %s route under the devices route and gates it on the plugin being enabled', async (name, params, path) => {
 		const router = createRealRouter();
 		DevicesModbusPlugin.install(app, createOptions(router));
 
-		expect(router.resolve({ name }).path).toBe(path);
-		await router.push({ name });
+		expect(router.resolve({ name, params }).path).toBe(path);
+		await router.push({ name, params });
 		expect(router.currentRoute.value.name).toBe(name);
-		expect(router.resolve({ name }).meta['devicesWizard']).toBe(true);
+		expect(router.resolve({ name, params }).meta['devicesWizard']).toBe(true);
 
 		mocks.configStore.findByType.mockReturnValue({ enabled: false });
 		await router.push({ name: DevicesRouteNames.DEVICES });
-		await router.push({ name });
+		await router.push({ name, params });
 		expect(router.currentRoute.value.name).toBe(DevicesRouteNames.DEVICES);
 	});
 

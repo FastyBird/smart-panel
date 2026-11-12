@@ -8,4 +8,6 @@ export interface IModbusPointEditorProps {
 	notation: AddressNotation;
 	/** True for rows added in the wizard; template rows keep their capability. */
 	capabilityEditable: boolean;
+	/** Category of the existing channel the row belongs to; only capabilities of that channel category can be chosen. */
+	lockedChannelCategory?: string | null;
 }
