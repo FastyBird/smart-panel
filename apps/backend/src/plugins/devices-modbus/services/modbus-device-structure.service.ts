@@ -85,6 +85,33 @@ const isUnitCollision = (error: unknown): boolean => {
  * completely before anything is written, and every row is written in one transaction through the core device
  * creation context, so a failure leaves nothing behind.
  */
+/**
+ * The request with the stored format of each kept property that omits it while keeping its data type, so a static
+ * value is judged against the format the property keeps (see `retainedPropertyFields`).
+ */
+function withStoredFormats(
+	dto: UpdateModbusDeviceStructureDto,
+	existing: ChannelEntity[],
+): UpdateModbusDeviceStructureDto {
+	const stored = new Map(
+		existing.flatMap((channel) => channel.properties.map((property) => [property.id, property] as const)),
+	);
+
+	return {
+		...dto,
+		channels: dto.channels.map((channel) => ({
+			...channel,
+			properties: channel.properties.map((property) => {
+				const row = property.id === undefined ? undefined : stored.get(property.id);
+
+				return row && property.format === undefined && row.dataType === property.data_type && row.format
+					? { ...property, format: [...row.format] as CreateModbusDeviceStructurePropertyDto['format'] }
+					: property;
+			}),
+		})),
+	};
+}
+
 @Injectable()
 export class ModbusDeviceStructureService {
 	private readonly logger = createExtensionLogger(DEVICES_MODBUS_PLUGIN_NAME, 'ModbusDeviceStructureService');
@@ -164,7 +191,7 @@ export class ModbusDeviceStructureService {
 	 */
 	async update(id: string, body: UpdateModbusDeviceStructureDto): Promise<ModbusDeviceEntity> {
 		// An explicit `null` id means "no id", as an omitted one does (create reads `id ?? uuid()` the same way).
-		const dto: UpdateModbusDeviceStructureDto = {
+		const request: UpdateModbusDeviceStructureDto = {
 			...body,
 			channels: body.channels.map((channel) => ({
 				...channel,
@@ -183,6 +210,7 @@ export class ModbusDeviceStructureService {
 			const existing = await this.dataSource
 				.getRepository(ChannelEntity)
 				.find({ where: { device: { id } }, relations: { properties: true } });
+			const dto = withStoredFormats(request, existing);
 			const information = existing.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION) ?? null;
 			const endpoint = device.endpointId ? await this.endpoints.findOne(device.endpointId) : null;
 			// The request judged as a whole device, with the fields this endpoint does not change taken from the row.
@@ -631,8 +659,12 @@ export class ModbusDeviceStructureService {
 				for (const entry of statics) {
 					const property = properties.find((candidate) => candidate.id === entry.propertyId);
 
-					if (property) {
-						await this.propertyValues.write(property, entry.value);
+					if (property && (await this.propertyValues.writeWithState(property, entry.value)).changed) {
+						// Nothing polls a static property, so its value event is sent here, as the core sends it after a write.
+						this.eventEmitter.emit(
+							EventType.CHANNEL_PROPERTY_VALUE_SET,
+							await this.channelsPropertiesService.getOneOrThrow(property.id),
+						);
 					}
 				}
 			} catch (error) {

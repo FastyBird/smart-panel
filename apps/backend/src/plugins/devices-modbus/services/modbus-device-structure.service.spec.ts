@@ -150,7 +150,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 	let events: EventEmitter2;
 	let bindings: ModbusBindingsService;
 	let runtime: { loadDevice: jest.Mock };
-	let values: { write: jest.Mock; flushHistory: jest.Mock };
+	let values: { writeWithState: jest.Mock; flushHistory: jest.Mock };
 	let templates: { has: jest.Mock };
 	let endpoint: ModbusEndpointEntity;
 	let otherEndpoint: ModbusEndpointEntity;
@@ -253,7 +253,10 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 		otherEndpoint = await endpoints.create({ name: 'Other gateway', host: '10.10.0.231' });
 
 		runtime = { loadDevice: jest.fn().mockResolvedValue(undefined) };
-		values = { write: jest.fn().mockResolvedValue(true), flushHistory: jest.fn().mockResolvedValue(undefined) };
+		values = {
+			writeWithState: jest.fn().mockResolvedValue({ changed: true, state: null }),
+			flushHistory: jest.fn().mockResolvedValue(undefined),
+		};
 		templates = { has: jest.fn().mockReturnValue(true) };
 		bindings = new ModbusBindingsService(database.getRepository(ModbusBindingEntity));
 		service = new ModbusDeviceStructureService(
@@ -729,7 +732,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			const relay = device.channels.find((channel) => channel.identifier === 'relay_1');
 			const property = relay.properties.find((p) => p.category === PropertyCategory.GENERIC);
 
-			expect(values.write).toHaveBeenCalledWith(expect.objectContaining({ id: property.id }), 'relay');
+			expect(values.writeWithState).toHaveBeenCalledWith(expect.objectContaining({ id: property.id }), 'relay');
 			expect((await bindings.findByProperty(property.id)).read).toBeNull();
 		});
 
@@ -770,7 +773,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 
 		const staticValueOf = (device: ModbusDeviceEntity, category: PropertyCategory): unknown => {
 			const property = informationOf(device)[0].properties.find((p) => p.category === category);
-			const calls = values.write.mock.calls as [ChannelPropertyEntity, unknown][];
+			const calls = values.writeWithState.mock.calls as [ChannelPropertyEntity, unknown][];
 			const call = calls.find(([written]) => written.id === property.id);
 
 			return call?.[1];
@@ -1302,7 +1305,7 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			it('keeps a static property sent without a value', async () => {
 				const { device, ids, label: labelId } = await createWithLabel();
 
-				values.write.mockClear();
+				values.writeWithState.mockClear();
 
 				const updated = await service.update(
 					device.id,
@@ -1312,8 +1315,80 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 				expect(updated.channels.find((channel) => channel.id === ids.channel)?.properties.map((p) => p.id)).toContain(
 					labelId,
 				);
-				expect(values.write).not.toHaveBeenCalledWith(expect.objectContaining({ id: labelId }), expect.anything());
+				expect(values.writeWithState).not.toHaveBeenCalledWith(
+					expect.objectContaining({ id: labelId }),
+					expect.anything(),
+				);
 				expect(await bindings.findByProperty(labelId)).toEqual({ read: null, write: null });
+			});
+
+			it('announces a changed static value once it is stored', async () => {
+				const { device, ids, label: labelId } = await createWithLabel();
+				const emitted = jest.spyOn(events, 'emit');
+
+				await service.update(
+					device.id,
+					toUpdate({
+						category: DeviceCategory.SWITCHER,
+						channels: [withLabel(ids, { ...label, id: labelId, static_value: 'other' })],
+					}),
+				);
+
+				expect(values.writeWithState).toHaveBeenCalledWith(expect.objectContaining({ id: labelId }), 'other');
+				expect(emitted).toHaveBeenCalledWith(
+					EventType.CHANNEL_PROPERTY_VALUE_SET,
+					expect.objectContaining({ id: labelId }),
+				);
+
+				emitted.mockClear();
+				values.writeWithState.mockResolvedValue({ changed: false, state: null });
+
+				await service.update(
+					device.id,
+					toUpdate({
+						category: DeviceCategory.SWITCHER,
+						channels: [withLabel(ids, { ...label, id: labelId, static_value: 'other' })],
+					}),
+				);
+
+				expect(emitted).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_VALUE_SET, expect.anything());
+			});
+
+			it('judges a static value against the stored format the request omits', async () => {
+				const { device, ids, label: labelId } = await createWithLabel();
+
+				await database.manager.update(
+					ChannelPropertyEntity,
+					{ id: labelId },
+					{ dataType: DataTypeType.ENUM, format: ['relay', 'lamp'] },
+				);
+
+				const enumLabel = { ...label, id: labelId, data_type: DataTypeType.ENUM };
+
+				expect(
+					await fieldsOf(
+						service.update(
+							device.id,
+							toUpdate({
+								category: DeviceCategory.SWITCHER,
+								channels: [withLabel(ids, { ...enumLabel, static_value: 'fan' })],
+							}),
+						),
+					),
+				).toContain('channels[0].properties[1].static_value');
+
+				await service.update(
+					device.id,
+					toUpdate({
+						category: DeviceCategory.SWITCHER,
+						channels: [withLabel(ids, { ...enumLabel, static_value: 'lamp' })],
+					}),
+				);
+
+				expect((await database.manager.findOneBy(ChannelPropertyEntity, { id: labelId }))?.format).toEqual([
+					'relay',
+					'lamp',
+				]);
 			});
 
 			it('refuses a kept static property without a value when its data type changes', async () => {

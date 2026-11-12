@@ -168,6 +168,7 @@ describe('ModbusRuntimeService', () => {
 	let bindingsService: { findByDevice: jest.Mock };
 	let devicesService: { findOne: jest.Mock; findAll: jest.Mock };
 	let channelsService: { findAll: jest.Mock; findOne: jest.Mock };
+	let endpointsService: { findOne: jest.Mock };
 	let occurrencesService: { publishOccurrence: jest.Mock };
 	let connectionsService: ModbusConnectionsService;
 	let runtime: ModbusRuntimeService;
@@ -234,7 +235,7 @@ describe('ModbusRuntimeService', () => {
 			),
 		};
 		occurrencesService = { publishOccurrence: jest.fn(() => Promise.resolve(null)) };
-		const endpointsService = {
+		endpointsService = {
 			findOne: jest.fn((id: string) => Promise.resolve(endpoints.find((endpoint) => endpoint.id === id) ?? null)),
 		};
 
@@ -505,6 +506,46 @@ describe('ModbusRuntimeService', () => {
 
 			expect(channelsService.findOne).toHaveBeenCalledWith('channel-2');
 			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+		});
+
+		it('supersedes a first load still reading when its channel or a property of it is removed', async () => {
+			const releases: (() => void)[] = [];
+			// The device is not cached yet: its first load waits on the endpoint lookup.
+			const pendingLoad = async (): Promise<{ load: Promise<void> }> => {
+				endpointsService.findOne.mockImplementationOnce(
+					(id: string) =>
+						new Promise((resolve) => {
+							releases.push(() => resolve(endpoints.find((endpoint) => endpoint.id === id) ?? null));
+						}),
+				);
+
+				const load = runtime.loadDevice('device-1');
+
+				await jest.advanceTimersByTimeAsync(0);
+				channelsService.findAll.mockClear();
+
+				return { load };
+			};
+
+			await runtime.unloadDevice('device-1');
+
+			const first = await pendingLoad();
+
+			await runtime.onChannelChanged({ id: 'channel-1', device: 'device-1' } as unknown as ChannelEntity);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+
+			await runtime.unloadDevice('device-1');
+
+			const second = await pendingLoad();
+
+			// A removed property arrives without its channel and no cache entry owns it.
+			await runtime.onChannelPropertyChanged({ id: 'p-unknown' } as unknown as ChannelPropertyEntity);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+
+			releases.forEach((release) => release());
+			await Promise.all([first.load, second.load]);
 		});
 
 		it('reloads a loaded device when a channel is created or deleted', async () => {

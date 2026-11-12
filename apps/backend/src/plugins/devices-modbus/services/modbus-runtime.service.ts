@@ -233,8 +233,20 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 			? (this.loadedDeviceOfChannel(channelId) ?? (await this.pendingDeviceOfChannel(channelId)))
 			: this.loadedDeviceOfProperty(property.id);
 
-		if (deviceId && this.isRunning()) {
+		if (deviceId) {
 			await this.loadSafely(deviceId);
+
+			return;
+		}
+
+		// A removed property arrives without its channel; when no cache entry owns it, any device whose load is still
+		// reading may have read it, so those loads are superseded.
+		if (!channelId) {
+			for (const pending of [...this.loads.keys()]) {
+				if (this.isRunning()) {
+					await this.loadSafely(pending);
+				}
+			}
 		}
 	}
 
@@ -261,7 +273,8 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 	async onChannelChanged(channel: ChannelEntity): Promise<void> {
 		const deviceId = idOf(channel.device);
 
-		if (deviceId && this.devices.has(deviceId) && this.isRunning()) {
+		// A device whose first load is still reading has no cache entry yet; a newer load supersedes the pending one.
+		if (deviceId && (this.devices.has(deviceId) || this.loads.has(deviceId)) && this.isRunning()) {
 			await this.loadSafely(deviceId);
 		}
 	}
