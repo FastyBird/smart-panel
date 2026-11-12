@@ -851,6 +851,60 @@ describe('useModbusDeviceWizard', () => {
 			expect(wizard.state.points.map((point) => point.propertyId)).toEqual(loaded);
 		});
 
+		it('keeps a new endpoint saved by the create wizard out of a device loaded meanwhile', async () => {
+			let release!: (endpoint: { id: string }) => void;
+			endpointsStore.add.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+
+			const wizard = useModbusDeviceWizard();
+			wizard.state.endpointMode = 'new';
+			wizard.state.newEndpoint.name = 'Gateway';
+			wizard.state.newEndpoint.host = '10.0.0.5';
+
+			const saving = wizard.saveNewEndpoint();
+
+			await wizard.loadDevice('d1');
+
+			const loadedEndpoint = wizard.state.endpointId;
+
+			expect(wizard.savingEndpoint.value).toBe(false);
+
+			release({ id: 'e9' });
+
+			// The caller stays on its step: the save belongs to the session the load ended.
+			await expect(saving).rejects.toThrow();
+			expect(wizard.state.endpointId).toBe(loadedEndpoint);
+		});
+
+		it('sends the points of a device loaded while the save of another one is pending', async () => {
+			let releaseFirst!: (value: unknown) => void;
+
+			put.mockReturnValueOnce(new Promise((resolve) => (releaseFirst = resolve)));
+			put.mockResolvedValueOnce({ data: { data: { id: 'd2', channels: [] } } });
+
+			const wizard = useModbusDeviceWizard();
+
+			await wizard.loadDevice('d1');
+
+			const first = wizard.submit();
+
+			devicesStore.get.mockResolvedValue(storedDevice({ id: 'd2' }));
+			await wizard.loadDevice('d2');
+
+			expect(wizard.submitState.value).toBe('idle');
+
+			await expect(wizard.submit()).resolves.toBe('d2');
+			expect(put).toHaveBeenCalledTimes(2);
+			expect(put.mock.calls[1][1].params).toEqual({ path: { id: 'd2' } });
+			expect(wizard.submitState.value).toBe('saved');
+
+			releaseFirst({ error: { error: { message: 'Gone' }, status: 404 }, response: { status: 404 } });
+			await expect(first).rejects.toThrow();
+
+			// The first device's failure does not touch the second device's wizard.
+			expect(wizard.submitState.value).toBe('saved');
+			expect(wizard.createError.value).toBeNull();
+		});
+
 		it('creates through submit in create mode', async () => {
 			post.mockResolvedValue({ data: { data: { id: 'd9' } } });
 

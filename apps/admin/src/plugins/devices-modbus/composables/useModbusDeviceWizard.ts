@@ -252,6 +252,9 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	const submitState = ref<ModbusWizardSubmitState>('idle');
 	const createError = ref<string | null>(null);
 
+	// Bumped by `loadDevice` and `startCreate`: a request of an earlier wizard session must not change the current one.
+	let session = 0;
+
 	let saving: Promise<string> | null = null;
 
 	// Called when the user leaves step 1: device creation needs an endpoint id. It is a no-op once the endpoint exists,
@@ -262,19 +265,31 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		}
 
 		if (saving === null) {
+			const started = session;
+
 			savingEndpoint.value = true;
-			saving = endpointForm
+
+			const pending: Promise<string> = endpointForm
 				.submit()
 				.then((saved) => {
+					// The endpoint exists either way; a later session (another device's edit, say) keeps its own.
+					if (started !== session) {
+						throw new Error('The wizard moved on while the endpoint was saved.');
+					}
+
 					state.endpointId = saved.id;
 					state.endpointMode = 'existing';
 
 					return saved.id;
 				})
 				.finally(() => {
-					saving = null;
-					savingEndpoint.value = false;
+					if (saving === pending) {
+						saving = null;
+						savingEndpoint.value = false;
+					}
 				});
+
+			saving = pending;
 		}
 
 		return saving;
@@ -449,7 +464,12 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		submitState.value = 'submitting';
 		createError.value = null;
 
-		creating = (async (): Promise<string> => {
+		const started = session;
+		const current = (): boolean => started === session;
+
+		let pending: Promise<string> | null = null;
+
+		pending = (async (): Promise<string> => {
 			try {
 				const { data: responseData, error } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices`, {
 					body,
@@ -459,21 +479,29 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 					throw new Error(error ? getErrorReason<DevicesModbusPluginCreateDeviceOperation>(error, fallback) : fallback);
 				}
 
-				submitState.value = 'created';
-				createdId = responseData.data.id;
+				if (current()) {
+					submitState.value = 'created';
+					createdId = responseData.data.id;
+				}
 
 				return responseData.data.id;
 			} catch (error: unknown) {
-				createError.value = error instanceof Error ? error.message : fallback;
-				submitState.value = 'error';
+				if (current()) {
+					createError.value = error instanceof Error ? error.message : fallback;
+					submitState.value = 'error';
+				}
 
 				throw error;
 			} finally {
-				creating = null;
+				if (creating === pending) {
+					creating = null;
+				}
 			}
 		})();
 
-		return creating;
+		creating = pending;
+
+		return pending;
 	};
 
 	// Removes from the devices module stores what the points update deleted; the stores only add and update on a read.
@@ -498,12 +526,13 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		}
 	};
 
-	// Replaces the points of the edited device. A second call while one is pending returns that outcome.
-	let updating: Promise<string> | null = null;
+	// Replaces the points of the edited device. A second call of the same session while one is pending returns that
+	// outcome; a save still pending from an earlier session (another device) neither answers nor changes this one.
+	let updating: { session: number; promise: Promise<string> } | null = null;
 
 	const updatePoints = (edit: IModbusWizardEdit): Promise<string> => {
-		if (updating !== null) {
-			return updating;
+		if (updating !== null && updating.session === session) {
+			return updating.promise;
 		}
 
 		const fallback = 'Failed to update the points of the Modbus device.';
@@ -537,7 +566,12 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		submitState.value = 'submitting';
 		createError.value = null;
 
-		updating = (async (): Promise<string> => {
+		const started = session;
+		const current = (): boolean => started === session;
+
+		let pending: Promise<string> | null = null;
+
+		pending = (async (): Promise<string> => {
 			try {
 				const { data: responseData, error } = await backend.client.PUT(`/${PLUGINS_PREFIX}/${DEVICES_MODBUS_PLUGIN_PREFIX}/devices/{id}/structure`, {
 					params: { path: { id: edit.deviceId } },
@@ -548,7 +582,9 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 					throw new Error(error ? getErrorReason<DevicesModbusPluginUpdateDeviceStructureOperation>(error, fallback) : fallback);
 				}
 
-				submitState.value = 'saved';
+				if (current()) {
+					submitState.value = 'saved';
+				}
 
 				forgetRemoved(edit.deviceId, (responseData.data.channels ?? []) as { id: string; properties?: { id: string }[] }[]);
 
@@ -558,16 +594,29 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 
 				return edit.deviceId;
 			} catch (error: unknown) {
-				createError.value = error instanceof Error ? error.message : fallback;
-				submitState.value = 'error';
+				if (current()) {
+					createError.value = error instanceof Error ? error.message : fallback;
+					submitState.value = 'error';
+				}
 
 				throw error;
 			} finally {
-				updating = null;
+				if (updating?.promise === pending) {
+					updating = null;
+				}
 			}
 		})();
 
-		return updating;
+		updating = { session: started, promise: pending };
+
+		return pending;
+	};
+
+	const startSession = (): void => {
+		session++;
+		saving = null;
+		creating = null;
+		savingEndpoint.value = false;
 	};
 
 	const submit = (): Promise<string> => {
@@ -586,9 +635,11 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 		const token = ++loadToken;
 		const fallback = 'Failed to load the Modbus device.';
 
-		// A template preview still pending is ignored once it returns: it must not replace the loaded device's points.
+		// A template preview, endpoint save, creation or update still pending belongs to the session this load ends: it
+		// must not replace the loaded device's points, endpoint or save state once it returns.
 		applyToken++;
 		applyingTemplate.value = false;
+		startSession();
 
 		mode.value = 'edit';
 		loading.value = true;
@@ -691,9 +742,10 @@ export const useModbusDeviceWizard = (): IUseModbusDeviceWizard => {
 	};
 
 	const startCreate = (): void => {
-		// A load or template preview still pending is ignored once it returns.
+		// A load, template preview, endpoint save, creation or update still pending is ignored once it returns.
 		loadToken++;
 		applyToken++;
+		startSession();
 
 		Object.assign(state, initialState());
 		Object.assign(applied, initialApplied());
