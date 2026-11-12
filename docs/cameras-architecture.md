@@ -12,6 +12,14 @@ the provider that matches the device, caches snapshots and issues sessions.
 Cameras are devices with category `camera` or `doorbell`. A camera whose `type` has no registered provider is still
 listed, with `live_view: false` and no profiles; its snapshot and session routes answer 404.
 
+`GET /cameras` lists visible devices only (`DeviceHiddenFilter.FALSE`). A hidden camera is not listed but stays
+reachable by its id: detail, snapshot and session do not check the hidden flag.
+
+The module can be switched off (`enabled` in its module configuration, on by default). While it is off every route
+answers 404 `Cameras module is disabled` through `CamerasModuleEnabledGuard`, the same status the MCP module uses for a
+disabled endpoint; the guard runs after authentication. The provider registry stays injectable and registrations keep
+working, so provider plugins are unaffected and the module resumes serving as soon as it is switched back on.
+
 Only users and displays may use the module. Third-party and MCP tokens are refused with 403, so a long-lived
 integration token never reaches camera footage.
 
@@ -53,28 +61,49 @@ export interface ICameraStreamProvider {
 
 ### Exceptions a provider may throw
 
-From `cameras.exceptions.ts`. Any other error a provider throws is treated as an untyped provider error.
+From `cameras.exceptions.ts`. Exactly three typed exceptions keep their meaning at the provider boundary
+(`sanitizeProviderError`); the module re-creates them with a fixed message, so the provider's text is dropped.
 
 | Exception | Meaning | What the module does |
 |---|---|---|
 | `CameraOfflineException` | The camera is not reachable. | Snapshot: 503 "Camera is offline" and the cached image of that key is dropped. Session: 503 "Camera did not respond". |
 | `CameraRateLimitedException` | The upstream asks the module to back off. | Snapshot: the stale cached image is returned with `X-Snapshot-Age` when one exists, otherwise 503 "Camera is busy" with `Retry-After: 2`. Session: 503 "Camera did not respond". |
-| `CameraProfileUnavailableException` | The requested profile does not exist or cannot be streamed. | 404 with the exception message. |
+| `CameraProfileUnavailableException` | The requested profile does not exist or cannot be streamed. | 404 "Stream profile is not available" (the profile id is not echoed). |
 
 Everything else:
 
-- An untyped provider error (anything that is not a `CamerasException`) is wrapped as `CameraUpstreamException`
-  (503 "Camera did not respond"). The original message is never logged or forwarded because a provider may embed a
-  source URL in it; only the error class name is logged.
+- Any other error a provider throws is wrapped as `CameraUpstreamException` (503 "Camera did not respond"). That
+  includes untyped errors and every other `CamerasException` a provider might throw: `CamerasNotFoundException`,
+  `CamerasForbiddenException`, the base `CamerasException` and `CameraUpstreamException` itself. A provider cannot
+  produce a 404 for a camera or a 403 for the caller. The original message is never logged or forwarded because a
+  provider may embed a source URL in it; the log line carries the device id and the error class name only.
+- Controller responses never contain a provider-originated message. Only messages the module creates itself (such as
+  "Camera <id> not found" for an unknown or non-camera device) appear in a response body.
 - A provider call that takes longer than 10 seconds (`CAMERA_PROVIDER_TIMEOUT_MS`) is aborted as
   `CameraProviderTimeoutError` and answered with 503.
-- A snapshot whose content type is not `image/jpeg`, `image/png` or `image/webp`, or whose data is empty, is rejected
+- A snapshot whose media type (the content type before `;`, trimmed and lower-cased, so `image/jpeg; charset=binary` is
+  accepted) is not `image/jpeg`, `image/png` or `image/webp`, or whose data is empty, is rejected
   as `CameraUpstreamException('Camera returned an invalid image')` (503).
 
 ### `getSnapshotMinIntervalMs`
 
 Optional. Returns the shortest interval, in milliseconds, between two real snapshot calls for a device. A value that
-is not a finite number or is below 250 ms, and a hook that throws, fall back to the 2000 ms default.
+is not a finite number or is below 250 ms, and a hook that throws, fall back to the 2000 ms default. The same
+interval is the window during which a failed snapshot is remembered (see Snapshot cache).
+
+### Provider obligations
+
+- `listProfiles` must answer from local state without an upstream request. The module calls it on every list, detail
+  and session request, and on a snapshot cache miss that names a `profile`; a provider that asks the camera each time
+  would multiply upstream traffic by the number of polling panels.
+- A provider whose plugin is disabled should throw `CameraOfflineException` from its calls rather than an untyped
+  error, so that clients see "Camera is offline" and failures are throttled as offline.
+- A provider plugin must import `CamerasModule` to inject `CameraStreamProviderRegistryService`. The registry is
+  injectable whether or not the module is enabled.
+- A snapshot with `profile` may take up to two provider timeouts: the profile lookup (`listProfiles`) and the snapshot
+  call each get `CAMERA_PROVIDER_TIMEOUT_MS` (10 s), so the request can take up to 20 s before it fails.
+- Throw only the three typed exceptions above to signal a known condition, and never put a URL, alias or credential in
+  any error message.
 
 ## Registering a provider
 
@@ -112,7 +141,7 @@ image itself.
 
 | Route | operationId | Result |
 |---|---|---|
-| `GET /cameras` | `get-cameras-module-cameras` | 200, every camera and doorbell with its profiles |
+| `GET /cameras` | `get-cameras-module-cameras` | 200, every visible camera and doorbell with its profiles |
 | `GET /cameras/:deviceId` | `get-cameras-module-camera` | 200, one camera; 404 when the device is not a camera |
 | `GET /cameras/:deviceId/snapshot?profile=&hq=` | `get-cameras-module-camera-snapshot` | 200 image (`image/jpeg`, `image/png` or `image/webp`) |
 | `POST /cameras/:deviceId/sessions` | `create-cameras-module-camera-session` | 201 `CamerasModuleDataSession` |
@@ -122,7 +151,8 @@ Status codes:
 - 400: invalid UUID, invalid query parameters or an invalid session request body (the global validation factory
   answers 400, not 422).
 - 403: the caller is not a user or a display.
-- 404: unknown camera, a camera without a registered provider, or an unknown/unavailable profile.
+- 404: unknown camera, a camera without a registered provider, an unknown/unavailable profile, or the module being
+  disabled (`Cameras module is disabled`).
 - 503: camera offline, busy, did not respond or timed out. The snapshot route adds `Retry-After: 2` when rate limited.
 
 Snapshot headers: `Content-Type`, `Content-Length`, `Cache-Control: no-store` and, only when the image is stale,
@@ -148,9 +178,15 @@ profile is used; with `profile` it must be available. Response data: `session_id
 - On `CameraRateLimitedException` during the lookup or the snapshot call, a cached image of that key is returned as
   stale (`X-Snapshot-Age`); without one the error is surfaced (503 "Camera is busy").
 - On `CameraOfflineException` the cached image of that key is dropped.
+- A failure is remembered per cache key for the snapshot minimum interval. During that window the same exception
+  class is replayed (offline, busy or did not respond, with the fixed message) without calling the provider, so three
+  panels polling an offline camera produce one provider call per interval instead of one per poll. The failures that
+  are remembered are offline, rate limited, any other provider failure (including a timeout) and an invalid image. A
+  later success clears the memory, and an unknown profile is never remembered. A remembered rate limit does not hide a
+  usable cached image: while one exists it is still returned as stale.
 - Entries older than 5 minutes (`CAMERA_SNAPSHOT_MAX_AGE_MS`) are never served, not even as stale.
-- A device deletion event evicts every entry of that device and detaches running fetches, so an eviction is not
-  undone by a fetch that finishes afterwards.
+- A device deletion event evicts every entry and every remembered failure of that device and detaches running
+  fetches, so an eviction is not undone by a fetch that finishes afterwards.
 
 ## Stream sessions
 
