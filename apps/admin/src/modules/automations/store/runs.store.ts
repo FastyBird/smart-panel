@@ -313,6 +313,15 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 					throw toApiException(e, 'Failed to fetch automation runs.');
 				} finally {
 					if (first) {
+						// The marks of what came while a first list was on its way that no history took in: it failed or was let go of
+						const kept = new Set((data.value.get(automationId) ?? []).map((run) => run.id));
+
+						for (const runId of awaitingFirstList.get(automationId)?.keys() ?? []) {
+							if (!kept.has(runId)) {
+								changedAt.delete(runId);
+							}
+						}
+
 						awaitingFirstList.delete(automationId);
 					}
 

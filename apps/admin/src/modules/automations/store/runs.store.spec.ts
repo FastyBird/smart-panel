@@ -550,6 +550,52 @@ describe('Automation runs store', (): void => {
 		}
 	});
 
+	it('lets go of the marks of what came while a first list was on its way when the list fails', async (): Promise<void> => {
+		const pending = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(pending.promise);
+
+		const fetching = store.fetch({ automationId });
+
+		store.onEvent({ data: runRes(1, { status: 'running', finished_at: null, duration_ms: null }) });
+
+		const remove = vi.spyOn(Map.prototype, 'delete');
+
+		try {
+			pending.resolve({ data: undefined, error: undefined, response: { status: 500 } });
+
+			await expect(fetching).rejects.toThrow();
+
+			expect(remove.mock.calls.some(([key]) => key === runIds[1])).toBe(true);
+		} finally {
+			remove.mockRestore();
+		}
+	});
+
+	it('lets go of the marks of what came while a first list was on its way when the automation is gone', async (): Promise<void> => {
+		const pending = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(pending.promise);
+
+		const fetching = store.fetch({ automationId });
+
+		store.onEvent({ data: runRes(1, { status: 'running', finished_at: null, duration_ms: null }) });
+
+		store.unset({ automationId });
+
+		const remove = vi.spyOn(Map.prototype, 'delete');
+
+		try {
+			pending.resolve({ data: { data: [runRes(0)] }, error: undefined, response: { status: 200 } });
+
+			await fetching;
+
+			expect(remove.mock.calls.some(([key]) => key === runIds[1])).toBe(true);
+		} finally {
+			remove.mockRestore();
+		}
+	});
+
 	it('forgets the runs of an automation that is gone, and every run on a reset', async (): Promise<void> => {
 		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [runRes(0)] }, error: undefined, response: { status: 200 } });
 

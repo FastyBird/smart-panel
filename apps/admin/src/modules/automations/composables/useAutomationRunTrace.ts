@@ -169,7 +169,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			const candidates = waitingRunIds.filter((runId) => runId !== source.value?.runId && live.stepsOf(runId).length > 0);
 			const runId = [...candidates].reverse().find((item) => !isEnded(runsStore.findById(item))) ?? candidates.at(-1) ?? null;
 
-			waitingRunIds = [];
+			// The others still wait: each is followed in turn once the one before it is over
+			waitingRunIds = candidates.filter((item) => item !== runId);
 
 			if (runId !== null) {
 				source.value = { kind: 'live', runId, pick: ++picks };
