@@ -175,13 +175,13 @@ export const describeConfigSchema = (schema: Record<string, unknown>): IAutomati
 
 /**
  * A configuration with one value set. A value that was cleared is left out altogether: the node types
- * tell "not given" from "given empty", and an optional key must be absent rather than null.
+ * tell "not given" from "given empty", and an optional key must be absent rather than null. Empty text is
+ * not cleared: it is a value a device property may hold, so the form unsets a field explicitly.
  */
 export const setConfigValue = (config: Record<string, unknown>, key: string, value: unknown): Record<string, unknown> => {
 	const cleared =
 		value === null ||
 		typeof value === 'undefined' ||
-		value === '' ||
 		(typeof value === 'number' && !Number.isFinite(value)) ||
 		(Array.isArray(value) && value.length === 0);
 

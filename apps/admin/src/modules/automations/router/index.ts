@@ -44,7 +44,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 	{
 		path: 'automations/:id/flow',
 		name: RouteNames.AUTOMATIONS_FLOW,
-		component: () => import('../views/view-automation-flow.vue'),
+		component: () => import('../views/view-automation-flow-route.vue'),
 		props: true,
 		meta: {
 			guards: { authenticated: true, roles: ROLES },

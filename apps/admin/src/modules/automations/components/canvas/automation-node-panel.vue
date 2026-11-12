@@ -86,6 +86,7 @@
 					:field-errors="fieldErrors"
 					:disabled="props.disabled"
 					@update:config="(config: Record<string, unknown>, field: string): void => emit('update:config', config, field)"
+					@update:invalid="(invalid: boolean): void => emit('update:invalid', invalid)"
 				/>
 			</div>
 		</el-scrollbar>
@@ -136,6 +137,8 @@ const props = withDefaults(defineProps<IAutomationNodePanelProps>(), {
 
 const emit = defineEmits<{
 	(e: 'update:config', config: Record<string, unknown>, field: string): void;
+	// Text typed into the form does not parse, so the configuration does not hold it yet
+	(e: 'update:invalid', invalid: boolean): void;
 	(e: 'remove'): void;
 	(e: 'close'): void;
 }>();

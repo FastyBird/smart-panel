@@ -289,6 +289,7 @@
 				"nothingToConfigure": "Ten blok nie ma nic do skonfigurowania.",
 				"invalidJson": "To nie jest poprawny JSON.",
 				"notSet": "Nie ustawiono",
+				"unset": "Usuń wartość",
 				"yes": "Tak",
 				"no": "Nie",
 				"valueType": {
@@ -325,7 +326,8 @@
 			},
 			"messages": {
 				"conflict": "Automatyzacja „{automation}” została w międzyczasie zmieniona w innym miejscu. Twoje zmiany zostały zachowane; wybierz, którą wersję zachować.",
-				"invalid": "Przebiegu automatyzacji „{automation}” nie można jeszcze zapisać. Sprawdź problemy wymienione pod płótnem."
+				"invalid": "Przebiegu automatyzacji „{automation}” nie można jeszcze zapisać. Sprawdź problemy wymienione pod płótnem.",
+				"invalidDraft": "Część tekstu w formularzu wybranego bloku nie jest poprawnym JSON. Popraw ją lub cofnij przed zapisaniem."
 			}
 		}
 	}

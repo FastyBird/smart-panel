@@ -108,10 +108,6 @@ describe('AutomationNodeGenericForm', (): void => {
 	it('leaves a cleared value out of the configuration', async (): Promise<void> => {
 		await createWrapper({ config: { title: 'Hello', severity: 'info', seconds: 5 } });
 
-		await field('title').find('input').setValue('');
-
-		expect(lastUpdate()).toEqual([{ severity: 'info', seconds: 5 }, 'title']);
-
 		field('severity').findComponent(ElSelect).vm.$emit('update:modelValue', null);
 
 		expect(lastUpdate()).toEqual([{ title: 'Hello', seconds: 5 }, 'severity']);
@@ -119,6 +115,40 @@ describe('AutomationNodeGenericForm', (): void => {
 		field('seconds').findComponent(ElInputNumber).vm.$emit('update:modelValue', null);
 
 		expect(lastUpdate()).toEqual([{ title: 'Hello', severity: 'info' }, 'seconds']);
+	});
+
+	it('keeps empty text, which is a value, and unsets an optional field only when asked', async (): Promise<void> => {
+		await createWrapper({ config: { title: 'Hello', to: 'on' } });
+
+		await field('title').find('input').setValue('');
+
+		expect(lastUpdate()).toEqual([{ title: '', to: 'on' }, 'title']);
+
+		// A property may hold empty text: a `to` filter of '' is a restriction, not no restriction
+		await field('to').findComponent(ElInput).find('input').setValue('');
+
+		expect(lastUpdate()).toEqual([{ title: 'Hello', to: '' }, 'to']);
+
+		await wrapper.setProps({ config: { title: 'Hello', to: '' } });
+
+		// A required field cannot be unset; an optional one that is set can, also while it holds empty text
+		expect(field('title').find('[data-test-id="unset-field"]').exists()).toBe(false);
+
+		await field('to').find('[data-test-id="unset-field"]').trigger('click');
+
+		expect(lastUpdate()).toEqual([{ title: 'Hello' }, 'to']);
+
+		await wrapper.setProps({ config: { title: 'Hello', to: 'on' } });
+
+		// Clearing an optional field unsets it
+		field('to').findComponent(ElInput).vm.$emit('clear');
+
+		expect(lastUpdate()).toEqual([{ title: 'Hello' }, 'to']);
+
+		await wrapper.setProps({ config: { title: 'Hello' } });
+
+		expect(field('to').find('[data-test-id="unset-field"]').exists()).toBe(false);
+		expect(field('to').findComponent(ElInput).find('input').attributes('placeholder')).toBe('automations.editor.form.notSet');
 	});
 
 	it('stores a list of numbers as numbers', async (): Promise<void> => {
@@ -186,6 +216,41 @@ describe('AutomationNodeGenericForm', (): void => {
 		await wrapper.setProps({ config: { writes: [{ value: false }] } });
 
 		expect(JSON.parse((field('writes').find('textarea').element as HTMLTextAreaElement).value)).toEqual([{ value: false }]);
+	});
+
+	it('tells while a JSON field holds text that does not parse', async (): Promise<void> => {
+		await createWrapper({ config: { writes: [{ value: 1 }] } });
+
+		expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
+
+		await field('writes').find('textarea').setValue('[{ "value": ');
+
+		expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([true]);
+
+		await field('writes').find('textarea').setValue('[{ "value": 2 }]');
+
+		expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
+	});
+
+	it('replaces text that does not parse once its value is changed from outside, and only then', async (): Promise<void> => {
+		await createWrapper({ config: { title: 'Hello', writes: [{ value: 1 }] } });
+
+		const typed = '[{ "value": ';
+
+		await field('writes').find('textarea').setValue(typed);
+
+		// Another field changed: the text being typed stays
+		await wrapper.setProps({ config: { title: 'Changed', writes: [{ value: 1 }] } });
+
+		expect((field('writes').find('textarea').element as HTMLTextAreaElement).value).toBe(typed);
+		expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([true]);
+
+		// An undo or a reload brings another value for the field itself
+		await wrapper.setProps({ config: { title: 'Changed', writes: [{ value: 3 }] } });
+
+		expect(JSON.parse((field('writes').find('textarea').element as HTMLTextAreaElement).value)).toEqual([{ value: 3 }]);
+		expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
+		await vi.waitFor((): void => expect(field('writes').text()).not.toContain('automations.editor.form.invalidJson'));
 	});
 
 	it('shows what the backend refused under the field it is about', async (): Promise<void> => {

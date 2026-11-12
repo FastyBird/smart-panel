@@ -289,6 +289,7 @@
 				"nothingToConfigure": "Este bloque no tiene nada que configurar.",
 				"invalidJson": "Esto no es JSON válido.",
 				"notSet": "Sin establecer",
+				"unset": "Quitar valor",
 				"yes": "Sí",
 				"no": "No",
 				"valueType": {
@@ -325,7 +326,8 @@
 			},
 			"messages": {
 				"conflict": "La automatización «{automation}» se modificó en otro lugar mientras tanto. Sus cambios se conservan; elija qué versión conservar.",
-				"invalid": "El flujo de la automatización «{automation}» aún no se puede guardar. Revise los problemas indicados bajo el lienzo."
+				"invalid": "El flujo de la automatización «{automation}» aún no se puede guardar. Revise los problemas indicados bajo el lienzo.",
+				"invalidDraft": "Parte del texto del formulario del bloque seleccionado no es JSON válido. Corríjalo o deshágalo antes de guardar."
 			}
 		}
 	}

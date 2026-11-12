@@ -127,6 +127,7 @@ export interface IUseAutomationEditor {
 	graph: Ref<IAutomationGraph>;
 	issues: Ref<IAutomationGraphIssue[]>;
 	loaded: Ref<boolean>;
+	// A save, or a read of the saved version that is to replace the working copy, is under way
 	saving: Ref<boolean>;
 	// The automation was changed elsewhere since the working copy was read
 	conflict: Ref<boolean>;

@@ -542,6 +542,90 @@ describe('useAutomationEditor', () => {
 			expect(editor.canUndo.value).toBe(false);
 		});
 
+		it('keeps what is drawn while the saved version is being read, and asks again which version to keep', async () => {
+			const editor = await conflictingSave();
+
+			let answer: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answer = res;
+				})
+			);
+
+			const reloading = editor.reloadLatest();
+
+			const drawn: IAutomationGraph = { ...withDelay(), nodes: withDelay().nodes.filter((node) => node.id !== 'a2') };
+
+			editor.updateGraph(drawn);
+
+			answer(ok(detailRes({ name: 'Renamed elsewhere', revision: 6 })));
+
+			await reloading;
+
+			expect(editor.graph.value).toEqual(drawn);
+			expect(editor.canUndo.value).toBe(true);
+			expect(editor.isDirty.value).toBe(true);
+			expect(editor.conflict.value).toBe(true);
+		});
+
+		it('saves nothing while the saved version is being read', async () => {
+			const editor = await conflictingSave();
+
+			let answer: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answer = res;
+				})
+			);
+
+			const reloading = editor.reloadLatest();
+
+			expect(editor.saving.value).toBe(true);
+			await expect(editor.save()).resolves.toBe('error');
+			await expect(editor.setEnabled(true)).resolves.toBe(false);
+
+			answer(ok(detailRes({ name: 'Renamed elsewhere', revision: 6 })));
+
+			await reloading;
+
+			expect(mockBackendClient.PATCH).toHaveBeenCalledTimes(1);
+			expect(editor.saving.value).toBe(false);
+			expect(editor.conflict.value).toBe(false);
+		});
+
+		it('does not follow a save made elsewhere over what is drawn while it is being read', async () => {
+			const editor = await createEditor();
+
+			let answer: (value: unknown) => void = () => {};
+
+			mockBackendClient.GET.mockReturnValueOnce(
+				new Promise((res) => {
+					answer = res;
+				})
+			);
+
+			automationsStore.onEvent({ id: automationId, data: detailRes({ revision: 4 }) });
+
+			await nextTick();
+
+			expect(mockBackendClient.GET).toHaveBeenCalledTimes(2);
+
+			editor.updateGraph(withDelay());
+
+			const theirs: IAutomationGraph = { ...cloneGraph(graph), nodes: graph.nodes.slice(0, 2), edges: graph.edges.slice(0, 1) };
+
+			answer(ok(detailRes({ revision: 4, graph: theirs })));
+
+			await flushPromises();
+
+			expect(editor.graph.value).toEqual(withDelay());
+			expect(editor.canUndo.value).toBe(true);
+			expect(editor.isDirty.value).toBe(true);
+			expect(editor.conflict.value).toBe(true);
+		});
+
 		it('is noticed as soon as the automation is saved elsewhere while there are unsaved changes', async () => {
 			const editor = await createEditor();
 

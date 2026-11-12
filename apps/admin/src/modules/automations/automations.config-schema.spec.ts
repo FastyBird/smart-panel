@@ -110,14 +110,16 @@ describe('automations.config-schema', (): void => {
 		it('leaves a cleared value out instead of storing it empty', (): void => {
 			const config = { a: 1, b: 'x' };
 
-			for (const cleared of [null, undefined, '', [], Number.NaN]) {
+			for (const cleared of [null, undefined, [], Number.NaN]) {
 				expect(setConfigValue(config, 'b', cleared)).toEqual({ a: 1 });
 			}
 		});
 
-		it('keeps false and zero, which are values', (): void => {
+		it('keeps false, zero and empty text, which are values', (): void => {
 			expect(setConfigValue({}, 'on', false)).toEqual({ on: false });
 			expect(setConfigValue({}, 'level', 0)).toEqual({ level: 0 });
+			// A device property may hold empty text, so a comparison or a `to` filter can be about it
+			expect(setConfigValue({ to: 'on' }, 'to', '')).toEqual({ to: '' });
 		});
 	});
 

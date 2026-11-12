@@ -289,6 +289,7 @@
 				"nothingToConfigure": "Dieser Block hat nichts zu konfigurieren.",
 				"invalidJson": "Das ist kein gültiges JSON.",
 				"notSet": "Nicht gesetzt",
+				"unset": "Zurücksetzen",
 				"yes": "Ja",
 				"no": "Nein",
 				"valueType": {
@@ -325,7 +326,8 @@
 			},
 			"messages": {
 				"conflict": "Die Automation „{automation}“ wurde inzwischen an anderer Stelle geändert. Ihre Änderungen bleiben erhalten; wählen Sie, welche Version behalten werden soll.",
-				"invalid": "Der Ablauf der Automation „{automation}“ kann noch nicht gespeichert werden. Prüfen Sie die Probleme unter der Arbeitsfläche."
+				"invalid": "Der Ablauf der Automation „{automation}“ kann noch nicht gespeichert werden. Prüfen Sie die Probleme unter der Arbeitsfläche.",
+				"invalidDraft": "Ein Text im Formular des ausgewählten Blocks ist kein gültiges JSON. Korrigieren oder verwerfen Sie ihn vor dem Speichern."
 			}
 		}
 	}

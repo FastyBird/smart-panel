@@ -167,7 +167,7 @@
 				</el-tag>
 
 				<el-tag
-					v-if="isDirty"
+					v-if="hasUnsaved"
 					type="warning"
 					disable-transitions
 					data-test-id="unsaved-tag"
@@ -216,7 +216,7 @@
 					v-if="!readonly"
 					type="primary"
 					:loading="saving"
-					:disabled="saving || !isDirty"
+					:disabled="saving || !isDirty || hasInvalidDraft"
 					data-test-id="save-flow"
 					@click="onSave"
 				>
@@ -304,6 +304,7 @@
 					:node-type="getNodeType(panelNode.type)"
 					:issues="panelIssues"
 					@update:config="onConfigUpdate"
+					@update:invalid="onDraftInvalid"
 					@remove="onRemoveNode"
 					@close="panelDismissedFor = panelNode.id"
 				/>
@@ -316,7 +317,7 @@
 import { computed, nextTick, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, onBeforeRouteLeave, useRouter } from 'vue-router';
+import { type RouteLocationNormalized, type RouteLocationResolvedGeneric, onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
 import { ElAlert, ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
 
@@ -445,6 +446,18 @@ watch(
 	}
 );
 
+// The form of the panel holds text that does not parse: it has not reached the graph, so the graph is not
+// saved without it, and leaving would lose it. The text goes with the form, so only the open panel counts.
+const invalidDraftFor = ref<string | null>(null);
+
+const hasInvalidDraft = computed<boolean>((): boolean => panelNode.value !== null && invalidDraftFor.value === panelNode.value.id);
+
+const hasUnsaved = computed<boolean>((): boolean => isDirty.value || hasInvalidDraft.value);
+
+const onDraftInvalid = (invalid: boolean): void => {
+	invalidDraftFor.value = invalid && panelNode.value !== null ? panelNode.value.id : null;
+};
+
 const onSelect = (nodeIds: string[], edgeIds: string[]): void => {
 	selectedNodeIds.value = nodeIds;
 	selectedEdgeIds.value = edgeIds;
@@ -489,8 +502,17 @@ const onReject = (reason: AutomationConnectionRejection): void => {
  * Saving
  */
 
+// Saving now would save the graph without what is typed in the form, and report it saved
+const refuseInvalidDraft = (): boolean => {
+	if (hasInvalidDraft.value) {
+		flashMessage.error(t('automations.editor.messages.invalidDraft'));
+	}
+
+	return hasInvalidDraft.value;
+};
+
 const onSave = (): void => {
-	if (readonly.value || saving.value || !isDirty.value) {
+	if (readonly.value || saving.value || refuseInvalidDraft() || !isDirty.value) {
 		return;
 	}
 
@@ -502,7 +524,7 @@ const onToggleEnabled = (enabled: boolean): void => {
 };
 
 const onReloadLatest = async (): Promise<void> => {
-	if (isDirty.value) {
+	if (hasUnsaved.value) {
 		try {
 			await ElMessageBox.confirm(t('automations.editor.conflict.confirmReload'), t('automations.headings.discard'), {
 				confirmButtonText: t('automations.buttons.yes.title'),
@@ -522,6 +544,10 @@ const onReloadLatest = async (): Promise<void> => {
 };
 
 const onOverwrite = (): void => {
+	if (refuseInvalidDraft()) {
+		return;
+	}
+
 	void overwrite();
 };
 
@@ -569,20 +595,20 @@ useEventListener(window, 'keydown', (event: KeyboardEvent): void => {
  */
 
 useEventListener(window, 'beforeunload', (event: BeforeUnloadEvent): void => {
-	if (isDirty.value) {
+	if (hasUnsaved.value) {
 		event.preventDefault();
 		// Still what some browsers need to show their prompt
 		event.returnValue = '';
 	}
 });
 
-onBeforeRouteLeave(async (): Promise<boolean> => {
+const confirmLeave = async (): Promise<boolean> => {
 	// A save on its way cannot be taken back: leaving now would look like discarding what is then saved anyway
 	if (saving.value) {
 		return false;
 	}
 
-	if (!isDirty.value) {
+	if (!hasUnsaved.value) {
 		return true;
 	}
 
@@ -597,7 +623,16 @@ onBeforeRouteLeave(async (): Promise<boolean> => {
 	} catch {
 		return false;
 	}
-});
+};
+
+onBeforeRouteLeave(confirmLeave);
+
+// Going from one flow straight to another reuses the route: the view is keyed by the automation where the
+// route renders it (`view-automation-flow-route.vue`), so the other automation gets an editor of its own,
+// and this one is left only as any other way out of it is
+onBeforeRouteUpdate(
+	(to: RouteLocationNormalized, from: RouteLocationNormalized): Promise<boolean> | boolean => to.params.id === from.params.id || confirmLeave()
+);
 
 const onClose = (): void => {
 	// The guard above asks before anything unsaved is left behind

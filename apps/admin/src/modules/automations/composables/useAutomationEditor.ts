@@ -210,8 +210,33 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 	 * After a conflict: gives up the working copy for what the backend holds now.
 	 */
 	const reloadLatest = async (): Promise<void> => {
-		// What is on its way may be from before the other save, so it is read anew
-		adopt(await automationsStore.get({ id, fresh: true }));
+		if (saving.value) {
+			return;
+		}
+
+		// Every edit, undo and redo puts a new graph in place, so the one shown now tells whether anything
+		// was drawn while the read was on its way
+		const drawing = history.graph.value;
+
+		// Nothing is saved while the read is on its way: what it brings replaces the revision a save is based on
+		saving.value = true;
+
+		try {
+			// What is on its way may be from before the other save, so it is read anew
+			const latest = await automationsStore.get({ id, fresh: true });
+
+			if (history.graph.value !== drawing) {
+				// Drawn after the user gave up their copy or after the editor set out to follow a save made
+				// elsewhere: that is not thrown away, the user chooses again
+				conflict.value = true;
+
+				return;
+			}
+
+			adopt(latest);
+		} finally {
+			saving.value = false;
+		}
 	};
 
 	/**

@@ -83,11 +83,13 @@ describe('AutomationNodePanel', (): void => {
 		await createWrapper();
 
 		wrapper.findComponent(AutomationNodeGenericForm).vm.$emit('update:config', { seconds: 60 }, 'seconds');
+		wrapper.findComponent(AutomationNodeGenericForm).vm.$emit('update:invalid', true);
 
 		await wrapper.find('[data-test-id="remove-node"]').trigger('click');
 		await wrapper.find('[data-test-id="close-node-panel"]').trigger('click');
 
 		expect(wrapper.emitted('update:config')).toEqual([[{ seconds: 60 }, 'seconds']]);
+		expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([true]);
 		expect(wrapper.emitted('remove')).toHaveLength(1);
 		expect(wrapper.emitted('close')).toHaveLength(1);
 	});

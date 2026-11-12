@@ -289,6 +289,7 @@
 				"nothingToConfigure": "This block has nothing to configure.",
 				"invalidJson": "This is not valid JSON.",
 				"notSet": "Not set",
+				"unset": "Unset",
 				"yes": "Yes",
 				"no": "No",
 				"valueType": {
@@ -325,7 +326,8 @@
 			},
 			"messages": {
 				"conflict": "Automation \"{automation}\" was changed elsewhere in the meantime. Your changes are kept; choose which version to keep.",
-				"invalid": "The flow of automation \"{automation}\" cannot be saved yet. Check the problems listed below the canvas."
+				"invalid": "The flow of automation \"{automation}\" cannot be saved yet. Check the problems listed below the canvas.",
+				"invalidDraft": "Some text in the form of the selected block is not valid JSON. Correct it or undo it before saving."
 			}
 		}
 	}

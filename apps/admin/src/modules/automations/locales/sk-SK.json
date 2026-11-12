@@ -289,6 +289,7 @@
 				"nothingToConfigure": "Tento blok nemá čo nastavovať.",
 				"invalidJson": "Toto nie je platný JSON.",
 				"notSet": "Nenastavené",
+				"unset": "Zrušiť nastavenie",
 				"yes": "Áno",
 				"no": "Nie",
 				"valueType": {
@@ -325,7 +326,8 @@
 			},
 			"messages": {
 				"conflict": "Automatizácia „{automation}“ bola medzitým zmenená inde. Vaše zmeny zostali zachované; vyberte, ktorú verziu zachovať.",
-				"invalid": "Priebeh automatizácie „{automation}“ zatiaľ nemožno uložiť. Skontrolujte problémy uvedené pod plátnom."
+				"invalid": "Priebeh automatizácie „{automation}“ zatiaľ nemožno uložiť. Skontrolujte problémy uvedené pod plátnom.",
+				"invalidDraft": "Časť textu vo formulári vybraného bloku nie je platný JSON. Pred uložením ju opravte alebo vráťte späť."
 			}
 		}
 	}

@@ -43,9 +43,26 @@
 				:model-value="textValue(field.key)"
 				:disabled="props.disabled"
 				:name="field.key"
+				:placeholder="isSet(field.key) ? undefined : t('automations.editor.form.notSet')"
 				clearable
 				@update:model-value="(value: string): void => onValue(field, value)"
-			/>
+				@clear="onClear(field)"
+			>
+				<template
+					v-if="canUnset(field)"
+					#append
+				>
+					<el-button
+						:aria-label="t('automations.editor.form.unset')"
+						data-test-id="unset-field"
+						@click="onValue(field, undefined)"
+					>
+						<template #icon>
+							<icon icon="mdi:close-circle-outline" />
+						</template>
+					</el-button>
+				</template>
+			</el-input>
 
 			<el-input-number
 				v-else-if="field.control === 'number'"
@@ -176,10 +193,27 @@
 					:model-value="textValue(field.key)"
 					:disabled="props.disabled"
 					:name="field.key"
+					:placeholder="isSet(field.key) ? undefined : t('automations.editor.form.notSet')"
 					clearable
 					class="grow-1"
 					@update:model-value="(value: string): void => onValue(field, value)"
-				/>
+					@clear="onClear(field)"
+				>
+					<template
+						v-if="canUnset(field)"
+						#append
+					>
+						<el-button
+							:aria-label="t('automations.editor.form.unset')"
+							data-test-id="unset-field"
+							@click="onValue(field, undefined)"
+						>
+							<template #icon>
+								<icon icon="mdi:close-circle-outline" />
+							</template>
+						</el-button>
+					</template>
+				</el-input>
 			</div>
 
 			<el-input
@@ -215,7 +249,9 @@
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElText } from 'element-plus';
+import { ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElText } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import {
 	type AutomationConfigScalar,
@@ -247,6 +283,8 @@ const props = withDefaults(defineProps<IAutomationNodeFormProps>(), {
 const emit = defineEmits<{
 	// `field` names what was edited, so a run of keystrokes in one field can be undone as one step
 	(e: 'update:config', config: Record<string, unknown>, field: string): void;
+	// Some text typed into the form does not parse, so it has not reached the configuration
+	(e: 'update:invalid', invalid: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -263,6 +301,10 @@ const jsonFields = computed<string[]>((): string[] =>
  */
 const jsonDrafts = reactive<Record<string, string>>({});
 const jsonErrors = reactive<Record<string, boolean>>({});
+
+// The value each draft was last written from or sent as, serialised: a value that differs from it was
+// changed from outside, whether the draft parses or not
+const jsonSeen: Record<string, string | undefined> = {};
 
 const jsonSource = (key: string): unknown => (key === WHOLE_CONFIG ? props.config : props.config[key]);
 
@@ -284,13 +326,14 @@ watch(
 	[jsonFields, (): Record<string, unknown> => props.config],
 	(): void => {
 		for (const key of jsonFields.value) {
-			const draft = typeof jsonDrafts[key] === 'string' ? parseJson(jsonDrafts[key]) : null;
+			const source = JSON.stringify(jsonSource(key));
 
 			// The text is replaced only when the configuration was changed from outside (undo, a reload):
 			// rewriting it while it is being typed would move the cursor and undo the formatting
-			if (draft === null || (draft.ok && JSON.stringify(draft.value) !== JSON.stringify(jsonSource(key)))) {
+			if (typeof jsonDrafts[key] !== 'string' || source !== jsonSeen[key]) {
 				jsonDrafts[key] = toJson(jsonSource(key));
 				jsonErrors[key] = false;
+				jsonSeen[key] = source;
 			}
 		}
 	},
@@ -318,17 +361,33 @@ const onJsonInput = (key: string, text: string): void => {
 			return;
 		}
 
-		jsonErrors[key] = false;
+		const config = (parsed.value ?? {}) as Record<string, unknown>;
 
-		emit('update:config', (parsed.value ?? {}) as Record<string, unknown>, key);
+		jsonErrors[key] = false;
+		jsonSeen[key] = JSON.stringify(config);
+
+		emit('update:config', config, key);
 
 		return;
 	}
 
-	jsonErrors[key] = false;
+	const config = setConfigValue(props.config, key, parsed.value);
 
-	emit('update:config', setConfigValue(props.config, key, parsed.value), key);
+	jsonErrors[key] = false;
+	jsonSeen[key] = JSON.stringify(config[key]);
+
+	emit('update:config', config, key);
 };
+
+const invalid = computed<boolean>((): boolean => jsonFields.value.some((key) => jsonErrors[key] === true));
+
+watch(
+	invalid,
+	(value: boolean): void => {
+		emit('update:invalid', value);
+	},
+	{ immediate: true }
+);
 
 /*
  * A value that may be text, a number or yes/no: its type is chosen next to it. The choice is remembered
@@ -390,6 +449,20 @@ const listValue = (key: string): AutomationConfigScalar[] => {
 
 const onValue = (field: IAutomationConfigField, value: unknown): void => {
 	emit('update:config', setConfigValue(props.config, field.key, value), field.key);
+};
+
+/*
+ * Empty text is a value - a property may hold it - so an optional field is unset only when asked: by its
+ * own button, or by clearing it.
+ */
+const isSet = (key: string): boolean => typeof props.config[key] !== 'undefined';
+
+const canUnset = (field: IAutomationConfigField): boolean => !field.required && !props.disabled && isSet(field.key);
+
+const onClear = (field: IAutomationConfigField): void => {
+	if (!field.required) {
+		onValue(field, undefined);
+	}
 };
 
 const onValueType = (field: IAutomationConfigField, type: ValueType): void => {

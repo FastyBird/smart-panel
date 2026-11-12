@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
 	isMDDevice: true,
 	routerPush: vi.fn(),
 	leaveGuard: null as null | (() => Promise<boolean>),
+	updateGuard: null as null | ((to: { params: { id: string } }, from: { params: { id: string } }) => Promise<boolean> | boolean),
 	flash: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 	fetchNodeTypes: vi.fn(),
 	canvas: { addNode: vi.fn(), removeNode: vi.fn(), removeSelected: vi.fn(), focusNode: vi.fn(), revealNode: vi.fn() },
@@ -73,6 +74,9 @@ vi.mock('vue-router', () => ({
 	}),
 	onBeforeRouteLeave: (guard: () => Promise<boolean>): void => {
 		mocks.leaveGuard = guard;
+	},
+	onBeforeRouteUpdate: (guard: typeof mocks.updateGuard): void => {
+		mocks.updateGuard = guard;
 	},
 }));
 
@@ -143,7 +147,7 @@ vi.mock('../components/components', async () => {
 				nodeType: { type: Object, required: false, default: null },
 				issues: { type: Array, required: true },
 			},
-			emits: ['update:config', 'remove', 'close'],
+			emits: ['update:config', 'update:invalid', 'remove', 'close'],
 			template: '<div data-test-id="panel-stub" />',
 		}),
 		AutomationIssuesList: defineComponent({
@@ -216,6 +220,7 @@ describe('ViewAutomationFlow', (): void => {
 
 		mocks.isMDDevice = true;
 		mocks.leaveGuard = null;
+		mocks.updateGuard = null;
 		mocks.fetchNodeTypes.mockResolvedValue(undefined);
 
 		editor = createEditor();
@@ -516,6 +521,71 @@ describe('ViewAutomationFlow', (): void => {
 		editor.saving.value = false;
 
 		await expect(mocks.leaveGuard?.()).resolves.toBe(true);
+	});
+
+	it('neither saves nor lets go of the graph while the form holds JSON that does not parse', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValue('cancel');
+
+		await createWrapper();
+
+		canvas().vm.$emit('select', ['a1'], []);
+		await flushPromises();
+
+		editor.isDirty.value = true;
+		wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$emit('update:invalid', true);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="save-flow"]').attributes('disabled')).toBeDefined();
+
+		press('s');
+
+		expect(editor.save).not.toHaveBeenCalled();
+		expect(mocks.flash.error).toHaveBeenCalledWith('automations.editor.messages.invalidDraft');
+
+		// Only the text in the form is unsaved: that still counts
+		editor.isDirty.value = false;
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="unsaved-tag"]').exists()).toBe(true);
+		await expect(mocks.leaveGuard?.()).resolves.toBe(false);
+		expect(confirm).toHaveBeenCalledTimes(1);
+
+		const unload = new Event('beforeunload', { cancelable: true });
+
+		window.dispatchEvent(unload);
+
+		expect(unload.defaultPrevented).toBe(true);
+
+		editor.isDirty.value = true;
+		wrapper.findComponent({ name: 'AutomationNodePanel' }).vm.$emit('update:invalid', false);
+		await flushPromises();
+
+		press('s');
+
+		expect(editor.save).toHaveBeenCalledTimes(1);
+	});
+
+	it('asks before going from one flow straight to another, as before any other way out', async (): Promise<void> => {
+		const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel');
+
+		await createWrapper();
+
+		const other = { params: { id: 'c9e1a0b4-2f43-4f7e-8a51-0d4c2e7b9f10' } };
+		const current = { params: { id: automationId } };
+
+		await expect(mocks.updateGuard?.(other, current)).resolves.toBe(true);
+
+		editor.isDirty.value = true;
+
+		// The same automation: nothing is left behind
+		expect(mocks.updateGuard?.(current, current)).toBe(true);
+
+		await expect(mocks.updateGuard?.(other, current)).resolves.toBe(false);
+
+		editor.saving.value = true;
+
+		await expect(mocks.updateGuard?.(other, current)).resolves.toBe(false);
+		expect(confirm).toHaveBeenCalledTimes(1);
 	});
 
 	it('holds the browser back from closing the page with unsaved changes', async (): Promise<void> => {
