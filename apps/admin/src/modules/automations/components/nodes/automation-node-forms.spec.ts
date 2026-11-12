@@ -271,6 +271,16 @@ describe('automation card forms', (): void => {
 			expect(lastConfig()).toEqual({ writes: [{ device_id: 'd-1' }, { ...lockWrite, value: false }] });
 		});
 
+		it('takes a list in place of a value for an entry that is not one, and replaces it whole', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [[123]] } });
+
+			expect(wrapper.find('[data-test-write="0"]').text()).toContain('automations.editor.fields.set.malformed');
+
+			wrapper.find('[data-test-write="0"]').findComponent(DevicePropertyPicker).vm.$emit('update:deviceId', 'd-1');
+
+			expect(lastConfig()).toEqual({ writes: [{ device_id: 'd-1' }] });
+		});
+
 		it('lets a single entry that is not a value be removed', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [null] } });
 

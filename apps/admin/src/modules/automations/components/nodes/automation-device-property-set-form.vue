@@ -193,7 +193,7 @@ const lookups = useAutomationNodeLookups();
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
-const isRow = (write: unknown): write is Row => typeof write === 'object' && write !== null;
+const isRow = (write: unknown): write is Row => typeof write === 'object' && write !== null && !Array.isArray(write);
 
 // The writes as configured, an entry that is not one included: what the backend says about a write
 // names it by its index there, and an edit keeps the other entries where they are
