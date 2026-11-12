@@ -515,7 +515,7 @@ Notes:
 2. `spec/devices/devices.yaml`: `camera` and `doorbell` allow `object_detection` and `sound_detection` (multiple),
    `indicator`, `illuminance`, `smoke`, `carbon_monoxide`; `camera` channel `multiple: true` on both.
 3. Backend enums (`ChannelCategory.OBJECT_DETECTION`, `ChannelCategory.SOUND_DETECTION`, `PropertyCategory.OBJECT_TYPE`,
-   `PropertyCategory.SOUND_TYPE`), CHECK-constraint migration,
+   `PropertyCategory.SOUND_TYPE`), CHECK-constraint migration (in place, see migration 059; the device tables are not rebuilt because later migrations attached catalog columns and triggers to them),
    admin `devices.mapping.ts` + locales, panel enums/views; regenerate specs, OpenAPI, admin types and the Dart client.
 4. Per-type security detection rules for `object_detection` and `sound_detection` (UP-16) and person detection as
    space occupancy (UP-21).

@@ -93,7 +93,7 @@ Sub-issues of #1175. PR titles are the issue titles unless stated otherwise.
 | ID | Issue | Milestone | Task | Depends on |
 |---|---|---|---|---|
 | UP-0 | #1176 | M0 | API compatibility spike, fixtures, go2rtc and flutter-pi measurements | hardware access |
-| UP-1 | #1177 | M0 | `feat(cross): extend camera specs with object detection and multi-stream channels` | D8 |
+| UP-1 (done) | #1177 | M0 | `feat(cross): extend camera specs with object detection and multi-stream channels` | D8 |
 | UP-2 | #1178 | M1 | `feat(backend): add cameras module with stream provider registry and snapshots` | D1, UP-1 (merge) |
 | UP-3 | #1179 | M1 | `feat(backend): relay camera live streams through a managed go2rtc service` | UP-2, UP-0 |
 | UP-4 | #1180 | M1 | `feat(installer): ship go2rtc with server installations` | UP-0 |
