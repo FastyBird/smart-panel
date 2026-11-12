@@ -427,6 +427,21 @@ describe('automation card forms', (): void => {
 			);
 		});
 
+		it('names a first entry that is not a number over the list being empty', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyCompareForm, {
+				nodeType: compare,
+				config: { device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature', operator: 'in', values: [] },
+			});
+
+			wrapper.find('[data-test-field="values"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', ['20x']);
+
+			expect(lastConfig()).not.toHaveProperty('values');
+
+			await vi.waitFor((): void =>
+				expect(wrapper.find('[data-test-field="values"]').text()).toContain('automations.editor.fields.compare.values.notNumber')
+			);
+		});
+
 		it('drops an operator the newly picked property can not be compared with', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertyCompareForm, {
 				nodeType: compare,

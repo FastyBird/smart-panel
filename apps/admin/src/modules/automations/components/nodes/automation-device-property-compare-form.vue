@@ -60,7 +60,7 @@
 		<el-form-item
 			v-else-if="operator === 'in'"
 			:label="t('automations.editor.fields.compare.values.title')"
-			:error="errorText('values') ?? rejectedText"
+			:error="rejectedText ?? errorText('values')"
 			required
 			data-test-field="values"
 		>
