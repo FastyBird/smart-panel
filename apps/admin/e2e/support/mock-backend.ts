@@ -54,9 +54,28 @@ export interface IStoredAutomation {
 	updated_at: string | null;
 }
 
+/** A run of an automation as the backend stores it, with its trace */
+export interface IStoredRun {
+	id: string;
+	automation_id: string;
+	revision: number;
+	status: string;
+	trigger_node_id: string;
+	manual: boolean;
+	started_at: string;
+	finished_at: string | null;
+	duration_ms: number | null;
+	end_reason: string | null;
+	trace: { trigger: { node_id: string; manual: boolean; data: Record<string, unknown> }; steps: Record<string, unknown>[]; truncated: boolean };
+}
+
 export interface IMockBackend {
 	/** The automations as stored, by id */
 	automations: Map<string, IStoredAutomation>;
+	/** The runs as stored, newest first */
+	runs: IStoredRun[];
+	/** The manual runs the admin asked for: the automation and the body of each request */
+	triggers: { id: string; body: Record<string, unknown> }[];
 	/** The bodies of every update the admin sent */
 	updates: { id: string; body: Record<string, unknown> }[];
 	/** Calls nothing here answers */
@@ -123,9 +142,11 @@ const withoutGraph = (automation: IStoredAutomation): Partial<IStoredAutomation>
 /**
  * Signs the page in and serves the backend from memory. Call before the first navigation.
  */
-export const mockBackend = async (page: Page, baseURL: string, automations: IStoredAutomation[]): Promise<IMockBackend> => {
+export const mockBackend = async (page: Page, baseURL: string, automations: IStoredAutomation[], runs: IStoredRun[] = []): Promise<IMockBackend> => {
 	const state: IMockBackend = {
 		automations: new Map(automations.map((automation) => [automation.id, structuredClone(automation)])),
+		runs: structuredClone(runs),
+		triggers: [],
 		updates: [],
 		unhandled: [],
 	};
@@ -204,6 +225,50 @@ export const mockBackend = async (page: Page, baseURL: string, automations: ISto
 
 			if (method === 'POST' && path === 'modules/automations/automations/validate') {
 				return reply({ valid: true, issues: [] });
+			}
+
+			// The editor reads the run history along with the automation, without the traces
+			const history = /^modules\/automations\/automations\/([0-9a-f-]{36})\/runs$/.exec(path);
+
+			if (method === 'GET' && history) {
+				if (!state.automations.has(history[1] as string)) {
+					return fail(404, 'The automation was not found.');
+				}
+
+				return reply(
+					state.runs
+						.filter((run) => run.automation_id === history[1])
+						.map((run) => {
+							const listed: Partial<IStoredRun> = { ...run };
+
+							delete listed.trace;
+
+							return listed;
+						})
+				);
+			}
+
+			const storedRun = /^modules\/automations\/runs\/([0-9a-f-]{36})$/.exec(path);
+
+			if (method === 'GET' && storedRun) {
+				const run = state.runs.find((item) => item.id === storedRun[1]);
+
+				return run ? reply(run) : fail(404, 'Requested run does not exist');
+			}
+
+			// A manual run is started and never ends here: the steps of a run come over the socket, which these tests do not open
+			const trigger = /^modules\/automations\/automations\/([0-9a-f-]{36})\/trigger$/.exec(path);
+
+			if (method === 'POST' && trigger) {
+				state.triggers.push({ id: trigger[1] as string, body: (request.postDataJSON() as Record<string, unknown> | null) ?? {} });
+
+				return reply({
+					automation_id: trigger[1],
+					started: true,
+					outcome: 'started',
+					run_id: `00000000-0000-4000-8000-${String(state.triggers.length).padStart(12, '0')}`,
+					reason: null,
+				});
 			}
 
 			const detail = /^modules\/automations\/automations\/([0-9a-f-]{36})$/.exec(path);
