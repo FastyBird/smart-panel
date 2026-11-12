@@ -386,6 +386,28 @@ export class ModbusDeviceStructureService {
 		};
 	}
 
+	/**
+	 * The stored columns of a kept property. While its data type stays, a format the request omits and the step (which
+	 * the request cannot carry) keep their stored values, so a constraint set through the core property API survives.
+	 */
+	private retainedPropertyFields(
+		channelCategory: ChannelCategory,
+		dto: CreateModbusDeviceStructurePropertyDto,
+		previous: ChannelPropertyEntity,
+	) {
+		const fields = this.propertyFields(channelCategory, dto);
+
+		if (previous.dataType !== dto.data_type) {
+			return fields;
+		}
+
+		return {
+			...fields,
+			format: dto.format === undefined ? previous.format : fields.format,
+			step: previous.step,
+		};
+	}
+
 	/** Stores the property's bindings, and queues its static value for after COMMIT. */
 	private async insertBindings(
 		manager: EntityManager,
@@ -507,7 +529,7 @@ export class ModbusDeviceStructureService {
 					continue;
 				}
 
-				const propertyFields = this.propertyFields(channel.category, property);
+				const propertyFields = this.retainedPropertyFields(channel.category, property, previous);
 
 				await manager.update(ChannelPropertyEntity, { id: previous.id }, propertyFields);
 				await this.insertBindings(manager, deviceId, previous.id, property, statics);
@@ -689,8 +711,9 @@ export class ModbusDeviceStructureService {
 
 	/**
 	 * Properties of a points update that keep their stored static value: sent with the ID of a property of this device
-	 * that has no Modbus binding, and with neither a static value nor a binding. Their stored value is left as it is, so
-	 * a static property whose value is missing (or unknown to the client) does not block the update.
+	 * that has no Modbus binding, with neither a static value nor a binding, and with the stored data type and format.
+	 * Their stored value is left as it is, so a static property whose value is missing (or unknown to the client) does
+	 * not block the update; a property whose metadata changes needs a value that fits it.
 	 */
 	private async keptStaticProperties(
 		deviceId: string,
@@ -702,7 +725,19 @@ export class ModbusDeviceStructureService {
 				(binding) => binding.propertyId,
 			),
 		);
-		const stored = new Set(existing.flatMap((channel) => channel.properties.map((property) => property.id)));
+		const stored = new Map(
+			existing.flatMap((channel) => channel.properties.map((property) => [property.id, property] as const)),
+		);
+		const sameMetadata = (property: CreateModbusDeviceStructurePropertyDto): boolean => {
+			const row = stored.get(property.id);
+
+			return (
+				row !== undefined &&
+				row.dataType === property.data_type &&
+				(property.format === undefined ||
+					JSON.stringify(row.format ?? null) === JSON.stringify(property.format ?? null))
+			);
+		};
 
 		return new Set(
 			dto.channels
@@ -710,7 +745,7 @@ export class ModbusDeviceStructureService {
 				.filter(
 					(property) =>
 						property.id !== undefined &&
-						stored.has(property.id) &&
+						sameMetadata(property) &&
 						!bound.has(property.id) &&
 						(property.static_value === undefined || property.static_value === null) &&
 						!property.read &&

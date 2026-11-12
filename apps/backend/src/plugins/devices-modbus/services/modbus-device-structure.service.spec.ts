@@ -1316,6 +1316,22 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 				expect(await bindings.findByProperty(labelId)).toEqual({ read: null, write: null });
 			});
 
+			it('refuses a kept static property without a value when its data type changes', async () => {
+				const { device, ids, label: labelId } = await createWithLabel();
+
+				expect(
+					await fieldsOf(
+						service.update(
+							device.id,
+							toUpdate({
+								category: DeviceCategory.SWITCHER,
+								channels: [withLabel(ids, { ...label, id: labelId, data_type: DataTypeType.UCHAR })],
+							}),
+						),
+					),
+				).toContain('channels[0].properties[1].read');
+			});
+
 			it('still refuses a new readable property without a binding', async () => {
 				const { device, ids, label: labelId } = await createWithLabel();
 
@@ -1353,6 +1369,20 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 					),
 				).toContain('channels[0].properties[0].read');
 			});
+		});
+
+		it('keeps a stored format and step of a kept property while its data type stays', async () => {
+			const device = await createRelays([1]);
+			const ids = idsOf(device);
+
+			await database.manager.update(ChannelPropertyEntity, { id: ids.property }, { format: [0, 1], step: 1 });
+
+			await service.update(device.id, toUpdate({ category: DeviceCategory.SWITCHER, channels: [relayAt(1, 1, ids)] }));
+
+			const kept = await database.manager.findOneBy(ChannelPropertyEntity, { id: ids.property });
+
+			expect(kept?.format).toEqual([0, 1]);
+			expect(kept?.step).toBe(1);
 		});
 
 		it('keeps template provenance', async () => {

@@ -167,7 +167,7 @@ describe('ModbusRuntimeService', () => {
 	let connectivity: { trySetConnectionState: jest.Mock };
 	let bindingsService: { findByDevice: jest.Mock };
 	let devicesService: { findOne: jest.Mock; findAll: jest.Mock };
-	let channelsService: { findAll: jest.Mock };
+	let channelsService: { findAll: jest.Mock; findOne: jest.Mock };
 	let occurrencesService: { publishOccurrence: jest.Mock };
 	let connectionsService: ModbusConnectionsService;
 	let runtime: ModbusRuntimeService;
@@ -225,6 +225,13 @@ describe('ModbusRuntimeService', () => {
 		};
 		channelsService = {
 			findAll: jest.fn((deviceId: string) => Promise.resolve(channels.get(deviceId) ?? [])),
+			findOne: jest.fn((id: string) =>
+				Promise.resolve(
+					[...channels.entries()]
+						.flatMap(([deviceId, list]) => list.map((channel) => ({ ...channel, device: { id: deviceId } })))
+						.find((channel) => channel.id === id) ?? null,
+				),
+			),
 		};
 		occurrencesService = { publishOccurrence: jest.fn(() => Promise.resolve(null)) };
 		const endpointsService = {
@@ -482,6 +489,21 @@ describe('ModbusRuntimeService', () => {
 			// The core removal emits the property row as loaded, without its channel relation.
 			await runtime.onChannelPropertyChanged({ id: 'p1' } as unknown as ChannelPropertyEntity);
 
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+		});
+
+		it('reloads a loaded device when a property arrives for a channel no load has cached yet', async () => {
+			// The channel was created after the last load; the load it started has not cached it.
+			channels.set('device-1', [
+				...(channels.get('device-1') ?? []),
+				channelEntity('channel-2', ChannelCategory.HUMIDITY, [
+					{ id: 'p2', category: PropertyCategory.HUMIDITY, dataType: DataTypeType.UCHAR },
+				]),
+			]);
+
+			await runtime.onChannelPropertyChanged({ id: 'p2', channel: 'channel-2' } as unknown as ChannelPropertyEntity);
+
+			expect(channelsService.findOne).toHaveBeenCalledWith('channel-2');
 			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
 		});
 

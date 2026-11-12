@@ -224,11 +224,35 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 	@OnEvent(EventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
 	async onChannelPropertyChanged(property: ChannelPropertyEntity): Promise<void> {
+		if (!this.isRunning()) {
+			return;
+		}
+
 		const channelId = idOf(property.channel);
-		const deviceId = channelId ? this.loadedDeviceOfChannel(channelId) : this.loadedDeviceOfProperty(property.id);
+		const deviceId = channelId
+			? (this.loadedDeviceOfChannel(channelId) ?? (await this.pendingDeviceOfChannel(channelId)))
+			: this.loadedDeviceOfProperty(property.id);
 
 		if (deviceId && this.isRunning()) {
 			await this.loadSafely(deviceId);
+		}
+	}
+
+	/**
+	 * The device of a channel no load has cached yet, when that device is loaded or loading: a property added right
+	 * after its channel can arrive while the load the channel started is still reading.
+	 */
+	private async pendingDeviceOfChannel(channelId: string): Promise<string | null> {
+		if (this.devices.size === 0 && this.loads.size === 0) {
+			return null;
+		}
+
+		try {
+			const deviceId = idOf((await this.channelsService.findOne(channelId))?.device);
+
+			return deviceId && (this.devices.has(deviceId) || this.loads.has(deviceId)) ? deviceId : null;
+		} catch {
+			return null;
 		}
 	}
 
