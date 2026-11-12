@@ -25,8 +25,8 @@ Panel, Delivery phases 4). Earlier plans: `2026-11-09-modbus-backend-core.md`, `
 - Never push to `main`; one branch and PR per delivery below, each stacked on the previous one.
 - Never hand-edit `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, `apps/panel/lib/api/`; regenerate with
   `pnpm run generate:openapi` and commit the result.
-- Migrations are incremental: the next file is `apps/backend/src/migrations/1000000000057-AddModbusLongPress.ts`
-  (check that 057 is still free on `main`; take the next free number otherwise).
+- Migrations are incremental: the next file is `apps/backend/src/migrations/1000000000058-AddModbusLongPress.ts`
+  (057 was taken by AddAutomationRuns on `main`).
 - Admin locales: every new key in all six files (`en-US`, `cs-CZ`, `sk-SK`, `de-DE`, `es-ES`, `pl-PL`), tab
   indented, English text acceptable outside `en-US` as in earlier plans.
 - Admin print width 150, backend 120; tabs; single quotes.
@@ -89,7 +89,7 @@ Panel, Delivery phases 4). Earlier plans: `2026-11-09-modbus-backend-core.md`, `
 ### Task 1: Long-press binding field and button validation
 
 **Files:**
-- Create: `apps/backend/src/migrations/1000000000057-AddModbusLongPress.ts`
+- Create: `apps/backend/src/migrations/1000000000058-AddModbusLongPress.ts`
 - Modify: `apps/backend/src/plugins/devices-modbus/entities/modbus-binding.entity.ts` (new column after `pollIntervalMs`)
 - Modify: `apps/backend/src/plugins/devices-modbus/dto/binding.dto.ts`, `devices-modbus.constants.ts`
   (`MODBUS_DEFAULTS.LONG_PRESS_MS = 800`, `MODBUS_LIMITS.MIN_LONG_PRESS_MS = 100`, `MAX_LONG_PRESS_MS = 10_000`)
