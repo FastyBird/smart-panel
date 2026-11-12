@@ -5,8 +5,13 @@ import type { IAutomationGraph, IAutomationGraphIssue } from '../store/automatio
 
 import { AUTOMATION_SELF_TRIGGER_ISSUE_CODE, AutomationBuiltInNodeType } from './nodes.constants';
 
-const writesOf = (config: Record<string, unknown>): Record<string, unknown>[] =>
-	Array.isArray(config.writes) ? config.writes.filter((write): write is Record<string, unknown> => typeof write === 'object' && write !== null) : [];
+// The writes with their place in the configuration, which an issue names; what is not a write is skipped
+const writesOf = (config: Record<string, unknown>): [Record<string, unknown>, number][] =>
+	Array.isArray(config.writes)
+		? config.writes.flatMap((write: unknown, index: number): [Record<string, unknown>, number][] =>
+				typeof write === 'object' && write !== null ? [[write as Record<string, unknown>, index]] : []
+			)
+		: [];
 
 /**
  * An action that sets a value one of the automation's own triggers watches starts the automation again
@@ -36,11 +41,11 @@ export const findSelfTriggeringWrites = (graph: Pick<IAutomationGraph, 'nodes'>)
 			continue;
 		}
 
-		writesOf(node.config).forEach((write, index): void => {
+		for (const [write, index] of writesOf(node.config)) {
 			const triggers = typeof write.property_id === 'string' ? watchedBy.get(write.property_id) : undefined;
 
 			if (!triggers) {
-				return;
+				continue;
 			}
 
 			issues.push({
@@ -52,7 +57,7 @@ export const findSelfTriggeringWrites = (graph: Pick<IAutomationGraph, 'nodes'>)
 				node_ids: [node.id, ...triggers],
 				field: `writes.${index}.property_id`,
 			});
-		});
+		}
 	}
 
 	return issues;

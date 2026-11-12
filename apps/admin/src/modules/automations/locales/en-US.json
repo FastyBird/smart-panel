@@ -290,6 +290,7 @@
 				"nothingToConfigure": "This block has nothing to configure.",
 				"invalidJson": "This is not valid JSON.",
 				"notSet": "Not set",
+				"outOfRange": "Outside the range the property takes ({range})",
 				"unset": "Unset",
 				"yes": "Yes",
 				"no": "No",
@@ -415,7 +416,8 @@
 					"max": "To (included)",
 					"values": {
 						"title": "Values",
-						"placeholder": "Type a value and press Enter"
+						"placeholder": "Type a value and press Enter",
+						"notNumber": "Not a number, so not added: {value}"
 					}
 				},
 				"set": {

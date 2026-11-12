@@ -46,6 +46,17 @@ describe('findSelfTriggeringWrites', (): void => {
 		).toEqual([]);
 	});
 
+	it('names the write by its place in the configuration, past entries that are not writes', (): void => {
+		const issues = findSelfTriggeringWrites({
+			nodes: [
+				node('t1', 'device.property.changed', { ...target('light-on'), to: true }),
+				node('a1', 'device.property.set', { writes: [null, { ...target('light-on'), value: false }] }),
+			],
+		});
+
+		expect(issues.map((issue) => issue.field)).toEqual(['writes.1.property_id']);
+	});
+
 	it('reads a half-configured graph without failing', (): void => {
 		expect(
 			findSelfTriggeringWrites({

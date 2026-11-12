@@ -290,6 +290,7 @@
 				"nothingToConfigure": "Ten blok nie ma nic do skonfigurowania.",
 				"invalidJson": "To nie jest poprawny JSON.",
 				"notSet": "Nie ustawiono",
+				"outOfRange": "Poza zakresem, który przyjmuje właściwość ({range})",
 				"unset": "Usuń wartość",
 				"yes": "Tak",
 				"no": "Nie",
@@ -415,7 +416,8 @@
 					"max": "Do (włącznie)",
 					"values": {
 						"title": "Wartości",
-						"placeholder": "Wpisz wartość i naciśnij Enter"
+						"placeholder": "Wpisz wartość i naciśnij Enter",
+						"notNumber": "To nie jest liczba, więc nie dodano: {value}"
 					}
 				},
 				"set": {

@@ -13,6 +13,7 @@ import type { IAutomationNodeType } from '../../store/node-types.store.types';
 import AutomationDevicePropertyChangedForm from './automation-device-property-changed-form.vue';
 import AutomationDevicePropertyCompareForm from './automation-device-property-compare-form.vue';
 import AutomationDevicePropertySetForm from './automation-device-property-set-form.vue';
+import AutomationDurationInput from './automation-duration-input.vue';
 import AutomationNotificationSendForm from './automation-notification-send-form.vue';
 import AutomationPropertyValueInput from './automation-property-value-input.vue';
 
@@ -41,6 +42,13 @@ const PROPERTIES: AutomationLookupProperty[] = [
 	property({ id: 'p-temperature', category: DevicesModuleChannelPropertyCategory.temperature, dataType: DevicesModuleChannelPropertyDataType.float }),
 	property({ id: 'p-detected', category: DevicesModuleChannelPropertyCategory.detected, dataType: DevicesModuleChannelPropertyDataType.bool }),
 	property({
+		id: 'p-position',
+		category: DevicesModuleChannelPropertyCategory.position,
+		dataType: DevicesModuleChannelPropertyDataType.uchar,
+		format: [0, 100],
+	}),
+	property({ id: 'p-label', category: DevicesModuleChannelPropertyCategory.generic, dataType: DevicesModuleChannelPropertyDataType.string }),
+	property({
 		id: 'p-status',
 		category: DevicesModuleChannelPropertyCategory.status,
 		dataType: DevicesModuleChannelPropertyDataType.enum,
@@ -50,8 +58,13 @@ const PROPERTIES: AutomationLookupProperty[] = [
 
 vi.mock('../../composables/useAutomationNodeLookups', () => ({
 	useAutomationNodeLookups: () => ({
-		device: (id: string) => (id === 'd-lock' ? { name: 'Front door', category: 'lock' } : { name: 'Sensor', category: 'sensor' }),
-		channel: (id: string) => (id === 'c-lock' ? { name: 'Lock', category: 'lock' } : { name: 'Sensor', category: 'sensor' }),
+		device: (id: string) =>
+			({ 'd-lock': { name: 'Front door', category: 'lock' }, 'd-door': { name: 'Garage', category: 'door' } })[id] ?? {
+				name: 'Sensor',
+				category: 'sensor',
+			},
+		channel: (id: string) =>
+			({ 'c-lock': { name: 'Lock', category: 'lock' }, 'c-door': { name: 'Door', category: 'door' } })[id] ?? { name: 'Sensor', category: 'sensor' },
 		property: (id: string) => PROPERTIES.find((item) => item.id === id) ?? null,
 		scene: () => null,
 		ensureDevices: async () => undefined,
@@ -199,6 +212,27 @@ describe('automation card forms', (): void => {
 			expect(wrapper.findAll('[data-test-write]')).toHaveLength(1);
 		});
 
+		it('sets an empty text, which is a value of its own', async (): Promise<void> => {
+			const write = { device_id: 'd-1', channel_id: 'c-1', property_id: 'p-label' };
+
+			await mountForm(AutomationDevicePropertySetForm, { nodeType: set, config: { writes: [{ ...write, value: 'Hello' }] } });
+
+			wrapper.find('[data-test-write="0"]').findComponent(AutomationPropertyValueInput).find('input').setValue('');
+
+			expect(lastConfig()).toEqual({ writes: [{ ...write, value: '' }] });
+		});
+
+		it('keeps a stored value out of the range taken until it is edited', async (): Promise<void> => {
+			// A door opened by an automation saved before; the backend refuses it on save, and the form says why
+			await mountForm(AutomationDevicePropertySetForm, {
+				nodeType: set,
+				config: { writes: [{ device_id: 'd-door', channel_id: 'c-door', property_id: 'p-position', value: 50 }] },
+			});
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+			expect(wrapper.find('[data-test-id="value-unsafe"]').exists()).toBe(true);
+		});
+
 		it('drops a value the newly picked property can not hold', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertySetForm, {
 				nodeType: set,
@@ -301,6 +335,18 @@ describe('automation card forms', (): void => {
 			expect(lastInvalid()).toBe(true);
 		});
 
+		it('takes a threshold that is null for one not entered, as the backend does', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config: { ...target, above: null } });
+
+			// Saved as it is, the trigger starts on any change
+			expect(wrapper.find('[data-test-field="mode"]').findComponent({ name: 'ElSelect' }).props('modelValue')).toBe('any');
+
+			chooseMode('above');
+			await handBack();
+
+			expect(lastInvalid()).toBe(true);
+		});
+
 		it('follows a configuration changed from outside, back to any change', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertyChangedForm, { nodeType: changed, config: { ...target, to: 21 } });
 
@@ -357,6 +403,30 @@ describe('automation card forms', (): void => {
 			expect(lastConfig()).toEqual({ device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature', operator: 'between' });
 		});
 
+		it('says which entry of a list of numbers is not a number', async (): Promise<void> => {
+			await mountForm(AutomationDevicePropertyCompareForm, {
+				nodeType: compare,
+				config: { device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature', operator: 'in', values: [10] },
+			});
+
+			wrapper.find('[data-test-field="values"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', [10, '20x']);
+
+			expect(lastConfig()).toEqual({ device_id: 'd-1', channel_id: 'c-1', property_id: 'p-temperature', operator: 'in', values: [10] });
+
+			await vi.waitFor((): void =>
+				expect(wrapper.find('[data-test-field="values"]').text()).toContain('automations.editor.fields.compare.values.notNumber')
+			);
+
+			// Gone with the next entry that is one
+			wrapper.find('[data-test-field="values"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', [10, '20']);
+
+			expect(lastConfig()).toEqual(expect.objectContaining({ values: [10, 20] }));
+
+			await vi.waitFor((): void =>
+				expect(wrapper.find('[data-test-field="values"]').text()).not.toContain('automations.editor.fields.compare.values.notNumber')
+			);
+		});
+
 		it('drops an operator the newly picked property can not be compared with', async (): Promise<void> => {
 			await mountForm(AutomationDevicePropertyCompareForm, {
 				nodeType: compare,
@@ -388,6 +458,34 @@ describe('automation card forms', (): void => {
 
 			// Left mounted for the unmount after each test
 			await mountForm(AutomationNotificationSendForm, { nodeType: nodeType('notification.send', AutomationNodeKind.action), config: {} });
+		});
+	});
+
+	describe('duration', (): void => {
+		it('keeps a duration within its limit when the unit is changed', async (): Promise<void> => {
+			await mountForm(AutomationDurationInput, { modelValue: 120, max: 3600 });
+
+			wrapper.find('[data-test-id="duration-unit"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', 'hours');
+
+			expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([3600]);
+		});
+	});
+
+	describe('value', (): void => {
+		it('does not change a stored number out of the range of the property when it is shown', async (): Promise<void> => {
+			await mountForm(AutomationPropertyValueInput, {
+				modelValue: 150,
+				property: { dataType: DevicesModuleChannelPropertyDataType.uchar, format: [0, 100], step: null },
+			});
+
+			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+			expect(wrapper.find('[data-test-id="value-out-of-range"]').exists()).toBe(true);
+
+			// An undo back to it does not change it either
+			await wrapper.setProps({ modelValue: 50 });
+			await wrapper.setProps({ modelValue: 150 });
+
+			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 		});
 	});
 

@@ -161,6 +161,7 @@ import {
 	type AutomationPropertyValue,
 	changedModeOf,
 	changedModesFor,
+	isOperandGiven,
 	isPropertyValue,
 	propertyValueKind,
 	valueFitsProperty,
@@ -263,7 +264,7 @@ watch(
  * The way chosen lacks a value it needs: saved as it is, the trigger would start on more than was chosen.
  * Like text that does not parse yet, it keeps the editor from saving until it is entered or given up.
  */
-const incomplete = computed<boolean>((): boolean => REQUIRED[mode.value].some((key) => typeof props.config[key] === 'undefined'));
+const incomplete = computed<boolean>((): boolean => REQUIRED[mode.value].some((key) => !isOperandGiven(props.config[key])));
 
 watch(
 	incomplete,

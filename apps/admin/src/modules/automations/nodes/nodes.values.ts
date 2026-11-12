@@ -69,14 +69,20 @@ export const changedModesFor = (kind: AutomationValueKind): AutomationChangedMod
 	AUTOMATION_CHANGED_MODES.filter((mode) => (mode !== 'above' && mode !== 'below') || kind === 'number' || kind === 'unknown');
 
 /**
+ * Whether an operand of a value trigger is given. The backend drops one that is null, as if it were not
+ * there, so it is not given here either.
+ */
+export const isOperandGiven = (value: unknown): boolean => typeof value !== 'undefined' && value !== null;
+
+/**
  * How a value trigger is set to start, read from its configuration.
  */
 export const changedModeOf = (config: Record<string, unknown>): AutomationChangedMode => {
-	if (typeof config.above !== 'undefined') return 'above';
-	if (typeof config.below !== 'undefined') return 'below';
+	if (isOperandGiven(config.above)) return 'above';
+	if (isOperandGiven(config.below)) return 'below';
 
-	const hasTo = typeof config.to !== 'undefined';
-	const hasFrom = typeof config.from !== 'undefined';
+	const hasTo = isOperandGiven(config.to);
+	const hasFrom = isOperandGiven(config.from);
 
 	if (hasTo && hasFrom) return 'fromTo';
 	if (hasFrom) return 'from';

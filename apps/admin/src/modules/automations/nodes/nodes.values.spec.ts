@@ -52,6 +52,10 @@ describe('automation card values', (): void => {
 		expect(changedModeOf({ from: 1 })).toBe('from');
 		expect(changedModeOf({ from: 1, to: 2 })).toBe('fromTo');
 		expect(changedModeOf({ below: 3, hysteresis: 1 })).toBe('below');
+		// The backend drops an operand that is null, so the trigger starts on what is left
+		expect(changedModeOf({ above: null })).toBe('any');
+		expect(changedModeOf({ above: null, below: 3 })).toBe('below');
+		expect(changedModeOf({ from: 1, to: null })).toBe('from');
 	});
 
 	it('tells whether a value fits a property', (): void => {

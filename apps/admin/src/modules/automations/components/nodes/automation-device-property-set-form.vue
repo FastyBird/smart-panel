@@ -193,8 +193,11 @@ const safetyTargetOfRow = (row: Row): IAutomationSafetyTarget => {
 	return safetyTargetOf(deviceId ? lookups.device(deviceId) : null, channelId ? lookups.channel(channelId) : null, propertyOf(row));
 };
 
+// An empty text is a value that can be set; an empty id is nothing picked
 const withoutEmpty = (row: Row): Row =>
-	Object.fromEntries(Object.entries(row).filter(([, value]) => typeof value !== 'undefined' && value !== null && value !== ''));
+	Object.fromEntries(
+		Object.entries(row).filter(([key, value]) => typeof value !== 'undefined' && value !== null && (value !== '' || key === 'value'))
+	);
 
 const emitRows = (next: Row[], field: string): void => {
 	const kept = next.map(withoutEmpty);

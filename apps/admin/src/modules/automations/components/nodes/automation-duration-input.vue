@@ -98,9 +98,10 @@ const onUnit = (next: Unit): void => {
 
 	unit.value = next;
 
-	// The number entered stays and means the new unit: "5 minutes" becomes "5 hours", not "0.08 hours"
+	// The number entered stays and means the new unit: "5 minutes" becomes "5 hours", not "0.08 hours" -
+	// as far as the longest duration taken, which it stops at
 	if (typeof current === 'number') {
-		emit('update:modelValue', Math.round(current * UNIT_SECONDS[next]));
+		emit('update:modelValue', Math.min(Math.round(current * UNIT_SECONDS[next]), props.max));
 	}
 };
 </script>

@@ -252,7 +252,8 @@ const SUMMARIES: Record<AutomationBuiltInNodeType, (config: Record<string, unkno
 	[AutomationBuiltInNodeType.FLOW_DELAY]: summarizeDelay,
 };
 
-const isBuiltInType = (type: string): type is AutomationBuiltInNodeType => type in SUMMARIES;
+// Own keys only: `in` would also take what every object inherits (`__proto__`, `toString`)
+const isBuiltInType = (type: string): type is AutomationBuiltInNodeType => Object.hasOwn(SUMMARIES, type);
 
 /**
  * The summary of a built-in card; "not configured yet" while it is not configured far enough to say what

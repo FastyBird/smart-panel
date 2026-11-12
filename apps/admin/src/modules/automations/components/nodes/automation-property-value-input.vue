@@ -21,8 +21,8 @@
 	<el-input-number
 		v-else-if="kind === 'number'"
 		:model-value="typeof props.modelValue === 'number' ? props.modelValue : undefined"
-		:min="range.min"
-		:max="range.max"
+		:min="bounds.min"
+		:max="bounds.max"
 		:step="props.numeric ? undefined : (props.property?.step ?? undefined)"
 		:name="props.name"
 		:disabled="props.disabled"
@@ -42,8 +42,19 @@
 		:name="props.name"
 		:disabled="props.disabled"
 		data-test-id="value-shared"
-		@update:model-value="(value: AutomationPropertyValue): void => emit('update:modelValue', value === '' ? undefined : value)"
+		@update:model-value="(value: AutomationPropertyValue): void => emit('update:modelValue', value)"
 	/>
+
+	<el-text
+		v-if="outOfRange && unsafe === null"
+		tag="div"
+		size="small"
+		type="warning"
+		class="leading-4! mt-1"
+		data-test-id="value-out-of-range"
+	>
+		{{ t('automations.editor.form.outOfRange', { range: rangeText }) }}
+	</el-text>
 
 	<el-alert
 		v-if="unsafe !== null"
@@ -66,11 +77,15 @@
  * For a value that is written, what an automation may not do - unlock, disarm, open - is not offered: the
  * option is left out, a number stops at zero. A value that would still do it (typed as text, or saved
  * before) is named. The backend refuses it on save either way.
+ *
+ * A number saved out of the range taken is shown as it is, with the range beside it: the number input
+ * would otherwise replace it by the nearest bound as soon as it is shown, without anything being edited.
+ * The range applies again once the number is back in it. An empty text is a value of its own.
  */
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElInputNumber, ElOption, ElSelect } from 'element-plus';
+import { ElAlert, ElInputNumber, ElOption, ElSelect, ElText } from 'element-plus';
 
 import PropertyValueInput from '../../../devices/components/channels/property-value-input.vue';
 import { type AutomationSafetyReducingKind, classifySafetyReducingWrite, isAboveZeroUnsafe } from '../../nodes/nodes.safety';
@@ -113,6 +128,24 @@ const range = computed<{ min?: number; max?: number }>((): { min?: number; max?:
 	}
 
 	return own;
+});
+
+const outOfRange = computed<boolean>((): boolean => {
+	const value = props.modelValue;
+
+	if (kind.value !== 'number' || typeof value !== 'number') return false;
+
+	return (typeof range.value.min === 'number' && value < range.value.min) || (typeof range.value.max === 'number' && value > range.value.max);
+});
+
+const bounds = computed<{ min?: number; max?: number }>((): { min?: number; max?: number } => (outOfRange.value ? {} : range.value));
+
+const rangeText = computed<string>((): string => {
+	const { min, max } = range.value;
+
+	if (typeof min === 'number' && typeof max === 'number') return `${min} – ${max}`;
+
+	return typeof min === 'number' ? `≥ ${min}` : `≤ ${max}`;
 });
 
 const unsafe = computed<AutomationSafetyReducingKind | null>((): AutomationSafetyReducingKind | null =>

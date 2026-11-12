@@ -290,6 +290,7 @@
 				"nothingToConfigure": "Tento blok nemá co nastavovat.",
 				"invalidJson": "Toto není platný JSON.",
 				"notSet": "Nenastaveno",
+				"outOfRange": "Mimo rozsah, který vlastnost přijímá ({range})",
 				"unset": "Zrušit nastavení",
 				"yes": "Ano",
 				"no": "Ne",
@@ -415,7 +416,8 @@
 					"max": "Do (včetně)",
 					"values": {
 						"title": "Hodnoty",
-						"placeholder": "Napište hodnotu a stiskněte Enter"
+						"placeholder": "Napište hodnotu a stiskněte Enter",
+						"notNumber": "Nejde o číslo, proto nepřidáno: {value}"
 					}
 				},
 				"set": {

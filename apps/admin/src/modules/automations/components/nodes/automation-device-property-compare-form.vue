@@ -60,7 +60,7 @@
 		<el-form-item
 			v-else-if="operator === 'in'"
 			:label="t('automations.editor.fields.compare.values.title')"
-			:error="errorText('values')"
+			:error="errorText('values') ?? rejectedText"
 			required
 			data-test-field="values"
 		>
@@ -110,7 +110,7 @@
  * what the property holds - ordering needs a number, a list makes no sense for yes/no (design § First node
  * catalogue) - and each operator takes its own operands; the backend refuses a stale one of another.
  */
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElOption, ElSelect } from 'element-plus';
@@ -216,10 +216,23 @@ const onOperator = (next: AutomationCompareOperator): void => {
 	form.update({ operator: next, ...operandsFor(next) }, 'operator');
 };
 
-const onValues = (values: unknown[]): void => {
-	const numeric = kind.value === 'number';
+// What was typed into a list of numbers and is not one; it is not added, and is named until the next entry
+const rejected = ref<string[]>([]);
 
-	form.update({ values: normalizeListValue({ numeric, integer: false }, values) }, 'values');
+const rejectedText = computed<string | undefined>((): string | undefined =>
+	rejected.value.length > 0 ? t('automations.editor.fields.compare.values.notNumber', { value: rejected.value.join(', ') }) : undefined
+);
+
+watch([(): unknown => props.config.property_id, operator], (): void => {
+	rejected.value = [];
+});
+
+const onValues = (values: unknown[]): void => {
+	const field = { numeric: kind.value === 'number', integer: false };
+
+	rejected.value = values.filter((value) => normalizeListValue(field, [value]).length === 0).map((value) => String(value));
+
+	form.update({ values: normalizeListValue(field, values) }, 'values');
 };
 
 const onTarget = (patch: Record<string, unknown>, field: string): void => {

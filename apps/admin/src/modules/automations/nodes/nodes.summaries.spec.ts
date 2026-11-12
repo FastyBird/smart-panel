@@ -141,6 +141,9 @@ describe('automation card summaries', (): void => {
 
 	it('leave a card the module does not provide to its own summary', (): void => {
 		expect(summary('spaces.occupancy.changed', { space_id: 'x' })).toBeNull();
+		// What every object inherits is not a card either
+		expect(summary('__proto__', {})).toBeNull();
+		expect(summary('toString', {})).toBeNull();
 	});
 
 	it('format durations and days', (): void => {
