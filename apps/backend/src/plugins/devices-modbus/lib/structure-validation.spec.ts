@@ -162,6 +162,49 @@ describe('structure validation', () => {
 			expect(issues.map((issue) => issue.field)).toEqual([`${READ}.data_type`]);
 		});
 
+		it('refuses a value map on the read binding of button.event, but allows invert', () => {
+			const valueMap = [
+				{ raw: 1, value: true },
+				{ raw: 0, value: false },
+			];
+
+			expect(issuesOn(button({ ...level, value_map: valueMap })).map((issue) => issue.field)).toEqual([
+				`${READ}.value_map`,
+			]);
+			expect(issuesOn(button({ ...level, invert: true }))).toEqual([]);
+		});
+
+		it('refuses a read binding on an ev property outside a button channel', () => {
+			const issues = issuesOn(withRead(ChannelCategory.BINARY_INPUT, PropertyCategory.EVENT, DataTypeType.ENUM, level));
+
+			expect(issues.map((issue) => issue.field)).toEqual([READ]);
+			expect(issues[0].reason).toContain('button event');
+		});
+
+		describe('button event format', () => {
+			const formatIssues = (format: string[] | undefined) => {
+				const structure = button(level);
+
+				structure.channels[0].properties[0].format = format;
+
+				return validateModbusStructure(structure, () => []).filter((issue) => issue.field.endsWith('.format'));
+			};
+
+			it('accepts no format and a format with all four synthesised events and extras', () => {
+				expect(formatIssues(undefined)).toEqual([]);
+				expect(formatIssues(['down', 'up', 'press', 'long_press'])).toEqual([]);
+				expect(formatIssues(['press', 'double_press', 'long_press', 'up', 'down'])).toEqual([]);
+			});
+
+			it('refuses a format missing a synthesised event', () => {
+				const issues = formatIssues(['press', 'long_press']);
+
+				expect(issues.map((issue) => issue.field)).toEqual(['channels[0].properties[0].format']);
+				expect(issues[0].reason).toContain('down');
+				expect(issues[0].reason).toContain('up');
+			});
+		});
+
 		it('refuses long_press_ms outside button.event', () => {
 			const issues = issuesOn(state({ ...level, long_press_ms: 800 }));
 

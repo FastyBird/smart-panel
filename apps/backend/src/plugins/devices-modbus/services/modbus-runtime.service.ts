@@ -53,10 +53,15 @@ interface LoadedDevice {
 	endpointId: string | null;
 	/** Read-bound properties that report samples; a button level never does. */
 	readPropertyIds: string[];
+	/** Channels of the device the load resolved metadata from; a structure event on one of them reloads it. */
+	channelIds: Set<string>;
 	poller: DevicePoller | null;
 	/** The device may be commanded over its endpoint connection. */
 	commandable: boolean;
 }
+
+const idOf = (reference: { id: string } | string | null | undefined): string | null =>
+	typeof reference === 'string' ? reference : (reference?.id ?? null);
 
 const isModbusDevice = (device: DeviceEntity | null | undefined): device is ModbusDeviceEntity =>
 	device instanceof ModbusDeviceEntity || device?.type === DEVICES_MODBUS_TYPE;
@@ -209,6 +214,42 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		}
 	}
 
+	/**
+	 * The load caches property data types and channel and property categories, so a metadata change of a property, or a
+	 * channel or property added or removed, reloads the loaded device that owns it.
+	 */
+	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_CREATED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
+	async onChannelPropertyChanged(property: ChannelPropertyEntity): Promise<void> {
+		const channelId = idOf(property.channel);
+		const deviceId = channelId ? this.loadedDeviceOfChannel(channelId) : null;
+
+		if (deviceId && this.isRunning()) {
+			await this.loadSafely(deviceId);
+		}
+	}
+
+	@OnEvent(EventType.CHANNEL_CREATED)
+	@OnEvent(EventType.CHANNEL_DELETED)
+	async onChannelChanged(channel: ChannelEntity): Promise<void> {
+		const deviceId = idOf(channel.device);
+
+		if (deviceId && this.devices.has(deviceId) && this.isRunning()) {
+			await this.loadSafely(deviceId);
+		}
+	}
+
+	private loadedDeviceOfChannel(channelId: string): string | null {
+		for (const [deviceId, entry] of this.devices) {
+			if (entry.channelIds.has(channelId)) {
+				return deviceId;
+			}
+		}
+
+		return null;
+	}
+
 	private isRunning(): boolean {
 		return this.state === 'starting' || this.state === 'started';
 	}
@@ -281,6 +322,7 @@ export class ModbusRuntimeService implements IManagedExtensionService {
 		const entry: LoadedDevice = {
 			endpointId: device.endpointId,
 			readPropertyIds: reads.filter((read) => read.button === null).map((read) => read.propertyId),
+			channelIds: new Set(channels.map((channel) => channel.id)),
 			poller: null,
 			commandable: false,
 		};

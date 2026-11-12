@@ -556,6 +556,16 @@ describe('devices-modbus plugin (e2e)', () => {
 		});
 	});
 
+	it('PATCH cannot set the generic category', async () => {
+		const before = (await fetchDevice()) as unknown as { category: string };
+		const refused = await authPatch(`/modules/devices/devices/${device.id}`)
+			.send({ data: { type: DEVICES_MODBUS_TYPE, category: DeviceCategory.GENERIC } })
+			.expect(400);
+
+		expect(JSON.stringify(refused.body)).toContain('generic category is reserved');
+		expect(((await fetchDevice()) as unknown as { category: string }).category).toBe(before.category);
+	});
+
 	it('PUT structure updates bindings and keeps ids', async () => {
 		// Relay 7 moves to register 8 and relay 8 is dropped; every other point is sent unchanged with its IDs.
 		const keptRelays = RELAYS.filter((relay) => relay !== 8);

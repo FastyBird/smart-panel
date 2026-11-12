@@ -15,7 +15,11 @@ import { CreateModbusDeviceStructureChannelDto } from './create-device-structure
  */
 @ApiSchema({ name: 'DevicesModbusPluginUpdateDeviceStructure' })
 export class UpdateModbusDeviceStructureDto {
-	@ApiProperty({ description: 'Device category', enum: DeviceCategory, example: DeviceCategory.SWITCHER })
+	@ApiProperty({
+		description: 'Device category. The generic category is reserved and refused.',
+		enum: DeviceCategory,
+		example: DeviceCategory.SWITCHER,
+	})
 	@Expose()
 	@IsEnum(DeviceCategory, { message: '[{"field":"category","reason":"Category must be a valid device category."}]' })
 	category: DeviceCategory;

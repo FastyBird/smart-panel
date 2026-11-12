@@ -7,7 +7,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { CreateChannelInputOccurrenceDto } from '../../../modules/devices/dto/channel-input-occurrence.dto';
-import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -360,7 +360,7 @@ describe('ModbusRuntimeService', () => {
 					{ id: 'humidity', category: PropertyCategory.HUMIDITY, dataType: DataTypeType.UCHAR },
 				]),
 				channelEntity('channel-input', ChannelCategory.BINARY_INPUT, [
-					{ id: 'button-event', category: PropertyCategory.STATE, dataType: DataTypeType.BOOL },
+					{ id: 'button-event', category: PropertyCategory.EVENT, dataType: DataTypeType.BOOL },
 				]),
 			]);
 
@@ -447,6 +447,50 @@ describe('ModbusRuntimeService', () => {
 		await runtime.stop();
 
 		expect(new Set(reports().map(([id]) => id))).toEqual(new Set(['p1']));
+	});
+
+	describe('core structure events', () => {
+		beforeEach(async () => {
+			channels.set('device-1', [
+				channelEntity('channel-1', ChannelCategory.HUMIDITY, [
+					{ id: 'p1', category: PropertyCategory.HUMIDITY, dataType: DataTypeType.UCHAR },
+				]),
+			]);
+
+			await runtime.start();
+			await jest.advanceTimersByTimeAsync(0);
+
+			channelsService.findAll.mockClear();
+		});
+
+		it('reloads a loaded device when a property of its channel is updated', async () => {
+			await runtime.onChannelPropertyChanged({ id: 'p1', channel: 'channel-1' } as unknown as ChannelPropertyEntity);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+		});
+
+		it('reloads a loaded device when a property with a channel entity is deleted', async () => {
+			await runtime.onChannelPropertyChanged({
+				id: 'p1',
+				channel: { id: 'channel-1' },
+			} as unknown as ChannelPropertyEntity);
+
+			expect(channelsService.findAll).toHaveBeenCalledWith('device-1');
+		});
+
+		it('reloads a loaded device when a channel is created or deleted', async () => {
+			await runtime.onChannelChanged({ id: 'channel-2', device: 'device-1' } as unknown as ChannelEntity);
+			await runtime.onChannelChanged({ id: 'channel-1', device: { id: 'device-1' } } as unknown as ChannelEntity);
+
+			expect(channelsService.findAll).toHaveBeenCalledTimes(2);
+		});
+
+		it('ignores events of an unrelated device', async () => {
+			await runtime.onChannelPropertyChanged({ id: 'other', channel: 'channel-x' } as unknown as ChannelPropertyEntity);
+			await runtime.onChannelChanged({ id: 'channel-x', device: 'device-2' } as unknown as ChannelEntity);
+
+			expect(channelsService.findAll).not.toHaveBeenCalled();
+		});
 	});
 
 	it('loads a device idempotently', async () => {

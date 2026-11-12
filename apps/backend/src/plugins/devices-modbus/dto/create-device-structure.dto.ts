@@ -178,7 +178,11 @@ export class CreateModbusDeviceStructureDto {
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
 
-	@ApiProperty({ description: 'Device category', enum: DeviceCategory, example: DeviceCategory.SWITCHER })
+	@ApiProperty({
+		description: 'Device category. The generic category is reserved and refused.',
+		enum: DeviceCategory,
+		example: DeviceCategory.SWITCHER,
+	})
 	@Expose()
 	@IsEnum(DeviceCategory, { message: '[{"field":"category","reason":"Category must be a valid device category."}]' })
 	category: DeviceCategory;

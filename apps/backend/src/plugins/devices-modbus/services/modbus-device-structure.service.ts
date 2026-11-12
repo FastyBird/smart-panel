@@ -243,6 +243,10 @@ export class ModbusDeviceStructureService {
 	async validateUpdate(device: ModbusDeviceEntity, previous: Readonly<Partial<ModbusDeviceEntity>>): Promise<void> {
 		const issues: ModbusStructureIssue[] = [];
 
+		if (device.category !== previous.category) {
+			issues.push(...this.validateCategory(device.category));
+		}
+
 		if (device.endpointId !== previous.endpointId || device.unitId !== previous.unitId) {
 			const endpoint = device.endpointId ? await this.endpoints.findOne(device.endpointId) : null;
 

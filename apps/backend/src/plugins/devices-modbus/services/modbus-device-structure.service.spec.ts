@@ -418,6 +418,17 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			expect((await stored(device.id)).endpointId).toBe(endpoint.id);
 		});
 
+		it('refuses the generic category and leaves the stored category unchanged', async () => {
+			const device = await service.create(toDto(relayBoard(endpoint.id)));
+			const before = (await stored(device.id)).category;
+
+			expect(await reasonsOf(patch(device.id, { category: DeviceCategory.GENERIC }))).toEqual([
+				{ field: 'category', reason: 'The generic category is reserved and cannot be used for Modbus devices.' },
+			]);
+			expect((await stored(device.id)).category).toBe(before);
+			await expect(patch(device.id, { category: DeviceCategory.LIGHTING })).resolves.toBeDefined();
+		});
+
 		it('refuses an unknown endpoint', async () => {
 			const device = await service.create(toDto(relayBoard(endpoint.id)));
 

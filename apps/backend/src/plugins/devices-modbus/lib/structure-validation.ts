@@ -28,6 +28,7 @@ import {
 	CreateModbusDeviceStructurePropertyDto,
 } from '../dto/create-device-structure.dto';
 
+import type { ModbusButtonEvent } from './button-synthesizer';
 import { registerSpan } from './codec';
 
 export type ModbusStructureIssue = { field: string; reason: string };
@@ -213,6 +214,9 @@ export function validateModbusStructure(
 	return issues;
 }
 
+/** The events the runtime synthesises from a button level; a declared format has to offer all of them. */
+const BUTTON_EVENTS: readonly ModbusButtonEvent[] = ['down', 'up', 'press', 'long_press'];
+
 /** The one `ev` property that may be read: the level the button events are synthesised from. */
 const isButtonEvent = (
 	channel: CreateModbusDeviceStructureChannelDto,
@@ -253,6 +257,17 @@ function validateProperty(
 
 	const buttonEvent = isButtonEvent(channel, property);
 
+	if (buttonEvent && property.format !== undefined && property.format !== null) {
+		const missing = BUTTON_EVENTS.filter((event) => !(property.format as unknown[]).includes(event));
+
+		if (missing.length > 0) {
+			issues.push({
+				field: `${field}.format`,
+				reason: `A button event format must contain every synthesised event; missing: ${missing.join(', ')}.`,
+			});
+		}
+	}
+
 	if (canRead && !property.read) {
 		issues.push({
 			field: `${field}.read`,
@@ -286,6 +301,13 @@ function validateLongPress(binding: ModbusBindingDto, buttonEvent: boolean, fiel
 		issues.push({
 			field: `${field}.data_type`,
 			reason: 'A button event reads a boolean level: use a coil, a discrete input or a register bit.',
+		});
+	}
+
+	if (buttonEvent && binding.value_map) {
+		issues.push({
+			field: `${field}.value_map`,
+			reason: 'A button event reads a boolean level and takes no value map; use invert to flip it.',
 		});
 	}
 
