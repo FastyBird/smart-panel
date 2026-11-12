@@ -1196,6 +1196,95 @@ describe('ModbusDeviceStructureService with real SQLite and core creation servic
 			}
 		});
 
+		describe('static properties', () => {
+			const label = {
+				identifier: 'label',
+				category: PropertyCategory.GENERIC,
+				data_type: DataTypeType.STRING,
+				permissions: [PermissionType.READ_ONLY],
+			};
+
+			const createWithLabel = async (): Promise<{ device: ModbusDeviceEntity; ids: PointIds; label: string }> => {
+				const relay1 = relayChannel(1);
+				const device = await createRelays([1], 1, {
+					channels: [
+						{
+							...relay1,
+							properties: [...(relay1.properties as Plain[]), { ...label, static_value: 'relay' }],
+						},
+					],
+				});
+				const channel = device.channels.find((candidate) => candidate.identifier === 'relay_1');
+
+				return {
+					device,
+					ids: { channel: channel.id, property: channel.properties.find((p) => p.identifier !== 'label').id },
+					label: channel.properties.find((p) => p.identifier === 'label').id,
+				};
+			};
+
+			const withLabel = (ids: PointIds, labelProperty: Plain): Plain => {
+				const relay1 = relayAt(1, 1, ids);
+
+				return { ...relay1, properties: [...(relay1.properties as Plain[]), labelProperty] };
+			};
+
+			it('keeps a static property sent without a value', async () => {
+				const { device, ids, label: labelId } = await createWithLabel();
+
+				values.write.mockClear();
+
+				const updated = await service.update(
+					device.id,
+					toUpdate({ category: DeviceCategory.SWITCHER, channels: [withLabel(ids, { ...label, id: labelId })] }),
+				);
+
+				expect(updated.channels.find((channel) => channel.id === ids.channel)?.properties.map((p) => p.id)).toContain(
+					labelId,
+				);
+				expect(values.write).not.toHaveBeenCalledWith(expect.objectContaining({ id: labelId }), expect.anything());
+				expect(await bindings.findByProperty(labelId)).toEqual({ read: null, write: null });
+			});
+
+			it('still refuses a new readable property without a binding', async () => {
+				const { device, ids, label: labelId } = await createWithLabel();
+
+				expect(
+					await fieldsOf(
+						service.update(
+							device.id,
+							toUpdate({ category: DeviceCategory.SWITCHER, channels: [withLabel(ids, { ...label })] }),
+						),
+					),
+				).toContain('channels[0].properties[1].read');
+
+				// A kept property that is read from the device is not static: dropping its binding is refused as well.
+				const relay1 = relayAt(1, 1, ids);
+				const [property] = relay1.properties as Plain[];
+
+				expect(
+					await fieldsOf(
+						service.update(
+							device.id,
+							toUpdate({
+								category: DeviceCategory.SWITCHER,
+								channels: [
+									{
+										...relay1,
+										properties: [
+											{ ...property, read: undefined },
+											{ ...label, id: labelId },
+										],
+									},
+									relayAt(2, 2),
+								],
+							}),
+						),
+					),
+				).toContain('channels[0].properties[0].read');
+			});
+		});
+
 		it('keeps template provenance', async () => {
 			const device = await createRelays([1], 1, {
 				template_id: 'eletechsup-n4d8b08',

@@ -203,10 +203,11 @@ export class ModbusDeviceStructureService {
 						requested,
 						endpoint ? `${endpoint.host}:${endpoint.port}#${device.unitId}` : `#${device.unitId}`,
 					);
+			const keptStatic = await this.keptStaticProperties(device.id, dto, existing);
 			const issues = [
 				...this.validateCategory(dto.category),
 				...this.validateOwnership(dto, existing, information),
-				...validateModbusStructure(structure, (input) => this.validateSpecification(input, information)),
+				...validateModbusStructure(structure, (input) => this.validateSpecification(input, information), keptStatic),
 				...(await this.validateAgainstDatabase(structure, endpoint, device)),
 			];
 
@@ -657,6 +658,39 @@ export class ModbusDeviceStructureService {
 		});
 
 		return issues;
+	}
+
+	/**
+	 * Properties of a points update that keep their stored static value: sent with the ID of a property of this device
+	 * that has no Modbus binding, and with neither a static value nor a binding. Their stored value is left as it is, so
+	 * a static property whose value is missing (or unknown to the client) does not block the update.
+	 */
+	private async keptStaticProperties(
+		deviceId: string,
+		dto: UpdateModbusDeviceStructureDto,
+		existing: ChannelEntity[],
+	): Promise<Set<string>> {
+		const bound = new Set(
+			(await this.dataSource.getRepository(ModbusBindingEntity).find({ where: { deviceId } })).map(
+				(binding) => binding.propertyId,
+			),
+		);
+		const stored = new Set(existing.flatMap((channel) => channel.properties.map((property) => property.id)));
+
+		return new Set(
+			dto.channels
+				.flatMap((channel) => channel.properties)
+				.filter(
+					(property) =>
+						property.id !== undefined &&
+						stored.has(property.id) &&
+						!bound.has(property.id) &&
+						(property.static_value === undefined || property.static_value === null) &&
+						!property.read &&
+						!property.write,
+				)
+				.map((property) => property.id),
+		);
 	}
 
 	/**

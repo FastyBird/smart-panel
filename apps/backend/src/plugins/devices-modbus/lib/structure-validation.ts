@@ -125,9 +125,14 @@ export function withDeviceInformation(
 	return { ...dto, channels: [...dto.channels, channel] };
 }
 
+/**
+ * `keptStatic` names the properties a points update keeps as stored static values: sent with their ID, without a
+ * value and without bindings. They are not read from the device, so they need no read binding.
+ */
 export function validateModbusStructure(
 	dto: CreateModbusDeviceStructureDto,
 	validateSpecification: SpecificationValidator,
+	keptStatic: ReadonlySet<string> = new Set(),
 ): ModbusStructureIssue[] {
 	const issues: ModbusStructureIssue[] = [];
 	const writes: { binding: ModbusBindingDto; field: string }[] = [];
@@ -177,7 +182,9 @@ export function validateModbusStructure(
 				propertyIdentifiers.add(property.identifier);
 			}
 
-			issues.push(...validateProperty(channel, property, field));
+			issues.push(
+				...validateProperty(channel, property, field, property.id !== undefined && keptStatic.has(property.id)),
+			);
 
 			if (property.read) {
 				readBindings.push(property.read);
@@ -230,6 +237,7 @@ function validateProperty(
 	channel: CreateModbusDeviceStructureChannelDto,
 	property: CreateModbusDeviceStructurePropertyDto,
 	field: string,
+	keptStatic: boolean,
 ): ModbusStructureIssue[] {
 	const issues: ModbusStructureIssue[] = [];
 	const permissions = property.permissions ?? [];
@@ -268,7 +276,7 @@ function validateProperty(
 		}
 	}
 
-	if (canRead && !property.read) {
+	if (canRead && !property.read && !keptStatic) {
 		issues.push({
 			field: `${field}.read`,
 			reason: 'A readable property needs a read binding, so every command is confirmed by reading the device.',
