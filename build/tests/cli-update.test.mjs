@@ -17,6 +17,10 @@ const updateAction = source.match(
 const helperFunction = source.match(
   /function provisionPrivilegedHelper\([\s\S]*?\n\}\n/,
 )[0];
+// The update calls the same LinuxInstaller.installGo2rtc() as the install path; run its real source.
+const go2rtcMethod = fs
+  .readFileSync(new URL("../src/installers/linux.ts", import.meta.url), "utf8")
+  .match(/\tinstallGo2rtc\(\): void \{([\s\S]*?)\n\t\}/)[1];
 const forwarded = [];
 const helperWrapper = vm.runInNewContext(`(${helperFunction})`, {
   __dirname: "/trusted/package/bin",
@@ -72,6 +76,7 @@ async function scenario(settings = {}) {
   }
   const calls = [];
   const warnings = [];
+  const go2rtcRuns = [];
   let stagingRoot;
   let candidateRoot;
   let backupRoot;
@@ -101,6 +106,31 @@ async function scenario(settings = {}) {
       if (settings.migrationFails)
         throw new Error("Migration may have partially committed");
       migrationsCommitted = true;
+    },
+    // The real installer step with its filesystem and process calls stubbed; it reads the installer from the new tree.
+    installGo2rtc: () => {
+      calls.push("go2rtc");
+      assert.equal(readVersion(packageRoot), newVersion);
+      assert.equal(running, false);
+      const stub = vm.runInNewContext(
+        `(function () { ${go2rtcMethod.replace(/\bthis\./g, "self.")} })`,
+        {
+          self: { packageRoot },
+          join,
+          getBackendPath: (base) =>
+            join(base, "node_modules", "@fastybird", "smart-panel-backend"),
+          existsSync: () => settings.go2rtcInstallerMissing !== true,
+          execFileSync: (command, args, options) => {
+            go2rtcRuns.push({ command, args, options });
+            if (settings.go2rtcFails) throw new Error("Command failed: exit 1");
+          },
+          logger: { warning: (value) => warnings.push(value), step() {} },
+          GO2RTC_INSTALL_TIMEOUT_MS: 960_000,
+          Error,
+          String,
+        },
+      );
+      stub();
     },
     start: async () => {
       calls.push("start:" + readVersion(packageRoot));
@@ -242,6 +272,7 @@ async function scenario(settings = {}) {
     const result = {
       calls,
       warnings,
+      go2rtcRuns,
       running,
       exited,
       policy,
@@ -389,7 +420,42 @@ for (const running of [true, false]) {
   assert.equal(result.running, running);
   assert.equal(result.backupExists, false);
   assert.equal(result.stagingExists, false);
+  // go2rtc is installed from the new package after the migrations and before the service restarts.
+  assert.deepEqual(
+    result.calls.filter((value) => /^(migration|go2rtc|start:.*)$/.test(value)),
+    running
+      ? ["migration", "go2rtc", "start:" + newVersion]
+      : ["migration", "go2rtc"],
+  );
+  assert.equal(result.go2rtcRuns.length, 1);
+  assert.equal(result.go2rtcRuns[0].command, "/bin/sh");
+  assert.ok(result.go2rtcRuns[0].args[0].endsWith("install-go2rtc.sh"));
+  assert.equal(result.go2rtcRuns[0].options.stdio[0], "ignore");
+  assert.equal(result.go2rtcRuns[0].options.timeout, 960_000);
+  assert.deepEqual(result.warnings, []);
 }
+for (const settings of [
+  { go2rtcInstallerMissing: true, expected: /go2rtc installer not found/ },
+  {
+    go2rtcFails: true,
+    expected: /go2rtc installation failed \(Command failed/,
+  },
+]) {
+  const result = await scenario(settings);
+  // A missing or failing go2rtc installer only warns: the update completes and the service restarts.
+  assert.equal(result.exited, false);
+  assert.equal(result.version, newVersion);
+  assert.equal(result.running, true);
+  assert.deepEqual(
+    result.calls.filter((value) => /^(migration|go2rtc|start:.*)$/.test(value)),
+    ["migration", "go2rtc", "start:" + newVersion],
+  );
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], settings.expected);
+  assert.equal(result.go2rtcRuns.length, settings.go2rtcFails ? 1 : 0);
+}
+// A failed migration never reaches the go2rtc step.
+assert.ok(!(await scenario({ migrationFails: true })).calls.includes("go2rtc"));
 const cleanupFailure = await scenario({ cleanupFails: true });
 assert.equal(cleanupFailure.exited, false);
 assert.equal(cleanupFailure.version, newVersion);
@@ -414,4 +480,7 @@ console.log(
 );
 console.log(
   "PASS: running/inactive success preserves bin links and previous service state; cleanup failure is warning-only",
+);
+console.log(
+  "PASS: the update installs go2rtc after the migrations and before the restart; a missing or failing installer only warns",
 );
