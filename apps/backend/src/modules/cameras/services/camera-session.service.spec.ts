@@ -5,6 +5,7 @@ import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { EventType as DisplaysEventType } from '../../displays/displays.constants';
 import { EventType as UsersEventType } from '../../users/users.constants';
 import { EventType } from '../cameras.constants';
+import { CamerasForbiddenException, CamerasNotFoundException } from '../cameras.exceptions';
 
 import { CameraSessionService } from './camera-session.service';
 
@@ -109,6 +110,90 @@ describe('CameraSessionService', () => {
 		service.create(input);
 
 		expect(sessionsOf(service).size).toBe(1);
+	});
+
+	describe('creation tickets', () => {
+		const owner = input.owner;
+		const tracked = (s: CameraSessionService) =>
+			s as never as {
+				openTickets: Set<unknown>;
+				revokedOwners: Map<string, number>;
+				revokedDevices: Map<string, number>;
+			};
+
+		it('creates a session when nothing was revoked meanwhile', () => {
+			const ticket = service.beginCreate(owner, input.deviceId);
+			const { session, token } = service.create(input, ticket);
+
+			service.endCreate(ticket);
+
+			expect(service.consume(token)).toEqual(session);
+		});
+
+		it.each([
+			['device deleted', (s: CameraSessionService) => s.handleDeviceDeleted({ id: 'c1' }), CamerasNotFoundException],
+			['display deleted', (s: CameraSessionService) => s.handleDisplayDeleted({ id: 'd1' }), CamerasForbiddenException],
+			[
+				'display token revoked',
+				(s: CameraSessionService) => s.handleDisplayTokenRevoked({ id: 'd1' }),
+				CamerasForbiddenException,
+			],
+			['user deleted', (s: CameraSessionService) => s.handleUserDeleted({ id: 'u1' }), CamerasForbiddenException],
+		])('refuses to create after %s while the ticket is open', (_name, revoke, expected) => {
+			const display = _name.startsWith('display');
+			const ticketOwner = display ? { kind: 'display' as const, id: 'd1' } : owner;
+			const ticket = service.beginCreate(ticketOwner, input.deviceId);
+
+			revoke(service);
+
+			expect(() => service.create({ ...input, owner: ticketOwner }, ticket)).toThrow(expected);
+			expect(sessionsOf(service).size).toBe(0);
+
+			service.endCreate(ticket);
+		});
+
+		it('ignores a revocation of another owner or device', () => {
+			const ticket = service.beginCreate(owner, input.deviceId);
+
+			service.revokeByOwner({ kind: 'user', id: 'someone-else' });
+			service.revokeByDevice('another-device');
+
+			expect(() => service.create(input, ticket)).not.toThrow();
+		});
+
+		it('does not hold a revocation against a ticket issued after it', () => {
+			const early = service.beginCreate(owner, input.deviceId);
+
+			service.revokeByDevice(input.deviceId);
+
+			const late = service.beginCreate(owner, input.deviceId);
+
+			expect(() => service.create(input, early)).toThrow(CamerasNotFoundException);
+			expect(() => service.create(input, late)).not.toThrow();
+		});
+
+		it('remembers revocations only while a ticket is open', () => {
+			service.revokeByDevice('c1');
+			service.revokeByOwner(owner);
+
+			expect(tracked(service).revokedDevices.size).toBe(0);
+			expect(tracked(service).revokedOwners.size).toBe(0);
+
+			const ticket = service.beginCreate(owner, 'c1');
+
+			service.revokeByDevice('c1');
+			service.revokeByOwner(owner);
+
+			expect(tracked(service).revokedDevices.size).toBe(1);
+			expect(tracked(service).revokedOwners.size).toBe(1);
+
+			service.endCreate(ticket);
+			service.endCreate(ticket);
+
+			expect(tracked(service).openTickets.size).toBe(0);
+			expect(tracked(service).revokedDevices.size).toBe(0);
+			expect(tracked(service).revokedOwners.size).toBe(0);
+		});
 	});
 
 	describe('event handlers', () => {

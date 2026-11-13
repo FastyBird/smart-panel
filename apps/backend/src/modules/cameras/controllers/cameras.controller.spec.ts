@@ -5,8 +5,10 @@ import { UserRole } from '../../users/users.constants';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraProviderTimeoutError,
 	CameraRateLimitedException,
 	CameraUpstreamException,
+	CamerasForbiddenException,
 	CamerasNotFoundException,
 } from '../cameras.exceptions';
 import { resolveCameraOwner } from '../cameras.utils';
@@ -15,7 +17,7 @@ import { SnapshotQueryDto } from '../dto/snapshot-query.dto';
 import { CameraModel } from '../models/camera.model';
 import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotService } from '../services/camera-snapshot.service';
-import { CameraProviderTimeoutError, CamerasService } from '../services/cameras.service';
+import { CamerasService } from '../services/cameras.service';
 
 import { CamerasController } from './cameras.controller';
 
@@ -26,6 +28,8 @@ describe('CamerasController', () => {
 	} as never;
 	const id = '8f0f2a3c-5c1e-4a56-9d3b-1c2d3e4f5a6b';
 
+	const ticket = { owner: { kind: 'user', id: 'u1' }, deviceId: id, issuedAt: 0 };
+
 	let service: {
 		findAll: jest.Mock;
 		getOneOrThrow: jest.Mock;
@@ -33,7 +37,7 @@ describe('CamerasController', () => {
 		getProviderOrThrow: jest.Mock;
 		resolveProfile: jest.Mock;
 	};
-	let sessions: { create: jest.Mock };
+	let sessions: { beginCreate: jest.Mock; endCreate: jest.Mock; create: jest.Mock };
 	let snapshots: { getSnapshot: jest.Mock };
 	let controller: CamerasController;
 
@@ -45,7 +49,7 @@ describe('CamerasController', () => {
 			getProviderOrThrow: jest.fn(),
 			resolveProfile: jest.fn(),
 		};
-		sessions = { create: jest.fn() };
+		sessions = { beginCreate: jest.fn().mockReturnValue(ticket), endCreate: jest.fn(), create: jest.fn() };
 		snapshots = { getSnapshot: jest.fn() };
 		controller = new CamerasController(
 			service as unknown as CamerasService,
@@ -224,12 +228,17 @@ describe('CamerasController', () => {
 			const response = await controller.createSession(userReq, id, body);
 
 			expect(service.resolveProfile).toHaveBeenCalledWith(device, provider, 'medium');
-			expect(sessions.create).toHaveBeenCalledWith({
-				deviceId: id,
-				profileId: 'medium',
-				transport: 'mse',
-				owner: resolveCameraOwner(userReq),
-			});
+			expect(sessions.beginCreate).toHaveBeenCalledWith(resolveCameraOwner(userReq), id);
+			expect(sessions.create).toHaveBeenCalledWith(
+				{
+					deviceId: id,
+					profileId: 'medium',
+					transport: 'mse',
+					owner: resolveCameraOwner(userReq),
+				},
+				ticket,
+			);
+			expect(sessions.endCreate).toHaveBeenCalledWith(ticket);
 			expect(response.data.sessionId).toBe('sid');
 			expect(response.data.url).toBe('/api/v1/modules/cameras/live?session=tok');
 			expect(response.data.expiresAt).toBe(new Date(expiresAt).toISOString());
@@ -241,7 +250,29 @@ describe('CamerasController', () => {
 			await controller.createSession(userReq, id, { data: { transport: 'mse' } } as ReqCreateCameraSessionDto);
 
 			expect(service.resolveProfile).toHaveBeenCalledWith(device, provider, undefined);
-			expect(sessions.create).toHaveBeenCalledWith(expect.objectContaining({ profileId: 'high' }));
+			expect(sessions.create).toHaveBeenCalledWith(expect.objectContaining({ profileId: 'high' }), ticket);
+		});
+
+		it('maps a revocation during the lookup to 404 for the device and 403 for the owner, and releases the ticket', async () => {
+			sessions.create.mockImplementation(() => {
+				throw new CamerasNotFoundException('Camera not found');
+			});
+
+			await expect(controller.createSession(userReq, id, body)).rejects.toBeInstanceOf(NotFoundException);
+
+			sessions.create.mockImplementation(() => {
+				throw new CamerasForbiddenException('Not allowed');
+			});
+
+			await expect(controller.createSession(userReq, id, body)).rejects.toBeInstanceOf(ForbiddenException);
+			expect(sessions.endCreate).toHaveBeenCalledTimes(2);
+		});
+
+		it('releases the ticket when the lookup fails', async () => {
+			service.resolveProfile.mockRejectedValue(new CameraUpstreamException('x'));
+
+			await expect(controller.createSession(userReq, id, body)).rejects.toBeInstanceOf(ServiceUnavailableException);
+			expect(sessions.endCreate).toHaveBeenCalledWith(ticket);
 		});
 
 		it.each([
@@ -294,6 +325,75 @@ describe('CamerasController', () => {
 					{ type: 'body', metatype: ReqCreateCameraSessionDto },
 				),
 			).resolves.toBeDefined();
+		});
+
+		it.each([[[]], ['text'], [42]])(
+			'rejects data %j that is not an object through the validation pipe',
+			async (data) => {
+				const pipe = new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true });
+
+				await expect(
+					pipe.transform({ data }, { type: 'body', metatype: ReqCreateCameraSessionDto }),
+				).rejects.toBeDefined();
+			},
+		);
+	});
+
+	describe('createSession racing a revocation', () => {
+		const emitter = { emit: jest.fn() };
+		const device = { id };
+		let real: CameraSessionService;
+		let racing: CamerasController;
+		let release: (profile: unknown) => void;
+
+		beforeEach(() => {
+			real = new CameraSessionService(emitter as never);
+			racing = new CamerasController(
+				service as unknown as CamerasService,
+				snapshots as unknown as CameraSnapshotService,
+				real,
+			);
+			service.getProviderOrThrow.mockResolvedValue({ device, provider: {} });
+			service.resolveProfile.mockReturnValue(
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+			);
+		});
+
+		const body = { data: { profile: 'medium', transport: 'mse' } } as ReqCreateCameraSessionDto;
+		const sessionCount = () => (real as never as { sessions: Map<string, unknown> }).sessions.size;
+
+		it('stores no session and answers 404 when the device is deleted while the profile resolves', async () => {
+			const pending = racing.createSession(userReq, id, body);
+
+			await new Promise((resolve) => setImmediate(resolve));
+			real.handleDeviceDeleted({ id });
+			release({ id: 'medium', available: true });
+
+			await expect(pending).rejects.toBeInstanceOf(NotFoundException);
+			expect(sessionCount()).toBe(0);
+		});
+
+		it('stores no session and answers 403 when the owner is deleted while the profile resolves', async () => {
+			const pending = racing.createSession(userReq, id, body);
+
+			await new Promise((resolve) => setImmediate(resolve));
+			real.handleUserDeleted({ id: 'u1' });
+			release({ id: 'medium', available: true });
+
+			await expect(pending).rejects.toBeInstanceOf(ForbiddenException);
+			expect(sessionCount()).toBe(0);
+		});
+
+		it('creates the session when nothing is revoked', async () => {
+			const pending = racing.createSession(userReq, id, body);
+
+			await new Promise((resolve) => setImmediate(resolve));
+			release({ id: 'medium', available: true });
+
+			expect((await pending).data.sessionId).toEqual(expect.any(String));
+			expect(sessionCount()).toBe(1);
 		});
 	});
 });

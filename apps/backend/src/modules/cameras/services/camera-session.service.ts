@@ -7,6 +7,7 @@ import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { EventType as DisplaysEventType } from '../../displays/displays.constants';
 import { EventType as UsersEventType } from '../../users/users.constants';
 import { EventType } from '../cameras.constants';
+import { CamerasForbiddenException, CamerasNotFoundException } from '../cameras.exceptions';
 import { CameraSessionOwner } from '../cameras.utils';
 
 export type CameraSessionTransport = 'mse';
@@ -25,6 +26,16 @@ export interface CameraSessionRevokedEvent {
 	reason: 'owner' | 'device';
 }
 
+/**
+ * Taken before the awaits that precede a session insert. `create` refuses when the owner or the device was revoked
+ * after the ticket was issued.
+ */
+export interface CameraSessionTicket {
+	readonly owner: CameraSessionOwner;
+	readonly deviceId: string;
+	readonly issuedAt: number; // revocation sequence number at issue time
+}
+
 export const CAMERA_SESSION_TTL_MS = 60_000;
 export const CAMERA_SESSION_MAX_PENDING_PER_OWNER = 16;
 
@@ -36,9 +47,51 @@ export const CAMERA_SESSION_MAX_PENDING_PER_OWNER = 16;
 export class CameraSessionService {
 	private readonly sessions = new Map<string, CameraStreamSession>();
 
+	// Revocation tracking for tickets. A revocation is only remembered while a ticket is outstanding, and everything is
+	// dropped once the last ticket is released, so the maps hold at most the keys revoked during one open request.
+	private revocationSeq = 0;
+	private readonly openTickets = new Set<CameraSessionTicket>();
+	private readonly revokedOwners = new Map<string, number>();
+	private readonly revokedDevices = new Map<string, number>();
+
 	constructor(private readonly eventEmitter: EventEmitter2) {}
 
-	create(input: Omit<CameraStreamSession, 'id' | 'expiresAt'>): { session: CameraStreamSession; token: string } {
+	/** Call before any await that precedes `create`, and release it with `endCreate` in a `finally`. */
+	beginCreate(owner: CameraSessionOwner, deviceId: string): CameraSessionTicket {
+		const ticket: CameraSessionTicket = { owner, deviceId, issuedAt: this.revocationSeq };
+
+		this.openTickets.add(ticket);
+
+		return ticket;
+	}
+
+	endCreate(ticket: CameraSessionTicket): void {
+		this.openTickets.delete(ticket);
+
+		if (this.openTickets.size === 0) {
+			this.revokedOwners.clear();
+			this.revokedDevices.clear();
+		}
+	}
+
+	/**
+	 * Stores a session. With a ticket, it refuses when the device was revoked since the ticket was issued (not found)
+	 * or when the owner was (forbidden). Pass a ticket whenever anything is awaited between the checks and the insert.
+	 */
+	create(
+		input: Omit<CameraStreamSession, 'id' | 'expiresAt'>,
+		ticket?: CameraSessionTicket,
+	): { session: CameraStreamSession; token: string } {
+		if (ticket) {
+			if ((this.revokedDevices.get(input.deviceId) ?? -1) >= ticket.issuedAt) {
+				throw new CamerasNotFoundException(`Camera ${input.deviceId} not found`);
+			}
+
+			if ((this.revokedOwners.get(ownerKey(input.owner)) ?? -1) >= ticket.issuedAt) {
+				throw new CamerasForbiddenException('Cameras are not available to this caller');
+			}
+		}
+
 		const now = Date.now();
 
 		this.removeExpired(now);
@@ -79,10 +132,14 @@ export class CameraSessionService {
 	}
 
 	revokeByOwner(owner: CameraSessionOwner): void {
+		if (this.openTickets.size > 0) this.revokedOwners.set(ownerKey(owner), this.revocationSeq++);
+
 		this.revoke((s) => s.owner.kind === owner.kind && s.owner.id === owner.id, 'owner');
 	}
 
 	revokeByDevice(deviceId: string): void {
+		if (this.openTickets.size > 0) this.revokedDevices.set(deviceId, this.revocationSeq++);
+
 		this.revoke((s) => s.deviceId === deviceId, 'device');
 	}
 
@@ -137,4 +194,8 @@ export class CameraSessionService {
 	private hash(token: string): string {
 		return createHash('sha256').update(token).digest('hex');
 	}
+}
+
+function ownerKey(owner: CameraSessionOwner): string {
+	return JSON.stringify([owner.kind, owner.id]);
 }

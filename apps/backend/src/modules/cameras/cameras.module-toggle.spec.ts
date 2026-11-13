@@ -36,7 +36,7 @@ describe('Cameras module toggle (routes)', () => {
 	let enabled: boolean;
 	let cameras: { findAll: jest.Mock; getOneOrThrow: jest.Mock; toModel: jest.Mock; getProviderOrThrow: jest.Mock };
 	let snapshots: { getSnapshot: jest.Mock };
-	let sessions: { create: jest.Mock };
+	let sessions: { beginCreate: jest.Mock; endCreate: jest.Mock; create: jest.Mock };
 
 	beforeAll(async () => {
 		cameras = {
@@ -49,6 +49,8 @@ describe('Cameras module toggle (routes)', () => {
 			getSnapshot: jest.fn().mockResolvedValue({ contentType: 'image/jpeg', data, ageMs: 0, stale: false }),
 		};
 		sessions = {
+			beginCreate: jest.fn().mockReturnValue({}),
+			endCreate: jest.fn(),
 			create: jest.fn().mockReturnValue({ session: { id: 'sid', expiresAt: Date.now() + 60_000 }, token: 'tok' }),
 		};
 		(cameras as Record<string, jest.Mock>).resolveProfile = jest.fn().mockResolvedValue({ id: 'medium' });

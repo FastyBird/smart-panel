@@ -32,6 +32,7 @@ import { CAMERAS_MODULE_API_TAG_NAME } from '../cameras.constants';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraProviderTimeoutError,
 	CameraRateLimitedException,
 	CameraUpstreamException,
 	CamerasForbiddenException,
@@ -49,7 +50,7 @@ import {
 import { CameraSessionModel } from '../models/session.model';
 import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotResult, CameraSnapshotService } from '../services/camera-snapshot.service';
-import { CameraProviderTimeoutError, CamerasService } from '../services/cameras.service';
+import { CamerasService } from '../services/cameras.service';
 
 const PROFILE_UNAVAILABLE_MESSAGE = 'Stream profile is not available';
 
@@ -218,19 +219,29 @@ export class CamerasController {
 
 		let created: ReturnType<CameraSessionService['create']>;
 
+		// Taken before the first await: a revocation while the profile lookup is pending must not yield a session.
+		const ticket = this.sessionService.beginCreate(owner, deviceId);
+
 		try {
 			const { device, provider } = await this.camerasService.getProviderOrThrow(deviceId);
 			const profile = await this.camerasService.resolveProfile(device, provider, body.data.profile);
 
-			created = this.sessionService.create({
-				deviceId: device.id,
-				profileId: profile.id,
-				transport: body.data.transport,
-				owner,
-			});
+			created = this.sessionService.create(
+				{
+					deviceId: device.id,
+					profileId: profile.id,
+					transport: body.data.transport,
+					owner,
+				},
+				ticket,
+			);
 		} catch (error) {
 			if (error instanceof CamerasNotFoundException) {
 				throw new NotFoundException(error.message);
+			}
+
+			if (error instanceof CamerasForbiddenException) {
+				throw new ForbiddenException(error.message);
 			}
 
 			if (error instanceof CameraProfileUnavailableException) {
@@ -247,6 +258,8 @@ export class CamerasController {
 			}
 
 			throw error;
+		} finally {
+			this.sessionService.endCreate(ticket);
 		}
 
 		const model = new CameraSessionModel();
