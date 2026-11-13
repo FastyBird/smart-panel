@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { EntitySubscriberInterface, InsertEvent, UpdateEvent } from 'typeorm';
 
 import { SchedulerRegistry } from '@nestjs/schedule';
 
@@ -228,6 +229,47 @@ describe('activity mode set by an automation, through the real SQLite admission'
 			expect(await active()).toBeNull();
 			expect(run).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			['over no selection', false],
+			['over an existing selection', true],
+		])(
+			'commits nothing for a run cancelled after admission but before COMMIT, %s',
+			async (_label: string, existing: boolean) => {
+				if (existing) {
+					await enableOccupancy(ActivityMode.WORK, ActivityMode.AWAY);
+					await setMode(ActivityMode.WORK, 'run-0');
+				}
+
+				const before = await active();
+				const controller = new AbortController();
+				// The run is cancelled while the selection is being written, after the early check admitted it
+				const cancel = (event: InsertEvent<unknown> | UpdateEvent<unknown>) => {
+					if (event.metadata.tableName === 'spaces_module_space_roles') controller.abort();
+				};
+				const subscriber: EntitySubscriberInterface = { afterInsert: cancel, afterUpdate: cancel };
+
+				h.database.subscribers.push(subscriber);
+
+				try {
+					const result = await setModeCard(modes, h, runtime).execute(
+						{ space_id: h.room.id, mode: ActivityMode.SLEEP },
+						runContext({ runId: 'run-2', signal: controller.signal }),
+					);
+
+					expect(result).toEqual({
+						success: false,
+						reason: 'The space mode was not set: The automation run was cancelled before the mode was selected',
+					});
+				} finally {
+					h.database.subscribers.splice(h.database.subscribers.indexOf(subscriber), 1);
+				}
+
+				expect(controller.signal.aborted).toBe(true);
+				expect(await active()).toEqual(before);
+				expect(run).toHaveBeenCalledTimes(existing ? 5 : 0);
+			},
+		);
 
 		it('refuses an automation admission that does not name the automation run as the actor', async () => {
 			await expect(
