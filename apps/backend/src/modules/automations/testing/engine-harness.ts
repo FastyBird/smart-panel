@@ -13,6 +13,8 @@ import {
 	RegisteredAutomationNodeType,
 	normalizeAutomationNodeType,
 } from '../graph/node-type';
+import { allNodeType } from '../nodes/all.node-type';
+import { anyNodeType } from '../nodes/any.node-type';
 import { delayNodeType } from '../nodes/delay.node-type';
 import { TrackerClock } from '../tracker/clock';
 
@@ -138,6 +140,11 @@ export class EngineHarness {
 		this.registered.delete(type);
 	}
 
+	/** Registers one more node type, e.g. a built-in card wired to a test tracker */
+	public register(nodeType: AutomationNodeType<any>): void {
+		this.registered.set(nodeType.type, normalizeAutomationNodeType(nodeType));
+	}
+
 	public nodeTypes(): AutomationNodeType<any>[] {
 		const subscribe: AutomationTriggerNodeType<EngineNodeBehaviour>['subscribe'] = (config, fire) => {
 			const key = config.key ?? 'default';
@@ -231,6 +238,8 @@ export class EngineHarness {
 				},
 			},
 			delayNodeType,
+			anyNodeType,
+			allNodeType,
 			fakeJoin,
 		];
 	}

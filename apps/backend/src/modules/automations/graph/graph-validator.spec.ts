@@ -1,3 +1,5 @@
+import { ALL_NODE_TYPE, allNodeType } from '../nodes/all.node-type';
+import { ANY_NODE_TYPE, anyNodeType } from '../nodes/any.node-type';
 import {
 	FAKE_ACTION_TYPE,
 	FAKE_CONDITION_TYPE,
@@ -671,6 +673,514 @@ describe('validateGraph', () => {
 				['unknown_node_type', 'x', 'Node type (not a string) is not available.'],
 				['unknown_node_type', 'y', 'Node type "boom" is not available.'],
 			]);
+		});
+	});
+	describe('All fed from triggers', () => {
+		const joinLookup = createLookup([...FAKE_NODE_TYPES, anyNodeType, allNodeType]);
+
+		it('is an error when no single trigger leads to every input: the All can never continue', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+						node('on', FAKE_ACTION_TYPE),
+					],
+					[e('t1:out>a:in'), e('a:done>all:in'), e('t2:out>all:in'), e('all:out>on:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([
+				{
+					severity: 'error',
+					code: 'join_never_completes',
+					message:
+						'This All can never continue: no run brings a token to every one of its inputs. A run starts from one trigger and a block takes one output each time it runs; to combine two events, use Wait until.',
+					node_id: 'all',
+				},
+			]);
+		});
+
+		it('is a warning naming the triggers whose runs stop at the All when only some can complete it', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t1:out>a:in'), e('t1:out>b:in'), e('t2:out>b:in'), e('a:done>all:in'), e('b:done>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([
+				{
+					severity: 'warning',
+					code: 'join_partly_completes',
+					message:
+						'This All continues only in runs of some of the triggers that lead to it; a run of 1 other trigger(s) stops here.',
+					node_id: 'all',
+					node_ids: ['t2'],
+				},
+			]);
+		});
+
+		it('finds nothing when every trigger leading to the All leads to all of its inputs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t1:out>c:in'),
+						e('t2:out>c:in'),
+						e('c:yes>a:in'),
+						e('c:yes>b:in'),
+						e('a:done>all:in'),
+						e('b:done>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('is an error when two inputs come from different outputs of a block that runs once in a run', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>c:in'), e('c:yes>a:in'), e('a:done>all:in'), e('c:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([
+				{
+					severity: 'error',
+					code: 'join_never_completes',
+					message:
+						'This All can never continue: no run brings a token to every one of its inputs. A run starts from one trigger and a block takes one output each time it runs; to combine two events, use Wait until.',
+					node_id: 'all',
+				},
+			]);
+		});
+
+		it('sees through a join: what follows an Any runs once in a run', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('any', ANY_NODE_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('x:done>any:in'),
+						e('y:done>any:in'),
+						e('any:out>c:in'),
+						e('c:yes>all:in'),
+						e('c:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['join_never_completes']);
+		});
+
+		it('says nothing when the block may run more than once in a run, so it can take both outputs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>x:in'), e('t:out>y:in'), e('x:done>c:in'), e('y:done>c:in'), e('c:yes>all:in'), e('c:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('carries what an upstream All can pass on: a chained All no trigger can complete is an error', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('A', ALL_NODE_TYPE),
+						node('B', ALL_NODE_TYPE),
+					],
+					[e('t1:out>A:in'), e('t1:out>b:in'), e('t2:out>b:in'), e('b:done>A:in'), e('A:out>B:in'), e('t2:out>B:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues.map((issue) => [issue.severity, issue.code, issue.node_id])).toEqual([
+				['warning', 'join_partly_completes', 'A'],
+				['error', 'join_never_completes', 'B'],
+			]);
+		});
+
+		it('finds nothing in chained Alls every trigger can complete', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('c', FAKE_ACTION_TYPE),
+						node('A', ALL_NODE_TYPE),
+						node('B', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>a:in'),
+						e('t:out>b:in'),
+						e('t:out>c:in'),
+						e('a:done>A:in'),
+						e('b:done>A:in'),
+						e('A:out>B:in'),
+						e('c:done>B:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('keeps the output of a block that runs once through a join with a single input', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('any', ANY_NODE_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>c:in'), e('c:yes>any:in'), e('any:out>all:in'), e('c:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['join_never_completes']);
+		});
+
+		it('sees a choice made before an All that has several inputs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('A', ALL_NODE_TYPE),
+						node('B', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>c:in'),
+						e('c:yes>x:in'),
+						e('c:yes>y:in'),
+						e('x:done>A:in'),
+						e('y:done>A:in'),
+						e('A:out>B:in'),
+						e('c:no>B:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues.map((issue) => [issue.code, issue.node_id])).toEqual([['join_never_completes', 'B']]);
+		});
+
+		describe('both outputs of one Wait until', () => {
+			const waitUntil = normalizeAutomationNodeType({
+				type: 'test.wait',
+				kind: 'flow',
+				name: 'Test wait',
+				description: 'Takes out or timeout.',
+				ports: { inputs: ['in'], outputs: ['out', 'timeout'] },
+				validateConfig: () => [],
+			});
+			const waitLookup: AutomationNodeTypeLookup = (type) => (type === 'test.wait' ? waitUntil : joinLookup(type));
+
+			it('is an error when every run reaches the Wait until once, whichever trigger started it', async () => {
+				const issues = await validateGraph(
+					graph(
+						[
+							node('t1', FAKE_TRIGGER_TYPE),
+							node('t2', FAKE_TRIGGER_TYPE),
+							node('wait', 'test.wait'),
+							node('all', ALL_NODE_TYPE),
+						],
+						[e('t1:out>wait:in'), e('t2:out>wait:in'), e('wait:out>all:in'), e('wait:timeout>all:in')],
+					),
+					waitLookup,
+				);
+
+				expect(codes(issues)).toEqual(['join_never_completes']);
+			});
+
+			it('is fine when one run reaches the Wait until along two paths, so both outputs can be taken', async () => {
+				const issues = await validateGraph(
+					graph(
+						[
+							node('t', FAKE_TRIGGER_TYPE),
+							node('p', FAKE_ACTION_TYPE),
+							node('q', FAKE_ACTION_TYPE),
+							node('wait', 'test.wait'),
+							node('all', ALL_NODE_TYPE),
+						],
+						[
+							e('t:out>p:in'),
+							e('t:out>q:in'),
+							e('p:done>wait:in'),
+							e('q:done>wait:in'),
+							e('wait:out>all:in'),
+							e('wait:timeout>all:in'),
+						],
+					),
+					waitLookup,
+				);
+
+				expect(issues).toEqual([]);
+			});
+		});
+
+		it('refuses nothing when a run has too many combinations of outputs to try', async () => {
+			const conditions = Array.from({ length: 12 }, (_value, index) => `c${index}`);
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('sink', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+						...conditions.map((id) => node(id, FAKE_CONDITION_TYPE)),
+					],
+					[
+						...conditions.flatMap((id) => [e(`t:out>${id}:in`), e(`${id}:yes>sink:in`), e(`${id}:no>sink:in`)]),
+						e('c0:yes>all:in'),
+						e('c0:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			// 2^12 combinations are tried and none completes the All; one condition more would be too many
+			expect(codes(issues)).toEqual(['join_never_completes']);
+
+			const more = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('sink', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+						...[...conditions, 'c12'].map((id) => node(id, FAKE_CONDITION_TYPE)),
+					],
+					[
+						...[...conditions, 'c12'].flatMap((id) => [
+							e(`t:out>${id}:in`),
+							e(`${id}:yes>sink:in`),
+							e(`${id}:no>sink:in`),
+						]),
+						e('c0:yes>all:in'),
+						e('c0:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(more).toEqual([]);
+		});
+
+		it('counts the runs of a block exactly: two runs can not feed one output and both outputs of the next', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('C', FAKE_CONDITION_TYPE),
+						node('D', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('x:done>C:in'),
+						e('y:done>C:in'),
+						e('C:yes>D:in'),
+						e('C:no>all:in'),
+						e('D:yes>all:in'),
+						e('D:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['join_never_completes']);
+		});
+
+		it('accepts a block run often enough to send a token down every path the All needs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('z', FAKE_ACTION_TYPE),
+						node('C', FAKE_CONDITION_TYPE),
+						node('D', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('t:out>z:in'),
+						e('x:done>C:in'),
+						e('y:done>C:in'),
+						e('z:done>C:in'),
+						e('C:yes>D:in'),
+						e('C:no>all:in'),
+						e('D:yes>all:in'),
+						e('D:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('accepts a block run twice that sends one token to each output', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('C', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>x:in'), e('t:out>y:in'), e('x:done>C:in'), e('y:done>C:in'), e('C:yes>all:in'), e('C:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('gives up on a block with many outputs within its budget, without spreading every run up front', async () => {
+			const outputs = Array.from({ length: 390 }, (_value, index) => `o${index}`);
+			const wide = normalizeAutomationNodeType({
+				type: 'test.wide',
+				kind: 'action',
+				name: 'Test wide',
+				description: 'Has very many outputs.',
+				ports: { inputs: ['in'], outputs },
+				validateConfig: () => [],
+			});
+			const wideLookup: AutomationNodeTypeLookup = (type) => (type === 'test.wide' ? wide : joinLookup(type));
+
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('z', FAKE_ACTION_TYPE),
+						node('C', 'test.wide'),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('t:out>z:in'),
+						e('x:done>C:in'),
+						e('y:done>C:in'),
+						e('z:done>C:in'),
+						...outputs.map((port) => e(`C:${port}>all:in`)),
+					],
+				),
+				wideLookup,
+			);
+
+			// Three runs can not reach 390 inputs, but there is too much to try: nothing is refused
+			expect(issues).toEqual([]);
+		});
+
+		it('leaves edges on ports that are not declared out of the join check', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t', FAKE_TRIGGER_TYPE), node('c', FAKE_CONDITION_TYPE), node('all', ALL_NODE_TYPE)],
+					[e('t:out>c:in'), e('c:yes>all:in'), e('c:maybe>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['unknown_port']);
+		});
+
+		it('lets an Any combine two triggers', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t1', FAKE_TRIGGER_TYPE), node('t2', FAKE_TRIGGER_TYPE), node('any', ANY_NODE_TYPE)],
+					[e('t1:out>any:in'), e('t2:out>any:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('leaves an input no trigger leads to to the unreachable warning', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t', FAKE_TRIGGER_TYPE), node('orphan', FAKE_ACTION_TYPE), node('all', ALL_NODE_TYPE)],
+					[e('t:out>all:in'), e('orphan:done>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['unreachable_node']);
+		});
+
+		it('says nothing while a node of an unknown type could be a trigger', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t', FAKE_TRIGGER_TYPE), node('x', 'not.registered'), node('all', ALL_NODE_TYPE)],
+					[e('t:out>all:in'), e('x:out>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['unknown_node_type']);
 		});
 	});
 });
