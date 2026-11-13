@@ -286,16 +286,42 @@ const findCycles = (nodes: ParsedNode[], successors: Map<ParsedNode, Set<ParsedN
 };
 
 /**
- * A run starts at one trigger, so an All - a strict AND over its incoming edges within one run - can
- * continue only in a run of a trigger that brings a token to every one of those edges (ADR 0003, decision 4);
- * a token gets past an All upstream only in a run of a trigger that completes that All. An
- * All no trigger can complete is an error; one that only some of the triggers leading to it can complete
- * is a warning, naming the triggers whose runs stop there. An edge no trigger leads to is left to the
- * unreachable-node warning.
+ * How many tokens a node is run for, or an edge carries, in one run: none, one, or many (two or more).
+ */
+type RunCount = 0 | 1 | 2;
+
+const MANY: RunCount = 2;
+
+/** One run of one trigger is simulated for at most this many combinations of outputs taken */
+export const AUTOMATION_GRAPH_MAX_JOIN_CHOICES = 4096;
+
+/**
+ * Decides, for every All, which triggers start a run in which it can continue (ADR 0003, decision 4): a
+ * run starts at one trigger, and an All continues only once a token has arrived on every edge leading into
+ * it.
+ *
+ * Each trigger's run is simulated on its own, with the number of tokens on every edge abstracted to none,
+ * one or many:
+ *
+ * - the trigger of the run is run once, every other trigger never;
+ * - a block is run once per token arriving, an Any at most once, and an All once when every incoming edge
+ *   carries a token (its state absorbs the rest);
+ * - a block run exactly once takes one of its outputs: which one is a choice, and every combination of
+ *   choices is tried. Only outputs with an edge are offered - an output with no edge carries nothing, and
+ *   carrying more never stops an All. A block run many times is assumed to take every output many times.
+ *
+ * The counts only grow while the simulation runs, so it ends, cycles included. Every token a real run
+ * produces is counted by the combination of choices that run made, so an All this finds no way to complete
+ * can never continue; when there are too many combinations to try, the trigger is assumed to complete it.
+ *
+ * An All no trigger can complete is an error; one that only some of the triggers leading to it can complete
+ * is a warning, naming the triggers whose runs stop there. An All with an input no trigger leads to is left
+ * to the unreachable-node warning.
  */
 const validateAllJoins = (
 	nodes: ParsedNode[],
 	triggers: ParsedNode[],
+	successors: Map<ParsedNode, Set<ParsedNode>>,
 	feeders: Map<ParsedNode, Feeder[]>,
 ): AutomationGraphIssue[] => {
 	const joins = nodes.filter((node) => isAllJoin(node.nodeType) && (feeders.get(node)?.length ?? 0) > 1);
@@ -304,69 +330,149 @@ const validateAllJoins = (
 		return [];
 	}
 
-	// The triggers whose runs can bring a token to every node, a trigger to itself. A token leaves an All
-	// only in a run of a trigger that brings one to every input of the All, so an All passes on the triggers
-	// all of its inputs share; any other node those of any input. The sets only grow, so this ends.
-	const canonical = new Set(triggers.map((trigger) => nodes.find((node) => node.id === trigger.id)));
-	const startedBy = new Map<ParsedNode, Set<ParsedNode>>(nodes.map((node) => [node, new Set<ParsedNode>()]));
+	const starts = nodes.filter((node) => triggers.some((trigger) => trigger.id === node.id));
+
+	// The outputs of every block that carry an edge
+	const usedPorts = new Map<ParsedNode, unknown[]>();
 
 	for (const node of nodes) {
-		if (canonical.has(node)) startedBy.get(node)?.add(node);
+		for (const { source, sourcePort } of feeders.get(node) ?? []) {
+			const ports = usedPorts.get(source) ?? [];
+
+			if (!ports.includes(sourcePort)) ports.push(sourcePort);
+
+			usedPorts.set(source, ports);
+		}
 	}
 
-	for (let changed = true; changed; ) {
-		changed = false;
+	const reachFrom = (start: ParsedNode): Set<ParsedNode> => {
+		const reached = new Set<ParsedNode>([start]);
+		const queue = [start];
 
-		for (const node of nodes) {
-			if (canonical.has(node)) continue;
+		for (let index = 0; index < queue.length; index += 1) {
+			for (const successor of successors.get(queue[index]) ?? []) {
+				if (!reached.has(successor)) {
+					reached.add(successor);
+					queue.push(successor);
+				}
+			}
+		}
 
-			const sets = (feeders.get(node) ?? []).map(({ source }) => startedBy.get(source) ?? new Set<ParsedNode>());
-			const known = startedBy.get(node) ?? new Set<ParsedNode>();
-			const reaching = isAllJoin(node.nodeType)
-				? [...(sets[0] ?? [])].filter((trigger) => sets.every((set) => set.has(trigger)))
-				: sets.flatMap((set) => [...set]);
+		return reached;
+	};
 
-			for (const trigger of reaching) {
-				if (!known.has(trigger)) {
-					known.add(trigger);
+	const simulate = (
+		start: ParsedNode,
+		reached: Set<ParsedNode>,
+		choice: Map<ParsedNode, unknown>,
+	): Map<ParsedNode, RunCount> => {
+		const runs = new Map<ParsedNode, RunCount>([[start, 1]]);
+
+		const carried = ({ source, sourcePort }: Feeder): RunCount => {
+			const count = runs.get(source) ?? 0;
+
+			if (count !== 1) return count;
+
+			return !choice.has(source) || choice.get(source) === sourcePort ? 1 : 0;
+		};
+
+		for (let changed = true; changed; ) {
+			changed = false;
+
+			for (const node of reached) {
+				if (node === start || node.nodeType?.kind === 'trigger') continue;
+
+				const counts = (feeders.get(node) ?? []).map(carried);
+				const total = Math.min(
+					MANY,
+					counts.reduce<number>((sum, count) => sum + count, 0),
+				) as RunCount;
+				const next: RunCount = isAllJoin(node.nodeType)
+					? counts.every((count) => count > 0)
+						? 1
+						: 0
+					: isJoin(node.nodeType)
+						? (Math.min(1, total) as RunCount)
+						: total;
+
+				if (next > (runs.get(node) ?? 0)) {
+					runs.set(node, next);
 					changed = true;
 				}
 			}
 		}
-	}
 
-	const issues: AutomationGraphIssue[] = [];
-	const choices = createChoiceTracer(feeders);
+		return runs;
+	};
 
-	for (const join of joins) {
-		const incoming = feeders.get(join) ?? [];
-		const perEdge = incoming.map(({ source }) => startedBy.get(source) ?? new Set<ParsedNode>());
+	/** The triggers whose runs can complete each All */
+	const completedBy = new Map<ParsedNode, Set<ParsedNode>>(joins.map((join) => [join, new Set<ParsedNode>()]));
+	/** The triggers whose runs reach each All at all */
+	const reachedBy = new Map<ParsedNode, Set<ParsedNode>>(joins.map((join) => [join, new Set<ParsedNode>()]));
+	const reachable = new Set<ParsedNode>();
 
-		if (perEdge.some((set) => set.size === 0)) {
+	for (const start of starts) {
+		const reached = reachFrom(start);
+		const pending = joins.filter((join) => reached.has(join));
+
+		reached.forEach((node) => reachable.add(node));
+		pending.forEach((join) => reachedBy.get(join)?.add(start));
+
+		if (pending.length === 0) continue;
+
+		const choosing = [...reached].filter(
+			(node) => node.nodeType?.kind !== 'trigger' && !isJoin(node.nodeType) && (usedPorts.get(node)?.length ?? 0) > 1,
+		);
+		const combinations = choosing.reduce((product, node) => product * (usedPorts.get(node)?.length ?? 1), 1);
+
+		if (combinations > AUTOMATION_GRAPH_MAX_JOIN_CHOICES) {
+			// Too many to try: nothing is concluded, so nothing is refused
+			pending.forEach((join) => completedBy.get(join)?.add(start));
+
 			continue;
 		}
 
-		const leading = new Set<ParsedNode>(perEdge.flatMap((set) => [...set]));
-		const completing = [...leading].filter((trigger) => perEdge.every((set) => set.has(trigger)));
+		for (let combination = 0; combination < combinations; combination += 1) {
+			const choice = new Map<ParsedNode, unknown>();
+			let rest = combination;
 
-		if (completing.length > 0 && excludeEachOther(incoming.map(choices))) {
+			for (const node of choosing) {
+				const ports = usedPorts.get(node) ?? [];
+
+				choice.set(node, ports[rest % ports.length]);
+				rest = Math.floor(rest / ports.length);
+			}
+
+			const runs = simulate(start, reached, choice);
+
+			for (const join of pending) {
+				if ((runs.get(join) ?? 0) > 0) completedBy.get(join)?.add(start);
+			}
+
+			if (pending.every((join) => completedBy.get(join)?.has(start) === true)) break;
+		}
+	}
+
+	const issues: AutomationGraphIssue[] = [];
+
+	for (const join of joins) {
+		if ((feeders.get(join) ?? []).some(({ source }) => !reachable.has(source))) {
+			continue;
+		}
+
+		const leading = reachedBy.get(join) ?? new Set<ParsedNode>();
+		const completing = completedBy.get(join) ?? new Set<ParsedNode>();
+
+		if (completing.size === 0) {
 			issues.push({
 				severity: 'error',
 				code: AutomationGraphIssueCode.JOIN_NEVER_COMPLETES,
 				message:
-					'This All can never continue: two of its inputs come from different outputs of one block, and a block that runs once in a run takes only one of its outputs.',
+					'This All can never continue: no run brings a token to every one of its inputs. A run starts from one trigger and a block takes one output each time it runs; to combine two events, use Wait until.',
 				node_id: join.id,
 			});
-		} else if (completing.length === 0) {
-			issues.push({
-				severity: 'error',
-				code: AutomationGraphIssueCode.JOIN_NEVER_COMPLETES,
-				message:
-					'This All can never continue: a run starts from one trigger, and no trigger leads to every one of its inputs. To combine two events, use Wait until.',
-				node_id: join.id,
-			});
-		} else if (completing.length < leading.size) {
-			const stopped = nodes.filter((node) => leading.has(node) && !completing.includes(node));
+		} else if (completing.size < leading.size) {
+			const stopped = nodes.filter((node) => leading.has(node) && !completing.has(node));
 
 			issues.push({
 				severity: 'warning',
@@ -380,63 +486,6 @@ const validateAllJoins = (
 
 	return issues;
 };
-
-/**
- * Traces the outputs that must have been taken for a token to come along an edge: the output of its source,
- * and further up as long as the source is reached by a single edge from a block that runs at most once in a
- * run, also through a join with a single input. Every block takes exactly one output each time it runs, so two edges whose traces need different
- * outputs of one block that runs at most once can never both carry a token in the same run.
- *
- * A block runs at most once in a run when it is a trigger or a join, or when exactly one edge leads into it
- * from a block that runs at most once. Anything else - a block several edges lead into - may run more than
- * once, and nothing is concluded from it.
- */
-const createChoiceTracer = (feeders: Map<ParsedNode, Feeder[]>): ((feeder: Feeder) => Map<ParsedNode, unknown>) => {
-	const once = new Map<ParsedNode, boolean>();
-
-	const runsOnce = (node: ParsedNode): boolean => {
-		const known = once.get(node);
-
-		if (known !== undefined) return known;
-
-		// Until it is worked out - or when it lies on a cycle - it is not known to run once
-		once.set(node, false);
-
-		const into = feeders.get(node) ?? [];
-		const result =
-			node.nodeType?.kind === 'trigger' || isJoin(node.nodeType) || (into.length === 1 && runsOnce(into[0].source));
-
-		once.set(node, result);
-
-		return result;
-	};
-
-	return (feeder) => {
-		const taken = new Map<ParsedNode, unknown>();
-		let current: Feeder | undefined = feeder;
-
-		while (current !== undefined && runsOnce(current.source) && !taken.has(current.source)) {
-			const { source } = current;
-
-			taken.set(source, current.sourcePort);
-
-			const into = feeders.get(source) ?? [];
-
-			// A join with a single input brings nothing new: what reached it had to come along that input
-			current = source.nodeType?.kind === 'trigger' || into.length !== 1 ? undefined : into[0];
-		}
-
-		return taken;
-	};
-};
-
-/** Whether two of the traces need different outputs of the same block */
-const excludeEachOther = (traces: Map<ParsedNode, unknown>[]): boolean =>
-	traces.some((first, index) =>
-		traces
-			.slice(index + 1)
-			.some((second) => [...first].some(([node, port]) => second.has(node) && second.get(node) !== port)),
-	);
 
 /**
  * Returns every issue of a graph. An empty list means the graph is complete and runnable.
@@ -638,7 +687,7 @@ export const validateGraph = async (
 
 	// Joins. A node of an unknown type may be a trigger, so while one is there nothing is said about them.
 	if (unknown.length === 0) {
-		issues.push(...validateAllJoins([...nodesById.values()], triggers, feeders));
+		issues.push(...validateAllJoins([...nodesById.values()], triggers, successors, feeders));
 	}
 
 	return issues;
