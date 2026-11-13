@@ -294,20 +294,31 @@ const MORE = EXACT_RUNS + 1;
 /** One run of one trigger is simulated for at most this many combinations of outputs taken */
 export const AUTOMATION_GRAPH_MAX_JOIN_CHOICES = 4096;
 
-/** Every way to spread `count` tokens over `ports` outputs, as the number each output gets */
-const spreads = (count: number, ports: number): number[][] => {
-	if (ports === 1) return [[count]];
+/** Every step of the simulation of one trigger's run - each output choice tried - counts against this */
+export const AUTOMATION_GRAPH_MAX_JOIN_STEPS = AUTOMATION_GRAPH_MAX_JOIN_CHOICES * 8;
 
-	const result: number[][] = [];
+/**
+ * Every way to spread `count` runs over `ports` outputs, one at a time and only as far as they are asked
+ * for: each is the output taken by each run, in non-decreasing order. The array yielded is reused, so it
+ * must be read before asking for the next one.
+ */
+function* spreads(count: number, ports: number): Generator<readonly number[]> {
+	const picks = new Array<number>(ports === 0 ? 0 : count).fill(0);
 
-	for (let first = count; first >= 0; first -= 1) {
-		for (const rest of spreads(count - first, ports - 1)) {
-			result.push([first, ...rest]);
-		}
+	for (;;) {
+		yield picks;
+
+		let index = picks.length - 1;
+
+		while (index >= 0 && picks[index] === ports - 1) index -= 1;
+
+		if (index < 0) return;
+
+		picks[index] += 1;
+
+		for (let next = index + 1; next < picks.length; next += 1) picks[next] = picks[index];
 	}
-
-	return result;
-};
+}
 
 /**
  * Decides, for every All, which triggers start a run in which it can continue (ADR 0003, decision 4): a
@@ -326,8 +337,11 @@ const spreads = (count: number, ports: number): number[][] => {
  *   stops an All. A block run "more" times is assumed to take every output "more" times.
  *
  * Every token of a real run is counted by the combination of choices that run made, so an All this finds no
- * way to complete can never continue. A run with too many combinations to try, or that walks a cycle (which
- * is refused on its own), is assumed to complete every All it reaches.
+ * way to complete can never continue. A run with too much to try - more than AUTOMATION_GRAPH_MAX_JOIN_CHOICES
+ * combinations or AUTOMATION_GRAPH_MAX_JOIN_STEPS choices - or that walks a cycle (which is refused on its
+ * own), is assumed to complete every All it reaches. The choices are made one at a time, so a block with
+ * many outputs costs only what is tried. Edges on ports that are not declared, refused on their own, are
+ * left out.
  *
  * An All no trigger can complete is an error; one that only some of the triggers leading to it can complete
  * is a warning, naming the triggers whose runs stop there. An All with an input no trigger leads to is left
@@ -413,6 +427,7 @@ const validateAllJoins = (
 		const taken = new Map<ParsedNode, Map<unknown, number>>();
 		const runs = new Map<ParsedNode, number>();
 		let tried = 0;
+		let steps = 0;
 
 		const carried = ({ source, sourcePort }: Feeder): number => taken.get(source)?.get(sourcePort) ?? 0;
 		const done = (): boolean => pending.every((join) => completedBy.get(join)?.has(start) === true);
@@ -449,13 +464,25 @@ const validateAllJoins = (
 								? Math.min(1, total)
 								: total;
 			const ports = usedPorts.get(node) ?? [];
-			const options =
-				count === MORE ? [ports.map(() => MORE)] : ports.length === 0 ? [[]] : spreads(count, ports.length);
 
 			runs.set(node, count);
 
-			for (const option of options) {
-				taken.set(node, new Map(ports.map((port, position) => [port, option[position]])));
+			if (count === MORE) {
+				taken.set(node, new Map(ports.map((port) => [port, MORE])));
+
+				return step(index + 1);
+			}
+
+			for (const picks of spreads(count, ports.length)) {
+				steps += 1;
+
+				if (steps > AUTOMATION_GRAPH_MAX_JOIN_STEPS) return false;
+
+				const tally = new Map<unknown, number>();
+
+				for (const pick of picks) tally.set(ports[pick], (tally.get(ports[pick]) ?? 0) + 1);
+
+				taken.set(node, tally);
 
 				if (!step(index + 1)) return false;
 				if (done()) return true;
@@ -612,7 +639,14 @@ export const validateGraph = async (
 			feeders.set(target, []);
 		}
 
-		feeders.get(target)?.push({ source, sourcePort: edge.sourcePort });
+		// Only an edge between declared ports takes part in the join check: any other is refused on its own
+		if (
+			source.nodeType?.ports.outputs.includes(edge.sourcePort as string) === true &&
+			target.nodeType?.kind !== 'trigger' &&
+			target.nodeType?.ports.inputs.includes(edge.targetPort as string) === true
+		) {
+			feeders.get(target)?.push({ source, sourcePort: edge.sourcePort });
+		}
 
 		if (source.nodeType !== undefined && !source.nodeType.ports.outputs.includes(edge.sourcePort as string)) {
 			issues.push({

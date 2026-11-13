@@ -1096,6 +1096,57 @@ describe('validateGraph', () => {
 			expect(issues).toEqual([]);
 		});
 
+		it('gives up on a block with many outputs within its budget, without spreading every run up front', async () => {
+			const outputs = Array.from({ length: 390 }, (_value, index) => `o${index}`);
+			const wide = normalizeAutomationNodeType({
+				type: 'test.wide',
+				kind: 'action',
+				name: 'Test wide',
+				description: 'Has very many outputs.',
+				ports: { inputs: ['in'], outputs },
+				validateConfig: () => [],
+			});
+			const wideLookup: AutomationNodeTypeLookup = (type) => (type === 'test.wide' ? wide : joinLookup(type));
+
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('z', FAKE_ACTION_TYPE),
+						node('C', 'test.wide'),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('t:out>z:in'),
+						e('x:done>C:in'),
+						e('y:done>C:in'),
+						e('z:done>C:in'),
+						...outputs.map((port) => e(`C:${port}>all:in`)),
+					],
+				),
+				wideLookup,
+			);
+
+			// Three runs can not reach 390 inputs, but there is too much to try: nothing is refused
+			expect(issues).toEqual([]);
+		});
+
+		it('leaves edges on ports that are not declared out of the join check', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t', FAKE_TRIGGER_TYPE), node('c', FAKE_CONDITION_TYPE), node('all', ALL_NODE_TYPE)],
+					[e('t:out>c:in'), e('c:yes>all:in'), e('c:maybe>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['unknown_port']);
+		});
+
 		it('lets an Any combine two triggers', async () => {
 			const issues = await validateGraph(
 				graph(
