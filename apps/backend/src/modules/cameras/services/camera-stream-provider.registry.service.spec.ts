@@ -27,6 +27,20 @@ describe('CameraStreamProviderRegistryService', () => {
 		expect(registry.get({ type: 'devices-b' })).toBeNull();
 	});
 
+	it('does not treat inherited object keys as registered types', () => {
+		for (const type of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+			expect(registry.has({ type })).toBe(false);
+			expect(registry.get({ type })).toBeNull();
+		}
+
+		const p = provider('constructor');
+
+		expect(registry.register(p)).not.toBeNull();
+		expect(registry.get({ type: 'constructor' })).toBe(p);
+		expect(registry.has({ type: 'toString' })).toBe(false);
+		expect(registry.list()).toEqual(['constructor']);
+	});
+
 	it('refuses a second provider for the same type and keeps the first', () => {
 		const first = provider('devices-a');
 

@@ -9,7 +9,7 @@ import { ICameraStreamProvider } from '../platforms/camera-stream.provider';
 export class CameraStreamProviderRegistryService implements OnModuleDestroy {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'CameraStreamProviderRegistryService');
 
-	private readonly providers: Record<string, { provider: ICameraStreamProvider }> = {};
+	private readonly providers = new Map<string, { provider: ICameraStreamProvider }>();
 	private destroyed = false;
 
 	/** Returns null when the registry is closed or the type is already taken; the first registration is kept. */
@@ -18,7 +18,7 @@ export class CameraStreamProviderRegistryService implements OnModuleDestroy {
 
 		const type = provider.getType();
 
-		if (type in this.providers) {
+		if (this.providers.has(type)) {
 			this.logger.warn(`Camera stream provider already registered type=${type}`);
 
 			return null;
@@ -26,19 +26,19 @@ export class CameraStreamProviderRegistryService implements OnModuleDestroy {
 
 		const record = { provider };
 
-		this.providers[type] = record;
+		this.providers.set(type, record);
 
 		this.logger.log(`Registered camera stream provider type=${type}`);
 
 		return Object.freeze({
 			dispose: () => {
-				if (this.providers[type] === record) delete this.providers[type];
+				if (this.providers.get(type) === record) this.providers.delete(type);
 			},
 		});
 	}
 
 	get(device: Pick<DeviceEntity, 'type'>): ICameraStreamProvider | null {
-		return this.providers[device.type]?.provider ?? null;
+		return this.providers.get(device.type)?.provider ?? null;
 	}
 
 	has(device: Pick<DeviceEntity, 'type'>): boolean {
@@ -46,14 +46,12 @@ export class CameraStreamProviderRegistryService implements OnModuleDestroy {
 	}
 
 	list(): string[] {
-		return Object.keys(this.providers);
+		return [...this.providers.keys()];
 	}
 
 	onModuleDestroy(): void {
 		this.destroyed = true;
 
-		for (const type of Object.keys(this.providers)) {
-			delete this.providers[type];
-		}
+		this.providers.clear();
 	}
 }
