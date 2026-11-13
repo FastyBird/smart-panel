@@ -949,3 +949,16 @@ export type DevicesHomeKitPluginGetBridgeStatusOperation = operations['get-devic
 export type DevicesHomeKitPluginResetPairingOperation = operations['reset-devices-homekit-plugin-pairing'];
 export type DevicesHomeKitPluginGetCandidatesOperation = operations['get-devices-homekit-plugin-candidates'];
 export type DevicesHomeKitPluginMapCandidatesOperation = operations['map-devices-homekit-plugin-candidates'];
+
+// Cameras Module Schemas
+export type CamerasModuleCameraSchema = components['schemas']['CamerasModuleDataCamera'];
+export type CamerasModuleStreamProfileSchema = components['schemas']['CamerasModuleDataStreamProfile'];
+export type CamerasModuleSessionSchema = components['schemas']['CamerasModuleDataSession'];
+export type CamerasModuleCreateSessionSchema = components['schemas']['CamerasModuleCreateSession'];
+export type CamerasModuleReqCreateSessionSchema = components['schemas']['CamerasModuleReqCreateSession'];
+
+// Cameras Module Operations
+export type CamerasModuleGetCamerasOperation = operations['get-cameras-module-cameras'];
+export type CamerasModuleGetCameraOperation = operations['get-cameras-module-camera'];
+export type CamerasModuleGetCameraSnapshotOperation = operations['get-cameras-module-camera-snapshot'];
+export type CamerasModuleCreateCameraSessionOperation = operations['create-cameras-module-camera-session'];
