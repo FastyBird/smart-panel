@@ -1,10 +1,11 @@
 import { FastifyReply } from 'fastify';
 
 import { Controller, Get, Res } from '@nestjs/common';
-import { ApiExcludeEndpoint } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 
 import { Public } from '../../auth/guards/auth.guard';
+import { CAMERAS_MODULE_API_TAG_NAME } from '../cameras.constants';
 
 /**
  * Answers a plain `GET` (no `Upgrade`) of the live socket path. Live sockets themselves are upgraded by
@@ -15,6 +16,7 @@ import { Public } from '../../auth/guards/auth.guard';
  * refusal there would echo the url as well), it needs no authentication (a refusal there would too) and it is not
  * throttled (a rejection would). The session is not consumed.
  */
+@ApiTags(CAMERAS_MODULE_API_TAG_NAME)
 @Controller('live')
 export class CamerasLiveController {
 	@Public()
