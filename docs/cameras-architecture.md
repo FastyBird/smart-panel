@@ -293,6 +293,11 @@ a backoff of 1, 2, 4, 8 and 16 s (five attempts, then `error`; the last five red
 `warn`); a run of 60 s resets the attempt counter; a 30 s health probe that fails twice in a row stops the child and
 counts as a crash. Stopping sends SIGTERM, then SIGKILL after 5 s, and waits 2 s for the confirmation.
 
+After `error` (including `port_in_use`) the relay does not retry on its own: it recovers only after a change of the go2rtc
+configuration or a restart of the service by the extension manager (toggle the module, or restart the backend).
+`Go2rtcService.isHealthy()` (shown in the managed service listing) is true while the relay is `running` or its mode is
+`disabled`.
+
 ### Managed process
 
 - go2rtc listens on `127.0.0.1` only: API `127.0.0.1:11984`, RTSP `127.0.0.1:18554`. `FB_GO2RTC_API_PORT` and
@@ -335,8 +340,24 @@ failure (silence).
 The URL carries no credentials (the validation refuses them); the backend sends none. The operator is responsible for
 securing that go2rtc (loopback or a trusted network): anyone who can reach it can read the registered streams. The
 backend probes `GET /api` every 30 s for the version and reachability. Whenever an external relay becomes `running`,
-every `smart-panel_*` stream it holds that this process does not know is deleted (orphans of an earlier run); other
-stream names are left alone.
+every stream it holds whose name starts with this installation's prefix (`smart-panel_<installationId>_`) and that this
+process does not know is deleted (orphans of an earlier run); every other name, including `smart-panel_*` streams of
+another installation sharing the go2rtc, is left alone.
+
+An external go2rtc persists registered streams, source urls included, to its own config file, and it outlives this
+backend. The streams must therefore be deleted explicitly: `Go2rtcStreamsService` remembers the client it last saw while
+the relay was external and running, and sends a best-effort `DELETE` for every registered stream through it when the
+relay stops, is disabled, switches mode or becomes unreachable (`Go2rtcService` has already cleared its own client by
+then). A `DELETE` that fails (the relay is unreachable) is not retried; the stream is removed by the orphan sweep the next
+time the relay is `running`, and its source stays in the secrets registry until then.
+
+### Installation id
+
+The stream names are scoped by a random 8 character `[a-z0-9]` id kept in `<FB_CONFIG_PATH>/go2rtc/installation-id`
+(mode 0600, in the 0700 go2rtc directory). It is created on first use and reused afterwards; content that is not such an
+id is replaced. The managed-mode cleanup deletes only the per-spawn `go2rtc-*.yaml` files and never this file. If the
+file cannot be written the id lasts for the process only (a warning is logged), so names stay unique but an orphan of an
+earlier run is no longer recognised.
 
 ### Provider I/O
 
@@ -348,7 +369,7 @@ resolution, `PUT`) to 20 s (`LIVE_UPSTREAM_ACQUIRE_TIMEOUT_MS`). A provider stil
 ## Stream registration
 
 `Go2rtcStreamsService` registers one go2rtc stream per camera profile while someone watches it. The stream name is
-`smart-panel_<deviceId>_<profileId>`; a profile id outside `[A-Za-z0-9_-]{1,64}` is refused as unavailable.
+`smart-panel_<installationId>_<deviceId>_<profileId>` (see Installation id); a profile id outside `[A-Za-z0-9_-]{1,64}` is refused as unavailable.
 
 | Situation | Result |
 |---|---|
@@ -357,10 +378,11 @@ resolution, `PUT`) to 20 s (`LIVE_UPSTREAM_ACQUIRE_TIMEOUT_MS`). A provider stil
 | `acquire` on a registered entry, also inside the grace period | count + 1, grace timer cleared, no `PUT` |
 | last `release` | `DELETE /api/streams?src=<name>` after 30 s (`GO2RTC_STREAM_IDLE_GRACE_MS`), so a reload reuses the stream; then the secrets are released |
 | `PUT` or `resolveSource` fails | every joiner rejects; no entry; secrets released; the next `acquire` starts over |
-| relay `generation` changes or the state leaves `running` | every entry is dropped; managed: no `DELETE` (the process and its file are gone); external: best-effort `DELETE` while the same relay is reachable |
+| relay `generation` changes or the state leaves `running` | every entry is dropped; managed: no `DELETE` (the process and its file are gone); external (stop, disable, mode change, unreachable): best-effort `DELETE` of every entry through the remembered external client |
 | device deleted | its entries are deleted at once, whatever their count |
 | external relay becomes `running` | orphan sweep, see External mode |
-| module destroy | best-effort `DELETE` of every entry, bounded by 2 s |
+| module destroy | best-effort `DELETE` of every entry (and the deletions already in flight), bounded by 2 s |
+| a `DELETE` fails | the secrets of that stream stay registered (`retained`) until a later `DELETE` of the name succeeds, the managed process is gone (generation change or stop; its config file with it) or the module is destroyed (after its bounded `DELETE`s) |
 
 Calls for one stream name run one after another (`PUT` and `DELETE` are queued per name), so the final go2rtc state of a
 name is the last call queued even when a drop races a registration. `release()` is idempotent and a no-op after its
@@ -394,7 +416,7 @@ tick, and only afterwards does the gateway look up the camera and talk to go2rtc
 | path is not the live path | untouched, left to other listeners |
 | module configuration unreadable / module disabled | raw HTTP 503 / 404, the token is not consumed |
 | unknown, expired or already used token | raw HTTP 401; a token works once at most |
-| a plain `GET` without `Upgrade` | reaches Fastify and answers 404; the session is not consumed |
+| a plain `GET` without `Upgrade` | reaches Fastify and answers a fixed `426` `{ "error": "upgrade_required" }` with `Upgrade: websocket` (`CamerasLiveController`, hidden from OpenAPI, public, not throttled, not behind the module guard so that no refusal can echo the url); the session is not consumed |
 
 Refusals at the HTTP level are never upgraded. After the 101, limits are enforced with a close code, because the session
 is consumed at that point.
@@ -406,8 +428,11 @@ no other key. The gateway forwards a message rebuilt from the validated fields, 
 because go2rtc's decoder matches keys case-insensitively and keeps the last duplicate. A second `mse` request would
 add a consumer on the go2rtc socket, so it closes with 1008; reconnect to renegotiate. A binary frame closes with 1003,
 any other text frame with 1008. A frame above 4096 bytes is refused by the WebSocket server itself (close 1009). A request sent before the upstream is open is held and sent when it opens.
-go2rtc answers a text `{ "type": "mse", "value": "video/mp4; codecs=…" }` and then binary fMP4 fragments, which are
-relayed unchanged.
+go2rtc answers a text `{ "type": "mse", "value": "video/mp4; codecs=…" }` and then binary fMP4 fragments. Binary
+fragments are relayed unchanged. Of go2rtc's text frames only the `mse` reply is forwarded, rebuilt from its validated
+`value` (a string of at most 256 characters from the mime-type alphabet). go2rtc's `{ "type": "error", "value": … }`
+frame can carry the camera source (path and query) in its text, so it is never forwarded: it, or an invalid `mse` reply,
+closes the socket with 1011 `upstream_failed`; any other text frame is dropped and only a fixed code is logged.
 
 ### Close codes
 
@@ -481,9 +506,14 @@ session token. Logs carry ids, stream names, fixed reason codes and error class 
 - The API password and instance secret never appear in the child's arguments or environment.
 - Close reasons are the fixed strings of the close code table.
 - **The session token travels in the URL query**, so: the upgrade never passes through Fastify, Fastify's request logger
-  is off (`main.ts`), and the gateway logs no URL. A plain `GET` of the live path does reach Fastify and its 404 body
-  echoes the request path, token included, to the requester only; the token is not consumed by it. A remote-access proxy
-  in front of the backend must not log query strings for `/api/v1/modules/cameras/live`.
+  is off (`main.ts`), and the gateway logs no URL. A plain `GET` of the live path does reach Fastify, where the live
+  controller answers a fixed `426` body that contains no part of the request (the token is not consumed). A
+  remote-access proxy in front of the backend must not log query strings for `/api/v1/modules/cameras/live`.
+- Text frames from go2rtc never reach the browser except a rebuilt, validated `mse` reply: go2rtc's `error` frame carries
+  the camera source path and query.
+- A secret stays registered for as long as the stream it belongs to may exist: external streams are deleted on stop,
+  and a failed `DELETE` keeps the secret registered (see Stream registration). The process memory of the backend is the
+  only place the secrets live; an external go2rtc keeps them in its own config file until the stream is deleted.
 
 ## Not yet implemented
 
