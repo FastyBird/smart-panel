@@ -7,7 +7,7 @@ Reference for the backend `cameras` module (`apps/backend/src/modules/cameras/`)
 The cameras module gives clients one way to list camera and doorbell devices, fetch a still image and open a
 short-lived live view session, whatever integration the device comes from. The module does not talk to any camera
 itself. An integration plugin registers an `ICameraStreamProvider` for its device `type`; the module routes requests to
-the provider that matches the device, caches snapshots and issues sessions.
+the provider that matches the device, caches snapshots, issues sessions and relays live video through go2rtc.
 
 Cameras are devices with category `camera` or `doorbell`. A camera whose `type` has no registered provider is still
 listed, with `live_view: false` and no profiles; its snapshot and session routes answer 404.
@@ -157,7 +157,9 @@ image itself.
 | `GET /cameras` | `get-cameras-module-cameras` | 200, every visible camera and doorbell with its profiles |
 | `GET /cameras/:deviceId` | `get-cameras-module-camera` | 200, one camera; 404 when the device is not a camera |
 | `GET /cameras/:deviceId/snapshot?profile=&hq=` | `get-cameras-module-camera-snapshot` | 200 image (`image/jpeg`, `image/png` or `image/webp`) |
-| `POST /cameras/:deviceId/sessions` | `create-cameras-module-camera-session` | 201 `CamerasModuleDataSession` |
+| `POST /cameras/:deviceId/sessions` | `create-cameras-module-camera-session` | 201 `CamerasModuleDataSession`; 503 while the relay is not running |
+| `GET /status` | `get-cameras-module-status` | 200 `CamerasModuleDataStatus`: relay state and live socket usage |
+| `GET /live?session=` (WebSocket upgrade) | not in OpenAPI | 101 and the live socket, see Live WebSocket |
 
 Status codes:
 
@@ -167,6 +169,8 @@ Status codes:
 - 404: unknown camera, a camera without a registered provider, an unknown/unavailable profile, or the module being
   disabled (`Cameras module is disabled`).
 - 503: camera offline, busy, did not respond or timed out. The snapshot route adds `Retry-After: 2` when rate limited.
+  `POST sessions` also answers 503 `Live view relay is not available` whenever the relay is not `running`: a session
+  is only worth issuing when it can be served. Snapshots do not use the relay and keep working.
 
 Snapshot headers: `Content-Type`, `Content-Length`, `Cache-Control: no-store` and, only when the image is stale,
 `X-Snapshot-Age` (whole seconds). Query parameters: `profile` (1 to 64 characters) and `hq` (`true` or `false`,
@@ -174,7 +178,8 @@ default `false`).
 
 Session request body: `{ "data": { "profile"?: string, "transport": "mse" } }`. Without `profile` the first available
 profile is used; with `profile` it must be available. Response data: `session_id`, `url` (a relative
-`/api/v1/modules/cameras/live?session=<token>` that must be opened within a minute) and `expires_at`.
+`/api/v1/modules/cameras/live?session=<token>` that must be opened within a minute) and `expires_at`. Clients join
+`url` with their configured API base; the backend does not know its public prefix.
 
 ## Snapshot cache
 
@@ -209,7 +214,7 @@ profile is used; with `profile` it must be available. Response data: `session_id
 
 ## Stream sessions
 
-`CameraSessionService` issues short-lived, single-use sessions that the live gateway will exchange for a stream.
+`CameraSessionService` issues short-lived, single-use sessions that the live gateway exchanges for a stream.
 
 - Token: 32 random bytes, base64url. Only the SHA-256 hex of the token is stored; the raw token is returned once and
   never kept, logged or emitted. The session id (a UUID) is safe to log.
@@ -232,24 +237,256 @@ profile is used; with `profile` it must be available. Response data: `session_id
 
 - `CamerasModule.Session.Revoked` is emitted with `{ sessionIds: string[]; reason: 'owner' | 'device' }` whenever a
   revocation removed at least one session. It covers only sessions that have not been consumed yet. A consumed session
-  is no longer known to the service, so the live gateway (not yet implemented) subscribes to the four source events
-  itself to close its open sockets.
+  is no longer known to the service, so the live gateway subscribes to the four source events itself to close its open
+  sockets (see Live WebSocket).
+
+## Relay (go2rtc)
+
+The module does not decode video. `Go2rtcService` (a managed service of the `cameras-module` owner, service id
+`go2rtc`, started only while the module is enabled) provides a go2rtc instance, `Go2rtcStreamsService` registers camera
+sources in it, and `LiveStreamGateway` proxies one browser socket to one go2rtc MSE socket. The relay state is read
+through `Go2rtcService.getStatus()` and `subscribe()`, never through the event bus: every event-bus event is broadcast to
+socket.io clients.
+
+### Modes
+
+`go2rtc.mode` in the module configuration (`PATCH /config/module/cameras-module`, owner only):
+
+| Mode | Behaviour |
+|---|---|
+| `managed` (default) | The backend runs `binary_path` as a supervised child and talks to it on loopback. |
+| `external` | The backend uses a go2rtc instance that already exists at `external_url` and runs nothing. |
+| `disabled` | No relay: sessions are refused with 503, snapshots work. |
+
+Other fields: `binary_path` (absolute path whose file name starts with `go2rtc`; default
+`GO2RTC_DEFAULT_BINARY_PATH = /usr/local/lib/smart-panel/go2rtc/go2rtc`), `external_url` (http or https URL without
+credentials, query or fragment), `max_sessions` (1 to 32, default 8) and `max_sessions_per_camera` (1 to 16, default
+4; the effective limit is the smaller of the two). `mode: external` with a missing or `null` `external_url` is
+refused with 400 by the cross-field check in `CamerasConfigMutationService`, registered with
+`ModuleConfigMutationRegistryService` so it also sees a PATCH that changes only one of the two fields.
+
+`GO2RTC_INSTALL_DIR` (`/usr/local/lib/smart-panel/go2rtc`) and `GO2RTC_DEFAULT_BINARY_PATH` are constants in
+`cameras.constants.ts`; the installer (UP-4) will place the binary there.
+
+### State and reason
+
+`GET /status` and `Go2rtcService.getStatus()` report `mode`, `state`, `reason`, `version` and an internal `generation`
+(+1 on every spawn, every external connect and every mode change). Everything that is not a hard failure to stop the
+child resolves `start()` normally, because the extension manager raises an error notification for every rejected
+`start()`; the service reports the situation through the status and heals itself on retry or config change.
+
+| State | Reason | When |
+|---|---|---|
+| `disabled` | `module_disabled` | the module is switched off |
+| `disabled` | `mode_disabled` | `mode` is `disabled` |
+| `starting` | `null` | the child was spawned and is not ready, or a respawn is waiting out its backoff (then `reason` holds the last failure: `crashed` or `start_timeout`) |
+| `running` | `null` | managed: ready, see Identity check; external: the probe succeeded |
+| `unavailable` | `binary_path_invalid` | `binary_path` fails validation |
+| `unavailable` | `binary_missing` / `binary_not_executable` | the binary does not exist (`ENOENT`, `ENOTDIR`) / cannot be executed (`EACCES`); no retry until the configuration changes |
+| `unavailable` | `external_url_missing` | external mode without a valid URL |
+| `unavailable` | `external_unreachable` | the external probe failed; re-probed every 30 s |
+| `error` | `port_in_use` | something else answers on the managed api port; no retry |
+| `error` | `crashed` / `start_timeout` | the fifth consecutive attempt failed, or the child could not be confirmed stopped |
+
+Supervision (managed): readiness within 10 s, polled every 250 ms; the child is restarted after an unexpected exit with
+a backoff of 1, 2, 4, 8 and 16 s (five attempts, then `error`; the last five redacted output lines are logged at
+`warn`); a run of 60 s resets the attempt counter; a 30 s health probe that fails twice in a row stops the child and
+counts as a crash. Stopping sends SIGTERM, then SIGKILL after 5 s, and waits 2 s for the confirmation.
+
+### Managed process
+
+- go2rtc listens on `127.0.0.1` only: API `127.0.0.1:11984`, RTSP `127.0.0.1:18554`. `FB_GO2RTC_API_PORT` and
+  `FB_GO2RTC_RTSP_PORT` override them. The defaults avoid 1984 and 8554 so a Frigate or Home Assistant go2rtc on the
+  same host does not collide. The WebRTC and SRTP listeners are empty (disabled).
+- The API and the RTSP server require basic auth with user `smart-panel` and a fresh random password per spawn;
+  `api.local_auth: true` makes go2rtc ask for it on loopback too.
+- The child gets only `PATH` and `HOME` in its environment and runs with the config directory as its working directory.
+- Config file: `<FB_CONFIG_PATH>/go2rtc/go2rtc-<random>.yaml`. The directory is created `0700` (and chmod'ed to `0700`
+  if it already existed), the file `0600`. A new file with a new random name and a new password is written on every
+  spawn; files of earlier spawns are removed first. At spawn it contains the listeners, the credentials and no stream.
+  Its first line is a comment `# smart-panel-instance <secret>`.
+- **go2rtc writes registered streams into that file.** `PUT /api/streams` makes go2rtc persist the stream, source URL
+  with its camera credentials included, into the config file it was started with. While the relay runs, a 0600 file in a
+  0700 directory owned by the service user therefore holds the source URLs (the same exposure as plugin secrets in the
+  application config). The file is removed whenever the child stops and regenerated on every spawn, so no source URL
+  rests on disk while the relay is down. If the child cannot be confirmed stopped the file stays, because the process
+  may still own it.
+- Process output is read line by line, redacted (registered secrets first, then any `rtsp`, `rtsps`, `rtspx`, `http`,
+  `https`, `ws` or `wss` URL by scheme, then truncated to 1 KiB) and kept in a ring of 64 lines. Nothing from the child
+  is logged unredacted.
+
+### Identity check
+
+go2rtc v1.9.15 has no `pid` in `GET /api`; it answers `{ version, revision, config_path, host }`. The relay must not
+send credentials or camera sources to a different service that happens to hold the api port, so a managed run is only
+trusted when both hold:
+
+1. `GET /api` reports `config_path` equal to the exact per-spawn file path (the random name is known only to our child
+   and visible only to local users that can list the 0700 directory or read `ps`), and
+2. `GET /api/config` (authenticated; go2rtc returns the raw config file) contains the per-spawn instance secret line.
+   The secret is only in the 0600 file, never in the process arguments, and is registered as a secret.
+
+The periodic probe re-checks `config_path` (the config text changes once streams are registered). After a failed start
+a single unauthenticated `GET /api` decides between `port_in_use` (any HTTP answer: someone else is there) and a counted
+failure (silence).
+
+### External mode
+
+The URL carries no credentials (the validation refuses them); the backend sends none. The operator is responsible for
+securing that go2rtc (loopback or a trusted network): anyone who can reach it can read the registered streams. The
+backend probes `GET /api` every 30 s for the version and reachability. Whenever an external relay becomes `running`,
+every `smart-panel_*` stream it holds that this process does not know is deleted (orphans of an earlier run); other
+stream names are left alone.
+
+### Provider I/O
+
+The relay trusts nothing a provider returns, and it bounds only its own work: the provider call is limited to 10 s
+(`CAMERA_PROVIDER_TIMEOUT_MS`), go2rtc HTTP calls to 5 s, and the whole acquisition of a socket (camera lookup, source
+resolution, `PUT`) to 20 s (`LIVE_UPSTREAM_ACQUIRE_TIMEOUT_MS`). A provider still MUST bound its own I/O and stop on
+`signal`: the module cannot cancel a call that ignores it (see Provider obligations).
+
+## Stream registration
+
+`Go2rtcStreamsService` registers one go2rtc stream per camera profile while someone watches it. The stream name is
+`smart-panel_<deviceId>_<profileId>`; a profile id outside `[A-Za-z0-9_-]{1,64}` is refused as unavailable.
+
+| Situation | Result |
+|---|---|
+| first `acquire` | `resolveSource`, `toGo2rtcSource`, `PUT /api/streams?name=&src=`; the source URL and its path are added to the secrets registry; reference count 1 |
+| `acquire` while that registration is in flight | joins it: one `resolveSource` and one `PUT` |
+| `acquire` on a registered entry, also inside the grace period | count + 1, grace timer cleared, no `PUT` |
+| last `release` | `DELETE /api/streams?src=<name>` after 30 s (`GO2RTC_STREAM_IDLE_GRACE_MS`), so a reload reuses the stream; then the secrets are released |
+| `PUT` or `resolveSource` fails | every joiner rejects; no entry; secrets released; the next `acquire` starts over |
+| relay `generation` changes or the state leaves `running` | every entry is dropped; managed: no `DELETE` (the process and its file are gone); external: best-effort `DELETE` while the same relay is reachable |
+| device deleted | its entries are deleted at once, whatever their count |
+| external relay becomes `running` | orphan sweep, see External mode |
+| module destroy | best-effort `DELETE` of every entry, bounded by 2 s |
+
+Calls for one stream name run one after another (`PUT` and `DELETE` are queued per name), so the final go2rtc state of a
+name is the last call queued even when a drop races a registration. `release()` is idempotent and a no-op after its
+entry was dropped.
+
+`toGo2rtcSource` maps what a provider returned. Anything but a plain URL of the declared transport is refused
+(`CameraUpstreamException`), so go2rtc source syntax that runs a command (`exec:`, `ffmpeg:`) cannot be reached; control
+characters, whitespace and fragments are refused too.
+
+| `transport` | Accepted URL schemes | go2rtc source |
+|---|---|---|
+| `rtsp` | `rtsp:`, `rtsps:` | unchanged |
+| `rtsps-insecure` | `rtsps:`, `rtspx:` | scheme replaced by `rtspx:` (RTSPS without certificate verification) |
+| `http` | `http:`, `https:` | unchanged |
+
+## Live WebSocket
+
+`GET /api/v1/modules/cameras/live?session=<token>` upgrades to a WebSocket. It is not a Nest gateway and not a Fastify
+route: `LiveStreamGateway` listens for the HTTP server's raw `upgrade` event (the server comes from `HttpAdapterHost`,
+so it works in the app and in e2e tests without `AppInstanceHolder`) and leaves every other path alone.
+
+### Handshake
+
+Everything up to and including the 101 runs synchronously inside the `upgrade` event. The reason is engine.io: the
+socket.io server of the websocket module ends every upgrade on another path that has not written a byte after one
+second. The session is therefore checked from memory (`CameraSessionService.consume`), the 101 is written in the same
+tick, and only afterwards does the gateway look up the camera and talk to go2rtc.
+
+| Check | Outcome |
+|---|---|
+| path is not the live path | untouched, left to other listeners |
+| module configuration unreadable / module disabled | raw HTTP 503 / 404, the token is not consumed |
+| unknown, expired or already used token | raw HTTP 401; a token works once at most |
+| a plain `GET` without `Upgrade` | reaches Fastify and answers 404; the session is not consumed |
+
+Refusals at the HTTP level are never upgraded. After the 101, limits are enforced with a close code, because the session
+is consumed at that point.
+
+### Client frames
+
+The client may send exactly one text frame, `{ "type": "mse", "value"?: string }` with `value` up to 1024 characters and
+no other key. The gateway forwards a message rebuilt from the validated fields, never the raw text,
+because go2rtc's decoder matches keys case-insensitively and keeps the last duplicate. A second `mse` request would
+add a consumer on the go2rtc socket, so it closes with 1008; reconnect to renegotiate. A binary frame closes with 1003,
+any other text frame with 1008. A frame above 4096 bytes is refused by the WebSocket server itself (close 1009). A request sent before the upstream is open is held and sent when it opens.
+go2rtc answers a text `{ "type": "mse", "value": "video/mp4; codecs=…" }` and then binary fMP4 fragments, which are
+relayed unchanged.
+
+### Close codes
+
+The close reason is always one of these fixed strings; peers' own reasons and error messages are never forwarded.
+
+| Code | Reason | When |
+|---|---|---|
+| 1001 | `server_shutdown` | the module or the application is shutting down |
+| 1003 | `unsupported_data` | the client sent a binary frame |
+| 1008 | `protocol_violation` | an invalid or repeated client frame |
+| 1011 | `upstream_failed` | the camera lookup, the registration or the go2rtc socket failed before media started |
+| 1011 | `upstream_closed` | the go2rtc socket ended while streaming |
+| 1013 | `relay_unavailable` | the relay is not running, or its state or generation changed |
+| 1013 | `session_limit` | `max_sessions` sockets are open |
+| 1013 | `camera_session_limit` | the camera already has `min(max_sessions_per_camera, max_sessions)` sockets |
+| 1013 | `slow_consumer` | the client did not drain its buffer for 10 s |
+| 4000 | `revoked` | see Revocation |
+| 4001 | `module_disabled` | the module was switched off |
+| 4002 | `max_lifetime` | the socket was open for 4 hours |
+
+### Limits, lifetime and flow control
+
+- Admission counts open sockets, including ones whose upstream is still connecting.
+- A socket lives at most 4 hours (`LIVE_MAX_LIFETIME_MS`).
+- The gateway pings every 30 s; a client that has not answered by the next tick is terminated, which frees its slot.
+- Backpressure: when more than 4 MiB are buffered for the client the go2rtc socket is paused; resuming happens below
+  1 MiB; a client that stays above for 10 s is closed `slow_consumer`. A go2rtc frame above 16 MiB ends the go2rtc socket (`upstream_closed`).
+- The go2rtc socket handshake times out after 10 s.
+
+### Revocation
+
+An open socket is no longer known to `CameraSessionService`, so the gateway subscribes itself:
+
+| Event | Effect |
+|---|---|
+| `DevicesModule.Device.Deleted` | the device's sockets close `revoked` |
+| `DisplaysModule.Display.Deleted`, `DisplaysModule.Display.TokenRevoked` | the display's sockets close `revoked` |
+| `UsersModule.User.Deleted` | the user's sockets close `revoked` |
+| config update of `cameras-module` leaving it disabled or unreadable | every socket closes `module_disabled` |
+| config update of any plugin | every watched (device, profile) is re-validated once, in parallel: a provider that is now offline (disabled plugin) or a profile that is no longer available closes its sockets `revoked` |
+| relay status leaves `running`, or the generation changes | every socket closes `relay_unavailable` |
+
+## Status route
+
+`GET /api/v1/modules/cameras/status` (users and displays, module enabled) answers:
+
+```json
+{ "data": { "relay": { "mode": "external", "state": "running", "reason": null, "version": "1.9.9" },
+            "sessions": { "active": 1, "max": 8, "max_per_camera": 4 } } }
+```
+
+`active` is the number of open live sockets. The body never contains a URL, a path or credentials; `version` is
+restricted to `[0-9A-Za-z.+-]{1,32}`.
 
 ## Secret rule
 
 A `CameraStreamSource.url` carries credentials. It is produced only by `resolveSource`, which the module never calls
 for a REST response. The source URL must never be returned to a client. A session token is different: it is returned
 once, to the authenticated requester that created the session (the `session` query parameter of the returned relative
-URL), as the session contract above describes. Neither the source URL, a session token nor a provider error message
-may be logged, persisted or emitted in an event. Logs carry ids and fixed error class labels only.
-`cameras.secret-hygiene.spec.ts` guards this.
+URL), as the session contract above describes.
+
+None of the following may reach a log line, a response body, a close reason, an event payload, an error message or the
+process output ring: a provider source URL and its path, the go2rtc API password, the per-spawn instance secret, and a
+session token. Logs carry ids, stream names, fixed reason codes and error class labels only
+(`cameras.secret-hygiene.spec.ts`, and the unit specs of the relay services, guard this).
+
+- go2rtc output is redacted before it is stored or logged (see Managed process); registered secrets are
+  literals in `Go2rtcSecretsRegistry`, a counted multiset: each registration has its own handle, and releasing one never
+  drops a literal another handle still holds. A registry that is asked to hold a secret shorter than its minimum throws
+  rather than leave it unredacted.
+- The API password and instance secret never appear in the child's arguments or environment.
+- Close reasons are the fixed strings of the close code table.
+- **The session token travels in the URL query**, so: the upgrade never passes through Fastify, Fastify's request logger
+  is off (`main.ts`), and the gateway logs no URL. A plain `GET` of the live path does reach Fastify and its 404 body
+  echoes the request path, token included, to the requester only; the token is not consumed by it. A remote-access proxy
+  in front of the backend must not log query strings for `/api/v1/modules/cameras/live`.
 
 ## Not yet implemented
 
-Planned in the live view work (#1179):
-
-- the go2rtc relay that turns a provider source into a stream,
-- the live WebSocket (`/api/v1/modules/cameras/live?session=...`) that consumes a session,
-- a camera status route.
-
-Until then a session can be created but its URL does not yet serve a stream.
+- WebRTC transport (the relay disables its listeners).
+- HLS or MP4 output for the panel (UP-15); only MSE is served.
+- The installer that ships the go2rtc binary to `GO2RTC_INSTALL_DIR` (UP-4).
