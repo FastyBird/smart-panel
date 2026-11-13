@@ -80,11 +80,21 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	// The pick a running run's trace was read again for: once per time it is picked
 	let refreshedPick: number | null = null;
 
+	// A read that went well since: the reads that failed for the run are not reported any more
+	const clearFailures = (runId: string): void => {
+		if ([...failedReads.value].some((key) => key.startsWith(`${runId}:`))) {
+			failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
+		}
+	};
+
 	// What a run stored so far, read when its events may have been missed; nothing stored yet is not a failure
 	const recover = (runId: string): void => {
-		void runsStore.get({ id: runId, fresh: true }).catch((): void => {
-			// Nothing stored yet, or not readable now: the live steps are what there is
-		});
+		void runsStore
+			.get({ id: runId, fresh: true })
+			.then((): void => clearFailures(runId))
+			.catch((): void => {
+				// Nothing stored yet, or not readable now: the live steps are what there is
+			});
 	};
 
 	const readKey = (runId: string, run: IAutomationRun | null): string => `${runId}:${run?.status ?? 'unknown'}`;
@@ -99,6 +109,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 		try {
 			await runsStore.get({ id: runId, fresh: true });
+
+			clearFailures(runId);
 		} catch {
 			failedReads.value = new Set([...failedReads.value, key]);
 		}
@@ -196,8 +208,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		}
 
 		if (source.value === null ? runId !== previous : isEnded(shownRecord.value)) {
-			waitingRunIds.value = waitingRunIds.value.filter((item) => item !== runId);
 			source.value = { kind: 'live', runId, pick: ++picks };
+			waitingRunIds.value = waitingRunIds.value.filter((item) => item !== runId);
 		} else if (source.value !== null) {
 			// Only the runs whose steps are still held can be followed
 			waitingRunIds.value = [...waitingRunIds.value.filter((item) => item !== runId && live.stepsOf(item).length > 0), runId];
@@ -217,12 +229,13 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			);
 			const runId = [...candidates].reverse().find((item) => !isEnded(runsStore.findById(item))) ?? candidates.at(-1) ?? null;
 
-			// The others still wait: each is followed in turn once the one before it is over
-			waitingRunIds.value = candidates.filter((item) => item !== runId);
-
+			// Shown before it stops waiting, so it stays open throughout
 			if (runId !== null) {
 				source.value = { kind: 'live', runId, pick: ++picks };
 			}
+
+			// The others still wait: each is followed in turn once the one before it is over
+			waitingRunIds.value = candidates.filter((item) => item !== runId);
 		}
 	);
 
@@ -347,7 +360,11 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		opened = next;
 	};
 
-	watch((): string[] => [...new Set([...(source.value ? [source.value.runId] : []), ...waitingRunIds.value])], hold, { immediate: true });
+	// At once, not on the next tick: an event that comes right after the step that took a run up is kept for it
+	watch((): string[] => [...new Set([...(source.value ? [source.value.runId] : []), ...waitingRunIds.value])], hold, {
+		immediate: true,
+		flush: 'sync',
+	});
 
 	onScopeDispose((): void => {
 		hold([]);

@@ -900,6 +900,51 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId, ended: true, run: { status: 'completed' } });
 	});
 
+	it('learns how a run ended when its end comes right after the step that took it up, with no history read', async (): Promise<void> => {
+		scope = effectScope();
+
+		const trace = scope.run(() => useAutomationRunTrace({ id: automationId, graph: ref(graph) })) as IUseAutomationRunTrace;
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await trace.fetchRuns();
+
+		// Both in the same batch: no tick between them
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId, ended: true, run: { status: 'completed' } });
+	});
+
+	it('stops saying a read of the trace failed once a later read of it went well', async (): Promise<void> => {
+		const trace = await create();
+
+		store().onEvent({ data: runRes(otherRunId, 'running') });
+
+		mocks.backend.GET.mockResolvedValueOnce({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+
+		trace.replay(otherRunId);
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, failed: true });
+
+		emit('disconnect');
+
+		mocks.backend.GET.mockResolvedValueOnce(
+			tracedRes(otherRunId, 'running', [
+				stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }),
+				stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked', delay_ms: 60_000 }),
+			])
+		);
+
+		emit('connect');
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, failed: false });
+		expect(trace.shown.value?.overlay.nodes.n2).toMatchObject({ state: 'reached', parked: true });
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 
