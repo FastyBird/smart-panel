@@ -76,6 +76,7 @@ COPY apps/backend/ apps/backend/
 COPY packages/extension-sdk/ packages/extension-sdk/
 COPY spec/ spec/
 COPY var/ var/
+COPY build/go2rtc/ build/go2rtc/
 
 # Generate specs and build (extension SDK must be built before openapi generation)
 RUN pnpm run generate:spec && \
