@@ -201,7 +201,9 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 			const local = localTimeAt(due.instant, timezone);
 
 			return {
-				key: `${due.day}:${due.event}`,
+				// The crossing itself: its instant comes from a grid fixed to the epoch, so it is the same each
+				// time it is computed, and two events of one kind on one solar date stay apart
+				key: `${due.event}:${due.instant}`,
 				fire: () =>
 					fire({
 						event: due.event,

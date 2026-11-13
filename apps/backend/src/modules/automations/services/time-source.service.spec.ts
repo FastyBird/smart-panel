@@ -490,6 +490,20 @@ describe('AutomationTimeSourceService', () => {
 			expect(sunFired.map((item) => item.date)).toEqual(['2026-03-21']);
 		});
 
+		it('fires for two sunsets that fall on one solar date, near the end of the midnight sun', async () => {
+			// At 69.9°N the first sunset after the midnight sun comes just after solar midnight of 27 July and
+			// the next one late on the same solar date: two events of one kind on one date
+			locate({ latitude: 69.9, longitude: 18.95 });
+			timezone = 'Europe/Oslo';
+			await start('2026-07-26T12:00:00Z');
+
+			service.onSunEvent({ event: 'sunset', offsetMinutes: 0 }, fireSun);
+
+			clock.advanceMinutes(48 * 60);
+
+			expect(sunFired.map(({ at }) => at.slice(0, 16))).toEqual(['2026-07-26T22:47', '2026-07-27T22:15']);
+		});
+
 		it('does not fire again for the same sunrise when the clock is set back', async () => {
 			locate(PRAGUE);
 			await start('2026-03-20T05:00:00Z');
