@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -21,6 +21,8 @@ import { CAMERA_PROVIDER_TIMEOUT_MS, CamerasService } from './cameras.service';
 export const CAMERA_SNAPSHOT_DEFAULT_MIN_INTERVAL_MS = 2000;
 export const CAMERA_SNAPSHOT_MIN_ALLOWED_INTERVAL_MS = 250;
 export const CAMERA_SNAPSHOT_MAX_AGE_MS = 300_000;
+/** How often expired images and failures of keys nobody requests any more are dropped. */
+export const CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS = 60_000;
 
 const ACCEPTED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -46,7 +48,7 @@ interface FailureEntry {
 }
 
 @Injectable()
-export class CameraSnapshotService {
+export class CameraSnapshotService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'CameraSnapshotService');
 
 	private readonly cache = new Map<string, CacheEntry>();
@@ -58,7 +60,23 @@ export class CameraSnapshotService {
 	 */
 	private readonly timedOutCalls = new Map<string, symbol>();
 
+	private sweepTimer: NodeJS.Timeout | undefined;
+
 	constructor(private readonly camerasService: CamerasService) {}
+
+	onModuleInit(): void {
+		// Expiry is otherwise only checked when the same key is requested again, so a camera or profile nobody views any
+		// more would keep its image buffer for the process lifetime.
+		this.sweepTimer = setInterval(() => this.sweepExpired(Date.now()), CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS);
+		this.sweepTimer.unref();
+	}
+
+	onModuleDestroy(): void {
+		if (this.sweepTimer !== undefined) {
+			clearInterval(this.sweepTimer);
+			this.sweepTimer = undefined;
+		}
+	}
 
 	async getSnapshot(
 		deviceId: string,
@@ -245,6 +263,16 @@ export class CameraSnapshotService {
 				return new CameraRateLimitedException('Camera is busy');
 			case 'upstream':
 				return new CameraUpstreamException('Camera did not respond');
+		}
+	}
+
+	private sweepExpired(now: number): void {
+		for (const [key, entry] of this.cache) {
+			if (now - entry.fetchedAt > CAMERA_SNAPSHOT_MAX_AGE_MS) this.cache.delete(key);
+		}
+
+		for (const [key, failure] of this.failures) {
+			if (failure.until <= now) this.failures.delete(key);
 		}
 	}
 

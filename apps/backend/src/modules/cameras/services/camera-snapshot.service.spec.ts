@@ -11,7 +11,11 @@ import {
 } from '../cameras.exceptions';
 import { CameraSnapshot, CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
-import { CameraSnapshotService } from './camera-snapshot.service';
+import {
+	CAMERA_SNAPSHOT_MAX_AGE_MS,
+	CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS,
+	CameraSnapshotService,
+} from './camera-snapshot.service';
 import { CamerasService } from './cameras.service';
 
 const jpeg = (n: number): CameraSnapshot => ({ contentType: 'image/jpeg', data: Buffer.from([0xff, 0xd8, n]) });
@@ -761,6 +765,49 @@ describe('CameraSnapshotService', () => {
 			await pending;
 
 			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		});
+	});
+
+	describe('expiry sweep', () => {
+		const internals = () => service as unknown as { cache: Map<string, unknown>; failures: Map<string, unknown> };
+
+		afterEach(() => service.onModuleDestroy());
+
+		it('drops the expired image of a key that is never requested again', async () => {
+			service.onModuleInit();
+
+			await service.getSnapshot('c1', {});
+			expect(internals().cache.size).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(CAMERA_SNAPSHOT_MAX_AGE_MS + CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS);
+
+			expect(internals().cache.size).toBe(0);
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+		});
+
+		it('drops expired failures of a key that is never requested again', async () => {
+			service.onModuleInit();
+			getSnapshot.mockRejectedValueOnce(new CameraOfflineException('offline'));
+
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraOfflineException);
+			expect(internals().failures.size).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS);
+
+			expect(internals().failures.size).toBe(0);
+		});
+
+		it('keeps a fresh image and stops sweeping after module destroy', async () => {
+			service.onModuleInit();
+
+			await service.getSnapshot('c1', {});
+			await jest.advanceTimersByTimeAsync(CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS);
+			expect(internals().cache.size).toBe(1);
+
+			service.onModuleDestroy();
+			await jest.advanceTimersByTimeAsync(CAMERA_SNAPSHOT_MAX_AGE_MS + CAMERA_SNAPSHOT_SWEEP_INTERVAL_MS);
+
+			expect(internals().cache.size).toBe(1);
 		});
 	});
 });
