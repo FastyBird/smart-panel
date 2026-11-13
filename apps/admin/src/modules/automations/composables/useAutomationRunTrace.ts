@@ -104,8 +104,13 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	 * it runs, its steps come from the live view. A record whose status moved on since its trace was read has
 	 * lost the trace in the store, and it is read again.
 	 */
+	// The reads of a trace on their way: one that ended is looked at again only once what it did is recorded
+	const readsInFlight = ref<Set<string>>(new Set());
+
 	const readTrace = async (runId: string): Promise<void> => {
 		const key = readKey(runId, runsStore.findById(runId));
+
+		readsInFlight.value = new Set([...readsInFlight.value, runId]);
 
 		try {
 			await runsStore.get({ id: runId, fresh: true });
@@ -113,6 +118,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			clearFailures(runId);
 		} catch {
 			failedReads.value = new Set([...failedReads.value, key]);
+		} finally {
+			readsInFlight.value = new Set([...readsInFlight.value].filter((item) => item !== runId));
 		}
 	};
 
@@ -124,7 +131,10 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 			const run = shownRecord.value;
 
-			return `${source.value.kind}:${source.value.pick}:${readKey(source.value.runId, run)}:${run?.trace ? 'traced' : 'bare'}`;
+			// A read on its way when the run ended is waited for, and looked at again once it is over
+			const reading = readsInFlight.value.has(source.value.runId) ? 'reading' : 'idle';
+
+			return `${source.value.kind}:${source.value.pick}:${readKey(source.value.runId, run)}:${run?.trace ? 'traced' : 'bare'}:${reading}`;
 		},
 		(): void => {
 			const current = source.value;
@@ -144,7 +154,12 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 			const wanted = current.kind === 'replay' || isEnded(run);
 
-			if (!wanted || runsStore.getting(current.runId) || failedReads.value.has(readKey(current.runId, run))) {
+			if (
+				!wanted ||
+				readsInFlight.value.has(current.runId) ||
+				runsStore.getting(current.runId) ||
+				failedReads.value.has(readKey(current.runId, run))
+			) {
 				return;
 			}
 

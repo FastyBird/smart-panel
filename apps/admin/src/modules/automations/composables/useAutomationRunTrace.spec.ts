@@ -971,6 +971,32 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId: otherRunId, ended: true, run: { status: 'completed' } });
 	});
 
+	it('reads the trace of a run that ended while a read of it was on its way, once that read fails', async (): Promise<void> => {
+		const trace = await create();
+
+		store().onEvent({ data: runRes(otherRunId, 'running') });
+
+		let answer: (value: unknown) => void = () => {};
+
+		mocks.backend.GET.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+		trace.replay(otherRunId);
+		await nextTick();
+
+		// It ends while the read of what it stored so far is on its way, and that read then fails
+		store().onEvent({ data: runRes(otherRunId, 'completed') });
+		await nextTick();
+
+		mocks.backend.GET.mockResolvedValueOnce(tracedRes(otherRunId, 'completed', [stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' })]));
+
+		answer({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+		await flushPromises();
+
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(3);
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, ended: true, failed: false });
+		expect(trace.shown.value?.overlay.nodes.n1?.state).toBe('passed');
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 
