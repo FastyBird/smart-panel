@@ -205,6 +205,8 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 			stamp(merged, ++sequence);
 
+			let inHistory = false;
+
 			// A history that was not read is not started here: it would look read while it holds one run
 			if (runs) {
 				const others = runs.filter((run) => run.id !== merged.id);
@@ -214,6 +216,13 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 				// Too old to be kept: no list is merged with it any more
 				forgetChanges([merged, ...others], sorted);
+
+				inHistory = sorted.some((run) => run.id === merged.id);
+			} else {
+				// While the first list is on its way, what is known of the run is kept for it: the list may be older
+				const awaiting = awaitingFirstList.get(incoming.automationId);
+
+				awaiting?.set(merged.id, mergeAutomationRun(awaiting.get(merged.id), withoutTrace(merged)));
 			}
 
 			if (merged.trace !== null) {
@@ -222,8 +231,9 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 				traces.value.delete(merged.id);
 			}
 
-			// An open run with no history to hold it keeps its record here, or the view would not learn how it went
-			if (!runs && openRunIds.has(merged.id)) {
+			// An open run no history holds (none read, or too old for it) keeps its record here, or the view would
+			// not learn how it went
+			if (!inHistory && openRunIds.has(merged.id)) {
 				openRecords.value.set(merged.id, withoutTrace(merged));
 			}
 
@@ -245,11 +255,7 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 
 				// A run a view has open is kept whether its history was read or not
 				if (openRunIds.has(parsed.data.id)) {
-					const kept = commit(parsed.data);
-
-					awaiting?.set(kept.id, mergeAutomationRun(awaiting.get(kept.id), kept));
-
-					return kept;
+					return commit(parsed.data);
 				}
 
 				if (!awaiting) {

@@ -2,7 +2,13 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AUTOMATION_RUN_TRACES_KEPT, AutomationRunRecordStatus, AutomationStatus, AutomationTriggerOutcome } from '../automations.constants';
+import {
+	AUTOMATION_RUNS_KEPT_PER_AUTOMATION,
+	AUTOMATION_RUN_TRACES_KEPT,
+	AutomationRunRecordStatus,
+	AutomationStatus,
+	AutomationTriggerOutcome,
+} from '../automations.constants';
 import { AutomationsApiException, AutomationsTriggerRefusedException } from '../automations.exceptions';
 
 import { mergeAutomationRun, useAutomationRunsStore } from './runs.store';
@@ -689,6 +695,56 @@ describe('Automation runs store', (): void => {
 		expect(store.findById(ids[0] as string)).toBeNull();
 		expect(store.findById(ids[1] as string)?.trace).not.toBeNull();
 		expect(store.findById(ids[2] as string)?.trace).not.toBeNull();
+	});
+
+	it('keeps how a run read alone ended when the first list on its way is older', async (): Promise<void> => {
+		const running = { status: 'running', finished_at: null, duration_ms: null };
+
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: { ...runRes(1, running), trace } }, error: undefined, response: { status: 200 } });
+
+		await store.get({ id: runIds[1] as string });
+
+		const pending = deferred<unknown>();
+
+		mockBackendClient.GET.mockReturnValueOnce(pending.promise);
+
+		const fetching = store.fetch({ automationId });
+
+		// The run ends while the list is on its way: its trace was held, so the event does not wait for the list
+		store.onEvent({ data: runRes(1) });
+
+		pending.resolve({ data: { data: [runRes(1, running)] }, error: undefined, response: { status: 200 } });
+
+		await fetching;
+
+		expect(store.findById(runIds[1] as string)).toMatchObject({ status: 'completed' });
+		expect(store.findForAutomation(automationId)).toEqual([expect.objectContaining({ id: runIds[1], status: 'completed' })]);
+	});
+
+	it('keeps how an open run ended when the history no longer holds it', async (): Promise<void> => {
+		const running = { status: 'running', finished_at: null, duration_ms: null };
+
+		mockBackendClient.GET.mockResolvedValueOnce({ data: { data: [runRes(0, running)] }, error: undefined, response: { status: 200 } });
+
+		await store.fetch({ automationId });
+
+		store.open({ id: runIds[0] as string });
+
+		// Newer runs push it out of the history the backend keeps
+		for (let index = 0; index < AUTOMATION_RUNS_KEPT_PER_AUTOMATION; index++) {
+			store.onEvent({
+				data: runRes(0, {
+					id: `c1f0c1d2-0000-4000-8000-0000000002${String(index).padStart(2, '0')}`,
+					started_at: `2026-11-12T07:${String(index).padStart(2, '0')}:00.000Z`,
+				}),
+			});
+		}
+
+		expect(store.findForAutomation(automationId).some((run) => run.id === runIds[0])).toBe(false);
+
+		store.onEvent({ data: runRes(0) });
+
+		expect(store.findById(runIds[0] as string)).toMatchObject({ id: runIds[0], status: 'completed' });
 	});
 
 	it('forgets the runs of an automation that is gone, and every run on a reset', async (): Promise<void> => {

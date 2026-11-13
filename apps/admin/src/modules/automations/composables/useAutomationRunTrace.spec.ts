@@ -659,6 +659,43 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId, ended: true, run: { status: 'completed' } });
 	});
 
+	it('learns how a run waiting to be shown ended when the history of the automation could not be read', async (): Promise<void> => {
+		scope = effectScope();
+
+		const trace = scope.run(() => useAutomationRunTrace({ id: automationId, graph: ref(graph) })) as IUseAutomationRunTrace;
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await trace.fetchRuns();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		await nextTick();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		await nextTick();
+
+		// The run waiting ends before the one shown
+		store().onEvent({ data: runRes(otherRunId, 'completed') });
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, ended: true, run: { status: 'completed' } });
+	});
+
+	it('lets go of the run it had open when the view closes before it looked again', async (): Promise<void> => {
+		const trace = await create();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		await nextTick();
+
+		const release = vi.spyOn(store(), 'release');
+
+		trace.close();
+		scope.stop();
+
+		expect(release).toHaveBeenCalledWith({ id: runId });
+	});
+
 	it('keeps showing all the run followed did while other runs of the automation send their steps', async (): Promise<void> => {
 		const trace = await create();
 

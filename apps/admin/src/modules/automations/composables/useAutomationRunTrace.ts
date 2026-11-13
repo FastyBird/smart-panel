@@ -133,7 +133,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	 * going is followed once that one is over (or the latest of them, when all are over: the end of a run is
 	 * announced after it is stored, so the steps of a short run that came next can arrive before it).
 	 */
-	let waitingRunIds: string[] = [];
+	const waitingRunIds = ref<string[]>([]);
 
 	// The run the step before came from: a run closed or turned down is not taken up again by its next step
 	let previousStepRunId: string | null = null;
@@ -181,11 +181,11 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		}
 
 		if (source.value === null ? runId !== previous : isEnded(shownRecord.value)) {
-			waitingRunIds = waitingRunIds.filter((item) => item !== runId);
+			waitingRunIds.value = waitingRunIds.value.filter((item) => item !== runId);
 			source.value = { kind: 'live', runId, pick: ++picks };
 		} else if (source.value !== null) {
 			// Only the runs whose steps are still held can be followed
-			waitingRunIds = [...waitingRunIds.filter((item) => item !== runId && live.stepsOf(item).length > 0), runId];
+			waitingRunIds.value = [...waitingRunIds.value.filter((item) => item !== runId && live.stepsOf(item).length > 0), runId];
 		}
 	});
 
@@ -197,11 +197,13 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 				return;
 			}
 
-			const candidates = waitingRunIds.filter((runId) => runId !== source.value?.runId && !isDismissed(runId) && live.stepsOf(runId).length > 0);
+			const candidates = waitingRunIds.value.filter(
+				(runId) => runId !== source.value?.runId && !isDismissed(runId) && live.stepsOf(runId).length > 0
+			);
 			const runId = [...candidates].reverse().find((item) => !isEnded(runsStore.findById(item))) ?? candidates.at(-1) ?? null;
 
 			// The others still wait: each is followed in turn once the one before it is over
-			waitingRunIds = candidates.filter((item) => item !== runId);
+			waitingRunIds.value = candidates.filter((item) => item !== runId);
 
 			if (runId !== null) {
 				source.value = { kind: 'live', runId, pick: ++picks };
@@ -277,7 +279,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		const result = await runsStore.trigger({ automationId: id, ...(typeof nodeId === 'string' ? { nodeId } : {}) });
 
 		if (result.started && result.runId !== null) {
-			waitingRunIds = [];
+			waitingRunIds.value = [];
 			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
 		}
 
@@ -288,7 +290,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		// Picked again after a read that failed: it is tried again
 		failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
 
-		waitingRunIds = [];
+		waitingRunIds.value = [];
 		source.value = { kind: 'replay', runId, pick: ++picks };
 	};
 
@@ -297,33 +299,37 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			dismiss(source.value.runId);
 		}
 
-		waitingRunIds = [];
+		waitingRunIds.value = [];
 		source.value = null;
 	};
 
-	// The run shown is open in the store: its record and trace are kept while it is shown, history read or not
-	watch(
-		(): string | null => source.value?.runId ?? null,
-		(runId: string | null, previous: string | null | undefined): void => {
-			if (runId === previous) {
-				return;
-			}
+	/*
+	 * The run shown and the runs waiting are open in the store: their records and traces are kept while the view
+	 * has them, history read or not. A run that moves from waiting to shown stays open throughout, and what was
+	 * opened is what is let go of when the view closes.
+	 */
+	let opened: string[] = [];
 
-			if (typeof previous === 'string') {
-				runsStore.release({ id: previous });
-			}
-
-			if (runId !== null) {
+	const hold = (next: string[]): void => {
+		for (const runId of next) {
+			if (!opened.includes(runId)) {
 				runsStore.open({ id: runId });
 			}
-		},
-		{ immediate: true }
-	);
+		}
+
+		for (const runId of opened) {
+			if (!next.includes(runId)) {
+				runsStore.release({ id: runId });
+			}
+		}
+
+		opened = next;
+	};
+
+	watch((): string[] => [...new Set([...(source.value ? [source.value.runId] : []), ...waitingRunIds.value])], hold, { immediate: true });
 
 	onScopeDispose((): void => {
-		if (source.value) {
-			runsStore.release({ id: source.value.runId });
-		}
+		hold([]);
 	});
 
 	return {
