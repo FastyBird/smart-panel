@@ -169,7 +169,6 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			if (
 				!wanted ||
 				readsInFlight.value.has(current.runId) ||
-				runsStore.getting(current.runId) ||
 				failedReads.value.has(readKey(current.runId, run)) ||
 				(!stale && attemptedReads.has(attempt))
 			) {

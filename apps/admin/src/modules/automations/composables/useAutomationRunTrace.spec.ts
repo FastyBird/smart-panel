@@ -1058,6 +1058,33 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId, ended: true, failed: false, run: { trace: expect.anything() } });
 	});
 
+	it('reads a run picked in a reopened editor once a read of it left from before settles', async (): Promise<void> => {
+		const first = await create();
+
+		let answer: (value: unknown) => void = () => {};
+
+		mocks.backend.GET.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+		first.replay(otherRunId);
+		await nextTick();
+
+		// The editor is left while the read is on its way, and opened again
+		scope.stop();
+
+		const second = await create();
+
+		second.replay(otherRunId);
+		await nextTick();
+
+		mocks.backend.GET.mockResolvedValueOnce(tracedRes(otherRunId, 'completed', [stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' })]));
+
+		answer({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+		await flushPromises();
+
+		expect(second.shown.value).toMatchObject({ runId: otherRunId, ended: true, failed: false });
+		expect(second.shown.value?.overlay.nodes.n1?.state).toBe('passed');
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 
