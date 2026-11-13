@@ -25,6 +25,11 @@ import {
 } from './live-stream.constants';
 
 const MAX_REQUEST_VALUE_LENGTH = 1024;
+/**
+ * A go2rtc `mse` reply value is a mime type such as `video/mp4; codecs="avc1.640029,mp4a.40.2"`. Anything outside this
+ * alphabet (or longer) is not forwarded, so a source url or a credential cannot ride along.
+ */
+const MSE_REPLY_VALUE = /^[\w/.;=,"+ -]{1,256}$/;
 const NORMAL_CLOSURE = 1000;
 /** Reason logged when the client left; the client's own close reason is never read. */
 const CLIENT_CLOSED_REASON = 'client_closed';
@@ -41,8 +46,9 @@ export interface LiveStreamConnectionOptions {
 /**
  * One proxied browser to go2rtc MSE socket.
  *
- * The browser may only send the `mse` request (text, small, validated); everything go2rtc sends is relayed with
- * backpressure. Close reasons are fixed codes and log lines carry ids and fixed codes only: the lease authorization,
+ * The browser may only send the `mse` request (text, small, validated). Of go2rtc's text frames only a rebuilt, validated
+ * `mse` reply is forwarded (an upstream `error` frame can carry source credentials and closes the socket instead);
+ * binary media frames are relayed with backpressure. Close reasons are fixed codes and log lines carry ids and fixed codes only: the lease authorization,
  * the upstream url and whatever the peers put in their own close reasons or error messages never leave this class.
  */
 export class LiveStreamConnection {
@@ -239,7 +245,32 @@ export class LiveStreamConnection {
 			return;
 		}
 
-		client.send(data, { binary: isBinary }, () => this.onClientSent());
+		let payload: RawData | string = data;
+
+		if (!isBinary) {
+			const reply = parseUpstreamText(rawToString(data));
+
+			if (reply.kind === 'error') {
+				this.logger.warn(
+					`Live stream upstream reported an error session=${this.session.id} device=${this.session.deviceId} code=upstream_error_frame`,
+				);
+				this.close('UPSTREAM_FAILED');
+
+				return;
+			}
+
+			if (reply.kind === 'drop') {
+				this.logger.warn(
+					`Live stream dropped an upstream text frame session=${this.session.id} device=${this.session.deviceId} code=upstream_text_dropped`,
+				);
+
+				return;
+			}
+
+			payload = reply.frame;
+		}
+
+		client.send(payload, { binary: isBinary }, () => this.onClientSent());
 
 		if (!this.paused && this.upstream && client.bufferedAmount > LIVE_HIGH_WATER_BYTES) {
 			this.paused = true;
@@ -400,4 +431,41 @@ function parseRequest(frame: string): string | null {
 	}
 
 	return JSON.stringify({ type: 'mse', value });
+}
+
+type UpstreamText = { kind: 'forward'; frame: string } | { kind: 'error' } | { kind: 'drop' };
+
+/**
+ * Classifies a go2rtc text frame: the rebuilt `mse` reply to forward, go2rtc's error frame (its value can carry the
+ * source url, so it is never forwarded) or anything else, which is dropped.
+ */
+function parseUpstreamText(frame: string): UpstreamText {
+	let parsed: unknown;
+
+	try {
+		parsed = JSON.parse(frame);
+	} catch {
+		return { kind: 'drop' };
+	}
+
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		return { kind: 'drop' };
+	}
+
+	const { type, value } = parsed as Record<string, unknown>;
+
+	if (type === 'error') {
+		return { kind: 'error' };
+	}
+
+	if (type !== 'mse') {
+		return { kind: 'drop' };
+	}
+
+	// An invalid mse reply is as good as a failed upstream: the player could not start from it.
+	if (typeof value !== 'string' || !MSE_REPLY_VALUE.test(value)) {
+		return { kind: 'error' };
+	}
+
+	return { kind: 'forward', frame: JSON.stringify({ type: 'mse', value }) };
 }

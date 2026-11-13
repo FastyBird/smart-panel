@@ -393,16 +393,36 @@ describe('LiveStreamConnection (real sockets)', () => {
 
 		await waitFor(() => closedCalls.length === 3);
 
-		const reasons = [failedClose, normalClose, violatingClose];
+		// 4. go2rtc reports a failure whose text carries the source url
+		connectUpstream.mockImplementationOnce(() =>
+			Promise.resolve({ ...makeLease(), wsUrl: `ws://127.0.0.1:${upstreamPort}/api/ws?src=errored` }),
+		);
+
+		const errored = connectClient();
+
+		await opened(errored.socket);
+
+		const erroredIndex = () => upstreamRequests.findIndex((request) => request.url?.includes('src=errored'));
+
+		await waitFor(() => erroredIndex() !== -1);
+		upstreamSockets[erroredIndex()].send(JSON.stringify({ type: 'error', value: `mse: ${FAKE_CAMERA_SECRET_URL}` }));
+
+		const erroredClose = await errored.closed;
+
+		await waitFor(() => closedCalls.length === 4);
+
+		const reasons = [failedClose, normalClose, violatingClose, erroredClose];
 
 		expect(reasons).toEqual([
 			[1011, 'upstream_failed'],
 			[1011, 'upstream_closed'],
 			[1008, 'protocol_violation'],
+			[1011, 'upstream_failed'],
 		]);
+		expect(errored.received).toEqual([]);
 		expect(logged.some((line) => line.includes(`Live stream closed session=${session.id}`))).toBe(true);
 
-		const everything = JSON.stringify([reasons, logged]);
+		const everything = JSON.stringify([reasons, logged, errored.received, failed.received, normal.received]);
 
 		expect(everything).not.toContain(PASSWORD_SENTINEL);
 		expect(everything).not.toContain('SENTINELALIAS');
@@ -497,15 +517,67 @@ describe('LiveStreamConnection (fake sockets)', () => {
 		const media = Buffer.alloc(10);
 
 		upstream.emit('message', media, true);
-		upstream.emit('message', Buffer.from('{"type":"mse"}'), false);
+		upstream.emit('message', Buffer.from('{"type":"mse","value":"video/mp4; codecs=\\"avc1.640029\\""}'), false);
 
 		expect(client.send).toHaveBeenNthCalledWith(1, media, { binary: true }, expect.any(Function));
 		expect(client.send).toHaveBeenNthCalledWith(
 			2,
-			Buffer.from('{"type":"mse"}'),
+			'{"type":"mse","value":"video/mp4; codecs=\\"avc1.640029\\""}',
 			{ binary: false },
 			expect.any(Function),
 		);
+	});
+
+	it('rebuilds the mse reply and never forwards the raw upstream text', async () => {
+		create();
+		await openUpstream();
+
+		upstream.emit('message', Buffer.from('{ "value" : "video/mp4",\n "type":"mse", "extra":"leak" }'), false);
+
+		expect(client.send).toHaveBeenCalledTimes(1);
+		expect(client.send).toHaveBeenCalledWith(
+			'{"type":"mse","value":"video/mp4"}',
+			{ binary: false },
+			expect.any(Function),
+		);
+	});
+
+	it.each([
+		['an error frame', JSON.stringify({ type: 'error', value: `mse: ${FAKE_CAMERA_SECRET_URL}` })],
+		[
+			'an error frame with a non-string value',
+			JSON.stringify({ type: 'error', value: { url: FAKE_CAMERA_SECRET_URL } }),
+		],
+		['an mse reply without a value', '{"type":"mse"}'],
+		['an mse reply with a non-string value', '{"type":"mse","value":5}'],
+		['an mse reply with a url value', JSON.stringify({ type: 'mse', value: FAKE_CAMERA_SECRET_URL })],
+		['an mse reply that is too long', JSON.stringify({ type: 'mse', value: 'a'.repeat(257) })],
+	])('closes 1011 upstream_failed and forwards nothing for %s', async (_name, frame) => {
+		create();
+		await openUpstream();
+
+		upstream.emit('message', Buffer.from(frame), false);
+
+		expect(client.send).not.toHaveBeenCalled();
+		expect(client.close).toHaveBeenCalledWith(1011, 'upstream_failed');
+		expect(release).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['an unknown type', JSON.stringify({ type: 'webrtc/answer', value: FAKE_CAMERA_SECRET_URL })],
+		['text that is not json', FAKE_CAMERA_SECRET_URL],
+		['a json array', '["mse"]'],
+		['json null', 'null'],
+	])('drops %s from upstream without forwarding it and keeps the socket open', async (_name, frame) => {
+		create();
+		await openUpstream();
+
+		upstream.emit('message', Buffer.from(frame), false);
+		upstream.emit('message', Buffer.alloc(4), true);
+
+		expect(client.send).toHaveBeenCalledTimes(1);
+		expect(client.send).toHaveBeenCalledWith(Buffer.alloc(4), { binary: true }, expect.any(Function));
+		expect(client.close).not.toHaveBeenCalled();
 	});
 
 	it('pauses upstream above 4 MiB buffered and resumes below 1 MiB', async () => {
