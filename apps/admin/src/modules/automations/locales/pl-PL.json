@@ -540,6 +540,145 @@
 				"message": "Wiadomość musi być tekstem.",
 				"messageMax": "Wiadomość może mieć najwyżej 1000 znaków."
 			}
+		},
+		"runs": {
+			"headings": {
+				"history": "Uruchomienia"
+			},
+			"buttons": {
+				"test": {
+					"title": "Testuj",
+					"description": "Uruchamia teraz zapisany przebieg, jakby zadziałał jego wyzwalacz, i pokazuje go na kanwie.",
+					"startAt": "Zacznij od: {trigger}"
+				},
+				"history": {
+					"title": "Historia uruchomień"
+				},
+				"reload": {
+					"title": "Wczytaj ponownie"
+				},
+				"close": {
+					"title": "Ukryj uruchomienie"
+				},
+				"showNode": {
+					"title": "Pokaż {node}"
+				}
+			},
+			"test": {
+				"disabled": {
+					"unsaved": "Najpierw zapisz przebieg: test uruchamia zapisaną wersję.",
+					"disabled": "Włącz automatyzację, aby ją przetestować.",
+					"invalid": "Automatyzacja nie może działać, dopóki jej problemy nie zostaną naprawione.",
+					"suspended": "Automatyzacja jest wstrzymana. Zapisz ją lub włącz ponownie, aby ją wznowić.",
+					"noTrigger": "Przebieg potrzebuje wyzwalacza, od którego zacznie."
+				}
+			},
+			"outcomes": {
+				"started": "Uruchomienie testowe wystartowało.",
+				"ignored": "Test nie wystartował: jedno uruchomienie już trwa, a automatyzacja w tym czasie ignoruje nowe wyzwalacze.",
+				"dropped": "Test nie wystartował: trwa teraz zbyt wiele uruchomień.",
+				"suspended": "Test nie wystartował: automatyzacja uruchamiała się zbyt często i została wstrzymana."
+			},
+			"refusals": {
+				"disabled": "Automatyzacja jest wyłączona, więc nie można jej uruchomić.",
+				"invalid": "Automatyzacja nie może działać, dopóki jej problemy nie zostaną naprawione.",
+				"suspended": "Automatyzacja jest wstrzymana. Zapisz ją lub włącz ponownie, aby ją wznowić.",
+				"not_a_trigger": "Blok wybrany jako początek nie jest wyzwalaczem.",
+				"no_trigger": "Przebieg nie ma wyzwalacza, od którego mógłby zacząć.",
+				"not_running": "Automatyzacje nie działają teraz na serwerze.",
+				"not_found": "Serwer nie wczytał jeszcze tej automatyzacji. Spróbuj ponownie za chwilę.",
+				"unknown": "Nie udało się uruchomić automatyzacji."
+			},
+			"messages": {
+				"testFailed": "Nie udało się uruchomić testu."
+			},
+			"statuses": {
+				"running": "W toku",
+				"completed": "Zakończono",
+				"failed": "Niepowodzenie",
+				"cancelled": "Anulowano",
+				"interrupted": "Przerwano"
+			},
+			"sources": {
+				"live": "Uruchomienie na żywo",
+				"replay": "Wcześniejsze uruchomienie"
+			},
+			"texts": {
+				"empty": "Ta automatyzacja jeszcze się nie uruchomiła.",
+				"loading": "Wczytywanie uruchomień...",
+				"loadFailed": "Nie udało się wczytać uruchomień.",
+				"reloadFailed": "Nie udało się wczytać najnowszych uruchomień; lista może być nieaktualna.",
+				"manual": "Ręcznie od {trigger}",
+				"unknownTrigger": "Wyzwalacz, którego nie ma już w przebiegu",
+				"startedFor": "{time}, trwało {duration}",
+				"milliseconds": "{count} ms",
+				"waitingForSteps": "Czekanie, aż uruchomienie dojdzie do pierwszego bloku...",
+				"traceLoading": "Wczytywanie tego, co zrobiło uruchomienie...",
+				"traceFailed": "Nie udało się wczytać zapisu tego uruchomienia; pokazano tylko to, co było widać na żywo.",
+				"truncated": "To uruchomienie zrobiło zbyt wiele, by zachować wszystko: może brakować ostatnich bloków, do których doszło.",
+				"otherRevision": "To uruchomienie przeszło przez wcześniejszą wersję przebiegu; bloki zmienione od tego czasu mogą nie odpowiadać temu, co zrobiło.",
+				"unsaved": "Przebieg na kanwie ma niezapisane zmiany; uruchomienie przeszło przez zapisaną wersję.",
+				"missingNodes": "Niektórych bloków, do których doszło to uruchomienie, nie ma już w przebiegu."
+			},
+			"nodes": {
+				"started": "Rozpoczął uruchomienie",
+				"running": "W toku...",
+				"waiting": "Czeka {duration}",
+				"waited": "Czekał {duration}",
+				"waitingStopped": "Czekał tutaj, gdy uruchomienie się zatrzymało",
+				"observed": "Odczytał {value}",
+				"output": "→ {output}",
+				"done": "Gotowe",
+				"failed": "Niepowodzenie: {reason}",
+				"failedNoReason": "Niepowodzenie",
+				"refused": "Niedozwolone: {reason}",
+				"refusedNoReason": "Niedozwolone",
+				"timedOut": "Nie odpowiedział na czas",
+				"skipped": "Niedokończone: uruchomienie już się zakończyło"
+			},
+			"explanations": {
+				"interrupted": {
+					"text": "To uruchomienie zatrzymało się przed końcem. {cause} To, co miało nastąpić po tym miejscu, nigdy nie nastąpiło."
+				},
+				"interruptedCauses": {
+					"backend_restarted": "Serwer został uruchomiony ponownie, gdy uruchomienie czekało.",
+					"engine_stopped": "Automatyzacje zostały zatrzymane na serwerze w trakcie uruchomienia.",
+					"restarted": "Automatyzacja została uruchomiona ponownie.",
+					"unknown": "Nie zdążyło się zakończyć."
+				},
+				"failed": {
+					"text": "Akcja nie powiodła się i nic w przebiegu nie obsłużyło jej błędu, więc uruchomienie zatrzymało się tutaj.",
+					"stopped": "Uruchomienie nie zostało dokończone. {reason}"
+				},
+				"cancelled": {
+					"text": "To uruchomienie zostało anulowane przed końcem: {cause}"
+				},
+				"cancelledCauses": {
+					"restarted": "automatyzacja została ponownie wyzwolona i zaczęła od początku.",
+					"backend_restarted": "serwer został uruchomiony ponownie.",
+					"engine_stopped": "automatyzacje zostały zatrzymane na serwerze.",
+					"automation_updated": "automatyzacja została zapisana ze zmianami.",
+					"automation_disabled": "automatyzacja została wyłączona.",
+					"automation_invalid": "automatyzacja nie może już działać, na przykład dlatego, że usunięto coś, czego używa.",
+					"suspended": "automatyzacja została wstrzymana, ponieważ w krótkim czasie uruchamiała się zbyt często.",
+					"unknown": "automatyzacja została zapisana, wyłączona lub ponownie wyzwolona."
+				},
+				"suspended": {
+					"title": "Automatyzacja jest wstrzymana",
+					"text": "W krótkim czasie uruchamiała się zbyt często, więc została zatrzymana, aby nie działała w pętli. Zwykle oznacza to, że jedna z jej akcji ustawia wartość obserwowaną przez jeden z jej wyzwalaczy. Sprawdź przebieg, a następnie zapisz go lub ponownie włącz automatyzację, aby ją wznowić."
+				},
+				"invalid": {
+					"title": "Automatyzacja nie może działać",
+					"text": "Jest włączona, ale serwer nie może jej uruchomić, dopóki te problemy nie zostaną naprawione:"
+				}
+			},
+			"problems": {
+				"invalid_config": "Ten blok nie jest poprawnie skonfigurowany.",
+				"not_runnable": "Serwer nie wie, jak wykonać ten blok.",
+				"missing_reference": "Ten blok odwołuje się do urządzenia, właściwości, sceny lub przestrzeni, które już nie istnieją.",
+				"trigger_failed": "Nie udało się uruchomić tego wyzwalacza.",
+				"safety_reducing_action": "Ta akcja odblokowałaby, rozbroiła lub otworzyła coś, czego automatyzacja nie może."
+			}
 		}
 	}
 }

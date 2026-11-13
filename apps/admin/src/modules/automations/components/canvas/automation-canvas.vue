@@ -2,7 +2,7 @@
 	<div
 		ref="container"
 		class="automation-canvas"
-		:class="{ 'automation-canvas--readonly': props.readonly }"
+		:class="{ 'automation-canvas--readonly': props.readonly, 'automation-canvas--run': props.run }"
 		data-test-id="automation-canvas"
 		@dragover="onDragOver"
 		@drop="onDrop"
@@ -39,6 +39,7 @@
 					v-bind="cardOf(nodeProps.data)"
 					:selected="nodeProps.selected"
 					:issue="severities.nodes.get(nodeProps.id)"
+					:run="runOf(nodeProps.id)"
 				/>
 
 				<template
@@ -123,6 +124,7 @@ import {
 	validateConnection,
 } from '../../automations.graph';
 import { useAutomationNodePresentation } from '../../composables/useAutomationNodePresentation';
+import { useAutomationRunPresentation } from '../../composables/useAutomationRunPresentation';
 import type { IAutomationGraph, IAutomationGraphEdge, IAutomationGraphNode } from '../../store/automations.store.types';
 import type { IAutomationNodeType, IAutomationNodeTypePorts } from '../../store/node-types.store.types';
 
@@ -138,7 +140,7 @@ import {
 	toGraph,
 } from './automation-canvas.mapping';
 import type { IAutomationCanvasColors, IAutomationCanvasProps } from './automation-canvas.types';
-import type { IAutomationNodeCardProps } from './automation-node-card.types';
+import type { IAutomationNodeCardProps, IAutomationNodeCardRun } from './automation-node-card.types';
 import AutomationNodeCard from './automation-node-card.vue';
 
 defineOptions({
@@ -150,6 +152,7 @@ const props = withDefaults(defineProps<IAutomationCanvasProps>(), {
 	summaryComponent: undefined,
 	readonly: false,
 	initialView: 'fit',
+	run: null,
 });
 
 const emit = defineEmits<{
@@ -159,6 +162,8 @@ const emit = defineEmits<{
 }>();
 
 const { kindLabel, nodeTitle, nodeIcon, nodeSummary, portLabel } = useAutomationNodePresentation();
+
+const { nodeRunText } = useAutomationRunPresentation();
 
 const flowId = `automation-canvas-${useId()}`;
 
@@ -227,6 +232,23 @@ const cardOf = (data: IAutomationCanvasNodeData): IAutomationNodeCardProps => {
 };
 
 /*
+ * A run laid over the graph. It is only looked at here: nothing of it reaches the graph that is emitted.
+ */
+
+// Undefined without a run; null for a card the run did not reach
+const runOf = (id: string): IAutomationNodeCardRun | null | undefined => {
+	if (!props.run) {
+		return undefined;
+	}
+
+	const overlay = props.run.overlay.nodes[id];
+
+	return overlay ? { state: overlay.state, text: nodeRunText(overlay, props.run.ended), visits: overlay.visits } : null;
+};
+
+const takenEdges = computed<Set<string> | null>((): Set<string> | null => (props.run ? new Set(props.run.overlay.takenEdges) : null));
+
+/*
  * Colours. The arrowheads and the background pattern are drawn by the library from the values it is
  * given, where a stylesheet cannot reach them (and a CSS variable does not resolve in an SVG attribute),
  * so the Element Plus variables are read here and handed over as props. They are read again whenever the
@@ -253,6 +275,7 @@ const readColors = (): IAutomationCanvasColors => ({
 		error: readColor('--el-color-danger', '#f56c6c'),
 		warning: readColor('--el-color-warning', '#e6a23c'),
 	},
+	run: readColor('--el-color-primary', '#409eff'),
 });
 
 const colors = ref<IAutomationCanvasColors>(readColors());
@@ -287,10 +310,19 @@ const toFlowNode = (node: IAutomationGraphNode): Node<IAutomationCanvasNodeData>
 const edgeAppearance = (id: string, sourcePort: string): Pick<Edge, 'class' | 'markerEnd'> => {
 	const tone: AutomationEdgeTone = edgeTone(sourcePort);
 	const issue = severities.value.edges.get(id);
+	const taken = takenEdges.value === null ? null : takenEdges.value.has(id);
 
 	return {
-		class: ['automation-canvas__edge', `automation-canvas__edge--${tone}`, ...(issue ? [`automation-canvas__edge--${issue}`] : [])].join(' '),
-		markerEnd: { type: MarkerType.ArrowClosed, color: issue ? colors.value.issues[issue] : colors.value.edges[tone] },
+		class: [
+			'automation-canvas__edge',
+			`automation-canvas__edge--${tone}`,
+			...(issue ? [`automation-canvas__edge--${issue}`] : []),
+			...(taken === null ? [] : [taken ? 'automation-canvas__edge--taken' : 'automation-canvas__edge--not-taken']),
+		].join(' '),
+		markerEnd: {
+			type: MarkerType.ArrowClosed,
+			color: taken === true ? colors.value.run : issue ? colors.value.issues[issue] : colors.value.edges[tone],
+		},
 	};
 };
 
@@ -299,8 +331,9 @@ const toFlowEdge = (edge: IAutomationGraphEdge): Edge => ({
 	...edgeAppearance(edge.id, edge.source_port),
 });
 
-// The colour of an arrowhead and the outline of a refused edge are part of the edge the library holds
-watch([colors, severities], (): void => {
+// The colour of an arrowhead, the outline of a refused edge and the mark of a taken one are part of the edge
+// the library holds
+watch([colors, severities, takenEdges], (): void => {
 	for (const edge of getEdges.value) {
 		Object.assign(edge, edgeAppearance(edge.id, edge.sourceHandle ?? DEFAULT_SOURCE_PORT));
 	}
@@ -819,6 +852,16 @@ defineExpose({
 	&__edge--error .vue-flow__edge-path {
 		stroke: var(--el-color-danger);
 		stroke-dasharray: 6 4;
+	}
+
+	// A run laid over the graph: the edges it went along stand out, the others step back
+	&__edge--taken .vue-flow__edge-path {
+		stroke: var(--el-color-primary);
+		stroke-width: 3;
+	}
+
+	&__edge--not-taken .vue-flow__edge-path {
+		opacity: 0.35;
 	}
 
 	.vue-flow__edge.selected .vue-flow__edge-path,

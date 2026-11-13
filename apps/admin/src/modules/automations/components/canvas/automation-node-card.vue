@@ -7,10 +7,13 @@
 				'automation-node-card--selected': props.selected,
 				'automation-node-card--error': props.issue === 'error',
 				'automation-node-card--warning': props.issue === 'warning',
+				[`automation-node-card--run-${props.run?.state}`]: Boolean(props.run),
+				'automation-node-card--run-none': props.run === null,
 			},
 		]"
 		:data-test-kind="props.kind ?? 'unknown'"
 		:data-test-issue="props.issue"
+		:data-test-run-state="props.run === undefined ? undefined : (props.run?.state ?? 'none')"
 	>
 		<div class="automation-node-card__icon">
 			<el-icon :size="20">
@@ -42,6 +45,26 @@
 					{{ props.summary }}
 				</template>
 			</div>
+			<div
+				v-if="props.run"
+				class="automation-node-card__run"
+				:title="props.run.text"
+				data-test-id="node-run"
+			>
+				<el-icon
+					:size="12"
+					class="flex-none"
+				>
+					<icon :icon="RUN_STATE_ICONS[props.run.state]" />
+				</el-icon>
+				<span class="automation-node-card__run-text">{{ props.run.text }}</span>
+				<span
+					v-if="props.run.visits > 1"
+					class="flex-none"
+				>
+					×{{ props.run.visits }}
+				</span>
+			</div>
 		</div>
 
 		<el-icon
@@ -59,6 +82,8 @@ import { ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import type { AutomationRunNodeState } from '../../automations.trace';
+
 import type { IAutomationNodeCardProps } from './automation-node-card.types';
 
 defineOptions({
@@ -71,7 +96,15 @@ const props = withDefaults(defineProps<IAutomationNodeCardProps>(), {
 	issue: undefined,
 	summaryComponent: undefined,
 	summaryProps: undefined,
+	run: undefined,
 });
+
+const RUN_STATE_ICONS: Record<AutomationRunNodeState, string> = {
+	reached: 'mdi:progress-clock',
+	passed: 'mdi:check-circle',
+	failed: 'mdi:close-circle',
+	skipped: 'mdi:minus-circle-outline',
+};
 </script>
 
 <style scoped lang="scss">
@@ -175,6 +208,53 @@ const props = withDefaults(defineProps<IAutomationNodeCardProps>(), {
 		line-height: 1.4;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	&__run {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		min-width: 0;
+		margin-top: 2px;
+		color: var(--automation-node-run-color, var(--el-text-color-secondary));
+		font-size: var(--el-font-size-extra-small);
+		font-weight: 600;
+		line-height: 1.4;
+	}
+
+	&__run-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	// A run laid over the canvas: the cards it reached are lit, the others step back
+	&--run-reached {
+		--automation-node-run-color: var(--el-color-primary);
+	}
+
+	&--run-passed {
+		--automation-node-run-color: var(--el-color-success);
+	}
+
+	&--run-failed {
+		--automation-node-run-color: var(--el-color-danger);
+	}
+
+	&--run-skipped {
+		--automation-node-run-color: var(--el-color-info);
+	}
+
+	&--run-reached,
+	&--run-passed,
+	&--run-failed,
+	&--run-skipped {
+		border-color: var(--automation-node-run-color);
+		background-color: color-mix(in srgb, var(--automation-node-run-color) 8%, var(--el-bg-color-overlay));
+	}
+
+	&--run-none {
+		opacity: 0.55;
 	}
 
 	&__issue {

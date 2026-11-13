@@ -540,6 +540,145 @@
 				"message": "The message must be a text.",
 				"messageMax": "The message can be at most 1000 characters long."
 			}
+		},
+		"runs": {
+			"headings": {
+				"history": "Runs"
+			},
+			"buttons": {
+				"test": {
+					"title": "Test",
+					"description": "Run the saved flow now, as if its trigger had fired, and follow it on the canvas.",
+					"startAt": "Start at: {trigger}"
+				},
+				"history": {
+					"title": "Run history"
+				},
+				"reload": {
+					"title": "Load again"
+				},
+				"close": {
+					"title": "Hide run"
+				},
+				"showNode": {
+					"title": "Show {node}"
+				}
+			},
+			"test": {
+				"disabled": {
+					"unsaved": "Save the flow first: a test runs the version that is saved.",
+					"disabled": "Enable the automation to test it.",
+					"invalid": "The automation cannot run until its problems are fixed.",
+					"suspended": "The automation is suspended. Save it or enable it again to resume it.",
+					"noTrigger": "The flow needs a trigger to start from."
+				}
+			},
+			"outcomes": {
+				"started": "The test run started.",
+				"ignored": "The test did not start: a run is already in progress and the automation is set to ignore new triggers meanwhile.",
+				"dropped": "The test did not start: too many runs are in progress right now.",
+				"suspended": "The test did not start: the automation ran too often and was suspended."
+			},
+			"refusals": {
+				"disabled": "The automation is disabled, so it cannot be run.",
+				"invalid": "The automation cannot run until its problems are fixed.",
+				"suspended": "The automation is suspended. Save it or enable it again to resume it.",
+				"not_a_trigger": "The block chosen to start from is not a trigger.",
+				"no_trigger": "The flow has no trigger to start from.",
+				"not_running": "Automations are not running on the server right now.",
+				"not_found": "The server has not loaded this automation yet. Try again in a moment.",
+				"unknown": "The automation could not be started."
+			},
+			"messages": {
+				"testFailed": "The test could not be started."
+			},
+			"statuses": {
+				"running": "Running",
+				"completed": "Completed",
+				"failed": "Failed",
+				"cancelled": "Cancelled",
+				"interrupted": "Interrupted"
+			},
+			"sources": {
+				"live": "Live run",
+				"replay": "Past run"
+			},
+			"texts": {
+				"empty": "This automation has not run yet.",
+				"loading": "Loading runs...",
+				"loadFailed": "The runs could not be loaded.",
+				"reloadFailed": "The latest runs could not be loaded; the list may be out of date.",
+				"manual": "By hand from {trigger}",
+				"unknownTrigger": "A trigger that is no longer in the flow",
+				"startedFor": "{time}, took {duration}",
+				"milliseconds": "{count} ms",
+				"waitingForSteps": "Waiting for the run to reach its first block...",
+				"traceLoading": "Loading what the run did...",
+				"traceFailed": "The record of this run could not be loaded; only what was seen live is shown.",
+				"truncated": "This run did too much to keep all of it: the last blocks it reached may be missing.",
+				"otherRevision": "This run walked an earlier version of the flow; blocks changed since may not match what it did.",
+				"unsaved": "The flow on the canvas has unsaved changes; the run walked the saved version.",
+				"missingNodes": "Some blocks this run reached are no longer in the flow."
+			},
+			"nodes": {
+				"started": "Started the run",
+				"running": "Running...",
+				"waiting": "Waiting {duration}",
+				"waited": "Waited {duration}",
+				"waitingStopped": "Was waiting here when the run stopped",
+				"observed": "Saw {value}",
+				"output": "→ {output}",
+				"done": "Done",
+				"failed": "Failed: {reason}",
+				"failedNoReason": "Failed",
+				"refused": "Not allowed: {reason}",
+				"refusedNoReason": "Not allowed",
+				"timedOut": "Did not answer in time",
+				"skipped": "Not finished: the run had ended"
+			},
+			"explanations": {
+				"interrupted": {
+					"text": "This run stopped before it ended. {cause} What was to happen after this point never happened."
+				},
+				"interruptedCauses": {
+					"backend_restarted": "The server restarted while the run was waiting.",
+					"engine_stopped": "Automations were stopped on the server while the run was in progress.",
+					"restarted": "The automation was started again.",
+					"unknown": "It did not get to finish."
+				},
+				"failed": {
+					"text": "An action failed and nothing in the flow handled its error, so the run stopped there.",
+					"stopped": "The run did not finish. {reason}"
+				},
+				"cancelled": {
+					"text": "This run was cancelled before it ended: {cause}"
+				},
+				"cancelledCauses": {
+					"restarted": "the automation was triggered again and started over.",
+					"backend_restarted": "the server restarted.",
+					"engine_stopped": "automations were stopped on the server.",
+					"automation_updated": "the automation was saved with changes.",
+					"automation_disabled": "the automation was disabled.",
+					"automation_invalid": "the automation can no longer run, for example because something it uses was removed.",
+					"suspended": "the automation was suspended because it ran too often in a short time.",
+					"unknown": "the automation was saved, disabled or triggered again."
+				},
+				"suspended": {
+					"title": "The automation is suspended",
+					"text": "It ran too often in a short time and was stopped so that it could not keep running in a loop. This usually means that one of its actions sets a value that one of its triggers watches. Check the flow, then save it or enable the automation again to resume it."
+				},
+				"invalid": {
+					"title": "The automation cannot run",
+					"text": "It is enabled, but the server cannot run it until these problems are fixed:"
+				}
+			},
+			"problems": {
+				"invalid_config": "This block is not configured correctly.",
+				"not_runnable": "The server does not know how to run this block.",
+				"missing_reference": "This block refers to a device, property, scene or space that no longer exists.",
+				"trigger_failed": "This trigger could not be started.",
+				"safety_reducing_action": "This action would unlock, disarm or open something, which an automation may not do."
+			}
 		}
 	}
 }

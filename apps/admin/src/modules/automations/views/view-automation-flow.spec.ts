@@ -6,9 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { AutomationMode, AutomationStatus, RouteNames } from '../automations.constants';
-import { AutomationsApiException } from '../automations.exceptions';
+import {
+	AutomationMode,
+	AutomationNodeKind,
+	AutomationRunRecordStatus,
+	AutomationStatus,
+	AutomationTriggerOutcome,
+	RouteNames,
+} from '../automations.constants';
+import { AutomationsApiException, AutomationsTriggerRefusedException } from '../automations.exceptions';
+import { mapTraceToOverlay } from '../automations.trace';
+import type { IAutomationShownRun } from '../composables/types';
 import type { IAutomation, IAutomationGraph, IAutomationGraphIssue } from '../store/automations.store.types';
+import type { IAutomationRun, IAutomationRuntime } from '../store/runs.store.types';
 
 import ViewAutomationFlow from './view-automation-flow.vue';
 
@@ -32,7 +42,23 @@ const mocks = vi.hoisted(() => ({
 	fetchNodeTypes: vi.fn(),
 	canvas: { addNode: vi.fn(), removeNode: vi.fn(), removeSelected: vi.fn(), focusNode: vi.fn(), revealNode: vi.fn() },
 	editor: null as unknown,
+	runs: null as unknown,
 }));
+
+interface IRunsMock {
+	runs: Ref<IAutomationRun[]>;
+	runsLoading: Ref<boolean>;
+	runsLoadFailed: Ref<boolean>;
+	runtime: Ref<IAutomationRuntime | null>;
+	testing: Ref<boolean>;
+	watching: Ref<boolean>;
+	shown: Ref<IAutomationShownRun | null>;
+	fetchRuns: ReturnType<typeof vi.fn>;
+	fetchRuntime: ReturnType<typeof vi.fn>;
+	test: ReturnType<typeof vi.fn>;
+	replay: ReturnType<typeof vi.fn>;
+	close: ReturnType<typeof vi.fn>;
+}
 
 interface IEditorMock {
 	automation: Ref<IAutomation | null>;
@@ -124,10 +150,20 @@ vi.mock('../../../common', async () => {
 
 vi.mock('../composables/composables', () => ({
 	useAutomationEditor: () => mocks.editor,
+	useAutomationRunTrace: () => mocks.runs,
+	useAutomationRunPresentation: () => ({
+		nodeLabel: (nodeId: string) => `label:${nodeId}`,
+		outcomeText: (outcome: string) => `outcome:${outcome}`,
+		refusalText: (refusal: string | null) => `refusal:${refusal}`,
+	}),
 	useAutomationNodeTypes: () => ({
 		nodeTypes: computed(() => []),
 		fetchNodeTypes: mocks.fetchNodeTypes,
-		getNodeType: () => null,
+		// Only the triggers matter to the view: they are what a test can start at
+		getNodeType: (type: string) =>
+			type === 'manual.start' || type === 'time.of-day'
+				? { type, kind: AutomationNodeKind.trigger, name: type, description: '', ports: { inputs: [], outputs: ['out'] }, configSchema: {} }
+				: null,
 	}),
 	useAutomationNodePlugins: () => ({
 		getFormComponent: () => null,
@@ -147,6 +183,7 @@ vi.mock('../components/components', async () => {
 				issues: { type: Array, required: true },
 				readonly: { type: Boolean, required: true },
 				initialView: { type: String, required: true },
+				run: { type: Object, required: false, default: null },
 			},
 			emits: ['update:graph', 'select', 'reject'],
 			setup(_, { expose }) {
@@ -176,6 +213,46 @@ vi.mock('../components/components', async () => {
 			props: { issues: { type: Array, required: true } },
 			emits: ['focus'],
 			template: '<div data-test-id="issues-stub" />',
+		}),
+		AutomationTestButton: defineComponent({
+			name: 'AutomationTestButton',
+			props: {
+				triggers: { type: Array, required: true },
+				disabledReason: { type: String, required: false, default: null },
+				loading: { type: Boolean, default: false },
+			},
+			emits: ['test'],
+			template: '<div data-test-id="test-button-stub" />',
+		}),
+		AutomationRunHistory: defineComponent({
+			name: 'AutomationRunHistory',
+			props: {
+				runs: { type: Array, required: true },
+				selectedRunId: { type: String, required: false, default: null },
+				loading: { type: Boolean, default: false },
+				failed: { type: Boolean, default: false },
+			},
+			emits: ['select', 'reload'],
+			template: '<div data-test-id="run-history-stub" />',
+		}),
+		AutomationRunSummary: defineComponent({
+			name: 'AutomationRunSummary',
+			props: {
+				shown: { type: Object, required: true },
+				revision: { type: Number, required: true },
+				unsaved: { type: Boolean, default: false },
+			},
+			emits: ['focus', 'close'],
+			template: '<div data-test-id="run-summary-stub" />',
+		}),
+		AutomationStatusExplanation: defineComponent({
+			name: 'AutomationStatusExplanation',
+			props: {
+				status: { type: String, required: true },
+				runtime: { type: Object, required: false, default: null },
+			},
+			emits: ['focus'],
+			template: '<div data-test-id="status-explanation-stub" />',
 		}),
 	};
 });
@@ -235,9 +312,40 @@ const createEditor = (): IEditorMock => {
 	};
 };
 
+const createRuns = (): IRunsMock => ({
+	runs: ref<IAutomationRun[]>([]),
+	runsLoading: ref(false),
+	runsLoadFailed: ref(false),
+	runtime: ref<IAutomationRuntime | null>(null),
+	testing: ref(false),
+	watching: ref(true),
+	shown: ref<IAutomationShownRun | null>(null),
+	fetchRuns: vi.fn().mockResolvedValue(undefined),
+	fetchRuntime: vi.fn().mockResolvedValue(undefined),
+	test: vi.fn().mockResolvedValue({ automationId, started: true, outcome: AutomationTriggerOutcome.started, runId: 'r1', reason: null }),
+	replay: vi.fn(),
+	close: vi.fn(),
+});
+
+const createRun = (overrides: Partial<IAutomationRun> = {}): IAutomationRun => ({
+	id: '0b6f1b44-7a3f-4c49-9f53-0c1d2e3f4a51',
+	automationId,
+	revision: 3,
+	status: AutomationRunRecordStatus.interrupted,
+	triggerNodeId: 't1',
+	manual: true,
+	startedAt: new Date('2026-11-11T07:30:00.000Z'),
+	finishedAt: null,
+	durationMs: null,
+	endReason: 'backend_restarted',
+	trace: null,
+	...overrides,
+});
+
 describe('ViewAutomationFlow', (): void => {
 	let wrapper: VueWrapper;
 	let editor: IEditorMock;
+	let runs: IRunsMock;
 
 	const createWrapper = async (): Promise<void> => {
 		wrapper = mount(ViewAutomationFlow, { props: { id: automationId }, attachTo: document.body });
@@ -265,6 +373,9 @@ describe('ViewAutomationFlow', (): void => {
 
 		editor = createEditor();
 		mocks.editor = editor;
+
+		runs = createRuns();
+		mocks.runs = runs;
 	});
 
 	afterEach((): void => {
@@ -871,5 +982,212 @@ describe('ViewAutomationFlow', (): void => {
 			?.trigger('click');
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS });
+	});
+	describe('test and trace', (): void => {
+		const testButton = (): VueWrapper => wrapper.findComponent({ name: 'AutomationTestButton' }) as unknown as VueWrapper;
+
+		const enable = (): void => {
+			(editor.automation.value as IAutomation).enabled = true;
+		};
+
+		it('offers a test at every trigger of the flow and starts it at the one chosen', async (): Promise<void> => {
+			enable();
+			editor.graph.value = {
+				...graph,
+				nodes: [...graph.nodes, { id: 't2', type: 'time.of-day', position: { x: 0, y: 200 }, config: {} }],
+			};
+
+			await createWrapper();
+
+			expect((testButton().props() as Record<string, unknown>).triggers).toEqual([
+				{ id: 't1', label: 'label:t1' },
+				{ id: 't2', label: 'label:t2' },
+			]);
+			expect((testButton().props() as Record<string, unknown>).disabledReason).toBeNull();
+
+			testButton().vm.$emit('test', 't2');
+			await flushPromises();
+
+			expect(runs.test).toHaveBeenCalledWith('t2');
+			expect(mocks.flash.warning).not.toHaveBeenCalled();
+			expect(mocks.flash.error).not.toHaveBeenCalled();
+		});
+
+		it('says why a test cannot be started: unsaved changes, disabled, not ok, no trigger', async (): Promise<void> => {
+			await createWrapper();
+
+			expect((testButton().props() as Record<string, unknown>).disabledReason).toBe('automations.runs.test.disabled.disabled');
+
+			enable();
+			editor.isDirty.value = true;
+			await flushPromises();
+
+			// The backend runs the saved flow, so what is drawn has to be saved first
+			expect((testButton().props() as Record<string, unknown>).disabledReason).toBe('automations.runs.test.disabled.unsaved');
+
+			editor.isDirty.value = false;
+			(editor.automation.value as IAutomation).status = AutomationStatus.suspended;
+			await flushPromises();
+
+			expect((testButton().props() as Record<string, unknown>).disabledReason).toBe('automations.runs.test.disabled.suspended');
+
+			(editor.automation.value as IAutomation).status = AutomationStatus.ok;
+			editor.graph.value = { ...graph, nodes: graph.nodes.filter((node) => node.id !== 't1'), edges: [] };
+			await flushPromises();
+
+			expect((testButton().props() as Record<string, unknown>).disabledReason).toBe('automations.runs.test.disabled.noTrigger');
+
+			testButton().vm.$emit('test');
+			await flushPromises();
+
+			expect(runs.test).not.toHaveBeenCalled();
+		});
+
+		it('is offered below the md breakpoint too, where the flow is read-only', async (): Promise<void> => {
+			mocks.isMDDevice = false;
+			enable();
+
+			await createWrapper();
+
+			expect(testButton().exists()).toBe(true);
+			expect((testButton().props() as Record<string, unknown>).disabledReason).toBeNull();
+			expect(wrapper.find('[data-test-id="toggle-run-history"]').exists()).toBe(true);
+		});
+
+		it('tells when the test did not start, and why the backend refused it', async (): Promise<void> => {
+			enable();
+
+			await createWrapper();
+
+			runs.test.mockResolvedValueOnce({ automationId, started: false, outcome: AutomationTriggerOutcome.ignored, runId: null, reason: 'Busy' });
+
+			testButton().vm.$emit('test');
+			await flushPromises();
+
+			expect(runs.test).toHaveBeenCalledWith(undefined);
+			expect(mocks.flash.warning).toHaveBeenCalledWith('outcome:ignored');
+
+			runs.test.mockRejectedValueOnce(new AutomationsTriggerRefusedException('Not running.', 'not_running'));
+
+			testButton().vm.$emit('test');
+			await flushPromises();
+
+			expect(mocks.flash.error).toHaveBeenCalledWith('refusal:not_running');
+
+			runs.test.mockRejectedValueOnce(new AutomationsApiException('Network.', null));
+
+			testButton().vm.$emit('test');
+			await flushPromises();
+
+			expect(mocks.flash.error).toHaveBeenCalledWith('automations.runs.messages.testFailed');
+		});
+
+		it('reads the run history along with the automation and shows it when asked to', async (): Promise<void> => {
+			runs.runs.value = [createRun()];
+
+			await createWrapper();
+
+			expect(runs.fetchRuns).toHaveBeenCalledTimes(1);
+			expect(wrapper.find('[data-test-id="run-history-stub"]').exists()).toBe(false);
+
+			await wrapper.find('[data-test-id="toggle-run-history"]').trigger('click');
+
+			const history = wrapper.findComponent({ name: 'AutomationRunHistory' });
+
+			expect(history.props('runs')).toEqual(runs.runs.value);
+
+			history.vm.$emit('reload');
+
+			expect(runs.fetchRuns).toHaveBeenCalledTimes(2);
+		});
+
+		it('replays a run picked from the history over the canvas, without touching the graph', async (): Promise<void> => {
+			const run = createRun();
+
+			runs.runs.value = [run];
+
+			await createWrapper();
+			await wrapper.find('[data-test-id="toggle-run-history"]').trigger('click');
+
+			wrapper.findComponent({ name: 'AutomationRunHistory' }).vm.$emit('select', run.id);
+
+			expect(runs.replay).toHaveBeenCalledWith(run.id);
+
+			const steps = [
+				{
+					seq: 1,
+					at: '2026-11-11T07:30:00.000Z',
+					elapsed_ms: 0,
+					node_id: 't1',
+					type: 'manual.start',
+					kind: AutomationNodeKind.trigger,
+					state: 'done' as IAutomationShownRun['steps'][number]['state'],
+					output: 'out',
+				},
+			];
+			const overlay = mapTraceToOverlay(graph, steps);
+
+			runs.shown.value = {
+				runId: run.id,
+				source: 'replay',
+				run,
+				steps,
+				overlay,
+				ended: true,
+				attention: { kind: 'interrupted', nodeId: 'a1', endReason: 'backend_restarted' },
+				loading: false,
+				failed: false,
+				truncated: false,
+			};
+			await flushPromises();
+
+			expect((canvas().props() as Record<string, unknown>).run).toEqual({ overlay, ended: true });
+			expect((canvas().props() as Record<string, unknown>).graph).toEqual(graph);
+			expect(wrapper.findComponent({ name: 'AutomationRunHistory' }).props('selectedRunId')).toBe(run.id);
+			expect(wrapper.findComponent({ name: 'AutomationRunSummary' }).props('revision')).toBe(3);
+			expect(editor.updateGraph).not.toHaveBeenCalled();
+
+			// The explanation leads to the card it is about
+			wrapper.findComponent({ name: 'AutomationRunSummary' }).vm.$emit('focus', 'a1');
+			await flushPromises();
+
+			expect(mocks.canvas.focusNode).toHaveBeenCalledWith('a1');
+
+			// Picked again, it is laid off the canvas
+			wrapper.findComponent({ name: 'AutomationRunHistory' }).vm.$emit('select', run.id);
+
+			expect(runs.close).toHaveBeenCalledTimes(1);
+
+			wrapper.findComponent({ name: 'AutomationRunSummary' }).vm.$emit('close');
+
+			expect(runs.close).toHaveBeenCalledTimes(2);
+		});
+
+		it('explains a suspended or invalid automation and leads to the card concerned', async (): Promise<void> => {
+			(editor.automation.value as IAutomation).status = AutomationStatus.suspended;
+			runs.runs.value = [createRun({ triggerNodeId: 't1', status: AutomationRunRecordStatus.completed })];
+
+			await createWrapper();
+
+			expect(runs.fetchRuntime).toHaveBeenCalled();
+
+			const explanation = wrapper.findComponent({ name: 'AutomationStatusExplanation' });
+
+			expect(explanation.props()).toMatchObject({ status: AutomationStatus.suspended });
+			// The last run is no word on the trigger that made the engine suspend the automation
+			expect(explanation.attributes('suspended-node-id')).toBeUndefined();
+
+			explanation.vm.$emit('focus', 't1');
+			await flushPromises();
+
+			expect(mocks.canvas.focusNode).toHaveBeenCalledWith('t1');
+		});
+
+		it('says nothing about the status of an automation that is in order', async (): Promise<void> => {
+			await createWrapper();
+
+			expect(wrapper.find('[data-test-id="status-explanation-stub"]').exists()).toBe(false);
+			expect(runs.fetchRuntime).not.toHaveBeenCalled();
+		});
 	});
 });

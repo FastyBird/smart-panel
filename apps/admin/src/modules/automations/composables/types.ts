@@ -5,12 +5,27 @@ import { type ZodType, z } from 'zod';
 
 import type { IModuleElement, IPluginElement } from '../../../common';
 import type { ISpace } from '../../spaces/store/spaces.store.types';
-import type { AutomationMode, AutomationNodeKind, FormResultType } from '../automations.constants';
+import type {
+	AutomationMode,
+	AutomationNodeKind,
+	AutomationRunRecordStatus,
+	AutomationTriggerOutcome,
+	AutomationTriggerRefusal,
+	FormResultType,
+} from '../automations.constants';
+import type { IAutomationRunAttention, IAutomationRunNodeOverlay, IAutomationRunOverlay } from '../automations.trace';
 import type { IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas } from '../automations.types';
 import type { IAutomationNodeLookups } from '../nodes/nodes.summaries';
 import type { IAutomationAddForm, IAutomationEditForm } from '../schemas/automations.types';
 import type { IAutomation, IAutomationGraph, IAutomationGraphIssue, IAutomationGraphNode } from '../store/automations.store.types';
 import type { IAutomationNodeType } from '../store/node-types.store.types';
+import type {
+	IAutomationRun,
+	IAutomationRunStep,
+	IAutomationRuntime,
+	IAutomationRuntimeProblem,
+	IAutomationTriggerResult,
+} from '../store/runs.store.types';
 
 import { AutomationsFilterSchema } from './schemas';
 
@@ -189,4 +204,68 @@ export interface IUseAutomationNodeLookups extends IAutomationNodeLookups {
 	ensureDevices: () => Promise<void>;
 	// Reads the scenes once, unless they are read already
 	ensureScenes: () => Promise<void>;
+}
+
+export interface IUseAutomationLiveRun {
+	// The backend sends the steps of the automation's runs to this client
+	watching: Ref<boolean>;
+	// The steps of a run received so far, in order
+	stepsOf: (runId: string) => IAutomationRunStep[];
+	// Calls the listener with the run of every step received, as it arrives
+	onStep: (listener: (runId: string) => void) => void;
+}
+
+// `live`: a run followed as it happens (started with Test, or by a trigger while the view is open);
+// `replay`: a run picked from the history
+export type AutomationRunOverlaySource = 'live' | 'replay';
+
+export interface IAutomationShownRun {
+	runId: string;
+	source: AutomationRunOverlaySource;
+	// The record of the run; null while the backend has not announced it yet
+	run: IAutomationRun | null;
+	// The steps known so far: the stored trace and what the live view received
+	steps: IAutomationRunStep[];
+	overlay: IAutomationRunOverlay;
+	// The run is over: its status is not `running`
+	ended: boolean;
+	// What needs explaining about how it ended, and the card it is about
+	attention: IAutomationRunAttention | null;
+	// The stored trace is being read, or could not be read
+	loading: boolean;
+	failed: boolean;
+	// The trace was shortened by the backend to fit its size limit
+	truncated: boolean;
+}
+
+export interface IUseAutomationRunTrace {
+	runs: ComputedRef<IAutomationRun[]>;
+	runsLoading: ComputedRef<boolean>;
+	runsLoadFailed: Ref<boolean>;
+	runtime: ComputedRef<IAutomationRuntime | null>;
+	testing: ComputedRef<boolean>;
+	watching: Ref<boolean>;
+	// The run laid over the canvas; null when none is
+	shown: ComputedRef<IAutomationShownRun | null>;
+	fetchRuns: () => Promise<void>;
+	fetchRuntime: () => Promise<void>;
+	// Starts a run by hand, at the trigger given or the first one, and follows it on the canvas
+	test: (nodeId?: string) => Promise<IAutomationTriggerResult>;
+	replay: (runId: string) => void;
+	close: () => void;
+}
+
+export interface IUseAutomationRunPresentation {
+	runStatusLabel: (status: AutomationRunRecordStatus) => string;
+	durationText: (ms: number) => string;
+	dateText: (date: Date) => string;
+	// The line a card shows about what it did in the run
+	nodeRunText: (overlay: IAutomationRunNodeOverlay, ended: boolean) => string;
+	// What happened to a run that did not complete, in plain words
+	attentionText: (attention: IAutomationRunAttention) => string;
+	// Why an invalid automation cannot run, in plain words
+	problemText: (problem: Pick<IAutomationRuntimeProblem, 'code' | 'message'>) => string;
+	refusalText: (refusal: AutomationTriggerRefusal | null) => string;
+	outcomeText: (outcome: AutomationTriggerOutcome) => string;
+	nodeLabel: (nodeId: string, graph: Pick<IAutomationGraph, 'nodes'>, nodeTypes: IAutomationNodeType[]) => string | null;
 }

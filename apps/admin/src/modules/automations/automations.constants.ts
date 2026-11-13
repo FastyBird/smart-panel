@@ -1,7 +1,20 @@
 // Re-export from generated OpenAPI types — canonical definition is on the backend
+import {
+	AutomationsModuleDataRunStatus as AutomationRunRecordStatus,
+	AutomationsModuleDataRunStepState as AutomationRunStepState,
+	AutomationsModuleDataTriggerResultOutcome as AutomationTriggerOutcome,
+} from '../../openapi';
 import { AutomationMode, AutomationNodeKind, AutomationRunStatus, AutomationStatus } from '../../openapi.constants';
 
-export { AutomationMode, AutomationNodeKind, AutomationRunStatus, AutomationStatus };
+export {
+	AutomationMode,
+	AutomationNodeKind,
+	AutomationRunRecordStatus,
+	AutomationRunStatus,
+	AutomationRunStepState,
+	AutomationStatus,
+	AutomationTriggerOutcome,
+};
 
 export const AUTOMATIONS_MODULE_PREFIX = 'automations';
 
@@ -14,6 +27,21 @@ export enum EventType {
 	AUTOMATION_UPDATED = 'AutomationsModule.Automation.Updated',
 	AUTOMATION_DELETED = 'AutomationsModule.Automation.Deleted',
 	MODULE_RESET = 'AutomationsModule.All.Reset',
+	RUN_STARTED = 'AutomationsModule.Run.Started',
+	RUN_COMPLETED = 'AutomationsModule.Run.Completed',
+	// Sent only to the clients watching the automation (`CommandType.WATCH_AUTOMATION`), never over the bus
+	RUN_STEP = 'AutomationsModule.Run.Step',
+}
+
+// The websocket commands that open and close the live view of one automation's runs
+export enum CommandType {
+	WATCH_AUTOMATION = 'AutomationsModule.WatchAutomation',
+	UNWATCH_AUTOMATION = 'AutomationsModule.UnwatchAutomation',
+}
+
+export enum CommandHandlerName {
+	WATCH_AUTOMATION = 'AutomationsModule.WatchAutomationHandler',
+	UNWATCH_AUTOMATION = 'AutomationsModule.UnwatchAutomationHandler',
 }
 
 export enum FormResult {
@@ -61,6 +89,59 @@ export const AUTOMATION_RUN_STATUS_COLORS: Record<AutomationRunStatus, StateColo
 	[AutomationRunStatus.cancelled]: 'info',
 	[AutomationRunStatus.interrupted]: 'warning',
 };
+
+// A stored run is `running` while it is parked on a Delay; the other statuses are those of a run that ended
+export const AUTOMATION_RUN_RECORD_STATUS_COLORS: Record<AutomationRunRecordStatus, StateColor> = {
+	[AutomationRunRecordStatus.running]: 'primary',
+	[AutomationRunRecordStatus.completed]: 'success',
+	[AutomationRunRecordStatus.failed]: 'danger',
+	[AutomationRunRecordStatus.cancelled]: 'info',
+	[AutomationRunRecordStatus.interrupted]: 'warning',
+};
+
+// RUNS
+// ====
+
+// How many runs of an automation the backend keeps (ADR 0003, decision 12)
+export const AUTOMATION_RUNS_KEPT_PER_AUTOMATION = 50;
+
+// How many runs read on their own the admin keeps the traces of, besides those a view has open
+export const AUTOMATION_RUN_TRACES_KEPT = 20;
+
+// Why the backend refuses a manual run (`error.details.code` of the 422 response)
+export type AutomationTriggerRefusal = 'disabled' | 'invalid' | 'suspended' | 'not_a_trigger' | 'no_trigger' | 'not_running' | 'not_found';
+
+export const AUTOMATION_TRIGGER_REFUSALS: AutomationTriggerRefusal[] = [
+	'disabled',
+	'invalid',
+	'suspended',
+	'not_a_trigger',
+	'no_trigger',
+	'not_running',
+	'not_found',
+];
+
+// Why a run ended early, as the backend names it in `end_reason`; anything else is a sentence in English.
+// An interrupted run was stopped by the server, a cancelled one by the engine (see its `teardown` reasons).
+export const AUTOMATION_RUN_INTERRUPT_REASONS = ['restarted', 'engine_stopped', 'backend_restarted'] as const;
+
+export const AUTOMATION_RUN_CANCEL_REASONS = [
+	'restarted',
+	'engine_stopped',
+	'backend_restarted',
+	'automation_updated',
+	'automation_disabled',
+	'automation_invalid',
+	'suspended',
+] as const;
+
+// How many runs the live view keeps the steps of while it waits to learn which one it follows
+export const AUTOMATION_LIVE_RUNS_BUFFERED = 5;
+
+// How many times what a run stored is read when its events may have been missed, and how long apart
+export const AUTOMATION_RUN_RECOVER_ATTEMPTS = 3;
+
+export const AUTOMATION_RUN_RECOVER_RETRY_MS = 2000;
 
 // FLOW EDITOR
 // ===========

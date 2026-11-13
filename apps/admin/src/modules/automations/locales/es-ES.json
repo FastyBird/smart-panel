@@ -540,6 +540,145 @@
 				"message": "El mensaje debe ser un texto.",
 				"messageMax": "El mensaje puede tener como máximo 1000 caracteres."
 			}
+		},
+		"runs": {
+			"headings": {
+				"history": "Ejecuciones"
+			},
+			"buttons": {
+				"test": {
+					"title": "Probar",
+					"description": "Ejecuta ahora el flujo guardado, como si su disparador se hubiera activado, y lo sigue en el lienzo.",
+					"startAt": "Empezar en: {trigger}"
+				},
+				"history": {
+					"title": "Historial de ejecuciones"
+				},
+				"reload": {
+					"title": "Volver a cargar"
+				},
+				"close": {
+					"title": "Ocultar ejecución"
+				},
+				"showNode": {
+					"title": "Mostrar {node}"
+				}
+			},
+			"test": {
+				"disabled": {
+					"unsaved": "Guarde primero el flujo: una prueba ejecuta la versión guardada.",
+					"disabled": "Habilite la automatización para probarla.",
+					"invalid": "La automatización no puede ejecutarse hasta que se corrijan sus problemas.",
+					"suspended": "La automatización está suspendida. Guárdela o vuelva a habilitarla para reanudarla.",
+					"noTrigger": "El flujo necesita un disparador desde el que empezar."
+				}
+			},
+			"outcomes": {
+				"started": "La ejecución de prueba ha empezado.",
+				"ignored": "La prueba no empezó: ya hay una ejecución en curso y la automatización ignora mientras tanto los nuevos disparadores.",
+				"dropped": "La prueba no empezó: ahora mismo hay demasiadas ejecuciones en curso.",
+				"suspended": "La prueba no empezó: la automatización se ejecutó demasiadas veces y se suspendió."
+			},
+			"refusals": {
+				"disabled": "La automatización está deshabilitada, por lo que no se puede ejecutar.",
+				"invalid": "La automatización no puede ejecutarse hasta que se corrijan sus problemas.",
+				"suspended": "La automatización está suspendida. Guárdela o vuelva a habilitarla para reanudarla.",
+				"not_a_trigger": "El bloque elegido para empezar no es un disparador.",
+				"no_trigger": "El flujo no tiene ningún disparador desde el que empezar.",
+				"not_running": "Las automatizaciones no se están ejecutando en el servidor ahora mismo.",
+				"not_found": "El servidor aún no ha cargado esta automatización. Inténtelo de nuevo en un momento.",
+				"unknown": "No se pudo iniciar la automatización."
+			},
+			"messages": {
+				"testFailed": "No se pudo iniciar la prueba."
+			},
+			"statuses": {
+				"running": "En curso",
+				"completed": "Completada",
+				"failed": "Fallida",
+				"cancelled": "Cancelada",
+				"interrupted": "Interrumpida"
+			},
+			"sources": {
+				"live": "Ejecución en directo",
+				"replay": "Ejecución anterior"
+			},
+			"texts": {
+				"empty": "Esta automatización aún no se ha ejecutado.",
+				"loading": "Cargando ejecuciones...",
+				"loadFailed": "No se pudieron cargar las ejecuciones.",
+				"reloadFailed": "No se pudieron cargar las últimas ejecuciones; puede que la lista no esté al día.",
+				"manual": "A mano desde {trigger}",
+				"unknownTrigger": "Un disparador que ya no está en el flujo",
+				"startedFor": "{time}, duró {duration}",
+				"milliseconds": "{count} ms",
+				"waitingForSteps": "Esperando a que la ejecución llegue a su primer bloque...",
+				"traceLoading": "Cargando lo que hizo la ejecución...",
+				"traceFailed": "No se pudo cargar el registro de esta ejecución; solo se muestra lo que se vio en directo.",
+				"truncated": "Esta ejecución hizo demasiado para guardarlo todo: pueden faltar los últimos bloques a los que llegó.",
+				"otherRevision": "Esta ejecución recorrió una versión anterior del flujo; los bloques cambiados desde entonces pueden no coincidir con lo que hizo.",
+				"unsaved": "El flujo del lienzo tiene cambios sin guardar; la ejecución recorrió la versión guardada.",
+				"missingNodes": "Algunos bloques a los que llegó esta ejecución ya no están en el flujo."
+			},
+			"nodes": {
+				"started": "Inició la ejecución",
+				"running": "En curso...",
+				"waiting": "Esperando {duration}",
+				"waited": "Esperó {duration}",
+				"waitingStopped": "Estaba esperando aquí cuando la ejecución se detuvo",
+				"observed": "Vio {value}",
+				"output": "→ {output}",
+				"done": "Hecho",
+				"failed": "Falló: {reason}",
+				"failedNoReason": "Falló",
+				"refused": "No permitido: {reason}",
+				"refusedNoReason": "No permitido",
+				"timedOut": "No respondió a tiempo",
+				"skipped": "Sin terminar: la ejecución ya había acabado"
+			},
+			"explanations": {
+				"interrupted": {
+					"text": "Esta ejecución se detuvo antes de terminar. {cause} Lo que debía ocurrir después de este punto nunca ocurrió."
+				},
+				"interruptedCauses": {
+					"backend_restarted": "El servidor se reinició mientras la ejecución esperaba.",
+					"engine_stopped": "Las automatizaciones se detuvieron en el servidor mientras la ejecución estaba en curso.",
+					"restarted": "La automatización se inició de nuevo.",
+					"unknown": "No llegó a terminar."
+				},
+				"failed": {
+					"text": "Una acción falló y nada en el flujo gestionó su error, así que la ejecución se detuvo ahí.",
+					"stopped": "La ejecución no terminó. {reason}"
+				},
+				"cancelled": {
+					"text": "Esta ejecución se canceló antes de terminar: {cause}"
+				},
+				"cancelledCauses": {
+					"restarted": "la automatización se volvió a disparar y empezó de nuevo.",
+					"backend_restarted": "el servidor se reinició.",
+					"engine_stopped": "las automatizaciones se detuvieron en el servidor.",
+					"automation_updated": "la automatización se guardó con cambios.",
+					"automation_disabled": "la automatización se deshabilitó.",
+					"automation_invalid": "la automatización ya no puede ejecutarse, por ejemplo porque se eliminó algo que usa.",
+					"suspended": "la automatización se suspendió porque se ejecutó demasiadas veces en poco tiempo.",
+					"unknown": "la automatización se guardó, se deshabilitó o se volvió a disparar."
+				},
+				"suspended": {
+					"title": "La automatización está suspendida",
+					"text": "Se ejecutó demasiadas veces en poco tiempo y se detuvo para que no siguiera ejecutándose en bucle. Normalmente significa que una de sus acciones fija un valor que vigila uno de sus disparadores. Revise el flujo y luego guárdelo o vuelva a habilitar la automatización para reanudarla."
+				},
+				"invalid": {
+					"title": "La automatización no puede ejecutarse",
+					"text": "Está habilitada, pero el servidor no puede ejecutarla hasta que se corrijan estos problemas:"
+				}
+			},
+			"problems": {
+				"invalid_config": "Este bloque no está configurado correctamente.",
+				"not_runnable": "El servidor no sabe cómo ejecutar este bloque.",
+				"missing_reference": "Este bloque hace referencia a un dispositivo, propiedad, escena o espacio que ya no existe.",
+				"trigger_failed": "No se pudo iniciar este disparador.",
+				"safety_reducing_action": "Esta acción desbloquearía, desarmaría o abriría algo, lo que una automatización no puede hacer."
+			}
 		}
 	}
 }
