@@ -997,6 +997,67 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value?.overlay.nodes.n1?.state).toBe('passed');
 	});
 
+	it('does not read a run again and again when what it stored comes without a trace', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({
+			data: { data: { ...runRes(otherRunId, 'completed'), trace: null } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		trace.replay(otherRunId);
+		await flushPromises();
+
+		// The history, the run once while nothing was known of it, and once more for how it ended: then no more
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(3);
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, ended: true });
+
+		await flushPromises();
+		await nextTick();
+
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(3);
+	});
+
+	it('reads the trace of a run that ended while a read after a reconnect was on its way, once that read fails', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.POST.mockResolvedValueOnce({
+			data: { data: { automation_id: automationId, started: true, outcome: 'started', run_id: runId, reason: null } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await trace.test();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }));
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		emit('disconnect');
+
+		let answer: (value: unknown) => void = () => {};
+
+		mocks.backend.GET.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+		emit('connect');
+		await flushPromises();
+
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(2);
+
+		// It ends while what it stored is being read after the reconnect, and that read then fails
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await nextTick();
+
+		mocks.backend.GET.mockResolvedValueOnce(tracedRes(runId, 'completed', [stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' })]));
+
+		answer({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+		await flushPromises();
+
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(3);
+		expect(trace.shown.value).toMatchObject({ runId, ended: true, failed: false, run: { trace: expect.anything() } });
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 

@@ -87,14 +87,24 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		}
 	};
 
+	// The reads of a run on their way: one that ended is looked at again only once what it did is recorded
+	const readsInFlight = ref<Set<string>>(new Set());
+
+	const settled = (runId: string): void => {
+		readsInFlight.value = new Set([...readsInFlight.value].filter((item) => item !== runId));
+	};
+
 	// What a run stored so far, read when its events may have been missed; nothing stored yet is not a failure
 	const recover = (runId: string): void => {
+		readsInFlight.value = new Set([...readsInFlight.value, runId]);
+
 		void runsStore
 			.get({ id: runId, fresh: true })
 			.then((): void => clearFailures(runId))
 			.catch((): void => {
 				// Nothing stored yet, or not readable now: the live steps are what there is
-			});
+			})
+			.finally((): void => settled(runId));
 	};
 
 	const readKey = (runId: string, run: IAutomationRun | null): string => `${runId}:${run?.status ?? 'unknown'}`;
@@ -104,8 +114,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	 * it runs, its steps come from the live view. A record whose status moved on since its trace was read has
 	 * lost the trace in the store, and it is read again.
 	 */
-	// The reads of a trace on their way: one that ended is looked at again only once what it did is recorded
-	const readsInFlight = ref<Set<string>>(new Set());
+	// The reads made for each pick and status of the run: a read that went well but brought no trace is not repeated
+	const attemptedReads = new Set<string>();
 
 	const readTrace = async (runId: string): Promise<void> => {
 		const key = readKey(runId, runsStore.findById(runId));
@@ -119,7 +129,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		} catch {
 			failedReads.value = new Set([...failedReads.value, key]);
 		} finally {
-			readsInFlight.value = new Set([...readsInFlight.value].filter((item) => item !== runId));
+			settled(runId);
 		}
 	};
 
@@ -154,14 +164,19 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 			const wanted = current.kind === 'replay' || isEnded(run);
 
+			const attempt = `${current.pick}:${readKey(current.runId, run)}`;
+
 			if (
 				!wanted ||
 				readsInFlight.value.has(current.runId) ||
 				runsStore.getting(current.runId) ||
-				failedReads.value.has(readKey(current.runId, run))
+				failedReads.value.has(readKey(current.runId, run)) ||
+				(!stale && attemptedReads.has(attempt))
 			) {
 				return;
 			}
+
+			attemptedReads.add(attempt);
 
 			refreshedPick = current.pick;
 
