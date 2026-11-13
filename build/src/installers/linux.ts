@@ -147,13 +147,14 @@ export class LinuxInstaller implements BaseInstaller {
 		// This ensures database files created by migrations are owned by the service user
 		setOwnership(dataDir, user);
 
+		// Camera relay binary, installed before the service starts: the cameras relay checks for the binary once and
+		// does not retry until a config change or restart. Never fails the installation (snapshots are the fallback).
+		this.installGo2rtc();
+
 		// Start service if not skipped
 		if (!noStart) {
 			await this.start();
 		}
-
-		// Camera relay binary; never fails the installation (cameras fall back to snapshots).
-		this.installGo2rtc();
 	}
 
 	async uninstall(options: UninstallOptions): Promise<void> {
@@ -575,10 +576,11 @@ polkit.addRule(function (action, subject) {
 
 	/**
 	 * Installs the pinned go2rtc binary with the installer bundled in the backend release. Runs as root on a
-	 * root-owned package tree. Every failure is a warning: the installation must not depend on go2rtc. The installer
-	 * honours its own opt-outs (FB_SKIP_GO2RTC=1, /etc/smart-panel/go2rtc.skip).
+	 * root-owned package tree, before the service is (re)started so the cameras relay finds the binary. Every failure
+	 * is a warning: neither installation nor update may depend on go2rtc. The installer honours its own opt-outs
+	 * (FB_SKIP_GO2RTC=1, /etc/smart-panel/go2rtc.skip).
 	 */
-	private installGo2rtc(): void {
+	installGo2rtc(): void {
 		const installer = join(getBackendPath(this.packageRoot), 'dist', 'go2rtc', 'install-go2rtc.sh');
 
 		if (!existsSync(installer)) {
@@ -586,6 +588,8 @@ polkit.addRule(function (action, subject) {
 
 			return;
 		}
+
+		logger.step('Installing go2rtc camera relay...');
 
 		try {
 			execFileSync('/bin/sh', [installer], {
