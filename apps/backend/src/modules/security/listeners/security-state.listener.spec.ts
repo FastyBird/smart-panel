@@ -240,6 +240,37 @@ describe('SecurityStateListener', () => {
 			expect(transitions()).toEqual([]);
 		});
 
+		it('does not take the state of a failed start-up read as the baseline', async () => {
+			// The devices could not be read when the backend started: nothing is known yet
+			await recalculate(statusWith(null, null, 1));
+			// The alarm was armed and triggered all along; the first good read is the baseline, not a change
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.TRIGGERED));
+
+			expect(transitions()).toEqual([]);
+
+			await recalculate(statusWith(ArmedState.DISARMED, AlarmState.IDLE));
+
+			expect(transitions()).toEqual([
+				{ kind: 'armed', from: ArmedState.ARMED_AWAY, to: ArmedState.DISARMED },
+				{ kind: 'alarm', from: AlarmState.TRIGGERED, to: AlarmState.IDLE },
+			]);
+		});
+
+		it('sets the baseline of each state from the first read that knows it', async () => {
+			// A failing provider: the armed state was read, the alarm state was not
+			await recalculate(statusWith(ArmedState.ARMED_HOME, null, 1));
+			await recalculate(statusWith(ArmedState.ARMED_HOME, AlarmState.PENDING));
+
+			expect(transitions()).toEqual([]);
+
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.TRIGGERED));
+
+			expect(transitions()).toEqual([
+				{ kind: 'armed', from: ArmedState.ARMED_HOME, to: ArmedState.ARMED_AWAY },
+				{ kind: 'alarm', from: AlarmState.PENDING, to: AlarmState.TRIGGERED },
+			]);
+		});
+
 		it('takes a state that is gone while every provider answered as a transition to none', async () => {
 			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
 			await recalculate(statusWith(null, AlarmState.IDLE));

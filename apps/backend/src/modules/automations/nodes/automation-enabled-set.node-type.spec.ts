@@ -124,6 +124,47 @@ describe('automation.enable and automation.disable', () => {
 		expect(update).toHaveBeenCalledTimes(AUTOMATION_ENABLED_SET_ATTEMPTS);
 	});
 
+	it('does not change the automation when the run is cancelled while it is being read', async () => {
+		const controller = new AbortController();
+		let answer: (value: { enabled: boolean; revision: number }) => void = () => undefined;
+
+		findOne.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+		const result = createAutomationDisableNodeType(store()).execute(
+			{ automation_id: OTHER },
+			context({ signal: controller.signal }),
+		);
+
+		await Promise.resolve();
+		controller.abort();
+		answer({ enabled: true, revision: 3 });
+
+		expect(await result).toEqual({
+			success: false,
+			reason: 'The run was cancelled before the automation was disabled.',
+		});
+		expect(update).not.toHaveBeenCalled();
+	});
+
+	it('does not try again after a conflict when the run was cancelled meanwhile', async () => {
+		const controller = new AbortController();
+
+		update.mockImplementationOnce(() => {
+			controller.abort();
+
+			return Promise.reject(new AutomationsRevisionConflictException('changed'));
+		});
+
+		expect(
+			await createAutomationEnableNodeType(store()).execute(
+				{ automation_id: OTHER },
+				context({ signal: controller.signal }),
+			),
+		).toEqual({ success: false, reason: 'The run was cancelled before the automation was enabled.' });
+		expect(findOne).toHaveBeenCalledTimes(1);
+		expect(update).toHaveBeenCalledTimes(1);
+	});
+
 	it('does nothing for a run that was cancelled before it got here', async () => {
 		expect(
 			await createAutomationEnableNodeType(store()).execute(

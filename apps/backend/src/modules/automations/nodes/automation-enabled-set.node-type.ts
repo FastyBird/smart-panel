@@ -67,17 +67,22 @@ const createAutomationEnabledSetNodeType = (
 		configSchema: AUTOMATION_TARGET_SCHEMA,
 		references: automationTargetReferences,
 		execute: async (config, context) => {
-			if (context.signal.aborted) {
-				return { success: false, reason: `The run was cancelled before the automation was ${verb}d.` };
-			}
+			const cancelled = { success: false, reason: `The run was cancelled before the automation was ${verb}d.` };
+
+			if (context.signal.aborted) return cancelled;
 
 			const self = refuseSelf(config, context, verb);
 
 			if (self) return self;
 
 			for (let attempt = 0; attempt < AUTOMATION_ENABLED_SET_ATTEMPTS; attempt++) {
+				// A run that stopped meanwhile - cancelled, or its node timed out - must not change anything
+				if (context.signal.aborted) return cancelled;
+
 				try {
 					const automation = await store.findOne(config.automation_id);
+
+					if (context.signal.aborted) return cancelled;
 
 					if (!automation) return { success: false, reason: 'The automation no longer exists.' };
 

@@ -50,6 +50,10 @@ const SECURITY_CHANNEL_CATEGORIES: ChannelCategory[] = [
 	ChannelCategory.CONTACT,
 ];
 
+type SecurityStateTransitionValue<K extends 'armed' | 'alarm'> = K extends 'armed'
+	? ArmedState | null
+	: AlarmState | null;
+
 @Injectable()
 export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityStateListener');
@@ -57,8 +61,8 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	private debounceTimer: NodeJS.Timeout | null = null;
 	private processingLock: Promise<void> = Promise.resolve();
 	private seeded = false;
-	/** The armed and alarm state of the last recalculation; undefined until the first one */
-	private lastStates: { armed: ArmedState | null; alarm: AlarmState | null } | undefined;
+	/** The armed and the alarm state last known; a state is missing until a read knew it */
+	private readonly knownStates = new Map<'armed' | 'alarm', ArmedState | AlarmState | null>();
 
 	constructor(
 		@InjectRepository(ChannelEntity)
@@ -267,31 +271,33 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Emits `SecurityModule.State.Changed` once for each of the armed and the alarm state that differs from
-	 * the last recalculation. The first recalculation only records the states: what holds when the backend
-	 * starts is not a transition. A state that became unknown while a provider failed says nothing about
-	 * the home, so it is not taken as a transition and the last known state is kept.
+	 * the one known before. The first read that knows a state only records it: what holds when the backend
+	 * starts is not a transition. A state that is unknown while a provider failed says nothing about the
+	 * home: it neither sets the baseline - a failed start-up read would make an alarm armed all along look
+	 * like it was just armed - nor counts as a change to "none".
 	 */
 	private emitStateTransitions(status: SecurityStatusModel, providerErrors: number): void {
-		const next = { armed: status.armedState ?? null, alarm: status.alarmState ?? null };
-		const previous = this.lastStates;
-
-		if (previous === undefined) {
-			this.lastStates = next;
-
-			return;
-		}
-
 		const transitions: SecurityStateChangedPayload[] = [];
 
-		if (next.armed !== previous.armed && (next.armed !== null || providerErrors === 0)) {
-			transitions.push({ kind: 'armed', from: previous.armed, to: next.armed });
-			previous.armed = next.armed;
-		}
+		const follow = <K extends 'armed' | 'alarm'>(kind: K, next: SecurityStateTransitionValue<K>): void => {
+			if (next === null && providerErrors > 0) return;
 
-		if (next.alarm !== previous.alarm && (next.alarm !== null || providerErrors === 0)) {
-			transitions.push({ kind: 'alarm', from: previous.alarm, to: next.alarm });
-			previous.alarm = next.alarm;
-		}
+			if (!this.knownStates.has(kind)) {
+				this.knownStates.set(kind, next);
+
+				return;
+			}
+
+			const previous = this.knownStates.get(kind) as SecurityStateTransitionValue<K>;
+
+			if (previous === next) return;
+
+			this.knownStates.set(kind, next);
+			transitions.push({ kind, from: previous, to: next } as SecurityStateChangedPayload);
+		};
+
+		follow('armed', status.armedState ?? null);
+		follow('alarm', status.alarmState ?? null);
 
 		for (const transition of transitions) {
 			try {
