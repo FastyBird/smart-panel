@@ -5,6 +5,7 @@ import { DevicesService } from '../../devices/services/devices.service';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraProviderTimeoutError,
 	CameraRateLimitedException,
 	CameraUpstreamException,
 	CamerasException,
@@ -166,6 +167,82 @@ describe('CamerasService', () => {
 		} finally {
 			jest.useRealTimers();
 		}
+	});
+
+	describe('profile lookup coalescing', () => {
+		it('serves concurrent lookups of one device with a single provider call', async () => {
+			let release!: (value: never[]) => void;
+
+			providerA.listProfiles.mockReturnValue(new Promise((resolve) => (release = resolve)));
+
+			const first = service.findProfileById(camera, providerA, 'p1').catch((e: unknown) => e);
+			const second = service.toModel(camera, providerA);
+
+			release([]);
+
+			await Promise.all([first, second]);
+
+			expect(providerA.listProfiles.mock.calls).toHaveLength(1);
+		});
+
+		it('does not start another provider call after the first lookup timed out', async () => {
+			jest.useFakeTimers();
+
+			try {
+				providerA.listProfiles.mockReturnValue(new Promise(() => undefined));
+
+				const first = service.resolveProfile(camera, providerA).catch((e: unknown) => e);
+
+				await jest.advanceTimersByTimeAsync(10_001);
+
+				expect(await first).toBeInstanceOf(CameraProviderTimeoutError);
+
+				const second = service.resolveProfile(camera, providerA).catch((e: unknown) => e);
+
+				await jest.advanceTimersByTimeAsync(10_001);
+
+				expect(await second).toBeInstanceOf(CameraProviderTimeoutError);
+				expect(providerA.listProfiles.mock.calls).toHaveLength(1);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('calls the provider again once the earlier call has settled', async () => {
+			jest.useFakeTimers();
+
+			try {
+				let release!: (value: never[]) => void;
+
+				providerA.listProfiles.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+
+				const first = service.findProfileById(camera, providerA, 'p1').catch((e: unknown) => e);
+
+				await jest.advanceTimersByTimeAsync(10_001);
+				await first;
+
+				release([]);
+				await jest.advanceTimersByTimeAsync(1);
+
+				providerA.listProfiles.mockResolvedValue([{ id: 'p1', channelId: 'ch1', available: true }]);
+
+				await expect(service.findProfileById(camera, providerA, 'p1')).resolves.toMatchObject({ id: 'p1' });
+				expect(providerA.listProfiles.mock.calls).toHaveLength(2);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		it('clears the entry when the provider call is rejected', async () => {
+			providerA.listProfiles.mockRejectedValueOnce(new Error('boom'));
+
+			await expect(service.findProfileById(camera, providerA, 'p1')).rejects.toBeInstanceOf(CamerasException);
+
+			providerA.listProfiles.mockResolvedValue([{ id: 'p1', channelId: 'ch1', available: true }]);
+
+			await expect(service.findProfileById(camera, providerA, 'p1')).resolves.toMatchObject({ id: 'p1' });
+			expect(providerA.listProfiles.mock.calls).toHaveLength(2);
+		});
 	});
 
 	it('does not log the name an untrusted provider error carries', async () => {

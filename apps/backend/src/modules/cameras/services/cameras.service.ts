@@ -27,6 +27,11 @@ const CAMERA_CATEGORIES: DeviceCategory[] = [DeviceCategory.CAMERA, DeviceCatego
 export class CamerasService {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'CamerasService');
 
+	private readonly profileLookups = new Map<
+		string,
+		{ promise: Promise<CameraStreamProfile[]>; controller: AbortController }
+	>();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly registry: CameraStreamProviderRegistryService,
@@ -67,7 +72,7 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId?: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(device.id, (signal) => provider.listProfiles(device, { signal }));
+		const profiles = await this.listProfiles(device, provider);
 
 		const profile = profileId ? profiles.find((p) => p.id === profileId) : profiles.find((p) => p.available);
 
@@ -88,7 +93,7 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(device.id, (signal) => provider.listProfiles(device, { signal }));
+		const profiles = await this.listProfiles(device, provider);
 		const profile = profiles.find((p) => p.id === profileId);
 
 		if (!profile) {
@@ -110,7 +115,7 @@ export class CamerasService {
 
 		if (provider) {
 			try {
-				const profiles = await this.withTimeout(device.id, (signal) => provider.listProfiles(device, { signal }));
+				const profiles = await this.listProfiles(device, provider);
 
 				model.profiles = profiles.map((profile) => this.toProfileModel(profile));
 			} catch (error) {
@@ -139,16 +144,42 @@ export class CamerasService {
 	}
 
 	/**
-	 * Bounds the wait for a provider call. The signal passed to the call is aborted on timeout; a provider that ignores
-	 * it keeps running, and its result is discarded.
+	 * Lists profiles, coalescing calls per device: while a provider call has not settled, later callers join it instead
+	 * of starting another one. Each caller keeps its own timeout, so a provider that never answers cannot pile up work.
 	 */
-	private async withTimeout<T>(deviceId: string, call: (signal: AbortSignal) => Promise<T>): Promise<T> {
-		const controller = new AbortController();
+	private listProfiles(device: DeviceEntity, provider: ICameraStreamProvider): Promise<CameraStreamProfile[]> {
+		let entry = this.profileLookups.get(device.id);
+
+		if (!entry) {
+			const controller = new AbortController();
+			const lookup = (async () => provider.listProfiles(device, { signal: controller.signal }))();
+			const created = { promise: lookup, controller };
+
+			entry = created;
+			this.profileLookups.set(device.id, created);
+
+			const release = (): void => {
+				if (this.profileLookups.get(device.id) === created) {
+					this.profileLookups.delete(device.id);
+				}
+			};
+
+			lookup.then(release, release);
+		}
+
+		return this.withTimeout(device.id, entry.promise, entry.controller);
+	}
+
+	/**
+	 * Bounds the wait for a provider call. The call's signal is aborted on timeout; a provider that ignores it keeps
+	 * running, and its result is discarded.
+	 */
+	private async withTimeout<T>(deviceId: string, call: Promise<T>, controller: AbortController): Promise<T> {
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
 			return await Promise.race([
-				call(controller.signal),
+				call,
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(() => {
 						controller.abort();
