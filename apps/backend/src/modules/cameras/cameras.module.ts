@@ -16,6 +16,7 @@ import {
 	CAMERAS_MODULE_NAME,
 } from './cameras.constants';
 import { CAMERAS_SWAGGER_EXTRA_MODELS } from './cameras.openapi';
+import { CamerasLiveController } from './controllers/cameras-live.controller';
 import { CamerasStatusController } from './controllers/cameras-status.controller';
 import { CamerasController } from './controllers/cameras.controller';
 import { UpdateCamerasConfigDto } from './dto/update-config.dto';
@@ -50,7 +51,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 		Go2rtcStreamsService,
 		LiveStreamGateway,
 	],
-	controllers: [CamerasController, CamerasStatusController],
+	controllers: [CamerasController, CamerasStatusController, CamerasLiveController],
 	exports: [
 		CameraStreamProviderRegistryService,
 		CamerasService,

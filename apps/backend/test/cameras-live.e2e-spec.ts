@@ -16,6 +16,7 @@ import { createGlobalExceptionFilters } from '../src/common/filters/global-filte
 import { ValidationExceptionFactory } from '../src/common/validation/validation-exception-factory';
 import { CameraStreamProviderRegistryService } from '../src/modules/cameras/services/camera-stream-provider.registry.service';
 import { go2rtcStreamName } from '../src/modules/cameras/services/go2rtc-source';
+import { Go2rtcService } from '../src/modules/cameras/services/go2rtc.service';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -113,6 +114,9 @@ describe('Cameras live streaming (e2e)', () => {
 	let socketA: LiveClient;
 	let socketB: LiveClient;
 	let usedUrl: string;
+
+	const streamName = (cameraId: string): string =>
+		go2rtcStreamName(app.get(Go2rtcService).getInstallationId(), cameraId, 'medium');
 
 	const api = '/api/v1';
 	const camerasUrl = (suffix = '') => `${api}/modules/cameras/cameras${suffix}`;
@@ -383,7 +387,7 @@ describe('Cameras live streaming (e2e)', () => {
 		await waitFor(() => socketA.texts.length > 0 && socketA.binary > 0, 'the mse reply and a media frame');
 
 		expect(JSON.parse(socketA.texts[0])).toEqual(MSE_REPLY);
-		expect(stub.puts).toEqual([{ name: go2rtcStreamName(cameraA, 'medium'), src: EXPECTED_SOURCE }]);
+		expect(stub.puts).toEqual([{ name: streamName(cameraA), src: EXPECTED_SOURCE }]);
 		// The relay forwards a rebuilt request, never the client's raw frame.
 		expect(stub.requests).toEqual([MSE_REQUEST]);
 	});
@@ -431,10 +435,18 @@ describe('Cameras live streaming (e2e)', () => {
 		}
 	});
 
-	it('answers 404 to a plain GET of a session url without consuming the session', async () => {
+	it('answers 426 without echoing the token to a plain GET of a session url, and does not consume the session', async () => {
 		const url = await createSession(cameraC);
 
-		await request(app.getHttpServer()).get(url).expect(404);
+		const plain = await request(app.getHttpServer()).get(url).expect(426);
+		const token = new URL(url, 'http://localhost').searchParams.get('session') ?? '';
+
+		expect(token.length).toBeGreaterThan(8);
+		expect(plain.body).toEqual({ error: 'upgrade_required' });
+		expect(plain.headers.upgrade).toBe('websocket');
+		// Neither the body nor any header echoes the token or the url.
+		expect(JSON.stringify([plain.text, plain.headers])).not.toContain(token);
+		expect(JSON.stringify([plain.text, plain.headers])).not.toContain('/live');
 
 		// The token was not consumed by the plain request: the upgrade is admitted and then met by the session limit
 		// (cameras A and B are streaming, `max_sessions` is 2), which only an unconsumed, valid token can reach.
@@ -460,9 +472,9 @@ describe('Cameras live streaming (e2e)', () => {
 
 		expect(await within(socketB.closed, 'the close')).toEqual({ code: 4000, reason: 'revoked' });
 
-		await waitFor(() => stub.deletes.includes(go2rtcStreamName(cameraB, 'medium')), 'the stream delete');
+		await waitFor(() => stub.deletes.includes(streamName(cameraB)), 'the stream delete');
 
-		expect(stub.deletes).toContain(go2rtcStreamName(cameraB, 'medium'));
+		expect(stub.deletes).toContain(streamName(cameraB));
 	});
 
 	it('closes an open socket with module_disabled and hides the status route when the module is disabled', async () => {
