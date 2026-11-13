@@ -5,10 +5,15 @@ import { ConflictException, Injectable, OnApplicationBootstrap, Optional } from 
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { captureSqliteNoMutationWindow, registerSqliteCommitGuard } from '../../../common/database/sqlite-data-source';
+import {
+	SqliteCommitGuardRefusedError,
+	captureSqliteNoMutationWindow,
+	registerSqliteCommitGuard,
+} from '../../../common/database/sqlite-data-source';
 import { MINUTE_MS } from '../../../common/schedule/schedule-time';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { activationStatus } from '../activity/activity-result.utils';
+import { AutomationActivityAdmission, isAutomationActivityActor } from '../activity/automation-activity';
 import {
 	ACTIVITY_STATE_CHANGED,
 	ActivityActivationStatus,
@@ -28,6 +33,16 @@ import { SpaceActivityDomainsService } from './space-activity-domains.service';
 import { SpaceActivationIdentity } from './space-climate-automation.port';
 import { SpaceClimateAutomationService } from './space-climate-automation.service';
 import { SpaceOccupancyConfigService } from './space-occupancy-config.service';
+
+const AUTOMATION_CANCELLED = 'The automation run was cancelled before the mode was selected';
+
+/** A refused COMMIT guard, also when the driver error was wrapped (TypeORM's `driverError`, an error `cause`) */
+const isCommitGuardRefusal = (error: unknown, depth = 0): boolean => {
+	if (error instanceof SqliteCommitGuardRefusedError) return true;
+	if (depth >= 5 || typeof error !== 'object' || error === null) return false;
+	const { driverError, cause } = error as { driverError?: unknown; cause?: unknown };
+	return isCommitGuardRefusal(driverError, depth + 1) || isCommitGuardRefusal(cause, depth + 1);
+};
 
 @Injectable()
 export class SpaceModeService implements OnApplicationBootstrap {
@@ -84,10 +99,15 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		actor: string,
 		scheduledAdmission?: ScheduledActivityAdmission,
 		occupancyAdmission?: OccupancyActivityAdmission,
+		automationAdmission?: AutomationActivityAdmission,
 	): Promise<SpaceActivityStateEntity | null> {
 		const scheduled = scheduledAdmission ? Object.freeze({ ...scheduledAdmission }) : null;
 		const occupancy = occupancyAdmission ? Object.freeze({ ...occupancyAdmission }) : null;
-		if (scheduled && occupancy) throw new ConflictException('Only one automatic activity source may be admitted');
+		const automation = automationAdmission ? Object.freeze({ ...automationAdmission }) : null;
+		if ([scheduled, occupancy, automation].filter((source) => source !== null).length > 1)
+			throw new ConflictException('Only one automatic activity source may be admitted');
+		if (automation && !isAutomationActivityActor(actor))
+			throw new ConflictException('An automation activation must name its automation run as the actor');
 		if (this.running.has(spaceId))
 			throw new ConflictException('Space activity activation is in progress; retry after completion');
 		this.running.add(spaceId);
@@ -156,6 +176,13 @@ export class SpaceModeService implements OnApplicationBootstrap {
 					if ((prior?.activationId ?? null) !== occupancy.previousActivationId)
 						throw new ConflictException('A newer activity superseded occupancy');
 					await claimOccupancy(manager, occupancy, activationId);
+				} else if (automation) {
+					// An automatic source: no occupancy manual hold, and never over a selection it did not see
+					if (!automation.isCurrent()) throw new ConflictException(AUTOMATION_CANCELLED);
+					// A run cancelled while the selection is being written must not have it committed either
+					registerSqliteCommitGuard(manager, () => automation.isCurrent());
+					if ((prior?.activationId ?? null) !== automation.previousActivationId)
+						throw new ConflictException('A newer activity selection superseded the automation');
 				} else if (!scheduled) await this.occupancyConfigs?.markManual(manager, spaceId);
 				const currentRepository = manager.getRepository(SpaceActivityStateEntity);
 				const admittedValues = { ...values, activityRequestedAt: new Date() };
@@ -200,9 +227,11 @@ export class SpaceModeService implements OnApplicationBootstrap {
 							'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
 							{ configId: config.id, revision },
 						);
-					if (scheduled || occupancy)
+					const admission = scheduled ?? occupancy ?? automation;
+					// Compare-and-swap on the activation the automatic source read
+					if (admission)
 						query.andWhere('activationId IS :previousActivation', {
-							previousActivation: (scheduled ?? occupancy).previousActivationId,
+							previousActivation: admission.previousActivationId,
 						});
 					const started = await query.execute();
 					if (started.affected !== 1) throw new ConflictException('Activity configuration changed');
@@ -211,15 +240,23 @@ export class SpaceModeService implements OnApplicationBootstrap {
 					await currentRepository.save(currentRepository.create({ spaceId, ...admittedValues }));
 				}
 			};
-			if (this.climateAutomation)
-				await this.climateAutomation.mutate(spaceId, undefined, start, undefined, prepareValidation);
-			else if (prepareValidation || this.occupancyConfigs)
-				await this.dataSource.transaction(async (manager) => {
-					const validate = prepareValidation?.(manager);
-					await start(manager);
-					await validate?.();
-				});
-			else await start(this.dataSource.manager);
+			try {
+				if (this.climateAutomation)
+					await this.climateAutomation.mutate(spaceId, undefined, start, undefined, prepareValidation);
+				// An automation admission guards its COMMIT, so it always needs a transaction
+				else if (prepareValidation || this.occupancyConfigs || automation)
+					await this.dataSource.transaction(async (manager) => {
+						const validate = prepareValidation?.(manager);
+						await start(manager);
+						await validate?.();
+					});
+				else await start(this.dataSource.manager);
+			} catch (cause) {
+				// The COMMIT guard of a cancelled automation run refused the write: report the cancellation
+				if (automation && isCommitGuardRefusal(cause) && !automation.isCurrent())
+					throw new ConflictException(AUTOMATION_CANCELLED);
+				throw cause;
+			}
 			const identity: SpaceActivationIdentity = {
 				spaceId,
 				activationId,
