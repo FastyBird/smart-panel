@@ -1651,7 +1651,10 @@ describe('Automations module (e2e)', () => {
 				.set('Authorization', `Bearer ${ownerToken}`)
 				.expect(200);
 
-			const builtIn = (response.body as { data: NodeTypeBody[] }).data.filter((item) => !item.type.startsWith('test.'));
+			// The space cards are provided by the spaces-home-control plugin, not by the module
+			const builtIn = (response.body as { data: NodeTypeBody[] }).data.filter(
+				(item) => !item.type.startsWith('test.') && !item.type.startsWith('space.'),
+			);
 
 			expect(builtIn.map((item) => `${item.kind} ${item.type}`)).toEqual([
 				'action automation.disable',
@@ -1691,6 +1694,45 @@ describe('Automations module (e2e)', () => {
 				required: ['device_id', 'channel_id', 'property_id', 'operator'],
 				'x-operators-by-value-kind': { boolean: ['eq', 'neq'] },
 			});
+		});
+
+		it('lists the space cards of the spaces-home-control plugin only while it is enabled', async () => {
+			const spaceCards = async (): Promise<string[]> => {
+				const response = await request(app.getHttpServer())
+					.get(nodeTypesBase)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				return (response.body as { data: NodeTypeBody[] }).data
+					.filter((item) => item.type.startsWith('space.'))
+					.map((item) => `${item.kind} ${item.type}`);
+			};
+
+			const setPluginEnabled = (enabled: boolean) =>
+				request(app.getHttpServer())
+					.patch('/modules/config/config/plugin/spaces-home-control-plugin')
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { type: 'spaces-home-control-plugin', enabled } })
+					.expect(200);
+
+			expect(await spaceCards()).toEqual([
+				'action space.lighting.intent',
+				'trigger space.mode.changed',
+				'condition space.mode.is',
+				'action space.mode.set',
+				'trigger space.occupancy.changed',
+				'condition space.occupancy.is',
+			]);
+
+			try {
+				await setPluginEnabled(false);
+
+				expect(await spaceCards()).toEqual([]);
+			} finally {
+				await setPluginEnabled(true);
+			}
+
+			expect(await spaceCards()).toHaveLength(6);
 		});
 
 		describe('sun cards', () => {

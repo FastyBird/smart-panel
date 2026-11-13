@@ -39,6 +39,7 @@ import {
 import { AutomationEntity } from '../entities/automations.entity';
 import { AutomationNodeReference, AutomationNodeReferenceKind, AutomationNodeTypeOwner } from '../graph/node-type';
 import { TrackerClock, systemTrackerClock } from '../tracker/clock';
+import { isAutomationNodeTypeOwnerEnabled } from '../utils/node-type-owner.utils';
 
 import { AutomationRunService } from './automation-run.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
@@ -451,17 +452,7 @@ export class AutomationEngineService extends BaseManagedExtensionService {
 	// ---- what the engine asks --------------------------------------------------------------------------
 
 	private isOwnerEnabled(owner: AutomationNodeTypeOwner): boolean {
-		try {
-			const config =
-				owner.kind === 'module'
-					? this.configService.getModuleConfig(owner.type)
-					: this.configService.getPluginConfig(owner.type);
-
-			return config?.enabled === true;
-		} catch {
-			// An owner without a configuration is treated as the service manager treats it: not enabled
-			return false;
-		}
+		return isAutomationNodeTypeOwnerEnabled(this.configService, owner);
 	}
 
 	private async referenceExists(reference: AutomationNodeReference): Promise<boolean> {

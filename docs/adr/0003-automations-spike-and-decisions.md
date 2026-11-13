@@ -170,6 +170,14 @@ manual hold, it uses the existing activation-id compare-and-swap so it never ove
 see, and its actor is `automation:<id>:<run>`. The schedule's "manual selection" badge treats it as automatic.
 Last automatic writer wins, as between schedule and occupancy today.
 
+As built (AU-18): `activateMode` takes an `AutomationActivityAdmission` - the activation the automation read and
+whether its run is still going - checked inside the admitting transaction, and the update carries the same
+`activationId IS :previous` compare-and-swap as the other automatic sources; a refusal or a concurrent activation
+takes the action's `error` output. The space cards are registered by the plugin with the plugin as owner, and the
+catalogue leaves out the node types of a disabled owner. The occupancy and mode triggers read the state on the
+existing `SpacesModule.Occupancy.Changed` and `SpacesModule.ActivityMode.StateChanged` hints and fire on transitions
+of the known state; see [space activity modes](../space-activity-modes.md#automations).
+
 ### 10. Location for sun cards
 
 There is no house location today; coordinates exist only on weather-plugin locations, and an OpenWeatherMap

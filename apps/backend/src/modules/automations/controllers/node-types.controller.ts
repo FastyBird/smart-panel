@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ConfigService } from '../../config/services/config.service';
 import {
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
@@ -13,6 +14,7 @@ import { AUTOMATIONS_MODULE_API_TAG_NAME, AUTOMATIONS_MODULE_NAME } from '../aut
 import { AutomationNodeTypesResponseModel } from '../models/automations-response.model';
 import { createAutomationNodeTypeModel } from '../models/node-types.model';
 import { AutomationNodeTypeRegistryService } from '../services/node-type-registry.service';
+import { isAutomationNodeTypeOffered } from '../utils/node-type-owner.utils';
 
 @ApiTags(AUTOMATIONS_MODULE_API_TAG_NAME)
 @Controller('node-types')
@@ -20,13 +22,16 @@ import { AutomationNodeTypeRegistryService } from '../services/node-type-registr
 export class AutomationNodeTypesController {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'AutomationNodeTypesController');
 
-	constructor(private readonly nodeTypeRegistry: AutomationNodeTypeRegistryService) {}
+	constructor(
+		private readonly nodeTypeRegistry: AutomationNodeTypeRegistryService,
+		private readonly configService: ConfigService,
+	) {}
 
 	@ApiOperation({
 		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve the catalogue of automation node types',
 		description:
-			'Fetches every node type an automation graph can be built from, as registered by the modules and plugins that are running: its type, kind, ports, human-facing name and description, and the JSON Schema of its configuration. The list is ordered by type. Requires the owner or admin role.',
+			'Fetches every node type an automation graph can be built from, as registered by the modules and plugins that are running; a node type of a module or plugin that is disabled is left out until it is enabled again. Each entry carries its type, kind, ports, human-facing name and description, and the JSON Schema of its configuration. The list is ordered by type. Requires the owner or admin role.',
 		operationId: 'get-automations-module-node-types',
 	})
 	@ApiSuccessResponse(AutomationNodeTypesResponseModel, 'The catalogue of node types was successfully retrieved.')
@@ -34,7 +39,10 @@ export class AutomationNodeTypesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	findAll(): AutomationNodeTypesResponseModel {
-		const nodeTypes = this.nodeTypeRegistry.list();
+		// A card of a disabled plugin stays registered, but it is not offered (ADR 0003, decision 13)
+		const nodeTypes = this.nodeTypeRegistry
+			.list()
+			.filter((nodeType) => isAutomationNodeTypeOffered(this.configService, nodeType));
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${nodeTypes.length} automation node types`);
 

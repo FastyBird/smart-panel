@@ -16,6 +16,8 @@ describe('SpacesHomeControlPlugin', () => {
 		const heartbeat = {};
 		const scheduler = {};
 		const occupancy = {};
+		const card = { type: 'space.mode.set' };
+		const nodeTypeRegistry = { register: jest.fn() };
 		const plugin = new SpacesHomeControlPlugin(
 			genericRegistry as never,
 			genericRegistry as never,
@@ -33,6 +35,8 @@ describe('SpacesHomeControlPlugin', () => {
 			heartbeat as never,
 			scheduler as never,
 			occupancy as never,
+			nodeTypeRegistry as never,
+			{ create: () => [card] } as never,
 		);
 
 		plugin.onModuleInit();
@@ -40,5 +44,6 @@ describe('SpacesHomeControlPlugin', () => {
 		expect(register).toHaveBeenCalledWith(heartbeat);
 		expect(register).toHaveBeenCalledWith(scheduler);
 		expect(register).toHaveBeenCalledWith(occupancy);
+		expect(nodeTypeRegistry.register).toHaveBeenCalledWith(card);
 	});
 });
