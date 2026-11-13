@@ -27,9 +27,10 @@ const CAMERA_CATEGORIES: DeviceCategory[] = [DeviceCategory.CAMERA, DeviceCatego
 export class CamerasService {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'CamerasService');
 
-	private readonly profileLookups = new Map<
-		string,
-		{ promise: Promise<CameraStreamProfile[]>; controller: AbortController }
+	// Keyed by provider instance, then device: a replacement provider never joins its predecessor's pending call.
+	private readonly profileLookups = new WeakMap<
+		ICameraStreamProvider,
+		Map<string, { promise: Promise<CameraStreamProfile[]>; controller: AbortController }>
 	>();
 
 	constructor(
@@ -144,11 +145,19 @@ export class CamerasService {
 	}
 
 	/**
-	 * Lists profiles, coalescing calls per device: while a provider call has not settled, later callers join it instead
+	 * Lists profiles, coalescing calls per provider instance and device: while a provider call has not settled, later callers join it instead
 	 * of starting another one. Each caller keeps its own timeout, so a provider that never answers cannot pile up work.
 	 */
 	private listProfiles(device: DeviceEntity, provider: ICameraStreamProvider): Promise<CameraStreamProfile[]> {
-		let entry = this.profileLookups.get(device.id);
+		let lookups = this.profileLookups.get(provider);
+
+		if (!lookups) {
+			lookups = new Map();
+			this.profileLookups.set(provider, lookups);
+		}
+
+		const pending = lookups;
+		let entry = pending.get(device.id);
 
 		if (!entry) {
 			const controller = new AbortController();
@@ -156,11 +165,11 @@ export class CamerasService {
 			const created = { promise: lookup, controller };
 
 			entry = created;
-			this.profileLookups.set(device.id, created);
+			pending.set(device.id, created);
 
 			const release = (): void => {
-				if (this.profileLookups.get(device.id) === created) {
-					this.profileLookups.delete(device.id);
+				if (pending.get(device.id) === created) {
+					pending.delete(device.id);
 				}
 			};
 

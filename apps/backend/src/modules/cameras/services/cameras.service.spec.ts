@@ -233,6 +233,34 @@ describe('CamerasService', () => {
 			}
 		});
 
+		it('does not let a replacement provider join the old provider pending lookup', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const providerB = provider('devices-a');
+
+				providerA.listProfiles.mockReturnValue(new Promise(() => undefined));
+				providerB.listProfiles.mockResolvedValue([{ id: 'pb', channelId: 'ch1', available: true }]);
+
+				const first = service.resolveProfile(camera, providerA).catch((e: unknown) => e);
+
+				await jest.advanceTimersByTimeAsync(1);
+
+				await expect(service.findProfileById(camera, providerB, 'pb')).resolves.toMatchObject({ id: 'pb' });
+				expect(providerB.listProfiles.mock.calls).toHaveLength(1);
+
+				const again = service.resolveProfile(camera, providerA).catch((e: unknown) => e);
+
+				await jest.advanceTimersByTimeAsync(10_001);
+
+				expect(await first).toBeInstanceOf(CameraProviderTimeoutError);
+				expect(await again).toBeInstanceOf(CameraProviderTimeoutError);
+				expect(providerA.listProfiles.mock.calls).toHaveLength(1);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
 		it('clears the entry when the provider call is rejected', async () => {
 			providerA.listProfiles.mockRejectedValueOnce(new Error('boom'));
 
