@@ -33,7 +33,10 @@ export const GO2RTC_API_USERNAME = 'smart-panel';
 
 export const GO2RTC_CONFIG_DIRNAME = 'go2rtc';
 
-export const GO2RTC_CONFIG_FILENAME = 'go2rtc.yaml';
+/** A spawn writes `<prefix><random nonce><suffix>`: the name is the proof that a service on the api port is our child. */
+export const GO2RTC_CONFIG_FILE_PREFIX = 'go2rtc-';
+
+export const GO2RTC_CONFIG_FILE_SUFFIX = '.yaml';
 
 export const GO2RTC_STOP_GRACE_MS = 5_000;
 

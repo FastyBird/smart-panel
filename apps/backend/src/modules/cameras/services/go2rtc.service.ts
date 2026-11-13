@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { accessSync, chmodSync, constants, mkdirSync, rmSync, writeFileSync } from 'fs';
+import { accessSync, chmodSync, constants, mkdirSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
@@ -15,7 +15,8 @@ import {
 	CAMERAS_MODULE_NAME,
 	GO2RTC_API_USERNAME,
 	GO2RTC_CONFIG_DIRNAME,
-	GO2RTC_CONFIG_FILENAME,
+	GO2RTC_CONFIG_FILE_PREFIX,
+	GO2RTC_CONFIG_FILE_SUFFIX,
 	GO2RTC_DEFAULT_API_PORT,
 	GO2RTC_DEFAULT_RTSP_PORT,
 	GO2RTC_PROBE_INTERVAL_MS,
@@ -79,6 +80,9 @@ interface ManagedRun {
 }
 
 const OUTPUT_TAIL_LINES = 5;
+const CONFIG_FILE_PATTERN = new RegExp(
+	`^${GO2RTC_CONFIG_FILE_PREFIX}[A-Za-z0-9_-]+${GO2RTC_CONFIG_FILE_SUFFIX.replace('.', '\\.')}$`,
+);
 const PROBE_FAILURES_BEFORE_RESTART = 2;
 
 /**
@@ -91,7 +95,9 @@ const PROBE_FAILURES_BEFORE_RESTART = 2;
  * the service heals itself on retry or config change.
  *
  * go2rtc persists registered streams, source urls included, into the config file it was started with, so the file is
- * deleted whenever the child stops and regenerated, with a fresh api password, on every spawn. The config file
+ * deleted whenever the child stops and regenerated, with a fresh api password, on every spawn. Its name carries a
+ * random nonce: the api answers with the path of the config it runs, and only our child can know that exact path, so a
+ * different service squatting on the api port is recognised before any credential or camera source is sent to it. The config file
  * operations are synchronous on purpose: they are tiny, happen only on lifecycle changes, and keep each state
  * transition free of interleaved I/O.
  */
@@ -333,7 +339,10 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 		const apiPort = getEnvValue<number>(this.nestConfigService, 'FB_GO2RTC_API_PORT', GO2RTC_DEFAULT_API_PORT);
 		const rtspPort = getEnvValue<number>(this.nestConfigService, 'FB_GO2RTC_RTSP_PORT', GO2RTC_DEFAULT_RTSP_PORT);
 		const configDir = this.getConfigDir();
-		const configPath = this.getConfigPath();
+		const configPath = join(
+			configDir,
+			`${GO2RTC_CONFIG_FILE_PREFIX}${randomBytes(16).toString('base64url')}${GO2RTC_CONFIG_FILE_SUFFIX}`,
+		);
 		const password = randomBytes(24).toString('base64url');
 		const releasePassword = this.secrets.add(password);
 
@@ -345,7 +354,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			);
 		} catch (error) {
 			this.logger.error(`go2rtc config could not be written error=${errorName(error)}`);
-			this.removeConfigFile();
+			this.removeConfigFiles();
 			releasePassword();
 			this.noteFailure(epoch, 'crashed');
 
@@ -632,7 +641,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			return false;
 		}
 
-		this.removeConfigFile();
+		this.removeConfigFiles();
 
 		return true;
 	}
@@ -696,7 +705,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 
 		await this.processService.stop();
 
-		this.removeConfigFile();
+		this.removeConfigFiles();
 	}
 
 	// ---- config file ----
@@ -711,24 +720,30 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 		return join(resolve(root), GO2RTC_CONFIG_DIRNAME);
 	}
 
-	private getConfigPath(): string {
-		return join(this.getConfigDir(), GO2RTC_CONFIG_FILENAME);
-	}
-
 	private writeConfigFile(configDir: string, configPath: string, content: string): void {
 		mkdirSync(configDir, { recursive: true, mode: 0o700 });
+		// `mkdir` leaves the mode of a directory that already exists alone.
 		chmodSync(configDir, 0o700);
-		// A file left by an earlier crash may carry wider permissions: replace it instead of writing into it.
-		rmSync(configPath, { force: true });
+		// Files left by an earlier crash carry streams and an old password.
+		this.removeConfigFiles();
 		writeFileSync(configPath, content, { mode: 0o600, flag: 'wx' });
 		chmodSync(configPath, 0o600);
 	}
 
-	private removeConfigFile(): void {
+	/** Deletes every per-spawn config file in the go2rtc config directory (there is at most one child). */
+	private removeConfigFiles(): void {
+		const configDir = this.getConfigDir();
+
 		try {
-			rmSync(this.getConfigPath(), { force: true });
+			for (const name of readdirSync(configDir)) {
+				if (CONFIG_FILE_PATTERN.test(name)) {
+					rmSync(join(configDir, name), { force: true });
+				}
+			}
 		} catch (error) {
-			this.logger.warn(`go2rtc config file could not be removed error=${errorName(error)}`);
+			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+				this.logger.warn(`go2rtc config files could not be removed error=${errorName(error)}`);
+			}
 		}
 	}
 

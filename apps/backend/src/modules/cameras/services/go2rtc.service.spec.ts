@@ -1,4 +1,14 @@
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from 'fs';
 import { createServer } from 'net';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -67,7 +77,10 @@ describe('Go2rtcService', () => {
 	let createClientSpy: jest.SpyInstance<Go2rtcApiClient, [Go2rtcEndpoint]>;
 	let logSpies: jest.SpyInstance[];
 
-	const yamlPath = (): string => join(configDir, 'go2rtc', 'go2rtc.yaml');
+	const goDir = (): string => join(configDir, 'go2rtc');
+	/** The config file of the most recent spawn. */
+	const yamlPath = (): string => fakeProcess.options?.configPath ?? '';
+	const configFiles = (): string[] => (existsSync(goDir()) ? readdirSync(goDir()).sort() : []);
 	const loggedCalls = (): string => JSON.stringify(logSpies.map((spy) => spy.mock.calls as unknown[][]));
 	const settle = (): Promise<void> => jest.advanceTimersByTimeAsync(0);
 	const crash = (): void => fakeProcess.exit({ code: 1 });
@@ -215,9 +228,9 @@ describe('Go2rtcService', () => {
 			await service.start();
 
 			expect(statSync(yamlPath()).mode & 0o777).toBe(0o600);
-			expect(statSync(join(configDir, 'go2rtc')).mode & 0o777).toBe(0o700);
+			expect(statSync(goDir()).mode & 0o777).toBe(0o700);
 			expect(readFileSync(yamlPath(), 'utf8')).toContain('listen: 127.0.0.1:41984');
-			expect(fakeProcess.options).toEqual({ binaryPath, configPath: yamlPath(), cwd: join(configDir, 'go2rtc') });
+			expect(fakeProcess.options).toEqual({ binaryPath, configPath: yamlPath(), cwd: goDir() });
 		});
 
 		it('spawns with starting status first and talks to the api with basic auth', async () => {
@@ -279,6 +292,61 @@ describe('Go2rtcService', () => {
 			await jest.advanceTimersByTimeAsync(120_000);
 
 			expect(fakeProcess.start).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['the old fixed config path', () => join(configDir, 'go2rtc', 'go2rtc.yaml')],
+			['a path with another nonce', () => join(configDir, 'go2rtc', 'go2rtc-AAAAAAAAAAAAAAAAAAAAAA.yaml')],
+		])('refuses a service that echoes %s', async (_name, foreignPath) => {
+			client.getInfo.mockImplementation(() => Promise.resolve({ version: '1.9.9', configPath: foreignPath() }));
+
+			await service.start();
+			await settle();
+
+			expect(service.getStatus()).toMatchObject({ state: 'error', reason: 'port_in_use', version: null });
+			expect(fakeProcess.stop).toHaveBeenCalled();
+			expect(service.getClient()).toBeNull();
+		});
+
+		it('uses a different random config file name for every spawn', async () => {
+			await startRunning();
+
+			const first = yamlPath();
+
+			expect(first).toMatch(/\/go2rtc-[A-Za-z0-9_-]{22}\.yaml$/);
+			expect(first.startsWith(`${goDir()}/`)).toBe(true);
+
+			crash();
+			await jest.advanceTimersByTimeAsync(GO2RTC_RESTART_BACKOFF_MS[0]);
+			await settle();
+
+			expect(fakeProcess.start).toHaveBeenCalledTimes(2);
+			expect(yamlPath()).not.toBe(first);
+			expect(yamlPath()).toMatch(/\/go2rtc-[A-Za-z0-9_-]{22}\.yaml$/);
+			expect(configFiles()).toEqual([yamlPath().split('/').pop()]);
+		});
+
+		it('tightens an existing config directory to 0700', async () => {
+			mkdirSync(goDir(), { recursive: true, mode: 0o755 });
+			chmodSync(goDir(), 0o755);
+
+			await service.start();
+
+			expect(statSync(goDir()).mode & 0o777).toBe(0o700);
+		});
+
+		it('removes stale per-spawn config files before a spawn and leaves unrelated files alone', async () => {
+			mkdirSync(goDir(), { recursive: true });
+			writeFileSync(join(goDir(), 'go2rtc-STALEFILE0123456789ab.yaml'), 'streams: {}\n', { mode: 0o644 });
+			writeFileSync(join(goDir(), 'notes.txt'), 'keep');
+
+			await service.start();
+
+			expect(configFiles()).toEqual([yamlPath().split('/').pop(), 'notes.txt'].sort());
+
+			await service.stop();
+
+			expect(configFiles()).toEqual(['notes.txt']);
 		});
 
 		it('refuses a service that answers the unauthenticated probe when readiness times out', async () => {
@@ -731,6 +799,12 @@ describe('Go2rtcService with the stub binary', () => {
 	let nestConfig: { get: jest.Mock };
 	let secrets: Go2rtcSecretsRegistry;
 
+	const stubConfigFiles = (): string[] => {
+		const dir = join(workDir, 'config', 'go2rtc');
+
+		return existsSync(dir) ? readdirSync(dir) : [];
+	};
+
 	async function freePort(): Promise<number> {
 		const server = createServer();
 
@@ -812,22 +886,23 @@ describe('Go2rtcService with the stub binary', () => {
 			version: '1.9.9-stub',
 		});
 		expect(service.getClient()).toBeInstanceOf(Go2rtcApiClient);
-		expect(existsSync(join(workDir, 'config', 'go2rtc', 'go2rtc.yaml'))).toBe(true);
+		expect(stubConfigFiles()).toHaveLength(1);
 
 		await service.stop();
 
 		expect(service.getStatus()).toMatchObject({ state: 'disabled', reason: 'module_disabled' });
-		expect(existsSync(join(workDir, 'config', 'go2rtc', 'go2rtc.yaml'))).toBe(false);
+		expect(stubConfigFiles()).toEqual([]);
 		expect(secrets.list()).toEqual([]);
 	});
 
-	it('refuses a stub that reports a different config_path', async () => {
-		service = await createService('/etc/frigate/go2rtc.yaml');
+	it('refuses a stub that echoes the old fixed config path', async () => {
+		// A squatter that guesses the old fixed config path.
+		service = await createService(join(workDir, 'config', 'go2rtc', 'go2rtc.yaml'));
 
 		await service.start();
 		await waitFor(() => service.getStatus().state !== 'starting');
 
 		expect(service.getStatus()).toMatchObject({ state: 'error', reason: 'port_in_use' });
-		expect(existsSync(join(workDir, 'config', 'go2rtc', 'go2rtc.yaml'))).toBe(false);
+		expect(stubConfigFiles()).toEqual([]);
 	});
 });
