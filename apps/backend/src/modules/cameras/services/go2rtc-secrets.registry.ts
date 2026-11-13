@@ -11,10 +11,13 @@ const MIN_SECRET_LENGTH = 8;
 export class Go2rtcSecretsRegistry {
 	private readonly counts = new Map<string, number>();
 
-	/** Returns the removal handle. Strings shorter than 8 characters are ignored (the handle is then a no-op). */
+	/**
+	 * Returns the removal handle. Throws for a value that cannot be redacted reliably (not a string, or shorter than 8
+	 * characters) so that a caller never believes a secret is protected when it is not. The message never carries the value.
+	 */
 	add(secret: string): () => void {
 		if (typeof secret !== 'string' || secret.length < MIN_SECRET_LENGTH) {
-			return () => undefined;
+			throw new TypeError('Secret is too short to redact');
 		}
 
 		this.counts.set(secret, (this.counts.get(secret) ?? 0) + 1);

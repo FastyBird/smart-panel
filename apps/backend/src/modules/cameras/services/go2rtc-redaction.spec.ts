@@ -38,6 +38,12 @@ describe('redactGo2rtcOutput', () => {
 		).toBe('dial <redacted> x');
 	});
 
+	it('does not double a url whose registered literal starts after the scheme', () => {
+		expect(redactGo2rtcOutput('rtsps://console:7441/ALIAS0123456789', ['console:7441/ALIAS0123456789'])).toBe(
+			'rtsps://<redacted>',
+		);
+	});
+
 	it('truncates long lines', () => {
 		expect(redactGo2rtcOutput('x'.repeat(5000), [])).toHaveLength(1024);
 	});

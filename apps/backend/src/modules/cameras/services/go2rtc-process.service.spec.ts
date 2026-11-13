@@ -125,6 +125,40 @@ describe('Go2rtcProcessService', () => {
 		expect(joined).toContain('stub password=<redacted>');
 	});
 
+	it('redacts a secret and a url that arrive in two writes with no newline in between', async () => {
+		secrets.add('PW_SENTINEL_abcdef0123');
+
+		startStub('split');
+		await sleep(100);
+
+		// Only the first halves have been written: they are held back, not stored.
+		const early = service.getOutputLines().join('\n');
+
+		expect(early).not.toContain('PW_SENT');
+		expect(early).not.toContain('SENTINEL');
+
+		await waitFor(() => service.getOutputLines().includes(STUB_GO2RTC_READY_LINE));
+
+		const lines = service.getOutputLines();
+		const joined = lines.join('\n');
+
+		expect(lines).toContain('stub split pw=<redacted>');
+		expect(lines).toContain('stub split url=rtsps://<redacted>');
+		expect(joined).not.toContain('PW_SENT');
+		expect(joined).not.toContain('SENTINEL');
+		expect(joined).not.toContain('ALIAS0123456789');
+	});
+
+	it('stores and redacts an unterminated tail when the child closes', async () => {
+		secrets.add('PW_SENTINEL_abcdef0123');
+
+		const exit = await exitOf('tail');
+
+		expect(exit).toEqual({ code: 0, signal: null, spawnErrorCode: null });
+		expect(service.getOutputLines()).toContain('stub tail rtsps://<redacted> pw=<redacted>');
+		expect(service.getOutputLines().join('\n')).not.toContain('SENTINELALIAS');
+	});
+
 	it('reports a crash through onExit once, with the output already flushed', async () => {
 		secrets.add('PW_SENTINEL_abcdef0123');
 

@@ -17,11 +17,24 @@ describe('Go2rtcSecretsRegistry', () => {
 		expect(registry.list()).toEqual([]);
 	});
 
-	it('ignores strings shorter than 8 characters', () => {
-		const release = registry.add('short');
+	it.each(['short', '', 'sevench', undefined, null, 12345678])('refuses %p without echoing it', (value) => {
+		let thrown: unknown;
 
+		try {
+			registry.add(value as unknown as string);
+		} catch (e) {
+			thrown = e;
+		}
+
+		expect(thrown).toBeInstanceOf(TypeError);
+		expect((thrown as Error).message).toBe('Secret is too short to redact');
 		expect(registry.list()).toEqual([]);
-		expect(() => release()).not.toThrow();
+	});
+
+	it('accepts a secret of exactly 8 characters', () => {
+		registry.add('12345678');
+
+		expect(registry.list()).toEqual(['12345678']);
 	});
 
 	it('keeps a literal while another handle still holds it', () => {
