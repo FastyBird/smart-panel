@@ -31,3 +31,12 @@ test('pin.env lists a version and one 64-hex checksum for each supported archite
 		assert.match(entries.get(key), /^[0-9a-f]{64}$/, key);
 	}
 });
+
+test('THIRD-PARTY-NOTICES.md names go2rtc, its MIT licence and reproduces the pinned licence text verbatim', () => {
+	const notices = read('THIRD-PARTY-NOTICES.md');
+
+	assert.ok(notices.includes('go2rtc'));
+	assert.ok(notices.includes('MIT'));
+	assert.ok(notices.includes('https://github.com/AlexxIT/go2rtc'));
+	assert.ok(notices.includes(read('build/go2rtc/LICENSE').trim()));
+});
