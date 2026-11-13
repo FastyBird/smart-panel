@@ -6,6 +6,8 @@ export type StubGo2rtcMode = 'run' | 'crash' | 'ignore-sigterm' | 'flood' | 'spl
 export interface StubGo2rtcOptions {
 	/** `serve` mode: the `config_path` the stub reports instead of its `-config` argument (a foreign service). */
 	reportedConfigPath?: string;
+	/** `serve` mode: the body `GET /api/config` returns instead of the `-config` file (a foreign service). */
+	reportedConfigText?: string;
 }
 
 export const STUB_GO2RTC_READY_LINE = 'stub signal handlers ready';
@@ -18,8 +20,8 @@ export const STUB_GO2RTC_READY_LINE = 'stub signal handlers ready';
  * writes the password (stdout) and a source url (stderr) in two halves 300 ms apart, newline only after the second
  * half. `tail` writes an unterminated line holding both secrets and exits 0. `serve` reads the `-config` file it was
  * given, listens on its `api.listen` address and answers `GET /api` with
- * `{ version, revision, config_path, host }` when the `Authorization` header matches the file's `api` credentials
- * (401 otherwise), like go2rtc's `app.Info`.
+ * `{ version, revision, config_path, host }` (like go2rtc's `app.Info`) and `GET /api/config` with the config file content,
+ * both only when the `Authorization` header matches the file's `api` credentials (401 otherwise).
  */
 export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options: StubGo2rtcOptions = {}): string {
 	const script = [
@@ -39,6 +41,7 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 		'  process.on("SIGTERM", () => {});',
 		'}',
 		`const reportedConfigPath = ${JSON.stringify(options.reportedConfigPath ?? null)};`,
+		`const reportedConfigText = ${JSON.stringify(options.reportedConfigText ?? null)};`,
 		SERVE_SOURCE,
 		'if (mode === "tail") {',
 		'  process.stdout.write("stub tail rtsps://console:7441/SENTINELALIAS0123456789 pw=PW_SENTINEL_abcdef0123");',
@@ -98,7 +101,7 @@ if (mode === "serve") {
   const host = cfg.api.listen;
   http
     .createServer((req, res) => {
-      if (req.method !== "GET" || req.url !== "/api") {
+      if (req.method !== "GET" || (req.url !== "/api" && req.url !== "/api/config")) {
         res.writeHead(404);
         res.end();
         return;
@@ -106,6 +109,11 @@ if (mode === "serve") {
       if (req.headers.authorization !== expected) {
         res.writeHead(401);
         res.end("Unauthorized");
+        return;
+      }
+      if (req.url === "/api/config") {
+        res.writeHead(200, { "content-type": "application/yaml" });
+        res.end(reportedConfigText === null ? fs.readFileSync(configPath, "utf8") : reportedConfigText);
         return;
       }
       res.writeHead(200, { "content-type": "application/json" });

@@ -16,7 +16,7 @@ import { join } from 'path';
 import { Logger } from '@nestjs/common';
 
 import { FAKE_CAMERA_SECRET_URL } from '../../../../test/support/fake-camera-stream.provider';
-import { writeStubGo2rtcScript } from '../../../../test/support/stub-go2rtc.script';
+import { StubGo2rtcOptions, writeStubGo2rtcScript } from '../../../../test/support/stub-go2rtc.script';
 import { GO2RTC_RESTART_BACKOFF_MS } from '../cameras.constants';
 import { Go2rtcApiError, Go2rtcUnavailableException } from '../cameras.exceptions';
 import { CamerasConfigModel, CamerasGo2rtcConfigModel } from '../models/config.model';
@@ -61,7 +61,7 @@ class FakeProcess {
 	}
 }
 
-type MockClient = { getInfo: jest.Mock };
+type MockClient = { getInfo: jest.Mock; getConfigText: jest.Mock };
 
 describe('Go2rtcService', () => {
 	let workDir: string;
@@ -84,6 +84,8 @@ describe('Go2rtcService', () => {
 	const loggedCalls = (): string => JSON.stringify(logSpies.map((spy) => spy.mock.calls as unknown[][]));
 	const settle = (): Promise<void> => jest.advanceTimersByTimeAsync(0);
 	const crash = (): void => fakeProcess.exit({ code: 1 });
+	const readInstanceSecret = (): string =>
+		/^# smart-panel-instance (\S+)$/m.exec(readFileSync(yamlPath(), 'utf8'))?.[1] ?? '';
 	const readPassword = (): string => /^\s+password: (\S+)$/m.exec(readFileSync(yamlPath(), 'utf8'))?.[1] ?? '';
 
 	function createService(): Go2rtcService {
@@ -142,8 +144,13 @@ describe('Go2rtcService', () => {
 		fakeProcess = new FakeProcess();
 		client = {
 			getInfo: jest.fn().mockImplementation(() => Promise.resolve({ version: '1.9.9-stub', configPath: yamlPath() })),
+			// Serves back the file this spawn wrote, like go2rtc's `GET /api/config`.
+			getConfigText: jest.fn().mockImplementation(() => Promise.resolve(readFileSync(yamlPath(), 'utf8'))),
 		};
-		probeClient = { getInfo: jest.fn().mockRejectedValue(new Go2rtcApiError(null)) };
+		probeClient = {
+			getInfo: jest.fn().mockRejectedValue(new Go2rtcApiError(null)),
+			getConfigText: jest.fn().mockRejectedValue(new Go2rtcApiError(null)),
+		};
 		service = createService();
 	});
 
@@ -256,10 +263,10 @@ describe('Go2rtcService', () => {
 			expect(service.getClient()).toBe(client);
 		});
 
-		it('registers the api password while the child lives and releases it afterwards', async () => {
+		it('registers the api password and the instance secret while the child lives and releases it afterwards', async () => {
 			await startRunning();
 
-			expect(secrets.list()).toEqual([readPassword()]);
+			expect([...secrets.list()].sort()).toEqual([readPassword(), readInstanceSecret()].sort());
 
 			await service.stop();
 
@@ -347,6 +354,82 @@ describe('Go2rtcService', () => {
 			await service.stop();
 
 			expect(configFiles()).toEqual(['notes.txt']);
+		});
+
+		it('writes the instance secret as the first line of the config and keeps it out of the spawn arguments', async () => {
+			await service.start();
+
+			const secret = readInstanceSecret();
+
+			expect(secret).toMatch(/^[A-Za-z0-9_-]{32}$/);
+			expect(readFileSync(yamlPath(), 'utf8').split('\n')[0]).toBe(`# smart-panel-instance ${secret}`);
+			expect(JSON.stringify(fakeProcess.start.mock.calls)).not.toContain(secret);
+			expect(secrets.list()).toContain(secret);
+
+			await service.stop();
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('uses a new instance secret for every spawn', async () => {
+			await startRunning();
+
+			const first = readInstanceSecret();
+
+			crash();
+			await jest.advanceTimersByTimeAsync(GO2RTC_RESTART_BACKOFF_MS[0]);
+			await settle();
+
+			expect(readInstanceSecret()).not.toBe(first);
+		});
+
+		it('becomes running only after /api/config serves the instance line back', async () => {
+			await startRunning();
+
+			expect(client.getConfigText).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['no instance line', () => 'api:\n  listen: 127.0.0.1:41984\n'],
+			['another instance secret', () => '# smart-panel-instance WRONGSECRET0123456789abcdefghij\napi:\n'],
+			['the line only as part of another line', () => `x ${readFileSync(yamlPath(), 'utf8').split('\n')[0]}\napi:\n`],
+		])('refuses a service with the right config_path but %s', async (_name, body) => {
+			client.getConfigText.mockImplementation(() => Promise.resolve(body()));
+
+			await service.start();
+			await settle();
+
+			expect(service.getStatus()).toMatchObject({ state: 'error', reason: 'port_in_use', version: null });
+			expect(fakeProcess.stop).toHaveBeenCalled();
+			expect(service.getClient()).toBeNull();
+			expect(existsSync(yamlPath())).toBe(false);
+
+			await jest.advanceTimersByTimeAsync(120_000);
+
+			expect(fakeProcess.start).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps polling while /api/config cannot be read yet', async () => {
+			client.getConfigText.mockRejectedValueOnce(new Go2rtcApiError(null));
+
+			await service.start();
+			await settle();
+
+			expect(service.getStatus().state).toBe('starting');
+
+			await jest.advanceTimersByTimeAsync(250);
+
+			expect(service.getStatus().state).toBe('running');
+		});
+
+		it('checks the instance line at readiness only, not on the periodic probe', async () => {
+			await startRunning();
+
+			client.getConfigText.mockResolvedValue('api:\n');
+			await jest.advanceTimersByTimeAsync(120_000);
+
+			expect(client.getConfigText).toHaveBeenCalledTimes(1);
+			expect(service.getStatus().state).toBe('running');
 		});
 
 		it('refuses a service that answers the unauthenticated probe when readiness times out', async () => {
@@ -750,13 +833,20 @@ describe('Go2rtcService', () => {
 			await startRunning();
 
 			const passwords: string[] = [];
+			const instanceSecrets: string[] = [];
+			const statuses: Go2rtcRelayStatus[] = [];
+
+			service.subscribe((status) => statuses.push(status));
 
 			// Crash the child until the service gives up; every ring tail carries the sentinels.
 			for (let attempt = 0; attempt <= GO2RTC_RESTART_BACKOFF_MS.length; attempt++) {
 				const password = readPassword();
 
+				const instanceSecret = readInstanceSecret();
+
 				passwords.push(password);
-				fakeProcess.lines = [`source ${FAKE_CAMERA_SECRET_URL}`, `auth ${password}`];
+				instanceSecrets.push(instanceSecret);
+				fakeProcess.lines = [`source ${FAKE_CAMERA_SECRET_URL}`, `auth ${password}`, `instance ${instanceSecret}`];
 				crash();
 				await jest.advanceTimersByTimeAsync(GO2RTC_RESTART_BACKOFF_MS[attempt] ?? 0);
 				await settle();
@@ -770,8 +860,9 @@ describe('Go2rtcService', () => {
 			expect(logged).toContain('go2rtc output:');
 			expect(logged).not.toContain('SENTINELALIAS');
 
-			for (const password of passwords) {
-				expect(logged).not.toContain(password);
+			for (const secret of [...passwords, ...instanceSecrets]) {
+				expect(logged).not.toContain(secret);
+				expect(JSON.stringify(statuses)).not.toContain(secret);
 			}
 		});
 
@@ -798,6 +889,7 @@ describe('Go2rtcService with the stub binary', () => {
 	let config: CamerasConfigModel;
 	let nestConfig: { get: jest.Mock };
 	let secrets: Go2rtcSecretsRegistry;
+	let processService: Go2rtcProcessService;
 
 	const stubConfigFiles = (): string[] => {
 		const dir = join(workDir, 'config', 'go2rtc');
@@ -829,9 +921,9 @@ describe('Go2rtcService with the stub binary', () => {
 		}
 	}
 
-	async function createService(reportedConfigPath?: string): Promise<Go2rtcService> {
+	async function createService(options: StubGo2rtcOptions = {}): Promise<Go2rtcService> {
 		const port = await freePort();
-		const binaryPath = writeStubGo2rtcScript(workDir, 'serve', { reportedConfigPath });
+		const binaryPath = writeStubGo2rtcScript(workDir, 'serve', options);
 
 		config = Object.assign(new CamerasConfigModel(), {
 			go2rtc: Object.assign(new CamerasGo2rtcConfigModel(), { mode: 'managed', binaryPath }),
@@ -848,11 +940,12 @@ describe('Go2rtcService with the stub binary', () => {
 			}),
 		};
 		secrets = new Go2rtcSecretsRegistry();
+		processService = new Go2rtcProcessService(secrets);
 
 		return new Go2rtcService(
 			{ getModuleConfig: jest.fn(() => config) } as never,
 			nestConfig as never,
-			new Go2rtcProcessService(secrets),
+			processService,
 			secrets,
 		);
 	}
@@ -888,6 +981,14 @@ describe('Go2rtcService with the stub binary', () => {
 		expect(service.getClient()).toBeInstanceOf(Go2rtcApiClient);
 		expect(stubConfigFiles()).toHaveLength(1);
 
+		// The instance secret is in the file but in neither the spawn arguments nor the (redacted) output ring.
+		const configFile = join(workDir, 'config', 'go2rtc', stubConfigFiles()[0]);
+		const secret = /^# smart-panel-instance (\S+)$/m.exec(readFileSync(configFile, 'utf8'))?.[1] ?? '';
+
+		expect(secret).toHaveLength(32);
+		expect(processService.getOutputLines().some((line) => line.startsWith('stub argv='))).toBe(true);
+		expect(processService.getOutputLines().join('\n')).not.toContain(secret);
+
 		await service.stop();
 
 		expect(service.getStatus()).toMatchObject({ state: 'disabled', reason: 'module_disabled' });
@@ -895,9 +996,20 @@ describe('Go2rtcService with the stub binary', () => {
 		expect(secrets.list()).toEqual([]);
 	});
 
+	it('refuses a stub that echoes the right config_path but serves a config without the instance secret', async () => {
+		// The squatter learns the path from the process arguments, but cannot read the 0600 file.
+		service = await createService({ reportedConfigText: 'api:\n  listen: 127.0.0.1:1\n' });
+
+		await service.start();
+		await waitFor(() => service.getStatus().state !== 'starting');
+
+		expect(service.getStatus()).toMatchObject({ state: 'error', reason: 'port_in_use' });
+		expect(stubConfigFiles()).toEqual([]);
+	});
+
 	it('refuses a stub that echoes the old fixed config path', async () => {
 		// A squatter that guesses the old fixed config path.
-		service = await createService(join(workDir, 'config', 'go2rtc', 'go2rtc.yaml'));
+		service = await createService({ reportedConfigPath: join(workDir, 'config', 'go2rtc', 'go2rtc.yaml') });
 
 		await service.start();
 		await waitFor(() => service.getStatus().state !== 'starting');

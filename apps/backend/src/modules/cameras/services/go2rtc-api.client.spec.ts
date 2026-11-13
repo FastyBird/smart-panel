@@ -16,6 +16,7 @@ class StubServer {
 	lastHeaders: IncomingHttpHeaders = {};
 
 	private readonly replies = new Map<string, { status: number; body: unknown }>();
+	private readonly textReplies = new Map<string, { status: number; text: string }>();
 	private readonly server: Server;
 	private hang = false;
 
@@ -34,6 +35,15 @@ class StubServer {
 				return;
 			}
 
+			const text = this.textReplies.get(`${req.method} ${url.pathname}`);
+
+			if (text) {
+				res.writeHead(text.status, { 'content-type': 'application/yaml' });
+				res.end(text.text);
+
+				return;
+			}
+
 			const reply = this.replies.get(`${req.method} ${url.pathname}`) ?? { status: 200, body: {} };
 
 			res.writeHead(reply.status, { 'content-type': 'application/json' });
@@ -43,6 +53,10 @@ class StubServer {
 
 	reply(key: string, status: number, body: unknown): void {
 		this.replies.set(key, { status, body });
+	}
+
+	replyText(key: string, status: number, text: string): void {
+		this.textReplies.set(key, { status, text });
 	}
 
 	neverAnswer(): void {
@@ -106,6 +120,29 @@ describe('Go2rtcApiClient', () => {
 		stub.reply('GET /api', 200, { version: '<script>' });
 
 		expect(await client.getInfo()).toEqual({ version: null, configPath: null });
+	});
+
+	it('reads the raw config text with the authorization header', async () => {
+		stub.replyText('GET /api/config', 200, '# smart-panel-instance abc\napi:\n  listen: 127.0.0.1:1\n');
+
+		expect(await client.getConfigText()).toBe('# smart-panel-instance abc\napi:\n  listen: 127.0.0.1:1\n');
+		expect(stub.lastHeaders.authorization).toBe('Basic c3A6cHc=');
+	});
+
+	it('rejects a config text over 64 KiB and a failing config request', async () => {
+		stub.replyText('GET /api/config', 200, 'x'.repeat(64 * 1024 + 1));
+
+		await expect(client.getConfigText()).rejects.toMatchObject({ name: 'Go2rtcApiError', status: null });
+
+		stub.replyText('GET /api/config', 401, 'Unauthorized');
+
+		await expect(client.getConfigText()).rejects.toMatchObject({ name: 'Go2rtcApiError', status: 401 });
+	});
+
+	it('accepts a config text of exactly 64 KiB', async () => {
+		stub.replyText('GET /api/config', 200, 'x'.repeat(64 * 1024));
+
+		expect(await client.getConfigText()).toHaveLength(64 * 1024);
 	});
 
 	it('puts a stream with name and src query parameters', async () => {

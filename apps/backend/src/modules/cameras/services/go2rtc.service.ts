@@ -71,7 +71,9 @@ interface ManagedRun {
 	ended: boolean;
 	configPath: string;
 	client: Go2rtcApiClient;
-	releasePassword: () => void;
+	/** The first line of the config file; the running instance must serve it back on `GET /api/config`. */
+	instanceLine: string;
+	releaseSecrets: () => void;
 	pollTimer: ReturnType<typeof setTimeout> | null;
 	deadlineTimer: ReturnType<typeof setTimeout> | null;
 	stableTimer: ReturnType<typeof setTimeout> | null;
@@ -84,6 +86,8 @@ const CONFIG_FILE_PATTERN = new RegExp(
 	`^${GO2RTC_CONFIG_FILE_PREFIX}[A-Za-z0-9_-]+${GO2RTC_CONFIG_FILE_SUFFIX.replace('.', '\\.')}$`,
 );
 const PROBE_FAILURES_BEFORE_RESTART = 2;
+
+const instanceLine = (secret: string): string => `# smart-panel-instance ${secret}`;
 
 /**
  * The go2rtc relay: runs it as a supervised child (`managed`), uses one that already exists (`external`), or does
@@ -344,18 +348,26 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			`${GO2RTC_CONFIG_FILE_PREFIX}${randomBytes(16).toString('base64url')}${GO2RTC_CONFIG_FILE_SUFFIX}`,
 		);
 		const password = randomBytes(24).toString('base64url');
+		// Unlike the config path, which `ps` shows, this never appears in the arguments: only a process that can read the
+		// 0600 config file, or that is our child, knows it.
+		const instanceSecret = randomBytes(24).toString('base64url');
 		const releasePassword = this.secrets.add(password);
+		const releaseInstanceSecret = this.secrets.add(instanceSecret);
+		const releaseSecrets = (): void => {
+			releasePassword();
+			releaseInstanceSecret();
+		};
 
 		try {
 			this.writeConfigFile(
 				configDir,
 				configPath,
-				buildGo2rtcConfig({ apiPort, rtspPort, username: GO2RTC_API_USERNAME, password }),
+				`${instanceLine(instanceSecret)}\n${buildGo2rtcConfig({ apiPort, rtspPort, username: GO2RTC_API_USERNAME, password })}`,
 			);
 		} catch (error) {
 			this.logger.error(`go2rtc config could not be written error=${errorName(error)}`);
 			this.removeConfigFiles();
-			releasePassword();
+			releaseSecrets();
 			this.noteFailure(epoch, 'crashed');
 
 			return;
@@ -370,7 +382,8 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 				baseUrl: `http://127.0.0.1:${apiPort}`,
 				authorization: `Basic ${Buffer.from(`${GO2RTC_API_USERNAME}:${password}`).toString('base64')}`,
 			}),
-			releasePassword,
+			instanceLine: instanceLine(instanceSecret),
+			releaseSecrets,
 			pollTimer: null,
 			deadlineTimer: null,
 			stableTimer: null,
@@ -422,14 +435,34 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			return;
 		}
 
-		if (info.configPath === run.configPath) {
-			this.onReady(run, info.version);
+		if (info.configPath !== run.configPath) {
+			// Something else answered on our api port: it is not our child.
+			await this.refuseForeignListener(run);
 
 			return;
 		}
 
-		// Something else answered on our api port: it is not our child.
-		await this.refuseForeignListener(run);
+		// The path is visible in the process arguments; the instance line in the file is not.
+		let configText: string | null = null;
+
+		try {
+			configText = await run.client.getConfigText();
+		} catch {
+			// Not served yet: keep polling until the deadline.
+		}
+
+		if (!this.isLive(run) || run.phase !== 'starting') {
+			return;
+		}
+
+		if (configText === null) {
+			run.pollTimer = setTimeout(() => void this.pollReady(run), GO2RTC_READY_POLL_MS);
+			run.pollTimer.unref?.();
+		} else if (configText.split(/\r?\n/).includes(run.instanceLine)) {
+			this.onReady(run, info.version);
+		} else {
+			await this.refuseForeignListener(run);
+		}
 	}
 
 	private onReady(run: ManagedRun, version: string | null): void {
@@ -669,7 +702,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			this.clearTimer(run, timer);
 		}
 
-		run.releasePassword();
+		run.releaseSecrets();
 	}
 
 	private clearTimer(run: ManagedRun, key: 'pollTimer' | 'deadlineTimer' | 'stableTimer' | 'probeTimer'): void {

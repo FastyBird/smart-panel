@@ -15,6 +15,8 @@ export interface Go2rtcInfo {
 
 const VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
 const MAX_CONFIG_PATH_LENGTH = 4096;
+const MAX_BODY_BYTES = 1024 * 1024;
+const MAX_CONFIG_TEXT_BYTES = 64 * 1024;
 
 /**
  * Thin client for the go2rtc HTTP API. Every failure rejects with a `Go2rtcApiError` that carries only the HTTP status
@@ -47,6 +49,13 @@ export class Go2rtcApiClient {
 		return { version, configPath };
 	}
 
+	/** The raw config file go2rtc runs with (`GET /api/config`, `application/yaml`), at most 64 KiB. */
+	async getConfigText(): Promise<string> {
+		const { body } = await this.request('GET', '/api/config', undefined, [], MAX_CONFIG_TEXT_BYTES);
+
+		return body;
+	}
+
 	async putStream(name: string, src: string): Promise<void> {
 		await this.request('PUT', '/api/streams', { name, src });
 	}
@@ -71,6 +80,7 @@ export class Go2rtcApiClient {
 		path: string,
 		query?: Record<string, string>,
 		acceptedStatuses: number[] = [],
+		maxBodyBytes: number = MAX_BODY_BYTES,
 	): Promise<{ status: number; body: string }> {
 		const url = new URL(`${this.baseUrl}${path}`);
 
@@ -90,7 +100,7 @@ export class Go2rtcApiClient {
 			});
 
 			status = response.status;
-			body = await response.text();
+			body = await readBounded(response, maxBodyBytes);
 		} catch {
 			throw new Go2rtcApiError(null);
 		}
@@ -101,6 +111,37 @@ export class Go2rtcApiClient {
 
 		return { status, body };
 	}
+}
+
+/** Reads the body as text and aborts, rejecting, once it grows past `maxBytes`. */
+async function readBounded(response: Response, maxBytes: number): Promise<string> {
+	if (response.body === null) {
+		return '';
+	}
+
+	const reader = response.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+
+	for (;;) {
+		const { done, value } = await reader.read();
+
+		if (done) {
+			break;
+		}
+
+		total += value.byteLength;
+
+		if (total > maxBytes) {
+			await reader.cancel().catch(() => undefined);
+
+			throw new Error('response too large');
+		}
+
+		chunks.push(value);
+	}
+
+	return Buffer.concat(chunks).toString('utf8');
 }
 
 function parseObject(body: string, status: number): Record<string, unknown> {
