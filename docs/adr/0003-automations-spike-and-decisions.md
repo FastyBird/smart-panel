@@ -195,13 +195,19 @@ eight releases since, the latest on the day of this ADR, no provenance attestati
 package metadata. The calculation is 80–150 lines and must handle polar day and night (no event that day), the
 local day rather than the UTC day, and offsets applied to the instant.
 
-As built (AU-16): `automations/time/sun.ts` follows the NOAA solar calculator, with each event computed again
-at its own estimate. A solar day is anchored to the calendar date at the longitude, and an event belongs to the
-local date of the instant it happens at in the house timezone. The trigger (`sun.event`) fires in the minute
-that holds the event moved by its offset (up to six hours either way); it works on instants, so a
-daylight-saving change does not move or repeat it, and one event fires once as for a time of day. The
-condition (`sun.daylight`) compares the altitude of the sun with -0.833°, the altitude of sunrise and sunset,
-so a polar day is day and a polar night is night. Tested against timeanddate.com tables to within a minute.
+As built (AU-16): `automations/time/sun.ts` takes the position of the sun from the NOAA solar calculator and
+finds sunrise and sunset as the crossings of -0.833° by the altitude itself: sampled every 10 minutes on a grid
+fixed to the epoch, refined by bisection, with turning points of the altitude searched so that a sun showing for
+only a minute or two near the polar night is not missed. Each crossing is found on its own, so the days around
+the midnight sun and the polar night keep every event, also a sunrise that comes after the last sunset. A solar
+day is anchored to the calendar date at the longitude, and an event belongs to the local date of the instant it
+happens at in the house timezone. The trigger (`sun.event`) fires at the first minute boundary at or after the
+event moved by its offset (up to six hours either way), so a day or night check right after a sunrise sees day
+and right after a sunset sees night; it works on instants, so a daylight-saving change does not move or repeat
+it, and one event fires once as for a time of day. The condition (`sun.daylight`) compares the altitude with the
+same -0.833°, so a polar day is day and a polar night is night. Tested against timeanddate.com tables to within
+a minute, and within three minutes on the days next to the polar transitions, where the sun crosses the horizon
+at a shallow angle.
 
 ### 12. Run history
 

@@ -2,6 +2,8 @@ import { localTimeAt } from './house-time';
 import {
 	GeoLocation,
 	SUN_HORIZON_ALTITUDE,
+	SUN_SAMPLE_MS,
+	horizonCrossings,
 	isDaytimeAt,
 	isGeoLocation,
 	meanSolarDateAt,
@@ -126,6 +128,110 @@ describe('sun', () => {
 		});
 	});
 
+	/*
+	 * The days around the start and the end of the midnight sun and the polar night at Tromsø, from the
+	 * timeanddate.com tables for 2026. Close to the transition the sunset can come after local midnight and
+	 * before the sunrise of the same local date, and a day can have one event without the other.
+	 *
+	 * On these days the sun crosses the horizon at a shallow angle, a hundredth of a degree a minute or
+	 * less, so the small difference between the NOAA model and the ephemeris behind the tables moves the
+	 * instant by a minute or two. The tolerance is three minutes here; what is tested is that every event
+	 * is there, on the right local date.
+	 */
+	describe('Tromsø, the transitions into the midnight sun and the polar night', () => {
+		it.each([
+			['2026-05-16', '01:32', null],
+			['2026-05-17', '01:17', '00:02'],
+			['2026-05-18', '00:52', '00:27'],
+			['2026-11-26', '10:56', '12:05'],
+			['2026-11-27', '11:20', '11:42'],
+		])('%s: sunrise %s, sunset %s, within three minutes', (date, sunrise, sunset) => {
+			const times = sunTimesOn(date, TROMSO, 'Europe/Oslo');
+
+			for (const [found, expected] of [
+				[times.sunrise, sunrise],
+				[times.sunset, sunset],
+			] as const) {
+				if (expected === null) {
+					expect(found).toBeNull();
+				} else {
+					expect(found).not.toBeNull();
+					expect(localTimeAt(found, 'Europe/Oslo').date).toBe(date);
+					expect(Math.abs(localMinutes(found, 'Europe/Oslo') - hm(expected))).toBeLessThanOrEqual(3);
+				}
+			}
+		});
+
+		it.each([
+			['the start of the midnight sun', '2026-05-12T00:00:00Z', '2026-05-22T00:00:00Z'],
+			['the end of the midnight sun', '2026-07-20T00:00:00Z', '2026-07-30T00:00:00Z'],
+			['the start of the polar night', '2026-11-22T00:00:00Z', '2026-12-01T00:00:00Z'],
+			['the end of the polar night', '2027-01-10T00:00:00Z', '2027-01-20T00:00:00Z'],
+		])('finds every crossing around %s that a scan by the half minute finds', (_name, from, to) => {
+			const start = Date.parse(from);
+			const end = Date.parse(to);
+			const scanned: string[] = [];
+
+			for (let at = start; at + 30_000 <= end; at += 30_000) {
+				const before = isDaytimeAt(at, TROMSO);
+
+				if (before !== isDaytimeAt(at + 30_000, TROMSO)) scanned.push(before ? 'sunset' : 'sunrise');
+			}
+
+			const found = horizonCrossings(start, end, TROMSO);
+
+			expect(found.map((crossing) => crossing.event)).toEqual(scanned);
+
+			for (const crossing of found) {
+				expect(isDaytimeAt(crossing.instant, TROMSO)).toBe(crossing.event === 'sunrise');
+				expect(isDaytimeAt(crossing.instant - 1, TROMSO)).toBe(crossing.event === 'sunset');
+			}
+		});
+
+		it('finds a sunrise and a sunset only minutes apart, between two samples of the altitude', () => {
+			// A little north of Tromsø the sun shows for about a minute and a half on the last day before the
+			// polar night, from 10:30:39 to 10:32:13 UTC - between the samples at 10:30 and 10:40
+			const north = { latitude: 69.669, longitude: 18.95 };
+			const start = Date.parse('2026-11-27T08:00:00Z');
+			const crossings = horizonCrossings(start, start + 6 * 60 * MINUTE, north);
+
+			expect(crossings.map((crossing) => crossing.event)).toEqual(['sunrise', 'sunset']);
+
+			const [sunrise, sunset] = crossings.map((crossing) => crossing.instant);
+
+			expect(sunset - sunrise).toBeGreaterThan(MINUTE);
+			expect(sunset - sunrise).toBeLessThan(SUN_SAMPLE_MS);
+			expect(Math.floor(sunrise / SUN_SAMPLE_MS)).toBe(Math.floor(sunset / SUN_SAMPLE_MS));
+			expect(isDaytimeAt(Math.round((sunrise + sunset) / 2), north)).toBe(true);
+			expect(
+				sunEventDueAt({ event: 'sunrise', offsetMinutes: 0 }, Math.ceil(sunrise / MINUTE) * MINUTE, north),
+			).toMatchObject({
+				instant: sunrise,
+			});
+		});
+
+		it.each([
+			['2026-05-19', 'day'],
+			['2026-11-28', 'night'],
+		])('%s has neither event: polar %s', (date, polar) => {
+			expect(sunTimesOn(date, TROMSO, 'Europe/Oslo')).toMatchObject({ sunrise: null, sunset: null, polar });
+		});
+
+		it('finds the last sunrise before the midnight sun, which happens after the last sunset', () => {
+			// 00:52 on 18 May in Tromsø
+			const sunrise = sunTimesOn('2026-05-18', TROMSO, 'Europe/Oslo').sunrise;
+			const minute = Math.ceil(sunrise / MINUTE) * MINUTE;
+
+			expect(new Date(sunrise).toISOString().slice(0, 13)).toBe('2026-05-17T22');
+			expect(sunEventDueAt({ event: 'sunrise', offsetMinutes: 0 }, minute, TROMSO)).toMatchObject({
+				event: 'sunrise',
+				instant: sunrise,
+			});
+			expect(isDaytimeAt(sunrise - MINUTE, TROMSO)).toBe(false);
+			expect(isDaytimeAt(sunrise + MINUTE, TROMSO)).toBe(true);
+		});
+	});
+
 	describe('a day without sunrise or sunset', () => {
 		it('has neither on a polar day, and it is day all through it', () => {
 			expect(sunTimesOn('2026-06-21', TROMSO, 'Europe/Oslo')).toEqual({
@@ -205,7 +311,8 @@ describe('sun', () => {
 
 	describe('a sun event due in a minute', () => {
 		const sunset = solarDay('2026-03-20', PRAGUE).sunset;
-		const minuteOf = (instant: number): number => Math.floor(instant / MINUTE) * MINUTE;
+		// The trigger fires at the first minute boundary at or after the event, when the sun has crossed
+		const minuteOf = (instant: number): number => Math.ceil(instant / MINUTE) * MINUTE;
 
 		it('is due in the minute that holds the event', () => {
 			const due = sunEventDueAt({ event: 'sunset', offsetMinutes: 0 }, minuteOf(sunset), PRAGUE);

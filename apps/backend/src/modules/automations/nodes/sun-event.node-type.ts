@@ -40,7 +40,8 @@ export const toSunEventSpec = (config: SunEventConfigDto): SunEventSpec => ({
  *
  * Sun times are computed locally from the house location (ADR 0003, decisions 10 and 11): no weather
  * service is involved. The event is an instant and the offset is added to that instant, so a
- * daylight-saving change neither moves nor repeats it. On a day the sun does not rise or set - a polar day
+ * daylight-saving change neither moves nor repeats it. It fires at the first minute boundary at or after
+ * that instant, so a "Day or night" check that follows sees the sun as having risen or set. On a day the sun does not rise or set - a polar day
  * or night - the trigger does not fire. Without a house location the card is unavailable: a graph using
  * it can not be enabled, and an enabled one does not fire until the location is set again.
  */

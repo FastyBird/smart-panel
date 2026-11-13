@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../config/services/config.service';
+import { AutomationRunContext } from '../graph/node-type';
+import { createSunDaylightNodeType } from '../nodes/sun-daylight.node-type';
 import { FakeWallClock } from '../testing/fake-wall-clock';
 import { SunEventFireData, solarDay } from '../time/sun';
 
@@ -381,7 +383,8 @@ describe('AutomationTimeSourceService', () => {
 			sunFired.push({ ...data, at: new Date(clock.now()).toISOString() });
 		};
 
-		const minuteOf = (instant: number): string => new Date(Math.floor(instant / 60_000) * 60_000).toISOString();
+		// A sun trigger fires at the first minute boundary at or after the event, once the sun has crossed
+		const minuteOf = (instant: number): string => new Date(Math.ceil(instant / 60_000) * 60_000).toISOString();
 
 		const locate = (location: { latitude: number; longitude: number } | null): void => {
 			latitude = location?.latitude ?? null;
@@ -500,6 +503,70 @@ describe('AutomationTimeSourceService', () => {
 			clock.advanceMinutes(2 * 60);
 
 			expect(sunFired).toHaveLength(1);
+		});
+
+		describe('followed by a day or night check', () => {
+			it.each([
+				[
+					'Prague, sunrise',
+					{ latitude: 50.0755, longitude: 14.4378 },
+					'Europe/Prague',
+					'2026-03-20T00:00:00Z',
+					'sunrise',
+					'day',
+				],
+				[
+					'Prague, sunset',
+					{ latitude: 50.0755, longitude: 14.4378 },
+					'Europe/Prague',
+					'2026-03-20T00:00:00Z',
+					'sunset',
+					'night',
+				],
+				[
+					'Sydney, sunrise',
+					{ latitude: -33.8667, longitude: 151.2167 },
+					'Australia/Sydney',
+					'2026-04-04T12:00:00Z',
+					'sunrise',
+					'day',
+				],
+				[
+					'Tromsø, the last sunrise before the midnight sun',
+					{ latitude: 69.65, longitude: 18.95 },
+					'Europe/Oslo',
+					'2026-05-17T12:00:00Z',
+					'sunrise',
+					'day',
+				],
+				[
+					'Tromsø, the last sunset before the polar night',
+					{ latitude: 69.65, longitude: 18.95 },
+					'Europe/Oslo',
+					'2026-11-27T00:00:00Z',
+					'sunset',
+					'night',
+				],
+			] as const)(
+				'%s: the check sees the sun as the trigger does',
+				async (_name, location, zone, from, event, state) => {
+					timezone = zone;
+					locate(location);
+					await start(from);
+
+					const daylight = createSunDaylightNodeType(service);
+					const checks: Promise<{ result: boolean }>[] = [];
+
+					service.onSunEvent({ event, offsetMinutes: 0 }, () => {
+						checks.push(daylight.evaluate({ state }, {} as AutomationRunContext));
+					});
+
+					clock.advanceMinutes(24 * 60);
+
+					expect(checks).toHaveLength(1);
+					await expect(checks[0]).resolves.toMatchObject({ result: true, observed: { state } });
+				},
+			);
 		});
 	});
 });

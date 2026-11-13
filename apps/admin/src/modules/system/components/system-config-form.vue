@@ -505,6 +505,17 @@ const rules = reactive<FormRules<ISystemConfigEditForm>>({
 	],
 });
 
+// Each coordinate is valid only together with the other one, so a change of either checks both: an error
+// left on the coordinate that was not touched would otherwise stay after the pair became valid
+watch(
+	(): [unknown, unknown] => [model.latitude, model.longitude],
+	(): void => {
+		formEl.value?.validateField(['latitude', 'longitude']).catch(() => {
+			// The errors are shown on the fields
+		});
+	}
+);
+
 watch(
 	(): FormResultType => formResult.value,
 	async (val: FormResultType): Promise<void> => {

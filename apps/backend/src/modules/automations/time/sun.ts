@@ -2,11 +2,14 @@
  * Sunrise, sunset and the position of the sun, computed locally. Framework-free (ADR 0003, decisions 11
  * and 15), with no dependency.
  *
- * The calculation is the one of the NOAA solar calculator (Jean Meeus, "Astronomical Algorithms"): the
- * declination of the sun and the equation of time from the Julian century, and the hour angle at which
- * the centre of the sun is 0.833° below the horizon - half its disc plus the standard refraction. Each
- * event is computed again at the instant it was first estimated for, which keeps it within a minute of
- * the published tables also at high latitudes.
+ * The position of the sun is the one of the NOAA solar calculator (Jean Meeus, "Astronomical
+ * Algorithms"): the declination of the sun and the equation of time from the Julian century. Sunrise and
+ * sunset are the instants the centre of the sun crosses 0.833° below the horizon - half its disc plus the
+ * standard refraction. They are found on the altitude itself, as it changes through the day: it is sampled
+ * on a fixed grid, and every crossing between two samples - or hidden between them by a turning point
+ * of the altitude, as on the days the sun only just dips below or rises above the horizon - is refined
+ * by bisection. Each crossing is found on its own, so the days around the midnight sun and the polar night
+ * get every event they have, also a sunset after local midnight that comes before the sunrise.
  *
  * Everything works on instants. A daylight-saving change therefore cannot move or repeat an event: it
  * only changes the local time it is shown at.
@@ -122,16 +125,6 @@ const solarParametersAt = (instant: number): SolarParameters => {
 	return { declination, equationOfTime };
 };
 
-/** The cosine of the hour angle at which the sun crosses the sunrise altitude */
-const horizonHourAngleCosine = (latitude: number, declination: number): number => {
-	const phi = toRad(latitude);
-
-	return (
-		(Math.sin(toRad(SUN_HORIZON_ALTITUDE)) - Math.sin(phi) * Math.sin(declination)) /
-		(Math.cos(phi) * Math.cos(declination))
-	);
-};
-
 /** UTC midnight of a `yyyy-MM-dd` calendar date, or null when the text is not one */
 export const parseCalendarDate = (date: string): number | null => {
 	const match = DATE_PATTERN.exec(date);
@@ -156,32 +149,10 @@ const solarNoonOf = (dayStart: number, longitude: number): number => {
 	return noon;
 };
 
-/** Sunrise (sign -1) or sunset (sign 1) of the solar day, or null when the sun does not cross the horizon */
-const horizonCrossing = (dayStart: number, noon: number, location: GeoLocation, sign: -1 | 1): number | null => {
-	let instant = noon;
-
-	for (let i = 0; i < EVENT_ITERATIONS; i += 1) {
-		const { declination, equationOfTime } = solarParametersAt(instant);
-		const cosine = horizonHourAngleCosine(location.latitude, declination);
-
-		if (cosine > 1 || cosine < -1) {
-			// The estimate may lie on a neighbouring day close to the edge of the polar day or night; the
-			// first pass, at the solar noon, decides
-			if (i === 0) return null;
-
-			break;
-		}
-
-		const hourAngle = toDeg(Math.acos(cosine));
-
-		instant = dayStart + (720 - 4 * location.longitude + sign * 4 * hourAngle - equationOfTime) * MINUTE_MS;
-	}
-
-	return instant;
-};
-
 /**
- * The sunrise and sunset of the solar day whose noon falls on a calendar date at the location.
+ * The sun events of the solar day whose noon falls on a calendar date at the location: the crossings of
+ * the sunrise altitude in the 24 hours around that noon. A day close to the midnight sun or the polar
+ * night may have one event without the other; `polar` is set only on a day with neither.
  *
  * The date is the one of the longitude, not of UTC: for Auckland the day of 15 January is the one whose
  * solar noon is at about 00:20 UTC on that date, for Honolulu at about 22:30 UTC.
@@ -196,18 +167,15 @@ export const solarDay = (date: string, location: GeoLocation): SolarDay => {
 	}
 
 	const noon = solarNoonOf(dayStart, location.longitude);
-	const cosine = horizonHourAngleCosine(location.latitude, solarParametersAt(noon).declination);
+	const crossings = horizonCrossings(noon - DAY_MS / 2, noon + DAY_MS / 2, location);
+	const sunrise = crossings.find((crossing) => crossing.event === 'sunrise')?.instant ?? null;
+	const sunset = crossings.find((crossing) => crossing.event === 'sunset')?.instant ?? null;
 
-	if (cosine < -1) return { date, noon, sunrise: null, sunset: null, polar: 'day' };
-	if (cosine > 1) return { date, noon, sunrise: null, sunset: null, polar: 'night' };
+	if (sunrise !== null || sunset !== null) {
+		return { date, noon, sunrise, sunset, polar: null };
+	}
 
-	return {
-		date,
-		noon,
-		sunrise: horizonCrossing(dayStart, noon, location, -1),
-		sunset: horizonCrossing(dayStart, noon, location, 1),
-		polar: null,
-	};
+	return { date, noon, sunrise: null, sunset: null, polar: isDaytimeAt(noon, location) ? 'day' : 'night' };
 };
 
 /**
@@ -232,6 +200,128 @@ export const sunAltitudeAt = (instant: number, location: GeoLocation): number =>
 export const isDaytimeAt = (instant: number, location: GeoLocation): boolean =>
 	sunAltitudeAt(instant, location) > SUN_HORIZON_ALTITUDE;
 
+/**
+ * The grid the altitude is sampled on. It is fixed to the epoch, so the same crossing is found at the same
+ * instant whatever window it is looked for in - which is what lets a trigger fire for it once.
+ */
+export const SUN_SAMPLE_MS = 10 * MINUTE_MS;
+
+/** Bisection steps of a crossing: the 10-minute bracket ends below a millisecond */
+const CROSSING_STEPS = 20;
+
+/** Golden-section steps of a turning point of the altitude */
+const TURNING_POINT_STEPS = 40;
+
+const GOLDEN = (Math.sqrt(5) - 1) / 2;
+
+export interface SunCrossing {
+	event: SunEvent;
+	/**
+	 * The instant of the crossing: the first millisecond on the far side of the sunrise altitude, so that
+	 * at it and just after it the sun is up after a sunrise and down after a sunset
+	 */
+	instant: number;
+}
+
+/**
+ * Every sunrise and sunset in `[from, to)`, in the order they happen.
+ *
+ * The altitude above the sunrise altitude is sampled on the fixed grid. A change of sign between two
+ * samples is a crossing, refined by bisection. Where the altitude turns between two samples without a
+ * change of sign - the sun barely touching the horizon on the days next to the midnight sun or the polar
+ * night - the turning point is looked for, and a pair of crossings around it is refined the same way.
+ */
+export const horizonCrossings = (from: number, to: number, location: GeoLocation): SunCrossing[] => {
+	const height = (instant: number): number => sunAltitudeAt(instant, location) - SUN_HORIZON_ALTITUDE;
+	const crossings: SunCrossing[] = [];
+
+	/** Refines a crossing between `below` and `above`, which have heights of opposite signs */
+	const refine = (low: number, high: number, rising: boolean): void => {
+		let a = low;
+		let b = high;
+
+		for (let i = 0; i < CROSSING_STEPS && b - a > 1; i += 1) {
+			const middle = Math.floor((a + b) / 2);
+
+			if (height(middle) > 0 === rising) {
+				b = middle;
+			} else {
+				a = middle;
+			}
+		}
+
+		if (b >= from && b < to) {
+			crossings.push({ event: rising ? 'sunrise' : 'sunset', instant: b });
+		}
+	};
+
+	/** The instant of the lowest (or highest) altitude between two instants */
+	const turningPoint = (low: number, high: number, lowest: boolean): number => {
+		let a = low;
+		let b = high;
+
+		for (let i = 0; i < TURNING_POINT_STEPS && b - a > 1; i += 1) {
+			const c = b - GOLDEN * (b - a);
+			const d = a + GOLDEN * (b - a);
+
+			if (height(c) < height(d) === lowest) {
+				b = d;
+			} else {
+				a = c;
+			}
+		}
+
+		return Math.round((a + b) / 2);
+	};
+
+	// Two samples either side of the window, so a crossing or a turning point at its edges is seen
+	const first = (Math.floor(from / SUN_SAMPLE_MS) - 2) * SUN_SAMPLE_MS;
+	const last = (Math.ceil(to / SUN_SAMPLE_MS) + 2) * SUN_SAMPLE_MS;
+	const samples: { at: number; height: number }[] = [];
+
+	for (let at = first; at <= last; at += SUN_SAMPLE_MS) {
+		samples.push({ at, height: height(at) });
+	}
+
+	for (let k = 0; k + 1 < samples.length; k += 1) {
+		const current = samples[k];
+		const next = samples[k + 1];
+
+		if (current.height > 0 !== next.height > 0) {
+			refine(current.at, next.at, next.height > 0);
+
+			continue;
+		}
+
+		// A turning point between this sample and the next, shown by the samples around them
+		const previous = samples[k - 1];
+		const after = samples[k + 2];
+
+		if (!previous || !after) continue;
+
+		const falling = current.height < previous.height;
+		const rising = after.height > next.height;
+		const lowest = falling && rising;
+		const highest = !falling && !rising;
+
+		if (!lowest && !highest) continue;
+
+		// Only the interval that holds the turning point is looked into, so a pair is not found twice
+		const turning = turningPoint(previous.at, after.at, lowest);
+
+		if (turning < current.at || turning >= next.at) continue;
+
+		const extreme = height(turning);
+
+		if (extreme > 0 === current.height > 0) continue;
+
+		refine(current.at, turning, !lowest);
+		refine(turning, next.at, lowest);
+	}
+
+	return crossings;
+};
+
 /** The calendar date at a longitude (local mean time) of an instant, `yyyy-MM-dd` */
 export const meanSolarDateAt = (instant: number, longitude: number): string =>
 	formatCalendarDate(Math.floor((instant + (longitude / 360) * DAY_MS) / DAY_MS) * DAY_MS);
@@ -245,23 +335,15 @@ export interface SunEventOccurrence {
 }
 
 /**
- * The sunrises and sunsets of the solar days around an instant: the day it falls on at the longitude, the
- * day before and the day after. They cover at least 24 hours either side of it, which leaves room for an
- * offset of up to 12 hours. A day without the event has no occurrence of it.
+ * The sunrises and sunsets in the 24 hours either side of an instant, which leaves room for an offset of
+ * up to 12 hours. `day` is the solar day an event belongs to: the date at the longitude of its instant.
  */
-export const sunEventsAround = (instant: number, location: GeoLocation): SunEventOccurrence[] => {
-	const today = parseCalendarDate(meanSolarDateAt(instant, location.longitude)) ?? 0;
-	const occurrences: SunEventOccurrence[] = [];
-
-	for (const offset of [-1, 0, 1]) {
-		const day = solarDay(formatCalendarDate(today + offset * DAY_MS), location);
-
-		if (day.sunrise !== null) occurrences.push({ event: 'sunrise', day: day.date, instant: day.sunrise });
-		if (day.sunset !== null) occurrences.push({ event: 'sunset', day: day.date, instant: day.sunset });
-	}
-
-	return occurrences;
-};
+export const sunEventsAround = (instant: number, location: GeoLocation): SunEventOccurrence[] =>
+	horizonCrossings(instant - DAY_MS, instant + DAY_MS, location).map(({ event, instant: at }) => ({
+		event,
+		day: meanSolarDateAt(at, location.longitude),
+		instant: at,
+	}));
 
 /** What a sun trigger fires with */
 export interface SunEventFireData {
@@ -286,8 +368,10 @@ export interface SunEventSpec {
 
 /**
  * The occurrence of a sun event a trigger fires for in the minute that starts at `minuteStart`: the one
- * whose instant, moved by the offset, lies inside that minute. Null when there is none - every minute of a
- * polar day or night, and every minute but one of an ordinary day.
+ * whose instant, moved by the offset, lies in the minute before it - so the trigger fires at the first
+ * minute boundary at or after the event, when the sun has crossed and a day or night check sees what the
+ * trigger saw. Null when there is none - every minute of a polar day or night, and every minute but one
+ * of an ordinary day.
  */
 export const sunEventDueAt = (
 	spec: SunEventSpec,
@@ -295,16 +379,13 @@ export const sunEventDueAt = (
 	location: GeoLocation,
 ): SunEventOccurrence | null => {
 	const shift = spec.offsetMinutes * MINUTE_MS;
+	const from = minuteStart - MINUTE_MS - shift;
 
-	for (const occurrence of sunEventsAround(minuteStart - shift, location)) {
-		if (occurrence.event !== spec.event) continue;
+	const due = horizonCrossings(from + 1, minuteStart - shift + 1, location).find(
+		(crossing) => crossing.event === spec.event,
+	);
 
-		const fireAt = occurrence.instant + shift;
-
-		if (fireAt >= minuteStart && fireAt < minuteStart + MINUTE_MS) return occurrence;
-	}
-
-	return null;
+	return due ? { event: due.event, day: meanSolarDateAt(due.instant, location.longitude), instant: due.instant } : null;
 };
 
 export interface LocalSunTimes {

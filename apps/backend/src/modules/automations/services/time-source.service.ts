@@ -168,8 +168,9 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 	}
 
 	/**
-	 * Calls `fire` in the minute that holds the sunrise or the sunset moved by the offset. Returns the
-	 * function that stops it.
+	 * Calls `fire` at the first minute boundary at or after the sunrise or the sunset moved by the offset,
+	 * at most a minute after it. Returns the function that stops it. Firing after the instant, never before
+	 * it, means a day or night check right after a sunrise sees day, and right after a sunset sees night.
 	 *
 	 * The event is an instant, so daylight saving does not move it; on a day the sun does not rise or set
 	 * there is nothing to fire for. While the house location is not set nothing fires; a location set
