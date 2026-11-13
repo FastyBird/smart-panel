@@ -9,6 +9,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { createExtensionLogger } from '../../../common/logger';
 import { MINUTE_MS, evaluateSchedule, scheduleOccurrenceKey } from '../../../common/schedule/schedule-time';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
+import { SCHEDULE_ACTIVITY_ACTOR_PREFIX, isAutomaticActivityActor } from '../activity/automation-activity';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 import { SpaceModeScheduleEntity } from '../entities/space-mode-schedule.entity';
 import { ScheduleRuntimeStatus, SpaceModeScheduleStateModel } from '../models/space-mode-schedule.model';
@@ -239,7 +240,7 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 				row.spaceId,
 				occurrence.mode,
 				config.activityRevision,
-				`schedule:${row.id}:${admission.occurrenceId}`,
+				`${SCHEDULE_ACTIVITY_ACTOR_PREFIX}${row.id}:${admission.occurrenceId}`,
 				admission,
 			);
 		} catch (cause) {
@@ -281,7 +282,8 @@ export class SpaceModeSchedulerService extends BaseManagedExtensionService imple
 		const manual =
 			row.enabled &&
 			!!state &&
-			!state.activityActor?.startsWith('schedule:') &&
+			// A selection made by a schedule or an automation is automatic, not a manual selection
+			!isAutomaticActivityActor(state.activityActor) &&
 			(!row.lastOccurrence ||
 				state.activationId !== row.lastTriggerPriorActivationId ||
 				(state.activityRequestedAt !== null &&

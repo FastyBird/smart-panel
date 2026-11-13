@@ -2,6 +2,8 @@ import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AutomationsModule } from '../../modules/automations/automations.module';
+import { AutomationNodeTypeRegistryService } from '../../modules/automations/services/node-type-registry.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
@@ -28,6 +30,8 @@ import { ToolProviderRegistryService } from '../../modules/tools/services/tool-p
 import { ToolsModule } from '../../modules/tools/tools.module';
 import { WebsocketModule } from '../../modules/websocket/websocket.module';
 
+import { SpaceAutomationEventsService } from './automations/space-automation-events.service';
+import { SpaceAutomationNodeTypesService } from './automations/space-automation-node-types.service';
 import { CreateHomeControlSpaceDto } from './dto/create-home-control-space.dto';
 import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeControlSpaceDto } from './dto/update-home-control-space.dto';
@@ -145,6 +149,7 @@ import { IntentSpecLoaderService } from './spec';
 			ChannelEntity,
 		]),
 		SwaggerModule,
+		AutomationsModule,
 		DevicesModule,
 		DisplaysModule,
 		ExtensionsModule,
@@ -207,6 +212,9 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceSuggestionService,
 		SpaceUndoHistoryService,
 		SpacesSeederService,
+		// Automation cards
+		SpaceAutomationEventsService,
+		SpaceAutomationNodeTypesService,
 	],
 	controllers: [],
 	exports: [
@@ -261,6 +269,8 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly spaceSuggestionHeartbeat: SpaceSuggestionHeartbeatService,
 		private readonly spaceModeScheduler: SpaceModeSchedulerService,
 		private readonly spaceOccupancy: SpaceOccupancyService,
+		private readonly automationNodeTypeRegistry: AutomationNodeTypeRegistryService,
+		private readonly spaceAutomationNodeTypes: SpaceAutomationNodeTypesService,
 	) {}
 
 	onModuleInit() {
@@ -402,6 +412,13 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		// Register the space lighting tool provider (moved here from
 		// SpacesModule.onModuleInit; the tool is plugin-owned).
 		this.toolProviderRegistry.register(this.spaceLightingTool);
+
+		// Register the space automation cards: occupancy and activity mode triggers and conditions, and the
+		// actions that set the activity mode and the lighting (ADR 0003, decision 13). They name the plugin as
+		// their owner, so they are offered and run only while it is enabled.
+		for (const nodeType of this.spaceAutomationNodeTypes.create()) {
+			this.automationNodeTypeRegistry.register(nodeType);
+		}
 
 		// Seed the spaces module — Room/Zone structure + seeded lighting /
 		// climate roles. The seeder itself owns the role-service injections

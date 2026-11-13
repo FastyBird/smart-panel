@@ -9,6 +9,7 @@ import { captureSqliteNoMutationWindow, registerSqliteCommitGuard } from '../../
 import { MINUTE_MS } from '../../../common/schedule/schedule-time';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { activationStatus } from '../activity/activity-result.utils';
+import { AutomationActivityAdmission, isAutomationActivityActor } from '../activity/automation-activity';
 import {
 	ACTIVITY_STATE_CHANGED,
 	ActivityActivationStatus,
@@ -84,10 +85,15 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		actor: string,
 		scheduledAdmission?: ScheduledActivityAdmission,
 		occupancyAdmission?: OccupancyActivityAdmission,
+		automationAdmission?: AutomationActivityAdmission,
 	): Promise<SpaceActivityStateEntity | null> {
 		const scheduled = scheduledAdmission ? Object.freeze({ ...scheduledAdmission }) : null;
 		const occupancy = occupancyAdmission ? Object.freeze({ ...occupancyAdmission }) : null;
-		if (scheduled && occupancy) throw new ConflictException('Only one automatic activity source may be admitted');
+		const automation = automationAdmission ? Object.freeze({ ...automationAdmission }) : null;
+		if ([scheduled, occupancy, automation].filter((source) => source !== null).length > 1)
+			throw new ConflictException('Only one automatic activity source may be admitted');
+		if (automation && !isAutomationActivityActor(actor))
+			throw new ConflictException('An automation activation must name its automation run as the actor');
 		if (this.running.has(spaceId))
 			throw new ConflictException('Space activity activation is in progress; retry after completion');
 		this.running.add(spaceId);
@@ -156,6 +162,12 @@ export class SpaceModeService implements OnApplicationBootstrap {
 					if ((prior?.activationId ?? null) !== occupancy.previousActivationId)
 						throw new ConflictException('A newer activity superseded occupancy');
 					await claimOccupancy(manager, occupancy, activationId);
+				} else if (automation) {
+					// An automatic source: no occupancy manual hold, and never over a selection it did not see
+					if (!automation.isCurrent())
+						throw new ConflictException('The automation run was cancelled before the mode was selected');
+					if ((prior?.activationId ?? null) !== automation.previousActivationId)
+						throw new ConflictException('A newer activity selection superseded the automation');
 				} else if (!scheduled) await this.occupancyConfigs?.markManual(manager, spaceId);
 				const currentRepository = manager.getRepository(SpaceActivityStateEntity);
 				const admittedValues = { ...values, activityRequestedAt: new Date() };
@@ -200,9 +212,11 @@ export class SpaceModeService implements OnApplicationBootstrap {
 							'EXISTS (SELECT 1 FROM spaces_module_space_roles c WHERE c.id = :configId AND c.activityRevision = :revision AND c.activityEnabled = 1)',
 							{ configId: config.id, revision },
 						);
-					if (scheduled || occupancy)
+					const admission = scheduled ?? occupancy ?? automation;
+					// Compare-and-swap on the activation the automatic source read
+					if (admission)
 						query.andWhere('activationId IS :previousActivation', {
-							previousActivation: (scheduled ?? occupancy).previousActivationId,
+							previousActivation: admission.previousActivationId,
 						});
 					const started = await query.execute();
 					if (started.affected !== 1) throw new ConflictException('Activity configuration changed');

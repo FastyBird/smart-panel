@@ -1,7 +1,7 @@
 # Space activity modes
 
 The home-control plugin provides Work, Relax, Sleep, Entertainment and Away for rooms and zones.
-These modes are independent of last-interaction tracking and media activities. Climate and security are disabled in authored defaults. Explicitly configured climate actions use the governed activity bridge merged in #1498. Startup never replays an activation; custom mode authoring and security actuation remain separate. Opt-in occupancy triggers reuse the same activation service. Time schedules reuse the same activation service. Admin and Panel use the same saved configuration and persisted selection contract.
+These modes are independent of last-interaction tracking and media activities. Climate and security are disabled in authored defaults. Explicitly configured climate actions use the governed activity bridge merged in #1498. Startup never replays an activation; custom mode authoring and security actuation remain separate. Opt-in occupancy triggers reuse the same activation service. Time schedules reuse the same activation service, and so do automations. Admin and Panel use the same saved configuration and persisted selection contract.
 
 ## API
 
@@ -190,3 +190,46 @@ Its page-owned read model refreshes on events, reconnect and periodic reads. Fre
 Unknown; a known disabled configuration hides the indicator. Panel occupancy display does not issue commands.
 Recently Occupied/Extended Vacant are illustrative future extensions, not additional states in this implementation.
 Installed-equipment behavior and release qualification remain separate acceptance gates.
+
+## Automations
+
+The plugin registers automation cards for rooms and zones with the automations module. Each card names the
+plugin as its owner: while the plugin is disabled the catalogue (`GET /api/v1/modules/automations/node-types`)
+leaves them out, and the engine neither arms nor executes them. A card points at its space by `space_id`, so an
+automation using a space that is deleted is marked invalid.
+
+| Kind      | Type                      | Configuration                                     | Behaviour                                                                                                    |
+| --------- | ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Trigger   | `space.occupancy.changed` | `space_id`, optional `to` (`occupied` / `vacant`) | Starts when the qualified occupancy goes from occupied to vacant or back.                                    |
+| Trigger   | `space.mode.changed`      | `space_id`, optional `to` and `from` (modes)      | Starts when another mode is selected or the selection is cleared (`to: null`), whoever did it.               |
+| Condition | `space.occupancy.is`      | `space_id`, `state` (`occupied` / `vacant`)       | `yes` when the qualified occupancy is that state.                                                            |
+| Condition | `space.mode.is`           | `space_id`, `modes`                               | `yes` when the selected mode is one of them; no selection is `no`.                                           |
+| Action    | `space.mode.set`          | `space_id`, `mode`                                | Activates the mode as an automatic source (below).                                                           |
+| Action    | `space.lighting.intent`   | `space_id`, `intent` and the fields it needs      | `on`, `off`, `set_mode` (`mode`), `role_on` / `role_off` (`role`), `role_brightness` (`role`, `brightness`). |
+
+The occupancy cards read the qualified state of the occupancy runtime, never a raw sensor. Unknown occupancy -
+detection disabled or stopped, stale or offline inputs, the vacancy interval after a start - evaluates the
+condition to `no` whichever state it asks for, and is no state for the trigger. Triggers fire on transitions
+only: the state when an automation is armed or the backend starts is the baseline, and a read that fails or
+occupancy that is unknown neither sets the baseline nor counts as a change, so vacant, unknown and vacant again
+starts nothing. Re-selecting the selected mode is no change either.
+
+Set space mode uses the automatic automation source of `SpaceModeService.activateMode`. Unlike a manual choice it
+does not set the occupancy manual hold, so occupancy keeps acting after an automation changed the mode. It
+replaces only the selection it read: it is admitted with the activation identity it saw through the same
+compare-and-swap as schedules and occupancy, so a selection or clear made in between, or another activation still
+running for the space, refuses it and the action takes its `error` output. A run cancelled before the selection
+is written writes nothing; once admitted, the activation completes like any other. A mode already selected and
+active, partial or still activating is left alone. The action takes `done` only for an activation that ended
+`active`. The actor is `automation:<automation id>:<run id>`, and the schedule's manual-precedence indication
+treats it as automatic, like a schedule's own selection.
+
+Among automatic writers the last one wins, as between schedules and occupancy: the next schedule trigger replaces
+a mode an automation set, and an automation can replace a mode a schedule or occupancy set. When the room becomes
+vacant after an automation set the mode, occupancy applies its vacant mode and, with an empty occupied mapping,
+restores the automation's mode on re-occupancy. A mode an automation selects while the room is vacant owns the
+selection, so re-occupancy does not restore over it.
+
+Set space lighting sends the intent through the same lighting intent service as the panel, with the automation as
+the intent origin. It takes `error` when the space does not exist or a light failed or was skipped offline; a
+space without lights takes `done`.
