@@ -109,7 +109,11 @@ export class CamerasService {
 	 * `listProfiles`. The result is a secret: it is never logged here.
 	 */
 	resolveSource(device: DeviceEntity, provider: ICameraStreamProvider, profileId: string): Promise<CameraStreamSource> {
-		return this.withTimeout(device.id, (signal) => provider.resolveSource(device, profileId, { signal }));
+		const controller = new AbortController();
+		// The async wrapper turns a synchronous provider throw into a rejection that withTimeout sanitises.
+		const call = (async () => provider.resolveSource(device, profileId, { signal: controller.signal }))();
+
+		return this.withTimeout(device.id, call, controller);
 	}
 
 	async toModel(device: DeviceEntity, provider: ICameraStreamProvider | null): Promise<CameraModel> {
