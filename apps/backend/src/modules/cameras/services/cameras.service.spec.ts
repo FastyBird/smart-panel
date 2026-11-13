@@ -145,6 +145,43 @@ describe('CamerasService', () => {
 		}
 	});
 
+	it('passes an abort signal to listProfiles and aborts it on timeout', async () => {
+		jest.useFakeTimers();
+
+		try {
+			providerA.listProfiles.mockReturnValue(new Promise(() => undefined));
+
+			const pending = service.findAll();
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			const options = providerA.listProfiles.mock.calls[0][1] as { signal: AbortSignal };
+
+			expect(options.signal.aborted).toBe(false);
+
+			await jest.advanceTimersByTimeAsync(10_001);
+			await pending;
+
+			expect(options.signal.aborted).toBe(true);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('does not log the name an untrusted provider error carries', async () => {
+		const warn = jest.fn();
+		const thrown = new Error('x');
+
+		thrown.name = 'rtsps://console:7441/SECRETALIAS';
+		(service as unknown as { logger: { warn: jest.Mock } }).logger = { warn };
+		providerA.listProfiles.mockRejectedValue(thrown);
+
+		await service.resolveProfile(camera, providerA).catch(() => undefined);
+
+		expect(JSON.stringify(warn.mock.calls)).toContain('ProviderError');
+		expect(JSON.stringify(warn.mock.calls)).not.toContain('SECRETALIAS');
+	});
+
 	it('wraps an untyped provider error without leaking its message', async () => {
 		providerA.listProfiles.mockRejectedValue(new Error('rtsps://fake-console:7441/SECRET'));
 

@@ -8,8 +8,10 @@ import { CAMERAS_MODULE_NAME } from '../cameras.constants';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraProviderTimeoutError,
 	CameraRateLimitedException,
 	CamerasNotFoundException,
+	errorName,
 	sanitizeProviderError,
 } from '../cameras.exceptions';
 import { CameraModel, CameraStreamProfileModel } from '../models/camera.model';
@@ -20,13 +22,6 @@ import { CameraStreamProviderRegistryService } from './camera-stream-provider.re
 export const CAMERA_PROVIDER_TIMEOUT_MS = 10_000;
 
 const CAMERA_CATEGORIES: DeviceCategory[] = [DeviceCategory.CAMERA, DeviceCategory.DOORBELL];
-
-export class CameraProviderTimeoutError extends Error {
-	constructor() {
-		super('Camera provider call timed out');
-		this.name = 'CameraProviderTimeoutError';
-	}
-}
 
 @Injectable()
 export class CamerasService {
@@ -72,7 +67,7 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId?: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(device.id, () => provider.listProfiles(device));
+		const profiles = await this.withTimeout(device.id, (signal) => provider.listProfiles(device, { signal }));
 
 		const profile = profileId ? profiles.find((p) => p.id === profileId) : profiles.find((p) => p.available);
 
@@ -93,7 +88,7 @@ export class CamerasService {
 		provider: ICameraStreamProvider,
 		profileId: string,
 	): Promise<CameraStreamProfile> {
-		const profiles = await this.withTimeout(device.id, () => provider.listProfiles(device));
+		const profiles = await this.withTimeout(device.id, (signal) => provider.listProfiles(device, { signal }));
 		const profile = profiles.find((p) => p.id === profileId);
 
 		if (!profile) {
@@ -115,14 +110,12 @@ export class CamerasService {
 
 		if (provider) {
 			try {
-				const profiles = await this.withTimeout(device.id, () => provider.listProfiles(device));
+				const profiles = await this.withTimeout(device.id, (signal) => provider.listProfiles(device, { signal }));
 
 				model.profiles = profiles.map((profile) => this.toProfileModel(profile));
 			} catch (error) {
 				// Never log the error message: a provider may embed a source URL in it.
-				this.logger.warn(
-					`Failed to list camera profiles deviceId=${device.id} error=${error instanceof Error ? error.name : 'UnknownError'}`,
-				);
+				this.logger.warn(`Failed to list camera profiles deviceId=${device.id} error=${errorName(error)}`);
 			}
 		}
 
@@ -145,14 +138,22 @@ export class CamerasService {
 		return model;
 	}
 
-	private async withTimeout<T>(deviceId: string, call: () => Promise<T>): Promise<T> {
+	/**
+	 * Bounds the wait for a provider call. The signal passed to the call is aborted on timeout; a provider that ignores
+	 * it keeps running, and its result is discarded.
+	 */
+	private async withTimeout<T>(deviceId: string, call: (signal: AbortSignal) => Promise<T>): Promise<T> {
+		const controller = new AbortController();
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
 			return await Promise.race([
-				call(),
+				call(controller.signal),
 				new Promise<never>((_, reject) => {
-					timer = setTimeout(() => reject(new CameraProviderTimeoutError()), CAMERA_PROVIDER_TIMEOUT_MS);
+					timer = setTimeout(() => {
+						controller.abort();
+						reject(new CameraProviderTimeoutError());
+					}, CAMERA_PROVIDER_TIMEOUT_MS);
 					timer.unref();
 				}),
 			]);
@@ -170,9 +171,7 @@ export class CamerasService {
 					error instanceof CameraProfileUnavailableException
 				)
 			) {
-				this.logger.warn(
-					`Camera provider call failed deviceId=${deviceId} error=${error instanceof Error ? error.name : 'UnknownError'}`,
-				);
+				this.logger.warn(`Camera provider call failed deviceId=${deviceId} error=${errorName(error)}`);
 			}
 
 			throw sanitizeProviderError(error);

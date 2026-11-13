@@ -138,6 +138,39 @@ describe('Cameras secret hygiene', () => {
 		expect(errors[4]).not.toBeNull();
 	});
 
+	it('never logs the name of an error a provider throws', async () => {
+		const thrown = new Error('plain message');
+
+		thrown.name = 'rtsps://fake-console:7441/SENTINELALIAS0123456789?enableSrtp';
+
+		jest.spyOn(provider, 'listProfiles').mockRejectedValue(thrown);
+		jest.spyOn(provider, 'getSnapshot').mockRejectedValue(thrown);
+		(provider as { getSnapshotMinIntervalMs?: () => number }).getSnapshotMinIntervalMs = () => {
+			throw thrown;
+		};
+
+		const res = { header: jest.fn(), send: jest.fn() };
+		const errors = [
+			// The list path: CamerasService.toModel.
+			await caught(() => service.findAll()),
+			// The provider-call paths: profile lookup for a snapshot and for a session.
+			await caught(() => controller.getSnapshot(userReq, id, { profile: 'medium' }, res as never)),
+			await caught(() => controller.createSession(userReq, id, { data: { transport: 'mse' } } as never)),
+			// The snapshot path: the provider's own getSnapshot and its interval hook.
+			await caught(() => controller.getSnapshot(userReq, id, {}, res as never)),
+		];
+
+		const logged = JSON.stringify(logSpies.map((spy): unknown[] => spy.mock.calls as unknown[]));
+
+		// The list swallows provider failures, every other path fails.
+		expect(errors[0]).toBeNull();
+		expect(errors.slice(1).every((e) => e !== null)).toBe(true);
+		expect(logged).toContain('ProviderError');
+		expect(logged).not.toContain('SENTINELALIAS');
+		expect(logged).not.toContain('fake-console:7441');
+		expect(JSON.stringify(responseSpy.mock.calls)).not.toContain('SENTINELALIAS');
+	});
+
 	it('does not expose a stream url in the camera list', async () => {
 		expect(JSON.stringify(instanceToPlain(await service.findAll()))).not.toContain('rtsp');
 	});

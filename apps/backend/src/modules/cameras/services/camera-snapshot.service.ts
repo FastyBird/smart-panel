@@ -8,13 +8,15 @@ import { CAMERAS_MODULE_NAME } from '../cameras.constants';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraProviderTimeoutError,
 	CameraRateLimitedException,
 	CameraUpstreamException,
+	errorName,
 	sanitizeProviderError,
 } from '../cameras.exceptions';
 import { CameraSnapshot, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
-import { CAMERA_PROVIDER_TIMEOUT_MS, CameraProviderTimeoutError, CamerasService } from './cameras.service';
+import { CAMERA_PROVIDER_TIMEOUT_MS, CamerasService } from './cameras.service';
 
 export const CAMERA_SNAPSHOT_DEFAULT_MIN_INTERVAL_MS = 2000;
 export const CAMERA_SNAPSHOT_MIN_ALLOWED_INTERVAL_MS = 250;
@@ -50,6 +52,11 @@ export class CameraSnapshotService {
 	private readonly cache = new Map<string, CacheEntry>();
 	private readonly failures = new Map<string, FailureEntry>();
 	private readonly inFlight = new Map<string, Promise<CameraSnapshotResult>>();
+	/**
+	 * Provider snapshot calls that timed out but have not settled yet, by cache key. While one is outstanding no second
+	 * call is started for the key, so a provider that never answers cannot pile up work.
+	 */
+	private readonly timedOutCalls = new Map<string, symbol>();
 
 	constructor(private readonly camerasService: CamerasService) {}
 
@@ -60,7 +67,7 @@ export class CameraSnapshotService {
 		const { device, provider } = await this.camerasService.getProviderOrThrow(deviceId);
 		const highQuality = options.highQuality === true;
 
-		const key = `${deviceId}:${options.profileId ?? 'default'}:${highQuality}`;
+		const key = snapshotKey(deviceId, options.profileId, highQuality);
 		const now = Date.now();
 		const entry = this.liveEntry(key, now);
 		const minIntervalMs = this.minIntervalMs(provider, device);
@@ -80,32 +87,34 @@ export class CameraSnapshotService {
 			throw this.replayFailure(failure.kind);
 		}
 
+		// A previous call timed out and the provider has not settled it. Do not start another one on top of it.
+		if (this.timedOutCalls.has(key)) {
+			throw this.replayFailure('upstream');
+		}
+
 		const running = this.inFlight.get(key);
 
 		if (running !== undefined) {
 			return running;
 		}
 
+		const isCurrent = () => this.inFlight.get(key) === request;
+
 		const request: Promise<CameraSnapshotResult> = (async () => {
 			try {
-				return await this.fetchFresh(
-					key,
-					deviceId,
-					options.profileId,
-					minIntervalMs,
-					() => this.inFlight.get(key) === request,
-					async () => {
-						// The profile lookup is part of the coalesced fetch: cache hits and joiners never reach the provider.
-						const channelId =
-							options.profileId === undefined
-								? undefined
-								: (await this.camerasService.findProfileById(device, provider, options.profileId)).channelId;
+				return await this.fetchFresh(key, deviceId, options.profileId, minIntervalMs, isCurrent, async () => {
+					// The profile lookup is part of the coalesced fetch: cache hits and joiners never reach the provider.
+					const channelId =
+						options.profileId === undefined
+							? undefined
+							: (await this.camerasService.findProfileById(device, provider, options.profileId)).channelId;
 
-						return this.withTimeout(provider.getSnapshot(device, { channelId, highQuality }));
-					},
-				);
+					return this.withTimeout(key, isCurrent, (signal) =>
+						provider.getSnapshot(device, { channelId, highQuality, signal }),
+					);
+				});
 			} finally {
-				if (this.inFlight.get(key) === request) {
+				if (isCurrent()) {
 					this.inFlight.delete(key);
 				}
 			}
@@ -117,18 +126,12 @@ export class CameraSnapshotService {
 	}
 
 	evict(deviceId: string): void {
-		const prefix = `${deviceId}:`;
+		const prefix = snapshotKeyPrefix(deviceId);
 
-		for (const key of [...this.cache.keys()]) {
-			if (key.startsWith(prefix)) this.cache.delete(key);
-		}
-
-		for (const key of [...this.failures.keys()]) {
-			if (key.startsWith(prefix)) this.failures.delete(key);
-		}
-
-		for (const key of [...this.inFlight.keys()]) {
-			if (key.startsWith(prefix)) this.inFlight.delete(key);
+		for (const map of [this.cache, this.failures, this.inFlight, this.timedOutCalls] as Map<string, unknown>[]) {
+			for (const key of [...map.keys()]) {
+				if (key.startsWith(prefix)) map.delete(key);
+			}
 		}
 	}
 
@@ -167,7 +170,9 @@ export class CameraSnapshotService {
 			}
 
 			if (sanitized instanceof CameraOfflineException) {
-				this.cache.delete(key);
+				// A detached (evicted) fetch must not delete the image a newer fetch has cached since.
+				if (isCurrent()) this.cache.delete(key);
+
 				this.recordFailure(key, 'offline', minIntervalMs, isCurrent);
 
 				throw sanitized;
@@ -272,14 +277,39 @@ export class CameraSnapshotService {
 			: CAMERA_SNAPSHOT_DEFAULT_MIN_INTERVAL_MS;
 	}
 
-	private async withTimeout<T>(promise: Promise<T>): Promise<T> {
+	/**
+	 * Bounds the wait for a provider call. The signal passed to the call is aborted on timeout, but the call may keep
+	 * running: the key is then remembered as timed out until the provider promise settles, and its result is discarded.
+	 */
+	private async withTimeout<T>(
+		key: string,
+		isCurrent: () => boolean,
+		call: (signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
+		const controller = new AbortController();
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
+			const promise = call(controller.signal);
+
 			return await Promise.race([
 				promise,
 				new Promise<never>((_, reject) => {
-					timer = setTimeout(() => reject(new CameraProviderTimeoutError()), CAMERA_PROVIDER_TIMEOUT_MS);
+					timer = setTimeout(() => {
+						controller.abort();
+
+						if (isCurrent()) {
+							const marker = Symbol('timed-out-call');
+							const clear = () => {
+								if (this.timedOutCalls.get(key) === marker) this.timedOutCalls.delete(key);
+							};
+
+							this.timedOutCalls.set(key, marker);
+							promise.then(clear, clear);
+						}
+
+						reject(new CameraProviderTimeoutError());
+					}, CAMERA_PROVIDER_TIMEOUT_MS);
 					timer.unref();
 				}),
 			]);
@@ -289,6 +319,16 @@ export class CameraSnapshotService {
 	}
 }
 
+/** One unambiguous key per device, profile (`null` when omitted) and quality, so `default` is just another profile. */
+function snapshotKey(deviceId: string, profileId: string | undefined, highQuality: boolean): string {
+	return JSON.stringify([deviceId, profileId ?? null, highQuality]);
+}
+
+/** The key text shared by every snapshot key of one device. */
+function snapshotKeyPrefix(deviceId: string): string {
+	return `[${JSON.stringify(deviceId)},`;
+}
+
 /** The media type of an accepted image content type, without parameters (`image/jpeg; charset=binary` is a JPEG). */
 function acceptedMediaType(contentType: unknown): string | null {
 	if (typeof contentType !== 'string') return null;
@@ -296,8 +336,4 @@ function acceptedMediaType(contentType: unknown): string | null {
 	const mediaType = contentType.split(';')[0].trim().toLowerCase();
 
 	return ACCEPTED_CONTENT_TYPES.includes(mediaType) ? mediaType : null;
-}
-
-function errorName(error: unknown): string {
-	return error instanceof Error ? error.name : 'UnknownError';
 }

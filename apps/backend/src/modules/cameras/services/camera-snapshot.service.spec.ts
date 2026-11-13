@@ -2,6 +2,7 @@ import { DeviceEntity } from '../../devices/entities/devices.entity';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
+	CameraProviderTimeoutError,
 	CameraRateLimitedException,
 	CameraUpstreamException,
 	CamerasException,
@@ -11,7 +12,7 @@ import {
 import { CameraSnapshot, CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
 import { CameraSnapshotService } from './camera-snapshot.service';
-import { CameraProviderTimeoutError, CamerasService } from './cameras.service';
+import { CamerasService } from './cameras.service';
 
 const jpeg = (n: number): CameraSnapshot => ({ contentType: 'image/jpeg', data: Buffer.from([0xff, 0xd8, n]) });
 
@@ -175,7 +176,11 @@ describe('CameraSnapshotService', () => {
 		await service.getSnapshot('c1', { profileId: 'package', highQuality: true });
 
 		expect(camerasService.findProfileById).toHaveBeenCalledWith(device, provider, 'package');
-		expect(getSnapshot).toHaveBeenCalledWith(device, { channelId: 'ch-package', highQuality: true });
+		expect(getSnapshot).toHaveBeenCalledWith(device, {
+			channelId: 'ch-package',
+			highQuality: true,
+			signal: expect.any(AbortSignal) as unknown as AbortSignal,
+		});
 	});
 
 	it('does not look the profile up again inside the minimum interval', async () => {
@@ -232,7 +237,11 @@ describe('CameraSnapshotService', () => {
 
 		expect(camerasService.findProfileById).not.toHaveBeenCalled();
 		expect(listProfiles).not.toHaveBeenCalled();
-		expect(getSnapshot).toHaveBeenCalledWith(device, { channelId: undefined, highQuality: false });
+		expect(getSnapshot).toHaveBeenCalledWith(device, {
+			channelId: undefined,
+			highQuality: false,
+			signal: expect.any(AbortSignal) as unknown as AbortSignal,
+		});
 	});
 
 	it('propagates an unknown profile as unavailable', async () => {
@@ -256,10 +265,15 @@ describe('CameraSnapshotService', () => {
 		camerasService.findProfileById.mockRejectedValueOnce(new Error('rtsps://console:7441/SECRETALIAS'));
 
 		await expect(service.getSnapshot('c1', { profileId: 'a' })).rejects.toBeInstanceOf(CameraUpstreamException);
+
+		// Let the recorded failure expire so that the second request really reaches the lookup.
+		jest.advanceTimersByTime(3000);
+
 		await expect(service.getSnapshot('c1', { profileId: 'a' })).rejects.toMatchObject({
 			name: 'CameraUpstreamException',
 			message: expect.not.stringContaining('SECRETALIAS') as unknown as string,
 		});
+		expect(camerasService.findProfileById).toHaveBeenCalledTimes(2);
 	});
 
 	it('propagates a missing camera', async () => {
@@ -299,17 +313,144 @@ describe('CameraSnapshotService', () => {
 		await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraRateLimitedException);
 	});
 
-	it('fails after 10 s, clears the in-flight call and retries on the next request', async () => {
-		getSnapshot.mockReturnValueOnce(new Promise(() => undefined)).mockResolvedValueOnce(jpeg(2));
+	it('fails after 10 s, clears the in-flight call and retries on the next request once the provider settled', async () => {
+		let release!: (v: CameraSnapshot) => void;
+
+		getSnapshot.mockReturnValueOnce(new Promise((r) => (release = r))).mockResolvedValueOnce(jpeg(2));
 
 		const pending = service.getSnapshot('c1', {});
 		const assertion = expect(pending).rejects.toBeInstanceOf(CameraUpstreamException);
 
 		await jest.advanceTimersByTimeAsync(10_000);
 		await assertion;
+		release(jpeg(1));
 		await jest.advanceTimersByTimeAsync(2000);
 
 		expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+	});
+
+	describe('timed-out provider calls', () => {
+		it('does not start a second provider call while a timed-out one is unsettled', async () => {
+			let release!: (v: CameraSnapshot) => void;
+
+			getSnapshot.mockReturnValueOnce(new Promise((r) => (release = r))).mockResolvedValue(jpeg(2));
+
+			const first = expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			await jest.advanceTimersByTimeAsync(10_000);
+			await first;
+
+			// The recorded failure has expired, but the first call is still unsettled.
+			await jest.advanceTimersByTimeAsync(3000);
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+			await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+			expect(getSnapshot).toHaveBeenCalledTimes(1);
+
+			// Once it settles, its result is discarded and the next request calls the provider again.
+			release(jpeg(1));
+			await flush();
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+			expect(getSnapshot).toHaveBeenCalledTimes(2);
+		});
+
+		it('clears the marker when the timed-out call fails', async () => {
+			let fail!: (e: Error) => void;
+
+			getSnapshot.mockReturnValueOnce(new Promise((_, reject) => (fail = reject))).mockResolvedValue(jpeg(2));
+
+			const first = expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			await jest.advanceTimersByTimeAsync(10_000);
+			await first;
+			fail(new Error('late'));
+			await jest.advanceTimersByTimeAsync(3000);
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		});
+
+		it('does not cache the discarded result of a timed-out call', async () => {
+			let release!: (v: CameraSnapshot) => void;
+
+			getSnapshot.mockReturnValueOnce(new Promise((r) => (release = r))).mockResolvedValue(jpeg(2));
+
+			const first = expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			await jest.advanceTimersByTimeAsync(10_000);
+			await first;
+			release(jpeg(1));
+			await jest.advanceTimersByTimeAsync(3000);
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		});
+
+		it('aborts the signal passed to the provider on timeout', async () => {
+			getSnapshot.mockReturnValueOnce(new Promise(() => undefined));
+
+			const first = expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			await flush();
+
+			const { signal } = (getSnapshot.mock.calls as [DeviceEntity, { signal: AbortSignal }][])[0][1];
+
+			expect(signal.aborted).toBe(false);
+
+			await jest.advanceTimersByTimeAsync(10_000);
+			await first;
+
+			expect(signal.aborted).toBe(true);
+		});
+
+		it('tracks timed-out calls per key and forgets them on evict', async () => {
+			getSnapshot.mockReturnValueOnce(new Promise(() => undefined)).mockResolvedValue(jpeg(2));
+
+			const first = expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+
+			await jest.advanceTimersByTimeAsync(10_000);
+			await first;
+			await jest.advanceTimersByTimeAsync(3000);
+
+			// Another profile is a different key and is not blocked.
+			expect((await service.getSnapshot('c1', { profileId: 'other' })).data[2]).toBe(2);
+
+			service.evict('c1');
+
+			expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		});
+	});
+
+	it('does not share a cache entry between an omitted profile and the profile named default', async () => {
+		getSnapshot.mockResolvedValueOnce(jpeg(1)).mockResolvedValueOnce(jpeg(2));
+
+		expect((await service.getSnapshot('c1', {})).data[2]).toBe(1);
+		expect((await service.getSnapshot('c1', { profileId: 'default' })).data[2]).toBe(2);
+		expect(getSnapshot).toHaveBeenCalledTimes(2);
+		expect(camerasService.findProfileById).toHaveBeenCalledWith(device, provider, 'default');
+
+		// Each stays cached under its own key.
+		expect((await service.getSnapshot('c1', {})).data[2]).toBe(1);
+		expect((await service.getSnapshot('c1', { profileId: 'default' })).data[2]).toBe(2);
+		expect(getSnapshot).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not delete a newer image when a detached fetch fails as offline afterwards', async () => {
+		let fail!: (e: Error) => void;
+
+		getSnapshot.mockReturnValueOnce(new Promise((_, reject) => (fail = reject))).mockResolvedValueOnce(jpeg(2));
+
+		const old = service.getSnapshot('c1', {}).catch((error: unknown) => error);
+
+		await flush();
+		service.evict('c1');
+
+		expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+
+		fail(new CameraOfflineException('x'));
+		expect(await old).toBeInstanceOf(CameraOfflineException);
+
+		// The newer image is still cached: no further provider call, no remembered offline failure.
+		expect((await service.getSnapshot('c1', {})).data[2]).toBe(2);
+		expect(getSnapshot).toHaveBeenCalledTimes(2);
 	});
 
 	it('keeps the cached image when the provider fails with an unknown error', async () => {
@@ -393,8 +534,12 @@ describe('CameraSnapshotService', () => {
 		getSnapshot.mockResolvedValueOnce({ contentType: 'text/html', data: Buffer.from('<html>') });
 		await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
 
+		// Let the recorded failure expire so that the second request really reaches the provider.
+		jest.advanceTimersByTime(3000);
+
 		getSnapshot.mockResolvedValueOnce({ contentType: 'image/jpeg', data: Buffer.alloc(0) });
 		await expect(service.getSnapshot('c1', {})).rejects.toBeInstanceOf(CameraUpstreamException);
+		expect(getSnapshot).toHaveBeenCalledTimes(2);
 	});
 
 	it.each(['image/jpeg; charset=binary', ' IMAGE/JPEG ;q=1', 'Image/Jpeg'])(
