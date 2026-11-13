@@ -41,7 +41,7 @@ export interface CameraStreamProfile {
 }
 
 export interface CameraStreamSource {
-	url: string; // SECRET. Never logged, persisted or returned to a client.
+	url: string; // SECRET. Never logged, persisted, emitted or returned to a client.
 	transport: 'rtsp' | 'rtsps-insecure' | 'http';
 }
 
@@ -52,9 +52,12 @@ export interface CameraSnapshot {
 
 export interface ICameraStreamProvider {
 	getType(): string; // device `type` discriminator, e.g. 'devices-unifi-protect'
-	listProfiles(device: DeviceEntity): Promise<CameraStreamProfile[]>;
-	resolveSource(device: DeviceEntity, profileId: string): Promise<CameraStreamSource>;
-	getSnapshot(device: DeviceEntity, options: { channelId?: string; highQuality?: boolean }): Promise<CameraSnapshot>;
+	listProfiles(device: DeviceEntity, options?: { signal?: AbortSignal }): Promise<CameraStreamProfile[]>;
+	resolveSource(device: DeviceEntity, profileId: string, options?: { signal?: AbortSignal }): Promise<CameraStreamSource>;
+	getSnapshot(
+		device: DeviceEntity,
+		options: { channelId?: string; highQuality?: boolean; signal?: AbortSignal },
+	): Promise<CameraSnapshot>;
 	getSnapshotMinIntervalMs?(device: DeviceEntity): number;
 }
 ```
@@ -72,6 +75,9 @@ From `cameras.exceptions.ts`. Exactly three typed exceptions keep their meaning 
 
 Everything else:
 
+- Logs never carry `error.name` or `error.message` of a provider error, because a provider controls both. The module
+  logs a fixed class label instead (`errorName()`): the module's own exception classes and `CameraProviderTimeoutError`
+  by their class names, any other `Error` as `ProviderError`, anything else as `UnknownError`.
 - Any other error a provider throws is wrapped as `CameraUpstreamException` (503 "Camera did not respond"). That
   includes untyped errors and every other `CamerasException` a provider might throw: `CamerasNotFoundException`,
   `CamerasForbiddenException`, the base `CamerasException` and `CameraUpstreamException` itself. A provider cannot
@@ -79,8 +85,9 @@ Everything else:
   provider may embed a source URL in it; the log line carries the device id and the error class name only.
 - Controller responses never contain a provider-originated message. Only messages the module creates itself (such as
   "Camera <id> not found" for an unknown or non-camera device) appear in a response body.
-- A provider call that takes longer than 10 seconds (`CAMERA_PROVIDER_TIMEOUT_MS`) is aborted as
-  `CameraProviderTimeoutError` and answered with 503.
+- A provider call that takes longer than 10 seconds (`CAMERA_PROVIDER_TIMEOUT_MS`) ends the wait for the caller as
+  `CameraProviderTimeoutError` and is answered with 503. The module aborts the `AbortSignal` it passed to the call, but
+  it does not guarantee that the call stops (see Provider obligations).
 - A snapshot whose media type (the content type before `;`, trimmed and lower-cased, so `image/jpeg; charset=binary` is
   accepted) is not `image/jpeg`, `image/png` or `image/webp`, or whose data is empty, is rejected
   as `CameraUpstreamException('Camera returned an invalid image')` (503).
@@ -102,6 +109,12 @@ interval is the window during which a failed snapshot is remembered (see Snapsho
   injectable whether or not the module is enabled.
 - A snapshot with `profile` may take up to two provider timeouts: the profile lookup (`listProfiles`) and the snapshot
   call each get `CAMERA_PROVIDER_TIMEOUT_MS` (10 s), so the request can take up to 20 s before it fails.
+- A provider MUST bound its own upstream I/O (connect, read and overall timeouts) and SHOULD stop its work when the
+  `signal` passed to `listProfiles`, `resolveSource` or `getSnapshot` aborts. The module's timeout only ends the wait
+  for the caller and returns 503; it cannot cancel a call that ignores the signal, which keeps running until it settles
+  on its own and whose result is then discarded. To stop such calls from piling up, the snapshot service starts no
+  further provider snapshot call for a cache key while an earlier call for that key has timed out and not yet settled:
+  requests for it fail with 503 until the provider promise settles.
 - Throw only the three typed exceptions above to signal a known condition, and never put a URL, alias or credential in
   any error message.
 
@@ -185,6 +198,12 @@ profile is used; with `profile` it must be available. Response data: `session_id
   later success clears the memory, and an unknown profile is never remembered. A remembered rate limit does not hide a
   usable cached image: while one exists it is still returned as stale.
 - Entries older than 5 minutes (`CAMERA_SNAPSHOT_MAX_AGE_MS`) are never served, not even as stale.
+- Cache, failure memory and in-flight keys are `JSON.stringify([deviceId, profileId ?? null, highQuality])`, so an
+  omitted profile and a profile literally named `default` never share an entry.
+- A provider snapshot call that timed out but has not settled is tracked per key. While it is outstanding, no new call
+  is made for that key: the request fails with 503 (the usual timeout path), or gets the stale image when a remembered
+  rate limit allows it. The marker is cleared when the provider promise settles, whatever the outcome; its result is
+  discarded and never cached.
 - A device deletion event evicts every entry and every remembered failure of that device and detaches running
   fetches, so an eviction is not undone by a fetch that finishes afterwards.
 
@@ -198,6 +217,10 @@ profile is used; with `profile` it must be available. Response data: `session_id
 - Single use: `consume(token)` removes the entry before checking its expiry, so a token works once at most.
 - At most 16 pending sessions per owner (`CAMERA_SESSION_MAX_PENDING_PER_OWNER`); the oldest are dropped first.
 - Owner kinds: `user` (id of the user) and `display` (id of the display, from a display token).
+- Revocation racing creation: the controller takes a ticket (`beginCreate(owner, deviceId)`) before its first await and
+  `create` refuses when the device (404) or the owner (403) was revoked after the ticket was issued, so a revocation
+  that fires while the profile lookup is pending cannot leave a session behind. Revocations are remembered only while a
+  ticket is open and dropped when the last one is released (`endCreate`), so the bookkeeping stays bounded.
 - Revocation: four events remove pending sessions, because the auth module emits no logout signal.
 
   | Event | Effect |
@@ -215,8 +238,11 @@ profile is used; with `profile` it must be available. Response data: `session_id
 ## Secret rule
 
 A `CameraStreamSource.url` carries credentials. It is produced only by `resolveSource`, which the module never calls
-for a REST response. The URL, tokens and provider error messages must never be logged, persisted, returned to a client
-or emitted in an event. Logs carry ids and error class names only. `cameras.secret-hygiene.spec.ts` guards this.
+for a REST response. The source URL must never be returned to a client. A session token is different: it is returned
+once, to the authenticated requester that created the session (the `session` query parameter of the returned relative
+URL), as the session contract above describes. Neither the source URL, a session token nor a provider error message
+may be logged, persisted or emitted in an event. Logs carry ids and fixed error class labels only.
+`cameras.secret-hygiene.spec.ts` guards this.
 
 ## Not yet implemented
 
