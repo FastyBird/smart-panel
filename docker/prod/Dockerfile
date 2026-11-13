@@ -85,7 +85,16 @@ RUN pnpm run generate:spec && \
 	pnpm --filter @fastybird/smart-panel-backend build
 
 # ============================================================
-# Stage 3: Production runtime
+# Stage 3: go2rtc relay binary (pinned release, SHA-256 verified)
+# ============================================================
+FROM node:24-alpine AS go2rtc
+ARG TARGETARCH
+RUN apk add --no-cache curl ca-certificates
+COPY build/go2rtc/ /installer/
+RUN sh /installer/install-go2rtc.sh --strict --arch "${TARGETARCH}" --dir /out/go2rtc
+
+# ============================================================
+# Stage 4: Production runtime
 # ============================================================
 FROM node:24-alpine AS runtime
 
@@ -107,6 +116,9 @@ COPY --from=admin-builder /build/apps/admin/dist/ /app/static/
 
 # Copy seed/config data
 COPY var/ /app/var/
+
+# go2rtc relay binary for the cameras module
+COPY --from=go2rtc /out/go2rtc/ /usr/local/lib/smart-panel/go2rtc/
 
 # Create data directories
 RUN mkdir -p /data/db /data/config
