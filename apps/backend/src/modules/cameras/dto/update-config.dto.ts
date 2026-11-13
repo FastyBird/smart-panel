@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import {
 	IsIn,
 	IsInt,
+	IsObject,
 	IsOptional,
 	IsString,
 	Max,
@@ -41,7 +42,7 @@ export class UpdateCamerasGo2rtcConfigDto {
 		example: 'managed',
 	})
 	@Expose()
-	@IsOptional()
+	@ValidateIf((o: UpdateCamerasGo2rtcConfigDto) => o.mode !== undefined)
 	@IsIn(GO2RTC_MODES, {
 		message: '[{"field":"mode","reason":"Mode must be one of managed, external or disabled."}]',
 	})
@@ -54,7 +55,7 @@ export class UpdateCamerasGo2rtcConfigDto {
 		example: '/usr/local/lib/smart-panel/go2rtc/go2rtc',
 	})
 	@Expose({ name: 'binary_path' })
-	@IsOptional()
+	@ValidateIf((o: UpdateCamerasGo2rtcConfigDto) => o.binaryPath !== undefined)
 	@Validate(IsGo2rtcBinaryPathConstraint, {
 		message:
 			'[{"field":"binary_path","reason":"Binary path must be an absolute path whose file name starts with go2rtc."}]',
@@ -94,7 +95,8 @@ export class UpdateCamerasConfigDto extends UpdateModuleConfigDto {
 		type: () => UpdateCamerasGo2rtcConfigDto,
 	})
 	@Expose()
-	@IsOptional()
+	@ValidateIf((o: UpdateCamerasConfigDto) => o.go2rtc !== undefined)
+	@IsObject({ message: '[{"field":"go2rtc","reason":"go2rtc must be an object."}]' })
 	@ValidateNested()
 	@Type(() => UpdateCamerasGo2rtcConfigDto)
 	go2rtc?: UpdateCamerasGo2rtcConfigDto;
@@ -108,7 +110,7 @@ export class UpdateCamerasConfigDto extends UpdateModuleConfigDto {
 		example: 8,
 	})
 	@Expose({ name: 'max_sessions' })
-	@IsOptional()
+	@ValidateIf((o: UpdateCamerasConfigDto) => o.maxSessions !== undefined)
 	@IsInt({ message: '[{"field":"max_sessions","reason":"Max sessions must be a whole number."}]' })
 	@Min(1, { message: '[{"field":"max_sessions","reason":"Max sessions must be at least 1."}]' })
 	@Max(32, { message: '[{"field":"max_sessions","reason":"Max sessions must be at most 32."}]' })
@@ -123,7 +125,7 @@ export class UpdateCamerasConfigDto extends UpdateModuleConfigDto {
 		example: 4,
 	})
 	@Expose({ name: 'max_sessions_per_camera' })
-	@IsOptional()
+	@ValidateIf((o: UpdateCamerasConfigDto) => o.maxSessionsPerCamera !== undefined)
 	@IsInt({
 		message: '[{"field":"max_sessions_per_camera","reason":"Max sessions per camera must be a whole number."}]',
 	})

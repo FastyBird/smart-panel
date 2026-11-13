@@ -55,6 +55,29 @@ describe('UpdateCamerasConfigDto', () => {
 		expect(JSON.stringify(errors)).toContain(field);
 	});
 
+	it.each([
+		[{ go2rtc: null }, 'go2rtc'],
+		[{ go2rtc: { mode: null } }, 'mode'],
+		[{ go2rtc: { binary_path: null } }, 'binary_path'],
+		[{ max_sessions: null }, 'max_sessions'],
+		[{ max_sessions_per_camera: null }, 'max_sessions_per_camera'],
+	])('rejects an explicit null in %j', async (data, field) => {
+		const errors = await validate(plainToInstance(UpdateCamerasConfigDto, { type: CAMERAS_MODULE_NAME, ...data }));
+
+		expect(errors.length).toBeGreaterThan(0);
+		expect(JSON.stringify(errors)).toContain(field);
+	});
+
+	it('accepts an update that omits every relay field and leaves them undefined', async () => {
+		const dto = plainToInstance(UpdateCamerasConfigDto, { type: CAMERAS_MODULE_NAME, go2rtc: {} });
+
+		expect(await validate(dto)).toHaveLength(0);
+		expect(dto.go2rtc?.mode).toBeUndefined();
+		expect(dto.go2rtc?.binaryPath).toBeUndefined();
+		expect(dto.maxSessions).toBeUndefined();
+		expect(dto.maxSessionsPerCamera).toBeUndefined();
+	});
+
 	it('accepts a valid relay update and an explicit null url', async () => {
 		const dto = plainToInstance(UpdateCamerasConfigDto, {
 			type: CAMERAS_MODULE_NAME,
