@@ -99,6 +99,28 @@ describe('automation run trace model', () => {
 				delay_ms: 60_000,
 			});
 		});
+
+		it('records the timeout of a Wait until', () => {
+			expect(
+				createAutomationRunStepModel(
+					step(1, { kind: 'flow', type: 'flow.wait-until', state: 'done', output: 'timeout', timeoutMs: 30_000 }),
+				),
+			).toMatchObject({ state: 'done', output: 'timeout', timeout_ms: 30_000 });
+		});
+
+		it('records a token a join absorbed, and the edges an All was missing', () => {
+			const missing = ['e3'];
+			const held = createAutomationRunStepModel(
+				step(1, { kind: 'flow', type: 'flow.all', state: 'cancelled', missingEdges: missing }),
+			);
+
+			expect(held).toMatchObject({ state: 'cancelled', missing_edges: ['e3'] });
+			expect(held.missing_edges).not.toBe(missing);
+			expect(held.absorbed).toBeUndefined();
+			expect(
+				createAutomationRunStepModel(step(2, { kind: 'flow', type: 'flow.any', state: 'done', absorbed: true })),
+			).toMatchObject({ state: 'done', absorbed: true });
+		});
 	});
 
 	describe('a trace', () => {

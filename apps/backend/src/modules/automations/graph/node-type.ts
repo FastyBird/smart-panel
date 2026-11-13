@@ -137,6 +137,9 @@ export const AUTOMATION_NODE_MAX_TIMEOUT_SECONDS = 300;
 /** The longest a Delay may park a run (ADR 0003, decision 7) */
 export const AUTOMATION_DELAY_MAX_SECONDS = 60 * 60;
 
+/** The longest a Wait until may park a run: the same limit as a Delay (ADR 0003, decision 7) */
+export const AUTOMATION_WAIT_MAX_SECONDS = AUTOMATION_DELAY_MAX_SECONDS;
+
 export interface AutomationConditionResult {
 	result: boolean;
 	observed?: unknown;
@@ -226,7 +229,7 @@ export interface AutomationActionNodeType<
 }
 
 /** The flow behaviours the engine knows how to run */
-export const AUTOMATION_FLOW_BEHAVIOURS = ['delay'] as const;
+export const AUTOMATION_FLOW_BEHAVIOURS = ['delay', 'wait_until', 'any', 'all'] as const;
 
 export type AutomationFlowBehaviour = (typeof AUTOMATION_FLOW_BEHAVIOURS)[number];
 
@@ -252,6 +255,60 @@ export interface AutomationDelayNodeType<
 	flow: 'delay';
 	/** How long to park, in seconds; the engine caps it at AUTOMATION_DELAY_MAX_SECONDS */
 	delaySeconds(config: TConfig): number;
+}
+
+/**
+ * What a Wait until answers when a token arrives at it.
+ *
+ * - `holds: true`: the awaited state already holds, so the token passes at once (ADR 0003, decision 4);
+ * - `holds: false`: the state does not hold yet. The node type is watching for it and calls `resume` when
+ *   it happens; `release` stops the watch and is called by the engine once the token goes on, whatever
+ *   let it go on.
+ */
+export type AutomationWaitStart =
+	| { holds: true; observed?: unknown; reason?: string }
+	| { holds: false; observed?: unknown; reason?: string; release: () => void };
+
+/** What a Wait until hands to `resume` when the awaited event happened */
+export interface AutomationWaitEvent {
+	/** What was seen, for the trace */
+	observed?: unknown;
+}
+
+/**
+ * Parks the token until a trigger-style event happens and continues on `out`, or on `timeout` when the
+ * event did not happen in time. The timeout is mandatory and the engine caps it at
+ * AUTOMATION_WAIT_MAX_SECONDS.
+ */
+export interface AutomationWaitUntilNodeType<
+	TConfig extends object = AutomationNodeConfig,
+> extends AutomationFlowNodeType<TConfig> {
+	flow: 'wait_until';
+	/** How long to wait at most, in seconds */
+	timeoutSeconds(config: TConfig): number;
+	/**
+	 * Starts waiting for the event. `resume` may be called at any time once this was called, also before
+	 * the returned promise resolves; calls after the first are ignored. A wait that throws ends the token
+	 * and fails the run, as there is no `error` output to take.
+	 */
+	wait(
+		config: TConfig,
+		resume: (event: AutomationWaitEvent) => void,
+		context: AutomationRunContext,
+	): Promise<AutomationWaitStart>;
+}
+
+/**
+ * Joins branches of one run (ADR 0003, decision 4). The state of a join belongs to the run.
+ *
+ * - `any` continues on the first token that arrives and absorbs every later one;
+ * - `all` continues once a token has arrived on every incoming edge. It is a strict AND: when the run has
+ *   nothing left that could still arrive, it does not continue and the trace names the missing edges.
+ */
+export interface AutomationJoinNodeType<
+	TConfig extends object = AutomationNodeConfig,
+> extends AutomationFlowNodeType<TConfig> {
+	flow: 'any' | 'all';
 }
 
 /**

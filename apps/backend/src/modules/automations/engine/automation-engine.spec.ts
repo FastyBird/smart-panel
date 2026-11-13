@@ -1,5 +1,8 @@
 import { AutomationNodeReference, AutomationNodeTypeOwner } from '../graph/node-type';
+import { ALL_NODE_TYPE } from '../nodes/all.node-type';
+import { ANY_NODE_TYPE } from '../nodes/any.node-type';
 import { DELAY_NODE_TYPE } from '../nodes/delay.node-type';
+import { WAIT_UNTIL_NODE_TYPE, createWaitUntilNodeType } from '../nodes/wait-until.node-type';
 import {
 	ENGINE_ACTION_TYPE,
 	ENGINE_BROKEN_TRIGGER_TYPE,
@@ -17,6 +20,8 @@ import {
 } from '../testing/engine-harness';
 import { FAKE_JOIN_TYPE } from '../testing/fake-node-types';
 import { FakeTrackerClock } from '../testing/fake-tracker-clock';
+import { PROPERTY_BOOL, fixtureFindProperty, target } from '../testing/node-fixtures';
+import { StateTracker } from '../tracker/state-tracker';
 
 import {
 	ActionPolicyRequest,
@@ -1135,5 +1140,203 @@ describe('AutomationEngine', () => {
 		expect(harness.calls).toEqual(['a']);
 		expect(engine.state(ID)).toMatchObject({ lastRunStatus: 'completed', activeRuns: 0 });
 		expect(errors).toEqual(['the runStarted hook', 'the runEnded hook']);
+	});
+	describe('joins and Wait until', () => {
+		/** trigger → action → All, and trigger → Delay 60 s → All; All → off */
+		const joined = graph(
+			[
+				node('t', ENGINE_TRIGGER_TYPE),
+				node('now', ENGINE_ACTION_TYPE),
+				node('wait', DELAY_NODE_TYPE, { seconds: 60 }),
+				node('all', ALL_NODE_TYPE),
+				node('off', ENGINE_ACTION_TYPE),
+			],
+			['t:out>now', 't:out>wait', 'now:done>all', 'wait:out>all', 'all:out>off'],
+		);
+
+		it('an All continues once every branch of the run has arrived', async () => {
+			expect(await engine.load(automation(joined))).toMatchObject({ status: 'ok' });
+
+			await fire();
+
+			expect(harness.calls).toEqual(['now']);
+			expect(started[0].steps.find((step) => step.nodeId === 'all')).toMatchObject({
+				state: 'parked',
+				missingEdges: ['wait:out>all'],
+			});
+
+			clock.advanceSeconds(60);
+			await flush();
+
+			expect(harness.calls).toEqual(['now', 'off']);
+			expect(ended.map((record) => record.status)).toEqual(['completed']);
+		});
+
+		it('restart cancels a run held at an All and marks the held token in its trace', async () => {
+			await engine.load(automation(joined, { mode: 'restart' }));
+			await fire();
+
+			clock.advanceSeconds(30);
+			await fire();
+
+			expect(ended[0]).toMatchObject({ status: 'cancelled', endReason: 'restarted' });
+			expect(ended[0].steps.filter((step) => step.nodeId === 'all')).toEqual([
+				expect.objectContaining({ state: 'cancelled', missingEdges: ['wait:out>all'] }),
+			]);
+
+			// What arrived in the cancelled run does not count in the new one
+			clock.advanceSeconds(30);
+			await flush();
+
+			expect(harness.calls).toEqual(['now', 'now']);
+
+			clock.advanceSeconds(30);
+			await flush();
+
+			expect(harness.calls).toEqual(['now', 'now', 'off']);
+			expect(ended.map((record) => record.status)).toEqual(['cancelled', 'completed']);
+		});
+
+		it('an Any continues once per run, and again in the next run', async () => {
+			await engine.load(
+				automation(
+					graph(
+						[
+							node('t', ENGINE_TRIGGER_TYPE),
+							node('a', ENGINE_ACTION_TYPE),
+							node('b', ENGINE_ACTION_TYPE),
+							node('any', ANY_NODE_TYPE),
+							node('on', ENGINE_ACTION_TYPE),
+						],
+						['t:out>a', 't:out>b', 'a:done>any', 'b:done>any', 'any:out>on'],
+					),
+				),
+			);
+
+			await fire();
+			await fire();
+
+			expect(harness.calls).toEqual(['a', 'b', 'on', 'a', 'b', 'on']);
+			expect(settled[1].steps.filter((step) => step.nodeId === 'any').map((step) => step.absorbed === true)).toEqual([
+				false,
+				true,
+			]);
+		});
+
+		it('refuses an All fed from two different triggers', async () => {
+			const twoTriggers = graph(
+				[
+					node('t1', ENGINE_TRIGGER_TYPE, { key: 'one' }),
+					node('t2', ENGINE_TRIGGER_TYPE, { key: 'two' }),
+					node('all', ALL_NODE_TYPE),
+					node('on', ENGINE_ACTION_TYPE),
+				],
+				['t1:out>all', 't2:out>all', 'all:out>on'],
+			);
+
+			expect(await engine.load(automation(twoTriggers))).toMatchObject({
+				status: 'invalid',
+				problems: [{ code: 'join_never_completes', node_id: 'all' }],
+			});
+		});
+
+		describe('Wait until', () => {
+			let tracker: StateTracker;
+			let holdValue: () => void;
+
+			/** trigger → Wait until the property is true (30 s) → on; timeout → late */
+			const waiting = graph(
+				[
+					node('t', ENGINE_TRIGGER_TYPE),
+					node('wait', WAIT_UNTIL_NODE_TYPE, { ...target(PROPERTY_BOOL), to: true, timeout_seconds: 30 }),
+					node('on', ENGINE_ACTION_TYPE),
+					node('late', ENGINE_ACTION_TYPE),
+				],
+				['t:out>wait', 'wait:out>on', 'wait:timeout>late'],
+			);
+
+			const waitStep = (record: RunRecord) => record.steps.find((step) => step.nodeId === 'wait');
+
+			beforeEach(() => {
+				tracker = new StateTracker(clock);
+				harness.register(
+					createWaitUntilNodeType({
+						tracker: {
+							watch: (spec, callback) => tracker.watch(spec, callback),
+							read: (propertyId) => tracker.read(propertyId),
+							settled: () => Promise.resolve(),
+						},
+						findProperty: fixtureFindProperty,
+					}),
+				);
+
+				// What the engine adapter does for a referenced property
+				holdValue = tracker.reference(PROPERTY_BOOL);
+				tracker.seed(PROPERTY_BOOL, { value: false });
+			});
+
+			afterEach(() => holdValue());
+
+			it('parks the run, writes the marker, and resumes when the value reaches the state', async () => {
+				expect(await engine.load(automation(waiting))).toMatchObject({ status: 'ok' });
+				expect(held).toContain(`property:${PROPERTY_BOOL}`);
+
+				await fire();
+
+				expect(parked).toHaveLength(1);
+				expect(waitStep(started[0])).toMatchObject({ state: 'parked', timeoutMs: 30_000, observed: false });
+
+				clock.advanceSeconds(10);
+				tracker.report(PROPERTY_BOOL, { value: true });
+				await flush();
+
+				expect(harness.calls).toEqual(['on']);
+				expect(waitStep(ended[0])).toMatchObject({ state: 'done', output: 'out', observed: true });
+				expect(tracker.trackedCount()).toBe(1);
+			});
+
+			it('passes at once when the state already holds', async () => {
+				tracker.report(PROPERTY_BOOL, { value: true });
+
+				await engine.load(automation(waiting));
+				await fire();
+
+				expect(parked).toHaveLength(0);
+				expect(harness.calls).toEqual(['on']);
+				expect(waitStep(ended[0])).toMatchObject({ output: 'out', reason: 'The state already held.' });
+			});
+
+			it('takes the timeout output when the value does not get there in time', async () => {
+				await engine.load(automation(waiting));
+				await fire();
+
+				clock.advanceSeconds(30);
+				await flush();
+
+				expect(harness.calls).toEqual(['late']);
+				expect(waitStep(ended[0])).toMatchObject({ output: 'timeout', timedOut: true });
+
+				tracker.report(PROPERTY_BOOL, { value: true });
+				await flush();
+
+				expect(harness.calls).toEqual(['late']);
+			});
+
+			it('restart cancels a waiting run, lets go of its watch and marks it in the trace', async () => {
+				await engine.load(automation(waiting, { mode: 'restart' }));
+				await fire();
+				await fire();
+
+				expect(ended[0]).toMatchObject({ status: 'cancelled', endReason: 'restarted' });
+				expect(waitStep(ended[0])?.state).toBe('cancelled');
+
+				tracker.report(PROPERTY_BOOL, { value: true });
+				await flush();
+
+				// Only the new run went on
+				expect(harness.calls).toEqual(['on']);
+				expect(ended.map((record) => record.status)).toEqual(['cancelled', 'completed']);
+			});
+		});
 	});
 });

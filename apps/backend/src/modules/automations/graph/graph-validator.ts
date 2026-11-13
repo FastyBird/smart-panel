@@ -21,6 +21,10 @@ export const AutomationGraphIssueCode = {
 	UNREACHABLE_NODE: 'unreachable_node',
 	/** An action would unlock, disarm or open, which an automation may not do */
 	SAFETY_REDUCING_ACTION: 'safety_reducing_action',
+	/** An All is fed from triggers none of which leads to every one of its incoming edges, so it never continues */
+	JOIN_NEVER_COMPLETES: 'join_never_completes',
+	/** An All can be completed by a run of some of the triggers leading to it, but not by every one */
+	JOIN_PARTLY_COMPLETES: 'join_partly_completes',
 } as const;
 
 export type AutomationGraphIssueCode = (typeof AutomationGraphIssueCode)[keyof typeof AutomationGraphIssueCode];
@@ -71,6 +75,10 @@ interface ParsedNode {
 	config: unknown;
 	nodeType: RegisteredAutomationNodeType | undefined;
 }
+
+/** Whether a node is an All: a strict AND over its incoming edges within one run */
+const isAllJoin = (nodeType: RegisteredAutomationNodeType | undefined): boolean =>
+	nodeType?.kind === 'flow' && (nodeType.definition as { flow?: unknown } | undefined)?.flow === 'all';
 
 interface ParsedEdge {
 	id: string | undefined;
@@ -265,6 +273,92 @@ const findCycles = (nodes: ParsedNode[], successors: Map<ParsedNode, Set<ParsedN
 };
 
 /**
+ * A run starts at one trigger, so an All - a strict AND over its incoming edges within one run - can
+ * continue only in a run of a trigger that leads to every one of those edges (ADR 0003, decision 4). An
+ * All no trigger can complete is an error; one that only some of the triggers leading to it can complete
+ * is a warning, naming the triggers whose runs stop there. An edge no trigger leads to is left to the
+ * unreachable-node warning.
+ */
+const validateAllJoins = (
+	nodes: ParsedNode[],
+	triggers: ParsedNode[],
+	successors: Map<ParsedNode, Set<ParsedNode>>,
+	feeders: Map<ParsedNode, ParsedNode[]>,
+): AutomationGraphIssue[] => {
+	const joins = nodes.filter((node) => isAllJoin(node.nodeType) && (feeders.get(node)?.length ?? 0) > 1);
+
+	if (joins.length === 0) {
+		return [];
+	}
+
+	// The triggers that lead to every node, a trigger leading to itself
+	const startedBy = new Map<ParsedNode, Set<ParsedNode>>();
+
+	for (const trigger of triggers) {
+		const start = nodes.find((node) => node.id === trigger.id);
+
+		if (start === undefined || startedBy.get(start)?.has(start) === true) {
+			continue;
+		}
+
+		const queue: ParsedNode[] = [start];
+		const seen = new Set<ParsedNode>(queue);
+
+		for (let index = 0; index < queue.length; index += 1) {
+			const current = queue[index];
+
+			if (!startedBy.has(current)) {
+				startedBy.set(current, new Set());
+			}
+
+			startedBy.get(current)?.add(start);
+
+			for (const successor of successors.get(current) ?? []) {
+				if (!seen.has(successor)) {
+					seen.add(successor);
+					queue.push(successor);
+				}
+			}
+		}
+	}
+
+	const issues: AutomationGraphIssue[] = [];
+
+	for (const join of joins) {
+		const perEdge = (feeders.get(join) ?? []).map((source) => startedBy.get(source) ?? new Set<ParsedNode>());
+
+		if (perEdge.some((set) => set.size === 0)) {
+			continue;
+		}
+
+		const leading = new Set<ParsedNode>(perEdge.flatMap((set) => [...set]));
+		const completing = [...leading].filter((trigger) => perEdge.every((set) => set.has(trigger)));
+
+		if (completing.length === 0) {
+			issues.push({
+				severity: 'error',
+				code: AutomationGraphIssueCode.JOIN_NEVER_COMPLETES,
+				message:
+					'This All can never continue: a run starts from one trigger, and no trigger leads to every one of its inputs. To combine two events, use Wait until.',
+				node_id: join.id,
+			});
+		} else if (completing.length < leading.size) {
+			const stopped = nodes.filter((node) => leading.has(node) && !completing.includes(node));
+
+			issues.push({
+				severity: 'warning',
+				code: AutomationGraphIssueCode.JOIN_PARTLY_COMPLETES,
+				message: `This All continues only in runs of some of the triggers that lead to it; a run of ${stopped.length} other trigger(s) stops here.`,
+				node_id: join.id,
+				node_ids: stopped.map((trigger) => trigger.id),
+			});
+		}
+	}
+
+	return issues;
+};
+
+/**
  * Returns every issue of a graph. An empty list means the graph is complete and runnable.
  *
  * Whether an issue stops a save is not decided here; see `save-policy.ts`.
@@ -318,6 +412,8 @@ export const validateGraph = async (
 	// Edges
 	const seenConnections = new Set<string>();
 	const successors = new Map<ParsedNode, Set<ParsedNode>>();
+	/** The nodes with an edge into each node, one entry per edge */
+	const feeders = new Map<ParsedNode, ParsedNode[]>();
 
 	for (const raw of asArray(document.edges)) {
 		if (!isRecord(raw)) {
@@ -345,6 +441,12 @@ export const validateGraph = async (
 		}
 
 		successors.get(source)?.add(target);
+
+		if (!feeders.has(target)) {
+			feeders.set(target, []);
+		}
+
+		feeders.get(target)?.push(source);
 
 		if (source.nodeType !== undefined && !source.nodeType.ports.outputs.includes(edge.sourcePort as string)) {
 			issues.push({
@@ -452,6 +554,11 @@ export const validateGraph = async (
 				node_id: node.id,
 			});
 		}
+	}
+
+	// Joins. A node of an unknown type may be a trigger, so while one is there nothing is said about them.
+	if (unknown.length === 0) {
+		issues.push(...validateAllJoins([...nodesById.values()], triggers, successors, feeders));
 	}
 
 	return issues;

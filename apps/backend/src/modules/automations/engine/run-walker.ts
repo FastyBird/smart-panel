@@ -15,10 +15,19 @@
  *   `error` output with no edge ends that token and marks the run `failed`; other branches continue.
  * - A Delay parks its token on a timer of the monotonic clock. A refused Delay has no `error` output to
  *   take: its token ends and the run is marked `failed`.
+ * - A Wait until passes at once when the awaited state already holds. Otherwise it parks its token until
+ *   the event happens (`out`) or its timeout runs out (`timeout`). A refused or failing Wait until ends its
+ *   token and fails the run, like a Delay.
+ * - Joins keep their state in the run, so nothing of one run reaches the next. An Any continues on the
+ *   first token and absorbs every later one. An All holds the tokens that arrived until one has arrived on
+ *   every incoming edge, then continues once. A token held at an All does not keep the run open: when
+ *   nothing else of the run is left, no branch can arrive any more, the All does not continue and its
+ *   steps name the edges that were missing. Either join continues at most once per run.
  * - A run takes a limited number of steps. Every token put on an edge counts, before its node is executed;
  *   the run ends as `failed` when one more would be needed.
  * - The run ends when no token is left: `completed`, or `failed` when an error went unhandled.
- * - A cancelled run ends at once. Parked tokens are dropped. A node already executing cannot be recalled:
+ * - A cancelled run ends at once. Parked tokens - on a Delay, a Wait until or an All - are dropped and their
+ *   steps are marked `cancelled`. A node already executing cannot be recalled:
  *   its abort signal fires, its result is traced with `afterCancel` when it returns, and its output is not
  *   followed. Every node has a timeout, so a cancelled run always settles.
  *
@@ -32,6 +41,8 @@ import {
 	AutomationNodeKind,
 	AutomationRunContext,
 	AutomationRunTrigger,
+	AutomationWaitEvent,
+	AutomationWaitStart,
 } from '../graph/node-type';
 import { TrackerClock } from '../tracker/clock';
 
@@ -73,10 +84,34 @@ export interface RunPlanDelayNode extends RunPlanNodeBase {
 	delayMs: number;
 }
 
-export type RunPlanNode = RunPlanTriggerNode | RunPlanConditionNode | RunPlanActionNode | RunPlanDelayNode;
+export interface RunPlanWaitUntilNode extends RunPlanNodeBase {
+	kind: 'flow';
+	flow: 'wait_until';
+	/** How long the token waits at most before it takes `timeout` */
+	timeoutMs: number;
+	wait(
+		resume: (event: AutomationWaitEvent) => void,
+		context: AutomationRunContext,
+	): Promise<AutomationWaitStart> | AutomationWaitStart;
+}
 
-/** The nodes a token can reach, each of which the gate is asked about */
-export type RunPlanGatedNode = RunPlanConditionNode | RunPlanActionNode | RunPlanDelayNode;
+export interface RunPlanJoinNode extends RunPlanNodeBase {
+	kind: 'flow';
+	flow: 'any' | 'all';
+	/** The edges leading into the join, in the order of the graph document */
+	incoming: string[];
+}
+
+export type RunPlanNode =
+	| RunPlanTriggerNode
+	| RunPlanConditionNode
+	| RunPlanActionNode
+	| RunPlanDelayNode
+	| RunPlanWaitUntilNode
+	| RunPlanJoinNode;
+
+/** The nodes the gate is asked about before they are executed */
+export type RunPlanGatedNode = RunPlanConditionNode | RunPlanActionNode | RunPlanDelayNode | RunPlanWaitUntilNode;
 
 export interface RunPlanEdge {
 	id: string;
@@ -110,7 +145,10 @@ export interface RunStep {
 	kind: AutomationNodeKind;
 	/** The edge the token arrived on */
 	via?: string;
-	/** `parked` while a Delay holds the token, `cancelled` when the run was cancelled around it */
+	/**
+	 * `parked` while a Delay, a Wait until or an All holds the token, `cancelled` when the run ended around
+	 * it - for an All also when the run ended before every branch arrived
+	 */
 	state: RunStepState;
 	/** The output port taken */
 	output?: string;
@@ -126,6 +164,12 @@ export interface RunStep {
 	afterCancel?: boolean;
 	/** For a Delay: how long the token was parked for */
 	delayMs?: number;
+	/** For a Wait until: how long the token waits at most */
+	timeoutMs?: number;
+	/** For a join: the token arrived after the join had continued in this run and went no further */
+	absorbed?: boolean;
+	/** For an All that holds the token or did not continue: the incoming edges no token has arrived on */
+	missingEdges?: string[];
 }
 
 export interface RunRecord {
@@ -153,7 +197,7 @@ export interface RunObserver {
 	 * `cancelled`. The step is the one in the record and may still change.
 	 */
 	step?(record: RunRecord, step: RunStep): void;
-	/** The run parked a token on a Delay and will outlive the current tick; reported for every park */
+	/** The run parked a token on a Delay or a Wait until and will outlive the current tick; reported for every park */
 	parked?(record: RunRecord): void;
 	/** The outcome of the run is known */
 	ended?(record: RunRecord): void;
@@ -186,6 +230,23 @@ export interface RunWalkerOptions {
 
 type Invocation<T> = { type: 'value'; value: T } | { type: 'threw'; error: unknown } | { type: 'timeout' };
 
+type WaitOutcome =
+	| { type: 'holds'; observed?: unknown; reason?: string }
+	| { type: 'event'; observed?: unknown }
+	| { type: 'timeout' }
+	| { type: 'cancelled' }
+	| { type: 'threw'; error: unknown };
+
+/** What one join knows within one run */
+interface JoinState {
+	/** The incoming edges a token has arrived on */
+	arrived: Set<string>;
+	/** Whether the join has continued; it does at most once per run */
+	fired: boolean;
+	/** The steps of the tokens an All holds */
+	held: RunStep[];
+}
+
 const describeError = (error: unknown): string => (error instanceof Error ? error.message : 'unknown error');
 
 const ACTION_CHECK_FAILED_REASON = 'The action could not be checked, so it was not executed.';
@@ -214,6 +275,8 @@ export class RunWalker {
 	private unhandledErrors = 0;
 	private readonly parked = new Set<() => void>();
 	private readonly executing = new Set<AbortController>();
+	/** Join state belongs to the run, so it can never reach the next one */
+	private readonly joins = new Map<string, JoinState>();
 
 	public constructor(options: RunWalkerOptions) {
 		this.plan = options.plan;
@@ -265,6 +328,7 @@ export class RunWalker {
 	public cancel(reason: string, status: RunEndStatus = 'cancelled'): void {
 		if (!this.started || this.ended) return;
 
+		this.releaseJoins();
 		this.end(status, reason);
 
 		for (const release of [...this.parked]) release();
@@ -335,7 +399,17 @@ export class RunWalker {
 			case 'action':
 				return this.runAction(node, edge);
 			case 'flow':
-				return this.runDelay(node, edge);
+				switch (node.flow) {
+					case 'delay':
+						return this.runDelay(node, edge);
+					case 'wait_until':
+						return this.runWaitUntil(node, edge);
+					case 'any':
+					case 'all':
+						return this.runJoin(node, edge);
+					default:
+						throw new Error('a token reached a flow block the engine does not know');
+				}
 			default:
 				throw new Error('a token reached a trigger');
 		}
@@ -475,6 +549,261 @@ export class RunWalker {
 		this.notifyStep(step);
 
 		this.follow(node.id, 'out');
+	}
+
+	private async runWaitUntil(node: RunPlanWaitUntilNode, edge: RunPlanEdge): Promise<void> {
+		const gate = this.beforeExecute?.(node) ?? { allow: true };
+
+		if (gate.allow === false) {
+			// A Wait until has no `error` output to take: the token ends here and the run fails
+			this.step(node, edge, { reason: gate.reason, refused: true, timeoutMs: node.timeoutMs });
+			this.unhandledErrors += 1;
+
+			return;
+		}
+
+		let step: RunStep | undefined;
+		const outcome = await this.waitFor(node, (start) => {
+			// The state does not hold yet: the token is parked from now on
+			step = this.step(node, edge, {
+				state: 'parked',
+				timeoutMs: node.timeoutMs,
+				...(start.observed !== undefined ? { observed: start.observed } : {}),
+				...(start.reason !== undefined ? { reason: start.reason } : {}),
+			});
+
+			// Every park is reported, so what is stored of a parked run names the block it waits on now
+			this.notify('parked');
+		});
+
+		const finish = (fields: Partial<RunStep>): void => {
+			if (step === undefined) {
+				this.step(node, edge, { timeoutMs: node.timeoutMs, ...fields });
+
+				return;
+			}
+
+			delete step.reason;
+			Object.assign(step, { state: 'done' }, fields);
+			this.notifyStep(step);
+		};
+
+		switch (outcome.type) {
+			case 'cancelled':
+				finish({ state: 'cancelled' });
+
+				return;
+			case 'threw':
+				finish({ reason: `The wait failed: ${describeError(outcome.error)}` });
+				this.unhandledErrors += 1;
+
+				return;
+			case 'holds':
+				finish({
+					output: 'out',
+					...(outcome.observed !== undefined ? { observed: outcome.observed } : {}),
+					reason: outcome.reason ?? 'The state already held.',
+				});
+				break;
+			case 'event':
+				finish({ output: 'out', ...(outcome.observed !== undefined ? { observed: outcome.observed } : {}) });
+				break;
+			case 'timeout':
+				finish({
+					output: 'timeout',
+					timedOut: true,
+					reason: `The awaited event did not happen within ${describeSeconds(node.timeoutMs)}.`,
+				});
+				break;
+		}
+
+		this.follow(node.id, outcome.type === 'timeout' ? 'timeout' : 'out');
+	}
+
+	/**
+	 * Starts a Wait until and resolves with what let the token go on. The timeout runs from the arrival of
+	 * the token, also while the node type is still looking at the state. The watch of the node type is
+	 * released however the wait ends. The promise always resolves.
+	 */
+	private waitFor(
+		node: RunPlanWaitUntilNode,
+		onParked: (start: { observed?: unknown; reason?: string }) => void,
+	): Promise<WaitOutcome> {
+		const controller = new AbortController();
+
+		this.executing.add(controller);
+
+		return new Promise((resolve) => {
+			let finished = false;
+			let release: (() => void) | undefined;
+
+			const letGo = (): void => {
+				const pending = release;
+
+				release = undefined;
+
+				try {
+					pending?.();
+				} catch {
+					// A watch that can not be released is the node type's to clean up
+				}
+			};
+
+			const finish = (outcome: WaitOutcome): void => {
+				if (finished) return;
+
+				finished = true;
+				this.clock.clearTimeout(handle);
+				this.parked.delete(cancel);
+				this.executing.delete(controller);
+
+				if (outcome.type === 'cancelled' || outcome.type === 'timeout') {
+					controller.abort();
+				}
+
+				letGo();
+				resolve(outcome);
+			};
+			const cancel = (): void => finish({ type: 'cancelled' });
+
+			this.parked.add(cancel);
+
+			const handle = this.clock.setTimeout(() => finish({ type: 'timeout' }), node.timeoutMs);
+
+			const resume = (event: AutomationWaitEvent): void => {
+				const observed = typeof event === 'object' && event !== null ? event.observed : undefined;
+
+				finish({ type: 'event', ...(observed !== undefined ? { observed } : {}) });
+			};
+
+			const started = (start: unknown): void => {
+				if (typeof start !== 'object' || start === null) {
+					finish({ type: 'threw', error: new Error('the block did not say whether the state holds') });
+
+					return;
+				}
+
+				const answer = start as Partial<AutomationWaitStart>;
+
+				if (answer.holds !== true && typeof answer.release === 'function') {
+					release = answer.release;
+				}
+
+				if (finished) {
+					// The wait ended while the node type was still looking: nothing is to be watched any more
+					letGo();
+
+					return;
+				}
+
+				if (answer.holds === true) {
+					finish({
+						type: 'holds',
+						...(answer.observed !== undefined ? { observed: answer.observed } : {}),
+						...(typeof answer.reason === 'string' ? { reason: answer.reason } : {}),
+					});
+
+					return;
+				}
+
+				onParked({
+					...(answer.observed !== undefined ? { observed: answer.observed } : {}),
+					...(typeof answer.reason === 'string' ? { reason: answer.reason } : {}),
+				});
+			};
+
+			try {
+				Promise.resolve(
+					node.wait(resume, {
+						automationId: this.record.automationId,
+						runId: this.record.id,
+						nodeId: node.id,
+						signal: controller.signal,
+						trigger: this.record.trigger,
+					}),
+				).then(started, (error: unknown) => finish({ type: 'threw', error }));
+			} catch (error) {
+				finish({ type: 'threw', error });
+			}
+		});
+	}
+
+	private runJoin(node: RunPlanJoinNode, edge: RunPlanEdge): void {
+		let join = this.joins.get(node.id);
+
+		if (join === undefined) {
+			join = { arrived: new Set(), fired: false, held: [] };
+			this.joins.set(node.id, join);
+		}
+
+		if (join.fired) {
+			this.step(node, edge, {
+				absorbed: true,
+				reason:
+					node.flow === 'any'
+						? 'Another branch already passed this block in this run.'
+						: 'This block already continued in this run.',
+			});
+
+			return;
+		}
+
+		if (node.flow === 'all') {
+			if (join.arrived.has(edge.id)) {
+				// A strict AND over the edges: a second token on one edge does not stand in for another edge
+				this.step(node, edge, { absorbed: true, reason: 'A token already arrived on this edge in this run.' });
+
+				return;
+			}
+
+			join.arrived.add(edge.id);
+
+			const arrived = join.arrived;
+			const missing = node.incoming.filter((id) => !arrived.has(id));
+
+			if (missing.length > 0) {
+				// The token rests here without keeping the run open: see releaseJoins()
+				join.held.push(this.step(node, edge, { state: 'parked', missingEdges: missing }));
+
+				return;
+			}
+		}
+
+		join.fired = true;
+
+		for (const held of join.held.splice(0)) {
+			held.state = 'done';
+			delete held.missingEdges;
+			this.notifyStep(held);
+		}
+
+		this.step(node, edge, { output: 'out' });
+		this.follow(node.id, 'out');
+	}
+
+	/**
+	 * Lets go of the tokens held at an All that did not continue, when the run ends: cancelled, or because
+	 * nothing of it is left that could still arrive. Their steps name the edges that were missing.
+	 */
+	private releaseJoins(reason?: string): void {
+		for (const [nodeId, join] of this.joins) {
+			if (join.fired || join.held.length === 0) continue;
+
+			const node = this.plan.nodes.get(nodeId);
+			const incoming = node?.kind === 'flow' && node.flow === 'all' ? node.incoming : [];
+			const missing = incoming.filter((id) => !join.arrived.has(id));
+
+			for (const held of join.held.splice(0)) {
+				held.state = 'cancelled';
+				held.missingEdges = missing;
+
+				if (reason !== undefined) {
+					held.reason = reason;
+				}
+
+				this.notifyStep(held);
+			}
+		}
 	}
 
 	/**
@@ -673,6 +1002,8 @@ export class RunWalker {
 		if (this.tokens > 0 || this.settledReported) return;
 
 		if (!this.ended) {
+			// Nothing of the run is left, so no branch can arrive at an All any more
+			this.releaseJoins('The run ended before a token arrived on every incoming edge, so this block did not continue.');
 			this.end(this.unhandledErrors > 0 ? 'failed' : 'completed');
 		}
 

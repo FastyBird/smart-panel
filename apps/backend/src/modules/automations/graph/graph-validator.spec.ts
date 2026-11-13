@@ -1,3 +1,5 @@
+import { ALL_NODE_TYPE, allNodeType } from '../nodes/all.node-type';
+import { ANY_NODE_TYPE, anyNodeType } from '../nodes/any.node-type';
 import {
 	FAKE_ACTION_TYPE,
 	FAKE_CONDITION_TYPE,
@@ -671,6 +673,124 @@ describe('validateGraph', () => {
 				['unknown_node_type', 'x', 'Node type (not a string) is not available.'],
 				['unknown_node_type', 'y', 'Node type "boom" is not available.'],
 			]);
+		});
+	});
+	describe('All fed from triggers', () => {
+		const joinLookup = createLookup([...FAKE_NODE_TYPES, anyNodeType, allNodeType]);
+
+		it('is an error when no single trigger leads to every input: the All can never continue', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+						node('on', FAKE_ACTION_TYPE),
+					],
+					[e('t1:out>a:in'), e('a:done>all:in'), e('t2:out>all:in'), e('all:out>on:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([
+				{
+					severity: 'error',
+					code: 'join_never_completes',
+					message:
+						'This All can never continue: a run starts from one trigger, and no trigger leads to every one of its inputs. To combine two events, use Wait until.',
+					node_id: 'all',
+				},
+			]);
+		});
+
+		it('is a warning naming the triggers whose runs stop at the All when only some can complete it', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t1:out>a:in'), e('t1:out>b:in'), e('t2:out>b:in'), e('a:done>all:in'), e('b:done>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([
+				{
+					severity: 'warning',
+					code: 'join_partly_completes',
+					message:
+						'This All continues only in runs of some of the triggers that lead to it; a run of 1 other trigger(s) stops here.',
+					node_id: 'all',
+					node_ids: ['t2'],
+				},
+			]);
+		});
+
+		it('finds nothing when every trigger leading to the All leads to all of its inputs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t1:out>c:in'),
+						e('t2:out>c:in'),
+						e('c:yes>a:in'),
+						e('c:yes>b:in'),
+						e('a:done>all:in'),
+						e('b:done>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('lets an Any combine two triggers', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t1', FAKE_TRIGGER_TYPE), node('t2', FAKE_TRIGGER_TYPE), node('any', ANY_NODE_TYPE)],
+					[e('t1:out>any:in'), e('t2:out>any:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('leaves an input no trigger leads to to the unreachable warning', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t', FAKE_TRIGGER_TYPE), node('orphan', FAKE_ACTION_TYPE), node('all', ALL_NODE_TYPE)],
+					[e('t:out>all:in'), e('orphan:done>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['unreachable_node']);
+		});
+
+		it('says nothing while a node of an unknown type could be a trigger', async () => {
+			const issues = await validateGraph(
+				graph(
+					[node('t', FAKE_TRIGGER_TYPE), node('x', 'not.registered'), node('all', ALL_NODE_TYPE)],
+					[e('t:out>all:in'), e('x:out>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['unknown_node_type']);
 		});
 	});
 });

@@ -1,4 +1,9 @@
-import { AutomationActionResult, AutomationRunContext } from '../graph/node-type';
+import {
+	AutomationActionResult,
+	AutomationRunContext,
+	AutomationWaitEvent,
+	AutomationWaitStart,
+} from '../graph/node-type';
 import { flush } from '../testing/engine-harness';
 import { FakeTrackerClock } from '../testing/fake-tracker-clock';
 
@@ -8,7 +13,9 @@ import {
 	RunPlanActionNode,
 	RunPlanConditionNode,
 	RunPlanGatedNode,
+	RunPlanJoinNode,
 	RunPlanNode,
+	RunPlanWaitUntilNode,
 	RunRecord,
 	RunStep,
 	RunWalker,
@@ -97,7 +104,16 @@ describe('RunWalker', () => {
 		delayMs,
 	});
 
-	/** Edges are written `source:port>target` and keep their order */
+	const join = (id: string, flow: 'any' | 'all'): RunPlanJoinNode => ({
+		id,
+		type: `flow.${flow}`,
+		kind: 'flow',
+		flow,
+		config: {},
+		incoming: [],
+	});
+
+	/** Edges are written `source:port>target` and keep their order; a join learns the edges leading into it */
 	const plan = (nodes: RunPlanNode[], edges: string[]): RunPlan => {
 		const result: RunPlan = { nodes: new Map(nodes.map((item) => [item.id, item])), outgoing: new Map() };
 
@@ -107,6 +123,12 @@ describe('RunWalker', () => {
 			const key = runPlanPortKey(source, sourcePort);
 
 			result.outgoing.set(key, [...(result.outgoing.get(key) ?? []), { id: spec, source, sourcePort, target }]);
+
+			const into = result.nodes.get(target);
+
+			if (into?.kind === 'flow' && (into.flow === 'any' || into.flow === 'all')) {
+				into.incoming.push(spec);
+			}
 		}
 
 		return result;
@@ -1127,6 +1149,408 @@ describe('RunWalker', () => {
 			expect(calls).toEqual(['a', 'b']);
 			expect(walker.record.status).toBe('completed');
 			expect(events.filter((event) => event === 'error')).toHaveLength(2);
+		});
+	});
+	describe('Any', () => {
+		it('continues on the first branch that arrives and absorbs every later one', async () => {
+			const walker = walk(
+				plan(
+					[trigger('t'), action('fast'), action('slow', { latencyMs: 500 }), join('any', 'any'), action('after')],
+					['t:out>fast', 't:out>slow', 'fast:done>any', 'slow:done>any', 'any:out>after'],
+				),
+			);
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['fast', 'slow', 'after']);
+			expect(stepOf(walker, 'any')).toMatchObject({ state: 'done', output: 'out', via: 'fast:done>any' });
+			expect(walker.active).toBe(true);
+
+			clock.advance(500);
+			await flush();
+
+			const steps = walker.record.steps.filter((item) => item.nodeId === 'any');
+
+			expect(steps).toHaveLength(2);
+			expect(steps[1]).toMatchObject({ state: 'done', via: 'slow:done>any', absorbed: true });
+			expect(steps[1].output).toBeUndefined();
+			expect(calls).toEqual(['fast', 'slow', 'after']);
+			expect(walker.record.status).toBe('completed');
+		});
+
+		it('absorbs a later arrival on the same edge too', async () => {
+			const walker = walk(
+				plan(
+					[trigger('t'), action('a'), action('b'), action('x'), join('any', 'any'), action('after')],
+					['t:out>a', 't:out>b', 'a:done>x', 'b:done>x', 'x:done>any', 'any:out>after'],
+				),
+			);
+
+			walker.start();
+			await flush();
+
+			expect(calls.filter((call) => call === 'after')).toHaveLength(1);
+			expect(walker.record.steps.filter((item) => item.nodeId === 'any' && item.absorbed)).toHaveLength(1);
+		});
+
+		it('keeps its state in the run: the next run passes again', async () => {
+			const runPlan = plan(
+				[trigger('t'), action('a'), action('b'), join('any', 'any'), action('after')],
+				['t:out>a', 't:out>b', 'a:done>any', 'b:done>any', 'any:out>after'],
+			);
+
+			walk(runPlan).start();
+			await flush();
+
+			const second = walk(runPlan);
+
+			second.start();
+			await flush();
+
+			expect(calls.filter((call) => call === 'after')).toHaveLength(2);
+			expect(
+				second.record.steps.filter((item) => item.nodeId === 'any').map((item) => item.output ?? 'absorbed'),
+			).toEqual(['out', 'absorbed']);
+		});
+	});
+
+	describe('All', () => {
+		const fanIn = (): RunPlan =>
+			plan(
+				[trigger('t'), action('now'), delay('later', 1_000), join('all', 'all'), action('after')],
+				['t:out>now', 't:out>later', 'now:done>all', 'later:out>all', 'all:out>after'],
+			);
+
+		it('holds a partial arrival and continues once a token has arrived on every incoming edge', async () => {
+			const walker = walk(fanIn());
+
+			walker.start();
+			await flush();
+
+			expect(stepOf(walker, 'all')).toMatchObject({
+				state: 'parked',
+				via: 'now:done>all',
+				missingEdges: ['later:out>all'],
+			});
+			expect(calls).toEqual(['now']);
+			expect(walker.active).toBe(true);
+
+			clock.advance(1_000);
+			await flush();
+
+			const steps = walker.record.steps.filter((item) => item.nodeId === 'all');
+
+			expect(steps).toHaveLength(2);
+			expect(steps[0].state).toBe('done');
+			expect(steps[0].missingEdges).toBeUndefined();
+			expect(steps[1]).toMatchObject({ state: 'done', output: 'out', via: 'later:out>all' });
+			expect(calls).toEqual(['now', 'after']);
+			expect(walker.record.status).toBe('completed');
+		});
+
+		it('is a strict AND: when a branch can no longer arrive it does not continue and names the missing edge', async () => {
+			const walker = walk(
+				plan(
+					[trigger('t'), condition('check', { result: false }), action('now'), join('all', 'all'), action('after')],
+					['t:out>check', 't:out>now', 'check:yes>all', 'now:done>all', 'all:out>after'],
+				),
+			);
+
+			walker.start();
+			await flush();
+
+			expect(calls).toEqual(['check', 'now']);
+			expect(stepOf(walker, 'all')).toMatchObject({
+				state: 'cancelled',
+				via: 'now:done>all',
+				missingEdges: ['check:yes>all'],
+				reason: 'The run ended before a token arrived on every incoming edge, so this block did not continue.',
+			});
+			expect(walker.record.status).toBe('completed');
+			expect(events).toEqual(['ended:completed', 'settled']);
+		});
+
+		it('does not count a second token on one edge for another edge', async () => {
+			const walker = walk(
+				plan(
+					[
+						trigger('t'),
+						action('a'),
+						action('b'),
+						action('x'),
+						condition('gone', { result: false }),
+						join('all', 'all'),
+						action('after'),
+					],
+					['t:out>a', 't:out>b', 'a:done>x', 'b:done>x', 'x:done>all', 't:out>gone', 'gone:yes>all', 'all:out>after'],
+				),
+			);
+
+			walker.start();
+			await flush();
+
+			const steps = walker.record.steps.filter((item) => item.nodeId === 'all');
+
+			expect(steps.map((item) => [item.state, item.absorbed === true])).toEqual([
+				['cancelled', false],
+				['done', true],
+			]);
+			expect(calls).not.toContain('after');
+		});
+
+		it('keeps its state in the run: what arrived in one run is not counted in the next', async () => {
+			const runPlan = fanIn();
+			const first = walk(runPlan);
+
+			first.start();
+			await flush();
+			first.cancel('restarted');
+
+			const second = walk(runPlan);
+
+			second.start();
+			await flush();
+
+			expect(stepOf(second, 'all')).toMatchObject({ state: 'parked', missingEdges: ['later:out>all'] });
+			expect(calls).toEqual(['now', 'now']);
+
+			clock.advance(1_000);
+			await flush();
+
+			expect(calls).toEqual(['now', 'now', 'after']);
+		});
+
+		it('drops a held token when the run is cancelled and marks it in the trace', async () => {
+			const walker = walk(fanIn());
+
+			walker.start();
+			await flush();
+			walker.cancel('restarted');
+
+			expect(walker.record).toMatchObject({ status: 'cancelled', endReason: 'restarted' });
+			expect(stepOf(walker, 'all')).toMatchObject({ state: 'cancelled', missingEdges: ['later:out>all'] });
+			expect(clock.pending()).toBe(0);
+
+			clock.advance(5_000);
+			await flush();
+
+			expect(stepOf(walker, 'later').state).toBe('cancelled');
+
+			expect(calls).toEqual(['now']);
+		});
+	});
+
+	describe('Wait until', () => {
+		interface FakeWait {
+			node: RunPlanWaitUntilNode;
+			resume?: (event: AutomationWaitEvent) => void;
+			context?: AutomationRunContext;
+			release: jest.Mock;
+		}
+
+		const waitUntil = (
+			id: string,
+			timeoutMs: number,
+			answer: (fake: FakeWait) => AutomationWaitStart | Promise<AutomationWaitStart>,
+		): FakeWait => {
+			const fake: FakeWait = { release: jest.fn() } as unknown as FakeWait;
+
+			fake.node = {
+				id,
+				type: 'flow.wait-until',
+				kind: 'flow',
+				flow: 'wait_until',
+				config: {},
+				timeoutMs,
+				wait: (resume, context) => {
+					calls.push(id);
+					fake.resume = resume;
+					fake.context = context;
+
+					return answer(fake);
+				},
+			};
+
+			return fake;
+		};
+
+		const notYet = (fake: FakeWait): AutomationWaitStart => ({
+			holds: false,
+			release: fake.release,
+			observed: false,
+			reason: 'The value is not in the awaited state yet.',
+		});
+
+		const waitPlan = (fake: FakeWait): RunPlan =>
+			plan(
+				[trigger('t'), fake.node, action('then'), action('late')],
+				['t:out>wait', 'wait:out>then', 'wait:timeout>late'],
+			);
+
+		it('passes at once when the state already holds', async () => {
+			const fake = waitUntil('wait', 60_000, () => ({ holds: true, observed: true }));
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+
+			expect(stepOf(walker, 'wait')).toMatchObject({
+				state: 'done',
+				output: 'out',
+				observed: true,
+				reason: 'The state already held.',
+			});
+			expect(calls).toEqual(['wait', 'then']);
+			expect(events).toEqual(['ended:completed', 'settled']);
+			expect(clock.pending()).toBe(0);
+		});
+
+		it('parks the run and resumes on the event', async () => {
+			const fake = waitUntil('wait', 60_000, notYet);
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+
+			expect(events).toEqual(['parked']);
+			expect(stepOf(walker, 'wait')).toMatchObject({
+				state: 'parked',
+				timeoutMs: 60_000,
+				observed: false,
+				reason: 'The value is not in the awaited state yet.',
+			});
+			expect(fake.context).toMatchObject({ automationId: 'automation-1', runId: 'run-1', nodeId: 'wait' });
+
+			clock.advance(10_000);
+			fake.resume?.({ observed: true });
+			await flush();
+
+			const step = stepOf(walker, 'wait');
+
+			expect(step).toMatchObject({ state: 'done', output: 'out', observed: true });
+			expect(step.reason).toBeUndefined();
+			expect(fake.release).toHaveBeenCalledTimes(1);
+			expect(calls).toEqual(['wait', 'then']);
+			expect(walker.record).toMatchObject({ status: 'completed', durationMs: 10_000 });
+			expect(clock.pending()).toBe(0);
+		});
+
+		it('takes the timeout output when the event does not happen in time', async () => {
+			const fake = waitUntil('wait', 30_000, notYet);
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+
+			clock.advance(29_999);
+			await flush();
+
+			expect(calls).toEqual(['wait']);
+
+			clock.advance(1);
+			await flush();
+
+			expect(stepOf(walker, 'wait')).toMatchObject({
+				state: 'done',
+				output: 'timeout',
+				timedOut: true,
+				reason: 'The awaited event did not happen within 30 s.',
+			});
+			expect(fake.release).toHaveBeenCalledTimes(1);
+			expect(fake.context?.signal.aborted).toBe(true);
+			expect(calls).toEqual(['wait', 'late']);
+
+			// An event after the timeout changes nothing
+			fake.resume?.({ observed: true });
+			await flush();
+
+			expect(calls).toEqual(['wait', 'late']);
+			expect(walker.record.status).toBe('completed');
+		});
+
+		it('an event that happens while the block still looks at the state resumes the run', async () => {
+			const fake = waitUntil('wait', 60_000, (self) => {
+				self.resume?.({ observed: 'heat' });
+
+				return Promise.resolve(notYet(self));
+			});
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+
+			expect(stepOf(walker, 'wait')).toMatchObject({ state: 'done', output: 'out', observed: 'heat' });
+			expect(fake.release).toHaveBeenCalledTimes(1);
+			expect(calls).toEqual(['wait', 'then']);
+		});
+
+		it('the timeout runs from the arrival, also while the block is still looking at the state', async () => {
+			let answer: (start: AutomationWaitStart) => void = () => undefined;
+			const fake = waitUntil('wait', 5_000, () => new Promise<AutomationWaitStart>((resolve) => (answer = resolve)));
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			clock.advance(5_000);
+			await flush();
+
+			expect(stepOf(walker, 'wait')).toMatchObject({ output: 'timeout' });
+
+			answer(notYet(fake));
+			await flush();
+
+			// The watch that was set up too late is let go at once
+			expect(fake.release).toHaveBeenCalledTimes(1);
+			expect(calls).toEqual(['wait', 'late']);
+		});
+
+		it('drops the parked token when the run is cancelled and marks it in the trace', async () => {
+			const fake = waitUntil('wait', 60_000, notYet);
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+			walker.cancel('restarted');
+			await flush();
+
+			expect(walker.record).toMatchObject({ status: 'cancelled', endReason: 'restarted' });
+			expect(stepOf(walker, 'wait').state).toBe('cancelled');
+			expect(fake.release).toHaveBeenCalledTimes(1);
+			expect(fake.context?.signal.aborted).toBe(true);
+			expect(clock.pending()).toBe(0);
+			expect(events).toEqual(['parked', 'ended:cancelled', 'settled']);
+
+			fake.resume?.({ observed: true });
+			await flush();
+
+			expect(calls).toEqual(['wait']);
+		});
+
+		it('a wait that fails ends its token and fails the run', async () => {
+			const fake = waitUntil('wait', 60_000, () => Promise.reject(new Error('no tracker')));
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+
+			expect(stepOf(walker, 'wait')).toMatchObject({ state: 'done', reason: 'The wait failed: no tracker' });
+			expect(stepOf(walker, 'wait').output).toBeUndefined();
+			expect(walker.record.status).toBe('failed');
+			expect(clock.pending()).toBe(0);
+		});
+
+		it('a refused wait parks nothing and fails the run', async () => {
+			const fake = waitUntil('wait', 60_000, notYet);
+			const walker = walk(waitPlan(fake), {
+				beforeExecute: (node) => (node.id === 'wait' ? { allow: false, reason: 'disabled' } : { allow: true }),
+			});
+
+			walker.start();
+			await flush();
+
+			expect(stepOf(walker, 'wait')).toMatchObject({ refused: true, reason: 'disabled' });
+			expect(calls).toEqual([]);
+			expect(walker.record.status).toBe('failed');
 		});
 	});
 });

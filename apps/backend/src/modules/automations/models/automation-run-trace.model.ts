@@ -65,7 +65,8 @@ export class AutomationRunStepResultModel {
 
 /**
  * One node a run reached. Only what applies to the node is present: a condition has `observed`, an action
- * has `result`, a Delay has `delay_ms`.
+ * has `result`, a Delay has `delay_ms`, a Wait until has `timeout_ms`, a join may have `absorbed` or
+ * `missing_edges`.
  */
 @ApiSchema({ name: 'AutomationsModuleDataRunStep' })
 export class AutomationRunStepModel {
@@ -114,7 +115,7 @@ export class AutomationRunStepModel {
 
 	@ApiProperty({
 		description:
-			'`done`; `parked` while a Delay holds the run; `cancelled` when the run ended before the node finished or was executed.',
+			'`done`; `parked` while a Delay, a Wait until or an All holds the run; `cancelled` when the run ended before the node finished or was executed, for an All also when the run ended before every incoming edge was reached.',
 		enum: AUTOMATION_RUN_STEP_STATES,
 		example: 'done',
 	})
@@ -188,6 +189,33 @@ export class AutomationRunStepModel {
 	})
 	@Expose()
 	delay_ms?: number;
+
+	@ApiPropertyOptional({
+		name: 'timeout_ms',
+		description: 'For a Wait until: how long the run waits at most, in milliseconds',
+		type: 'integer',
+		minimum: 0,
+	})
+	@Expose()
+	timeout_ms?: number;
+
+	@ApiPropertyOptional({
+		description: 'For an Any or an All: the run arrived after the block had continued and went no further',
+		type: 'boolean',
+	})
+	@Expose()
+	absorbed?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'missing_edges',
+		description:
+			'For an All that holds the run or did not continue: identifiers of the incoming edges the run has not arrived on',
+		type: 'array',
+		items: { type: 'string' },
+		example: ['e4'],
+	})
+	@Expose()
+	missing_edges?: string[];
 }
 
 /**
@@ -265,6 +293,9 @@ export const createAutomationRunStepModel = (step: RunStep): AutomationRunStepMo
 	...(step.timedOut === true ? { timed_out: true } : {}),
 	...(step.afterCancel === true ? { after_cancel: true } : {}),
 	...(step.delayMs !== undefined ? { delay_ms: step.delayMs } : {}),
+	...(step.timeoutMs !== undefined ? { timeout_ms: step.timeoutMs } : {}),
+	...(step.absorbed === true ? { absorbed: true } : {}),
+	...(step.missingEdges !== undefined ? { missing_edges: [...step.missingEdges] } : {}),
 });
 
 /**

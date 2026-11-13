@@ -31,9 +31,11 @@ import {
 	AUTOMATION_DELAY_MAX_SECONDS,
 	AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS,
 	AUTOMATION_NODE_MAX_TIMEOUT_SECONDS,
+	AUTOMATION_WAIT_MAX_SECONDS,
 	AutomationActionNodeType,
 	AutomationConditionNodeType,
 	AutomationDelayNodeType,
+	AutomationFlowNodeType,
 	AutomationNodeConfig,
 	AutomationNodeReference,
 	AutomationNodeReferenceKind,
@@ -41,6 +43,7 @@ import {
 	AutomationNodeTypeOwner,
 	AutomationTriggerData,
 	AutomationTriggerNodeType,
+	AutomationWaitUntilNodeType,
 	RegisteredAutomationNodeType,
 } from '../graph/node-type';
 import { applyGraphSavePolicy } from '../graph/save-policy';
@@ -188,9 +191,9 @@ export interface EngineHooks {
 	 */
 	statusChanged?(state: EngineAutomationState, previous: EngineAutomationStatus): void;
 	runStarted?(record: RunRecord): void;
-	/** The run reached a node, or a Delay it was parked on let it go on or was cancelled */
+	/** The run reached a node, or a Delay, a Wait until or an All it was parked on let it go on or was cancelled */
 	runStep?(record: RunRecord, step: RunStep): void;
-	/** The run parked on a Delay, so it will outlive the current tick; called for every park */
+	/** The run parked on a Delay or a Wait until, so it will outlive the current tick; called for every park */
 	runParked?(record: RunRecord): void;
 	/** The outcome of the run is known */
 	runEnded?(record: RunRecord): void;
@@ -678,6 +681,13 @@ export class AutomationEngine {
 			} else {
 				plan.outgoing.set(key, [edge]);
 			}
+
+			// A join has to know every edge that leads into it
+			const target = plan.nodes.get(edge.target);
+
+			if (target?.kind === 'flow' && (target.flow === 'any' || target.flow === 'all')) {
+				target.incoming.push(edge.id);
+			}
 		});
 
 		// References are checked once each, whatever the number of nodes sharing them
@@ -735,12 +745,26 @@ export class AutomationEngine {
 					execute: (context) => (definition as AutomationActionNodeType).execute(config, context),
 				};
 			}
-			case 'flow': {
-				const definition = registered.definition as Partial<AutomationDelayNodeType>;
+			case 'flow':
+				return this.compileFlowNode(base, registered.definition as Partial<AutomationFlowNodeType>);
+			default:
+				return undefined;
+		}
+	}
 
-				if (definition.flow !== 'delay' || typeof definition.delaySeconds !== 'function') return undefined;
+	private compileFlowNode(
+		base: { id: string; type: string; config: AutomationNodeConfig },
+		definition: Partial<AutomationFlowNodeType>,
+	): RunPlanNode | undefined {
+		const config = base.config;
 
-				const seconds = this.safely(() => (definition as AutomationDelayNodeType).delaySeconds(config), Number.NaN);
+		switch (definition.flow) {
+			case 'delay': {
+				const delay = definition as Partial<AutomationDelayNodeType>;
+
+				if (typeof delay.delaySeconds !== 'function') return undefined;
+
+				const seconds = this.safely(() => (delay as AutomationDelayNodeType).delaySeconds(config), Number.NaN);
 
 				if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return undefined;
 
@@ -751,6 +775,28 @@ export class AutomationEngine {
 					delayMs: Math.round(Math.min(seconds, AUTOMATION_DELAY_MAX_SECONDS) * 1000),
 				};
 			}
+			case 'wait_until': {
+				const wait = definition as Partial<AutomationWaitUntilNodeType>;
+
+				if (typeof wait.timeoutSeconds !== 'function' || typeof wait.wait !== 'function') return undefined;
+
+				const seconds = this.safely(() => (wait as AutomationWaitUntilNodeType).timeoutSeconds(config), Number.NaN);
+
+				// The timeout is mandatory (ADR 0003, decision 4): a Wait until without one can not run
+				if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) return undefined;
+
+				return {
+					...base,
+					kind: 'flow',
+					flow: 'wait_until',
+					timeoutMs: Math.round(Math.min(seconds, AUTOMATION_WAIT_MAX_SECONDS) * 1000),
+					wait: (resume, context) => (wait as AutomationWaitUntilNodeType).wait(config, resume, context),
+				};
+			}
+			case 'any':
+			case 'all':
+				// The incoming edges are filled in once the edges are read
+				return { ...base, kind: 'flow', flow: definition.flow, incoming: [] };
 			default:
 				return undefined;
 		}

@@ -37,6 +37,7 @@ describe('graph save policy', () => {
 			'cycle',
 			'duplicate_edge',
 			'safety_reducing_action',
+			'join_never_completes',
 		])('%s always stops a save', (code) => {
 			expect(isBlockingGraphIssue(issue(code), { enabled: false })).toBe(true);
 			expect(isBlockingGraphIssue(issue(code), { enabled: true })).toBe(true);
@@ -50,6 +51,7 @@ describe('graph save policy', () => {
 		it('a warning never stops a save', () => {
 			expect(isBlockingGraphIssue(issue('unreachable_node', 'warning'), { enabled: true })).toBe(false);
 			expect(isBlockingGraphIssue(issue('cycle', 'warning'), { enabled: true })).toBe(false);
+			expect(isBlockingGraphIssue(issue('join_partly_completes', 'warning'), { enabled: true })).toBe(false);
 		});
 
 		it('an error it does not know stops a save, as a structural one would', () => {
