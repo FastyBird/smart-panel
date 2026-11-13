@@ -11,6 +11,7 @@ The image is based on **Raspberry Pi OS Lite (Bookworm, arm64)** and includes:
 - **Admin UI** (Vue.js) served as static files
 - **SQLite** database (pre-configured)
 - **InfluxDB 1.8** time-series database for device metrics and historical data
+- **go2rtc 1.9.15** camera relay (`/usr/local/lib/smart-panel/go2rtc`); create `/etc/smart-panel/go2rtc.skip` to disable updates of it
 - **systemd service** for auto-start on boot
 - **First-boot initialization** (JWT secret generation, InfluxDB setup, DB migrations)
 - **mDNS/Avahi** for network discovery
