@@ -47,6 +47,21 @@ export class CamerasForbiddenException extends CamerasException {
 	}
 }
 
+export class Go2rtcUnavailableException extends CamerasException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'Go2rtcUnavailableException';
+	}
+}
+
+/** A failed call to go2rtc. `status` is the HTTP status, or `null` when there was no response. Never carries a url. */
+export class Go2rtcApiError extends Error {
+	constructor(readonly status: number | null) {
+		super('go2rtc request failed');
+		this.name = 'Go2rtcApiError';
+	}
+}
+
 export class CameraProviderTimeoutError extends Error {
 	constructor() {
 		super('Camera provider call timed out');
@@ -67,7 +82,9 @@ export function errorName(error: unknown): string {
 	if (error instanceof CameraProfileUnavailableException) return 'CameraProfileUnavailableException';
 	if (error instanceof CameraUpstreamException) return 'CameraUpstreamException';
 	if (error instanceof CamerasForbiddenException) return 'CamerasForbiddenException';
+	if (error instanceof Go2rtcUnavailableException) return 'Go2rtcUnavailableException';
 	if (error instanceof CamerasException) return 'CamerasException';
+	if (error instanceof Go2rtcApiError) return 'Go2rtcApiError';
 	if (error instanceof Error) return 'ProviderError';
 
 	return 'UnknownError';

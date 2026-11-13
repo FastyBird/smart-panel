@@ -4,6 +4,7 @@ import { ModuleConfigMutationRegistryService } from '../config/services/module-c
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../extensions/services/managed-service-manager.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -22,6 +23,9 @@ import { CameraSnapshotService } from './services/camera-snapshot.service';
 import { CameraStreamProviderRegistryService } from './services/camera-stream-provider.registry.service';
 import { CamerasConfigMutationService } from './services/cameras-config-mutation.service';
 import { CamerasService } from './services/cameras.service';
+import { Go2rtcProcessService } from './services/go2rtc-process.service';
+import { Go2rtcSecretsRegistry } from './services/go2rtc-secrets.registry';
+import { Go2rtcService } from './services/go2rtc.service';
 
 @ApiTag({
 	tagName: CAMERAS_MODULE_NAME,
@@ -36,9 +40,18 @@ import { CamerasService } from './services/cameras.service';
 		CameraSnapshotService,
 		CameraSessionService,
 		CamerasConfigMutationService,
+		Go2rtcSecretsRegistry,
+		Go2rtcProcessService,
+		Go2rtcService,
 	],
 	controllers: [CamerasController],
-	exports: [CameraStreamProviderRegistryService, CamerasService, CameraSnapshotService, CameraSessionService],
+	exports: [
+		CameraStreamProviderRegistryService,
+		CamerasService,
+		CameraSnapshotService,
+		CameraSessionService,
+		Go2rtcService,
+	],
 })
 export class CamerasModule implements OnModuleInit {
 	constructor(
@@ -47,9 +60,13 @@ export class CamerasModule implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
 		private readonly configMutation: CamerasConfigMutationService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
+		private readonly go2rtcService: Go2rtcService,
 	) {}
 
 	onModuleInit() {
+		this.managedServiceManager.register(this.go2rtcService);
+
 		// Register configuration mapping
 		this.modulesMapperService.registerMapping<CamerasConfigModel, UpdateCamerasConfigDto>({
 			type: CAMERAS_MODULE_NAME,
