@@ -202,6 +202,27 @@ test('installs the pinned binary for amd64', () => {
 	assert.ok(result.stdout.includes('go2rtc: installed 9.9.9'), result.stdout);
 });
 
+test('creates world-searchable directories under a restrictive caller umask', () => {
+	const sandbox = makeSandbox();
+	const parent = join(sandbox.root, 'new-parent');
+	const dir = join(parent, 'go2rtc');
+	const result = spawnSync(SHELL, ['-c', 'umask 027; exec "$0" "$@"', SHELL, SCRIPT, '--arch', 'amd64', '--dir', dir], {
+		encoding: 'utf8',
+		env: {
+			PATH: `${sandbox.bin}${delimiter}${sandbox.toolbox}`,
+			FB_GO2RTC_PIN_FILE: sandbox.pin,
+			FB_GO2RTC_SKIP_FILE: join(sandbox.root, 'no-such-marker'),
+		},
+	});
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(mode(parent), 0o755);
+	assert.equal(mode(dir), 0o755);
+	assert.equal(mode(join(dir, 'go2rtc')), 0o755);
+	assert.equal(mode(join(dir, 'LICENSE')), 0o644);
+	assert.deepEqual(readdirSync(dir).sort(), ['LICENSE', 'go2rtc']);
+});
+
 test('downloads over https with the documented curl flags', () => {
 	const sandbox = makeSandbox();
 

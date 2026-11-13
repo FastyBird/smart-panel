@@ -12,6 +12,9 @@
 set -eu
 LC_ALL=C
 export LC_ALL
+# Callers differ (the privileged update helper runs with umask 027): the service user must be able to traverse every
+# directory created here and read the binary, so create everything world-searchable whatever the caller's umask.
+umask 022
 
 DEFAULT_DIR=/usr/local/lib/smart-panel/go2rtc
 DEFAULT_SKIP_FILE=/etc/smart-panel/go2rtc.skip

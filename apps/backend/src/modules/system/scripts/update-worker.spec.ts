@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
 	chmodSync,
 	copyFileSync,
@@ -14,7 +15,7 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { DataSource } from 'typeorm';
 
 const WORKER = join(__dirname, 'update-worker.sh');
@@ -1370,7 +1371,8 @@ printf 'after-hook\\n'
 `,
 		);
 		const started = Date.now();
-		const result = spawnSync('bash', [harness, releaseRoot], {
+		// The privileged helper sets umask 027 and the worker inherits it.
+		const result = spawnSync('bash', ['-c', 'umask 027; exec bash "$0" "$@"', harness, releaseRoot], {
 			env: { ...process.env, ...env },
 			encoding: 'utf8',
 			timeout: 25_000,
@@ -1414,6 +1416,51 @@ printf 'after-hook\\n'
 			const marker = readFileSync(ran, 'utf8');
 			expect(marker).toContain('stdin-closed');
 			expect(marker).toContain(join(release, 'dist', 'go2rtc', 'install-go2rtc.sh'));
+		});
+	});
+
+	it('leaves the installed go2rtc reachable by the service user under the helper umask', () => {
+		withRoot((root) => {
+			// The real installer, with curl and the pin replaced; a wrapper supplies the --dir the hook cannot pass.
+			const realInstaller = join(__dirname, '..', '..', '..', '..', '..', '..', 'build', 'go2rtc', 'install-go2rtc.sh');
+			const binary = '#!/bin/sh\necho "go2rtc version 9.9.9 (stub) linux/test"\n';
+			const digest = createHash('sha256').update(binary).digest('hex');
+			const parent = join(root, 'usr-local-lib-smart-panel');
+			const installDir = join(parent, 'go2rtc');
+			const stubBin = join(root, 'stub-bin');
+			mkdirSync(stubBin);
+			writeFileSync(join(root, 'served'), binary);
+			writeExecutable(
+				join(stubBin, 'curl'),
+				`#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && out="$2"; shift; done\ncp "${join(root, 'served')}" "$out"\n`,
+			);
+			writeFileSync(
+				join(root, 'pin.env'),
+				[
+					'GO2RTC_VERSION=9.9.9',
+					...['AMD64', 'ARM64', 'ARM'].map((arch) => `GO2RTC_SHA256_LINUX_${arch}=${digest}`),
+				].join('\n') + '\n',
+			);
+			const release = makeRelease(root, {
+				content: `#!/bin/sh\nexec /bin/sh "${realInstaller}" --arch amd64 --dir "${installDir}"\n`,
+			});
+			copyFileSync(join(dirname(realInstaller), 'LICENSE'), join(release, 'dist', 'go2rtc', 'LICENSE'));
+			const result = runHook(
+				root,
+				{
+					HELPER_MANAGED: '1',
+					PATH: `${stubBin}:${process.env.PATH ?? ''}`,
+					FB_GO2RTC_PIN_FILE: join(root, 'pin.env'),
+					FB_GO2RTC_SKIP_FILE: join(root, 'no-such-marker'),
+				},
+				release,
+			);
+
+			expect(result.code).toBe(0);
+			expect(result.stderr).not.toContain('did not complete');
+			expect(statSync(parent).mode & 0o777).toBe(0o755);
+			expect(statSync(installDir).mode & 0o777).toBe(0o755);
+			expect(statSync(join(installDir, 'go2rtc')).mode & 0o777).toBe(0o755);
 		});
 	});
 
