@@ -341,8 +341,9 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
 			waitingRunIds.value = [];
 
-			// With no history held, a short run may have ended before the answer named it: what it stored says so
-			if (!runsStore.firstLoadFinished(id) && runsStore.findById(result.runId) === null) {
+			// Nothing known of the run when the answer names it (no history held, or the run not in it any more): a
+			// short run may have ended before, and what it stored says so
+			if (runsStore.findById(result.runId) === null) {
 				recover(result.runId);
 			}
 		}

@@ -351,8 +351,8 @@ describe('useAutomationRunTrace', (): void => {
 		store().onEvent({ data: runRes(runId, 'running') });
 		await nextTick();
 
-		// Still running: nothing is read, the steps come live
-		expect(mocks.backend.GET).toHaveBeenCalledTimes(1);
+		// Still running: nothing more is read (only what it stored, once the answer named a run not known), the steps come live
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(2);
 		expect(trace.shown.value?.overlay.nodes.n2).toMatchObject({ state: 'reached', parked: true });
 		expect(trace.shown.value?.overlay.takenEdges).toEqual(['e1']);
 
@@ -756,7 +756,7 @@ describe('useAutomationRunTrace', (): void => {
 		store().onEvent({ data: runRes(runId, 'running') });
 		await nextTick();
 
-		expect(mocks.backend.GET).toHaveBeenCalledTimes(1);
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(2);
 
 		emit('disconnect');
 
@@ -1043,7 +1043,7 @@ describe('useAutomationRunTrace', (): void => {
 		emit('connect');
 		await flushPromises();
 
-		expect(mocks.backend.GET).toHaveBeenCalledTimes(2);
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(3);
 
 		// It ends while what it stored is being read after the reconnect, and that read then fails
 		store().onEvent({ data: runRes(runId, 'completed') });
@@ -1054,7 +1054,7 @@ describe('useAutomationRunTrace', (): void => {
 		answer({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
 		await flushPromises();
 
-		expect(mocks.backend.GET).toHaveBeenCalledTimes(3);
+		expect(mocks.backend.GET).toHaveBeenCalledTimes(4);
 		expect(trace.shown.value).toMatchObject({ runId, ended: true, failed: false, run: { trace: expect.anything() } });
 	});
 
@@ -1083,6 +1083,36 @@ describe('useAutomationRunTrace', (): void => {
 
 		expect(second.shown.value).toMatchObject({ runId: otherRunId, ended: true, failed: false });
 		expect(second.shown.value?.overlay.nodes.n1?.state).toBe('passed');
+	});
+
+	it('reads how a test run went when the answer names a run the history no longer holds', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.POST.mockImplementationOnce(async () => {
+			// Over before the answer arrives, and pushed out of the history by the runs that came after it
+			store().onEvent({ data: runRes(runId, 'completed', { started_at: '2026-11-11T06:00:00.000Z' }) });
+
+			for (let index = 0; index < 50; index++) {
+				store().onEvent({
+					data: runRes(`d1f0c1d2-0000-4000-8000-0000000003${String(index).padStart(2, '0')}`, 'completed', {
+						started_at: `2026-11-11T08:${String(index).padStart(2, '0')}:00.000Z`,
+					}),
+				});
+			}
+
+			return {
+				data: { data: { automation_id: automationId, started: true, outcome: 'started', run_id: runId, reason: null } },
+				error: undefined,
+				response: { status: 200 },
+			};
+		});
+
+		mocks.backend.GET.mockResolvedValueOnce(tracedRes(runId, 'completed', [stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' })]));
+
+		await trace.test('n1');
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId, ended: true, run: { status: 'completed' } });
 	});
 
 	it('says when the history cannot be read', async (): Promise<void> => {
