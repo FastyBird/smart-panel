@@ -50,7 +50,8 @@
     "LICENSE.md"
   ],
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && pnpm run build:go2rtc",
+    "build:go2rtc": "mkdir -p dist/go2rtc && cp ../../build/go2rtc/install-go2rtc.sh ../../build/go2rtc/pin.env ../../build/go2rtc/LICENSE dist/go2rtc/",
     "start": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --disable-warning=DEP0040\" nest start",
     "start:dev": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --disable-warning=DEP0040\" nest start --watch",
     "start:debug": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --disable-warning=DEP0040\" nest start --debug --watch",
