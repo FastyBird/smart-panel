@@ -179,16 +179,36 @@ export const createWaitUntilNodeType = (
 		},
 		references: devicePropertyReferences,
 		timeoutSeconds: (config) => config.timeout_seconds,
-		wait: async (config, resume): Promise<AutomationWaitStart> => {
+		wait: async (config, resume, context): Promise<AutomationWaitStart> => {
 			const spec = toWaitSpec(config);
 			const { tracker } = dependencies;
+			const signal = context?.signal;
+			let unwatch: (() => void) | undefined;
+
+			// Idempotent: the engine, an abort and a failure may each ask for it
+			const release = (): void => {
+				const pending = unwatch;
+
+				unwatch = undefined;
+				signal?.removeEventListener('abort', release);
+				pending?.();
+			};
+
 			// Watched before the state is read, so a report between the two is not missed
-			const release = tracker.watch(spec, (data) => resume({ observed: data.to }));
+			unwatch = tracker.watch(spec, (data) => resume({ observed: data.to }));
+
+			// A run that is cancelled or runs into its timeout while the state is still being read can not
+			// release the watch until this returns, which may take long: the abort lets it go at once
+			if (signal?.aborted) {
+				release();
+			} else {
+				signal?.addEventListener('abort', release, { once: true });
+			}
 
 			try {
 				let reading = tracker.read(spec.propertyId);
 
-				if (reading.status === 'unknown') {
+				if (reading.status === 'unknown' && unwatch !== undefined) {
 					// The value of a property that was referenced a moment ago may still be on its way
 					await tracker.settled();
 

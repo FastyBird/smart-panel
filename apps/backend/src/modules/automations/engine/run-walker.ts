@@ -762,6 +762,12 @@ export class RunWalker {
 			const missing = node.incoming.filter((id) => !arrived.has(id));
 
 			if (missing.length > 0) {
+				// The tokens held before this one are still waiting, but no longer for this edge
+				for (const held of join.held) {
+					held.missingEdges = [...missing];
+					this.notifyStep(held);
+				}
+
 				// The token rests here without keeping the run open: see releaseJoins()
 				join.held.push(this.step(node, edge, { state: 'parked', missingEdges: missing }));
 

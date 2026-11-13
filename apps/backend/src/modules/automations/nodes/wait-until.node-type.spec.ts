@@ -225,6 +225,51 @@ describe('flow.wait-until', () => {
 			expect(events).toEqual([{ observed: true }]);
 		});
 
+		it('lets go of its watch at once when the run is aborted while the baseline is still being read', () => {
+			settled.mockReturnValue(new Promise<void>(() => undefined));
+
+			const controller = new AbortController();
+			const start = card().wait(
+				{ ...target(PROPERTY_BOOL), to: true, timeout_seconds: 30 } as unknown as WaitUntilConfigDto,
+				(event) => events.push(event),
+				runContext({ signal: controller.signal }),
+			);
+
+			expect(tracker.trackedCount()).toBe(1);
+
+			controller.abort();
+
+			expect(tracker.trackedCount()).toBe(0);
+
+			held.push(tracker.reference(PROPERTY_BOOL));
+			tracker.seed(PROPERTY_BOOL, { value: false });
+			tracker.report(PROPERTY_BOOL, { value: true });
+
+			expect(events).toEqual([]);
+
+			void start;
+		});
+
+		it('watches nothing for a run that was aborted before it arrived', async () => {
+			const controller = new AbortController();
+
+			controller.abort();
+
+			const start = await card().wait(
+				{ ...target(PROPERTY_BOOL), to: true, timeout_seconds: 30 } as unknown as WaitUntilConfigDto,
+				(event) => events.push(event),
+				runContext({ signal: controller.signal }),
+			);
+
+			expect(settled).not.toHaveBeenCalled();
+			expect(tracker.trackedCount()).toBe(0);
+
+			// Releasing what was already let go does no harm
+			(start as Extract<AutomationWaitStart, { holds: false }>).release();
+
+			expect(tracker.trackedCount()).toBe(0);
+		});
+
 		it('lets go of its watch when it fails', async () => {
 			settled.mockRejectedValue(new Error('the database is gone'));
 

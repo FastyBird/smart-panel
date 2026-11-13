@@ -1249,6 +1249,35 @@ describe('RunWalker', () => {
 			expect(walker.record.status).toBe('completed');
 		});
 
+		it('keeps the missing edges of every held token up to date as more branches arrive', async () => {
+			const walker = walk(
+				plan(
+					[trigger('t'), action('a'), delay('b', 1_000), delay('c', 5_000), join('all', 'all'), action('after')],
+					['t:out>a', 't:out>b', 't:out>c', 'a:done>all', 'b:out>all', 'c:out>all', 'all:out>after'],
+				),
+			);
+
+			walker.start();
+			await flush();
+
+			expect(stepOf(walker, 'all').missingEdges).toEqual(['b:out>all', 'c:out>all']);
+
+			clock.advance(1_000);
+			await flush();
+
+			const held = walker.record.steps.filter((item) => item.nodeId === 'all');
+
+			expect(held.map((item) => [item.via, item.state, item.missingEdges])).toEqual([
+				['a:done>all', 'parked', ['c:out>all']],
+				['b:out>all', 'parked', ['c:out>all']],
+			]);
+
+			clock.advance(4_000);
+			await flush();
+
+			expect(calls).toEqual(['a', 'after']);
+		});
+
 		it('is a strict AND: when a branch can no longer arrive it does not continue and names the missing edge', async () => {
 			const walker = walk(
 				plan(
