@@ -312,6 +312,14 @@ describe('Cameras module (e2e)', () => {
 		await postSession(cameraId, { transport: 'webrtc' }).expect(400);
 	});
 
+	it('rejects session data that is not an object as invalid input', async () => {
+		await request(app.getHttpServer())
+			.post(url(`/${cameraId}/sessions`))
+			.set('Authorization', `Bearer ${userToken}`)
+			.send({ data: [] })
+			.expect(400);
+	});
+
 	it('revokes sessions when the device is deleted', async () => {
 		const response = await postSession(cameraId, { transport: 'mse' }).expect(201);
 		const token = (response.body as { data: { url: string } }).data.url.split('session=')[1];

@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsDefined, IsIn, IsOptional, IsString, Length, ValidateNested } from 'class-validator';
+import { IsDefined, IsIn, IsObject, IsOptional, IsString, Length, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -29,6 +29,7 @@ export class ReqCreateCameraSessionDto {
 	@ApiProperty({ description: 'Session data', type: () => CreateCameraSessionDto })
 	@Expose()
 	@IsDefined({ message: '[{"field":"data","reason":"Session data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Session data must be an object."}]' })
 	@ValidateNested()
 	@Type(() => CreateCameraSessionDto)
 	data: CreateCameraSessionDto;
