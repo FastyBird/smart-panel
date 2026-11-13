@@ -12,6 +12,7 @@
 #   --version         Install specific version (e.g., --version 1.0.0)
 #   --port            Set HTTP port (default: 3000)
 #   --with-tailscale  Install Tailscale for remote access (daemon left disabled)
+#   --skip-go2rtc     Do not install the go2rtc camera relay (also skips it on later updates)
 #
 
 set -e
@@ -36,6 +37,7 @@ BETA=false
 PORT=$DEFAULT_PORT
 WITH_TAILSCALE=false
 TAILSCALE_INSTALLED=false
+SKIP_GO2RTC=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -57,6 +59,10 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--with-tailscale)
 			WITH_TAILSCALE=true
+			shift
+			;;
+		--skip-go2rtc)
+			SKIP_GO2RTC=true
 			shift
 			;;
 		*)
@@ -326,6 +332,49 @@ install_smart_panel() {
 	print_success "Smart Panel package installed"
 }
 
+find_go2rtc_installer() {
+	local global_root
+	global_root=$(npm root -g) || return 1
+
+	local installer="$global_root/@fastybird/smart-panel/node_modules/@fastybird/smart-panel-backend/dist/go2rtc/install-go2rtc.sh"
+
+	[[ -f "$installer" ]] || return 1
+
+	echo "$installer"
+}
+
+# Install the go2rtc camera relay. Optional: this function never returns non-zero,
+# so a missing or failing relay cannot abort the installation.
+install_go2rtc() {
+	if [[ "$SKIP_GO2RTC" == true ]]; then
+		local marker="${FB_GO2RTC_SKIP_FILE:-/etc/smart-panel/go2rtc.skip}"
+
+		if mkdir -p "$(dirname "$marker")" && touch "$marker"; then
+			print_step "go2rtc installation skipped (--skip-go2rtc); later updates skip it too"
+		else
+			print_warning "Could not write $marker; go2rtc will be installed again on the next update"
+		fi
+
+		return 0
+	fi
+
+	print_step "Installing go2rtc camera relay..."
+
+	local installer
+	if ! installer=$(find_go2rtc_installer); then
+		print_warning "This Smart Panel release does not bundle go2rtc; camera streaming is unavailable"
+		return 0
+	fi
+
+	if sh "$installer"; then
+		print_success "go2rtc step finished"
+	else
+		print_warning "go2rtc installation failed; camera streaming is unavailable until it is installed"
+	fi
+
+	return 0
+}
+
 configure_service() {
 	print_step "Configuring Smart Panel service..."
 
@@ -478,6 +527,7 @@ main() {
 
 	# Install Smart Panel
 	install_smart_panel
+	install_go2rtc
 	configure_service
 
 	# Optional: Tailscale for remote access. Failure here must not abort
