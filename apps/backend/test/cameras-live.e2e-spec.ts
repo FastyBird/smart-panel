@@ -448,6 +448,16 @@ describe('Cameras live streaming (e2e)', () => {
 		expect(JSON.stringify([plain.text, plain.headers])).not.toContain(token);
 		expect(JSON.stringify([plain.text, plain.headers])).not.toContain('/live');
 
+		// Every other method gets the same fixed answer; none of them falls to the not-found handling that echoes the url.
+		for (const method of ['post', 'put', 'patch', 'delete'] as const) {
+			const other = await request(app.getHttpServer())[method](url).send({}).expect(426);
+
+			expect(other.body).toEqual({ error: 'upgrade_required' });
+			expect(other.headers.upgrade).toBe('websocket');
+			expect(JSON.stringify([other.text, other.headers])).not.toContain(token);
+			expect(JSON.stringify([other.text, other.headers])).not.toContain('/live');
+		}
+
 		// The token was not consumed by the plain request: the upgrade is admitted and then met by the session limit
 		// (cameras A and B are streaming, `max_sessions` is 2), which only an unconsumed, valid token can reach.
 		const client = connect(url);
@@ -462,6 +472,20 @@ describe('Cameras live streaming (e2e)', () => {
 		const current = await relayState();
 
 		expect(current).toEqual({ state: 'running', reason: null });
+	});
+
+	it('rejects an explicit null for a non-nullable setting and keeps the relay running', async () => {
+		for (const data of [
+			{ max_sessions: null },
+			{ max_sessions_per_camera: null },
+			{ go2rtc: null },
+			{ go2rtc: { mode: null } },
+			{ go2rtc: { binary_path: null } },
+		]) {
+			await patchConfig(data).expect(400);
+		}
+
+		expect(await relayState()).toEqual({ state: 'running', reason: null });
 	});
 
 	it('closes a socket with revoked and deletes its stream when the camera is deleted', async () => {
