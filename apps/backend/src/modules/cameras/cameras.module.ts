@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
 import { ModuleConfigMutationRegistryService } from '../config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
@@ -15,6 +16,7 @@ import {
 	CAMERAS_MODULE_NAME,
 } from './cameras.constants';
 import { CAMERAS_SWAGGER_EXTRA_MODELS } from './cameras.openapi';
+import { CamerasStatusController } from './controllers/cameras-status.controller';
 import { CamerasController } from './controllers/cameras.controller';
 import { UpdateCamerasConfigDto } from './dto/update-config.dto';
 import { LiveStreamGateway } from './gateway/live-stream.gateway';
@@ -35,7 +37,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 	description: CAMERAS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [DevicesModule, SwaggerModule],
+	imports: [NestConfigModule, DevicesModule, SwaggerModule],
 	providers: [
 		CameraStreamProviderRegistryService,
 		CamerasService,
@@ -48,7 +50,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 		Go2rtcStreamsService,
 		LiveStreamGateway,
 	],
-	controllers: [CamerasController],
+	controllers: [CamerasController, CamerasStatusController],
 	exports: [
 		CameraStreamProviderRegistryService,
 		CamerasService,

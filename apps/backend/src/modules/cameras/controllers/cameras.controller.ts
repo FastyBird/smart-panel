@@ -38,7 +38,6 @@ import {
 	CamerasForbiddenException,
 	CamerasNotFoundException,
 } from '../cameras.exceptions';
-import { CameraSessionOwner, resolveCameraOwner } from '../cameras.utils';
 import { ReqCreateCameraSessionDto } from '../dto/create-session.dto';
 import { SnapshotQueryDto } from '../dto/snapshot-query.dto';
 import { CamerasModuleEnabledGuard } from '../guards/cameras-module-enabled.guard';
@@ -51,6 +50,9 @@ import { CameraSessionModel } from '../models/session.model';
 import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotResult, CameraSnapshotService } from '../services/camera-snapshot.service';
 import { CamerasService } from '../services/cameras.service';
+import { Go2rtcService } from '../services/go2rtc.service';
+
+import { requireCameraOwner } from './camera-owner.utils';
 
 const PROFILE_UNAVAILABLE_MESSAGE = 'Stream profile is not available';
 
@@ -62,6 +64,7 @@ export class CamerasController {
 		private readonly camerasService: CamerasService,
 		private readonly snapshotService: CameraSnapshotService,
 		private readonly sessionService: CameraSessionService,
+		private readonly go2rtc: Go2rtcService,
 	) {}
 
 	@ApiOperation({
@@ -75,7 +78,7 @@ export class CamerasController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(@Req() req: AuthenticatedRequest): Promise<CamerasResponseModel> {
-		this.requireOwner(req);
+		requireCameraOwner(req);
 
 		const response = new CamerasResponseModel();
 
@@ -101,7 +104,7 @@ export class CamerasController {
 		@Req() req: AuthenticatedRequest,
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 	): Promise<CameraResponseModel> {
-		this.requireOwner(req);
+		requireCameraOwner(req);
 
 		try {
 			const { device, provider } = await this.camerasService.getOneOrThrow(deviceId);
@@ -148,7 +151,7 @@ export class CamerasController {
 		@Query() query: SnapshotQueryDto,
 		@Res() res: Response,
 	): Promise<void> {
-		this.requireOwner(req);
+		requireCameraOwner(req);
 
 		let snapshot: CameraSnapshotResult;
 
@@ -207,7 +210,7 @@ export class CamerasController {
 	@ApiForbiddenResponse('Cameras are not available to this caller')
 	@ApiNotFoundResponse('Camera or stream profile not found')
 	@ApiBadRequestResponse('Invalid session request or invalid UUID format')
-	@ApiServiceUnavailableResponse('Camera did not respond')
+	@ApiServiceUnavailableResponse('Camera did not respond or the live view relay is not available')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':deviceId/sessions')
 	async createSession(
@@ -215,7 +218,11 @@ export class CamerasController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Body() body: ReqCreateCameraSessionDto,
 	): Promise<CameraSessionResponseModel> {
-		const owner = this.requireOwner(req);
+		const owner = requireCameraOwner(req);
+
+		if (!this.go2rtc.isRunning()) {
+			throw new ServiceUnavailableException('Live view relay is not available');
+		}
 
 		let created: ReturnType<CameraSessionService['create']>;
 
@@ -273,17 +280,5 @@ export class CamerasController {
 		response.data = model;
 
 		return response;
-	}
-
-	private requireOwner(req: AuthenticatedRequest): CameraSessionOwner {
-		try {
-			return resolveCameraOwner(req);
-		} catch (error) {
-			if (error instanceof CamerasForbiddenException) {
-				throw new ForbiddenException(error.message);
-			}
-
-			throw error;
-		}
 	}
 }

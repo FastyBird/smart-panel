@@ -9,11 +9,14 @@ import { ConfigService } from '../config/services/config.service';
 import { UserRole } from '../users/users.constants';
 
 import { CAMERAS_MODULE_NAME } from './cameras.constants';
+import { CamerasStatusController } from './controllers/cameras-status.controller';
 import { CamerasController } from './controllers/cameras.controller';
+import { LiveStreamGateway } from './gateway/live-stream.gateway';
 import { CamerasConfigModel } from './models/config.model';
 import { CameraSessionService } from './services/camera-session.service';
 import { CameraSnapshotService } from './services/camera-snapshot.service';
 import { CamerasService } from './services/cameras.service';
+import { Go2rtcService } from './services/go2rtc.service';
 
 @Injectable()
 class FakeAuthGuard implements CanActivate {
@@ -56,11 +59,19 @@ describe('Cameras module toggle (routes)', () => {
 		(cameras as Record<string, jest.Mock>).resolveProfile = jest.fn().mockResolvedValue({ id: 'medium' });
 
 		const moduleRef = await Test.createTestingModule({
-			controllers: [CamerasController],
+			controllers: [CamerasController, CamerasStatusController],
 			providers: [
 				{ provide: CamerasService, useValue: cameras },
 				{ provide: CameraSnapshotService, useValue: snapshots },
 				{ provide: CameraSessionService, useValue: sessions },
+				{
+					provide: Go2rtcService,
+					useValue: {
+						isRunning: () => true,
+						getStatus: () => ({ mode: 'managed', state: 'running', reason: null, version: '1.9.9', generation: 1 }),
+					},
+				},
+				{ provide: LiveStreamGateway, useValue: { getActiveCount: () => 0 } },
 				{
 					provide: ConfigService,
 					useValue: {
@@ -92,6 +103,7 @@ describe('Cameras module toggle (routes)', () => {
 		['list', 'GET', '/cameras', undefined],
 		['detail', 'GET', `/cameras/${id}`, undefined],
 		['snapshot', 'GET', `/cameras/${id}/snapshot`, undefined],
+		['status', 'GET', '/status', undefined],
 		['session', 'POST', `/cameras/${id}/sessions`, { data: { transport: 'mse' } }],
 	] as const;
 

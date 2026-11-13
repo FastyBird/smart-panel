@@ -7,6 +7,12 @@ import { CameraModel, CameraStreamProfileModel } from './models/camera.model';
 import { CameraResponseModel, CameraSessionResponseModel, CamerasResponseModel } from './models/cameras-response.model';
 import { CamerasConfigModel, CamerasGo2rtcConfigModel } from './models/config.model';
 import { CameraSessionModel } from './models/session.model';
+import {
+	CamerasRelayStatusModel,
+	CamerasSessionsStatusModel,
+	CamerasStatusModel,
+	CamerasStatusResponseModel,
+} from './models/status.model';
 
 export const CAMERAS_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
@@ -21,8 +27,12 @@ export const CAMERAS_SWAGGER_EXTRA_MODELS = [
 	CameraStreamProfileModel,
 	CameraModel,
 	CameraSessionModel,
+	CamerasRelayStatusModel,
+	CamerasSessionsStatusModel,
+	CamerasStatusModel,
 	// Response models
 	CameraResponseModel,
 	CamerasResponseModel,
 	CameraSessionResponseModel,
+	CamerasStatusResponseModel,
 ];

@@ -18,6 +18,7 @@ import { CameraModel } from '../models/camera.model';
 import { CameraSessionService } from '../services/camera-session.service';
 import { CameraSnapshotService } from '../services/camera-snapshot.service';
 import { CamerasService } from '../services/cameras.service';
+import { Go2rtcService } from '../services/go2rtc.service';
 
 import { CamerasController } from './cameras.controller';
 
@@ -39,6 +40,7 @@ describe('CamerasController', () => {
 	};
 	let sessions: { beginCreate: jest.Mock; endCreate: jest.Mock; create: jest.Mock };
 	let snapshots: { getSnapshot: jest.Mock };
+	let go2rtc: { isRunning: jest.Mock };
 	let controller: CamerasController;
 
 	beforeEach(() => {
@@ -51,10 +53,12 @@ describe('CamerasController', () => {
 		};
 		sessions = { beginCreate: jest.fn().mockReturnValue(ticket), endCreate: jest.fn(), create: jest.fn() };
 		snapshots = { getSnapshot: jest.fn() };
+		go2rtc = { isRunning: jest.fn().mockReturnValue(true) };
 		controller = new CamerasController(
 			service as unknown as CamerasService,
 			snapshots as unknown as CameraSnapshotService,
 			sessions as unknown as CameraSessionService,
+			go2rtc as unknown as Go2rtcService,
 		);
 	});
 
@@ -224,6 +228,23 @@ describe('CamerasController', () => {
 			sessions.create.mockReturnValue({ session: { id: 'sid', expiresAt }, token: 'tok' });
 		});
 
+		it('answers 503 for a session while the relay is not running and creates nothing', async () => {
+			go2rtc.isRunning.mockReturnValue(false);
+
+			const error: unknown = await controller.createSession(userReq, id, body).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ServiceUnavailableException);
+			expect((error as ServiceUnavailableException).message).toBe('Live view relay is not available');
+			expect(sessions.beginCreate).not.toHaveBeenCalled();
+			expect(sessions.create).not.toHaveBeenCalled();
+		});
+
+		it('refuses a third-party token before looking at the relay', async () => {
+			go2rtc.isRunning.mockReturnValue(false);
+
+			await expect(controller.createSession(thirdPartyReq, id, body)).rejects.toBeInstanceOf(ForbiddenException);
+		});
+
 		it('creates a session for the resolved profile and owner', async () => {
 			const response = await controller.createSession(userReq, id, body);
 
@@ -352,6 +373,7 @@ describe('CamerasController', () => {
 				service as unknown as CamerasService,
 				snapshots as unknown as CameraSnapshotService,
 				real,
+				go2rtc as unknown as Go2rtcService,
 			);
 			service.getProviderOrThrow.mockResolvedValue({ device, provider: {} });
 			service.resolveProfile.mockReturnValue(
