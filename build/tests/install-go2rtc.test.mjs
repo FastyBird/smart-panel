@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import {
 	chmodSync,
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -231,8 +232,94 @@ test('downloads over https with the documented curl flags', () => {
 	const [line] = curlLines(sandbox);
 
 	assert.ok(line.includes('--proto =https --proto-redir =https'), line);
-	assert.ok(line.includes('--connect-timeout 10 --max-time 60 --retry 2 --retry-delay 2 -fsSL'), line);
+	assert.ok(line.includes('--connect-timeout 10 --max-time 300 --retry 2 --retry-delay 2 -fsSL'), line);
 	assert.ok(line.includes('https://github.com/AlexxIT/go2rtc/releases/download/v9.9.9/'), line);
+});
+
+test('refuses a symlinked install directory without downloading or writing through it', () => {
+	const sandbox = makeSandbox();
+	const target = join(sandbox.root, 'elsewhere');
+
+	mkdirSync(target);
+	mkdirSync(join(sandbox.root, 'install'), { recursive: true });
+	symlinkSync(target, sandbox.dir);
+
+	const lenient = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+	const strict = run(sandbox, ['--strict', '--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(lenient.status, 0);
+	assert.ok(lenient.stderr.includes('symbolic link'), lenient.stderr);
+	assert.equal(strict.status, 1);
+	assert.deepEqual(curlLines(sandbox), []);
+	assert.deepEqual(readdirSync(target), []);
+});
+
+test(
+	'refuses an install directory owned by another user without downloading',
+	{ skip: process.getuid?.() === 0 ? 'root owns the directory it would be refused for' : false },
+	() => {
+		const sandbox = makeSandbox();
+		// /usr exists, is root-owned and is not a symlink on Linux and macOS; the script refuses before writing.
+		const lenient = run(sandbox, ['--arch', 'amd64', '--dir', '/usr']);
+		const strict = run(sandbox, ['--strict', '--arch', 'amd64', '--dir', '/usr']);
+
+		assert.equal(lenient.status, 0);
+		assert.ok(lenient.stderr.includes('not owned by the current user'), lenient.stderr);
+		assert.equal(strict.status, 1);
+		assert.deepEqual(curlLines(sandbox), []);
+	},
+);
+
+test('replaces a symlink at the binary and licence paths instead of writing through it', () => {
+	const sandbox = makeSandbox();
+	const victim = join(sandbox.root, 'victim-file');
+	const victimDir = join(sandbox.root, 'victim-dir');
+
+	mkdirSync(sandbox.dir, { recursive: true });
+	mkdirSync(victimDir);
+	writeFileSync(victim, 'untouched');
+	symlinkSync(victim, join(sandbox.dir, 'go2rtc'));
+	symlinkSync(victimDir, join(sandbox.dir, 'LICENSE'));
+
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(readFileSync(victim, 'utf8'), 'untouched');
+	assert.deepEqual(readdirSync(victimDir), []);
+	assert.equal(lstatSync(join(sandbox.dir, 'go2rtc')).isSymbolicLink(), false);
+	assert.equal(lstatSync(join(sandbox.dir, 'LICENSE')).isSymbolicLink(), false);
+	assert.equal(readFileSync(join(sandbox.dir, 'go2rtc'), 'utf8'), STUB);
+	assert.equal(readFileSync(join(sandbox.dir, 'LICENSE'), 'utf8'), REAL_LICENSE);
+	assert.deepEqual(readdirSync(sandbox.dir).sort(), ['LICENSE', 'go2rtc']);
+});
+
+test('sweeps temporary directories left behind by a killed run', () => {
+	const sandbox = makeSandbox();
+	const stale = join(sandbox.dir, '.install.AbC123');
+	const unrelated = join(sandbox.dir, 'keep-me');
+
+	mkdirSync(stale, { recursive: true });
+	writeFileSync(join(stale, 'go2rtc'), 'partial download');
+	writeFileSync(unrelated, 'unrelated');
+
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.deepEqual(readdirSync(sandbox.dir).sort(), ['LICENSE', 'go2rtc', 'keep-me']);
+});
+
+test('sweeps stale temporary directories even when the binary is already installed', () => {
+	const sandbox = makeSandbox();
+	const args = ['--arch', 'amd64', '--dir', sandbox.dir];
+
+	assert.equal(run(sandbox, args).status, 0);
+	mkdirSync(join(sandbox.dir, '.install.Zz9'));
+
+	const second = run(sandbox, args);
+
+	assert.equal(second.status, 0, second.stderr);
+	assert.ok(second.stdout.includes('already installed'), second.stdout);
+	assert.deepEqual(readdirSync(sandbox.dir).sort(), ['LICENSE', 'go2rtc']);
 });
 
 test('requests the asset that matches each architecture', () => {

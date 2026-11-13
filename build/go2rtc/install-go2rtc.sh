@@ -182,6 +182,24 @@ main() {
 		fail "sha256sum or shasum is required to verify the download"
 	fi
 
+	# The installer usually runs as root: never write through a symlinked or foreign-owned install directory.
+	if [ -L "$DIR" ]; then
+		fail "$DIR is a symbolic link; refusing to install into it"
+	fi
+	# test -O is not POSIX but dash, busybox ash, bash and the macOS sh all support it.
+	# shellcheck disable=SC3067
+	if [ -e "$DIR" ] && [ ! -O "$DIR" ]; then
+		fail "$DIR is not owned by the current user; refusing to install into it"
+	fi
+	if [ -d "$DIR" ]; then
+		# A killed run (SIGKILL on a timeout) leaves its temporary directory behind. Runs are not concurrent.
+		for stale in "$DIR"/.install.*; do
+			if [ -d "$stale" ] && [ ! -L "$stale" ]; then
+				rm -rf "$stale"
+			fi
+		done
+	fi
+
 	if [ -f "$DIR/go2rtc" ] && [ "$(sha256_of "$DIR/go2rtc")" = "$EXPECTED" ]; then
 		log "already installed $VERSION ($ARCH) in $DIR"
 		exit 0
@@ -206,7 +224,7 @@ main() {
 	trap 'exit 143' TERM
 
 	URL=$DOWNLOAD_BASE/v$VERSION/$ASSET
-	curl --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 60 --retry 2 --retry-delay 2 \
+	curl --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 300 --retry 2 --retry-delay 2 \
 		-fsSL -o "$TMP/go2rtc" "$URL" || fail "download failed: $URL"
 
 	ACTUAL=$(sha256_of "$TMP/go2rtc")
@@ -221,9 +239,16 @@ main() {
 	*) fail "downloaded binary does not run on this system (--version gave: ${REPORTED:-no output})" ;;
 	esac
 
+	# mv would move into a symlink that points at a directory and a root-owned write must not follow one.
+	if [ -L "$DIR/go2rtc" ]; then
+		rm -f "$DIR/go2rtc"
+	fi
 	mv -f "$TMP/go2rtc" "$DIR/go2rtc" || fail "cannot install $DIR/go2rtc"
 
 	if [ -f "$SCRIPT_DIR/LICENSE" ]; then
+		if [ -L "$DIR/LICENSE" ]; then
+			rm -f "$DIR/LICENSE"
+		fi
 		{
 			cp "$SCRIPT_DIR/LICENSE" "$TMP/LICENSE" &&
 				chmod 0644 "$TMP/LICENSE" &&
