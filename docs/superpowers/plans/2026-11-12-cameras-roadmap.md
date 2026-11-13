@@ -162,7 +162,12 @@ views, mappers and six `.arb` files; regeneration and cross-app verification.
 Seven tasks: module skeleton and wiring; provider contract and registry; camera listing; snapshot cache; stream
 sessions and revocation; fake provider, secret hygiene and e2e; `docs/cameras-architecture.md`.
 
-### Plan 3 — Relay and installer (UP-3, UP-4)
+### Plan 3 — Relay and installer (UP-3, UP-4) — written
+
+Step-level plans: `2026-11-13-cameras-plan-3a-relay.md` (UP-3) and `2026-11-13-cameras-plan-3b-installer.md` (UP-4).
+Where they deviate from the outline below (registration at socket admission, `HttpAdapterHost` instead of
+`AppInstanceHolder`, the cross-field config rule in a mutation handler, the Pi image call site in `01-install-app`, the
+update-worker hook before the service stops), the plans win and say why.
 
 UP-3 `feat(backend): relay camera live streams through a managed go2rtc service`:
 
