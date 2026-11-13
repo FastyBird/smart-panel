@@ -29,6 +29,7 @@ describe('Go2rtcStreamsService', () => {
 	let provider: FakeCameraStreamProvider;
 	let client: {
 		authorization: string | null;
+		baseUrl: string;
 		putStream: jest.Mock;
 		deleteStream: jest.Mock;
 		listStreamNames: jest.Mock;
@@ -67,6 +68,7 @@ describe('Go2rtcStreamsService', () => {
 
 		client = {
 			authorization: 'Basic c2VjcmV0',
+			baseUrl: 'http://127.0.0.1:11984',
 			putStream: jest.fn().mockResolvedValue(undefined),
 			deleteStream: jest.fn().mockResolvedValue(undefined),
 			listStreamNames: jest.fn().mockResolvedValue([]),
@@ -246,6 +248,91 @@ describe('Go2rtcStreamsService', () => {
 		expect(client.putStream).toHaveBeenCalledTimes(2);
 	});
 
+	it('sends no compensating DELETE when the PUT was answered with an HTTP error', async () => {
+		client.putStream.mockRejectedValueOnce(new Go2rtcApiError(500));
+
+		await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+		await flush();
+
+		expect(client.deleteStream).not.toHaveBeenCalled();
+		expect(secrets.list()).toEqual([]);
+	});
+
+	describe('a PUT that fails without an HTTP status', () => {
+		it('queues a compensating DELETE, keeps the source redactable until it is confirmed, then releases it', async () => {
+			let confirmDelete!: () => void;
+
+			client.putStream.mockRejectedValueOnce(new Go2rtcApiError(null));
+			client.deleteStream.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					confirmDelete = resolve;
+				}),
+			);
+
+			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenCalledWith(name);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			confirmDelete();
+			await flush();
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('keeps the source retained when the compensating DELETE fails, until a later DELETE succeeds', async () => {
+			client.putStream.mockRejectedValueOnce(new Go2rtcApiError(null));
+			client.deleteStream.mockRejectedValueOnce(new Go2rtcApiError(null));
+
+			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenCalledTimes(1);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			const lease = await streams.acquire(camera, provider, 'medium');
+
+			expect(secrets.list()).toContain(SENT_URL);
+
+			lease.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(client.deleteStream).toHaveBeenCalledTimes(2);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('runs the compensating DELETE in the name queue, before the next registration of that name', async () => {
+			const order: string[] = [];
+
+			client.putStream.mockImplementation(() => {
+				order.push('PUT');
+
+				return order.length === 1 ? Promise.reject(new Go2rtcApiError(null)) : Promise.resolve();
+			});
+			client.deleteStream.mockImplementation(() => {
+				order.push('DELETE');
+
+				return Promise.resolve();
+			});
+
+			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await expect(streams.acquire(camera, provider, 'medium')).resolves.toMatchObject({ streamName: name });
+
+			expect(order).toEqual(['PUT', 'DELETE', 'PUT']);
+		});
+
+		it('waits for the compensating DELETE on module destroy', async () => {
+			client.putStream.mockRejectedValueOnce(new Go2rtcApiError(null));
+			client.deleteStream.mockRejectedValueOnce(new Go2rtcApiError(null));
+
+			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await streams.onModuleDestroy();
+
+			expect(secrets.list()).toEqual([]);
+		});
+	});
+
 	it('rejects every joiner and keeps no entry when the provider fails', async () => {
 		jest.spyOn(provider, 'resolveSource').mockRejectedValueOnce(new CameraOfflineException('offline'));
 
@@ -399,6 +486,65 @@ describe('Go2rtcStreamsService', () => {
 			await flush();
 
 			expect(secrets.list()).toContain(SENT_URL);
+		});
+	});
+
+	describe('retained secrets of two external relays', () => {
+		const clientFor = (baseUrl: string): typeof client => ({
+			...client,
+			baseUrl,
+			putStream: jest.fn().mockResolvedValue(undefined),
+			deleteStream: jest.fn().mockResolvedValue(undefined),
+			listStreamNames: jest.fn().mockResolvedValue([]),
+		});
+
+		const switchTo = async (target: typeof client, patch: Partial<Go2rtcRelayStatus>): Promise<void> => {
+			status = { ...status, ...patch };
+			relayClient = status.state === 'running' ? target : null;
+
+			for (const listener of [...listeners]) {
+				listener({ ...status });
+			}
+
+			await flush();
+		};
+
+		it('does not release the secrets retained for relay A when the same stream is deleted on relay B', async () => {
+			const relayA = clientFor('http://a.example:1984');
+			const relayB = clientFor('http://b.example:1984');
+
+			await switchTo(relayA, { mode: 'external', state: 'running', generation: 2 });
+
+			await streams.acquire(camera, provider, 'medium');
+
+			// Relay A goes away and the stream cannot be deleted there: its source stays redactable.
+			relayA.deleteStream.mockRejectedValue(new Go2rtcApiError(null));
+			await switchTo(relayA, { state: 'unavailable', reason: 'external_unreachable' });
+
+			expect(relayA.deleteStream).toHaveBeenCalledWith(name);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			// The same stream name is registered on relay B and deleted there.
+			await switchTo(relayB, { state: 'running', reason: null, generation: 3 });
+
+			const lease = await streams.acquire(camera, provider, 'medium');
+
+			lease.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(relayB.deleteStream).toHaveBeenCalledWith(name);
+			expect(relayA.deleteStream).toHaveBeenCalledTimes(1);
+			// B's own handles are released, A's are not.
+			expect(secrets.list()).toContain(SENT_URL);
+
+			// Only a confirmed DELETE on relay A releases them.
+			relayA.deleteStream.mockResolvedValue(undefined);
+			relayA.listStreamNames.mockResolvedValue([name]);
+			await switchTo(relayB, { state: 'unavailable', reason: 'external_unreachable' });
+			await switchTo(relayA, { state: 'running', reason: null, generation: 4 });
+
+			expect(relayA.deleteStream).toHaveBeenCalledTimes(2);
+			expect(secrets.list()).toEqual([]);
 		});
 	});
 

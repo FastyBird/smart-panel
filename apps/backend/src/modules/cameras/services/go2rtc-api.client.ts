@@ -24,8 +24,8 @@ const MAX_CONFIG_TEXT_BYTES = 64 * 1024;
  */
 export class Go2rtcApiClient {
 	readonly authorization: string | null;
-
-	private readonly baseUrl: string;
+	/** Identifies the relay this client talks to. Never carries credentials (an external url may not). */
+	readonly baseUrl: string;
 
 	constructor(
 		endpoint: Go2rtcEndpoint,
