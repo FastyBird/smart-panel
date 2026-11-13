@@ -236,7 +236,7 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 		const connection = new LiveStreamConnection({
 			client,
 			session,
-			connectUpstream: () => this.connectUpstream(session, entry),
+			connectUpstream: (signal) => this.connectUpstream(session, entry, signal),
 			onClosed: (closed) => {
 				this.entries.delete(closed);
 			},
@@ -274,20 +274,38 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 	}
 
 	/**
-	 * Camera lookup and lease, bounded in time. A lease that arrives after the deadline is released here; one that
-	 * arrives after the connection closed is released by the connection.
+	 * Camera lookup and lease, bounded in time. `signal` aborts when the connection closes (client gone, revoked, relay
+	 * lost): the lookup result is then dropped without a lease being acquired, and a lease that completes after the abort
+	 * is released at once. A lease that arrives after the deadline is released here too.
 	 */
-	private async connectUpstream(session: CameraStreamSession, entry: LiveEntry): Promise<Go2rtcStreamLease> {
+	private async connectUpstream(
+		session: CameraStreamSession,
+		entry: LiveEntry,
+		signal: AbortSignal,
+	): Promise<Go2rtcStreamLease> {
 		const attempt = (async () => {
+			throwIfClosed(signal);
+
 			const { device, provider } = await this.cameras.getProviderOrThrow(session.deviceId);
+
+			// Never acquire for a connection that is already gone.
+			throwIfClosed(signal);
 
 			entry.device = device;
 			entry.provider = provider;
 
-			return this.streams.acquire(device, provider, session.profileId);
+			const lease = await this.streams.acquire(device, provider, session.profileId);
+
+			if (signal.aborted) {
+				lease.release();
+				throwIfClosed(signal);
+			}
+
+			return lease;
 		})();
 
 		let timer: NodeJS.Timeout | undefined;
+		let onAbort: (() => void) | undefined;
 
 		try {
 			return await Promise.race([
@@ -298,6 +316,9 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 						LIVE_UPSTREAM_ACQUIRE_TIMEOUT_MS,
 					);
 					timer.unref();
+
+					onAbort = () => reject(closedError());
+					signal.addEventListener('abort', onAbort, { once: true });
 				}),
 			]);
 		} catch (error) {
@@ -309,6 +330,10 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 			throw error;
 		} finally {
 			clearTimeout(timer);
+
+			if (onAbort) {
+				signal.removeEventListener('abort', onAbort);
+			}
 		}
 	}
 
@@ -377,5 +402,15 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 				connection.close(kind);
 			}
 		}
+	}
+}
+
+function closedError(): Error {
+	return new Error('Live stream connection closed');
+}
+
+function throwIfClosed(signal: AbortSignal): void {
+	if (signal.aborted) {
+		throw closedError();
 	}
 }

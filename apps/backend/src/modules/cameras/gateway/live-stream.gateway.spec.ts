@@ -631,6 +631,63 @@ describe('LiveStreamGateway', () => {
 		expect(release).toHaveBeenCalledTimes(1);
 	});
 
+	it('never acquires a lease for a connection that closed while the camera lookup was pending', async () => {
+		let resolveLookup!: (value: Awaited<ReturnType<CamerasService['getProviderOrThrow']>>) => void;
+
+		const resolved = await cameras.getProviderOrThrow('c1');
+		const lookup = jest.spyOn(cameras, 'getProviderOrThrow');
+
+		lookup.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveLookup = resolve;
+				}),
+		);
+
+		const live = connect(validToken('c1'));
+
+		await new Promise<void>((resolve) => live.client.once('open', () => resolve()));
+		await waitFor(() => lookup.mock.calls.length === 1);
+
+		// The client goes away while the lookup is outstanding.
+		live.client.terminate();
+		await live.closed;
+		await waitFor(() => gateway.getActiveCount() === 0);
+
+		resolveLookup(resolved);
+		await settle();
+
+		expect(acquire).not.toHaveBeenCalled();
+		expect(release).not.toHaveBeenCalled();
+	});
+
+	it('releases at once a lease whose acquisition completes after the connection closed', async () => {
+		let resolveLease!: (lease: Go2rtcStreamLease) => void;
+
+		acquire.mockImplementationOnce(
+			() =>
+				new Promise<Go2rtcStreamLease>((resolve) => {
+					resolveLease = resolve;
+				}),
+		);
+
+		const live = connect(validToken('c1'));
+
+		await new Promise<void>((resolve) => live.client.once('open', () => resolve()));
+		await waitFor(() => acquire.mock.calls.length === 1);
+
+		live.client.terminate();
+		await live.closed;
+		await waitFor(() => gateway.getActiveCount() === 0);
+
+		expect(release).not.toHaveBeenCalled();
+
+		resolveLease(lease());
+		await settle();
+
+		expect(release).toHaveBeenCalledTimes(1);
+	});
+
 	it('closes 4000 when the camera is gone before the lease is acquired', async () => {
 		jest.spyOn(cameras, 'getProviderOrThrow').mockRejectedValueOnce(new CamerasNotFoundException('Camera not found'));
 
