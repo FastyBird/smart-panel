@@ -9,6 +9,7 @@ import {
 	readFileSync,
 	readdirSync,
 	readlinkSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	symlinkSync,
@@ -1389,8 +1390,44 @@ printf 'after-hook\\n'
 		return release;
 	};
 
+	// The real installer refuses to install below a directory that is group- or world-writable anywhere up to /
+	// (/tmp is on Linux), so the fixtures live in the first base directory whose whole parent chain it accepts.
+	const chainIsTrusted = (dir: string): boolean => {
+		let current = realpathSync(dir);
+
+		for (;;) {
+			const info = statSync(current);
+
+			if ((info.uid !== 0 && info.uid !== process.getuid?.()) || (info.mode & 0o022) !== 0) {
+				return false;
+			}
+
+			const parent = dirname(current);
+
+			if (parent === current) {
+				return true;
+			}
+
+			current = parent;
+		}
+	};
+
+	const trustedBase = (): string => {
+		const checkoutCache = join(__dirname, '..', '..', '..', '..', 'node_modules', '.cache');
+
+		for (const candidate of [tmpdir(), checkoutCache]) {
+			mkdirSync(candidate, { recursive: true });
+
+			if (chainIsTrusted(candidate)) {
+				return candidate;
+			}
+		}
+
+		throw new Error('no directory with a trusted parent chain is available for the go2rtc hook fixtures');
+	};
+
 	const withRoot = (run: (root: string) => void): void => {
-		const root = mkdtempSync(join(tmpdir(), 'smart-panel-go2rtc-hook-'));
+		const root = mkdtempSync(join(trustedBase(), 'smart-panel-go2rtc-hook-'));
 		try {
 			run(root);
 		} finally {

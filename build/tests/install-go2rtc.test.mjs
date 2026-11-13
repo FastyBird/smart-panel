@@ -9,13 +9,15 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	symlinkSync,
+	utimesSync,
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -65,10 +67,47 @@ const SHELL = process.env.GO2RTC_TEST_SHELL ?? '/bin/sh';
 const VERSION = '9.9.9';
 const ASSETS = ['go2rtc_linux_amd64', 'go2rtc_linux_arm64', 'go2rtc_linux_arm'];
 const PIN_KEYS = ['GO2RTC_SHA256_LINUX_AMD64', 'GO2RTC_SHA256_LINUX_ARM64', 'GO2RTC_SHA256_LINUX_ARM'];
-const TOOLBOX = 'sh mktemp mv cp rm mkdir chmod cat grep sed tr awk dirname basename id printf head install'.split(' ');
+const TOOLBOX =
+	'sh mktemp mv cp rm mkdir chmod cat grep sed tr awk dirname basename id printf head install ls find'.split(' ');
 
 const STUB = '#!/bin/sh\necho "go2rtc version 9.9.9 (stub) linux/test"\n';
 const sha256 = (content) => createHash('sha256').update(content).digest('hex');
+
+// Directories created by the tests must not be group-writable whatever the caller's umask: the installer refuses those.
+process.umask(0o022);
+
+/** True when every directory from dir up to / is owned by root or this user and not group- or world-writable. */
+const chainIsTrusted = (dir) => {
+	let current = realpathSync(dir);
+
+	for (;;) {
+		const info = statSync(current);
+
+		if ((info.uid !== 0 && info.uid !== process.getuid()) || (info.mode & 0o022) !== 0) {
+			return false;
+		}
+
+		const parent = dirname(current);
+
+		if (parent === current) {
+			return true;
+		}
+
+		current = parent;
+	}
+};
+
+// The installer refuses a world-writable ancestor, and /tmp is one on Linux: the happy path needs a base directory
+// whose whole parent chain it accepts, so fall back to a cache directory inside the checkout.
+const sandboxBase = [tmpdir(), join(fileURLToPath(root), 'node_modules', '.cache')].find((candidate) => {
+	mkdirSync(candidate, { recursive: true });
+
+	return chainIsTrusted(candidate);
+});
+
+if (sandboxBase === undefined) {
+	throw new Error('no directory with a trusted parent chain is available for the sandboxes');
+}
 
 const sandboxes = [];
 
@@ -100,7 +139,7 @@ const pinContent = (hashes, version = VERSION) =>
  * nothing depends on the host.
  */
 const makeSandbox = ({ uname = 'x86_64', dpkg, curl = true, omit = [], binary = STUB } = {}) => {
-	const sandboxRoot = mkdtempSync(join(tmpdir(), 'install-go2rtc-'));
+	const sandboxRoot = mkdtempSync(join(sandboxBase, 'install-go2rtc-'));
 	const sandbox = {
 		root: sandboxRoot,
 		bin: join(sandboxRoot, 'bin'),
@@ -186,6 +225,9 @@ const curlLines = (sandbox) =>
 	existsSync(sandbox.curlLog) ? readFileSync(sandbox.curlLog, 'utf8').split('\n').filter(Boolean) : [];
 
 const mode = (path) => statSync(path).mode & 0o777;
+
+/** The pid of a process that has just exited. */
+const deadPid = () => spawnSync(process.execPath, ['-e', '']).pid;
 
 test('installs the pinned binary for amd64', () => {
 	const sandbox = makeSandbox();
@@ -300,6 +342,7 @@ test('sweeps temporary directories left behind by a killed run', () => {
 
 	mkdirSync(stale, { recursive: true });
 	writeFileSync(join(stale, 'go2rtc'), 'partial download');
+	writeFileSync(join(stale, '.owner'), `${deadPid()}\n`);
 	writeFileSync(unrelated, 'unrelated');
 
 	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
@@ -314,6 +357,7 @@ test('sweeps stale temporary directories even when the binary is already install
 
 	assert.equal(run(sandbox, args).status, 0);
 	mkdirSync(join(sandbox.dir, '.install.Zz9'));
+	writeFileSync(join(sandbox.dir, '.install.Zz9', '.owner'), `${deadPid()}\n`);
 
 	const second = run(sandbox, args);
 
@@ -664,4 +708,308 @@ test('the default install directory matches the cameras module default binary pa
 	if (constant) {
 		assert.equal(constant[1], expected);
 	}
+});
+
+const runBoth = (sandbox, dir = sandbox.dir) => ({
+	lenient: run(sandbox, ['--arch', 'amd64', '--dir', dir]),
+	strict: run(sandbox, ['--strict', '--arch', 'amd64', '--dir', dir]),
+});
+
+const assertRefused = (sandbox, results, message) => {
+	assert.equal(results.lenient.status, 0, results.lenient.stderr);
+	assert.ok(results.lenient.stderr.includes(message), results.lenient.stderr);
+	assert.equal(results.strict.status, 1);
+	assert.ok(results.strict.stderr.includes(message), results.strict.stderr);
+	assert.deepEqual(curlLines(sandbox), []);
+};
+
+test('refuses an install directory that is group-writable, without downloading', () => {
+	const sandbox = makeSandbox();
+
+	mkdirSync(sandbox.dir, { recursive: true });
+	chmodSync(sandbox.dir, 0o775);
+
+	assertRefused(sandbox, runBoth(sandbox), 'writable by its group');
+	assert.deepEqual(readdirSync(sandbox.dir), []);
+});
+
+test('refuses an install directory that is world-writable, without downloading', () => {
+	const sandbox = makeSandbox();
+
+	mkdirSync(sandbox.dir, { recursive: true });
+	chmodSync(sandbox.dir, 0o757);
+
+	assertRefused(sandbox, runBoth(sandbox), 'writable by other users');
+	assert.deepEqual(readdirSync(sandbox.dir), []);
+});
+
+test('refuses an install directory below a group- or world-writable parent before creating anything', () => {
+	for (const [parentMode, message] of [
+		[0o775, 'writable by its group'],
+		[0o777, 'writable by other users'],
+		[0o1777, 'writable by other users'],
+	]) {
+		const sandbox = makeSandbox();
+		const parent = join(sandbox.root, 'install');
+
+		mkdirSync(parent);
+		chmodSync(parent, parentMode);
+		// A deeper level that does not exist yet: the walk must still reach the unsafe ancestor.
+		const dir = join(parent, 'new', 'go2rtc');
+
+		assertRefused(sandbox, runBoth(sandbox, dir), message);
+		assert.deepEqual(readdirSync(parent), [], parentMode.toString(8));
+	}
+});
+
+test('refuses an install directory below a writable ancestor that is several levels up', () => {
+	const sandbox = makeSandbox();
+	const top = join(sandbox.root, 'a');
+
+	mkdirSync(join(top, 'b', 'c'), { recursive: true });
+	chmodSync(top, 0o777);
+
+	assertRefused(sandbox, runBoth(sandbox, join(top, 'b', 'c', 'go2rtc')), 'writable by other users');
+	assert.deepEqual(readdirSync(join(top, 'b', 'c')), []);
+});
+
+test('refuses a parent directory owned by a user other than root or the current one', () => {
+	const sandbox = makeSandbox();
+	const parent = join(sandbox.root, 'install');
+	const realLs = findOnPath('ls');
+
+	mkdirSync(parent);
+
+	// Changing an owner needs root, so a stand-in ls reports the parent as owned by uid 4242.
+	writeExecutable(
+		join(sandbox.bin, 'ls'),
+		script([
+			'for last; do :; done',
+			`if [ "$last" = '${realpathSync(parent)}' ]; then echo 'drwxr-xr-x 2 4242 4242 64 Jan 1 00:00 x'; exit 0; fi`,
+			`exec '${realLs}' "$@"`,
+		]),
+	);
+
+	assertRefused(sandbox, runBoth(sandbox), 'owned by uid 4242');
+	assert.deepEqual(readdirSync(parent), []);
+});
+
+test(
+	'refuses a parent directory that is really owned by another user',
+	{ skip: process.getuid?.() === 0 ? undefined : 'changing an owner needs root' },
+	() => {
+		const sandbox = makeSandbox();
+		const parent = join(sandbox.root, 'install');
+
+		mkdirSync(parent);
+		spawnSync('chown', ['4242', parent]);
+
+		assertRefused(sandbox, runBoth(sandbox), 'owned by uid 4242');
+	},
+);
+
+test('refuses a relative install directory under an unsafe ancestor and a directory path that is a file', () => {
+	const sandbox = makeSandbox();
+	const unsafe = join(sandbox.root, 'unsafe');
+
+	mkdirSync(unsafe);
+	chmodSync(unsafe, 0o777);
+
+	const relative = spawnSync(SHELL, [SCRIPT, '--arch', 'amd64', '--dir', 'go2rtc'], {
+		cwd: unsafe,
+		encoding: 'utf8',
+		env: {
+			PATH: `${sandbox.bin}${delimiter}${sandbox.toolbox}`,
+			FB_GO2RTC_PIN_FILE: sandbox.pin,
+			FB_GO2RTC_SKIP_FILE: join(sandbox.root, 'no-such-marker'),
+		},
+	});
+
+	assert.equal(relative.status, 0, relative.stderr);
+	assert.ok(relative.stderr.includes('writable by other users'), relative.stderr);
+	assert.deepEqual(readdirSync(unsafe), []);
+
+	const file = join(sandbox.root, 'a-file');
+
+	writeFileSync(file, 'not a directory');
+
+	const underFile = run(sandbox, ['--strict', '--arch', 'amd64', '--dir', join(file, 'go2rtc')]);
+
+	assert.equal(underFile.status, 1);
+	assert.ok(underFile.stderr.includes('not a directory'), underFile.stderr);
+	assert.deepEqual(curlLines(sandbox), []);
+
+	const dotDot = run(sandbox, ['--strict', '--arch', 'amd64', '--dir', `${sandbox.root}/x/../go2rtc`]);
+
+	assert.equal(dotDot.status, 1);
+	assert.ok(dotDot.stderr.includes('.. component'), dotDot.stderr);
+});
+
+test('accepts a new install directory below a private base directory', () => {
+	const sandbox = makeSandbox();
+	const result = run(sandbox, ['--strict', '--arch', 'amd64', '--dir', join(sandbox.root, 'x', 'y', 'go2rtc')]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(readFileSync(join(sandbox.root, 'x', 'y', 'go2rtc', 'go2rtc'), 'utf8'), STUB);
+});
+
+const installedSandbox = () => {
+	const sandbox = makeSandbox();
+
+	assert.equal(run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]).status, 0);
+	assert.equal(curlLines(sandbox).length, 1);
+
+	return sandbox;
+};
+
+test('applies 0755 to an installed binary that already matches the pin, without downloading', () => {
+	const sandbox = installedSandbox();
+
+	chmodSync(join(sandbox.dir, 'go2rtc'), 0o644);
+
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.ok(result.stdout.includes('already installed'), result.stdout);
+	assert.equal(mode(join(sandbox.dir, 'go2rtc')), 0o755);
+	assert.equal(curlLines(sandbox).length, 1);
+	assert.deepEqual(readdirSync(sandbox.dir).sort(), ['LICENSE', 'go2rtc']);
+});
+
+test('restores a missing or different LICENSE when the binary already matches the pin, without downloading', () => {
+	const sandbox = installedSandbox();
+	const license = join(sandbox.dir, 'LICENSE');
+
+	rmSync(license);
+
+	const missing = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(missing.status, 0, missing.stderr);
+	assert.equal(readFileSync(license, 'utf8'), REAL_LICENSE);
+	assert.equal(mode(license), 0o644);
+
+	writeFileSync(license, 'edited');
+
+	const different = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(different.status, 0, different.stderr);
+	assert.equal(readFileSync(license, 'utf8'), REAL_LICENSE);
+
+	chmodSync(license, 0o600);
+
+	const restricted = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(restricted.status, 0, restricted.stderr);
+	assert.equal(mode(license), 0o644);
+	assert.equal(curlLines(sandbox).length, 1);
+	assert.deepEqual(readdirSync(sandbox.dir).sort(), ['LICENSE', 'go2rtc']);
+});
+
+test('does not chmod through a symlinked binary even when the target matches the pin', () => {
+	const sandbox = makeSandbox();
+	const victim = join(sandbox.root, 'victim-binary');
+
+	mkdirSync(sandbox.dir, { recursive: true });
+	writeFileSync(victim, STUB);
+	chmodSync(victim, 0o600);
+	symlinkSync(victim, join(sandbox.dir, 'go2rtc'));
+
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(mode(victim), 0o600);
+	assert.equal(lstatSync(join(sandbox.dir, 'go2rtc')).isSymbolicLink(), false);
+	assert.equal(curlLines(sandbox).length, 1);
+});
+
+test('refuses to install over a real directory at the binary or licence path', () => {
+	for (const name of ['go2rtc', 'LICENSE']) {
+		const sandbox = makeSandbox();
+
+		mkdirSync(join(sandbox.dir, name), { recursive: true });
+		writeFileSync(join(sandbox.dir, name, 'keep'), 'keep');
+
+		assertRefused(sandbox, runBoth(sandbox), `${join(sandbox.dir, name)} is a directory`);
+		assert.deepEqual(readdirSync(join(sandbox.dir, name)), ['keep'], name);
+		assert.deepEqual(readdirSync(sandbox.dir), [name], name);
+	}
+});
+
+const workspace = (sandbox, name, { owner, ageHours = 0 } = {}) => {
+	const path = join(sandbox.dir, name);
+
+	mkdirSync(path, { recursive: true });
+	writeFileSync(join(path, 'go2rtc'), 'partial download');
+
+	if (owner !== undefined) {
+		writeFileSync(join(path, '.owner'), owner);
+	}
+
+	if (ageHours > 0) {
+		const past = new Date(Date.now() - ageHours * 3600 * 1000);
+
+		utimesSync(path, past, past);
+	}
+
+	return path;
+};
+
+test('leaves a workspace whose owner process is alive, removes one whose owner is gone', () => {
+	const sandbox = makeSandbox();
+	const live = workspace(sandbox, '.install.Live01', { owner: `${process.pid}\n` });
+	const dead = workspace(sandbox, '.install.Dead01', { owner: `${deadPid()}\n` });
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(existsSync(join(live, 'go2rtc')), true);
+	assert.equal(existsSync(dead), false);
+	assert.deepEqual(readdirSync(sandbox.dir).sort(), ['.install.Live01', 'LICENSE', 'go2rtc']);
+});
+
+test('keeps a recent workspace without an owner file and removes one older than an hour', () => {
+	const sandbox = makeSandbox();
+	const fresh = workspace(sandbox, '.install.Fresh1');
+	const garbage = workspace(sandbox, '.install.Garb01', { owner: 'not-a-pid\n' });
+	const old = workspace(sandbox, '.install.Old001', { ageHours: 2 });
+	const oldGarbage = workspace(sandbox, '.install.Old002', { owner: '\n', ageHours: 2 });
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(existsSync(fresh), true);
+	assert.equal(existsSync(garbage), true);
+	assert.equal(existsSync(old), false);
+	assert.equal(existsSync(oldGarbage), false);
+});
+
+test('never follows a symlink named like a workspace', () => {
+	const sandbox = makeSandbox();
+	const target = join(sandbox.root, 'victim-workspace');
+
+	mkdirSync(sandbox.dir, { recursive: true });
+	mkdirSync(target);
+	writeFileSync(join(target, '.owner'), `${deadPid()}\n`);
+	writeFileSync(join(target, 'keep'), 'keep');
+	symlinkSync(target, join(sandbox.dir, '.install.Link01'));
+
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(readFileSync(join(target, 'keep'), 'utf8'), 'keep');
+	assert.equal(lstatSync(join(sandbox.dir, '.install.Link01')).isSymbolicLink(), true);
+});
+
+test('records the owning pid in its own workspace and removes the workspace on exit', () => {
+	const sandbox = makeSandbox();
+
+	// A slow curl lets the test read the workspace while the installer is still running.
+	writeExecutable(
+		join(sandbox.bin, 'curl'),
+		script([`cp "$(ls -d '${sandbox.dir}'/.install.*)/.owner" '${sandbox.root}/owner.copy'`, 'exit 22']),
+	);
+
+	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(readFileSync(join(sandbox.root, 'owner.copy'), 'utf8'), /^\d+\n$/);
+	assert.deepEqual(readdirSync(sandbox.dir), []);
 });

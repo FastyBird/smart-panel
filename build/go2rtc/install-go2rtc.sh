@@ -7,6 +7,8 @@
 # is given. Exit codes: 0 installed, already installed, skipped or failed; 1 failed with --strict; 2 usage error.
 # Opt out with --skip, FB_SKIP_GO2RTC=1 or the marker file /etc/smart-panel/go2rtc.skip (the privileged update
 # helper clears the worker environment, so only the marker reaches updates).
+# The install directory and every existing ancestor must be owned by root or the current user and not writable by
+# group or others (a root run must not execute a binary that someone else could swap); otherwise nothing is installed.
 # Test-only hooks: FB_GO2RTC_PIN_FILE (default <script dir>/pin.env), FB_GO2RTC_SKIP_FILE (default the marker).
 
 set -eu
@@ -126,6 +128,133 @@ run_version() {
 	fi
 }
 
+# Succeeds when the existing directory $1 (a physical path) is safe to trust while this script runs as root: owned
+# by root or the current user, and not writable by group or others (a sticky world-writable /tmp is refused too),
+# since anyone who can write the directory or one of its ancestors can swap the checksum-verified workspace.
+check_trusted_dir() {
+	td_path=$1
+	td_listing=$(ls -ldn "$td_path" 2>/dev/null) || {
+		warn "cannot inspect $td_path; refusing to install under it"
+		return 1
+	}
+	read -r td_mode _ td_uid _ <<LISTING
+$td_listing
+LISTING
+	case $td_mode in
+	d*) ;;
+	*)
+		warn "$td_path is not a directory; refusing to install under it"
+		return 1
+		;;
+	esac
+	if [ "$td_uid" != 0 ] && [ "$td_uid" != "$CURRENT_UID" ]; then
+		warn "$td_path is owned by uid $td_uid, not root or the current user; refusing to install under it"
+		return 1
+	fi
+	case $td_mode in
+	????????w*)
+		warn "$td_path is writable by other users; refusing to install under it"
+		return 1
+		;;
+	?????w*)
+		# Debian and Ubuntu ship /usr/local and /usr/local/lib as root:staff 2775 (staff is the local-administrator
+		# group); every default install passes through them, so those two root-owned paths stay trusted.
+		if [ "$td_uid" = 0 ] && { [ "$td_path" = /usr/local ] || [ "$td_path" = /usr/local/lib ]; }; then
+			return 0
+		fi
+		warn "$td_path is writable by its group; refusing to install under it"
+		return 1
+		;;
+	esac
+}
+
+# Checks $DIR (when it exists) and every existing ancestor up to / with check_trusted_dir, before anything is created.
+check_install_path() {
+	case /$DIR/ in
+	*/../*)
+		warn "$DIR contains a .. component; refusing to install into it"
+		return 1
+		;;
+	esac
+	chain_path=$DIR
+	case $chain_path in
+	/*) ;;
+	*) chain_path=$PWD/$chain_path ;;
+	esac
+	while [ ! -e "$chain_path" ] && [ ! -L "$chain_path" ]; do
+		chain_path=$(dirname "$chain_path")
+	done
+	chain_path=$(cd -P "$chain_path" 2>/dev/null && pwd -P) || {
+		warn "$DIR or one of its parents is not a directory; refusing to install into it"
+		return 1
+	}
+	while :; do
+		check_trusted_dir "$chain_path" || return 1
+		if [ "$chain_path" = / ]; then
+			return 0
+		fi
+		chain_path=$(dirname "$chain_path")
+	done
+}
+
+# Creates this run's workspace in $DIR and records the owning pid so another run's sweep leaves it alone.
+make_workspace() {
+	trap cleanup EXIT
+	trap 'exit 129' HUP
+	trap 'exit 130' INT
+	trap 'exit 143' TERM
+	TMP=$(mktemp -d "$DIR/.install.XXXXXX" 2>/dev/null) || fail "cannot create a temporary directory in $DIR"
+	printf '%s\n' "$$" >"$TMP/.owner" || fail "cannot write the workspace owner file in $TMP"
+}
+
+# Removes workspaces abandoned by a killed run (SIGKILL on a timeout): owner pid gone, or no readable owner and
+# older than an hour. A workspace whose owner is still running belongs to another installer and is never touched.
+sweep_workspaces() {
+	for stale in "$DIR"/.install.*; do
+		if [ ! -d "$stale" ] || [ -L "$stale" ]; then
+			continue
+		fi
+		owner=
+		if [ -f "$stale/.owner" ] && [ ! -L "$stale/.owner" ]; then
+			owner=$(head -n 1 "$stale/.owner" 2>/dev/null || true)
+		fi
+		case $owner in
+		'' | *[!0-9]*)
+			if [ -n "$(find "$stale" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then
+				rm -rf "$stale"
+			fi
+			;;
+		*)
+			if ! kill -0 "$owner" 2>/dev/null; then
+				rm -rf "$stale"
+			fi
+			;;
+		esac
+	done
+}
+
+# Installs the licence text next to the binary unless an identical regular file is already there.
+install_license() {
+	if [ ! -f "$SCRIPT_DIR/LICENSE" ]; then
+		return 0
+	fi
+	if [ -L "$DIR/LICENSE" ]; then
+		rm -f "$DIR/LICENSE"
+	fi
+	if [ -f "$DIR/LICENSE" ] && [ "$(sha256_of "$DIR/LICENSE")" = "$(sha256_of "$SCRIPT_DIR/LICENSE")" ]; then
+		chmod 0644 "$DIR/LICENSE" || fail "cannot set permissions on $DIR/LICENSE"
+		return 0
+	fi
+	if [ -z "$TMP" ]; then
+		make_workspace
+	fi
+	{
+		cp "$SCRIPT_DIR/LICENSE" "$TMP/LICENSE" &&
+			chmod 0644 "$TMP/LICENSE" &&
+			mv -f "$TMP/LICENSE" "$DIR/LICENSE"
+	} || fail "installed go2rtc but cannot install its LICENSE into $DIR"
+}
+
 main() {
 	while [ $# -gt 0 ]; do
 		case $1 in
@@ -191,16 +320,20 @@ main() {
 	if [ -e "$DIR" ] && [ ! -O "$DIR" ]; then
 		fail "$DIR is not owned by the current user; refusing to install into it"
 	fi
+	CURRENT_UID=$(id -u)
+	check_install_path || finish_failed
+	for target in "$DIR/go2rtc" "$DIR/LICENSE"; do
+		if [ -d "$target" ] && [ ! -L "$target" ]; then
+			fail "$target is a directory; refusing to install over it"
+		fi
+	done
 	if [ -d "$DIR" ]; then
-		# A killed run (SIGKILL on a timeout) leaves its temporary directory behind. Runs are not concurrent.
-		for stale in "$DIR"/.install.*; do
-			if [ -d "$stale" ] && [ ! -L "$stale" ]; then
-				rm -rf "$stale"
-			fi
-		done
+		sweep_workspaces
 	fi
 
-	if [ -f "$DIR/go2rtc" ] && [ "$(sha256_of "$DIR/go2rtc")" = "$EXPECTED" ]; then
+	if [ -f "$DIR/go2rtc" ] && [ ! -L "$DIR/go2rtc" ] && [ "$(sha256_of "$DIR/go2rtc")" = "$EXPECTED" ]; then
+		chmod 0755 "$DIR/go2rtc" || fail "cannot set permissions on $DIR/go2rtc"
+		install_license
 		log "already installed $VERSION ($ARCH) in $DIR"
 		exit 0
 	fi
@@ -217,11 +350,7 @@ main() {
 	if [ "$CREATED_DIR" = 1 ]; then
 		chmod 0755 "$DIR" || fail "cannot set permissions on $DIR"
 	fi
-	TMP=$(mktemp -d "$DIR/.install.XXXXXX" 2>/dev/null) || fail "cannot create a temporary directory in $DIR"
-	trap cleanup EXIT
-	trap 'exit 129' HUP
-	trap 'exit 130' INT
-	trap 'exit 143' TERM
+	make_workspace
 
 	URL=$DOWNLOAD_BASE/v$VERSION/$ASSET
 	curl --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 300 --retry 2 --retry-delay 2 \
@@ -245,16 +374,7 @@ main() {
 	fi
 	mv -f "$TMP/go2rtc" "$DIR/go2rtc" || fail "cannot install $DIR/go2rtc"
 
-	if [ -f "$SCRIPT_DIR/LICENSE" ]; then
-		if [ -L "$DIR/LICENSE" ]; then
-			rm -f "$DIR/LICENSE"
-		fi
-		{
-			cp "$SCRIPT_DIR/LICENSE" "$TMP/LICENSE" &&
-				chmod 0644 "$TMP/LICENSE" &&
-				mv -f "$TMP/LICENSE" "$DIR/LICENSE"
-		} || fail "installed go2rtc but cannot install its LICENSE into $DIR"
-	fi
+	install_license
 
 	log "installed $VERSION ($ARCH) to $DIR"
 }
