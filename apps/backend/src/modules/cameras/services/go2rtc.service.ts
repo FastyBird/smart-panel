@@ -700,19 +700,24 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			return false;
 		}
 
+		// The child has exited and its output is drained: nothing can print the secrets any more.
+		run.releaseSecrets();
 		this.removeConfigFiles();
 
 		return true;
 	}
 
-	/** Cancels everything the run owns and releases its password. Idempotent. */
+	/**
+	 * Cancels the run's timers and detaches it from the service. Idempotent. Its secrets stay registered: the child may
+	 * still print them while it shuts down, and they are released only once it is confirmed gone (`halt`, `teardown`).
+	 */
 	private endRun(run: ManagedRun): void {
 		if (run.ended) {
 			return;
 		}
 
 		// The ring is already redacted; redact once more with the secrets that are still registered, then keep the tail
-		// for the give-up log (the next spawn clears the ring, and the password is released below).
+		// for the give-up log (the next spawn clears the ring).
 		this.outputTail = this.processService
 			.getOutputLines()
 			.slice(-OUTPUT_TAIL_LINES)
@@ -727,8 +732,6 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 		for (const timer of ['pollTimer', 'deadlineTimer', 'stableTimer', 'probeTimer'] as const) {
 			this.clearTimer(run, timer);
 		}
-
-		run.releaseSecrets();
 	}
 
 	private clearTimer(run: ManagedRun, key: 'pollTimer' | 'deadlineTimer' | 'stableTimer' | 'probeTimer'): void {
@@ -758,12 +761,16 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 
 		this.externalClient = null;
 
-		if (this.run !== null) {
-			this.endRun(this.run);
+		const run = this.run;
+
+		if (run !== null) {
+			this.endRun(run);
 		}
 
 		await this.processService.stop();
 
+		// Only a confirmed stop releases the secrets; a rejected one leaves them registered (and the child owned).
+		run?.releaseSecrets();
 		this.removeConfigFiles();
 	}
 

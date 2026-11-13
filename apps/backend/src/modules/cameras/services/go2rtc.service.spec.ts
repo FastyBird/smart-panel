@@ -855,6 +855,60 @@ describe('Go2rtcService', () => {
 			expect(fakeProcess.start).toHaveBeenCalledTimes(1);
 		});
 
+		it('keeps the password and instance secret registered until the child is confirmed stopped', async () => {
+			await startRunning();
+
+			const password = readPassword();
+			const instanceSecret = readInstanceSecret();
+			const registeredDuringStop: string[][] = [];
+
+			fakeProcess.stop.mockImplementationOnce(() => {
+				registeredDuringStop.push([...secrets.list()]);
+
+				return Promise.resolve();
+			});
+
+			await service.stop();
+
+			expect(registeredDuringStop).toHaveLength(1);
+			expect(registeredDuringStop[0]).toEqual(expect.arrayContaining([password, instanceSecret]));
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('keeps the secrets registered when the child cannot be confirmed stopped', async () => {
+			await startRunning();
+
+			const password = readPassword();
+			const instanceSecret = readInstanceSecret();
+
+			fakeProcess.stop.mockRejectedValueOnce(new Error('stuck'));
+			fakeProcess.running = true;
+
+			await expect(service.stop()).rejects.toBeInstanceOf(Go2rtcUnavailableException);
+
+			expect(secrets.list()).toEqual(expect.arrayContaining([password, instanceSecret]));
+		});
+
+		it('keeps the secrets registered while a crashed run is halted, and releases them afterwards', async () => {
+			await startRunning();
+
+			const password = readPassword();
+			const registeredDuringStop: string[][] = [];
+
+			fakeProcess.stop.mockImplementation(() => {
+				registeredDuringStop.push([...secrets.list()]);
+
+				return Promise.resolve();
+			});
+
+			crash();
+			await settle();
+
+			expect(registeredDuringStop.length).toBeGreaterThan(0);
+			expect(registeredDuringStop[0]).toContain(password);
+			expect(secrets.list()).not.toContain(password);
+		});
+
 		it('is a no-op to stop a service that never started', async () => {
 			await expect(service.stop()).resolves.toBeUndefined();
 
@@ -1027,6 +1081,30 @@ describe('Go2rtcService with the stub binary', () => {
 
 		expect(service.getStatus()).toMatchObject({ state: 'disabled', reason: 'module_disabled' });
 		expect(stubConfigFiles()).toEqual([]);
+		expect(secrets.list()).toEqual([]);
+	});
+
+	it('redacts the password and instance secret that the child prints while it shuts down', async () => {
+		service = await createService({ emitSecretsOnSigterm: true });
+
+		await service.start();
+		await waitFor(() => service.getStatus().state === 'running');
+
+		const configFile = join(workDir, 'config', 'go2rtc', stubConfigFiles()[0]);
+		const text = readFileSync(configFile, 'utf8');
+		const instanceSecret = /^# smart-panel-instance (\S+)$/m.exec(text)?.[1] ?? '';
+		const password = /password: *"?([^"\s]+)"?/.exec(text)?.[1] ?? '';
+
+		expect(instanceSecret).toHaveLength(32);
+		expect(password.length).toBeGreaterThanOrEqual(16);
+
+		await service.stop();
+
+		const ring = processService.getOutputLines().join('\n');
+
+		expect(ring).toContain('stub shutdown');
+		expect(ring).not.toContain(password);
+		expect(ring).not.toContain(instanceSecret);
 		expect(secrets.list()).toEqual([]);
 	});
 

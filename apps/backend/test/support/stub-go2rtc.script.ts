@@ -8,6 +8,8 @@ export interface StubGo2rtcOptions {
 	reportedConfigPath?: string;
 	/** `serve` mode: the body `GET /api/config` returns instead of the `-config` file (a foreign service). */
 	reportedConfigText?: string;
+	/** `serve` mode: on SIGTERM print the real API password and instance secret on stdout, then exit 0. */
+	emitSecretsOnSigterm?: boolean;
 }
 
 export const STUB_GO2RTC_READY_LINE = 'stub signal handlers ready';
@@ -42,6 +44,7 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 		'}',
 		`const reportedConfigPath = ${JSON.stringify(options.reportedConfigPath ?? null)};`,
 		`const reportedConfigText = ${JSON.stringify(options.reportedConfigText ?? null)};`,
+		`const emitSecretsOnSigterm = ${JSON.stringify(options.emitSecretsOnSigterm ?? false)};`,
 		SERVE_SOURCE,
 		'if (mode === "tail") {',
 		'  process.stdout.write("stub tail rtsps://console:7441/SENTINELALIAS0123456789 pw=PW_SENTINEL_abcdef0123");',
@@ -99,6 +102,12 @@ if (mode === "serve") {
   }
   const expected = "Basic " + Buffer.from(cfg.api.username + ":" + cfg.api.password).toString("base64");
   const host = cfg.api.listen;
+  if (emitSecretsOnSigterm) {
+    const instance = /^# smart-panel-instance (\S+)$/m.exec(fs.readFileSync(configPath, "utf8"));
+    process.on("SIGTERM", () => {
+      process.stdout.write("stub shutdown password=" + cfg.api.password + " instance=" + (instance ? instance[1] : "") + "\n", () => process.exit(0));
+    });
+  }
   http
     .createServer((req, res) => {
       if (req.method !== "GET" || (req.url !== "/api" && req.url !== "/api/config")) {
