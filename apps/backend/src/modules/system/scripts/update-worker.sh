@@ -59,6 +59,29 @@ provision_helper() {
 	/usr/bin/python3 -I "$installer" "${args[@]}"
 }
 
+# Installs the go2rtc binary bundled with a release so existing installations receive it. go2rtc is
+# optional (cameras fall back to snapshots), so this never fails or holds an update: it always returns 0,
+# is time-bounded, and takes no part in update status or attempt bookkeeping.
+# The script runs as root only on the helper-managed path, where the release tree is root-owned (the same
+# trust the helper already extends to install-helper.py). On the legacy sudo path the tree is chowned to the
+# service user, so executing a script from it as root would be a privilege escalation.
+install_go2rtc_nonfatal() {
+	local release_root="$1"
+	local installer="${release_root}/dist/go2rtc/install-go2rtc.sh"
+	if [ "$HELPER_MANAGED" != 1 ]; then
+		printf 'go2rtc is installed by install-server.sh or manually on this installation\n' >&2
+		return 0
+	fi
+	if [ ! -f "$installer" ] || [ -L "$installer" ]; then
+		printf 'go2rtc installer not found in this release; cameras fall back to snapshots\n' >&2
+		return 0
+	fi
+	if ! timeout --kill-after=5 "$GO2RTC_INSTALL_TIMEOUT_SECONDS" /bin/sh "$installer" </dev/null; then
+		printf 'go2rtc installer did not complete; cameras fall back to snapshots\n' >&2
+	fi
+	return 0
+}
+
 # `stopped-maintenance` is an operator-only mode.  The API always supplies the default
 # running-service mode; this mode is intentionally guarded by a complete, explicit identity
 # packet and is never inferred from a stale status file or an ambient process environment.
@@ -88,6 +111,7 @@ SERVICE_NAME="smart-panel"
 SERVICE_UNIT="${SERVICE_UNIT:-${SERVICE_NAME}.service}"
 QUIESCENCE_TIMEOUT_SECONDS="${QUIESCENCE_TIMEOUT_SECONDS:-30}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-60}"
+GO2RTC_INSTALL_TIMEOUT_SECONDS="${GO2RTC_INSTALL_TIMEOUT_SECONDS:-120}"
 CAPTURED_SERVICE_CGROUP_PROCS=""
 CAPTURED_SERVICE_CGROUP_DIR=""
 CAPTURED_SERVICE_CGROUP_EVENTS=""
@@ -1306,6 +1330,9 @@ PY
 		}
 	fi
 
+	# The old service keeps running, so the installer adds no downtime.
+	install_go2rtc_nonfatal "$NEW_VERSION_DIR"
+
 	# ── Stop/qualify service ──
 	update_status "stopping" "stopping"
 	write_attempt "active" "stopping" "" "false" "$MIGRATION_ENTERED"
@@ -1566,6 +1593,8 @@ if [ "$HELPER_MANAGED" = 1 ]; then
 		FINALIZED="true"
 		exit 1
 	fi
+	# The service is already stopped here, so the timeout bounds the added downtime.
+	install_go2rtc_nonfatal "$NPM_BACKEND_ROOT"
 	# Only native dependency workspaces become writable; helper sources and all
 	# application entry points retain their release ownership throughout the rebuild.
 	mapfile -d '' native_dirs < <(find "$NPM_PACKAGE_ROOT/node_modules" -type d \( -name sqlite3 -o -name bcrypt \) -print0)
@@ -1660,6 +1689,8 @@ else
 		exit 1
 	}
 fi
+
+install_go2rtc_nonfatal "$(npm root -g)/@fastybird/smart-panel/node_modules/@fastybird/smart-panel-backend"
 
 # Run database migrations
 update_status "migrating" "migrating"
