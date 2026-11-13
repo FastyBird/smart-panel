@@ -15,7 +15,7 @@ import {
 	sanitizeProviderError,
 } from '../cameras.exceptions';
 import { CameraModel, CameraStreamProfileModel } from '../models/camera.model';
-import { CameraStreamProfile, ICameraStreamProvider } from '../platforms/camera-stream.provider';
+import { CameraStreamProfile, CameraStreamSource, ICameraStreamProvider } from '../platforms/camera-stream.provider';
 
 import { CameraStreamProviderRegistryService } from './camera-stream-provider.registry.service';
 
@@ -102,6 +102,14 @@ export class CamerasService {
 		}
 
 		return profile;
+	}
+
+	/**
+	 * Asks the provider for the stream source of a profile. Same timeout, abort signal and error sanitising as
+	 * `listProfiles`. The result is a secret: it is never logged here.
+	 */
+	resolveSource(device: DeviceEntity, provider: ICameraStreamProvider, profileId: string): Promise<CameraStreamSource> {
+		return this.withTimeout(device.id, (signal) => provider.resolveSource(device, profileId, { signal }));
 	}
 
 	async toModel(device: DeviceEntity, provider: ICameraStreamProvider | null): Promise<CameraModel> {

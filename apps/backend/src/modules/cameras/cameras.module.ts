@@ -25,6 +25,7 @@ import { CamerasConfigMutationService } from './services/cameras-config-mutation
 import { CamerasService } from './services/cameras.service';
 import { Go2rtcProcessService } from './services/go2rtc-process.service';
 import { Go2rtcSecretsRegistry } from './services/go2rtc-secrets.registry';
+import { Go2rtcStreamsService } from './services/go2rtc-streams.service';
 import { Go2rtcService } from './services/go2rtc.service';
 
 @ApiTag({
@@ -43,6 +44,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 		Go2rtcSecretsRegistry,
 		Go2rtcProcessService,
 		Go2rtcService,
+		Go2rtcStreamsService,
 	],
 	controllers: [CamerasController],
 	exports: [
@@ -51,6 +53,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 		CameraSnapshotService,
 		CameraSessionService,
 		Go2rtcService,
+		Go2rtcStreamsService,
 	],
 })
 export class CamerasModule implements OnModuleInit {
