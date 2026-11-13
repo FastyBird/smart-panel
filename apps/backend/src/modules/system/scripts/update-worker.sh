@@ -69,7 +69,7 @@ install_go2rtc_nonfatal() {
 	local release_root="$1"
 	local installer="${release_root}/dist/go2rtc/install-go2rtc.sh"
 	if [ "$HELPER_MANAGED" != 1 ]; then
-		printf 'go2rtc is installed by install-server.sh or manually on this installation\n' >&2
+		printf 'go2rtc is not installed by updates on this installation; install it with install-server.sh or install-go2rtc.sh\n' >&2
 		return 0
 	fi
 	if [ ! -f "$installer" ] || [ -L "$installer" ]; then
@@ -111,7 +111,7 @@ SERVICE_NAME="smart-panel"
 SERVICE_UNIT="${SERVICE_UNIT:-${SERVICE_NAME}.service}"
 QUIESCENCE_TIMEOUT_SECONDS="${QUIESCENCE_TIMEOUT_SECONDS:-30}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-60}"
-GO2RTC_INSTALL_TIMEOUT_SECONDS="${GO2RTC_INSTALL_TIMEOUT_SECONDS:-120}"
+GO2RTC_INSTALL_TIMEOUT_SECONDS="${GO2RTC_INSTALL_TIMEOUT_SECONDS:-960}"
 CAPTURED_SERVICE_CGROUP_PROCS=""
 CAPTURED_SERVICE_CGROUP_DIR=""
 CAPTURED_SERVICE_CGROUP_EVENTS=""
@@ -1330,7 +1330,8 @@ PY
 		}
 	fi
 
-	# The old service keeps running, so the installer adds no downtime.
+	# In the default mode the old service keeps running, so the installer adds no downtime; in stopped-maintenance
+	# mode it is already stopped. go2rtc converges before the update commits (harmless if the update is held).
 	install_go2rtc_nonfatal "$NEW_VERSION_DIR"
 
 	# ── Stop/qualify service ──

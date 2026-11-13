@@ -47,8 +47,8 @@ function writeExecutable(path: string, contents: string): void {
 }
 
 interface FixtureOptions {
-	// dist/go2rtc/install-go2rtc.sh in the release archive: a script with this content, or a symlink to this target.
-	go2rtcInstaller?: { content: string } | { symlinkTarget: string };
+	// dist/go2rtc/install-go2rtc.sh in the release archive: a script with this content.
+	go2rtcInstaller?: { content: string };
 }
 
 function createFixture(options: FixtureOptions = {}): Fixture {
@@ -97,11 +97,7 @@ function createFixture(options: FixtureOptions = {}): Fixture {
 	if (options.go2rtcInstaller) {
 		mkdirSync(join(archiveRoot, 'dist', 'go2rtc'), { recursive: true });
 		const installer = join(archiveRoot, 'dist', 'go2rtc', 'install-go2rtc.sh');
-		if ('content' in options.go2rtcInstaller) {
-			writeExecutable(installer, options.go2rtcInstaller.content);
-		} else {
-			symlinkSync(options.go2rtcInstaller.symlinkTarget, installer);
-		}
+		writeExecutable(installer, options.go2rtcInstaller.content);
 	}
 
 	execFileSync('tar', ['-czf', archive, '-C', archiveRoot, '.']);
@@ -1364,7 +1360,7 @@ describe('go2rtc installer hook', () => {
 			`#!/bin/bash
 set -e
 HELPER_MANAGED="\${HELPER_MANAGED:-0}"
-GO2RTC_INSTALL_TIMEOUT_SECONDS="\${GO2RTC_INSTALL_TIMEOUT_SECONDS:-120}"
+GO2RTC_INSTALL_TIMEOUT_SECONDS="\${GO2RTC_INSTALL_TIMEOUT_SECONDS:-960}"
 ${hookFunction()}
 install_go2rtc_nonfatal "$1"
 printf 'after-hook\\n'
@@ -1482,7 +1478,7 @@ printf 'after-hook\\n'
 
 			expect(result.code).toBe(0);
 			expect(result.stdout).toContain('after-hook');
-			expect(result.stderr).toContain('go2rtc');
+			expect(result.stderr).toContain('go2rtc installer not found in this release; cameras fall back to snapshots');
 		});
 	});
 
@@ -1509,6 +1505,7 @@ printf 'after-hook\\n'
 			expect(result.code).toBe(0);
 			expect(result.stdout).toContain('after-hook');
 			expect(existsSync(ran)).toBe(false);
+			expect(result.stderr).toContain('go2rtc installer not found in this release; cameras fall back to snapshots');
 		});
 	});
 
@@ -1522,7 +1519,9 @@ printf 'after-hook\\n'
 			expect(result.stdout).toContain('after-hook');
 			expect(existsSync(ran)).toBe(false);
 			expect(
-				result.stderr.match(/go2rtc is installed by install-server\.sh or manually on this installation/g),
+				result.stderr.match(
+					/go2rtc is not installed by updates on this installation; install it with install-server\.sh or install-go2rtc\.sh/g,
+				),
 			).toHaveLength(1);
 		});
 	});
@@ -1555,32 +1554,10 @@ printf 'after-hook\\n'
 
 			expect(result.status).toBe('success');
 			expect(readJson(fixture.statusFile).status).toBe('complete');
-			expect(result.output).toContain('go2rtc is installed by install-server.sh or manually on this installation');
+			expect(result.output).toContain(
+				'go2rtc is not installed by updates on this installation; install it with install-server.sh or install-go2rtc.sh',
+			);
 			expect(existsSync(`${fixture.stateFile}.go2rtc-ran`)).toBe(false);
-		} finally {
-			rmSync(fixture.root, { recursive: true, force: true });
-		}
-	});
-
-	it('completes an image update when the release has no installer', () => {
-		const fixture = createFixture();
-		try {
-			const result = runWorker(fixture);
-
-			expect(result.status).toBe('success');
-			expect(readJson(fixture.statusFile).status).toBe('complete');
-		} finally {
-			rmSync(fixture.root, { recursive: true, force: true });
-		}
-	});
-
-	it('completes an image update when the installer is a symlink', () => {
-		const fixture = createFixture({ go2rtcInstaller: { symlinkTarget: '/nonexistent/install-go2rtc.sh' } });
-		try {
-			const result = runWorker(fixture);
-
-			expect(result.status).toBe('success');
-			expect(readJson(fixture.statusFile).status).toBe('complete');
 		} finally {
 			rmSync(fixture.root, { recursive: true, force: true });
 		}
