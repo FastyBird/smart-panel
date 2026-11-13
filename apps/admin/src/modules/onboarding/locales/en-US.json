@@ -83,7 +83,7 @@
 			"myLocation": "My Location"
 		},
 		"orEnterManually": "Or enter coordinates manually",
-		"hint": "You can configure your location later in the Weather settings.",
+		"hint": "You can change the house location, which sunrise and sunset are computed from, later in the System settings, and the weather locations in the Weather settings.",
 		"messages": {
 			"error": "Failed to save location.",
 			"geolocationNotSupported": "Geolocation is not supported by your browser.",

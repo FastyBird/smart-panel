@@ -50,4 +50,52 @@ describe('useAppOnboarding', () => {
 			params: { query: { hidden: DevicesModuleDevicesHiddenFilter.false } },
 		});
 	});
+
+	describe('saveLocation', () => {
+		beforeEach(() => {
+			const { reset } = useAppOnboarding();
+
+			reset();
+
+			mockPatch.mockResolvedValue({ data: {}, error: undefined });
+			mockPost.mockResolvedValue({ data: { data: { id: 'location-1' } }, error: undefined });
+		});
+
+		it('stores the chosen coordinates as the house location, as well as for the weather', async () => {
+			const { locationData, saveLocation } = useAppOnboarding();
+
+			locationData.latitude = -33.87;
+			locationData.longitude = 151.21;
+
+			await expect(saveLocation()).resolves.toBe(true);
+
+			expect(mockPatch).toHaveBeenCalledWith('/modules/config/config/module/{module}', {
+				params: { path: { module: 'system-module' } },
+				body: { data: { type: 'system-module', latitude: -33.87, longitude: 151.21 } },
+			});
+			expect(mockPatch).toHaveBeenCalledWith('/modules/config/config/module/{module}', {
+				params: { path: { module: 'weather-module' } },
+				body: { data: { type: 'weather-module', primary_location_id: 'location-1' } },
+			});
+		});
+
+		it('fails when the house location can not be stored', async () => {
+			const { locationData, saveLocation } = useAppOnboarding();
+
+			locationData.latitude = 50;
+			locationData.longitude = 14;
+
+			mockPatch.mockResolvedValueOnce({ data: undefined, error: { status: 422 } });
+
+			await expect(saveLocation()).resolves.toBe(false);
+			expect(mockPost).not.toHaveBeenCalled();
+		});
+
+		it('stores nothing when no coordinates were chosen', async () => {
+			const { saveLocation } = useAppOnboarding();
+
+			await expect(saveLocation()).resolves.toBe(true);
+			expect(mockPatch).not.toHaveBeenCalled();
+		});
+	});
 });

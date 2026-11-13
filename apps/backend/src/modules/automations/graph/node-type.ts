@@ -84,6 +84,14 @@ export interface AutomationNodeTypeBase<TConfig extends object = AutomationNodeC
 	references?(config: TConfig): AutomationNodeReference[];
 	/** The module or plugin the node type belongs to; left out by the automations module itself */
 	owner?: AutomationNodeTypeOwner;
+	/**
+	 * Why the node type can not be used at the moment - something it needs is not set up, such as the
+	 * house location of the sun cards - or undefined while it can. Asked whenever a graph is checked and
+	 * the catalogue is listed, so it must be quick and must not throw. A graph using an unavailable node
+	 * type can be kept as a disabled draft but not enabled. An automation that is already enabled stays
+	 * armed: the node type itself decides what it does without what it needs.
+	 */
+	unavailableReason?(): string | undefined;
 }
 
 export interface AutomationTriggerData {
@@ -334,6 +342,8 @@ export interface RegisteredAutomationNodeType {
 	references(config: AutomationNodeConfig): AutomationNodeReference[];
 	/** What an action does to the home; empty for every other kind */
 	commands(config: AutomationNodeConfig): AutomationActionCommand[];
+	/** Why the node type can not be used at the moment; undefined while it can */
+	unavailableReason(): string | undefined;
 	owner?: AutomationNodeTypeOwner;
 	definition: AutomationNodeTypeBase<any>;
 }
@@ -349,6 +359,9 @@ export const AUTOMATION_NODE_DEFAULT_PORTS: Readonly<
 };
 
 export const AUTOMATION_NODE_TYPE_MAX_LENGTH = 100;
+
+/** Given for a node type whose availability could not be told */
+export const AUTOMATION_NODE_TYPE_UNAVAILABLE_REASON = 'This block is not available at the moment.';
 export const AUTOMATION_NODE_PORT_MAX_LENGTH = 64;
 
 const NODE_TYPE_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
@@ -412,6 +425,12 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 	}
 
 	const { commands } = definition as { commands?: unknown };
+
+	if (definition.unavailableReason !== undefined && typeof definition.unavailableReason !== 'function') {
+		throw new AutomationNodeTypeDefinitionError(
+			`Automation node type ${type} has an unavailable reason that is not a function.`,
+		);
+	}
 
 	if (commands !== undefined && typeof commands !== 'function') {
 		throw new AutomationNodeTypeDefinitionError(`Automation node type ${type} has commands that is not a function.`);
@@ -478,6 +497,15 @@ export const normalizeAutomationNodeType = <TConfig extends object>(
 		validateConfig: (config) => source.validateConfig(config),
 		references: (config) => source.references?.(config) ?? [],
 		commands: (config) => (kind === 'action' ? (source.commands?.(config) ?? []) : []),
+		unavailableReason: () => {
+			try {
+				const reason: unknown = source.unavailableReason?.();
+
+				return typeof reason === 'string' && reason !== '' ? reason : undefined;
+			} catch {
+				return AUTOMATION_NODE_TYPE_UNAVAILABLE_REASON;
+			}
+		},
 		...(owner ? { owner: { kind: owner.kind, type: owner.type } } : {}),
 		definition: source,
 	};

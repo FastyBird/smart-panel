@@ -83,7 +83,7 @@
 			"myLocation": "Moje poloha"
 		},
 		"orEnterManually": "Nebo zadejte souřadnice ručně",
-		"hint": "Svou lokaci můžete nakonfigurovat později v nastavení Počasí.",
+		"hint": "Polohu domu, ze které se počítá východ a západ slunce, můžete později změnit v nastavení Systému a lokace počasí v nastavení Počasí.",
 		"messages": {
 			"error": "Nepodařilo se uložit lokaci.",
 			"geolocationNotSupported": "Geolokace není podporována vaším prohlížečem.",

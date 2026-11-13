@@ -177,12 +177,37 @@ city-name location has none. Add nullable `latitude` and `longitude` to the syst
 onboarding and defaulted from the primary weather location on upgrade. Sun cards are unavailable, with a clear
 validation message, when no location is set.
 
+As built (AU-16): the location is `latitude` and `longitude` of the `system-module` configuration, editable in
+the system settings and stored by the onboarding location step. The configuration lives in `config.yaml`, not
+in the database, so the upgrade default is an on-boot step (`HouseLocationDefaultService`) rather than a
+migration: while the file holds no `latitude` or `longitude` key at all - a file written before they existed -
+the coordinates of the primary weather location are copied in, when it has them. Once either key is stored,
+set or cleared, it is never touched again. A node type may declare `unavailableReason()`; the validator then
+reports `node_type_unavailable` on each node using it, a completeness issue (a disabled draft can be saved,
+enabling is refused), and the catalogue serves the reason as `unavailable_reason`. The engine does not ask for
+it when it loads an automation: an automation enabled while the location was set stays armed if the location
+is cleared, its sun triggers do not fire and the day or night condition answers `no` with the reason.
+
 ### 11. Sun calculation
 
 Implemented in the module, with no dependency. `suncalc` resumed publishing in June 2026 after four years, with
 eight releases since, the latest on the day of this ADR, no provenance attestation and no licence field in its
 package metadata. The calculation is 80–150 lines and must handle polar day and night (no event that day), the
 local day rather than the UTC day, and offsets applied to the instant.
+
+As built (AU-16): `automations/time/sun.ts` takes the position of the sun from the NOAA solar calculator and
+finds sunrise and sunset as the crossings of -0.833° by the altitude itself: sampled every 10 minutes on a grid
+fixed to the epoch, refined by bisection, with turning points of the altitude searched so that a sun showing for
+only a minute or two near the polar night is not missed. Each crossing is found on its own, so the days around
+the midnight sun and the polar night keep every event, also a sunrise that comes after the last sunset. A solar
+day is anchored to the calendar date at the longitude, and an event belongs to the local date of the instant it
+happens at in the house timezone. The trigger (`sun.event`) fires at the first minute boundary at or after the
+event moved by its offset (up to six hours either way), so a day or night check right after a sunrise sees day
+and right after a sunset sees night; it works on instants, so a daylight-saving change does not move or repeat
+it, and one event fires once as for a time of day. The condition (`sun.daylight`) compares the altitude with the
+same -0.833°, so a polar day is day and a polar night is night. Tested against timeanddate.com tables to within
+a minute, and within three minutes on the days next to the polar transitions, where the sun crosses the horizon
+at a shallow angle.
 
 ### 12. Run history
 

@@ -73,6 +73,7 @@ describe('AutomationBuiltInNodeTypesService', () => {
 			'action notification.send',
 			'action scene.run',
 			'condition device.property.compare',
+			'condition sun.daylight',
 			'condition time.window',
 			'flow flow.all',
 			'flow flow.any',
@@ -80,11 +81,12 @@ describe('AutomationBuiltInNodeTypesService', () => {
 			'flow flow.wait-until',
 			'trigger device.property.changed',
 			'trigger manual.start',
+			'trigger sun.event',
 			'trigger time.of-day',
 		]);
 
 		for (const item of registered) {
-			// Cards of the module itself have no owner: they are always available
+			// Cards of the module itself have no owner: they are always running
 			expect(item.owner).toBeUndefined();
 			expect(item.configSchema).toMatchObject({ type: 'object', additionalProperties: false });
 			expect(item.name).not.toBe('');

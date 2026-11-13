@@ -38,6 +38,7 @@ import { SystemStatsProvider } from './providers/system-stats.provider';
 import { BackupContributionRegistry } from './services/backup-contribution-registry.service';
 import { BackupService } from './services/backup.service';
 import { DisplayCommandService } from './services/display-command.service';
+import { HouseLocationDefaultService } from './services/house-location-default.service';
 import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { OnboardingService } from './services/onboarding.service';
 import { SystemCommandService } from './services/system-command.service';
@@ -83,6 +84,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		SystemStatsProvider,
 		SystemThrottleMonitorService,
 		HouseModeActionsService,
+		HouseLocationDefaultService,
 		OnboardingService,
 		UpdateService,
 		UpdateExecutorService,

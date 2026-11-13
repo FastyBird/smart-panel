@@ -22,6 +22,8 @@ export const AutomationNodeTypeSchema = z.object({
 	description: z.string().default(''),
 	ports: AutomationNodeTypePortsSchema,
 	configSchema: z.record(z.string(), z.unknown()).default({ type: 'object', additionalProperties: true }),
+	// Why the card can not be used at the moment (a sun card without a house location); null or left out while it can
+	unavailableReason: z.string().nullable().optional(),
 });
 
 export const AutomationNodeTypesStateSemaphoreSchema = z.object({
@@ -38,4 +40,6 @@ export const AutomationNodeTypeResSchema: ZodType<ApiNodeType> = z.object({
 	description: z.string(),
 	ports: AutomationNodeTypePortsSchema,
 	config_schema: z.record(z.string(), z.unknown()),
+	// Defaulted so a backend that predates it still parses
+	unavailable_reason: z.string().nullable().default(null),
 });

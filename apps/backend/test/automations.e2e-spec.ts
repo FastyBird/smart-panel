@@ -27,7 +27,10 @@ import { AutomationRunHistoryService } from '../src/modules/automations/services
 import { AutomationsService } from '../src/modules/automations/services/automations.service';
 import { AutomationNodeTypeRegistryService } from '../src/modules/automations/services/node-type-registry.service';
 import { AutomationStateTrackerService } from '../src/modules/automations/services/state-tracker.service';
-import { AutomationTimeSourceService } from '../src/modules/automations/services/time-source.service';
+import {
+	AutomationTimeSourceService,
+	HOUSE_LOCATION_NOT_SET_REASON,
+} from '../src/modules/automations/services/time-source.service';
 import {
 	FAKE_ACTION_TYPE,
 	FAKE_NODE_TYPES,
@@ -478,6 +481,7 @@ describe('Automations module (e2e)', () => {
 				ports: { inputs: [], outputs: ['out'] },
 				// A node type that does not describe its configuration accepts any object
 				config_schema: { type: 'object', additionalProperties: true },
+				unavailable_reason: null,
 			});
 			expect(nodeTypes.find((item) => item.type === 'test.condition')?.ports).toEqual({
 				inputs: ['in'],
@@ -1660,6 +1664,8 @@ describe('Automations module (e2e)', () => {
 				'trigger manual.start',
 				'action notification.send',
 				'action scene.run',
+				'condition sun.daylight',
+				'trigger sun.event',
 				'trigger time.of-day',
 				'condition time.window',
 			]);
@@ -1672,6 +1678,132 @@ describe('Automations module (e2e)', () => {
 			expect(builtIn.find((item) => item.type === 'device.property.compare')?.config_schema).toMatchObject({
 				required: ['device_id', 'channel_id', 'property_id', 'operator'],
 				'x-operators-by-value-kind': { boolean: ['eq', 'neq'] },
+			});
+		});
+
+		describe('sun cards', () => {
+			const setHouseLocation = (latitude: number | null, longitude: number | null) =>
+				request(app.getHttpServer())
+					.patch('/modules/config/config/module/system-module')
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { type: 'system-module', latitude, longitude } })
+					.expect(200);
+
+			const sunGraph = () => ({
+				version: 1,
+				nodes: [
+					{
+						id: 'dusk',
+						type: 'sun.event',
+						position: { x: 0, y: 0 },
+						config: { event: 'sunset', offset_minutes: -30 },
+					},
+					{ id: 'dark', type: 'sun.daylight', position: { x: 200, y: 0 }, config: { state: 'night' } },
+					{
+						id: 'on',
+						type: 'device.property.set',
+						position: { x: 400, y: 0 },
+						config: { writes: [{ ...lightOn, value: true }] },
+					},
+				],
+				edges: [
+					{ id: 'e1', source: 'dusk', source_port: 'out', target: 'dark', target_port: 'in' },
+					{ id: 'e2', source: 'dark', source_port: 'no', target: 'on', target_port: 'in' },
+				],
+			});
+
+			afterAll(async () => {
+				await setHouseLocation(null, null);
+			});
+
+			it('are unavailable without a house location: a draft is kept, enabling is refused', async () => {
+				await setHouseLocation(null, null);
+
+				const nodeTypes = await request(app.getHttpServer())
+					.get(nodeTypesBase)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				const sun = (nodeTypes.body as { data: (NodeTypeBody & { unavailable_reason: string | null })[] }).data.filter(
+					(item) => item.type.startsWith('sun.'),
+				);
+
+				expect(sun.map((item) => item.unavailable_reason)).toEqual([
+					HOUSE_LOCATION_NOT_SET_REASON,
+					HOUSE_LOCATION_NOT_SET_REASON,
+				]);
+
+				const validation = await request(app.getHttpServer())
+					.post(`${base}/validate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { graph: sunGraph(), enabled: true } })
+					.expect(200);
+
+				expect((validation.body as { data: unknown }).data).toEqual({
+					valid: false,
+					issues: [
+						{
+							severity: 'error',
+							code: 'node_type_unavailable',
+							message: HOUSE_LOCATION_NOT_SET_REASON,
+							node_id: 'dusk',
+							blocking: true,
+						},
+						{
+							severity: 'error',
+							code: 'node_type_unavailable',
+							message: HOUSE_LOCATION_NOT_SET_REASON,
+							node_id: 'dark',
+							blocking: true,
+						},
+					],
+				});
+
+				await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Lights at dusk', enabled: true, graph: sunGraph() } })
+					.expect(422);
+
+				const draft = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Lights at dusk, draft', enabled: false, graph: sunGraph() } })
+					.expect(201);
+
+				await request(app.getHttpServer())
+					.delete(`${base}/${(draft.body as { data: AutomationBody }).data.id}`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(204);
+			});
+
+			it('are available once the house location is set, and an automation using them can be enabled', async () => {
+				await setHouseLocation(50.0755, 14.4378);
+
+				const validation = await request(app.getHttpServer())
+					.post(`${base}/validate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { graph: sunGraph(), enabled: true } })
+					.expect(200);
+
+				expect((validation.body as { data: unknown }).data).toEqual({ valid: true, issues: [] });
+
+				const created = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: 'Lights at dusk', enabled: true, graph: sunGraph() } })
+					.expect(201);
+
+				const id = (created.body as { data: AutomationBody }).data.id;
+
+				await engine.settled();
+
+				expect(engine.runtime(id)).toMatchObject({ status: 'ok', armed: true, armedTriggers: 1 });
+
+				await request(app.getHttpServer())
+					.delete(`${base}/${id}`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(204);
 			});
 		});
 

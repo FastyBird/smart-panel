@@ -1,5 +1,16 @@
 import { Expose, Transform } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+	ArrayNotEmpty,
+	IsArray,
+	IsBoolean,
+	IsEnum,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Max,
+	Min,
+	ValidateIf,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -54,6 +65,43 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"timezone","reason":"Timezone must be a valid string."}]' })
 	timezone?: string;
+
+	// The house location: a number sets a coordinate, null clears it, and leaving it out keeps it
+	@ApiPropertyOptional({
+		description: 'Sets the latitude of the house in degrees, north positive; null clears it.',
+		type: 'number',
+		minimum: -90,
+		maximum: 90,
+		nullable: true,
+		example: 50.0755,
+	})
+	@Expose()
+	@ValidateIf((_, value) => value !== null && value !== undefined)
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ message: '[{"field":"latitude","reason":"Latitude must be a number from -90 to 90."}]' },
+	)
+	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be a number from -90 to 90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be a number from -90 to 90."}]' })
+	latitude?: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Sets the longitude of the house in degrees, east positive; null clears it.',
+		type: 'number',
+		minimum: -180,
+		maximum: 180,
+		nullable: true,
+		example: 14.4378,
+	})
+	@Expose()
+	@ValidateIf((_, value) => value !== null && value !== undefined)
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ message: '[{"field":"longitude","reason":"Longitude must be a number from -180 to 180."}]' },
+	)
+	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be a number from -180 to 180."}]' })
+	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be a number from -180 to 180."}]' })
+	longitude?: number | null;
 
 	@ApiPropertyOptional({
 		description: 'Sets the time format.',

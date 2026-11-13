@@ -68,7 +68,8 @@
 		"aboutHouseModeSettings": "Tryb domu",
 		"systemBackups": {
 			"list": "Kopie zapasowe systemu"
-		}
+		},
+		"aboutHouseLocation": "Lokalizacja domu"
 	},
 	"subHeadings": {
 		"system": "Informacje o stanie systemu smart panelu",
@@ -169,7 +170,8 @@
 		},
 		"aboutLanguageSettings": "Skonfiguruj język interfejsu, strefę czasową, format czasu i jednostki miar Smart Panel. Te ustawienia wpływają na sposób wyświetlania dat, godzin, temperatur i miar w całym systemie.",
 		"aboutSystemSettings": "Zarządzaj ogólnosystemową konfiguracją logowania. Wybierz, które poziomy ważności logów mają być monitorowane i wyświetlane w logach aplikacji.",
-		"aboutHouseModeSettings": "Ustaw bieżący tryb domu, aby kontrolować zachowanie Smart Panel i podłączonych urządzeń. Tryb Dom to normalna obecność, tryb Poza domem gdy nikogo nie ma, a tryb Noc na czas snu."
+		"aboutHouseModeSettings": "Ustaw bieżący tryb domu, aby kontrolować zachowanie Smart Panel i podłączonych urządzeń. Tryb Dom to normalna obecność, tryb Poza domem gdy nikogo nie ma, a tryb Noc na czas snu.",
+		"aboutHouseLocation": "Szerokość i długość geograficzna domu. Na ich podstawie Smart Panel sam, bez usługi pogodowej, oblicza wschód i zachód słońca dla kart automatyzacji wschód słońca, zachód słońca oraz dzień lub noc. Pozostaw oba pola puste, aby usunąć lokalizację."
 	},
 	"fields": {
 		"config": {
@@ -322,6 +324,22 @@
 				},
 				"validation": {
 					"required": "Tryb domu jest wymagany"
+				}
+			},
+			"latitude": {
+				"title": "Szerokość geograficzna",
+				"placeholder": "np. 50.0755",
+				"validation": {
+					"range": "Szerokość geograficzna musi być liczbą od -90 do 90",
+					"pair": "Podaj szerokość i długość geograficzną albo pozostaw oba pola puste"
+				}
+			},
+			"longitude": {
+				"title": "Długość geograficzna",
+				"placeholder": "np. 14.4378",
+				"validation": {
+					"range": "Długość geograficzna musi być liczbą od -180 do 180",
+					"pair": "Podaj szerokość i długość geograficzną albo pozostaw oba pola puste"
 				}
 			}
 		},

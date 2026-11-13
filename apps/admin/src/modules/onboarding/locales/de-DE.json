@@ -83,7 +83,7 @@
 			"myLocation": "Mein Standort"
 		},
 		"orEnterManually": "Oder Koordinaten manuell eingeben",
-		"hint": "Sie können Ihren Standort später in den Wetter-Einstellungen konfigurieren.",
+		"hint": "Den Standort des Hauses, aus dem Sonnenaufgang und Sonnenuntergang berechnet werden, können Sie später in den System-Einstellungen ändern, die Wetterstandorte in den Wetter-Einstellungen.",
 		"messages": {
 			"error": "Standort konnte nicht gespeichert werden.",
 			"geolocationNotSupported": "Geolokalisierung wird von Ihrem Browser nicht unterstützt.",

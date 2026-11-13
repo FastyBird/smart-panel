@@ -73,6 +73,49 @@ describe('validateGraph', () => {
 		expect(issues).toEqual([]);
 	});
 
+	describe('node_type_unavailable', () => {
+		let reason: string | undefined;
+		const UNAVAILABLE_TRIGGER = 'test.unavailable-trigger';
+		const unavailableLookup = createLookup([
+			...FAKE_NODE_TYPES,
+			{
+				type: UNAVAILABLE_TRIGGER,
+				kind: 'trigger',
+				name: 'Needs set-up',
+				description: 'Needs something set up.',
+				validateConfig: () => [],
+				unavailableReason: () => reason,
+				subscribe: () => () => undefined,
+			} as AutomationNodeType<any>,
+		]);
+		const sunGraph = graph([node('t', UNAVAILABLE_TRIGGER), node('a', FAKE_ACTION_TYPE)], [e('t:out>a:in')]);
+
+		beforeEach(() => {
+			reason = 'The house location is not set.';
+		});
+
+		it('is an error on the node, with the reason of the node type', async () => {
+			expect(await validateGraph(sunGraph, unavailableLookup)).toEqual([
+				{
+					severity: 'error',
+					code: 'node_type_unavailable',
+					message: 'The house location is not set.',
+					node_id: 't',
+				},
+			]);
+		});
+
+		it('is gone once the node type is available again', async () => {
+			reason = undefined;
+
+			expect(await validateGraph(sunGraph, unavailableLookup)).toEqual([]);
+		});
+
+		it('is not reported when availability is not asked for', async () => {
+			expect(await validateGraph(sunGraph, unavailableLookup, { availability: false })).toEqual([]);
+		});
+	});
+
 	describe('unknown_node_type', () => {
 		it('is an error on the node', async () => {
 			const issues = await validateGraph(graph([node('t', FAKE_TRIGGER_TYPE), node('x', 'not.registered')]), lookup);

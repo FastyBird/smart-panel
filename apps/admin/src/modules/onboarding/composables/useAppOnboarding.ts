@@ -1,16 +1,17 @@
 import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { sessionStoreKey } from '../../auth/store/keys';
 import { CONFIG_MODULE_PREFIX } from '../../config/config.constants';
 import { DEVICES_MODULE_PREFIX } from '../../devices/devices.constants';
-import { spacesStoreKey } from '../../spaces/store/keys';
 import { SPACES_MODULE_PREFIX, SpaceType } from '../../spaces/spaces.constants';
+import { spacesStoreKey } from '../../spaces/store/keys';
 import { WEATHER_MODULE_PREFIX } from '../../weather/weather.constants';
 import { OnboardingStep } from '../onboarding.constants';
+
 import { useOnboardingStatus } from './useOnboardingStatus';
 
 export interface IAccountData {
@@ -189,6 +190,22 @@ export const useAppOnboarding = () => {
 		}
 
 		try {
+			// The house location: sunrise and sunset are computed from it, whatever weather service is used
+			// type is required by the base config update schema; latitude/longitude are system-module-specific
+			const { error: houseError } = await backend.client.PATCH(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
+				params: { path: { module: 'system-module' } },
+				body: {
+					data: { type: 'system-module', latitude: locationData.latitude, longitude: locationData.longitude } as {
+						type: string;
+						[k: string]: unknown;
+					},
+				},
+			});
+
+			if (houseError) {
+				return false;
+			}
+
 			// Invalidate cached location if user changed coordinates
 			if (
 				createdLocationId &&
@@ -257,7 +274,9 @@ export const useAppOnboarding = () => {
 
 			if (error || !data) return false;
 
-			const items = (data as { data: { id: string; name: string; type: string; category: string; description: string | null; room_id: string | null }[] }).data;
+			const items = (
+				data as { data: { id: string; name: string; type: string; category: string; description: string | null; room_id: string | null }[] }
+			).data;
 
 			discoveredDevices.splice(0, discoveredDevices.length);
 

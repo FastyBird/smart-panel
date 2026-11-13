@@ -68,7 +68,8 @@
     },
     "aboutLanguageSettings": "Language & Units",
     "aboutSystemSettings": "System Settings",
-    "aboutHouseModeSettings": "House Mode"
+    "aboutHouseModeSettings": "House Mode",
+    "aboutHouseLocation": "House Location"
   },
   "subHeadings": {
     "system": "Smart panel system status information",
@@ -169,7 +170,8 @@
     },
     "aboutLanguageSettings": "Configure the interface language, timezone, time format, and measurement units for the Smart Panel. These settings affect how dates, times, temperatures, and measurements are displayed throughout the system.",
     "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs.",
-    "aboutHouseModeSettings": "Set the current house mode to control how the Smart Panel and connected devices behave. Home mode is for normal occupancy, Away mode for when no one is home, and Night mode for sleeping hours."
+    "aboutHouseModeSettings": "Set the current house mode to control how the Smart Panel and connected devices behave. Home mode is for normal occupancy, Away mode for when no one is home, and Night mode for sleeping hours.",
+    "aboutHouseLocation": "The latitude and longitude of the house. Sunrise and sunset are computed from them on the Smart Panel itself, without a weather service, for the sunrise, sunset and day or night cards of automations. Leave both empty to clear the location."
   },
   "fields": {
     "config": {
@@ -322,6 +324,22 @@
         },
         "validation": {
           "required": "House mode is required"
+        }
+      },
+      "latitude": {
+        "title": "Latitude",
+        "placeholder": "e.g. 50.0755",
+        "validation": {
+          "range": "Latitude must be a number from -90 to 90",
+          "pair": "Enter both latitude and longitude, or leave both empty"
+        }
+      },
+      "longitude": {
+        "title": "Longitude",
+        "placeholder": "e.g. 14.4378",
+        "validation": {
+          "range": "Longitude must be a number from -180 to 180",
+          "pair": "Enter both latitude and longitude, or leave both empty"
         }
       }
     },

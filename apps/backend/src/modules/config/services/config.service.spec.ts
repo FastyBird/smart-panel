@@ -266,6 +266,29 @@ describe('ConfigService', () => {
 		});
 	});
 
+	describe('isModuleConfigValueStored', () => {
+		beforeEach(() => {
+			jest.spyOn(service as any, 'configPath', 'get').mockReturnValue('/var/smart-panel/');
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest.spyOn(fs, 'readFileSync').mockReturnValue('file');
+		});
+
+		it('tells a stored value, null included, from a key the file does not hold', () => {
+			jest.spyOn(yaml, 'parse').mockReturnValue({ modules: { 'test-module': { latitude: null, longitude: 14.4 } } });
+
+			expect(service.isModuleConfigValueStored('test-module', 'latitude')).toBe(true);
+			expect(service.isModuleConfigValueStored('test-module', 'longitude')).toBe(true);
+			expect(service.isModuleConfigValueStored('test-module', 'timezone')).toBe(false);
+			expect(service.isModuleConfigValueStored('other-module', 'latitude')).toBe(false);
+		});
+
+		it('holds nothing without a configuration file', () => {
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+			expect(service.isModuleConfigValueStored('test-module', 'latitude')).toBe(false);
+		});
+	});
+
 	describe('getConfig', () => {
 		it('should return the entire configuration', () => {
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);

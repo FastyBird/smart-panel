@@ -79,6 +79,17 @@ export class AutomationNodeTypeModel {
 	})
 	@Expose()
 	config_schema: Record<string, unknown>;
+
+	@ApiProperty({
+		name: 'unavailable_reason',
+		description:
+			'Why the node type can not be used at the moment, in English - something it needs is not set up, such as the house location of the sun cards. Null while it can be used. A graph using an unavailable node type can be saved disabled, but not enabled.',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	unavailable_reason: string | null;
 }
 
 export const createAutomationNodeTypeModel = (nodeType: RegisteredAutomationNodeType): AutomationNodeTypeModel => {
@@ -93,6 +104,7 @@ export const createAutomationNodeTypeModel = (nodeType: RegisteredAutomationNode
 	model.description = nodeType.description;
 	model.ports = ports;
 	model.config_schema = nodeType.configSchema ?? { type: 'object', additionalProperties: true };
+	model.unavailable_reason = nodeType.unavailableReason() ?? null;
 
 	return model;
 };
