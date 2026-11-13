@@ -11,10 +11,15 @@ describe('cameras config utils', () => {
 		expect(isValidGo2rtcBinaryPath(p)).toBe(true),
 	);
 
-	it.each(['go2rtc', './go2rtc', '/bin/sh', '/usr/bin/go2rtc\0x', `/${'a'.repeat(4100)}/go2rtc`, 42])(
-		'refuses the binary %#',
-		(p) => expect(isValidGo2rtcBinaryPath(p)).toBe(false),
-	);
+	it.each([
+		'go2rtc',
+		'./go2rtc',
+		'/bin/sh',
+		'/usr/bin/go2rtc\0x',
+		'/usr/bin/go2rtc/',
+		`/${'a'.repeat(4100)}/go2rtc`,
+		42,
+	])('refuses the binary %#', (p) => expect(isValidGo2rtcBinaryPath(p)).toBe(false));
 
 	it.each(['http://192.168.1.5:1984', 'https://frigate.local:1984/'])('accepts the external url %s', (u) =>
 		expect(isValidGo2rtcExternalUrl(u)).toBe(true),

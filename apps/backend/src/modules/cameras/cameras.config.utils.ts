@@ -9,7 +9,7 @@ export function isValidGo2rtcBinaryPath(value: unknown): value is string {
 		return false;
 	}
 
-	if (value.includes('\0') || !path.isAbsolute(value)) {
+	if (value.includes('\0') || value.endsWith('/') || !path.isAbsolute(value)) {
 		return false;
 	}
 
