@@ -1019,6 +1019,83 @@ describe('validateGraph', () => {
 			expect(more).toEqual([]);
 		});
 
+		it('counts the runs of a block exactly: two runs can not feed one output and both outputs of the next', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('C', FAKE_CONDITION_TYPE),
+						node('D', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('x:done>C:in'),
+						e('y:done>C:in'),
+						e('C:yes>D:in'),
+						e('C:no>all:in'),
+						e('D:yes>all:in'),
+						e('D:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['join_never_completes']);
+		});
+
+		it('accepts a block run often enough to send a token down every path the All needs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('z', FAKE_ACTION_TYPE),
+						node('C', FAKE_CONDITION_TYPE),
+						node('D', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('t:out>z:in'),
+						e('x:done>C:in'),
+						e('y:done>C:in'),
+						e('z:done>C:in'),
+						e('C:yes>D:in'),
+						e('C:no>all:in'),
+						e('D:yes>all:in'),
+						e('D:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('accepts a block run twice that sends one token to each output', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('C', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>x:in'), e('t:out>y:in'), e('x:done>C:in'), e('y:done>C:in'), e('C:yes>all:in'), e('C:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
 		it('lets an Any combine two triggers', async () => {
 			const issues = await validateGraph(
 				graph(

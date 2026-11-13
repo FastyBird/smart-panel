@@ -285,34 +285,49 @@ const findCycles = (nodes: ParsedNode[], successors: Map<ParsedNode, Set<ParsedN
 	return cycles;
 };
 
-/**
- * How many tokens a node is run for, or an edge carries, in one run: none, one, or many (two or more).
- */
-type RunCount = 0 | 1 | 2;
+/** Token counts are kept exactly up to this many; anything above is "more" */
+const EXACT_RUNS = 3;
 
-const MANY: RunCount = 2;
+/** More tokens than EXACT_RUNS: assumed to reach every output as often as needed */
+const MORE = EXACT_RUNS + 1;
 
 /** One run of one trigger is simulated for at most this many combinations of outputs taken */
 export const AUTOMATION_GRAPH_MAX_JOIN_CHOICES = 4096;
+
+/** Every way to spread `count` tokens over `ports` outputs, as the number each output gets */
+const spreads = (count: number, ports: number): number[][] => {
+	if (ports === 1) return [[count]];
+
+	const result: number[][] = [];
+
+	for (let first = count; first >= 0; first -= 1) {
+		for (const rest of spreads(count - first, ports - 1)) {
+			result.push([first, ...rest]);
+		}
+	}
+
+	return result;
+};
 
 /**
  * Decides, for every All, which triggers start a run in which it can continue (ADR 0003, decision 4): a
  * run starts at one trigger, and an All continues only once a token has arrived on every edge leading into
  * it.
  *
- * Each trigger's run is simulated on its own, with the number of tokens on every edge abstracted to none,
- * one or many:
+ * Each trigger's run is simulated on its own, block by block in the order of the graph, counting the tokens
+ * exactly up to EXACT_RUNS and as "more" above:
  *
  * - the trigger of the run is run once, every other trigger never;
  * - a block is run once per token arriving, an Any at most once, and an All once when every incoming edge
  *   carries a token (its state absorbs the rest);
- * - a block run exactly once takes one of its outputs: which one is a choice, and every combination of
- *   choices is tried. Only outputs with an edge are offered - an output with no edge carries nothing, and
- *   carrying more never stops an All. A block run many times is assumed to take every output many times.
+ * - each run of a block takes one of its outputs, and a token goes along every edge of the output taken.
+ *   How the runs of a block spread over its outputs is a choice, and every combination of choices is tried.
+ *   Only outputs with an edge are offered: an output with no edge carries nothing, and a token more never
+ *   stops an All. A block run "more" times is assumed to take every output "more" times.
  *
- * The counts only grow while the simulation runs, so it ends, cycles included. Every token a real run
- * produces is counted by the combination of choices that run made, so an All this finds no way to complete
- * can never continue; when there are too many combinations to try, the trigger is assumed to complete it.
+ * Every token of a real run is counted by the combination of choices that run made, so an All this finds no
+ * way to complete can never continue. A run with too many combinations to try, or that walks a cycle (which
+ * is refused on its own), is assumed to complete every All it reaches.
  *
  * An All no trigger can complete is an error; one that only some of the triggers leading to it can complete
  * is a warning, naming the triggers whose runs stop there. An All with an input no trigger leads to is left
@@ -361,48 +376,95 @@ const validateAllJoins = (
 		return reached;
 	};
 
-	const simulate = (
-		start: ParsedNode,
-		reached: Set<ParsedNode>,
-		choice: Map<ParsedNode, unknown>,
-	): Map<ParsedNode, RunCount> => {
-		const runs = new Map<ParsedNode, RunCount>([[start, 1]]);
+	/** The reached blocks with every block after those leading into it; null when they form a cycle */
+	const orderOf = (reached: Set<ParsedNode>): ParsedNode[] | null => {
+		const waiting = new Map<ParsedNode, number>();
+		const order: ParsedNode[] = [];
 
-		const carried = ({ source, sourcePort }: Feeder): RunCount => {
-			const count = runs.get(source) ?? 0;
+		for (const node of reached) {
+			waiting.set(node, (feeders.get(node) ?? []).filter(({ source }) => reached.has(source)).length);
+		}
 
-			if (count !== 1) return count;
+		const ready = [...reached].filter((node) => waiting.get(node) === 0);
 
-			return !choice.has(source) || choice.get(source) === sourcePort ? 1 : 0;
-		};
+		for (let node = ready.shift(); node !== undefined; node = ready.shift()) {
+			order.push(node);
 
-		for (let changed = true; changed; ) {
-			changed = false;
+			for (const [target, count] of waiting) {
+				const from = (feeders.get(target) ?? []).filter(({ source }) => source === node).length;
 
-			for (const node of reached) {
-				if (node === start || node.nodeType?.kind === 'trigger') continue;
+				if (from > 0) {
+					waiting.set(target, count - from);
 
-				const counts = (feeders.get(node) ?? []).map(carried);
-				const total = Math.min(
-					MANY,
-					counts.reduce<number>((sum, count) => sum + count, 0),
-				) as RunCount;
-				const next: RunCount = isAllJoin(node.nodeType)
-					? counts.every((count) => count > 0)
-						? 1
-						: 0
-					: isJoin(node.nodeType)
-						? (Math.min(1, total) as RunCount)
-						: total;
-
-				if (next > (runs.get(node) ?? 0)) {
-					runs.set(node, next);
-					changed = true;
+					if (count - from === 0) ready.push(target);
 				}
 			}
 		}
 
-		return runs;
+		return order.length === reached.size ? order : null;
+	};
+
+	/**
+	 * Tries the combinations of choices of one trigger's run and marks the Alls they complete. Returns false
+	 * when there were too many to try.
+	 */
+	const explore = (start: ParsedNode, order: ParsedNode[], pending: ParsedNode[]): boolean => {
+		/** Tokens taken by each output of each block, keyed by block, then port */
+		const taken = new Map<ParsedNode, Map<unknown, number>>();
+		const runs = new Map<ParsedNode, number>();
+		let tried = 0;
+
+		const carried = ({ source, sourcePort }: Feeder): number => taken.get(source)?.get(sourcePort) ?? 0;
+		const done = (): boolean => pending.every((join) => completedBy.get(join)?.has(start) === true);
+
+		const step = (index: number): boolean => {
+			if (index === order.length) {
+				tried += 1;
+
+				if (tried > AUTOMATION_GRAPH_MAX_JOIN_CHOICES) return false;
+
+				for (const join of pending) {
+					if ((runs.get(join) ?? 0) > 0) completedBy.get(join)?.add(start);
+				}
+
+				return true;
+			}
+
+			const node = order[index];
+			const counts = (feeders.get(node) ?? []).map(carried);
+			const total = Math.min(
+				MORE,
+				counts.reduce((sum, count) => sum + count, 0),
+			);
+			const count =
+				node === start
+					? 1
+					: node.nodeType?.kind === 'trigger'
+						? 0
+						: isAllJoin(node.nodeType)
+							? counts.every((arrived) => arrived > 0)
+								? 1
+								: 0
+							: isJoin(node.nodeType)
+								? Math.min(1, total)
+								: total;
+			const ports = usedPorts.get(node) ?? [];
+			const options =
+				count === MORE ? [ports.map(() => MORE)] : ports.length === 0 ? [[]] : spreads(count, ports.length);
+
+			runs.set(node, count);
+
+			for (const option of options) {
+				taken.set(node, new Map(ports.map((port, position) => [port, option[position]])));
+
+				if (!step(index + 1)) return false;
+				if (done()) return true;
+			}
+
+			return true;
+		};
+
+		return step(0);
 	};
 
 	/** The triggers whose runs can complete each All */
@@ -420,36 +482,11 @@ const validateAllJoins = (
 
 		if (pending.length === 0) continue;
 
-		const choosing = [...reached].filter(
-			(node) => node.nodeType?.kind !== 'trigger' && !isJoin(node.nodeType) && (usedPorts.get(node)?.length ?? 0) > 1,
-		);
-		const combinations = choosing.reduce((product, node) => product * (usedPorts.get(node)?.length ?? 1), 1);
+		const order = orderOf(reached);
 
-		if (combinations > AUTOMATION_GRAPH_MAX_JOIN_CHOICES) {
-			// Too many to try: nothing is concluded, so nothing is refused
+		if (order === null || !explore(start, order, pending)) {
+			// A cycle, or too many combinations: nothing is concluded, so nothing is refused
 			pending.forEach((join) => completedBy.get(join)?.add(start));
-
-			continue;
-		}
-
-		for (let combination = 0; combination < combinations; combination += 1) {
-			const choice = new Map<ParsedNode, unknown>();
-			let rest = combination;
-
-			for (const node of choosing) {
-				const ports = usedPorts.get(node) ?? [];
-
-				choice.set(node, ports[rest % ports.length]);
-				rest = Math.floor(rest / ports.length);
-			}
-
-			const runs = simulate(start, reached, choice);
-
-			for (const join of pending) {
-				if ((runs.get(join) ?? 0) > 0) completedBy.get(join)?.add(start);
-			}
-
-			if (pending.every((join) => completedBy.get(join)?.has(start) === true)) break;
 		}
 	}
 
