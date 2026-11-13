@@ -308,8 +308,9 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		const result = await runsStore.trigger({ automationId: id, ...(typeof nodeId === 'string' ? { nodeId } : {}) });
 
 		if (result.started && result.runId !== null) {
-			waitingRunIds.value = [];
+			// Shown before the runs waiting are let go of: the run may be one of them, and it stays open throughout
 			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
+			waitingRunIds.value = [];
 
 			// With no history held, a short run may have ended before the answer named it: what it stored says so
 			if (!runsStore.firstLoadFinished(id) && runsStore.findById(result.runId) === null) {
@@ -324,8 +325,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		// Picked again after a read that failed: it is tried again
 		failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
 
-		waitingRunIds.value = [];
 		source.value = { kind: 'replay', runId, pick: ++picks };
+		waitingRunIds.value = [];
 	};
 
 	const close = (): void => {

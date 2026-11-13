@@ -945,6 +945,32 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value?.overlay.nodes.n2).toMatchObject({ state: 'reached', parked: true });
 	});
 
+	it('keeps how a run waiting to be shown ended when a test names it, with no history read', async (): Promise<void> => {
+		scope = effectScope();
+
+		const trace = scope.run(() => useAutomationRunTrace({ id: automationId, graph: ref(graph) })) as IUseAutomationRunTrace;
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await trace.fetchRuns();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		store().onEvent({ data: runRes(otherRunId, 'completed') });
+
+		// The answer to the test comes late, naming the run that waited and is over already
+		mocks.backend.POST.mockResolvedValueOnce({
+			data: { data: { automation_id: automationId, started: true, outcome: 'started', run_id: otherRunId, reason: null } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await trace.test('n1');
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId: otherRunId, ended: true, run: { status: 'completed' } });
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 
