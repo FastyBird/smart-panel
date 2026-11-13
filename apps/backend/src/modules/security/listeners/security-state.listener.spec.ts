@@ -7,7 +7,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
-import { SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
+import { AlarmState, ArmedState, EventType, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityEventsService } from '../services/security-events.service';
@@ -20,6 +20,7 @@ describe('SecurityStateListener', () => {
 	let channelRepository: jest.Mocked<Repository<ChannelEntity>>;
 	let aggregator: jest.Mocked<SecurityAggregatorService>;
 	let channelQueryBuilder: { where: jest.Mock; getOne: jest.Mock };
+	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	// A property whose category the listener cares about. Its channel is a plain id string, matching
 	// how the entity is shaped once loaded off a relation that was not eagerly joined.
@@ -85,6 +86,7 @@ describe('SecurityStateListener', () => {
 		listener = module.get<SecurityStateListener>(SecurityStateListener);
 		channelRepository = module.get(getRepositoryToken(ChannelEntity));
 		aggregator = module.get(SecurityAggregatorService);
+		eventEmitter = module.get(EventEmitter2);
 	});
 
 	afterEach(async () => {
@@ -172,5 +174,77 @@ describe('SecurityStateListener', () => {
 		await listener.handlePropertyChanged(sensorProperty);
 
 		expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
+	});
+	// -- typed state transitions ------------------------------------------------------------------
+
+	describe('state transitions', () => {
+		const statusWith = (
+			armedState: ArmedState | null,
+			alarmState: AlarmState | null,
+			providerErrors = 0,
+		): { status: unknown; providerErrors: number } => ({
+			status: { activeAlerts: [], armedState, alarmState },
+			providerErrors,
+		});
+
+		/** Runs one recalculation with the given result, the way the start-up seed does */
+		const recalculate = async (result: { status: unknown; providerErrors: number }): Promise<void> => {
+			aggregator.aggregateWithErrors.mockResolvedValueOnce(
+				result as Awaited<ReturnType<SecurityAggregatorService['aggregateWithErrors']>>,
+			);
+
+			await listener.onModuleInit();
+		};
+
+		const transitions = (): unknown[] =>
+			eventEmitter.emit.mock.calls
+				.filter(([event]) => event === EventType.SECURITY_STATE_CHANGED)
+				.map(([, payload]) => payload as unknown);
+
+		it('takes the state found at start-up as the baseline, not as a transition', async () => {
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+
+			expect(transitions()).toEqual([]);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.SECURITY_STATUS, expect.anything());
+		});
+
+		it('emits one transition for each state that changed, and none for a recalculation that changed nothing', async () => {
+			await recalculate(statusWith(ArmedState.DISARMED, AlarmState.IDLE));
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.TRIGGERED));
+
+			expect(transitions()).toEqual([
+				{ kind: 'armed', from: ArmedState.DISARMED, to: ArmedState.ARMED_AWAY },
+				{ kind: 'alarm', from: AlarmState.IDLE, to: AlarmState.TRIGGERED },
+			]);
+			// The whole status still goes out on every recalculation, as before
+			expect(eventEmitter.emit.mock.calls.filter(([event]) => event === EventType.SECURITY_STATUS)).toHaveLength(4);
+		});
+
+		it('emits both transitions of a recalculation that changed both states', async () => {
+			await recalculate(statusWith(ArmedState.ARMED_NIGHT, AlarmState.IDLE));
+			await recalculate(statusWith(ArmedState.DISARMED, AlarmState.SILENCED));
+
+			expect(transitions()).toEqual([
+				{ kind: 'armed', from: ArmedState.ARMED_NIGHT, to: ArmedState.DISARMED },
+				{ kind: 'alarm', from: AlarmState.IDLE, to: AlarmState.SILENCED },
+			]);
+		});
+
+		it('does not take a state lost to a failing provider as a transition', async () => {
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+			await recalculate(statusWith(null, null, 1));
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+
+			expect(transitions()).toEqual([]);
+		});
+
+		it('takes a state that is gone while every provider answered as a transition to none', async () => {
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+			await recalculate(statusWith(null, AlarmState.IDLE));
+
+			expect(transitions()).toEqual([{ kind: 'armed', from: ArmedState.ARMED_AWAY, to: null }]);
+		});
 	});
 });

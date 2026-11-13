@@ -95,6 +95,10 @@ export interface DevicePropertyInfo {
 	invalid: string | number | boolean | null;
 	step: number | null;
 	permissions: PermissionType[];
+	/** The category of the property, when it is known */
+	category?: string | null;
+	/** The category of the channel the property belongs to, when it is known */
+	channelCategory?: string | null;
 }
 
 /** Finds a property; null when it does not exist. May throw when the lookup itself fails. */

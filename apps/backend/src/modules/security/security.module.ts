@@ -126,6 +126,7 @@ Aggregates the security state of the home (armed mode, alarm state, alerts) into
 - **Event timeline** — recent security events (state changes, alert raised / cleared, ack actions) are persisted as time-series for the panel "history" view
 - **Provider architecture** — providers are pluggable: a default safe provider, a future alarm-panel provider, sensor-based providers; the module enforces a stable contract so adding one doesn't change the API
 - **Real-time push** — every state change and alert transition is broadcast over WebSocket so panels and the admin UI react instantly
+- **State transitions** — besides the whole status (\`security:status\`), every change of the armed state or of the alarm state is emitted once as \`SecurityModule.State.Changed\` with where it came from and where it went, for automations and other listeners that react to a transition
 
 ## API Endpoints
 

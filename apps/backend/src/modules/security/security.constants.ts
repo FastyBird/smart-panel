@@ -10,7 +10,13 @@ export const SECURITY_MODULE_API_TAG_DESCRIPTION =
 export const SECURITY_STATE_PROVIDERS = Symbol('SECURITY_STATE_PROVIDERS');
 
 export enum EventType {
+	/** The whole security status, emitted on every recalculation */
 	SECURITY_STATUS = 'security:status',
+	/**
+	 * One transition of the armed state or of the alarm state (`SecurityStateChangedPayload`), emitted only
+	 * when the state actually changed
+	 */
+	SECURITY_STATE_CHANGED = 'SecurityModule.State.Changed',
 }
 
 export enum ArmedState {

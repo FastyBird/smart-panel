@@ -415,6 +415,34 @@ Added with AU-13; decision 12 names the storage and the limits, this records how
   empty room. For this the websocket module gained two small things: a command handler is handed the socket
   of its command as far as joining and leaving a room goes, and the gateway can send an event to one room.
 
+### 21. Event, house mode, security and automation cards
+
+Added with AU-17.
+
+- **One listener per event.** `AutomationEventSourceService` holds the only listener of the module for button
+  occurrences, device connection changes, scene runs, house mode changes and security transitions, and hands
+  each event to the armed triggers, as the state tracker does for property values.
+- **Typed security transitions.** The security module emits `SecurityModule.State.Changed` with
+  `{ kind: 'armed' | 'alarm', from, to }`, once per state that changed. It is emitted by the state listener
+  next to `security:status`, which is unchanged. The state found when the backend starts is the baseline, not
+  a transition, and a state lost to a failing provider is not taken as a change to "none".
+- **Connection triggers fire on online/offline transitions only.** The state a device is in when the watch
+  starts is read as the baseline; a change between two online states (`init` → `ready`), two offline states
+  or to `unknown` starts nothing, and while the state before is not known the first change only sets it.
+- **Arming is a declared device write.** "Arm alarm" points at the `state` property of an `alarm` channel and
+  declares the write with `commands()`, so the safety policy judges it like any write. It offers only the armed
+  states; there is no disarm card, and a `disarmed` write through "Set device value" stays refused (decision 18).
+- **The house mode** is read from and written to the system configuration, the same change the panel and the
+  admin make, so the house mode actions and `SystemModule.HouseMode.Changed` follow. Setting the mode it
+  already has writes nothing.
+- **Acting on another automation.** Enable and disable save the other automation through `AutomationsService`
+  at the revision just read, retrying on a revision conflict, so enabling checks its graph as the API does; an
+  automation already as asked is left alone. Run uses the path of the manual run (`triggerOrThrow`) and does not
+  wait for that run. An automation never acts on itself - running itself would loop and disabling itself would
+  cancel the run doing it - which is refused when the action runs, as the configuration does not know the
+  automation it belongs to. The automation named is a reference, so one that is deleted marks the automation
+  `invalid`.
+
 ## Consequences
 
 - The design doc is updated to match this ADR.
