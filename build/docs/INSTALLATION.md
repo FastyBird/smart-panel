@@ -69,6 +69,28 @@ and install Tailscale manually if needed. The Raspberry Pi image's `server` and 
 already ship with Tailscale pre-installed (daemon disabled by default). This flag is specific to
 this one-liner script — it has no effect on Option 1 or Option 3 below.
 
+#### Camera relay (go2rtc)
+
+Smart Panel's cameras module uses [go2rtc](https://github.com/AlexxIT/go2rtc) (MIT) to relay live
+camera streams. The installer places a pinned, SHA-256-verified binary in
+`/usr/local/lib/smart-panel/go2rtc/` (amd64, arm64 and 32-bit ARMv7). It is installed by this
+one-liner, by the Raspberry Pi image, by the Docker build, and by system updates of installations
+managed by the privileged update helper. Installations that predate the helper (legacy sudo
+installs) skip the install during updates with a warning; they get go2rtc by re-running
+`install-server.sh` or by running the installer by hand (see below).
+
+To opt out:
+
+| Where | How |
+|-------|-----|
+| One-liner | `curl -fsSL https://get.smart-panel.fastybird.com \| sudo bash -s -- --skip-go2rtc` |
+| Running `install-go2rtc.sh` by hand | `FB_SKIP_GO2RTC=1` |
+| Persistently, including update-time installs | create `/etc/smart-panel/go2rtc.skip` |
+
+A go2rtc failure (no network, checksum mismatch, unsupported architecture) never fails the
+installation or an update; cameras fall back to snapshots. Raspberry Pi Zero and Pi 1 (ARMv6) are
+unsupported.
+
 ### Option 3: Manual Tarball Install
 
 For environments where npm is not available or you prefer a self-contained installation, download the
@@ -110,6 +132,12 @@ sudo chown -R ${USER}:${USER} /var/smart-panel
 
 # Run database migrations
 npm run migration:run
+```
+
+This install does not run the go2rtc installer. To enable live camera relaying, run it by hand:
+
+```bash
+sudo sh /opt/smart-panel/dist/go2rtc/install-go2rtc.sh
 ```
 
 Then create a systemd service at `/etc/systemd/system/smart-panel-backend.service`:
