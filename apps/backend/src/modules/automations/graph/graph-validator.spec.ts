@@ -827,6 +827,71 @@ describe('validateGraph', () => {
 			expect(issues).toEqual([]);
 		});
 
+		it('carries what an upstream All can pass on: a chained All no trigger can complete is an error', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t1', FAKE_TRIGGER_TYPE),
+						node('t2', FAKE_TRIGGER_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('A', ALL_NODE_TYPE),
+						node('B', ALL_NODE_TYPE),
+					],
+					[e('t1:out>A:in'), e('t1:out>b:in'), e('t2:out>b:in'), e('b:done>A:in'), e('A:out>B:in'), e('t2:out>B:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues.map((issue) => [issue.severity, issue.code, issue.node_id])).toEqual([
+				['warning', 'join_partly_completes', 'A'],
+				['error', 'join_never_completes', 'B'],
+			]);
+		});
+
+		it('finds nothing in chained Alls every trigger can complete', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('b', FAKE_ACTION_TYPE),
+						node('c', FAKE_ACTION_TYPE),
+						node('A', ALL_NODE_TYPE),
+						node('B', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>a:in'),
+						e('t:out>b:in'),
+						e('t:out>c:in'),
+						e('a:done>A:in'),
+						e('b:done>A:in'),
+						e('A:out>B:in'),
+						e('c:done>B:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
+		it('keeps the output of a block that runs once through a join with a single input', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('any', ANY_NODE_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>c:in'), e('c:yes>any:in'), e('any:out>all:in'), e('c:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['join_never_completes']);
+		});
+
 		it('lets an Any combine two triggers', async () => {
 			const issues = await validateGraph(
 				graph(
