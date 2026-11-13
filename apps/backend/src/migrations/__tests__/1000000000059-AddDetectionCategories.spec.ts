@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { DataSource, QueryRunner } from 'typeorm';
 
@@ -123,8 +124,8 @@ describe('AddDetectionCategories1000000000059', () => {
 	});
 
 	describe('migration transaction compatibility', () => {
-		it('configures transaction = false', () => {
-			expect(migration.transaction).toBe(false);
+		it('leaves transaction handling to TypeORM', () => {
+			expect((migration as { transaction?: boolean }).transaction).toBeUndefined();
 		});
 
 		it('keeps the thermostat creation catalog verifiable after up()', async () => {
@@ -141,5 +142,108 @@ describe('AddDetectionCategories1000000000059', () => {
 			await queryRunner.rollbackTransaction();
 			await expect(insertChannel('ch-od', 'object_detection')).rejects.toThrow(/CHECK constraint failed/);
 		});
+	});
+
+	describe('atomicity with the migration history row', () => {
+		const target = 'AddDetectionCategories1000000000059';
+		const allFiles = fs
+			.readdirSync(path.resolve(__dirname, '..'))
+			.filter((f) => f.endsWith('.ts'))
+			.sort()
+			.map((f) => path.resolve(__dirname, '..', f));
+		const filesUpTo058 = allFiles.filter((f) => path.basename(f) < '1000000000059');
+
+		const createDs = (mode: 'all' | 'each', database: string, migrations: string[]): DataSource =>
+			new DataSource({ type: 'sqlite', database, migrations, migrationsTransactionMode: mode, logging: false });
+
+		const installHistoryWriteFault = (ds: DataSource, enabled: { value: boolean }): void => {
+			const createQueryRunner = ds.createQueryRunner.bind(ds) as DataSource['createQueryRunner'];
+			ds.createQueryRunner = (...args: Parameters<DataSource['createQueryRunner']>) => {
+				const runner = createQueryRunner(...args);
+				const query = runner.query.bind(runner) as QueryRunner['query'];
+				runner.query = (async (...queryArgs: Parameters<QueryRunner['query']>) => {
+					const [sql, parameters] = queryArgs;
+					if (
+						enabled.value &&
+						typeof sql === 'string' &&
+						sql.includes('INSERT INTO "migrations"') &&
+						Array.isArray(parameters) &&
+						parameters.includes(target)
+					) {
+						throw new Error('injected migration history write failure');
+					}
+
+					return (await query(...queryArgs)) as unknown;
+				}) as QueryRunner['query'];
+				return runner;
+			};
+		};
+
+		const storedSql = async (ds: DataSource): Promise<string> => {
+			const rows = (await ds.query(
+				`SELECT sql FROM sqlite_master WHERE type = 'table' AND name IN ('devices_module_channels', 'devices_module_channels_properties') ORDER BY name`,
+			)) as { sql: string }[];
+
+			return rows.map((row) => row.sql).join('\n');
+		};
+
+		const historyCount = async (ds: DataSource): Promise<unknown> =>
+			ds.query(`SELECT COUNT(*) AS count FROM "migrations" WHERE "name" = '${target}'`);
+
+		it.each(['each', 'all'] as const)(
+			'rolls back and recovers after a history write failure (%s)',
+			async (mode) => {
+				const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'smart-panel-migration-059-'));
+				const database = path.join(directory, 'database.sqlite');
+				const fault = { value: true };
+				const dataSources: DataSource[] = [];
+				const open = async (files: string[], withFault = false, dsMode = mode): Promise<DataSource> => {
+					const ds = createDs(dsMode, database, files);
+					if (withFault) {
+						installHistoryWriteFault(ds, fault);
+					}
+					await ds.initialize();
+					dataSources.push(ds);
+					return ds;
+				};
+
+				try {
+					// Older migrations override the transaction mode, so the prefix always runs in 'each' mode.
+					const prefix = await open(filesUpTo058, false, 'each');
+					await prefix.runMigrations();
+					const before = await storedSql(prefix);
+					await prefix.destroy();
+
+					const failed = await open(allFiles, true);
+					await expect(failed.runMigrations()).rejects.toThrow('injected migration history write failure');
+					expect(await storedSql(failed)).toBe(before);
+					expect(before).not.toContain('object_detection');
+					expect(await historyCount(failed)).toEqual([{ count: 0 }]);
+					await failed.destroy();
+
+					fault.value = false;
+					const recovered = await open(allFiles);
+					const executed = await recovered.runMigrations();
+					expect(executed.map(({ name }) => name)).toEqual([target]);
+					const after = await storedSql(recovered);
+					expect(after).toContain(`'object_detection'`);
+					expect(after).toContain(`'sound_type'`);
+					expect(await historyCount(recovered)).toEqual([{ count: 1 }]);
+					expect(await recovered.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
+					await recovered.destroy();
+
+					const again = await open(allFiles);
+					expect(await again.runMigrations()).toEqual([]);
+				} finally {
+					for (const ds of dataSources) {
+						if (ds.isInitialized) {
+							await ds.destroy();
+						}
+					}
+					fs.rmSync(directory, { recursive: true, force: true });
+				}
+			},
+			120000,
+		);
 	});
 });

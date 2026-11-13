@@ -10,6 +10,12 @@ import { extendCategoryCheck, reduceCategoryCheck } from './utils/category-check
  * its allocation triggers and the thermostat creation catalog verifier depend on stable rowids and on the exact
  * stored table and trigger SQL (migrations 048, 049 and 054).
  *
+ * Atomicity: the migration keeps TypeORM's default transaction handling (the app uses migrationsTransactionMode
+ * 'each'), so the schema rewrite, the integrity check and the migration-history row commit or roll back together. A
+ * failed history write therefore leaves the CHECK lists untouched and the next run retries cleanly. PRAGMA
+ * writable_schema, the sqlite_master updates and the schema_version bump are valid inside that transaction. When run
+ * without an outer transaction (direct up()/down() calls) inTransaction() opens and commits its own.
+ *
  * Ordering hazard: the stored CHECK lists must be rewritten before any row is written in the same transaction. A schema
  * reload after writes that fire the FTS5 home search triggers can make integrity_check report a malformed search index.
  */
@@ -22,7 +28,6 @@ type Rewrite = (tableSql: string, values: readonly string[]) => string;
 
 export class AddDetectionCategories1000000000059 implements MigrationInterface {
 	name = 'AddDetectionCategories1000000000059';
-	transaction = false;
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await this.inTransaction(queryRunner, async () => {
