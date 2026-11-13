@@ -28,7 +28,7 @@ import {
 	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { CAMERAS_MODULE_API_TAG_NAME } from '../cameras.constants';
+import { CAMERAS_LIVE_PATH, CAMERAS_MODULE_API_TAG_NAME } from '../cameras.constants';
 import {
 	CameraOfflineException,
 	CameraProfileUnavailableException,
@@ -265,7 +265,7 @@ export class CamerasController {
 		const model = new CameraSessionModel();
 
 		model.sessionId = created.session.id;
-		model.url = `/api/v1/modules/cameras/live?session=${created.token}`;
+		model.url = `${CAMERAS_LIVE_PATH}?session=${created.token}`;
 		model.expiresAt = new Date(created.session.expiresAt).toISOString();
 
 		const response = new CameraSessionResponseModel();

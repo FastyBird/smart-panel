@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { ModuleConfigMutationRegistryService } from '../config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -19,6 +20,7 @@ import { CamerasConfigModel } from './models/config.model';
 import { CameraSessionService } from './services/camera-session.service';
 import { CameraSnapshotService } from './services/camera-snapshot.service';
 import { CameraStreamProviderRegistryService } from './services/camera-stream-provider.registry.service';
+import { CamerasConfigMutationService } from './services/cameras-config-mutation.service';
 import { CamerasService } from './services/cameras.service';
 
 @ApiTag({
@@ -28,7 +30,13 @@ import { CamerasService } from './services/cameras.service';
 })
 @Module({
 	imports: [DevicesModule, SwaggerModule],
-	providers: [CameraStreamProviderRegistryService, CamerasService, CameraSnapshotService, CameraSessionService],
+	providers: [
+		CameraStreamProviderRegistryService,
+		CamerasService,
+		CameraSnapshotService,
+		CameraSessionService,
+		CamerasConfigMutationService,
+	],
 	controllers: [CamerasController],
 	exports: [CameraStreamProviderRegistryService, CamerasService, CameraSnapshotService, CameraSessionService],
 })
@@ -37,6 +45,8 @@ export class CamerasModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
+		private readonly configMutation: CamerasConfigMutationService,
 	) {}
 
 	onModuleInit() {
@@ -46,6 +56,10 @@ export class CamerasModule implements OnModuleInit {
 			class: CamerasConfigModel,
 			configDto: UpdateCamerasConfigDto,
 		});
+
+		this.moduleConfigMutations.register<UpdateCamerasConfigDto>(CAMERAS_MODULE_NAME, (update, commit) =>
+			this.configMutation.update(update, commit),
+		);
 
 		// Register Swagger models
 		for (const model of CAMERAS_SWAGGER_EXTRA_MODELS) {
