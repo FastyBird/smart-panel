@@ -45,9 +45,9 @@ sudo smart-panel-service install
 ```
 
 `smart-panel-service install` also downloads go2rtc, the camera relay (see
-[Camera relay (go2rtc)](#camera-relay-go2rtc)). A failed download only prints a warning. Later
-`smart-panel-service update` runs do not install go2rtc; use the admin UI update or run
-`install-go2rtc.sh` by hand to add it to an existing installation.
+[Camera relay (go2rtc)](#camera-relay-go2rtc)) before it starts the service. A failed download
+only prints a warning. `smart-panel-service update` installs it as well, after the new package is in
+place and before the service restarts.
 
 ### Option 2: One-liner Script
 
@@ -79,12 +79,13 @@ this one-liner script — it has no effect on Option 1 or Option 3 below.
 Smart Panel's cameras module uses [go2rtc](https://github.com/AlexxIT/go2rtc) (MIT) to relay live
 camera streams. The installer places a pinned, SHA-256-verified binary in
 `/usr/local/lib/smart-panel/go2rtc/` (amd64, arm64 and 32-bit ARMv7). It is installed by this
-one-liner, by `smart-panel-service install` (Option 1), by the Raspberry Pi image, by the Docker
-build, and by admin-UI updates of installations managed by the privileged update helper.
-`smart-panel-service update` does not install it. Installations that predate the helper (legacy
-sudo installs) skip the install during updates with a warning ("go2rtc is not installed by updates
-on this installation"); they get go2rtc by re-running `install-server.sh` or by running the
-installer by hand (see below).
+one-liner, by `smart-panel-service install` and `smart-panel-service update` (Option 1), by the
+Raspberry Pi image, by the Docker build, and by admin-UI updates of installations managed by the
+privileged update helper. Legacy sudo-managed installations (those that predate the helper) skip
+the install during admin-UI updates with a warning ("go2rtc is not installed by updates on this
+installation"), because running a script that the service user can write as root would be a
+privilege escalation. Run `sudo smart-panel-service update`, re-run `install-server.sh`, or run the
+installer by hand (see below) to give them go2rtc.
 
 To opt out:
 
@@ -95,9 +96,11 @@ To opt out:
 | Running `install-go2rtc.sh` by hand | `--skip`, or `sudo FB_SKIP_GO2RTC=1 sh install-go2rtc.sh` (plain `sudo` drops the variable) |
 | Persistently, including update-time installs | create `/etc/smart-panel/go2rtc.skip` |
 
-A go2rtc failure (no network, checksum mismatch, unsupported architecture) never fails the
-installation or an update; cameras fall back to snapshots. Raspberry Pi Zero and Pi 1 (ARMv6) are
-unsupported.
+A go2rtc failure (no network, checksum mismatch, unsupported architecture) never fails a host
+installation or update (the one-liner, `smart-panel-service install` and `update`, admin-UI
+updates); cameras fall back to snapshots. The Raspberry Pi image and Docker image builds are
+different: they require a successful go2rtc installation and fail the build otherwise. Raspberry Pi
+Zero and Pi 1 (ARMv6) are unsupported.
 
 ### Option 3: Manual Tarball Install
 
