@@ -44,6 +44,11 @@ sudo npm install -g @fastybird/smart-panel
 sudo smart-panel-service install
 ```
 
+`smart-panel-service install` also downloads go2rtc, the camera relay (see
+[Camera relay (go2rtc)](#camera-relay-go2rtc)). A failed download only prints a warning. Later
+`smart-panel-service update` runs do not install go2rtc; use the admin UI update or run
+`install-go2rtc.sh` by hand to add it to an existing installation.
+
 ### Option 2: One-liner Script
 
 ```bash
@@ -74,17 +79,20 @@ this one-liner script — it has no effect on Option 1 or Option 3 below.
 Smart Panel's cameras module uses [go2rtc](https://github.com/AlexxIT/go2rtc) (MIT) to relay live
 camera streams. The installer places a pinned, SHA-256-verified binary in
 `/usr/local/lib/smart-panel/go2rtc/` (amd64, arm64 and 32-bit ARMv7). It is installed by this
-one-liner, by the Raspberry Pi image, by the Docker build, and by system updates of installations
-managed by the privileged update helper. Installations that predate the helper (legacy sudo
-installs) skip the install during updates with a warning; they get go2rtc by re-running
-`install-server.sh` or by running the installer by hand (see below).
+one-liner, by `smart-panel-service install` (Option 1), by the Raspberry Pi image, by the Docker
+build, and by admin-UI updates of installations managed by the privileged update helper.
+`smart-panel-service update` does not install it. Installations that predate the helper (legacy
+sudo installs) skip the install during updates with a warning ("go2rtc is not installed by updates
+on this installation"); they get go2rtc by re-running `install-server.sh` or by running the
+installer by hand (see below).
 
 To opt out:
 
 | Where | How |
 |-------|-----|
 | One-liner | `curl -fsSL https://get.smart-panel.fastybird.com \| sudo bash -s -- --skip-go2rtc` |
-| Running `install-go2rtc.sh` by hand | `FB_SKIP_GO2RTC=1` |
+| `smart-panel-service install` | `sudo FB_SKIP_GO2RTC=1 smart-panel-service install` (plain `sudo` drops the variable), or the marker below |
+| Running `install-go2rtc.sh` by hand | `--skip`, or `sudo FB_SKIP_GO2RTC=1 sh install-go2rtc.sh` (plain `sudo` drops the variable) |
 | Persistently, including update-time installs | create `/etc/smart-panel/go2rtc.skip` |
 
 A go2rtc failure (no network, checksum mismatch, unsupported architecture) never fails the

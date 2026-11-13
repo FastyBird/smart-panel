@@ -1,7 +1,8 @@
 # Third-Party Notices
 
-Smart Panel is licensed under the Apache License 2.0 (see `LICENSE.md`). The software listed below is downloaded at
-install time and is not part of this repository or the npm packages.
+Smart Panel is licensed under the Apache License 2.0 (see `LICENSE.md`). The software listed below is not part of this
+repository or the npm packages. It is downloaded at install time and is shipped in the Docker and Raspberry Pi images,
+with its licence installed next to the binary.
 
 ## go2rtc
 
