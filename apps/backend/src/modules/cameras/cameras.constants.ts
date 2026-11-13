@@ -59,3 +59,9 @@ export const GO2RTC_HTTP_TIMEOUT_MS = 5_000;
 export const GO2RTC_STREAM_IDLE_GRACE_MS = 30_000;
 
 export const GO2RTC_STREAM_NAME_PREFIX = 'smart-panel_';
+
+/**
+ * Persisted in the go2rtc config directory (never matched by the per-spawn config file pattern). Its content scopes the
+ * stream names of this installation, so an orphan sweep on a shared external go2rtc never touches another installation.
+ */
+export const GO2RTC_INSTALLATION_ID_FILENAME = 'installation-id';

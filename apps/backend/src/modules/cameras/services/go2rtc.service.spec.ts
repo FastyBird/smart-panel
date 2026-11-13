@@ -356,6 +356,23 @@ describe('Go2rtcService', () => {
 			expect(configFiles()).toEqual(['notes.txt']);
 		});
 
+		it('never deletes the installation id when it removes per-spawn config files', async () => {
+			const id = service.getInstallationId();
+
+			expect(id).toMatch(/^[a-z0-9]{8}$/);
+			expect(configFiles()).toEqual(['installation-id']);
+
+			await service.start();
+
+			expect(configFiles()).toEqual([yamlPath().split('/').pop(), 'installation-id'].sort());
+
+			await service.stop();
+
+			expect(configFiles()).toEqual(['installation-id']);
+			expect(readFileSync(join(goDir(), 'installation-id'), 'utf8').trim()).toBe(id);
+			expect(createService().getInstallationId()).toBe(id);
+		});
+
 		it('writes the instance secret as the first line of the config and keeps it out of the spawn arguments', async () => {
 			await service.start();
 
@@ -735,6 +752,23 @@ describe('Go2rtcService', () => {
 	});
 
 	describe('lifecycle', () => {
+		it('is healthy while running or switched off, and unhealthy otherwise', async () => {
+			await expect(service.isHealthy()).resolves.toBe(true);
+
+			await startRunning();
+			await expect(service.isHealthy()).resolves.toBe(true);
+
+			crash();
+			await settle();
+			expect(service.getStatus().state).toBe('starting');
+			await expect(service.isHealthy()).resolves.toBe(false);
+
+			await service.stop();
+			config.go2rtc.mode = 'disabled';
+			await service.start();
+			await expect(service.isHealthy()).resolves.toBe(true);
+		});
+
 		it('requires a restart only when the go2rtc settings change', async () => {
 			await service.start();
 

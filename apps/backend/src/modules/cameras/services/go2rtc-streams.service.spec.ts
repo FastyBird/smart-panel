@@ -20,7 +20,9 @@ const SENT_URL = FAKE_CAMERA_SECRET_URL.replace(/^rtsps/, 'rtspx');
 
 describe('Go2rtcStreamsService', () => {
 	const camera = { id: 'cam-1', category: 'camera', type: 'devices-fake' } as unknown as DeviceEntity;
-	const name = `smart-panel_${camera.id}_medium`;
+	const installationId = 'abcd1234';
+	const name = `smart-panel_${installationId}_${camera.id}_medium`;
+	const foreignName = 'smart-panel_zzzz9999_cam-9_medium';
 
 	let streams: Go2rtcStreamsService;
 	let secrets: Go2rtcSecretsRegistry;
@@ -78,6 +80,7 @@ describe('Go2rtcStreamsService', () => {
 		const go2rtc = {
 			getClient: jest.fn(() => relayClient as Go2rtcApiClient | null),
 			getStatus: jest.fn(() => ({ ...status })),
+			getInstallationId: jest.fn(() => installationId),
 			subscribe: jest.fn((listener: (s: Go2rtcRelayStatus) => void) => {
 				listeners.add(listener);
 
@@ -219,7 +222,7 @@ describe('Go2rtcStreamsService', () => {
 
 		expect(client.putStream).toHaveBeenCalledTimes(2);
 		expect(client.putStream.mock.calls.map((call: string[]) => call[0]).sort()).toEqual([
-			`smart-panel_${camera.id}_low`,
+			`smart-panel_${installationId}_${camera.id}_low`,
 			name,
 		]);
 	});
@@ -293,19 +296,110 @@ describe('Go2rtcStreamsService', () => {
 		await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(Go2rtcUnavailableException);
 	});
 
-	it('best-effort deletes the streams when an external relay reconnects with a new generation', async () => {
-		fire({ mode: 'external', state: 'running', generation: 2 });
-		await flush();
-		client.listStreamNames.mockClear();
+	describe('an external relay that stops being usable', () => {
+		const unreachable = { state: 'unavailable', reason: 'external_unreachable' } as const;
 
-		await streams.acquire(camera, provider, 'medium');
-		client.deleteStream.mockClear();
+		beforeEach(async () => {
+			fire({ mode: 'external', state: 'running', generation: 2 });
+			await flush();
+			client.listStreamNames.mockClear();
+		});
 
-		fire({ generation: 3 });
-		await flush();
+		it('deletes every stream through the remembered client when the relay is disabled, though getClient() is null', async () => {
+			await streams.acquire(camera, provider, 'medium');
+			await streams.acquire(camera, provider, 'low');
+			client.deleteStream.mockClear();
 
-		expect(client.deleteStream).toHaveBeenCalledWith(name);
-		expect(secrets.list()).toEqual([]);
+			fire({ state: 'disabled', reason: 'module_disabled' });
+			await flush();
+
+			expect(relayClient).toBeNull();
+			expect(client.deleteStream.mock.calls.map((call: string[]) => call[0]).sort()).toEqual(
+				[name, `smart-panel_${installationId}_${camera.id}_low`].sort(),
+			);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('keeps the source redactable until the DELETE has settled', async () => {
+			let finishDelete!: () => void;
+
+			await streams.acquire(camera, provider, 'medium');
+			client.deleteStream.mockReturnValue(
+				new Promise<void>((resolve) => {
+					finishDelete = resolve;
+				}),
+			);
+
+			fire({ state: 'disabled', reason: 'module_disabled' });
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenCalledWith(name);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			finishDelete();
+			await flush();
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('deletes the streams when the mode changes to managed', async () => {
+			await streams.acquire(camera, provider, 'medium');
+			client.deleteStream.mockClear();
+
+			fire({ mode: 'managed', state: 'starting', reason: null, generation: 3 });
+			await flush();
+
+			expect(client.deleteStream.mock.calls).toEqual([[name]]);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('deletes the streams when the relay becomes unreachable and sends nothing when none are registered', async () => {
+			fire({ ...unreachable });
+			await flush();
+			expect(client.deleteStream).not.toHaveBeenCalled();
+
+			fire({ state: 'running', reason: null, generation: 4 });
+			await flush();
+			await streams.acquire(camera, provider, 'medium');
+			client.deleteStream.mockClear();
+
+			fire({ ...unreachable });
+			await flush();
+
+			expect(client.deleteStream.mock.calls).toEqual([[name]]);
+		});
+
+		it('retains the secrets of a stream whose DELETE failed and releases them when the sweep deletes it later', async () => {
+			await streams.acquire(camera, provider, 'medium');
+			client.deleteStream.mockRejectedValue(new Go2rtcApiError(null));
+
+			fire({ ...unreachable });
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenCalledWith(name);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			client.deleteStream.mockResolvedValue(undefined);
+			client.listStreamNames.mockResolvedValue([name]);
+
+			fire({ state: 'running', reason: null, generation: 4 });
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenLastCalledWith(name);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('does not release a managed-generation retention on an external change', async () => {
+			await streams.acquire(camera, provider, 'medium');
+			client.deleteStream.mockRejectedValue(new Go2rtcApiError(null));
+
+			fire({ ...unreachable });
+			await flush();
+			fire({ state: 'running', reason: null, generation: 4 });
+			await flush();
+
+			expect(secrets.list()).toContain(SENT_URL);
+		});
 	});
 
 	it('rejects in-flight registrations when the relay stops', async () => {
@@ -366,7 +460,7 @@ describe('Go2rtcStreamsService', () => {
 		streams.removeDevice({ id: other.id });
 		await flush();
 
-		expect(client.deleteStream.mock.calls).toEqual([[`smart-panel_${other.id}_medium`]]);
+		expect(client.deleteStream.mock.calls).toEqual([[`smart-panel_${installationId}_${other.id}_medium`]]);
 	});
 
 	it('lease.release is a no-op after the entry was dropped and the count never goes negative', async () => {
@@ -390,12 +484,26 @@ describe('Go2rtcStreamsService', () => {
 	});
 
 	it('deletes orphaned smart-panel streams when an external relay comes up', async () => {
-		client.listStreamNames.mockResolvedValue(['smart-panel_old_medium', 'frigate_front']);
+		client.listStreamNames.mockResolvedValue([`smart-panel_${installationId}_old_medium`, 'frigate_front']);
 
 		fire({ mode: 'external', state: 'running', generation: 3 });
 		await flush();
 
-		expect(client.deleteStream.mock.calls).toEqual([['smart-panel_old_medium']]);
+		expect(client.deleteStream.mock.calls).toEqual([[`smart-panel_${installationId}_old_medium`]]);
+	});
+
+	it('never deletes streams of another installation or of a hand-made smart-panel_ name', async () => {
+		client.listStreamNames.mockResolvedValue([
+			foreignName,
+			'smart-panel_old_medium',
+			'smart-panel_abcd12345_cam_medium',
+			`smart-panel_${installationId}_old_medium`,
+		]);
+
+		fire({ mode: 'external', state: 'running', generation: 3 });
+		await flush();
+
+		expect(client.deleteStream.mock.calls).toEqual([[`smart-panel_${installationId}_old_medium`]]);
 	});
 
 	it('sweeps the streams of dropped entries too when an external relay comes back', async () => {
@@ -404,15 +512,17 @@ describe('Go2rtcStreamsService', () => {
 
 		await streams.acquire(camera, provider, 'medium');
 
-		client.listStreamNames.mockResolvedValue([name, 'smart-panel_old_medium']);
+		client.listStreamNames.mockResolvedValue([name, `smart-panel_${installationId}_old_medium`]);
+
+		fire({ state: 'unavailable', reason: 'external_unreachable' });
+		await flush();
 		client.deleteStream.mockClear();
 
-		fire({ state: 'starting' });
-		fire({ state: 'running', generation: 3 });
+		fire({ state: 'running', reason: null, generation: 3 });
 		await flush();
 
 		expect(client.deleteStream.mock.calls.map((call: string[]) => call[0]).sort()).toEqual(
-			[name, 'smart-panel_old_medium'].sort(),
+			[name, `smart-panel_${installationId}_old_medium`].sort(),
 		);
 	});
 
@@ -430,10 +540,10 @@ describe('Go2rtcStreamsService', () => {
 
 		await streams.acquire(camera, provider, 'medium');
 
-		finishList([name, 'smart-panel_old_medium']);
+		finishList([name, `smart-panel_${installationId}_old_medium`]);
 		await flush();
 
-		expect(client.deleteStream.mock.calls).toEqual([['smart-panel_old_medium']]);
+		expect(client.deleteStream.mock.calls).toEqual([[`smart-panel_${installationId}_old_medium`]]);
 	});
 
 	it('does not sweep when a managed relay comes up', async () => {
@@ -516,7 +626,7 @@ describe('Go2rtcStreamsService', () => {
 		const other = { id: 'cam-9', category: 'camera', type: 'devices-fake' } as unknown as DeviceEntity;
 
 		await expect(streams.acquire(other, provider, 'medium')).resolves.toMatchObject({
-			streamName: `smart-panel_${other.id}_medium`,
+			streamName: `smart-panel_${installationId}_${other.id}_medium`,
 		});
 	});
 
@@ -564,7 +674,7 @@ describe('Go2rtcStreamsService', () => {
 		expect(client.putStream).toHaveBeenCalledTimes(2);
 	});
 
-	it('removes a stream without failing when the DELETE is rejected, and logs only the error name', async () => {
+	it('survives a rejected DELETE, keeps the source redactable and logs only the error name', async () => {
 		client.deleteStream.mockRejectedValue(new Error(FAKE_CAMERA_SECRET_URL));
 
 		const lease = await streams.acquire(camera, provider, 'medium');
@@ -572,7 +682,7 @@ describe('Go2rtcStreamsService', () => {
 		lease.release();
 		await jest.advanceTimersByTimeAsync(30_000);
 
-		expect(secrets.list()).toEqual([]);
+		expect(secrets.list()).toContain(SENT_URL);
 		expect(logSpies[1]).toHaveBeenCalled();
 		expect(loggedCalls()).not.toContain('SENTINELALIAS');
 
@@ -683,7 +793,7 @@ describe('Go2rtcStreamsService', () => {
 
 			await flush();
 
-			fire({ generation: 3 });
+			fire({ state: 'unavailable', reason: 'external_unreachable' });
 			await flush();
 
 			for (const result of await Promise.all(pending)) {
@@ -733,7 +843,8 @@ describe('Go2rtcStreamsService', () => {
 
 			const destroyed = streams.onModuleDestroy();
 
-			await flush();
+			// The DELETE is queued behind the held PUT; destroy gives up on it after 2 s.
+			await jest.advanceTimersByTimeAsync(2_000);
 			await destroyed;
 
 			for (const result of await Promise.all(pending)) {
@@ -790,6 +901,107 @@ describe('Go2rtcStreamsService', () => {
 		await jest.advanceTimersByTimeAsync(60_000);
 		expect(client.deleteStream).toHaveBeenCalledTimes(1);
 		expect(secrets.list()).toEqual([]);
+	});
+
+	describe('a DELETE that fails', () => {
+		it('keeps the source redactable and releases it when a later DELETE of the name succeeds', async () => {
+			client.deleteStream.mockRejectedValueOnce(new Go2rtcApiError(500));
+
+			const first = await streams.acquire(camera, provider, 'medium');
+
+			first.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(client.deleteStream).toHaveBeenCalledTimes(1);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			const second = await streams.acquire(camera, provider, 'medium');
+
+			expect(secrets.list()).toContain(SENT_URL);
+
+			second.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(client.deleteStream).toHaveBeenCalledTimes(2);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('releases the retained source when the managed process is gone', async () => {
+			client.deleteStream.mockRejectedValue(new Go2rtcApiError(500));
+
+			const lease = await streams.acquire(camera, provider, 'medium');
+
+			lease.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			fire({ generation: 2 });
+			await flush();
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('does not retain the source of a managed stream whose DELETE fails after the process died', async () => {
+			let failDelete!: (error: Error) => void;
+
+			client.deleteStream.mockReturnValue(
+				new Promise<void>((_, reject) => {
+					failDelete = reject;
+				}),
+			);
+
+			const lease = await streams.acquire(camera, provider, 'medium');
+
+			lease.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			fire({ state: 'unavailable', reason: 'crashed' });
+			failDelete(new Go2rtcApiError(null));
+			await flush();
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('keeps the source until module destroy has run its DELETEs, then releases it even though they failed', async () => {
+			let failDelete!: (error: Error) => void;
+
+			client.deleteStream.mockReturnValue(
+				new Promise<void>((_, reject) => {
+					failDelete = reject;
+				}),
+			);
+
+			await streams.acquire(camera, provider, 'medium');
+
+			const destroyed = streams.onModuleDestroy();
+
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenCalledWith(name);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			failDelete(new Go2rtcApiError(null));
+			await destroyed;
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('releases the source retained by an earlier failure when module destroy ends', async () => {
+			client.deleteStream.mockRejectedValue(new Go2rtcApiError(null));
+
+			const lease = await streams.acquire(camera, provider, 'medium');
+
+			fire({ mode: 'external', state: 'running', generation: 2 });
+			await flush();
+
+			lease.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			await streams.onModuleDestroy();
+
+			expect(secrets.list()).toEqual([]);
+		});
 	});
 
 	it('bounds the best-effort DELETE on module destroy to 2 s', async () => {

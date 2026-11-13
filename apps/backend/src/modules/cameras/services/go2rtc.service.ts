@@ -31,6 +31,7 @@ import { CamerasConfigModel } from '../models/config.model';
 
 import { Go2rtcApiClient, Go2rtcEndpoint, Go2rtcInfo } from './go2rtc-api.client';
 import { buildGo2rtcConfig } from './go2rtc-config';
+import { generateInstallationId, loadOrCreateInstallationId } from './go2rtc-installation-id';
 import { Go2rtcExitInfo, Go2rtcProcessService } from './go2rtc-process.service';
 import { redactGo2rtcOutput } from './go2rtc-redaction';
 import { Go2rtcSecretsRegistry } from './go2rtc-secrets.registry';
@@ -131,6 +132,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 	private externalClient: Go2rtcApiClient | null = null;
 	private externalTimer: ReturnType<typeof setTimeout> | null = null;
 	private outputTail: string[] = [];
+	private installationId: string | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -228,6 +230,30 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 
 	isRunning(): boolean {
 		return this.status.state === 'running';
+	}
+
+	/** Reported to the service manager's status listing: a relay that is switched off is as healthy as a running one. */
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.status.state === 'running' || this.status.mode === 'disabled');
+	}
+
+	/**
+	 * The random id that scopes this installation's stream names on a go2rtc it may share with others. Persisted in the
+	 * go2rtc config directory; if that cannot be written the id lasts for this process only, so names stay unique but an
+	 * orphan of an earlier run is no longer recognised.
+	 */
+	getInstallationId(): string {
+		if (this.installationId === null) {
+			try {
+				this.installationId = loadOrCreateInstallationId(this.getConfigDir());
+			} catch (error) {
+				this.logger.warn(`go2rtc installation id could not be persisted error=${errorName(error)}`);
+
+				this.installationId = generateInstallationId();
+			}
+		}
+
+		return this.installationId;
 	}
 
 	/** Non-null only while the relay is running. */

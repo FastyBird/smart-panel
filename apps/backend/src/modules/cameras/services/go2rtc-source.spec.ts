@@ -1,7 +1,7 @@
 import { FAKE_CAMERA_SECRET_URL } from '../../../../test/support/fake-camera-stream.provider';
 import { CameraProfileUnavailableException, CameraUpstreamException } from '../cameras.exceptions';
 
-import { go2rtcStreamName, toGo2rtcSource } from './go2rtc-source';
+import { go2rtcStreamName, go2rtcStreamPrefix, toGo2rtcSource } from './go2rtc-source';
 
 describe('toGo2rtcSource', () => {
 	it.each([
@@ -44,11 +44,17 @@ describe('toGo2rtcSource', () => {
 });
 
 describe('go2rtcStreamName', () => {
-	it('names streams by device and profile', () => {
-		expect(go2rtcStreamName('c1', 'medium')).toBe('smart-panel_c1_medium');
+	it('names streams by installation, device and profile', () => {
+		expect(go2rtcStreamName('ab12cd34', 'c1', 'medium')).toBe('smart-panel_ab12cd34_c1_medium');
+	});
+
+	it('scopes the prefix to the installation', () => {
+		expect(go2rtcStreamPrefix('ab12cd34')).toBe('smart-panel_ab12cd34_');
+		expect(go2rtcStreamName('ab12cd34', 'c1', 'medium').startsWith(go2rtcStreamPrefix('ab12cd34'))).toBe(true);
+		expect(go2rtcStreamName('zz99zz99', 'c1', 'medium').startsWith(go2rtcStreamPrefix('ab12cd34'))).toBe(false);
 	});
 
 	it.each(['', 'has space', 'a/b', 'x'.repeat(65)])('refuses the profile id %#', (profileId) => {
-		expect(() => go2rtcStreamName('c1', profileId)).toThrow(CameraProfileUnavailableException);
+		expect(() => go2rtcStreamName('ab12cd34', 'c1', profileId)).toThrow(CameraProfileUnavailableException);
 	});
 });

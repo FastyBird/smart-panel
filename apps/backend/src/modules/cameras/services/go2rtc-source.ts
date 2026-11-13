@@ -47,10 +47,15 @@ export function toGo2rtcSource(source: CameraStreamSource): string {
 	return source.url;
 }
 
-export function go2rtcStreamName(deviceId: string, profileId: string): string {
+/** `smart-panel_<installationId>_`: the prefix of every stream name this installation registers. */
+export function go2rtcStreamPrefix(installationId: string): string {
+	return `${GO2RTC_STREAM_NAME_PREFIX}${installationId}_`;
+}
+
+export function go2rtcStreamName(installationId: string, deviceId: string, profileId: string): string {
 	if (!PROFILE_ID_PATTERN.test(profileId)) {
 		throw new CameraProfileUnavailableException('Stream profile is not available');
 	}
 
-	return `${GO2RTC_STREAM_NAME_PREFIX}${deviceId}_${profileId}`;
+	return `${go2rtcStreamPrefix(installationId)}${deviceId}_${profileId}`;
 }

@@ -4,12 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { EventType as DevicesEventType } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
-import {
-	CAMERAS_MODULE_NAME,
-	GO2RTC_STREAM_IDLE_GRACE_MS,
-	GO2RTC_STREAM_NAME_PREFIX,
-	Go2rtcMode,
-} from '../cameras.constants';
+import { CAMERAS_MODULE_NAME, GO2RTC_STREAM_IDLE_GRACE_MS } from '../cameras.constants';
 import {
 	CameraUpstreamException,
 	CamerasNotFoundException,
@@ -21,7 +16,7 @@ import { ICameraStreamProvider } from '../platforms/camera-stream.provider';
 import { CamerasService } from './cameras.service';
 import { Go2rtcApiClient } from './go2rtc-api.client';
 import { Go2rtcSecretsRegistry } from './go2rtc-secrets.registry';
-import { go2rtcStreamName, toGo2rtcSource } from './go2rtc-source';
+import { go2rtcStreamName, go2rtcStreamPrefix, toGo2rtcSource } from './go2rtc-source';
 import { Go2rtcRelayStatus, Go2rtcService } from './go2rtc.service';
 
 /** Upper bound for the best-effort cleanup on module destroy. */
@@ -53,13 +48,31 @@ interface StreamEntry {
 	dropped: boolean;
 }
 
+/** The relay a DELETE goes to, and whether it is an external one (which outlives this backend and our process). */
+interface DeleteTarget {
+	readonly client: Go2rtcApiClient;
+	readonly external: boolean;
+}
+
+/** Secret handles of a stream whose DELETE failed: it may still exist, so its source stays redactable. */
+interface RetainedSecrets {
+	handles: Array<() => void>;
+	external: boolean;
+}
+
 /**
  * Registers one go2rtc stream per camera profile while someone watches it. Registration is lazy (first viewer), shared
  * (one `resolveSource` and one `PUT` for concurrent viewers) and reference counted: the stream is deleted
  * `GO2RTC_STREAM_IDLE_GRACE_MS` after the last viewer leaves, so a page reload reuses it.
  *
  * The source url is a secret: it lives in the go2rtc process and in the secrets registry, never in a log line, an
- * error message or a lease.
+ * error message or a lease. A stream that could not be deleted keeps its secrets registered (`retained`) until a later
+ * DELETE of that name succeeds, the managed process (and its config file) is gone, or the module is destroyed.
+ *
+ * An external go2rtc outlives the relay state: it persists registered streams to its own config file and stays
+ * reachable after this backend stops using it. The client last seen while the relay was external and running is
+ * therefore remembered, so the streams can still be DELETEd when the relay stops, is switched to another mode or is
+ * disabled (all of which clear `Go2rtcService.getClient()` first).
  */
 @Injectable()
 export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
@@ -72,6 +85,13 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	 */
 	private readonly queues = new Map<string, Promise<void>>();
 
+	/** Handles of streams whose DELETE failed, by stream name. */
+	private readonly retained = new Map<string, RetainedSecrets>();
+	/** Entry deletions in flight, so that module destroy can wait (bounded) for them. */
+	private readonly settling = new Set<Promise<void>>();
+
+	/** The client of the external relay, remembered while it was running. `null` for any other state or mode. */
+	private externalClient: Go2rtcApiClient | null = null;
 	private lastStatus: Go2rtcRelayStatus | null = null;
 	private unsubscribe: (() => void) | null = null;
 
@@ -83,6 +103,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 
 	onModuleInit(): void {
 		this.lastStatus = this.go2rtc.getStatus();
+		this.rememberExternalClient(this.lastStatus);
 		this.unsubscribe = this.go2rtc.subscribe((status) => this.onRelayStatus(status));
 
 		if (this.lastStatus.state === 'running' && this.lastStatus.mode === 'external') {
@@ -96,27 +117,43 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 
 		const client = this.go2rtc.getClient();
 		const entries = [...this.entries.values()];
+		const held: Array<() => void> = [];
 
+		// The secrets stay registered until the DELETEs below are done.
 		for (const entry of entries) {
+			held.push(...entry.secretHandles);
+			entry.secretHandles = [];
 			this.discard(entry, new Go2rtcUnavailableException('Camera relay is not running'));
-		}
-
-		if (!client || entries.length === 0) {
-			return;
 		}
 
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
-			await Promise.race([
-				Promise.allSettled(entries.map((entry) => client.deleteStream(entry.name))),
-				new Promise<void>((resolve) => {
-					timer = setTimeout(resolve, DESTROY_DELETE_TIMEOUT_MS);
-					timer.unref();
-				}),
-			]);
+			// Deletions a relay status change already started (the relay may have stopped first) are awaited too.
+			const pending: Array<Promise<unknown>> = [...this.settling];
+
+			if (client) {
+				pending.push(...entries.map((entry) => this.deleteTracked(client, entry.name)));
+			}
+
+			if (pending.length > 0) {
+				await Promise.race([
+					Promise.allSettled(pending),
+					new Promise<void>((resolve) => {
+						timer = setTimeout(resolve, DESTROY_DELETE_TIMEOUT_MS);
+						timer.unref();
+					}),
+				]);
+			}
 		} finally {
 			if (timer) clearTimeout(timer);
+
+			// Nothing will register or delete after this, so whatever is still held is released.
+			for (const release of held) {
+				release();
+			}
+
+			this.releaseRetained(null);
 		}
 	}
 
@@ -127,7 +164,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 			throw new Go2rtcUnavailableException('Camera relay is not running');
 		}
 
-		const name = go2rtcStreamName(device.id, profileId);
+		const name = go2rtcStreamName(this.go2rtc.getInstallationId(), device.id, profileId);
 
 		let entry = this.entries.get(name);
 
@@ -151,7 +188,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	removeDevice(payload: { id: string }): void {
 		for (const entry of [...this.entries.values()]) {
 			if (entry.deviceId === payload.id) {
-				void this.deleteEntry(entry, new CamerasNotFoundException('Camera not found'));
+				void this.deleteEntry(entry, this.currentTarget(), new CamerasNotFoundException('Camera not found'));
 			}
 		}
 	}
@@ -296,7 +333,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 						entry.graceTimer = null;
 
 						if (!entry.dropped && entry.count === 0) {
-							void this.deleteEntry(entry);
+							void this.deleteEntry(entry, this.currentTarget());
 						}
 					}, GO2RTC_STREAM_IDLE_GRACE_MS);
 					entry.graceTimer.unref();
@@ -305,10 +342,23 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		};
 	}
 
-	/** Drops the entry, deletes its stream (best effort) and only then forgets its secrets. */
-	private async deleteEntry(entry: StreamEntry, error?: Error): Promise<void> {
+	private currentTarget(): DeleteTarget | null {
 		const client = this.go2rtc.getClient();
 
+		return client ? { client, external: this.go2rtc.getStatus().mode === 'external' } : null;
+	}
+
+	/** Drops the entry, deletes its stream (best effort) and only then forgets its secrets, or retains them. */
+	private deleteEntry(entry: StreamEntry, target: DeleteTarget | null, error?: Error): Promise<void> {
+		const run = this.dropAndDelete(entry, target, error);
+
+		this.settling.add(run);
+		void run.finally(() => this.settling.delete(run));
+
+		return run;
+	}
+
+	private async dropAndDelete(entry: StreamEntry, target: DeleteTarget | null, error?: Error): Promise<void> {
 		if (entry.dropped) {
 			return;
 		}
@@ -319,16 +369,65 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		entry.secretHandles = [];
 		this.discard(entry, error);
 
-		if (client) {
-			await this.deleteTracked(client, entry.name);
+		if (!target) {
+			for (const release of handles) {
+				release();
+			}
+
+			return;
 		}
 
-		for (const release of handles) {
-			release();
+		if (await this.deleteTracked(target.client, entry.name)) {
+			for (const release of handles) {
+				release();
+			}
+		} else {
+			this.retain(entry.name, handles, target);
 		}
 	}
 
-	private deleteTracked(client: Go2rtcApiClient, name: string): Promise<void> {
+	/** Keeps the secrets of a stream that may still exist, unless the relay holding it is already gone. */
+	private retain(name: string, handles: Array<() => void>, target: DeleteTarget): void {
+		if (handles.length === 0) {
+			return;
+		}
+
+		if (!target.external && this.go2rtc.getClient() !== target.client) {
+			// A managed process that is gone took its streams (and config file) with it.
+			for (const release of handles) {
+				release();
+			}
+
+			return;
+		}
+
+		const held = this.retained.get(name);
+
+		if (held) {
+			held.handles.push(...handles);
+			held.external = held.external || target.external;
+		} else {
+			this.retained.set(name, { handles, external: target.external });
+		}
+	}
+
+	/** Releases the retained secrets of the given kind (`true` external, `false` managed) or all of them (`null`). */
+	private releaseRetained(external: boolean | null): void {
+		for (const [name, held] of [...this.retained]) {
+			if (external !== null && held.external !== external) {
+				continue;
+			}
+
+			this.retained.delete(name);
+
+			for (const release of held.handles) {
+				release();
+			}
+		}
+	}
+
+	/** Resolves `true` when the stream is gone from the relay. */
+	private deleteTracked(client: Go2rtcApiClient, name: string): Promise<boolean> {
 		return this.enqueue(name, () => this.safeDelete(client, name));
 	}
 
@@ -352,14 +451,29 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		return run;
 	}
 
-	private async safeDelete(client: Go2rtcApiClient, name: string): Promise<void> {
+	/** Never throws. A successful DELETE also releases the secrets retained for an earlier failed one. */
+	private async safeDelete(client: Go2rtcApiClient, name: string): Promise<boolean> {
 		try {
 			await client.deleteStream(name);
 
 			this.logger.log(`go2rtc stream removed name=${name}`);
 		} catch (error) {
 			this.logger.warn(`go2rtc stream remove failed name=${name} error=${errorName(error)}`);
+
+			return false;
 		}
+
+		const held = this.retained.get(name);
+
+		if (held) {
+			this.retained.delete(name);
+
+			for (const release of held.handles) {
+				release();
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -391,15 +505,30 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		entry.secretHandles = [];
 	}
 
+	private rememberExternalClient(status: Go2rtcRelayStatus): void {
+		this.externalClient = status.state === 'running' && status.mode === 'external' ? this.go2rtc.getClient() : null;
+	}
+
 	private onRelayStatus(status: Go2rtcRelayStatus): void {
 		const previous = this.lastStatus;
+		// What `getClient()` returned while the relay was external and running: it is already `null` for the status
+		// that ends that (`stop`, a mode change and a disable clear the service's client before they publish).
+		const external = this.externalClient;
 
 		this.lastStatus = status;
+		this.rememberExternalClient(status);
 
 		const lost = status.state !== 'running' || previous === null || status.generation !== previous.generation;
 
-		if (lost && this.entries.size > 0) {
-			this.dropAll(previous, status);
+		if (lost) {
+			if (previous?.mode === 'managed') {
+				// The process is gone, and the config file that persisted its streams with it.
+				this.releaseRetained(false);
+			}
+
+			if (this.entries.size > 0) {
+				this.dropAll(previous?.mode === 'external' ? external : null);
+			}
 		}
 
 		const cameUp = status.state === 'running' && status.mode === 'external';
@@ -412,23 +541,20 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * The relay lost its streams (managed: the process is gone and its config file with it) or may still hold them
-	 * (external). Managed entries are dropped without a DELETE; external ones get a best-effort DELETE while the same
-	 * external relay is reachable.
+	 * (external, which persists them to its own config file). Managed entries are dropped without a DELETE; external
+	 * ones get a best-effort DELETE through the remembered client.
 	 */
-	private dropAll(previous: Go2rtcRelayStatus | null, status: Go2rtcRelayStatus): void {
-		const mode: Go2rtcMode | null = previous?.mode ?? null;
-		const client = mode === 'external' && status.mode === 'external' ? this.go2rtc.getClient() : null;
-
+	private dropAll(externalClient: Go2rtcApiClient | null): void {
 		for (const entry of [...this.entries.values()]) {
-			if (client) {
-				void this.deleteEntry(entry);
+			if (externalClient) {
+				void this.deleteEntry(entry, { client: externalClient, external: true });
 			} else {
 				this.discard(entry);
 			}
 		}
 	}
 
-	/** Deletes every `smart-panel_*` stream of an external relay that this table does not know (previous backend run). */
+	/** Deletes every stream of this installation on an external relay that this table does not know (previous run). */
 	private async sweepOrphans(): Promise<void> {
 		const client = this.go2rtc.getClient();
 
@@ -436,16 +562,14 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
+		const prefix = go2rtcStreamPrefix(this.go2rtc.getInstallationId());
+
 		try {
 			const names = await client.listStreamNames();
 
 			for (const name of names) {
 				// Re-checked per name: a viewer may have registered it while the list was in flight.
-				if (
-					name.startsWith(GO2RTC_STREAM_NAME_PREFIX) &&
-					!this.entries.has(name) &&
-					this.go2rtc.getClient() === client
-				) {
+				if (name.startsWith(prefix) && !this.entries.has(name) && this.go2rtc.getClient() === client) {
 					await this.deleteTracked(client, name);
 				}
 			}
