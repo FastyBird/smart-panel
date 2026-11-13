@@ -131,6 +131,10 @@ export const AutomationRunsOnEventActionPayloadSchema = z.object({
 	data: z.record(z.string(), z.unknown()),
 });
 
+export const AutomationRunsOpenActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+});
+
 export const AutomationRunsUnsetActionPayloadSchema = z.object({
 	automationId: ItemIdSchema,
 });

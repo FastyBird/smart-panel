@@ -1,4 +1,4 @@
-import { type Ref, computed, ref, watch } from 'vue';
+import { type Ref, computed, onScopeDispose, ref, watch } from 'vue';
 
 import { injectStoresManager } from '../../../common';
 import { AutomationRunRecordStatus } from '../automations.constants';
@@ -138,6 +138,26 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	// The run the step before came from: a run closed or turned down is not taken up again by its next step
 	let previousStepRunId: string | null = null;
 
+	// The runs closed or turned down while still going: not taken up on their own again until they end (a test
+	// or a replay still shows them)
+	const dismissed = new Set<string>();
+
+	const dismiss = (runId: string | undefined): void => {
+		if (typeof runId === 'string' && !isEnded(runsStore.findById(runId))) {
+			dismissed.add(runId);
+		}
+	};
+
+	const isDismissed = (runId: string): boolean => {
+		for (const item of dismissed) {
+			if (isEnded(runsStore.findById(item))) {
+				dismissed.delete(item);
+			}
+		}
+
+		return dismissed.has(runId);
+	};
+
 	// A run started while the view is open is followed, unless a past run is being looked at or the run
 	// followed is still going. Every step is looked at as it arrives, so no run is missed when several arrive
 	// at once or the steps of the runs interleave.
@@ -146,7 +166,17 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 		previousStepRunId = runId;
 
-		if (source.value?.runId === runId || source.value?.kind === 'replay') {
+		if (source.value?.runId === runId) {
+			return;
+		}
+
+		if (source.value?.kind === 'replay') {
+			dismiss(runId);
+
+			return;
+		}
+
+		if (isDismissed(runId)) {
 			return;
 		}
 
@@ -167,7 +197,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 				return;
 			}
 
-			const candidates = waitingRunIds.filter((runId) => runId !== source.value?.runId && live.stepsOf(runId).length > 0);
+			const candidates = waitingRunIds.filter((runId) => runId !== source.value?.runId && !isDismissed(runId) && live.stepsOf(runId).length > 0);
 			const runId = [...candidates].reverse().find((item) => !isEnded(runsStore.findById(item))) ?? candidates.at(-1) ?? null;
 
 			// The others still wait: each is followed in turn once the one before it is over
@@ -263,9 +293,38 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	};
 
 	const close = (): void => {
+		if (source.value?.kind === 'live') {
+			dismiss(source.value.runId);
+		}
+
 		waitingRunIds = [];
 		source.value = null;
 	};
+
+	// The run shown is open in the store: its record and trace are kept while it is shown, history read or not
+	watch(
+		(): string | null => source.value?.runId ?? null,
+		(runId: string | null, previous: string | null | undefined): void => {
+			if (runId === previous) {
+				return;
+			}
+
+			if (typeof previous === 'string') {
+				runsStore.release({ id: previous });
+			}
+
+			if (runId !== null) {
+				runsStore.open({ id: runId });
+			}
+		},
+		{ immediate: true }
+	);
+
+	onScopeDispose((): void => {
+		if (source.value) {
+			runsStore.release({ id: source.value.runId });
+		}
+	});
 
 	return {
 		runs,

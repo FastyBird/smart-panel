@@ -11,6 +11,7 @@ import type {
 	AutomationRunsFetchActionPayloadSchema,
 	AutomationRunsGetActionPayloadSchema,
 	AutomationRunsOnEventActionPayloadSchema,
+	AutomationRunsOpenActionPayloadSchema,
 	AutomationRunsStateSemaphoreSchema,
 	AutomationRunsTriggerActionPayloadSchema,
 	AutomationRunsUnsetActionPayloadSchema,
@@ -45,6 +46,8 @@ export type IAutomationRunsTriggerActionPayload = z.infer<typeof AutomationRunsT
 
 export type IAutomationRunsOnEventActionPayload = z.infer<typeof AutomationRunsOnEventActionPayloadSchema>;
 
+export type IAutomationRunsOpenActionPayload = z.infer<typeof AutomationRunsOpenActionPayloadSchema>;
+
 export type IAutomationRunsUnsetActionPayload = z.infer<typeof AutomationRunsUnsetActionPayloadSchema>;
 
 export interface IAutomationRunsStoreState {
@@ -71,6 +74,9 @@ export interface IAutomationRunsStoreActions {
 	trigger: (payload: IAutomationRunsTriggerActionPayload) => Promise<IAutomationTriggerResult>;
 	fetchRuntime: (payload: IAutomationRunsFetchActionPayload) => Promise<IAutomationRuntime>;
 	onEvent: (payload: IAutomationRunsOnEventActionPayload) => IAutomationRun | null;
+	// A view shows the run, and lets go of it
+	open: (payload: IAutomationRunsOpenActionPayload) => void;
+	release: (payload: IAutomationRunsOpenActionPayload) => void;
 	unset: (payload: IAutomationRunsUnsetActionPayload) => void;
 	reset: () => void;
 	isLoaded: () => boolean;

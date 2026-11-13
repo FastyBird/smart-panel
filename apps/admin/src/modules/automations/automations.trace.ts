@@ -179,9 +179,10 @@ export const mapTraceToOverlay = (graph: Pick<IAutomationGraph, 'nodes' | 'edges
 		const state = stepState(step);
 		const held = nodes[step.node_id];
 
-		const outputs = [...(held?.outputs ?? [])];
+		// Each output once, in the order last taken: the last one is what the card's latest visit did
+		const outputs = (held?.outputs ?? []).filter((output) => output !== step.output);
 
-		if (typeof step.output === 'string' && !outputs.includes(step.output)) {
+		if (typeof step.output === 'string') {
 			outputs.push(step.output);
 		}
 

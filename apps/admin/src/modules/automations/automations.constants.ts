@@ -105,6 +105,9 @@ export const AUTOMATION_RUN_RECORD_STATUS_COLORS: Record<AutomationRunRecordStat
 // How many runs of an automation the backend keeps (ADR 0003, decision 12)
 export const AUTOMATION_RUNS_KEPT_PER_AUTOMATION = 50;
 
+// How many runs read on their own the admin keeps the traces of, besides those a view has open
+export const AUTOMATION_RUN_TRACES_KEPT = 20;
+
 // Why the backend refuses a manual run (`error.details.code` of the 422 response)
 export type AutomationTriggerRefusal = 'disabled' | 'invalid' | 'suspended' | 'not_a_trigger' | 'no_trigger' | 'not_running' | 'not_found';
 

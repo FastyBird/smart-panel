@@ -8,6 +8,7 @@ import type { operations } from '../../../openapi';
 import {
 	AUTOMATIONS_MODULE_PREFIX,
 	AUTOMATION_RUNS_KEPT_PER_AUTOMATION,
+	AUTOMATION_RUN_TRACES_KEPT,
 	AUTOMATION_TRIGGER_REFUSALS,
 	AutomationRunRecordStatus,
 	type AutomationTriggerRefusal,
@@ -20,6 +21,7 @@ import type {
 	IAutomationRunsFetchActionPayload,
 	IAutomationRunsGetActionPayload,
 	IAutomationRunsOnEventActionPayload,
+	IAutomationRunsOpenActionPayload,
 	IAutomationRunsStateSemaphore,
 	IAutomationRunsStoreActions,
 	IAutomationRunsStoreState,
@@ -91,6 +93,12 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 		const traces = ref<Map<IAutomationRun['id'], IAutomationRun>>(new Map());
 
 		const runtimes = ref<Map<IAutomationRun['automationId'], IAutomationRuntime>>(new Map());
+
+		// The runs a view has open (followed live or replayed), by how many views have them open
+		const openRunIds = new Map<IAutomationRun['id'], number>();
+
+		// The last record of an open run of an automation whose history is not held: its events are not lost
+		const openRecords = ref<Map<IAutomationRun['id'], IAutomationRun>>(new Map());
 
 		// Every change of a run is numbered, every request takes a number when it starts: what changed after a
 		// list was asked for is newer than the list
@@ -165,7 +173,19 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 				}
 			}
 
-			return null;
+			return openRecords.value.get(id) ?? null;
+		};
+
+		// The traces of the runs read last are kept, and those of the runs a view has open: the others are let go of
+		const keepTrace = (run: IAutomationRun): void => {
+			traces.value.delete(run.id);
+			traces.value.set(run.id, run);
+
+			const evictable = [...traces.value.keys()].filter((id) => !openRunIds.has(id));
+
+			for (const id of evictable.slice(0, Math.max(0, evictable.length - AUTOMATION_RUN_TRACES_KEPT))) {
+				traces.value.delete(id);
+			}
 		};
 
 		const findRuntime = (automationId: IAutomationRun['automationId']): IAutomationRuntime | null => runtimes.value.get(automationId) ?? null;
@@ -179,7 +199,7 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			const listed = runs?.find((run) => run.id === incoming.id);
 			const tracedHeld = traces.value.get(incoming.id);
 
-			const held = listed && tracedHeld ? mergeAutomationRun(listed, tracedHeld) : (listed ?? tracedHeld);
+			const held = listed && tracedHeld ? mergeAutomationRun(listed, tracedHeld) : (listed ?? tracedHeld ?? openRecords.value.get(incoming.id));
 
 			const merged = mergeAutomationRun(held, incoming);
 
@@ -197,9 +217,14 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			}
 
 			if (merged.trace !== null) {
-				traces.value.set(merged.id, merged);
+				keepTrace(merged);
 			} else if (tracedHeld && tracedHeld.status !== merged.status) {
 				traces.value.delete(merged.id);
+			}
+
+			// An open run with no history to hold it keeps its record here, or the view would not learn how it went
+			if (!runs && openRunIds.has(merged.id)) {
+				openRecords.value.set(merged.id, withoutTrace(merged));
 			}
 
 			return merged;
@@ -217,6 +242,15 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			// read while it holds only the runs since. While its first list is on its way, the run is kept for it.
 			if (!data.value.has(parsed.data.automationId) && !traces.value.has(parsed.data.id)) {
 				const awaiting = awaitingFirstList.get(parsed.data.automationId);
+
+				// A run a view has open is kept whether its history was read or not
+				if (openRunIds.has(parsed.data.id)) {
+					const kept = commit(parsed.data);
+
+					awaiting?.set(kept.id, mergeAutomationRun(awaiting.get(kept.id), kept));
+
+					return kept;
+				}
 
 				if (!awaiting) {
 					return null;
@@ -511,6 +545,24 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			}
 		};
 
+		// A view shows the run: its record and trace are kept for as long as it is open
+		const open = (payload: IAutomationRunsOpenActionPayload): void => {
+			openRunIds.set(payload.id, (openRunIds.get(payload.id) ?? 0) + 1);
+		};
+
+		const release = (payload: IAutomationRunsOpenActionPayload): void => {
+			const count = (openRunIds.get(payload.id) ?? 0) - 1;
+
+			if (count > 0) {
+				openRunIds.set(payload.id, count);
+
+				return;
+			}
+
+			openRunIds.delete(payload.id);
+			openRecords.value.delete(payload.id);
+		};
+
 		// The automation is gone, and its history with it
 		const unset = (payload: IAutomationRunsUnsetActionPayload): void => {
 			forgetChanges(findForAutomation(payload.automationId), []);
@@ -525,6 +577,12 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 				}
 			}
 
+			for (const [id, run] of openRecords.value) {
+				if (run.automationId === payload.automationId) {
+					openRecords.value.delete(id);
+				}
+			}
+
 			removedAt.set(payload.automationId, ++sequence);
 		};
 
@@ -536,6 +594,7 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			traces.value.clear();
 			runtimes.value.clear();
 			loaded.value.clear();
+			openRecords.value.clear();
 
 			allRemovedAt = ++sequence;
 		};
@@ -563,6 +622,8 @@ export const useAutomationRunsStore = defineStore<'automations_module-runs', Aut
 			trigger,
 			fetchRuntime,
 			onEvent,
+			open,
+			release,
 			unset,
 			reset,
 			isLoaded,

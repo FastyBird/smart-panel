@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AutomationRunRecordStatus, AutomationStatus, AutomationTriggerOutcome } from '../automations.constants';
+import { AUTOMATION_RUN_TRACES_KEPT, AutomationRunRecordStatus, AutomationStatus, AutomationTriggerOutcome } from '../automations.constants';
 import { AutomationsApiException, AutomationsTriggerRefusedException } from '../automations.exceptions';
 
 import { mergeAutomationRun, useAutomationRunsStore } from './runs.store';
@@ -652,6 +652,43 @@ describe('Automation runs store', (): void => {
 		} finally {
 			remove.mockRestore();
 		}
+	});
+
+	it('keeps the record of a run a view has open when the history of its automation is not held', (): void => {
+		store.onEvent({ data: runRes(1, { status: 'running', finished_at: null, duration_ms: null }) });
+
+		expect(store.findById(runIds[1] as string)).toBeNull();
+
+		store.open({ id: runIds[1] as string });
+
+		store.onEvent({ data: runRes(1) });
+
+		expect(store.findById(runIds[1] as string)).toMatchObject({ id: runIds[1], status: 'completed', trace: null });
+
+		store.release({ id: runIds[1] as string });
+
+		expect(store.findById(runIds[1] as string)).toBeNull();
+	});
+
+	it('keeps the traces of the runs read last, and the trace of a run a view has open', async (): Promise<void> => {
+		const ids = Array.from(
+			{ length: AUTOMATION_RUN_TRACES_KEPT + 2 },
+			(_, index) => `b1f0c1d2-0000-4000-8000-0000000001${String(index).padStart(2, '0')}`
+		);
+
+		store.open({ id: ids[1] as string });
+
+		for (const id of ids) {
+			mockBackendClient.GET.mockResolvedValueOnce({ data: { data: { ...runRes(0, { id }), trace } }, error: undefined, response: { status: 200 } });
+
+			await store.get({ id });
+		}
+
+		expect(store.traces.size).toBe(AUTOMATION_RUN_TRACES_KEPT + 1);
+		// The oldest read is let go of; the one open is kept however old
+		expect(store.findById(ids[0] as string)).toBeNull();
+		expect(store.findById(ids[1] as string)?.trace).not.toBeNull();
+		expect(store.findById(ids[2] as string)?.trace).not.toBeNull();
 	});
 
 	it('forgets the runs of an automation that is gone, and every run on a reset', async (): Promise<void> => {

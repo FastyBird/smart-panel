@@ -604,6 +604,61 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId: otherRunId, source: 'live' });
 	});
 
+	it('does not take up a run that was closed again when the steps of other runs come in between', async (): Promise<void> => {
+		const trace = await create();
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		trace.close();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), otherRunId);
+		store().onEvent({ data: runRes(otherRunId, 'running') });
+		await nextTick();
+
+		expect(trace.shown.value?.runId).toBe(otherRunId);
+
+		// The run closed goes on while the other one runs: it does not wait to be shown again
+		sendStep(stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked', delay_ms: 60_000 }), runId);
+		await nextTick();
+
+		store().onEvent({ data: runRes(otherRunId, 'completed') });
+		await nextTick();
+		await nextTick();
+
+		expect(trace.shown.value?.runId).toBe(otherRunId);
+	});
+
+	it('learns how a test run ended when the history of the automation could not be read', async (): Promise<void> => {
+		scope = effectScope();
+
+		const trace = scope.run(() => useAutomationRunTrace({ id: automationId, graph: ref(graph) })) as IUseAutomationRunTrace;
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await trace.fetchRuns();
+
+		expect(trace.runsLoadFailed.value).toBe(true);
+
+		mocks.backend.POST.mockResolvedValueOnce({
+			data: { data: { automation_id: automationId, started: true, outcome: 'started', run_id: runId, reason: null } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await trace.test('n1');
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }));
+		store().onEvent({ data: runRes(runId, 'running') });
+		store().onEvent({ data: runRes(runId, 'completed') });
+		await flushPromises();
+
+		expect(trace.shown.value).toMatchObject({ runId, ended: true, run: { status: 'completed' } });
+	});
+
 	it('keeps showing all the run followed did while other runs of the automation send their steps', async (): Promise<void> => {
 		const trace = await create();
 

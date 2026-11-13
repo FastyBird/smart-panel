@@ -204,6 +204,18 @@ describe('mapTraceToOverlay', (): void => {
 		expect(overlay.takenEdges).toEqual(['e4', 'e5']);
 	});
 
+	it('keeps the output the card took last when the run took one it took before', (): void => {
+		reset();
+
+		const overlay = mapTraceToOverlay(graph, [
+			step('c1', AutomationNodeKind.condition, { output: 'yes', observed: 1 }),
+			step('c1', AutomationNodeKind.condition, { output: 'no', observed: 2 }),
+			step('c1', AutomationNodeKind.condition, { output: 'yes', observed: 3 }),
+		]);
+
+		expect(overlay.nodes.c1).toMatchObject({ outputs: ['no', 'yes'], observed: '3', visits: 3 });
+	});
+
 	it('reads the steps in the order the run took them, whatever order they arrived in', (): void => {
 		reset();
 
