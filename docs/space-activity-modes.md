@@ -219,8 +219,9 @@ does not set the occupancy manual hold, so occupancy keeps acting after an autom
 replaces only the selection it read: it is admitted with the activation identity it saw through the same
 compare-and-swap as schedules and occupancy, so a selection or clear made in between, or another activation still
 running for the space, refuses it and the action takes its `error` output. A run cancelled before the selection
-is committed writes nothing - the run is checked before the write and again by a guard at COMMIT; once admitted, the activation completes like any other. A mode already selected and
-active, partial or still activating is left alone. The action takes `done` only for an activation that ended
+is committed writes nothing - the run is checked before the write and again by a guard at COMMIT; once admitted, the activation completes like any other. Only a mode already selected and
+`active` is left alone, as `done`; a selected mode whose last activation ended partial, failed or interrupted is
+activated again as a retry, and one still activating is not waited for: the request meets it and takes `error`. The action takes `done` only for an activation that ended
 `active`. The actor is `automation:<automation id>:<run id>`, and the schedule's manual-precedence indication
 treats it as automatic, like a schedule's own selection.
 

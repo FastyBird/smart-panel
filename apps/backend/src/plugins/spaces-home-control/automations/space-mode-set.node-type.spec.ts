@@ -106,29 +106,55 @@ describe('space.mode.set', () => {
 		expect(admission.isCurrent()).toBe(false);
 	});
 
-	it('leaves a mode that is already selected and active, or on its way, alone', async () => {
-		for (const status of [
-			ActivityActivationStatus.ACTIVE,
-			ActivityActivationStatus.PARTIAL,
-			ActivityActivationStatus.ACTIVATING,
-		]) {
-			current = { mode: ActivityMode.SLEEP, status, activationId: 'a-1', actor: 'schedule:s:o' };
-
-			expect(await card().execute({ space_id: SPACE, mode: ActivityMode.SLEEP }, runContext())).toEqual({
-				success: true,
-			});
-		}
-
-		expect(activateMode).not.toHaveBeenCalled();
-	});
-
-	it('activates a selected mode again when its last activation failed or was interrupted', async () => {
-		current = { mode: ActivityMode.SLEEP, status: ActivityActivationStatus.FAILED, activationId: 'a-1', actor: 'x' };
+	it('leaves a mode that is already selected and active alone, as done', async () => {
+		current = { mode: ActivityMode.SLEEP, status: ActivityActivationStatus.ACTIVE, activationId: 'a-1', actor: 's' };
 
 		expect(await card().execute({ space_id: SPACE, mode: ActivityMode.SLEEP }, runContext())).toEqual({
 			success: true,
 		});
-		expect(activateMode).toHaveBeenCalledTimes(1);
+		expect(activateMode).not.toHaveBeenCalled();
+	});
+
+	it.each([ActivityActivationStatus.PARTIAL, ActivityActivationStatus.FAILED, ActivityActivationStatus.INTERRUPTED])(
+		'activates a selected mode whose last activation ended %s again, over that selection',
+		async (status) => {
+			current = { mode: ActivityMode.SLEEP, status, activationId: 'a-1', actor: 'x' };
+
+			expect(await card().execute({ space_id: SPACE, mode: ActivityMode.SLEEP }, runContext())).toEqual({
+				success: true,
+			});
+			expect(activateMode).toHaveBeenCalledTimes(1);
+			expect(activateMode.mock.calls[0][4].previousActivationId).toBe('a-1');
+		},
+	);
+
+	it('does not report a partial selection as done when the retry ends partial again', async () => {
+		current = { mode: ActivityMode.SLEEP, status: ActivityActivationStatus.PARTIAL, activationId: 'a-1', actor: 'x' };
+		activateMode.mockImplementation((_spaceId, mode, _revision, actor) =>
+			Promise.resolve({ mode, status: ActivityActivationStatus.PARTIAL, activationId: 'a-2', actor }),
+		);
+
+		expect(await card().execute({ space_id: SPACE, mode: ActivityMode.SLEEP }, runContext())).toEqual({
+			success: false,
+			reason: 'The sleep mode was selected, but its activation ended as partial.',
+		});
+	});
+
+	it('does not report a mode still being activated as done: asking again meets it and takes error', async () => {
+		current = {
+			mode: ActivityMode.SLEEP,
+			status: ActivityActivationStatus.ACTIVATING,
+			activationId: 'a-1',
+			actor: 'schedule:s:o',
+		};
+		activateMode.mockRejectedValue(
+			new ConflictException('Space activity activation is in progress; retry after completion'),
+		);
+
+		expect(await card().execute({ space_id: SPACE, mode: ActivityMode.SLEEP }, runContext())).toEqual({
+			success: false,
+			reason: 'The space mode was not set: Space activity activation is in progress; retry after completion',
+		});
 	});
 
 	it('does not activate a mode that is disabled in the space', async () => {

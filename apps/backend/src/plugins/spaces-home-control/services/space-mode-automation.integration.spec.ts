@@ -179,6 +179,37 @@ describe('activity mode set by an automation, through the real SQLite admission'
 			expect((await active())?.selectedActivityMode).toBe(ActivityMode.SLEEP);
 		});
 
+		it('retries a mode whose activation ended partial instead of reporting it as done', async () => {
+			run.mockImplementation((domain: ActivityDomain) =>
+				Promise.resolve(
+					domainResult(
+						domain,
+						domain === ActivityDomain.LIGHTING ? ActivityDomainStatus.SUCCEEDED : ActivityDomainStatus.FAILED,
+						'test',
+					),
+				),
+			);
+
+			expect(await setMode(ActivityMode.RELAX, 'run-1')).toEqual({
+				success: false,
+				reason: 'The relax mode was selected, but its activation ended as partial.',
+			});
+
+			const partial = await active();
+
+			expect(partial?.activityStatus).toBe(ActivityActivationStatus.PARTIAL);
+
+			run.mockImplementation(noTargets);
+
+			expect(await setMode(ActivityMode.RELAX, 'run-2')).toEqual({ success: true });
+			expect(await active()).toMatchObject({
+				selectedActivityMode: ActivityMode.RELAX,
+				activityStatus: ActivityActivationStatus.ACTIVE,
+				activityActor: 'automation:automation-1:run-2',
+			});
+			expect((await active())?.activationId).not.toBe(partial?.activationId);
+		});
+
 		it('never overwrites a selection made after the one the automation read', async () => {
 			const read = await active();
 

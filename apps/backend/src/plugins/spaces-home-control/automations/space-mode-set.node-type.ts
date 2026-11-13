@@ -53,13 +53,6 @@ export interface SpaceModeActivator extends SpaceModeReader {
 	): Promise<SpaceModeReading>;
 }
 
-/** A selection of the mode asked for that is in place or on its way, so selecting it again would only repeat it */
-const SETTLED_STATUSES: readonly (ActivityActivationStatus | null)[] = [
-	ActivityActivationStatus.ACTIVATING,
-	ActivityActivationStatus.ACTIVE,
-	ActivityActivationStatus.PARTIAL,
-];
-
 /**
  * The action "set the activity mode of a space".
  *
@@ -69,9 +62,13 @@ const SETTLED_STATUSES: readonly (ActivityActivationStatus | null)[] = [
  * selected or cleared a mode in between, or another activation of the space is still running, nothing is
  * changed and the action takes `error`. Its actor is `automation:<automation id>:<run id>`.
  *
- * It takes `done` when the mode was activated in full. A mode that is already selected and active, or still
- * being activated, is left alone. An activation of which a domain failed or was not supported takes `error`
- * with the status, though the mode stays selected, and so does one that a newer selection replaced before it
+ * It takes `done` when the mode was activated in full. Only a mode that is already selected and `active` is left
+ * alone, as `done`: the same answer an activation that ended `active` gives. A selected mode whose last
+ * activation ended partial, failed or interrupted is activated again, as a retry through the same admission, so
+ * the automation can resolve the failure instead of reporting it as done. A mode still being activated is not
+ * waited for: asking again meets the activation in progress, is refused and takes `error`, as it can not yet
+ * tell how that activation ends. An activation of which a domain failed or was not supported takes `error` with
+ * the status, though the mode stays selected, and so does one that a newer selection replaced before it
  * finished. A mode that is disabled for the space is not activated.
  */
 export const createSpaceModeSetNodeType = (
@@ -107,7 +104,8 @@ export const createSpaceModeSetNodeType = (
 		try {
 			current = await activator.activeMode(spaceId);
 
-			if (current.mode === mode && SETTLED_STATUSES.includes(current.status)) return { success: true };
+			// Only a selection that is in place in full is a no-op; anything else is (re)activated
+			if (current.mode === mode && current.status === ActivityActivationStatus.ACTIVE) return { success: true };
 
 			configuration = await activator.modeConfiguration(spaceId, mode);
 		} catch (error) {
