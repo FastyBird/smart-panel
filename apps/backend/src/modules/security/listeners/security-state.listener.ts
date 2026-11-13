@@ -7,7 +7,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { EventType, SECURITY_MODULE_NAME, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
+import { SecurityStateChangedPayload } from '../contracts/security-state-changed.type';
+import { SecurityStatusModel } from '../models/security-status.model';
+import {
+	AlarmState,
+	ArmedState,
+	EventType,
+	SECURITY_MODULE_NAME,
+	SECURITY_STATE_DEBOUNCE_MS,
+} from '../security.constants';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityEventsService } from '../services/security-events.service';
@@ -42,6 +50,10 @@ const SECURITY_CHANNEL_CATEGORIES: ChannelCategory[] = [
 	ChannelCategory.CONTACT,
 ];
 
+type SecurityStateTransitionValue<K extends 'armed' | 'alarm'> = K extends 'armed'
+	? ArmedState | null
+	: AlarmState | null;
+
 @Injectable()
 export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'SecurityStateListener');
@@ -49,6 +61,8 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	private debounceTimer: NodeJS.Timeout | null = null;
 	private processingLock: Promise<void> = Promise.resolve();
 	private seeded = false;
+	/** The armed and the alarm state last known; a state is missing until a read knew it */
+	private readonly knownStates = new Map<'armed' | 'alarm', ArmedState | AlarmState | null>();
 
 	constructor(
 		@InjectRepository(ChannelEntity)
@@ -223,6 +237,9 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		try {
 			const { status, providerErrors } = await this.aggregator.aggregateWithErrors();
 
+			// First: it reads only the states, so nothing that fails further down can make a transition be missed
+			this.emitStateTransitions(status, providerErrors);
+
 			// Record transitions
 			try {
 				await this.eventsService.recordAlertTransitions(status.activeAlerts, status.armedState, status.alarmState);
@@ -254,12 +271,49 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
+	 * Emits `SecurityModule.State.Changed` once for each of the armed and the alarm state that differs from
+	 * the one known before. The first read that knows a state only records it: what holds when the backend
+	 * starts is not a transition. A state that is unknown while a provider failed says nothing about the
+	 * home: it neither sets the baseline - a failed start-up read would make an alarm armed all along look
+	 * like it was just armed - nor counts as a change to "none".
+	 */
+	private emitStateTransitions(status: SecurityStatusModel, providerErrors: number): void {
+		const transitions: SecurityStateChangedPayload[] = [];
+
+		const follow = <K extends 'armed' | 'alarm'>(kind: K, next: SecurityStateTransitionValue<K>): void => {
+			if (next === null && providerErrors > 0) return;
+
+			if (!this.knownStates.has(kind)) {
+				this.knownStates.set(kind, next);
+
+				return;
+			}
+
+			const previous = this.knownStates.get(kind) as SecurityStateTransitionValue<K>;
+
+			if (previous === next) return;
+
+			this.knownStates.set(kind, next);
+			transitions.push({ kind, from: previous, to: next } as SecurityStateChangedPayload);
+		};
+
+		follow('armed', status.armedState ?? null);
+		follow('alarm', status.alarmState ?? null);
+
+		for (const transition of transitions) {
+			try {
+				this.eventEmitter.emit(EventType.SECURITY_STATE_CHANGED, transition);
+			} catch (error) {
+				this.logger.warn(`Failed to emit a security state transition: ${error}`);
+			}
+		}
+	}
+
+	/**
 	 * Read-only acknowledgement annotation: looks up ack records and sets
 	 * alert.acknowledged flag without writing to DB.
 	 */
-	private async annotateAcknowledgements(
-		status: import('../models/security-status.model').SecurityStatusModel,
-	): Promise<void> {
+	private async annotateAcknowledgements(status: SecurityStatusModel): Promise<void> {
 		const alertIds = status.activeAlerts.map((a) => a.id);
 		const ackRecords = await this.ackService.findByIds(alertIds);
 		const ackMap = new Map(ackRecords.map((r) => [r.id, r]));
@@ -290,10 +344,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	 * Sync ack records: reset acks for alerts with newer timestamps,
 	 * and clean up stale ack records for alerts that no longer exist.
 	 */
-	private async syncAckRecords(
-		status: import('../models/security-status.model').SecurityStatusModel,
-		providerErrors: number,
-	): Promise<void> {
+	private async syncAckRecords(status: SecurityStatusModel, providerErrors: number): Promise<void> {
 		// Reset acks for alerts with newer timestamps — safe with partial
 		// data since it only touches alerts that ARE present.
 		if (status.activeAlerts.length > 0) {

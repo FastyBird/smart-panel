@@ -6,6 +6,7 @@ import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../extensions/services/managed-service-manager.service';
 import { ScenesModule } from '../scenes/scenes.module';
+import { SecurityModule } from '../security/security.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SpacesModule } from '../spaces/spaces.module';
@@ -36,6 +37,7 @@ import { AutomationRunService } from './services/automation-run.service';
 import { AutomationSafetyService } from './services/automation-safety.service';
 import { AutomationsSeederService } from './services/automations-seeder.service';
 import { AutomationsService } from './services/automations.service';
+import { AutomationEventSourceService } from './services/event-source.service';
 import { AutomationsModuleResetService } from './services/module-reset.service';
 import { AutomationNodeTypeRegistryService } from './services/node-type-registry.service';
 import { AutomationStateTrackerService } from './services/state-tracker.service';
@@ -52,6 +54,7 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 		DevicesModule,
 		SpacesModule,
 		ScenesModule,
+		SecurityModule,
 		WebsocketModule,
 		SeedModule,
 	],
@@ -62,6 +65,7 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 		AutomationNodeTypeRegistryService,
 		AutomationStateTrackerService,
 		AutomationTimeSourceService,
+		AutomationEventSourceService,
 		AutomationRunHistoryService,
 		AutomationRunService,
 		AutomationSafetyService,
@@ -156,7 +160,7 @@ export class AutomationsModule implements OnModuleInit {
 
 Stores automations: graphs of *When / And / Then* blocks drawn on a canvas, which let the home react on its own to presence, light, time, temperature and alarms.
 
-The module stores, validates and runs automations. It provides the first set of blocks itself — device, time, scene and notification cards and the Delay block; plugins register further ones.
+The module stores, validates and runs automations. It provides the first set of blocks itself — device, time, sun, scene, notification, house mode, security and automation cards and the flow blocks; plugins register further ones.
 
 ## Features
 
@@ -168,7 +172,7 @@ The module stores, validates and runs automations. It provides the first set of 
 - **Safety** — an automation may lock, arm and close, but it can not unlock a lock, disarm the alarm or open a door, garage or gate: such a value is refused when the automation is saved and again before every write, and a scene that would do it is not run by an automation at all
 - **Safe concurrent editing** — every save carries the revision it was based on; a save based on a stale revision is refused instead of overwriting somebody else's change
 - **Engine** — a managed service that watches the triggers of every enabled automation and walks its graph when one fires: several edges from one output run in parallel, conditions continue on \`yes\` or \`no\`, actions on \`done\` or \`error\`, a Delay parks the run for up to one hour
-- **Built-in blocks** — *When*: a device value changes (to / from / any, above / below a threshold, optionally only after it stayed there for a time), a time of day on chosen weekdays, a manual start. *And*: a device value compares as asked, the time is inside a window (which may cross midnight). *Then*: set device values (values of one device are applied together), run a scene, send a notification
+- **Built-in blocks** — *When*: a device value changes (to / from / any, above / below a threshold, optionally only after it stayed there for a time), a button is pressed (any press or the chosen ones), a device goes offline or online, a time of day on chosen weekdays, sunrise or sunset, a scene was run, the house mode changes, the security state changes (armed state or alarm state), a manual start. *And*: a device value compares as asked, the time is inside a window (which may cross midnight), day or night, the house mode is, the alarm is armed. *Then*: set device values (values of one device are applied together), run a scene, send a notification, set the house mode, arm the alarm (never disarm it), enable, disable or run another automation
 - **House time** — time blocks use the house timezone and share one minute tick; a time missed while the backend was down is not replayed, and nothing depending on the time runs before the system clock is set
 - **Unknown is not true** — a condition on a value that is missing, invalid or belongs to an offline device continues on \`no\`, with the reason recorded
 - **Run modes** — \`single\` ignores a trigger while a run is active, \`restart\` (default) cancels every active run and starts again, \`parallel\` lets up to 10 runs overlap

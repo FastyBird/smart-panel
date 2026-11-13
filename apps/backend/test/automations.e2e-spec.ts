@@ -1654,6 +1654,11 @@ describe('Automations module (e2e)', () => {
 			const builtIn = (response.body as { data: NodeTypeBody[] }).data.filter((item) => !item.type.startsWith('test.'));
 
 			expect(builtIn.map((item) => `${item.kind} ${item.type}`)).toEqual([
+				'action automation.disable',
+				'action automation.enable',
+				'action automation.run',
+				'trigger device.button.pressed',
+				'trigger device.connection.changed',
 				'trigger device.property.changed',
 				'condition device.property.compare',
 				'action device.property.set',
@@ -1661,9 +1666,16 @@ describe('Automations module (e2e)', () => {
 				'flow flow.any',
 				'flow flow.delay',
 				'flow flow.wait-until',
+				'trigger house-mode.changed',
+				'condition house-mode.is',
+				'action house-mode.set',
 				'trigger manual.start',
 				'action notification.send',
 				'action scene.run',
+				'trigger scene.was-run',
+				'action security.arm',
+				'condition security.armed.is',
+				'trigger security.state.changed',
 				'condition sun.daylight',
 				'trigger sun.event',
 				'trigger time.of-day',
