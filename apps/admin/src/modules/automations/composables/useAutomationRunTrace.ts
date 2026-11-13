@@ -77,6 +77,16 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 	const shownRecord = computed<IAutomationRun | null>((): IAutomationRun | null => (source.value ? runsStore.findById(source.value.runId) : null));
 
+	// The pick a running run's trace was read again for: once per time it is picked
+	let refreshedPick: number | null = null;
+
+	// What a run stored so far, read when its events may have been missed; nothing stored yet is not a failure
+	const recover = (runId: string): void => {
+		void runsStore.get({ id: runId, fresh: true }).catch((): void => {
+			// Nothing stored yet, or not readable now: the live steps are what there is
+		});
+	};
+
 	const readKey = (runId: string, run: IAutomationRun | null): string => `${runId}:${run?.status ?? 'unknown'}`;
 
 	/*
@@ -113,7 +123,10 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 			const run = shownRecord.value;
 
-			if (run?.trace) {
+			// A run still going stores more each time it waits: picked again, what it stored since is read once
+			const stale = current.kind === 'replay' && run?.trace && !isEnded(run) && refreshedPick !== current.pick;
+
+			if (run?.trace && !stale) {
 				return;
 			}
 
@@ -122,6 +135,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 			if (!wanted || runsStore.getting(current.runId) || failedReads.value.has(readKey(current.runId, run))) {
 				return;
 			}
+
+			refreshedPick = current.pick;
 
 			void readTrace(current.runId);
 		},
@@ -219,15 +234,16 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	watch(
 		(): boolean => live.watching.value,
 		(watching: boolean, wasWatching: boolean): void => {
-			const current = source.value;
-
-			if (!watching || wasWatching || !current || isEnded(shownRecord.value)) {
+			if (!watching || wasWatching) {
 				return;
 			}
 
-			void runsStore.get({ id: current.runId, fresh: true }).catch((): void => {
-				// Nothing stored yet, or not readable now: the live steps are what there is
-			});
+			// The runs waiting may have ended while the socket was down: what they stored says so
+			for (const runId of [...(source.value ? [source.value.runId] : []), ...waitingRunIds.value]) {
+				if (!isEnded(runsStore.findById(runId))) {
+					recover(runId);
+				}
+			}
 		}
 	);
 
@@ -281,6 +297,11 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		if (result.started && result.runId !== null) {
 			waitingRunIds.value = [];
 			source.value = { kind: 'live', runId: result.runId, pick: ++picks };
+
+			// With no history held, a short run may have ended before the answer named it: what it stored says so
+			if (!runsStore.firstLoadFinished(id) && runsStore.findById(result.runId) === null) {
+				recover(result.runId);
+			}
 		}
 
 		return result;
