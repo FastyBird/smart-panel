@@ -17,6 +17,7 @@ import {
 import { CAMERAS_SWAGGER_EXTRA_MODELS } from './cameras.openapi';
 import { CamerasController } from './controllers/cameras.controller';
 import { UpdateCamerasConfigDto } from './dto/update-config.dto';
+import { LiveStreamGateway } from './gateway/live-stream.gateway';
 import { CamerasConfigModel } from './models/config.model';
 import { CameraSessionService } from './services/camera-session.service';
 import { CameraSnapshotService } from './services/camera-snapshot.service';
@@ -45,6 +46,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 		Go2rtcProcessService,
 		Go2rtcService,
 		Go2rtcStreamsService,
+		LiveStreamGateway,
 	],
 	controllers: [CamerasController],
 	exports: [
