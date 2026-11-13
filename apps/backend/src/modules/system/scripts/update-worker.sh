@@ -1511,7 +1511,7 @@ PY
 		OLD_VERSIONS=$(ls -d v[0-9]*.[0-9]*.[0-9]*/ 2>/dev/null | grep -v "^${CURRENT_BASENAME}/" | sort -V | head -n -2 || true)
 
 		for old_dir in $OLD_VERSIONS; do
-			rm -rf "${IMAGE_BASE_DIR}/${old_dir}"
+			rm -rf "${IMAGE_BASE_DIR:?}/${old_dir}"
 		done
 	fi
 
@@ -1663,9 +1663,6 @@ fi
 
 # Run database migrations
 update_status "migrating" "migrating"
-
-DATA_DIR="${FB_DATA_DIR:-/var/lib/smart-panel}"
-DB_PATH="${FB_DB_PATH:-${DATA_DIR}/data}"
 
 if [ -f "$(npm root -g)/@fastybird/smart-panel/dataSource.js" ]; then
 	node "$(npm root -g)/@fastybird/smart-panel/node_modules/typeorm/cli.js" \
