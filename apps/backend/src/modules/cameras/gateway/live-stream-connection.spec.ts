@@ -212,6 +212,9 @@ describe('LiveStreamConnection (real sockets)', () => {
 		JSON.stringify({ type: 'mse', value: 5 }),
 		JSON.stringify(['mse']),
 		'null',
+		'{"type":"mse","extra":1}',
+		'{"type":"mse","Type":"webrtc/offer"}',
+		'{"Type":"mse"}',
 	])('closes 1008 for the request %#', async (frame) => {
 		const { socket, closed } = connectClient();
 
@@ -229,7 +232,31 @@ describe('LiveStreamConnection (real sockets)', () => {
 		socket.send(JSON.stringify({ type: 'mse' }));
 		await waitFor(() => upstreamMessages.length === 1);
 
-		expect(JSON.parse(upstreamMessages[0])).toEqual({ type: 'mse' });
+		expect(upstreamMessages[0]).toBe('{"type":"mse"}');
+	});
+
+	it('forwards a rebuilt request, never the raw text', async () => {
+		const { socket } = connectClient();
+
+		await opened(socket);
+		// extra whitespace and unicode escapes, and a duplicate `type` key whose last value wins
+		socket.send('{ "type" : "webrtc/offer",\n "type":"\u006dse", "value" :\t"avc1.\u0036\u0034" }');
+		await waitFor(() => upstreamMessages.length === 1);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		expect(upstreamMessages).toEqual([JSON.stringify({ type: 'mse', value: 'avc1.64' })]);
+	});
+
+	it('closes 1008 for a second request after the upstream opened, and forwards only the first', async () => {
+		const { socket, closed } = connectClient();
+
+		await opened(socket);
+		socket.send(JSON.stringify({ type: 'mse', value: 'a' }));
+		await waitFor(() => upstreamMessages.length === 1);
+		socket.send(JSON.stringify({ type: 'mse', value: 'b' }));
+
+		expect(await closed).toEqual([1008, 'protocol_violation']);
+		expect(upstreamMessages).toEqual([JSON.stringify({ type: 'mse', value: 'a' })]);
 	});
 
 	it('closes 1003 for a binary client frame', async () => {
@@ -584,7 +611,7 @@ describe('LiveStreamConnection (fake sockets)', () => {
 		expect(connection.closed).toBe(true);
 	});
 
-	it('closes 1008 when a ninth frame is queued and never connects upstream', async () => {
+	it('closes 1008 for a second request queued before the upstream opens, and never forwards it', async () => {
 		const lateLease = new Promise<Go2rtcStreamLease>((resolve) => {
 			resolveLease = resolve;
 		});
@@ -592,13 +619,11 @@ describe('LiveStreamConnection (fake sockets)', () => {
 		create({ connectUpstream: () => lateLease });
 		connection.start();
 
-		const frame = Buffer.from(JSON.stringify({ type: 'mse', value: 'avc1' }));
-
-		for (let i = 0; i < 8; i++) client.emit('message', frame, false);
+		client.emit('message', Buffer.from(JSON.stringify({ type: 'mse', value: 'a' })), false);
 
 		expect(client.close).not.toHaveBeenCalled();
 
-		client.emit('message', frame, false);
+		client.emit('message', Buffer.from(JSON.stringify({ type: 'mse', value: 'b' })), false);
 
 		expect(client.close).toHaveBeenCalledWith(1008, 'protocol_violation');
 		expect(onClosed).toHaveBeenCalledTimes(1);
@@ -610,22 +635,30 @@ describe('LiveStreamConnection (fake sockets)', () => {
 		expect(upstream.send).not.toHaveBeenCalled();
 	});
 
-	it('flushes queued frames in order once the upstream opens', async () => {
+	it('flushes the single queued request, rebuilt, once the upstream opens', async () => {
 		create();
 		connection.start();
 
-		const first = JSON.stringify({ type: 'mse', value: 'a' });
-		const second = JSON.stringify({ type: 'mse', value: 'b' });
-
-		client.emit('message', Buffer.from(first), false);
-		client.emit('message', Buffer.from(second), false);
+		client.emit('message', Buffer.from('{ "type": "mse",  "value": "a" }'), false);
 		await flush();
 
 		expect(upstream.send).not.toHaveBeenCalled();
 
 		upstream.emit('open');
 
-		expect(upstream.send.mock.calls.map(([data]) => data)).toEqual([first, second]);
+		expect(upstream.send).toHaveBeenCalledTimes(1);
+		expect(upstream.send.mock.calls[0][0]).toBe('{"type":"mse","value":"a"}');
+	});
+
+	it('closes 1008 for a second request on an open upstream with fake sockets', async () => {
+		create();
+		await openUpstream();
+
+		client.emit('message', Buffer.from('{"type":"mse"}'), false);
+		client.emit('message', Buffer.from('{"type":"mse"}'), false);
+
+		expect(upstream.send).toHaveBeenCalledTimes(1);
+		expect(client.close).toHaveBeenCalledWith(1008, 'protocol_violation');
 	});
 
 	it('terminates an upstream that is still connecting when the client leaves', async () => {

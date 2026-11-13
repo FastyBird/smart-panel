@@ -13,7 +13,6 @@ import { CameraStreamSession } from '../services/camera-session.service';
 import { Go2rtcStreamLease } from '../services/go2rtc-streams.service';
 
 import {
-	LIVE_CLIENT_PENDING_FRAMES,
 	LIVE_CLOSE,
 	LIVE_HEARTBEAT_INTERVAL_MS,
 	LIVE_HIGH_WATER_BYTES,
@@ -50,7 +49,9 @@ export class LiveStreamConnection {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'LiveStreamConnection');
 
 	private readonly abort = new AbortController();
-	private readonly pending: string[] = [];
+	/** The one `mse` request received before the upstream opened. */
+	private pending: string | null = null;
+	private requested = false;
 
 	private upstream: WebSocket | null = null;
 	private upstreamOpen = false;
@@ -172,8 +173,9 @@ export class LiveStreamConnection {
 
 			this.upstreamOpen = true;
 
-			for (const frame of this.pending.splice(0)) {
-				this.sendUpstream(upstream, frame);
+			if (this.pending !== null) {
+				this.sendUpstream(upstream, this.pending);
+				this.pending = null;
 			}
 		});
 
@@ -206,27 +208,24 @@ export class LiveStreamConnection {
 			return;
 		}
 
-		const frame = rawToString(data);
+		const request = parseRequest(rawToString(data));
 
-		if (!isValidRequest(frame)) {
+		// Each `mse` request adds a consumer on the go2rtc socket, so a connection carries exactly one.
+		if (request === null || this.requested) {
 			this.close('PROTOCOL_VIOLATION');
 
 			return;
 		}
+
+		this.requested = true;
 
 		if (this.upstream && this.upstreamOpen) {
-			this.sendUpstream(this.upstream, frame);
+			this.sendUpstream(this.upstream, request);
 
 			return;
 		}
 
-		if (this.pending.length >= LIVE_CLIENT_PENDING_FRAMES) {
-			this.close('PROTOCOL_VIOLATION');
-
-			return;
-		}
-
-		this.pending.push(frame);
+		this.pending = request;
 	}
 
 	private sendUpstream(upstream: WebSocket, frame: string): void {
@@ -307,7 +306,7 @@ export class LiveStreamConnection {
 			this.lease?.release();
 		} finally {
 			this.lease = null;
-			this.pending.length = 0;
+			this.pending = null;
 
 			this.logger.log(
 				`Live stream closed session=${this.session.id} device=${this.session.deviceId} code=${code} reason=${reason}`,
@@ -361,25 +360,44 @@ function rawToString(data: RawData): string {
 	return Buffer.isBuffer(data) ? data.toString('utf8') : Buffer.from(data).toString('utf8');
 }
 
-/** The only request a browser may send: `{ "type": "mse", "value"?: string }`. */
-function isValidRequest(frame: string): boolean {
+/**
+ * The only request a browser may send: `{ "type": "mse", "value"?: string }`, with no other key.
+ *
+ * Returns the message to forward, rebuilt from the validated fields: go2rtc's decoder matches keys case-insensitively
+ * and keeps the last duplicate, so the raw text is never forwarded. `null` when the frame is not acceptable.
+ */
+function parseRequest(frame: string): string | null {
 	let parsed: unknown;
 
 	try {
 		parsed = JSON.parse(frame);
 	} catch {
-		return false;
+		return null;
 	}
 
 	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-		return false;
+		return null;
+	}
+
+	const keys = Object.keys(parsed);
+
+	if (keys.some((key) => key !== 'type' && key !== 'value')) {
+		return null;
 	}
 
 	const { type, value } = parsed as Record<string, unknown>;
 
 	if (type !== 'mse') {
-		return false;
+		return null;
 	}
 
-	return value === undefined || (typeof value === 'string' && value.length <= MAX_REQUEST_VALUE_LENGTH);
+	if (value === undefined) {
+		return JSON.stringify({ type: 'mse' });
+	}
+
+	if (typeof value !== 'string' || value.length > MAX_REQUEST_VALUE_LENGTH) {
+		return null;
+	}
+
+	return JSON.stringify({ type: 'mse', value });
 }
