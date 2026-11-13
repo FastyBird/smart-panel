@@ -79,7 +79,7 @@ jobs:
           apps/backend/src/modules/system/scripts/update-worker.sh
 
       - name: "Test go2rtc installer"
-        run: "node --test build/tests/install-go2rtc.test.mjs build/tests/install-server-go2rtc.test.mjs"
+        run: "node --test build/tests/install-go2rtc.test.mjs build/tests/install-server-go2rtc.test.mjs build/tests/linux-installer-go2rtc.test.mjs"
 
   backend-analyze:
     needs: "check-skip"

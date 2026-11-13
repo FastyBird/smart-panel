@@ -24,6 +24,7 @@ import {
 	getTypeOrmCliPath,
 	hasSystemd,
 	isRoot,
+	logger,
 	readFile,
 	setOwnership,
 	userExists,
@@ -35,6 +36,8 @@ const __dirname = dirname(__filename);
 
 const SERVICE_NAME = 'smart-panel';
 const SYSTEMD_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
+// Matches the update worker budget: three curl attempts of 300 s each, plus slack.
+const GO2RTC_INSTALL_TIMEOUT_MS = 960_000;
 
 export class LinuxInstaller implements BaseInstaller {
 	readonly platform = 'linux';
@@ -148,6 +151,9 @@ export class LinuxInstaller implements BaseInstaller {
 		if (!noStart) {
 			await this.start();
 		}
+
+		// Camera relay binary; never fails the installation (cameras fall back to snapshots).
+		this.installGo2rtc();
 	}
 
 	async uninstall(options: UninstallOptions): Promise<void> {
@@ -565,6 +571,33 @@ polkit.addRule(function (action, subject) {
 			],
 			{ stdio: 'inherit' },
 		);
+	}
+
+	/**
+	 * Installs the pinned go2rtc binary with the installer bundled in the backend release. Runs as root on a
+	 * root-owned package tree. Every failure is a warning: the installation must not depend on go2rtc. The installer
+	 * honours its own opt-outs (FB_SKIP_GO2RTC=1, /etc/smart-panel/go2rtc.skip).
+	 */
+	private installGo2rtc(): void {
+		const installer = join(getBackendPath(this.packageRoot), 'dist', 'go2rtc', 'install-go2rtc.sh');
+
+		if (!existsSync(installer)) {
+			logger.warning(`go2rtc installer not found (${installer}); camera streaming will use snapshots`);
+
+			return;
+		}
+
+		try {
+			execFileSync('/bin/sh', [installer], {
+				stdio: ['ignore', 'inherit', 'inherit'],
+				timeout: GO2RTC_INSTALL_TIMEOUT_MS,
+				killSignal: 'SIGKILL',
+			});
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+
+			logger.warning(`go2rtc installation failed (${reason}); camera streaming will use snapshots`);
+		}
 	}
 
 	private assertNoActivePrivilegedJobs(): void {
