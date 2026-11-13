@@ -5,6 +5,7 @@ import { DeviceEntity } from '../../devices/entities/devices.entity';
 import {
 	CameraOfflineException,
 	CameraUpstreamException,
+	CamerasNotFoundException,
 	Go2rtcApiError,
 	Go2rtcUnavailableException,
 } from '../cameras.exceptions';
@@ -577,6 +578,198 @@ describe('Go2rtcStreamsService', () => {
 
 		await streams.acquire(camera, provider, 'medium');
 		expect(client.putStream).toHaveBeenCalledTimes(2);
+	});
+
+	describe('a drop while the PUT is still outstanding', () => {
+		let finishPut: Array<() => void>;
+		let calls: string[];
+
+		/** The first `count` PUTs stay pending until `finishPut[i]()`; later ones resolve at once. */
+		const holdPuts = (count: number): void => {
+			finishPut = [];
+			calls = [];
+
+			let held = 0;
+
+			client.putStream.mockImplementation((n: string) => {
+				calls.push(`put ${n}`);
+
+				if (held++ >= count) {
+					return Promise.resolve();
+				}
+
+				return new Promise<void>((resolve) => {
+					finishPut.push(resolve);
+				});
+			});
+			client.deleteStream.mockImplementation((n: string) => {
+				calls.push(`delete ${n}`);
+
+				return Promise.resolve();
+			});
+		};
+
+		it('does not let the late DELETE of a dropped registration remove the stream of the next one', async () => {
+			holdPuts(1);
+
+			const first = streams.acquire(camera, provider, 'medium').catch((e: Error) => e);
+
+			await flush();
+			expect(calls).toEqual([`put ${name}`]);
+
+			streams.removeDevice({ id: camera.id });
+
+			const second = streams.acquire(camera, provider, 'medium');
+
+			await flush();
+
+			// The second registration waits for the outstanding PUT of the first one.
+			expect(calls).toEqual([`put ${name}`]);
+
+			finishPut[0]();
+			await flush();
+
+			expect(await first).toBeInstanceOf(CamerasNotFoundException);
+			await expect(second).resolves.toMatchObject({ streamName: name });
+
+			expect(calls[0]).toBe(`put ${name}`);
+			expect(calls[calls.length - 1]).toBe(`put ${name}`);
+			expect(calls.slice(1, -1).length).toBeGreaterThanOrEqual(1);
+			expect(calls.slice(1, -1).every((call) => call === `delete ${name}`)).toBe(true);
+		});
+
+		it('sends the compensating DELETE and rejects a joiner that joined mid-PUT when the device is deleted', async () => {
+			holdPuts(1);
+
+			const results = [
+				streams.acquire(camera, provider, 'medium').catch((e: Error) => e),
+				streams.acquire(camera, provider, 'medium').catch((e: Error) => e),
+			];
+
+			await flush();
+
+			streams.removeDevice({ id: camera.id });
+			await flush();
+
+			for (const result of await Promise.all(results)) {
+				expect(result).toBeInstanceOf(CamerasNotFoundException);
+				expect((result as Error).message).toBe('Camera not found');
+			}
+
+			// The PUT has not returned yet: nothing may be deleted before it, and the secrets are still held.
+			expect(calls).toEqual([`put ${name}`]);
+
+			finishPut[0]();
+			await flush();
+
+			expect(calls[0]).toBe(`put ${name}`);
+			expect(calls.slice(1).length).toBeGreaterThanOrEqual(1);
+			expect(calls.slice(1).every((call) => call === `delete ${name}`)).toBe(true);
+			expect(secrets.list()).toEqual([]);
+
+			// Nothing is left behind: the next viewer starts over.
+			await expect(streams.acquire(camera, provider, 'medium')).resolves.toMatchObject({ streamName: name });
+		});
+
+		it('deletes the stream a late PUT created when an external relay reconnects mid-PUT', async () => {
+			fire({ mode: 'external', state: 'running', generation: 2 });
+			await flush();
+			holdPuts(1);
+
+			const pending = [
+				streams.acquire(camera, provider, 'medium').catch((e: Error) => e),
+				streams.acquire(camera, provider, 'medium').catch((e: Error) => e),
+			];
+
+			await flush();
+
+			fire({ generation: 3 });
+			await flush();
+
+			for (const result of await Promise.all(pending)) {
+				expect(result).toBeInstanceOf(Go2rtcUnavailableException);
+			}
+
+			finishPut[0]();
+			await flush();
+
+			expect(calls).toContain(`delete ${name}`);
+			expect(calls.indexOf(`delete ${name}`)).toBeGreaterThan(calls.indexOf(`put ${name}`));
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('sends no compensating DELETE to a relay that is no longer the one that was PUT to', async () => {
+			holdPuts(1);
+
+			const pending = streams.acquire(camera, provider, 'medium').catch((e: Error) => e);
+
+			await flush();
+
+			fire({ generation: 2 });
+			await flush();
+
+			const successor = { ...client, deleteStream: jest.fn().mockResolvedValue(undefined) };
+
+			relayClient = successor;
+
+			finishPut[0]();
+			await flush();
+
+			expect(await pending).toBeInstanceOf(Go2rtcUnavailableException);
+			expect(client.deleteStream).not.toHaveBeenCalled();
+			expect(successor.deleteStream).not.toHaveBeenCalled();
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('rejects an in-flight registration on module destroy and deletes what the PUT created', async () => {
+			holdPuts(1);
+
+			const pending = [
+				streams.acquire(camera, provider, 'medium').catch((e: Error) => e),
+				streams.acquire(camera, provider, 'medium').catch((e: Error) => e),
+			];
+
+			await flush();
+
+			const destroyed = streams.onModuleDestroy();
+
+			await flush();
+			await destroyed;
+
+			for (const result of await Promise.all(pending)) {
+				expect(result).toBeInstanceOf(Go2rtcUnavailableException);
+			}
+
+			expect(secrets.list()).toEqual([]);
+
+			finishPut[0]();
+			await flush();
+
+			expect(calls).toContain(`delete ${name}`);
+			expect(calls.indexOf(`delete ${name}`)).toBeGreaterThan(calls.indexOf(`put ${name}`));
+		});
+
+		it('does not PUT a registration that was dropped while it waited for an earlier call of its name', async () => {
+			holdPuts(1);
+
+			const first = streams.acquire(camera, provider, 'medium').catch((e: Error) => e);
+
+			await flush();
+			streams.removeDevice({ id: camera.id });
+
+			const second = streams.acquire(camera, provider, 'medium').catch((e: Error) => e);
+
+			await flush();
+			streams.removeDevice({ id: camera.id });
+			await flush();
+
+			finishPut[0]();
+			await flush();
+
+			expect(await first).toBeInstanceOf(CamerasNotFoundException);
+			expect(await second).toBeInstanceOf(CamerasNotFoundException);
+			expect(calls.filter((call) => call.startsWith('put'))).toEqual([`put ${name}`]);
+		});
 	});
 
 	it('unsubscribes and clears the grace timers on module destroy', async () => {

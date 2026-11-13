@@ -66,8 +66,11 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'Go2rtcStreamsService');
 
 	private readonly entries = new Map<string, StreamEntry>();
-	/** Names whose DELETE is in flight: a new registration of the same name waits for it. Never rejects. */
-	private readonly deleting = new Map<string, Promise<void>>();
+	/**
+	 * Per stream name, the tail of the PUT/DELETE calls sent for it. Every call for a name runs after the previous one
+	 * settled, so the final go2rtc state of a name is always that of the last call queued. Never rejects.
+	 */
+	private readonly queues = new Map<string, Promise<void>>();
 
 	private lastStatus: Go2rtcRelayStatus | null = null;
 	private unsubscribe: (() => void) | null = null;
@@ -209,26 +212,28 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 
 		this.holdSecrets(entry, src, source.url);
 
-		await this.deleting.get(entry.name);
+		await this.enqueue(entry.name, async () => {
+			// Dropped while it waited for an earlier call of the same name: nothing to register.
+			this.throwIfDropped(entry);
 
-		this.throwIfDropped(entry);
+			try {
+				await client.putStream(entry.name, src);
+			} catch (error) {
+				this.logger.warn(`go2rtc stream register failed name=${entry.name} error=${errorName(error)}`);
 
-		try {
-			await client.putStream(entry.name, src);
-		} catch (error) {
-			this.logger.warn(`go2rtc stream register failed name=${entry.name} error=${errorName(error)}`);
-
-			throw new CameraUpstreamException('Live stream could not be started');
-		}
-
-		if (entry.dropped) {
-			// Dropped while the PUT was in flight: the stream may now exist on a relay that outlives the drop.
-			if (this.go2rtc.getClient() === client) {
-				await this.safeDelete(client, entry.name);
+				throw new CameraUpstreamException('Live stream could not be started');
 			}
 
-			throw new Go2rtcUnavailableException('Camera relay is not running');
-		}
+			if (entry.dropped) {
+				// Dropped while the PUT was in flight: the stream may now exist on a relay that outlives the drop. The
+				// DELETE belongs to this call, so a registration queued behind it cannot be hit by it.
+				if (this.go2rtc.getClient() === client) {
+					await this.safeDelete(client, entry.name);
+				}
+
+				throw new Go2rtcUnavailableException('Camera relay is not running');
+			}
+		});
 
 		this.logger.log(`go2rtc stream registered name=${entry.name}`);
 	}
@@ -324,15 +329,27 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	private deleteTracked(client: Go2rtcApiClient, name: string): Promise<void> {
-		const deletion = this.safeDelete(client, name).finally(() => {
-			if (this.deleting.get(name) === deletion) {
-				this.deleting.delete(name);
+		return this.enqueue(name, () => this.safeDelete(client, name));
+	}
+
+	/** Runs `call` once every earlier call queued for `name` has settled. The result is `call`'s own. */
+	private enqueue<T>(name: string, call: () => Promise<T>): Promise<T> {
+		const previous = this.queues.get(name) ?? Promise.resolve<void>(undefined);
+		const run = previous.then<T>(call);
+		const tail = run.then<void, void>(
+			() => undefined,
+			() => undefined,
+		);
+
+		this.queues.set(name, tail);
+
+		void tail.then(() => {
+			if (this.queues.get(name) === tail) {
+				this.queues.delete(name);
 			}
 		});
 
-		this.deleting.set(name, deletion);
-
-		return deletion;
+		return run;
 	}
 
 	private async safeDelete(client: Go2rtcApiClient, name: string): Promise<void> {
