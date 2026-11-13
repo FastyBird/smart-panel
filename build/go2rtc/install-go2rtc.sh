@@ -168,7 +168,9 @@ LISTING
 	esac
 }
 
-# Checks $DIR (when it exists) and every existing ancestor up to / with check_trusted_dir, before anything is created.
+# Checks $DIR (when it exists) and every existing ancestor up to / with check_trusted_dir, before anything is created,
+# then rewrites DIR to the physical path that was checked (the deepest existing ancestor, symlinks resolved, followed
+# by the components that do not exist yet) so no later command can follow a symlink that is retargeted after the check.
 check_install_path() {
 	case /$DIR/ in
 	*/../*)
@@ -181,20 +183,28 @@ check_install_path() {
 	/*) ;;
 	*) chain_path=$PWD/$chain_path ;;
 	esac
+	chain_rest=
 	while [ ! -e "$chain_path" ] && [ ! -L "$chain_path" ]; do
+		chain_name=$(basename "$chain_path")
+		case $chain_name in
+		. | /) ;;
+		*) chain_rest=/$chain_name$chain_rest ;;
+		esac
 		chain_path=$(dirname "$chain_path")
 	done
 	chain_path=$(cd -P "$chain_path" 2>/dev/null && pwd -P) || {
 		warn "$DIR or one of its parents is not a directory; refusing to install into it"
 		return 1
 	}
+	physical_dir=${chain_path%/}$chain_rest
 	while :; do
 		check_trusted_dir "$chain_path" || return 1
 		if [ "$chain_path" = / ]; then
-			return 0
+			break
 		fi
 		chain_path=$(dirname "$chain_path")
 	done
+	DIR=$physical_dir
 }
 
 # Creates this run's workspace in $DIR and records the owning pid so another run's sweep leaves it alone.

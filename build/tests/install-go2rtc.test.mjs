@@ -853,6 +853,43 @@ test('accepts a new install directory below a private base directory', () => {
 	assert.equal(readFileSync(join(sandbox.root, 'x', 'y', 'go2rtc', 'go2rtc'), 'utf8'), STUB);
 });
 
+test('installs into the physical path of a symlinked parent and never re-resolves the symlink', () => {
+	const sandbox = makeSandbox();
+	const real = join(sandbox.root, 'real');
+	const other = join(sandbox.root, 'other');
+	const link = join(sandbox.root, 'link');
+
+	mkdirSync(real);
+	mkdirSync(other);
+	symlinkSync(real, link);
+	// The stand-in for an attacker: while the download runs, the validated symlink is pointed somewhere else.
+	symlinkSync(other, join(sandbox.root, 'link.next'));
+	writeExecutable(
+		join(sandbox.bin, 'curl'),
+		script([
+			`rm '${link}'`,
+			`mv '${sandbox.root}/link.next' '${link}'`,
+			"out=''",
+			'while [ $# -gt 0 ]; do',
+			'  case $1 in -o) out=$2; shift ;; esac',
+			'  shift',
+			'done',
+			`cp '${sandbox.served}/go2rtc_linux_amd64' "$out"`,
+		]),
+	);
+
+	const result = run(sandbox, ['--strict', '--arch', 'amd64', '--dir', join(link, 'new', 'go2rtc')]);
+	const installed = join(realpathSync(real), 'new', 'go2rtc');
+
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(realpathSync(link), realpathSync(other), 'the symlink was retargeted during the run');
+	assert.equal(readFileSync(join(installed, 'go2rtc'), 'utf8'), STUB);
+	assert.equal(readFileSync(join(installed, 'LICENSE'), 'utf8'), REAL_LICENSE);
+	assert.deepEqual(readdirSync(installed).sort(), ['LICENSE', 'go2rtc']);
+	assert.deepEqual(readdirSync(other), []);
+	assert.ok(result.stdout.includes(`installed 9.9.9 (amd64) to ${installed}`), result.stdout);
+});
+
 const installedSandbox = () => {
 	const sandbox = makeSandbox();
 
