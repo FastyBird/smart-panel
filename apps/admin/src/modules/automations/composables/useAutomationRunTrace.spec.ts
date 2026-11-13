@@ -1202,6 +1202,53 @@ describe('useAutomationRunTrace', (): void => {
 		}
 	});
 
+	it('stops trying again to read a run once a read of it went well in between', async (): Promise<void> => {
+		const trace = await create();
+
+		const parked = [
+			stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }),
+			stepRes(2, 'n2', AutomationNodeKind.flow, { via: 'e1', state: 'parked', delay_ms: 60_000 }),
+		];
+
+		store().onEvent({ data: runRes(otherRunId, 'running') });
+
+		mocks.backend.GET.mockResolvedValueOnce(tracedRes(otherRunId, 'running', parked));
+
+		trace.replay(otherRunId);
+		await flushPromises();
+
+		emit('disconnect');
+
+		mocks.backend.GET.mockResolvedValueOnce({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+		try {
+			// The read after the reconnect fails and is to be tried again
+			emit('connect');
+			await flushPromises();
+
+			// Picked again in the meantime, the run is read and that goes well
+			mocks.backend.GET.mockResolvedValueOnce(tracedRes(otherRunId, 'running', parked));
+
+			trace.close();
+			trace.replay(otherRunId);
+			await flushPromises();
+
+			const reads = mocks.backend.GET.mock.calls.length;
+
+			mocks.backend.GET.mockResolvedValue({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+
+			await vi.advanceTimersByTimeAsync(10_000);
+			await flushPromises();
+
+			expect(mocks.backend.GET).toHaveBeenCalledTimes(reads);
+			expect(trace.shown.value).toMatchObject({ runId: otherRunId, failed: false });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 

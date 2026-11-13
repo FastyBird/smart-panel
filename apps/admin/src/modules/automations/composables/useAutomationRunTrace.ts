@@ -81,8 +81,39 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	// The pick a running run's trace was read again for: once per time it is picked
 	let refreshedPick: number | null = null;
 
-	// A read that went well since: the reads that failed for the run are not reported any more
+	// The read of what a run stored that waits to be tried again, and the chain of tries each run is on
+	const recoverRetries = new Map<string, ReturnType<typeof setTimeout>>();
+
+	const recoverChains = new Map<string, number>();
+
+	let chains = 0;
+
+	let disposed = false;
+
+	// The tries of a run still to come are not made: a read went well since, or a new chain of tries starts
+	const cancelRecovery = (runId: string): void => {
+		const retry = recoverRetries.get(runId);
+
+		if (retry !== undefined) {
+			clearTimeout(retry);
+		}
+
+		recoverRetries.delete(runId);
+		recoverChains.delete(runId);
+	};
+
+	const startRecovery = (runId: string): number => {
+		cancelRecovery(runId);
+
+		recoverChains.set(runId, ++chains);
+
+		return chains;
+	};
+
+	// A read that went well since: the reads that failed for the run are not reported any more, nor tried again
 	const clearFailures = (runId: string): void => {
+		cancelRecovery(runId);
+
 		if ([...failedReads.value].some((key) => key.startsWith(`${runId}:`))) {
 			failedReads.value = new Set([...failedReads.value].filter((key) => !key.startsWith(`${runId}:`)));
 		}
@@ -95,38 +126,47 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		readsInFlight.value = new Set([...readsInFlight.value].filter((item) => item !== runId));
 	};
 
-	// The reads of what a run stored that wait to be tried again
-	const recoverRetries = new Set<ReturnType<typeof setTimeout>>();
-
-	let disposed = false;
-
 	/*
 	 * What a run stored so far, read when its events may have been missed. Nothing stored yet is not a failure.
 	 * A read that failed is tried again a few times; when the run is not known to have ended, a read that kept
-	 * failing is said, as the run would otherwise look as if it were still going.
+	 * failing is said, as the run would otherwise look as if it were still going. A read of the run that went
+	 * well in the meantime ends the tries.
 	 */
-	const recover = (runId: string, attemptsLeft: number = AUTOMATION_RUN_RECOVER_ATTEMPTS): void => {
+	const recover = (runId: string, attemptsLeft: number = AUTOMATION_RUN_RECOVER_ATTEMPTS, chain: number = startRecovery(runId)): void => {
 		readsInFlight.value = new Set([...readsInFlight.value, runId]);
 
 		void runsStore
 			.get({ id: runId, fresh: true })
-			.then((): void => clearFailures(runId))
+			.then((): void => {
+				if (recoverChains.get(runId) === chain) {
+					clearFailures(runId);
+				}
+			})
 			.catch((error: unknown): void => {
-				if ((error instanceof AutomationsApiException && error.code === 404) || disposed) {
+				if (disposed || recoverChains.get(runId) !== chain) {
+					return;
+				}
+
+				if (error instanceof AutomationsApiException && error.code === 404) {
+					recoverChains.delete(runId);
+
 					return;
 				}
 
 				if (attemptsLeft > 1) {
-					const retry = setTimeout((): void => {
-						recoverRetries.delete(retry);
+					recoverRetries.set(
+						runId,
+						setTimeout((): void => {
+							recoverRetries.delete(runId);
 
-						recover(runId, attemptsLeft - 1);
-					}, AUTOMATION_RUN_RECOVER_RETRY_MS);
-
-					recoverRetries.add(retry);
+							recover(runId, attemptsLeft - 1, chain);
+						}, AUTOMATION_RUN_RECOVER_RETRY_MS)
+					);
 
 					return;
 				}
+
+				recoverChains.delete(runId);
 
 				const run = runsStore.findById(runId);
 
@@ -431,11 +471,12 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	onScopeDispose((): void => {
 		disposed = true;
 
-		for (const retry of recoverRetries) {
+		for (const retry of recoverRetries.values()) {
 			clearTimeout(retry);
 		}
 
 		recoverRetries.clear();
+		recoverChains.clear();
 
 		hold([]);
 	});
