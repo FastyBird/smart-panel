@@ -6,6 +6,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.da
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/microphone.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/motion.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/object_detection.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/sound_detection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
@@ -42,7 +44,16 @@ class CameraDeviceView extends DeviceView
 
   @override
   CameraChannelView get cameraChannel =>
-      channels.whereType<CameraChannelView>().first;
+      selectMainCameraChannel(cameraChannels)!;
+
+  List<CameraChannelView> get cameraChannels =>
+      channels.whereType<CameraChannelView>().toList();
+
+  List<ObjectDetectionChannelView> get objectDetectionChannels =>
+      channels.whereType<ObjectDetectionChannelView>().toList();
+
+  List<SoundDetectionChannelView> get soundDetectionChannels =>
+      channels.whereType<SoundDetectionChannelView>().toList();
 
   @override
   DeviceInformationChannelView get deviceInformationChannel =>

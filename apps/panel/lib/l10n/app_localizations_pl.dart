@@ -3408,6 +3408,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_label_motion => 'Ruch';
 
   @override
+  String get sensor_label_object_detection => 'Wykrywanie obiektów';
+
+  @override
+  String get sensor_label_sound_detection => 'Wykrywanie dźwięku';
+
+  @override
   String get sensor_label_occupancy => 'Obecność';
 
   @override

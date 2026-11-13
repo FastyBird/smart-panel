@@ -1006,6 +1006,8 @@
   "sensor_label_voc": "VOC",
   "sensor_label_particulate_matter": "Pevné častice",
   "sensor_label_motion": "Pohyb",
+  "sensor_label_object_detection": "Detekcia objektov",
+  "sensor_label_sound_detection": "Detekcia zvuku",
   "sensor_label_occupancy": "Prítomnosť",
   "sensor_label_contact": "Kontakt",
   "sensor_label_leak": "Únik",

@@ -292,7 +292,9 @@
 				"thermostat": "Manages climate control systems, allowing adjustments of heating, cooling, and fan settings.",
 				"valve": "Controls fluid or gas valves, managing open/close states or flow rates.",
 				"volatile_organic_compounds": "Monitors the concentration of VOCs in the air to track pollution or air quality.",
-				"window_covering": "Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments."
+				"window_covering": "Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments.",
+				"object_detection": "Reports whether a camera or sensor currently detects an object of one type, such as a person or a vehicle.",
+				"sound_detection": "Reports whether a camera or sensor currently hears a sound of one type, such as breaking glass or a siren."
 			},
 			"selectPlugin": "To create a new channel, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific channel type."
 		},
@@ -837,7 +839,9 @@
 			"volatile_organic_compounds": "Volatile organic compounds",
 			"window_covering": "Window covering",
 			"analog_input": "Analog input",
-			"binary_input": "Binary input"
+			"binary_input": "Binary input",
+			"object_detection": "Object detection",
+			"sound_detection": "Sound detection"
 		},
 		"channelsProperties": {
 			"generic": "Generic",
@@ -943,7 +947,9 @@
 			"water_tank_level": "Water tank level",
 			"zoom": "Zoom",
 			"unit": "Unit",
-			"value": "Value"
+			"value": "Value",
+			"object_type": "Object type",
+			"sound_type": "Sound type"
 		}
 	},
 	"hidden": {

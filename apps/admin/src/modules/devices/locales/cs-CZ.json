@@ -292,7 +292,9 @@
 				"thermostat": "Spravuje systémy řízení klimatu a umožňuje nastavení topení, chlazení a ventilátoru.",
 				"valve": "Ovládá ventily pro kapaliny nebo plyny a řídí stavy otevření/zavření nebo průtok.",
 				"volatile_organic_compounds": "Monitoruje koncentraci těkavých organických sloučenin (VOC) ve vzduchu pro sledování znečištění nebo kvality vzduchu.",
-				"window_covering": "Ovládá okenní krytiny jako žaluzie, záclony a rolety včetně nastavení polohy a náklonu."
+				"window_covering": "Ovládá okenní krytiny jako žaluzie, záclony a rolety včetně nastavení polohy a náklonu.",
+				"object_detection": "Hlásí, zda kamera nebo senzor právě detekuje objekt jednoho typu, například osobu nebo vozidlo.",
+				"sound_detection": "Hlásí, zda kamera nebo senzor právě slyší zvuk jednoho typu, například tříštící se sklo nebo sirénu."
 			},
 			"selectPlugin": "Pro vytvoření nového kanálu vyberte prosím kompatibilní plugin ze seznamu. Pluginy poskytují potřebné konfigurační možnosti pro konkrétní typ kanálu."
 		},
@@ -837,7 +839,9 @@
 			"volatile_organic_compounds": "Těkavé organické sloučeniny",
 			"window_covering": "Okenní krytina",
 			"analog_input": "Analogový vstup",
-			"binary_input": "Binární vstup"
+			"binary_input": "Binární vstup",
+			"object_detection": "Detekce objektů",
+			"sound_detection": "Detekce zvuku"
 		},
 		"channelsProperties": {
 			"generic": "Obecná",
@@ -943,7 +947,9 @@
 			"water_tank_level": "Hladina zásobníku vody",
 			"zoom": "Přiblížení",
 			"unit": "Jednotka",
-			"value": "Hodnota"
+			"value": "Hodnota",
+			"object_type": "Typ objektu",
+			"sound_type": "Typ zvuku"
 		}
 	},
 	"hidden": {

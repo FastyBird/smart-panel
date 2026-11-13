@@ -8,6 +8,7 @@ class HomeAssistantChannelModel extends ChannelModel {
     required super.id,
     super.category = DevicesModuleChannelCategory.generic,
     super.name,
+    super.identifier,
     super.description,
     required super.device,
     super.parent,
@@ -54,6 +55,7 @@ class HomeAssistantChannelModel extends ChannelModel {
       id: json['id'],
       category: category,
       name: json['name'],
+      identifier: json['identifier'],
       description: json['description'],
       device: json['device'],
       parent: json['parent'] != null

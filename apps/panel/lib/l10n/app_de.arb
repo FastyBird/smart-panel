@@ -1006,6 +1006,8 @@
   "sensor_label_voc": "VOC",
   "sensor_label_particulate_matter": "Feinstaub",
   "sensor_label_motion": "Bewegung",
+  "sensor_label_object_detection": "Objekterkennung",
+  "sensor_label_sound_detection": "Geräuscherkennung",
   "sensor_label_occupancy": "Belegung",
   "sensor_label_contact": "Kontakt",
   "sensor_label_leak": "Leck",

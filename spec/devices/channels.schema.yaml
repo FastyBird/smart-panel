@@ -179,6 +179,7 @@ definitions:
       - mode
       - mute
       - natural_breeze
+      - object_type
       - obstruction
       - "on"
       - orientation
@@ -201,6 +202,7 @@ definitions:
       - saturation
       - serial_number
       - shuffle
+      - sound_type
       - source
       - source_label
       - state
@@ -345,6 +347,7 @@ patternProperties:
           - microphone
           - motion
           - nitrogen_dioxide
+          - object_detection
           - occupancy
           - outlet
           - ozone
@@ -352,6 +355,7 @@ patternProperties:
           - projector
           - robot_vacuum
           - smoke
+          - sound_detection
           - speaker
           - sulphur_dioxide
           - switcher

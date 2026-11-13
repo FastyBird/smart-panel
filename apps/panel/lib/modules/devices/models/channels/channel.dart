@@ -6,6 +6,7 @@ abstract class ChannelModel extends Model {
 
   final DevicesModuleChannelCategory _category;
 
+  final String? _identifier;
   final String? _name;
   final String? _description;
 
@@ -19,6 +20,7 @@ abstract class ChannelModel extends Model {
     required super.id,
     required String type,
     DevicesModuleChannelCategory category = DevicesModuleChannelCategory.generic,
+    String? identifier,
     String? name,
     String? description,
     required String device,
@@ -29,6 +31,7 @@ abstract class ChannelModel extends Model {
     super.updatedAt,
   })  : _type = type,
         _category = category,
+        _identifier = identifier,
         _name = name,
         _description = description,
         _device = device,
@@ -39,6 +42,9 @@ abstract class ChannelModel extends Model {
   String get type => _type;
 
   DevicesModuleChannelCategory get category => _category;
+
+  /// Channel identifier, unique within its device (e.g. `main`, `camera.package`)
+  String? get identifier => _identifier;
 
   String? get name => _name;
 

@@ -40,6 +40,10 @@ class ChannelView {
 
   String get type => _type;
 
+  /// Channel identifier within its device (e.g. `main`, `camera.package`).
+  /// Assigned by the channel mapper after construction.
+  String? identifier;
+
   DevicesModuleChannelCategory get category => _category;
 
   String get name => _name ?? (_category.json ?? _category.toString());

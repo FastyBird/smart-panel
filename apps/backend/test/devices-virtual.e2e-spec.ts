@@ -5159,7 +5159,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 		});
 		try {
 			const expectedNames = prepared.migrations.map((migration) => migration.name ?? migration.constructor.name).sort();
-			expect(expectedNames).toHaveLength(59);
+			expect(expectedNames).toHaveLength(60);
 			expect(expectedNames).toContain('FenceClimateAutomationLifecycle1000000000049');
 			expect(expectedNames).toContain('AddSpaceModeSchedules1000000000050');
 			expect(expectedNames).toContain('AddSpaceOccupancy1000000000051');
@@ -5170,6 +5170,7 @@ describe('P05b1b default migrated thermostat HTTP consumer', () => {
 			expect(expectedNames).toContain('AddAutomations1000000000056');
 			expect(expectedNames).toContain('AddAutomationRuns1000000000057');
 			expect(expectedNames).toContain('AddModbusLongPress1000000000058');
+			expect(expectedNames).toContain('AddDetectionCategories1000000000059');
 			const applied = await prepared.runMigrations({ transaction: 'each' });
 			expect(applied.map((migration) => migration.name).sort()).toEqual(expectedNames);
 		} finally {

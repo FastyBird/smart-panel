@@ -795,6 +795,10 @@ class SensorUtils {
         return l.sensor_label_particulate_matter;
       case DevicesModuleChannelCategory.motion:
         return l.sensor_label_motion;
+      case DevicesModuleChannelCategory.objectDetection:
+        return l.sensor_label_object_detection;
+      case DevicesModuleChannelCategory.soundDetection:
+        return l.sensor_label_sound_detection;
       case DevicesModuleChannelCategory.occupancy:
         return l.sensor_label_occupancy;
       case DevicesModuleChannelCategory.contact:

@@ -303,8 +303,9 @@ describe('migration transaction compatibility', () => {
 		await dataSource.initialize();
 
 		try {
+			// Later migrations that also set transaction = false are listed in the same message.
 			await expect(dataSource.runMigrations()).rejects.toThrow(
-				'Migrations "AddHardwareInputCategories1000000000026" override the transaction mode',
+				/Migrations "AddHardwareInputCategories1000000000026"(, "[A-Za-z]+\d{13}")* override the transaction mode/,
 			);
 			await expect(dataSource.query(`SELECT COUNT(*) AS count FROM "migrations"`)).resolves.toEqual([{ count: 0 }]);
 		} finally {

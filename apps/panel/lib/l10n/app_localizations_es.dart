@@ -3379,6 +3379,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sensor_label_motion => 'Movimiento';
 
   @override
+  String get sensor_label_object_detection => 'Detección de objetos';
+
+  @override
+  String get sensor_label_sound_detection => 'Detección de sonido';
+
+  @override
   String get sensor_label_occupancy => 'Ocupación';
 
   @override

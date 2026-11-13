@@ -37,6 +37,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/media_input
 import 'package:fastybird_smart_panel/modules/devices/views/channels/media_playback.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/microphone.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/motion.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/object_detection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/nitrogen_dioxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/occupancy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/outlet.dart';
@@ -44,6 +45,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/ozone.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/channels/pressure.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/robot_vacuum.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/smoke.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/sound_detection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/sulphur_dioxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/switcher.dart';
@@ -103,7 +105,7 @@ T _createChannelView<T extends ChannelView>(
     List<ValidationIssue> validationIssues,
   }) constructor,
 ) {
-  return constructor(
+  final view = constructor(
     id: model.id,
     type: model.type,
     category: model.category,
@@ -115,6 +117,10 @@ T _createChannelView<T extends ChannelView>(
     isValid: isValid,
     validationIssues: validationIssues,
   );
+
+  view.identifier = model.identifier;
+
+  return view;
 }
 
 Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<ChannelPropertyView>, bool, List<ValidationIssue>)>
@@ -223,6 +229,12 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   },
   DevicesModuleChannelCategory.motion: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, MotionChannelView.new);
+  },
+  DevicesModuleChannelCategory.objectDetection: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, ObjectDetectionChannelView.new);
+  },
+  DevicesModuleChannelCategory.soundDetection: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, SoundDetectionChannelView.new);
   },
   DevicesModuleChannelCategory.nitrogenDioxide: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, NitrogenDioxideChannelView.new);
@@ -333,6 +345,10 @@ IconData buildChannelIcon(DevicesModuleChannelCategory category) {
       return MdiIcons.pipeLeak;
     case DevicesModuleChannelCategory.motion:
       return MdiIcons.motionSensor;
+    case DevicesModuleChannelCategory.objectDetection:
+      return MdiIcons.accountSearch;
+    case DevicesModuleChannelCategory.soundDetection:
+      return MdiIcons.earHearing;
     case DevicesModuleChannelCategory.occupancy:
       return MdiIcons.accountCheck;
     case DevicesModuleChannelCategory.smoke:

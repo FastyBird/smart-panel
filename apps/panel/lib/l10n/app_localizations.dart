@@ -6142,6 +6142,18 @@ abstract class AppLocalizations {
   /// **'Motion'**
   String get sensor_label_motion;
 
+  /// No description provided for @sensor_label_object_detection.
+  ///
+  /// In en, this message translates to:
+  /// **'Object detection'**
+  String get sensor_label_object_detection;
+
+  /// No description provided for @sensor_label_sound_detection.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound detection'**
+  String get sensor_label_sound_detection;
+
   /// No description provided for @sensor_label_occupancy.
   ///
   /// In en, this message translates to:

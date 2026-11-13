@@ -3375,6 +3375,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sensor_label_motion => 'Bewegung';
 
   @override
+  String get sensor_label_object_detection => 'Objekterkennung';
+
+  @override
+  String get sensor_label_sound_detection => 'Geräuscherkennung';
+
+  @override
   String get sensor_label_occupancy => 'Belegung';
 
   @override
