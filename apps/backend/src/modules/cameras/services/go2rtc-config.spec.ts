@@ -49,11 +49,17 @@ describe('buildGo2rtcConfig', () => {
 	it('refuses an unsafe username and does not echo the password', () => {
 		expect(() => buildGo2rtcConfig({ ...options, username: 'Bad User' })).toThrow('Invalid go2rtc username');
 
+		let thrown: unknown;
+
 		try {
 			buildGo2rtcConfig({ ...options, password: 'bad pw "x"' });
 		} catch (e) {
-			expect((e as Error).message).not.toContain('bad pw');
+			thrown = e;
 		}
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).message).toContain('Invalid go2rtc password');
+		expect((thrown as Error).message).not.toContain('bad pw');
 	});
 
 	it.each([0, 70000, 1.5, Number.NaN])('refuses the port %s', (port) => {
