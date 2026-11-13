@@ -237,6 +237,9 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		try {
 			const { status, providerErrors } = await this.aggregator.aggregateWithErrors();
 
+			// First: it reads only the states, so nothing that fails further down can make a transition be missed
+			this.emitStateTransitions(status, providerErrors);
+
 			// Record transitions
 			try {
 				await this.eventsService.recordAlertTransitions(status.activeAlerts, status.armedState, status.alarmState);
@@ -260,8 +263,6 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 			// Emit status update
 			this.eventEmitter.emit(EventType.SECURITY_STATUS, status);
-
-			this.emitStateTransitions(status, providerErrors);
 
 			this.seeded = true;
 		} catch (error) {

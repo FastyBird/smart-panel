@@ -423,9 +423,11 @@ Added with AU-17.
   occurrences, device connection changes, scene runs, house mode changes and security transitions, and hands
   each event to the armed triggers, as the state tracker does for property values.
 - **Typed security transitions.** The security module emits `SecurityModule.State.Changed` with
-  `{ kind: 'armed' | 'alarm', from, to }`, once per state that changed. It is emitted by the state listener
-  next to `security:status`, which is unchanged. The state found when the backend starts is the baseline, not
-  a transition, and a state lost to a failing provider is not taken as a change to "none".
+  `{ kind: 'armed' | 'alarm', from, to }`, once per state that changed. It is emitted by the state listener as
+  soon as a recalculation has aggregated the status, before the alert bookkeeping and `security:status`, which
+  is unchanged, so a failure there can not lose a transition. The first read that knows a state is its
+  baseline, not a transition, and a state lost to a failing provider neither sets the baseline nor is taken as
+  a change to "none".
 - **Connection triggers fire on online/offline transitions only.** The state a device is in when the watch
   starts is read as the baseline; a change between two online states (`init` → `ready`), two offline states
   or to `unknown` starts nothing, and while the state before is not known the first change only sets it.

@@ -271,6 +271,25 @@ describe('SecurityStateListener', () => {
 			]);
 		});
 
+		it('still emits a transition when the acknowledgements of the alerts can not be read', async () => {
+			const findByIds = module?.get(SecurityAlertAckService).findByIds as jest.Mock;
+
+			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
+
+			findByIds.mockRejectedValue(new Error('Database is locked'));
+
+			await recalculate({
+				status: {
+					activeAlerts: [{ id: 'alarm:intrusion', timestamp: '2026-11-13T10:00:00.000Z' }],
+					armedState: ArmedState.ARMED_AWAY,
+					alarmState: AlarmState.TRIGGERED,
+				},
+				providerErrors: 0,
+			});
+
+			expect(transitions()).toEqual([{ kind: 'alarm', from: AlarmState.IDLE, to: AlarmState.TRIGGERED }]);
+		});
+
 		it('takes a state that is gone while every provider answered as a transition to none', async () => {
 			await recalculate(statusWith(ArmedState.ARMED_AWAY, AlarmState.IDLE));
 			await recalculate(statusWith(null, AlarmState.IDLE));
