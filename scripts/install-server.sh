@@ -138,7 +138,8 @@ get_version_id() {
 }
 
 get_arch() {
-	local arch=$(uname -m)
+	local arch
+	arch=$(uname -m)
 	case $arch in
 		armv7l|armv6l)
 			echo "armv7"
@@ -158,7 +159,8 @@ get_arch() {
 install_build_deps() {
 	print_step "Installing build dependencies..."
 
-	local distro=$(get_distro)
+	local distro
+	distro=$(get_distro)
 
 	case $distro in
 		debian|ubuntu|raspbian)
@@ -194,8 +196,10 @@ install_influxdb() {
 
 	print_step "Installing InfluxDB 1.8..."
 
-	local distro=$(get_distro)
-	local arch=$(uname -m)
+	local distro
+	distro=$(get_distro)
+	local arch
+	arch=$(uname -m)
 
 	case $distro in
 		debian|ubuntu|raspbian)
@@ -227,7 +231,7 @@ REPO
 
 	# Wait for InfluxDB to be ready
 	local ready=false
-	for i in $(seq 1 15); do
+	for _ in $(seq 1 15); do
 		if influx -execute "SHOW DATABASES" >/dev/null 2>&1; then
 			ready=true
 			break
@@ -252,7 +256,8 @@ install_nodejs() {
 	print_step "Checking Node.js installation..."
 
 	if command -v node &> /dev/null; then
-		local node_version=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+		local node_version
+		node_version=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
 		if [[ $node_version -ge $NODE_MIN_VERSION ]]; then
 			print_success "Node.js v$(node -v | cut -d'v' -f2) is installed"
 			return 0
@@ -265,7 +270,8 @@ install_nodejs() {
 
 	print_step "Installing Node.js v$NODE_MIN_VERSION..."
 
-	local distro=$(get_distro)
+	local distro
+	distro=$(get_distro)
 
 	case $distro in
 		debian|ubuntu|raspbian)
@@ -336,7 +342,8 @@ configure_service() {
 install_tailscale() {
 	print_step "Installing Tailscale..."
 
-	local distro=$(get_distro)
+	local distro
+	distro=$(get_distro)
 	local installed=false
 
 	# Every branch installs from a signed vendor package source for the
@@ -346,7 +353,8 @@ install_tailscale() {
 		debian|ubuntu|raspbian)
 			# Debian-family: add the signed keyring and apt source for the
 			# detected codename ourselves (same shape as install_influxdb()).
-			local codename=$(get_codename)
+			local codename
+			codename=$(get_codename)
 
 			if [[ "$codename" == "unknown" ]]; then
 				print_warning "Could not determine the ${distro} codename for the Tailscale apt source"
@@ -374,7 +382,8 @@ install_tailscale() {
 			fi
 			;;
 		centos|rhel|rocky|almalinux)
-			local version_id=$(get_version_id)
+			local version_id
+			version_id=$(get_version_id)
 			local major="${version_id%%.*}"
 			[[ -z "$major" || "$major" == "unknown" ]] && major="9"
 
@@ -412,7 +421,8 @@ install_tailscale() {
 }
 
 print_completion() {
-	local ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
+	local ip_addr
+	ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
 	[[ -z "$ip_addr" ]] && ip_addr="localhost"
 
 	echo ""
@@ -450,8 +460,10 @@ main() {
 	print_header
 
 	# System info
-	local distro=$(get_distro)
-	local arch=$(get_arch)
+	local distro
+	distro=$(get_distro)
+	local arch
+	arch=$(get_arch)
 	print_step "System: $distro ($arch)"
 	echo ""
 
