@@ -68,7 +68,8 @@
 		"aboutHouseModeSettings": "Režim domu",
 		"systemBackups": {
 			"list": "Systémové zálohy"
-		}
+		},
+		"aboutHouseLocation": "Poloha domu"
 	},
 	"subHeadings": {
 		"system": "Informácie o stave systému smart panelu",
@@ -169,7 +170,8 @@
 		},
 		"aboutLanguageSettings": "Nakonfigurujte jazyk rozhrania, časové pásmo, formát času a merné jednotky pre Smart Panel. Tieto nastavenia ovplyvňujú spôsob zobrazovania dátumov, časov, teplôt a meraní v celom systéme.",
 		"aboutSystemSettings": "Spravujte celosystémovú konfiguráciu logovania. Vyberte, ktoré úrovne závažnosti logov sa majú monitorovať a zobrazovať v aplikačných logoch.",
-		"aboutHouseModeSettings": "Nastavte aktuálny režim domu na ovládanie správania Smart Panelu a pripojených zariadení. Režim Doma je pre bežné obývanie, režim Preč keď nie je nikto doma a režim Noc pre spánok."
+		"aboutHouseModeSettings": "Nastavte aktuálny režim domu na ovládanie správania Smart Panelu a pripojených zariadení. Režim Doma je pre bežné obývanie, režim Preč keď nie je nikto doma a režim Noc pre spánok.",
+		"aboutHouseLocation": "Zemepisná šírka a dĺžka domu. Smart Panel z nich sám, bez služby počasia, počíta východ a západ slnka pre karty automatizácií východ slnka, západ slnka a deň alebo noc. Ak necháte obe polia prázdne, poloha sa odstráni."
 	},
 	"fields": {
 		"config": {
@@ -322,6 +324,22 @@
 				},
 				"validation": {
 					"required": "Režim domu je povinný"
+				}
+			},
+			"latitude": {
+				"title": "Zemepisná šírka",
+				"placeholder": "napr. 50.0755",
+				"validation": {
+					"range": "Zemepisná šírka musí byť číslo od -90 do 90",
+					"pair": "Zadajte zemepisnú šírku aj dĺžku, alebo nechajte obe polia prázdne"
+				}
+			},
+			"longitude": {
+				"title": "Zemepisná dĺžka",
+				"placeholder": "napr. 14.4378",
+				"validation": {
+					"range": "Zemepisná dĺžka musí byť číslo od -180 do 180",
+					"pair": "Zadajte zemepisnú šírku aj dĺžku, alebo nechajte obe polia prázdne"
 				}
 			}
 		},

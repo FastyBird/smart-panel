@@ -20,6 +20,8 @@ import { DevicePropertyInfo, DevicePropertyLookup } from './device-property.util
 import { manualStartNodeType } from './manual-start.node-type';
 import { createNotificationSendNodeType } from './notification-send.node-type';
 import { createSceneRunNodeType } from './scene-run.node-type';
+import { createSunDaylightNodeType } from './sun-daylight.node-type';
+import { createSunEventNodeType } from './sun-event.node-type';
 import { createTimeOfDayNodeType } from './time-of-day.node-type';
 import { createTimeWindowNodeType } from './time-window.node-type';
 import { createWaitUntilNodeType } from './wait-until.node-type';
@@ -53,7 +55,7 @@ export const toDevicePropertyInfo = (property: ChannelPropertyEntity): DevicePro
 
 /**
  * Builds the cards the automations module itself provides (ADR 0003, decision 13): the cards over the
- * core modules - devices, time, scenes and notifications - and the flow blocks: Delay, Wait until, Any and
+ * core modules - devices, time, the sun, scenes and notifications - and the flow blocks: Delay, Wait until, Any and
  * All. The cards are plain
  * objects that take only the part of a service they use, so each of them is tested without the
  * application; this service hands them the real services.
@@ -82,10 +84,12 @@ export class AutomationBuiltInNodeTypesService {
 			// Triggers
 			createDevicePropertyChangedNodeType({ tracker: this.stateTracker, findProperty }),
 			createTimeOfDayNodeType(this.timeSource),
+			createSunEventNodeType(this.timeSource),
 			manualStartNodeType,
 			// Conditions
 			createDevicePropertyCompareNodeType({ tracker: this.stateTracker, findProperty }),
 			createTimeWindowNodeType(this.timeSource),
+			createSunDaylightNodeType(this.timeSource),
 			// Actions
 			createDevicePropertySetNodeType({
 				commands: {

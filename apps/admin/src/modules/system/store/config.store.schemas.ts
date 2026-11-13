@@ -27,6 +27,9 @@ export const SystemConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(SYSTEM_MODULE_NAME),
 	language: z.nativeEnum(SystemModuleLanguage),
 	timezone: z.string(),
+	// Defaulted rather than required so a backend that predates the house location still parses
+	latitude: z.number().nullable().default(null),
+	longitude: z.number().nullable().default(null),
 	timeFormat: z.nativeEnum(SystemModuleTimeFormat),
 	numberFormat: z.nativeEnum(SystemModuleNumberFormat),
 	temperatureUnit: z.nativeEnum(TemperatureUnit),
@@ -51,6 +54,9 @@ export const SystemConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Confi
 		type: z.literal(SYSTEM_MODULE_NAME),
 		language: z.nativeEnum(SystemModuleLanguage).optional(),
 		timezone: z.string().optional(),
+		// null clears the house location
+		latitude: z.number().min(-90).max(90).nullable().optional(),
+		longitude: z.number().min(-180).max(180).nullable().optional(),
 		time_format: z.nativeEnum(SystemModuleTimeFormat).optional(),
 		number_format: z.nativeEnum(SystemModuleNumberFormat).optional(),
 		temperature_unit: z.nativeEnum(TemperatureUnit).optional(),
@@ -69,6 +75,9 @@ export const SystemConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSc
 		type: z.literal(SYSTEM_MODULE_NAME),
 		language: z.nativeEnum(SystemModuleLanguage),
 		timezone: z.string(),
+		// Defaulted so a backend that predates the house location still parses
+		latitude: z.number().nullable().default(null),
+		longitude: z.number().nullable().default(null),
 		time_format: z.nativeEnum(SystemModuleTimeFormat),
 		number_format: z.nativeEnum(SystemModuleNumberFormat),
 		temperature_unit: z.nativeEnum(TemperatureUnit),

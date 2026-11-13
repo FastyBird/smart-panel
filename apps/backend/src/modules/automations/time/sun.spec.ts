@@ -1,0 +1,274 @@
+import { localTimeAt } from './house-time';
+import {
+	GeoLocation,
+	SUN_HORIZON_ALTITUDE,
+	isDaytimeAt,
+	isGeoLocation,
+	meanSolarDateAt,
+	solarDay,
+	sunAltitudeAt,
+	sunEventDueAt,
+	sunEventsAround,
+	sunTimesOn,
+} from './sun';
+
+const MINUTE = 60_000;
+
+const dms = (degrees: number, minutes: number): number => Math.sign(degrees) * (Math.abs(degrees) + minutes / 60);
+
+// The coordinates timeanddate.com gives for each city, which its tables below are computed for
+const PRAGUE: GeoLocation = { latitude: dms(50, 5), longitude: dms(14, 25) };
+const SYDNEY: GeoLocation = { latitude: dms(-33, 52), longitude: dms(151, 13) };
+const AUCKLAND: GeoLocation = { latitude: dms(-36, 51), longitude: dms(174, 46) };
+const HONOLULU: GeoLocation = { latitude: dms(21, 18), longitude: dms(-157, 51) };
+const TROMSO: GeoLocation = { latitude: dms(69, 39), longitude: dms(18, 57) };
+
+/** The local wall-clock time of an instant, as minutes since midnight with seconds */
+const localMinutes = (instant: number, timezone: string): number => {
+	const local = localTimeAt(instant, timezone);
+
+	return local.minutes + (instant % MINUTE) / MINUTE;
+};
+
+const hm = (time: string): number => {
+	const [hours, minutes] = time.split(':').map(Number);
+
+	return hours * 60 + minutes;
+};
+
+describe('sun', () => {
+	/*
+	 * Reference times from the sunrise and sunset tables of timeanddate.com for 2026 (local time, standard
+	 * refraction, shown to the minute). Each covers a case the calculation must get right: a daylight
+	 * saving change both ways, the southern hemisphere, a timezone far east and one far west of Greenwich,
+	 * and a location north of the polar circle.
+	 */
+	describe.each([
+		{
+			place: 'Prague, the start of daylight saving',
+			location: PRAGUE,
+			timezone: 'Europe/Prague',
+			days: [
+				['2026-03-28', '05:47', '18:27'],
+				['2026-03-29', '06:45', '19:29'],
+				['2026-03-30', '06:43', '19:30'],
+			],
+		},
+		{
+			place: 'Prague, the end of daylight saving',
+			location: PRAGUE,
+			timezone: 'Europe/Prague',
+			days: [
+				['2026-10-24', '07:38', '17:53'],
+				['2026-10-25', '06:40', '16:51'],
+				['2026-10-26', '06:42', '16:49'],
+			],
+		},
+		{
+			place: 'Sydney, southern hemisphere, the end of daylight saving',
+			location: SYDNEY,
+			timezone: 'Australia/Sydney',
+			days: [
+				['2026-04-04', '07:09', '18:46'],
+				['2026-04-05', '06:09', '17:45'],
+				['2026-04-06', '06:10', '17:44'],
+			],
+		},
+		{
+			place: 'Auckland, UTC+13, the local day ahead of the UTC day',
+			location: AUCKLAND,
+			timezone: 'Pacific/Auckland',
+			days: [
+				['2026-01-14', '06:16', '20:42'],
+				['2026-01-15', '06:17', '20:42'],
+				['2026-01-16', '06:18', '20:41'],
+			],
+		},
+		{
+			place: 'Honolulu, UTC-10, the sunset on the next UTC day',
+			location: HONOLULU,
+			timezone: 'Pacific/Honolulu',
+			days: [
+				['2026-06-20', '05:50', '19:16'],
+				['2026-06-21', '05:50', '19:16'],
+			],
+		},
+		{
+			place: 'Tromsø, north of the polar circle, at the equinox',
+			location: TROMSO,
+			timezone: 'Europe/Oslo',
+			days: [
+				['2026-03-19', '05:48', '17:57'],
+				['2026-03-20', '05:43', '18:01'],
+				['2026-03-21', '05:39', '18:05'],
+			],
+		},
+		{
+			place: 'Tromsø, a short day before the polar night',
+			location: TROMSO,
+			timezone: 'Europe/Oslo',
+			days: [['2026-11-13', '09:13', '13:42']],
+		},
+	])('$place', ({ location, timezone, days }) => {
+		it.each(days)('%s: sunrise %s, sunset %s, within a minute', (date, sunrise, sunset) => {
+			const times = sunTimesOn(date, location, timezone);
+
+			expect(times.polar).toBeNull();
+			expect(times.sunrise).not.toBeNull();
+			expect(times.sunset).not.toBeNull();
+
+			// The events happen on the local date asked for
+			expect(localTimeAt(times.sunrise, timezone).date).toBe(date);
+			expect(localTimeAt(times.sunset, timezone).date).toBe(date);
+
+			expect(Math.abs(localMinutes(times.sunrise, timezone) - hm(sunrise))).toBeLessThanOrEqual(1);
+			expect(Math.abs(localMinutes(times.sunset, timezone) - hm(sunset))).toBeLessThanOrEqual(1);
+		});
+	});
+
+	describe('a day without sunrise or sunset', () => {
+		it('has neither on a polar day, and it is day all through it', () => {
+			expect(sunTimesOn('2026-06-21', TROMSO, 'Europe/Oslo')).toEqual({
+				date: '2026-06-21',
+				sunrise: null,
+				sunset: null,
+				polar: 'day',
+			});
+
+			for (let hour = 0; hour < 24; hour += 1) {
+				expect(isDaytimeAt(Date.parse(`2026-06-21T${String(hour).padStart(2, '0')}:00:00Z`), TROMSO)).toBe(true);
+			}
+		});
+
+		it('has neither in the polar night, and it is night all through it', () => {
+			expect(sunTimesOn('2026-12-21', TROMSO, 'Europe/Oslo')).toEqual({
+				date: '2026-12-21',
+				sunrise: null,
+				sunset: null,
+				polar: 'night',
+			});
+
+			for (let hour = 0; hour < 24; hour += 1) {
+				expect(isDaytimeAt(Date.parse(`2026-12-21T${String(hour).padStart(2, '0')}:00:00Z`), TROMSO)).toBe(false);
+			}
+		});
+
+		it('has no event around an instant of the polar day or night', () => {
+			expect(sunEventsAround(Date.parse('2026-06-21T12:00:00Z'), TROMSO)).toEqual([]);
+			expect(sunEventsAround(Date.parse('2026-12-21T12:00:00Z'), TROMSO)).toEqual([]);
+		});
+	});
+
+	describe('the local day', () => {
+		it('anchors the solar day to the date at the longitude, not to the UTC date', () => {
+			// The Auckland day of 15 January has its noon at about 00:20 UTC on that date
+			const auckland = solarDay('2026-01-15', AUCKLAND);
+
+			expect(new Date(auckland.noon).toISOString().slice(0, 10)).toBe('2026-01-15');
+			// ... and its sunrise on the UTC day before
+			expect(new Date(auckland.sunrise).toISOString().slice(0, 10)).toBe('2026-01-14');
+
+			// The Honolulu day of 21 June ends on the next UTC day
+			const honolulu = solarDay('2026-06-21', HONOLULU);
+
+			expect(new Date(honolulu.sunset).toISOString().slice(0, 10)).toBe('2026-06-22');
+		});
+
+		it('tells the mean solar date at a longitude', () => {
+			expect(meanSolarDateAt(Date.parse('2026-01-14T13:00:00Z'), AUCKLAND.longitude)).toBe('2026-01-15');
+			expect(meanSolarDateAt(Date.parse('2026-06-22T05:00:00Z'), HONOLULU.longitude)).toBe('2026-06-21');
+		});
+
+		it('refuses a date that is not a calendar date', () => {
+			expect(() => solarDay('2026-02-30', PRAGUE)).toThrow();
+			expect(() => sunTimesOn('tomorrow', PRAGUE, 'Europe/Prague')).toThrow();
+		});
+	});
+
+	describe('the position of the sun', () => {
+		it('is at the sunrise altitude at sunrise and sunset', () => {
+			const day = solarDay('2026-03-20', PRAGUE);
+
+			expect(sunAltitudeAt(day.sunrise, PRAGUE)).toBeCloseTo(SUN_HORIZON_ALTITUDE, 1);
+			expect(sunAltitudeAt(day.sunset, PRAGUE)).toBeCloseTo(SUN_HORIZON_ALTITUDE, 1);
+		});
+
+		it('turns from night to day at sunrise and back at sunset', () => {
+			const { sunrise, sunset } = solarDay('2026-03-20', PRAGUE) as { sunrise: number; sunset: number };
+
+			expect(isDaytimeAt(sunrise - MINUTE, PRAGUE)).toBe(false);
+			expect(isDaytimeAt(sunrise + MINUTE, PRAGUE)).toBe(true);
+			expect(isDaytimeAt(sunset - MINUTE, PRAGUE)).toBe(true);
+			expect(isDaytimeAt(sunset + MINUTE, PRAGUE)).toBe(false);
+		});
+	});
+
+	describe('a sun event due in a minute', () => {
+		const sunset = solarDay('2026-03-20', PRAGUE).sunset;
+		const minuteOf = (instant: number): number => Math.floor(instant / MINUTE) * MINUTE;
+
+		it('is due in the minute that holds the event', () => {
+			const due = sunEventDueAt({ event: 'sunset', offsetMinutes: 0 }, minuteOf(sunset), PRAGUE);
+
+			expect(due).toEqual({ event: 'sunset', day: '2026-03-20', instant: sunset });
+			expect(sunEventDueAt({ event: 'sunset', offsetMinutes: 0 }, minuteOf(sunset) - MINUTE, PRAGUE)).toBeNull();
+			expect(sunEventDueAt({ event: 'sunset', offsetMinutes: 0 }, minuteOf(sunset) + MINUTE, PRAGUE)).toBeNull();
+			expect(sunEventDueAt({ event: 'sunrise', offsetMinutes: 0 }, minuteOf(sunset), PRAGUE)).toBeNull();
+		});
+
+		it.each([-360, -30, 45, 360])('moves the instant by an offset of %i minutes', (offsetMinutes) => {
+			const fireAt = sunset + offsetMinutes * MINUTE;
+
+			expect(sunEventDueAt({ event: 'sunset', offsetMinutes }, minuteOf(fireAt), PRAGUE)).toEqual({
+				event: 'sunset',
+				day: '2026-03-20',
+				instant: sunset,
+			});
+			expect(sunEventDueAt({ event: 'sunset', offsetMinutes }, minuteOf(sunset), PRAGUE)).toBeNull();
+		});
+
+		it('is due exactly once a day, minute by minute over a week', () => {
+			const days: string[] = [];
+
+			for (
+				let minute = Date.parse('2026-03-25T00:00:00Z');
+				minute < Date.parse('2026-04-01T00:00:00Z');
+				minute += MINUTE
+			) {
+				const due = sunEventDueAt({ event: 'sunrise', offsetMinutes: -20 }, minute, PRAGUE);
+
+				if (due) days.push(due.day);
+			}
+
+			// Daylight saving starts on 29 March; the event is an instant, so it is neither lost nor repeated
+			expect(days).toEqual([
+				'2026-03-25',
+				'2026-03-26',
+				'2026-03-27',
+				'2026-03-28',
+				'2026-03-29',
+				'2026-03-30',
+				'2026-03-31',
+			]);
+		});
+
+		it('has no sunrise in Tromsø on the days of the midnight sun and the polar night', () => {
+			let withSunrise = 0;
+
+			for (let day = Date.parse('2026-01-01'); day < Date.parse('2027-01-01'); day += 24 * 60 * MINUTE) {
+				if (solarDay(new Date(day).toISOString().slice(0, 10), TROMSO).sunrise !== null) withSunrise += 1;
+			}
+
+			// About two months of midnight sun and six weeks of polar night
+			expect(withSunrise).toBeGreaterThan(220);
+			expect(withSunrise).toBeLessThan(270);
+		});
+	});
+
+	it('accepts only a location with both coordinates in range', () => {
+		expect(isGeoLocation({ latitude: 50, longitude: 14 })).toBe(true);
+		expect(isGeoLocation({ latitude: 90.5, longitude: 14 })).toBe(false);
+		expect(isGeoLocation({ latitude: 50, longitude: null })).toBe(false);
+		expect(isGeoLocation(null)).toBe(false);
+	});
+});

@@ -595,7 +595,10 @@ export class AutomationEngine {
 		const compiled: CompiledNode[] = [];
 		const plan: RunPlan = { nodes: new Map(), outgoing: new Map() };
 
-		const issues = applyGraphSavePolicy(await validateGraph(automation.graph, this.lookup), {
+		// What a node type needs but is not set up does not stop an automation that is loaded: it was
+		// enabled while it was set up, and the card copes without it (no sun trigger fires without a house
+		// location) until it is set up again
+		const issues = applyGraphSavePolicy(await validateGraph(automation.graph, this.lookup, { availability: false }), {
 			enabled: automation.enabled,
 		}).issues;
 

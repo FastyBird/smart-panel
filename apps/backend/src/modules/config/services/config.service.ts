@@ -286,6 +286,29 @@ export class ConfigService {
 		return modulesArray;
 	}
 
+	/**
+	 * Whether the configuration file holds a value for a key of a module, null included. A key added in a
+	 * newer version is missing from a file written before it, which tells a value that was never set from
+	 * one that was set or cleared on purpose - the model of the module would give both its default.
+	 */
+	isModuleConfigValueStored(module: string, key: string): boolean {
+		const file = path.resolve(this.configPath, this.filename);
+
+		if (!fs.existsSync(file)) {
+			return false;
+		}
+
+		const parsed = yaml.parse(fs.readFileSync(file, 'utf8')) as unknown;
+		const modules = this.isRecord(parsed) ? parsed.modules : undefined;
+		const stored = this.isRecord(modules) ? modules[module] : undefined;
+
+		return this.isRecord(stored) && Object.hasOwn(stored, key);
+	}
+
+	private isRecord(value: unknown): value is Record<string, unknown> {
+		return typeof value === 'object' && value !== null && !Array.isArray(value);
+	}
+
 	getConfig(): AppConfigModel {
 		this.logger.log('Retrieving full configuration');
 

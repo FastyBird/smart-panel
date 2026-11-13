@@ -43,10 +43,13 @@ describe('graph save policy', () => {
 			expect(isBlockingGraphIssue(issue(code), { enabled: true })).toBe(true);
 		});
 
-		it.each(['invalid_config', 'no_trigger'])('%s stops a save only when the automation would be enabled', (code) => {
-			expect(isBlockingGraphIssue(issue(code), { enabled: false })).toBe(false);
-			expect(isBlockingGraphIssue(issue(code), { enabled: true })).toBe(true);
-		});
+		it.each(['invalid_config', 'no_trigger', 'node_type_unavailable'])(
+			'%s stops a save only when the automation would be enabled',
+			(code) => {
+				expect(isBlockingGraphIssue(issue(code), { enabled: false })).toBe(false);
+				expect(isBlockingGraphIssue(issue(code), { enabled: true })).toBe(true);
+			},
+		);
 
 		it('a warning never stops a save', () => {
 			expect(isBlockingGraphIssue(issue('unreachable_node', 'warning'), { enabled: true })).toBe(false);

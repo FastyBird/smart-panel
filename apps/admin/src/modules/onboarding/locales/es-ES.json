@@ -83,7 +83,7 @@
 			"myLocation": "Mi ubicación"
 		},
 		"orEnterManually": "O ingresa las coordenadas manualmente",
-		"hint": "Puedes configurar tu ubicación más tarde en los ajustes del clima.",
+		"hint": "Puedes cambiar más tarde la ubicación de la casa, a partir de la cual se calculan el amanecer y el atardecer, en los ajustes del sistema, y las ubicaciones del clima en los ajustes del clima.",
 		"messages": {
 			"error": "No se pudo guardar la ubicación.",
 			"geolocationNotSupported": "La geolocalización no es compatible con tu navegador.",

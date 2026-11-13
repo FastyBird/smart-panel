@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -57,6 +57,42 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@Expose()
 	@IsString()
 	timezone: string = 'Europe/Prague';
+
+	/*
+	 * The house location, used by the sun cards of the automations. A configuration written before the
+	 * location existed is defaulted from the primary weather location at start (HouseLocationDefaultService).
+	 */
+	@ApiProperty({
+		description:
+			'Latitude of the house in degrees, north positive. Used to compute sunrise and sunset locally; null while the house location is not set.',
+		type: 'number',
+		minimum: -90,
+		maximum: 90,
+		nullable: true,
+		example: 50.0755,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-90)
+	@Max(90)
+	latitude: number | null = null;
+
+	@ApiProperty({
+		description:
+			'Longitude of the house in degrees, east positive. Used to compute sunrise and sunset locally; null while the house location is not set.',
+		type: 'number',
+		minimum: -180,
+		maximum: 180,
+		nullable: true,
+		example: 14.4378,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-180)
+	@Max(180)
+	longitude: number | null = null;
 
 	@ApiProperty({
 		name: 'time_format',

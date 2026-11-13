@@ -249,6 +249,44 @@
 			</el-select>
 		</el-form-item>
 
+		<el-alert
+			type="info"
+			:title="t('systemModule.headings.aboutHouseLocation')"
+			:description="t('systemModule.texts.aboutHouseLocation')"
+			:closable="false"
+		/>
+
+		<div class="flex flex-row items-start gap-4 mt-3">
+			<el-form-item
+				:label="t('systemModule.fields.config.latitude.title')"
+				prop="latitude"
+				class="flex-1"
+			>
+				<el-input
+					v-model="model.latitude"
+					:placeholder="t('systemModule.fields.config.latitude.placeholder')"
+					name="latitude"
+					type="number"
+					step="0.0001"
+					clearable
+				/>
+			</el-form-item>
+			<el-form-item
+				:label="t('systemModule.fields.config.longitude.title')"
+				prop="longitude"
+				class="flex-1"
+			>
+				<el-input
+					v-model="model.longitude"
+					:placeholder="t('systemModule.fields.config.longitude.placeholder')"
+					name="longitude"
+					type="number"
+					step="0.0001"
+					clearable
+				/>
+			</el-form-item>
+		</div>
+
 		<el-divider />
 
 		<el-form-item
@@ -312,10 +350,11 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElOption, ElOptionGroup, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElOptionGroup, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { ISystemConfigEditForm } from '../schemas/config.types';
+import { houseLocationValidator } from '../utils/house-location.utils';
 
 import type { ISystemConfigFormProps } from './system-config-form.types';
 
@@ -437,6 +476,24 @@ const rules = reactive<FormRules<ISystemConfigEditForm>>({
 	pressureUnit: [{ required: true, message: t('systemModule.fields.config.pressureUnit.validation.required'), trigger: 'change' }],
 	precipitationUnit: [{ required: true, message: t('systemModule.fields.config.precipitationUnit.validation.required'), trigger: 'change' }],
 	distanceUnit: [{ required: true, message: t('systemModule.fields.config.distanceUnit.validation.required'), trigger: 'change' }],
+	latitude: [
+		{
+			validator: houseLocationValidator(() => model.longitude, 90, {
+				range: t('systemModule.fields.config.latitude.validation.range'),
+				pair: t('systemModule.fields.config.latitude.validation.pair'),
+			}),
+			trigger: ['change', 'blur'],
+		},
+	],
+	longitude: [
+		{
+			validator: houseLocationValidator(() => model.latitude, 180, {
+				range: t('systemModule.fields.config.longitude.validation.range'),
+				pair: t('systemModule.fields.config.longitude.validation.pair'),
+			}),
+			trigger: ['change', 'blur'],
+		},
+	],
 	logLevels: [
 		{ required: true, message: t('systemModule.fields.config.logLevels.validation.required'), trigger: 'change' },
 		{

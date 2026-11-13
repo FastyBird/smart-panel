@@ -83,7 +83,7 @@
 			"myLocation": "Moja lokalizacja"
 		},
 		"orEnterManually": "Lub wprowadź współrzędne ręcznie",
-		"hint": "Lokalizację możesz skonfigurować później w ustawieniach pogody.",
+		"hint": "Lokalizację domu, na podstawie której obliczany jest wschód i zachód słońca, możesz później zmienić w ustawieniach systemu, a lokalizacje pogody w ustawieniach pogody.",
 		"messages": {
 			"error": "Nie udało się zapisać lokalizacji.",
 			"geolocationNotSupported": "Geolokalizacja nie jest obsługiwana przez Twoją przeglądarkę.",

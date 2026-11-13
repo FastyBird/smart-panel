@@ -68,7 +68,8 @@
 		"aboutHouseModeSettings": "Hausmodus",
 		"systemBackups": {
 			"list": "System-Backups"
-		}
+		},
+		"aboutHouseLocation": "Standort des Hauses"
 	},
 	"subHeadings": {
 		"system": "Smart Panel Systemstatus-Informationen",
@@ -169,7 +170,8 @@
 		},
 		"aboutLanguageSettings": "Konfigurieren Sie die Oberflächensprache, Zeitzone, das Zeitformat und die Maßeinheiten für das Smart Panel. Diese Einstellungen beeinflussen, wie Datum, Uhrzeit, Temperaturen und Messungen im gesamten System angezeigt werden.",
 		"aboutSystemSettings": "Verwalten Sie die systemweite Protokollierungskonfiguration. Wählen Sie, welche Protokollschweregrade überwacht und in den Anwendungsprotokollen angezeigt werden sollen.",
-		"aboutHouseModeSettings": "Legen Sie den aktuellen Hausmodus fest, um zu steuern, wie sich das Smart Panel und die verbundenen Geräte verhalten. Der Zuhause-Modus ist für normale Anwesenheit, der Abwesend-Modus für wenn niemand zu Hause ist und der Nacht-Modus für die Schlafenszeit."
+		"aboutHouseModeSettings": "Legen Sie den aktuellen Hausmodus fest, um zu steuern, wie sich das Smart Panel und die verbundenen Geräte verhalten. Der Zuhause-Modus ist für normale Anwesenheit, der Abwesend-Modus für wenn niemand zu Hause ist und der Nacht-Modus für die Schlafenszeit.",
+		"aboutHouseLocation": "Breiten- und Längengrad des Hauses. Daraus berechnet das Smart Panel selbst, ohne Wetterdienst, Sonnenaufgang und Sonnenuntergang für die Automatisierungskarten Sonnenaufgang, Sonnenuntergang und Tag oder Nacht. Lassen Sie beide Felder leer, um den Standort zu entfernen."
 	},
 	"fields": {
 		"config": {
@@ -322,6 +324,22 @@
 				},
 				"validation": {
 					"required": "Hausmodus ist erforderlich"
+				}
+			},
+			"latitude": {
+				"title": "Breitengrad",
+				"placeholder": "z. B. 50.0755",
+				"validation": {
+					"range": "Der Breitengrad muss eine Zahl von -90 bis 90 sein",
+					"pair": "Geben Sie Breiten- und Längengrad ein oder lassen Sie beide Felder leer"
+				}
+			},
+			"longitude": {
+				"title": "Längengrad",
+				"placeholder": "z. B. 14.4378",
+				"validation": {
+					"range": "Der Längengrad muss eine Zahl von -180 bis 180 sein",
+					"pair": "Geben Sie Breiten- und Längengrad ein oder lassen Sie beide Felder leer"
 				}
 			}
 		},

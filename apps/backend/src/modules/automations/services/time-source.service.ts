@@ -3,24 +3,36 @@ import { Inject, Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { MINUTE_MS } from '../../../common/schedule/schedule-time';
 import { ConfigService } from '../../config/services/config.service';
+import { getConfigHouseLocation } from '../../system/utils/house-location.utils';
 import { getConfigTimezone } from '../../system/utils/timezone.utils';
 import { AUTOMATIONS_MODULE_NAME } from '../automations.constants';
 import {
 	HouseTimeReading,
 	TimeOfDaySpec,
 	WallClock,
+	formatTimeOfDay,
 	isWallClockTrusted,
 	localTimeAt,
 	systemWallClock,
 	timeOfDayFiresAt,
 } from '../time/house-time';
 import { MinuteListener, MinuteTicker } from '../time/minute-ticker';
+import {
+	GeoLocation,
+	HouseLocationReading,
+	SunEventFireData,
+	SunEventSpec,
+	isGeoLocation,
+	sunEventDueAt,
+} from '../time/sun';
 
 /** Injection token for the wall clock of the time source; left unbound in the application, bound in tests */
 export const AUTOMATION_WALL_CLOCK = Symbol('AUTOMATION_WALL_CLOCK');
 
 export const WALL_CLOCK_NOT_TRUSTED_REASON = 'The system clock is not set yet.';
 export const HOUSE_TIMEZONE_NOT_VALID_REASON = 'The house timezone is not valid.';
+export const HOUSE_LOCATION_NOT_SET_REASON =
+	'The house location is not set. Enter its latitude and longitude in the system settings to use the sun cards.';
 
 export interface TimeOfDayFireData {
 	/** The configured time, `HH:mm` */
@@ -38,15 +50,22 @@ export interface TimeOfDayFireData {
  */
 export const TIME_OF_DAY_SERVED_DATES_KEPT = 31;
 
-interface TimeOfDaySubscription {
-	spec: TimeOfDaySpec;
-	fire: (data: TimeOfDayFireData) => void;
+/** What a time trigger answers for a minute: the key of the occurrence that is due, and what to fire with */
+interface TimeTriggerDue {
+	/** Identifies the occurrence, so one occurrence fires once whatever the clock does */
+	key: string;
+	fire: () => void;
+}
+
+interface TimeTriggerSubscription {
+	/** The occurrence due in the minute, or null; the house time of the minute is passed in */
+	due: (minuteStart: number, timezone: string) => TimeTriggerDue | null;
 	/**
 	 * The minute the subscription started in. The shared tick may catch up on minutes that passed before a
 	 * trigger joined it; those are not handed to that trigger. 0 once the clock was set back past it.
 	 */
 	since: number;
-	/** The local days the subscription fired for, oldest first, so one day fires once whatever the clock does */
+	/** The occurrences the subscription fired for, oldest first, so one fires once whatever the clock does */
 	served: Set<string>;
 }
 
@@ -71,11 +90,13 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 
 	private readonly clock: WallClock;
 	private readonly ticker: MinuteTicker;
-	private readonly subscriptions = new Set<TimeOfDaySubscription>();
+	private readonly subscriptions = new Set<TimeTriggerSubscription>();
 
 	private releaseTick: (() => void) | undefined;
 	/** The reason the last minute was skipped as a whole, so it is logged once and not every minute */
 	private skippedBecause: string | undefined;
+	/** Whether sun triggers were skipped for want of a house location, so it is logged once */
+	private sunSkipped = false;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -104,9 +125,97 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 	 * already passed.
 	 */
 	onTimeOfDay(spec: TimeOfDaySpec, fire: (data: TimeOfDayFireData) => void): () => void {
-		const subscription: TimeOfDaySubscription = {
-			spec: { time: spec.time, ...(spec.weekdays !== undefined ? { weekdays: [...spec.weekdays] } : {}) },
-			fire,
+		const copy: TimeOfDaySpec = {
+			time: spec.time,
+			...(spec.weekdays !== undefined ? { weekdays: [...spec.weekdays] } : {}),
+		};
+
+		return this.subscribe((minuteStart, timezone) => {
+			const due = timeOfDayFiresAt(copy, minuteStart, timezone);
+
+			return due
+				? {
+						key: due.date,
+						fire: () => fire({ time: copy.time, date: due.date, weekday: due.weekday, timezone }),
+					}
+				: null;
+		});
+	}
+
+	/**
+	 * The house location from the system configuration, read when it is needed, so a changed location
+	 * applies from the next minute.
+	 */
+	houseLocation(): HouseLocationReading {
+		let location: GeoLocation | null;
+
+		try {
+			location = getConfigHouseLocation(this.configService);
+		} catch {
+			location = null;
+		}
+
+		return isGeoLocation(location)
+			? { status: 'ok', location }
+			: { status: 'not_set', reason: HOUSE_LOCATION_NOT_SET_REASON };
+	}
+
+	/** Why the sun cards can not be used now - there is no house location - or undefined when they can */
+	sunUnavailableReason(): string | undefined {
+		const location = this.houseLocation();
+
+		return location.status === 'ok' ? undefined : location.reason;
+	}
+
+	/**
+	 * Calls `fire` in the minute that holds the sunrise or the sunset moved by the offset. Returns the
+	 * function that stops it.
+	 *
+	 * The event is an instant, so daylight saving does not move it; on a day the sun does not rise or set
+	 * there is nothing to fire for. While the house location is not set nothing fires; a location set
+	 * later applies from the next minute. Like a time of day, an event that passed while the backend was
+	 * down, or that a set clock skipped, is not replayed, and one event fires once.
+	 */
+	onSunEvent(spec: SunEventSpec, fire: (data: SunEventFireData) => void): () => void {
+		const copy: SunEventSpec = { event: spec.event, offsetMinutes: spec.offsetMinutes };
+
+		return this.subscribe((minuteStart, timezone) => {
+			const location = this.houseLocation();
+
+			if (location.status !== 'ok') {
+				if (!this.sunSkipped) {
+					this.sunSkipped = true;
+					this.logger.warn(`[TIME] Sun triggers are not served: ${location.reason}`);
+				}
+
+				return null;
+			}
+
+			this.sunSkipped = false;
+
+			const due = sunEventDueAt(copy, minuteStart, location.location);
+
+			if (!due) return null;
+
+			const local = localTimeAt(due.instant, timezone);
+
+			return {
+				key: `${due.day}:${due.event}`,
+				fire: () =>
+					fire({
+						event: due.event,
+						offset_minutes: copy.offsetMinutes,
+						date: local.date,
+						time: formatTimeOfDay(local.minutes),
+						timezone,
+					}),
+			};
+		});
+	}
+
+	private subscribe(due: TimeTriggerSubscription['due']): () => void {
+		const subscription: TimeTriggerSubscription = {
+			due,
 			since: minuteOf(this.clock.now()),
 			served: new Set(),
 		};
@@ -137,7 +246,7 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 		return this.ticker.subscribe(listener);
 	}
 
-	/** Number of time-of-day triggers being served */
+	/** Number of time triggers - times of day and sun events - being served */
 	subscriptionCount(): number {
 		return this.subscriptions.size;
 	}
@@ -190,11 +299,11 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 			if (minuteStart <= subscription.since) continue;
 
 			try {
-				const due = timeOfDayFiresAt(subscription.spec, minuteStart, reading.timezone);
+				const due = subscription.due(minuteStart, reading.timezone);
 
-				if (!due || subscription.served.has(due.date)) continue;
+				if (!due || subscription.served.has(due.key)) continue;
 
-				subscription.served.add(due.date);
+				subscription.served.add(due.key);
 
 				if (subscription.served.size > TIME_OF_DAY_SERVED_DATES_KEPT) {
 					for (const oldest of subscription.served) {
@@ -203,12 +312,7 @@ export class AutomationTimeSourceService implements OnModuleDestroy {
 					}
 				}
 
-				subscription.fire({
-					time: subscription.spec.time,
-					date: due.date,
-					weekday: due.weekday,
-					timezone: reading.timezone,
-				});
+				due.fire();
 			} catch (error) {
 				this.logger.warn(`[TIME] A time trigger failed: ${describeError(error)}`);
 			}

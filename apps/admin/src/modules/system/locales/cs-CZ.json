@@ -68,7 +68,8 @@
 		"aboutHouseModeSettings": "Režim domu",
 		"systemBackups": {
 			"list": "Systémové zálohy"
-		}
+		},
+		"aboutHouseLocation": "Poloha domu"
 	},
 	"subHeadings": {
 		"system": "Informace o stavu systému smart panelu",
@@ -169,7 +170,8 @@
 		},
 		"aboutLanguageSettings": "Nakonfigurujte jazyk rozhraní, časovou zónu, formát času a měrné jednotky pro Smart Panel. Tato nastavení ovlivňují, jak se v celém systému zobrazují data, časy, teploty a měření.",
 		"aboutSystemSettings": "Spravujte celkovou konfiguraci protokolování systému. Vyberte, které úrovně závažnosti protokolů mají být monitorovány a zobrazeny v aplikačních protokolech.",
-		"aboutHouseModeSettings": "Nastavte aktuální režim domu pro ovládání chování Smart Panelu a připojených zařízení. Režim Doma je pro běžný pobyt, režim Mimo domov pro případ, že nikdo není doma, a režim Noc pro dobu spánku."
+		"aboutHouseModeSettings": "Nastavte aktuální režim domu pro ovládání chování Smart Panelu a připojených zařízení. Režim Doma je pro běžný pobyt, režim Mimo domov pro případ, že nikdo není doma, a režim Noc pro dobu spánku.",
+		"aboutHouseLocation": "Zeměpisná šířka a délka domu. Smart Panel z nich sám, bez služby počasí, počítá východ a západ slunce pro karty automatizací východ slunce, západ slunce a den nebo noc. Ponecháte-li obě pole prázdná, poloha se odstraní."
 	},
 	"fields": {
 		"config": {
@@ -322,6 +324,22 @@
 				},
 				"validation": {
 					"required": "Režim domu je povinný"
+				}
+			},
+			"latitude": {
+				"title": "Zeměpisná šířka",
+				"placeholder": "např. 50.0755",
+				"validation": {
+					"range": "Zeměpisná šířka musí být číslo od -90 do 90",
+					"pair": "Zadejte zeměpisnou šířku i délku, nebo nechte obě pole prázdná"
+				}
+			},
+			"longitude": {
+				"title": "Zeměpisná délka",
+				"placeholder": "např. 14.4378",
+				"validation": {
+					"range": "Zeměpisná délka musí být číslo od -180 do 180",
+					"pair": "Zadejte zeměpisnou šířku i délku, nebo nechte obě pole prázdná"
 				}
 			}
 		},

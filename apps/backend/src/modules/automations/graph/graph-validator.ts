@@ -12,6 +12,8 @@ export type AutomationGraphIssueSeverity = 'error' | 'warning';
 
 export const AutomationGraphIssueCode = {
 	UNKNOWN_NODE_TYPE: 'unknown_node_type',
+	/** The node type is registered but can not be used at the moment, e.g. a sun card without a house location */
+	NODE_TYPE_UNAVAILABLE: 'node_type_unavailable',
 	INVALID_CONFIG: 'invalid_config',
 	UNKNOWN_PORT: 'unknown_port',
 	EDGE_INTO_TRIGGER: 'edge_into_trigger',
@@ -62,6 +64,11 @@ export type AutomationGraphSafetyCheck = (
 export interface AutomationGraphValidationOptions {
 	/** Asked for every action node with a readable configuration */
 	safety?: AutomationGraphSafetyCheck;
+	/**
+	 * Whether a node type that is unavailable at the moment is reported; true when left out. The engine
+	 * leaves it out of what it loads: an armed card decides itself what it does without what it needs.
+	 */
+	availability?: boolean;
 }
 
 /** At most this many configuration problems are reported for one node */
@@ -593,6 +600,17 @@ export const validateGraph = async (
 			});
 
 			continue;
+		}
+
+		const unavailable = options.availability === false ? undefined : node.nodeType.unavailableReason();
+
+		if (unavailable !== undefined) {
+			issues.push({
+				severity: 'error',
+				code: AutomationGraphIssueCode.NODE_TYPE_UNAVAILABLE,
+				message: unavailable,
+				node_id: node.id,
+			});
 		}
 
 		issues.push(...(await validateNodeConfig(node, node.nodeType)));

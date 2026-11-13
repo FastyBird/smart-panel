@@ -44,6 +44,7 @@ const nodeTypeRes = (overrides: Partial<IAutomationNodeTypeRes> = {}): IAutomati
 		required: ['property_id'],
 		additionalProperties: false,
 	},
+	unavailable_reason: null,
 	...overrides,
 });
 
@@ -63,7 +64,14 @@ describe('transformAutomationNodeTypeResponse', () => {
 				required: ['property_id'],
 				additionalProperties: false,
 			},
+			unavailableReason: null,
 		});
+	});
+
+	it('carries why a card can not be used at the moment', () => {
+		expect(
+			transformAutomationNodeTypeResponse(nodeTypeRes({ type: 'sun.event', unavailable_reason: 'The house location is not set.' })).unavailableReason
+		).toBe('The house location is not set.');
 	});
 
 	it('gives a node type without a schema one that accepts any object', () => {

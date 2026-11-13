@@ -2,14 +2,22 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../config/services/config.service';
 import { FakeWallClock } from '../testing/fake-wall-clock';
+import { SunEventFireData, solarDay } from '../time/sun';
 
-import { AUTOMATION_WALL_CLOCK, AutomationTimeSourceService, TimeOfDayFireData } from './time-source.service';
+import {
+	AUTOMATION_WALL_CLOCK,
+	AutomationTimeSourceService,
+	HOUSE_LOCATION_NOT_SET_REASON,
+	TimeOfDayFireData,
+} from './time-source.service';
 
 describe('AutomationTimeSourceService', () => {
 	let module: TestingModule;
 	let service: AutomationTimeSourceService;
 	let clock: FakeWallClock;
 	let timezone: string | undefined;
+	let latitude: number | null;
+	let longitude: number | null;
 	let fired: (TimeOfDayFireData & { at: string })[];
 
 	const fire = (data: TimeOfDayFireData): void => {
@@ -22,7 +30,7 @@ describe('AutomationTimeSourceService', () => {
 		module = await Test.createTestingModule({
 			providers: [
 				AutomationTimeSourceService,
-				{ provide: ConfigService, useValue: { getModuleConfig: () => ({ timezone }) } },
+				{ provide: ConfigService, useValue: { getModuleConfig: () => ({ timezone, latitude, longitude }) } },
 				{ provide: AUTOMATION_WALL_CLOCK, useValue: clock },
 			],
 		}).compile();
@@ -32,6 +40,8 @@ describe('AutomationTimeSourceService', () => {
 
 	beforeEach(() => {
 		timezone = 'Europe/Prague';
+		latitude = null;
+		longitude = null;
 		fired = [];
 	});
 
@@ -360,5 +370,136 @@ describe('AutomationTimeSourceService', () => {
 		clock.advanceMinutes(5);
 
 		expect(fired).toEqual([]);
+	});
+
+	describe('sun events', () => {
+		const PRAGUE = { latitude: 50.0755, longitude: 14.4378 };
+
+		let sunFired: (SunEventFireData & { at: string })[];
+
+		const fireSun = (data: SunEventFireData): void => {
+			sunFired.push({ ...data, at: new Date(clock.now()).toISOString() });
+		};
+
+		const minuteOf = (instant: number): string => new Date(Math.floor(instant / 60_000) * 60_000).toISOString();
+
+		const locate = (location: { latitude: number; longitude: number } | null): void => {
+			latitude = location?.latitude ?? null;
+			longitude = location?.longitude ?? null;
+		};
+
+		beforeEach(() => {
+			sunFired = [];
+		});
+
+		it('fires in the minute of the sunrise, once, on the day daylight saving starts', async () => {
+			locate(PRAGUE);
+			await start('2026-03-29T00:00:00Z');
+
+			const sunrise = solarDay('2026-03-29', PRAGUE).sunrise;
+
+			service.onSunEvent({ event: 'sunrise', offsetMinutes: 0 }, fireSun);
+
+			clock.advanceMinutes(12 * 60);
+
+			expect(sunFired).toEqual([
+				{
+					event: 'sunrise',
+					offset_minutes: 0,
+					date: '2026-03-29',
+					time: '06:45',
+					timezone: 'Europe/Prague',
+					at: minuteOf(sunrise),
+				},
+			]);
+		});
+
+		it('applies a negative offset to the instant of the sunset', async () => {
+			locate(PRAGUE);
+			await start('2026-10-25T00:00:00Z');
+
+			const sunset = solarDay('2026-10-25', PRAGUE).sunset;
+
+			service.onSunEvent({ event: 'sunset', offsetMinutes: -45 }, fireSun);
+
+			clock.advanceMinutes(24 * 60);
+
+			expect(sunFired).toEqual([
+				{
+					event: 'sunset',
+					offset_minutes: -45,
+					date: '2026-10-25',
+					time: '16:51',
+					timezone: 'Europe/Prague',
+					at: minuteOf(sunset - 45 * 60_000),
+				},
+			]);
+		});
+
+		it('reports the local day of a house far east of Greenwich', async () => {
+			timezone = 'Pacific/Auckland';
+			locate({ latitude: -36.85, longitude: 174.7633 });
+			// 12:00 on 14 January in Auckland
+			await start('2026-01-13T23:00:00Z');
+
+			service.onSunEvent({ event: 'sunrise', offsetMinutes: 0 }, fireSun);
+
+			clock.advanceMinutes(24 * 60);
+
+			// The sunrise of 15 January in Auckland happens on 14 January in UTC
+			expect(sunFired.map(({ date, time, at }) => ({ date, time, day: at.slice(0, 10) }))).toEqual([
+				{ date: '2026-01-15', time: '06:17', day: '2026-01-14' },
+			]);
+		});
+
+		it('does not fire on the days the sun does not set', async () => {
+			locate({ latitude: 69.65, longitude: 18.95 });
+			timezone = 'Europe/Oslo';
+			await start('2026-06-19T00:00:00Z');
+
+			service.onSunEvent({ event: 'sunset', offsetMinutes: 0 }, fireSun);
+			service.onSunEvent({ event: 'sunrise', offsetMinutes: 0 }, fireSun);
+
+			clock.advanceMinutes(3 * 24 * 60);
+
+			expect(sunFired).toEqual([]);
+		});
+
+		it('fires nothing while the house location is not set, and fires once it is', async () => {
+			await start('2026-03-20T00:00:00Z');
+
+			expect(service.houseLocation()).toEqual({ status: 'not_set', reason: HOUSE_LOCATION_NOT_SET_REASON });
+			expect(service.sunUnavailableReason()).toBe(HOUSE_LOCATION_NOT_SET_REASON);
+
+			service.onSunEvent({ event: 'sunrise', offsetMinutes: 0 }, fireSun);
+
+			clock.advanceMinutes(24 * 60);
+
+			expect(sunFired).toEqual([]);
+
+			locate(PRAGUE);
+
+			expect(service.houseLocation()).toEqual({ status: 'ok', location: PRAGUE });
+			expect(service.sunUnavailableReason()).toBeUndefined();
+
+			clock.advanceMinutes(24 * 60);
+
+			expect(sunFired.map((item) => item.date)).toEqual(['2026-03-21']);
+		});
+
+		it('does not fire again for the same sunrise when the clock is set back', async () => {
+			locate(PRAGUE);
+			await start('2026-03-20T05:00:00Z');
+
+			service.onSunEvent({ event: 'sunrise', offsetMinutes: 0 }, fireSun);
+
+			clock.advanceMinutes(2 * 60);
+			expect(sunFired).toHaveLength(1);
+
+			clock.step(-2 * 60 * 60_000);
+			clock.advanceMinutes(2 * 60);
+
+			expect(sunFired).toHaveLength(1);
+		});
 	});
 });

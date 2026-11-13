@@ -68,7 +68,8 @@
 		"aboutHouseModeSettings": "Modo de la casa",
 		"systemBackups": {
 			"list": "Copias de seguridad del sistema"
-		}
+		},
+		"aboutHouseLocation": "Ubicación de la casa"
 	},
 	"subHeadings": {
 		"system": "Información del estado del sistema del panel inteligente",
@@ -169,7 +170,8 @@
 		},
 		"aboutLanguageSettings": "Configura el idioma de la interfaz, la zona horaria, el formato de hora y las unidades de medida del panel inteligente. Estos ajustes afectan cómo se muestran las fechas, horas, temperaturas y medidas en todo el sistema.",
 		"aboutSystemSettings": "Administra la configuración de registros a nivel de sistema. Selecciona qué niveles de severidad de registro monitorear y mostrar en los registros de la aplicación.",
-		"aboutHouseModeSettings": "Establece el modo actual de la casa para controlar cómo se comportan el panel inteligente y los dispositivos conectados. El modo Casa es para ocupación normal, el modo Ausente es para cuando no hay nadie en casa, y el modo Noche es para las horas de sueño."
+		"aboutHouseModeSettings": "Establece el modo actual de la casa para controlar cómo se comportan el panel inteligente y los dispositivos conectados. El modo Casa es para ocupación normal, el modo Ausente es para cuando no hay nadie en casa, y el modo Noche es para las horas de sueño.",
+		"aboutHouseLocation": "La latitud y la longitud de la casa. Con ellas el Smart Panel calcula por sí mismo, sin un servicio meteorológico, la salida y la puesta del sol para las tarjetas de automatización de amanecer, atardecer y día o noche. Deje ambos campos vacíos para quitar la ubicación."
 	},
 	"fields": {
 		"config": {
@@ -322,6 +324,22 @@
 				},
 				"validation": {
 					"required": "El modo de la casa es obligatorio"
+				}
+			},
+			"latitude": {
+				"title": "Latitud",
+				"placeholder": "p. ej. 50.0755",
+				"validation": {
+					"range": "La latitud debe ser un número entre -90 y 90",
+					"pair": "Introduzca la latitud y la longitud, o deje ambos campos vacíos"
+				}
+			},
+			"longitude": {
+				"title": "Longitud",
+				"placeholder": "p. ej. 14.4378",
+				"validation": {
+					"range": "La longitud debe ser un número entre -180 y 180",
+					"pair": "Introduzca la latitud y la longitud, o deje ambos campos vacíos"
 				}
 			}
 		},

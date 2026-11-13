@@ -1,4 +1,4 @@
-import { AutomationNodeReference, AutomationNodeTypeOwner } from '../graph/node-type';
+import { AutomationNodeReference, AutomationNodeType, AutomationNodeTypeOwner } from '../graph/node-type';
 import { ALL_NODE_TYPE } from '../nodes/all.node-type';
 import { ANY_NODE_TYPE } from '../nodes/any.node-type';
 import { DELAY_NODE_TYPE } from '../nodes/delay.node-type';
@@ -849,6 +849,24 @@ describe('AutomationEngine', () => {
 
 			expect(await engine.load(automation(withReferences, { revision: 2 }))).toMatchObject({ status: 'invalid' });
 			expect(await engine.load(automation(simple, { revision: 3 }))).toMatchObject({ status: 'ok', armed: true });
+		});
+	});
+
+	describe('a node type that is not available', () => {
+		it('keeps an enabled automation armed: the card copes without what it needs', async () => {
+			const trigger = harness.lookup(ENGINE_TRIGGER_TYPE)?.definition as AutomationNodeType<any>;
+
+			harness.register({ ...trigger, type: 'engine.unavailable-trigger', unavailableReason: () => 'Not set up.' });
+
+			expect(
+				await engine.load(
+					automation(graph([node('t', 'engine.unavailable-trigger'), node('a', ENGINE_ACTION_TYPE)], ['t:out>a'])),
+				),
+			).toMatchObject({ status: 'ok', armed: true, armedTriggers: 1, problems: [] });
+
+			await fire();
+
+			expect(harness.calls).toEqual(['a']);
 		});
 	});
 

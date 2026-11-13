@@ -2,6 +2,7 @@ import { fakeAction, fakeCondition, fakeJoin, fakeStrictAction, fakeTrigger } fr
 
 import {
 	AUTOMATION_NODE_DEFAULT_PORTS,
+	AUTOMATION_NODE_TYPE_UNAVAILABLE_REASON,
 	AutomationActionNodeType,
 	AutomationNodeType,
 	AutomationNodeTypeDefinitionError,
@@ -98,6 +99,7 @@ describe('normalizeAutomationNodeType', () => {
 		['a missing config validation', { ...fakeAction, validateConfig: undefined }],
 		['references that is not a function', { ...fakeAction, references: [] }],
 		['commands that is not a function', { ...fakeAction, commands: [] }],
+		['an unavailable reason that is not a function', { ...fakeAction, unavailableReason: 'Not set up.' }],
 		['a config schema that is not an object', { ...fakeAction, configSchema: [] }],
 		['an owner that is not an object', { ...fakeAction, owner: 'some-plugin' }],
 		['an owner of an unknown kind', { ...fakeAction, owner: { kind: 'extension', type: 'some-plugin' } }],
@@ -112,5 +114,35 @@ describe('normalizeAutomationNodeType', () => {
 		expect(() => normalizeAutomationNodeType(definition as unknown as AutomationNodeType)).toThrow(
 			AutomationNodeTypeDefinitionError,
 		);
+	});
+
+	describe('unavailableReason', () => {
+		it('is undefined for a node type that is always available', () => {
+			expect(normalizeAutomationNodeType(fakeAction).unavailableReason()).toBeUndefined();
+		});
+
+		it('passes on the reason of the node type, and only a reason that says something', () => {
+			let reason: unknown = 'The house location is not set.';
+			const registered = normalizeAutomationNodeType({ ...fakeAction, unavailableReason: () => reason as string });
+
+			expect(registered.unavailableReason()).toBe('The house location is not set.');
+
+			reason = '';
+			expect(registered.unavailableReason()).toBeUndefined();
+
+			reason = 42;
+			expect(registered.unavailableReason()).toBeUndefined();
+		});
+
+		it('reports a node type whose availability can not be told as unavailable', () => {
+			const registered = normalizeAutomationNodeType({
+				...fakeAction,
+				unavailableReason: () => {
+					throw new Error('secret detail');
+				},
+			});
+
+			expect(registered.unavailableReason()).toBe(AUTOMATION_NODE_TYPE_UNAVAILABLE_REASON);
+		});
 	});
 });
