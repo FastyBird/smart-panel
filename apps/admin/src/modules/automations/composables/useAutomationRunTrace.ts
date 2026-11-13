@@ -1,7 +1,8 @@
 import { type Ref, computed, onScopeDispose, ref, watch } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { AutomationRunRecordStatus } from '../automations.constants';
+import { AUTOMATION_RUN_RECOVER_ATTEMPTS, AUTOMATION_RUN_RECOVER_RETRY_MS, AutomationRunRecordStatus } from '../automations.constants';
+import { AutomationsApiException } from '../automations.exceptions';
 import { findRunAttention, mapTraceToOverlay, newerRunStep } from '../automations.trace';
 import type { IAutomation, IAutomationGraph } from '../store/automations.store.types';
 import { automationRunsStoreKey } from '../store/keys';
@@ -94,15 +95,44 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 		readsInFlight.value = new Set([...readsInFlight.value].filter((item) => item !== runId));
 	};
 
-	// What a run stored so far, read when its events may have been missed; nothing stored yet is not a failure
-	const recover = (runId: string): void => {
+	// The reads of what a run stored that wait to be tried again
+	const recoverRetries = new Set<ReturnType<typeof setTimeout>>();
+
+	let disposed = false;
+
+	/*
+	 * What a run stored so far, read when its events may have been missed. Nothing stored yet is not a failure.
+	 * A read that failed is tried again a few times; when nothing at all is known of the run, a read that kept
+	 * failing is said, as the run would otherwise look as if it were still going.
+	 */
+	const recover = (runId: string, attemptsLeft: number = AUTOMATION_RUN_RECOVER_ATTEMPTS): void => {
 		readsInFlight.value = new Set([...readsInFlight.value, runId]);
 
 		void runsStore
 			.get({ id: runId, fresh: true })
 			.then((): void => clearFailures(runId))
-			.catch((): void => {
-				// Nothing stored yet, or not readable now: the live steps are what there is
+			.catch((error: unknown): void => {
+				if ((error instanceof AutomationsApiException && error.code === 404) || disposed) {
+					return;
+				}
+
+				if (attemptsLeft > 1) {
+					const retry = setTimeout((): void => {
+						recoverRetries.delete(retry);
+
+						recover(runId, attemptsLeft - 1);
+					}, AUTOMATION_RUN_RECOVER_RETRY_MS);
+
+					recoverRetries.add(retry);
+
+					return;
+				}
+
+				const run = runsStore.findById(runId);
+
+				if (run === null) {
+					failedReads.value = new Set([...failedReads.value, readKey(runId, run)]);
+				}
 			})
 			.finally((): void => settled(runId));
 	};
@@ -398,6 +428,14 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 	});
 
 	onScopeDispose((): void => {
+		disposed = true;
+
+		for (const retry of recoverRetries) {
+			clearTimeout(retry);
+		}
+
+		recoverRetries.clear();
+
 		hold([]);
 	});
 

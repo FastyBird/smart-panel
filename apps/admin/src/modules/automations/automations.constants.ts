@@ -138,6 +138,11 @@ export const AUTOMATION_RUN_CANCEL_REASONS = [
 // How many runs the live view keeps the steps of while it waits to learn which one it follows
 export const AUTOMATION_LIVE_RUNS_BUFFERED = 5;
 
+// How many times what a run stored is read when its events may have been missed, and how long apart
+export const AUTOMATION_RUN_RECOVER_ATTEMPTS = 3;
+
+export const AUTOMATION_RUN_RECOVER_RETRY_MS = 2000;
+
 // FLOW EDITOR
 // ===========
 

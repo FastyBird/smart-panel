@@ -1115,6 +1115,56 @@ describe('useAutomationRunTrace', (): void => {
 		expect(trace.shown.value).toMatchObject({ runId, ended: true, run: { status: 'completed' } });
 	});
 
+	it('tries again to read a test run nothing is known of, and says when it cannot be read', async (): Promise<void> => {
+		scope = effectScope();
+
+		const trace = scope.run(() => useAutomationRunTrace({ id: automationId, graph: ref(graph) })) as IUseAutomationRunTrace;
+
+		mocks.backend.GET.mockResolvedValueOnce({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await trace.fetchRuns();
+
+		mocks.backend.POST.mockImplementationOnce(async () => {
+			// Over before the answer arrives: its end is not kept, nothing has it open yet
+			store().onEvent({ data: runRes(runId, 'completed') });
+
+			return {
+				data: { data: { automation_id: automationId, started: true, outcome: 'started', run_id: runId, reason: null } },
+				error: undefined,
+				response: { status: 200 },
+			};
+		});
+
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+		try {
+			await trace.test('n1');
+			await flushPromises();
+
+			// Not said yet: it is tried again first
+			expect(mocks.backend.GET).toHaveBeenCalledTimes(2);
+			expect(trace.shown.value).toMatchObject({ runId, failed: false });
+
+			await vi.advanceTimersByTimeAsync(2000);
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(2000);
+			await flushPromises();
+
+			expect(mocks.backend.GET).toHaveBeenCalledTimes(4);
+			expect(trace.shown.value).toMatchObject({ runId, failed: true });
+
+			// No more tries after that
+			await vi.advanceTimersByTimeAsync(10_000);
+			await flushPromises();
+
+			expect(mocks.backend.GET).toHaveBeenCalledTimes(4);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 
