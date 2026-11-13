@@ -13,6 +13,13 @@ describe('redactGo2rtcOutput', () => {
 		);
 	});
 
+	it('redacts the userinfo of a url together with the rest of it', () => {
+		expect(redactGo2rtcOutput('GET http://u:p@h/x', [])).toBe('GET http://<redacted>');
+		expect(redactGo2rtcOutput('dial rtsp://admin:hunter2@cam.local:554/ch1?token=abc', [])).toBe(
+			'dial rtsp://<redacted>',
+		);
+	});
+
 	it('redacts registered literals even without a scheme', () => {
 		expect(
 			redactGo2rtcOutput('path=/SENTINELALIAS0123456789 pw=PW_SENTINEL_abcdef0123', [

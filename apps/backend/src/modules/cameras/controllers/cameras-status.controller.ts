@@ -6,6 +6,8 @@ import { ConfigService } from '../../config/services/config.service';
 import {
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { CAMERAS_MODULE_API_TAG_NAME, CAMERAS_MODULE_NAME } from '../cameras.constants';
@@ -40,6 +42,8 @@ export class CamerasStatusController {
 	})
 	@ApiSuccessResponse(CamerasStatusResponseModel, 'Status retrieved successfully')
 	@ApiForbiddenResponse('Cameras are not available to this caller')
+	@ApiNotFoundResponse('Cameras module is disabled')
+	@ApiServiceUnavailableResponse('Cameras module configuration is unavailable')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	getStatus(@Req() req: AuthenticatedRequest): CamerasStatusResponseModel {
