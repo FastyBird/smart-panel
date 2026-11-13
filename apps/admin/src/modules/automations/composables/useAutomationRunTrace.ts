@@ -102,7 +102,7 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 	/*
 	 * What a run stored so far, read when its events may have been missed. Nothing stored yet is not a failure.
-	 * A read that failed is tried again a few times; when nothing at all is known of the run, a read that kept
+	 * A read that failed is tried again a few times; when the run is not known to have ended, a read that kept
 	 * failing is said, as the run would otherwise look as if it were still going.
 	 */
 	const recover = (runId: string, attemptsLeft: number = AUTOMATION_RUN_RECOVER_ATTEMPTS): void => {
@@ -130,7 +130,8 @@ export const useAutomationRunTrace = ({ id, graph }: IUseAutomationRunTraceProps
 
 				const run = runsStore.findById(runId);
 
-				if (run === null) {
+				// Not known to have ended: without saying so the run would look as if it were still going
+				if (!isEnded(run)) {
 					failedReads.value = new Set([...failedReads.value, readKey(runId, run)]);
 				}
 			})

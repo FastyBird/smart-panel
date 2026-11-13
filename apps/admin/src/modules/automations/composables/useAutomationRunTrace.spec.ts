@@ -1165,6 +1165,43 @@ describe('useAutomationRunTrace', (): void => {
 		}
 	});
 
+	it('says when what a run known to be going stored cannot be read after a reconnect, with no history read', async (): Promise<void> => {
+		scope = effectScope();
+
+		const trace = scope.run(() => useAutomationRunTrace({ id: automationId, graph: ref(graph) })) as IUseAutomationRunTrace;
+
+		mocks.backend.GET.mockResolvedValueOnce({ data: undefined, error: undefined, response: { status: 500 } });
+
+		await trace.fetchRuns();
+
+		sendStep(stepRes(1, 'n1', AutomationNodeKind.trigger, { output: 'out' }), runId);
+		store().onEvent({ data: runRes(runId, 'running') });
+		await nextTick();
+
+		emit('disconnect');
+
+		// It ends while the socket is down, and what it stored cannot be read
+		mocks.backend.GET.mockResolvedValue({ data: undefined, error: { error: { message: 'Down' } }, response: { status: 500 } });
+
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+		try {
+			emit('connect');
+			await flushPromises();
+
+			expect(trace.shown.value).toMatchObject({ runId, failed: false });
+
+			await vi.advanceTimersByTimeAsync(2000);
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(2000);
+			await flushPromises();
+
+			expect(trace.shown.value).toMatchObject({ runId, ended: false, failed: true });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('says when the history cannot be read', async (): Promise<void> => {
 		scope = effectScope();
 
