@@ -250,6 +250,23 @@ describe('flow.wait-until', () => {
 			void start;
 		});
 
+		it('lets go of its watch as soon as the event happens, even while the baseline is still being read', () => {
+			settled.mockReturnValue(new Promise<void>(() => undefined));
+
+			void card().wait(
+				{ ...target(PROPERTY_BOOL), to: true, timeout_seconds: 30 } as unknown as WaitUntilConfigDto,
+				(event) => events.push(event),
+				runContext(),
+			);
+
+			expect(tracker.trackedCount()).toBe(1);
+
+			tracker.report(PROPERTY_BOOL, { value: true });
+
+			expect(events).toEqual([{ observed: true }]);
+			expect(tracker.trackedCount()).toBe(0);
+		});
+
 		it('watches nothing for a run that was aborted before it arrived', async () => {
 			const controller = new AbortController();
 

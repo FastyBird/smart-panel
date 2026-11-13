@@ -635,6 +635,21 @@ describe('RunWalker', () => {
 			expect(walker.record.status).toBe('cancelled');
 		});
 
+		it('a delay whose timer fired just before the run was cancelled stays cancelled', async () => {
+			const walker = walk(plan([trigger('t'), delay('wait', 1_000), action('off')], ['t:out>wait', 'wait:out>off']));
+
+			walker.start();
+			await flush();
+
+			clock.advance(1_000);
+			walker.cancel('restarted');
+			await flush();
+
+			expect(stepOf(walker, 'wait').state).toBe('cancelled');
+			expect(stepOf(walker, 'wait').output).toBeUndefined();
+			expect(calls).toEqual([]);
+		});
+
 		it('ends as interrupted when the engine itself stops', async () => {
 			const walker = walk(plan([trigger('t'), delay('wait', 1000)], ['t:out>wait']));
 
@@ -1531,6 +1546,23 @@ describe('RunWalker', () => {
 			// The watch that was set up too late is let go at once
 			expect(fake.release).toHaveBeenCalledTimes(1);
 			expect(calls).toEqual(['wait', 'late']);
+		});
+
+		it('stays cancelled when the run is cancelled right after the event, before the wait went on', async () => {
+			const fake = waitUntil('wait', 60_000, notYet);
+			const walker = walk(waitPlan(fake));
+
+			walker.start();
+			await flush();
+
+			fake.resume?.({ observed: true });
+			walker.cancel('restarted');
+			await flush();
+
+			expect(stepOf(walker, 'wait').state).toBe('cancelled');
+			expect(stepOf(walker, 'wait').output).toBeUndefined();
+			expect(calls).toEqual(['wait']);
+			expect(walker.record.status).toBe('cancelled');
 		});
 
 		it('drops the parked token when the run is cancelled and marks it in the trace', async () => {

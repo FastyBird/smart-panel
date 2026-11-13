@@ -757,6 +757,76 @@ describe('validateGraph', () => {
 			expect(issues).toEqual([]);
 		});
 
+		it('is an error when two inputs come from different outputs of a block that runs once in a run', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('a', FAKE_ACTION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>c:in'), e('c:yes>a:in'), e('a:done>all:in'), e('c:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([
+				{
+					severity: 'error',
+					code: 'join_never_completes',
+					message:
+						'This All can never continue: two of its inputs come from different outputs of one block, and a block that runs once in a run takes only one of its outputs.',
+					node_id: 'all',
+				},
+			]);
+		});
+
+		it('sees through a join: what follows an Any runs once in a run', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('any', ANY_NODE_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[
+						e('t:out>x:in'),
+						e('t:out>y:in'),
+						e('x:done>any:in'),
+						e('y:done>any:in'),
+						e('any:out>c:in'),
+						e('c:yes>all:in'),
+						e('c:no>all:in'),
+					],
+				),
+				joinLookup,
+			);
+
+			expect(codes(issues)).toEqual(['join_never_completes']);
+		});
+
+		it('says nothing when the block may run more than once in a run, so it can take both outputs', async () => {
+			const issues = await validateGraph(
+				graph(
+					[
+						node('t', FAKE_TRIGGER_TYPE),
+						node('x', FAKE_ACTION_TYPE),
+						node('y', FAKE_ACTION_TYPE),
+						node('c', FAKE_CONDITION_TYPE),
+						node('all', ALL_NODE_TYPE),
+					],
+					[e('t:out>x:in'), e('t:out>y:in'), e('x:done>c:in'), e('y:done>c:in'), e('c:yes>all:in'), e('c:no>all:in')],
+				),
+				joinLookup,
+			);
+
+			expect(issues).toEqual([]);
+		});
+
 		it('lets an Any combine two triggers', async () => {
 			const issues = await validateGraph(
 				graph(

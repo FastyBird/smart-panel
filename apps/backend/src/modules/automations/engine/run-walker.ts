@@ -537,7 +537,8 @@ export class RunWalker {
 		// Every park is reported, so what is stored of a parked run names the Delay it waits on now
 		this.notify('parked');
 
-		if (!(await resumed)) {
+		// The run may have been cancelled after the timer fired but before this went on
+		if (!(await resumed) || this.ended) {
 			step.state = 'cancelled';
 			this.notifyStep(step);
 
@@ -588,11 +589,14 @@ export class RunWalker {
 			this.notifyStep(step);
 		};
 
-		switch (outcome.type) {
-			case 'cancelled':
-				finish({ state: 'cancelled' });
+		// The run may have been cancelled after the wait ended but before this went on: nothing follows then
+		if (outcome.type === 'cancelled' || this.ended) {
+			finish({ state: 'cancelled' });
 
-				return;
+			return;
+		}
+
+		switch (outcome.type) {
 			case 'threw':
 				finish({ reason: `The wait failed: ${describeError(outcome.error)}` });
 				this.unhandledErrors += 1;

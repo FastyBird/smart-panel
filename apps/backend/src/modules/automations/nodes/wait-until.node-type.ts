@@ -194,8 +194,12 @@ export const createWaitUntilNodeType = (
 				pending?.();
 			};
 
-			// Watched before the state is read, so a report between the two is not missed
-			unwatch = tracker.watch(spec, (data) => resume({ observed: data.to }));
+			// Watched before the state is read, so a report between the two is not missed. Once the event has
+			// happened there is nothing left to watch: the watch goes at once, not when the state has been read.
+			unwatch = tracker.watch(spec, (data) => {
+				release();
+				resume({ observed: data.to });
+			});
 
 			// A run that is cancelled or runs into its timeout while the state is still being read can not
 			// release the watch until this returns, which may take long: the abort lets it go at once

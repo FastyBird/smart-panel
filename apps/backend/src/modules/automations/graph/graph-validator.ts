@@ -80,6 +80,19 @@ interface ParsedNode {
 const isAllJoin = (nodeType: RegisteredAutomationNodeType | undefined): boolean =>
 	nodeType?.kind === 'flow' && (nodeType.definition as { flow?: unknown } | undefined)?.flow === 'all';
 
+/** Whether a node is a join, which continues at most once per run whatever leads into it */
+const isJoin = (nodeType: RegisteredAutomationNodeType | undefined): boolean => {
+	const flow = nodeType?.kind === 'flow' ? (nodeType.definition as { flow?: unknown } | undefined)?.flow : undefined;
+
+	return flow === 'any' || flow === 'all';
+};
+
+/** An edge as seen from its target: where it comes from */
+interface Feeder {
+	source: ParsedNode;
+	sourcePort: unknown;
+}
+
 interface ParsedEdge {
 	id: string | undefined;
 	source: ParsedNode;
@@ -283,7 +296,7 @@ const validateAllJoins = (
 	nodes: ParsedNode[],
 	triggers: ParsedNode[],
 	successors: Map<ParsedNode, Set<ParsedNode>>,
-	feeders: Map<ParsedNode, ParsedNode[]>,
+	feeders: Map<ParsedNode, Feeder[]>,
 ): AutomationGraphIssue[] => {
 	const joins = nodes.filter((node) => isAllJoin(node.nodeType) && (feeders.get(node)?.length ?? 0) > 1);
 
@@ -323,9 +336,11 @@ const validateAllJoins = (
 	}
 
 	const issues: AutomationGraphIssue[] = [];
+	const choices = createChoiceTracer(feeders);
 
 	for (const join of joins) {
-		const perEdge = (feeders.get(join) ?? []).map((source) => startedBy.get(source) ?? new Set<ParsedNode>());
+		const incoming = feeders.get(join) ?? [];
+		const perEdge = incoming.map(({ source }) => startedBy.get(source) ?? new Set<ParsedNode>());
 
 		if (perEdge.some((set) => set.size === 0)) {
 			continue;
@@ -334,7 +349,15 @@ const validateAllJoins = (
 		const leading = new Set<ParsedNode>(perEdge.flatMap((set) => [...set]));
 		const completing = [...leading].filter((trigger) => perEdge.every((set) => set.has(trigger)));
 
-		if (completing.length === 0) {
+		if (completing.length > 0 && excludeEachOther(incoming.map(choices))) {
+			issues.push({
+				severity: 'error',
+				code: AutomationGraphIssueCode.JOIN_NEVER_COMPLETES,
+				message:
+					'This All can never continue: two of its inputs come from different outputs of one block, and a block that runs once in a run takes only one of its outputs.',
+				node_id: join.id,
+			});
+		} else if (completing.length === 0) {
 			issues.push({
 				severity: 'error',
 				code: AutomationGraphIssueCode.JOIN_NEVER_COMPLETES,
@@ -357,6 +380,63 @@ const validateAllJoins = (
 
 	return issues;
 };
+
+/**
+ * Traces the outputs that must have been taken for a token to come along an edge: the output of its source,
+ * and further up as long as the source is reached by a single edge from a block that runs at most once in a
+ * run. Every block takes exactly one output each time it runs, so two edges whose traces need different
+ * outputs of one block that runs at most once can never both carry a token in the same run.
+ *
+ * A block runs at most once in a run when it is a trigger or a join, or when exactly one edge leads into it
+ * from a block that runs at most once. Anything else - a block several edges lead into - may run more than
+ * once, and nothing is concluded from it.
+ */
+const createChoiceTracer = (feeders: Map<ParsedNode, Feeder[]>): ((feeder: Feeder) => Map<ParsedNode, unknown>) => {
+	const once = new Map<ParsedNode, boolean>();
+
+	const runsOnce = (node: ParsedNode): boolean => {
+		const known = once.get(node);
+
+		if (known !== undefined) return known;
+
+		// Until it is worked out - or when it lies on a cycle - it is not known to run once
+		once.set(node, false);
+
+		const into = feeders.get(node) ?? [];
+		const result =
+			node.nodeType?.kind === 'trigger' || isJoin(node.nodeType) || (into.length === 1 && runsOnce(into[0].source));
+
+		once.set(node, result);
+
+		return result;
+	};
+
+	return (feeder) => {
+		const taken = new Map<ParsedNode, unknown>();
+		let current: Feeder | undefined = feeder;
+
+		while (current !== undefined && runsOnce(current.source) && !taken.has(current.source)) {
+			const { source } = current;
+
+			taken.set(source, current.sourcePort);
+
+			const into = feeders.get(source) ?? [];
+
+			current =
+				source.nodeType?.kind === 'trigger' || isJoin(source.nodeType) || into.length !== 1 ? undefined : into[0];
+		}
+
+		return taken;
+	};
+};
+
+/** Whether two of the traces need different outputs of the same block */
+const excludeEachOther = (traces: Map<ParsedNode, unknown>[]): boolean =>
+	traces.some((first, index) =>
+		traces
+			.slice(index + 1)
+			.some((second) => [...first].some(([node, port]) => second.has(node) && second.get(node) !== port)),
+	);
 
 /**
  * Returns every issue of a graph. An empty list means the graph is complete and runnable.
@@ -412,8 +492,8 @@ export const validateGraph = async (
 	// Edges
 	const seenConnections = new Set<string>();
 	const successors = new Map<ParsedNode, Set<ParsedNode>>();
-	/** The nodes with an edge into each node, one entry per edge */
-	const feeders = new Map<ParsedNode, ParsedNode[]>();
+	/** The edges into each node, by where they come from */
+	const feeders = new Map<ParsedNode, Feeder[]>();
 
 	for (const raw of asArray(document.edges)) {
 		if (!isRecord(raw)) {
@@ -446,7 +526,7 @@ export const validateGraph = async (
 			feeders.set(target, []);
 		}
 
-		feeders.get(target)?.push(source);
+		feeders.get(target)?.push({ source, sourcePort: edge.sourcePort });
 
 		if (source.nodeType !== undefined && !source.nodeType.ports.outputs.includes(edge.sourcePort as string)) {
 			issues.push({
