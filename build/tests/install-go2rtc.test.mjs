@@ -558,3 +558,23 @@ test('--help prints the option list and exits 0', () => {
 		assert.ok(result.stdout.includes(option), `${option} missing from: ${result.stdout}`);
 	}
 });
+
+test('the default install directory matches the cameras module default binary path', () => {
+	const expected = '/usr/local/lib/smart-panel/go2rtc/go2rtc';
+	const defaultDir = read('build/go2rtc/install-go2rtc.sh').match(/^DEFAULT_DIR=(\S+)$/m);
+
+	assert.ok(defaultDir, 'DEFAULT_DIR not found in install-go2rtc.sh');
+	assert.equal(`${defaultDir[1]}/go2rtc`, expected);
+
+	const constantsUrl = new URL('apps/backend/src/modules/cameras/cameras.constants.ts', root);
+
+	if (!existsSync(constantsUrl)) {
+		return;
+	}
+
+	const constant = readFileSync(constantsUrl, 'utf8').match(/GO2RTC_DEFAULT_BINARY_PATH\s*=\s*'([^']+)'/);
+
+	if (constant) {
+		assert.equal(constant[1], expected);
+	}
+});
