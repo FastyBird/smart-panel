@@ -1,7 +1,7 @@
 import { chmodSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
-export type StubGo2rtcMode = 'run' | 'crash' | 'ignore-sigterm' | 'flood' | 'split' | 'tail' | 'serve';
+export type StubGo2rtcMode = 'run' | 'crash' | 'ignore-sigterm' | 'flood' | 'split' | 'tail' | 'overlong' | 'serve';
 
 export interface StubGo2rtcOptions {
 	/** `serve` mode: the `config_path` the stub reports instead of its `-config` argument (a foreign service). */
@@ -20,7 +20,8 @@ export const STUB_GO2RTC_READY_LINE = 'stub signal handlers ready';
  * on stdout once its signal handlers are installed. `flood` then prints `line 0`..`line 99` and writes nothing to
  * stderr: ordering across the two pipes is undefined, so a single stream keeps "the last line" deterministic. `split`
  * writes the password (stdout) and a source url (stderr) in two halves 300 ms apart, newline only after the second
- * half. `tail` writes an unterminated line holding both secrets and exits 0. `serve` reads the `-config` file it was
+ * half. `overlong` writes a 20,000-character unterminated line ending in `http://`, then 200 ms later the rest of that
+ * line (credentials, host, the password) and one more normal line `next line ok`. `tail` writes an unterminated line holding both secrets and exits 0. `serve` reads the `-config` file it was
  * given, listens on its `api.listen` address and answers `GET /api` with
  * `{ version, revision, config_path, host }` (like go2rtc's `app.Info`) and `GET /api/config` with the config file content,
  * both only when the `Authorization` header matches the file's `api` credentials (401 otherwise).
@@ -46,7 +47,13 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 		`const reportedConfigText = ${JSON.stringify(options.reportedConfigText ?? null)};`,
 		`const emitSecretsOnSigterm = ${JSON.stringify(options.emitSecretsOnSigterm ?? false)};`,
 		SERVE_SOURCE,
-		'if (mode === "tail") {',
+		'if (mode === "overlong") {',
+		'  process.stdout.write("stub overlong " + "x".repeat(20000) + " http://");',
+		'  setTimeout(() => {',
+		'    process.stdout.write("viewer:hunter2pass@cam.local/stream pw=PW_SENTINEL_abcdef0123\\nnext line ok\\n");',
+		'    ready();',
+		'  }, 200);',
+		'} else if (mode === "tail") {',
 		'  process.stdout.write("stub tail rtsps://console:7441/SENTINELALIAS0123456789 pw=PW_SENTINEL_abcdef0123");',
 		'  process.exit(0);',
 		'}',
@@ -67,7 +74,7 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 		'    process.stderr.write("ALIAS0123456789\\n");',
 		'    ready();',
 		'  }, 300);',
-		'} else {',
+		'} else if (mode !== "overlong") {',
 		'  ready();',
 		'}',
 		'',

@@ -9,7 +9,7 @@ import {
 } from '../../../../test/support/stub-go2rtc.script';
 import { GO2RTC_OUTPUT_RING_SIZE } from '../cameras.constants';
 
-import { Go2rtcExitInfo, Go2rtcProcessService } from './go2rtc-process.service';
+import { GO2RTC_OVERLONG_LINE_MARKER, Go2rtcExitInfo, Go2rtcProcessService } from './go2rtc-process.service';
 import { Go2rtcSecretsRegistry } from './go2rtc-secrets.registry';
 
 /**
@@ -147,6 +147,22 @@ describe('Go2rtcProcessService', () => {
 		expect(joined).not.toContain('PW_SENT');
 		expect(joined).not.toContain('SENTINEL');
 		expect(joined).not.toContain('ALIAS0123456789');
+	});
+
+	it('stores one marker for an over-long line and drops everything up to its newline', async () => {
+		secrets.add('PW_SENTINEL_abcdef0123');
+
+		const lines = await startAndCollect('overlong');
+		const joined = lines.join('\n');
+
+		expect(lines.filter((line) => line === GO2RTC_OVERLONG_LINE_MARKER)).toHaveLength(1);
+		// Neither the head nor the continuation of the line reaches the ring, only the marker and what follows the newline.
+		expect(joined).not.toContain('xxxx');
+		expect(joined).not.toContain('stub overlong');
+		expect(joined).not.toContain('hunter2pass');
+		expect(joined).not.toContain('cam.local');
+		expect(joined).not.toContain('PW_SENTINEL_abcdef0123');
+		expect(lines.indexOf('next line ok')).toBe(lines.indexOf(GO2RTC_OVERLONG_LINE_MARKER) + 1);
 	});
 
 	it('stores and redacts an unterminated tail when the child closes', async () => {

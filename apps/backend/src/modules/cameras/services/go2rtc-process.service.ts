@@ -14,8 +14,16 @@ import { errorName } from '../cameras.exceptions';
 import { redactGo2rtcOutput } from './go2rtc-redaction';
 import { Go2rtcSecretsRegistry } from './go2rtc-secrets.registry';
 
-/** A line without a newline is flushed once it grows past this, so a runaway child cannot grow the carry buffer. */
+/** A line without a newline that grows past this is dropped, so a runaway child cannot grow the carry buffer. */
 const MAX_CARRY_LENGTH = 16 * 1024;
+
+/**
+ * Stored in place of an over-long line. Redaction cannot match a secret that straddles the cut, so neither half is ever
+ * kept: the marker is stored once and the rest of the line, through its newline, is discarded.
+ */
+export const GO2RTC_OVERLONG_LINE_MARKER = '<output line too long, discarded>';
+
+type CarryKey = 'stdoutCarry' | 'stderrCarry';
 
 export interface Go2rtcProcessOptions {
 	binaryPath: string;
@@ -36,6 +44,8 @@ interface Go2rtcProcessState {
 	onExit: (exit: Go2rtcExitInfo) => void;
 	stdoutCarry: string;
 	stderrCarry: string;
+	/** An over-long line is being skipped: everything up to the next newline of that stream is dropped. */
+	discarding: Record<CarryKey, boolean>;
 	/** The child is gone (`exit` seen, or it never started): it no longer counts as running. */
 	terminated: boolean;
 	/** `stop()` was called: the exit is expected and is not reported through `onExit`. */
@@ -102,6 +112,7 @@ export class Go2rtcProcessService {
 			onExit,
 			stdoutCarry: '',
 			stderrCarry: '',
+			discarding: { stdoutCarry: false, stderrCarry: false },
 			terminated: false,
 			stopping: false,
 			reported: false,
@@ -271,24 +282,38 @@ export class Go2rtcProcessService {
 		child.on('error', () => undefined);
 	}
 
-	private append(state: Go2rtcProcessState, carryKey: 'stdoutCarry' | 'stderrCarry', text: string): void {
+	private append(state: Go2rtcProcessState, carryKey: CarryKey, text: string): void {
 		if (this.latestProcess !== state) {
 			return;
 		}
 
-		state[carryKey] += text;
+		let incoming = text;
+
+		if (state.discarding[carryKey]) {
+			const newline = incoming.indexOf('\n');
+
+			if (newline === -1) {
+				return;
+			}
+
+			state.discarding[carryKey] = false;
+			incoming = incoming.slice(newline + 1);
+		}
+
+		state[carryKey] += incoming;
 
 		const lines = state[carryKey].split('\n');
 
 		state[carryKey] = lines.pop() ?? '';
 
-		if (state[carryKey].length > MAX_CARRY_LENGTH) {
-			lines.push(state[carryKey]);
-			state[carryKey] = '';
-		}
-
 		for (const line of lines) {
 			this.store(line.endsWith('\r') ? line.slice(0, -1) : line);
+		}
+
+		if (state[carryKey].length > MAX_CARRY_LENGTH) {
+			this.store(GO2RTC_OVERLONG_LINE_MARKER);
+			state[carryKey] = '';
+			state.discarding[carryKey] = true;
 		}
 	}
 
