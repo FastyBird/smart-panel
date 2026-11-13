@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { CAMERAS_MODULE_NAME } from '../cameras.constants';
@@ -26,13 +26,13 @@ describe('CamerasModuleEnabledGuard', () => {
 		expect(() => guard.canActivate()).toThrow('Cameras module is disabled');
 	});
 
-	it('falls back to enabled when the configuration cannot be read', () => {
+	it('fails closed with 503 when the configuration cannot be read', () => {
 		const guard = guardFor(
 			jest.fn().mockImplementation(() => {
 				throw new Error('no config');
 			}),
 		);
 
-		expect(guard.canActivate()).toBe(true);
+		expect(() => guard.canActivate()).toThrow(ServiceUnavailableException);
 	});
 });

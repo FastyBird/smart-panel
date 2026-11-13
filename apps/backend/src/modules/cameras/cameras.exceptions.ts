@@ -47,6 +47,32 @@ export class CamerasForbiddenException extends CamerasException {
 	}
 }
 
+export class CameraProviderTimeoutError extends Error {
+	constructor() {
+		super('Camera provider call timed out');
+		this.name = 'CameraProviderTimeoutError';
+	}
+}
+
+/**
+ * Names an error for log output from a fixed set of literals.
+ *
+ * Never reads `error.name` or `error.message`: a provider controls both and may put a source URL in either.
+ */
+export function errorName(error: unknown): string {
+	if (error instanceof CameraProviderTimeoutError) return 'CameraProviderTimeoutError';
+	if (error instanceof CamerasNotFoundException) return 'CamerasNotFoundException';
+	if (error instanceof CameraOfflineException) return 'CameraOfflineException';
+	if (error instanceof CameraRateLimitedException) return 'CameraRateLimitedException';
+	if (error instanceof CameraProfileUnavailableException) return 'CameraProfileUnavailableException';
+	if (error instanceof CameraUpstreamException) return 'CameraUpstreamException';
+	if (error instanceof CamerasForbiddenException) return 'CamerasForbiddenException';
+	if (error instanceof CamerasException) return 'CamerasException';
+	if (error instanceof Error) return 'ProviderError';
+
+	return 'UnknownError';
+}
+
 /**
  * Normalises an error thrown by a camera provider before it leaves the provider boundary.
  *

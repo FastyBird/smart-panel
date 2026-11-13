@@ -8,8 +8,6 @@ import { CAMERAS_MODULE_NAME } from '../cameras.constants';
 
 @ApiSchema({ name: 'CamerasModuleUpdateConfig' })
 export class UpdateCamerasConfigDto extends UpdateModuleConfigDto {
-	override enabled = true;
-
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',
