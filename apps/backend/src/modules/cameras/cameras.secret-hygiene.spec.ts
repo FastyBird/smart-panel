@@ -229,6 +229,7 @@ describe('Cameras secret hygiene', () => {
 			const go2rtc = {
 				getClient: () => ({ authorization: null, putStream, deleteStream: jest.fn(), wsUrl: jest.fn() }),
 				getStatus: () => ({ ...unavailable, state: 'running', reason: null, version: '1.9.9' }),
+				getInstallationId: () => 'abcd1234',
 				subscribe: () => () => undefined,
 			};
 			const streams = new Go2rtcStreamsService(go2rtc as never, service, secrets);
