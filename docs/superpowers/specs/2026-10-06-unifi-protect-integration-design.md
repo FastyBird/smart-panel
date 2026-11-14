@@ -209,6 +209,67 @@ Status: **all confirmed** on 2026-10-06 — D1, D3, D5, D6, D7 and D8 first, the
 | **D9** | Stream creation on the console | The adoption wizard offers "Enable RTSPS stream" per camera (default on, quality configurable); the plugin calls `POST rtsps-stream` only for cameras the user selected and never deletes streams it did not create. | Never touch the console (user must enable streams manually). |
 | **D10** | Scope of consoles | **One console per plugin instance** in the MVP; device identifiers include the NVR id so that multi-console support can be added later without migration. | Multiple consoles in the config from day one. |
 
+### Spike results (2026-11-14)
+
+UP-0 live spike against the maintainer's console (read-only: only `GET`, no stream was created, no setting changed).
+Fixtures live in `apps/backend/src/plugins/devices-unifi-protect/__fixtures__/` (captured files are sanitized, the rest
+is marked `_synthetic`); the repeatable API checks are the `*.unifi-spike.ts` suite (`pnpm --filter ./apps/backend run
+test:unifi-spike`, needs `FB_UNIFI_SPIKE_HOST` and `FB_UNIFI_SPIKE_API_KEY_FILE`).
+
+**Confirmed**
+
+- **Console:** reports itself as *Dream Machine Pro* (`hardware.shortname` `UNVR`, NVR type `UNVR4`); firmware in the
+  discovery reply (TLV 0x03) is `6.0.17`; **Protect 7.3.74** (`GET meta/info` -> `applicationVersion`). Two cameras,
+  both `UVC G5 Dome` (H.264, `videoMode` `lprNoneReflex`, HDR on, mic and speaker, smart detect person/vehicle/animal,
+  audio detect `alrmSmoke`/`alrmCmonx`/`alrmBabyCry`/`alrmSpeak`, `supportFullHdSnapshot: false`). One default
+  liveview. `sensors`, `lights`, `chimes` and `viewers` are empty.
+- **API key:** created in *Protect -> Settings -> Integrations* (`/protect/integrations/`); accepted as `X-API-KEY` on
+  REST and on both WebSocket upgrades. D3 (minimum 7.2.105) is not contradicted: 7.3.74 works; older versions were
+  not available to test.
+- **Rate limit:** every response carries `RateLimit: "10-in-1sec"; r=<remaining>; t=<reset>` and `RateLimit-Policy:
+  "10-in-1sec"; q=10; w=1; pk=:<key>:`. A burst of 15 parallel requests gave 10 x `200` and 5 x `429` with
+  `Retry-After: 1`. The pacer targets 80 % (8 requests/s) and honours `Retry-After`.
+- **TLS:** by IP the console presents a self-signed certificate (`CN=unifi.local`). With SNI set to `directConnectDomain`
+  (from `GET /api/system`) it presents a valid Let's Encrypt certificate. Default policy for UP-5: connect to the IP
+  with `servername = directConnectDomain` and full verification; fall back to certificate pinning, and to
+  "unverified" only as an explicit last resort. Validity on the RTSPS port was not tested (see below).
+- **Probes:** `GET /api/system` without auth returns `200` (`hardware.shortname`, `name`, `mac`,
+  `directConnectDomain`, ...); `GET /proxy/protect/api` without auth returns `401` (Protect present).
+- **HQ snapshot:** `snapshot?highQuality=false` returns `200 image/jpeg` (about 58 KB, 0.4 s). `highQuality=true` on a
+  camera with `supportFullHdSnapshot: false` returns `400 {"error":"Camera does not support full HD snapshot","name":
+  "BAD_REQUEST"}`; request HQ only when the flag is true (or fall back on that `400`).
+- **Streams:** `GET cameras/{id}/rtsps-stream` returns `{high, medium, low, package}` where only the qualities that are
+  enabled on the console are non-null (here only `high`); streams are not created by the spike. The URL form is
+  `rtsps://<console>:7441/<alias>?enableSrtp`; the alias is a bearer secret.
+- **WebSocket idle behaviour:** `subscribe/devices` and `subscribe/events` open in about 60 ms with the same header. A
+  6 minute idle capture of both produced no frames, no server pings and no close, so idle sockets survive at least
+  6 minutes without client pings. The 10 minute nginx timeout and the ~180 s client ping interval stay as designed.
+  Reconnect semantics (token/state after a drop) were not exercised.
+- **Discovery:** UDP 10001 broadcast of `01 00 00 00` is answered by the console with a v1 header (`ver 1`, 402 bytes;
+  TLVs 0x01/0x02/0x2f address, 0x03 firmware, 0x0b hostname, 0x0c short model `UNVR`, 0x30 `directConnectDomain`, 0x32
+  interface JSON, 0x33 UUID, ...). A non-console UniFi device replied with a **v0** header and different TLVs (0x15
+  `uum_controller`, 0x16 version, 0x22 `tls://<ip>:12812`). The parser must accept both versions and recognise the
+  console by its TLVs (0x0c model / 0x30 domain), not by "any reply". Both replies are fixtures.
+
+**Not verified (no hardware or no events)**
+
+- Doorbell recognition rule (model `type` vs `featureFlags.hasLcdScreen`): no doorbell on the console. The doorbell and
+  package-camera fixtures are synthetic.
+- Sensors, lights, chimes: none present; fixtures are synthetic, including the leak/tamper reset semantics and
+  `sensorAlarm`/smoke semantics.
+- Event frames: no motion happened during the capture, so `subscribe/events` and `subscribe/devices` event frames are
+  synthetic, built from the OpenAPI shapes in section 4.1.
+- `POST rtsps-stream` (changes console configuration) and the 400/409 behaviour of creating an existing stream.
+- go2rtc restreaming the real `rtspx://<host>:7441/<alias>` to MSE in Chrome, Firefox and Safari, its CPU/memory on a
+  Pi 4 and Pi 5 with 1 and 3 viewers, and HEVC behaviour.
+- flutter-pi playback with `BUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN=ON` on Pi 4/Pi 5 (decides the UP-15 approach).
+- Third-party/HEVC cameras, certificate validity on the RTSPS port, multi-homed stream hosts.
+
+**Spec gap (follow-up):** the `sound_type` enum of the `sound_detection` channel (D8, `spec/devices/channels.yaml`)
+has no values for Protect's `alrmSmoke` and `alrmCmonx` (smoke alarm and CO alarm sounds); `alrmBabyCry` and
+`alrmSpeak` map to `baby_cry` and `speech`. Add `smoke_alarm` and `co_alarm` in a follow-up spec change (check whether
+a property-enum change needs a migration; the category does not change).
+
 ## 7. Architecture
 
 ```
