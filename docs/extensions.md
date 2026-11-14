@@ -483,7 +483,8 @@ differ, so a change to the contract has to be made in both places.
    leaves it out, the engine does not arm it as a trigger and refuses to execute it as a condition or an action (an
    action then takes `error`, traced as refused). Enabling the extension again re-arms the automations that use it.
 3. **Validation.** `validateConfig(config)` is called whenever a graph is saved or validated, with whatever was
-   submitted, and returns `{ field, reason }` problems; an empty list accepts the configuration. A reason is shown to
+   submitted, and returns `{ field, reason }` problems; an empty list accepts the configuration. Check every field
+   the `configSchema` declares, with its type: the schema only shapes the admin form, nothing enforces it. A reason is shown to
    the user, so it describes the rule and never repeats the value. An invalid configuration stops the save of an
    enabled automation; a disabled draft may hold it. `references(config)` lists the devices, scenes or other
    automations the node depends on, so it is invalidated when one of them is removed.
@@ -528,6 +529,7 @@ export const createPulseAction = (bridge: AcmeBridge) =>
     validateConfig: (config) => [
       ...checkAutomationConfigKeys(config, ['property_id', 'value']),
       ...(typeof config.property_id === 'string' ? [] : [{ field: 'property_id', reason: 'A property is needed.' }]),
+      ...(typeof config.value === 'boolean' ? [] : [{ field: 'value', reason: 'The value must be yes or no.' }]),
     ],
     references: (config) => (typeof config.property_id === 'string' ? [{ kind: 'property', id: config.property_id }] : []),
     // What the safety policy judges; never throws
