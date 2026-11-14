@@ -171,7 +171,7 @@ Connects Smart Panel to a UniFi Protect console over its local Integration API. 
 
 ## What you get
 
-- Cameras, sensors and lights known to your Protect console as Smart Panel devices
+- A monitored connection to your Protect console, with its status and a test-connection check (this version creates no devices yet; device adoption comes in a later release)
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
 - Certificate trust that never sends the API key over an unverified connection
 
