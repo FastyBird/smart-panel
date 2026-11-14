@@ -415,7 +415,9 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 
 			console.info(`UniFi spike TLS identity verified via ${SERVER_NAME ? 'server name' : 'pinned fingerprint'}`);
 		},
-		TIMEOUT_MS * 2 + SLACK_MS,
+		// Three sequential operations (TLS verification, /api/system, /cameras), each aborted after TIMEOUT_MS, so the
+		// hook can never expire while one of them is still running.
+		TIMEOUT_MS * 3 + SLACK_MS,
 	);
 
 	describe('console probe (unauthenticated)', () => {
