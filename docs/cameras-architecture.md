@@ -394,6 +394,7 @@ whose acquisition completes after the close is released at once.
 | first `acquire` | `resolveSource`, `toGo2rtcSource`, `PUT /api/streams?name=&src=`; the source URL and its path are added to the secrets registry; reference count 1 |
 | `acquire` while that registration is in flight | joins it: one `resolveSource` and one `PUT` |
 | `acquire` on a registered entry, also inside the grace period | count + 1, grace timer cleared, no `PUT` |
+| `acquire` with a different provider instance than the entry's (replaced plugin) | drops the entry like any other drop (its joiners reject, its leases become no-ops, its `DELETE` is queued), then registers afresh through the same name queue with the new provider's `resolveSource`; never reuses the old source, also inside the grace period |
 | last `release` | `DELETE /api/streams?src=<name>` after 30 s (`GO2RTC_STREAM_IDLE_GRACE_MS`), so a reload reuses the stream; then the secrets are released |
 | `resolveSource` fails | every joiner rejects; no entry; secrets released; the next `acquire` starts over |
 | `PUT` fails, with or without an HTTP status (timeout, reset, or a `400` for a failed config save) | as above, but go2rtc creates the stream before it saves the config (v1.9.15), so it may exist whatever the answer: a compensating `DELETE` is queued behind the `PUT` in the name queue and the secrets stay retained until that `DELETE` is confirmed (`404` counts as deleted) |

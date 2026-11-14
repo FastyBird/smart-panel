@@ -849,6 +849,125 @@ describe('Go2rtcStreamsService', () => {
 		expect(secrets.list()).toEqual([]);
 	});
 
+	describe('a provider that replaced the one that registered the stream', () => {
+		const SOURCE_P1 = 'rtsps://console-one:7441/PROVIDERONEALIAS01?enableSrtp';
+		const SOURCE_P2 = 'rtsps://console-two:7441/PROVIDERTWOALIAS02?enableSrtp';
+
+		let p1: FakeCameraStreamProvider;
+		let p2: FakeCameraStreamProvider;
+		let resolveP1: jest.SpyInstance;
+		let resolveP2: jest.SpyInstance;
+		let go2rtcState: Map<string, string>;
+
+		beforeEach(() => {
+			p1 = new FakeCameraStreamProvider('devices-fake');
+			p2 = new FakeCameraStreamProvider('devices-fake');
+			go2rtcState = new Map();
+
+			resolveP1 = jest.spyOn(p1, 'resolveSource').mockResolvedValue({ url: SOURCE_P1, transport: 'rtsps-insecure' });
+			resolveP2 = jest.spyOn(p2, 'resolveSource').mockResolvedValue({ url: SOURCE_P2, transport: 'rtsps-insecure' });
+
+			client.putStream.mockImplementation((n: string, src: string) => {
+				go2rtcState.set(n, src);
+
+				return Promise.resolve();
+			});
+			client.deleteStream.mockImplementation((n: string) => {
+				go2rtcState.delete(n);
+
+				return Promise.resolve();
+			});
+		});
+
+		it('re-registers with the new provider, turns the old lease into a no-op and ends with the new source', async () => {
+			const old = await streams.acquire(camera, p1, 'medium');
+
+			expect(go2rtcState.get(name)).toContain('console-one');
+
+			const fresh = await streams.acquire(camera, p2, 'medium');
+
+			expect(resolveP2).toHaveBeenCalledTimes(1);
+			expect(client.deleteStream).toHaveBeenCalledTimes(1);
+			expect(client.putStream).toHaveBeenCalledTimes(2);
+			expect(go2rtcState.get(name)).toContain('console-two');
+			expect(go2rtcState.get(name)).not.toContain('console-one');
+			expect(secrets.list().join(' ')).not.toContain('PROVIDERONEALIAS01');
+			expect(secrets.list().join(' ')).toContain('PROVIDERTWOALIAS02');
+
+			// The stale lease belongs to the dropped entry: releasing it neither counts nor schedules a DELETE.
+			old.release();
+			await jest.advanceTimersByTimeAsync(60_000);
+			expect(go2rtcState.get(name)).toContain('console-two');
+
+			fresh.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+			expect(go2rtcState.has(name)).toBe(false);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('does not reuse the source of an entry in its idle grace period, and its timer never resurrects it', async () => {
+			const old = await streams.acquire(camera, p1, 'medium');
+
+			old.release();
+			await jest.advanceTimersByTimeAsync(10_000);
+
+			const fresh = await streams.acquire(camera, p2, 'medium');
+
+			expect(resolveP2).toHaveBeenCalledTimes(1);
+			expect(go2rtcState.get(name)).toContain('console-two');
+
+			// The old grace timer would have fired here: it must not delete the new registration.
+			await jest.advanceTimersByTimeAsync(60_000);
+			expect(go2rtcState.get(name)).toContain('console-two');
+			expect(client.deleteStream).toHaveBeenCalledTimes(1);
+
+			fresh.release();
+		});
+
+		it('still coalesces viewers of the same provider while its registration is in flight', async () => {
+			const results = await Promise.all([streams.acquire(camera, p1, 'medium'), streams.acquire(camera, p1, 'medium')]);
+
+			expect(resolveP1).toHaveBeenCalledTimes(1);
+			expect(client.putStream).toHaveBeenCalledTimes(1);
+			expect(results).toHaveLength(2);
+			expect(client.deleteStream).not.toHaveBeenCalled();
+		});
+
+		it('supersedes an in-flight registration of the replaced provider: its joiners reject, the new one registers once', async () => {
+			let answerP1!: (value: { url: string; transport: 'rtsps-insecure' }) => void;
+
+			resolveP1.mockReturnValue(
+				new Promise((resolve) => {
+					answerP1 = resolve;
+				}),
+			);
+
+			const joiners = [
+				streams.acquire(camera, p1, 'medium').catch((e: Error) => e),
+				streams.acquire(camera, p1, 'medium').catch((e: Error) => e),
+			];
+
+			await flush();
+
+			const fresh = await streams.acquire(camera, p2, 'medium');
+
+			for (const result of await Promise.all(joiners)) {
+				expect(result).toBeInstanceOf(CamerasNotFoundException);
+			}
+
+			// The replaced provider answering late must not register anything.
+			answerP1({ url: SOURCE_P1, transport: 'rtsps-insecure' });
+			await flush();
+
+			expect(resolveP2).toHaveBeenCalledTimes(1);
+			expect(client.putStream).toHaveBeenCalledTimes(1);
+			expect(go2rtcState.get(name)).toContain('console-two');
+			expect(secrets.list().join(' ')).not.toContain('PROVIDERONEALIAS01');
+
+			fresh.release();
+		});
+	});
+
 	it('does not start a PUT before a DELETE of the same stream has finished', async () => {
 		let finishDelete!: () => void;
 

@@ -36,6 +36,8 @@ export interface Go2rtcStreamLease {
 interface StreamEntry {
 	readonly name: string;
 	readonly deviceId: string;
+	/** The provider instance that registered (or is registering) this entry: its source is what the stream carries. */
+	readonly provider: ICameraStreamProvider;
 	/** The relay this entry was registered on: its DELETE, and the secrets it retains, belong to that relay. */
 	readonly relay: Relay;
 	/** Viewers (and joiners of an in-flight registration) that hold a lease. */
@@ -71,7 +73,7 @@ interface RetainedSecrets {
 
 /**
  * Registers one go2rtc stream per camera profile while someone watches it. Registration is lazy (first viewer), shared
- * (one `resolveSource` and one `PUT` for concurrent viewers) and reference counted: the stream is deleted
+ * (one `resolveSource` and one `PUT` for concurrent viewers of the same provider) and reference counted: the stream is deleted
  * `GO2RTC_STREAM_IDLE_GRACE_MS` after the last viewer leaves, so a page reload reuses it.
  *
  * The source url is a secret: it lives in the go2rtc process and in the secrets registry, never in a log line, an
@@ -205,6 +207,14 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 
 		let entry = this.entries.get(name);
 
+		if (entry && entry.provider !== provider) {
+			// Registered by a provider that was replaced: its source must not be reused. The drop queues the DELETE of the
+			// old stream, so the registration below (same name queue) runs after it; joiners of the old registration reject
+			// and its leases become no-ops.
+			void this.deleteEntry(entry, relay, new CamerasNotFoundException('Camera not found'));
+			entry = undefined;
+		}
+
 		if (entry) {
 			entry.count++;
 
@@ -249,6 +259,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		const entry: StreamEntry = {
 			name,
 			deviceId: device.id,
+			provider,
 			relay,
 			count: 1,
 			registration: Promise.resolve(),
