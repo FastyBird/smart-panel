@@ -307,7 +307,7 @@ a property-enum change needs a migration; the category does not change).
 - Identifiers: prefix `devices-unifi-protect`, plugin name `devices-unifi-protect-plugin`, type
   `devices-unifi-protect`. Routes under `/api/v1/plugins/devices-unifi-protect/…`.
 - Config (`models/config.model.ts`): `enabled`, `host`, `port` (443), write-only secret `api_key`
-  (`api_key_configured` projection), `tls` (`verify` bool, optional pinned `fingerprint_sha256`), `stream_host_override`,
+  (`api_key_configured` projection), `tls { mode: verify | pinned, server_name, fingerprint_sha256 }` (verify needs an admin-confirmed `server_name` when the host is an IP; no insecure mode), `stream_host_override`,
   `default_stream_quality` (`medium`), `snapshot_min_interval_ms` (2000), `poll_interval_ms` for degraded mode.
 - Services: `ProtectApiClient` (Node `https`/`tls` agent with the TLS policy — `undici` is not a backend
   dependency — request pacing at 80 % of `RateLimit-Policy`,
