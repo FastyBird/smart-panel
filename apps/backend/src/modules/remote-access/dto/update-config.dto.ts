@@ -71,6 +71,10 @@ export class UpdateRemoteAccessConfigDto extends UpdateModuleConfigDto {
 		example: false,
 	})
 	@Expose({ name: 'trust_forwarded_headers' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { trust_forwarded_headers?: unknown } }) => obj.trust_forwarded_headers, {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({
 		message: '[{"field":"trust_forwarded_headers","reason":"Trust forwarded headers must be a boolean value."}]',

@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
@@ -104,6 +104,8 @@ export abstract class CreateTileDto {
 
 	@ApiPropertyOptional({ description: 'Whether tile is hidden', type: 'boolean', example: false })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { hidden?: unknown } }) => obj.hidden, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
 	hidden?: boolean;

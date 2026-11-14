@@ -44,7 +44,10 @@ export class ClimateIntentDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { increase?: unknown } }) => (obj.increase === null ? undefined : obj.increase), {
+		toClassOnly: true,
+	})
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for setpoint delta."}]' })
 	@IsBoolean({ message: '[{"field":"increase","reason":"Increase must be a boolean value."}]' })

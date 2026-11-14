@@ -89,6 +89,8 @@ export class UpdateMcpClientDto {
 
 	@ApiPropertyOptional({ description: 'Whether the client may authenticate', type: 'boolean' })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean()
 	enabled?: boolean;

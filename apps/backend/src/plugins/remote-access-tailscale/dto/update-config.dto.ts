@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { ArrayUnique, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -50,6 +50,8 @@ export class UpdateRemoteAccessTailscalePluginConfigDto extends UpdatePluginConf
 		example: true,
 	})
 	@Expose({ name: 'accept_dns' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { accept_dns?: unknown } }) => obj.accept_dns, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"accept_dns","reason":"Accept DNS must be a boolean value."}]' })
 	accept_dns?: boolean;
@@ -61,6 +63,8 @@ export class UpdateRemoteAccessTailscalePluginConfigDto extends UpdatePluginConf
 		example: false,
 	})
 	@Expose({ name: 'accept_routes' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { accept_routes?: unknown } }) => obj.accept_routes, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"accept_routes","reason":"Accept routes must be a boolean value."}]' })
 	accept_routes?: boolean;
@@ -88,6 +92,8 @@ export class UpdateRemoteAccessTailscalePluginConfigDto extends UpdatePluginConf
 		example: false,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { ssh?: unknown } }) => obj.ssh, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"ssh","reason":"SSH must be a boolean value."}]' })
 	ssh?: boolean;
@@ -99,6 +105,8 @@ export class UpdateRemoteAccessTailscalePluginConfigDto extends UpdatePluginConf
 		example: true,
 	})
 	@Expose({ name: 'serve_https' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { serve_https?: unknown } }) => obj.serve_https, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"serve_https","reason":"Serve HTTPS must be a boolean value."}]' })
 	serve_https?: boolean;
@@ -109,6 +117,8 @@ export class UpdateRemoteAccessTailscalePluginConfigDto extends UpdatePluginConf
 		example: false,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { funnel?: unknown } }) => obj.funnel, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"funnel","reason":"Funnel must be a boolean value."}]' })
 	funnel?: boolean;

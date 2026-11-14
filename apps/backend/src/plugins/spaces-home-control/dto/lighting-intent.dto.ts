@@ -99,7 +99,8 @@ export class LightingIntentDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { on?: unknown } }) => (obj.on === null ? undefined : obj.on), { toClassOnly: true })
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_SET && o.on !== undefined)
 	@IsBoolean({ message: '[{"field":"on","reason":"On must be a boolean."}]' })
 	on?: boolean;

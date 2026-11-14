@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
@@ -96,6 +96,8 @@ export class ConfigureThermostatComfortDto extends ThermostatComfortFenceDto {
 		type: Boolean,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { automation_enabled?: unknown } }) => obj.automation_enabled, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean()
 	automation_enabled?: boolean;
@@ -152,6 +154,8 @@ export class SelectThermostatPresetDto extends ThermostatComfortFenceDto {
 		description: 'Explicit user action clearing a previously latched OFF; requested HVAC mode remains separate',
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { clear_user_off?: unknown } }) => obj.clear_user_off, { toClassOnly: true })
 	@IsBoolean()
 	clear_user_off: boolean;
 }

@@ -78,7 +78,11 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 		example: false,
 	})
 	@Expose({ name: 'voice_enabled' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { voice_enabled?: unknown } }) => (obj.voice_enabled === null ? undefined : obj.voice_enabled),
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"voice_enabled","reason":"Voice enabled must be a boolean."}]' })
 	voice_enabled?: boolean;

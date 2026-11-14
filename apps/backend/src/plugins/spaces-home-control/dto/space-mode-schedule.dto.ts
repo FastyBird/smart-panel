@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	ArrayMinSize,
@@ -56,6 +56,8 @@ export class ScheduleEntryDto implements ScheduleEntry {
 	days_of_week: number[];
 	@ApiProperty({ description: 'Whether this entry participates', type: 'boolean' })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsBoolean()
 	enabled: boolean;
 }
@@ -70,6 +72,8 @@ export class UpdateSpaceModeScheduleDto {
 	expected_revision: number;
 	@ApiProperty({ description: 'Per-space scheduling opt-in', type: 'boolean' })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsBoolean()
 	enabled: boolean;
 	@ApiProperty({

@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -64,6 +64,10 @@ export class UpdateScenesConfigDto extends UpdateModuleConfigDto {
 		example: true,
 	})
 	@Expose({ name: 'continue_on_action_failure' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { continue_on_action_failure?: unknown } }) => obj.continue_on_action_failure, {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({
 		message: '[{"field":"continue_on_action_failure","reason":"Continue on action failure must be a boolean."}]',
