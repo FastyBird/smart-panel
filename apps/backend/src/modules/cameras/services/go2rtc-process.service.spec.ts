@@ -175,6 +175,45 @@ describe('Go2rtcProcessService', () => {
 		expect(service.getOutputLines().join('\n')).not.toContain('SENTINELALIAS');
 	});
 
+	it('resolves stop() only after the pipes are drained, even when called after exit and before close', async () => {
+		secrets.add('PW_SENTINEL_abcdef0123');
+
+		startStub('held-pipes');
+
+		// The child has exited; a helper still holds its stdout, so `close` has not happened.
+		await waitFor(() => !service.isRunning());
+
+		expect(service.getPid()).toBeNull();
+		expect(service.getOutputLines().join('\n')).not.toContain('late tail');
+
+		let stopped = false;
+		const stopping = service.stop().then(() => {
+			stopped = true;
+		});
+
+		await sleep(150);
+
+		expect(stopped).toBe(false);
+
+		await stopping;
+
+		// The unterminated tail reached the ring, redacted, while the secrets were still registered.
+		expect(service.getOutputLines()).toContain('stub late tail rtsps://<redacted> pw=<redacted>');
+		expect(service.getOutputLines().join('\n')).not.toContain('SENTINELALIAS');
+		expect(service.getOutputLines().join('\n')).not.toContain('PW_SENTINEL_abcdef0123');
+	});
+
+	it('does not report a stopped child through onExit when its pipes close after exit', async () => {
+		const onExit = jest.fn();
+
+		startStub('held-pipes', onExit);
+		await waitFor(() => !service.isRunning());
+		await service.stop();
+		await sleep(100);
+
+		expect(onExit).not.toHaveBeenCalled();
+	});
+
 	it('reports a crash through onExit once, with the output already flushed', async () => {
 		secrets.add('PW_SENTINEL_abcdef0123');
 

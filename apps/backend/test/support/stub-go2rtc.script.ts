@@ -1,7 +1,16 @@
 import { chmodSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
-export type StubGo2rtcMode = 'run' | 'crash' | 'ignore-sigterm' | 'flood' | 'split' | 'tail' | 'overlong' | 'serve';
+export type StubGo2rtcMode =
+	| 'run'
+	| 'crash'
+	| 'ignore-sigterm'
+	| 'flood'
+	| 'split'
+	| 'tail'
+	| 'overlong'
+	| 'serve'
+	| 'held-pipes';
 
 export interface StubGo2rtcOptions {
 	/** `serve` mode: the `config_path` the stub reports instead of its `-config` argument (a foreign service). */
@@ -21,7 +30,9 @@ export const STUB_GO2RTC_READY_LINE = 'stub signal handlers ready';
  * stderr: ordering across the two pipes is undefined, so a single stream keeps "the last line" deterministic. `split`
  * writes the password (stdout) and a source url (stderr) in two halves 300 ms apart, newline only after the second
  * half. `overlong` writes a 20,000-character unterminated line ending in `http://`, then 200 ms later the rest of that
- * line (credentials, host, the password) and one more normal line `next line ok`. `tail` writes an unterminated line holding both secrets and exits 0. `serve` reads the `-config` file it was
+ * line (credentials, host, the password) and one more normal line `next line ok`. `held-pipes` exits 0 at once while a
+ * helper process that inherited its stdout keeps the pipe open for 500 ms and then writes an unterminated line holding
+ * both secrets: the child's `exit` comes well before its `close`. `tail` writes an unterminated line holding both secrets and exits 0. `serve` reads the `-config` file it was
  * given, listens on its `api.listen` address and answers `GET /api` with
  * `{ version, revision, config_path, host }` (like go2rtc's `app.Info`) and `GET /api/config` with the config file content,
  * both only when the `Authorization` header matches the file's `api` credentials (401 otherwise).
@@ -39,6 +50,10 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 		'}',
 		'if (mode === "crash") {',
 		'  process.exit(3);',
+		'}',
+		'if (mode === "held-pipes") {',
+		`  require("child_process").spawn(process.execPath, ["-e", ${JSON.stringify(HELD_PIPES_HELPER)}], { stdio: ["ignore", "inherit", "inherit"] }).unref();`,
+		'  process.exit(0);',
 		'}',
 		'if (mode === "ignore-sigterm") {',
 		'  process.on("SIGTERM", () => {});',
@@ -87,6 +102,9 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 
 	return path;
 }
+
+const HELD_PIPES_HELPER =
+	'setTimeout(() => process.stdout.write("stub late tail rtsps://console:7441/SENTINELALIAS0123456789 pw=PW_SENTINEL_abcdef0123"), 500)';
 
 const SERVE_SOURCE = String.raw`
 if (mode === "serve") {

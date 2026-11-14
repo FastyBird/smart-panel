@@ -48,6 +48,8 @@ interface Go2rtcProcessState {
 	discarding: Record<CarryKey, boolean>;
 	/** The child is gone (`exit` seen, or it never started): it no longer counts as running. */
 	terminated: boolean;
+	/** The child is gone and its stdout/stderr are drained and flushed (`close`): the state is released. */
+	closed: boolean;
 	/** `stop()` was called: the exit is expected and is not reported through `onExit`. */
 	stopping: boolean;
 	reported: boolean;
@@ -70,12 +72,13 @@ export class Go2rtcProcessService {
 
 	constructor(private readonly secrets: Go2rtcSecretsRegistry) {}
 
+	/** `false` from the child's `exit` on, although its output may not be drained yet (`stop()` waits for that). */
 	isRunning(): boolean {
-		return this.processState !== null;
+		return this.processState !== null && !this.processState.terminated;
 	}
 
 	getPid(): number | null {
-		return this.processState?.child.pid ?? null;
+		return this.processState !== null && !this.processState.terminated ? (this.processState.child.pid ?? null) : null;
 	}
 
 	/** The retained output (already redacted), oldest first, at most `GO2RTC_OUTPUT_RING_SIZE` lines. */
@@ -83,9 +86,11 @@ export class Go2rtcProcessService {
 		return this.ring;
 	}
 
-	/** No-op while a child is running. Never throws: a failed spawn is reported through `onExit`. */
+	/**
+	 * No-op while a child is running (one that exited but whose output is not drained yet does not block a new one: its
+	 * output is dropped, see `append`). Never throws: a failed spawn is reported through `onExit`. */
 	start(options: Go2rtcProcessOptions, onExit: (exit: Go2rtcExitInfo) => void): void {
-		if (this.processState) {
+		if (this.processState && !this.processState.terminated) {
 			return;
 		}
 
@@ -114,6 +119,7 @@ export class Go2rtcProcessService {
 			stderrCarry: '',
 			discarding: { stdoutCarry: false, stderrCarry: false },
 			terminated: false,
+			closed: false,
 			stopping: false,
 			reported: false,
 			spawnErrorCode: null,
@@ -136,6 +142,7 @@ export class Go2rtcProcessService {
 				state.spawnErrorCode = code;
 				this.logger.warn(`go2rtc spawn failed code=${code}`);
 				this.markTerminated(state);
+				this.markClosed(state);
 				this.report(state, { code: null, signal: null, spawnErrorCode: code });
 				this.detach(state, onStdout, onStderr, onChildExit, onError, onClose);
 
@@ -148,6 +155,7 @@ export class Go2rtcProcessService {
 		const onClose = (code: number | null, signal: NodeJS.Signals | null): void => {
 			this.markTerminated(state);
 			this.flush(state);
+			this.markClosed(state);
 			this.report(state, { code, signal, spawnErrorCode: state.spawnErrorCode });
 			this.detach(state, onStdout, onStderr, onChildExit, onError, onClose);
 		};
@@ -160,8 +168,10 @@ export class Go2rtcProcessService {
 	}
 
 	/**
-	 * SIGTERM, then SIGKILL after `graceMs`. Rejects after a bounded wait if the exit cannot be confirmed; ownership is
-	 * then retained so a second process is never started alongside it. `onExit` is not called for a stopped child.
+	 * SIGTERM, then SIGKILL after `graceMs`. Resolves only once the child's `close` was seen: it exited and its stdout and
+	 * stderr are drained, the unterminated tails flushed into the (redacted) ring. A call between `exit` and `close`
+	 * waits for that `close`. Rejects after a bounded wait if it cannot be confirmed; ownership is then retained so a
+	 * second process is never started alongside it. `onExit` is not called for a stopped child.
 	 */
 	async stop(graceMs: number = GO2RTC_STOP_GRACE_MS): Promise<void> {
 		const state = this.processState;
@@ -181,29 +191,28 @@ export class Go2rtcProcessService {
 			let timer: ReturnType<typeof setTimeout>;
 			const cleanup = (): void => {
 				clearTimeout(timer);
-				child.removeListener('exit', onTerminated);
-				child.removeListener('close', onTerminated);
+				child.removeListener('close', onClosed);
 				child.removeListener('error', onError);
 			};
-			const onTerminated = (): void => {
+			const onClosed = (): void => {
 				cleanup();
 				resolve();
 			};
+			// A failed spawn emits `error` and releases the state itself; `close` may never follow.
 			const onError = (): void => {
-				if (state.terminated) {
-					onTerminated();
+				if (state.closed) {
+					onClosed();
 				}
 			};
 			const signal = (name: NodeJS.Signals): void => {
 				try {
 					child.kill(name);
 				} catch {
-					// A failed signal does not prove exit. Keep waiting for exit/close or the bound.
+					// A failed signal does not prove exit. Keep waiting for close or the bound.
 				}
 			};
 
-			child.once('exit', onTerminated);
-			child.once('close', onTerminated);
+			child.once('close', onClosed);
 			child.on('error', onError);
 			timer = setTimeout(() => {
 				timer = setTimeout(() => {
@@ -228,6 +237,11 @@ export class Go2rtcProcessService {
 
 	private markTerminated(state: Go2rtcProcessState): void {
 		state.terminated = true;
+	}
+
+	/** Releases the process state: only now, with the output drained, may `stop()` resolve. */
+	private markClosed(state: Go2rtcProcessState): void {
+		state.closed = true;
 
 		if (this.processState === state) {
 			this.processState = null;
