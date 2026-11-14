@@ -42,11 +42,18 @@ interface RawBooleanCase {
 	headers?: Record<string, string>;
 	/** False when a valid value would start real work, such as installing an update or reaching a device */
 	control?: boolean;
+	/**
+	 * What the control request answers: 201 for a POST and 200 otherwise unless stated. A placeholder id answers 404,
+	 * which still proves the field passed: the global pipe validates the body before the handler looks the id up.
+	 */
+	controlStatus?: number;
+	/** Runs before the control request, to read state the valid body depends on */
+	prepare?: () => Promise<void>;
 	/** Sent without a token: the route is public */
 	anonymous?: boolean;
 	/**
 	 * The spaces module answers any invalid space payload with 422 and no field details. For those routes the
-	 * control request proves the field is what fails: the same body with a real boolean is accepted.
+	 * control request proves the field is what fails: the same body with a real boolean succeeds.
 	 */
 	spaces?: boolean;
 }
@@ -67,6 +74,13 @@ describe('Raw boolean validation (e2e)', () => {
 		propertyId: PLACEHOLDER_ID,
 		roomId: PLACEHOLDER_ID,
 		signageId: PLACEHOLDER_ID,
+	};
+
+	// The home control documents as the room fixture stores them; a valid update must echo their current revision
+	const homeControlDocs: Record<'mode' | 'occupancy' | 'schedule', Record<string, unknown>> = {
+		mode: {},
+		occupancy: {},
+		schedule: {},
 	};
 
 	const send = (method: Method, path: string, body: object, anonymous = false): request.Test => {
@@ -127,6 +141,36 @@ describe('Raw boolean validation (e2e)', () => {
 	// The home control routes are served by the spaces module, under its historical URLs
 	const homeControl = (path: string): string => `/modules/spaces/spaces/${fixtures.roomId}/${path}`;
 
+	const readHomeControlDocs = async (): Promise<void> => {
+		const read = async (path: string): Promise<Record<string, unknown>> => {
+			const response = await request(app.getHttpServer())
+				.get(homeControl(path))
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.expect(200);
+
+			return (response.body as { data: Record<string, unknown> }).data;
+		};
+
+		const mode = await read('activity-modes/away/config');
+		const occupancy = await read('occupancy');
+		const schedule = await read('schedules');
+
+		homeControlDocs.mode = {
+			expected_revision: mode.activity_revision,
+			display_order: mode.activity_order,
+			configuration: mode.activity_configuration,
+		};
+		homeControlDocs.occupancy = {
+			expected_revision: occupancy.revision,
+			vacancy_timeout_seconds: occupancy.vacancy_timeout_seconds,
+			maximum_age_seconds: occupancy.maximum_age_seconds,
+			sensor_property_ids: occupancy.sensor_property_ids,
+			occupied_mode: occupancy.occupied_mode,
+			vacant_mode: occupancy.vacant_mode,
+		};
+		homeControlDocs.schedule = { expected_revision: schedule.revision, timezone: schedule.timezone };
+	};
+
 	const cases: RawBooleanCase[] = [
 		// Automations
 		{
@@ -138,6 +182,7 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'PATCH automations/:id',
+			controlStatus: 404,
 			method: 'patch',
 			path: () => `/modules/automations/automations/${PLACEHOLDER_ID}`,
 			body: (value) => data({ revision: 1, enabled: value }),
@@ -145,6 +190,7 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'POST automations/validate',
+			controlStatus: 200,
 			method: 'post',
 			path: () => '/modules/automations/automations/validate',
 			body: (value) => data({ graph: { version: 1, nodes: [], edges: [] }, enabled: value }),
@@ -154,6 +200,7 @@ describe('Raw boolean validation (e2e)', () => {
 		// Auth
 		{
 			label: 'PATCH tokens/:id',
+			controlStatus: 404,
 			method: 'patch',
 			path: () => `/modules/auth/tokens/${PLACEHOLDER_ID}`,
 			body: (value) => data({ type: 'long-live', revoked: value }),
@@ -244,7 +291,8 @@ describe('Raw boolean validation (e2e)', () => {
 			label: 'PATCH tiles/:id',
 			method: 'patch',
 			path: () => `/modules/dashboard/tiles/${fixtures.tileId}`,
-			body: (value) => data({ type: 'tiles-time', hidden: value }),
+			// The update route reads the parent from the body unconditionally
+			body: (value) => data({ type: 'tiles-time', parent: { type: 'page', id: fixtures.pageId }, hidden: value }),
 			field: 'hidden',
 			prefix: '',
 		},
@@ -272,6 +320,7 @@ describe('Raw boolean validation (e2e)', () => {
 		),
 		{
 			label: 'POST devices/bulk-update',
+			controlStatus: 200,
 			method: 'post',
 			path: () => '/modules/devices/devices/bulk-update',
 			body: (value) => data({ ids: [PLACEHOLDER_ID], enabled: value }),
@@ -312,6 +361,7 @@ describe('Raw boolean validation (e2e)', () => {
 		...['dark_mode', 'screen_saver', 'screen_power_off', 'speaker', 'microphone'].map(
 			(field): RawBooleanCase => ({
 				label: 'PATCH displays/:id',
+				controlStatus: 404,
 				method: 'patch',
 				path: () => `/modules/displays/displays/${PLACEHOLDER_ID}`,
 				body: (value) => data({ [field]: value }),
@@ -329,6 +379,7 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'POST extensions/bulk-update',
+			controlStatus: 200,
 			method: 'post',
 			path: () => '/modules/extensions/extensions/bulk-update',
 			body: (value) => data({ types: ['devices-wled-plugin'], enabled: value }),
@@ -338,6 +389,7 @@ describe('Raw boolean validation (e2e)', () => {
 		// MCP
 		{
 			label: 'PATCH mcp clients/:id',
+			controlStatus: 404,
 			method: 'patch',
 			path: () => `/modules/mcp/clients/${PLACEHOLDER_ID}`,
 			body: (value) => data({ enabled: value }),
@@ -345,6 +397,7 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'PATCH mcp oauth/clients/:id',
+			controlStatus: 404,
 			method: 'patch',
 			path: () => `/modules/mcp/oauth/clients/${PLACEHOLDER_ID}`,
 			body: (value) => data({ enabled: value }),
@@ -355,6 +408,7 @@ describe('Raw boolean validation (e2e)', () => {
 		...['read', 'dismissed'].map(
 			(field): RawBooleanCase => ({
 				label: 'PATCH notifications/:id',
+				controlStatus: 404,
 				method: 'patch',
 				path: () => `/modules/notifications/notifications/${PLACEHOLDER_ID}`,
 				body: (value) => data({ [field]: value }),
@@ -364,6 +418,7 @@ describe('Raw boolean validation (e2e)', () => {
 		...['read', 'dismissed'].map(
 			(field): RawBooleanCase => ({
 				label: 'POST notifications/bulk-update',
+				controlStatus: 200,
 				method: 'post',
 				path: () => '/modules/notifications/notifications/bulk-update',
 				body: (value) => data({ ids: [PLACEHOLDER_ID], [field]: value }),
@@ -418,6 +473,7 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'POST scenes/bulk-update',
+			controlStatus: 200,
 			method: 'post',
 			path: () => '/modules/scenes/scenes/bulk-update',
 			body: (value) => data({ ids: [PLACEHOLDER_ID], enabled: value }),
@@ -482,32 +538,44 @@ describe('Raw boolean validation (e2e)', () => {
 			label: 'PUT home control activity mode config',
 			method: 'put',
 			path: () => homeControl('activity-modes/away/config'),
-			body: (value) => data({ expected_revision: 1, enabled: value }),
+			prepare: readHomeControlDocs,
+			body: (value) => data({ ...homeControlDocs.mode, enabled: value }),
 			field: 'enabled',
 		},
 		{
 			label: 'PUT home control occupancy',
 			method: 'put',
 			path: () => homeControl('occupancy'),
-			body: (value) => data({ expected_revision: 1, enabled: value }),
+			prepare: readHomeControlDocs,
+			body: (value) => data({ ...homeControlDocs.occupancy, enabled: value }),
 			field: 'enabled',
 		},
 		{
 			label: 'PUT home control schedules',
 			method: 'put',
 			path: () => homeControl('schedules'),
-			body: (value) => data({ expected_revision: 1, enabled: value, entries: [] }),
+			prepare: readHomeControlDocs,
+			body: (value) => data({ ...homeControlDocs.schedule, enabled: value, entries: [] }),
 			field: 'enabled',
 		},
 		{
 			label: 'PUT home control schedules entry',
 			method: 'put',
 			path: () => homeControl('schedules'),
+			prepare: readHomeControlDocs,
 			body: (value) =>
 				data({
-					expected_revision: 1,
+					...homeControlDocs.schedule,
 					enabled: false,
-					entries: [{ id: 'e1', mode: 'away', time: '08:00', days_of_week: [1], enabled: value }],
+					entries: [
+						{
+							id: '22222222-2222-4222-8222-222222222222',
+							mode: 'away',
+							time: '08:00',
+							days_of_week: [1],
+							enabled: value,
+						},
+					],
 				}),
 			field: 'enabled',
 			prefix: 'data.entries.0.',
@@ -620,6 +688,8 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'PUT virtual thermostat comfort',
+			// Valid, then refused by the producer: the placeholder is no thermostat
+			controlStatus: 422,
 			method: 'put',
 			path: () => `/plugins/devices-virtual/producers/thermostats/${PLACEHOLDER_ID}/comfort`,
 			body: (value) => ({ expected_revision: 1, expected_graph_revision: 1, automation_enabled: value, presets: [] }),
@@ -628,6 +698,8 @@ describe('Raw boolean validation (e2e)', () => {
 		},
 		{
 			label: 'POST virtual thermostat comfort/selection',
+			// Valid, then refused by the producer: the revisions do not match any thermostat
+			controlStatus: 422,
 			method: 'post',
 			path: () => `/plugins/devices-virtual/producers/thermostats/${PLACEHOLDER_ID}/comfort/selection`,
 			body: (value) => ({ expected_revision: 1, expected_graph_revision: 1, preset: null, clear_user_off: value }),
@@ -793,14 +865,11 @@ describe('Raw boolean validation (e2e)', () => {
 
 			if (item.control !== false) {
 				it('accepts a real boolean for the field', async () => {
+					await item.prepare?.();
+
 					const response = await call(false);
 
-					if (item.spaces) {
-						expect(response.status).toBeLessThan(300);
-
-						return;
-					}
-
+					expect(response.status).toBe(item.controlStatus ?? (item.method === 'post' ? 201 : 200));
 					expect(fieldErrors(response.body, prefix, item.field)).toHaveLength(0);
 				});
 			}
