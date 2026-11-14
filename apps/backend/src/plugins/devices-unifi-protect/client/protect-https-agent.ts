@@ -45,6 +45,7 @@ export class ProtectHttpsAgent extends https.Agent {
 	private readonly ca: (string | Buffer)[] | undefined;
 	private readonly handshakeTimeoutMs: number;
 	private peerFingerprintValue: string | null = null;
+	private closed = false;
 
 	constructor(options: ProtectAgentOptions) {
 		super({
@@ -64,6 +65,12 @@ export class ProtectHttpsAgent extends https.Agent {
 		return this.peerFingerprintValue;
 	}
 
+	/** Marks the agent closed so a handshake still in flight cannot hand its socket to the pool afterwards. */
+	destroy(): void {
+		this.closed = true;
+		super.destroy();
+	}
+
 	createConnection(
 		_options: tls.ConnectionOptions,
 		callback?: (error: Error | null, socket?: Duplex) => void,
@@ -81,6 +88,11 @@ export class ProtectHttpsAgent extends https.Agent {
 			connection.removeListener('secureConnect', onSecureConnect);
 			// A late error (a reset after settling, or while the socket is being destroyed) must never go unhandled.
 			connection.on('error', () => undefined);
+
+			if (error === null && this.closed) {
+				// The agent was closed during the handshake; Node would otherwise pool the finished socket.
+				error = new ProtectApiError(ProtectErrorCategory.CANCELLED, 'tls');
+			}
 
 			if (error !== null) {
 				connection.destroy();

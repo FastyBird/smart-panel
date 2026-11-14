@@ -333,6 +333,25 @@ describe('ProtectHttpsAgent', () => {
 		}
 	});
 
+	it('destroys a socket whose handshake finishes after the agent was destroyed and fails the request', async () => {
+		const agent = agentFor({
+			mode: 'pinned',
+			serverName: null,
+			fingerprintSha256: PROTECT_TEST_TLS.fingerprints.selfSigned,
+		});
+		const request = get(agent);
+		const outcome = request.then(
+			() => null,
+			(error: unknown) => error,
+		);
+
+		agent.destroy();
+
+		await expect(outcome).resolves.toMatchObject({ category: 'cancelled' });
+		expect(Object.values(agent.freeSockets).flat()).toHaveLength(0);
+		expect(Object.values(agent.sockets).flat()).toHaveLength(0);
+	});
+
 	it('reports a closed port as unreachable', async () => {
 		const port = server.port;
 
