@@ -111,6 +111,8 @@ import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/dev
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1/devices-shelly-v1.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
+import { DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX } from './plugins/devices-unifi-protect/devices-unifi-protect.constants';
+import { DevicesUnifiProtectPlugin } from './plugins/devices-unifi-protect/devices-unifi-protect.plugin';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from './plugins/devices-virtual/devices-virtual.constants';
 import { DevicesVirtualPlugin } from './plugins/devices-virtual/devices-virtual.plugin';
 import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.constants';
@@ -474,6 +476,10 @@ export class AppModule {
 								path: REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_PREFIX,
 								module: RemoteAccessCloudflareTunnelPlugin,
 							},
+							{
+								path: DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX,
+								module: DevicesUnifiProtectPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -561,6 +567,7 @@ export class AppModule {
 				RemoteAccessModule,
 				RemoteAccessTailscalePlugin,
 				RemoteAccessCloudflareTunnelPlugin,
+				DevicesUnifiProtectPlugin,
 
 				// Static file serving is registered directly on the Fastify instance
 				// in main.ts via @fastify/static, bypassing @nestjs/serve-static
