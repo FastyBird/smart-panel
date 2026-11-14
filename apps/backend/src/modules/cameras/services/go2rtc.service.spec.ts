@@ -889,6 +889,96 @@ describe('Go2rtcService', () => {
 			expect(secrets.list()).toEqual(expect.arrayContaining([password, instanceSecret]));
 		});
 
+		it('reports a managed run as ended, with its generation, only once its child is confirmed stopped', async () => {
+			const ended: number[] = [];
+			const endedWhileRegistered: boolean[] = [];
+
+			service.onManagedRunEnded((generation) => {
+				ended.push(generation);
+				endedWhileRegistered.push(secrets.list().length > 0);
+			});
+
+			await startRunning();
+
+			const generation = service.getStatus().generation;
+
+			fakeProcess.stop.mockRejectedValueOnce(new Error('stuck'));
+			fakeProcess.running = true;
+
+			await expect(service.stop()).rejects.toBeInstanceOf(Go2rtcUnavailableException);
+
+			// The relay reports error/crashed, but the child is not confirmed gone: no signal.
+			expect(service.getStatus()).toMatchObject({ state: 'error', reason: 'crashed' });
+			expect(ended).toEqual([]);
+
+			// A later stop that is confirmed settles the run that was left unconfirmed.
+			await service.stop();
+
+			expect(ended).toEqual([generation]);
+			// The secrets were already released when the signal went out: listeners may release what they retained.
+			expect(endedWhileRegistered).toEqual([false]);
+		});
+
+		it('reports the run of a crashed child as ended after its halt, and each run once', async () => {
+			const ended: number[] = [];
+
+			service.onManagedRunEnded((generation) => ended.push(generation));
+
+			await startRunning();
+
+			const first = service.getStatus().generation;
+
+			crash();
+			await jest.advanceTimersByTimeAsync(1000);
+			await settle();
+
+			const second = service.getStatus().generation;
+
+			expect(second).toBe(first + 1);
+			expect(ended).toEqual([first]);
+
+			await service.stop();
+
+			expect(ended).toEqual([first, second]);
+		});
+
+		it('does not report an ended run for a halt whose stop is rejected', async () => {
+			const ended: number[] = [];
+
+			service.onManagedRunEnded((generation) => ended.push(generation));
+
+			await startRunning();
+
+			fakeProcess.stop.mockRejectedValue(new Error('stuck'));
+			crash();
+			await settle();
+
+			expect(service.getStatus()).toMatchObject({ state: 'error', reason: 'crashed' });
+			expect(ended).toEqual([]);
+			expect(secrets.list().length).toBeGreaterThan(0);
+
+			fakeProcess.stop.mockImplementation(() => Promise.resolve());
+			await service.stop();
+
+			expect(ended).toHaveLength(1);
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('stops notifying a listener that unsubscribed, and survives one that throws', async () => {
+			const ended: number[] = [];
+			const unsubscribe = service.onManagedRunEnded((generation) => ended.push(generation));
+
+			service.onManagedRunEnded(() => {
+				throw new Error('listener failed');
+			});
+			unsubscribe();
+
+			await startRunning();
+			await expect(service.stop()).resolves.toBeUndefined();
+
+			expect(ended).toEqual([]);
+		});
+
 		it('keeps the secrets registered while a crashed run is halted, and releases them afterwards', async () => {
 			await startRunning();
 

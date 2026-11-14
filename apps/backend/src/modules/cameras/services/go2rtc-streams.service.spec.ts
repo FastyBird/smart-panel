@@ -39,6 +39,7 @@ describe('Go2rtcStreamsService', () => {
 	let relayClient: unknown;
 	let listeners: Set<(status: Go2rtcRelayStatus) => void>;
 	let unsubscribe: jest.Mock;
+	let endedListeners: Set<(generation: number) => void>;
 	let logSpies: jest.SpyInstance[];
 
 	const flush = (): Promise<void> => jest.advanceTimersByTimeAsync(0);
@@ -54,6 +55,13 @@ describe('Go2rtcStreamsService', () => {
 
 		for (const listener of [...listeners]) {
 			listener({ ...status });
+		}
+	};
+
+	/** The managed process of `generation` was confirmed gone (`Go2rtcService.onManagedRunEnded`). */
+	const fireRunEnded = (generation: number): void => {
+		for (const listener of [...endedListeners]) {
+			listener(generation);
 		}
 	};
 
@@ -78,6 +86,7 @@ describe('Go2rtcStreamsService', () => {
 		relayClient = client;
 		listeners = new Set();
 		unsubscribe = jest.fn();
+		endedListeners = new Set();
 
 		const go2rtc = {
 			getClient: jest.fn(() => relayClient as Go2rtcApiClient | null),
@@ -89,6 +98,13 @@ describe('Go2rtcStreamsService', () => {
 				return () => {
 					unsubscribe();
 					listeners.delete(listener);
+				};
+			}),
+			onManagedRunEnded: jest.fn((listener: (generation: number) => void) => {
+				endedListeners.add(listener);
+
+				return () => {
+					endedListeners.delete(listener);
 				};
 			}),
 		};
@@ -359,6 +375,11 @@ describe('Go2rtcStreamsService', () => {
 		await flush();
 
 		expect(client.deleteStream).not.toHaveBeenCalled();
+		// The process of generation 1 is not confirmed gone: it may still print the source.
+		expect(secrets.list()).toContain(SENT_URL);
+
+		fireRunEnded(1);
+
 		expect(secrets.list()).toEqual([]);
 
 		await streams.acquire(camera, provider, 'medium');
@@ -378,6 +399,10 @@ describe('Go2rtcStreamsService', () => {
 		await flush();
 
 		expect(client.deleteStream).not.toHaveBeenCalled();
+		expect(secrets.list()).toContain(SENT_URL);
+
+		fireRunEnded(1);
+
 		expect(secrets.list()).toEqual([]);
 
 		await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(Go2rtcUnavailableException);
@@ -974,6 +999,10 @@ describe('Go2rtcStreamsService', () => {
 			expect(await pending).toBeInstanceOf(Go2rtcUnavailableException);
 			expect(client.deleteStream).not.toHaveBeenCalled();
 			expect(successor.deleteStream).not.toHaveBeenCalled();
+			expect(secrets.list()).toContain(SENT_URL);
+
+			fireRunEnded(1);
+
 			expect(secrets.list()).toEqual([]);
 		});
 
@@ -1072,7 +1101,7 @@ describe('Go2rtcStreamsService', () => {
 			expect(secrets.list()).toEqual([]);
 		});
 
-		it('releases the retained source when the managed process is gone', async () => {
+		it('releases the retained source only when the managed process is confirmed gone', async () => {
 			client.deleteStream.mockRejectedValue(new Go2rtcApiError(500));
 
 			const lease = await streams.acquire(camera, provider, 'medium');
@@ -1084,10 +1113,37 @@ describe('Go2rtcStreamsService', () => {
 			fire({ generation: 2 });
 			await flush();
 
+			// A new generation says nothing about the old process: it is released by its own run-ended signal only.
+			expect(secrets.list()).toContain(SENT_URL);
+
+			fireRunEnded(2);
+
+			expect(secrets.list()).toContain(SENT_URL);
+
+			fireRunEnded(1);
+
 			expect(secrets.list()).toEqual([]);
 		});
 
-		it('does not retain the source of a managed stream whose DELETE fails after the process died', async () => {
+		it('keeps the source of a stream dropped with an unavailable relay while its process end is unconfirmed', async () => {
+			await streams.acquire(camera, provider, 'medium');
+
+			// `stop()` rejected: the relay is reported crashed, but the child may be alive and print the source.
+			fire({ state: 'error', reason: 'crashed' });
+			await flush();
+			fire({ state: 'unavailable', reason: 'crashed' });
+			await flush();
+
+			expect(client.deleteStream).not.toHaveBeenCalled();
+			expect(secrets.list()).toContain(SENT_URL);
+
+			// A later confirmed stop of that run.
+			fireRunEnded(1);
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('releases the source of a managed stream whose DELETE fails after its process was confirmed gone', async () => {
 			let failDelete!: (error: Error) => void;
 
 			client.deleteStream.mockReturnValue(
@@ -1103,6 +1159,7 @@ describe('Go2rtcStreamsService', () => {
 			expect(secrets.list()).toContain(SENT_URL);
 
 			fire({ state: 'unavailable', reason: 'crashed' });
+			fireRunEnded(1);
 			failDelete(new Go2rtcApiError(null));
 			await flush();
 

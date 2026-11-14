@@ -231,6 +231,7 @@ describe('Cameras secret hygiene', () => {
 				getStatus: () => ({ ...unavailable, state: 'running', reason: null, version: '1.9.9' }),
 				getInstallationId: () => 'abcd1234',
 				subscribe: () => () => undefined,
+				onManagedRunEnded: () => () => undefined,
 			};
 			const streams = new Go2rtcStreamsService(go2rtc as never, service, secrets);
 

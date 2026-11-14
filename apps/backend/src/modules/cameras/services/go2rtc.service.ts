@@ -68,6 +68,8 @@ interface AppliedConfig {
 /** One spawn of the managed child. Everything a spawn owns lives here, so that a late callback can be recognised. */
 interface ManagedRun {
 	epoch: number;
+	/** The relay generation of this spawn: what `onManagedRunEnded` reports once the child is confirmed gone. */
+	generation: number;
 	phase: 'starting' | 'running';
 	ended: boolean;
 	configPath: string;
@@ -122,6 +124,9 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 		generation: 0,
 	};
 	private readonly listeners = new Set<(status: Go2rtcRelayStatus) => void>();
+	private readonly runEndedListeners = new Set<(generation: number) => void>();
+	/** Runs that were ended but whose child was not yet confirmed closed: a later confirmed stop settles them all. */
+	private readonly unconfirmedRuns = new Set<ManagedRun>();
 
 	/** Bumped by `start` and `stop`; every asynchronous continuation compares it to know it was superseded. */
 	private epoch = 0;
@@ -273,6 +278,20 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 		};
 	}
 
+	/**
+	 * Called with the relay generation of a managed run once its child is confirmed gone: exited, stdout and stderr
+	 * drained. Unlike the relay status (which turns non-running as soon as the supervisor gives up on the child), this
+	 * never fires for a child whose termination could not be confirmed, so whoever holds secrets that the child may
+	 * still print can wait for it before releasing them.
+	 */
+	onManagedRunEnded(listener: (generation: number) => void): () => void {
+		this.runEndedListeners.add(listener);
+
+		return () => {
+			this.runEndedListeners.delete(listener);
+		};
+	}
+
 	private getCamerasConfig(): CamerasConfigModel {
 		return this.configService.getModuleConfig<CamerasConfigModel>(CAMERAS_MODULE_NAME);
 	}
@@ -401,6 +420,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 
 		const run: ManagedRun = {
 			epoch,
+			generation: 0,
 			phase: 'starting',
 			ended: false,
 			configPath,
@@ -419,6 +439,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 
 		this.run = run;
 		this.update({ mode: 'managed', state: 'starting', reason: null, version: null }, true);
+		run.generation = this.status.generation;
 
 		// Each spawn has its own `run`: an exit that arrives late (the supervisor reports it on `close`, which a
 		// grandchild holding the pipes can delay past the next spawn) finds its run ended and is ignored.
@@ -687,6 +708,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 	 */
 	private async halt(run: ManagedRun, graceMs?: number): Promise<boolean> {
 		this.endRun(run);
+		this.unconfirmedRuns.add(run);
 
 		try {
 			await this.processService.stop(graceMs);
@@ -700,9 +722,7 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			return false;
 		}
 
-		// The child has exited and its output is drained: nothing can print the secrets any more.
-		run.releaseSecrets();
-		this.removeConfigFiles();
+		this.confirmStopped();
 
 		return true;
 	}
@@ -767,11 +787,37 @@ export class Go2rtcService extends BaseManagedExtensionService implements OnModu
 			this.endRun(run);
 		}
 
+		if (run !== null) {
+			this.unconfirmedRuns.add(run);
+		}
+
 		await this.processService.stop();
 
-		// Only a confirmed stop releases the secrets; a rejected one leaves them registered (and the child owned).
-		run?.releaseSecrets();
+		this.confirmStopped();
+	}
+
+	/**
+	 * `processService.stop()` resolved: the child (there is only one) has exited and its output is drained, so nothing
+	 * can print the secrets of any run that was waiting for it any more. Only a confirmed stop gets here; a rejected one
+	 * leaves the secrets registered, the child owned and `onManagedRunEnded` silent.
+	 */
+	private confirmStopped(): void {
+		const runs = [...this.unconfirmedRuns].sort((a, b) => a.generation - b.generation);
+
+		this.unconfirmedRuns.clear();
 		this.removeConfigFiles();
+
+		for (const run of runs) {
+			run.releaseSecrets();
+
+			for (const listener of [...this.runEndedListeners]) {
+				try {
+					listener(run.generation);
+				} catch (error) {
+					this.logger.warn(`go2rtc run-ended listener failed error=${errorName(error)}`);
+				}
+			}
+		}
 	}
 
 	// ---- config file ----

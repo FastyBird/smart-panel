@@ -60,6 +60,8 @@ interface Relay {
 	readonly client: Go2rtcApiClient;
 	readonly external: boolean;
 	readonly key: string;
+	/** The relay generation of a managed process (`null` for an external instance). */
+	readonly generation: number | null;
 }
 
 /** Secret handles of a stream whose DELETE failed or is uncertain: it may still exist, so its source stays redactable. */
@@ -76,7 +78,10 @@ interface RetainedSecrets {
  * The source url is a secret: it lives in the go2rtc process and in the secrets registry, never in a log line, an
  * error message or a lease. A stream that could not be deleted, or whose PUT failed without an HTTP answer (it may have
  * been created), keeps its secrets registered (`retained`, by relay and name) until a later DELETE of that name on that
- * same relay succeeds, the managed process (and its config file) is gone, or the module is destroyed.
+ * same relay succeeds, the managed process is confirmed gone (`Go2rtcService.onManagedRunEnded`: exited and its output
+ * drained, which the relay status does not prove: a child whose stop could not be confirmed may still print a source),
+ * or the module is destroyed. The entries of a managed relay that stopped being available are dropped from the table at
+ * once (nothing is registered on it any more), but their secrets are retained under that process until it has ended.
  *
  * An external go2rtc outlives the relay state: it persists registered streams to its own config file and stays
  * reachable after this backend stops using it. Every entry therefore remembers the relay it was registered on, so its
@@ -99,8 +104,12 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	/** Entry deletions in flight, so that module destroy can wait (bounded) for them. */
 	private readonly settling = new Set<Promise<unknown>>();
 
+	/** The newest managed relay generation whose process was confirmed gone; secrets of older ones need no retention. */
+	private endedManagedGeneration = 0;
+
 	private lastStatus: Go2rtcRelayStatus | null = null;
 	private unsubscribe: (() => void) | null = null;
+	private unsubscribeRunEnded: (() => void) | null = null;
 
 	constructor(
 		private readonly go2rtc: Go2rtcService,
@@ -111,6 +120,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	onModuleInit(): void {
 		this.lastStatus = this.go2rtc.getStatus();
 		this.unsubscribe = this.go2rtc.subscribe((status) => this.onRelayStatus(status));
+		this.unsubscribeRunEnded = this.go2rtc.onManagedRunEnded((generation) => this.onManagedRunEnded(generation));
 
 		if (this.lastStatus.state === 'running' && this.lastStatus.mode === 'external') {
 			void this.sweepOrphans();
@@ -120,6 +130,8 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	async onModuleDestroy(): Promise<void> {
 		this.unsubscribe?.();
 		this.unsubscribe = null;
+		this.unsubscribeRunEnded?.();
+		this.unsubscribeRunEnded = null;
 
 		const relay = this.currentRelay();
 		const entries = [...this.entries.values()];
@@ -381,8 +393,8 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		const status = this.go2rtc.getStatus();
 
 		return status.mode === 'external'
-			? { client, external: true, key: `external:${client.baseUrl}` }
-			: { client, external: false, key: `managed:${status.generation}` };
+			? { client, external: true, key: `external:${client.baseUrl}`, generation: null }
+			: { client, external: false, key: `managed:${status.generation}`, generation: status.generation };
 	}
 
 	/** Drops the entry, deletes its stream (best effort) and only then forgets its secrets, or retains them. */
@@ -410,8 +422,13 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		this.discard(entry, error);
 
 		if (!relay) {
-			for (const release of handles) {
-				release();
+			if (entry.relay.external) {
+				for (const release of handles) {
+					release();
+				}
+			} else {
+				// No relay to DELETE from, but a managed child that has not been confirmed gone may still print the source.
+				this.retain(entry.name, handles, entry.relay);
 			}
 
 			return;
@@ -430,14 +447,16 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		return JSON.stringify([relay.key, name]);
 	}
 
-	/** Keeps the secrets of a stream that may still exist, unless the relay holding it is already gone. */
+	/**
+	 * Keeps the secrets of a stream that may still exist, unless the relay holding it is confirmed gone: a managed process
+	 * that has ended took its streams (and config file) with it. A merely unavailable one has not ended.
+	 */
 	private retain(name: string, handles: Array<() => void>, relay: Relay): void {
 		if (handles.length === 0) {
 			return;
 		}
 
-		if (!relay.external && this.go2rtc.getClient() !== relay.client) {
-			// A managed process that is gone took its streams (and config file) with it.
+		if (relay.generation !== null && relay.generation <= this.endedManagedGeneration) {
 			for (const release of handles) {
 				release();
 			}
@@ -561,11 +580,6 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		const lost = status.state !== 'running' || previous === null || status.generation !== previous.generation;
 
 		if (lost) {
-			if (previous?.mode === 'managed') {
-				// The process is gone, and the config file that persisted its streams with it.
-				this.releaseRetained(`managed:${previous.generation}`);
-			}
-
 			if (this.entries.size > 0) {
 				this.dropAll();
 			}
@@ -580,18 +594,29 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
-	 * The relay lost its streams (managed: the process is gone and its config file with it) or may still hold them
-	 * (external, which persists them to its own config file). Managed entries are dropped without a DELETE; external
-	 * ones get a best-effort DELETE through the client they were registered on.
+	 * The relay is no longer available. Managed: nothing can be registered on it or DELETEd from it any more, so its
+	 * entries are dropped without a DELETE; the process itself may still be alive, so their secrets move to the
+	 * retention of that process until `onManagedRunEnded`. External (persists its streams to its own config file): a
+	 * best-effort DELETE through the client they were registered on.
 	 */
 	private dropAll(): void {
 		for (const entry of [...this.entries.values()]) {
 			if (entry.relay.external) {
 				void this.deleteEntry(entry, entry.relay);
 			} else {
+				const handles = entry.secretHandles;
+
+				entry.secretHandles = [];
 				this.discard(entry);
+				this.retain(entry.name, handles, entry.relay);
 			}
 		}
+	}
+
+	/** The managed process of `generation` is confirmed gone: it can print nothing more, so what it retained is released. */
+	private onManagedRunEnded(generation: number): void {
+		this.endedManagedGeneration = Math.max(this.endedManagedGeneration, generation);
+		this.releaseRetained(`managed:${generation}`);
 	}
 
 	/** Deletes every stream of this installation on an external relay that this table does not know (previous run). */
