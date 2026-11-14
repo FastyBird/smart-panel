@@ -27,7 +27,13 @@ test('default ports and kinds match what the engine uses, and can not be changed
 		action: { inputs: ['in'], outputs: ['done', 'error'] },
 	});
 	assert.ok(Object.isFrozen(AUTOMATION_NODE_DEFAULT_PORTS));
-	assert.ok(Object.isFrozen(AUTOMATION_NODE_DEFAULT_PORTS.action));
+	for (const ports of Object.values(AUTOMATION_NODE_DEFAULT_PORTS)) {
+		assert.ok(Object.isFrozen(ports));
+		assert.ok(Object.isFrozen(ports.inputs));
+		assert.ok(Object.isFrozen(ports.outputs));
+	}
+	assert.throws(() => AUTOMATION_NODE_DEFAULT_PORTS.action.outputs.splice(0), TypeError);
+	assert.deepEqual(AUTOMATION_NODE_DEFAULT_PORTS.action.outputs, ['done', 'error']);
 	assert.ok(Object.isFrozen(AUTOMATION_EXTENSION_NODE_KINDS));
 	assert.ok(AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS <= AUTOMATION_NODE_MAX_TIMEOUT_SECONDS);
 });

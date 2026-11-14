@@ -5,7 +5,11 @@ export interface AutomationNodePorts {
     inputs: string[];
     outputs: string[];
 }
-export declare const AUTOMATION_NODE_DEFAULT_PORTS: Readonly<Record<AutomationExtensionNodeKind, Readonly<AutomationNodePorts>>>;
+export interface AutomationNodeDefaultPorts {
+    readonly inputs: readonly string[];
+    readonly outputs: readonly string[];
+}
+export declare const AUTOMATION_NODE_DEFAULT_PORTS: Readonly<Record<AutomationExtensionNodeKind, AutomationNodeDefaultPorts>>;
 export type AutomationNodeReferenceKind = 'device' | 'channel' | 'property' | 'scene' | 'space' | 'automation';
 export interface AutomationNodeReference {
     kind: AutomationNodeReferenceKind;

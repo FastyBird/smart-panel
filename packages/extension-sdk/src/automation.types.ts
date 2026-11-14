@@ -34,14 +34,25 @@ export interface AutomationNodePorts {
 	outputs: string[];
 }
 
-/** The ports a card of each kind gets when it declares none */
-export const AUTOMATION_NODE_DEFAULT_PORTS: Readonly<
-	Record<AutomationExtensionNodeKind, Readonly<AutomationNodePorts>>
-> = Object.freeze({
-	trigger: Object.freeze({ inputs: [], outputs: ['out'] }),
-	condition: Object.freeze({ inputs: ['in'], outputs: ['yes', 'no'] }),
-	action: Object.freeze({ inputs: ['in'], outputs: ['done', 'error'] }),
-});
+/** Ports that cannot be changed in place: the shared defaults below */
+export interface AutomationNodeDefaultPorts {
+	readonly inputs: readonly string[];
+	readonly outputs: readonly string[];
+}
+
+const defaultPorts = (inputs: string[], outputs: string[]): AutomationNodeDefaultPorts =>
+	Object.freeze({ inputs: Object.freeze(inputs), outputs: Object.freeze(outputs) });
+
+/**
+ * The ports a card of each kind gets when it declares none. Frozen all the way down, because every SDK consumer in
+ * the process shares them: copy an array (`[...ports.outputs]`) before changing it.
+ */
+export const AUTOMATION_NODE_DEFAULT_PORTS: Readonly<Record<AutomationExtensionNodeKind, AutomationNodeDefaultPorts>> =
+	Object.freeze({
+		trigger: defaultPorts([], ['out']),
+		condition: defaultPorts(['in'], ['yes', 'no']),
+		action: defaultPorts(['in'], ['done', 'error']),
+	});
 
 export type AutomationNodeReferenceKind = 'device' | 'channel' | 'property' | 'scene' | 'space' | 'automation';
 

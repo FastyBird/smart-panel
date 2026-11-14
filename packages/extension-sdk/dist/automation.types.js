@@ -6,10 +6,11 @@ exports.AUTOMATION_EXTENSION_NODE_KINDS = Object.freeze([
     'condition',
     'action',
 ]);
+const defaultPorts = (inputs, outputs) => Object.freeze({ inputs: Object.freeze(inputs), outputs: Object.freeze(outputs) });
 exports.AUTOMATION_NODE_DEFAULT_PORTS = Object.freeze({
-    trigger: Object.freeze({ inputs: [], outputs: ['out'] }),
-    condition: Object.freeze({ inputs: ['in'], outputs: ['yes', 'no'] }),
-    action: Object.freeze({ inputs: ['in'], outputs: ['done', 'error'] }),
+    trigger: defaultPorts([], ['out']),
+    condition: defaultPorts(['in'], ['yes', 'no']),
+    action: defaultPorts(['in'], ['done', 'error']),
 });
 exports.AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS = 30;
 exports.AUTOMATION_NODE_MAX_TIMEOUT_SECONDS = 300;
