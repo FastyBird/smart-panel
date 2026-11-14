@@ -123,7 +123,12 @@ export class RegisterDisplayDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { audio_output_supported?: unknown } }) =>
+			obj.audio_output_supported === null ? undefined : obj.audio_output_supported,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"audio_output_supported","reason":"Audio output supported must be a boolean."}]' })
 	audio_output_supported?: boolean;
@@ -135,7 +140,12 @@ export class RegisterDisplayDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { audio_input_supported?: unknown } }) =>
+			obj.audio_input_supported === null ? undefined : obj.audio_input_supported,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"audio_input_supported","reason":"Audio input supported must be a boolean."}]' })
 	audio_input_supported?: boolean;

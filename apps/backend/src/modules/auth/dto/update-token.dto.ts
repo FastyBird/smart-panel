@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
@@ -23,6 +23,8 @@ export abstract class UpdateTokenDto {
 		example: false,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { revoked?: unknown } }) => obj.revoked, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"revoked","reason":"Revoked must be a valid boolean value."}]' })
 	revoked: boolean;

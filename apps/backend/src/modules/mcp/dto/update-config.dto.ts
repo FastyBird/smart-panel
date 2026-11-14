@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { ArrayUnique, IsArray, IsBoolean, IsEnum, IsOptional, IsString, Validate } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -26,6 +26,8 @@ export class UpdateMcpConfigDto extends UpdateModuleConfigDto {
 		example: false,
 	})
 	@Expose({ name: 'oauth_enabled' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { oauth_enabled?: unknown } }) => obj.oauth_enabled, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"oauth_enabled","reason":"OAuth enabled state must be a boolean."}]' })
 	oauth_enabled?: boolean;

@@ -92,7 +92,11 @@ export class Z2mUpdateMqttDto {
 		name: 'clean_session',
 	})
 	@Expose({ name: 'clean_session' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { clean_session?: unknown } }) => (obj.clean_session === null ? undefined : obj.clean_session),
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"clean_session","reason":"Clean session must be a boolean value."}]' })
 	cleanSession?: boolean;
@@ -150,7 +154,10 @@ export class Z2mUpdateTlsDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => (obj.enabled === null ? undefined : obj.enabled), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;
@@ -161,7 +168,12 @@ export class Z2mUpdateTlsDto {
 		name: 'reject_unauthorized',
 	})
 	@Expose({ name: 'reject_unauthorized' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { reject_unauthorized?: unknown } }) =>
+			obj.reject_unauthorized === null ? undefined : obj.reject_unauthorized,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"reject_unauthorized","reason":"Reject unauthorized must be a boolean value."}]' })
 	rejectUnauthorized?: boolean;
@@ -208,7 +220,10 @@ export class Z2mUpdateDiscoveryDto {
 		name: 'auto_add',
 	})
 	@Expose({ name: 'auto_add' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { auto_add?: unknown } }) => (obj.auto_add === null ? undefined : obj.auto_add), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_add","reason":"Auto add must be a boolean value."}]' })
 	autoAdd?: boolean;
@@ -219,7 +234,12 @@ export class Z2mUpdateDiscoveryDto {
 		name: 'sync_on_startup',
 	})
 	@Expose({ name: 'sync_on_startup' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { sync_on_startup?: unknown } }) =>
+			obj.sync_on_startup === null ? undefined : obj.sync_on_startup,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"sync_on_startup","reason":"Sync on startup must be a boolean value."}]' })
 	syncOnStartup?: boolean;
@@ -269,7 +289,10 @@ export class Z2mUpdateWsDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { secure?: unknown } }) => (obj.secure === null ? undefined : obj.secure), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"secure","reason":"Secure must be a boolean value."}]' })
 	secure?: boolean;

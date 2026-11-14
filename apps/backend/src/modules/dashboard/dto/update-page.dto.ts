@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
@@ -53,6 +53,8 @@ export abstract class UpdatePageDto {
 		example: true,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { show_top_bar?: unknown } }) => obj.show_top_bar, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"show_top_bar","reason":"Show top bar attribute must be a valid true or false."}]' })
 	show_top_bar?: boolean;

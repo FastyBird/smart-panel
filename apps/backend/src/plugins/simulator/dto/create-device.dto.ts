@@ -26,7 +26,11 @@ export class CreateSimulatorDeviceDto extends CreateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { auto_simulate?: unknown } }) => (obj.auto_simulate === null ? undefined : obj.auto_simulate),
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_simulate","reason":"Auto simulate must be a boolean."}]' })
 	auto_simulate?: boolean;
