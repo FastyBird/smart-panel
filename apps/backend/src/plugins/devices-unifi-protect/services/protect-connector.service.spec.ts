@@ -112,7 +112,6 @@ describe('ProtectConnectorService', () => {
 			enabled: true,
 			configured: true,
 			healthy: true,
-			host: 'protect.example.com',
 			tlsMode: 'verify',
 			applicationVersion: '7.3.74',
 			minimumVersion: '7.2.105',
@@ -232,6 +231,29 @@ describe('ProtectConnectorService', () => {
 
 		expect(factory.create).toHaveBeenCalledTimes(1);
 	});
+
+	it.each(['EPROTO', 'ERR_SSL_WRONG_VERSION_NUMBER'])(
+		'stops without a reconnect loop on the raw transport error %s',
+		async (code) => {
+			const client = fakeClient(Object.assign(new Error('write EPROTO'), { code }));
+
+			queue(client);
+			await service.start();
+			await service.settle();
+
+			expect(service.getStatus()).toMatchObject({
+				connectionState: 'error',
+				lastErrorCategory: ProtectErrorCategory.TLS_UNTRUSTED,
+				reconnectAttempt: 0,
+				nextRetryAt: null,
+			});
+			expect(jest.getTimerCount()).toBe(0);
+
+			await jest.advanceTimersByTimeAsync(120_000);
+
+			expect(factory.create).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it.each([
 		ProtectErrorCategory.UNREACHABLE,
@@ -498,7 +520,6 @@ describe('ProtectConnectorService', () => {
 		expect(service.getStatus()).toMatchObject({
 			enabled: false,
 			configured: false,
-			host: null,
 			lastErrorCategory: null,
 			lastError: null,
 		});
@@ -518,7 +539,6 @@ describe('ProtectConnectorService', () => {
 			connectionState: 'error',
 			enabled: false,
 			configured: false,
-			host: null,
 			tlsMode: 'verify',
 			lastErrorCategory: 'validation',
 		});

@@ -52,6 +52,10 @@ describe('ProtectApiError', () => {
 });
 
 describe('toProtectApiError', () => {
+	it.each(['EPROTO', 'ERR_SSL_WRONG_VERSION_NUMBER'])('does not retry the handshake failure %s', (code) => {
+		expect(toProtectApiError(withCode(code), 'tls').retryable).toBe(false);
+	});
+
 	it.each([
 		['ECONNREFUSED', 'unreachable'],
 		['EHOSTUNREACH', 'unreachable'],
@@ -66,6 +70,9 @@ describe('toProtectApiError', () => {
 		['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'tls_untrusted'],
 		['CERT_HAS_EXPIRED', 'tls_untrusted'],
 		['ERR_TLS_CERT_ALTNAME_INVALID', 'tls_untrusted'],
+		['EPROTO', 'tls_untrusted'],
+		['ERR_SSL_WRONG_VERSION_NUMBER', 'tls_untrusted'],
+		['ERR_SSL_PACKET_LENGTH_TOO_LONG', 'tls_untrusted'],
 	])('maps %s to %s', (code, category) => {
 		expect(toProtectApiError(withCode(code), 'tls').category).toBe(category);
 	});

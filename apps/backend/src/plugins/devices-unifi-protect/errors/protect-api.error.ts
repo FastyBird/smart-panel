@@ -110,7 +110,8 @@ export function toProtectApiError(error: unknown, operation: ProtectOperation): 
 	const code = typeof (error as { code?: unknown } | null)?.code === 'string' ? (error as { code: string }).code : null;
 	const name = typeof (error as { name?: unknown } | null)?.name === 'string' ? (error as { name: string }).name : null;
 
-	if (code !== null && TLS_UNTRUSTED_CODES.has(code)) {
+	// A handshake the peer cannot complete (plain HTTP on the port, unsupported protocol) never improves by retrying.
+	if (code !== null && (TLS_UNTRUSTED_CODES.has(code) || code === 'EPROTO' || code.startsWith('ERR_SSL_'))) {
 		return new ProtectApiError(ProtectErrorCategory.TLS_UNTRUSTED, operation);
 	}
 
