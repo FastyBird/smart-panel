@@ -2,15 +2,16 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
+import { DefinitionSource } from '../../../common/definitions/definition-loader';
 import { AutomationMode } from '../automations.constants';
 import {
 	AUTOMATION_TEMPLATE_PARAMETER_TYPES,
 	AUTOMATION_TEMPLATE_PROPERTY_ACCESS,
-	AutomationTemplate,
 	AutomationTemplateParameter,
 	AutomationTemplateParameterType,
 	AutomationTemplatePropertyAccess,
 } from '../templates/automation-template.types';
+import { LoadedAutomationTemplate } from '../templates/automation-templates.service';
 import { AutomationTemplateDraft } from '../templates/template-generator';
 
 import { AutomationGraphModel } from './automation-graph.model';
@@ -168,6 +169,15 @@ export class AutomationTemplateModel {
 	mode: AutomationMode;
 
 	@ApiProperty({
+		description:
+			'Where the template comes from: `builtin` is shipped with the backend, `user` is a file of the configuration directory, which may replace a built-in template with the same identifier. Only a built-in template is the one a client may know and translate by its identifier; the texts of a user template are shown as given.',
+		enum: ['builtin', 'user'],
+		example: 'builtin',
+	})
+	@Expose()
+	source: DefinitionSource;
+
+	@ApiProperty({
 		description: 'The questions the template asks, in the order they are asked',
 		type: 'array',
 		items: { $ref: getSchemaPath(AutomationTemplateParameterModel) },
@@ -253,7 +263,10 @@ const createParameterModel = (parameter: AutomationTemplateParameter): Automatio
 	return model;
 };
 
-export const createAutomationTemplateModel = (template: AutomationTemplate): AutomationTemplateModel => {
+export const createAutomationTemplateModel = ({
+	template,
+	source,
+}: LoadedAutomationTemplate): AutomationTemplateModel => {
 	const model = new AutomationTemplateModel();
 
 	model.id = template.id;
@@ -261,6 +274,7 @@ export const createAutomationTemplateModel = (template: AutomationTemplate): Aut
 	model.description = template.description;
 	model.icon = template.icon ?? null;
 	model.mode = template.mode as AutomationMode;
+	model.source = source;
 	model.parameters = template.parameters.map(createParameterModel);
 
 	return model;

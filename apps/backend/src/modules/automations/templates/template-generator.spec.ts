@@ -120,7 +120,7 @@ describe('checkAutomationTemplate', () => {
 
 		expect(checkAutomationTemplate(t)).toEqual([
 			'parameter unused: min must not be greater than max',
-			'parameter unused: default must be between min and max',
+			'parameter unused: default: The duration must be between 100 and 10 seconds.',
 			'parameter title is declared twice',
 			'node n2 is declared twice',
 			'edge e1 is declared twice',
@@ -133,7 +133,27 @@ describe('checkAutomationTemplate', () => {
 		const t = template();
 		t.parameters[2] = { id: 'level', type: 'number', label: 'Level', min: 5, max: 30, step: 0.5, default: 7.3 };
 
-		expect(checkAutomationTemplate(t)).toEqual(['parameter level: default must be on the step']);
+		expect(checkAutomationTemplate(t)).toEqual([
+			'parameter level: default: The number must be a multiple of 0.5 from 5.',
+		]);
+	});
+
+	it('judges a default by the rules an answer is judged by', () => {
+		const t = template();
+		t.parameters[1] = { id: 'wait', type: 'duration', label: 'Wait', min: 10, max: 600, default: 10.5 };
+		t.parameters[3] = { id: 'title', type: 'text', label: 'Title', max_length: 20, default: '   ' };
+
+		expect(checkAutomationTemplate(t)).toEqual([
+			'parameter wait: default: The duration must be a whole number of seconds.',
+			'parameter title: default: A text is needed.',
+		]);
+	});
+
+	it('measures a text default without the spaces around it, as an answer', () => {
+		const t = template();
+		t.parameters[3] = { id: 'title', type: 'text', label: 'Title', max_length: 5, default: '  Hello  ' };
+
+		expect(checkAutomationTemplate(t)).toEqual([]);
 	});
 });
 

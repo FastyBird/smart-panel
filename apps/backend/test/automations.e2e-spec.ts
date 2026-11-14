@@ -1705,7 +1705,8 @@ describe('Automations module (e2e)', () => {
 					.set('Authorization', `Bearer ${ownerToken}`)
 					.expect(200);
 
-				const templates = (response.body as { data: { id: string; parameters: { id: string }[] }[] }).data;
+				const templates = (response.body as { data: { id: string; source: string; parameters: { id: string }[] }[] })
+					.data;
 
 				expect(templates.map((template) => template.id)).toEqual([
 					'away-heating-setback',
@@ -1717,6 +1718,7 @@ describe('Automations module (e2e)', () => {
 					['motion', 'light', 'off_after'],
 				);
 				expect(templates[0]).not.toHaveProperty('graph');
+				expect(templates.every((template) => template.source === 'builtin')).toBe(true);
 			});
 
 			it('generates a draft that is saved as an ordinary enabled automation, with no link to the template', async () => {

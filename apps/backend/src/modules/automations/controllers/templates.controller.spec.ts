@@ -40,15 +40,16 @@ const GRAPH = { version: 1, nodes: [], edges: [] };
 
 describe('AutomationTemplatesController', () => {
 	let generate: jest.Mock;
+	let catalog: { template: AutomationTemplate; source: string; path: string; overridesBuiltin: boolean }[];
 	let controller: AutomationTemplatesController;
 
 	beforeEach(() => {
 		generate = jest.fn(() => Promise.resolve({ name: 'Leak alarm', mode: 'restart', graph: GRAPH }));
 
+		catalog = [{ template: TEMPLATE, source: 'builtin', path: 'x.yaml', overridesBuiltin: false }];
+
 		const templates = {
-			catalog: () => ({
-				templates: [{ template: TEMPLATE, source: 'builtin', path: 'x.yaml', overridesBuiltin: false }],
-			}),
+			catalog: () => ({ templates: catalog }),
 			generate,
 		};
 
@@ -64,6 +65,7 @@ describe('AutomationTemplatesController', () => {
 			description: 'Sends a notification when water is detected.',
 			icon: 'mdi:water-alert',
 			mode: 'restart',
+			source: 'builtin',
 			parameters: [
 				{
 					id: 'leak',
@@ -79,6 +81,12 @@ describe('AutomationTemplatesController', () => {
 			],
 		});
 		expect(template).not.toHaveProperty('graph');
+	});
+
+	it('says a template replaced from the configuration directory is not the built-in one', () => {
+		catalog = [{ template: TEMPLATE, source: 'user', path: 'module.automations.x.yaml', overridesBuiltin: true }];
+
+		expect(controller.findAll().data[0].source).toBe('user');
 	});
 
 	it('answers the generated draft', async () => {

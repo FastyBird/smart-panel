@@ -134,30 +134,15 @@ const checkParameter = (parameter: AutomationTemplateParameter): string[] => {
 	const problems: string[] = [];
 	const prefix = `parameter ${parameter.id}: `;
 
-	switch (parameter.type) {
-		case 'duration':
-		case 'number':
-			if (parameter.min > parameter.max) {
-				problems.push(`${prefix}min must not be greater than max`);
-			}
+	if ((parameter.type === 'duration' || parameter.type === 'number') && parameter.min > parameter.max) {
+		problems.push(`${prefix}min must not be greater than max`);
+	}
 
-			if (parameter.default !== undefined && (parameter.default < parameter.min || parameter.default > parameter.max)) {
-				problems.push(`${prefix}default must be between min and max`);
-			}
-
-			if (parameter.type === 'number' && parameter.default !== undefined && !isOnStep(parameter.default, parameter)) {
-				problems.push(`${prefix}default must be on the step`);
-			}
-
-			break;
-		case 'text':
-			if (parameter.default !== undefined && parameter.default.length > parameter.max_length) {
-				problems.push(`${prefix}default must be at most max_length characters long`);
-			}
-
-			break;
-		default:
-			break;
+	// A default is used when the question is left unanswered, so it has to pass the rules an answer passes
+	if (parameter.type !== 'property' && parameter.default !== undefined) {
+		problems.push(
+			...checkValueAnswer(parameter, parameter.default).map((issue) => `${prefix}default: ${issue.reason}`),
+		);
 	}
 
 	return problems;
@@ -343,16 +328,14 @@ const checkPropertyAnswer = async (
 	return issues;
 };
 
-const checkAnswer = async (
-	parameter: AutomationTemplateParameter,
+/** Checks the answer to a duration, number or text question; also what a default of one is checked with */
+const checkValueAnswer = (
+	parameter: Exclude<AutomationTemplateParameter, AutomationTemplatePropertyParameter>,
 	value: unknown,
-	findProperty: DevicePropertyLookup,
-): Promise<AutomationTemplateParameterIssue[]> => {
+): AutomationTemplateParameterIssue[] => {
 	const field = `parameters.${parameter.id}`;
 
 	switch (parameter.type) {
-		case 'property':
-			return checkPropertyAnswer(parameter, value, findProperty);
 		case 'duration':
 			if (typeof value !== 'number' || !Number.isInteger(value)) {
 				return [{ field, reason: 'The duration must be a whole number of seconds.' }];
@@ -383,6 +366,15 @@ const checkAnswer = async (
 				: [];
 	}
 };
+
+const checkAnswer = async (
+	parameter: AutomationTemplateParameter,
+	value: unknown,
+	findProperty: DevicePropertyLookup,
+): Promise<AutomationTemplateParameterIssue[]> =>
+	parameter.type === 'property'
+		? checkPropertyAnswer(parameter, value, findProperty)
+		: checkValueAnswer(parameter, value);
 
 const given = (value: unknown): boolean => value !== undefined && value !== null;
 
@@ -415,11 +407,13 @@ export const checkAutomationTemplateAnswers = async (
 	}
 
 	for (const parameter of template.parameters) {
-		const answer = given(answers[parameter.id])
-			? answers[parameter.id]
-			: 'default' in parameter
-				? parameter.default
-				: undefined;
+		let answer: unknown = undefined;
+
+		if (given(answers[parameter.id])) {
+			answer = answers[parameter.id];
+		} else if ('default' in parameter) {
+			answer = parameter.default;
+		}
 
 		if (!given(answer)) {
 			issues.push({ field: `parameters.${parameter.id}`, reason: 'An answer is needed.' });

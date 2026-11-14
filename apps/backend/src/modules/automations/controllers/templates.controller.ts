@@ -68,7 +68,7 @@ export class AutomationTemplatesController {
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${templates.length} automation templates`);
 
 		const response = new AutomationTemplatesResponseModel();
-		response.data = templates.map((entry) => createAutomationTemplateModel(entry.template));
+		response.data = templates.map(createAutomationTemplateModel);
 
 		return response;
 	}
