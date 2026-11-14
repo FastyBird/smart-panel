@@ -128,6 +128,19 @@ run_version() {
 	fi
 }
 
+# Prints the numeric gid of the local group named staff, or nothing when there is none.
+staff_gid() {
+	sg_line=
+	if command -v getent >/dev/null 2>&1; then
+		sg_line=$(getent group staff 2>/dev/null)
+	elif [ -r /etc/group ]; then
+		sg_line=$(grep '^staff:' /etc/group 2>/dev/null | head -n 1)
+	fi
+	sg_rest=${sg_line#*:}
+	sg_rest=${sg_rest#*:}
+	printf '%s' "${sg_rest%%:*}"
+}
+
 # Succeeds when the existing directory $1 (a physical path) is safe to trust while this script runs as root: owned
 # by root or the current user, and not writable by group or others (a sticky world-writable /tmp is refused too),
 # since anyone who can write the directory or one of its ancestors can swap the checksum-verified workspace.
@@ -137,7 +150,7 @@ check_trusted_dir() {
 		warn "cannot inspect $td_path; refusing to install under it"
 		return 1
 	}
-	read -r td_mode _ td_uid _ <<LISTING
+	read -r td_mode _ td_uid td_gid _ <<LISTING
 $td_listing
 LISTING
 	case $td_mode in
@@ -158,9 +171,12 @@ LISTING
 		;;
 	?????w*)
 		# Debian and Ubuntu ship /usr/local and /usr/local/lib as root:staff 2775 (staff is the local-administrator
-		# group); every default install passes through them, so those two root-owned paths stay trusted.
+		# group); every default install passes through them, so those two root-owned paths stay trusted, but only
+		# while their group is root or staff: a member of any other group could swap the workspace.
 		if [ "$td_uid" = 0 ] && { [ "$td_path" = /usr/local ] || [ "$td_path" = /usr/local/lib ]; }; then
-			return 0
+			if [ "$td_gid" = 0 ] || { [ -n "$(staff_gid)" ] && [ "$td_gid" = "$(staff_gid)" ]; }; then
+				return 0
+			fi
 		fi
 		warn "$td_path is writable by its group; refusing to install under it"
 		return 1

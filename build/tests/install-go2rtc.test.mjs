@@ -794,6 +794,44 @@ test('refuses a parent directory owned by a user other than root or the current 
 	assert.deepEqual(readdirSync(parent), []);
 });
 
+test('trusts a group-writable /usr/local only for the root or staff group', { skip: !existsSync('/usr/local') }, () => {
+	const realLs = findOnPath('ls');
+	const dir = '/usr/local/lib/smart-panel/go2rtc';
+
+	const attempt = (gid) => {
+		const sandbox = makeSandbox();
+
+		// /usr/local is reported as root-owned, group-writable and owned by gid; staff is gid 50. A failing mkdir keeps
+		// an accepted run from creating anything on the host.
+		writeExecutable(
+			join(sandbox.bin, 'ls'),
+			script([
+				'for last; do :; done',
+				`if [ "$last" = '${realpathSync('/usr/local')}' ]; then echo 'drwxrwxr-x 2 0 ${gid} 64 Jan 1 00:00 x'; exit 0; fi`,
+				`exec '${realLs}' "$@"`,
+			]),
+		);
+		writeExecutable(join(sandbox.bin, 'getent'), script(["echo 'staff:x:50:'"]));
+		writeExecutable(join(sandbox.bin, 'mkdir'), script(['exit 1']));
+
+		return { sandbox, result: runBoth(sandbox, dir) };
+	};
+
+	for (const gid of [50, 0]) {
+		const { sandbox, result } = attempt(gid);
+
+		for (const run of [result.lenient, result.strict]) {
+			assert.ok(!run.stderr.includes('writable by its group'), `gid ${gid}: ${run.stderr}`);
+		}
+
+		assert.deepEqual(curlLines(sandbox), [], `gid ${gid}`);
+	}
+
+	const { sandbox, result } = attempt(100);
+
+	assertRefused(sandbox, result, 'writable by its group');
+});
+
 test(
 	'refuses a parent directory that is really owned by another user',
 	{ skip: process.getuid?.() === 0 ? undefined : 'changing an owner needs root' },
