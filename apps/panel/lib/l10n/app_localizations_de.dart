@@ -4892,6 +4892,38 @@ class AppLocalizationsDe extends AppLocalizations {
   String get space_occupancy_automatic => 'Belegungsautomatik aktiviert';
 
   @override
+  String get space_automations_title => 'Automatisierungen';
+
+  @override
+  String get space_automations_on => 'Ein';
+
+  @override
+  String get space_automations_off => 'Aus';
+
+  @override
+  String get space_automations_suspended =>
+      'Angehalten: wurde zu oft ausgelöst';
+
+  @override
+  String get space_automations_invalid =>
+      'Muss in der Verwaltung geprüft werden';
+
+  @override
+  String get space_automations_last_failed => 'Letzter Lauf fehlgeschlagen';
+
+  @override
+  String get space_automations_toggle_failed =>
+      'Die Automatisierung konnte nicht umgeschaltet werden. Bitte erneut versuchen.';
+
+  @override
+  String get space_automations_toggle_incomplete =>
+      'Diese Automatisierung ist nicht vollständig und kann nicht eingeschaltet werden.';
+
+  @override
+  String get space_automations_toggle_not_found =>
+      'Diese Automatisierung existiert nicht mehr.';
+
+  @override
   String get native_thermostat_title => 'Natives Thermostat';
 
   @override

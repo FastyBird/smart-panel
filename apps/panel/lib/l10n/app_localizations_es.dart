@@ -4889,6 +4889,38 @@ class AppLocalizationsEs extends AppLocalizations {
       'Automatización de ocupación activada';
 
   @override
+  String get space_automations_title => 'Automatizaciones';
+
+  @override
+  String get space_automations_on => 'Activada';
+
+  @override
+  String get space_automations_off => 'Desactivada';
+
+  @override
+  String get space_automations_suspended =>
+      'En pausa: se activó demasiadas veces';
+
+  @override
+  String get space_automations_invalid =>
+      'Requiere revisión en la administración';
+
+  @override
+  String get space_automations_last_failed => 'La última ejecución falló';
+
+  @override
+  String get space_automations_toggle_failed =>
+      'No se pudo cambiar la automatización. Inténtalo de nuevo.';
+
+  @override
+  String get space_automations_toggle_incomplete =>
+      'Esta automatización no está completa y no se puede activar.';
+
+  @override
+  String get space_automations_toggle_not_found =>
+      'Esta automatización ya no existe.';
+
+  @override
   String get native_thermostat_title => 'Termostato nativo';
 
   @override

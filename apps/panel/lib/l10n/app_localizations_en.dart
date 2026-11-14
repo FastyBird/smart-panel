@@ -4839,6 +4839,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get space_occupancy_automatic => 'Occupancy automation enabled';
 
   @override
+  String get space_automations_title => 'Automations';
+
+  @override
+  String get space_automations_on => 'On';
+
+  @override
+  String get space_automations_off => 'Off';
+
+  @override
+  String get space_automations_suspended =>
+      'Suspended: it was triggered too often';
+
+  @override
+  String get space_automations_invalid => 'Needs attention in the admin';
+
+  @override
+  String get space_automations_last_failed => 'Last run failed';
+
+  @override
+  String get space_automations_toggle_failed =>
+      'The automation could not be switched. Try again.';
+
+  @override
+  String get space_automations_toggle_incomplete =>
+      'This automation is not complete and cannot be switched on.';
+
+  @override
+  String get space_automations_toggle_not_found =>
+      'This automation no longer exists.';
+
+  @override
   String get native_thermostat_title => 'Native thermostat';
 
   @override

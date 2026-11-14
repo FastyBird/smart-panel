@@ -8776,6 +8776,60 @@ abstract class AppLocalizations {
   /// **'Occupancy automation enabled'**
   String get space_occupancy_automatic;
 
+  /// No description provided for @space_automations_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Automations'**
+  String get space_automations_title;
+
+  /// No description provided for @space_automations_on.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get space_automations_on;
+
+  /// No description provided for @space_automations_off.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get space_automations_off;
+
+  /// No description provided for @space_automations_suspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended: it was triggered too often'**
+  String get space_automations_suspended;
+
+  /// No description provided for @space_automations_invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention in the admin'**
+  String get space_automations_invalid;
+
+  /// No description provided for @space_automations_last_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last run failed'**
+  String get space_automations_last_failed;
+
+  /// No description provided for @space_automations_toggle_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The automation could not be switched. Try again.'**
+  String get space_automations_toggle_failed;
+
+  /// No description provided for @space_automations_toggle_incomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'This automation is not complete and cannot be switched on.'**
+  String get space_automations_toggle_incomplete;
+
+  /// No description provided for @space_automations_toggle_not_found.
+  ///
+  /// In en, this message translates to:
+  /// **'This automation no longer exists.'**
+  String get space_automations_toggle_not_found;
+
   /// No description provided for @native_thermostat_title.
   ///
   /// In en, this message translates to:
