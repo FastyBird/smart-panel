@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && vite build",
     "clean": "rimraf dist && rimraf admin",
+    "test": "node --import ./test/register-hooks.mjs --test test/*.test.ts",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "fastybird": {
