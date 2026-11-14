@@ -72,6 +72,12 @@ const boundSystemText = (value: string | null, maxLength: number): string | null
 	value === null ? null : value.replace(CONTROL_CHARACTERS, '').slice(0, maxLength);
 
 /**
+ * The shape of a UniFi console's own direct-connect name. Only such a name is offered as a suggestion: a peer that
+ * answers `/api/system` in the console's place cannot hold a valid certificate for one it does not own.
+ */
+const UNIFI_DIRECT_CONNECT_DOMAIN = /^[0-9a-z]{1,63}\.id\.ui\.direct$/;
+
+/**
  * Tests a console connection without ever sending the API key to a peer that is not accepted first: the presented
  * certificate is inspected and judged (chain and name, or pin) before any client holding the key is created. A saved
  * test uses the stored settings only; a candidate test uses only what it submits, including a new key, so the stored
@@ -302,7 +308,8 @@ export class ProtectConnectionTestService {
 
 		result.directConnectDomain = domain;
 		// Only a suggestion for the administrator to confirm; it is never used as the name the certificate is checked against.
-		result.suggestedServerName = isValidProtectServerName(domain) ? domain : null;
+		result.suggestedServerName =
+			domain !== null && isValidProtectServerName(domain) && UNIFI_DIRECT_CONNECT_DOMAIN.test(domain) ? domain : null;
 		result.consoleName = boundSystemText(system.name, MAX_NAME_LENGTH);
 		result.consoleModel = boundSystemText(system.shortname, MAX_NAME_LENGTH);
 	}

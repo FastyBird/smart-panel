@@ -268,6 +268,18 @@ describe('ProtectConnectionTestService', () => {
 		expect(result.suggestedServerName).toBeNull();
 	});
 
+	it.each(['console.example.com', 'a.b.id.ui.direct', 'X.ID.UI.DIRECT', 'id.ui.direct.example.com'])(
+		'does not suggest %s, which is not a UniFi direct-connect name',
+		async (domain) => {
+			fetchSystem.mockResolvedValue(system({ directConnectDomain: domain }));
+
+			const result = await service.testConnection(candidate({ host: '10.0.0.2' }));
+
+			expect(result.directConnectDomain).toBe(domain);
+			expect(result.suggestedServerName).toBeNull();
+		},
+	);
+
 	it('pins a console that reports no usable domain by its presented fingerprint', async () => {
 		fetchSystem.mockResolvedValue(system({ directConnectDomain: null }));
 		inspect.mockResolvedValue(certificate({ trusted: false }));
