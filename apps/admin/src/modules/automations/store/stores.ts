@@ -11,4 +11,8 @@ export * from './runs.store';
 export * from './runs.store.schemas';
 export * from './runs.store.types';
 export * from './runs.transformers';
+export * from './templates.store';
+export * from './templates.store.schemas';
+export * from './templates.store.types';
+export * from './templates.transformers';
 export * from './types';

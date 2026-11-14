@@ -155,6 +155,9 @@
 			},
 			"flow": {
 				"title": "Edytuj przebieg"
+			},
+			"fromTemplate": {
+				"title": "Z szablonu"
 			}
 		},
 		"messages": {
@@ -949,6 +952,97 @@
 				"missing_reference": "Ten blok odwołuje się do urządzenia, właściwości, sceny lub przestrzeni, które już nie istnieją.",
 				"trigger_failed": "Nie udało się uruchomić tego wyzwalacza.",
 				"safety_reducing_action": "Ta akcja odblokowałaby, rozbroiła lub otworzyła coś, czego automatyzacja nie może."
+			}
+		},
+		"templates": {
+			"headings": {
+				"pick": "Nowa z szablonu"
+			},
+			"texts": {
+				"pick": "Wybierz, co ma robić automatyzacja. Następnie pojawi się kilka pytań, a edytor otworzy się z gotowym przepływem.",
+				"loadFailed": "Nie udało się wczytać szablonów.",
+				"empty": "Brak dostępnych szablonów.",
+				"hint": "Nic nie jest jeszcze zapisywane. Następnie nazwiesz automatyzację; jej przepływ otworzy się potem w edytorze, gdzie możesz go zmienić przed zapisaniem.",
+				"addHint": "Przepływ wygenerowany z szablonu otworzy się w edytorze, gdy automatyzacja zostanie utworzona. Zostanie zapisany dopiero, gdy zapiszesz go tam, a automatyzacja pozostanie wyłączona, dopóki jej nie włączysz."
+			},
+			"buttons": {
+				"back": {
+					"title": "Wstecz"
+				},
+				"continue": {
+					"title": "Dalej"
+				}
+			},
+			"messages": {
+				"invalidAnswers": "Niektóre odpowiedzi są nieprawidłowe. Sprawdź oznaczone pytania.",
+				"invalidGraph": "Nie można zapisać przepływu wygenerowanego z tych odpowiedzi. Sprawdź wybrane urządzenia.",
+				"notGenerated": "Nie udało się przygotować automatyzacji z szablonu."
+			},
+			"items": {
+				"motion-light": {
+					"name": "Światło na ruch",
+					"description": "Włącza światło po wykryciu ruchu i wyłącza je, gdy przez jakiś czas nie wykryto ruchu.",
+					"parameters": {
+						"motion": {
+							"label": "Czujnik ruchu",
+							"description": "Czujnik wykrywający ruch lub obecność."
+						},
+						"light": {
+							"label": "Światło",
+							"description": "Światło, przełącznik lub gniazdko do włączania i wyłączania."
+						},
+						"off_after": {
+							"label": "Wyłącz po braku ruchu przez"
+						}
+					}
+				},
+				"door-open-reminder": {
+					"name": "Przypomnienie o otwartych drzwiach",
+					"description": "Wysyła powiadomienie, gdy drzwi lub okno pozostają otwarte przez jakiś czas.",
+					"parameters": {
+						"contact": {
+							"label": "Czujnik drzwi lub okna",
+							"description": "Czujnik kontaktowy drzwi lub okna."
+						},
+						"open_for": {
+							"label": "Przypomnij, gdy otwarte przez"
+						},
+						"title": {
+							"label": "Tytuł powiadomienia",
+							"default": "Drzwi pozostały otwarte"
+						}
+					}
+				},
+				"away-heating-setback": {
+					"name": "Obniżenie ogrzewania podczas nieobecności",
+					"description": "Obniża ogrzewanie, gdy dom jest w trybie nieobecności, i przywraca je, gdy dom opuszcza ten tryb.",
+					"parameters": {
+						"heater": {
+							"label": "Zadana temperatura ogrzewania",
+							"description": "Docelowa temperatura ogrzewania."
+						},
+						"away_temperature": {
+							"label": "Temperatura podczas nieobecności"
+						},
+						"home_temperature": {
+							"label": "Temperatura po powrocie"
+						}
+					}
+				},
+				"leak-alarm": {
+					"name": "Alarm wycieku wody",
+					"description": "Wysyła krytyczne powiadomienie, gdy tylko czujnik zalania wykryje wodę.",
+					"parameters": {
+						"leak": {
+							"label": "Czujnik zalania",
+							"description": "Czujnik wykrywający wodę."
+						},
+						"title": {
+							"label": "Tytuł powiadomienia",
+							"default": "Wykryto wyciek wody"
+						}
+					}
+				}
 			}
 		}
 	}

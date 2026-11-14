@@ -47,6 +47,21 @@
 		<span class="uppercase">{{ t('automations.buttons.add.title') }}</span>
 	</app-bar-button>
 
+	<app-bar-button
+		v-if="!isMDDevice && isAutomationsListRoute"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		data-test-id="automations-from-template"
+		@click="onAutomationFromTemplate"
+	>
+		<template #icon>
+			<el-icon :size="20">
+				<icon icon="mdi:file-document-multiple-outline" />
+			</el-icon>
+		</template>
+	</app-bar-button>
+
 	<view-header
 		:heading="t('automations.headings.list')"
 		:sub-heading="t('automations.subHeadings.list')"
@@ -65,6 +80,19 @@
 					</template>
 
 					{{ t('automations.buttons.add.title') }}
+				</el-button>
+
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					data-test-id="automations-from-template"
+					@click="onAutomationFromTemplate"
+				>
+					<template #icon>
+						<icon icon="mdi:file-document-multiple-outline" />
+					</template>
+
+					{{ t('automations.buttons.fromTemplate.title') }}
 				</el-button>
 			</div>
 		</template>
@@ -163,6 +191,11 @@
 			</template>
 		</div>
 	</el-drawer>
+
+	<automation-template-dialog
+		v-model:visible="showTemplateDialog"
+		@generated="onTemplateGenerated"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -176,8 +209,8 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { AUTOMATION_DEFAULT_ICON, RouteNames } from '../automations.constants';
-import { ListAutomations, ListAutomationsAdjust } from '../components/components';
+import { AUTOMATION_DEFAULT_ICON, AUTOMATION_TEMPLATE_DRAFT_QUERY, RouteNames } from '../automations.constants';
+import { AutomationTemplateDialog, ListAutomations, ListAutomationsAdjust } from '../components/components';
 import { useAutomationSpaces, useAutomationsActions, useAutomationsDataSource } from '../composables/composables';
 import type { IAutomation } from '../store/automations.store.types';
 
@@ -221,6 +254,7 @@ const { updating, remove, setEnabled } = useAutomationsActions();
 
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
+const showTemplateDialog = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 const remoteFormSaving = ref<boolean>(false);
@@ -244,11 +278,11 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const navigate = (name: string, params?: { id: IAutomation['id'] }): void => {
+const navigate = (name: string, params?: { id: IAutomation['id'] }, query?: Record<string, string>): void => {
 	if (isLGDevice.value) {
-		router.replace({ name, params });
+		router.replace({ name, params, query });
 	} else {
-		router.push({ name, params });
+		router.push({ name, params, query });
 	}
 };
 
@@ -321,6 +355,16 @@ const onResetFilters = (): void => {
 
 const onAutomationCreate = (): void => {
 	navigate(RouteNames.AUTOMATIONS_ADD);
+};
+
+const onAutomationFromTemplate = (): void => {
+	showTemplateDialog.value = true;
+};
+
+// The generated flow waits under the id the new automation gets: the add form starts from its name and mode,
+// and the editor opens with the flow once the automation is created
+const onTemplateGenerated = (draftId: string): void => {
+	navigate(RouteNames.AUTOMATIONS_ADD, undefined, { [AUTOMATION_TEMPLATE_DRAFT_QUERY]: draftId });
 };
 
 const onAdjustList = (): void => {

@@ -95,6 +95,12 @@ vi.mock('../components/components', async () => {
 			name: 'ListAutomationsAdjust',
 			template: '<div />',
 		}),
+		AutomationTemplateDialog: defineVueComponent({
+			name: 'AutomationTemplateDialog',
+			props: { visible: { type: Boolean, default: false } },
+			emits: ['update:visible', 'generated'],
+			template: '<div />',
+		}),
 	};
 });
 
@@ -315,6 +321,24 @@ describe('ViewAutomations', (): void => {
 		// Pushed even on a large screen: the list stays in the history to come back to
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: 'automation-1' } });
 		expect(mocks.routerReplace).not.toHaveBeenCalled();
+	});
+
+	it('opens the template dialog and the add form with the flow it generated', async (): Promise<void> => {
+		await mountView();
+
+		const dialog = wrapper.findComponent({ name: 'AutomationTemplateDialog' });
+
+		expect(dialog.props('visible')).toBe(false);
+
+		await wrapper.find('[data-test-id="automations-from-template"]').trigger('click');
+
+		expect(dialog.props('visible')).toBe(true);
+
+		dialog.vm.$emit('generated', 'draft-1');
+
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_ADD, params: undefined, query: { draft: 'draft-1' } });
 	});
 
 	it('shows the list even when the spaces could not be loaded', async (): Promise<void> => {

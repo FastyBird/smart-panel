@@ -20,9 +20,10 @@ import { locales } from './locales';
 import { AUTOMATION_BUILT_IN_NODE_ELEMENTS } from './nodes/nodes.elements';
 import { ModuleRoutes } from './router';
 import { registerAutomationsStore } from './store/automations.store';
-import { automationNodeTypesStoreKey, automationRunsStoreKey, automationsStoreKey } from './store/keys';
+import { automationNodeTypesStoreKey, automationRunsStoreKey, automationTemplatesStoreKey, automationsStoreKey } from './store/keys';
 import { registerAutomationNodeTypesStore } from './store/node-types.store';
 import { registerAutomationRunsStore } from './store/runs.store';
+import { registerAutomationTemplatesStore } from './store/templates.store';
 
 const automationsAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Automations');
 
@@ -54,6 +55,12 @@ export default {
 
 		app.provide(automationRunsStoreKey, runsStore);
 		storesManager.addStore(automationRunsStoreKey, runsStore);
+
+		// The templates change only when the backend starts, so the store is not refreshed after a gap
+		const templatesStore = registerAutomationTemplatesStore(options.store);
+
+		app.provide(automationTemplatesStoreKey, templatesStore);
+		storesManager.addStore(automationTemplatesStoreKey, templatesStore);
 
 		modulesManager.addModule(automationsAdminModuleKey, {
 			type: AUTOMATIONS_MODULE_NAME,

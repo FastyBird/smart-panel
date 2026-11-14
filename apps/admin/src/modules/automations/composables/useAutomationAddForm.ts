@@ -15,13 +15,15 @@ import { useAutomationModes } from './useAutomationModes';
 
 interface IUseAutomationAddFormProps {
 	id: IAutomation['id'];
+	// What the form starts with when the automation is created from a template
+	initial?: { name: string; mode: AutomationMode } | null;
 }
 
 /**
  * Creates an automation from its basic details. It is created disabled and with an empty flow: an
  * automation without a trigger cannot be enabled, and the flow is drawn in the editor afterwards.
  */
-export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAutomationAddForm => {
+export const useAutomationAddForm = ({ id, initial = null }: IUseAutomationAddFormProps): IUseAutomationAddForm => {
 	const storesManager = injectStoresManager();
 
 	const automationsStore = storesManager.getStore(automationsStoreKey);
@@ -39,15 +41,16 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 
 	const model = reactive<IAutomationAddForm>({
 		id,
-		name: '',
+		name: initial?.name ?? '',
 		description: '',
 		spaceId: null,
-		mode: AutomationMode.restart,
+		mode: initial?.mode ?? AutomationMode.restart,
 	});
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
-	const formChanged = ref<boolean>(false);
+	// A flow generated from a template is lost with the form, so leaving it asks first from the start
+	const formChanged = ref<boolean>(initial !== null);
 
 	let pending: Promise<'added'> | null = null;
 
@@ -120,7 +123,8 @@ export const useAutomationAddForm = ({ id }: IUseAutomationAddFormProps): IUseAu
 	}
 
 	watch(model, (val: IAutomationAddForm): void => {
-		formChanged.value = val.name !== '' || (val.description ?? '') !== '' || (val.spaceId ?? null) !== null || val.mode !== AutomationMode.restart;
+		formChanged.value =
+			initial !== null || val.name !== '' || (val.description ?? '') !== '' || (val.spaceId ?? null) !== null || val.mode !== AutomationMode.restart;
 	});
 
 	return {

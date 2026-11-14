@@ -14,7 +14,7 @@
 			show-icon
 			class="mb-4!"
 		>
-			{{ t('automations.texts.addHint') }}
+			{{ props.initial ? t('automations.templates.texts.addHint') : t('automations.texts.addHint') }}
 		</el-alert>
 
 		<el-form-item
@@ -127,6 +127,7 @@ const props = withDefaults(defineProps<IAutomationAddFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	initial: null,
 });
 
 const emit = defineEmits<{
@@ -138,7 +139,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { modeOptions, model, formEl, formChanged, submit, formResult } = useAutomationAddForm({ id: props.id });
+const { modeOptions, model, formEl, formChanged, submit, formResult } = useAutomationAddForm({ id: props.id, initial: props.initial });
 
 const { spacesOptions, loadingSpaces, fetchSpaces } = useAutomationSpaces();
 

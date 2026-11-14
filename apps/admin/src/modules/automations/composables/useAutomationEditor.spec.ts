@@ -8,6 +8,7 @@ import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager } from '../../../common';
 import { AutomationMode, AutomationNodeKind, AutomationStatus } from '../automations.constants';
+import { stashAutomationDraft, takeAutomationDraft } from '../automations.drafts';
 import { cloneGraph } from '../automations.graph';
 import { useAutomationsStore } from '../store/automations.store';
 import type { IAutomationGraph, IAutomationRes } from '../store/automations.store.types';
@@ -179,6 +180,32 @@ describe('useAutomationEditor', () => {
 	});
 
 	describe('load', () => {
+		it('opens an automation just created from a template with the generated flow, unsaved', async () => {
+			stashAutomationDraft(automationId, { name: 'Two flows', mode: AutomationMode.parallel, graph: cloneGraph(graph) });
+
+			const editor = await createEditor(detailRes({ graph: { version: 1, nodes: [], edges: [] } }));
+
+			expect(editor.graph.value).toEqual(graph);
+			expect(editor.isDirty.value).toBe(true);
+			expect(editor.canUndo.value).toBe(true);
+			// Handed over once: opening the editor again starts from what is saved
+			expect(takeAutomationDraft(automationId)).toBeNull();
+
+			editor.undo();
+
+			expect(editor.graph.value.nodes).toEqual([]);
+			expect(editor.isDirty.value).toBe(false);
+		});
+
+		it('leaves a draft alone for an automation that already has a flow', async () => {
+			stashAutomationDraft(automationId, { name: 'Other', mode: AutomationMode.parallel, graph: withDelay() });
+
+			const editor = await createEditor();
+
+			expect(editor.graph.value).toEqual(graph);
+			expect(editor.isDirty.value).toBe(false);
+		});
+
 		it('reads the automation on its own and starts from its graph', async () => {
 			const editor = await createEditor();
 

@@ -1,5 +1,6 @@
 import type { AutomationTriggerRefusal } from './automations.constants';
 import type { IAutomationGraphIssue } from './store/automations.store.types';
+import type { IAutomationTemplateIssue } from './store/templates.store.types';
 
 export class AutomationsException extends Error {
 	public exception: Error | null;
@@ -40,6 +41,20 @@ export class AutomationsGraphInvalidException extends AutomationsApiException {
 	constructor(message: string, issues: IAutomationGraphIssue[] = [], exception: Error | null = null) {
 		super(message, 422, exception);
 		this.name = 'AutomationsGraphInvalidException';
+		this.issues = issues;
+	}
+}
+
+/**
+ * The backend refused the answers to the questions of a template (422 with `automation-template-parameters-invalid`).
+ * Each issue is addressed to its question, `parameters.<id>` or `parameters.<id>.<field>`.
+ */
+export class AutomationsTemplateParametersException extends AutomationsApiException {
+	public issues: IAutomationTemplateIssue[];
+
+	constructor(message: string, issues: IAutomationTemplateIssue[] = [], exception: Error | null = null) {
+		super(message, 422, exception);
+		this.name = 'AutomationsTemplateParametersException';
 		this.issues = issues;
 	}
 }

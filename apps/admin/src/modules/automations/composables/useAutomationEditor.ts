@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { AutomationMode } from '../automations.constants';
+import { takeAutomationDraft } from '../automations.drafts';
 import { AutomationsApiException, AutomationsGraphInvalidException, AutomationsRevisionConflictException } from '../automations.exceptions';
 import { canonicalGraph, cloneGraph, createEmptyGraph, findSeparateFlows, pruneIssues } from '../automations.graph';
 import { AUTOMATION_SAFETY_ISSUE_CODE } from '../nodes/nodes.constants';
@@ -114,6 +115,14 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		const fetched = await readWithGraph(false);
 
 		adopt(fetched);
+
+		// An automation just created from a template opens with the flow the template generated: it is the
+		// working copy, not yet saved, and undo goes back to the empty flow that was created
+		const draft = takeAutomationDraft(id);
+
+		if (draft !== null && history.graph.value.nodes.length === 0) {
+			history.commit(cloneGraph(draft.graph));
+		}
 
 		loaded.value = true;
 	};

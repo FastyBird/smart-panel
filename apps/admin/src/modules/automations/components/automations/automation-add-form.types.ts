@@ -1,4 +1,4 @@
-import type { FormResultType } from '../../automations.constants';
+import type { AutomationMode, FormResultType } from '../../automations.constants';
 import type { IAutomation } from '../../store/automations.store.types';
 
 export interface IAutomationAddFormProps {
@@ -7,4 +7,6 @@ export interface IAutomationAddFormProps {
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;
 	remoteFormChanged?: boolean;
+	// What the form starts with when the automation is created from a template
+	initial?: { name: string; mode: AutomationMode } | null;
 }

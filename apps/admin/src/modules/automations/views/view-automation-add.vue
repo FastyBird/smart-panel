@@ -50,6 +50,7 @@
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-changed="formChanged"
+				:initial="draft"
 			/>
 		</el-scrollbar>
 
@@ -82,9 +83,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 import { v4 as uuid } from 'uuid';
@@ -92,7 +93,8 @@ import { v4 as uuid } from 'uuid';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
-import { FormResult, type FormResultType, RouteNames } from '../automations.constants';
+import { AUTOMATION_TEMPLATE_DRAFT_QUERY, FormResult, type FormResultType, RouteNames } from '../automations.constants';
+import { type IAutomationDraft, discardAutomationDraft, peekAutomationDraft } from '../automations.drafts';
 import { AutomationAddForm } from '../components/components';
 
 import type { IViewAutomationAddProps } from './view-automation-add.types';
@@ -111,11 +113,21 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const route = useRoute();
 const router = useRouter();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const automationId = ref<string>(uuid());
+// Created from a template, the automation gets the id its generated flow waits under. After a reload the draft
+// is gone, and the form is the blank one.
+const draftId = route.query[AUTOMATION_TEMPLATE_DRAFT_QUERY];
+const templateDraft: IAutomationDraft | null = typeof draftId === 'string' ? peekAutomationDraft(draftId) : null;
+
+const draft = templateDraft ? { name: templateDraft.name, mode: templateDraft.mode } : null;
+
+const automationId = ref<string>(templateDraft !== null && typeof draftId === 'string' ? draftId : uuid());
+
+let created = false;
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const formChanged = ref<boolean>(props.remoteFormChanged);
@@ -158,12 +170,21 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
+			created = true;
+
 			// A new automation has an empty flow: drawing it is the next thing to do. The flow takes the place of
 			// the form, so going back leads to the list and not to a form for yet another automation.
 			router.replace({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: automationId.value } });
 		}
 	}
 );
+
+// A flow of a form left without saving is not kept for later
+onBeforeUnmount((): void => {
+	if (!created && templateDraft !== null) {
+		discardAutomationDraft(automationId.value);
+	}
+});
 
 watch(
 	(): boolean => saving.value,

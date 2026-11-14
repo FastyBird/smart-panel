@@ -62,6 +62,7 @@ const UNIT_SECONDS: Record<Unit, number> = { seconds: 1, minutes: 60, hours: 360
 const props = withDefaults(defineProps<IAutomationDurationInputProps>(), {
 	name: 'duration',
 	disabled: false,
+	min: 1,
 });
 
 const emit = defineEmits<{
@@ -97,7 +98,11 @@ const amount = computed<number | undefined>((): number | undefined =>
 
 const bounds = computed<IAutomationNumberBounds>(
 	(): IAutomationNumberBounds =>
-		numberInputBounds(amount.value, { min: 1, max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit.value])), precision: 0 })
+		numberInputBounds(amount.value, {
+			min: Math.max(1, Math.ceil(props.min / UNIT_SECONDS[unit.value])),
+			max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit.value])),
+			precision: 0,
+		})
 );
 
 const onAmount = (value: number | null | undefined): void => {
