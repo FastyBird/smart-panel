@@ -29,7 +29,7 @@
 				link
 				type="primary"
 				size="small"
-				:loading="fetching"
+				:loading="fetchingSpaces"
 				data-test-id="retry-load-spaces"
 				@click="load"
 			>
@@ -75,7 +75,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { spaces, fetching, firstLoadFinished, fetchSpaces, findById } = useSpaces();
+const { fetchingSpaces, firstLoadFinished, fetchSpaces, findById } = useSpaces();
 
 // The space cards act on rooms and zones only; a stored space of another type is shown, and flagged
 const wrongType = computed<boolean>((): boolean => {
@@ -84,30 +84,32 @@ const wrongType = computed<boolean>((): boolean => {
 	return space !== null && space.type !== SpaceType.ROOM && space.type !== SpaceType.ZONE;
 });
 
-// A failed read is said beside the select, with a way to read again, so it is not taken for no spaces
-const loadFailed = ref<boolean>(false);
+/*
+ * A failed read is said beside the select, with a way to read again, so it is not taken for no spaces.
+ * The spaces are read once for the whole admin, possibly by another part of it, and the store keeps no
+ * error: the collection has failed when a read of it has ended since the field opened and it is still
+ * not loaded. Loading it, by anyone, clears that; a single space read in the meantime proves nothing.
+ */
+const readEnded = ref<boolean>(false);
+
+const loadFailed = computed<boolean>((): boolean => readEnded.value && !fetchingSpaces.value && !firstLoadFinished.value);
+
+watch(fetchingSpaces, (now: boolean, before: boolean): void => {
+	if (before && !now) readEnded.value = true;
+});
 
 const load = async (): Promise<void> => {
-	loadFailed.value = false;
-
 	try {
 		await fetchSpaces();
 	} catch {
-		loadFailed.value = true;
+		// Shown through `loadFailed`
+	} finally {
+		readEnded.value = true;
 	}
 };
 
-// The spaces are shared: a read another part of the admin started fails here too. The store keeps no
-// error, so a read that ends without the first load finished, and with no space known, is taken as
-// failed (`fetching` also covers the read of a single space, which brings that space when it succeeds)
-watch(fetching, (now: boolean, before: boolean): void => {
-	if (before && !now && !firstLoadFinished.value && spaces.value.length === 0) {
-		loadFailed.value = true;
-	}
-});
-
 onBeforeMount((): void => {
-	if (!firstLoadFinished.value && !fetching.value) {
+	if (!firstLoadFinished.value && !fetchingSpaces.value) {
 		void load();
 	}
 });

@@ -1,4 +1,4 @@
-import { type Ref, ref } from 'vue';
+import { type Ref, reactive, ref } from 'vue';
 
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -127,6 +127,22 @@ describe('useSpaces', () => {
 		const { fetching: isFetching } = useSpaces();
 
 		expect(isFetching.value).toBe(true);
+	});
+
+	it('should tell the read of the collection from the read of a single space', () => {
+		const semaphore = reactive({ fetching: { items: false, item: ['space-1'] } });
+
+		(mockStore as unknown as { semaphore: unknown }).semaphore = semaphore;
+		fetching.mockReturnValue(true);
+
+		const { fetching: isFetching, fetchingSpaces } = useSpaces();
+
+		expect(isFetching.value).toBe(true);
+		expect(fetchingSpaces.value).toBe(false);
+
+		semaphore.fetching.items = true;
+
+		expect(fetchingSpaces.value).toBe(true);
 	});
 
 	it('should return fetching = false if store is not fetching', () => {

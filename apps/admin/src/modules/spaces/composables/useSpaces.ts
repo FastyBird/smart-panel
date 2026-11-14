@@ -1,10 +1,10 @@
-import { computed, type ComputedRef } from 'vue';
+import { type ComputedRef, computed } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
-import { spacesStoreKey, type ISpace } from '../store';
+import { SpaceType, isFloorZoneCategory } from '../spaces.constants';
+import { type ISpace, spacesStoreKey } from '../store';
 
 interface IUseSpaces {
 	spaces: ComputedRef<ISpace[]>;
@@ -12,6 +12,8 @@ interface IUseSpaces {
 	zoneSpaces: ComputedRef<ISpace[]>;
 	floorZoneSpaces: ComputedRef<ISpace[]>;
 	fetching: ComputedRef<boolean>;
+	// Only the read of the whole collection, not of a single space
+	fetchingSpaces: ComputedRef<boolean>;
 	firstLoadFinished: ComputedRef<boolean>;
 	fetchSpaces: () => Promise<ISpace[]>;
 	findById: (id: ISpace['id']) => ISpace | null;
@@ -25,21 +27,17 @@ export const useSpaces = (): IUseSpaces => {
 
 	const spaces = computed<ISpace[]>(() => spacesStore.findAll());
 
-	const roomSpaces = computed<ISpace[]>(() =>
-		spacesStore.findAll().filter((space) => space.type === SpaceType.ROOM)
-	);
+	const roomSpaces = computed<ISpace[]>(() => spacesStore.findAll().filter((space) => space.type === SpaceType.ROOM));
 
-	const zoneSpaces = computed<ISpace[]>(() =>
-		spacesStore.findAll().filter((space) => space.type === SpaceType.ZONE)
-	);
+	const zoneSpaces = computed<ISpace[]>(() => spacesStore.findAll().filter((space) => space.type === SpaceType.ZONE));
 
 	const floorZoneSpaces = computed<ISpace[]>(() =>
-		spacesStore.findAll().filter((space) =>
-			space.type === SpaceType.ZONE && isFloorZoneCategory(space.category)
-		)
+		spacesStore.findAll().filter((space) => space.type === SpaceType.ZONE && isFloorZoneCategory(space.category))
 	);
 
 	const fetching = computed<boolean>(() => spacesStore.fetching());
+
+	const fetchingSpaces = computed<boolean>(() => spacesStore.semaphore.fetching.items);
 
 	const firstLoadFinished = computed<boolean>(() => firstLoad.value);
 
@@ -57,6 +55,7 @@ export const useSpaces = (): IUseSpaces => {
 		zoneSpaces,
 		floorZoneSpaces,
 		fetching,
+		fetchingSpaces,
 		firstLoadFinished,
 		fetchSpaces,
 		findById,

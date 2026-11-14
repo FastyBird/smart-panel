@@ -36,6 +36,7 @@ vi.mock('../../../../modules/spaces/composables/useSpaces', () => ({
 		roomSpaces: computed(() => SPACES.filter((space) => space.type === 'room')),
 		zoneSpaces: computed(() => []),
 		fetching: computed(() => false),
+		fetchingSpaces: computed(() => false),
 		firstLoadFinished: computed(() => false),
 		fetchSpaces: mocks.fetchSpaces,
 		findById: (id: string) => SPACES.find((space) => space.id === id) ?? null,
