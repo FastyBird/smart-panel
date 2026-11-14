@@ -556,6 +556,86 @@ void main() {
     );
   });
 
+  group('AutomationsRepository request-relative answers', () {
+    Future<void> arrived() => pumpEventQueue();
+
+    test('two lists started back to back keep their order', () async {
+      // From an empty repository, the first list still holds A
+      adapter.stored['a'] = _automation('a');
+      final older = Completer<void>();
+      adapter.listGate = older;
+      final first = repository.fetchAll();
+      await arrived();
+
+      // A is deleted on the server and the event is missed
+      adapter.stored.remove('a');
+      await repository.fetchAll();
+
+      older.complete();
+      await first;
+
+      expect(repository.automations, isEmpty);
+    });
+
+    test(
+      'a delayed 404 does not remove an automation restored meanwhile',
+      () async {
+        adapter.stored['a'] = _automation('a', name: 'Old');
+        await service.initialize();
+
+        adapter.enabledStatus = 404;
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await arrived();
+
+        repository.delete('a');
+        repository.insert([_automation('a', name: 'Restored')]);
+        gate.complete();
+
+        expect(await result, AutomationToggleResult.notFound);
+        expect(repository.getAutomation('a')!.name, 'Restored');
+        expect(service.automationsForSpace('room').single.name, 'Restored');
+      },
+    );
+
+    test(
+      'a delayed 404 does not remove what a reset and a fresh list brought back',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await service.initialize();
+
+        adapter.enabledStatus = 404;
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await arrived();
+
+        repository.clear();
+        await repository.fetchAll();
+        expect(repository.getAutomation('a'), isNotNull);
+
+        gate.complete();
+
+        expect(await result, AutomationToggleResult.notFound);
+        expect(repository.getAutomation('a'), isNotNull);
+      },
+    );
+
+    test('a 404 with nothing newer removes the automation', () async {
+      adapter.stored['a'] = _automation('a');
+      await service.initialize();
+
+      adapter.enabledStatus = 404;
+
+      expect(
+        await service.setEnabled('a', true),
+        AutomationToggleResult.notFound,
+      );
+      expect(repository.getAutomation('a'), isNull);
+    });
+  });
+
   group('disposal', () {
     test(
       'a switch on its way when the module is torn down completes quietly',

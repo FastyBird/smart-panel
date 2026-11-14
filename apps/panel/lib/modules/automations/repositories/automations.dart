@@ -32,17 +32,22 @@ class AutomationToggleException implements Exception {
 /// The automations the panel knows about, as the backend last reported them.
 ///
 /// Live changes (websocket events) and REST answers (the list, a switch) race:
-/// an answer can be read before a change and arrive after it. Every change is
-/// therefore numbered, and every request remembers the number it started at.
-/// - A deletion seen by any source - a Deleted event, a list that leaves the
-///   automation out, a switch answered with 404 - is recorded at its number.
-/// - An answer is applied to an automation only when nothing deleted it and no
-///   reset happened after the request started; a newer revision then wins, and
-///   at the same revision so does a change made after the request started.
-/// - A list that started before the last list applied is dropped whole, so an
-///   older list can neither re-add nor remove anything relative to a newer one.
-/// - Records are pruned only when no request still in flight started before
-///   them, so a slow request always finds the changes it missed.
+/// an answer can be read before a change and arrive after it. The model is
+/// request-relative, with no special cases:
+/// - Every request takes a fresh number when it starts (`++_seq`), and every
+///   applied change takes the next one: a live create, update, delete or
+///   reset, an item or removal applied from a list, an applied switch answer
+///   and an applied "gone" answer.
+/// - A deletion is a change like any other and is recorded as one, whatever
+///   reported it: a Deleted event, a list that leaves the automation out, or a
+///   switch answered with 404.
+/// - An answer is applied to an automation only when nothing changed or
+///   deleted it, and no reset happened, after the request started; an item
+///   must also be at least the stored revision. A 404 is an answer saying the
+///   automation is gone, handled exactly like a list leaving it out.
+/// - A list that started before the last applied list is dropped whole.
+/// - Records are pruned only up to the earliest start of a request still in
+///   flight, and entirely once none is.
 class AutomationsRepository extends ChangeNotifier {
   final AutomationsModuleClient _apiClient;
 
@@ -51,11 +56,9 @@ class AutomationsRepository extends ChangeNotifier {
   /// The number of the last change, live or from an answer.
   int _seq = 0;
 
-  /// The change number of the last change of each automation.
+  /// The change number of the last change of each automation, deletions
+  /// included.
   final Map<String, int> _changedAt = {};
-
-  /// The change number at which each automation was seen deleted.
-  final Map<String, int> _deletedAt = {};
 
   /// The change number of the last reset; nothing read before it survives.
   int _resetAt = 0;
@@ -104,7 +107,7 @@ class AutomationsRepository extends ChangeNotifier {
   void delete(String id) {
     if (_disposed) return;
 
-    _deletedAt[id] = _changedAt[id] = ++_seq;
+    _changedAt[id] = ++_seq;
 
     _replace({..._data}..remove(id));
     _prune();
@@ -206,6 +209,13 @@ class AutomationsRepository extends ChangeNotifier {
         );
       }
 
+      if (e.response?.statusCode == 404 && !_disposed) {
+        final next = {..._data};
+
+        _applyGone(next, id, startedAt);
+        _replace(next);
+      }
+
       throw AutomationToggleException(switch (e.response?.statusCode) {
         422 => AutomationToggleFailure.incomplete,
         404 => AutomationToggleFailure.notFound,
@@ -230,9 +240,11 @@ class AutomationsRepository extends ChangeNotifier {
   }
 
   int _begin() {
-    _inFlight.add(_seq);
+    final startedAt = ++_seq;
 
-    return _seq;
+    _inFlight.add(startedAt);
+
+    return startedAt;
   }
 
   void _end(int startedAt) {
@@ -245,7 +257,6 @@ class AutomationsRepository extends ChangeNotifier {
   void _prune() {
     if (_inFlight.isEmpty) {
       _changedAt.clear();
-      _deletedAt.clear();
 
       return;
     }
@@ -253,26 +264,29 @@ class AutomationsRepository extends ChangeNotifier {
     final earliest = _inFlight.reduce((a, b) => a < b ? a : b);
 
     _changedAt.removeWhere((_, at) => at <= earliest);
-    _deletedAt.removeWhere((_, at) => at <= earliest);
   }
+
+  /// Whether nothing changed [id] - and no reset happened - after a request
+  /// that started at [startedAt], so its answer about [id] still holds.
+  bool _unchangedSince(String id, int startedAt) =>
+      _resetAt < startedAt && (_changedAt[id] ?? -1) < startedAt;
 
   /// Whether an automation read by a request that started at [startedAt] may
   /// replace what is held now.
   bool _accepts(AutomationModel automation, int startedAt) {
-    if (_resetAt > startedAt) return false;
-
-    if ((_deletedAt[automation.id] ?? -1) > startedAt) return false;
+    if (!_unchangedSince(automation.id, startedAt)) return false;
 
     final stored = _data[automation.id];
 
-    if (stored == null) return true;
+    return stored == null || automation.revision >= stored.revision;
+  }
 
-    if (automation.revision != stored.revision) {
-      return automation.revision > stored.revision;
-    }
+  /// A request that started at [startedAt] says [id] is gone.
+  void _applyGone(Map<String, AutomationModel> next, String id, int startedAt) {
+    if (!_unchangedSince(id, startedAt) || !next.containsKey(id)) return;
 
-    // Same revision: a change made since the request started is newer
-    return (_changedAt[automation.id] ?? -1) <= startedAt;
+    _changedAt[id] = ++_seq;
+    next.remove(id);
   }
 
   void _mergeList(Map<String, AutomationModel> listed, int startedAt) {
@@ -281,17 +295,10 @@ class AutomationsRepository extends ChangeNotifier {
 
     _listAppliedFrom = startedAt;
 
-    final next = <String, AutomationModel>{};
+    final next = {..._data};
 
-    for (final entry in _data.entries) {
-      if (listed.containsKey(entry.key) ||
-          (_changedAt[entry.key] ?? -1) > startedAt) {
-        // Listed (merged below), or changed after the list was asked for
-        next[entry.key] = entry.value;
-      } else {
-        // Left out of the list: deleted, as far as older requests are concerned
-        _deletedAt[entry.key] = _changedAt[entry.key] = ++_seq;
-      }
+    for (final id in _data.keys) {
+      if (!listed.containsKey(id)) _applyGone(next, id, startedAt);
     }
 
     for (final automation in listed.values) {

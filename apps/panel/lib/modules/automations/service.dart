@@ -109,10 +109,6 @@ class AutomationsService extends ChangeNotifier {
 
       return AutomationToggleResult.success;
     } on AutomationToggleException catch (e) {
-      if (e.failure == AutomationToggleFailure.notFound) {
-        _repository.delete(id);
-      }
-
       return switch (e.failure) {
         AutomationToggleFailure.incomplete => AutomationToggleResult.incomplete,
         AutomationToggleFailure.notFound => AutomationToggleResult.notFound,
