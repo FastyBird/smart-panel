@@ -43,7 +43,6 @@ interface StatusData {
 	enabled: boolean;
 	configured: boolean;
 	healthy: boolean;
-	host: string | null;
 	tls_mode: string;
 	application_version: string | null;
 	minimum_version: string;

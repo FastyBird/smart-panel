@@ -156,7 +156,6 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		status.enabled = config?.enabled === true;
 		status.configured = !!config && !!config.host?.trim() && !!config.apiKey?.trim();
 		status.healthy = this.isConnected();
-		status.host = config?.host ?? null;
 		status.tlsMode = config?.tls.mode ?? 'verify';
 		status.applicationVersion = this.applicationVersion;
 		status.minimumVersion = PROTECT_MIN_VERSION;

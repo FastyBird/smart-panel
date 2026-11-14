@@ -43,12 +43,6 @@ export class ProtectStatusModel {
 	@IsBoolean()
 	healthy: boolean;
 
-	@ApiPropertyOptional({ description: 'Configured console host', nullable: true })
-	@Expose()
-	@IsOptional()
-	@IsString()
-	host: string | null;
-
 	@ApiProperty({
 		description: 'Configured certificate trust mode',
 		enum: PROTECT_TLS_MODES,
