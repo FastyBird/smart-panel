@@ -3,16 +3,31 @@ import { describe, expect, it } from 'vitest';
 import { AutomationBuiltInNodeType } from './nodes.constants';
 import {
 	AUTOMATION_BUILT_IN_CONFIG_SCHEMAS,
+	AutomationTargetConfigSchema,
 	DelayConfigSchema,
+	DeviceButtonPressedConfigSchema,
+	DeviceConnectionChangedConfigSchema,
 	DevicePropertyChangedConfigSchema,
 	DevicePropertyCompareConfigSchema,
 	DevicePropertySetConfigSchema,
+	HouseModeChangedConfigSchema,
+	HouseModeIsConfigSchema,
+	HouseModeSetConfigSchema,
+	JoinConfigSchema,
 	ManualStartConfigSchema,
 	NotificationSendConfigSchema,
 	SceneRunConfigSchema,
+	SceneWasRunConfigSchema,
+	SecurityArmConfigSchema,
+	SecurityArmedIsConfigSchema,
+	SecurityStateChangedConfigSchema,
+	SunDaylightConfigSchema,
+	SunEventConfigSchema,
 	TimeOfDayConfigSchema,
 	TimeWindowConfigSchema,
+	WaitUntilConfigSchema,
 	checkNodeConfig,
+	defineNodeConfigSchema,
 	isValidationKey,
 } from './nodes.schemas';
 
@@ -21,6 +36,7 @@ const CHANNEL = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a02';
 const PROPERTY = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a03';
 const OTHER_PROPERTY = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a04';
 const SCENE = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a05';
+const AUTOMATION = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a06';
 
 const target = { device_id: DEVICE, channel_id: CHANNEL, property_id: PROPERTY };
 
@@ -187,6 +203,144 @@ describe('automation card schemas', (): void => {
 			expect(checkNodeConfig(DelayConfigSchema, { seconds: 0 })).toEqual({ seconds: [key('durationMin')] });
 			expect(checkNodeConfig(DelayConfigSchema, { seconds: 3601 })).toEqual({ seconds: [key('delayMax')] });
 		});
+	});
+
+	describe('flow', (): void => {
+		it('a join takes nothing', (): void => {
+			expect(JoinConfigSchema.safeParse({}).success).toBe(true);
+			expect(checkNodeConfig(JoinConfigSchema, { count: 2 })).toEqual({ count: [key('unknownField')] });
+		});
+
+		it.each([
+			['a value it becomes', { to: 'open' }],
+			['a threshold above', { above: 20 }],
+			['a threshold below', { below: 5 }],
+		])('wait until takes %s with a timeout', (_name, operands): void => {
+			expect(WaitUntilConfigSchema.safeParse({ ...target, ...operands, timeout_seconds: 600 }).success).toBe(true);
+		});
+
+		it('wait until refuses what the state tracker refuses, and a timeout over an hour', (): void => {
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, above: 1, below: 2, timeout_seconds: 60 })).toEqual({
+				below: [key('aboveAndBelow')],
+			});
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, above: 1, to: 2, timeout_seconds: 60 })).toEqual({ to: [key('thresholdAndValue')] });
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, to: true, timeout_seconds: 3601 })).toEqual({
+				timeout_seconds: [key('timeoutMax')],
+			});
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, to: true, timeout_seconds: 0 })).toEqual({ timeout_seconds: [key('durationMin')] });
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, to: true, timeout_seconds: 60, from: true })).toEqual({
+				from: [key('unknownField')],
+			});
+			// A timeout is needed, as the backend requires it, but missing is unfinished rather than wrong
+			expect(WaitUntilConfigSchema.safeParse({ ...target, to: true }).success).toBe(false);
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, to: true })).toEqual({});
+		});
+	});
+
+	describe('sun', (): void => {
+		it('sunrise or sunset takes an offset of at most six hours either way', (): void => {
+			expect(SunEventConfigSchema.safeParse({ event: 'sunrise' }).success).toBe(true);
+			expect(SunEventConfigSchema.safeParse({ event: 'sunset', offset_minutes: -360 }).success).toBe(true);
+			expect(SunEventConfigSchema.safeParse({ event: 'sunset', offset_minutes: 360 }).success).toBe(true);
+			expect(checkNodeConfig(SunEventConfigSchema, { event: 'sunset', offset_minutes: 361 })).toEqual({ offset_minutes: [key('offset')] });
+			expect(checkNodeConfig(SunEventConfigSchema, { event: 'sunset', offset_minutes: -361 })).toEqual({ offset_minutes: [key('offset')] });
+			expect(checkNodeConfig(SunEventConfigSchema, { event: 'sunset', offset_minutes: 1.5 })).toEqual({ offset_minutes: [key('offset')] });
+			expect(checkNodeConfig(SunEventConfigSchema, { event: 'noon' })).toEqual({ event: [key('sunEvent')] });
+		});
+
+		it('day or night takes one of them', (): void => {
+			expect(SunDaylightConfigSchema.safeParse({ state: 'night' }).success).toBe(true);
+			expect(checkNodeConfig(SunDaylightConfigSchema, { state: 'dusk' })).toEqual({ state: [key('daylight')] });
+		});
+	});
+
+	describe('devices and scenes', (): void => {
+		it('a button takes every press, or a list of different presses', (): void => {
+			expect(DeviceButtonPressedConfigSchema.safeParse(target).success).toBe(true);
+			expect(DeviceButtonPressedConfigSchema.safeParse({ ...target, events: ['press', 'long_press'] }).success).toBe(true);
+			expect(checkNodeConfig(DeviceButtonPressedConfigSchema, { ...target, events: [] })).toEqual({ events: [key('buttonEvents')] });
+			expect(checkNodeConfig(DeviceButtonPressedConfigSchema, { ...target, events: ['press', 'press'] })).toEqual({ events: [key('listTwice')] });
+			expect(checkNodeConfig(DeviceButtonPressedConfigSchema, { ...target, events: [''] })).toEqual({ 'events.0': [key('buttonEvent')] });
+			expect(checkNodeConfig(DeviceButtonPressedConfigSchema, { ...target, events: ['x'.repeat(65)] })).toEqual({
+				'events.0': [key('buttonEvent')],
+			});
+			expect(
+				checkNodeConfig(DeviceButtonPressedConfigSchema, { ...target, events: Array.from({ length: 21 }, (_item, index) => `p${index}`) })
+			).toEqual({ events: [key('buttonEventsMax')] });
+		});
+
+		it('a connection trigger needs a device, and goes either way unless told', (): void => {
+			expect(DeviceConnectionChangedConfigSchema.safeParse({ device_id: DEVICE }).success).toBe(true);
+			expect(DeviceConnectionChangedConfigSchema.safeParse({ device_id: DEVICE, to: 'offline' }).success).toBe(true);
+			expect(checkNodeConfig(DeviceConnectionChangedConfigSchema, { device_id: DEVICE, to: 'away' })).toEqual({ to: [key('connection')] });
+			expect(checkNodeConfig(DeviceConnectionChangedConfigSchema, { device_id: DEVICE, channel_id: CHANNEL })).toEqual({
+				channel_id: [key('unknownField')],
+			});
+		});
+
+		it('scene was run needs a scene', (): void => {
+			expect(SceneWasRunConfigSchema.safeParse({ scene_id: SCENE }).success).toBe(true);
+			expect(checkNodeConfig(SceneWasRunConfigSchema, { scene_id: 'evening' })).toEqual({ scene_id: [key('scene')] });
+		});
+	});
+
+	describe('house mode', (): void => {
+		it('changes from one mode to another, never to the same', (): void => {
+			expect(HouseModeChangedConfigSchema.safeParse({}).success).toBe(true);
+			expect(HouseModeChangedConfigSchema.safeParse({ from: 'home', to: 'away' }).success).toBe(true);
+			expect(checkNodeConfig(HouseModeChangedConfigSchema, { from: 'away', to: 'away' })).toEqual({ to: [key('sameState')] });
+			expect(checkNodeConfig(HouseModeChangedConfigSchema, { to: 'party' })).toEqual({ to: [key('houseMode')] });
+		});
+
+		it('is one of the modes picked, at least one and each once', (): void => {
+			expect(HouseModeIsConfigSchema.safeParse({ modes: ['home', 'night'] }).success).toBe(true);
+			expect(checkNodeConfig(HouseModeIsConfigSchema, { modes: [] })).toEqual({ modes: [key('houseModes')] });
+			expect(checkNodeConfig(HouseModeIsConfigSchema, { modes: ['home', 'home'] })).toEqual({ modes: [key('listTwice')] });
+			expect(checkNodeConfig(HouseModeIsConfigSchema, { modes: ['party'] })).toEqual({ 'modes.0': [key('houseMode')] });
+		});
+
+		it('is set to one mode', (): void => {
+			expect(HouseModeSetConfigSchema.safeParse({ mode: 'night' }).success).toBe(true);
+			expect(checkNodeConfig(HouseModeSetConfigSchema, { mode: 'party' })).toEqual({ mode: [key('houseMode')] });
+		});
+	});
+
+	describe('security', (): void => {
+		it('a state change takes only the states of the state watched', (): void => {
+			expect(SecurityStateChangedConfigSchema.safeParse({ kind: 'alarm', to: 'triggered' }).success).toBe(true);
+			expect(SecurityStateChangedConfigSchema.safeParse({ kind: 'armed', from: 'disarmed', to: 'armed_away' }).success).toBe(true);
+			expect(checkNodeConfig(SecurityStateChangedConfigSchema, { kind: 'armed', to: 'triggered' })).toEqual({ to: [key('securityState')] });
+			expect(checkNodeConfig(SecurityStateChangedConfigSchema, { kind: 'alarm', from: 'idle', to: 'idle' })).toEqual({ to: [key('sameState')] });
+			expect(checkNodeConfig(SecurityStateChangedConfigSchema, { kind: 'motion' })).toEqual({ kind: [key('securityKind')] });
+		});
+
+		it('armed is takes armed states only', (): void => {
+			expect(SecurityArmedIsConfigSchema.safeParse({ states: ['armed_away', 'armed_night'] }).success).toBe(true);
+			expect(checkNodeConfig(SecurityArmedIsConfigSchema, { states: [] })).toEqual({ states: [key('armedStates')] });
+			expect(checkNodeConfig(SecurityArmedIsConfigSchema, { states: ['triggered'] })).toEqual({ 'states.0': [key('armedStates')] });
+		});
+
+		it('arm never disarms', (): void => {
+			expect(SecurityArmConfigSchema.safeParse({ ...target, armed_state: 'armed_home' }).success).toBe(true);
+			expect(checkNodeConfig(SecurityArmConfigSchema, { ...target, armed_state: 'disarmed' })).toEqual({ armed_state: [key('armState')] });
+		});
+	});
+
+	it('the automation actions need another automation', (): void => {
+		expect(AutomationTargetConfigSchema.safeParse({ automation_id: AUTOMATION }).success).toBe(true);
+		expect(checkNodeConfig(AutomationTargetConfigSchema, { automation_id: 'morning' })).toEqual({ automation_id: [key('automation')] });
+	});
+
+	it('words the rules of a schema a plugin defines with the keys of the plugin', (): void => {
+		const schema = defineNodeConfigSchema(
+			{},
+			(config, report): void => {
+				if (config.a === config.b) report(['b'], 'same');
+			},
+			'plugin.validation.'
+		);
+
+		expect(checkNodeConfig(schema, { a: 1, b: 1 })).toEqual({ a: [key('unknownField')], b: [key('unknownField'), 'plugin.validation.same'] });
 	});
 
 	it('tells its own messages from those of a schema a plugin brought', (): void => {

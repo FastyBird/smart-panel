@@ -48,6 +48,7 @@ const context: IAutomationSummaryContext = {
 		channel: () => null,
 		property: (id) => [temperature, motion].find((property) => property.id === id) ?? null,
 		scene: (id) => (id === 's-evening' ? { name: 'Evening' } : null),
+		automation: (id) => (id === 'a-lights' ? { name: 'Night lights' } : null),
 	},
 };
 
@@ -129,6 +130,82 @@ describe('automation card summaries', (): void => {
 			'summaries.delay(duration=summaries.duration.minutes(count=1) summaries.duration.seconds(count=30))'
 		);
 		expect(summary('manual.start', {})).toBe('summaries.manualStart');
+	});
+
+	it('read the flow cards', (): void => {
+		const target = 'summaries.target(device=Hall sensor, property=Temperature)';
+
+		expect(summary('flow.wait-until', { ...hall, property_id: 'p-temperature', above: 22, timeout_seconds: 600 })).toBe(
+			`summaries.waitUntil.above(target=${target}, value=22 °C, timeout=summaries.duration.minutes(count=10))`
+		);
+		expect(summary('flow.wait-until', { ...hall, property_id: 'p-motion', to: false, timeout_seconds: 60 })).toContain('summaries.waitUntil.to(');
+		expect(summary('flow.wait-until', { ...hall, property_id: 'p-motion', to: false })).toBe('texts.notConfigured');
+		expect(summary('flow.wait-until', { ...hall, property_id: 'p-motion', timeout_seconds: 60 })).toBe('texts.notConfigured');
+		expect(summary('flow.any', {})).toBe('summaries.join.any');
+		expect(summary('flow.all', {})).toBe('summaries.join.all');
+	});
+
+	it('read the sun cards, with the offset before or after the event', (): void => {
+		expect(summary('sun.event', { event: 'sunset' })).toBe('summaries.sunEvent.sunset.at');
+		expect(summary('sun.event', { event: 'sunrise', offset_minutes: -30 })).toBe(
+			'summaries.sunEvent.sunrise.before(duration=summaries.duration.minutes(count=30))'
+		);
+		expect(summary('sun.event', { event: 'sunset', offset_minutes: 90 })).toBe(
+			'summaries.sunEvent.sunset.after(duration=summaries.duration.hours(count=1) summaries.duration.minutes(count=30))'
+		);
+		expect(summary('sun.event', { event: 'noon' })).toBe('texts.notConfigured');
+		expect(summary('sun.daylight', { state: 'night' })).toBe('summaries.daylight.night');
+		expect(summary('sun.daylight', {})).toBe('texts.notConfigured');
+	});
+
+	it('read the button, the connection and the scene triggers', (): void => {
+		const target = 'summaries.target(device=Hall sensor, property=devicesModule.categories.channelsProperties.detected)';
+
+		expect(summary('device.button.pressed', { ...hall, property_id: 'p-motion' })).toBe(`summaries.button.any(target=${target})`);
+		expect(summary('device.button.pressed', { ...hall, property_id: 'p-motion', events: ['press', 'long_press'] })).toBe(
+			`summaries.button.events(target=${target}, events=press, long_press)`
+		);
+		expect(summary('device.connection.changed', { device_id: 'd-hall' })).toBe('summaries.connection.any(device=Hall sensor)');
+		expect(summary('device.connection.changed', { device_id: 'd-hall', to: 'offline' })).toBe('summaries.connection.offline(device=Hall sensor)');
+		expect(summary('device.connection.changed', { device_id: 'd-gone', to: 'online' })).toBe(
+			'summaries.connection.online(device=summaries.unknownDevice)'
+		);
+		expect(summary('scene.was-run', { scene_id: 's-evening' })).toBe('summaries.sceneWasRun(scene=Evening)');
+		expect(summary('scene.was-run', { scene_id: 's-gone' })).toBe('summaries.sceneWasRun(scene=summaries.unknownSceneName)');
+	});
+
+	it('read the house mode cards', (): void => {
+		expect(summary('house-mode.changed', {})).toBe('summaries.change.any(subject=summaries.subjects.houseMode)');
+		expect(summary('house-mode.changed', { from: 'home', to: 'away' })).toBe(
+			'summaries.change.fromTo(subject=summaries.subjects.houseMode, from=options.houseModes.home, to=options.houseModes.away)'
+		);
+		expect(summary('house-mode.is', { modes: ['night', 'home'] })).toBe(
+			'summaries.houseModeIs(modes=summaries.alternatives(first=options.houseModes.home, last=options.houseModes.night))'
+		);
+		expect(summary('house-mode.is', { modes: [] })).toBe('texts.notConfigured');
+		expect(summary('house-mode.set', { mode: 'away' })).toBe('summaries.houseModeSet(mode=options.houseModes.away)');
+	});
+
+	it('read the security cards with the states of the state watched', (): void => {
+		expect(summary('security.state.changed', { kind: 'alarm', to: 'triggered' })).toBe(
+			'summaries.change.to(subject=summaries.subjects.alarm, to=options.alarmStates.triggered)'
+		);
+		expect(summary('security.state.changed', { kind: 'armed', from: 'disarmed' })).toBe(
+			'summaries.change.from(subject=summaries.subjects.armed, from=options.armedStates.disarmed)'
+		);
+		expect(summary('security.state.changed', {})).toBe('texts.notConfigured');
+		expect(summary('security.armed.is', { states: ['armed_away'] })).toBe('summaries.armedIs(states=options.armedStates.armed_away)');
+		expect(summary('security.arm', { device_id: 'd-hall', armed_state: 'armed_night' })).toBe(
+			'summaries.arm(device=Hall sensor, state=options.armedStates.armed_night)'
+		);
+		expect(summary('security.arm', { device_id: 'd-hall', armed_state: 'disarmed' })).toBe('texts.notConfigured');
+	});
+
+	it('name the automation an automation action acts on', (): void => {
+		expect(summary('automation.enable', { automation_id: 'a-lights' })).toBe('summaries.automation.enable(automation=Night lights)');
+		expect(summary('automation.disable', { automation_id: 'a-lights' })).toBe('summaries.automation.disable(automation=Night lights)');
+		expect(summary('automation.run', { automation_id: 'a-gone' })).toBe('summaries.automation.run(automation=summaries.unknownAutomation)');
+		expect(summary('automation.run', {})).toBe('texts.notConfigured');
 	});
 
 	it('say a card is not configured while it is not configured far enough', (): void => {

@@ -5,6 +5,8 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import { AUTOMATIONS_MODULE_NAME } from '../../modules/automations/automations.constants';
+import type { IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas } from '../../modules/automations/automations.types';
 import {
 	type ISpace,
 	type ISpacePluginRoutes,
@@ -17,6 +19,7 @@ import {
 } from '../../modules/spaces';
 import { SpaceCreateSchema, SpaceEditSchema, SpaceSchema } from '../../modules/spaces/store/spaces.store.schemas';
 
+import { SPACE_AUTOMATION_NODE_ELEMENTS } from './automations/space-automations.elements';
 import { SpaceAddForm, SpaceDetail, SpaceEditForm, SpacesWizard } from './components/components';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
@@ -27,8 +30,9 @@ import {
 	SPACES_HOME_CONTROL_TYPES,
 } from './spaces-home-control.constants';
 
-export const spacesHomeControlPluginKey: PluginInjectionKey<IPlugin<ISpacePluginsComponents, ISpacePluginsSchemas, ISpacePluginRoutes>> =
-	Symbol('FB-Plugin-SpacesHomeControl');
+export const spacesHomeControlPluginKey: PluginInjectionKey<
+	IPlugin<ISpacePluginsComponents & IAutomationNodePluginsComponents, ISpacePluginsSchemas & IAutomationNodePluginsSchemas, ISpacePluginRoutes>
+> = Symbol('FB-Plugin-SpacesHomeControl');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -36,7 +40,13 @@ export default {
 
 		for (const [locale, translations] of Object.entries(locales)) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
-			const mergedMessages = defaultsDeep(currentMessages, { spacesHomeControlPlugin: translations });
+			// The names of the plugin's automation cards go where the automations editor looks the names of
+			// cards up (`automations.editor.nodeTypes.<type>`); everything else stays under the plugin
+			const automations = (translations.automations ?? {}) as { nodeTypes?: Record<string, unknown> };
+			const mergedMessages = defaultsDeep(currentMessages, {
+				spacesHomeControlPlugin: translations,
+				automations: { editor: { nodeTypes: automations.nodeTypes ?? {} } },
+			});
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
@@ -65,23 +75,27 @@ export default {
 			// runtime locale changes update the picker label without a
 			// page reload. Plain strings (from legacy plugins) fall
 			// through unchanged.
-			elements: SPACES_HOME_CONTROL_TYPES.map((type) => ({
-				type,
-				name: `spacesHomeControlPlugin.typeLabels.${type}`,
-				components: {
-					spaceDetail: SpaceDetail,
-					spaceAddForm: SpaceAddForm,
-					spaceEditForm: SpaceEditForm,
-					spaceWizard: SpacesWizard,
-				},
-				schemas: {
-					spaceSchema: SpaceSchema,
-					spaceAddFormSchema: SpaceAddFormSchema,
-					spaceEditFormSchema: SpaceEditFormSchema,
-					spaceCreateReqSchema: SpaceCreateSchema,
-					spaceUpdateReqSchema: SpaceEditSchema,
-				},
-			})),
+			elements: [
+				...SPACES_HOME_CONTROL_TYPES.map((type) => ({
+					type,
+					name: `spacesHomeControlPlugin.typeLabels.${type}`,
+					components: {
+						spaceDetail: SpaceDetail,
+						spaceAddForm: SpaceAddForm,
+						spaceEditForm: SpaceEditForm,
+						spaceWizard: SpacesWizard,
+					},
+					schemas: {
+						spaceSchema: SpaceSchema,
+						spaceAddFormSchema: SpaceAddFormSchema,
+						spaceEditFormSchema: SpaceEditFormSchema,
+						spaceCreateReqSchema: SpaceCreateSchema,
+						spaceUpdateReqSchema: SpaceEditSchema,
+					},
+				})),
+				// The space cards of the automations editor: occupancy, activity mode and lighting
+				...SPACE_AUTOMATION_NODE_ELEMENTS,
+			],
 			...(spacePluginRoute
 				? {
 						routes: {
@@ -96,7 +110,7 @@ export default {
 						},
 					}
 				: {}),
-			modules: [SPACES_MODULE_NAME],
+			modules: [SPACES_MODULE_NAME, AUTOMATIONS_MODULE_NAME],
 			isCore: true,
 		});
 	},

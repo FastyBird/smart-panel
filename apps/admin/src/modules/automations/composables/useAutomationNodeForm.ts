@@ -28,7 +28,7 @@ export const useAutomationNodeForm = (
 	emit: Emit,
 	schema: ZodType | null
 ): IUseAutomationNodeForm => {
-	const { t } = useI18n();
+	const { t, te } = useI18n();
 
 	const { issueText } = useAutomationNodePresentation();
 
@@ -63,7 +63,8 @@ export const useAutomationNodeForm = (
 
 		for (const [problemPath, keys] of Object.entries(problems.value)) {
 			if (problemPath === path || problemPath.startsWith(`${path}.`)) {
-				for (const key of keys) errors.add(isValidationKey(key) ? t(key) : key);
+				// A plugin words the problems of its cards with keys of its own translations
+				for (const key of keys) errors.add(isValidationKey(key) || te(key) ? t(key) : key);
 			}
 		}
 

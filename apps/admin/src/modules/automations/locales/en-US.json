@@ -222,6 +222,18 @@
 							"name": "Set device value",
 							"description": "Sets one or more values of devices."
 						}
+					},
+					"button": {
+						"pressed": {
+							"name": "Button is pressed",
+							"description": "Starts when a button is pressed: any press, or only the presses chosen."
+						}
+					},
+					"connection": {
+						"changed": {
+							"name": "Device goes offline or online",
+							"description": "Starts when a device loses its connection, when it comes back, or both."
+						}
 					}
 				},
 				"manual": {
@@ -240,6 +252,10 @@
 					"run": {
 						"name": "Run scene",
 						"description": "Runs a scene."
+					},
+					"was-run": {
+						"name": "Scene was run",
+						"description": "Starts when a scene has been run, from anywhere."
 					}
 				},
 				"time": {
@@ -256,6 +272,74 @@
 					"delay": {
 						"name": "Delay",
 						"description": "Waits for a while before the flow continues."
+					},
+					"wait-until": {
+						"name": "Wait until",
+						"description": "Waits until a device value reaches a state, at most for a time. Continues on \"out\" when it does or already holds, on \"timeout\" otherwise."
+					},
+					"any": {
+						"name": "Any",
+						"description": "Continues when the first of the branches leading to it arrives; later ones in the same run stop here."
+					},
+					"all": {
+						"name": "All",
+						"description": "Continues once every branch leading to it has arrived in the same run."
+					}
+				},
+				"sun": {
+					"event": {
+						"name": "Sunrise or sunset",
+						"description": "Starts at sunrise or sunset at the house location, or some minutes before or after it."
+					},
+					"daylight": {
+						"name": "Day or night",
+						"description": "Continues on \"yes\" by day or at night, as chosen, otherwise on \"no\"."
+					}
+				},
+				"house-mode": {
+					"changed": {
+						"name": "House mode changes",
+						"description": "Starts when the house mode changes: to a mode, from a mode, or any change."
+					},
+					"is": {
+						"name": "House mode is",
+						"description": "Continues on \"yes\" when the house mode is one of the chosen modes, otherwise on \"no\"."
+					},
+					"set": {
+						"name": "Set house mode",
+						"description": "Changes the house mode."
+					}
+				},
+				"security": {
+					"state": {
+						"changed": {
+							"name": "Security state changes",
+							"description": "Starts when the alarm is armed or disarmed, or when the alarm state changes, e.g. when the alarm goes off."
+						}
+					},
+					"armed": {
+						"is": {
+							"name": "Alarm is armed",
+							"description": "Continues on \"yes\" when the armed state of the alarm is one of the chosen states, otherwise on \"no\"."
+						}
+					},
+					"arm": {
+						"name": "Arm alarm",
+						"description": "Arms an alarm: home, away or night. An automation cannot disarm it."
+					}
+				},
+				"automation": {
+					"enable": {
+						"name": "Enable automation",
+						"description": "Switches another automation on, so its triggers start it again."
+					},
+					"disable": {
+						"name": "Disable automation",
+						"description": "Switches another automation off: its triggers stop and its active runs are cancelled."
+					},
+					"run": {
+						"name": "Run automation",
+						"description": "Starts another automation as if it were run by hand."
 					}
 				}
 			},
@@ -456,6 +540,80 @@
 				"delay": {
 					"title": "Wait for",
 					"hint": "At most one hour. A delay does not survive a restart of the server."
+				},
+				"waitUntil": {
+					"mode": "Continue when the value",
+					"modes": {
+						"to": "becomes a value",
+						"above": "is above a threshold",
+						"below": "is below a threshold"
+					},
+					"timeout": {
+						"title": "Wait at most",
+						"hint": "At most one hour. When the value does not get there in time, the flow continues on \"timeout\"."
+					}
+				},
+				"sunEvent": {
+					"event": "Event",
+					"placeholder": "Select sunrise or sunset",
+					"offset": {
+						"title": "Offset in minutes",
+						"hint": "Negative starts before the event, positive after it; at most {hours} hours either way. Leave empty for the event itself."
+					}
+				},
+				"sun": {
+					"location": "The sun times are computed from the house location set in the system settings."
+				},
+				"daylight": {
+					"title": "Continue on \"yes\"",
+					"hint": "Day is while the sun is up at the house location. A polar day counts as day, a polar night as night."
+				},
+				"button": {
+					"events": {
+						"title": "Presses",
+						"pick": "Every press",
+						"type": "Every press; type a press and press Enter",
+						"hint": "Leave empty to start on every press. Presses are named as the integration reports them, e.g. press, long_press or double_press."
+					}
+				},
+				"device": {
+					"title": "Device",
+					"placeholder": "Select a device",
+					"empty": "There are no devices yet"
+				},
+				"connection": {
+					"title": "Start when the device"
+				},
+				"sceneWasRun": {
+					"hint": "Starts every time the scene runs, whoever runs it: the panel, the admin or another automation."
+				},
+				"change": {
+					"from": "Changes from",
+					"to": "Changes to",
+					"anyMode": "Any mode",
+					"anyState": "Any state"
+				},
+				"houseMode": {
+					"modes": "House modes that answer \"yes\"",
+					"mode": "House mode",
+					"placeholder": "Select a house mode"
+				},
+				"security": {
+					"kind": "Watch",
+					"states": "Armed states that answer \"yes\"",
+					"armTo": "Arm to",
+					"armPlaceholder": "Select how to arm",
+					"noDisarm": "An automation can arm the alarm, but never disarm it."
+				},
+				"automation": {
+					"title": "Automation",
+					"placeholder": "Select an automation",
+					"empty": "There are no other automations yet",
+					"hints": {
+						"enable": "Its triggers start it again. Its flow has to be complete to be enabled. An automation cannot enable itself.",
+						"disable": "Its triggers stop and its active runs are cancelled. An automation cannot disable itself.",
+						"run": "Starts it as if it were run by hand, without waiting for it to finish. A disabled automation is not started."
+					}
 				}
 			},
 			"summaries": {
@@ -497,6 +655,64 @@
 					"everyDay": "every day",
 					"workdays": "Mon – Fri",
 					"weekend": "weekends"
+				},
+				"unknownAutomation": "an unknown automation",
+				"unknownSceneName": "An unknown scene",
+				"waitUntil": {
+					"to": "Until {target} is {value}, at most {timeout}",
+					"above": "Until {target} is above {value}, at most {timeout}",
+					"below": "Until {target} is below {value}, at most {timeout}"
+				},
+				"join": {
+					"any": "Continues with the first branch",
+					"all": "Continues once every branch arrived"
+				},
+				"sunEvent": {
+					"sunrise": {
+						"at": "At sunrise",
+						"before": "{duration} before sunrise",
+						"after": "{duration} after sunrise"
+					},
+					"sunset": {
+						"at": "At sunset",
+						"before": "{duration} before sunset",
+						"after": "{duration} after sunset"
+					}
+				},
+				"daylight": {
+					"day": "It is day",
+					"night": "It is night"
+				},
+				"button": {
+					"any": "{target} is pressed",
+					"events": "{target}: {events}"
+				},
+				"connection": {
+					"any": "{device} goes offline or online",
+					"online": "{device} comes back online",
+					"offline": "{device} goes offline"
+				},
+				"sceneWasRun": "{scene} was run",
+				"alternatives": "{first} or {last}",
+				"change": {
+					"any": "{subject} changes",
+					"to": "{subject} changes to {to}",
+					"from": "{subject} changes from {from}",
+					"fromTo": "{subject} changes from {from} to {to}"
+				},
+				"subjects": {
+					"houseMode": "House mode",
+					"armed": "Armed state",
+					"alarm": "Alarm state"
+				},
+				"houseModeIs": "House mode is {modes}",
+				"houseModeSet": "Set house mode to {mode}",
+				"armedIs": "Alarm is {states}",
+				"arm": "Arm {device}: {state}",
+				"automation": {
+					"enable": "Enable {automation}",
+					"disable": "Disable {automation}",
+					"run": "Run {automation}"
 				}
 			},
 			"validation": {
@@ -538,7 +754,60 @@
 				"title": "A title is needed.",
 				"titleMax": "The title can be at most 120 characters long.",
 				"message": "The message must be a text.",
-				"messageMax": "The message can be at most 1000 characters long."
+				"messageMax": "The message can be at most 1000 characters long.",
+				"timeoutMax": "The timeout can be at most 1 hour.",
+				"offset": "The offset must be a whole number of minutes, at most 6 hours before or after.",
+				"sunEvent": "Choose sunrise or sunset.",
+				"daylight": "Choose day or night.",
+				"buttonEvent": "A press must be a text of 1 to 64 characters.",
+				"buttonEvents": "At least one press is needed, or none for every press.",
+				"buttonEventsMax": "At most 20 presses can be picked.",
+				"listTwice": "A value can be picked only once.",
+				"connection": "Choose online or offline.",
+				"houseMode": "Choose a house mode.",
+				"houseModes": "At least one house mode is needed.",
+				"sameState": "The state cannot change to the state it changes from.",
+				"securityKind": "Choose the armed state or the alarm state.",
+				"securityState": "This state is not one of the states watched.",
+				"armedStates": "At least one armed state is needed.",
+				"armState": "Choose home, away or night.",
+				"automation": "An automation must be chosen."
+			},
+			"options": {
+				"sunEvents": {
+					"sunrise": "Sunrise",
+					"sunset": "Sunset"
+				},
+				"daylight": {
+					"day": "By day",
+					"night": "At night"
+				},
+				"connections": {
+					"any": "goes offline or online",
+					"online": "comes back online",
+					"offline": "goes offline"
+				},
+				"houseModes": {
+					"home": "Home",
+					"away": "Away",
+					"night": "Night"
+				},
+				"armedStates": {
+					"disarmed": "Disarmed",
+					"armed_home": "Armed home",
+					"armed_away": "Armed away",
+					"armed_night": "Armed night"
+				},
+				"alarmStates": {
+					"idle": "Idle",
+					"pending": "Pending",
+					"triggered": "Triggered",
+					"silenced": "Silenced"
+				},
+				"securityKinds": {
+					"armed": "Armed state",
+					"alarm": "Alarm state"
+				}
 			}
 		},
 		"runs": {

@@ -222,6 +222,18 @@
 							"name": "Establecer valor de dispositivo",
 							"description": "Establece uno o varios valores de dispositivos."
 						}
+					},
+					"button": {
+						"pressed": {
+							"name": "Se pulsa un botón",
+							"description": "Se inicia cuando se pulsa un botón: con cualquier pulsación o solo con las elegidas."
+						}
+					},
+					"connection": {
+						"changed": {
+							"name": "Un dispositivo se desconecta o se conecta",
+							"description": "Se inicia cuando un dispositivo pierde la conexión, cuando la recupera, o en ambos casos."
+						}
 					}
 				},
 				"manual": {
@@ -240,6 +252,10 @@
 					"run": {
 						"name": "Ejecutar escena",
 						"description": "Ejecuta una escena."
+					},
+					"was-run": {
+						"name": "Se ejecutó una escena",
+						"description": "Se inicia cuando se ha ejecutado una escena, desde cualquier lugar."
 					}
 				},
 				"time": {
@@ -256,6 +272,74 @@
 					"delay": {
 						"name": "Retardo",
 						"description": "Espera un momento antes de que el flujo continúe."
+					},
+					"wait-until": {
+						"name": "Esperar hasta",
+						"description": "Espera hasta que un valor de un dispositivo alcance un estado, como mucho durante un tiempo. Continúa por «out» cuando ocurre o el estado ya se cumple, y por «tiempo agotado» en caso contrario."
+					},
+					"any": {
+						"name": "Cualquiera",
+						"description": "Continúa cuando llega la primera de las ramas que conducen a él; las siguientes del mismo recorrido terminan aquí."
+					},
+					"all": {
+						"name": "Todas",
+						"description": "Continúa cuando han llegado todas las ramas que conducen a él en el mismo recorrido."
+					}
+				},
+				"sun": {
+					"event": {
+						"name": "Amanecer o atardecer",
+						"description": "Se inicia al amanecer o al atardecer en la ubicación de la casa, o unos minutos antes o después."
+					},
+					"daylight": {
+						"name": "Día o noche",
+						"description": "Continúa por «sí» de día o de noche, según lo elegido, y por «no» en caso contrario."
+					}
+				},
+				"house-mode": {
+					"changed": {
+						"name": "El modo de la casa cambia",
+						"description": "Se inicia cuando cambia el modo de la casa: a un modo, desde un modo o con cualquier cambio."
+					},
+					"is": {
+						"name": "El modo de la casa es",
+						"description": "Continúa por «sí» cuando el modo de la casa es uno de los modos elegidos, y por «no» en caso contrario."
+					},
+					"set": {
+						"name": "Establecer el modo de la casa",
+						"description": "Cambia el modo de la casa."
+					}
+				},
+				"security": {
+					"state": {
+						"changed": {
+							"name": "El estado de seguridad cambia",
+							"description": "Se inicia cuando la alarma se arma o se desarma, o cuando cambia el estado de la alarma, p. ej. cuando la alarma salta."
+						}
+					},
+					"armed": {
+						"is": {
+							"name": "La alarma está armada",
+							"description": "Continúa por «sí» cuando el estado de armado de la alarma es uno de los estados elegidos, y por «no» en caso contrario."
+						}
+					},
+					"arm": {
+						"name": "Armar la alarma",
+						"description": "Arma una alarma: en casa, ausente o noche. Una automatización no puede desarmarla."
+					}
+				},
+				"automation": {
+					"enable": {
+						"name": "Activar automatización",
+						"description": "Activa otra automatización, para que sus disparadores vuelvan a iniciarla."
+					},
+					"disable": {
+						"name": "Desactivar automatización",
+						"description": "Desactiva otra automatización: sus disparadores se detienen y sus ejecuciones activas se cancelan."
+					},
+					"run": {
+						"name": "Ejecutar automatización",
+						"description": "Inicia otra automatización como si se ejecutara a mano."
 					}
 				}
 			},
@@ -456,6 +540,80 @@
 				"delay": {
 					"title": "Esperar",
 					"hint": "Como máximo una hora. Una espera no sobrevive a un reinicio del servidor."
+				},
+				"waitUntil": {
+					"mode": "Continuar cuando el valor",
+					"modes": {
+						"to": "tome un valor",
+						"above": "esté por encima de un umbral",
+						"below": "esté por debajo de un umbral"
+					},
+					"timeout": {
+						"title": "Esperar como mucho",
+						"hint": "Como mucho una hora. Si el valor no llega a tiempo, el flujo continúa por «tiempo agotado»."
+					}
+				},
+				"sunEvent": {
+					"event": "Evento",
+					"placeholder": "Seleccione amanecer o atardecer",
+					"offset": {
+						"title": "Desfase en minutos",
+						"hint": "Un valor negativo inicia antes del evento, uno positivo después; como mucho {hours} horas en cada sentido. Déjelo vacío para el evento en sí."
+					}
+				},
+				"sun": {
+					"location": "Las horas del sol se calculan a partir de la ubicación de la casa definida en los ajustes del sistema."
+				},
+				"daylight": {
+					"title": "Continuar por «sí»",
+					"hint": "Es de día mientras el sol está sobre el horizonte en la ubicación de la casa. Un día polar cuenta como día y una noche polar como noche."
+				},
+				"button": {
+					"events": {
+						"title": "Pulsaciones",
+						"pick": "Cualquier pulsación",
+						"type": "Cualquier pulsación; escriba una pulsación y pulse Intro",
+						"hint": "Déjelo vacío para iniciar con cualquier pulsación. Las pulsaciones se llaman como las informa la integración, p. ej. press, long_press o double_press."
+					}
+				},
+				"device": {
+					"title": "Dispositivo",
+					"placeholder": "Seleccione un dispositivo",
+					"empty": "Aún no hay dispositivos"
+				},
+				"connection": {
+					"title": "Iniciar cuando el dispositivo"
+				},
+				"sceneWasRun": {
+					"hint": "Se inicia cada vez que se ejecuta la escena, la ejecute quien la ejecute: el panel, la administración u otra automatización."
+				},
+				"change": {
+					"from": "Cambia desde",
+					"to": "Cambia a",
+					"anyMode": "Cualquier modo",
+					"anyState": "Cualquier estado"
+				},
+				"houseMode": {
+					"modes": "Modos de la casa que responden «sí»",
+					"mode": "Modo de la casa",
+					"placeholder": "Seleccione un modo de la casa"
+				},
+				"security": {
+					"kind": "Vigilar",
+					"states": "Estados de armado que responden «sí»",
+					"armTo": "Armar en",
+					"armPlaceholder": "Seleccione cómo armar",
+					"noDisarm": "Una automatización puede armar la alarma, pero nunca desarmarla."
+				},
+				"automation": {
+					"title": "Automatización",
+					"placeholder": "Seleccione una automatización",
+					"empty": "Aún no hay otras automatizaciones",
+					"hints": {
+						"enable": "Sus disparadores vuelven a iniciarla. Para activarla, su flujo tiene que estar completo. Una automatización no puede activarse a sí misma.",
+						"disable": "Sus disparadores se detienen y sus ejecuciones activas se cancelan. Una automatización no puede desactivarse a sí misma.",
+						"run": "La inicia como si se ejecutara a mano, sin esperar a que termine. Una automatización desactivada no se inicia."
+					}
 				}
 			},
 			"summaries": {
@@ -497,6 +655,64 @@
 					"everyDay": "todos los días",
 					"workdays": "lun – vie",
 					"weekend": "los fines de semana"
+				},
+				"unknownAutomation": "una automatización desconocida",
+				"unknownSceneName": "Una escena desconocida",
+				"waitUntil": {
+					"to": "Hasta que {target} sea {value}, como mucho {timeout}",
+					"above": "Hasta que {target} supere {value}, como mucho {timeout}",
+					"below": "Hasta que {target} baje de {value}, como mucho {timeout}"
+				},
+				"join": {
+					"any": "Continúa con la primera rama",
+					"all": "Continúa cuando llegan todas las ramas"
+				},
+				"sunEvent": {
+					"sunrise": {
+						"at": "Al amanecer",
+						"before": "{duration} antes del amanecer",
+						"after": "{duration} después del amanecer"
+					},
+					"sunset": {
+						"at": "Al atardecer",
+						"before": "{duration} antes del atardecer",
+						"after": "{duration} después del atardecer"
+					}
+				},
+				"daylight": {
+					"day": "Es de día",
+					"night": "Es de noche"
+				},
+				"button": {
+					"any": "Se pulsa {target}",
+					"events": "{target}: {events}"
+				},
+				"connection": {
+					"any": "{device} se desconecta o se conecta",
+					"online": "{device} vuelve a conectarse",
+					"offline": "{device} se desconecta"
+				},
+				"sceneWasRun": "Se ejecutó {scene}",
+				"alternatives": "{first} o {last}",
+				"change": {
+					"any": "{subject} cambia",
+					"to": "{subject} cambia a {to}",
+					"from": "{subject} cambia desde {from}",
+					"fromTo": "{subject} cambia de {from} a {to}"
+				},
+				"subjects": {
+					"houseMode": "El modo de la casa",
+					"armed": "El estado de armado",
+					"alarm": "El estado de la alarma"
+				},
+				"houseModeIs": "El modo de la casa es {modes}",
+				"houseModeSet": "Establecer el modo de la casa: {mode}",
+				"armedIs": "Alarma: {states}",
+				"arm": "Armar {device}: {state}",
+				"automation": {
+					"enable": "Activar {automation}",
+					"disable": "Desactivar {automation}",
+					"run": "Ejecutar {automation}"
 				}
 			},
 			"validation": {
@@ -538,7 +754,60 @@
 				"title": "Se necesita un título.",
 				"titleMax": "El título puede tener como máximo 120 caracteres.",
 				"message": "El mensaje debe ser un texto.",
-				"messageMax": "El mensaje puede tener como máximo 1000 caracteres."
+				"messageMax": "El mensaje puede tener como máximo 1000 caracteres.",
+				"timeoutMax": "El tiempo de espera puede ser como mucho de 1 hora.",
+				"offset": "El desfase debe ser un número entero de minutos, como mucho 6 horas antes o después.",
+				"sunEvent": "Elija amanecer o atardecer.",
+				"daylight": "Elija día o noche.",
+				"buttonEvent": "Una pulsación debe ser un texto de 1 a 64 caracteres.",
+				"buttonEvents": "Se necesita al menos una pulsación, o ninguna para cualquier pulsación.",
+				"buttonEventsMax": "Se pueden elegir como mucho 20 pulsaciones.",
+				"listTwice": "Un valor solo se puede elegir una vez.",
+				"connection": "Elija conectado o desconectado.",
+				"houseMode": "Elija un modo de la casa.",
+				"houseModes": "Se necesita al menos un modo de la casa.",
+				"sameState": "El estado no puede cambiar al mismo estado desde el que cambia.",
+				"securityKind": "Elija el estado de armado o el estado de la alarma.",
+				"securityState": "Este estado no es uno de los estados vigilados.",
+				"armedStates": "Se necesita al menos un estado de armado.",
+				"armState": "Elija en casa, ausente o noche.",
+				"automation": "Hay que elegir una automatización."
+			},
+			"options": {
+				"sunEvents": {
+					"sunrise": "Amanecer",
+					"sunset": "Atardecer"
+				},
+				"daylight": {
+					"day": "De día",
+					"night": "De noche"
+				},
+				"connections": {
+					"any": "se desconecta o se conecta",
+					"online": "vuelve a conectarse",
+					"offline": "se desconecta"
+				},
+				"houseModes": {
+					"home": "En casa",
+					"away": "Ausente",
+					"night": "Noche"
+				},
+				"armedStates": {
+					"disarmed": "Desarmada",
+					"armed_home": "Armada en casa",
+					"armed_away": "Armada ausente",
+					"armed_night": "Armada noche"
+				},
+				"alarmStates": {
+					"idle": "En reposo",
+					"pending": "Pendiente",
+					"triggered": "Disparada",
+					"silenced": "Silenciada"
+				},
+				"securityKinds": {
+					"armed": "Estado de armado",
+					"alarm": "Estado de la alarma"
+				}
 			}
 		},
 		"runs": {

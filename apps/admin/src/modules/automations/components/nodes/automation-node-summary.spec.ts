@@ -10,7 +10,7 @@ import AutomationNodeCard from '../canvas/automation-node-card.vue';
 
 import AutomationNodeSummary from './automation-node-summary.vue';
 
-const mocks = vi.hoisted(() => ({ ensureDevices: vi.fn(), ensureScenes: vi.fn() }));
+const mocks = vi.hoisted(() => ({ ensureDevices: vi.fn(), ensureScenes: vi.fn(), ensureAutomations: vi.fn() }));
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -24,8 +24,10 @@ vi.mock('../../composables/useAutomationNodeLookups', () => ({
 		channel: () => null,
 		property: () => null,
 		scene: (id: string) => (id === 's-evening' ? { name: 'Evening' } : null),
+		automation: () => null,
 		ensureDevices: mocks.ensureDevices,
 		ensureScenes: mocks.ensureScenes,
+		ensureAutomations: mocks.ensureAutomations,
 	}),
 }));
 
@@ -51,6 +53,19 @@ describe('AutomationNodeSummary', (): void => {
 		mount(AutomationNodeSummary, { props: { nodeType: nodeType('device.property.set'), config: {} } });
 
 		expect(mocks.ensureDevices).toHaveBeenCalled();
+	});
+
+	it('reads the scenes for a scene trigger and the automations for an automation action', (): void => {
+		vi.clearAllMocks();
+
+		mount(AutomationNodeSummary, { props: { nodeType: nodeType('scene.was-run'), config: {} } });
+
+		expect(mocks.ensureScenes).toHaveBeenCalled();
+		expect(mocks.ensureAutomations).not.toHaveBeenCalled();
+
+		mount(AutomationNodeSummary, { props: { nodeType: nodeType('automation.run'), config: {} } });
+
+		expect(mocks.ensureAutomations).toHaveBeenCalled();
 	});
 });
 

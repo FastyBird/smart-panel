@@ -10,7 +10,7 @@
 <script setup lang="ts">
 /*
  * The summary of a built-in card (`automationNodeCard`): what it is set to do, with the names of the
- * devices and scenes it points at.
+ * devices, scenes and automations it points at.
  */
 import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -34,6 +34,18 @@ const DEVICE_TYPES: string[] = [
 	AutomationBuiltInNodeType.DEVICE_PROPERTY_CHANGED,
 	AutomationBuiltInNodeType.DEVICE_PROPERTY_COMPARE,
 	AutomationBuiltInNodeType.DEVICE_PROPERTY_SET,
+	AutomationBuiltInNodeType.DEVICE_BUTTON_PRESSED,
+	AutomationBuiltInNodeType.DEVICE_CONNECTION_CHANGED,
+	AutomationBuiltInNodeType.FLOW_WAIT_UNTIL,
+	AutomationBuiltInNodeType.SECURITY_ARM,
+];
+
+const SCENE_TYPES: string[] = [AutomationBuiltInNodeType.SCENE_RUN, AutomationBuiltInNodeType.SCENE_WAS_RUN];
+
+const AUTOMATION_TYPES: string[] = [
+	AutomationBuiltInNodeType.AUTOMATION_ENABLE,
+	AutomationBuiltInNodeType.AUTOMATION_DISABLE,
+	AutomationBuiltInNodeType.AUTOMATION_RUN,
 ];
 
 const summary = computed<string>(
@@ -45,8 +57,10 @@ const summary = computed<string>(
 onBeforeMount((): void => {
 	if (DEVICE_TYPES.includes(props.nodeType.type)) {
 		void lookups.ensureDevices();
-	} else if (props.nodeType.type === AutomationBuiltInNodeType.SCENE_RUN) {
+	} else if (SCENE_TYPES.includes(props.nodeType.type)) {
 		void lookups.ensureScenes();
+	} else if (AUTOMATION_TYPES.includes(props.nodeType.type)) {
+		void lookups.ensureAutomations();
 	}
 });
 </script>

@@ -573,5 +573,119 @@
 		"readOnly": "Nastavenia obsadenosti môže meniť vlastník alebo správca.",
 		"supplementalFailed": "Senzory alebo zistený stav obsadenosti sa nepodarilo načítať. Skúste obnoviť stav.",
 		"unsupportedSpace": "Tento typ priestoru už nepodporuje obsadenosť. Koncept zostal zachovaný na kontrolu; ukladanie ani obnovenie automatiky nie je dostupné."
+	},
+	"automations": {
+		"nodeTypes": {
+			"space": {
+				"occupancy": {
+					"changed": {
+						"name": "Obsadenosť priestoru sa zmení",
+						"description": "Spustí sa, keď sa miestnosť alebo zóna obsadí, uvoľní, alebo v oboch prípadoch, podľa detekcie obsadenosti."
+					},
+					"is": {
+						"name": "Priestor je obsadený",
+						"description": "Pokračuje výstupom „áno“, keď detekcia obsadenosti miestnosti alebo zóny hlási obsadené, alebo voľné, podľa voľby, inak výstupom „nie“."
+					}
+				},
+				"mode": {
+					"changed": {
+						"name": "Režim priestoru sa zmení",
+						"description": "Spustí sa pri zmene režimu aktivity miestnosti alebo zóny: na režim, z režimu, alebo pri akejkoľvek zmene."
+					},
+					"is": {
+						"name": "Režim priestoru je",
+						"description": "Pokračuje výstupom „áno“, keď je režim aktivity miestnosti alebo zóny jedným z vybraných režimov, inak výstupom „nie“."
+					},
+					"set": {
+						"name": "Nastaviť režim priestoru",
+						"description": "Aktivuje režim aktivity miestnosti alebo zóny, rovnako ako panel."
+					}
+				},
+				"lighting": {
+					"intent": {
+						"name": "Nastaviť osvetlenie priestoru",
+						"description": "Zapne alebo vypne svetlá miestnosti alebo zóny, použije režim osvetlenia, alebo zapne, vypne či stlmí svetlá jednej roly."
+					}
+				}
+			}
+		},
+		"fields": {
+			"space": {
+				"title": "Miestnosť alebo zóna",
+				"placeholder": "Vyberte miestnosť alebo zónu"
+			},
+			"occupancy": {
+				"when": "Spustiť, keď sa priestor",
+				"anyChange": "obsadí alebo uvoľní",
+				"is": "Pokračovať výstupom „áno“, keď je priestor",
+				"hints": {
+					"changed": "Riadi sa detekciou obsadenosti priestoru: stavom, na ktorom sa ustálila, nie každým hlásením senzora.",
+					"is": "Kým obsadenosť nie je známa, podmienka pokračuje výstupom „nie“."
+				}
+			},
+			"mode": {
+				"modes": "Režimy aktivity, ktoré odpovedia „áno“",
+				"mode": "Režim aktivity",
+				"placeholder": "Vyberte režim aktivity",
+				"hints": {
+					"changed": "Spustí sa, nech režim vyberie ktokoľvek: človek, rozvrh, obsadenosť alebo automatizácia.",
+					"is": "Načíta režim vybraný pre priestor vo chvíli, keď priebeh dorazí k podmienke.",
+					"set": "Aktivuje režim rovnako ako panel, bez pozastavenia obsadenosti priestoru. Režim musí byť pre priestor nastavený."
+				}
+			},
+			"lighting": {
+				"intent": "Osvetlenie",
+				"intentPlaceholder": "Vyberte, čo sa má so svetlami stať",
+				"intents": {
+					"on": "Zapnúť svetlá",
+					"off": "Vypnúť svetlá",
+					"set_mode": "Použiť režim osvetlenia",
+					"role_on": "Zapnúť svetlá roly",
+					"role_off": "Vypnúť svetlá roly",
+					"role_brightness": "Nastaviť jas roly"
+				},
+				"mode": "Režim osvetlenia",
+				"modePlaceholder": "Vyberte režim osvetlenia",
+				"role": "Rola osvetlenia",
+				"rolePlaceholder": "Vyberte rolu osvetlenia",
+				"brightness": "Jas",
+				"hint": "Svetlá sa vyberajú podľa svojich rolí v priestore, rovnako ako na paneli; odpojené svetlá sa preskočia."
+			}
+		},
+		"summaries": {
+			"unknownSpace": "Neznámy priestor",
+			"occupancyChanged": {
+				"any": "{space} sa obsadí alebo uvoľní",
+				"occupied": "{space} sa obsadí",
+				"vacant": "{space} sa uvoľní"
+			},
+			"occupancyIs": {
+				"occupied": "{space} je obsadené",
+				"vacant": "{space} je voľné"
+			},
+			"modeOf": "Režim {space}",
+			"modeIs": "Režim {space} je {modes}",
+			"modeSet": "Nastaviť {space}: {mode}",
+			"lighting": {
+				"on": "Zapnúť svetlá: {space}",
+				"off": "Vypnúť svetlá: {space}",
+				"set_mode": "{space}: režim osvetlenia {mode}",
+				"role_on": "{space}: zapnúť svetlá roly {role}",
+				"role_off": "{space}: vypnúť svetlá roly {role}",
+				"role_brightness": "{space}: svetlá roly {role} na {brightness} %"
+			}
+		},
+		"validation": {
+			"space": "Treba vybrať miestnosť alebo zónu.",
+			"occupancy": "Vyberte obsadené alebo voľné.",
+			"activityMode": "Vyberte režim aktivity.",
+			"activityModes": "Treba aspoň jeden režim aktivity.",
+			"lightingIntent": "Vyberte, čo sa má so svetlami stať.",
+			"lightingMode": "Vyberte režim osvetlenia.",
+			"lightingRole": "Vyberte rolu osvetlenia.",
+			"brightness": "Jas musí byť celé číslo od 0 do 100.",
+			"notUsedByIntent": "Táto hodnota sa pre zvolené osvetlenie nepoužíva.",
+			"sameState": "Režim sa nemôže zmeniť na režim, z ktorého sa mení."
+		}
 	}
 }

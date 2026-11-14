@@ -222,6 +222,18 @@
 							"name": "Gerätewert setzen",
 							"description": "Setzt einen oder mehrere Werte von Geräten."
 						}
+					},
+					"button": {
+						"pressed": {
+							"name": "Taste wird gedrückt",
+							"description": "Startet, wenn eine Taste gedrückt wird: bei jedem Druck oder nur bei den gewählten."
+						}
+					},
+					"connection": {
+						"changed": {
+							"name": "Gerät geht offline oder online",
+							"description": "Startet, wenn ein Gerät seine Verbindung verliert, wenn es wieder verbunden ist, oder in beiden Fällen."
+						}
 					}
 				},
 				"manual": {
@@ -240,6 +252,10 @@
 					"run": {
 						"name": "Szene ausführen",
 						"description": "Führt eine Szene aus."
+					},
+					"was-run": {
+						"name": "Szene wurde ausgeführt",
+						"description": "Startet, wenn eine Szene ausgeführt wurde, von wo auch immer."
 					}
 				},
 				"time": {
@@ -256,6 +272,74 @@
 					"delay": {
 						"name": "Verzögerung",
 						"description": "Wartet eine Weile, bevor der Ablauf fortgesetzt wird."
+					},
+					"wait-until": {
+						"name": "Warten bis",
+						"description": "Wartet, bis ein Gerätewert einen Zustand erreicht, höchstens eine bestimmte Zeit. Fährt bei „out“ fort, wenn das eintritt oder der Zustand schon gilt, sonst bei „Zeitüberschreitung“."
+					},
+					"any": {
+						"name": "Beliebig",
+						"description": "Fährt fort, sobald der erste der dorthin führenden Zweige ankommt; spätere Zweige desselben Laufs enden hier."
+					},
+					"all": {
+						"name": "Alle",
+						"description": "Fährt fort, sobald im selben Lauf alle dorthin führenden Zweige angekommen sind."
+					}
+				},
+				"sun": {
+					"event": {
+						"name": "Sonnenaufgang oder -untergang",
+						"description": "Startet bei Sonnenaufgang oder -untergang am Standort des Hauses oder einige Minuten davor oder danach."
+					},
+					"daylight": {
+						"name": "Tag oder Nacht",
+						"description": "Fährt je nach Wahl am Tag oder in der Nacht bei „ja“ fort, sonst bei „nein“."
+					}
+				},
+				"house-mode": {
+					"changed": {
+						"name": "Hausmodus ändert sich",
+						"description": "Startet, wenn sich der Hausmodus ändert: zu einem Modus, von einem Modus oder bei jeder Änderung."
+					},
+					"is": {
+						"name": "Hausmodus ist",
+						"description": "Fährt bei „ja“ fort, wenn der Hausmodus einer der gewählten Modi ist, sonst bei „nein“."
+					},
+					"set": {
+						"name": "Hausmodus setzen",
+						"description": "Ändert den Hausmodus."
+					}
+				},
+				"security": {
+					"state": {
+						"changed": {
+							"name": "Sicherheitszustand ändert sich",
+							"description": "Startet, wenn die Alarmanlage scharf oder unscharf geschaltet wird oder sich der Alarmzustand ändert, z. B. wenn der Alarm ausgelöst wird."
+						}
+					},
+					"armed": {
+						"is": {
+							"name": "Alarmanlage ist scharf",
+							"description": "Fährt bei „ja“ fort, wenn der Scharfschaltzustand einer der gewählten Zustände ist, sonst bei „nein“."
+						}
+					},
+					"arm": {
+						"name": "Alarmanlage scharf schalten",
+						"description": "Schaltet eine Alarmanlage scharf: zu Hause, abwesend oder Nacht. Eine Automation kann sie nicht unscharf schalten."
+					}
+				},
+				"automation": {
+					"enable": {
+						"name": "Automation aktivieren",
+						"description": "Schaltet eine andere Automation ein, sodass ihre Auslöser sie wieder starten."
+					},
+					"disable": {
+						"name": "Automation deaktivieren",
+						"description": "Schaltet eine andere Automation aus: Ihre Auslöser stoppen und ihre aktiven Läufe werden abgebrochen."
+					},
+					"run": {
+						"name": "Automation ausführen",
+						"description": "Startet eine andere Automation, als wäre sie von Hand ausgeführt worden."
 					}
 				}
 			},
@@ -456,6 +540,80 @@
 				"delay": {
 					"title": "Warten",
 					"hint": "Höchstens eine Stunde. Eine Verzögerung übersteht keinen Neustart des Servers."
+				},
+				"waitUntil": {
+					"mode": "Fortfahren, wenn der Wert",
+					"modes": {
+						"to": "einen Wert annimmt",
+						"above": "über einem Schwellwert liegt",
+						"below": "unter einem Schwellwert liegt"
+					},
+					"timeout": {
+						"title": "Höchstens warten",
+						"hint": "Höchstens eine Stunde. Erreicht der Wert den Zustand nicht rechtzeitig, fährt der Ablauf bei „Zeitüberschreitung“ fort."
+					}
+				},
+				"sunEvent": {
+					"event": "Ereignis",
+					"placeholder": "Sonnenaufgang oder -untergang auswählen",
+					"offset": {
+						"title": "Versatz in Minuten",
+						"hint": "Negativ startet vor dem Ereignis, positiv danach; höchstens {hours} Stunden in jede Richtung. Leer lassen für das Ereignis selbst."
+					}
+				},
+				"sun": {
+					"location": "Die Sonnenzeiten werden aus dem Standort des Hauses in den Systemeinstellungen berechnet."
+				},
+				"daylight": {
+					"title": "Auf „ja“ fortfahren",
+					"hint": "Tag ist, solange die Sonne am Standort des Hauses über dem Horizont steht. Ein Polartag gilt als Tag, eine Polarnacht als Nacht."
+				},
+				"button": {
+					"events": {
+						"title": "Tastendrücke",
+						"pick": "Jeder Tastendruck",
+						"type": "Jeder Tastendruck; Tastendruck eingeben und Enter drücken",
+						"hint": "Leer lassen, um bei jedem Tastendruck zu starten. Die Tastendrücke heißen so, wie die Integration sie meldet, z. B. press, long_press oder double_press."
+					}
+				},
+				"device": {
+					"title": "Gerät",
+					"placeholder": "Gerät auswählen",
+					"empty": "Es gibt noch keine Geräte"
+				},
+				"connection": {
+					"title": "Starten, wenn das Gerät"
+				},
+				"sceneWasRun": {
+					"hint": "Startet jedes Mal, wenn die Szene ausgeführt wird, egal von wem: vom Panel, von der Administration oder von einer anderen Automation."
+				},
+				"change": {
+					"from": "Ändert sich von",
+					"to": "Ändert sich zu",
+					"anyMode": "Beliebiger Modus",
+					"anyState": "Beliebiger Zustand"
+				},
+				"houseMode": {
+					"modes": "Hausmodi, die „ja“ ergeben",
+					"mode": "Hausmodus",
+					"placeholder": "Hausmodus auswählen"
+				},
+				"security": {
+					"kind": "Beobachten",
+					"states": "Scharfschaltzustände, die „ja“ ergeben",
+					"armTo": "Scharf schalten auf",
+					"armPlaceholder": "Art der Scharfschaltung auswählen",
+					"noDisarm": "Eine Automation kann die Alarmanlage scharf schalten, aber niemals unscharf."
+				},
+				"automation": {
+					"title": "Automation",
+					"placeholder": "Automation auswählen",
+					"empty": "Es gibt noch keine anderen Automationen",
+					"hints": {
+						"enable": "Ihre Auslöser starten sie wieder. Um aktiviert zu werden, muss ihr Ablauf vollständig sein. Eine Automation kann sich nicht selbst aktivieren.",
+						"disable": "Ihre Auslöser stoppen und ihre aktiven Läufe werden abgebrochen. Eine Automation kann sich nicht selbst deaktivieren.",
+						"run": "Startet sie, als wäre sie von Hand ausgeführt worden, ohne auf ihr Ende zu warten. Eine deaktivierte Automation wird nicht gestartet."
+					}
 				}
 			},
 			"summaries": {
@@ -497,6 +655,64 @@
 					"everyDay": "jeden Tag",
 					"workdays": "Mo – Fr",
 					"weekend": "am Wochenende"
+				},
+				"unknownAutomation": "eine unbekannte Automation",
+				"unknownSceneName": "Eine unbekannte Szene",
+				"waitUntil": {
+					"to": "Bis {target} {value} ist, höchstens {timeout}",
+					"above": "Bis {target} über {value} liegt, höchstens {timeout}",
+					"below": "Bis {target} unter {value} liegt, höchstens {timeout}"
+				},
+				"join": {
+					"any": "Fährt mit dem ersten Zweig fort",
+					"all": "Fährt fort, wenn alle Zweige angekommen sind"
+				},
+				"sunEvent": {
+					"sunrise": {
+						"at": "Bei Sonnenaufgang",
+						"before": "{duration} vor Sonnenaufgang",
+						"after": "{duration} nach Sonnenaufgang"
+					},
+					"sunset": {
+						"at": "Bei Sonnenuntergang",
+						"before": "{duration} vor Sonnenuntergang",
+						"after": "{duration} nach Sonnenuntergang"
+					}
+				},
+				"daylight": {
+					"day": "Es ist Tag",
+					"night": "Es ist Nacht"
+				},
+				"button": {
+					"any": "{target} wird gedrückt",
+					"events": "{target}: {events}"
+				},
+				"connection": {
+					"any": "{device} geht offline oder online",
+					"online": "{device} geht wieder online",
+					"offline": "{device} geht offline"
+				},
+				"sceneWasRun": "{scene} wurde ausgeführt",
+				"alternatives": "{first} oder {last}",
+				"change": {
+					"any": "{subject} ändert sich",
+					"to": "{subject} ändert sich zu {to}",
+					"from": "{subject} ändert sich von {from}",
+					"fromTo": "{subject} ändert sich von {from} zu {to}"
+				},
+				"subjects": {
+					"houseMode": "Hausmodus",
+					"armed": "Scharfschaltzustand",
+					"alarm": "Alarmzustand"
+				},
+				"houseModeIs": "Hausmodus ist {modes}",
+				"houseModeSet": "Hausmodus setzen: {mode}",
+				"armedIs": "Alarmanlage: {states}",
+				"arm": "{device} scharf schalten: {state}",
+				"automation": {
+					"enable": "{automation} aktivieren",
+					"disable": "{automation} deaktivieren",
+					"run": "{automation} ausführen"
 				}
 			},
 			"validation": {
@@ -538,7 +754,60 @@
 				"title": "Ein Titel wird benötigt.",
 				"titleMax": "Der Titel darf höchstens 120 Zeichen lang sein.",
 				"message": "Die Nachricht muss ein Text sein.",
-				"messageMax": "Die Nachricht darf höchstens 1000 Zeichen lang sein."
+				"messageMax": "Die Nachricht darf höchstens 1000 Zeichen lang sein.",
+				"timeoutMax": "Die Wartezeit kann höchstens 1 Stunde betragen.",
+				"offset": "Der Versatz muss eine ganze Zahl von Minuten sein, höchstens 6 Stunden davor oder danach.",
+				"sunEvent": "Sonnenaufgang oder Sonnenuntergang wählen.",
+				"daylight": "Tag oder Nacht wählen.",
+				"buttonEvent": "Ein Tastendruck muss ein Text mit 1 bis 64 Zeichen sein.",
+				"buttonEvents": "Mindestens ein Tastendruck ist nötig, oder keiner für jeden Tastendruck.",
+				"buttonEventsMax": "Höchstens 20 Tastendrücke können gewählt werden.",
+				"listTwice": "Ein Wert kann nur einmal gewählt werden.",
+				"connection": "Online oder offline wählen.",
+				"houseMode": "Einen Hausmodus wählen.",
+				"houseModes": "Mindestens ein Hausmodus ist nötig.",
+				"sameState": "Der Zustand kann sich nicht zu dem Zustand ändern, von dem er sich ändert.",
+				"securityKind": "Den Scharfschaltzustand oder den Alarmzustand wählen.",
+				"securityState": "Dieser Zustand gehört nicht zu den beobachteten Zuständen.",
+				"armedStates": "Mindestens ein Scharfschaltzustand ist nötig.",
+				"armState": "Zu Hause, abwesend oder Nacht wählen.",
+				"automation": "Eine Automation muss gewählt werden."
+			},
+			"options": {
+				"sunEvents": {
+					"sunrise": "Sonnenaufgang",
+					"sunset": "Sonnenuntergang"
+				},
+				"daylight": {
+					"day": "Am Tag",
+					"night": "In der Nacht"
+				},
+				"connections": {
+					"any": "offline oder online geht",
+					"online": "wieder online geht",
+					"offline": "offline geht"
+				},
+				"houseModes": {
+					"home": "Zu Hause",
+					"away": "Abwesend",
+					"night": "Nacht"
+				},
+				"armedStates": {
+					"disarmed": "Unscharf",
+					"armed_home": "Scharf (zu Hause)",
+					"armed_away": "Scharf (abwesend)",
+					"armed_night": "Scharf (Nacht)"
+				},
+				"alarmStates": {
+					"idle": "Ruhe",
+					"pending": "Verzögerung",
+					"triggered": "Ausgelöst",
+					"silenced": "Stummgeschaltet"
+				},
+				"securityKinds": {
+					"armed": "Scharfschaltzustand",
+					"alarm": "Alarmzustand"
+				}
 			}
 		},
 		"runs": {
