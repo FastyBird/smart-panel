@@ -12,6 +12,7 @@ import { UpdateBuddyTelegramConfigDto } from './buddy-telegram/dto/update-config
 import { UpdateBuddyVoiceaiConfigDto } from './buddy-voiceai/dto/update-config.dto';
 import { HomeAssistantUpdatePluginConfigDto } from './devices-home-assistant/dto/update-config.dto';
 import { HomeyUpdatePluginConfigDto } from './devices-homey/dto/update-config.dto';
+import { ProtectUpdatePluginConfigDto } from './devices-unifi-protect/dto/update-config.dto';
 import { Zigbee2mqttUpdatePluginConfigDto } from './devices-zigbee2mqtt/dto/update-config.dto';
 import { UpdateInfluxV1ConfigDto } from './influx-v1/dto/update-config.dto';
 import { UpdateInfluxV2ConfigDto } from './influx-v2/dto/update-config.dto';
@@ -50,6 +51,7 @@ const SECRETS: { label: string; dto: object; submit: Record<string, unknown>; re
 		['buddy-voiceai', UpdateBuddyVoiceaiConfigDto, 'api_key', 'apiKey'],
 		['devices-home-assistant', HomeAssistantUpdatePluginConfigDto, 'api_key', 'api_key'],
 		['devices-homey', HomeyUpdatePluginConfigDto, 'api_key', 'apiKey'],
+		['devices-unifi-protect', ProtectUpdatePluginConfigDto, 'api_key', 'apiKey'],
 		['influx-v1', UpdateInfluxV1ConfigDto, 'password', 'password'],
 		['influx-v2', UpdateInfluxV2ConfigDto, 'token', 'token'],
 		['notifications-discord', UpdateNotificationsDiscordConfigDto, 'webhook_url', 'webhookUrl'],
