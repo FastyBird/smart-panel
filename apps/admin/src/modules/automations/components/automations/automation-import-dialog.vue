@@ -104,7 +104,7 @@
 					</div>
 
 					<automation-node-target
-						v-if="reference.kind === AutomationReferenceKind.property"
+						v-if="remappable(reference) && reference.kind === AutomationReferenceKind.property"
 						:device-id="propertyTarget(reference).device_id"
 						:channel-id="propertyTarget(reference).channel_id"
 						:property-id="propertyTarget(reference).property_id"
@@ -308,7 +308,8 @@ const propertyTargets = ref<Record<string, IPropertyTarget>>({});
 
 const referenceKey = automationReferenceKey;
 
-const remappable = (reference: IAutomationImportMissingReference): boolean => AUTOMATION_REMAPPABLE_REFERENCE_KINDS.includes(reference.kind);
+const remappable = (reference: IAutomationImportMissingReference): boolean =>
+	reference.remappable && AUTOMATION_REMAPPABLE_REFERENCE_KINDS.includes(reference.kind);
 
 const byLabel = (a: IOption, b: IOption): number => a.label.localeCompare(b.label);
 

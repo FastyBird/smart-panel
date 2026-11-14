@@ -1109,7 +1109,8 @@
 				"invalidGraph": "Die Automatisierung aus der Datei kann nicht gespeichert werden.",
 				"notRead": "Die Datei konnte nicht geprüft werden.",
 				"imported": "Automatisierung „{automation}“ wurde deaktiviert importiert.",
-				"notImported": "Die Automatisierung konnte nicht importiert werden."
+				"notImported": "Die Automatisierung konnte nicht importiert werden.",
+				"changed": "Die Datei wurde nach der Prüfung geändert. Prüfen Sie sie vor dem Import erneut."
 			}
 		}
 	}

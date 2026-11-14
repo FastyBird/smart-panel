@@ -27,7 +27,8 @@ export const AutomationExportSchema = z.object({
 export const AutomationImportReferenceUsageSchema = z.object({
 	// The node holding the reference; null for the space of the automation itself
 	nodeId: z.string().nullable(),
-	field: z.string(),
+	// Null when the card does not say where it holds the reference
+	field: z.string().nullable(),
 });
 
 // An entity the imported automation refers to that does not exist here
@@ -35,6 +36,8 @@ export const AutomationImportMissingReferenceSchema = z.object({
 	kind: z.nativeEnum(AutomationReferenceKind),
 	id: z.string(),
 	usages: z.array(AutomationImportReferenceUsageSchema),
+	// Whether a mapping can point it elsewhere; one that can not is fixed in the editor after the import
+	remappable: z.boolean(),
 });
 
 // What the new automation is created with
@@ -95,7 +98,8 @@ export const AutomationExportResSchema: ZodType<ApiExport> = z.object({
 export const AutomationImportMissingReferenceResSchema: ZodType<ApiMissingReference> = z.object({
 	kind: z.nativeEnum(AutomationReferenceKind),
 	id: z.string(),
-	usages: z.array(z.object({ node_id: z.string().nullable(), field: z.string() })),
+	usages: z.array(z.object({ node_id: z.string().nullable(), field: z.string().nullable() })),
+	remappable: z.boolean(),
 });
 
 export const AutomationImportPreparationResSchema = z.object({

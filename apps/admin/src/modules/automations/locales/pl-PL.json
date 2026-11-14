@@ -1109,7 +1109,8 @@
 				"invalidGraph": "Automatyzacji z pliku nie można zapisać.",
 				"notRead": "Nie udało się sprawdzić pliku.",
 				"imported": "Automatyzacja „{automation}” została zaimportowana jako wyłączona.",
-				"notImported": "Nie udało się zaimportować automatyzacji."
+				"notImported": "Nie udało się zaimportować automatyzacji.",
+				"changed": "Plik zmienił się po sprawdzeniu. Sprawdź go ponownie przed importem."
 			}
 		}
 	}

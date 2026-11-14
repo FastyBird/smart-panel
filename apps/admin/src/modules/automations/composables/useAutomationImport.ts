@@ -56,6 +56,14 @@ export const useAutomationImport = (): IUseAutomationImport => {
 
 	const submitting = ref<boolean>(false);
 
+	// The document the preparation shown was made from: the automation is created from that one, never from text
+	// that changed since
+	let preparedYaml: string | null = null;
+
+	// Moved by every change of the text - a file read, an edit, a reset - so a file read that finishes after it is
+	// dropped instead of replacing what came later
+	let generation = 0;
+
 	const missingReferences = computed<IAutomationImportMissingReference[]>(
 		(): IAutomationImportMissingReference[] => preparation.value?.missingReferences ?? []
 	);
@@ -70,6 +78,9 @@ export const useAutomationImport = (): IUseAutomationImport => {
 	};
 
 	const reset = (): void => {
+		generation += 1;
+		preparedYaml = null;
+
 		yaml.value = '';
 		preparation.value = null;
 		mappings.value = {};
@@ -78,10 +89,23 @@ export const useAutomationImport = (): IUseAutomationImport => {
 		clearProblems();
 	};
 
-	const setYaml = (text: string): void => {
+	const applyYaml = (text: string): void => {
 		yaml.value = text;
 
+		// A preparation is about the text it was made from; other text is prepared again
+		if (preparation.value !== null && preparedYaml !== text) {
+			preparation.value = null;
+			preparedYaml = null;
+			mappings.value = {};
+		}
+
 		clearProblems();
+	};
+
+	const setYaml = (text: string): void => {
+		generation += 1;
+
+		applyYaml(text);
 	};
 
 	const readFile = async (file: Blob): Promise<boolean> => {
@@ -91,12 +115,23 @@ export const useAutomationImport = (): IUseAutomationImport => {
 			return false;
 		}
 
+		const read = ++generation;
+
 		try {
-			setYaml(await file.text());
+			const text = await file.text();
+
+			// Another file, an edit or a reset came first
+			if (read !== generation) {
+				return false;
+			}
+
+			applyYaml(text);
 
 			return true;
 		} catch {
-			flashMessage.error(t('automations.transfer.messages.unreadable'));
+			if (read === generation) {
+				flashMessage.error(t('automations.transfer.messages.unreadable'));
+			}
 
 			return false;
 		}
@@ -119,7 +154,7 @@ export const useAutomationImport = (): IUseAutomationImport => {
 
 	const chosenMappings = (): IAutomationImportReferenceMapping[] =>
 		missingReferences.value
-			.filter((reference) => mappings.value[automationReferenceKey(reference)] !== undefined)
+			.filter((reference) => reference.remappable && mappings.value[automationReferenceKey(reference)] !== undefined)
 			.map((reference) => ({ kind: reference.kind, id: reference.id, to: mappings.value[automationReferenceKey(reference)] }));
 
 	const report = (error: unknown, fallback: string): void => {
@@ -145,13 +180,26 @@ export const useAutomationImport = (): IUseAutomationImport => {
 
 		clearProblems();
 
+		const text = yaml.value;
+		const started = generation;
+
 		try {
-			preparation.value = await transferStore.prepareImport({ yaml: yaml.value });
+			const prepared = await transferStore.prepareImport({ yaml: text });
+
+			// The text changed while it was being checked: what came back is about text no longer there
+			if (started !== generation || yaml.value !== text) {
+				return false;
+			}
+
+			preparation.value = prepared;
+			preparedYaml = text;
 			mappings.value = {};
 
 			return true;
 		} catch (error: unknown) {
-			report(error, t('automations.transfer.messages.notRead'));
+			if (started === generation) {
+				report(error, t('automations.transfer.messages.notRead'));
+			}
 
 			return false;
 		} finally {
@@ -164,6 +212,20 @@ export const useAutomationImport = (): IUseAutomationImport => {
 			return null;
 		}
 
+		// Only the document that was checked and shown is imported
+		if (preparedYaml === null || preparedYaml !== yaml.value) {
+			preparation.value = null;
+			preparedYaml = null;
+			mappings.value = {};
+
+			flashMessage.error(t('automations.transfer.messages.changed'));
+
+			return null;
+		}
+
+		const document = preparedYaml;
+		const shown = preparation.value;
+
 		submitting.value = true;
 
 		clearProblems();
@@ -172,7 +234,7 @@ export const useAutomationImport = (): IUseAutomationImport => {
 			const chosen = chosenMappings();
 
 			// The mapping is applied by the backend, which looks up the channel and device of a new property
-			const { draft } = chosen.length > 0 ? await transferStore.prepareImport({ yaml: yaml.value, mappings: chosen }) : preparation.value;
+			const { draft } = chosen.length > 0 ? await transferStore.prepareImport({ yaml: document, mappings: chosen }) : shown;
 
 			const automation = await automationsStore.add({
 				data: {

@@ -1109,7 +1109,8 @@
 				"invalidGraph": "The automation in the file can not be saved.",
 				"notRead": "The file could not be checked.",
 				"imported": "Automation \"{automation}\" was imported, disabled.",
-				"notImported": "The automation could not be imported."
+				"notImported": "The automation could not be imported.",
+				"changed": "The file changed after it was checked. Check it again before importing it."
 			}
 		}
 	}

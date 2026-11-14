@@ -49,6 +49,7 @@ export const transformAutomationImportPreparationResponse = (
 					kind: reference.kind,
 					id: reference.id,
 					usages: Array.isArray(reference.usages) ? reference.usages.map((usage) => ({ nodeId: usage.node_id, field: usage.field })) : [],
+					remappable: reference.remappable,
 				}))
 			: data.missing_references,
 		issues: transformAutomationGraphIssues(data.issues),

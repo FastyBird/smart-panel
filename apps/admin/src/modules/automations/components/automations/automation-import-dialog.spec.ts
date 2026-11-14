@@ -29,6 +29,7 @@ vi.mock('../../../../common', async () => {
 
 const SCENE = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a10';
 const OTHER_SCENE = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a11';
+const OLD_SCENE = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a12';
 const PROPERTY = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a20';
 const DEVICE = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a01';
 const CHANNEL = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a02';
@@ -52,9 +53,10 @@ const graph = { version: 1, nodes: [{ id: 'run', type: 'scene.run', position: { 
 const preparation: IAutomationImportPreparation = {
 	draft: { name: 'Evening', description: null, icon: null, mode: AutomationMode.restart, spaceId: null, graph },
 	missingReferences: [
-		{ kind: AutomationReferenceKind.scene, id: SCENE, usages: [{ nodeId: 'run', field: 'scene_id' }] },
-		{ kind: AutomationReferenceKind.property, id: PROPERTY, usages: [{ nodeId: 'watch', field: 'property_id' }] },
-		{ kind: AutomationReferenceKind.channel, id: CHANNEL, usages: [{ nodeId: 'odd', field: 'channel_id' }] },
+		{ kind: AutomationReferenceKind.scene, id: SCENE, usages: [{ nodeId: 'run', field: 'scene_id' }], remappable: true },
+		{ kind: AutomationReferenceKind.property, id: PROPERTY, usages: [{ nodeId: 'watch', field: 'property_id' }], remappable: true },
+		{ kind: AutomationReferenceKind.channel, id: CHANNEL, usages: [{ nodeId: 'odd', field: 'channel_id' }], remappable: true },
+		{ kind: AutomationReferenceKind.scene, id: OLD_SCENE, usages: [{ nodeId: 'legacy', field: null }], remappable: false },
 	],
 	issues: [{ severity: 'error', code: 'invalid_config', message: 'Choose a scene.', blocking: false, node_id: 'run' }],
 };
@@ -181,6 +183,9 @@ describe('AutomationImportDialog', () => {
 
 		expect(scene.text()).toContain('automations.transfer.kinds.scene');
 		expect(channel.text()).toContain('automations.transfer.texts.notRemappable');
+		// A card that does not say where it holds the scene offers no choice for it
+		expect(wrapper.find(`[data-test-reference="scene:${OLD_SCENE}"]`).find('[data-test-select]').exists()).toBe(false);
+		expect(wrapper.find(`[data-test-reference="scene:${OLD_SCENE}"]`).text()).toContain('automations.transfer.texts.notRemappable');
 
 		await scene.find('[data-test-id="pick-option"]').trigger('click');
 		await property.find('[data-test-id="pick-property"]').trigger('click');

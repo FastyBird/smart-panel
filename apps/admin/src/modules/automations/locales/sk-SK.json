@@ -1109,7 +1109,8 @@
 				"invalidGraph": "Automatizáciu zo súboru nemožno uložiť.",
 				"notRead": "Súbor sa nepodarilo skontrolovať.",
 				"imported": "Automatizácia „{automation}“ bola importovaná ako vypnutá.",
-				"notImported": "Automatizáciu sa nepodarilo importovať."
+				"notImported": "Automatizáciu sa nepodarilo importovať.",
+				"changed": "Súbor sa po kontrole zmenil. Pred importom ho skontrolujte znova."
 			}
 		}
 	}

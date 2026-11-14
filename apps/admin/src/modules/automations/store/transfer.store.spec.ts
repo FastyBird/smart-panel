@@ -47,7 +47,10 @@ const preparationRes = {
 			edges: [],
 		},
 	},
-	missing_references: [{ kind: 'property', id: PROPERTY, usages: [{ node_id: 'n1', field: 'property_id' }] }],
+	missing_references: [
+		{ kind: 'property', id: PROPERTY, usages: [{ node_id: 'n1', field: 'property_id' }], remappable: true },
+		{ kind: 'scene', id: PROPERTY, usages: [{ node_id: 'n2', field: null }], remappable: false },
+	],
 	issues: [{ severity: 'error', code: 'invalid_config', message: 'Choose a property.', blocking: false, node_id: 'n1', field: 'property_id' }],
 };
 
@@ -118,7 +121,10 @@ describe('useAutomationTransferStore', () => {
 					spaceId: null,
 					graph: preparationRes.draft.graph,
 				},
-				missingReferences: [{ kind: AutomationReferenceKind.property, id: PROPERTY, usages: [{ nodeId: 'n1', field: 'property_id' }] }],
+				missingReferences: [
+					{ kind: AutomationReferenceKind.property, id: PROPERTY, usages: [{ nodeId: 'n1', field: 'property_id' }], remappable: true },
+					{ kind: AutomationReferenceKind.scene, id: PROPERTY, usages: [{ nodeId: 'n2', field: null }], remappable: false },
+				],
 				issues: [preparationRes.issues[0]],
 			});
 			expect(store.preparing()).toBe(false);

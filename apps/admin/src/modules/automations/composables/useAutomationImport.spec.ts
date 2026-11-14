@@ -39,8 +39,8 @@ const graph = (scene: string) => ({
 const preparation = (scene: string, missing: boolean): IAutomationImportPreparation => ({
 	draft: { name: 'Evening', description: 'Dim it', icon: null, mode: AutomationMode.single, spaceId: null, graph: graph(scene) },
 	missingReferences: [
-		{ kind: AutomationReferenceKind.space, id: SPACE, usages: [{ nodeId: null, field: 'space_id' }] },
-		...(missing ? [{ kind: AutomationReferenceKind.scene, id: scene, usages: [{ nodeId: 'run', field: 'scene_id' }] }] : []),
+		{ kind: AutomationReferenceKind.space, id: SPACE, usages: [{ nodeId: null, field: 'space_id' }], remappable: true },
+		...(missing ? [{ kind: AutomationReferenceKind.scene, id: scene, usages: [{ nodeId: 'run', field: 'scene_id' }], remappable: true }] : []),
 	],
 	issues: [],
 });
@@ -175,5 +175,166 @@ describe('useAutomationImport', () => {
 		expect(await form.readFile(new Blob(['x'.repeat(AUTOMATION_IMPORT_MAX_LENGTH + 1)]))).toBe(false);
 		expect(form.yaml.value).toBe('version: 1\n');
 		expect(mockFlash.error).toHaveBeenCalledWith('automations.transfer.messages.tooLarge');
+	});
+
+	describe('a file read that finishes late', () => {
+		// A file whose content comes when the test says so
+		const slowFile = (): { file: Blob; finish: (text: string) => Promise<void> } => {
+			let resolve: (text: string) => void = () => undefined;
+
+			const text = new Promise<string>((done) => {
+				resolve = done;
+			});
+
+			return {
+				file: { size: 10, text: () => text } as unknown as Blob,
+				finish: async (content: string): Promise<void> => {
+					resolve(content);
+
+					await text;
+					await Promise.resolve();
+				},
+			};
+		};
+
+		it('does not replace a file chosen after it', async () => {
+			const form = useAutomationImport();
+
+			const first = slowFile();
+			const second = slowFile();
+
+			const firstRead = form.readFile(first.file);
+			const secondRead = form.readFile(second.file);
+
+			await second.finish('second');
+			await first.finish('first');
+
+			expect(await secondRead).toBe(true);
+			expect(await firstRead).toBe(false);
+			expect(form.yaml.value).toBe('second');
+		});
+
+		it('does not replace text typed meanwhile, and does not fill a dialog that was reset', async () => {
+			const form = useAutomationImport();
+
+			const typedOver = slowFile();
+			const pending = form.readFile(typedOver.file);
+
+			form.setYaml('typed');
+
+			await typedOver.finish('from the file');
+
+			expect(await pending).toBe(false);
+			expect(form.yaml.value).toBe('typed');
+
+			const closed = slowFile();
+			const late = form.readFile(closed.file);
+
+			form.reset();
+
+			await closed.finish('from the file');
+
+			expect(await late).toBe(false);
+			expect(form.yaml.value).toBe('');
+		});
+
+		it('does not change a preparation shown, nor what is imported, once it arrives', async () => {
+			const form = useAutomationImport();
+
+			form.setYaml('version: 1');
+
+			const late = slowFile();
+			const pending = form.readFile(late.file);
+
+			// Typing settles what is there; the file read on its way no longer counts
+			form.setYaml('version: 1');
+
+			await form.prepare();
+
+			await late.finish('something else');
+			await pending;
+
+			expect(form.yaml.value).toBe('version: 1');
+			expect(form.preparation.value).not.toBeNull();
+
+			await form.create();
+
+			expect(add).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('creates only the document that was checked: changed text is checked again first', async () => {
+		const form = useAutomationImport();
+
+		form.setYaml('version: 1');
+
+		await form.prepare();
+
+		form.setYaml('version: 1\nname: Changed');
+
+		expect(form.preparation.value).toBeNull();
+		expect(await form.create()).toBeNull();
+		expect(add).not.toHaveBeenCalled();
+	});
+
+	it('drops a check that comes back for text that changed while it was made', async () => {
+		let answer: (value: IAutomationImportPreparation) => void = () => undefined;
+
+		prepareImport.mockReturnValueOnce(
+			new Promise<IAutomationImportPreparation>((resolve) => {
+				answer = resolve;
+			})
+		);
+
+		const form = useAutomationImport();
+
+		form.setYaml('first');
+
+		const pending = form.prepare();
+
+		form.setYaml('second');
+
+		answer(preparation(SCENE, true));
+
+		expect(await pending).toBe(false);
+		expect(form.preparation.value).toBeNull();
+	});
+
+	it('maps with the document that was checked', async () => {
+		const form = useAutomationImport();
+
+		form.setYaml('checked');
+
+		await form.prepare();
+
+		prepareImport.mockResolvedValueOnce(preparation(OTHER_SCENE, false));
+
+		form.setMapping({ kind: AutomationReferenceKind.scene, id: SCENE }, OTHER_SCENE);
+
+		await form.create();
+
+		expect(prepareImport).toHaveBeenLastCalledWith({
+			yaml: 'checked',
+			mappings: [{ kind: AutomationReferenceKind.scene, id: SCENE, to: OTHER_SCENE }],
+		});
+	});
+
+	it('never sends a mapping of a reference the backend can not point elsewhere', async () => {
+		prepareImport.mockResolvedValueOnce({
+			...preparation(SCENE, false),
+			missingReferences: [{ kind: AutomationReferenceKind.scene, id: SCENE, usages: [{ nodeId: 'run', field: null }], remappable: false }],
+		});
+
+		const form = useAutomationImport();
+
+		form.setYaml('version: 1');
+
+		await form.prepare();
+
+		form.setMapping({ kind: AutomationReferenceKind.scene, id: SCENE }, OTHER_SCENE);
+
+		await form.create();
+
+		expect(prepareImport).toHaveBeenCalledTimes(1);
 	});
 });
