@@ -18,6 +18,9 @@ after(() => {
 const INSTALLER_RELATIVE =
 	'@fastybird/smart-panel/node_modules/@fastybird/smart-panel-backend/dist/go2rtc/install-go2rtc.sh';
 
+// Single-quotes a value for a generated shell script; an apostrophe in a path must not end the literal.
+const shq = (value) => "'" + String(value).replaceAll("'", "'\\''") + "'";
+
 // Extract the two functions under test from the real script and run them with stubbed helpers.
 const run = ({ installerExit = null, skip = false, markerExists = false } = {}) => {
 	const sandbox = mkdtempSync(join(tmpdir(), 'install-server-go2rtc-'));
@@ -33,14 +36,14 @@ const run = ({ installerExit = null, skip = false, markerExists = false } = {}) 
 	const driver = join(sandbox, 'driver.sh');
 
 	mkdirSync(bin);
-	writeFileSync(join(bin, 'npm'), `#!/bin/sh\n[ "$1 $2" = "root -g" ] && echo '${globalRoot}'\n`);
+	writeFileSync(join(bin, 'npm'), `#!/bin/sh\n[ "$1 $2" = "root -g" ] && echo ${shq(globalRoot)}\n`);
 	chmodSync(join(bin, 'npm'), 0o755);
 
 	if (installerExit !== null) {
 		mkdirSync(join(installer, '..'), { recursive: true });
 		writeFileSync(
 			installer,
-			`#!/bin/sh\necho "ran: $*" > '${argsFile}'\nenv | grep -c '^FB_SKIP_GO2RTC=' >> '${argsFile}' || true\nexit ${installerExit}\n`,
+			`#!/bin/sh\necho "ran: $*" > ${shq(argsFile)}\nenv | grep -c '^FB_SKIP_GO2RTC=' >> ${shq(argsFile)} || true\nexit ${installerExit}\n`,
 		);
 		chmodSync(installer, 0o755);
 	}
@@ -68,7 +71,7 @@ const run = ({ installerExit = null, skip = false, markerExists = false } = {}) 
 			'print_success() { echo "OK: $*"; }',
 			'print_warning() { echo "WARN: $*"; }',
 			`SKIP_GO2RTC=${skip}`,
-			`source '${funcs}'`,
+			`source ${shq(funcs)}`,
 			'install_go2rtc',
 			'echo "returned"',
 		].join('\n'),

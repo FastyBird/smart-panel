@@ -16,7 +16,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -98,15 +98,29 @@ const chainIsTrusted = (dir) => {
 };
 
 // The installer refuses a world-writable ancestor, and /tmp is one on Linux: the happy path needs a base directory
-// whose whole parent chain it accepts, so fall back to a cache directory inside the checkout.
-const sandboxBase = [tmpdir(), join(fileURLToPath(root), 'node_modules', '.cache')].find((candidate) => {
-	mkdirSync(candidate, { recursive: true });
+// whose whole parent chain it accepts. Candidates in order: FB_GO2RTC_TEST_SANDBOX (explicit override), the OS
+// temp directory, a user-owned cache under $HOME, and a cache directory inside the checkout.
+const sandboxBase = [
+	process.env.FB_GO2RTC_TEST_SANDBOX,
+	tmpdir(),
+	homedir() ? join(homedir(), '.cache', 'smart-panel-tests') : undefined,
+	join(fileURLToPath(root), 'node_modules', '.cache'),
+]
+	.filter((candidate) => candidate)
+	.find((candidate) => {
+		try {
+			mkdirSync(candidate, { recursive: true, mode: 0o700 });
 
-	return chainIsTrusted(candidate);
-});
+			return chainIsTrusted(candidate);
+		} catch {
+			return false;
+		}
+	});
 
 if (sandboxBase === undefined) {
-	throw new Error('no directory with a trusted parent chain is available for the sandboxes');
+	throw new Error(
+		'no directory with a trusted parent chain is available for the sandboxes; set FB_GO2RTC_TEST_SANDBOX to a directory whose ancestors are not group- or world-writable',
+	);
 }
 
 const sandboxes = [];
@@ -121,6 +135,9 @@ const findOnPath = (name) =>
 	process.env.PATH.split(delimiter)
 		.map((dir) => join(dir, name))
 		.find((candidate) => existsSync(candidate));
+
+// Single-quotes a value for a generated shell script; an apostrophe in a path must not end the literal.
+const shq = (value) => "'" + String(value).replaceAll("'", "'\\''") + "'";
 
 const script = (lines) => `#!/bin/sh\n${lines.join('\n')}\n`;
 
@@ -162,25 +179,25 @@ const makeSandbox = ({ uname = 'x86_64', dpkg, curl = true, omit = [], binary = 
 		}
 	}
 
-	writeExecutable(join(sandbox.bin, 'uname'), script([`[ "$1" = -m ] && echo '${uname}'`]));
+	writeExecutable(join(sandbox.bin, 'uname'), script([`[ "$1" = -m ] && echo ${shq(uname)}`]));
 
 	if (dpkg !== undefined) {
-		writeExecutable(join(sandbox.bin, 'dpkg'), script([`[ "$1" = --print-architecture ] && echo '${dpkg}'`]));
+		writeExecutable(join(sandbox.bin, 'dpkg'), script([`[ "$1" = --print-architecture ] && echo ${shq(dpkg)}`]));
 	}
 
 	if (curl) {
 		writeExecutable(
 			join(sandbox.bin, 'curl'),
 			script([
-				`echo "$*" >> '${sandbox.curlLog}'`,
+				`echo "$*" >> ${shq(sandbox.curlLog)}`,
 				"out=''; url=''",
 				'while [ $# -gt 0 ]; do',
 				'  case $1 in -o) out=$2; shift ;; http*) url=$1 ;; esac',
 				'  shift',
 				'done',
-				`file='${sandbox.served}'/$(basename "$url")`,
+				`file=${shq(sandbox.served)}/$(basename "$url")`,
 				'[ -f "$file" ] || exit 22',
-				`if [ -f '${sandbox.root}/curl.mode' ] && [ "$(cat '${sandbox.root}/curl.mode')" = truncate ]; then`,
+				`if [ -f ${shq(`${sandbox.root}/curl.mode`)} ] && [ "$(cat ${shq(`${sandbox.root}/curl.mode`)})" = truncate ]; then`,
 				'  head -c 20 "$file" > "$out"; exit 18',
 				'fi',
 				'cp "$file" "$out"',
@@ -785,8 +802,8 @@ test('refuses a parent directory owned by a user other than root or the current 
 		join(sandbox.bin, 'ls'),
 		script([
 			'for last; do :; done',
-			`if [ "$last" = '${realpathSync(parent)}' ]; then echo 'drwxr-xr-x 2 4242 4242 64 Jan 1 00:00 x'; exit 0; fi`,
-			`exec '${realLs}' "$@"`,
+			`if [ "$last" = ${shq(realpathSync(parent))} ]; then echo 'drwxr-xr-x 2 4242 4242 64 Jan 1 00:00 x'; exit 0; fi`,
+			`exec ${shq(realLs)} "$@"`,
 		]),
 	);
 
@@ -807,8 +824,8 @@ test('trusts a group-writable /usr/local only for the root or staff group', { sk
 			join(sandbox.bin, 'ls'),
 			script([
 				'for last; do :; done',
-				`if [ "$last" = '${realpathSync('/usr/local')}' ]; then echo 'drwxrwxr-x 2 0 ${gid} 64 Jan 1 00:00 x'; exit 0; fi`,
-				`exec '${realLs}' "$@"`,
+				`if [ "$last" = ${shq(realpathSync('/usr/local'))} ]; then echo 'drwxrwxr-x 2 0 ${gid} 64 Jan 1 00:00 x'; exit 0; fi`,
+				`exec ${shq(realLs)} "$@"`,
 			]),
 		);
 		writeExecutable(join(sandbox.bin, 'getent'), script(["echo 'staff:x:50:'"]));
@@ -905,14 +922,14 @@ test('installs into the physical path of a symlinked parent and never re-resolve
 	writeExecutable(
 		join(sandbox.bin, 'curl'),
 		script([
-			`rm '${link}'`,
-			`mv '${sandbox.root}/link.next' '${link}'`,
+			`rm ${shq(link)}`,
+			`mv ${shq(`${sandbox.root}/link.next`)} ${shq(link)}`,
 			"out=''",
 			'while [ $# -gt 0 ]; do',
 			'  case $1 in -o) out=$2; shift ;; esac',
 			'  shift',
 			'done',
-			`cp '${sandbox.served}/go2rtc_linux_amd64' "$out"`,
+			`cp ${shq(`${sandbox.served}/go2rtc_linux_amd64`)} "$out"`,
 		]),
 	);
 
@@ -1079,7 +1096,7 @@ test('records the owning pid in its own workspace and removes the workspace on e
 	// A slow curl lets the test read the workspace while the installer is still running.
 	writeExecutable(
 		join(sandbox.bin, 'curl'),
-		script([`cp "$(ls -d '${sandbox.dir}'/.install.*)/.owner" '${sandbox.root}/owner.copy'`, 'exit 22']),
+		script([`cp "$(ls -d ${shq(sandbox.dir)}/.install.*)/.owner" ${shq(`${sandbox.root}/owner.copy`)}`, 'exit 22']),
 	);
 
 	const result = run(sandbox, ['--arch', 'amd64', '--dir', sandbox.dir]);

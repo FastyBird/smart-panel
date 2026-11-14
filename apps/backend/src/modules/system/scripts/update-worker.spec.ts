@@ -15,7 +15,7 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { DataSource } from 'typeorm';
 
@@ -40,6 +40,11 @@ interface Fixture {
 	installedWorker: string;
 	targetWorkerSha256: string;
 	archiveSha256: string;
+}
+
+// Single-quotes a value for a generated shell script; an apostrophe in a path must not end the literal.
+function shq(value: string): string {
+	return "'" + value.replaceAll("'", "'\\''") + "'";
 }
 
 function writeExecutable(path: string, contents: string): void {
@@ -1412,18 +1417,36 @@ printf 'after-hook\\n'
 		}
 	};
 
+	// Candidates in order: FB_GO2RTC_TEST_SANDBOX (explicit override), the OS temp directory, a user-owned cache under
+	// $HOME, and a cache directory inside the checkout.
 	const trustedBase = (): string => {
 		const checkoutCache = join(__dirname, '..', '..', '..', '..', 'node_modules', '.cache');
+		const candidates = [
+			process.env.FB_GO2RTC_TEST_SANDBOX,
+			tmpdir(),
+			homedir() ? join(homedir(), '.cache', 'smart-panel-tests') : undefined,
+			checkoutCache,
+		];
 
-		for (const candidate of [tmpdir(), checkoutCache]) {
-			mkdirSync(candidate, { recursive: true });
+		for (const candidate of candidates) {
+			if (!candidate) {
+				continue;
+			}
 
-			if (chainIsTrusted(candidate)) {
-				return candidate;
+			try {
+				mkdirSync(candidate, { recursive: true, mode: 0o700 });
+
+				if (chainIsTrusted(candidate)) {
+					return candidate;
+				}
+			} catch {
+				// not usable here, try the next candidate
 			}
 		}
 
-		throw new Error('no directory with a trusted parent chain is available for the go2rtc hook fixtures');
+		throw new Error(
+			'no directory with a trusted parent chain is available for the go2rtc hook fixtures; set FB_GO2RTC_TEST_SANDBOX to a directory whose ancestors are not group- or world-writable',
+		);
 	};
 
 	const withRoot = (run: (root: string) => void): void => {
@@ -1439,7 +1462,7 @@ printf 'after-hook\\n'
 		withRoot((root) => {
 			const ran = join(root, 'go2rtc-ran');
 			const release = makeRelease(root, {
-				content: `#!/bin/sh\nif read -r line; then echo "stdin-open" > "${ran}"; else echo "stdin-closed $0" > "${ran}"; fi\n`,
+				content: `#!/bin/sh\nif read -r line; then echo "stdin-open" > ${shq(ran)}; else echo "stdin-closed $0" > ${shq(ran)}; fi\n`,
 			});
 			const result = runHook(root, { HELPER_MANAGED: '1' }, release);
 
@@ -1465,7 +1488,7 @@ printf 'after-hook\\n'
 			writeFileSync(join(root, 'served'), binary);
 			writeExecutable(
 				join(stubBin, 'curl'),
-				`#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && out="$2"; shift; done\ncp "${join(root, 'served')}" "$out"\n`,
+				`#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && out="$2"; shift; done\ncp ${shq(join(root, 'served'))} "$out"\n`,
 			);
 			writeFileSync(
 				join(root, 'pin.env'),
@@ -1475,7 +1498,7 @@ printf 'after-hook\\n'
 				].join('\n') + '\n',
 			);
 			const release = makeRelease(root, {
-				content: `#!/bin/sh\nexec /bin/sh "${realInstaller}" --arch amd64 --dir "${installDir}"\n`,
+				content: `#!/bin/sh\nexec /bin/sh ${shq(realInstaller)} --arch amd64 --dir ${shq(installDir)}\n`,
 			});
 			copyFileSync(join(dirname(realInstaller), 'LICENSE'), join(release, 'dist', 'go2rtc', 'LICENSE'));
 			const result = runHook(
@@ -1535,7 +1558,7 @@ printf 'after-hook\\n'
 		withRoot((root) => {
 			const ran = join(root, 'go2rtc-ran');
 			const target = join(root, 'elsewhere.sh');
-			writeExecutable(target, `#!/bin/sh\necho ran > "${ran}"\n`);
+			writeExecutable(target, `#!/bin/sh\necho ran > ${shq(ran)}\n`);
 			const release = makeRelease(root, { symlinkTarget: target });
 			const result = runHook(root, { HELPER_MANAGED: '1' }, release);
 
@@ -1549,7 +1572,7 @@ printf 'after-hook\\n'
 	it('never runs a release script on the legacy sudo path and says why once', () => {
 		withRoot((root) => {
 			const ran = join(root, 'go2rtc-ran');
-			const release = makeRelease(root, { content: `#!/bin/sh\necho ran > "${ran}"\n` });
+			const release = makeRelease(root, { content: `#!/bin/sh\necho ran > ${shq(ran)}\n` });
 			const result = runHook(root, { HELPER_MANAGED: '0' }, release);
 
 			expect(result.code).toBe(0);
