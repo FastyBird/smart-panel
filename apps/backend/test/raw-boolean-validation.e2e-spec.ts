@@ -291,8 +291,7 @@ describe('Raw boolean validation (e2e)', () => {
 			label: 'PATCH tiles/:id',
 			method: 'patch',
 			path: () => `/modules/dashboard/tiles/${fixtures.tileId}`,
-			// The update route reads the parent from the body unconditionally
-			body: (value) => data({ type: 'tiles-time', parent: { type: 'page', id: fixtures.pageId }, hidden: value }),
+			body: (value) => data({ type: 'tiles-time', hidden: value }),
 			field: 'hidden',
 			prefix: '',
 		},
