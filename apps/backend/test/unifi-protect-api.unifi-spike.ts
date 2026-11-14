@@ -58,9 +58,26 @@ const CONFIGURED = Boolean(HOST) && Boolean(API_KEY_FILE);
 const HAS_TRUST_ANCHOR = SERVER_NAME !== undefined || FINGERPRINT !== undefined;
 const LIVE = CONFIGURED && HAS_TRUST_ANCHOR;
 
-const TIMEOUT_MS = Number(process.env.FB_UNIFI_SPIKE_TIMEOUT_MS ?? '10000');
-const WS_IDLE_MS = Number(process.env.FB_UNIFI_SPIKE_WS_IDLE_MS ?? '0');
-const MAX_CAMERAS = Number(process.env.FB_UNIFI_SPIKE_MAX_CAMERAS ?? '16');
+/** Reads an integer setting; a non-integer, non-finite or out-of-range value is a configuration error, never a default. */
+const intSetting = (name: string, fallback: number, min: number): number => {
+	const raw = process.env[name];
+
+	if (raw === undefined || raw.trim() === '') {
+		return fallback;
+	}
+
+	const value = Number(raw);
+
+	if (!Number.isSafeInteger(value) || value < min) {
+		throw new Error(`${name} must be an integer >= ${min}`);
+	}
+
+	return value;
+};
+
+const TIMEOUT_MS = intSetting('FB_UNIFI_SPIKE_TIMEOUT_MS', 10_000, 1);
+const WS_IDLE_MS = intSetting('FB_UNIFI_SPIKE_WS_IDLE_MS', 0, 0);
+const MAX_CAMERAS = intSetting('FB_UNIFI_SPIKE_MAX_CAMERAS', 16, 1);
 const BURST = process.env.FB_UNIFI_SPIKE_BURST === '1';
 
 /** Test budgets: an operation's own timeout plus headroom for the spacing delay. */
