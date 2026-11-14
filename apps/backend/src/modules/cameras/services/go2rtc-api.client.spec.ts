@@ -139,6 +139,13 @@ describe('Go2rtcApiClient', () => {
 		await expect(client.getConfigText()).rejects.toMatchObject({ name: 'Go2rtcApiError', status: 401 });
 	});
 
+	it('keeps the status of a rejected response whose body is over the size limit', async () => {
+		// The probe of a foreign listener on the api port (`getInfo`) reads the status of exactly such an answer.
+		stub.replyText('GET /api', 401, 'x'.repeat(2 * 1024 * 1024));
+
+		await expect(client.getInfo()).rejects.toMatchObject({ name: 'Go2rtcApiError', status: 401 });
+	});
+
 	it('accepts a config text of exactly 64 KiB', async () => {
 		stub.replyText('GET /api/config', 200, 'x'.repeat(64 * 1024));
 

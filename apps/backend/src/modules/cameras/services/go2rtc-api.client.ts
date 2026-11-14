@@ -100,13 +100,17 @@ export class Go2rtcApiClient {
 			});
 
 			status = response.status;
-			body = await readBounded(response, maxBodyBytes);
-		} catch {
-			throw new Go2rtcApiError(null);
-		}
 
-		if ((status < 200 || status >= 300) && !acceptedStatuses.includes(status)) {
-			throw new Go2rtcApiError(status);
+			if ((status < 200 || status >= 300) && !acceptedStatuses.includes(status)) {
+				// The status decides; the body of a rejected response is never read (it may be arbitrarily large).
+				await response.body?.cancel().catch(() => undefined);
+
+				throw new Go2rtcApiError(status);
+			}
+
+			body = await readBounded(response, maxBodyBytes);
+		} catch (error) {
+			throw error instanceof Go2rtcApiError ? error : new Go2rtcApiError(null);
 		}
 
 		return { status, body };
