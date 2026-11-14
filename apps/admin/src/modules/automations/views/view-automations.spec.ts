@@ -13,6 +13,7 @@ import ViewAutomations from './view-automations.vue';
 const mocks = vi.hoisted(() => ({
 	fetchAutomations: vi.fn(),
 	fetchSpaces: vi.fn(),
+	exportAutomation: vi.fn(),
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
 	route: null as unknown as { name: string; path: string; matched: { name: string }[]; query: Record<string, string> },
@@ -92,7 +93,7 @@ vi.mock('../components/components', async () => {
 				loading: { type: Boolean, default: false },
 				loadFailed: { type: Boolean, default: false },
 			},
-			emits: ['adjust-list', 'retry', 'flow'],
+			emits: ['adjust-list', 'retry', 'flow', 'export'],
 			template: '<div />',
 		}),
 		ListAutomationsAdjust: defineVueComponent({
@@ -105,6 +106,12 @@ vi.mock('../components/components', async () => {
 			emits: ['update:visible', 'generated'],
 			template: '<div />',
 		}),
+		AutomationImportDialog: defineVueComponent({
+			name: 'AutomationImportDialog',
+			props: { visible: { type: Boolean, default: false } },
+			emits: ['update:visible', 'imported'],
+			template: '<div />',
+		}),
 	};
 });
 
@@ -115,6 +122,7 @@ vi.mock('../composables/composables', async () => {
 
 	return {
 		useAutomationSpaces: () => ({ fetchSpaces: mocks.fetchSpaces }),
+		useAutomationExport: () => ({ exporting: () => false, exportAutomation: mocks.exportAutomation }),
 		useAutomationsActions: () => ({ updating: ref([]), remove: vi.fn(), setEnabled: vi.fn() }),
 		useAutomationsDataSource: () => ({
 			fetchAutomations: mocks.fetchAutomations,
@@ -346,6 +354,35 @@ describe('ViewAutomations', (): void => {
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_ADD, params: undefined, query: { draft: 'draft-1' } });
 	});
 
+	it('exports an automation of the list as YAML', async (): Promise<void> => {
+		await mountView();
+
+		wrapper.findComponent(ListAutomations).vm.$emit('export', 'automation-1');
+
+		await flushPromises();
+
+		expect(mocks.exportAutomation).toHaveBeenCalledWith('automation-1');
+	});
+
+	it('opens the import dialog and the editor of the automation it imported', async (): Promise<void> => {
+		await mountView();
+
+		const dialog = wrapper.findComponent({ name: 'AutomationImportDialog' });
+
+		expect(dialog.props('visible')).toBe(false);
+
+		await wrapper.find('[data-test-id="automations-import"]').trigger('click');
+		await flushPromises();
+
+		expect(dialog.props('visible')).toBe(true);
+
+		dialog.vm.$emit('imported', 'automation-2');
+
+		await flushPromises();
+
+		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: 'automation-2' } });
+	});
+
 	it('opens a new add form when another template is generated while one is open', async (): Promise<void> => {
 		openRoute(addRoute, { draft: 'draft-1' });
 
@@ -425,6 +462,31 @@ describe('ViewAutomations', (): void => {
 
 			expect(confirm).toHaveBeenCalledTimes(1);
 			expect(wrapper.findComponent({ name: 'AutomationTemplateDialog' }).props('visible')).toBe(true);
+
+			confirm.mockRestore();
+		});
+
+		it('asks before the import dialog replaces a changed form, and opens it only when the answer is yes', async (): Promise<void> => {
+			const confirm = vi
+				.spyOn(ElMessageBox, 'confirm')
+				.mockRejectedValueOnce('cancel')
+				.mockResolvedValueOnce('confirm' as never);
+
+			await changedForm();
+
+			const dialog = wrapper.findComponent({ name: 'AutomationImportDialog' });
+
+			await wrapper.find('[data-test-id="automations-import"]').trigger('click');
+			await flushPromises();
+
+			expect(dialog.props('visible')).toBe(false);
+			expect(wrapper.findComponent(DetailView).props('remoteFormChanged')).toBe(true);
+
+			await wrapper.find('[data-test-id="automations-import"]').trigger('click');
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledTimes(2);
+			expect(dialog.props('visible')).toBe(true);
 
 			confirm.mockRestore();
 		});

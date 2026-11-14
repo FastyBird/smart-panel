@@ -694,6 +694,11 @@ export type AutomationsModuleNodeTypeSchema = components['schemas']['Automations
 export type AutomationsModuleTemplateSchema = components['schemas']['AutomationsModuleDataTemplate'];
 export type AutomationsModuleTemplateParameterSchema = components['schemas']['AutomationsModuleDataTemplateParameter'];
 export type AutomationsModuleTemplateDraftSchema = components['schemas']['AutomationsModuleDataTemplateDraft'];
+export type AutomationsModuleExportSchema = components['schemas']['AutomationsModuleDataExport'];
+export type AutomationsModuleImportPreparationSchema = components['schemas']['AutomationsModuleDataImportPreparation'];
+export type AutomationsModuleImportDraftSchema = components['schemas']['AutomationsModuleDataImportDraft'];
+export type AutomationsModuleImportMissingReferenceSchema = components['schemas']['AutomationsModuleDataImportMissingReference'];
+export type AutomationsModuleImportReferenceMappingSchema = components['schemas']['AutomationsModuleImportReferenceMapping'];
 
 // Automations Module Operations
 export type AutomationsModuleGetAutomationsOperation = operations['get-automations-module-automations'];
@@ -705,6 +710,8 @@ export type AutomationsModuleValidateGraphOperation = operations['validate-autom
 export type AutomationsModuleGetNodeTypesOperation = operations['get-automations-module-node-types'];
 export type AutomationsModuleGetTemplatesOperation = operations['get-automations-module-templates'];
 export type AutomationsModuleGenerateTemplateDraftOperation = operations['generate-automations-module-template-draft'];
+export type AutomationsModuleExportAutomationOperation = operations['export-automations-module-automation'];
+export type AutomationsModulePrepareImportOperation = operations['prepare-automations-module-automation-import'];
 
 // Automations Module Enums
 export { AutomationsModuleCreateAutomationMode as AutomationMode } from './openapi';

@@ -1,6 +1,7 @@
 import type { AutomationTriggerRefusal } from './automations.constants';
 import type { IAutomationGraphIssue } from './store/automations.store.types';
 import type { IAutomationTemplateIssue } from './store/templates.store.types';
+import type { IAutomationImportIssue } from './store/transfer.store.types';
 
 export class AutomationsException extends Error {
 	public exception: Error | null;
@@ -55,6 +56,20 @@ export class AutomationsTemplateParametersException extends AutomationsApiExcept
 	constructor(message: string, issues: IAutomationTemplateIssue[] = [], exception: Error | null = null) {
 		super(message, 422, exception);
 		this.name = 'AutomationsTemplateParametersException';
+		this.issues = issues;
+	}
+}
+
+/**
+ * The backend could not read an import file as an automation (422 with `automation-import-invalid`). Each issue is
+ * addressed to a part of the document, such as `graph.nodes.0.type`, or of the request, such as `mappings.0.to`.
+ */
+export class AutomationsImportInvalidException extends AutomationsApiException {
+	public issues: IAutomationImportIssue[];
+
+	constructor(message: string, issues: IAutomationImportIssue[] = [], exception: Error | null = null) {
+		super(message, 422, exception);
+		this.name = 'AutomationsImportInvalidException';
 		this.issues = issues;
 	}
 }

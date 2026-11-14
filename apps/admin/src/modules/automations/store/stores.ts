@@ -15,4 +15,8 @@ export * from './templates.store';
 export * from './templates.store.schemas';
 export * from './templates.store.types';
 export * from './templates.transformers';
+export * from './transfer.store';
+export * from './transfer.store.schemas';
+export * from './transfer.store.types';
+export * from './transfer.transformers';
 export * from './types';

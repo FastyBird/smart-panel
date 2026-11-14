@@ -63,6 +63,22 @@
 		</template>
 	</app-bar-button>
 
+	<app-bar-button
+		v-if="!isMDDevice && isAutomationsListRoute"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		:aria-label="t('automations.buttons.importYaml.title')"
+		data-test-id="automations-import"
+		@click="onAutomationImport"
+	>
+		<template #icon>
+			<el-icon :size="20">
+				<icon icon="mdi:file-import-outline" />
+			</el-icon>
+		</template>
+	</app-bar-button>
+
 	<view-header
 		:heading="t('automations.headings.list')"
 		:sub-heading="t('automations.subHeadings.list')"
@@ -96,6 +112,19 @@
 
 					{{ t('automations.buttons.fromTemplate.title') }}
 				</el-button>
+
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					data-test-id="automations-import"
+					@click="onAutomationImport"
+				>
+					<template #icon>
+						<icon icon="mdi:file-import-outline" />
+					</template>
+
+					{{ t('automations.buttons.importYaml.title') }}
+				</el-button>
 			</div>
 		</template>
 	</view-header>
@@ -117,8 +146,10 @@
 			:load-failed="loadFailed"
 			:filters-active="filtersActive"
 			:updating="updating"
+			:exporting="exportingIds"
 			@edit="onAutomationEdit"
 			@flow="onAutomationFlow"
+			@export="onAutomationExport"
 			@remove="onAutomationRemove"
 			@toggle-enabled="onAutomationToggleEnabled"
 			@adjust-list="onAdjustList"
@@ -198,6 +229,11 @@
 		v-model:visible="showTemplateDialog"
 		@generated="onTemplateGenerated"
 	/>
+
+	<automation-import-dialog
+		v-model:visible="showImportDialog"
+		@imported="onImported"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -212,8 +248,8 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { AUTOMATION_DEFAULT_ICON, AUTOMATION_TEMPLATE_DRAFT_QUERY, RouteNames } from '../automations.constants';
-import { AutomationTemplateDialog, ListAutomations, ListAutomationsAdjust } from '../components/components';
-import { useAutomationSpaces, useAutomationsActions, useAutomationsDataSource } from '../composables/composables';
+import { AutomationImportDialog, AutomationTemplateDialog, ListAutomations, ListAutomationsAdjust } from '../components/components';
+import { useAutomationExport, useAutomationSpaces, useAutomationsActions, useAutomationsDataSource } from '../composables/composables';
 import type { IAutomation } from '../store/automations.store.types';
 
 import type { IViewAutomationsProps } from './view-automations.types';
@@ -254,9 +290,16 @@ const { fetchSpaces } = useAutomationSpaces();
 
 const { updating, remove, setEnabled } = useAutomationsActions();
 
+const { exporting, exportAutomation } = useAutomationExport();
+
+const exportingIds = computed<IAutomation['id'][]>((): IAutomation['id'][] =>
+	automations.value.filter((automation) => exporting(automation.id)).map((automation) => automation.id)
+);
+
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
 const showTemplateDialog = ref<boolean>(false);
+const showImportDialog = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 const remoteFormSaving = ref<boolean>(false);
@@ -413,6 +456,25 @@ const onAutomationFromTemplate = (): void => {
 // and the editor opens with the flow once the automation is created
 const onTemplateGenerated = (draftId: string): void => {
 	navigate(RouteNames.AUTOMATIONS_ADD, undefined, { [AUTOMATION_TEMPLATE_DRAFT_QUERY]: draftId });
+};
+
+const onAutomationExport = (id: IAutomation['id']): void => {
+	void exportAutomation(id);
+};
+
+// Asked before the dialog opens, as for a template: the imported automation opens in its editor, which replaces the
+// form in the drawer
+const onAutomationImport = (): void => {
+	mayReplaceForm().then((replace: boolean): void => {
+		if (replace) {
+			showImportDialog.value = true;
+		}
+	});
+};
+
+// The imported automation is created disabled; its flow opens in the editor to be checked before it is enabled
+const onImported = (id: IAutomation['id']): void => {
+	router.push({ name: RouteNames.AUTOMATIONS_FLOW, params: { id } });
 };
 
 const onAdjustList = (): void => {

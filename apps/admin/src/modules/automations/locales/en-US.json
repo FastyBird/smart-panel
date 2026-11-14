@@ -120,7 +120,8 @@
 			"edit": "Edit automation \"{automation}\"",
 			"flow": "Edit flow of automation \"{automation}\"",
 			"remove": "Remove automation \"{automation}\"",
-			"enabled": "Automation \"{automation}\" enabled"
+			"enabled": "Automation \"{automation}\" enabled",
+			"export": "Export automation \"{automation}\" as YAML"
 		},
 		"buttons": {
 			"add": {
@@ -158,6 +159,15 @@
 			},
 			"fromTemplate": {
 				"title": "From template"
+			},
+			"importYaml": {
+				"title": "Import YAML"
+			},
+			"exportYaml": {
+				"title": "Export YAML"
+			},
+			"viewYaml": {
+				"title": "View as YAML"
 			}
 		},
 		"messages": {
@@ -1043,6 +1053,63 @@
 						}
 					}
 				}
+			}
+		},
+		"transfer": {
+			"headings": {
+				"import": "Import automation",
+				"yaml": "Automation as YAML"
+			},
+			"texts": {
+				"pick": "Choose a YAML file exported from Smart Panel, or paste its content. Nothing is saved until you import it.",
+				"drop": "Drop the file here or click to choose it",
+				"allFound": "Everything the automation refers to exists here.",
+				"missing": "The automation refers to one thing that does not exist here. | The automation refers to {count} things that do not exist here.",
+				"usedByAutomation": "The space of the automation",
+				"usedByNodes": "Used by block {nodes} | Used by blocks {nodes}",
+				"notRemappable": "This can not be chosen here. Fix the block in the editor after the import.",
+				"unresolved": "Anything left unchosen is kept as it is. The automation is imported disabled; fix its blocks in the editor before you enable it.",
+				"warnings": "One block needs attention before the automation can be enabled: | {count} blocks need attention before the automation can be enabled:",
+				"yamlUnsaved": "This is the saved version. Changes not saved yet are not in it."
+			},
+			"fields": {
+				"yaml": {
+					"title": "YAML",
+					"placeholder": "version: 1\nkind: automation\nname: …"
+				},
+				"nodes": {
+					"title": "Blocks"
+				},
+				"mapping": {
+					"title": "The {kind} to use instead",
+					"placeholder": "Choose what to use instead"
+				}
+			},
+			"kinds": {
+				"device": "Device",
+				"channel": "Channel",
+				"property": "Device property",
+				"scene": "Scene",
+				"space": "Space",
+				"automation": "Automation"
+			},
+			"buttons": {
+				"import": {
+					"title": "Import"
+				},
+				"export": {
+					"title": "Download"
+				}
+			},
+			"messages": {
+				"exportFailed": "The automation could not be exported.",
+				"tooLarge": "The file is larger than {size} KB.",
+				"unreadable": "The file could not be read.",
+				"invalidFile": "The file is not an automation that can be imported.",
+				"invalidGraph": "The automation in the file can not be saved.",
+				"notRead": "The file could not be checked.",
+				"imported": "Automation \"{automation}\" was imported, disabled.",
+				"notImported": "The automation could not be imported."
 			}
 		}
 	}

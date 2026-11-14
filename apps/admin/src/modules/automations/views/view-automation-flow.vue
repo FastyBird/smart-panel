@@ -237,6 +237,40 @@
 					</el-button>
 				</el-tooltip>
 
+				<el-dropdown
+					trigger="click"
+					data-test-id="flow-yaml-menu"
+					@command="onYamlCommand"
+				>
+					<el-button
+						:loading="exporting(automation.id)"
+						:aria-label="t('automations.buttons.exportYaml.title')"
+						data-test-id="flow-yaml"
+					>
+						<template #icon>
+							<icon icon="mdi:code-braces" />
+						</template>
+						YAML
+					</el-button>
+
+					<template #dropdown>
+						<el-dropdown-menu>
+							<el-dropdown-item
+								command="export"
+								data-test-id="flow-export-yaml"
+							>
+								{{ t('automations.buttons.exportYaml.title') }}
+							</el-dropdown-item>
+							<el-dropdown-item
+								command="view"
+								data-test-id="flow-view-yaml"
+							>
+								{{ t('automations.buttons.viewYaml.title') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</template>
+				</el-dropdown>
+
 				<el-button
 					v-if="!readonly"
 					type="primary"
@@ -377,6 +411,12 @@
 					@close="onClosePanel"
 				/>
 			</div>
+
+			<automation-yaml-dialog
+				v-model:visible="showYaml"
+				:automation-id="automation.id"
+				:unsaved="hasUnsaved"
+			/>
 		</div>
 	</div>
 </template>
@@ -387,7 +427,20 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationNormalized, type RouteLocationResolvedGeneric, onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElButtonGroup,
+	ElDropdown,
+	ElDropdownItem,
+	ElDropdownMenu,
+	ElIcon,
+	ElMessageBox,
+	ElScrollbar,
+	ElSwitch,
+	ElTag,
+	ElTooltip,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useEventListener } from '@vueuse/core';
@@ -421,11 +474,13 @@ import {
 	AutomationRunSummary,
 	AutomationStatusExplanation,
 	AutomationTestButton,
+	AutomationYamlDialog,
 	type IAutomationCanvasRun,
 	type IAutomationTestTrigger,
 } from '../components/components';
 import {
 	useAutomationEditor,
+	useAutomationExport,
 	useAutomationNodePlugins,
 	useAutomationNodeTypes,
 	useAutomationRunPresentation,
@@ -742,6 +797,23 @@ const onOverwrite = (): void => {
  */
 
 const showHistory = ref<boolean>(false);
+
+// The stored automation as YAML: exported as a file, or shown read only
+const { exporting, exportAutomation } = useAutomationExport();
+
+const showYaml = ref<boolean>(false);
+
+const onYamlCommand = (command: string): void => {
+	if (!automation.value) {
+		return;
+	}
+
+	if (command === 'export') {
+		void exportAutomation(automation.value.id);
+	} else {
+		showYaml.value = true;
+	}
+};
 
 // Only looked at by the canvas: it is worked out from the trace and never written into the graph
 const canvasRun = computed<IAutomationCanvasRun | null>((): IAutomationCanvasRun | null =>

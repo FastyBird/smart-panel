@@ -120,7 +120,8 @@
 			"edit": "Edytuj automatyzację „{automation}”",
 			"flow": "Edytuj przebieg automatyzacji „{automation}”",
 			"remove": "Usuń automatyzację „{automation}”",
-			"enabled": "Automatyzacja „{automation}” włączona"
+			"enabled": "Automatyzacja „{automation}” włączona",
+			"export": "Eksportuj automatyzację „{automation}” jako YAML"
 		},
 		"buttons": {
 			"add": {
@@ -158,6 +159,15 @@
 			},
 			"fromTemplate": {
 				"title": "Z szablonu"
+			},
+			"importYaml": {
+				"title": "Importuj YAML"
+			},
+			"exportYaml": {
+				"title": "Eksportuj YAML"
+			},
+			"viewYaml": {
+				"title": "Pokaż jako YAML"
 			}
 		},
 		"messages": {
@@ -1043,6 +1053,63 @@
 						}
 					}
 				}
+			}
+		},
+		"transfer": {
+			"headings": {
+				"import": "Import automatyzacji",
+				"yaml": "Automatyzacja jako YAML"
+			},
+			"texts": {
+				"pick": "Wybierz plik YAML wyeksportowany ze Smart Panel lub wklej jego zawartość. Nic nie zostanie zapisane, dopóki go nie zaimportujesz.",
+				"drop": "Upuść plik tutaj lub kliknij, aby go wybrać",
+				"allFound": "Wszystko, do czego odwołuje się automatyzacja, istnieje tutaj.",
+				"missing": "Automatyzacja odwołuje się do jednej rzeczy, której tu nie ma. | Automatyzacja odwołuje się do {count} rzeczy, których tu nie ma. | Automatyzacja odwołuje się do {count} rzeczy, których tu nie ma.",
+				"usedByAutomation": "Przestrzeń automatyzacji",
+				"usedByNodes": "Używane przez blok {nodes} | Używane przez bloki {nodes} | Używane przez bloki {nodes}",
+				"notRemappable": "Tego nie można tu wybrać. Popraw blok w edytorze po imporcie.",
+				"unresolved": "To, czego nie wybierzesz, pozostanie bez zmian. Automatyzacja zostanie zaimportowana jako wyłączona; popraw jej bloki w edytorze przed włączeniem.",
+				"warnings": "Jeden blok wymaga poprawy, zanim będzie można włączyć automatyzację: | {count} bloki wymagają poprawy, zanim będzie można włączyć automatyzację: | {count} bloków wymaga poprawy, zanim będzie można włączyć automatyzację:",
+				"yamlUnsaved": "To jest zapisana wersja. Niezapisane zmiany nie są w niej uwzględnione."
+			},
+			"fields": {
+				"yaml": {
+					"title": "YAML",
+					"placeholder": "version: 1\nkind: automation\nname: …"
+				},
+				"nodes": {
+					"title": "Bloki"
+				},
+				"mapping": {
+					"title": "Czego użyć zamiast: {kind}",
+					"placeholder": "Wybierz, czego użyć zamiast"
+				}
+			},
+			"kinds": {
+				"device": "Urządzenie",
+				"channel": "Kanał",
+				"property": "Właściwość urządzenia",
+				"scene": "Scena",
+				"space": "Przestrzeń",
+				"automation": "Automatyzacja"
+			},
+			"buttons": {
+				"import": {
+					"title": "Importuj"
+				},
+				"export": {
+					"title": "Pobierz"
+				}
+			},
+			"messages": {
+				"exportFailed": "Nie udało się wyeksportować automatyzacji.",
+				"tooLarge": "Plik jest większy niż {size} KB.",
+				"unreadable": "Nie udało się odczytać pliku.",
+				"invalidFile": "Plik nie jest automatyzacją, którą można zaimportować.",
+				"invalidGraph": "Automatyzacji z pliku nie można zapisać.",
+				"notRead": "Nie udało się sprawdzić pliku.",
+				"imported": "Automatyzacja „{automation}” została zaimportowana jako wyłączona.",
+				"notImported": "Nie udało się zaimportować automatyzacji."
 			}
 		}
 	}

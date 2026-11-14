@@ -120,7 +120,8 @@
 			"edit": "Automation „{automation}“ bearbeiten",
 			"flow": "Ablauf der Automation „{automation}“ bearbeiten",
 			"remove": "Automation „{automation}“ entfernen",
-			"enabled": "Automation „{automation}“ aktiviert"
+			"enabled": "Automation „{automation}“ aktiviert",
+			"export": "Automatisierung „{automation}“ als YAML exportieren"
 		},
 		"buttons": {
 			"add": {
@@ -158,6 +159,15 @@
 			},
 			"fromTemplate": {
 				"title": "Aus Vorlage"
+			},
+			"importYaml": {
+				"title": "YAML importieren"
+			},
+			"exportYaml": {
+				"title": "Als YAML exportieren"
+			},
+			"viewYaml": {
+				"title": "Als YAML anzeigen"
 			}
 		},
 		"messages": {
@@ -1043,6 +1053,63 @@
 						}
 					}
 				}
+			}
+		},
+		"transfer": {
+			"headings": {
+				"import": "Automatisierung importieren",
+				"yaml": "Automatisierung als YAML"
+			},
+			"texts": {
+				"pick": "Wählen Sie eine aus Smart Panel exportierte YAML-Datei oder fügen Sie ihren Inhalt ein. Gespeichert wird erst beim Importieren.",
+				"drop": "Datei hierher ziehen oder zum Auswählen klicken",
+				"allFound": "Alles, worauf die Automatisierung verweist, ist hier vorhanden.",
+				"missing": "Die Automatisierung verweist auf etwas, das hier nicht existiert. | Die Automatisierung verweist auf {count} Dinge, die hier nicht existieren.",
+				"usedByAutomation": "Der Raum der Automatisierung",
+				"usedByNodes": "Verwendet von Block {nodes} | Verwendet von den Blöcken {nodes}",
+				"notRemappable": "Das kann hier nicht gewählt werden. Korrigieren Sie den Block nach dem Import im Editor.",
+				"unresolved": "Nicht Gewähltes bleibt, wie es ist. Die Automatisierung wird deaktiviert importiert; korrigieren Sie ihre Blöcke im Editor, bevor Sie sie aktivieren.",
+				"warnings": "Ein Block muss angepasst werden, bevor die Automatisierung aktiviert werden kann: | {count} Blöcke müssen angepasst werden, bevor die Automatisierung aktiviert werden kann:",
+				"yamlUnsaved": "Dies ist die gespeicherte Fassung. Noch nicht gespeicherte Änderungen sind nicht enthalten."
+			},
+			"fields": {
+				"yaml": {
+					"title": "YAML",
+					"placeholder": "version: 1\nkind: automation\nname: …"
+				},
+				"nodes": {
+					"title": "Blöcke"
+				},
+				"mapping": {
+					"title": "Stattdessen zu verwenden: {kind}",
+					"placeholder": "Wählen Sie, was stattdessen verwendet wird"
+				}
+			},
+			"kinds": {
+				"device": "Gerät",
+				"channel": "Kanal",
+				"property": "Geräteeigenschaft",
+				"scene": "Szene",
+				"space": "Raum",
+				"automation": "Automatisierung"
+			},
+			"buttons": {
+				"import": {
+					"title": "Importieren"
+				},
+				"export": {
+					"title": "Herunterladen"
+				}
+			},
+			"messages": {
+				"exportFailed": "Die Automatisierung konnte nicht exportiert werden.",
+				"tooLarge": "Die Datei ist größer als {size} KB.",
+				"unreadable": "Die Datei konnte nicht gelesen werden.",
+				"invalidFile": "Die Datei ist keine importierbare Automatisierung.",
+				"invalidGraph": "Die Automatisierung aus der Datei kann nicht gespeichert werden.",
+				"notRead": "Die Datei konnte nicht geprüft werden.",
+				"imported": "Automatisierung „{automation}“ wurde deaktiviert importiert.",
+				"notImported": "Die Automatisierung konnte nicht importiert werden."
 			}
 		}
 	}

@@ -32,8 +32,10 @@
 				:filters-active="props.filtersActive"
 				:table-height="tableHeight"
 				:updating="props.updating"
+				:exporting="props.exporting"
 				@edit="(id: IAutomation['id']): void => emit('edit', id)"
 				@flow="(id: IAutomation['id']): void => emit('flow', id)"
+				@export="(id: IAutomation['id']): void => emit('export', id)"
 				@remove="(id: IAutomation['id']): void => emit('remove', id)"
 				@toggle-enabled="(id: IAutomation['id'], enabled: boolean): void => emit('toggle-enabled', id, enabled)"
 				@reset-filters="emit('reset-filters')"
@@ -81,6 +83,7 @@ const props = defineProps<IListAutomationsProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: IAutomation['id']): void;
 	(e: 'flow', id: IAutomation['id']): void;
+	(e: 'export', id: IAutomation['id']): void;
 	(e: 'remove', id: IAutomation['id']): void;
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
 	(e: 'adjust-list'): void;

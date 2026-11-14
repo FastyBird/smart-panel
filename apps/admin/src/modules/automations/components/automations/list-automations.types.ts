@@ -14,4 +14,6 @@ export interface IListAutomationsProps {
 	loading: boolean;
 	loadFailed?: boolean;
 	updating: IAutomation['id'][];
+	// The automations being exported right now
+	exporting?: IAutomation['id'][];
 }

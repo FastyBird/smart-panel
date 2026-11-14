@@ -279,7 +279,7 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="160"
+			:width="200"
 			align="right"
 		>
 			<template #default="scope">
@@ -297,6 +297,24 @@
 					>
 						<template #icon>
 							<icon :icon="AUTOMATION_FLOW_ICON" />
+						</template>
+					</el-button>
+				</el-tooltip>
+				<el-tooltip
+					:content="t('automations.buttons.exportYaml.title')"
+					placement="top"
+				>
+					<el-button
+						size="small"
+						plain
+						class="ml-1!"
+						:loading="props.exporting?.includes(scope.row.id) ?? false"
+						:aria-label="t('automations.aria.export', { automation: scope.row.name })"
+						data-test-id="export-automation"
+						@click.stop="emit('export', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:file-export-outline" />
 						</template>
 					</el-button>
 				</el-tooltip>
@@ -364,6 +382,7 @@ const props = defineProps<IAutomationsTableProps>();
 const emit = defineEmits<{
 	(e: 'edit', id: IAutomation['id']): void;
 	(e: 'flow', id: IAutomation['id']): void;
+	(e: 'export', id: IAutomation['id']): void;
 	(e: 'remove', id: IAutomation['id']): void;
 	(e: 'toggle-enabled', id: IAutomation['id'], enabled: boolean): void;
 	(e: 'reset-filters'): void;

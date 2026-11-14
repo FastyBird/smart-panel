@@ -189,6 +189,23 @@ describe('AutomationsTable', (): void => {
 		expect(wrapper.emitted('edit')).toBeUndefined();
 	});
 
+	it('emits export for a row without opening its details, and marks one being exported', async (): Promise<void> => {
+		await createWrapper({ exporting: ['2'] });
+
+		const buttons = wrapper.findAll('[data-test-id="export-automation"]');
+
+		expect(buttons.map((button) => button.attributes('aria-label'))).toEqual([
+			'automations.aria.export Hallway motion light',
+			'automations.aria.export Night mode',
+		]);
+		expect(buttons[1]!.classes()).toContain('is-loading');
+
+		await buttons[0]!.trigger('click');
+
+		expect(wrapper.emitted('export')).toEqual([['1']]);
+		expect(wrapper.emitted('edit')).toBeUndefined();
+	});
+
 	it('filters by the space of a row and removes the filter again', async (): Promise<void> => {
 		const filters: IAutomationsTableProps['filters'] = { search: undefined, spaceId: undefined, enabled: 'all', statuses: [] };
 

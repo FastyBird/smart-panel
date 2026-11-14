@@ -1,5 +1,6 @@
 // Re-export from generated OpenAPI types — canonical definition is on the backend
 import {
+	AutomationsModuleImportReferenceMappingKind as AutomationReferenceKind,
 	AutomationsModuleDataRunStatus as AutomationRunRecordStatus,
 	AutomationsModuleDataRunStepState as AutomationRunStepState,
 	AutomationsModuleDataTriggerResultOutcome as AutomationTriggerOutcome,
@@ -16,6 +17,7 @@ import {
 export {
 	AutomationMode,
 	AutomationNodeKind,
+	AutomationReferenceKind,
 	AutomationRunRecordStatus,
 	AutomationRunStatus,
 	AutomationRunStepState,
@@ -83,6 +85,12 @@ export const AUTOMATION_GRAPH_INVALID_ERROR_CODE = 'automation-graph-invalid';
 
 // Application error code of answers to a template the backend refused (`error.details.code` of the 422 response)
 export const AUTOMATION_TEMPLATE_PARAMETERS_INVALID_ERROR_CODE = 'automation-template-parameters-invalid';
+
+// Application error code of an import file the backend could not read as an automation (`error.details.code` of the 422 response)
+export const AUTOMATION_IMPORT_INVALID_ERROR_CODE = 'automation-import-invalid';
+
+// The largest import file the backend reads, in bytes
+export const AUTOMATION_IMPORT_MAX_LENGTH = 256 * 1024;
 
 // The route query that names the template draft a new automation is created from
 export const AUTOMATION_TEMPLATE_DRAFT_QUERY = 'draft';

@@ -28,6 +28,7 @@ import type {
 	IAutomationTriggerResult,
 } from '../store/runs.store.types';
 import type { IAutomationTemplate, IAutomationTemplateIssue, IAutomationTemplateParameter } from '../store/templates.store.types';
+import type { IAutomationImportIssue, IAutomationImportMissingReference, IAutomationImportPreparation } from '../store/transfer.store.types';
 
 import { AutomationsFilterSchema } from './schemas';
 
@@ -309,5 +310,34 @@ export interface IUseAutomationTemplateForm {
 	propertyAnswer: (parameterId: IAutomationTemplateParameter['id']) => AutomationTemplatePropertyAnswer;
 	errorsAt: (parameterId: IAutomationTemplateParameter['id']) => string[];
 	submit: () => Promise<IAutomationDraft | null>;
+	reset: () => void;
+}
+
+export interface IUseAutomationExport {
+	exporting: (id: IAutomation['id']) => boolean;
+	// The YAML document of the stored automation, or null when it could not be read
+	fetchYaml: (id: IAutomation['id']) => Promise<string | null>;
+	// Offers the automation as a file to save; false when it could not be exported, which was said
+	exportAutomation: (id: IAutomation['id']) => Promise<boolean>;
+}
+
+export interface IUseAutomationImport {
+	yaml: Ref<string>;
+	preparation: Ref<IAutomationImportPreparation | null>;
+	missingReferences: ComputedRef<IAutomationImportMissingReference[]>;
+	// How many missing references are left as they are
+	unresolved: ComputedRef<number>;
+	// Why the backend could not read the file
+	fileIssues: Ref<IAutomationImportIssue[]>;
+	// Why the backend would not save the graph
+	graphIssues: Ref<IAutomationGraphIssue[]>;
+	submitting: Ref<boolean>;
+	setYaml: (text: string) => void;
+	readFile: (file: Blob) => Promise<boolean>;
+	setMapping: (reference: Pick<IAutomationImportMissingReference, 'kind' | 'id'>, to: string | null) => void;
+	mappingFor: (reference: Pick<IAutomationImportMissingReference, 'kind' | 'id'>) => string | null;
+	prepare: () => Promise<boolean>;
+	// The id of the automation created, or null when it was not
+	create: () => Promise<IAutomation['id'] | null>;
 	reset: () => void;
 }
