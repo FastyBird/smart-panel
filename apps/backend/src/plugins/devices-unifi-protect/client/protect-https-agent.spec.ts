@@ -22,10 +22,10 @@ interface TestServer {
 	close: () => Promise<void>;
 }
 
-async function startServer(): Promise<TestServer> {
+async function startServer(options: https.ServerOptions = protectTlsServerOptions()): Promise<TestServer> {
 	const state = { secureConnections: 0, requests: 0, bytesReceived: 0 };
 	const sockets = new Set<net.Socket>();
-	const server = https.createServer(protectTlsServerOptions(), (_req, res) => {
+	const server = https.createServer(options, (_req, res) => {
 		state.requests += 1;
 		res.writeHead(200, { 'Content-Type': 'text/plain' });
 		res.end('ok');
@@ -129,7 +129,7 @@ describe('ProtectHttpsAgent', () => {
 		expect(server.bytesReceived).toBe(0);
 	});
 
-	it('verify mode refuses a certificate that does not match the server name', async () => {
+	it('verify mode refuses a self-signed certificate served for another server name', async () => {
 		const agent = agentFor(
 			{ mode: 'verify', serverName: 'other.id.ui.direct', fingerprintSha256: null },
 			{ trustedCa: PROTECT_TEST_TLS.ca },
@@ -138,6 +138,28 @@ describe('ProtectHttpsAgent', () => {
 		await expect(get(agent)).rejects.toMatchObject({ category: 'tls_untrusted' });
 		expect(server.requests).toBe(0);
 		expect(server.bytesReceived).toBe(0);
+	});
+
+	it('verify mode refuses a CA-signed certificate checked against a different server name', async () => {
+		// Every SNI gets the console certificate, so the chain is valid and only the name check can refuse it.
+		await server.close();
+		server = await startServer({ key: PROTECT_TEST_TLS.console.key, cert: PROTECT_TEST_TLS.console.cert });
+
+		const agent = agentFor(
+			{ mode: 'verify', serverName: 'other.id.ui.direct', fingerprintSha256: null },
+			{ trustedCa: PROTECT_TEST_TLS.ca },
+		);
+
+		await expect(get(agent)).rejects.toMatchObject({ category: 'tls_untrusted' });
+		expect(server.requests).toBe(0);
+		expect(server.bytesReceived).toBe(0);
+
+		const matching = agentFor(
+			{ mode: 'verify', serverName: PROTECT_TEST_DIRECT_DOMAIN, fingerprintSha256: null },
+			{ trustedCa: PROTECT_TEST_TLS.ca },
+		);
+
+		expect((await get(matching)).status).toBe(200);
 	});
 
 	it('verify mode by IP refuses the self-signed certificate before any byte is sent', async () => {
