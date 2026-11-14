@@ -160,6 +160,20 @@ describe('buildAutomationSuggestionDraft', () => {
 		expect(buildAutomationSuggestionDraft(routine({ actions: [] }))).toBeNull();
 	});
 
+	it('is not built when one of the observed writes can not be repeated', () => {
+		// The draft would do only part of what was observed
+		expect(
+			buildAutomationSuggestionDraft(
+				routine({ actions: [write(PROPERTY_BOOL, true), write(PROPERTY_NUMBER, undefined)] }),
+			),
+		).toBeNull();
+		expect(
+			buildAutomationSuggestionDraft(
+				routine({ actions: [write(PROPERTY_BOOL, true), { deviceId: DEVICE_A, channelId: CHANNEL_A, value: 3 }] }),
+			),
+		).toBeNull();
+	});
+
 	it('is not built when the routine writes more than one action takes', () => {
 		const actions = Array.from({ length: DEVICE_PROPERTY_SET_MAX_WRITES + 1 }, (_, index) =>
 			write(`0d9f0a3e-6f5c-4d7e-9a43-${index.toString().padStart(12, '0')}`, true),

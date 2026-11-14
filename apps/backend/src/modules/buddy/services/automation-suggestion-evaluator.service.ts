@@ -45,6 +45,8 @@ interface Routine {
 	intentTypes: IntentType[];
 	deviceIds: string[];
 	actions: ObservedPropertyWrite[];
+	/** Whether `actions` holds every action of the routine; a routine some action of which set no property is not */
+	complete: boolean;
 	/** `sequenceHash` for a routine of several actions, `intentType` for a single one: what the scene suggestion keys by */
 	key: { sequenceHash: string } | { intentType: IntentType };
 	routineLabel: string;
@@ -55,6 +57,21 @@ const minutesApart = (a: { hour: number; minute: number }, b: { hour: number; mi
 
 	return Math.min(diff, 1440 - diff);
 };
+
+const sameWrite = (a: ObservedPropertyWrite, b: ObservedPropertyWrite): boolean =>
+	a.deviceId === b.deviceId && a.channelId === b.channelId && a.propertyId === b.propertyId && a.value === b.value;
+
+/**
+ * Whether a single repeated action is part of a routine of several actions: the same space, about the same time,
+ * the same kind of action, and every value it sets is one the routine sets. Another light toggled half an hour after
+ * a light-and-blinds routine is a routine of its own.
+ */
+const covers = (sequence: Routine, single: Routine): boolean =>
+	sequence.spaceId === single.spaceId &&
+	single.intentTypes.every((type) => sequence.intentTypes.includes(type)) &&
+	minutesApart(sequence.timeOfDay, single.timeOfDay) <= ROUTINE_OVERLAP_MINUTES &&
+	single.actions.length > 0 &&
+	single.actions.every((write) => sequence.actions.some((observed) => sameWrite(observed, write)));
 
 /**
  * Offers an automation for a routine: the same writes done around the same time of day, as found by the detectors
@@ -90,25 +107,24 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 		}
 
 		const spaces = new Map(context.spaces.map((space) => [space.id, space.name]));
+		const { sequences, singles } = this.findRoutines(new Set(spaces.keys()));
 		const results: EvaluatorResult[] = [];
+		const offered: Routine[] = [];
 
-		for (const routine of this.findRoutines(new Set(spaces.keys()))) {
-			const spaceName = spaces.get(routine.spaceId) ?? 'unknown space';
-			const automationName = `${spaceName} ${getTimePeriodLabel(
-				routine.timeOfDay.hour,
-				this.rulesLoader.getPatternRule('multi_action_sequence'),
-			)}`;
-
-			const draft = buildAutomationSuggestionDraft({
-				name: automationName,
-				timeOfDay: routine.timeOfDay,
-				actions: routine.actions,
-			});
-
-			if (draft === null || !(await this.canBeSaved(draft))) {
+		// Routines of several actions first: a single action is left out only when a routine offered covers it
+		for (const routine of [...sequences, ...singles]) {
+			if (routine.source === 'single' && offered.some((sequence) => covers(sequence, routine))) {
 				continue;
 			}
 
+			const spaceName = spaces.get(routine.spaceId) ?? 'unknown space';
+			const draft = await this.draftFor(routine, spaceName);
+
+			if (draft === null) {
+				continue;
+			}
+
+			offered.push(routine);
 			results.push(this.toResult(routine, draft, spaceName, rule));
 		}
 
@@ -116,10 +132,29 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 	}
 
 	/**
-	 * The routines of the spaces asked about. A single repeated action that is part of a routine of several actions
-	 * at about the same time is that routine, not one of its own.
+	 * The draft of the automation that repeats a routine, when it can be offered. A routine part of which an
+	 * automation can not repeat - an action that set no property, a value that is not one - is not offered at all:
+	 * the draft would only do some of what was observed.
 	 */
-	private findRoutines(spaceIds: Set<string>): Routine[] {
+	private async draftFor(routine: Routine, spaceName: string): Promise<AutomationSuggestionDraft | null> {
+		if (!routine.complete) {
+			return null;
+		}
+
+		const draft = buildAutomationSuggestionDraft({
+			name: `${spaceName} ${getTimePeriodLabel(
+				routine.timeOfDay.hour,
+				this.rulesLoader.getPatternRule('multi_action_sequence'),
+			)}`,
+			timeOfDay: routine.timeOfDay,
+			actions: routine.actions,
+		});
+
+		return draft !== null && (await this.canBeSaved(draft)) ? draft : null;
+	}
+
+	/** The routines of the spaces asked about, by the detector that found them */
+	private findRoutines(spaceIds: Set<string>): { sequences: Routine[]; singles: Routine[] } {
 		const sequenceRule = this.rulesLoader.getPatternRule('multi_action_sequence');
 		const singleRule = this.rulesLoader.getPatternRule('single_pattern');
 
@@ -133,18 +168,10 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 				? []
 				: this.patternDetector.detectPatterns().filter((pattern) => spaceIds.has(pattern.spaceId));
 
-		const isPartOfSequence = (pattern: DetectedPattern): boolean =>
-			sequences.some(
-				(sequence) =>
-					sequence.spaceId === pattern.spaceId &&
-					sequence.sequence.intentTypes.includes(pattern.intentType) &&
-					minutesApart(sequence.timeOfDay, pattern.timeOfDay) <= ROUTINE_OVERLAP_MINUTES,
-			);
-
-		return [
-			...sequences.map((pattern) => this.fromSequence(pattern)),
-			...singles.filter((pattern) => !isPartOfSequence(pattern)).map((pattern) => this.fromSingle(pattern)),
-		];
+		return {
+			sequences: sequences.map((pattern) => this.fromSequence(pattern)),
+			singles: singles.map((pattern) => this.fromSingle(pattern)),
+		};
 	}
 
 	private fromSequence(pattern: DetectedSequencePattern): Routine {
@@ -156,6 +183,7 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 			intentTypes: pattern.sequence.intentTypes,
 			deviceIds: pattern.sequence.deviceIds,
 			actions: pattern.latestActions,
+			complete: pattern.latestActionsComplete,
 			key: { sequenceHash: pattern.sequence.hash },
 			routineLabel: `perform ${pattern.sequence.intentTypes.length} actions`,
 		};
@@ -172,6 +200,7 @@ export class AutomationSuggestionEvaluator implements HeartbeatEvaluator {
 			intentTypes: [pattern.intentType],
 			deviceIds: [...new Set(targets.map((target) => target.deviceId))].sort(),
 			actions: targets.map((target) => ({ ...target, value: pattern.latestValue })),
+			complete: targets.length > 0 && targets.every((target) => !!target.propertyId),
 			key: { intentType: pattern.intentType },
 			routineLabel: formatIntentLabel(pattern.intentType),
 		};

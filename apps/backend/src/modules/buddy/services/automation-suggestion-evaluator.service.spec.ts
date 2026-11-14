@@ -21,6 +21,11 @@ const DEVICE_LIGHT = 'device-light';
 const DEVICE_BLINDS = 'device-blinds';
 
 const LIGHT = { deviceId: DEVICE_LIGHT, channelId: 'channel-light', propertyId: 'property-light-on' };
+const OTHER_LIGHT = {
+	deviceId: 'device-other-light',
+	channelId: 'channel-other-light',
+	propertyId: 'property-other-light-on',
+};
 const BLINDS = { deviceId: DEVICE_BLINDS, channelId: 'channel-blinds', propertyId: 'property-blinds-position' };
 
 const context = (spaces = [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 2 }]) =>
@@ -221,6 +226,70 @@ describe('AutomationSuggestionEvaluator', () => {
 			['multi-action', { hour: 19, minute: 0 }],
 			['single', { hour: 23, minute: 0 }],
 		]);
+	});
+
+	it('suggests a single action near a routine when it sets something the routine does not', async () => {
+		recordEveningRoutine();
+		// Another light, half an hour after the routine
+		record(onDays(3, 19, 30).map((at) => action(IntentType.LIGHT_TOGGLE, OTHER_LIGHT, false, at)));
+
+		const results = await evaluator.evaluate(context());
+
+		expect(results.map((result) => result.metadata.sequence)).toEqual(['multi-action', 'single']);
+		expect((results[1].metadata.draft as AutomationSuggestionDraft).graph.nodes[1].config).toEqual({
+			writes: [
+				{
+					device_id: OTHER_LIGHT.deviceId,
+					channel_id: OTHER_LIGHT.channelId,
+					property_id: OTHER_LIGHT.propertyId,
+					value: false,
+				},
+			],
+		});
+	});
+
+	it('suggests an action of a routine on its own when the routine itself can not be offered', async () => {
+		recordEveningRoutine();
+
+		// Writing the blinds is refused, so the whole routine is; the light alone is not
+		checkGraph.mockImplementation((graph: AutomationSuggestionDraft['graph']) =>
+			Promise.resolve({ valid: !JSON.stringify(graph).includes(BLINDS.propertyId), issues: [] }),
+		);
+
+		const results = await evaluator.evaluate(context());
+
+		expect(results).toHaveLength(1);
+		expect(results[0].metadata).toMatchObject({ sequence: 'single', intentType: IntentType.LIGHT_TOGGLE });
+	});
+
+	it('does not offer a routine of which only some actions can be repeated', async () => {
+		// A space-wide intent sets no property; only the blinds are written as a property
+		for (const at of onDays(3, 19)) {
+			record([
+				action(IntentType.SPACE_LIGHTING_ON, { deviceId: DEVICE_LIGHT }, undefined, at),
+				action(IntentType.DEVICE_SET_PROPERTY, BLINDS, 30, new Date(at.getTime() + 5000)),
+			]);
+		}
+
+		const results = await evaluator.evaluate(context());
+
+		// The blinds alone are a routine of their own, offered as what they are; the two together are not
+		expect(results.map((result) => [result.metadata.sequence, result.metadata.intentType])).toEqual([
+			['single', IntentType.DEVICE_SET_PROPERTY],
+		]);
+	});
+
+	it('does not offer a single action of which only some targets can be repeated', async () => {
+		record(
+			onDays(3, 7, 30).map((at) => ({
+				...action(IntentType.LIGHT_TOGGLE, LIGHT, true, at),
+				deviceIds: [DEVICE_LIGHT, 'device-lamp'],
+				targets: [LIGHT, { deviceId: 'device-lamp' }],
+			})),
+		);
+
+		expect(await evaluator.evaluate(context())).toEqual([]);
+		expect(checkGraph).not.toHaveBeenCalled();
 	});
 
 	it('does not suggest a routine whose draft the automations module would not save', async () => {

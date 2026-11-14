@@ -42,6 +42,11 @@ export interface DetectedSequencePattern {
 	occurrences: number;
 	/** Action details from the most recent session — used to populate scene actions. */
 	latestActions: SceneActionDetail[];
+	/**
+	 * Whether every action of the most recent session is in `latestActions`: each named at least one target and
+	 * every target named a property. An action that set no property (a space-wide intent) is left out of them.
+	 */
+	latestActionsComplete: boolean;
 }
 
 /**
@@ -199,6 +204,10 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 						timeOfDay: cluster.timeOfDay,
 						occurrences: cluster.sessions.length,
 						latestActions,
+						latestActionsComplete: latestSession.actions.every(
+							(action) =>
+								(action.targets ?? []).length > 0 && (action.targets ?? []).every((target) => !!target.propertyId),
+						),
 					});
 				}
 			}

@@ -88,6 +88,10 @@ export const formatDraftTime = (hour: number, minute: number): string | null => 
 	return `${pad(hour)}:${pad(minute)}`;
 };
 
+/** Whether an automation can repeat an observed write: it names a device, a channel and a property, and a plain value */
+export const isRepeatableWrite = (action: ObservedPropertyWrite): boolean =>
+	isId(action.deviceId) && isId(action.channelId) && isId(action.propertyId) && isPropertyValue(action.value);
+
 /**
  * The writes of the routine as the action takes them. A write that names no channel or property, or whose value is
  * not a text, a finite number or a yes/no value, can not be repeated by an automation and is left out. A property
@@ -129,8 +133,8 @@ const toDraftWeekdays = (weekdays: readonly number[] | undefined): number[] | nu
  * Builds the draft of an automation that repeats a routine: a "time of day" trigger at the time of the routine (on
  * its weekdays when it has them) wired to one "set device values" action with the writes of the routine.
  *
- * Returns null when the routine can not be repeated as it was observed: no write left that an automation can make,
- * more writes than one action takes, or a time that is not one. The draft is to be saved disabled; nothing here
+ * Returns null when the routine can not be repeated as it was observed: a write an automation can not make, no
+ * write at all, more writes than one action takes, or a time that is not one. The draft is to be saved disabled; nothing here
  * enables it.
  */
 export const buildAutomationSuggestionDraft = (
@@ -139,6 +143,9 @@ export const buildAutomationSuggestionDraft = (
 	const time = formatDraftTime(routine.timeOfDay.hour, routine.timeOfDay.minute);
 
 	if (time === null) return null;
+
+	// A draft that repeats only part of the routine would offer something that was never done
+	if (!routine.actions.every(isRepeatableWrite)) return null;
 
 	const writes = toDraftWrites(routine.actions);
 
