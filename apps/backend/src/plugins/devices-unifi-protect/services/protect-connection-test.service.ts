@@ -61,12 +61,7 @@ const submittedKeys = (request: object): string[] =>
 		.filter(([, value]) => value !== undefined)
 		.map(([key]) => key);
 
-/**
- * Tests a console connection without ever sending the API key to a peer that is not accepted first: the presented
- * certificate is inspected and judged (chain and name, or pin) before any client holding the key is created. A saved
- * test uses the stored settings only; a candidate test uses only what it submits, including a new key, so the stored
- * key never travels to a submitted host. Every outcome is a result; this service never throws.
- */
+/** Bounds for the unauthenticated `/api/system` strings returned to the admin (DNS name limit; display text). */
 const MAX_DOMAIN_LENGTH = 253;
 const MAX_NAME_LENGTH = 128;
 
@@ -76,6 +71,12 @@ const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
 const boundSystemText = (value: string | null, maxLength: number): string | null =>
 	value === null ? null : value.replace(CONTROL_CHARACTERS, '').slice(0, maxLength);
 
+/**
+ * Tests a console connection without ever sending the API key to a peer that is not accepted first: the presented
+ * certificate is inspected and judged (chain and name, or pin) before any client holding the key is created. A saved
+ * test uses the stored settings only; a candidate test uses only what it submits, including a new key, so the stored
+ * key never travels to a submitted host. Every outcome is a result; this service never throws.
+ */
 @Injectable()
 export class ProtectConnectionTestService {
 	constructor(
