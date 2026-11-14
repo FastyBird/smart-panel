@@ -116,4 +116,15 @@ curl --silent --show-error --fail --connect-timeout 2 --max-time 5 \
 test -s "$smoke_dir/asset.js"
 # An SPA fallback also returns 200; require an actual JavaScript content type.
 grep -Eiq '^content-type:.*(javascript|ecmascript)' "$smoke_dir/asset.headers"
-printf 'Runtime smoke passed: migrations, container health, health/version, fresh onboarding and admin asset.\n'
+
+# The cameras module relies on the go2rtc binary shipped in the image.
+go2rtc_args=(run --rm)
+if [[ -n "$platform" ]]; then
+	go2rtc_args+=(--platform "$platform")
+fi
+go2rtc_version=$(docker "${go2rtc_args[@]}" --entrypoint /usr/local/lib/smart-panel/go2rtc/go2rtc "$image" --version 2>/dev/null | head -n 1 || true)
+if [[ "$go2rtc_version" != 'go2rtc version '* ]]; then
+	printf 'go2rtc binary missing or not runnable in the runtime image\n' >&2
+	exit 1
+fi
+printf 'Runtime smoke passed: migrations, container health, health/version, fresh onboarding, admin asset and go2rtc binary.\n'

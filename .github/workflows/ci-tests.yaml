@@ -53,6 +53,34 @@ jobs:
       - name: "Test captive portal network recovery"
         run: "python3 build/raspbian/tests/test_portal_network_recovery.py"
 
+  installer-script-checks:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
+    name: "Installer script checks"
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v7"
+        with:
+          node-version: "24"
+
+      - name: "Shellcheck installer scripts"
+        run: >-
+          shellcheck --severity=warning
+          build/go2rtc/install-go2rtc.sh
+          scripts/install-server.sh
+          scripts/test-docker-runtime.sh
+          build/raspbian/stage-smart-panel/01-install-app/01-run-chroot.sh
+          apps/backend/src/modules/system/scripts/update-worker.sh
+
+      - name: "Test go2rtc installer"
+        run: "node --test build/tests/install-go2rtc.test.mjs build/tests/install-server-go2rtc.test.mjs build/tests/linux-installer-go2rtc.test.mjs build/tests/cli-update.test.mjs"
+
   backend-analyze:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'

@@ -12,6 +12,7 @@ import { ValidationExceptionFactory } from '../src/common/validation/validation-
 import { CameraSessionService } from '../src/modules/cameras/services/camera-session.service';
 import { CameraSnapshotService } from '../src/modules/cameras/services/camera-snapshot.service';
 import { CameraStreamProviderRegistryService } from '../src/modules/cameras/services/camera-stream-provider.registry.service';
+import { Go2rtcService } from '../src/modules/cameras/services/go2rtc.service';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -39,6 +40,7 @@ describe('Cameras module (e2e)', () => {
 	let snapshots: CameraSnapshotService;
 	let sessions: CameraSessionService;
 	let logSpies: jest.SpyInstance[];
+	let relaySpy: jest.SpyInstance<boolean, []>;
 
 	const api = '/api/v1';
 	const base = `${api}/modules/cameras/cameras`;
@@ -204,6 +206,7 @@ describe('Cameras module (e2e)', () => {
 		app.get(CameraStreamProviderRegistryService).register(provider);
 		snapshots = app.get(CameraSnapshotService);
 		sessions = app.get(CameraSessionService);
+		relaySpy = jest.spyOn(app.get(Go2rtcService), 'isRunning').mockReturnValue(true);
 	}, 120_000);
 
 	afterAll(async () => {
@@ -302,6 +305,16 @@ describe('Cameras module (e2e)', () => {
 		expect((response.body as { data: { url: string } }).data.url).toMatch(
 			/^\/api\/v1\/modules\/cameras\/live\?session=[A-Za-z0-9_-]{43}$/,
 		);
+	});
+
+	it('answers 503 for a session while the relay is unavailable', async () => {
+		relaySpy.mockReturnValueOnce(false);
+
+		const response = await postSession(cameraId, { transport: 'mse' }).expect(503);
+
+		expect(JSON.stringify(response.body)).toContain('Live view relay is not available');
+
+		await postSession(cameraId, { transport: 'mse' }).expect(201);
 	});
 
 	it('answers 404 for an unavailable profile', async () => {

@@ -64,10 +64,11 @@ describe('managed service registration inventory', () => {
 			'plugins/remote-access-cloudflare-tunnel/remote-access-cloudflare-tunnel.plugin.ts',
 			'this.managedServiceManager.register(this.tunnelManagedService)',
 		],
+		['modules/cameras/cameras.module.ts', 'this.managedServiceManager.register(this.go2rtcService)'],
 	] as const;
 
 	it('keeps every expected owner registration wired to the manager', () => {
-		expect(registrations).toHaveLength(22);
+		expect(registrations).toHaveLength(23);
 
 		for (const [relativeFile, marker] of registrations) {
 			const source = readFileSync(resolve(__dirname, '../../../', relativeFile), 'utf8');

@@ -963,9 +963,13 @@ export type CamerasModuleStreamProfileSchema = components['schemas']['CamerasMod
 export type CamerasModuleSessionSchema = components['schemas']['CamerasModuleDataSession'];
 export type CamerasModuleCreateSessionSchema = components['schemas']['CamerasModuleCreateSession'];
 export type CamerasModuleReqCreateSessionSchema = components['schemas']['CamerasModuleReqCreateSession'];
+export type CamerasModuleStatusSchema = components['schemas']['CamerasModuleDataStatus'];
+export type CamerasModuleRelayStatusSchema = components['schemas']['CamerasModuleDataRelayStatus'];
+export type CamerasModuleSessionsStatusSchema = components['schemas']['CamerasModuleDataSessionsStatus'];
 
 // Cameras Module Operations
 export type CamerasModuleGetCamerasOperation = operations['get-cameras-module-cameras'];
 export type CamerasModuleGetCameraOperation = operations['get-cameras-module-camera'];
 export type CamerasModuleGetCameraSnapshotOperation = operations['get-cameras-module-camera-snapshot'];
 export type CamerasModuleCreateCameraSessionOperation = operations['create-cameras-module-camera-session'];
+export type CamerasModuleGetStatusOperation = operations['get-cameras-module-status'];
