@@ -80,7 +80,8 @@ interface RetainedSecrets {
  * been created), keeps its secrets registered (`retained`, by relay and name) until a later DELETE of that name on that
  * same relay succeeds, the managed process is confirmed gone (`Go2rtcService.onManagedRunEnded`: exited and its output
  * drained, which the relay status does not prove: a child whose stop could not be confirmed may still print a source),
- * or the module is destroyed. The entries of a managed relay that stopped being available are dropped from the table at
+ * or, for an external relay only, the module is destroyed (a managed one stays until its run-ended signal, which
+ * destroy keeps listening for without waiting). The entries of a managed relay that stopped being available are dropped from the table at
  * once (nothing is registered on it any more), but their secrets are retained under that process until it has ended.
  *
  * An external go2rtc outlives the relay state: it persists registered streams to its own config file and stays
@@ -110,6 +111,7 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	private lastStatus: Go2rtcRelayStatus | null = null;
 	private unsubscribe: (() => void) | null = null;
 	private unsubscribeRunEnded: (() => void) | null = null;
+	private destroyed = false;
 
 	constructor(
 		private readonly go2rtc: Go2rtcService,
@@ -130,16 +132,16 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	async onModuleDestroy(): Promise<void> {
 		this.unsubscribe?.();
 		this.unsubscribe = null;
-		this.unsubscribeRunEnded?.();
-		this.unsubscribeRunEnded = null;
+		// The run-ended subscription stays alive until no managed process still has secrets retained (see below).
+		this.destroyed = true;
 
 		const relay = this.currentRelay();
 		const entries = [...this.entries.values()];
-		const held: Array<() => void> = [];
+		const held: Array<{ name: string; handles: Array<() => void>; relay: Relay }> = [];
 
 		// The secrets stay registered until the DELETEs below are done.
 		for (const entry of entries) {
-			held.push(...entry.secretHandles);
+			held.push({ name: entry.name, handles: entry.secretHandles, relay: entry.relay });
 			entry.secretHandles = [];
 			this.discard(entry, new Go2rtcUnavailableException('Camera relay is not running'));
 		}
@@ -166,12 +168,30 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		} finally {
 			if (timer) clearTimeout(timer);
 
-			// Nothing will register or delete after this, so whatever is still held is released.
-			for (const release of held) {
-				release();
+			// Nothing will register or delete after this. An external relay's secrets are released (its DELETEs were
+			// attempted). A managed process that is not confirmed ended may still print the source, so its secrets stay
+			// registered until `onManagedRunEnded`; this never waits for it.
+			for (const { name, handles, relay: heldRelay } of held) {
+				if (heldRelay.external) {
+					for (const release of handles) {
+						release();
+					}
+				} else {
+					this.retain(name, handles, heldRelay);
+				}
 			}
 
-			this.releaseRetained(null);
+			for (const [key, retained] of [...this.retained]) {
+				if (retained.relay.external) {
+					this.retained.delete(key);
+
+					for (const release of retained.handles) {
+						release();
+					}
+				}
+			}
+
+			this.unsubscribeRunEndedWhenIdle();
 		}
 	}
 
@@ -474,10 +494,10 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/** Releases what was retained for one relay (by its key), or everything (`null`). */
-	private releaseRetained(relayKey: string | null): void {
+	/** Releases what was retained for one relay (by its key). */
+	private releaseRetained(relayKey: string): void {
 		for (const [key, held] of [...this.retained]) {
-			if (relayKey !== null && held.relay.key !== relayKey) {
+			if (held.relay.key !== relayKey) {
 				continue;
 			}
 
@@ -617,6 +637,15 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	private onManagedRunEnded(generation: number): void {
 		this.endedManagedGeneration = Math.max(this.endedManagedGeneration, generation);
 		this.releaseRetained(`managed:${generation}`);
+		this.unsubscribeRunEndedWhenIdle();
+	}
+
+	/** After module destroy, stops listening once no retained secrets wait for a managed process to end. */
+	private unsubscribeRunEndedWhenIdle(): void {
+		if (this.destroyed && this.retained.size === 0) {
+			this.unsubscribeRunEnded?.();
+			this.unsubscribeRunEnded = null;
+		}
 	}
 
 	/** Deletes every stream of this installation on an external relay that this table does not know (previous run). */

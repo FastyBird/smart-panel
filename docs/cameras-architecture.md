@@ -401,7 +401,7 @@ whose acquisition completes after the close is released at once.
 | device deleted | its entries are deleted at once, whatever their count |
 | external relay becomes `running` | orphan sweep, see External mode |
 | module destroy | best-effort `DELETE` of every entry (and the deletions already in flight), bounded by 2 s |
-| a `DELETE` fails | the secrets of that stream stay registered (`retained`, keyed by relay and stream name) until a later `DELETE` of the name on that same relay succeeds, the managed process of that generation is confirmed gone (`onManagedRunEnded`; a status change or a new generation is not proof) or the module is destroyed (after its bounded `DELETE`s) |
+| a `DELETE` fails | the secrets of that stream stay registered (`retained`, keyed by relay and stream name) until a later `DELETE` of the name on that same relay succeeds, the managed process of that generation is confirmed gone (`onManagedRunEnded`; a status change or a new generation is not proof) or, for an external relay only, the module is destroyed (after its bounded `DELETE`s); a managed process's secrets outlive module destroy until its `onManagedRunEnded` signal (destroy keeps that subscription, never waits for it) |
 
 A relay is identified by its generation (managed: every spawn is a new relay) or its normalized base URL (external). A
 `DELETE` on one relay never releases what was retained for another: with an external relay A that was left with a

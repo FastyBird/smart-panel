@@ -345,6 +345,11 @@ describe('Go2rtcStreamsService', () => {
 			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
 			await streams.onModuleDestroy();
 
+			// The managed process is not confirmed ended, so it may still print the source.
+			expect(secrets.list()).toContain(SENT_URL);
+
+			fireRunEnded(1);
+
 			expect(secrets.list()).toEqual([]);
 		});
 	});
@@ -1026,7 +1031,7 @@ describe('Go2rtcStreamsService', () => {
 				expect(result).toBeInstanceOf(Go2rtcUnavailableException);
 			}
 
-			expect(secrets.list()).toEqual([]);
+			expect(secrets.list()).toContain(SENT_URL);
 
 			finishPut[0]();
 			await flush();
@@ -1075,6 +1080,8 @@ describe('Go2rtcStreamsService', () => {
 		// The destroy deleted the stream once; the cancelled grace timer must not delete it again.
 		await jest.advanceTimersByTimeAsync(60_000);
 		expect(client.deleteStream).toHaveBeenCalledTimes(1);
+
+		fireRunEnded(1);
 		expect(secrets.list()).toEqual([]);
 	});
 
@@ -1166,7 +1173,10 @@ describe('Go2rtcStreamsService', () => {
 			expect(secrets.list()).toEqual([]);
 		});
 
-		it('keeps the source until module destroy has run its DELETEs, then releases it even though they failed', async () => {
+		it("keeps the source until module destroy has run its DELETEs, then releases an external relay's even though they failed", async () => {
+			fire({ mode: 'external', state: 'running', generation: null });
+			await flush();
+
 			let failDelete!: (error: Error) => void;
 
 			client.deleteStream.mockReturnValue(
@@ -1190,7 +1200,7 @@ describe('Go2rtcStreamsService', () => {
 			expect(secrets.list()).toEqual([]);
 		});
 
-		it('releases the source retained by an earlier failure when module destroy ends', async () => {
+		it('keeps the source retained for an unconfirmed managed process through module destroy', async () => {
 			client.deleteStream.mockRejectedValue(new Go2rtcApiError(null));
 
 			const lease = await streams.acquire(camera, provider, 'medium');
@@ -1203,7 +1213,39 @@ describe('Go2rtcStreamsService', () => {
 
 			await streams.onModuleDestroy();
 
+			expect(secrets.list()).toContain(SENT_URL);
+			expect(endedListeners.size).toBe(1);
+
+			fireRunEnded(1);
+
 			expect(secrets.list()).toEqual([]);
+			expect(endedListeners.size).toBe(0);
+		});
+
+		it('releases at once on module destroy when the managed process was already confirmed ended', async () => {
+			await streams.acquire(camera, provider, 'medium');
+			fireRunEnded(1);
+			await streams.onModuleDestroy();
+
+			expect(secrets.list()).toEqual([]);
+			expect(endedListeners.size).toBe(0);
+		});
+
+		it('releases the retained source of an external relay on module destroy', async () => {
+			client.deleteStream.mockRejectedValue(new Go2rtcApiError(null));
+			fire({ mode: 'external', state: 'running', generation: null });
+			await flush();
+
+			const lease = await streams.acquire(camera, provider, 'medium');
+
+			lease.release();
+			await jest.advanceTimersByTimeAsync(30_000);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			await streams.onModuleDestroy();
+
+			expect(secrets.list()).toEqual([]);
+			expect(endedListeners.size).toBe(0);
 		});
 	});
 
