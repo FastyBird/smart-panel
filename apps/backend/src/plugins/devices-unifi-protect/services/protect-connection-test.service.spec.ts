@@ -10,6 +10,7 @@ import {
 } from '../dto/test-connection.dto';
 import { PROTECT_ERROR_MESSAGES, ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
 import { ProtectConfigModel, ProtectTlsConfigModel } from '../models/config.model';
+import { PROTECT_SERVER_NAME_REQUIRED_MESSAGE } from '../validators/protect-config.validators';
 
 import { ProtectConnectionTestService } from './protect-connection-test.service';
 
@@ -328,7 +329,6 @@ describe('ProtectConnectionTestService', () => {
 			minimumVersion: '7.2.105',
 			versionSupported: true,
 			nvrName: 'Home NVR',
-			warnings: [],
 			errorCategory: null,
 			error: null,
 			certificate: { trusted: true },
@@ -407,12 +407,54 @@ describe('ProtectConnectionTestService', () => {
 		});
 	});
 
-	it('warns, with a fixed text, about a certificate outside its validity period', async () => {
-		inspect.mockResolvedValue(certificate({ trusted: true, validTo: '2001-01-01T00:00:00.000Z' }));
+	it('refuses a trusted certificate for an IP host without a server name, keeping the suggestion', async () => {
+		inspect.mockResolvedValue(certificate({ trusted: true, selfSigned: false, subjectAltNames: ['10.0.0.2'] }));
 
-		const result = await service.testConnection(candidate());
+		const result = await service.testConnection(candidate({ host: '10.0.0.2' }));
+
+		expect(result).toMatchObject({
+			success: false,
+			tlsMode: 'verify',
+			errorCategory: 'validation',
+			error: PROTECT_SERVER_NAME_REQUIRED_MESSAGE,
+			directConnectDomain: DOMAIN,
+			suggestedServerName: DOMAIN,
+			certificate: { trusted: true, fingerprintSha256: FINGERPRINT, subjectAltNames: ['10.0.0.2'] },
+			applicationVersion: null,
+		});
+		expect(factory.create).not.toHaveBeenCalled();
+	});
+
+	it('accepts a trusted certificate for an IP host once a server name is given', async () => {
+		inspect.mockResolvedValue(certificate({ trusted: true, selfSigned: false }));
+
+		const result = await service.testConnection(
+			candidate({ host: '10.0.0.2', tls: { mode: 'verify', serverName: DOMAIN } }),
+		);
 
 		expect(result.success).toBe(true);
-		expect(result.warnings).toEqual(['The console certificate is outside its validity period']);
+		expect(factory.create).toHaveBeenCalledTimes(1);
+	});
+
+	it('applies the same rule to the saved configuration', async () => {
+		stored = storedConfig({ host: '10.0.0.2' }, { mode: 'verify', serverName: null });
+		inspect.mockResolvedValue(certificate({ trusted: true, selfSigned: false }));
+
+		const result = await service.testConnection(saved());
+
+		expect(result).toMatchObject({
+			success: false,
+			errorCategory: 'validation',
+			error: PROTECT_SERVER_NAME_REQUIRED_MESSAGE,
+		});
+		expect(factory.create).not.toHaveBeenCalled();
+	});
+
+	it('keeps tls_untrusted for an untrusted certificate on an IP host without a server name', async () => {
+		inspect.mockResolvedValue(certificate({ trusted: false }));
+
+		const result = await service.testConnection(candidate({ host: '10.0.0.2' }));
+
+		expect(result).toMatchObject({ errorCategory: 'tls_untrusted' });
 	});
 });

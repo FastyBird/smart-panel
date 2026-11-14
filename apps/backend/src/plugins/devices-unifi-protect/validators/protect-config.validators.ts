@@ -5,6 +5,9 @@ import { PROTECT_DEFAULT_PORT, PROTECT_TLS_MODES } from '../devices-unifi-protec
 
 export const MAX_PROTECT_HOST_LENGTH = 253;
 
+/** Readiness text for a `verify` config whose IP host has no TLS server name to verify the certificate against. */
+export const PROTECT_SERVER_NAME_REQUIRED_MESSAGE = 'TLS server name is required when the host is an IP address';
+
 const DNS_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 const FINGERPRINT = /^[0-9a-f]{64}$/;
 
@@ -121,7 +124,7 @@ export function findProtectConfigError(config: Record<string, unknown>): Protect
 	}
 
 	if (mode === 'verify' && serverName === null && isIP(host) !== 0) {
-		return { message: 'TLS server name is required when the host is an IP address', field: 'tls.server_name' };
+		return { message: PROTECT_SERVER_NAME_REQUIRED_MESSAGE, field: 'tls.server_name' };
 	}
 
 	if (mode === 'pinned' && normalizeProtectFingerprint(fingerprint) === null) {

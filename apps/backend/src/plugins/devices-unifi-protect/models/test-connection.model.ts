@@ -170,12 +170,6 @@ export class ProtectTestConnectionModel {
 	@IsString()
 	nvrName: string | null;
 
-	@ApiProperty({ description: 'Fixed, credential-free notes about the tested connection', type: [String] })
-	@Expose()
-	@IsArray()
-	@IsString({ each: true })
-	warnings: string[];
-
 	@ApiPropertyOptional({
 		description: 'Normalized connection failure category',
 		enum: ProtectErrorCategory,

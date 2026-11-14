@@ -34,7 +34,6 @@ describe('ProtectTestConnectionController', () => {
 			minimumVersion: '7.2.105',
 			versionSupported: null,
 			nvrName: null,
-			warnings: [],
 			errorCategory: 'tls_untrusted',
 			error: 'The certificate presented by the UniFi Protect console is not trusted',
 		});

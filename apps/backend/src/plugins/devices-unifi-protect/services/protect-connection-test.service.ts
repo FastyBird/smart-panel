@@ -1,3 +1,5 @@
+import { isIP } from 'net';
+
 import { Inject, Injectable, Optional } from '@nestjs/common';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -29,12 +31,11 @@ import {
 import { ProtectConfigModel } from '../models/config.model';
 import { ProtectCertificateModel, ProtectTestConnectionModel } from '../models/test-connection.model';
 import {
+	PROTECT_SERVER_NAME_REQUIRED_MESSAGE,
 	isValidProtectHost,
 	isValidProtectServerName,
 	normalizeProtectFingerprint,
 } from '../validators/protect-config.validators';
-
-const CERTIFICATE_PERIOD_WARNING = 'The console certificate is outside its validity period';
 
 const CANDIDATE_KEYS: readonly string[] = ['mode', 'host', 'port', 'apiKey', 'tls'];
 
@@ -43,6 +44,13 @@ interface ResolvedConnection {
 	port: number;
 	apiKey: string;
 	tls: ProtectTlsSettings;
+}
+
+/** A trusted certificate the saved connector would still refuse: `verify` by IP address needs a server name. */
+class ProtectServerNameRequiredError extends ProtectApiError {
+	constructor() {
+		super(ProtectErrorCategory.VALIDATION, 'tls');
+	}
 }
 
 const validation = (): ProtectApiError => new ProtectApiError(ProtectErrorCategory.VALIDATION, 'tls');
@@ -87,7 +95,7 @@ export class ProtectConnectionTestService {
 
 			this.applyCertificate(result, certificate);
 			this.applySystem(result, await this.readSystem(connection));
-			this.judgeCertificate(connection.tls, certificate);
+			this.judgeCertificate(connection.host, connection.tls, certificate);
 
 			client = this.clientFactory.create({
 				host: connection.host,
@@ -223,10 +231,15 @@ export class ProtectConnectionTestService {
 	}
 
 	/** The certificate decision, made before any request carries the API key. */
-	private judgeCertificate(tls: ProtectTlsSettings, certificate: ProtectCertificateInfo): void {
+	private judgeCertificate(host: string, tls: ProtectTlsSettings, certificate: ProtectCertificateInfo): void {
 		if (tls.mode === 'verify') {
 			if (!certificate.trusted) {
 				throw new ProtectApiError(ProtectErrorCategory.TLS_UNTRUSTED, 'tls');
+			}
+
+			// The connector refuses this config (see findProtectConfigError), so the test must not call it a success.
+			if (tls.serverName === null && isIP(host) !== 0) {
+				throw new ProtectServerNameRequiredError();
 			}
 
 			return;
@@ -251,7 +264,6 @@ export class ProtectConnectionTestService {
 			minimumVersion: PROTECT_MIN_VERSION,
 			versionSupported: null,
 			nvrName: null,
-			warnings: [],
 			errorCategory: null,
 			error: null,
 		});
@@ -268,12 +280,6 @@ export class ProtectConnectionTestService {
 			selfSigned: info.selfSigned,
 			trusted: info.trusted,
 		});
-
-		const now = Date.now();
-
-		if (now < Date.parse(info.validFrom) || now > Date.parse(info.validTo)) {
-			result.warnings.push(CERTIFICATE_PERIOD_WARNING);
-		}
 	}
 
 	private applySystem(result: ProtectTestConnectionModel, system: ProtectConsoleSystem | null): void {
@@ -295,6 +301,9 @@ export class ProtectConnectionTestService {
 
 		result.success = false;
 		result.errorCategory = category;
-		result.error = PROTECT_ERROR_MESSAGES[category];
+		result.error =
+			error instanceof ProtectServerNameRequiredError
+				? PROTECT_SERVER_NAME_REQUIRED_MESSAGE
+				: PROTECT_ERROR_MESSAGES[category];
 	}
 }

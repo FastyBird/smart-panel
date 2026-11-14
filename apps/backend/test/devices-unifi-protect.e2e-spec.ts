@@ -68,7 +68,6 @@ interface TestData {
 	application_version: string | null;
 	version_supported: boolean | null;
 	nvr_name: string | null;
-	warnings: string[];
 	error_category: string | null;
 	error: string | null;
 }
@@ -476,7 +475,7 @@ describe('UniFi Protect plugin (e2e)', () => {
 		// The saved configuration tests fine against the live console as well.
 		const { data } = await testConnection({ mode: 'saved' });
 
-		expect(data).toMatchObject({ mode: 'saved', success: true, tls_mode: 'pinned', nvr_name: nvrName, warnings: [] });
+		expect(data).toMatchObject({ mode: 'saved', success: true, tls_mode: 'pinned', nvr_name: nvrName });
 	});
 
 	it('reports version_unsupported for a console older than 7.2.105', async () => {
