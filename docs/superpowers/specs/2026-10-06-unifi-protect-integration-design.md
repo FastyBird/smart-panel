@@ -214,7 +214,11 @@ Status: **all confirmed** on 2026-10-06 — D1, D3, D5, D6, D7 and D8 first, the
 UP-0 live spike against the maintainer's console (read-only: only `GET`, no stream was created, no setting changed).
 Fixtures live in `apps/backend/src/plugins/devices-unifi-protect/__fixtures__/` (captured files are sanitized, the rest
 is marked `_synthetic`); the repeatable API checks are the `*.unifi-spike.ts` suite (`pnpm --filter ./apps/backend run
-test:unifi-spike`, needs `FB_UNIFI_SPIKE_HOST` and `FB_UNIFI_SPIKE_API_KEY_FILE`).
+test:unifi-spike`, needs `FB_UNIFI_SPIKE_HOST`, `FB_UNIFI_SPIKE_API_KEY_FILE` and an independent trust anchor:
+`FB_UNIFI_SPIKE_SERVER_NAME` (the console's `*.id.ui.direct` name, used as SNI with full certificate verification)
+and/or `FB_UNIFI_SPIKE_FINGERPRINT` (SHA-256 pin). The API key is never sent over an unverified connection and the
+console's own `directConnectDomain` is never trusted; without an anchor the suite skips the authenticated tests.
+`FB_UNIFI_SPIKE_BURST=1` adds the 429 burst test, which runs last).
 
 **Confirmed**
 
