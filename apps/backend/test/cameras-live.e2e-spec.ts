@@ -458,6 +458,28 @@ describe('Cameras live streaming (e2e)', () => {
 			expect(JSON.stringify([other.text, other.headers])).not.toContain('/live');
 		}
 
+		// A body that fails to parse is rejected by Fastify before routing; the answer must still be the fixed 426, not
+		// an error response that echoes the url (the filters put `originalUrl` in their body and logs).
+		const malformed = await request(app.getHttpServer())
+			.post(url)
+			.set('Content-Type', 'application/json')
+			.send('{')
+			.expect(426);
+
+		expect(malformed.body).toEqual({ error: 'upgrade_required' });
+		expect(malformed.headers.upgrade).toBe('websocket');
+		expect(JSON.stringify([malformed.text, malformed.headers])).not.toContain(token);
+		expect(JSON.stringify([malformed.text, malformed.headers])).not.toContain('/live');
+
+		// Any other route keeps its own handling: an unknown route is still a not-found, and a malformed body on another
+		// route is still a client error.
+		await get(`${api}/modules/cameras/no-such-route`, userToken).expect(404);
+		await request(app.getHttpServer())
+			.post(`${api}/modules/auth/auth/login`)
+			.set('Content-Type', 'application/json')
+			.send('{')
+			.expect(400);
+
 		// The token was not consumed by the plain request: the upgrade is admitted and then met by the session limit
 		// (cameras A and B are streaming, `max_sessions` is 2), which only an unconsumed, valid token can reach.
 		const client = connect(url);

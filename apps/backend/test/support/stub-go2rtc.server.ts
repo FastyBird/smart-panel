@@ -37,6 +37,8 @@ export class StubGo2rtcServer {
 	private readonly streams = new Set<string>();
 	private readonly clients = new Set<WebSocket>();
 	private readonly timers = new Set<NodeJS.Timeout>();
+	/** Sockets whose upgrade is delayed (`acceptDelayMs`): destroyed on `stop()` so the server can close. */
+	private readonly pendingUpgrades = new Set<Duplex>();
 	private readonly wss = new WebSocketServer({ noServer: true });
 	private server: Server | null = null;
 
@@ -70,6 +72,12 @@ export class StubGo2rtcServer {
 		}
 
 		this.timers.clear();
+
+		for (const socket of this.pendingUpgrades) {
+			socket.destroy();
+		}
+
+		this.pendingUpgrades.clear();
 
 		for (const client of this.clients) {
 			client.terminate();
@@ -146,8 +154,12 @@ export class StubGo2rtcServer {
 			return;
 		}
 
+		const forget = (): void => {
+			this.pendingUpgrades.delete(socket);
+		};
 		const timer = setTimeout(() => {
 			this.timers.delete(timer);
+			forget();
 
 			if (socket.destroyed) {
 				return;
@@ -157,6 +169,8 @@ export class StubGo2rtcServer {
 		}, this.acceptDelayMs);
 
 		this.timers.add(timer);
+		this.pendingUpgrades.add(socket);
+		socket.once('close', forget);
 	}
 
 	private onClient(client: WebSocket, name: string): void {
