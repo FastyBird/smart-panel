@@ -1,3 +1,4 @@
+import { AutomationsService } from '../../automations/services/automations.service';
 import { ConfigService } from '../../config/services/config.service';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
@@ -26,6 +27,7 @@ import { SpaceType, SpaceZoneCategory } from '../../spaces/spaces.constants';
 import { WeatherService } from '../../weather/services/weather.service';
 import {
 	MCP_MAX_CHANNELS_PER_DEVICE,
+	MCP_MAX_CONTEXT_AUTOMATIONS,
 	MCP_MAX_CONTEXT_DEVICES,
 	MCP_MAX_CONTEXT_SCENES,
 	MCP_MAX_CONTEXT_SPACES,
@@ -68,6 +70,7 @@ describe('McpContextService', () => {
 	let properties: { findOne: jest.Mock; findBoundedForChannels: jest.Mock };
 	let timeseries: { queryTimeseriesStrict: jest.Mock };
 	let scenes: { findSummaryPage: jest.Mock };
+	let automations: { findSummaryPage: jest.Mock };
 	let weather: { getPrimaryWeather: jest.Mock; getWeather: jest.Mock };
 	let energy: { getSummary: jest.Mock; getSpaceSummary: jest.Mock; getDeviceZoneSummary: jest.Mock };
 	let security: { getBoundedStatus: jest.Mock };
@@ -111,6 +114,7 @@ describe('McpContextService', () => {
 		};
 		timeseries = { queryTimeseriesStrict: jest.fn() };
 		scenes = { findSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }) };
+		automations = { findSummaryPage: jest.fn().mockResolvedValue({ automations: [], total: 0 }) };
 		weather = {
 			getPrimaryWeather: jest.fn().mockRejectedValue(new Error('weather unavailable')),
 			getWeather: jest.fn(),
@@ -148,6 +152,7 @@ describe('McpContextService', () => {
 			weather as unknown as WeatherService,
 			energy as unknown as EnergyDataService,
 			security as unknown as SecurityService,
+			automations as unknown as AutomationsService,
 		);
 		homeStateQueryService = new HomeStateQueryService(
 			spaces as unknown as SpacesService,
@@ -194,6 +199,7 @@ describe('McpContextService', () => {
 			channelsPerDevice: MCP_MAX_CHANNELS_PER_DEVICE,
 			propertiesPerChannel: MCP_MAX_PROPERTIES_PER_CHANNEL,
 			scenes: MCP_MAX_CONTEXT_SCENES,
+			automations: MCP_MAX_CONTEXT_AUTOMATIONS,
 			writableProperties: MCP_MAX_WRITABLE_PROPERTIES,
 			writableCandidates: MCP_MAX_WRITABLE_PROPERTY_CANDIDATES,
 			triggerScenes: MCP_MAX_TRIGGER_SCENES,
@@ -212,6 +218,7 @@ describe('McpContextService', () => {
 			channelsPerDevice: 20,
 			propertiesPerChannel: 40,
 			scenes: 50,
+			automations: 50,
 			writableProperties: 100,
 			writableCandidates: 500,
 			triggerScenes: 50,
@@ -513,6 +520,7 @@ describe('McpContextService', () => {
 					primary_space_id: 'room-1',
 				},
 			],
+			automations: [],
 			weather: {
 				location_id: 'location-1',
 				location: 'Prague',
@@ -558,7 +566,12 @@ describe('McpContextService', () => {
 					sourceDeviceId: 'device-1',
 				},
 			},
-			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+				automations_truncated: false,
+			},
 		});
 	});
 
@@ -607,6 +620,7 @@ describe('McpContextService', () => {
 			spaces: [{ id: 'room-1', name: 'Kitchen', type: SpaceType.ROOM, parent_id: null, device_count: 0 }],
 			devices: [],
 			scenes: [],
+			automations: [],
 			weather: {
 				location_id: 'location-1',
 				location: 'Prague',
@@ -640,7 +654,12 @@ describe('McpContextService', () => {
 				state_truncated: false,
 				last_event: null,
 			},
-			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+				automations_truncated: false,
+			},
 		});
 	});
 
@@ -889,6 +908,40 @@ describe('McpContextService', () => {
 
 		expect(scenes.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_SCENES, undefined);
 		expect(result.limits).toEqual(expect.objectContaining({ scenes_truncated: true }));
+	});
+
+	it('requests only the bounded automation summary page and reports truncation', async () => {
+		automations.findSummaryPage.mockResolvedValue({
+			automations: [
+				{
+					id: 'automation-id',
+					name: 'Hallway light',
+					enabled: true,
+					status: 'ok',
+					spaceId: null,
+					lastTriggeredAt: new Date('2026-08-15T11:00:00.000Z'),
+					lastRunStatus: 'completed',
+					graph: { version: 1, nodes: [{ id: 'secret' }], edges: [] },
+				},
+			],
+			total: MCP_MAX_CONTEXT_AUTOMATIONS + 1,
+		});
+
+		const result = await service.getHomeContext();
+
+		expect(automations.findSummaryPage).toHaveBeenCalledWith(MCP_MAX_CONTEXT_AUTOMATIONS, { spaceIds: undefined });
+		expect(result.automations).toEqual([
+			{
+				id: 'automation-id',
+				name: 'Hallway light',
+				enabled: true,
+				status: 'ok',
+				space_id: null,
+				last_triggered_at: '2026-08-15T11:00:00.000Z',
+				last_run_status: 'completed',
+			},
+		]);
+		expect(result.limits).toEqual(expect.objectContaining({ automations_truncated: true }));
 	});
 
 	it('preserves disabled visible devices and scenes in the MCP snapshot', async () => {

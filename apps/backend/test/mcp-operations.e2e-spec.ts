@@ -7,6 +7,9 @@ import { Test } from '@nestjs/testing';
 
 import { OpenApiResponseInterceptor } from '../src/modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../src/modules/api/interceptors/transform-response.interceptor';
+import { AutomationEngineService } from '../src/modules/automations/services/automation-engine.service';
+import { AutomationToolService } from '../src/modules/automations/services/automation-tool.service';
+import { AutomationsService } from '../src/modules/automations/services/automations.service';
 import { PermissionType } from '../src/modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../src/modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
@@ -48,6 +51,7 @@ const CHANNEL_ID = '20000000-0000-4000-8000-000000000001';
 const DEVICE_ID = '30000000-0000-4000-8000-000000000001';
 const SCENE_ID = '40000000-0000-4000-8000-000000000001';
 const SPACE_ID = '50000000-0000-4000-8000-000000000001';
+const AUTOMATION_ID = '60000000-0000-4000-8000-000000000001';
 const ALL_CAPABILITIES = [McpCapability.WRITE, McpCapability.TRIGGER];
 let runtimeCapabilities = [...ALL_CAPABILITIES];
 
@@ -101,6 +105,8 @@ describe('MCP simulator operations', () => {
 	let behaviorManager: { handlePropertyChange: jest.Mock };
 	let sceneExecutor: { triggerScene: jest.Mock };
 	let spaceIntentService: { executeLightingIntent: jest.Mock };
+	let automationsService: { findOne: jest.Mock; findSummaryPage: jest.Mock; setEnabled: jest.Mock };
+	let automationEngine: { triggerOrThrow: jest.Mock };
 	let simulatorProperty: ChannelPropertyEntity;
 
 	beforeAll(async () => {
@@ -208,6 +214,26 @@ describe('MCP simulator operations', () => {
 			shortIds,
 		);
 
+		automationsService = {
+			findOne: jest.fn().mockResolvedValue({ id: AUTOMATION_ID, name: 'Simulator motion light', enabled: false }),
+			findSummaryPage: jest.fn().mockResolvedValue({ automations: [], total: 0 }),
+			setEnabled: jest.fn().mockResolvedValue({
+				id: AUTOMATION_ID,
+				name: 'Simulator motion light',
+				enabled: true,
+				status: 'ok',
+			}),
+		};
+		automationEngine = {
+			triggerOrThrow: jest.fn().mockResolvedValue({ outcome: 'started', runId: 'run-1' }),
+		};
+		const automationProvider = new AutomationToolService(
+			automationsService as unknown as AutomationsService,
+			automationEngine as unknown as AutomationEngineService,
+			spacesService as unknown as SpacesService,
+			shortIds,
+		);
+
 		await lightingProvider.onModuleInit();
 
 		const toolRegistry = new ToolProviderRegistryService();
@@ -215,6 +241,7 @@ describe('MCP simulator operations', () => {
 		toolRegistry.register(deviceProvider);
 		toolRegistry.register(sceneProvider);
 		toolRegistry.register(lightingProvider);
+		toolRegistry.register(automationProvider);
 
 		const contextService = {
 			getInstallation: jest.fn().mockImplementation((capabilities: McpCapability[], endpointUrl?: string) => ({
@@ -317,9 +344,11 @@ describe('MCP simulator operations', () => {
 			expect(tools.tools.map(({ name }) => name)).toEqual([
 				'list_writable_properties',
 				'set_device_property',
+				'set_automation_enabled',
 				'list_trigger_targets',
 				'run_scene',
 				'set_space_lighting',
+				'run_automation',
 			]);
 			expect(writeResult.isError).not.toBe(true);
 			expect(sceneResult.isError).not.toBe(true);
@@ -363,6 +392,60 @@ describe('MCP simulator operations', () => {
 				extra: { source: 'mcp', audience: ToolAudience.MCP, actorId: CLIENT_ID },
 			});
 		} finally {
+			await client.close();
+		}
+	});
+
+	it('switches and runs an automation through the automation tool provider without exposing a graph tool', async () => {
+		const client = new Client(
+			{ name: 'simulator-automation-client', version: '1.0.0' },
+			{ versionNegotiation: { mode: 'auto' } },
+		);
+		const transport = new StreamableHTTPClientTransport(endpoint, {
+			requestInit: { headers: { Authorization: `Bearer ${CLIENT_ID}` } },
+		});
+
+		try {
+			await client.connect(transport);
+
+			const tools = (await client.listTools()).tools.map(({ name }) => name);
+			const enableResult = await client.callTool({
+				name: 'set_automation_enabled',
+				arguments: { automation_id: AUTOMATION_ID, enabled: true },
+			});
+			const runResult = await client.callTool({ name: 'run_automation', arguments: { automation_id: AUTOMATION_ID } });
+
+			expect(tools.filter((name) => name.includes('automation'))).toEqual(['set_automation_enabled', 'run_automation']);
+			expect(enableResult.isError).not.toBe(true);
+			expect(runResult.isError).not.toBe(true);
+			expect(automationsService.setEnabled).toHaveBeenCalledWith(AUTOMATION_ID, true);
+			expect(automationEngine.triggerOrThrow).toHaveBeenCalledWith(AUTOMATION_ID);
+			expect((enableResult.structuredContent as { data: unknown }).data).toEqual({
+				status: 'completed',
+				automation_id: AUTOMATION_ID,
+				enabled: true,
+				changed: true,
+				automation_status: 'ok',
+			});
+			expect((runResult.structuredContent as { data: unknown }).data).toEqual({
+				status: 'completed',
+				automation_id: AUTOMATION_ID,
+				started: true,
+				outcome: 'started',
+				run_id: 'run-1',
+				reason: null,
+			});
+
+			runtimeCapabilities = [McpCapability.WRITE];
+			automationEngine.triggerOrThrow.mockClear();
+
+			const deniedRun = await client.callTool({ name: 'run_automation', arguments: { automation_id: AUTOMATION_ID } });
+
+			expect(deniedRun.isError).toBe(true);
+			expect((deniedRun.structuredContent as { error?: { code?: string } }).error?.code).toBe('permission_denied');
+			expect(automationEngine.triggerOrThrow).not.toHaveBeenCalled();
+		} finally {
+			runtimeCapabilities = [...ALL_CAPABILITIES];
 			await client.close();
 		}
 	});

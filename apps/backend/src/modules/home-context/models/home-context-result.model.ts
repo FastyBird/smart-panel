@@ -33,6 +33,16 @@ export interface HomeSnapshotScene {
 	primary_space_id: string | null;
 }
 
+export interface HomeSnapshotAutomation {
+	id: string;
+	name: string;
+	enabled: boolean;
+	status: string;
+	space_id: string | null;
+	last_triggered_at: string | null;
+	last_run_status: string | null;
+}
+
 export interface HomeSnapshotWeather {
 	location_id: string | null;
 	location: unknown;
@@ -94,6 +104,7 @@ export interface HomeSnapshotLimits {
 	spaces_truncated: boolean;
 	devices_truncated: boolean;
 	scenes_truncated: boolean;
+	automations_truncated: boolean;
 }
 
 export interface HomeSnapshotResult {
@@ -101,6 +112,7 @@ export interface HomeSnapshotResult {
 	spaces: HomeSnapshotSpace[];
 	devices: HomeSnapshotDevice[];
 	scenes: HomeSnapshotScene[];
+	automations: HomeSnapshotAutomation[];
 	weather: HomeSnapshotWeather | null;
 	energy: HomeSnapshotEnergy | null;
 	security: HomeSnapshotSecurity | null;

@@ -16,6 +16,8 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
+import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
+import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import {
@@ -40,6 +42,7 @@ import { AutomationEngineService } from './services/automation-engine.service';
 import { AutomationRunHistoryService } from './services/automation-run-history.service';
 import { AutomationRunService } from './services/automation-run.service';
 import { AutomationSafetyService } from './services/automation-safety.service';
+import { AutomationToolService } from './services/automation-tool.service';
 import { AutomationsSeederService } from './services/automations-seeder.service';
 import { AutomationsService } from './services/automations.service';
 import { AutomationEventSourceService } from './services/event-source.service';
@@ -62,6 +65,7 @@ import { AUTOMATION_TEMPLATES_LOCATIONS, AutomationTemplatesService } from './te
 		SpacesModule,
 		ScenesModule,
 		SecurityModule,
+		ToolsModule,
 		WebsocketModule,
 		SeedModule,
 	],
@@ -82,6 +86,8 @@ import { AUTOMATION_TEMPLATES_LOCATIONS, AutomationTemplatesService } from './te
 		AutomationRunService,
 		AutomationSafetyService,
 		AutomationEngineService,
+		// Buddy / MCP tools
+		AutomationToolService,
 		// Built-in cards
 		AutomationBuiltInNodeTypesService,
 		// Templates
@@ -127,6 +133,8 @@ export class AutomationsModule implements OnModuleInit {
 		private readonly engine: AutomationEngineService,
 		private readonly safety: AutomationSafetyService,
 		private readonly templates: AutomationTemplatesService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly automationTool: AutomationToolService,
 	) {}
 
 	async onModuleInit(): Promise<void> {
@@ -143,6 +151,9 @@ export class AutomationsModule implements OnModuleInit {
 
 		// Register the engine with the central service manager
 		this.managedServiceManager.register(this.engine);
+
+		// Let Buddy and MCP clients list, run and switch automations on or off; no tool edits a graph
+		this.toolProviderRegistry.register(this.automationTool);
 
 		// Register seeder (priority 160 - right after scenes, which automations may refer to)
 		this.seedRegistry.register(
@@ -205,6 +216,7 @@ The module stores, validates and runs automations. It provides the first set of 
 - **Overload guard** — an automation that starts more than 30 times a minute or 200 times an hour is suspended and a notification is raised; saving or enabling it again resumes it
 - **Self-checking status** — an automation is marked \`invalid\` and stopped when a device, property, scene or space it refers to is removed, or when one of its block types is no longer available
 - **Manual run** — an automation can be started by hand through the API or the \`AutomationsModule.TriggerAutomation\` websocket command
+- **Buddy and MCP tools** — \`list_automations\`, \`run_automation\` and \`set_automation_enabled\` let Buddy and MCP clients (with the \`read\`, \`trigger\` and \`write\` capability) list automations, run one by hand and switch one on or off. No tool creates, edits or deletes an automation or exposes its graph
 - **Run history** — every run leaves a record with its trace: what started it, the blocks it reached, the output each took, the value each condition saw and what each action answered. The last 50 runs of an automation are kept, for at most 30 days
 - **Interrupted runs stay visible** — a run waiting on a Delay is stored as \`running\`; when the backend restarts or loses power before it ends, it is shown as \`interrupted\`, which tells why a delayed action never happened
 - **Live runs** — \`AutomationsModule.Run.Started\` and \`AutomationsModule.Run.Completed\` are announced to owners and admins; the steps of a run (\`AutomationsModule.Run.Step\`) are sent only to the clients that watch that automation with the \`AutomationsModule.WatchAutomation\` websocket command

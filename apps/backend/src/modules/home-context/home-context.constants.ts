@@ -6,6 +6,7 @@ export interface HomeContextLimitProfile {
 	spaces: number;
 	devices: number;
 	scenes: number;
+	automations: number;
 	forecastDays: number;
 	securityAlerts: number;
 	securityDevices: number;
@@ -28,6 +29,7 @@ export const HOME_CONTEXT_LIMIT_PROFILES: Readonly<Record<HomeContextProfile, Re
 			spaces: 50,
 			devices: 100,
 			scenes: 50,
+			automations: 50,
 			forecastDays: 5,
 			securityAlerts: 20,
 			securityDevices: 100,

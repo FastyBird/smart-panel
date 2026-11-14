@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { AutomationsService } from '../../automations/services/automations.service';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DevicesService } from '../../devices/services/devices.service';
@@ -33,6 +34,7 @@ describe('HomeContextQueryService', () => {
 	};
 	let connectionStates: { readLatestManyStrict: jest.Mock };
 	let scenes: { findSummaryPage: jest.Mock };
+	let automations: { findSummaryPage: jest.Mock };
 	let weather: { getPrimaryWeather: jest.Mock };
 	let energy: { getSummary: jest.Mock; getSpaceSummary: jest.Mock; getDeviceZoneSummary: jest.Mock };
 	let security: { getBoundedStatus: jest.Mock };
@@ -62,6 +64,7 @@ describe('HomeContextQueryService', () => {
 				),
 		};
 		scenes = { findSummaryPage: jest.fn().mockResolvedValue({ scenes: [], total: 0 }) };
+		automations = { findSummaryPage: jest.fn().mockResolvedValue({ automations: [], total: 0 }) };
 		weather = { getPrimaryWeather: jest.fn().mockRejectedValue(new Error('weather unavailable')) };
 		energy = {
 			getSummary: jest.fn().mockRejectedValue(new Error('energy unavailable')),
@@ -80,6 +83,7 @@ describe('HomeContextQueryService', () => {
 				{ provide: WeatherService, useValue: weather },
 				{ provide: EnergyDataService, useValue: energy },
 				{ provide: SecurityService, useValue: security },
+				{ provide: AutomationsService, useValue: automations },
 			],
 		}).compile();
 
@@ -98,6 +102,7 @@ describe('HomeContextQueryService', () => {
 			spaces: 50,
 			devices: 100,
 			scenes: 50,
+			automations: 50,
 			forecastDays: 5,
 			securityAlerts: 20,
 			securityDevices: 100,
@@ -159,6 +164,23 @@ describe('HomeContextQueryService', () => {
 			],
 			total: 2,
 		});
+		automations.findSummaryPage.mockResolvedValue({
+			automations: [
+				{
+					id: 'automation-1',
+					name: 'Hallway light',
+					description: 'Not part of the snapshot',
+					enabled: true,
+					status: 'ok',
+					spaceId: 'room-1',
+					mode: 'restart',
+					revision: 3,
+					lastTriggeredAt: new Date('2026-08-15T11:00:00.000Z'),
+					lastRunStatus: 'completed',
+				},
+			],
+			total: 1,
+		});
 		weather.getPrimaryWeather.mockResolvedValue({
 			locationId: 'location-1',
 			location: 'Prague',
@@ -207,6 +229,7 @@ describe('HomeContextQueryService', () => {
 		expect(spaces.findSummaryPage).toHaveBeenCalledWith(51, 0);
 		expect(devices.findVisibleSummaryPage).toHaveBeenCalledWith(100);
 		expect(scenes.findSummaryPage).toHaveBeenCalledWith(50, undefined);
+		expect(automations.findSummaryPage).toHaveBeenCalledWith(50, { spaceIds: undefined });
 		expect(security.getBoundedStatus).toHaveBeenCalledWith(100, 10, 20, undefined);
 		expect(result).toEqual({
 			scope: { type: 'home' },
@@ -250,6 +273,17 @@ describe('HomeContextQueryService', () => {
 					enabled: false,
 					triggerable: false,
 					primary_space_id: null,
+				},
+			],
+			automations: [
+				{
+					id: 'automation-1',
+					name: 'Hallway light',
+					enabled: true,
+					status: 'ok',
+					space_id: 'room-1',
+					last_triggered_at: '2026-08-15T11:00:00.000Z',
+					last_run_status: 'completed',
 				},
 			],
 			weather: {
@@ -297,7 +331,12 @@ describe('HomeContextQueryService', () => {
 					sourceDeviceId: 'device-1',
 				},
 			},
-			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+				automations_truncated: false,
+			},
 		});
 		expect(homeSnapshotResultSchema.safeParse(result).success).toBe(true);
 	});
@@ -359,6 +398,7 @@ describe('HomeContextQueryService', () => {
 
 		expect(spaces.findVisibleDeviceSummariesBySpace).toHaveBeenCalledWith('room-1', 100);
 		expect(scenes.findSummaryPage).toHaveBeenCalledWith(50, ['room-1']);
+		expect(automations.findSummaryPage).toHaveBeenCalledWith(50, { spaceIds: ['room-1'] });
 		expect(security.getBoundedStatus).toHaveBeenCalledWith(100, 10, 20, { roomIds: ['room-1'] });
 		expect(result).toEqual({
 			scope: { type: 'space', id: 'room-1', name: 'Kitchen' },
@@ -375,6 +415,7 @@ describe('HomeContextQueryService', () => {
 				},
 			],
 			scenes: [],
+			automations: [],
 			weather: {
 				location_id: 'location-1',
 				location: 'Prague',
@@ -408,7 +449,12 @@ describe('HomeContextQueryService', () => {
 				state_truncated: false,
 				last_event: null,
 			},
-			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+				automations_truncated: false,
+			},
 		});
 		expect(homeSnapshotResultSchema.safeParse(result).success).toBe(true);
 	});
@@ -419,11 +465,84 @@ describe('HomeContextQueryService', () => {
 			spaces: [],
 			devices: [],
 			scenes: [],
+			automations: [],
 			weather: null,
 			energy: null,
 			security: null,
-			limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+			limits: {
+				spaces_truncated: false,
+				devices_truncated: false,
+				scenes_truncated: false,
+				automations_truncated: false,
+			},
 		});
+	});
+
+	it('bounds automations to the profile limit and flags the truncation', async () => {
+		const limit = HOME_CONTEXT_LIMIT_PROFILES[HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY].automations;
+
+		automations.findSummaryPage.mockResolvedValue({
+			automations: Array.from({ length: limit }, (_, index) => ({
+				id: `automation-${index}`,
+				name: `Automation ${index}`,
+				enabled: index % 2 === 0,
+				status: 'ok',
+				spaceId: null,
+				lastTriggeredAt: null,
+				lastRunStatus: null,
+			})),
+			total: limit + 5,
+		});
+
+		const result = await service.getHomeSnapshot({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY });
+
+		expect(automations.findSummaryPage).toHaveBeenCalledWith(limit, { spaceIds: undefined });
+		expect(result.automations).toHaveLength(limit);
+		expect(result.automations[1]).toEqual({
+			id: 'automation-1',
+			name: 'Automation 1',
+			enabled: false,
+			status: 'ok',
+			space_id: null,
+			last_triggered_at: null,
+			last_run_status: null,
+		});
+		expect(result.limits.automations_truncated).toBe(true);
+		expect(homeSnapshotResultSchema.safeParse(result).success).toBe(true);
+		expect(
+			homeSnapshotResultSchema.safeParse({
+				...result,
+				automations: [...result.automations, result.automations[0]],
+			}).success,
+		).toBe(false);
+	});
+
+	it('never puts an automation graph into the snapshot', async () => {
+		automations.findSummaryPage.mockResolvedValue({
+			automations: [
+				{
+					id: 'automation-1',
+					name: 'Hallway light',
+					enabled: true,
+					status: 'ok',
+					spaceId: null,
+					lastTriggeredAt: null,
+					lastRunStatus: null,
+					graph: { version: 1, nodes: [{ id: 'node-1' }], edges: [] },
+				},
+			],
+			total: 1,
+		});
+
+		const result = await service.getHomeSnapshot({ profile: HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY });
+
+		expect(result.automations[0]).not.toHaveProperty('graph');
+		expect(
+			homeSnapshotResultSchema.safeParse({
+				...result,
+				automations: [{ ...result.automations[0], graph: { version: 1, nodes: [], edges: [] } }],
+			}).success,
+		).toBe(false);
 	});
 
 	it('throws the typed shared error when a requested space does not exist', async () => {
@@ -539,10 +658,16 @@ describe('HomeContextQueryService', () => {
 				spaces: [],
 				devices: [],
 				scenes: [],
+				automations: [],
 				weather: null,
 				energy: null,
 				security: null,
-				limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+				limits: {
+					spaces_truncated: false,
+					devices_truncated: false,
+					scenes_truncated: false,
+					automations_truncated: false,
+				},
 			}).success,
 		).toBe(true);
 		expect(
@@ -551,6 +676,7 @@ describe('HomeContextQueryService', () => {
 				spaces: [],
 				devices: [],
 				scenes: [],
+				automations: [],
 				weather: null,
 				energy: {
 					scope: { type: 'home' },
@@ -558,7 +684,12 @@ describe('HomeContextQueryService', () => {
 					to: '2026-08-15T12:00:00.000Z',
 				},
 				security: null,
-				limits: { spaces_truncated: false, devices_truncated: false, scenes_truncated: false },
+				limits: {
+					spaces_truncated: false,
+					devices_truncated: false,
+					scenes_truncated: false,
+					automations_truncated: false,
+				},
 			}).success,
 		).toBe(false);
 		expect(homeSnapshotResultSchema.safeParse({ scope: { type: 'home' } }).success).toBe(false);

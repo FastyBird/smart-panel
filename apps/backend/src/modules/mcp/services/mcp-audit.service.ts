@@ -243,7 +243,9 @@ export class McpAuditService {
 					? 'scene_id'
 					: tool === 'set_space_lighting'
 						? 'space_id'
-						: undefined;
+						: tool === 'run_automation' || tool === 'set_automation_enabled'
+							? 'automation_id'
+							: undefined;
 
 		if (!key || typeof args[key] !== 'string') {
 			return {};

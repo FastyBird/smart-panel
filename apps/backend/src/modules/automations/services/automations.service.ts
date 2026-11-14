@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { v4 as uuid } from 'uuid';
 
@@ -40,6 +40,35 @@ import { AutomationNodeTypeRegistryService } from './node-type-registry.service'
 /** How often switching an automation on or off is tried when an edit keeps winning the race */
 const SET_ENABLED_ATTEMPTS = 3;
 
+/** The columns of an automation without its graph */
+const SUMMARY_COLUMNS = {
+	id: true,
+	createdAt: true,
+	updatedAt: true,
+	name: true,
+	description: true,
+	icon: true,
+	enabled: true,
+	spaceId: true,
+	mode: true,
+	revision: true,
+	status: true,
+	lastTriggeredAt: true,
+	lastRunStatus: true,
+} as const;
+
+export interface AutomationSummaryPageFilter {
+	/** Only automations assigned to one of these spaces; an empty list matches nothing */
+	spaceIds?: string[];
+	/** Only automations that are (or are not) enabled */
+	enabled?: boolean;
+}
+
+export interface AutomationSummaryPage {
+	automations: AutomationEntity[];
+	total: number;
+}
+
 @Injectable()
 export class AutomationsService {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'AutomationsService');
@@ -62,21 +91,7 @@ export class AutomationsService {
 		this.logger.debug('[LOOKUP ALL] Fetching all automations');
 
 		const automations = await this.repository.find({
-			select: {
-				id: true,
-				createdAt: true,
-				updatedAt: true,
-				name: true,
-				description: true,
-				icon: true,
-				enabled: true,
-				spaceId: true,
-				mode: true,
-				revision: true,
-				status: true,
-				lastTriggeredAt: true,
-				lastRunStatus: true,
-			},
+			select: SUMMARY_COLUMNS,
 			order: {
 				name: 'ASC',
 				id: 'ASC',
@@ -86,6 +101,38 @@ export class AutomationsService {
 		this.logger.debug(`[LOOKUP ALL] Found ${automations.length} automations`);
 
 		return toInstance(AutomationSummaryModel, automations);
+	}
+
+	/**
+	 * Reads a bounded page of automations without their graphs, ordered by name, with the number of automations
+	 * the filter matches in all. The graph column is not read from the database at all.
+	 */
+	async findSummaryPage(limit: number, filter: AutomationSummaryPageFilter = {}): Promise<AutomationSummaryPage> {
+		if (limit <= 0 || filter.spaceIds?.length === 0) {
+			return { automations: [], total: 0 };
+		}
+
+		const where: FindOptionsWhere<AutomationEntity> = {};
+
+		if (filter.spaceIds !== undefined) {
+			where.spaceId = In(filter.spaceIds);
+		}
+
+		if (filter.enabled !== undefined) {
+			where.enabled = filter.enabled;
+		}
+
+		const [automations, total] = await this.repository.findAndCount({
+			select: SUMMARY_COLUMNS,
+			where,
+			order: {
+				name: 'ASC',
+				id: 'ASC',
+			},
+			take: limit,
+		});
+
+		return { automations, total };
 	}
 
 	async findOne(id: string): Promise<AutomationEntity | null> {

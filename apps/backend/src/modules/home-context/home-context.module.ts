@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AutomationsModule } from '../automations/automations.module';
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
 import { ScenesModule } from '../scenes/scenes.module';
@@ -14,7 +15,7 @@ import { HomeStateQueryService } from './services/home-state-query.service';
 import { HomeTargetQueryService } from './services/home-target-query.service';
 
 @Module({
-	imports: [DevicesModule, EnergyModule, ScenesModule, SecurityModule, SpacesModule, WeatherModule],
+	imports: [AutomationsModule, DevicesModule, EnergyModule, ScenesModule, SecurityModule, SpacesModule, WeatherModule],
 	providers: [
 		HomeContextQueryService,
 		HomeCurrentStateQueryService,
