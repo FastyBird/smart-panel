@@ -257,6 +257,19 @@ describe('ProtectRatePacer', () => {
 		expect(starts[0]).toBeGreaterThanOrEqual(3000);
 	});
 
+	it('does not re-queue a waiter whose newer pause already ended when it woke', async () => {
+		const starts: number[] = [];
+
+		await pacer.acquire(); // takes the slot at 0; the next waiter sleeps until 125
+
+		const waiter = pacer.acquire().then(() => starts.push(clock.now()));
+
+		pacer.backOff(100); // announced after the reservation, but over by the time the waiter wakes
+		await clock.run([waiter]);
+
+		expect(starts).toEqual([125]);
+	});
+
 	it('clamps the interval of an advertised policy to 60 seconds', async () => {
 		pacer.observe({ 'ratelimit-policy': '"1-in-1h"; q=1; w=3600' });
 

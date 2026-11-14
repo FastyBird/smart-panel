@@ -178,9 +178,10 @@ export class ProtectRatePacer {
 				await this.sleep(slot - now, signal);
 			}
 
-			// Only a longer pause announced while this waiter slept pushes it to a new slot behind the earlier
-			// waiters; a timer that merely woke early must not reorder the queue.
-			if (this.pausedUntil <= pausedAtReservation) {
+			// Only a longer pause announced while this waiter slept, and still running, pushes it to a new slot behind
+			// the earlier waiters; a timer that merely woke early must not reorder the queue, and a newer pause that
+			// has already ended must not make the waiter queue again.
+			if (this.pausedUntil <= pausedAtReservation || this.now() >= this.pausedUntil) {
 				return;
 			}
 		}

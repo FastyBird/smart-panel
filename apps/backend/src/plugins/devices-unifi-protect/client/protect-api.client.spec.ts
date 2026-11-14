@@ -465,6 +465,62 @@ describe('ProtectApiClient', () => {
 			expect(sleep).not.toHaveBeenCalled();
 		});
 
+		it('throws a timeout instead of sending when the pacer held the call past its deadline', async () => {
+			const slowPacer = new ProtectRatePacer({ sleep: () => Promise.resolve() });
+
+			jest.spyOn(slowPacer, 'acquire').mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 80)));
+			transport.queue(200, '[]');
+
+			await expect(build({ pacer: slowPacer, deadlineMs: 30 }).listCameras()).rejects.toMatchObject({
+				category: ProtectErrorCategory.TIMEOUT,
+			});
+			expect(transport.requests).toHaveLength(0);
+		});
+
+		it('waits once, not twice, for a 429 with the real pacer', async () => {
+			let now = 0;
+			const timers: { at: number; resolve: () => void }[] = [];
+			const virtualSleep = (ms: number): Promise<void> =>
+				new Promise((resolve) => timers.push({ at: now + ms, resolve }));
+			const realPacer = new ProtectRatePacer({ now: () => now, sleep: virtualSleep });
+			const sleeps: number[] = [];
+			const paced = build({
+				pacer: realPacer,
+				sleep: (ms) => {
+					sleeps.push(ms);
+
+					return virtualSleep(ms);
+				},
+			});
+
+			transport.queue(429, '{}', { 'retry-after': '1' });
+			transport.queue(200, '[]');
+
+			let done = false;
+			const call = paced.listCameras().then((result) => {
+				done = true;
+
+				return result;
+			});
+
+			while (!done) {
+				await new Promise((resolve) => setImmediate(resolve));
+				timers.sort((a, b) => a.at - b.at);
+
+				const next = timers.shift();
+
+				if (next) {
+					now = Math.max(now, next.at);
+					next.resolve();
+				}
+			}
+
+			expect(await call).toEqual([]);
+			expect(sleeps).toEqual([1000]);
+			expect(now).toBe(1000);
+			expect(transport.requests).toHaveLength(2);
+		});
+
 		it('retries a reset connection once and then gives up', async () => {
 			transport.queueError(reset());
 			transport.queue(200, '[]');

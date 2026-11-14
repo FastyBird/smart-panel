@@ -423,6 +423,11 @@ export class ProtectApiClient {
 			for (let attempt = 1; ; attempt++) {
 				await guarded(this.pacer.acquire(options.signal));
 
+				// The pacer may have held this call past its overall deadline; do not send what nobody awaits anymore.
+				if (Date.now() >= deadlineAt) {
+					throw new ProtectApiError(ProtectErrorCategory.TIMEOUT, endpoint);
+				}
+
 				const attemptStartedAt = Date.now();
 				let response: ProtectTransportResponse;
 
