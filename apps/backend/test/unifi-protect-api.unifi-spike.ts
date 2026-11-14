@@ -303,9 +303,10 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 				const req = request(
 					{
 						...requestOptions,
-						agent: false,
 						signal: controller.signal,
-						...(socket ? { createConnection: () => socket } : { rejectUnauthorized: false }),
+						// `agent: false` would make Node build its own agent and ignore `createConnection`, opening an
+						// unverified-by-name connection; without an agent the pre-verified socket is used as is.
+						...(socket ? { createConnection: () => socket } : { agent: false, rejectUnauthorized: false }),
 					},
 					(response) => {
 						const chunks: Buffer[] = [];
