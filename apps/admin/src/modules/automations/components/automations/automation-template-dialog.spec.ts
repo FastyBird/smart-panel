@@ -6,7 +6,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager } from '../../../../common';
-import { AutomationMode, AutomationTemplateParameterType } from '../../automations.constants';
+import { AutomationMode, AutomationTemplateParameterType, AutomationTemplateSource } from '../../automations.constants';
 import { takeAutomationDraft } from '../../automations.drafts';
 import type { IAutomationTemplate } from '../../store/templates.store.types';
 
@@ -58,6 +58,7 @@ const leakAlarm: IAutomationTemplate = {
 	description: 'Sends a notification when water is detected.',
 	icon: 'mdi:water-alert',
 	mode: AutomationMode.restart,
+	source: AutomationTemplateSource.builtin,
 	parameters: [
 		parameter({
 			id: 'leak',

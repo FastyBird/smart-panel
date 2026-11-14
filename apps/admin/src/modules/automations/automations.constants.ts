@@ -4,7 +4,14 @@ import {
 	AutomationsModuleDataRunStepState as AutomationRunStepState,
 	AutomationsModuleDataTriggerResultOutcome as AutomationTriggerOutcome,
 } from '../../openapi';
-import { AutomationMode, AutomationNodeKind, AutomationRunStatus, AutomationStatus, AutomationTemplateParameterType } from '../../openapi.constants';
+import {
+	AutomationMode,
+	AutomationNodeKind,
+	AutomationRunStatus,
+	AutomationStatus,
+	AutomationTemplateParameterType,
+	AutomationTemplateSource,
+} from '../../openapi.constants';
 
 export {
 	AutomationMode,
@@ -14,6 +21,7 @@ export {
 	AutomationRunStepState,
 	AutomationStatus,
 	AutomationTemplateParameterType,
+	AutomationTemplateSource,
 	AutomationTriggerOutcome,
 };
 

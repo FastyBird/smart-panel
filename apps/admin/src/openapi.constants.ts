@@ -712,6 +712,7 @@ export { AutomationsModuleDataAutomationStatus as AutomationStatus } from './ope
 export { AutomationsModuleDataAutomationLast_run_status as AutomationRunStatus } from './openapi';
 export { AutomationsModuleDataNodeTypeKind as AutomationNodeKind } from './openapi';
 export { AutomationsModuleDataTemplateParameterType as AutomationTemplateParameterType } from './openapi';
+export { AutomationsModuleDataTemplateSource as AutomationTemplateSource } from './openapi';
 
 // Weather Module Types
 // ====================

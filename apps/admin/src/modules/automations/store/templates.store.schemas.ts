@@ -5,7 +5,7 @@ import type {
 	AutomationsModuleTemplateParameterSchema,
 	AutomationsModuleTemplateSchema,
 } from '../../../openapi.constants';
-import { AutomationMode, AutomationTemplateParameterType } from '../automations.constants';
+import { AutomationMode, AutomationTemplateParameterType, AutomationTemplateSource } from '../automations.constants';
 
 import { AutomationGraphSchema } from './automations.store.schemas';
 
@@ -43,6 +43,9 @@ export const AutomationTemplateSchema = z.object({
 	description: z.string().default(''),
 	icon: z.string().nullable().default(null),
 	mode: z.nativeEnum(AutomationMode),
+	// Only a built-in template is the one the admin knows and translates; a user's own, even one replacing a
+	// built-in id, is shown as the backend gives it. Taken for a user's own when it is not said.
+	source: z.nativeEnum(AutomationTemplateSource).default(AutomationTemplateSource.user),
 	parameters: z.array(AutomationTemplateParameterSchema),
 });
 
@@ -99,6 +102,7 @@ export const AutomationTemplateResSchema: ZodType<ApiTemplate> = z.object({
 	description: z.string(),
 	icon: z.string().nullable(),
 	mode: z.nativeEnum(AutomationMode),
+	source: z.nativeEnum(AutomationTemplateSource),
 	parameters: z.array(AutomationTemplateParameterResSchema),
 });
 

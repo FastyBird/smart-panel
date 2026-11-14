@@ -130,7 +130,8 @@ const automationId = ref<string>(templateDraft !== null && typeof draftId === 's
 let created = false;
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
-const formChanged = ref<boolean>(props.remoteFormChanged);
+// The flow generated from a template is lost with the form, so leaving it asks first from the start
+const formChanged = ref<boolean>(props.remoteFormChanged || templateDraft !== null);
 
 const saving = computed<boolean>((): boolean => remoteFormResult.value === FormResult.WORKING);
 
@@ -200,10 +201,12 @@ watch(
 	}
 );
 
+// Immediate, so the drawer around the view knows of a form that starts changed
 watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
-	}
+	},
+	{ immediate: true }
 );
 </script>

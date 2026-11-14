@@ -121,6 +121,26 @@ describe('ViewAutomationAdd', (): void => {
 			expect(peekAutomationDraft(draftId)?.graph).toEqual(graph);
 		});
 
+		it('counts as changed from the start, so leaving it asks first', async (): Promise<void> => {
+			const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel');
+
+			const wrapper = mount(ViewAutomationAdd);
+
+			await flushPromises();
+
+			expect(wrapper.emitted('update:remote-form-changed')?.[0]).toEqual([true]);
+
+			appBarBack(wrapper).vm.$emit('click');
+
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(mocks.routerPush).not.toHaveBeenCalled();
+
+			confirm.mockRestore();
+			wrapper.unmount();
+		});
+
 		it('forgets the flow when the form is left without saving', (): void => {
 			const wrapper = mount(ViewAutomationAdd);
 

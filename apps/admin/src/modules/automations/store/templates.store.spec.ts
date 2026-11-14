@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AutomationMode, AutomationTemplateParameterType } from '../automations.constants';
+import { AutomationMode, AutomationTemplateParameterType, AutomationTemplateSource } from '../automations.constants';
 import {
 	AutomationsApiException,
 	AutomationsGraphInvalidException,
@@ -41,6 +41,7 @@ const templateRes = (): IAutomationTemplateRes => ({
 	description: 'Turns a light on when motion is detected.',
 	icon: 'mdi:motion-sensor',
 	mode: AutomationMode.parallel,
+	source: AutomationTemplateSource.builtin,
 	parameters: [
 		{
 			id: 'motion',
@@ -92,6 +93,7 @@ describe('useAutomationTemplatesStore', () => {
 			expect(mockBackendClient.GET).toHaveBeenCalledWith('/modules/automations/templates');
 			expect(store.firstLoadFinished()).toBe(true);
 			expect(templates).toHaveLength(1);
+			expect(templates[0].source).toBe('builtin');
 			expect(store.findById('motion-light')?.parameters).toEqual([
 				expect.objectContaining({
 					id: 'motion',

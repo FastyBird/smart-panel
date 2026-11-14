@@ -3,7 +3,7 @@ import { nextTick, ref } from 'vue';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { AutomationMode, AutomationTemplateParameterType } from '../automations.constants';
+import { AutomationMode, AutomationTemplateParameterType, AutomationTemplateSource } from '../automations.constants';
 import { AutomationsApiException, AutomationsGraphInvalidException, AutomationsTemplateParametersException } from '../automations.exceptions';
 import type { IAutomationTemplate } from '../store/templates.store.types';
 
@@ -65,6 +65,7 @@ const motionLight = (): IAutomationTemplate => ({
 	description: 'Turns a light on.',
 	icon: null,
 	mode: AutomationMode.parallel,
+	source: AutomationTemplateSource.builtin,
 	parameters: [
 		parameter({ id: 'motion', type: AutomationTemplateParameterType.property, label: 'Motion sensor', access: 'readable' }),
 		parameter({ id: 'off_after', type: AutomationTemplateParameterType.duration, label: 'Off after', min: 10, max: 600, default: 120 }),
@@ -77,6 +78,7 @@ const userTemplate = (): IAutomationTemplate => ({
 	...motionLight(),
 	id: 'my-own',
 	name: 'My own',
+	source: AutomationTemplateSource.user,
 	parameters: [parameter({ id: 'title', label: 'Title', maxLength: 20, default: 'Hello' })],
 });
 
@@ -101,6 +103,27 @@ describe('useAutomationTemplates', () => {
 		expect(parameterLabel(mine, mine.parameters[0])).toBe('Title');
 		expect(parameterDefault(mine, mine.parameters[0])).toBe('Hello');
 		expect(parameterDefault(known, known.parameters[1])).toBe(120);
+	});
+
+	it('shows a user template that replaces a built-in one as given, not with the texts of the built-in one', () => {
+		const replaced: IAutomationTemplate = {
+			...motionLight(),
+			source: AutomationTemplateSource.user,
+			name: 'Hallway light',
+			parameters: [parameter({ id: 'title', label: 'Heading', maxLength: 20, default: 'Custom' })],
+		};
+
+		(injectStoresManager as Mock).mockReturnValue({
+			getStore: () => ({ findAll: () => [replaced], fetching: () => false, firstLoadFinished: () => true }),
+		});
+
+		const { templates, templateName, parameterLabel, parameterDefault } = useAutomationTemplates();
+
+		const [template] = templates.value;
+
+		expect(templateName(template)).toBe('Hallway light');
+		expect(parameterLabel(template, template.parameters[0])).toBe('Heading');
+		expect(parameterDefault(template, template.parameters[0])).toBe('Custom');
 	});
 
 	it('says when the catalogue could not be read', async () => {

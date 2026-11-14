@@ -180,11 +180,13 @@ watch(
 	}
 );
 
+// Immediate: a form started from a template is changed from the start, and the view has to know before anything is typed
 watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
-	}
+	},
+	{ immediate: true }
 );
 
 onMounted((): void => {

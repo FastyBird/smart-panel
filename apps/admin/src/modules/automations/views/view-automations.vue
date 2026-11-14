@@ -127,7 +127,7 @@
 
 	<router-view
 		v-else
-		:key="props.id"
+		:key="detailKey"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -177,7 +177,7 @@
 
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="detailKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -258,6 +258,14 @@ const showTemplateDialog = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 const remoteFormSaving = ref<boolean>(false);
+
+// The add form takes its automation id and its template draft once, when it is set up: a draft generated while
+// one is open is a new form, not the same one with another query
+const detailKey = computed<string>((): string => {
+	const draft = route.query[AUTOMATION_TEMPLATE_DRAFT_QUERY];
+
+	return `${props.id ?? ''}:${typeof draft === 'string' ? draft : ''}`;
+});
 
 const isAutomationsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.AUTOMATIONS;

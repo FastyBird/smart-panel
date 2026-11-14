@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager } from '../../../../common';
-import { FormResult } from '../../automations.constants';
+import { AutomationMode, FormResult } from '../../automations.constants';
 
 import AutomationAddForm from './automation-add-form.vue';
 
@@ -57,6 +57,14 @@ describe('AutomationAddForm', (): void => {
 
 	afterEach((): void => {
 		wrapper.unmount();
+	});
+
+	it('reports a form started from a template as changed at once', async (): Promise<void> => {
+		wrapper = mount(AutomationAddForm, { props: { id: automationId, initial: { name: 'Leak alarm', mode: AutomationMode.restart } } });
+
+		await flushPromises();
+
+		expect(wrapper.emitted('update:remote-form-changed')?.[0]).toEqual([true]);
 	});
 
 	it('does not take input while the automation is being created', async (): Promise<void> => {
