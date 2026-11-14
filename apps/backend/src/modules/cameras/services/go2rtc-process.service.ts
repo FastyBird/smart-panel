@@ -132,8 +132,8 @@ export class Go2rtcProcessService {
 			this.logger.log(`Spawning go2rtc pid=${child.pid}`);
 		}
 
-		const onStdout = (chunk: Buffer): void => this.append(state, 'stdoutCarry', chunk.toString('utf8'));
-		const onStderr = (chunk: Buffer): void => this.append(state, 'stderrCarry', chunk.toString('utf8'));
+		const onStdout = (chunk: string): void => this.append(state, 'stdoutCarry', chunk);
+		const onStderr = (chunk: string): void => this.append(state, 'stderrCarry', chunk);
 		const onChildExit = (): void => this.markTerminated(state);
 		const onError = (error: Error): void => {
 			const code = errorCode(error);
@@ -160,6 +160,10 @@ export class Go2rtcProcessService {
 			this.detach(state, onStdout, onStderr, onChildExit, onError, onClose);
 		};
 
+		// The stream decodes: a multibyte character split across two chunks stays intact (a per-chunk `toString` would
+		// replace both halves), and a trailing incomplete sequence is flushed when the stream ends.
+		child.stdout?.setEncoding('utf8');
+		child.stderr?.setEncoding('utf8');
 		child.stdout?.on('data', onStdout);
 		child.stderr?.on('data', onStderr);
 		child.once('exit', onChildExit);
@@ -278,8 +282,8 @@ export class Go2rtcProcessService {
 
 	private detach(
 		state: Go2rtcProcessState,
-		onStdout: (chunk: Buffer) => void,
-		onStderr: (chunk: Buffer) => void,
+		onStdout: (chunk: string) => void,
+		onStderr: (chunk: string) => void,
 		onExit: () => void,
 		onError: (error: Error) => void,
 		onClose: (code: number | null, signal: NodeJS.Signals | null) => void,

@@ -149,6 +149,13 @@ describe('Go2rtcProcessService', () => {
 		expect(joined).not.toContain('ALIAS0123456789');
 	});
 
+	it('keeps a multibyte character that arrives split across two chunks intact', async () => {
+		const lines = await startAndCollect('multibyte');
+
+		expect(lines).toContain('stub multibyte café ok');
+		expect(lines.join('\n')).not.toContain('\uFFFD');
+	});
+
 	it('stores one marker for an over-long line and drops everything up to its newline', async () => {
 		secrets.add('PW_SENTINEL_abcdef0123');
 

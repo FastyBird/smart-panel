@@ -9,6 +9,7 @@ export type StubGo2rtcMode =
 	| 'split'
 	| 'tail'
 	| 'overlong'
+	| 'multibyte'
 	| 'serve'
 	| 'held-pipes';
 
@@ -30,7 +31,8 @@ export const STUB_GO2RTC_READY_LINE = 'stub signal handlers ready';
  * stderr: ordering across the two pipes is undefined, so a single stream keeps "the last line" deterministic. `split`
  * writes the password (stdout) and a source url (stderr) in two halves 300 ms apart, newline only after the second
  * half. `overlong` writes a 20,000-character unterminated line ending in `http://`, then 200 ms later the rest of that
- * line (credentials, host, the password) and one more normal line `next line ok`. `held-pipes` exits 0 at once while a
+ * line (credentials, host, the password) and one more normal line `next line ok`. `multibyte` writes `caf` plus the
+ * first byte of `é` (UTF-8) and, 200 ms later, the second byte and ` ok`, so one character is split across two chunks. `held-pipes` exits 0 at once while a
  * helper process that inherited its stdout keeps the pipe open for 500 ms and then writes an unterminated line holding
  * both secrets: the child's `exit` comes well before its `close`. `tail` writes an unterminated line holding both secrets and exits 0. `serve` reads the `-config` file it was
  * given, listens on its `api.listen` address and answers `GET /api` with
@@ -81,7 +83,14 @@ export function writeStubGo2rtcScript(dir: string, mode: StubGo2rtcMode, options
 		'  }',
 		'  setInterval(() => {}, 60000);',
 		'};',
-		'if (mode === "split") {',
+		'if (mode === "multibyte") {',
+		'  const bytes = Buffer.from("é");',
+		'  process.stdout.write(Buffer.concat([Buffer.from("stub multibyte caf"), bytes.subarray(0, 1)]));',
+		'  setTimeout(() => {',
+		'    process.stdout.write(Buffer.concat([bytes.subarray(1), Buffer.from(" ok\\n")]));',
+		'    ready();',
+		'  }, 200);',
+		'} else if (mode === "split") {',
 		'  process.stdout.write("stub split pw=PW_SENT");',
 		'  process.stderr.write("stub split url=rtsps://console:7441/SENTINEL");',
 		'  setTimeout(() => {',
