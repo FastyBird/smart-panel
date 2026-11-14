@@ -71,9 +71,11 @@ export class NodeProtectTransport implements ProtectTransport {
 					resolve(response);
 				}
 			};
+			// Not assigned yet when `https.request()` itself throws, e.g. for a header value Node refuses.
+			let req: http.ClientRequest | undefined;
 			const fail = (error: Error): void => {
 				if (settle()) {
-					req.destroy();
+					req?.destroy();
 					reject(error);
 				}
 			};
@@ -85,51 +87,57 @@ export class NodeProtectTransport implements ProtectTransport {
 
 			request.signal?.addEventListener('abort', onAbort, { once: true });
 
-			const req = https.request(
-				{
-					host: this.host,
-					port: this.port,
-					method: request.method,
-					path: request.path,
-					headers: request.headers,
-					agent: this.agent,
-				},
-				(res: http.IncomingMessage) => {
-					const declared = Number(res.headers['content-length']);
+			try {
+				req = https.request(
+					{
+						host: this.host,
+						port: this.port,
+						method: request.method,
+						path: request.path,
+						headers: request.headers,
+						agent: this.agent,
+					},
+					(res: http.IncomingMessage) => {
+						const declared = Number(res.headers['content-length']);
 
-					if (Number.isFinite(declared) && declared > request.maxBytes) {
-						res.destroy();
-						fail(new ProtectApiError(ProtectErrorCategory.PROTOCOL, TRANSPORT_OPERATION));
-
-						return;
-					}
-
-					const chunks: Buffer[] = [];
-					let received = 0;
-
-					res.on('data', (chunk: Buffer) => {
-						received += chunk.length;
-
-						if (received > request.maxBytes) {
+						if (Number.isFinite(declared) && declared > request.maxBytes) {
 							res.destroy();
 							fail(new ProtectApiError(ProtectErrorCategory.PROTOCOL, TRANSPORT_OPERATION));
 
 							return;
 						}
 
-						chunks.push(chunk);
-					});
-					res.on('end', () =>
-						succeed({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks, received) }),
-					);
-					res.on('error', (error) => fail(error));
-					res.on('close', () => {
-						if (!res.complete) {
-							fail(new ProtectApiError(ProtectErrorCategory.PROTOCOL, TRANSPORT_OPERATION));
-						}
-					});
-				},
-			);
+						const chunks: Buffer[] = [];
+						let received = 0;
+
+						res.on('data', (chunk: Buffer) => {
+							received += chunk.length;
+
+							if (received > request.maxBytes) {
+								res.destroy();
+								fail(new ProtectApiError(ProtectErrorCategory.PROTOCOL, TRANSPORT_OPERATION));
+
+								return;
+							}
+
+							chunks.push(chunk);
+						});
+						res.on('end', () =>
+							succeed({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks, received) }),
+						);
+						res.on('error', (error) => fail(error));
+						res.on('close', () => {
+							if (!res.complete) {
+								fail(new ProtectApiError(ProtectErrorCategory.PROTOCOL, TRANSPORT_OPERATION));
+							}
+						});
+					},
+				);
+			} catch (error) {
+				fail(error as Error);
+
+				return;
+			}
 
 			req.on('error', (error) => fail(error));
 			req.end();

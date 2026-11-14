@@ -82,7 +82,12 @@ export function parseRateLimit(header: HeaderValue): ProtectRateState | null {
 			continue;
 		}
 
-		if (best === null || remaining < best.remaining) {
+		// The fewest remaining wins; among equally exhausted limits the longest reset does, or the pause ends too early.
+		if (
+			best === null ||
+			remaining < best.remaining ||
+			(remaining === best.remaining && resetSeconds > best.resetSeconds)
+		) {
 			best = { remaining, resetSeconds };
 		}
 	}
@@ -145,6 +150,7 @@ export class ProtectRatePacer {
 
 	private nextSlotAt = 0;
 	private pausedUntil = 0;
+	private lastReleaseAt = Number.NEGATIVE_INFINITY;
 
 	private readonly utilisation: number;
 	private readonly now: () => number;
@@ -182,8 +188,25 @@ export class ProtectRatePacer {
 			// the earlier waiters; a timer that merely woke early must not reorder the queue, and a newer pause that
 			// has already ended must not make the waiter queue again.
 			if (this.pausedUntil <= pausedAtReservation || this.now() >= this.pausedUntil) {
+				await this.spaceFromLastRelease(signal);
+
 				return;
 			}
+		}
+	}
+
+	/**
+	 * Timers that resume late release together, so each release is also spaced from the previous actual one. The
+	 * release time is claimed before sleeping, so several overdue waiters line up instead of sharing one gap.
+	 */
+	private async spaceFromLastRelease(signal?: AbortSignal): Promise<void> {
+		const now = this.now();
+		const releaseAt = Math.max(now, this.lastReleaseAt + pacingIntervalMs(this.policy, this.utilisation));
+
+		this.lastReleaseAt = releaseAt;
+
+		if (releaseAt > now) {
+			await this.sleep(releaseAt - now, signal);
 		}
 	}
 

@@ -409,19 +409,33 @@ export class ProtectApiClient {
 		const path = buildProtectPath(endpoint, params);
 		const startedAt = Date.now();
 		const deadlineAt = startedAt + this.deadlineMs;
+		const timedOut = new ProtectApiError(ProtectErrorCategory.TIMEOUT, endpoint);
 
-		// The caller's own signal (not the combined one) goes to the pacer and the sleeps; `close()` cancels via race.
+		// The deadline covers the whole call, so a long pacing pause or retry sleep ends it on time instead of after.
+		const deadline = new AbortController();
+		const deadlineTimer = setTimeout(() => deadline.abort(timedOut), this.deadlineMs);
+
+		deadlineTimer.unref();
+
+		// The caller's signal and the deadline (not the lifetime) go to the pacer and the sleeps, so both stop their
+		// timers; `close()` cancels via the race below.
+		const waitSignal = options.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal;
 		const guarded = <T>(promise: Promise<T>): Promise<T> =>
 			new Promise<T>((resolve, reject) => {
 				const onAbort = (): void => reject(cancelled);
+				const onDeadline = (): void => reject(timedOut);
 
 				signal.addEventListener('abort', onAbort, { once: true });
-				promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+				deadline.signal.addEventListener('abort', onDeadline, { once: true });
+				promise.then(resolve, reject).finally(() => {
+					signal.removeEventListener('abort', onAbort);
+					deadline.signal.removeEventListener('abort', onDeadline);
+				});
 			});
 
 		try {
 			for (let attempt = 1; ; attempt++) {
-				await guarded(this.pacer.acquire(options.signal));
+				await guarded(this.pacer.acquire(waitSignal));
 
 				// The pacer may have held this call past its overall deadline; do not send what nobody awaits anymore.
 				if (Date.now() >= deadlineAt) {
@@ -479,7 +493,7 @@ export class ProtectApiClient {
 					throw failure;
 				}
 
-				await guarded(this.sleep(delay, options.signal));
+				await guarded(this.sleep(delay, waitSignal));
 			}
 		} catch (error) {
 			if (signal.aborted) {
@@ -487,6 +501,8 @@ export class ProtectApiClient {
 			}
 
 			throw error;
+		} finally {
+			clearTimeout(deadlineTimer);
 		}
 	}
 

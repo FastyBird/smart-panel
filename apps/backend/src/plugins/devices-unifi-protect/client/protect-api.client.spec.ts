@@ -376,7 +376,8 @@ describe('ProtectApiClient', () => {
 			transport.queue(200, text('cameras.json'));
 
 			expect(await client.listCameras()).toHaveLength(2);
-			expect(sleep).toHaveBeenCalledWith(1000, undefined);
+			// The sleep carries the call deadline, so it stops with the call.
+			expect(sleep).toHaveBeenCalledWith(1000, expect.any(AbortSignal));
 			expect(transport.requests).toHaveLength(2);
 		});
 
@@ -477,6 +478,28 @@ describe('ProtectApiClient', () => {
 			expect(transport.requests).toHaveLength(0);
 		});
 
+		it('ends the call at its deadline while the pacer is still holding it', async () => {
+			const heldPacer = new ProtectRatePacer({ sleep: () => Promise.resolve() });
+			let pacingSignal: AbortSignal | undefined;
+
+			jest.spyOn(heldPacer, 'acquire').mockImplementation((signal) => {
+				pacingSignal = signal;
+
+				return new Promise(() => undefined);
+			});
+			transport.queue(200, '[]');
+
+			const startedAt = Date.now();
+
+			await expect(build({ pacer: heldPacer, deadlineMs: 30 }).listCameras()).rejects.toMatchObject({
+				category: ProtectErrorCategory.TIMEOUT,
+			});
+			expect(Date.now() - startedAt).toBeLessThan(1000);
+			// The pacer is told as well, so its own sleep timer stops with the call.
+			expect(pacingSignal?.aborted).toBe(true);
+			expect(transport.requests).toHaveLength(0);
+		});
+
 		it('waits once, not twice, for a 429 with the real pacer', async () => {
 			let now = 0;
 			const timers: { at: number; resolve: () => void }[] = [];
@@ -497,13 +520,12 @@ describe('ProtectApiClient', () => {
 			transport.queue(200, '[]');
 
 			let done = false;
-			const call = paced.listCameras().then((result) => {
+			const call = paced.listCameras().finally(() => {
 				done = true;
-
-				return result;
 			});
 
-			while (!done) {
+			// Bounded, and stopped by a rejection as well as a result, so a failure cannot spin forever.
+			for (let pumps = 0; !done && pumps < 1000; pumps++) {
 				await new Promise((resolve) => setImmediate(resolve));
 				timers.sort((a, b) => a.at - b.at);
 

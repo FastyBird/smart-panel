@@ -206,6 +206,7 @@ describe('DevicesUnifiProtectPlugin', () => {
 			class: ProtectDeviceEntity,
 			createDto: CreateProtectDeviceDto,
 			updateDto: UpdateProtectDeviceDto,
+			requiresCreationContext: true,
 		});
 		expect(channelsMapper.registerMapping).toHaveBeenCalledWith({
 			type: DEVICES_UNIFI_PROTECT_TYPE,

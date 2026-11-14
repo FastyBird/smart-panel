@@ -123,6 +123,8 @@ export class DevicesUnifiProtectPlugin implements OnModuleInit {
 			class: ProtectDeviceEntity,
 			createDto: CreateProtectDeviceDto,
 			updateDto: UpdateProtectDeviceDto,
+			// Only the plugin writes the Protect identity; the generic create route must not reserve an identity pair.
+			requiresCreationContext: true,
 		});
 
 		this.channelsMapper.registerMapping<ProtectChannelEntity, CreateProtectChannelDto, UpdateProtectChannelDto>({

@@ -477,6 +477,25 @@ describe('UniFi Protect plugin (e2e)', () => {
 		expect(data).toMatchObject({ mode: 'saved', success: true, tls_mode: 'pinned', nvr_name: nvrName });
 	});
 
+	it('still rejects a candidate without a new key once a key is stored', async () => {
+		// Stop the connector, so the only thing that could reach the console is the candidate test itself.
+		await patchConfig({ enabled: false });
+		await awaitStatus((data) => data.service_state === 'stopped', 'the connector to stop');
+
+		const config = (await get(configUrl, ownerToken)).body as { data: Record<string, unknown> };
+
+		expect(config.data).toMatchObject({ api_key_configured: true });
+
+		// Counted, not reset, so the writes and forbidden hits the final check adds up are kept.
+		const before = fake.requests.length;
+		const response = await post(testUrl, ownerToken, {
+			data: { mode: 'candidate', host: fake.host, port: fake.port, tls: pinnedSelfSigned },
+		});
+
+		expect(response.status).toBe(400);
+		expect(fake.requests.slice(before)).toEqual([]);
+	});
+
 	it('reports version_unsupported for a console older than 7.2.105', async () => {
 		await patchConfig({ enabled: false });
 		await awaitStatus((data) => data.service_state === 'stopped', 'the connector to stop');

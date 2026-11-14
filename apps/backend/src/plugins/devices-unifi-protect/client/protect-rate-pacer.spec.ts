@@ -90,6 +90,9 @@ describe('protect-rate-pacer parsing', () => {
 		expect(parseRateLimit('"10-in-1sec"; r=0; t=1')).toEqual({ remaining: 0, resetSeconds: 1 });
 		expect(parseRateLimit(fixture.ok['ratelimit'])).toEqual({ remaining: 9, resetSeconds: 1 });
 		expect(parseRateLimit('nonsense')).toBeNull();
+		// Equally exhausted limits: the longer reset wins, whichever comes first.
+		expect(parseRateLimit('"short"; r=0; t=1, "long"; r=0; t=60')).toEqual({ remaining: 0, resetSeconds: 60 });
+		expect(parseRateLimit('"long"; r=0; t=60, "short"; r=0; t=1')).toEqual({ remaining: 0, resetSeconds: 60 });
 		expect(parseRateLimit(undefined)).toBeNull();
 	});
 
@@ -240,7 +243,44 @@ describe('ProtectRatePacer', () => {
 		await Promise.all([early.acquire().then(() => order.push('a')), early.acquire().then(() => order.push('b'))]);
 
 		expect(order).toEqual(['a', 'b']);
-		expect(sleeps).toBe(2);
+		// Two pacing sleeps, plus one spacing sleep for `b`: the clock never moved, so it is still within 125 ms of `a`.
+		expect(sleeps).toBe(3);
+	});
+
+	it('keeps overdue waiters that resume together 125 ms apart', async () => {
+		let now = 0;
+		const sleeps: { ms: number; resolve: () => void }[] = [];
+		const late = new ProtectRatePacer({
+			now: () => now,
+			sleep: (ms) => new Promise((resolve) => sleeps.push({ ms, resolve })),
+		});
+		const flush = async (): Promise<void> => {
+			for (let i = 0; i < 10; i++) {
+				await new Promise((resolve) => setImmediate(resolve));
+			}
+		};
+		const released: string[] = [];
+
+		await late.acquire(); // released at 0
+
+		const second = late.acquire().then(() => released.push('second'));
+		const third = late.acquire().then(() => released.push('third'));
+
+		expect(sleeps.map((s) => s.ms)).toEqual([125, 250]);
+
+		// Both timers resume late, at the same moment.
+		now = 300;
+		sleeps.splice(0).forEach((s) => s.resolve());
+		await flush();
+
+		expect(released).toEqual(['second']);
+		expect(sleeps.map((s) => s.ms)).toEqual([125]);
+
+		now = 425;
+		sleeps.splice(0).forEach((s) => s.resolve());
+		await Promise.all([second, third]);
+
+		expect(released).toEqual(['second', 'third']);
 	});
 
 	it('re-queues a waiter only when a longer pause was announced after its reservation', async () => {

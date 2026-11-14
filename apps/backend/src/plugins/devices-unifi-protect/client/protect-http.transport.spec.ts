@@ -133,6 +133,29 @@ describe('NodeProtectTransport', () => {
 		await expect(request(t, { signal: controller.signal })).rejects.toMatchObject({ category: 'cancelled' });
 	});
 
+	it('rejects a header value Node refuses and leaves no timer or abort listener behind', async () => {
+		const t = await open((_req, res) => res.end('{}'));
+		const controller = new AbortController();
+		const failure = await t
+			.request({
+				method: 'GET',
+				path: '/x',
+				headers: { 'X-API-KEY': 'key\nvalue', Accept: 'application/json' },
+				timeoutMs: 50,
+				maxBytes: 1024,
+				signal: controller.signal,
+			})
+			.catch((error: unknown) => error);
+
+		expect((failure as { code?: string }).code).toBe('ERR_INVALID_CHAR');
+		expect((failure as Error).message).not.toContain('value');
+
+		// Neither the timer nor a late abort may reach the request that was never created.
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(() => controller.abort()).not.toThrow();
+		expect(server?.requests).toHaveLength(0);
+	});
+
 	it('reports a connection closed mid-response with the raw reset code', async () => {
 		const t = await open((req) => req.socket.destroy());
 
