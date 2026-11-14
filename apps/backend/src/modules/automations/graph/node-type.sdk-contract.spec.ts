@@ -4,6 +4,10 @@
  * the backend. This suite keeps the two from drifting apart: every `same<Sdk, Backend>(true)` below fails to
  * compile - and so fails the suite and the backend type check - as soon as a field is added, removed,
  * renamed, made optional or changes its type on either side.
+ *
+ * The comparison is strict type identity, not assignability both ways: TypeScript checks the parameters of
+ * a method bivariantly, so a mirror whose `evaluate(config)` took a narrower configuration would still be
+ * assignable in both directions. Identity rejects that (see the last case of the suite).
  */
 import * as Sdk from '@fastybird/smart-panel-extension-sdk';
 
@@ -13,10 +17,8 @@ import * as Backend from './node-type';
 
 type Assignable<A, B> = [A] extends [B] ? true : false;
 
-type SameKeys<A, B> = [keyof A] extends [keyof B] ? ([keyof B] extends [keyof A] ? true : false) : false;
-
-/** Each accepts the other and both have the same keys */
-type Same<A, B> = Assignable<A, B> extends true ? (Assignable<B, A> extends true ? SameKeys<A, B> : false) : false;
+/** Whether the two are the very same type; invariant in every member, method parameters included */
+type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 
 const same = <A, B>(proof: Same<A, B>): boolean => proof;
 
@@ -117,5 +119,26 @@ describe('extension SDK automation contract', () => {
 		})();
 
 		expect(Sdk.isAutomationNodeTypeId(type)).toBe(accepted);
+	});
+
+	it('rejects a mirror that narrows what a card handler accepts', () => {
+		/** The SDK condition as it would be if its `evaluate` took a narrower configuration than the backend's */
+		type Narrowed = Omit<Sdk.AutomationConditionNodeType<SampleConfig>, 'evaluate'> & {
+			evaluate(
+				config: SampleConfig & { extra: string },
+				context: Sdk.AutomationRunContext,
+			): Promise<Sdk.AutomationConditionResult>;
+		};
+
+		// Assignable both ways, because method parameters are compared bivariantly ...
+		expect(assignable<Narrowed, Backend.AutomationConditionNodeType<SampleConfig>>(true)).toBe(true);
+		expect(assignable<Backend.AutomationConditionNodeType<SampleConfig>, Narrowed>(true)).toBe(true);
+
+		// ... but not the same type, which is what the checks above ask for
+		const identical: Same<Narrowed, Backend.AutomationConditionNodeType<SampleConfig>> = false;
+		// @ts-expect-error A narrowed handler parameter is drift: claiming the types are the same does not compile
+		const claimed: Same<Narrowed, Backend.AutomationConditionNodeType<SampleConfig>> = true;
+
+		expect([identical, claimed]).toEqual([false, true]);
 	});
 });
