@@ -441,6 +441,145 @@ backend's own classes - see `packages/extension-sdk/src/notification.types.ts`.
 `@fastybird/smart-panel-backend` directly and calls the real `NotificationsService`, the way
 a plugin compiled as part of the backend itself would.
 
+## Adding automation cards
+
+An automation is a graph of cards ("node types"): triggers start a run, conditions choose between their `yes`
+and `no` outputs, actions do the work and take `done` or `error`. Any extension can add triggers, conditions and
+actions; flow blocks (Delay, Wait until, Any, All) are run by the engine itself and are not open to extensions.
+See [ADR 0003](./adr/0003-automations-spike-and-decisions.md) for the decisions behind the rules below.
+
+### The contract
+
+The contract is published by `@fastybird/smart-panel-extension-sdk` (`packages/extension-sdk/src/automation.types.ts`),
+so a card is typed without importing anything from the backend:
+
+| Export | What it is |
+|--------|------------|
+| `AutomationTriggerNodeType`, `AutomationConditionNodeType`, `AutomationActionNodeType` | The card of each kind; `AutomationExtensionNodeType` is any of them. Generic over the configuration type. |
+| `AutomationNodeTypeBase` | What every card declares: `type`, `kind`, `name`, `description`, `validateConfig`, and optionally `ports`, `configSchema`, `references`, `owner`, `unavailableReason`. |
+| `AutomationRunContext`, `AutomationTriggerContext`, `AutomationRunTrigger`, `AutomationTriggerData` | What the engine hands to a card. |
+| `AutomationConditionResult`, `AutomationActionResult`, `AutomationActionCommand` | What a card answers; what an action declares to the safety policy. |
+| `AutomationNodeConfigProblem`, `AutomationNodeReference`, `AutomationNodeTypeOwner`, `AutomationNodePorts` | Helper shapes. |
+| `AutomationNodeTypeRegistrar` | The part of the backend registry an extension calls (`register()`). |
+| `defineAutomationTrigger` / `defineAutomationCondition` / `defineAutomationAction` | Type a card and keep its configuration type. |
+| `checkAutomationConfigKeys`, `isAutomationNodeTypeId` | Refuse configuration keys a card does not declare; check an identifier the way the registry does. |
+| `AUTOMATION_NODE_DEFAULT_PORTS`, `AUTOMATION_NODE_DEFAULT_TIMEOUT_SECONDS`, `AUTOMATION_NODE_MAX_TIMEOUT_SECONDS`, `AUTOMATION_NODE_TYPE_MAX_LENGTH` | The limits and defaults the engine uses. |
+
+These are plain mirrors of the backend's own contract (`apps/backend/src/modules/automations/graph/node-type.ts`),
+which cards compiled into the backend keep using. A backend test
+(`apps/backend/src/modules/automations/graph/node-type.sdk-contract.spec.ts`) fails to compile as soon as the two
+differ, so a change to the contract has to be made in both places.
+
+### Lifecycle
+
+1. **Registration.** Import `AutomationsModule` into your module (its registry is not global, unlike the extensions,
+   config and notifications services), inject `AutomationNodeTypeRegistryService` - both from
+   `@fastybird/smart-panel-backend` - and call `register()` for every card in `onModuleInit`. A card the engine could
+   not use - an identifier that is not lower-case words joined by `.`, `_` or `-`, a missing validator, a trigger
+   with input ports - is refused with an error, so it fails at start. Prefix the identifier with your extension
+   type; registering an identifier that exists replaces the card.
+2. **Owner gating.** Set `owner: { kind: 'plugin', type: '<your extension type>' }` (or `kind: 'module'`). The card
+   stays registered when the extension is disabled, but the catalogue (`GET /api/v1/modules/automations/node-types`)
+   leaves it out, the engine does not arm it as a trigger and refuses to execute it as a condition or an action (an
+   action then takes `error`, traced as refused). Enabling the extension again re-arms the automations that use it.
+3. **Validation.** `validateConfig(config)` is called whenever a graph is saved or validated, with whatever was
+   submitted, and returns `{ field, reason }` problems; an empty list accepts the configuration. A reason is shown to
+   the user, so it describes the rule and never repeats the value. An invalid configuration stops the save of an
+   enabled automation; a disabled draft may hold it. `references(config)` lists the devices, scenes or other
+   automations the node depends on, so it is invalidated when one of them is removed.
+4. **Safety policy.** An action lists what it does to the home in `commands(config)`:
+   `{ kind: 'property_write', propertyId, value, field }` for every device value it writes and
+   `{ kind: 'scene_run', sceneId, field }` for every scene it runs. The same policy as for the built-in cards judges
+   that list when the graph is saved - unlocking, disarming or opening is an error that stops even a draft - and
+   again before every execution, where a refusal takes `error` without calling `execute`. `commands()` is called
+   with configurations that were not validated, so it skips what it can not read and never throws. An action that
+   acts on the home and declares nothing is a bug in that card.
+5. **Running.** A trigger's `subscribe(config, fire, context)` is called when an enabled, valid automation is armed;
+   it starts watching and returns the function that stops watching, which the engine calls when the automation is
+   disabled, changed or removed. Do not call `fire` from inside `subscribe`. A condition's `evaluate(config, context)`
+   and an action's `execute(config, context)` get the run context: `automationId`, `runId`, `nodeId`, the `trigger`
+   that started the run and an `AbortSignal` that is aborted when the run is cancelled or the node runs into its
+   timeout (30 s unless `timeoutSeconds` says otherwise, at most 300 s). Stop early when it is aborted. A condition
+   that throws or times out is `no`; an action that throws or times out takes `error`. Branches of one run execute
+   in parallel and in no guaranteed order.
+
+### Example
+
+`packages/example-extension/src/automation-cards.ts` adds a trigger, a condition and an action around in-memory
+"signals". In short:
+
+```typescript
+// automation-cards.ts - imports nothing from the backend
+import { checkAutomationConfigKeys, defineAutomationAction } from '@fastybird/smart-panel-extension-sdk';
+
+export const createPulseAction = (bridge: AcmeBridge) =>
+  defineAutomationAction<{ property_id: string; value: boolean }>({
+    type: 'acme.property.pulse',
+    kind: 'action',
+    name: 'Pulse a value',
+    description: 'Writes a value through the Acme bridge.',
+    owner: { kind: 'plugin', type: ACME_PLUGIN_NAME },
+    configSchema: {
+      type: 'object',
+      properties: { property_id: { type: 'string', title: 'Property' }, value: { type: 'boolean', title: 'Value' } },
+      required: ['property_id', 'value'],
+      additionalProperties: false,
+    },
+    validateConfig: (config) => [
+      ...checkAutomationConfigKeys(config, ['property_id', 'value']),
+      ...(typeof config.property_id === 'string' ? [] : [{ field: 'property_id', reason: 'A property is needed.' }]),
+    ],
+    references: (config) => (typeof config.property_id === 'string' ? [{ kind: 'property', id: config.property_id }] : []),
+    // What the safety policy judges; never throws
+    commands: (config) =>
+      typeof config.property_id === 'string'
+        ? [{ kind: 'property_write', propertyId: config.property_id, value: config.value, field: 'value' }]
+        : [],
+    execute: async (config, context) => {
+      if (context.signal.aborted) return { success: false, reason: 'The run was cancelled.' };
+
+      await bridge.write(config.property_id, config.value, { signal: context.signal });
+
+      return { success: true };
+    },
+  });
+```
+
+```typescript
+// acme.plugin.ts
+import { AutomationNodeTypeRegistryService, AutomationsModule } from '@fastybird/smart-panel-backend';
+
+@Module({ imports: [AutomationsModule], providers: [AcmeBridge] })
+export class AcmePlugin implements OnModuleInit {
+  constructor(
+    private readonly automationNodeTypes: AutomationNodeTypeRegistryService,
+    private readonly bridge: AcmeBridge,
+  ) {}
+
+  onModuleInit() {
+    // ... registerMapping(), registerPluginMetadata() as above ...
+    this.automationNodeTypes.register(createPulseAction(this.bridge));
+  }
+}
+```
+
+### Admin
+
+A card of an extension needs nothing in the admin: the palette lists everything the catalogue offers, and a card
+without an admin element is edited with the generic form, built from its `configSchema`. `string`, `number`,
+`integer` (with `minimum` / `maximum`), `boolean`, `enum` and arrays of those get their own field, labelled by
+`title` and explained by `description`, with `required` marking a field; anything else, or a card without a schema,
+is edited as JSON. The backend validates what is saved either way. An admin plugin can bring its own form, card
+summary and Zod schema for a card with an element of the automations module (`automationNodeForm`,
+`automationNodeCard`, `automationNodeConfigSchema`), the way `spaces-home-control` does.
+
+### Testing
+
+Cards are plain objects, so they can be unit-tested without the backend - see
+`packages/example-extension/test/automation-cards.test.ts`. The backend runs SDK-typed cards through its registry,
+catalogue, save check, engine and safety policy in
+`apps/backend/src/modules/automations/services/extension-node-types.spec.ts`.
+
 ## Third-Party Extensions
 
 ### Creating a Standalone Package
