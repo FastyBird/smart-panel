@@ -164,6 +164,20 @@ describe('automation YAML', () => {
 			]);
 		});
 
+		it.each([['.nan'], ['.inf'], ['-.inf'], ['.NaN']])('refuses %s, which the stored JSON can not keep', (number) => {
+			expect(
+				refused(
+					`version: 1\nkind: automation\nname: X\ngraph:\n  nodes:\n    - { id: a, type: t, position: { x: 0, y: 0 }, config: { level: [1, ${number}] } }\n`,
+				),
+			).toEqual([
+				{
+					field: 'graph.nodes.0.config.level.1',
+					reason:
+						'Only finite numbers, texts, yes/no values, null, lists and mappings can be imported; .nan and .inf can not.',
+				},
+			]);
+		});
+
 		it('refuses a document that is not one automation of a known version', () => {
 			expect(refused('- a\n- b\n')).toEqual([{ field: 'yaml', reason: 'The file must hold one automation document.' }]);
 			expect(refused('version: 2\nkind: scene\nname: X\nenabled: true\nid: abc\n')).toEqual([

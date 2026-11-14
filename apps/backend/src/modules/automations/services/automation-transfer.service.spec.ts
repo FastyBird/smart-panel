@@ -198,6 +198,17 @@ describe('AutomationTransferService', () => {
 		expect(fields.some((field) => field.startsWith('graph'))).toBe(true);
 	});
 
+	it('refuses a number the stored automation could not keep, instead of storing null', async () => {
+		const infinite = (await exported()).replace('level: 40', 'level: .inf');
+
+		const error = await service.prepareImport(infinite).catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(AutomationsImportException);
+		expect((error as AutomationsImportException).issues).toEqual([
+			expect.objectContaining({ field: 'graph.nodes.1.config.level' }),
+		]);
+	});
+
 	it('refuses a file that is not YAML before anything is looked up', async () => {
 		await expect(service.prepareImport('name: [')).rejects.toBeInstanceOf(AutomationsImportException);
 	});

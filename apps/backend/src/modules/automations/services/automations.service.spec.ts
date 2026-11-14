@@ -30,7 +30,7 @@ import {
 	FAKE_STRICT_ACTION_TYPE,
 	FAKE_TRIGGER_TYPE,
 } from '../testing/fake-node-types';
-import { parseAutomationYaml, serializeAutomationYaml } from '../transfer/automation-yaml';
+import { automationExportProblem, parseAutomationYaml, serializeAutomationYaml } from '../transfer/automation-yaml';
 
 import { AutomationSafetyService } from './automation-safety.service';
 import { AutomationsService } from './automations.service';
@@ -1092,26 +1092,80 @@ describe('AutomationsService', () => {
 			expect(tooLarge(error)).toBe(true);
 		});
 
+		// The largest text per node that still lets the automation be exported and imported again
+		const largestFitting = (name: string): number => {
+			let low = 0;
+			let high = 4000;
+
+			while (low < high) {
+				const size = Math.ceil((low + high) / 2);
+				const source = { name, description: null, icon: null, mode: AutomationMode.RESTART, spaceId: null };
+
+				if (automationExportProblem({ ...source, graph: largeGraph(size) }) === null) {
+					low = size;
+				} else {
+					high = size - 1;
+				}
+			}
+
+			return low;
+		};
+
+		it('holds an update that changes only the name or the description to the limits, but never switching it on or off', async () => {
+			const stored = await create({ name: 'Near the limit', graph: largeGraph(largestFitting('Near the limit')) });
+
+			const error = await update(stored.id, { revision: stored.revision, description: 'd'.repeat(1000) }).catch(
+				(caught: unknown) => caught,
+			);
+
+			expect(tooLarge(error)).toBe(true);
+			expect((await service.findOne(stored.id))?.description).toBeNull();
+
+			const switched = await update(stored.id, { revision: stored.revision, enabled: true });
+
+			expect(switched.enabled).toBe(true);
+
+			const renamed = await update(stored.id, { revision: switched.revision, name: 'Near' });
+
+			expect(renamed.name).toBe('Near');
+		});
+
 		it('keeps an automation stored before the limits editable: only a submitted graph is held to them', async () => {
 			const stored = await create({ name: 'Old' });
 
 			// As it would have been stored before the limits existed
 			await repository.update({ id: stored.id }, { graph: largeGraph(3000) });
 
-			const renamed = await update(stored.id, { revision: stored.revision, name: 'Old, renamed' });
+			// It may change as long as its export does not grow: a shorter name, switching it on or off
+			const renamed = await update(stored.id, { revision: stored.revision, name: 'Ol' });
 
-			expect(renamed.name).toBe('Old, renamed');
+			expect(renamed.name).toBe('Ol');
 			expect((await service.findOne(stored.id))?.graph.nodes).toHaveLength(MAX_NODES);
 
 			expect(
 				tooLarge(
-					await update(stored.id, { revision: renamed.revision, graph: largeGraph(3000) }).catch(
+					await update(stored.id, { revision: renamed.revision, description: 'Longer than before' }).catch(
 						(error: unknown) => error,
 					),
 				),
 			).toBe(true);
 
-			const trimmed = await update(stored.id, { revision: renamed.revision, graph: largeGraph(100) });
+			const switchedOn = await service.setEnabled(stored.id, true);
+
+			expect(switchedOn.enabled).toBe(true);
+			const switchedOff = await service.setEnabled(stored.id, false);
+
+			expect(switchedOff.enabled).toBe(false);
+
+			expect(
+				tooLarge(
+					await update(stored.id, { revision: switchedOff.revision, graph: largeGraph(3000) }).catch(
+						(error: unknown) => error,
+					),
+				),
+			).toBe(true);
+
+			const trimmed = await update(stored.id, { revision: switchedOff.revision, graph: largeGraph(100) });
 
 			expect(trimmed.graph.nodes).toHaveLength(MAX_NODES);
 		});

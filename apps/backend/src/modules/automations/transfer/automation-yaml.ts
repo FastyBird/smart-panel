@@ -151,6 +151,10 @@ export const automationExportFileName = (name: string): string => {
 	return `${slug !== '' ? slug : 'automation'}.yaml`;
 };
 
+/** How many UTF-8 bytes the export of an automation takes */
+export const automationExportSize = (source: AutomationExportSource): number =>
+	Buffer.byteLength(serializeAutomationYaml(source), 'utf8');
+
 /**
  * Why an automation could not be imported again once exported: its YAML document is larger than an import file
  * may be, or nests deeper. A save checks this, so every automation it stores can be restored from its export.
@@ -161,11 +165,47 @@ export const automationExportProblem = (source: AutomationExportSource): string 
 		return `The configuration of a block may not be nested this deeply: an automation is kept to ${AUTOMATION_IMPORT_MAX_DEPTH} levels, so that it can be exported and imported again.`;
 	}
 
-	if (Buffer.byteLength(serializeAutomationYaml(source), 'utf8') > AUTOMATION_IMPORT_MAX_LENGTH) {
+	if (automationExportSize(source) > AUTOMATION_IMPORT_MAX_LENGTH) {
 		return `The automation is too large: exported, it would be larger than ${AUTOMATION_IMPORT_MAX_LENGTH / 1024} KB, the most that can be imported again. Remove blocks or shorten their configuration.`;
 	}
 
 	return null;
+};
+
+/**
+ * Where the document holds a value an automation can not store - it is kept as JSON, which has no NaN, no
+ * infinity and no big integers - as a dot-separated path, or null when it holds none. Called on a value already
+ * known to be shallow.
+ */
+const unsupportedValuePath = (value: unknown, path: (string | number)[]): string | null => {
+	const here = (): string => (path.length > 0 ? path.join('.') : 'yaml');
+
+	if (value === null || typeof value === 'string' || typeof value === 'boolean') return null;
+
+	if (typeof value === 'number') return Number.isFinite(value) ? null : here();
+
+	if (Array.isArray(value)) {
+		for (const [index, item] of (value as unknown[]).entries()) {
+			const found = unsupportedValuePath(item, [...path, index]);
+
+			if (found !== null) return found;
+		}
+
+		return null;
+	}
+
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+		for (const [key, item] of Object.entries(value)) {
+			const found = unsupportedValuePath(item, [...path, key]);
+
+			if (found !== null) return found;
+		}
+
+		return null;
+	}
+
+	// undefined, a big integer, a date, a set or anything else that is not plain JSON
+	return here();
 };
 
 /** Whether a value nests deeper than the limit; stops looking as soon as it does */
@@ -242,6 +282,15 @@ export const parseAutomationYaml = (text: string): AutomationYamlParseResult => 
 
 	if (tooDeep(value, 0)) {
 		return refuse('yaml', `Values may not be nested more than ${AUTOMATION_IMPORT_MAX_DEPTH} levels deep.`);
+	}
+
+	const unsupported = unsupportedValuePath(value, []);
+
+	if (unsupported !== null) {
+		return refuse(
+			unsupported,
+			'Only finite numbers, texts, yes/no values, null, lists and mappings can be imported; .nan and .inf can not.',
+		);
 	}
 
 	const problems: AutomationImportProblem[] = [];

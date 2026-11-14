@@ -34,7 +34,7 @@ import { AutomationGraphIssueCode } from '../graph/graph-validator';
 import { AutomationGraphSaveCheck, checkGraphForSave } from '../graph/save-policy';
 import { AutomationGraphModel, createEmptyAutomationGraph } from '../models/automation-graph.model';
 import { AutomationSummaryModel } from '../models/automations.model';
-import { AutomationExportSource, automationExportProblem } from '../transfer/automation-yaml';
+import { AutomationExportSource, automationExportProblem, automationExportSize } from '../transfer/automation-yaml';
 
 import { AutomationSafetyService } from './automation-safety.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
@@ -274,18 +274,7 @@ export class AutomationsService {
 			await this.assertGraphCanBeSaved(graph ?? existing.graph, enabled);
 		}
 
-		// Only a submitted graph is held to the export limits: an automation stored before them stays readable and
-		// can be renamed or switched, and is saved again once its graph is brought within them
-		if (graph !== undefined) {
-			this.assertExportable({
-				name: dtoInstance.name ?? existing.name,
-				description: dtoInstance.description !== undefined ? dtoInstance.description : existing.description,
-				icon: dtoInstance.icon !== undefined ? dtoInstance.icon : existing.icon,
-				mode: dtoInstance.mode ?? existing.mode,
-				spaceId: dtoInstance.space_id !== undefined ? dtoInstance.space_id : existing.spaceId,
-				graph,
-			});
-		}
+		this.assertUpdateExportable(existing, dtoInstance, graph);
 
 		const changes: QueryDeepPartialEntity<AutomationEntity> = {
 			revision: dtoInstance.revision + 1,
@@ -429,6 +418,59 @@ export class AutomationsService {
 		throw new AutomationsGraphValidationException(`The automation graph cannot be saved: ${problem}`, [
 			{ severity: 'error', code: AutomationGraphIssueCode.GRAPH_TOO_LARGE, message: problem, blocking: true },
 		]);
+	}
+
+	/**
+	 * Holds an update to the export limits, judged on the automation it leaves behind. A submitted graph must fit.
+	 * Without one, an update that only switches the automation on or off always goes through, and any other must
+	 * fit unless the automation was stored before the limits and is already too large: then it may change as long
+	 * as its export does not grow, so it can be renamed or described shorter, and brought within the limits by
+	 * saving a smaller graph.
+	 */
+	private assertUpdateExportable(
+		existing: AutomationEntity,
+		dto: UpdateAutomationDto,
+		graph: AutomationGraphModel | undefined,
+	): void {
+		const metadataChanged =
+			dto.name !== undefined ||
+			dto.description !== undefined ||
+			dto.icon !== undefined ||
+			dto.mode !== undefined ||
+			dto.space_id !== undefined;
+
+		if (graph === undefined && !metadataChanged) {
+			return;
+		}
+
+		const before: AutomationExportSource = {
+			name: existing.name,
+			description: existing.description,
+			icon: existing.icon,
+			mode: existing.mode,
+			spaceId: existing.spaceId,
+			graph: existing.graph,
+		};
+
+		const after: AutomationExportSource = {
+			name: dto.name ?? existing.name,
+			description: dto.description !== undefined ? dto.description : existing.description,
+			icon: dto.icon !== undefined ? dto.icon : existing.icon,
+			mode: dto.mode ?? existing.mode,
+			spaceId: dto.space_id !== undefined ? dto.space_id : existing.spaceId,
+			graph: graph ?? existing.graph,
+		};
+
+		if (
+			graph === undefined &&
+			automationExportProblem(after) !== null &&
+			automationExportProblem(before) !== null &&
+			automationExportSize(after) <= automationExportSize(before)
+		) {
+			return;
+		}
+
+		this.assertExportable(after);
 	}
 
 	private createRevisionConflict(id: string, revision: number): AutomationsRevisionConflictException {
