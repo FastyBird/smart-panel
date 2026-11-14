@@ -1,0 +1,15 @@
+{
+	"_synthetic": true,
+	"request": {
+		"qualities": [
+			"high",
+			"medium"
+		]
+	},
+	"response": {
+		"high": "rtsps://192.0.2.10:7441/REDACTEDALIAS00001?enableSrtp",
+		"medium": "rtsps://192.0.2.10:7441/REDACTEDALIAS00002?enableSrtp",
+		"low": null,
+		"package": null
+	}
+}

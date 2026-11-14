@@ -1,0 +1,29 @@
+{
+	"hardware": {
+		"shortname": "UNVR"
+	},
+	"name": "Dream Machine Pro",
+	"mac": "0CEA14003A69",
+	"directConnectDomain": "0cea14000000000000000000000000000000.id.ui.direct",
+	"deviceState": "setup",
+	"deviceErrorCode": null,
+	"uidb": {
+		"guid": "049df97a-5894-408c-bc87-b4872b2a6346",
+		"id": "f0eeb243-1e33-435d-9c83-0ab0e856aa6f",
+		"images": {
+			"default": "eebdbea1436dda66bb95658783ae5133",
+			"nopadding": "e6c444a789e3108caa51da9dc4897ba6",
+			"topology": "32a3970b8f70210d3678dcfaecf56dff",
+			"rack": "525b4c724de38b3bcb6ecf1bd30b651d"
+		}
+	},
+	"debugEnabled": false,
+	"cloudConnected": true,
+	"cloudRegistrationRevoked": false,
+	"isOrHasGatewayInLAN": true,
+	"remoteAccessEnabled": true,
+	"hasInternet": true,
+	"hasInternetLastChanged": 1794389870430,
+	"isSingleUser": false,
+	"isSsoEnabled": true
+}

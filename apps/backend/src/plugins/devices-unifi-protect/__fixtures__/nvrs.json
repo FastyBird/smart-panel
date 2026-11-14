@@ -1,0 +1,23 @@
+{
+	"id": "68b3ace392bf98c9fb76f70c",
+	"modelKey": "nvr",
+	"name": "Home NVR",
+	"type": "UNVR4",
+	"guid": "5572d3ef-16e6-b572-9665-af8f5c04b102",
+	"mac": "0CEA14003A69",
+	"doorbellSettings": {
+		"defaultMessageText": "WELCOME",
+		"defaultMessageResetTimeoutMs": 60000,
+		"customMessages": [],
+		"customImages": []
+	},
+	"armMode": {
+		"status": "disabled",
+		"armedAt": null,
+		"willBeArmedAt": null,
+		"breachDetectedAt": null,
+		"breachEventCount": 0,
+		"breachTriggerEventId": null,
+		"breachEventId": null
+	}
+}

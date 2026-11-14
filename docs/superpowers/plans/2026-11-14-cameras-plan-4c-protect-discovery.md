@@ -58,8 +58,8 @@ class-transformer, `@nestjs/swagger`, Jest, supertest. No migration, no config c
   characters (`/[\u0000-\u001f\u007f]/`) and valid UTF-8; otherwise the field is `null`. MACs are lowercase,
   colon-separated.
 - Secrets: nothing in UP-6 handles credentials. The probe never sends an `Authorization` or `X-API-KEY` header; the
-  unauthenticated GETs may therefore use the TLS policy's `insecure` mode (the console presents a self-signed
-  certificate by IP). Log lines carry fixed reason codes, never raw datagrams, bodies or MACs.
+  unauthenticated GETs may therefore use plain Node TLS options `{ rejectUnauthorized: false }` (the console presents a
+  self-signed certificate by IP; UP-5 has no insecure TLS mode; this key-less request is the only place verification is skipped). Log lines carry fixed reason codes, never raw datagrams, bodies or MACs.
 - Roles: all three routes `@Roles(UserRole.OWNER, UserRole.ADMIN)` on each handler, as `plugins/devices-homey`
   (`controllers/homey-test-connection.controller.ts`).
 
@@ -83,7 +83,7 @@ class-transformer, `@nestjs/swagger`, Jest, supertest. No migration, no config c
 |---|---|---|
 | A1 | `apps/backend/src/plugins/devices-unifi-protect/devices-unifi-protect.constants.ts` exports `DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX`, `DEVICES_UNIFI_PROTECT_PLUGIN_NAME`, `DEVICES_UNIFI_PROTECT_TYPE`, `DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME` (Homey analogues). | Use UP-5's names; no other effect. |
 | A2 | `devices-unifi-protect.plugin.ts` exports `DevicesUnifiProtectPlugin` (`@Module` with `providers` and `controllers` arrays); `devices-unifi-protect.openapi.ts` exports `DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS`; the plugin is routed from `app.module.ts` at `DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX`. | Task 5 edits UP-5's equivalents. |
-| A3 | UP-5 (plan 4b, Task 5) provides `client/protect-tls-policy.ts`: `interface ProtectTlsSettings { mode: ProtectTlsMode; serverName: string \| null; fingerprintSha256: string \| null }`, `planProtectTls(host, settings): ProtectTlsConnectPlan` (`{ servername, rejectUnauthorized, pinnedFingerprint, insecure }`), `peerFingerprint`, `fingerprintsEqual`; and `client/protect-https-agent.ts`: `inspectProtectCertificate({ host, port, serverName, … }): Promise<ProtectCertificateInfo>` (`fingerprintSha256`, `subjectCommonName`, `issuerCommonName`, …) plus `ProtectHttpsAgent`. The discovery probe transport reuses `inspectProtectCertificate` for its certificate check and `planProtectTls` for TLS options instead of building its own. | Only `protect-discovery-probe.transport.ts` imports them; if UP-5's final names differ, adapt that file's imports and call sites only. |
+| A3 | UP-5 (plan 4b, Task 5) provides `client/protect-tls-policy.ts`: `interface ProtectTlsSettings { mode: ProtectTlsMode; serverName: string \| null; fingerprintSha256: string \| null }`, `planProtectTls(host, settings): ProtectTlsConnectPlan` (`{ servername, rejectUnauthorized, pinnedFingerprint }`; modes `verify` and `pinned` only), `peerFingerprint`, `fingerprintsEqual`; and `client/protect-https-agent.ts`: `inspectProtectCertificate({ host, port, serverName, … }): Promise<ProtectCertificateInfo>` (`fingerprintSha256`, `subjectCommonName`, `issuerCommonName`, …) plus `ProtectHttpsAgent`. The discovery probe transport reuses `inspectProtectCertificate` for its certificate check and `planProtectTls` for the TLS policy types; the key-less probe `get` uses plain `{ rejectUnauthorized: false }` instead. | Only `protect-discovery-probe.transport.ts` imports them; if UP-5's final names differ, adapt that file's imports and call sites only. |
 | A4 | UP-0 is merged: `apps/backend/src/plugins/devices-unifi-protect/__fixtures__/` contains `discovery-reply.bin` (sanitized console reply, header version 1), `discovery-reply-v0.bin` (non-console, header version 0) and `system.json` (body of `GET /api/system`). Sanitization keeps field shapes (a MAC stays a 6-byte MAC, the domain stays `<hex>.id.ui.direct`). | **Stop.** Do not hand-craft a stand-in for a live capture; ask for UP-0. |
 | A5 | `createExtensionLogger(name, context)` from `apps/backend/src/common/logger` is available (used by `plugins/devices-home-assistant/services/ha-mdns-discoverer.service.ts`). | — |
 
@@ -486,7 +486,7 @@ Expected: FAIL, "Cannot find module './protect-discovery-probe.transport'".
 
 - [ ] **Step 5: Implement the transport**
 
-`get`: `https.request({ host, port, path, method: 'GET', agent: false, timeout, headers: { Accept: 'application/json' }, rejectUnauthorized: false })` (TLS options from `planProtectTls(host, { mode: 'insecure', serverName: null, fingerprintSha256: null })`)
+`get`: `https.request({ host, port, path, method: 'GET', agent: false, timeout, headers: { Accept: 'application/json' }, rejectUnauthorized: false })` (plain Node TLS options, not `planProtectTls`, which has no insecure mode)
 (comment: unauthenticated request, nothing secret is sent, so an unverified certificate is acceptable; the verified
 check is `checkCertificate`). Collect the body up to `PROTECT_PROBE_MAX_BODY_BYTES`, then destroy and resolve
 `{ ok: false, kind: 'protocol', code: 'body_too_large' }`. Settle exactly once (a `settled` guard); one `setTimeout(timeoutMs)`

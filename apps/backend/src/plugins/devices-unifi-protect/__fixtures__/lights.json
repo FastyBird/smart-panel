@@ -1,0 +1,26 @@
+[
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000c01",
+		"modelKey": "light",
+		"state": "CONNECTED",
+		"name": "Synthetic floodlight",
+		"mac": "0CEA1400C001",
+		"lightModeSettings": {
+			"mode": "motion",
+			"enableAt": "dark"
+		},
+		"lightDeviceSettings": {
+			"isIndicatorEnabled": true,
+			"pirDuration": 15000,
+			"pirSensitivity": 50,
+			"ledLevel": 6
+		},
+		"isDark": true,
+		"isLightOn": false,
+		"isLightForceEnabled": false,
+		"lastMotion": 1794400000000,
+		"isPirMotionDetected": false,
+		"camera": "600cefafd5f365d6f83c4ef3"
+	}
+]

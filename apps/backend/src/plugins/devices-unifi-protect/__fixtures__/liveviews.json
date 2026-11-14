@@ -1,0 +1,27 @@
+[
+	{
+		"id": "652e2eb2e3abfb02c3f473f3",
+		"modelKey": "liveview",
+		"name": "Default",
+		"isDefault": true,
+		"isGlobal": true,
+		"owner": "6d7cfe6518bd0f836a76d5a5",
+		"layout": 2,
+		"slots": [
+			{
+				"cameras": [
+					"6e9e3966e39b412ab18f3727"
+				],
+				"cycleMode": "time",
+				"cycleInterval": 10
+			},
+			{
+				"cameras": [
+					"600cefafd5f365d6f83c4ef3"
+				],
+				"cycleMode": "time",
+				"cycleInterval": 10
+			}
+		]
+	}
+]

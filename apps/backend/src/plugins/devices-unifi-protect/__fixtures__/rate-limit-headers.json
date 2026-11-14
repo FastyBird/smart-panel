@@ -1,0 +1,13 @@
+{
+	"ok": {
+		"content-type": "application/json; charset=utf-8",
+		"ratelimit": "\"10-in-1sec\"; r=9; t=1",
+		"ratelimit-policy": "\"10-in-1sec\"; q=10; w=1; pk=:REDACTED:"
+	},
+	"rate_limited": {
+		"content-type": "application/json; charset=utf-8",
+		"ratelimit": "\"10-in-1sec\"; r=0; t=1",
+		"ratelimit-policy": "\"10-in-1sec\"; q=10; w=1; pk=:REDACTED:",
+		"retry-after": "1"
+	}
+}
