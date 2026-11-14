@@ -3,6 +3,13 @@ import { CreateProtectChannelDto } from './dto/create-channel.dto';
 import { CreateProtectDeviceChannelPropertyDto } from './dto/create-device-channel-property.dto';
 import { CreateProtectDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateProtectDeviceDto } from './dto/create-device.dto';
+import {
+	ProtectTestCandidateConnectionDto,
+	ProtectTestConnectionDto,
+	ProtectTestConnectionRequestDto,
+	ProtectTestSavedConnectionDto,
+	ProtectTestTlsDto,
+} from './dto/test-connection.dto';
 import { UpdateProtectChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateProtectChannelDto } from './dto/update-channel.dto';
 import { ProtectUpdatePluginConfigDto, ProtectUpdateTlsConfigDto } from './dto/update-config.dto';
@@ -14,6 +21,11 @@ import {
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel, ProtectTlsConfigModel } from './models/config.model';
 import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
+import {
+	ProtectCertificateModel,
+	ProtectTestConnectionModel,
+	ProtectTestConnectionResponseModel,
+} from './models/test-connection.model';
 
 export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectTlsConfigModel,
@@ -33,4 +45,12 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	UpdateProtectChannelPropertyDto,
 	ProtectStatusModel,
 	ProtectStatusResponseModel,
+	ProtectTestConnectionDto,
+	ProtectTestSavedConnectionDto,
+	ProtectTestTlsDto,
+	ProtectTestCandidateConnectionDto,
+	ProtectTestConnectionRequestDto,
+	ProtectCertificateModel,
+	ProtectTestConnectionModel,
+	ProtectTestConnectionResponseModel,
 ];

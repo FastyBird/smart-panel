@@ -13,12 +13,19 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { ProtectStatusController } from './controllers/protect-status.controller';
+import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from './devices-unifi-protect.constants';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-unifi-protect.openapi';
 import { DevicesUnifiProtectPlugin } from './devices-unifi-protect.plugin';
 import { CreateProtectChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateProtectChannelDto } from './dto/create-channel.dto';
 import { CreateProtectDeviceDto } from './dto/create-device.dto';
+import {
+	ProtectTestCandidateConnectionDto,
+	ProtectTestConnectionRequestDto,
+	ProtectTestSavedConnectionDto,
+	ProtectTestTlsDto,
+} from './dto/test-connection.dto';
 import { UpdateProtectChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateProtectChannelDto } from './dto/update-channel.dto';
 import { ProtectUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -30,7 +37,13 @@ import {
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel } from './models/config.model';
 import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
+import {
+	ProtectCertificateModel,
+	ProtectTestConnectionModel,
+	ProtectTestConnectionResponseModel,
+} from './models/test-connection.model';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
+import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
@@ -159,16 +172,27 @@ describe('DevicesUnifiProtectPlugin', () => {
 		await expect(runFactoryReset()).resolves.toEqual({ success: false, reason: 'stop failed' });
 	});
 
-	it('provides and exports the connector and serves the status controller', () => {
+	it('provides and exports the connector and serves the status and test-connection controllers', () => {
 		const providers = Reflect.getMetadata('providers', DevicesUnifiProtectPlugin) as unknown[];
 		const controllers = Reflect.getMetadata('controllers', DevicesUnifiProtectPlugin) as unknown[];
 		const exported = Reflect.getMetadata('exports', DevicesUnifiProtectPlugin) as unknown[];
 
 		expect(providers).toContain(ProtectConnectorService);
-		expect(controllers).toEqual([ProtectStatusController]);
+		expect(providers).toContain(ProtectConnectionTestService);
+		expect(controllers).toEqual([ProtectStatusController, ProtectTestConnectionController]);
 		expect(exported).toContain(ProtectConnectorService);
 		expect(DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS).toEqual(
-			expect.arrayContaining([ProtectStatusModel, ProtectStatusResponseModel]),
+			expect.arrayContaining([
+				ProtectStatusModel,
+				ProtectStatusResponseModel,
+				ProtectTestConnectionRequestDto,
+				ProtectTestSavedConnectionDto,
+				ProtectTestCandidateConnectionDto,
+				ProtectTestTlsDto,
+				ProtectCertificateModel,
+				ProtectTestConnectionModel,
+				ProtectTestConnectionResponseModel,
+			]),
 		);
 	});
 

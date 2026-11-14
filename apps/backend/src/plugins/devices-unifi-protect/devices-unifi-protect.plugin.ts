@@ -25,6 +25,7 @@ import { FactoryResetRegistryService } from '../../modules/system/services/facto
 
 import { DefaultProtectApiClientFactory, PROTECT_API_CLIENT_FACTORY } from './client/protect-api-client.factory';
 import { ProtectStatusController } from './controllers/protect-status.controller';
+import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME,
@@ -47,6 +48,7 @@ import {
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel } from './models/config.model';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
+import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
 
 @ApiTag({
@@ -69,8 +71,9 @@ import { ProtectConnectorService } from './services/protect-connector.service';
 		DefaultProtectApiClientFactory,
 		{ provide: PROTECT_API_CLIENT_FACTORY, useExisting: DefaultProtectApiClientFactory },
 		ProtectConnectorService,
+		ProtectConnectionTestService,
 	],
-	controllers: [ProtectStatusController],
+	controllers: [ProtectStatusController, ProtectTestConnectionController],
 	exports: [ProtectConnectorService],
 })
 export class DevicesUnifiProtectPlugin implements OnModuleInit {

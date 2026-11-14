@@ -12,6 +12,7 @@ import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	PROTECT_HEALTH_CHECK_INTERVAL_MS,
 	PROTECT_MIN_VERSION,
+	PROTECT_RECONNECT_MAX_DELAY_MS,
 	ProtectConnectionState,
 } from '../devices-unifi-protect.constants';
 import {
@@ -289,6 +290,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 	}
 
 	private scheduleHealthCheck(generation: number): void {
+		this.clearHealthTimer();
 		this.healthTimer = this.unref(
 			setTimeout(() => {
 				this.healthTimer = null;
@@ -339,7 +341,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		this.lastErrorCategory = category;
 
 		if (apiError.retryable) {
-			this.scheduleReconnect(generation, category);
+			this.scheduleReconnect(generation, category, apiError.retryAfterMs);
 
 			return;
 		}
@@ -353,8 +355,15 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		this.logger.warn(`UniFi Protect connection stopped (${category})`);
 	}
 
-	private scheduleReconnect(generation: number, category: ProtectErrorCategory): void {
-		const delay = calculateProtectReconnectDelay(this.reconnectAttempt);
+	private scheduleReconnect(generation: number, category: ProtectErrorCategory, retryAfterMs: number | null): void {
+		const backoff = calculateProtectReconnectDelay(this.reconnectAttempt);
+		// A throttled console says when it will answer again; waiting less only earns another 429.
+		const delay =
+			category === ProtectErrorCategory.RATE_LIMITED && retryAfterMs !== null
+				? Math.min(PROTECT_RECONNECT_MAX_DELAY_MS, Math.max(backoff, retryAfterMs))
+				: backoff;
+
+		this.clearReconnectTimer();
 
 		this.reconnectAttempt += 1;
 		this.connectionState = ProtectConnectionState.DISCONNECTED;
@@ -388,6 +397,13 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		}
 	}
 
+	private clearReconnectTimer(): void {
+		if (this.reconnectTimer !== null) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
+	}
+
 	private clearHealthTimer(): void {
 		if (this.healthTimer !== null) {
 			clearTimeout(this.healthTimer);
@@ -398,11 +414,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 	/** Closes every client and timer and clears the connection facts; the generation is bumped by the caller. */
 	private resetRuntime(): void {
 		this.clearHealthTimer();
-
-		if (this.reconnectTimer !== null) {
-			clearTimeout(this.reconnectTimer);
-			this.reconnectTimer = null;
-		}
+		this.clearReconnectTimer();
 
 		for (const client of [this.client, this.attemptClient]) {
 			client?.close();

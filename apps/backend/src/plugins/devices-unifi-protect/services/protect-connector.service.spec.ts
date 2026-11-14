@@ -333,6 +333,96 @@ describe('ProtectConnectorService', () => {
 		expect(service.getStatus().reconnectAttempt).toBe(8);
 	});
 
+	describe('rate limit and timer hygiene', () => {
+		const rateLimited = (retryAfterMs: number | null): ProtectApiError =>
+			new ProtectApiError(ProtectErrorCategory.RATE_LIMITED, 'meta/info', { status: 429, retryAfterMs });
+
+		const retryDelays = (): number[] =>
+			logged
+				.map((line) => /retry in (\d+) ms/.exec(line)?.[1])
+				.filter((delay): delay is string => delay !== undefined)
+				.map(Number);
+
+		it('waits for the console Retry-After when it exceeds the backoff', async () => {
+			queue(fakeClient(rateLimited(20_000)), fakeClient());
+			await service.start();
+			await service.settle();
+
+			expect(retryDelays()).toEqual([20_000]);
+			expect(service.getStatus().nextRetryAt).toBe('2026-11-14T10:00:20.000Z');
+
+			await jest.advanceTimersByTimeAsync(19_999);
+
+			expect(factory.create).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(1);
+			await service.settle();
+
+			expect(factory.create).toHaveBeenCalledTimes(2);
+			expect(service.getStatus().connectionState).toBe('connected');
+		});
+
+		it('keeps the backoff when it is longer than Retry-After', async () => {
+			queue(fakeClient(rateLimited(500)));
+			await service.start();
+			await service.settle();
+
+			expect(retryDelays()).toEqual([1000]);
+		});
+
+		it('caps the Retry-After wait at 60 s', async () => {
+			queue(fakeClient(rateLimited(600_000)));
+			await service.start();
+			await service.settle();
+
+			expect(retryDelays()).toEqual([60_000]);
+		});
+
+		it('ignores Retry-After on a category other than rate_limited', async () => {
+			queue(fakeClient(new ProtectApiError(ProtectErrorCategory.UNAVAILABLE, 'meta/info', { retryAfterMs: 30_000 })));
+			await service.start();
+			await service.settle();
+
+			expect(retryDelays()).toEqual([1000]);
+		});
+
+		it('replaces a pending reconnect timer instead of leaking it', async () => {
+			const internals = service as unknown as {
+				scheduleReconnect(generation: number, category: ProtectErrorCategory, retryAfterMs: number | null): void;
+			};
+
+			queue(fakeClient(apiError(ProtectErrorCategory.UNREACHABLE)));
+			await service.start();
+			await service.settle();
+
+			expect(jest.getTimerCount()).toBe(1);
+
+			internals.scheduleReconnect(1, ProtectErrorCategory.UNREACHABLE, null);
+
+			expect(jest.getTimerCount()).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(60_000);
+			await service.settle();
+
+			// One timer, one attempt: the replaced handle never fires a second connection attempt.
+			expect(factory.create).toHaveBeenCalledTimes(2);
+		});
+
+		it('replaces a pending health check timer instead of leaking it', async () => {
+			const internals = service as unknown as { scheduleHealthCheck(generation: number): void };
+
+			queue(fakeClient());
+			await service.start();
+			await service.settle();
+
+			expect(jest.getTimerCount()).toBe(1);
+
+			internals.scheduleHealthCheck(1);
+
+			expect(jest.getTimerCount()).toBe(1);
+		});
+	});
+
 	it.each(Object.values(ProtectErrorCategory))(
 		'never throws from start for the console outcome %s and keeps the service started',
 		async (category) => {
