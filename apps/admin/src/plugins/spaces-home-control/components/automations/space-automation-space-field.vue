@@ -47,7 +47,7 @@
  * The room or zone a space card points at, picked with the space select of the spaces module. Only rooms
  * and zones are offered: the space cards of the backend act on nothing else.
  */
-import { computed, onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElFormItem, ElText } from 'element-plus';
@@ -75,7 +75,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { fetching, firstLoadFinished, fetchSpaces, findById } = useSpaces();
+const { spaces, fetching, firstLoadFinished, fetchSpaces, findById } = useSpaces();
 
 // The space cards act on rooms and zones only; a stored space of another type is shown, and flagged
 const wrongType = computed<boolean>((): boolean => {
@@ -96,6 +96,15 @@ const load = async (): Promise<void> => {
 		loadFailed.value = true;
 	}
 };
+
+// The spaces are shared: a read another part of the admin started fails here too. The store keeps no
+// error, so a read that ends without the first load finished, and with no space known, is taken as
+// failed (`fetching` also covers the read of a single space, which brings that space when it succeeds)
+watch(fetching, (now: boolean, before: boolean): void => {
+	if (before && !now && !firstLoadFinished.value && spaces.value.length === 0) {
+		loadFailed.value = true;
+	}
+});
 
 onBeforeMount((): void => {
 	if (!firstLoadFinished.value && !fetching.value) {

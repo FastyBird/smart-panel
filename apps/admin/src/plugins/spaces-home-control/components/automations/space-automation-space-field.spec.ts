@@ -13,14 +13,16 @@ vi.mock('vue-i18n', () => ({
 }));
 
 const spaces = ref<{ id: string; name: string; type: string }[]>([]);
+const fetching = ref<boolean>(false);
+const firstLoadFinished = ref<boolean>(false);
 
 vi.mock('../../../../modules/spaces/composables/useSpaces', () => ({
 	useSpaces: () => ({
 		spaces: computed(() => spaces.value),
 		roomSpaces: computed(() => spaces.value.filter((space) => space.type === 'room')),
 		zoneSpaces: computed(() => spaces.value.filter((space) => space.type === 'zone')),
-		fetching: computed(() => false),
-		firstLoadFinished: computed(() => false),
+		fetching: computed(() => fetching.value),
+		firstLoadFinished: computed(() => firstLoadFinished.value),
 		fetchSpaces: mocks.fetchSpaces,
 		findById: (id: string) => spaces.value.find((space) => space.id === id) ?? null,
 	}),
@@ -47,6 +49,42 @@ describe('SpaceAutomationSpaceField', (): void => {
 		expect(mocks.fetchSpaces).toHaveBeenCalledTimes(2);
 		expect(wrapper.find('[data-test-id="spaces-load-failed"]').exists()).toBe(false);
 		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'))).toEqual(['r-1']);
+
+		wrapper.unmount();
+	});
+
+	it('says when a read another part of the admin started fails, and loads them again on retry', async (): Promise<void> => {
+		spaces.value = [];
+		mocks.fetchSpaces.mockReset();
+		mocks.fetchSpaces.mockImplementationOnce(async () => {
+			spaces.value = [{ id: 'z-1', name: 'Ground floor', type: 'zone' }];
+			firstLoadFinished.value = true;
+
+			return spaces.value;
+		});
+
+		// Another consumer's read is under way when the field mounts
+		fetching.value = true;
+
+		const wrapper = mount(SpaceAutomationSpaceField, { props: { modelValue: undefined }, global: { stubs: { Icon: true } } });
+
+		await flushPromises();
+
+		expect(mocks.fetchSpaces).not.toHaveBeenCalled();
+		expect(wrapper.find('[data-test-id="spaces-load-failed"]').exists()).toBe(false);
+
+		// That read fails: the store ends it without the first load finished
+		fetching.value = false;
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="spaces-load-failed"]').exists()).toBe(true);
+
+		await wrapper.find('[data-test-id="retry-load-spaces"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.fetchSpaces).toHaveBeenCalledTimes(1);
+		expect(wrapper.find('[data-test-id="spaces-load-failed"]').exists()).toBe(false);
+		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'))).toEqual(['z-1']);
 
 		wrapper.unmount();
 	});
