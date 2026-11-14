@@ -47,6 +47,30 @@ describe('McpAuditService', () => {
 		expect(captured).not.toContain('token_hash');
 	});
 
+	it.each([
+		{ tool: 'run_automation', capability: McpCapability.TRIGGER },
+		{ tool: 'set_automation_enabled', capability: McpCapability.WRITE },
+	])('logs only the automation target of $tool', ({ tool, capability }) => {
+		service.recordToolResult({
+			requestId: 'request-1',
+			tool,
+			capability,
+			durationMs: 3,
+			outcome: McpAuditOutcome.COMPLETED,
+			arguments: { automation_id: 'automation-1', enabled: true },
+		});
+
+		expect(log).toHaveBeenCalledWith('MCP audit event', {
+			event: 'tool_execution',
+			request_id: 'request-1',
+			tool,
+			capability,
+			duration_ms: 3,
+			outcome: McpAuditOutcome.COMPLETED,
+			automation_id: 'automation-1',
+		});
+	});
+
 	it('tracks calls by capability and tool plus failure outcomes', () => {
 		service.recordToolResult({
 			requestId: '1',

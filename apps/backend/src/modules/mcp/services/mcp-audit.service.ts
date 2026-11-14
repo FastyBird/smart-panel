@@ -69,6 +69,15 @@ interface ToolResult extends RequestIdentity {
 	arguments?: Record<string, unknown>;
 }
 
+// Which argument names the target of each tool call that is audited with a target id
+const MCP_AUDIT_TARGET_KEYS: ReadonlyMap<string, string> = new Map([
+	['set_device_property', 'property_id'],
+	['run_scene', 'scene_id'],
+	['set_space_lighting', 'space_id'],
+	['run_automation', 'automation_id'],
+	['set_automation_enabled', 'automation_id'],
+]);
+
 @Injectable()
 export class McpAuditService {
 	private readonly logger = createExtensionLogger(MCP_MODULE_NAME, 'McpAuditService');
@@ -236,14 +245,7 @@ export class McpAuditService {
 			return {};
 		}
 
-		const key =
-			tool === 'set_device_property'
-				? 'property_id'
-				: tool === 'run_scene'
-					? 'scene_id'
-					: tool === 'set_space_lighting'
-						? 'space_id'
-						: undefined;
+		const key = MCP_AUDIT_TARGET_KEYS.get(tool);
 
 		if (!key || typeof args[key] !== 'string') {
 			return {};

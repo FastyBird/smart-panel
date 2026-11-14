@@ -54,6 +54,20 @@ const runSceneInputSchema = z.object({
 	scene_id: z.string().uuid(),
 });
 
+const listAutomationsInputSchema = z.object({
+	space_id: z.string().uuid().optional(),
+	enabled: z.boolean().optional(),
+});
+
+const runAutomationInputSchema = z.object({
+	automation_id: z.string().uuid(),
+});
+
+const setAutomationEnabledInputSchema = z.object({
+	automation_id: z.string().uuid(),
+	enabled: z.boolean(),
+});
+
 const lightingModes = ['off', 'on', 'work', 'relax', 'night'] as const;
 
 const setSpaceLightingInputSchema = z.object({
@@ -90,6 +104,10 @@ export class McpTargetDiscoveryToolService {
 	) {}
 
 	register(server: McpServer, authInfo?: AuthInfo): void {
+		if (authInfo?.scopes.includes(McpCapability.READ)) {
+			this.registerReadTools(server);
+		}
+
 		if (authInfo?.scopes.includes(McpCapability.WRITE)) {
 			this.registerWriteTools(server);
 		}
@@ -97,6 +115,32 @@ export class McpTargetDiscoveryToolService {
 		if (authInfo?.scopes.includes(McpCapability.TRIGGER)) {
 			this.registerTriggerTools(server);
 		}
+	}
+
+	private registerReadTools(server: McpServer): void {
+		if (!this.hasProviderTool('list_automations', ToolAccessKind.READ)) {
+			return;
+		}
+
+		server.registerTool(
+			'list_automations',
+			{
+				description:
+					'Lists bounded automation summaries (never their graphs), optionally for one space or by enabled state.',
+				inputSchema: listAutomationsInputSchema,
+				outputSchema: toolOutputSchema,
+			},
+			async (args, ctx) =>
+				this.runProviderTool(
+					'list_automations',
+					'list_automations',
+					McpCapability.READ,
+					ToolAccessKind.READ,
+					args,
+					ctx,
+					MCP_TOOL_CALL_TIMEOUT_MS,
+				),
+		);
 	}
 
 	private registerWriteTools(server: McpServer): void {
@@ -120,27 +164,46 @@ export class McpTargetDiscoveryToolService {
 				}),
 		);
 
-		if (!this.hasProviderTool('control_device', ToolAccessKind.WRITE)) {
-			return;
+		if (this.hasProviderTool('control_device', ToolAccessKind.WRITE)) {
+			server.registerTool(
+				'set_device_property',
+				{
+					description: 'Sets one writable device property using an ID returned by list_writable_properties.',
+					inputSchema: setDevicePropertyInputSchema,
+					outputSchema: toolOutputSchema,
+				},
+				async (args, ctx) =>
+					this.runProviderTool(
+						'set_device_property',
+						'control_device',
+						McpCapability.WRITE,
+						ToolAccessKind.WRITE,
+						args,
+						ctx,
+					),
+			);
 		}
 
-		server.registerTool(
-			'set_device_property',
-			{
-				description: 'Sets one writable device property using an ID returned by list_writable_properties.',
-				inputSchema: setDevicePropertyInputSchema,
-				outputSchema: toolOutputSchema,
-			},
-			async (args, ctx) =>
-				this.runProviderTool(
-					'set_device_property',
-					'control_device',
-					McpCapability.WRITE,
-					ToolAccessKind.WRITE,
-					args,
-					ctx,
-				),
-		);
+		if (this.hasProviderTool('set_automation_enabled', ToolAccessKind.WRITE)) {
+			server.registerTool(
+				'set_automation_enabled',
+				{
+					description:
+						'Switches one automation on or off using an ID returned by list_automations. Nothing else is changed.',
+					inputSchema: setAutomationEnabledInputSchema,
+					outputSchema: toolOutputSchema,
+				},
+				async (args, ctx) =>
+					this.runProviderTool(
+						'set_automation_enabled',
+						'set_automation_enabled',
+						McpCapability.WRITE,
+						ToolAccessKind.WRITE,
+						args,
+						ctx,
+					),
+			);
+		}
 	}
 
 	private registerTriggerTools(server: McpServer): void {
@@ -200,6 +263,27 @@ export class McpTargetDiscoveryToolService {
 					),
 			);
 		}
+
+		if (this.hasProviderTool('run_automation', ToolAccessKind.TRIGGER)) {
+			server.registerTool(
+				'run_automation',
+				{
+					description:
+						'Runs one enabled automation now using an ID returned by list_automations, without waiting for the run.',
+					inputSchema: runAutomationInputSchema,
+					outputSchema: toolOutputSchema,
+				},
+				async (args, ctx) =>
+					this.runProviderTool(
+						'run_automation',
+						'run_automation',
+						McpCapability.TRIGGER,
+						ToolAccessKind.TRIGGER,
+						args,
+						ctx,
+					),
+			);
+		}
 	}
 
 	private async runProviderTool(
@@ -209,6 +293,7 @@ export class McpTargetDiscoveryToolService {
 		access: ToolAccessKind,
 		args: Record<string, unknown>,
 		ctx: ServerContext,
+		timeoutMs: number | null = null,
 	) {
 		const requestId = this.auditService.getRequestId({ id: ctx.mcpReq.id });
 
@@ -239,7 +324,7 @@ export class McpTargetDiscoveryToolService {
 
 				return this.toProviderToolData(capability, result);
 			},
-			null,
+			timeoutMs,
 			args,
 		);
 	}
@@ -393,7 +478,7 @@ export class McpTargetDiscoveryToolService {
 
 		const invalid = result.errorCode === 'INVALID_TOOL_ARGUMENTS';
 		const notFound = result.errorCode?.endsWith('_NOT_FOUND') ?? false;
-		const operation = capability === McpCapability.WRITE ? 'write' : 'trigger';
+		const operation = this.getOperation(capability);
 
 		return {
 			data,
@@ -424,8 +509,19 @@ export class McpTargetDiscoveryToolService {
 		};
 	}
 
+	private getOperation(capability: McpCapability): 'read' | 'write' | 'trigger' {
+		switch (capability) {
+			case McpCapability.READ:
+				return 'read';
+			case McpCapability.WRITE:
+				return 'write';
+			default:
+				return 'trigger';
+		}
+	}
+
 	private sanitizeError(error: unknown, capability: McpCapability): { code: string; message: string } {
-		const operation = capability === McpCapability.WRITE ? 'write' : 'trigger';
+		const operation = this.getOperation(capability);
 
 		if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
 			return {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { AutomationsService } from '../../automations/services/automations.service';
 import { DeviceConnectionStatus, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../devices/services/device-connection-state.service';
 import { DevicesService, VisibleDeviceSpaceCounts } from '../../devices/services/devices.service';
@@ -37,6 +38,7 @@ export class HomeContextQueryService {
 		private readonly weatherService: WeatherService,
 		private readonly energyService: EnergyDataService,
 		private readonly securityService: SecurityService,
+		private readonly automationsService: AutomationsService,
 	) {}
 
 	async getHomeSnapshot(query: HomeSnapshotQuery): Promise<HomeSnapshotResult> {
@@ -52,28 +54,31 @@ export class HomeContextQueryService {
 			? Promise.resolve<VisibleDeviceSpaceCounts | null>(null)
 			: this.devicesService.getVisibleSpaceCounts();
 
-		const [spacePage, devicePage, spaceCounts, scenePage, weather, energy, security] = await Promise.all([
-			selectedSpace
-				? Promise.resolve({ spaces: [selectedSpace], total: 1 })
-				: this.spacesService.findSummaryPage(profile.spaces + 1, 0),
-			selectedSpace
-				? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, profile.devices)
-				: this.devicesService.findVisibleSummaryPage(profile.devices),
-			spaceCountsPromise,
-			this.scenesService.findSummaryPage(profile.scenes, snapshotScope?.sceneSpaceIds),
-			this.optional(() => this.weatherService.getPrimaryWeather()),
-			this.optional(() =>
-				this.getEnergySummaryData(snapshotScope?.wholeHome ? undefined : (selectedSpace ?? undefined)),
-			),
-			this.optional(() =>
-				this.securityService.getBoundedStatus(
-					profile.securityDevices,
-					profile.securityChannelsPerDevice,
-					profile.securityPropertiesPerChannel,
-					snapshotScope?.securityDeviceScope ?? snapshotScope?.deviceScope,
+		const [spacePage, devicePage, spaceCounts, scenePage, automationPage, weather, energy, security] =
+			await Promise.all([
+				selectedSpace
+					? Promise.resolve({ spaces: [selectedSpace], total: 1 })
+					: this.spacesService.findSummaryPage(profile.spaces + 1, 0),
+				selectedSpace
+					? this.spacesService.findVisibleDeviceSummariesBySpace(selectedSpace.id, profile.devices)
+					: this.devicesService.findVisibleSummaryPage(profile.devices),
+				spaceCountsPromise,
+				this.scenesService.findSummaryPage(profile.scenes, snapshotScope?.sceneSpaceIds),
+				// Automations are assigned to spaces the way scenes are, so they share the scope of the scenes
+				this.automationsService.findSummaryPage(profile.automations, { spaceIds: snapshotScope?.sceneSpaceIds }),
+				this.optional(() => this.weatherService.getPrimaryWeather()),
+				this.optional(() =>
+					this.getEnergySummaryData(snapshotScope?.wholeHome ? undefined : (selectedSpace ?? undefined)),
 				),
-			),
-		]);
+				this.optional(() =>
+					this.securityService.getBoundedStatus(
+						profile.securityDevices,
+						profile.securityChannelsPerDevice,
+						profile.securityPropertiesPerChannel,
+						snapshotScope?.securityDeviceScope ?? snapshotScope?.deviceScope,
+					),
+				),
+			]);
 		await this.hydrateDeviceStatusesStrict(devicePage.devices);
 
 		const devices = devicePage.devices.filter((device) => !device.hidden);
@@ -98,6 +103,15 @@ export class HomeContextQueryService {
 				triggerable: scene.triggerable,
 				primary_space_id: scene.primarySpaceId,
 			})),
+			automations: automationPage.automations.map((automation) => ({
+				id: automation.id,
+				name: automation.name,
+				enabled: automation.enabled,
+				status: automation.status,
+				space_id: automation.spaceId,
+				last_triggered_at: this.toIsoString(automation.lastTriggeredAt),
+				last_run_status: automation.lastRunStatus ?? null,
+			})),
 			weather: weather ? this.mapWeather(weather, profile.forecastDays) : null,
 			energy,
 			security: security
@@ -113,6 +127,7 @@ export class HomeContextQueryService {
 				spaces_truncated: spacePage.total > spaces.length,
 				devices_truncated: devicePage.total > devices.length,
 				scenes_truncated: scenePage.total > scenes.length,
+				automations_truncated: automationPage.total > automationPage.automations.length,
 			},
 		};
 

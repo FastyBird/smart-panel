@@ -19,6 +19,7 @@ export enum ScopedShortIdTargetKind {
 	SPACE = 'space',
 	PROPERTY = 'property',
 	SCENE = 'scene',
+	AUTOMATION = 'automation',
 }
 
 export const MAX_SCOPED_SHORT_ID_MAPPINGS = 10_000;
@@ -266,6 +267,8 @@ export class ShortIdMappingService {
 				return 'pr';
 			case ScopedShortIdTargetKind.SCENE:
 				return 'sc';
+			case ScopedShortIdTargetKind.AUTOMATION:
+				return 'au';
 		}
 	}
 

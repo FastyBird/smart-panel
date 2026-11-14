@@ -50,9 +50,10 @@ const READ_TOOLS = [
 	'get_energy_summary',
 	'get_weather',
 	'get_security_status',
+	'list_automations',
 ];
-const WRITE_TOOLS = ['list_writable_properties', 'set_device_property'];
-const TRIGGER_TOOLS = ['list_trigger_targets', 'run_scene', 'set_space_lighting'];
+const WRITE_TOOLS = ['list_writable_properties', 'set_device_property', 'set_automation_enabled'];
+const TRIGGER_TOOLS = ['list_trigger_targets', 'run_scene', 'set_space_lighting', 'run_automation'];
 const CAPABILITY_CASES: { capabilities: McpCapability[]; expectedTools: string[] }[] = [
 	{ capabilities: [], expectedTools: [] },
 	{ capabilities: [McpCapability.READ], expectedTools: [...READ_TOOLS] },
@@ -204,6 +205,30 @@ describe('MCP endpoint', () => {
 					inputSchema: z.object({}),
 					outputSchema: z.object({}),
 				}),
+				createToolDefinition({
+					name: 'list_automations',
+					description: 'Test automation list provider.',
+					audiences: [ToolAudience.MCP],
+					access: ToolAccessKind.READ,
+					inputSchema: z.object({}),
+					outputSchema: z.object({}),
+				}),
+				createToolDefinition({
+					name: 'run_automation',
+					description: 'Test automation run provider.',
+					audiences: [ToolAudience.MCP],
+					access: ToolAccessKind.TRIGGER,
+					inputSchema: z.object({}),
+					outputSchema: z.object({}),
+				}),
+				createToolDefinition({
+					name: 'set_automation_enabled',
+					description: 'Test automation enable provider.',
+					audiences: [ToolAudience.MCP],
+					access: ToolAccessKind.WRITE,
+					inputSchema: z.object({}),
+					outputSchema: z.object({}),
+				}),
 			],
 			executeTool: jest.fn().mockResolvedValue(null),
 		});
@@ -332,6 +357,7 @@ describe('MCP endpoint', () => {
 				'get_energy_summary',
 				'get_weather',
 				'get_security_status',
+				'list_automations',
 			]);
 			expect(resources.resources.map(({ uri }) => uri)).toEqual(
 				expect.arrayContaining([

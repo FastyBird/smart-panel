@@ -1,5 +1,5 @@
 import { AuthInfo, McpServer, ServerContext } from '@modelcontextprotocol/server';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
@@ -560,6 +560,195 @@ describe('McpTargetDiscoveryToolService', () => {
 			'invalid_credential',
 			{ capability: McpCapability.TRIGGER, tool: 'run_scene' },
 		);
+	});
+
+	describe('automation tools', () => {
+		const AUTOMATION_ID = '60000000-0000-4000-8000-000000000001';
+
+		beforeEach(() => {
+			providerTools = [
+				providerTool('list_automations', ToolAccessKind.READ),
+				providerTool('run_automation', ToolAccessKind.TRIGGER),
+				providerTool('set_automation_enabled', ToolAccessKind.WRITE),
+			];
+			// Answer as the real registry does: only the tools of the asked access kinds
+			toolRegistry.getAllToolDefinitions.mockImplementation((options: { accessKinds?: ToolAccessKind[] }) =>
+				providerTools.filter((tool) => options.accessKinds?.includes(tool.access) ?? true),
+			);
+		});
+
+		it.each([
+			{ scopes: [], expected: [] },
+			{ scopes: [McpCapability.READ], expected: ['list_automations'] },
+			{ scopes: [McpCapability.TRIGGER], expected: ['list_trigger_targets', 'run_automation'] },
+			{ scopes: [McpCapability.WRITE], expected: ['list_writable_properties', 'set_automation_enabled'] },
+			{
+				scopes: [McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER],
+				expected: [
+					'list_automations',
+					'list_writable_properties',
+					'set_automation_enabled',
+					'list_trigger_targets',
+					'run_automation',
+				],
+			},
+		])('registers each automation tool only for its capability: $scopes', ({ scopes, expected }) => {
+			service.register(server(), authInfo(scopes));
+
+			expect([...callbacks.keys()]).toEqual(expected);
+		});
+
+		it('omits an automation tool whose provider is not registered with the matching access kind', () => {
+			providerTools = [
+				providerTool('list_automations', ToolAccessKind.WRITE),
+				providerTool('run_automation', ToolAccessKind.READ),
+				providerTool('set_automation_enabled', ToolAccessKind.TRIGGER),
+			];
+			service.register(server(), authInfo([McpCapability.READ, McpCapability.WRITE, McpCapability.TRIGGER]));
+
+			expect([...callbacks.keys()]).toEqual(['list_writable_properties', 'list_trigger_targets']);
+		});
+
+		it.each([
+			{
+				tool: 'list_automations',
+				capability: McpCapability.READ,
+				access: ToolAccessKind.READ,
+				args: { space_id: '50000000-0000-4000-8000-000000000001', enabled: true },
+			},
+			{
+				tool: 'run_automation',
+				capability: McpCapability.TRIGGER,
+				access: ToolAccessKind.TRIGGER,
+				args: { automation_id: AUTOMATION_ID },
+			},
+			{
+				tool: 'set_automation_enabled',
+				capability: McpCapability.WRITE,
+				access: ToolAccessKind.WRITE,
+				args: { automation_id: AUTOMATION_ID, enabled: false },
+			},
+		])('authorizes $tool with its capability and routes it with only its access kind', async (testCase) => {
+			toolRegistry.executeTool.mockResolvedValue({
+				success: true,
+				status: ToolExecutionStatus.COMPLETED,
+				message: 'Done',
+				data: { automation_id: AUTOMATION_ID },
+			});
+			service.register(server(), authInfo([testCase.capability]));
+
+			const result = await callbacks.get(testCase.tool)?.(testCase.args, requestContext([testCase.capability]));
+
+			expect(policyService.authorizeAuthInfo).toHaveBeenCalledWith(
+				expect.objectContaining({ clientId: 'client-id' }),
+				testCase.capability,
+			);
+			expect(toolRegistry.executeTool).toHaveBeenCalledWith(
+				{ id: '17', name: testCase.tool, arguments: testCase.args },
+				{
+					audience: ToolAudience.MCP,
+					source: 'mcp',
+					actorId: 'client-id',
+					requestId: '17',
+					allowedAccessKinds: [testCase.access],
+				},
+			);
+			expect(result?.isError).toBeUndefined();
+			expect(result?.content).toEqual([{ type: 'text', text: 'Done' }]);
+			expect(result?.structuredContent.data).toEqual({ status: 'completed', automation_id: AUTOMATION_ID });
+			expect(auditService.recordToolResult).toHaveBeenCalledWith(
+				expect.objectContaining({ tool: testCase.tool, capability: testCase.capability, outcome: 'completed' }),
+			);
+		});
+
+		it('denies a call when the live policy no longer grants the capability', async () => {
+			policyService.authorizeAuthInfo.mockRejectedValue(new ForbiddenException('capability revoked'));
+			service.register(server(), authInfo([McpCapability.WRITE]));
+
+			const result = await callbacks.get('set_automation_enabled')?.(
+				{ automation_id: AUTOMATION_ID, enabled: true },
+				requestContext([McpCapability.WRITE]),
+			);
+
+			expect(result?.isError).toBe(true);
+			expect(result?.structuredContent.error).toEqual({
+				code: 'permission_denied',
+				message: 'The MCP client is not authorized for this write operation.',
+			});
+			expect(auditService.recordPolicyDenial).toHaveBeenCalledWith(
+				{ requestId: '17', clientId: 'client-id' },
+				'capability_denied',
+				{ capability: McpCapability.WRITE, tool: 'set_automation_enabled' },
+			);
+			expect(toolRegistry.executeTool).not.toHaveBeenCalled();
+		});
+
+		it('reports a refused run as a trigger failure, not a capability denial', async () => {
+			toolRegistry.executeTool.mockResolvedValue({
+				success: false,
+				status: ToolExecutionStatus.DENIED,
+				message: 'Automation "Hallway" cannot be run: The automation is disabled.',
+				data: { automation_id: AUTOMATION_ID, started: false, outcome: 'refused', run_id: null, reason: 'disabled' },
+				errorCode: 'AUTOMATION_DISABLED',
+			});
+			service.register(server(), authInfo([McpCapability.TRIGGER]));
+
+			const result = await callbacks.get('run_automation')?.(
+				{ automation_id: AUTOMATION_ID },
+				requestContext([McpCapability.TRIGGER]),
+			);
+
+			expect(result?.isError).toBe(true);
+			expect(result?.structuredContent.error).toEqual(expect.objectContaining({ code: 'trigger_failed' }));
+			expect(result?.structuredContent.data).toEqual(
+				expect.objectContaining({ status: 'denied', outcome: 'refused', started: false }),
+			);
+			expect(auditService.recordPolicyDenial).not.toHaveBeenCalled();
+			expect(auditService.recordToolResult).toHaveBeenCalledWith(
+				expect.objectContaining({
+					outcome: 'failed',
+					tool: 'run_automation',
+					arguments: { automation_id: AUTOMATION_ID },
+				}),
+			);
+		});
+
+		it('reports an unknown automation as not found', async () => {
+			toolRegistry.executeTool.mockResolvedValue({
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: 'Automation not found',
+				errorCode: 'AUTOMATION_NOT_FOUND',
+			});
+			service.register(server(), authInfo([McpCapability.WRITE]));
+
+			const result = await callbacks.get('set_automation_enabled')?.(
+				{ automation_id: AUTOMATION_ID, enabled: true },
+				requestContext([McpCapability.WRITE]),
+			);
+
+			expect(result?.structuredContent.error).toEqual({
+				code: 'not_found',
+				message: 'The requested Smart Panel target was not found.',
+			});
+		});
+
+		it('describes a failed list as a read failure', async () => {
+			toolRegistry.executeTool.mockResolvedValue({
+				success: false,
+				status: ToolExecutionStatus.FAILED,
+				message: 'Failed to execute tool "list_automations"',
+				errorCode: 'TOOL_EXECUTION_FAILED',
+			});
+			service.register(server(), authInfo([McpCapability.READ]));
+
+			const result = await callbacks.get('list_automations')?.({}, requestContext([McpCapability.READ]));
+
+			expect(result?.structuredContent.error).toEqual({
+				code: 'read_failed',
+				message: 'Smart Panel could not complete the requested read operation.',
+			});
+		});
 	});
 
 	function server(): McpServer {

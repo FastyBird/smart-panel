@@ -48,6 +48,18 @@ const sceneSchema = z
 	})
 	.strict();
 
+const automationSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		enabled: z.boolean(),
+		status: z.string(),
+		space_id: z.string().nullable(),
+		last_triggered_at: z.string().nullable(),
+		last_run_status: z.string().nullable(),
+	})
+	.strict();
+
 const weatherSchema = z
 	.object({
 		location_id: z.string().nullable(),
@@ -124,6 +136,7 @@ export const homeSnapshotResultSchema = z
 		spaces: z.array(spaceSchema).max(limits.spaces),
 		devices: z.array(deviceSchema).max(limits.devices),
 		scenes: z.array(sceneSchema).max(limits.scenes),
+		automations: z.array(automationSchema).max(limits.automations),
 		weather: weatherSchema.nullable(),
 		energy: energySchema.nullable(),
 		security: securitySchema.nullable(),
@@ -132,6 +145,7 @@ export const homeSnapshotResultSchema = z
 				spaces_truncated: z.boolean(),
 				devices_truncated: z.boolean(),
 				scenes_truncated: z.boolean(),
+				automations_truncated: z.boolean(),
 			})
 			.strict(),
 	})

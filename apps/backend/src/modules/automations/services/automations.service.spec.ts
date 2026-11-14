@@ -683,6 +683,42 @@ describe('AutomationsService', () => {
 		});
 	});
 
+	describe('findSummaryPage', () => {
+		it('reads a bounded, filtered page by name without graphs and counts every match', async () => {
+			const zulu = await create({ name: 'Zulu', graph: graph(), space_id: SPACE_ID });
+			const alpha = await create({ name: 'Alpha', graph: graph(), space_id: SPACE_ID });
+			const mike = await create({ name: 'Mike', graph: graph() });
+			const other = await create({ name: 'Other', graph: graph() });
+
+			await repository.update({ id: alpha.id }, { enabled: true });
+			await repository.update({ id: mike.id }, { enabled: true });
+			await repository.update({ id: other.id }, { spaceId: OTHER_SPACE_ID });
+
+			const all = await service.findSummaryPage(2);
+
+			expect(all.total).toBe(4);
+			expect(all.automations.map((automation) => automation.name)).toEqual(['Alpha', 'Mike']);
+
+			for (const automation of all.automations) {
+				expect(automation.graph).toBeUndefined();
+			}
+
+			const inSpace = await service.findSummaryPage(10, { spaceIds: [SPACE_ID] });
+
+			expect(inSpace.automations.map((automation) => automation.id)).toEqual([alpha.id, zulu.id]);
+
+			const enabledInSpaces = await service.findSummaryPage(10, {
+				spaceIds: [SPACE_ID, OTHER_SPACE_ID],
+				enabled: true,
+			});
+
+			expect(enabledInSpaces).toEqual({ automations: [expect.objectContaining({ id: alpha.id })], total: 1 });
+			expect((await service.findSummaryPage(10, { enabled: false })).total).toBe(2);
+			expect(await service.findSummaryPage(10, { spaceIds: [] })).toEqual({ automations: [], total: 0 });
+			expect(await service.findSummaryPage(0)).toEqual({ automations: [], total: 0 });
+		});
+	});
+
 	describe('update', () => {
 		it('changes only the provided fields and increments the revision', async () => {
 			const automation = await create({ name: 'Motion light', description: 'Hallway', graph: graph() });
