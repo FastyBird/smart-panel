@@ -170,6 +170,32 @@ describe('AutomationTemplateDialog', () => {
 		expect(wrapper.find('[data-test-template="leak-alarm"]').text()).toContain('Leak alarm');
 	});
 
+	it('reads the catalogue again each time it opens, keeping the list it holds meanwhile', async () => {
+		await open();
+
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+
+		// The backend may have restarted with other templates since
+		expect(fetch).toHaveBeenCalledTimes(2);
+		expect(wrapper.find('[data-test-id="templates-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-template="leak-alarm"]').exists()).toBe(true);
+	});
+
+	it('keeps offering the list it holds when reading it again fails', async () => {
+		await open();
+
+		fetch.mockRejectedValueOnce(new Error('offline'));
+
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="templates-load-failed"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-template="leak-alarm"]').exists()).toBe(true);
+	});
+
 	it('asks the questions of the picked template and generates its flow under the id of the new automation', async () => {
 		await open();
 

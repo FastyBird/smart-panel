@@ -27,7 +27,7 @@
 			/>
 
 			<el-result
-				v-else-if="loadFailed"
+				v-else-if="loadFailed && templates.length === 0"
 				icon="error"
 				:title="t('automations.templates.texts.loadFailed')"
 				data-test-id="templates-load-failed"
@@ -276,7 +276,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { templates, loading, loaded, loadFailed, fetchTemplates, templateName, templateDescription, parameterLabel, parameterDescription } =
+const { templates, loading, loadFailed, fetchTemplates, templateName, templateDescription, parameterLabel, parameterDescription } =
 	useAutomationTemplates();
 
 const lookups = useAutomationNodeLookups();
@@ -320,12 +320,12 @@ const propertyFilter =
 		return true;
 	};
 
+// Read on every open: the backend may have restarted with other templates. The list held stays on screen
+// meanwhile, and the store joins a read already on its way.
 const onOpen = (): void => {
-	if (!loaded.value) {
-		fetchTemplates().catch((): void => {
-			// The dialog says so and offers to try again
-		});
-	}
+	fetchTemplates().catch((): void => {
+		// The dialog says so and offers to try again
+	});
 };
 
 const onPick = (template: IAutomationTemplate): void => {
