@@ -21,6 +21,7 @@ import { CamerasStatusController } from './controllers/cameras-status.controller
 import { CamerasController } from './controllers/cameras.controller';
 import { UpdateCamerasConfigDto } from './dto/update-config.dto';
 import { LiveStreamGateway } from './gateway/live-stream.gateway';
+import { LiveUpgradeRequiredHook } from './gateway/live-upgrade-required.hook';
 import { CamerasConfigModel } from './models/config.model';
 import { CameraSessionService } from './services/camera-session.service';
 import { CameraSnapshotService } from './services/camera-snapshot.service';
@@ -50,6 +51,7 @@ import { Go2rtcService } from './services/go2rtc.service';
 		Go2rtcService,
 		Go2rtcStreamsService,
 		LiveStreamGateway,
+		LiveUpgradeRequiredHook,
 	],
 	controllers: [CamerasController, CamerasStatusController, CamerasLiveController],
 	exports: [
