@@ -686,6 +686,226 @@ describe('LiveStreamGateway', () => {
 			});
 		});
 
+		describe('a stale provider socket next to a pending newer check', () => {
+			async function threeProviders(checkedByOlder: boolean): Promise<{
+				underZero: Awaited<ReturnType<typeof openLive>>;
+				underOne: Awaited<ReturnType<typeof openLive>>;
+				underTwo: Awaited<ReturnType<typeof openLive>>;
+				failOlder: () => void;
+				passNewer: () => void;
+				older: Promise<void>;
+				newer: Promise<void>;
+			}> {
+				const providerZero = new FakeCameraStreamProvider('fake-cameras');
+				const providerOne = new FakeCameraStreamProvider('fake-cameras');
+				const providerTwo = new FakeCameraStreamProvider('fake-cameras');
+				const underZero = await openUnder({ kind: 'user', id: 'u0' }, providerZero);
+				const underOne = await openUnder({ kind: 'user', id: 'u1' }, providerOne);
+				const underTwo = await openUnder({ kind: 'user', id: 'u2' }, providerTwo);
+				const resolved = await cameras.getProviderOrThrow('c1');
+
+				let failOlder!: () => void;
+				let passNewer!: () => void;
+
+				const lookup = jest.spyOn(cameras, 'getProviderOrThrow');
+
+				let failLookup!: () => void;
+
+				if (checkedByOlder) {
+					lookup.mockResolvedValueOnce({ device: resolved.device, provider: providerOne });
+				} else {
+					// The older check has resolved no provider when it fails.
+					lookup.mockReturnValueOnce(
+						new Promise((_resolve, reject) => {
+							failLookup = () => reject(new CameraOfflineException('Camera is offline'));
+						}),
+					);
+				}
+
+				lookup.mockResolvedValueOnce({ device: resolved.device, provider: providerTwo });
+
+				const resolveProfile = jest.spyOn(cameras, 'resolveProfile');
+
+				resolveProfile.mockImplementation(
+					(_device, checked) =>
+						new Promise((resolve, reject) => {
+							if (checked === providerOne) {
+								failOlder = () => reject(new CameraOfflineException('Camera is offline'));
+							} else {
+								passNewer = () => resolve(pass);
+							}
+						}),
+				);
+
+				const older = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+				if (checkedByOlder) {
+					await waitFor(() => resolveProfile.mock.calls.length === 1);
+				}
+
+				const newer = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+				await waitFor(() => resolveProfile.mock.calls.length === (checkedByOlder ? 2 : 1));
+
+				return {
+					underZero,
+					underOne,
+					underTwo,
+					failOlder: checkedByOlder ? failOlder : failLookup,
+					passNewer,
+					older,
+					newer,
+				};
+			}
+
+			it("closes every provider but the running check's on a superseded failure, and the rest once it passes", async () => {
+				const { underZero, underOne, underTwo, failOlder, passNewer, older, newer } = await threeProviders(true);
+
+				failOlder();
+				await older;
+
+				expect(await underOne.closed).toEqual([4000, 'revoked']);
+				expect(await underZero.closed).toEqual([4000, 'revoked']);
+				expect(underTwo.client.readyState).toBe(WebSocket.OPEN);
+
+				passNewer();
+				await newer;
+				await settle();
+
+				expect(underTwo.client.readyState).toBe(WebSocket.OPEN);
+				expect(gateway.getActiveCount()).toBe(1);
+			});
+
+			it("treats a failure that checked no provider as covering every socket but the running check's", async () => {
+				const { underZero, underOne, underTwo, failOlder, older, newer, passNewer } = await threeProviders(false);
+
+				failOlder();
+				await older;
+
+				expect(await underZero.closed).toEqual([4000, 'revoked']);
+				expect(await underOne.closed).toEqual([4000, 'revoked']);
+				expect(underTwo.client.readyState).toBe(WebSocket.OPEN);
+
+				passNewer();
+				await newer;
+				await settle();
+
+				expect(underTwo.client.readyState).toBe(WebSocket.OPEN);
+				expect(gateway.getActiveCount()).toBe(1);
+			});
+
+			it('closes a stale provider socket when the newest check passes and nothing failed', async () => {
+				const providerZero = new FakeCameraStreamProvider('fake-cameras');
+				const providerTwo = new FakeCameraStreamProvider('fake-cameras');
+				const underZero = await openUnder({ kind: 'user', id: 'u0' }, providerZero);
+				const underTwo = await openUnder({ kind: 'user', id: 'u2' }, providerTwo);
+				const resolved = await cameras.getProviderOrThrow('c1');
+
+				jest
+					.spyOn(cameras, 'getProviderOrThrow')
+					.mockResolvedValueOnce({ device: resolved.device, provider: providerTwo });
+				jest.spyOn(cameras, 'resolveProfile').mockResolvedValue(pass);
+
+				await gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+				expect(await underZero.closed).toEqual([4000, 'revoked']);
+
+				await settle();
+
+				expect(underTwo.client.readyState).toBe(WebSocket.OPEN);
+				expect(gateway.getActiveCount()).toBe(1);
+			});
+
+			it('spares the sockets of a newer passed check and of a newer running one when an older check fails last', async () => {
+				const providerZero = new FakeCameraStreamProvider('fake-cameras');
+				const providerA = new FakeCameraStreamProvider('fake-cameras');
+				const providerB = new FakeCameraStreamProvider('fake-cameras');
+				const providerC = new FakeCameraStreamProvider('fake-cameras');
+				const underA = await openUnder({ kind: 'user', id: 'u1' }, providerA);
+				const resolved = await cameras.getProviderOrThrow('c1');
+
+				let failA!: () => void;
+				let passC!: () => void;
+
+				const lookup = jest.spyOn(cameras, 'getProviderOrThrow');
+				const resolveProfile = jest.spyOn(cameras, 'resolveProfile');
+
+				resolveProfile.mockImplementation(
+					(_device, checked) =>
+						new Promise((resolve, reject) => {
+							if (checked === providerA) {
+								failA = () => reject(new CameraOfflineException('Camera is offline'));
+							} else if (checked === providerB) {
+								resolve(pass);
+							} else {
+								passC = () => resolve(pass);
+							}
+						}),
+				);
+
+				lookup.mockResolvedValueOnce({ device: resolved.device, provider: providerA });
+
+				const checkA = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+				await waitFor(() => resolveProfile.mock.calls.length === 1);
+
+				// B passes and sweeps A's socket as stale.
+				lookup.mockResolvedValueOnce({ device: resolved.device, provider: providerB });
+				await gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+				expect(await underA.closed).toEqual([4000, 'revoked']);
+
+				// Sockets admitted after B's check: one on a stale provider, one on the provider C is about to evaluate.
+				const underB = await openUnder({ kind: 'user', id: 'u2' }, providerB);
+				const underZero = await openUnder({ kind: 'user', id: 'u0' }, providerZero);
+				const underC = await openUnder({ kind: 'user', id: 'u3' }, providerC);
+
+				lookup.mockResolvedValueOnce({ device: resolved.device, provider: providerC });
+
+				const checkC = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+				await waitFor(() => resolveProfile.mock.calls.length === 3);
+
+				failA();
+				await checkA;
+
+				expect(await underZero.closed).toEqual([4000, 'revoked']);
+
+				await settle();
+
+				expect(underB.client.readyState).toBe(WebSocket.OPEN);
+				expect(underC.client.readyState).toBe(WebSocket.OPEN);
+
+				// C passes: B's socket is now stale, C's stays.
+				passC();
+				await checkC;
+
+				expect(await underB.closed).toEqual([4000, 'revoked']);
+
+				await settle();
+
+				expect(underC.client.readyState).toBe(WebSocket.OPEN);
+				expect(gateway.getActiveCount()).toBe(1);
+			});
+
+			it('stops treating a failure as superseded by a pending check once that check finished', async () => {
+				const { underZero, underOne, underTwo, failOlder, passNewer, older, newer } = await threeProviders(true);
+
+				passNewer();
+				await newer;
+
+				expect(await underOne.closed).toEqual([4000, 'revoked']);
+				expect(await underZero.closed).toEqual([4000, 'revoked']);
+
+				failOlder();
+				await older;
+				await settle();
+
+				// The newer check passed and validated providerTwo: its sockets stay open.
+				expect(underTwo.client.readyState).toBe(WebSocket.OPEN);
+			});
+		});
+
 		it('closes a socket on a third provider that is neither the checked nor the validated one', async () => {
 			const provider0 = new FakeCameraStreamProvider('fake-cameras');
 			const providerA = new FakeCameraStreamProvider('fake-cameras');

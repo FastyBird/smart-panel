@@ -496,7 +496,7 @@ An open socket is no longer known to `CameraSessionService`, so the gateway subs
 | `DisplaysModule.Display.Deleted`, `DisplaysModule.Display.TokenRevoked` | the display's sockets close `revoked` |
 | `UsersModule.User.Deleted` | the user's sockets close `revoked` |
 | config update of `cameras-module` leaving it disabled or unreadable | every socket closes `module_disabled` |
-| config update of any plugin | every watched (device, profile) is re-validated once, in parallel: a provider that is now offline (disabled plugin) or a profile that is no longer available closes its sockets `revoked`, except those admitted under the provider instance that a newer passing check for the same (device, profile) validated (a stale result never closes those; sockets on any other provider, or without one yet, still close) |
+| config update of any plugin | every watched (device, profile) is re-validated once, in parallel: a provider that is now offline (disabled plugin) or a profile that is no longer available closes its sockets `revoked`, except those admitted under the provider instance that a newer passing check for the same (device, profile) validated or that a newer check still running evaluates (a stale result never closes those; sockets on any other provider, or without one yet, still close). A passing newest check also closes `revoked` the sockets of that (device, profile) still on another provider instance (stale providers), except those a newer running check evaluates; sockets still connecting are left to admission |
 | relay status leaves `running`, or the generation changes | every socket closes `relay_unavailable` |
 
 ## Status route

@@ -41,10 +41,11 @@ interface LiveEntry {
 }
 
 interface Revalidation {
-	/** Generation of the newest check started. */
-	latest: number;
-	/** Checks in flight; the state is dropped when the last one settles. */
-	pending: number;
+	/**
+	 * Checks still running by generation, with the provider instance each evaluates (`null` until its provider lookup
+	 * resolves). A check leaves it when it settles; the state is dropped when the last one does.
+	 */
+	running: Map<number, ICameraStreamProvider | null>;
 	/** The newest passing check and the provider instance it validated. */
 	validated: { generation: number; provider: ICameraStreamProvider } | null;
 }
@@ -373,46 +374,74 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 		await Promise.all(
 			[...targets].map(async ([key, { deviceId, profileId }]) => {
 				const generation = ++this.revalidationSeq;
-				const state = this.revalidations.get(key) ?? { latest: 0, pending: 0, validated: null };
+				const state: Revalidation = this.revalidations.get(key) ?? { running: new Map(), validated: null };
 
-				state.latest = generation;
-				state.pending++;
+				state.running.set(generation, null);
 				this.revalidations.set(key, state);
 
-				let checked: ICameraStreamProvider | null = null;
+				// Sockets of this camera profile that survive a result of `generation`: those on the provider a newer passing
+				// check validated and those on a provider a newer check is still evaluating. A newer check that has not resolved
+				// its provider yet spares nothing, and neither does a socket still connecting (no provider yet).
+				const spared = (): Set<ICameraStreamProvider> => {
+					const providers = new Set<ICameraStreamProvider>();
+
+					if (state.validated && state.validated.generation >= generation) {
+						providers.add(state.validated.provider);
+					}
+
+					for (const [other, evaluating] of state.running) {
+						if (other > generation && evaluating !== null) {
+							providers.add(evaluating);
+						}
+					}
+
+					return providers;
+				};
 
 				try {
 					const { device, provider } = await this.cameras.getProviderOrThrow(deviceId);
 
-					checked = provider;
+					state.running.set(generation, provider);
 
 					await this.cameras.resolveProfile(device, provider, profileId);
 
+					// The newest passing check owns the camera profile: a socket on any other provider instance is stale and
+					// closes like one of a failed check. A socket still connecting (no provider yet) is left to admission.
 					if (!state.validated || generation > state.validated.generation) {
 						state.validated = { generation, provider };
+
+						const keep = spared();
+
+						this.closeWhere(
+							(session, entry) =>
+								session.deviceId === deviceId &&
+								session.profileId === profileId &&
+								entry.provider !== null &&
+								!keep.has(entry.provider),
+							'REVOKED',
+						);
 					}
 				} catch (error) {
 					this.logger.warn(
 						`Live stream camera unavailable device=${deviceId} profile=${profileId} error=${errorName(error)}`,
 					);
 
-					// A newer passing check spares only the sockets admitted under the provider it validated. A failure that a
-					// newer check has superseded but that is still pending judges only the provider it checked: the replacement
-					// is judged by its own check. The newest failure closes every other socket of this camera profile.
-					const newer = state.validated && state.validated.generation > generation ? state.validated.provider : null;
-					const supersededByPending = newer === null && generation < state.latest;
+					// A failure closes every socket of the camera profile except those on the provider a newer passing check
+					// validated and those on a provider a newer check still running evaluates: that check judges them itself, and
+					// sweeps the stale ones if it passes. The newest check has nothing newer, so its failure closes all.
+					const keep = spared();
 
 					this.closeWhere(
 						(session, entry) =>
 							session.deviceId === deviceId &&
 							session.profileId === profileId &&
-							(supersededByPending
-								? checked !== null && entry.provider === checked
-								: newer === null || entry.provider !== newer),
+							(entry.provider === null || !keep.has(entry.provider)),
 						'REVOKED',
 					);
 				} finally {
-					if (--state.pending === 0 && this.revalidations.get(key) === state) {
+					state.running.delete(generation);
+
+					if (state.running.size === 0 && this.revalidations.get(key) === state) {
 						this.revalidations.delete(key);
 					}
 				}
