@@ -208,6 +208,19 @@ export interface IUseAutomationNodeLookups extends IAutomationNodeLookups {
 	ensureScenes: () => Promise<void>;
 	// Reads the automations once, unless they are read already
 	ensureAutomations: () => Promise<void>;
+	// A read of the collection (by anyone) ended since the lookups were set up and it is still not loaded;
+	// said until it is loaded, a read after it under way meanwhile
+	devicesLoadFailed: ComputedRef<boolean>;
+	scenesLoadFailed: ComputedRef<boolean>;
+	automationsLoadFailed: ComputedRef<boolean>;
+	// A read of the collection is under way
+	fetchingDevices: ComputedRef<boolean>;
+	fetchingScenes: ComputedRef<boolean>;
+	fetchingAutomations: ComputedRef<boolean>;
+	// Reads the collection again, after a read of it failed
+	retryDevices: () => Promise<void>;
+	retryScenes: () => Promise<void>;
+	retryAutomations: () => Promise<void>;
 }
 
 export interface IUseAutomationLiveRun {

@@ -532,6 +532,7 @@
 					"title": "Scene",
 					"placeholder": "Select a scene",
 					"empty": "There are no scenes yet",
+					"loadFailed": "The scenes could not be loaded.",
 					"hint": "Every time it runs, the scene is checked again: a scene that would unlock, disarm or open something is not run."
 				},
 				"notification": {
@@ -582,7 +583,8 @@
 				"device": {
 					"title": "Device",
 					"placeholder": "Select a device",
-					"empty": "There are no devices yet"
+					"empty": "There are no devices yet",
+					"loadFailed": "The devices could not be loaded."
 				},
 				"connection": {
 					"title": "Start when the device"
@@ -612,6 +614,7 @@
 					"title": "Automation",
 					"placeholder": "Select an automation",
 					"empty": "There are no other automations yet",
+					"loadFailed": "The automations could not be loaded.",
 					"hints": {
 						"enable": "Its triggers start it again. Its flow has to be complete to be enabled. An automation cannot enable itself.",
 						"disable": "Its triggers stop and its active runs are cancelled. An automation cannot disable itself.",

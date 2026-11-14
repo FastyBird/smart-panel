@@ -60,6 +60,15 @@ vi.mock('../../composables/useAutomationNodeLookups', () => ({
 		ensureDevices: async () => undefined,
 		ensureScenes: async () => undefined,
 		ensureAutomations: async () => undefined,
+		devicesLoadFailed: computed(() => false),
+		scenesLoadFailed: computed(() => false),
+		automationsLoadFailed: computed(() => false),
+		fetchingDevices: computed(() => false),
+		fetchingScenes: computed(() => false),
+		fetchingAutomations: computed(() => false),
+		retryDevices: async () => undefined,
+		retryScenes: async () => undefined,
+		retryAutomations: async () => undefined,
 	}),
 }));
 

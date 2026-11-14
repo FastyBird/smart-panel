@@ -9,6 +9,7 @@ export { default as AutomationDurationInput } from './automation-duration-input.
 export { default as AutomationHouseModeChangedForm } from './automation-house-mode-changed-form.vue';
 export { default as AutomationHouseModeIsForm } from './automation-house-mode-is-form.vue';
 export { default as AutomationHouseModeSetForm } from './automation-house-mode-set-form.vue';
+export { default as AutomationLookupLoadFailed } from './automation-lookup-load-failed.vue';
 export { default as AutomationManualStartForm } from './automation-manual-start-form.vue';
 export { default as AutomationNodeSummary } from './automation-node-summary.vue';
 export { default as AutomationNodeTarget } from './automation-node-target.vue';
@@ -30,6 +31,7 @@ export { default as AutomationWeekdaysInput } from './automation-weekdays-input.
 
 export * from './types';
 export type * from './automation-duration-input.types';
+export type * from './automation-lookup-load-failed.types';
 export type * from './automation-node-target.types';
 export type * from './automation-option-select.types';
 export type * from './automation-property-value-input.types';

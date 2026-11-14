@@ -1,9 +1,74 @@
+import { type ComputedRef, computed, ref, watch } from 'vue';
+
 import { injectStoresManager } from '../../../common';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../devices/store/keys';
 import { scenesStoreKey } from '../../scenes/store/keys';
 import { automationsStoreKey } from '../store/keys';
 
 import type { IUseAutomationNodeLookups } from './types';
+
+interface ICollectionStore {
+	firstLoadFinished: () => boolean;
+	fetching: () => boolean;
+	fetch: () => Promise<unknown>;
+}
+
+interface ICollectionRead {
+	fetching: ComputedRef<boolean>;
+	loadFailed: ComputedRef<boolean>;
+	ensure: () => Promise<void>;
+	retry: () => Promise<void>;
+}
+
+/*
+ * A collection read once for the whole admin, possibly by another part of it (the summaries of the canvas,
+ * the device picker), whose store keeps no error. It has failed when a read of it has ended since the lookups
+ * were set up and it is still not loaded. The failure is said until the collection is loaded, by anyone, so
+ * a read under way after it (a retry) shows as loading beside it.
+ */
+const collectionRead = (store: ICollectionStore): ICollectionRead => {
+	const failed = ref<boolean>(false);
+
+	const fetching = computed<boolean>((): boolean => store.fetching());
+
+	const loadFailed = computed<boolean>((): boolean => failed.value && !store.firstLoadFinished());
+
+	const settle = (): void => {
+		failed.value = !store.firstLoadFinished();
+	};
+
+	watch(fetching, (now: boolean, before: boolean): void => {
+		if (before && !now) settle();
+	});
+
+	const read = async (): Promise<void> => {
+		try {
+			await store.fetch();
+		} catch {
+			// Shown through `loadFailed`, where the forms offer to read again
+		} finally {
+			settle();
+		}
+	};
+
+	const ensure = async (): Promise<void> => {
+		if (store.firstLoadFinished() || store.fetching()) {
+			return;
+		}
+
+		await read();
+	};
+
+	const retry = async (): Promise<void> => {
+		if (store.fetching()) {
+			return;
+		}
+
+		await read();
+	};
+
+	return { fetching, loadFailed, ensure, retry };
+};
 
 /**
  * What the cards need to know of the devices, channels, properties, scenes and automations they name, read from the
@@ -29,43 +94,25 @@ export const useAutomationNodeLookups = (): IUseAutomationNodeLookups => {
 
 	const automation: IUseAutomationNodeLookups['automation'] = (id) => automationsStore.findById(id);
 
-	// Every card of a canvas asks; the stores share one request between them, and a failed read only
-	// leaves the names unknown
-	const ensureDevices = async (): Promise<void> => {
-		if (devicesStore.firstLoadFinished() || devicesStore.fetching()) {
-			return;
-		}
+	// Every card of a canvas asks; the stores share one request between them. A failed read leaves the
+	// names unknown in the summaries, and is said in the pickers of the forms, with a way to read again
+	const devicesRead = collectionRead({
+		firstLoadFinished: (): boolean => devicesStore.firstLoadFinished(),
+		fetching: (): boolean => devicesStore.fetching(),
+		fetch: () => devicesStore.fetch(),
+	});
 
-		try {
-			await devicesStore.fetch();
-		} catch {
-			// The summaries say "unknown device" and the picker tries again
-		}
-	};
+	const scenesRead = collectionRead({
+		firstLoadFinished: (): boolean => scenesStore.firstLoadFinished(),
+		fetching: (): boolean => scenesStore.fetching(),
+		fetch: () => scenesStore.fetch(),
+	});
 
-	const ensureScenes = async (): Promise<void> => {
-		if (scenesStore.firstLoadFinished() || scenesStore.fetching()) {
-			return;
-		}
-
-		try {
-			await scenesStore.fetch();
-		} catch {
-			// The summaries say "unknown scene" and the scene picker tries again
-		}
-	};
-
-	const ensureAutomations = async (): Promise<void> => {
-		if (automationsStore.firstLoadFinished() || automationsStore.fetching()) {
-			return;
-		}
-
-		try {
-			await automationsStore.fetch();
-		} catch {
-			// The summaries say "unknown automation" and the automation picker tries again
-		}
-	};
+	const automationsRead = collectionRead({
+		firstLoadFinished: (): boolean => automationsStore.firstLoadFinished(),
+		fetching: (): boolean => automationsStore.fetching(),
+		fetch: () => automationsStore.fetch(),
+	});
 
 	return {
 		device,
@@ -73,8 +120,17 @@ export const useAutomationNodeLookups = (): IUseAutomationNodeLookups => {
 		property,
 		scene,
 		automation,
-		ensureDevices,
-		ensureScenes,
-		ensureAutomations,
+		ensureDevices: devicesRead.ensure,
+		ensureScenes: scenesRead.ensure,
+		ensureAutomations: automationsRead.ensure,
+		devicesLoadFailed: devicesRead.loadFailed,
+		scenesLoadFailed: scenesRead.loadFailed,
+		automationsLoadFailed: automationsRead.loadFailed,
+		fetchingDevices: devicesRead.fetching,
+		fetchingScenes: scenesRead.fetching,
+		fetchingAutomations: automationsRead.fetching,
+		retryDevices: devicesRead.retry,
+		retryScenes: scenesRead.retry,
+		retryAutomations: automationsRead.retry,
 	};
 };

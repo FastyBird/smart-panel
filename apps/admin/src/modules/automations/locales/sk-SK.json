@@ -532,6 +532,7 @@
 					"title": "Scéna",
 					"placeholder": "Vyberte scénu",
 					"empty": "Zatiaľ nie sú žiadne scény",
+					"loadFailed": "Scény sa nepodarilo načítať.",
 					"hint": "Pri každom behu sa scéna znova skontroluje: scéna, ktorá by niečo odomkla, odistila alebo otvorila, sa nespustí."
 				},
 				"notification": {
@@ -582,7 +583,8 @@
 				"device": {
 					"title": "Zariadenie",
 					"placeholder": "Vyberte zariadenie",
-					"empty": "Zatiaľ nie sú žiadne zariadenia"
+					"empty": "Zatiaľ nie sú žiadne zariadenia",
+					"loadFailed": "Zariadenia sa nepodarilo načítať."
 				},
 				"connection": {
 					"title": "Spustiť, keď sa zariadenie"
@@ -612,6 +614,7 @@
 					"title": "Automatizácia",
 					"placeholder": "Vyberte automatizáciu",
 					"empty": "Zatiaľ nie sú žiadne iné automatizácie",
+					"loadFailed": "Automatizácie sa nepodarilo načítať.",
 					"hints": {
 						"enable": "Jej spúšťače ju začnú znova spúšťať. Aby sa dala povoliť, musí byť jej priebeh úplný. Automatizácia nemôže povoliť sama seba.",
 						"disable": "Jej spúšťače prestanú fungovať a jej aktívne behy sa zrušia. Automatizácia nemôže zakázať sama seba.",

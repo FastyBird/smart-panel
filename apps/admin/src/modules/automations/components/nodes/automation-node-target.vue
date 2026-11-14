@@ -13,6 +13,17 @@
 		@update:property-id="onProperty"
 	/>
 
+	<div
+		v-if="devicesLoadFailed"
+		class="mt--3 mb-3"
+	>
+		<automation-lookup-load-failed
+			collection="devices"
+			:loading="fetchingDevices"
+			@retry="retryDevices"
+		/>
+	</div>
+
 	<el-text
 		v-for="(error, index) in props.errors"
 		:key="index"
@@ -32,11 +43,14 @@
  * three ids are stored together (ADR 0003, decision 17). A change is reported once, as the fields it
  * sets: picking another device clears the channel and the property, picking another channel clears the
  * property - the picker reports those as separate updates, which would each start from the old ids.
+ * The picker reads the devices; a read that fails is said under it, with a way to read them again.
  */
 import { ElText } from 'element-plus';
 
 import DevicePropertyPicker from '../../../devices/components/devices/device-property-picker.vue';
+import { useAutomationNodeLookups } from '../../composables/useAutomationNodeLookups';
 
+import AutomationLookupLoadFailed from './automation-lookup-load-failed.vue';
 import type { IAutomationNodeTargetProps } from './automation-node-target.types';
 
 defineOptions({
@@ -53,6 +67,8 @@ const props = withDefaults(defineProps<IAutomationNodeTargetProps>(), {
 const emit = defineEmits<{
 	(e: 'change', patch: { device_id?: string; channel_id?: string; property_id?: string }, field: 'device' | 'channel' | 'property'): void;
 }>();
+
+const { devicesLoadFailed, fetchingDevices, retryDevices } = useAutomationNodeLookups();
 
 const onDevice = (deviceId: string): void => {
 	if (deviceId !== props.deviceId) {
