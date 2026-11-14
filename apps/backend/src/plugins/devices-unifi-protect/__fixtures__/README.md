@@ -41,6 +41,10 @@ the design doc).
 
 - Object ids, MAC addresses and GUIDs are replaced by stable fakes (the same input always maps to the same fake;
   MACs use the `0CEA1400...` prefix, GUIDs are fake UUIDs).
+- Both cameras in `cameras.json` carry the same `guid`. That is faithful to the capture: this console reports one
+  `guid` for every camera (ids and MACs differ, and it is not the NVR guid either). Protect's `guid` is therefore not
+  unique across devices and must not be used as a device key; mappers key devices by `id`. `fixtures.spec.ts` asserts
+  this on purpose, so a sanitizer change that "fixes" it is noticed.
 - IP addresses are replaced by addresses from `192.0.2.0/24` (RFC 5737 documentation range).
 - `directConnectDomain` (`<hex>.id.ui.direct`) is replaced by `0cea14000000000000000000000000000000.id.ui.direct`.
 - RTSPS stream aliases (a bearer secret) are replaced by `REDACTEDALIAS...`; the rate-limit policy key by `REDACTED`.

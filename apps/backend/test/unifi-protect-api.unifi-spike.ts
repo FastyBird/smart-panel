@@ -278,6 +278,15 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 	let lastRequestAt = 0;
 	let cameras: Camera[] = [];
 
+	const connectedCameras = (): Camera[] => cameras.filter((entry) => entry.state === 'CONNECTED');
+
+	/** Fails loudly instead of passing vacuously when the inventory has nothing to iterate. */
+	const requireConnectedCameras = (): void => {
+		if (connectedCameras().length === 0) {
+			throw new Error('No CONNECTED camera in the console inventory, so this check has nothing to verify');
+		}
+	};
+
 	/** One request, always aborted after TIMEOUT_MS. Authenticated requests only ever use a verified socket. */
 	const get = async (path: string, options: { authenticated?: boolean; burst?: boolean } = {}): Promise<HttpResult> => {
 		const authenticated = options.authenticated !== false;
@@ -352,8 +361,22 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 					createConnection: () => socket,
 				});
 
-				ws.once('open', () => resolve(ws));
-				ws.once('error', reject);
+				// The TLS deadline no longer applies once the socket is verified, so the Upgrade needs its own.
+				const upgradeTimer = setTimeout(() => {
+					ws.terminate();
+					socket.destroy();
+					reject(new Error(`WebSocket upgrade timed out after ${TIMEOUT_MS} ms`));
+				}, TIMEOUT_MS);
+
+				ws.once('open', () => {
+					clearTimeout(upgradeTimer);
+					resolve(ws);
+				});
+				ws.once('error', (error) => {
+					clearTimeout(upgradeTimer);
+					socket.destroy();
+					reject(error);
+				});
 			});
 		} finally {
 			clearTimeout(timer);
@@ -387,6 +410,8 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 
 			directConnectDomain =
 				(JSON.parse(system.body.toString('utf8')) as { directConnectDomain?: string }).directConnectDomain ?? '';
+
+			cameras = await getJson<Camera[]>(`${INTEGRATION}/cameras`);
 
 			console.info(`UniFi spike TLS identity verified via ${SERVER_NAME ? 'server name' : 'pinned fingerprint'}`);
 		},
@@ -468,9 +493,7 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 
 		it(
 			'cameras returns camera objects with the feature flags the mapper needs',
-			async () => {
-				cameras = await getJson<Camera[]>(`${INTEGRATION}/cameras`);
-
+			() => {
 				expect(Array.isArray(cameras)).toBe(true);
 				// The snapshot / stream test budgets are sized for MAX_CAMERAS.
 				expect(cameras.length).toBeLessThanOrEqual(MAX_CAMERAS);
@@ -502,7 +525,9 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 		it(
 			'rtsps-stream (GET) has the quality shape and never exposes a URL here',
 			async () => {
-				for (const camera of cameras.filter((entry) => entry.state === 'CONNECTED')) {
+				requireConnectedCameras();
+
+				for (const camera of connectedCameras()) {
 					const streams = await getJson<Record<string, unknown>>(`${INTEGRATION}/cameras/${camera.id}/rtsps-stream`);
 
 					expect(Object.keys(streams).sort()).toEqual(['high', 'low', 'medium', 'package']);
@@ -519,7 +544,9 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 		it(
 			'snapshot returns a JPEG; HQ only where supported, otherwise 400',
 			async () => {
-				for (const camera of cameras.filter((entry) => entry.state === 'CONNECTED')) {
+				requireConnectedCameras();
+
+				for (const camera of connectedCameras()) {
 					const normal = await get(`${INTEGRATION}/cameras/${camera.id}/snapshot?highQuality=false`);
 
 					expect(normal.status).toBe(200);

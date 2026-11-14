@@ -262,6 +262,15 @@ describe('UniFi Protect fixtures', () => {
 			expect(headers.rate_limited['retry-after']).toBe('1');
 		});
 
+		it('keeps the console-wide guid shared while camera ids stay unique', () => {
+			const cameras = JSON.parse(read('cameras.json')) as { id: string; guid: string }[];
+
+			expect(cameras.length).toBeGreaterThan(1);
+			// Captured behaviour: Protect reports one guid for every camera on this console, so it is not a device key.
+			expect(new Set(cameras.map((camera) => camera.guid)).size).toBe(1);
+			expect(new Set(cameras.map((camera) => camera.id)).size).toBe(cameras.length);
+		});
+
 		it('keeps only the enabled stream quality non-null', () => {
 			expect(JSON.parse(read('rtsps-stream.json'))).toEqual({
 				high: expect.stringMatching(/^rtsps:\/\//) as string,
