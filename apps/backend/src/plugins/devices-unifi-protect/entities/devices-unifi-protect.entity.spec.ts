@@ -7,6 +7,7 @@ import { DEVICES_UNIFI_PROTECT_TYPE } from '../devices-unifi-protect.constants';
 import { CreateProtectChannelDto } from '../dto/create-channel.dto';
 import { CreateProtectDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
 import { CreateProtectDeviceDto } from '../dto/create-device.dto';
+import { UpdateProtectChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { UpdateProtectDeviceDto } from '../dto/update-device.dto';
 
 import {
@@ -152,6 +153,22 @@ describe('UniFi Protect DTOs', () => {
 		expect(ok.protectMappingName).toHaveLength(128);
 		expect((await validate(ok)).map((error) => error.property)).not.toContain('protectMappingName');
 		expect((await validate(tooLong)).map((error) => error.property)).toContain('protectMappingName');
+	});
+
+	it('does not accept a category or mapping change through the property update DTO', async () => {
+		const dto = toInstance(UpdateProtectChannelPropertyDto, {
+			type: DEVICES_UNIFI_PROTECT_TYPE,
+			category: 'brightness',
+			protect_mapping_name: 'other',
+			name: 'Renamed',
+		});
+
+		expect(dto.type).toBe(DEVICES_UNIFI_PROTECT_TYPE);
+		expect(dto.name).toBe('Renamed');
+		expect(dto as unknown as Record<string, unknown>).not.toHaveProperty('category');
+		expect(dto as unknown as Record<string, unknown>).not.toHaveProperty('protectMappingName');
+		expect(instanceToPlain(dto)).not.toHaveProperty('category');
+		expect(await validate(dto)).toEqual([]);
 	});
 
 	it('requires the plugin type on the channel create DTO', async () => {

@@ -243,7 +243,7 @@ describe('AddUnifiProtectIdentity1000000000060 on the full migration chain', () 
 	const migrationsDirectory = path.resolve(__dirname, '..');
 	const allFiles = fs
 		.readdirSync(migrationsDirectory)
-		.filter((file) => file.endsWith('.ts'))
+		.filter((file) => file.endsWith('.ts') && file < '1000000000061')
 		.sort()
 		.map((file) => path.resolve(migrationsDirectory, file));
 	const filesBefore060 = allFiles.filter((file) => path.basename(file) < '1000000000060');
@@ -302,11 +302,9 @@ describe('AddUnifiProtectIdentity1000000000060 on the full migration chain', () 
 		}
 	});
 
-	it('is the next migration after 059 and the thermostat trigger is installed before it', async () => {
-		expect(allFiles.map((file) => path.basename(file)).filter((file) => file >= '1000000000059')).toEqual([
-			'1000000000059-AddDetectionCategories.ts',
-			'1000000000060-AddUnifiProtectIdentity.ts',
-		]);
+	it('runs after 059 and the thermostat trigger is installed before it', async () => {
+		expect(filesBefore060.map((file) => path.basename(file)).at(-1)).toBe('1000000000059-AddDetectionCategories.ts');
+		expect(allFiles.map((file) => path.basename(file)).at(-1)).toBe('1000000000060-AddUnifiProtectIdentity.ts');
 		expect(
 			await queryRunner.query(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [
 				DELETION_CAPTURE_TRIGGER,
