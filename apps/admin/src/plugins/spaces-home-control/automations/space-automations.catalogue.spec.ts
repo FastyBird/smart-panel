@@ -51,6 +51,9 @@ const BACKEND_CATALOGUE: string[] = [
 	'space.lighting.intent',
 ];
 
+// The cards the generic form serves on purpose, independent of what the automations module declares
+const DELIBERATELY_GENERIC: string[] = ['flow.any', 'flow.all'];
+
 const BACKEND_SPACE_CARDS = BACKEND_CATALOGUE.filter((type) => type.startsWith('space.'));
 
 const mocks = vi.hoisted(() => ({ plugins: [] as unknown[], modules: [] as unknown[] }));
@@ -81,6 +84,10 @@ describe('automation card catalogue', (): void => {
 		expect(SPACE_AUTOMATION_NODE_ELEMENTS.map((element) => element.type).sort()).toEqual([...BACKEND_SPACE_CARDS].sort());
 	});
 
+	it('leaves exactly the cards with nothing to configure to the generic form', (): void => {
+		expect([...AUTOMATION_GENERIC_FORM_NODE_TYPES].sort()).toEqual([...DELIBERATELY_GENERIC].sort());
+	});
+
 	it.each(BACKEND_CATALOGUE)('%s resolves to its form, its summary and its schema', (type): void => {
 		const { getFormComponent, getCardComponent, getConfigSchema } = useAutomationNodePlugins();
 
@@ -91,7 +98,7 @@ describe('automation card catalogue', (): void => {
 		expect(getConfigSchema(type)).not.toBeNull();
 
 		// The generic form only where the automations module serves a card with it on purpose
-		expect(form === AutomationNodeGenericForm).toBe((AUTOMATION_GENERIC_FORM_NODE_TYPES as string[]).includes(type));
+		expect(form === AutomationNodeGenericForm).toBe(DELIBERATELY_GENERIC.includes(type));
 	});
 
 	it('shows the space cards with the summary of the plugin', (): void => {

@@ -160,6 +160,21 @@ watch(
 	}
 );
 
+/*
+ * A threshold chosen with no value entered yet is not in the configuration: saved as it is, the card
+ * would read back as "becomes". Like the value trigger, it keeps the editor from saving until the
+ * threshold is entered or another state is chosen.
+ */
+const incomplete = computed<boolean>((): boolean => mode.value !== 'to' && !isOperandGiven(props.config[mode.value]));
+
+watch(
+	incomplete,
+	(value: boolean): void => {
+		emit('update:invalid', value);
+	},
+	{ immediate: true }
+);
+
 const onMode = (next: WaitMode): void => {
 	const previous = mode.value;
 

@@ -8,7 +8,7 @@
 	>
 		<el-form-item
 			:label="t('automations.editor.fields.automation.title')"
-			:error="errorText('automation_id')"
+			:error="selfTarget ? t('automations.editor.validation.automationSelf') : errorText('automation_id')"
 			required
 			data-test-field="automation_id"
 		>
@@ -27,6 +27,7 @@
 					:key="automation.id"
 					:label="automation.name"
 					:value="automation.id"
+					:disabled="automation.id === editedId"
 				/>
 			</el-select>
 			<el-text
@@ -44,8 +45,8 @@
 <script setup lang="ts">
 /*
  * "Enable automation", "Disable automation" and "Run automation": the other automation acted on. The
- * automation being edited is not offered - an automation does not act on itself, and the backend refuses
- * it when it runs.
+ * automation being edited cannot be picked - an automation does not act on itself, and the backend refuses
+ * it when it runs. One already configured stays listed, disabled, so its name shows with the problem.
  */
 import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -103,6 +104,8 @@ const editedId = computed<string | null>((): string | null => {
 const others = computed<IAutomation[]>((): IAutomation[] =>
 	automations.value.filter((automation) => automation.id !== editedId.value || automation.id === props.config.automation_id)
 );
+
+const selfTarget = computed<boolean>((): boolean => editedId.value !== null && props.config.automation_id === editedId.value);
 
 onBeforeMount((): void => {
 	void ensureAutomations();

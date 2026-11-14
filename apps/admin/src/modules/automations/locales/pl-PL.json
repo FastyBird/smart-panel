@@ -771,7 +771,9 @@
 				"securityState": "Ten stan nie należy do obserwowanych stanów.",
 				"armedStates": "Potrzebny jest co najmniej jeden stan uzbrojenia.",
 				"armState": "Wybierz: w domu, poza domem lub na noc.",
-				"automation": "Trzeba wybrać automatyzację."
+				"automation": "Trzeba wybrać automatyzację.",
+				"automationSelf": "Automatyzacja nie może działać sama na siebie.",
+				"waitNeedsState": "Wybierz stan, na który należy czekać: wartość albo próg."
 			},
 			"options": {
 				"sunEvents": {

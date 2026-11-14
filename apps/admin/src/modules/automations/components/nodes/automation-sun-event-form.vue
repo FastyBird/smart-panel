@@ -32,7 +32,7 @@
 				:min="bounds.min"
 				:max="bounds.max"
 				:step="5"
-				:precision="0"
+				:precision="bounds.precision"
 				:disabled="props.disabled"
 				:value-on-clear="null"
 				name="offset_minutes"

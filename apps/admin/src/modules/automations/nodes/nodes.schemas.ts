@@ -257,6 +257,12 @@ export const WaitUntilConfigSchema = cardConfig(
 		if (threshold && given(config.to)) {
 			report(['to'], 'thresholdAndValue');
 		}
+
+		// The backend needs a state to wait for; while none is entered the card is only unfinished, so
+		// `checkNodeConfig` does not report it, but the configuration is not complete
+		if (!threshold && !given(config.to)) {
+			report(['to'], 'waitNeedsState');
+		}
 	}
 );
 

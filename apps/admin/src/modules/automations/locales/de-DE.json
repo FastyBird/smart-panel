@@ -771,7 +771,9 @@
 				"securityState": "Dieser Zustand gehört nicht zu den beobachteten Zuständen.",
 				"armedStates": "Mindestens ein Scharfschaltzustand ist nötig.",
 				"armState": "Zu Hause, abwesend oder Nacht wählen.",
-				"automation": "Eine Automation muss gewählt werden."
+				"automation": "Eine Automation muss gewählt werden.",
+				"automationSelf": "Eine Automation kann nicht auf sich selbst wirken.",
+				"waitNeedsState": "Einen Zustand wählen, auf den gewartet wird: einen Wert oder einen Schwellwert."
 			},
 			"options": {
 				"sunEvents": {

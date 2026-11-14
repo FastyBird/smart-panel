@@ -771,7 +771,9 @@
 				"securityState": "Tento stav nepatrí medzi sledované stavy.",
 				"armedStates": "Treba aspoň jeden stav zabezpečenia.",
 				"armState": "Vyberte doma, mimo domova alebo na noc.",
-				"automation": "Treba vybrať automatizáciu."
+				"automation": "Treba vybrať automatizáciu.",
+				"automationSelf": "Automatizácia nemôže pôsobiť sama na seba.",
+				"waitNeedsState": "Vyberte stav, na ktorý sa má čakať: hodnotu, alebo prah."
 			},
 			"options": {
 				"sunEvents": {

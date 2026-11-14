@@ -74,7 +74,7 @@
 				:model-value="brightness"
 				:min="bounds.min"
 				:max="bounds.max"
-				:precision="0"
+				:precision="bounds.precision"
 				:step="5"
 				:disabled="props.disabled"
 				:value-on-clear="null"

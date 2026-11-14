@@ -231,6 +231,9 @@ describe('automation card schemas', (): void => {
 			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, to: true, timeout_seconds: 60, from: true })).toEqual({
 				from: [key('unknownField')],
 			});
+			// A state to wait for is needed, as the backend requires it; missing is unfinished rather than wrong
+			expect(WaitUntilConfigSchema.safeParse({ ...target, timeout_seconds: 60 }).success).toBe(false);
+			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, timeout_seconds: 60 })).toEqual({});
 			// A timeout is needed, as the backend requires it, but missing is unfinished rather than wrong
 			expect(WaitUntilConfigSchema.safeParse({ ...target, to: true }).success).toBe(false);
 			expect(checkNodeConfig(WaitUntilConfigSchema, { ...target, to: true })).toEqual({});

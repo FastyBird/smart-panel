@@ -771,7 +771,9 @@
 				"securityState": "This state is not one of the states watched.",
 				"armedStates": "At least one armed state is needed.",
 				"armState": "Choose home, away or night.",
-				"automation": "An automation must be chosen."
+				"automation": "An automation must be chosen.",
+				"automationSelf": "An automation cannot act on itself.",
+				"waitNeedsState": "Choose a state to wait for: a value, or a threshold."
 			},
 			"options": {
 				"sunEvents": {

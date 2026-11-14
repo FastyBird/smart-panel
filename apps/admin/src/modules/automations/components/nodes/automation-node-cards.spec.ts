@@ -167,6 +167,21 @@ describe('automation card forms of the second catalogue', (): void => {
 			expect(lastConfig()).toEqual({ ...target, property_id: 'p-temperature', timeout_seconds: 60 });
 		});
 
+		it('keeps the editor from saving while the threshold chosen has no value', async (): Promise<void> => {
+			await mountForm(AutomationWaitUntilForm, { nodeType: wait, config: { ...target, property_id: 'p-temperature', timeout_seconds: 60 } });
+
+			expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
+
+			select('mode').vm.$emit('update:modelValue', 'above');
+			await wrapper.setProps({ config: lastConfig() });
+
+			expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([true]);
+
+			await wrapper.setProps({ config: { ...lastConfig(), above: 21 } });
+
+			expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
+		});
+
 		it('drops a threshold when a property that holds no number is picked', async (): Promise<void> => {
 			await mountForm(AutomationWaitUntilForm, { nodeType: wait, config: { ...target, property_id: 'p-temperature', above: 20 } });
 
@@ -305,6 +320,24 @@ describe('automation card forms of the second catalogue', (): void => {
 	});
 
 	describe('automation actions', (): void => {
+		it('show an automation configured to act on itself, disabled and flagged', async (): Promise<void> => {
+			await mountForm(AutomationAutomationTargetForm, {
+				nodeType: nodeType('automation.run', AutomationNodeKind.action),
+				config: { automation_id: 'a-edited' },
+			});
+
+			const options = select('automation_id').findAllComponents({ name: 'ElOption' });
+
+			expect(options.map((option) => [option.props('value'), option.props('disabled')])).toEqual([
+				['a-edited', true],
+				['a-other', false],
+			]);
+
+			await vi.waitFor((): void =>
+				expect(wrapper.find('[data-test-field="automation_id"]').text()).toContain('automations.editor.validation.automationSelf')
+			);
+		});
+
 		it('do not offer the automation being edited', async (): Promise<void> => {
 			await mountForm(AutomationAutomationTargetForm, { nodeType: nodeType('automation.disable', AutomationNodeKind.action), config: {} });
 

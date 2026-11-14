@@ -771,7 +771,9 @@
 				"securityState": "Este estado no es uno de los estados vigilados.",
 				"armedStates": "Se necesita al menos un estado de armado.",
 				"armState": "Elija en casa, ausente o noche.",
-				"automation": "Hay que elegir una automatización."
+				"automation": "Hay que elegir una automatización.",
+				"automationSelf": "Una automatización no puede actuar sobre sí misma.",
+				"waitNeedsState": "Elija un estado que esperar: un valor o un umbral."
 			},
 			"options": {
 				"sunEvents": {
