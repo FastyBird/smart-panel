@@ -27,7 +27,8 @@ const readReason = (message: string): string => {
 	return message;
 };
 
-const flattenErrors = (errors: ValidationError[], parentPath = ''): AutomationNodeConfigProblem[] => {
+/** Flattens class-validator errors into one problem per broken rule, each addressed by its dot-separated path */
+export const flattenErrors = (errors: ValidationError[], parentPath = ''): AutomationNodeConfigProblem[] => {
 	const problems: AutomationNodeConfigProblem[] = [];
 
 	for (const error of errors) {

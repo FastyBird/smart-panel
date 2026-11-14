@@ -59,9 +59,9 @@ describe('security.arm', () => {
 			ports: { inputs: ['in'], outputs: ['done', 'error'] },
 		});
 		expect(registered.references({ ...target(ALARM_STATE), armed_state: ArmedState.ARMED_AWAY })).toEqual([
-			{ kind: 'device', id: DEVICE_A },
-			{ kind: 'channel', id: CHANNEL_A },
-			{ kind: 'property', id: ALARM_STATE },
+			{ kind: 'device', id: DEVICE_A, path: ['device_id'] },
+			{ kind: 'channel', id: CHANNEL_A, path: ['channel_id'] },
+			{ kind: 'property', id: ALARM_STATE, path: ['property_id'] },
 		]);
 		expect(registered.commands({ ...target(ALARM_STATE), armed_state: ArmedState.ARMED_AWAY })).toEqual([
 			{ kind: 'property_write', propertyId: ALARM_STATE, value: ArmedState.ARMED_AWAY, field: 'armed_state' },

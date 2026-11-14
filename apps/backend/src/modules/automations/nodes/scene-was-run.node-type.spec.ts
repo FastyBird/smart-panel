@@ -30,7 +30,9 @@ describe('scene.was-run', () => {
 		const registered = normalizeAutomationNodeType(card());
 
 		expect(registered).toMatchObject({ type: SCENE_WAS_RUN_NODE_TYPE, kind: 'trigger' });
-		expect(registered.references({ scene_id: SCENE_ID })).toEqual([{ kind: 'scene', id: SCENE_ID }]);
+		expect(registered.references({ scene_id: SCENE_ID })).toEqual([
+			{ kind: 'scene', id: SCENE_ID, path: ['scene_id'] },
+		]);
 	});
 
 	it('needs a scene and takes nothing else', async () => {

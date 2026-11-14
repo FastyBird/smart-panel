@@ -120,7 +120,8 @@
 			"edit": "Editar la automatización «{automation}»",
 			"flow": "Editar el flujo de la automatización «{automation}»",
 			"remove": "Eliminar la automatización «{automation}»",
-			"enabled": "Automatización «{automation}» activada"
+			"enabled": "Automatización «{automation}» activada",
+			"export": "Exportar la automatización \"{automation}\" como YAML"
 		},
 		"buttons": {
 			"add": {
@@ -158,6 +159,15 @@
 			},
 			"fromTemplate": {
 				"title": "Desde plantilla"
+			},
+			"importYaml": {
+				"title": "Importar YAML"
+			},
+			"exportYaml": {
+				"title": "Exportar YAML"
+			},
+			"viewYaml": {
+				"title": "Ver como YAML"
 			}
 		},
 		"messages": {
@@ -1046,6 +1056,64 @@
 						}
 					}
 				}
+			}
+		},
+		"transfer": {
+			"headings": {
+				"import": "Importar automatización",
+				"yaml": "Automatización como YAML"
+			},
+			"texts": {
+				"pick": "Elija un archivo YAML exportado desde Smart Panel o pegue su contenido. No se guarda nada hasta que lo importe.",
+				"drop": "Suelte el archivo aquí o haga clic para elegirlo",
+				"allFound": "Todo aquello a lo que hace referencia la automatización existe aquí.",
+				"missing": "La automatización hace referencia a algo que no existe aquí. | La automatización hace referencia a {count} elementos que no existen aquí.",
+				"usedByAutomation": "El espacio de la automatización",
+				"usedByNodes": "Usado por el bloque {nodes} | Usado por los bloques {nodes}",
+				"notRemappable": "Esto no se puede elegir aquí. Corrija el bloque en el editor después de importar.",
+				"unresolved": "Lo que no elija se mantiene tal cual. La automatización se importa desactivada; corrija sus bloques en el editor antes de activarla.",
+				"warnings": "Un bloque necesita ajustes antes de poder activar la automatización: | {count} bloques necesitan ajustes antes de poder activar la automatización:",
+				"yamlUnsaved": "Esta es la versión guardada. Los cambios sin guardar no están incluidos."
+			},
+			"fields": {
+				"yaml": {
+					"title": "YAML",
+					"placeholder": "version: 1\nkind: automation\nname: …"
+				},
+				"nodes": {
+					"title": "Bloques"
+				},
+				"mapping": {
+					"title": "Qué usar en su lugar: {kind}",
+					"placeholder": "Elija qué usar en su lugar"
+				}
+			},
+			"kinds": {
+				"device": "Dispositivo",
+				"channel": "Canal",
+				"property": "Propiedad del dispositivo",
+				"scene": "Escena",
+				"space": "Espacio",
+				"automation": "Automatización"
+			},
+			"buttons": {
+				"import": {
+					"title": "Importar"
+				},
+				"export": {
+					"title": "Descargar"
+				}
+			},
+			"messages": {
+				"exportFailed": "No se pudo exportar la automatización.",
+				"tooLarge": "El archivo supera los {size} KB.",
+				"unreadable": "No se pudo leer el archivo.",
+				"invalidFile": "El archivo no es una automatización que se pueda importar.",
+				"invalidGraph": "La automatización del archivo no se puede guardar.",
+				"notRead": "No se pudo comprobar el archivo.",
+				"imported": "La automatización \"{automation}\" se importó desactivada.",
+				"notImported": "No se pudo importar la automatización.",
+				"changed": "El archivo cambió después de comprobarlo. Compruébelo de nuevo antes de importarlo."
 			}
 		}
 	}

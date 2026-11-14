@@ -58,9 +58,9 @@ describe('device.property.compare', () => {
 			ports: { inputs: ['in'], outputs: ['yes', 'no'] },
 		});
 		expect(registered.references({ ...target(PROPERTY_NUMBER), operator: 'lt', value: 50 })).toEqual([
-			{ kind: 'device', id: DEVICE_A },
-			{ kind: 'channel', id: CHANNEL_A },
-			{ kind: 'property', id: PROPERTY_NUMBER },
+			{ kind: 'device', id: DEVICE_A, path: ['device_id'] },
+			{ kind: 'channel', id: CHANNEL_A, path: ['channel_id'] },
+			{ kind: 'property', id: PROPERTY_NUMBER, path: ['property_id'] },
 		]);
 	});
 

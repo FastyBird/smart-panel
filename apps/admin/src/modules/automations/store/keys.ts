@@ -4,6 +4,7 @@ import type { IAutomationsStoreActions, IAutomationsStoreState } from './automat
 import type { IAutomationNodeTypesStoreActions, IAutomationNodeTypesStoreState } from './node-types.store.types';
 import type { IAutomationRunsStoreActions, IAutomationRunsStoreState } from './runs.store.types';
 import type { IAutomationTemplatesStoreActions, IAutomationTemplatesStoreState } from './templates.store.types';
+import type { IAutomationTransferStoreActions, IAutomationTransferStoreState } from './transfer.store.types';
 
 export const automationsStoreKey: StoreInjectionKey<string, IAutomationsStoreState, object, IAutomationsStoreActions> = Symbol(
 	'FB-Module-Automations-AutomationsStore'
@@ -17,3 +18,6 @@ export const automationRunsStoreKey: StoreInjectionKey<string, IAutomationRunsSt
 
 export const automationTemplatesStoreKey: StoreInjectionKey<string, IAutomationTemplatesStoreState, object, IAutomationTemplatesStoreActions> =
 	Symbol('FB-Module-Automations-TemplatesStore');
+
+export const automationTransferStoreKey: StoreInjectionKey<string, IAutomationTransferStoreState, object, IAutomationTransferStoreActions> =
+	Symbol('FB-Module-Automations-TransferStore');

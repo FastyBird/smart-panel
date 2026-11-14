@@ -6,6 +6,11 @@ import {
 	GenerateAutomationFromTemplateDto,
 	ReqGenerateAutomationFromTemplateDto,
 } from './dto/generate-from-template.dto';
+import {
+	AutomationImportReferenceMappingDto,
+	PrepareAutomationImportDto,
+	ReqPrepareAutomationImportDto,
+} from './dto/prepare-import.dto';
 import { ReqSetAutomationEnabledDto, SetAutomationEnabledDto } from './dto/set-automation-enabled.dto';
 import { ReqTriggerAutomationDto, TriggerAutomationDto } from './dto/trigger-automation.dto';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
@@ -36,9 +41,18 @@ import {
 	AutomationTemplateModel,
 	AutomationTemplateParameterModel,
 } from './models/automation-templates.model';
+import {
+	AutomationExportModel,
+	AutomationImportDraftModel,
+	AutomationImportMissingReferenceModel,
+	AutomationImportPreparationModel,
+	AutomationImportReferenceUsageModel,
+} from './models/automation-transfer.model';
 import { AutomationTriggerResultModel } from './models/automation-trigger-result.model';
 import {
+	AutomationExportResponseModel,
 	AutomationGraphValidationResponseModel,
+	AutomationImportPreparationResponseModel,
 	AutomationNodeTypesResponseModel,
 	AutomationResponseModel,
 	AutomationRunResponseModel,
@@ -71,6 +85,9 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	ReqSetAutomationEnabledDto,
 	GenerateAutomationFromTemplateDto,
 	ReqGenerateAutomationFromTemplateDto,
+	AutomationImportReferenceMappingDto,
+	PrepareAutomationImportDto,
+	ReqPrepareAutomationImportDto,
 	// Response models
 	AutomationResponseModel,
 	AutomationsResponseModel,
@@ -83,6 +100,8 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	AutomationRunResponseModel,
 	AutomationTemplatesResponseModel,
 	AutomationTemplateDraftResponseModel,
+	AutomationExportResponseModel,
+	AutomationImportPreparationResponseModel,
 	// Data models
 	AutomationSummaryModel,
 	AutomationGraphModel,
@@ -106,6 +125,11 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	AutomationTemplateModel,
 	AutomationTemplateParameterModel,
 	AutomationTemplateDraftModel,
+	AutomationExportModel,
+	AutomationImportReferenceUsageModel,
+	AutomationImportMissingReferenceModel,
+	AutomationImportDraftModel,
+	AutomationImportPreparationModel,
 	// Entities
 	AutomationEntity,
 	AutomationRunEntity,

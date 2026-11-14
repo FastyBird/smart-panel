@@ -80,9 +80,9 @@ describe('device.button.pressed', () => {
 			ports: { inputs: [], outputs: ['out'] },
 		});
 		expect(registered.references(target(BUTTON))).toEqual([
-			{ kind: 'device', id: DEVICE_A },
-			{ kind: 'channel', id: CHANNEL_A },
-			{ kind: 'property', id: BUTTON },
+			{ kind: 'device', id: DEVICE_A, path: ['device_id'] },
+			{ kind: 'channel', id: CHANNEL_A, path: ['channel_id'] },
+			{ kind: 'property', id: BUTTON, path: ['property_id'] },
 		]);
 	});
 

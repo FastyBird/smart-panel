@@ -61,7 +61,8 @@ export const createDeviceConnectionChangedNodeType = (
 		required: ['device_id'],
 		additionalProperties: false,
 	},
-	references: (config) => (typeof config.device_id === 'string' ? [{ kind: 'device', id: config.device_id }] : []),
+	references: (config) =>
+		typeof config.device_id === 'string' ? [{ kind: 'device', id: config.device_id, path: ['device_id'] }] : [],
 	subscribe: (config, fire) =>
 		source.onDeviceConnection(config.device_id, (change) => {
 			if (change.deviceId !== config.device_id) return;

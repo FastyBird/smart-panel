@@ -120,7 +120,8 @@
 			"edit": "Upravit automatizaci „{automation}“",
 			"flow": "Upravit průběh automatizace „{automation}“",
 			"remove": "Odstranit automatizaci „{automation}“",
-			"enabled": "Automatizace „{automation}“ povolena"
+			"enabled": "Automatizace „{automation}“ povolena",
+			"export": "Exportovat automatizaci „{automation}“ jako YAML"
 		},
 		"buttons": {
 			"add": {
@@ -158,6 +159,15 @@
 			},
 			"fromTemplate": {
 				"title": "Ze šablony"
+			},
+			"importYaml": {
+				"title": "Importovat YAML"
+			},
+			"exportYaml": {
+				"title": "Exportovat YAML"
+			},
+			"viewYaml": {
+				"title": "Zobrazit jako YAML"
 			}
 		},
 		"messages": {
@@ -1046,6 +1056,64 @@
 						}
 					}
 				}
+			}
+		},
+		"transfer": {
+			"headings": {
+				"import": "Import automatizace",
+				"yaml": "Automatizace jako YAML"
+			},
+			"texts": {
+				"pick": "Vyberte soubor YAML exportovaný ze Smart Panelu nebo vložte jeho obsah. Dokud ji neimportujete, nic se neuloží.",
+				"drop": "Přetáhněte soubor sem nebo klikněte a vyberte ho",
+				"allFound": "Vše, na co automatizace odkazuje, zde existuje.",
+				"missing": "Automatizace odkazuje na jednu věc, která zde neexistuje. | Automatizace odkazuje na {count} věci, které zde neexistují. | Automatizace odkazuje na {count} věcí, které zde neexistují.",
+				"usedByAutomation": "Prostor automatizace",
+				"usedByNodes": "Používá blok {nodes} | Používají bloky {nodes} | Používají bloky {nodes}",
+				"notRemappable": "Tady to vybrat nelze. Po importu blok opravte v editoru.",
+				"unresolved": "Co nevyberete, zůstane beze změny. Automatizace se importuje vypnutá; před zapnutím opravte její bloky v editoru.",
+				"warnings": "Jeden blok je potřeba upravit, než půjde automatizaci zapnout: | {count} bloky je potřeba upravit, než půjde automatizaci zapnout: | {count} bloků je potřeba upravit, než půjde automatizaci zapnout:",
+				"yamlUnsaved": "Toto je uložená verze. Neuložené změny v ní nejsou."
+			},
+			"fields": {
+				"yaml": {
+					"title": "YAML",
+					"placeholder": "version: 1\nkind: automation\nname: …"
+				},
+				"nodes": {
+					"title": "Bloky"
+				},
+				"mapping": {
+					"title": "Co použít místo: {kind}",
+					"placeholder": "Vyberte, co použít místo toho"
+				}
+			},
+			"kinds": {
+				"device": "Zařízení",
+				"channel": "Kanál",
+				"property": "Vlastnost zařízení",
+				"scene": "Scéna",
+				"space": "Prostor",
+				"automation": "Automatizace"
+			},
+			"buttons": {
+				"import": {
+					"title": "Importovat"
+				},
+				"export": {
+					"title": "Stáhnout"
+				}
+			},
+			"messages": {
+				"exportFailed": "Automatizaci se nepodařilo exportovat.",
+				"tooLarge": "Soubor je větší než {size} KB.",
+				"unreadable": "Soubor se nepodařilo přečíst.",
+				"invalidFile": "Soubor není automatizace, kterou lze importovat.",
+				"invalidGraph": "Automatizaci ze souboru nelze uložit.",
+				"notRead": "Soubor se nepodařilo zkontrolovat.",
+				"imported": "Automatizace „{automation}“ byla importována jako vypnutá.",
+				"notImported": "Automatizaci se nepodařilo importovat.",
+				"changed": "Soubor se po kontrole změnil. Před importem ho zkontrolujte znovu."
 			}
 		}
 	}

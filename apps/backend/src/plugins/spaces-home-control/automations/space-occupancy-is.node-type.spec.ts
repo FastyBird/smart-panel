@@ -32,7 +32,9 @@ describe('space.occupancy.is', () => {
 			ports: { inputs: ['in'], outputs: ['yes', 'no'] },
 			owner: { kind: 'plugin', type: SPACES_HOME_CONTROL_PLUGIN_NAME },
 		});
-		expect(registered.references({ space_id: SPACE, state: 'occupied' })).toEqual([{ kind: 'space', id: SPACE }]);
+		expect(registered.references({ space_id: SPACE, state: 'occupied' })).toEqual([
+			{ kind: 'space', id: SPACE, path: ['space_id'] },
+		]);
 	});
 
 	it('needs a space and occupied or vacant', async () => {

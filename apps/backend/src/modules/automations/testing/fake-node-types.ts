@@ -78,7 +78,7 @@ export const fakeStrictAction: AutomationActionNodeType<FakeStrictActionConfigDt
 	description: 'Needs a level between 0 and 100.',
 	validateConfig: createConfigValidatorFromDto(FakeStrictActionConfigDto),
 	configSchema: FAKE_STRICT_ACTION_CONFIG_SCHEMA,
-	references: (config) => (config.scene_id ? [{ kind: 'scene', id: config.scene_id }] : []),
+	references: (config) => (config.scene_id ? [{ kind: 'scene', id: config.scene_id, path: ['scene_id'] }] : []),
 	execute: () => Promise.resolve({ success: true }),
 };
 

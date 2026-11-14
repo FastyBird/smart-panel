@@ -28,7 +28,9 @@ describe('automation.run', () => {
 		const registered = normalizeAutomationNodeType(card());
 
 		expect(registered).toMatchObject({ type: AUTOMATION_RUN_NODE_TYPE, kind: 'action' });
-		expect(registered.references({ automation_id: OTHER })).toEqual([{ kind: 'automation', id: OTHER }]);
+		expect(registered.references({ automation_id: OTHER })).toEqual([
+			{ kind: 'automation', id: OTHER, path: ['automation_id'] },
+		]);
 		expect(await registered.validateConfig({ automation_id: 'evening' })).toEqual([
 			{ field: 'automation_id', reason: 'An automation must be chosen.' },
 		]);

@@ -20,10 +20,17 @@ import { locales } from './locales';
 import { AUTOMATION_BUILT_IN_NODE_ELEMENTS } from './nodes/nodes.elements';
 import { ModuleRoutes } from './router';
 import { registerAutomationsStore } from './store/automations.store';
-import { automationNodeTypesStoreKey, automationRunsStoreKey, automationTemplatesStoreKey, automationsStoreKey } from './store/keys';
+import {
+	automationNodeTypesStoreKey,
+	automationRunsStoreKey,
+	automationTemplatesStoreKey,
+	automationTransferStoreKey,
+	automationsStoreKey,
+} from './store/keys';
 import { registerAutomationNodeTypesStore } from './store/node-types.store';
 import { registerAutomationRunsStore } from './store/runs.store';
 import { registerAutomationTemplatesStore } from './store/templates.store';
+import { registerAutomationTransferStore } from './store/transfer.store';
 
 const automationsAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Automations');
 
@@ -61,6 +68,12 @@ export default {
 
 		app.provide(automationTemplatesStoreKey, templatesStore);
 		storesManager.addStore(automationTemplatesStoreKey, templatesStore);
+
+		// Holds no data: an export and an import are each one request
+		const transferStore = registerAutomationTransferStore(options.store);
+
+		app.provide(automationTransferStoreKey, transferStore);
+		storesManager.addStore(automationTransferStoreKey, transferStore);
 
 		modulesManager.addModule(automationsAdminModuleKey, {
 			type: AUTOMATIONS_MODULE_NAME,

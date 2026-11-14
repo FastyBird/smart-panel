@@ -60,7 +60,8 @@ export const createSceneRunNodeType = (scenes: SceneRunner): AutomationActionNod
 		required: ['scene_id'],
 		additionalProperties: false,
 	},
-	references: (config) => (typeof config.scene_id === 'string' ? [{ kind: 'scene', id: config.scene_id }] : []),
+	references: (config) =>
+		typeof config.scene_id === 'string' ? [{ kind: 'scene', id: config.scene_id, path: ['scene_id'] }] : [],
 	commands: (config) =>
 		typeof config?.scene_id === 'string' ? [{ kind: 'scene_run', sceneId: config.scene_id, field: 'scene_id' }] : [],
 	execute: async (config, context) => {

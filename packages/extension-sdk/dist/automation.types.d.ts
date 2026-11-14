@@ -14,6 +14,7 @@ export type AutomationNodeReferenceKind = 'device' | 'channel' | 'property' | 's
 export interface AutomationNodeReference {
     kind: AutomationNodeReferenceKind;
     id: string;
+    path?: (string | number)[];
 }
 export type AutomationNodeConfig = Record<string, unknown>;
 export interface AutomationNodeTypeOwner {

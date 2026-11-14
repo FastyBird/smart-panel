@@ -38,7 +38,8 @@ export const createSceneWasRunNodeType = (source: SceneRunSource): AutomationTri
 		required: ['scene_id'],
 		additionalProperties: false,
 	},
-	references: (config) => (typeof config.scene_id === 'string' ? [{ kind: 'scene', id: config.scene_id }] : []),
+	references: (config) =>
+		typeof config.scene_id === 'string' ? [{ kind: 'scene', id: config.scene_id, path: ['scene_id'] }] : [],
 	subscribe: (config, fire) =>
 		source.onSceneRun((run) => {
 			if (run.sceneId !== config.scene_id) return;

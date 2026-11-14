@@ -10,6 +10,8 @@ export interface IAutomationsTableProps {
 	loading: boolean;
 	loadFailed?: boolean;
 	updating: IAutomation['id'][];
+	// The automations being exported right now
+	exporting?: IAutomation['id'][];
 	sortBy: AutomationsSortBy | undefined;
 	sortDir: 'asc' | 'desc' | null;
 }

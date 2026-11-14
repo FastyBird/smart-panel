@@ -87,3 +87,18 @@ export const AUTOMATION_GRAPH_INVALID_ERROR_CODE = 'automation-graph-invalid';
 
 // Application error code of answers to a template that were refused (error.details.code of the 422 response)
 export const AUTOMATION_TEMPLATE_PARAMETERS_INVALID_ERROR_CODE = 'automation-template-parameters-invalid';
+
+// Application error code of an import file that could not be read as an automation (error.details.code of the 422 response)
+export const AUTOMATION_IMPORT_INVALID_ERROR_CODE = 'automation-import-invalid';
+
+// Import and export as YAML
+/** The version of the YAML document an automation is exported as */
+export const AUTOMATION_YAML_VERSION = 1;
+/** What the YAML document holds; only automations for now */
+export const AUTOMATION_YAML_KIND = 'automation';
+/** The largest import file, in UTF-8 bytes */
+export const AUTOMATION_IMPORT_MAX_LENGTH = 256 * 1024;
+/** How deeply the values of an import file may nest; the deepest node configuration is far shallower */
+export const AUTOMATION_IMPORT_MAX_DEPTH = 32;
+/** The most references an import may be asked to point elsewhere */
+export const AUTOMATION_IMPORT_MAX_MAPPINGS = 200;

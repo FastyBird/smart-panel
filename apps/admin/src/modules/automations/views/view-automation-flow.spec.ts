@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => ({
 	updateGuard: null as null | ((to: { params: { id: string } }, from: { params: { id: string } }) => Promise<boolean> | boolean),
 	flash: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
 	fetchNodeTypes: vi.fn(),
+	exportAutomation: vi.fn(),
 	canvas: { addNode: vi.fn(), removeNode: vi.fn(), removeSelected: vi.fn(), focusNode: vi.fn(), revealNode: vi.fn() },
 	editor: null as unknown,
 	runs: null as unknown,
@@ -150,6 +151,7 @@ vi.mock('../../../common', async () => {
 
 vi.mock('../composables/composables', () => ({
 	useAutomationEditor: () => mocks.editor,
+	useAutomationExport: () => ({ exporting: () => false, exportAutomation: mocks.exportAutomation }),
 	useAutomationRunTrace: () => mocks.runs,
 	useAutomationRunPresentation: () => ({
 		nodeLabel: (nodeId: string) => `label:${nodeId}`,
@@ -244,6 +246,16 @@ vi.mock('../components/components', async () => {
 			},
 			emits: ['focus', 'close'],
 			template: '<div data-test-id="run-summary-stub" />',
+		}),
+		AutomationYamlDialog: defineComponent({
+			name: 'AutomationYamlDialog',
+			props: {
+				visible: { type: Boolean, default: false },
+				automationId: { type: String, required: true },
+				unsaved: { type: Boolean, default: false },
+			},
+			emits: ['update:visible'],
+			template: '<div data-test-id="yaml-dialog-stub" />',
 		}),
 		AutomationStatusExplanation: defineComponent({
 			name: 'AutomationStatusExplanation',
@@ -983,6 +995,29 @@ describe('ViewAutomationFlow', (): void => {
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS });
 	});
+
+	it('exports the stored automation as YAML and shows it read only, saying when changes are not in it', async (): Promise<void> => {
+		await createWrapper();
+
+		const menu = wrapper.findComponent({ name: 'ElDropdown' });
+
+		menu.vm.$emit('command', 'export');
+
+		expect(mocks.exportAutomation).toHaveBeenCalledWith(editor.automation.value?.id);
+
+		const dialog = wrapper.findComponent({ name: 'AutomationYamlDialog' });
+
+		expect(dialog.props('visible')).toBe(false);
+
+		menu.vm.$emit('command', 'view');
+
+		await flushPromises();
+
+		expect(dialog.props('visible')).toBe(true);
+		expect(dialog.props('automationId')).toBe(editor.automation.value?.id);
+		expect(dialog.props('unsaved')).toBe(false);
+	});
+
 	describe('test and trace', (): void => {
 		const testButton = (): VueWrapper => wrapper.findComponent({ name: 'AutomationTestButton' }) as unknown as VueWrapper;
 

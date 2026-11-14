@@ -35,7 +35,9 @@ describe('automation.enable and automation.disable', () => {
 		const registered = normalizeAutomationNodeType(create(store()));
 
 		expect(registered).toMatchObject({ type, kind: 'action', ports: { inputs: ['in'], outputs: ['done', 'error'] } });
-		expect(registered.references({ automation_id: OTHER })).toEqual([{ kind: 'automation', id: OTHER }]);
+		expect(registered.references({ automation_id: OTHER })).toEqual([
+			{ kind: 'automation', id: OTHER, path: ['automation_id'] },
+		]);
 		expect(registered.references({})).toEqual([]);
 		expect(await registered.validateConfig({ automation_id: OTHER })).toEqual([]);
 		expect(await registered.validateConfig({})).toEqual([

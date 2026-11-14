@@ -25,7 +25,9 @@ export const AUTOMATION_TARGET_SCHEMA = {
 } as const;
 
 export const automationTargetReferences = (config: Partial<AutomationTargetConfigDto>): AutomationNodeReference[] =>
-	typeof config.automation_id === 'string' ? [{ kind: 'automation', id: config.automation_id }] : [];
+	typeof config.automation_id === 'string'
+		? [{ kind: 'automation', id: config.automation_id, path: ['automation_id'] }]
+		: [];
 
 /** The part of `AutomationsService` the actions need */
 export interface AutomationStore {
