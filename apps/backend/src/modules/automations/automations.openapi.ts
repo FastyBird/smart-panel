@@ -6,6 +6,7 @@ import {
 	GenerateAutomationFromTemplateDto,
 	ReqGenerateAutomationFromTemplateDto,
 } from './dto/generate-from-template.dto';
+import { ReqSetAutomationEnabledDto, SetAutomationEnabledDto } from './dto/set-automation-enabled.dto';
 import { ReqTriggerAutomationDto, TriggerAutomationDto } from './dto/trigger-automation.dto';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
 import { ReqValidateAutomationGraphDto, ValidateAutomationGraphDto } from './dto/validate-graph.dto';
@@ -43,6 +44,7 @@ import {
 	AutomationRunResponseModel,
 	AutomationRunsResponseModel,
 	AutomationRuntimeResponseModel,
+	AutomationSummaryResponseModel,
 	AutomationTemplateDraftResponseModel,
 	AutomationTemplatesResponseModel,
 	AutomationTriggerResultResponseModel,
@@ -65,11 +67,14 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	ReqValidateAutomationGraphDto,
 	TriggerAutomationDto,
 	ReqTriggerAutomationDto,
+	SetAutomationEnabledDto,
+	ReqSetAutomationEnabledDto,
 	GenerateAutomationFromTemplateDto,
 	ReqGenerateAutomationFromTemplateDto,
 	// Response models
 	AutomationResponseModel,
 	AutomationsResponseModel,
+	AutomationSummaryResponseModel,
 	AutomationGraphValidationResponseModel,
 	AutomationNodeTypesResponseModel,
 	AutomationTriggerResultResponseModel,

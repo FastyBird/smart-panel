@@ -888,6 +888,79 @@ describe('AutomationsService', () => {
 		});
 	});
 
+	describe('setEnabled', () => {
+		it('switches an automation on and off without a revision, changing nothing else', async () => {
+			const automation = await create({ name: 'Motion light', description: 'Hallway', graph: graph() });
+			eventEmitter.emit.mockClear();
+
+			const enabled = await service.setEnabled(automation.id, true);
+
+			expect(enabled).toMatchObject({ name: 'Motion light', description: 'Hallway', enabled: true, revision: 2 });
+			expect(enabled.graph).toEqual(graph());
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.AUTOMATION_UPDATED, enabled);
+
+			const disabled = await service.setEnabled(automation.id, false);
+
+			expect(disabled).toMatchObject({ enabled: false, revision: 3 });
+		});
+
+		it('returns an automation already in the requested state without a new revision or event', async () => {
+			const automation = await create({ name: 'Motion light' });
+			eventEmitter.emit.mockClear();
+
+			const unchanged = await service.setEnabled(automation.id, false);
+
+			expect(unchanged).toMatchObject({ enabled: false, revision: 1 });
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+		});
+
+		it('refuses to enable an incomplete draft, as an update does', async () => {
+			const automation = await create({ name: 'Draft' });
+
+			await expect(service.setEnabled(automation.id, true)).rejects.toBeInstanceOf(AutomationsGraphValidationException);
+			expect(await service.findOne(automation.id)).toMatchObject({ enabled: false, revision: 1 });
+		});
+
+		it('applies the change on top of an edit that won the race', async () => {
+			const automation = await create({ name: 'Motion light', graph: graph() });
+			const realUpdate = (id: string, dto: UpdateAutomationDto): Promise<AutomationEntity> =>
+				AutomationsService.prototype.update.call(service, id, dto) as Promise<AutomationEntity>;
+			let raced = false;
+
+			jest.spyOn(service, 'update').mockImplementation(async (id: string, dto: UpdateAutomationDto) => {
+				if (!raced) {
+					raced = true;
+
+					// Somebody saved in the admin between the read and the write
+					await realUpdate(id, { revision: dto.revision, name: 'Renamed' } as UpdateAutomationDto);
+				}
+
+				return realUpdate(id, dto);
+			});
+
+			const updated = await service.setEnabled(automation.id, true);
+
+			expect(updated).toMatchObject({ name: 'Renamed', enabled: true, revision: 3 });
+		});
+
+		it('gives up with a conflict when edits keep winning the race', async () => {
+			const automation = await create({ name: 'Motion light', graph: graph() });
+
+			const spy = jest
+				.spyOn(service, 'update')
+				.mockRejectedValue(new AutomationsRevisionConflictException('Changed by somebody else'));
+
+			await expect(service.setEnabled(automation.id, true)).rejects.toBeInstanceOf(
+				AutomationsRevisionConflictException,
+			);
+			expect(spy).toHaveBeenCalledTimes(3);
+		});
+
+		it('reports an unknown automation as not found', async () => {
+			await expect(service.setEnabled(MISSING_ID, true)).rejects.toBeInstanceOf(AutomationsNotFoundException);
+		});
+	});
+
 	describe('remove', () => {
 		it('deletes the automation and emits its id', async () => {
 			const automation = await create({ name: 'Motion light' });

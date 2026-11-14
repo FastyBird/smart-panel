@@ -37,6 +37,9 @@ import { AutomationSummaryModel } from '../models/automations.model';
 import { AutomationSafetyService } from './automation-safety.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
 
+/** How often switching an automation on or off is tried when an edit keeps winning the race */
+const SET_ENABLED_ATTEMPTS = 3;
+
 @Injectable()
 export class AutomationsService {
 	private readonly logger = createExtensionLogger(AUTOMATIONS_MODULE_NAME, 'AutomationsService');
@@ -267,6 +270,33 @@ export class AutomationsService {
 		this.eventEmitter.emit(EventType.AUTOMATION_UPDATED, automation);
 
 		return automation;
+	}
+
+	/**
+	 * Switches an automation on or off and changes nothing else. This is what the wall panel does, so it carries
+	 * no revision: it is applied to the stored automation as it is now, through the same compare-and-swap update
+	 * as any other save, and it is retried when an edit wins the race in between. Switching on still checks the
+	 * stored graph, so an incomplete draft cannot be enabled from here either. An automation already in the
+	 * requested state is returned as it is, without a new revision.
+	 */
+	async setEnabled(id: string, enabled: boolean): Promise<AutomationEntity> {
+		for (let attempt = 1; ; attempt++) {
+			const existing = await this.getOneOrThrow(id);
+
+			if (existing.enabled === enabled) {
+				return existing;
+			}
+
+			try {
+				return await this.update(id, { revision: existing.revision, enabled });
+			} catch (error) {
+				if (error instanceof AutomationsRevisionConflictException && attempt < SET_ENABLED_ATTEMPTS) {
+					continue;
+				}
+
+				throw error;
+			}
+		}
 	}
 
 	async remove(id: string): Promise<void> {

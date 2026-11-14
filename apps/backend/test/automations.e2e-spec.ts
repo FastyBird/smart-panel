@@ -2674,6 +2674,134 @@ describe('Automations module (e2e)', () => {
 		});
 	});
 
+	describe('as a display', () => {
+		const asDisplay = (call: request.Test): request.Test => call.set('Authorization', `Bearer ${displayToken}`);
+
+		// The throttler allows 30 requests a minute per route, so the automations are set up and checked in process
+		const service = (): AutomationsService => app.get(AutomationsService, { strict: false });
+		const stored = (): Promise<AutomationEntity | null> => service().findOne(id);
+
+		let id: string;
+
+		beforeEach(async () => {
+			id = (await service().create({ name: 'Panel switch', graph: completeGraph } as unknown as CreateAutomationDto))
+				.id;
+		});
+
+		afterEach(async () => {
+			await service().remove(id);
+		});
+
+		it('lists automations without their graphs', async () => {
+			const response = await asDisplay(request(app.getHttpServer()).get(base)).expect(200);
+			const row = (response.body as { data: AutomationBody[] }).data.find((automation) => automation.id === id);
+
+			expect(row).toMatchObject({ name: 'Panel switch', enabled: false, space_id: null, status: 'ok' });
+			expect(row).not.toHaveProperty('graph');
+		});
+
+		it('switches an automation on and off without a revision and announces each change', async () => {
+			const emit = jest.spyOn(app.get(EventEmitter2), 'emit');
+
+			try {
+				const on = await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+					.send({ data: { enabled: true } })
+					.expect(200);
+
+				expect((on.body as { data: AutomationBody }).data).toMatchObject({ id, enabled: true, revision: 2 });
+				expect((on.body as { data: AutomationBody }).data).not.toHaveProperty('graph');
+				expect(emit).toHaveBeenCalledWith(
+					AutomationsEventType.AUTOMATION_UPDATED,
+					expect.objectContaining({ id, enabled: true }),
+				);
+
+				const off = await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+					.send({ data: { enabled: false } })
+					.expect(200);
+
+				expect((off.body as { data: AutomationBody }).data).toMatchObject({ enabled: false, revision: 3 });
+			} finally {
+				emit.mockRestore();
+			}
+
+			// The graph was not touched
+			expect(await stored()).toMatchObject({
+				name: 'Panel switch',
+				enabled: false,
+				revision: 3,
+				graph: completeGraph,
+			});
+		});
+
+		it('refuses any other field on the enabled route', async () => {
+			await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+				.send({ data: { enabled: true, name: 'Renamed' } })
+				.expect(400);
+			await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+				.send({ data: { enabled: true, graph: draftGraph } })
+				.expect(400);
+			await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+				.send({ data: {} })
+				.expect(400);
+
+			expect(await stored()).toMatchObject({ name: 'Panel switch', enabled: false, revision: 1 });
+		});
+
+		it.each<[string, unknown]>([
+			['the string "false"', 'false'],
+			['the string "true"', 'true'],
+			['1', 1],
+			['0', 0],
+			['null', null],
+		])('refuses %s for enabled and changes nothing', async (_label, enabled) => {
+			await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+				.send({ data: { enabled } })
+				.expect(400);
+
+			expect(await stored()).toMatchObject({ enabled: false, revision: 1 });
+		});
+
+		it('cannot enable an automation whose graph is not complete', async () => {
+			const draftId = (
+				await service().create({ name: 'Panel draft', graph: draftGraph } as unknown as CreateAutomationDto)
+			).id;
+
+			try {
+				await asDisplay(request(app.getHttpServer()).patch(`${base}/${draftId}/enabled`))
+					.send({ data: { enabled: true } })
+					.expect(422);
+			} finally {
+				await service().remove(draftId);
+			}
+		});
+
+		it('cannot read the graph, edit, run or delete the automation', async () => {
+			await asDisplay(request(app.getHttpServer()).get(`${base}/${id}`)).expect(403);
+			await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}`))
+				.send({ data: { revision: 1, enabled: true } })
+				.expect(403);
+			await asDisplay(request(app.getHttpServer()).post(`${base}/${id}/trigger`))
+				.send({})
+				.expect(403);
+			await asDisplay(request(app.getHttpServer()).delete(`${base}/${id}`)).expect(403);
+
+			expect(await stored()).toMatchObject({ enabled: false, revision: 1 });
+		});
+
+		it('lets the owner use the enabled route as well, but not a plain user', async () => {
+			await request(app.getHttpServer())
+				.patch(`${base}/${id}/enabled`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({ data: { enabled: true } })
+				.expect(200);
+			await request(app.getHttpServer())
+				.patch(`${base}/${id}/enabled`)
+				.set('Authorization', `Bearer ${userToken}`)
+				.send({ data: { enabled: false } })
+				.expect(403);
+		});
+	});
+
 	describe('role enforcement', () => {
 		const calls: Array<[string, (token?: string) => request.Test]> = [
 			['GET /automations', (token) => authorize(request(app.getHttpServer()).get(base), token)],
@@ -2715,6 +2843,13 @@ describe('Automations module (e2e)', () => {
 					}),
 			],
 			[
+				'PATCH /automations/:id/enabled',
+				(token) =>
+					authorize(request(app.getHttpServer()).patch(`${base}/${placeholderId}/enabled`), token).send({
+						data: { enabled: true },
+					}),
+			],
+			[
 				'POST /automations/:id/trigger',
 				(token) => authorize(request(app.getHttpServer()).post(`${base}/${placeholderId}/trigger`), token).send({}),
 			],
@@ -2748,8 +2883,22 @@ describe('Automations module (e2e)', () => {
 			await call(userToken).expect(403);
 		});
 
-		it.each(calls)('%s is 403 for a display token', async (_label, call) => {
-			await call(displayToken).expect(403);
+		// The wall panel lists automations and switches them on or off; everything else stays closed to it
+		const displayCalls = ['GET /automations', 'PATCH /automations/:id/enabled'];
+
+		it.each(calls.filter(([label]) => !displayCalls.includes(label)))(
+			'%s is 403 for a display token',
+			async (_label, call) => {
+				await call(displayToken).expect(403);
+			},
+		);
+
+		it('lets a display token through to the panel routes', async () => {
+			const [list, enabled] = displayCalls.map((label) => calls.find(([name]) => name === label)[1]);
+
+			await list(displayToken).expect(200);
+			// Past the guards: the placeholder id does not exist
+			await enabled(displayToken).expect(404);
 		});
 
 		it('leaves nothing behind after the refused writes', async () => {

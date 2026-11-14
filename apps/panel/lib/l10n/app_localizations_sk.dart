@@ -4888,6 +4888,37 @@ class AppLocalizationsSk extends AppLocalizations {
   String get space_occupancy_automatic => 'Automatika obsadenosti je zapnutá';
 
   @override
+  String get space_automations_title => 'Automatizácie';
+
+  @override
+  String get space_automations_on => 'Zapnutá';
+
+  @override
+  String get space_automations_off => 'Vypnutá';
+
+  @override
+  String get space_automations_suspended =>
+      'Pozastavená: spúšťala sa príliš často';
+
+  @override
+  String get space_automations_invalid => 'Vyžaduje kontrolu v administrácii';
+
+  @override
+  String get space_automations_last_failed => 'Posledné spustenie zlyhalo';
+
+  @override
+  String get space_automations_toggle_failed =>
+      'Automatizáciu sa nepodarilo prepnúť. Skúste to znova.';
+
+  @override
+  String get space_automations_toggle_incomplete =>
+      'Táto automatizácia nie je dokončená a nedá sa zapnúť.';
+
+  @override
+  String get space_automations_toggle_not_found =>
+      'Táto automatizácia už neexistuje.';
+
+  @override
   String get native_thermostat_title => 'Natívny termostat';
 
   @override

@@ -64,6 +64,7 @@ import 'package:fastybird_smart_panel/features/suggestions/services/suggestion_n
 import 'package:fastybird_smart_panel/modules/displays/services/inactivity_overlay_provider.dart';
 import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/buddy/export.dart';
+import 'package:fastybird_smart_panel/modules/automations/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/export.dart';
@@ -335,6 +336,7 @@ class StartupManagerService {
         locator.get<DevicesModuleService>().initialize(),
         locator.get<SpacesHomeControlPluginService>().initialize(),
         locator.get<ScenesModuleService>().initialize(),
+        locator.get<AutomationsModuleService>().initialize(),
         locator.get<IntentsModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
         locator.get<EnergyModuleService>().initialize(),
@@ -404,6 +406,7 @@ class StartupManagerService {
     service.register('devices', () => locator<DevicesModuleService>().refresh());
     service.register('spaces', () => locator<SpacesHomeControlPluginService>().refresh());
     service.register('scenes', () => locator<ScenesModuleService>().refresh());
+    service.register('automations', () => locator<AutomationsModuleService>().refresh());
     service.register('dashboard', () => locator<DashboardModuleService>().refresh());
     service.register('energy', () => locator<EnergyModuleService>().refresh());
     service.register('buddy', () => locator<BuddyModuleService>().refresh());
@@ -502,6 +505,10 @@ class StartupManagerService {
     if (locator.isRegistered<ScenesModuleService>()) {
       try { locator<ScenesModuleService>().dispose(); } catch (_) {}
       try { locator.unregister<ScenesModuleService>(); } catch (_) {}
+    }
+    if (locator.isRegistered<AutomationsModuleService>()) {
+      try { locator<AutomationsModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<AutomationsModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<IntentsModuleService>()) {
       try { locator<IntentsModuleService>().dispose(); } catch (_) {}
@@ -802,6 +809,10 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    var automationsModuleService = AutomationsModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
     var spacesHomeControlPluginService = SpacesHomeControlPluginService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -842,6 +853,7 @@ class StartupManagerService {
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);
     locator.registerSingleton(scenesModuleService);
+    locator.registerSingleton(automationsModuleService);
     locator.registerSingleton(intentsModuleService);
     locator.registerSingleton(spacesHomeControlPluginService);
 

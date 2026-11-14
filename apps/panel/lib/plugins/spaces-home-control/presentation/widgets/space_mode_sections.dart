@@ -1,5 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/modules/automations/service.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/activity_modes_section.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/automations_section.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/mode_schedule_section.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/occupancy_section.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
@@ -25,6 +27,8 @@ class SpaceModeSections extends StatelessWidget {
           ModeScheduleSection(spaceId: spaceId),
         if (locator.isRegistered<OccupancyRegistry>())
           OccupancySection(spaceId: spaceId),
+        if (locator.isRegistered<AutomationsService>())
+          AutomationsSection(spaceId: spaceId),
       ],
     ),
   );

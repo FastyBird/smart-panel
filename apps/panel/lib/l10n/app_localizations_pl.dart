@@ -4922,6 +4922,39 @@ class AppLocalizationsPl extends AppLocalizations {
   String get space_occupancy_automatic => 'Automatyka obecności włączona';
 
   @override
+  String get space_automations_title => 'Automatyzacje';
+
+  @override
+  String get space_automations_on => 'Włączona';
+
+  @override
+  String get space_automations_off => 'Wyłączona';
+
+  @override
+  String get space_automations_suspended =>
+      'Wstrzymana: uruchamiała się zbyt często';
+
+  @override
+  String get space_automations_invalid =>
+      'Wymaga sprawdzenia w panelu administracyjnym';
+
+  @override
+  String get space_automations_last_failed =>
+      'Ostatnie uruchomienie nie powiodło się';
+
+  @override
+  String get space_automations_toggle_failed =>
+      'Nie udało się przełączyć automatyzacji. Spróbuj ponownie.';
+
+  @override
+  String get space_automations_toggle_incomplete =>
+      'Ta automatyzacja nie jest ukończona i nie można jej włączyć.';
+
+  @override
+  String get space_automations_toggle_not_found =>
+      'Ta automatyzacja już nie istnieje.';
+
+  @override
   String get native_thermostat_title => 'Termostat natywny';
 
   @override

@@ -19,7 +19,9 @@ import {
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
+import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
 	ApiConflictResponse,
@@ -46,6 +48,7 @@ import {
 	AutomationsRevisionConflictException,
 } from '../automations.exceptions';
 import { ReqCreateAutomationDto } from '../dto/create-automation.dto';
+import { ReqSetAutomationEnabledDto } from '../dto/set-automation-enabled.dto';
 import { ReqTriggerAutomationDto } from '../dto/trigger-automation.dto';
 import { ReqUpdateAutomationDto } from '../dto/update-automation.dto';
 import { ReqValidateAutomationGraphDto } from '../dto/validate-graph.dto';
@@ -57,13 +60,16 @@ import {
 	AutomationResponseModel,
 	AutomationRunsResponseModel,
 	AutomationRuntimeResponseModel,
+	AutomationSummaryResponseModel,
 	AutomationTriggerResultResponseModel,
 	AutomationsResponseModel,
 } from '../models/automations-response.model';
+import { AutomationSummaryModel } from '../models/automations.model';
 import { createAutomationGraphValidationModel } from '../models/graph-validation.model';
 import { AutomationEngineService } from '../services/automation-engine.service';
 import { AutomationRunHistoryService } from '../services/automation-run-history.service';
 import { AutomationsService } from '../services/automations.service';
+import { assertOwnerAdminOrDisplay } from '../utils/automations-caller.utils';
 
 @ApiTags(AUTOMATIONS_MODULE_API_TAG_NAME)
 @Controller('automations')
@@ -81,17 +87,21 @@ export class AutomationsController {
 		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a list of automations',
 		description:
-			'Fetches all automations. The list is lightweight: each automation carries its metadata (name, enabled state, mode, revision, status, last run) but not its graph. Read a single automation to get the graph. Requires the owner or admin role.',
+			'Fetches all automations. The list is lightweight: each automation carries its metadata (name, enabled state, owning space, mode, revision, status, last run) but not its graph. Read a single automation to get the graph. Requires the owner or admin role, or a display token: the wall panel lists the automations of a space from it.',
 		operationId: 'get-automations-module-automations',
 	})
 	@ApiSuccessResponse(
 		AutomationsResponseModel,
 		'A list of automations successfully retrieved. The graph of each automation is left out.',
 	)
-	@ApiForbiddenResponse('Only owners and admins can read automations')
+	@ApiForbiddenResponse('Only owners, admins and displays can list automations')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async findAll(): Promise<AutomationsResponseModel> {
+	// Widens the class rule so a display token, which carries the user role, reaches the check below
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	async findAll(@Req() req: AuthenticatedRequest): Promise<AutomationsResponseModel> {
+		assertOwnerAdminOrDisplay(req.auth);
+
 		this.logger.debug('[LOOKUP ALL] Fetching all automations');
 
 		const automations = await this.automationsService.findAll();
@@ -239,6 +249,67 @@ export class AutomationsController {
 
 			const response = new AutomationResponseModel();
 			response.data = automation;
+
+			return response;
+		} catch (error) {
+			if (error instanceof AutomationsNotFoundException) {
+				throw new NotFoundException('Requested automation does not exist');
+			}
+
+			if (error instanceof AutomationsRevisionConflictException) {
+				throw new ConflictException(error.message);
+			}
+
+			if (error instanceof AutomationsGraphValidationException) {
+				throw this.createGraphRejection(error);
+			}
+
+			if (error instanceof AutomationsException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@ApiOperation({
+		tags: [AUTOMATIONS_MODULE_API_TAG_NAME],
+		summary: 'Switch an automation on or off',
+		description:
+			'Sets whether the automation is enabled and changes nothing else. It needs no revision: the change is applied to the automation as it is stored now, and it moves the revision like any other save, so an editor holding an older revision is refused on its next save. Switching on checks the stored graph as an update does, so an automation whose graph is not complete cannot be enabled and the request is answered with 422 and the list of issues in `error.details.issues`. An automation already in the requested state is returned unchanged. The response carries the automation without its graph. Requires the owner or admin role, or a display token: this is the only change the wall panel can make to an automation.',
+		operationId: 'set-automations-module-automation-enabled',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Automation ID' })
+	@ApiBody({ type: ReqSetAutomationEnabledDto, description: 'The enabled state to set' })
+	@ApiSuccessResponse(
+		AutomationSummaryResponseModel,
+		'The automation is in the requested state. The response includes the automation without its graph.',
+	)
+	@ApiBadRequestResponse('Invalid request data or UUID format')
+	@ApiForbiddenResponse('Only owners, admins and displays can switch automations on or off')
+	@ApiNotFoundResponse('Automation not found')
+	@ApiConflictResponse('The automation kept changing while it was being switched; try again')
+	@ApiUnprocessableEntityResponse(
+		'The automation could not be enabled. When the graph is the reason, `error.details.code` is `automation-graph-invalid` and `error.details.issues` lists the issues.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id/enabled')
+	// Widens the class rule so a display token, which carries the user role, reaches the check below
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	async setEnabled(
+		@Req() req: AuthenticatedRequest,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() enabledDto: ReqSetAutomationEnabledDto,
+	): Promise<AutomationSummaryResponseModel> {
+		assertOwnerAdminOrDisplay(req.auth);
+
+		try {
+			const automation = await this.automationsService.setEnabled(id, enabledDto.data.enabled);
+
+			this.logger.debug(`[ENABLED] Automation id=${id} enabled=${automation.enabled}`);
+
+			const response = new AutomationSummaryResponseModel();
+			response.data = toInstance(AutomationSummaryModel, automation);
 
 			return response;
 		} catch (error) {

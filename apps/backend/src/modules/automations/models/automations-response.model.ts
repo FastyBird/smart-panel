@@ -28,6 +28,19 @@ export class AutomationResponseModel extends BaseSuccessResponseModel<Automation
 }
 
 /**
+ * Response wrapper for AutomationSummaryModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResAutomationSummary' })
+export class AutomationSummaryResponseModel extends BaseSuccessResponseModel<AutomationSummaryModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationSummaryModel,
+	})
+	@Expose()
+	declare data: AutomationSummaryModel;
+}
+
+/**
  * Response wrapper for array of AutomationSummaryModel
  */
 @ApiSchema({ name: 'AutomationsModuleResAutomations' })
