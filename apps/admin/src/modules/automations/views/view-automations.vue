@@ -73,6 +73,7 @@
 					type="primary"
 					plain
 					class="px-4! ml-2!"
+					data-test-id="automations-add"
 					@click="onAutomationCreate"
 				>
 					<template #icon>
@@ -298,6 +299,38 @@ const onFormSaving = (saving: boolean): void => {
 	remoteFormSaving.value = saving;
 };
 
+// Whether what the form in the drawer holds may be thrown away: at once when nothing was changed, otherwise
+// when the user says so
+const mayDiscardForm = async (): Promise<boolean> => {
+	if (!remoteFormChanged.value) {
+		return true;
+	}
+
+	try {
+		await ElMessageBox.confirm(t('automations.texts.confirmDiscard'), t('automations.headings.discard'), {
+			confirmButtonText: t('automations.buttons.yes.title'),
+			cancelButtonText: t('automations.buttons.no.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+// Another form takes the place of the one in the drawer only when that one may go: never while it is being
+// saved, and after the same question closing the drawer asks when it holds changes. Asked before the template
+// dialog opens, so a "no" leaves the form - and the flow it was generated with - as they are, and no new draft
+// is made only to be thrown away.
+const mayReplaceForm = async (): Promise<boolean> => {
+	if (remoteFormSaving.value) {
+		return false;
+	}
+
+	return mayDiscardForm();
+};
+
 const onCloseDrawer = (done?: () => void): void => {
 	if (adjustList.value) {
 		showDrawer.value = false;
@@ -313,27 +346,13 @@ const onCloseDrawer = (done?: () => void): void => {
 		return;
 	}
 
-	if (!remoteFormChanged.value) {
-		navigate(RouteNames.AUTOMATIONS);
-
-		done?.();
-
-		return;
-	}
-
-	ElMessageBox.confirm(t('automations.texts.confirmDiscard'), t('automations.headings.discard'), {
-		confirmButtonText: t('automations.buttons.yes.title'),
-		cancelButtonText: t('automations.buttons.no.title'),
-		type: 'warning',
-	})
-		.then((): void => {
+	mayDiscardForm().then((discard: boolean): void => {
+		if (discard) {
 			navigate(RouteNames.AUTOMATIONS);
 
 			done?.();
-		})
-		.catch((): void => {
-			// Just ignore it
-		});
+		}
+	});
 };
 
 const onAutomationEdit = (id: IAutomation['id']): void => {
@@ -362,11 +381,19 @@ const onResetFilters = (): void => {
 };
 
 const onAutomationCreate = (): void => {
-	navigate(RouteNames.AUTOMATIONS_ADD);
+	mayReplaceForm().then((replace: boolean): void => {
+		if (replace) {
+			navigate(RouteNames.AUTOMATIONS_ADD);
+		}
+	});
 };
 
 const onAutomationFromTemplate = (): void => {
-	showTemplateDialog.value = true;
+	mayReplaceForm().then((replace: boolean): void => {
+		if (replace) {
+			showTemplateDialog.value = true;
+		}
+	});
 };
 
 // The generated flow waits under the id the new automation gets: the add form starts from its name and mode,

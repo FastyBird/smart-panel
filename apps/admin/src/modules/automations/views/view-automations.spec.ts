@@ -335,6 +335,7 @@ describe('ViewAutomations', (): void => {
 		expect(dialog.props('visible')).toBe(false);
 
 		await wrapper.find('[data-test-id="automations-from-template"]').trigger('click');
+		await flushPromises();
 
 		expect(dialog.props('visible')).toBe(true);
 
@@ -358,6 +359,71 @@ describe('ViewAutomations', (): void => {
 
 		// The add form keeps the automation id and the draft from its setup, so it is not reused for another one
 		expect(mocks.detailMounts).toBe(mounted + 1);
+	});
+
+	describe('over a form in the drawer', (): void => {
+		const changedForm = async (): Promise<void> => {
+			openRoute(editRoute);
+
+			await mountView();
+
+			wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+			await flushPromises();
+		};
+
+		it.each([
+			['From template', 'automations-from-template'],
+			['Add automation', 'automations-add'],
+		])('asks before %s replaces a changed form, and leaves the form when the answer is no', async (_label, button): Promise<void> => {
+			const confirm = vi.spyOn(ElMessageBox, 'confirm').mockRejectedValueOnce('cancel');
+
+			await changedForm();
+
+			await wrapper.find(`[data-test-id="${button}"]`).trigger('click');
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(wrapper.findComponent({ name: 'AutomationTemplateDialog' }).props('visible')).toBe(false);
+			expect(mocks.routerReplace).not.toHaveBeenCalled();
+			expect(wrapper.findComponent(DetailView).props('remoteFormChanged')).toBe(true);
+
+			confirm.mockRestore();
+		});
+
+		it('opens the template dialog once a changed form may be discarded', async (): Promise<void> => {
+			const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValueOnce('confirm' as never);
+
+			await changedForm();
+
+			await wrapper.find('[data-test-id="automations-from-template"]').trigger('click');
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(wrapper.findComponent({ name: 'AutomationTemplateDialog' }).props('visible')).toBe(true);
+
+			confirm.mockRestore();
+		});
+
+		it('does not replace a form while it is being saved', async (): Promise<void> => {
+			const confirm = vi.spyOn(ElMessageBox, 'confirm');
+
+			await changedForm();
+
+			wrapper.findComponent(DetailView).vm.$emit('update:remote-form-saving', true);
+
+			await flushPromises();
+
+			await wrapper.find('[data-test-id="automations-from-template"]').trigger('click');
+			await wrapper.find('[data-test-id="automations-add"]').trigger('click');
+			await flushPromises();
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(wrapper.findComponent({ name: 'AutomationTemplateDialog' }).props('visible')).toBe(false);
+			expect(mocks.routerReplace).not.toHaveBeenCalled();
+
+			confirm.mockRestore();
+		});
 	});
 
 	it('shows the list even when the spaces could not be loaded', async (): Promise<void> => {
