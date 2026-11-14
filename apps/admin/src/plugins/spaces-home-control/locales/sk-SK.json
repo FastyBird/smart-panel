@@ -612,7 +612,8 @@
 		"fields": {
 			"space": {
 				"title": "Miestnosť alebo zóna",
-				"placeholder": "Vyberte miestnosť alebo zónu"
+				"placeholder": "Vyberte miestnosť alebo zónu",
+				"loadFailed": "Miestnosti a zóny sa nepodarilo načítať."
 			},
 			"occupancy": {
 				"when": "Spustiť, keď sa priestor",

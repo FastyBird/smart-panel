@@ -612,7 +612,8 @@
 		"fields": {
 			"space": {
 				"title": "Místnost nebo zóna",
-				"placeholder": "Vyberte místnost nebo zónu"
+				"placeholder": "Vyberte místnost nebo zónu",
+				"loadFailed": "Místnosti a zóny se nepodařilo načíst."
 			},
 			"occupancy": {
 				"when": "Spustit, když se prostor",

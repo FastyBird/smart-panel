@@ -612,7 +612,8 @@
 		"fields": {
 			"space": {
 				"title": "Room or zone",
-				"placeholder": "Select a room or zone"
+				"placeholder": "Select a room or zone",
+				"loadFailed": "The rooms and zones could not be loaded."
 			},
 			"occupancy": {
 				"when": "Start when the space",

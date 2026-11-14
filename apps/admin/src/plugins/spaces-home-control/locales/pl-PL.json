@@ -612,7 +612,8 @@
 		"fields": {
 			"space": {
 				"title": "Pomieszczenie lub strefa",
-				"placeholder": "Wybierz pomieszczenie lub strefę"
+				"placeholder": "Wybierz pomieszczenie lub strefę",
+				"loadFailed": "Nie udało się wczytać pomieszczeń i stref."
 			},
 			"occupancy": {
 				"when": "Uruchom, gdy przestrzeń",

@@ -612,7 +612,8 @@
 		"fields": {
 			"space": {
 				"title": "Raum oder Zone",
-				"placeholder": "Raum oder Zone auswählen"
+				"placeholder": "Raum oder Zone auswählen",
+				"loadFailed": "Die Räume und Zonen konnten nicht geladen werden."
 			},
 			"occupancy": {
 				"when": "Starten, wenn der Bereich",

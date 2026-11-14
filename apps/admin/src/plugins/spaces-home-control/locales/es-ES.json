@@ -612,7 +612,8 @@
 		"fields": {
 			"space": {
 				"title": "Habitación o zona",
-				"placeholder": "Seleccione una habitación o zona"
+				"placeholder": "Seleccione una habitación o zona",
+				"loadFailed": "No se pudieron cargar las habitaciones y zonas."
 			},
 			"occupancy": {
 				"when": "Iniciar cuando el espacio",

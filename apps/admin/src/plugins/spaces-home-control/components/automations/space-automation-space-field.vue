@@ -13,6 +13,32 @@
 			:disabled="props.disabled"
 			@update:model-value="(spaceId: string | null): void => emit('update:modelValue', spaceId ?? undefined)"
 		/>
+		<div
+			v-if="loadFailed"
+			class="flex items-center gap-2 mt-1"
+			data-test-id="spaces-load-failed"
+		>
+			<el-text
+				size="small"
+				type="danger"
+				class="leading-4!"
+			>
+				{{ t('spacesHomeControlPlugin.automations.fields.space.loadFailed') }}
+			</el-text>
+			<el-button
+				link
+				type="primary"
+				size="small"
+				:loading="fetching"
+				data-test-id="retry-load-spaces"
+				@click="load"
+			>
+				<template #icon>
+					<icon icon="mdi:refresh" />
+				</template>
+				{{ t('automations.buttons.retry.title') }}
+			</el-button>
+		</div>
 	</el-form-item>
 </template>
 
@@ -21,10 +47,12 @@
  * The room or zone a space card points at, picked with the space select of the spaces module. Only rooms
  * and zones are offered: the space cards of the backend act on nothing else.
  */
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElFormItem } from 'element-plus';
+import { ElButton, ElFormItem, ElText } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import SpaceSelect from '../../../../modules/spaces/components/space-select.vue';
 import { useSpaces } from '../../../../modules/spaces/composables/useSpaces';
@@ -56,10 +84,22 @@ const wrongType = computed<boolean>((): boolean => {
 	return space !== null && space.type !== SpaceType.ROOM && space.type !== SpaceType.ZONE;
 });
 
+// A failed read is said beside the select, with a way to read again, so it is not taken for no spaces
+const loadFailed = ref<boolean>(false);
+
+const load = async (): Promise<void> => {
+	loadFailed.value = false;
+
+	try {
+		await fetchSpaces();
+	} catch {
+		loadFailed.value = true;
+	}
+};
+
 onBeforeMount((): void => {
 	if (!firstLoadFinished.value && !fetching.value) {
-		// The select stays empty and the summaries say "unknown space"; opening the form again tries again
-		fetchSpaces().catch((): void => undefined);
+		void load();
 	}
 });
 </script>
