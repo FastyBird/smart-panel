@@ -1803,6 +1803,183 @@ describe('Automations module (e2e)', () => {
 			});
 		});
 
+		describe('import and export', () => {
+			interface PreparationBody {
+				draft: {
+					name: string;
+					description: string | null;
+					icon: string | null;
+					mode: string;
+					space_id: string | null;
+					graph: { version: number; nodes: { id: string; config: Record<string, unknown> }[]; edges: unknown[] };
+				};
+				missing_references: { kind: string; id: string; usages: { node_id: string | null; field: string }[] }[];
+				issues: IssueBody[];
+			}
+
+			const transferGraph = () => ({
+				version: 1,
+				nodes: [
+					{
+						id: 'occupied',
+						type: 'device.property.changed',
+						position: { x: 10, y: 20 },
+						config: { ...occupancy, to: true },
+					},
+					{
+						id: 'on',
+						type: 'device.property.set',
+						position: { x: 300.5, y: -40 },
+						config: { writes: [{ ...lightOn, value: true }] },
+					},
+				],
+				edges: [{ id: 'e1', source: 'occupied', source_port: 'out', target: 'on', target_port: 'in' }],
+			});
+
+			const exportYaml = async (id: string): Promise<{ file_name: string; content_type: string; content: string }> => {
+				const response = await request(app.getHttpServer())
+					.get(`${base}/${id}/export`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				return (response.body as { data: { file_name: string; content_type: string; content: string } }).data;
+			};
+
+			const prepare = (yaml: string, mappings?: unknown[]) =>
+				request(app.getHttpServer())
+					.post(`${base}/import/prepare`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { yaml, ...(mappings ? { mappings } : {}) } });
+
+			it('exports an automation and imports it again as the same graph, created disabled', async () => {
+				const original = await automationsService.create({
+					name: 'Presence light',
+					description: 'On when somebody comes in',
+					mode: AutomationMode.PARALLEL,
+					enabled: true,
+					graph: transferGraph(),
+				} as unknown as CreateAutomationDto);
+
+				try {
+					const exported = await exportYaml(original.id);
+
+					expect(exported.file_name).toBe('presence-light.yaml');
+					expect(exported.content_type).toBe('application/yaml');
+					expect(exported.content).not.toContain(original.id);
+					expect(exported.content).not.toMatch(/enabled|revision|status/);
+
+					const prepared = await prepare(exported.content).expect(200);
+
+					const preparation = (prepared.body as { data: PreparationBody }).data;
+
+					expect(preparation.missing_references).toEqual([]);
+					expect(preparation.draft).toEqual({
+						name: 'Presence light',
+						description: 'On when somebody comes in',
+						icon: null,
+						mode: 'parallel',
+						space_id: null,
+						graph: original.graph,
+					});
+
+					// Preparing stores nothing; the automation is created the ordinary way, disabled. The service is called
+					// directly: the create route is close to its request limit in this file.
+					const imported = await automationsService.create({
+						...preparation.draft,
+						enabled: false,
+					} as unknown as CreateAutomationDto);
+
+					expect(imported.enabled).toBe(false);
+					expect(imported.graph).toEqual(original.graph);
+
+					await automationsService.remove(imported.id);
+				} finally {
+					await automationsService.remove(original.id);
+					await settled();
+				}
+			});
+
+			it('lists the references that do not exist here and points them at the ones the administrator chose', async () => {
+				const original = await automationsService.create({
+					name: 'Elsewhere',
+					graph: transferGraph(),
+				} as unknown as CreateAutomationDto);
+
+				try {
+					const { content } = await exportYaml(original.id);
+
+					// The same file as another installation would have exported it: its sensor has other ids
+					const foreign = {
+						device_id: '0d000000-0000-4000-8000-000000000001',
+						channel_id: '0c000000-0000-4000-8000-000000000001',
+						property_id: '0f000000-0000-4000-8000-000000000001',
+					};
+					const space = '05000000-0000-4000-8000-000000000001';
+
+					const yaml = `${content
+						.replaceAll(occupancy.device_id, foreign.device_id)
+						.replaceAll(occupancy.channel_id, foreign.channel_id)
+						.replaceAll(occupancy.property_id, foreign.property_id)}space_id: ${space}\n`;
+
+					const unmapped = (await prepare(yaml).expect(200)).body as { data: PreparationBody };
+
+					expect(unmapped.data.missing_references).toEqual([
+						{ kind: 'space', id: space, usages: [{ node_id: null, field: 'space_id' }] },
+						{ kind: 'property', id: foreign.property_id, usages: [{ node_id: 'occupied', field: 'property_id' }] },
+					]);
+					expect(unmapped.data.draft.space_id).toBeNull();
+
+					const mapped = (
+						await prepare(yaml, [{ kind: 'property', id: foreign.property_id, to: occupancy.property_id }]).expect(200)
+					).body as { data: PreparationBody };
+
+					expect(mapped.data.missing_references.map((reference) => reference.kind)).toEqual(['space']);
+					expect(mapped.data.draft.graph).toEqual(original.graph);
+
+					const refused = await prepare(yaml, [
+						{ kind: 'scene', id: foreign.property_id, to: '0e000000-0000-4000-8000-000000000001' },
+					]).expect(422);
+
+					expect(refused.body).toMatchObject({
+						code: 'automation-import-invalid',
+						issues: [{ field: 'mappings.0.to', reason: 'The scene to refer to instead does not exist.' }],
+					});
+				} finally {
+					await automationsService.remove(original.id);
+					await settled();
+				}
+			});
+
+			it('refuses a file that is not an automation with 422 and the problems', async () => {
+				const response = await prepare(
+					'version: 1\nkind: automation\nname: Broken\ngraph:\n  nodes:\n    - { id: a, type: no.such.card, position: { x: 0, y: 0 } }\n  edges: []\n',
+				).expect(422);
+
+				expect(response.body).toMatchObject({
+					code: 'automation-graph-invalid',
+					issues: [expect.objectContaining({ code: 'unknown_node_type', node_id: 'a', blocking: true })],
+				});
+
+				const aliased = await prepare('version: 1\nkind: automation\nname: &a Broken\ndescription: *a\n').expect(422);
+
+				expect(aliased.body).toMatchObject({
+					code: 'automation-import-invalid',
+					issues: [{ field: 'yaml', reason: 'Aliases are not allowed.' }],
+				});
+
+				const versioned = await prepare('version: 2\nkind: automation\nname: Later\n').expect(422);
+
+				expect(versioned.body).toMatchObject({ code: 'automation-import-invalid', issues: [{ field: 'version' }] });
+			});
+
+			it('answers 404 for exporting an automation that does not exist', async () => {
+				await request(app.getHttpServer())
+					.get(`${base}/${placeholderId}/export`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(404);
+			});
+		});
+
 		it('lists the space cards of the spaces-home-control plugin only while it is enabled', async () => {
 			const spaceCards = async (): Promise<string[]> => {
 				const response = await request(app.getHttpServer())
@@ -2409,6 +2586,41 @@ describe('Automations module (e2e)', () => {
 				await reset(lightBrightness, 100);
 			});
 
+			it('refuses to import an automation that would unlock, as a save does', async () => {
+				const yaml = [
+					'version: 1',
+					'kind: automation',
+					'name: Let everybody in',
+					'graph:',
+					'  nodes:',
+					'    - { id: start, type: manual.start, position: { x: 0, y: 0 } }',
+					`    - id: unlock`,
+					`      type: device.property.set`,
+					`      position: { x: 200, y: 0 }`,
+					`      config: { writes: [ ${JSON.stringify({ ...lockStatus, value: 'unlocked' })} ] }`,
+					'  edges:',
+					'    - { id: e1, source: start, source_port: out, target: unlock, target_port: in }',
+				].join('\n');
+
+				const response = await request(app.getHttpServer())
+					.post(`${base}/import/prepare`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { yaml } })
+					.expect(422);
+
+				expect(response.body).toMatchObject({
+					code: 'automation-graph-invalid',
+					issues: [
+						expect.objectContaining({
+							code: 'safety_reducing_action',
+							node_id: 'unlock',
+							field: 'writes.0.value',
+							blocking: true,
+						}),
+					],
+				});
+			});
+
 			it('refuses to save an automation that would unlock, disarm or open, node by node, even as a draft', async () => {
 				const graph = {
 					version: 1,
@@ -2841,6 +3053,17 @@ describe('Automations module (e2e)', () => {
 					).send({
 						data: { parameters: {} },
 					}),
+			],
+			[
+				'POST /automations/import/prepare',
+				(token) =>
+					authorize(request(app.getHttpServer()).post(`${base}/import/prepare`), token).send({
+						data: { yaml: 'version: 1' },
+					}),
+			],
+			[
+				'GET /automations/:id/export',
+				(token) => authorize(request(app.getHttpServer()).get(`${base}/${placeholderId}/export`), token),
 			],
 			[
 				'PATCH /automations/:id/enabled',

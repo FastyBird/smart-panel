@@ -9,6 +9,7 @@ import { AutomationEntity } from '../entities/automations.entity';
 import { AutomationRunSummaryModel } from './automation-runs.model';
 import { AutomationRuntimeModel } from './automation-runtime.model';
 import { AutomationTemplateDraftModel, AutomationTemplateModel } from './automation-templates.model';
+import { AutomationExportModel, AutomationImportPreparationModel } from './automation-transfer.model';
 import { AutomationTriggerResultModel } from './automation-trigger-result.model';
 import { AutomationSummaryModel } from './automations.model';
 import { AutomationGraphValidationModel } from './graph-validation.model';
@@ -159,4 +160,30 @@ export class AutomationTemplateDraftResponseModel extends BaseSuccessResponseMod
 	})
 	@Expose()
 	declare data: AutomationTemplateDraftModel;
+}
+
+/**
+ * Response wrapper for AutomationExportModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResExport' })
+export class AutomationExportResponseModel extends BaseSuccessResponseModel<AutomationExportModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationExportModel,
+	})
+	@Expose()
+	declare data: AutomationExportModel;
+}
+
+/**
+ * Response wrapper for AutomationImportPreparationModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResImportPreparation' })
+export class AutomationImportPreparationResponseModel extends BaseSuccessResponseModel<AutomationImportPreparationModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationImportPreparationModel,
+	})
+	@Expose()
+	declare data: AutomationImportPreparationModel;
 }

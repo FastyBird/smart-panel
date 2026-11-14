@@ -30,6 +30,7 @@ import { AutomationsController } from './controllers/automations.controller';
 import { AutomationNodeTypesController } from './controllers/node-types.controller';
 import { AutomationRunsController } from './controllers/runs.controller';
 import { AutomationTemplatesController } from './controllers/templates.controller';
+import { AutomationTransferController } from './controllers/transfer.controller';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
 import { AutomationRunEntity } from './entities/automation-runs.entity';
 import { AutomationEntity } from './entities/automations.entity';
@@ -43,6 +44,7 @@ import { AutomationRunHistoryService } from './services/automation-run-history.s
 import { AutomationRunService } from './services/automation-run.service';
 import { AutomationSafetyService } from './services/automation-safety.service';
 import { AutomationToolService } from './services/automation-tool.service';
+import { AutomationTransferService } from './services/automation-transfer.service';
 import { AutomationsSeederService } from './services/automations-seeder.service';
 import { AutomationsService } from './services/automations.service';
 import { AutomationEventSourceService } from './services/event-source.service';
@@ -74,6 +76,7 @@ import { AUTOMATION_TEMPLATES_LOCATIONS, AutomationTemplatesService } from './te
 		AutomationNodeTypesController,
 		AutomationRunsController,
 		AutomationTemplatesController,
+		AutomationTransferController,
 	],
 	providers: [
 		// Core services
@@ -99,6 +102,7 @@ import { AUTOMATION_TEMPLATES_LOCATIONS, AutomationTemplatesService } from './te
 			},
 		},
 		AutomationTemplatesService,
+		AutomationTransferService,
 		// Listeners
 		ReferenceCleanupListener,
 		WebsocketExchangeListener,

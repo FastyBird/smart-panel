@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 
 import { AutomationGraphSaveIssue } from './graph/save-policy';
 import { AutomationTemplateParameterIssue } from './templates/template-generator';
+import { AutomationImportProblem } from './transfer/automation-yaml';
 
 export class AutomationsException extends Error {
 	public constructor(message: string) {
@@ -94,5 +95,20 @@ export class AutomationsTemplateParametersException extends AutomationsValidatio
 	) {
 		super(message);
 		this.name = 'AutomationsTemplateParametersException';
+	}
+}
+
+/**
+ * An import file that could not be read as an automation: not valid YAML, not an automation document of a
+ * known version, or fields a create request would refuse. Carries the problems, each addressed to the part of
+ * the document it is about.
+ */
+export class AutomationsImportException extends AutomationsValidationException {
+	public constructor(
+		message: string,
+		public readonly issues: AutomationImportProblem[],
+	) {
+		super(message);
+		this.name = 'AutomationsImportException';
 	}
 }
