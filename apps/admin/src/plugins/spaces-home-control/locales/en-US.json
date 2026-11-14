@@ -573,5 +573,122 @@
 		"readOnly": "Occupancy editing requires an owner or administrator.",
 		"supplementalFailed": "Occupancy sensors or observed state could not be loaded. Refresh to retry.",
 		"unsupportedSpace": "This space type no longer supports occupancy. Your draft is preserved for review; saving and Resume are unavailable."
+	},
+	"automations": {
+		"nodeTypes": {
+			"space": {
+				"occupancy": {
+					"changed": {
+						"name": "Space occupancy changes",
+						"description": "Starts when a room or zone becomes occupied, becomes vacant, or both, as its occupancy detection says."
+					},
+					"is": {
+						"name": "Space is occupied",
+						"description": "Continues on \"yes\" when the occupancy detection of a room or zone says it is occupied, or vacant, as chosen, otherwise on \"no\"."
+					}
+				},
+				"mode": {
+					"changed": {
+						"name": "Space mode changes",
+						"description": "Starts when the activity mode of a room or zone changes: to a mode, from a mode, or any change."
+					},
+					"is": {
+						"name": "Space mode is",
+						"description": "Continues on \"yes\" when the activity mode of a room or zone is one of the chosen modes, otherwise on \"no\"."
+					},
+					"set": {
+						"name": "Set space mode",
+						"description": "Activates an activity mode of a room or zone, as the panel does."
+					}
+				},
+				"lighting": {
+					"intent": {
+						"name": "Set space lighting",
+						"description": "Turns the lights of a room or zone on or off, applies a lighting mode, or turns on, off or dims the lights of one role."
+					}
+				}
+			}
+		},
+		"fields": {
+			"space": {
+				"title": "Room or zone",
+				"placeholder": "Select a room or zone",
+				"loadFailed": "The rooms and zones could not be loaded."
+			},
+			"occupancy": {
+				"when": "Start when the space",
+				"anyChange": "becomes occupied or vacant",
+				"is": "Continue on \"yes\" when the space is",
+				"hints": {
+					"changed": "Follows the occupancy detection of the space: the state it settled on, not every sensor report.",
+					"is": "While the occupancy is not known, the condition continues on \"no\"."
+				}
+			},
+			"mode": {
+				"modes": "Activity modes that answer \"yes\"",
+				"mode": "Activity mode",
+				"placeholder": "Select an activity mode",
+				"hints": {
+					"changed": "Starts whoever selects the mode: a person, a schedule, occupancy or an automation.",
+					"is": "Reads the mode selected for the space when the condition is reached.",
+					"set": "Activates the mode as the panel does, without pausing the occupancy of the space. The mode has to be set up for the space."
+				}
+			},
+			"lighting": {
+				"intent": "Lighting",
+				"intentPlaceholder": "Select what to do with the lights",
+				"intents": {
+					"on": "Turn the lights on",
+					"off": "Turn the lights off",
+					"set_mode": "Apply a lighting mode",
+					"role_on": "Turn the lights of a role on",
+					"role_off": "Turn the lights of a role off",
+					"role_brightness": "Set the brightness of a role"
+				},
+				"mode": "Lighting mode",
+				"modePlaceholder": "Select a lighting mode",
+				"role": "Lighting role",
+				"rolePlaceholder": "Select a lighting role",
+				"brightness": "Brightness",
+				"hint": "The lights are chosen by their roles in the space, as on the panel; offline lights are skipped."
+			}
+		},
+		"summaries": {
+			"unknownSpace": "Unknown space",
+			"occupancyChanged": {
+				"any": "{space} becomes occupied or vacant",
+				"occupied": "{space} becomes occupied",
+				"vacant": "{space} becomes vacant"
+			},
+			"occupancyIs": {
+				"occupied": "{space} is occupied",
+				"vacant": "{space} is vacant"
+			},
+			"modeOf": "Mode of {space}",
+			"modeIs": "Mode of {space} is {modes}",
+			"modeSet": "Set {space} to {mode}",
+			"lighting": {
+				"on": "Lights on in {space}",
+				"off": "Lights off in {space}",
+				"set_mode": "{space}: lighting mode {mode}",
+				"role_on": "{space}: {role} lights on",
+				"role_off": "{space}: {role} lights off",
+				"role_brightness": "{space}: {role} lights at {brightness} %"
+			}
+		},
+		"validation": {
+			"space": "A room or a zone must be chosen.",
+			"occupancy": "Choose occupied or vacant.",
+			"activityMode": "Choose an activity mode.",
+			"activityModes": "At least one activity mode is needed.",
+			"lightingIntent": "Choose what to do with the lights.",
+			"lightingMode": "Choose a lighting mode.",
+			"lightingRole": "Choose a lighting role.",
+			"brightness": "The brightness must be a whole number from 0 to 100.",
+			"notUsedByIntent": "This value does not apply to the lighting chosen.",
+			"sameState": "The mode cannot change to the mode it changes from.",
+			"spaceType": "This space is not a room or a zone; the card acts only on rooms and zones.",
+			"required": "This value is needed."
+		}
 	}
 }

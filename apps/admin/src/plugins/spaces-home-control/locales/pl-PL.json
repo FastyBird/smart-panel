@@ -573,5 +573,122 @@
 		"readOnly": "Edycja wymaga właściciela lub administratora.",
 		"supplementalFailed": "Nie udało się wczytać czujników lub stanu obecności. Odśwież, aby spróbować ponownie.",
 		"unsupportedSpace": "Ten typ przestrzeni nie obsługuje już obecności. Zachowano wersję roboczą do sprawdzenia; zapis i wznowienie są niedostępne."
+	},
+	"automations": {
+		"nodeTypes": {
+			"space": {
+				"occupancy": {
+					"changed": {
+						"name": "Zajętość przestrzeni się zmienia",
+						"description": "Uruchamia się, gdy pomieszczenie lub strefa staje się zajęte, puste, albo w obu przypadkach, zgodnie z wykrywaniem zajętości."
+					},
+					"is": {
+						"name": "Przestrzeń jest zajęta",
+						"description": "Przechodzi dalej wyjściem „tak”, gdy wykrywanie zajętości pomieszczenia lub strefy wskazuje zajęte albo puste, zgodnie z wyborem, w przeciwnym razie wyjściem „nie”."
+					}
+				},
+				"mode": {
+					"changed": {
+						"name": "Tryb przestrzeni się zmienia",
+						"description": "Uruchamia się przy zmianie trybu aktywności pomieszczenia lub strefy: na tryb, z trybu albo przy dowolnej zmianie."
+					},
+					"is": {
+						"name": "Tryb przestrzeni to",
+						"description": "Przechodzi dalej wyjściem „tak”, gdy tryb aktywności pomieszczenia lub strefy jest jednym z wybranych trybów, w przeciwnym razie wyjściem „nie”."
+					},
+					"set": {
+						"name": "Ustaw tryb przestrzeni",
+						"description": "Aktywuje tryb aktywności pomieszczenia lub strefy, tak jak panel."
+					}
+				},
+				"lighting": {
+					"intent": {
+						"name": "Ustaw oświetlenie przestrzeni",
+						"description": "Włącza lub wyłącza światła pomieszczenia lub strefy, stosuje tryb oświetlenia albo włącza, wyłącza lub przyciemnia światła jednej roli."
+					}
+				}
+			}
+		},
+		"fields": {
+			"space": {
+				"title": "Pomieszczenie lub strefa",
+				"placeholder": "Wybierz pomieszczenie lub strefę",
+				"loadFailed": "Nie udało się wczytać pomieszczeń i stref."
+			},
+			"occupancy": {
+				"when": "Uruchom, gdy przestrzeń",
+				"anyChange": "staje się zajęta lub pusta",
+				"is": "Przejdź dalej wyjściem „tak”, gdy przestrzeń jest",
+				"hints": {
+					"changed": "Kieruje się wykrywaniem zajętości przestrzeni: stanem, na którym się ustaliło, a nie każdym odczytem czujnika.",
+					"is": "Dopóki zajętość nie jest znana, warunek przechodzi dalej wyjściem „nie”."
+				}
+			},
+			"mode": {
+				"modes": "Tryby aktywności, które odpowiadają „tak”",
+				"mode": "Tryb aktywności",
+				"placeholder": "Wybierz tryb aktywności",
+				"hints": {
+					"changed": "Uruchamia się niezależnie od tego, kto wybierze tryb: osoba, harmonogram, zajętość czy automatyzacja.",
+					"is": "Odczytuje tryb wybrany dla przestrzeni w chwili, gdy przebieg dotrze do warunku.",
+					"set": "Aktywuje tryb tak jak panel, bez wstrzymywania zajętości przestrzeni. Tryb musi być skonfigurowany dla przestrzeni."
+				}
+			},
+			"lighting": {
+				"intent": "Oświetlenie",
+				"intentPlaceholder": "Wybierz, co zrobić ze światłami",
+				"intents": {
+					"on": "Włącz światła",
+					"off": "Wyłącz światła",
+					"set_mode": "Zastosuj tryb oświetlenia",
+					"role_on": "Włącz światła roli",
+					"role_off": "Wyłącz światła roli",
+					"role_brightness": "Ustaw jasność roli"
+				},
+				"mode": "Tryb oświetlenia",
+				"modePlaceholder": "Wybierz tryb oświetlenia",
+				"role": "Rola oświetlenia",
+				"rolePlaceholder": "Wybierz rolę oświetlenia",
+				"brightness": "Jasność",
+				"hint": "Światła są wybierane według ich ról w przestrzeni, tak jak na panelu; światła offline są pomijane."
+			}
+		},
+		"summaries": {
+			"unknownSpace": "Nieznana przestrzeń",
+			"occupancyChanged": {
+				"any": "{space} staje się zajęte lub puste",
+				"occupied": "{space} staje się zajęte",
+				"vacant": "{space} staje się puste"
+			},
+			"occupancyIs": {
+				"occupied": "{space} jest zajęte",
+				"vacant": "{space} jest puste"
+			},
+			"modeOf": "Tryb: {space}",
+			"modeIs": "Tryb {space}: {modes}",
+			"modeSet": "Ustaw {space}: {mode}",
+			"lighting": {
+				"on": "Włącz światła: {space}",
+				"off": "Wyłącz światła: {space}",
+				"set_mode": "{space}: tryb oświetlenia {mode}",
+				"role_on": "{space}: włącz światła roli {role}",
+				"role_off": "{space}: wyłącz światła roli {role}",
+				"role_brightness": "{space}: światła roli {role} na {brightness} %"
+			}
+		},
+		"validation": {
+			"space": "Trzeba wybrać pomieszczenie lub strefę.",
+			"occupancy": "Wybierz zajęte lub puste.",
+			"activityMode": "Wybierz tryb aktywności.",
+			"activityModes": "Potrzebny jest co najmniej jeden tryb aktywności.",
+			"lightingIntent": "Wybierz, co zrobić ze światłami.",
+			"lightingMode": "Wybierz tryb oświetlenia.",
+			"lightingRole": "Wybierz rolę oświetlenia.",
+			"brightness": "Jasność musi być liczbą całkowitą od 0 do 100.",
+			"notUsedByIntent": "Ta wartość nie dotyczy wybranego oświetlenia.",
+			"sameState": "Tryb nie może zmienić się na ten sam tryb, z którego się zmienia.",
+			"spaceType": "Ta przestrzeń nie jest pomieszczeniem ani strefą; blok działa tylko na pomieszczenia i strefy.",
+			"required": "Ta wartość jest wymagana."
+		}
 	}
 }

@@ -67,8 +67,10 @@ vi.mock('../../composables/useAutomationNodeLookups', () => ({
 			({ 'c-lock': { name: 'Lock', category: 'lock' }, 'c-door': { name: 'Door', category: 'door' } })[id] ?? { name: 'Sensor', category: 'sensor' },
 		property: (id: string) => PROPERTIES.find((item) => item.id === id) ?? null,
 		scene: () => null,
+		automation: () => null,
 		ensureDevices: async () => undefined,
 		ensureScenes: async () => undefined,
+		ensureAutomations: async () => undefined,
 	}),
 }));
 

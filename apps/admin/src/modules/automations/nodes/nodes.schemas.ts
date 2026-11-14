@@ -7,32 +7,48 @@
 import { z } from 'zod';
 
 import {
+	AUTOMATION_ARMED_STATES,
+	AUTOMATION_ARM_STATES,
+	AUTOMATION_BUTTON_EVENT_MAX_LENGTH,
+	AUTOMATION_BUTTON_MAX_EVENTS,
 	AUTOMATION_COMPARE_MAX_VALUES,
 	AUTOMATION_COMPARE_OPERATORS,
+	AUTOMATION_DAYLIGHT_STATES,
 	AUTOMATION_DELAY_MAX_SECONDS,
+	AUTOMATION_DEVICE_CONNECTIONS,
 	AUTOMATION_FOR_MAX_SECONDS,
+	AUTOMATION_HOUSE_MODES,
 	AUTOMATION_NOTIFICATION_MESSAGE_MAX_LENGTH,
 	AUTOMATION_NOTIFICATION_SEVERITIES,
 	AUTOMATION_NOTIFICATION_TITLE_MAX_LENGTH,
+	AUTOMATION_SECURITY_STATES_BY_KIND,
+	AUTOMATION_SECURITY_STATE_KINDS,
 	AUTOMATION_SET_MAX_WRITES,
+	AUTOMATION_SUN_EVENTS,
+	AUTOMATION_SUN_OFFSET_MAX_MINUTES,
 	AUTOMATION_TIME_OF_DAY_PATTERN,
+	AUTOMATION_WAIT_MAX_SECONDS,
 	AutomationBuiltInNodeType,
+	type AutomationSecurityStateKind,
 } from './nodes.constants';
 
 const VALIDATION_PREFIX = 'automations.editor.validation.';
 
 const message = (key: string): { message: string } => ({ message: `${VALIDATION_PREFIX}${key}` });
 
-type Report = (path: (string | number)[], key: string) => void;
+export type AutomationNodeConfigReport = (path: (string | number)[], key: string) => void;
 
-type Rules = (config: Record<string, unknown>, report: Report) => void;
+export type AutomationNodeConfigRules = (config: Record<string, unknown>, report: AutomationNodeConfigReport) => void;
 
-/*
+/**
  * A card configuration: the fields as `shape` says, no field it does not name, and the rules that tie its
  * fields together. The rules are checked beside the fields rather than after them, so a rule is reported
  * while another field is still missing - a zod refinement would wait for every field to be right first.
+ *
+ * A rule reports a key under `prefix`; a plugin passes its own, so the messages of its cards are
+ * translation keys of the plugin (`spacesHomeControlPlugin.automations.validation.`).
  */
-const cardConfig = <T extends z.ZodRawShape>(shape: T, rules?: Rules) =>
+export const defineNodeConfigSchema = <T extends z.ZodRawShape>(shape: T, rules?: AutomationNodeConfigRules, prefix: string = VALIDATION_PREFIX) =>
 	z.intersection(
 		z.object(shape),
 		z.record(z.string(), z.unknown()).superRefine((config, ctx): void => {
@@ -43,10 +59,12 @@ const cardConfig = <T extends z.ZodRawShape>(shape: T, rules?: Rules) =>
 			}
 
 			rules?.(config, (path, key): void => {
-				ctx.addIssue({ code: 'custom', path, ...message(key) });
+				ctx.addIssue({ code: 'custom', path, message: `${prefix}${key}` });
 			});
 		})
 	);
+
+const cardConfig = defineNodeConfigSchema;
 
 const PropertyValueSchema = z.union([z.string(), z.number(), z.boolean()], message('value'));
 
@@ -218,6 +236,148 @@ export const DelayConfigSchema = cardConfig({
 	seconds: DurationSchema(AUTOMATION_DELAY_MAX_SECONDS, 'delayMax'),
 });
 
+// No branch of a join has anything to configure: it only waits for one or for all of its inputs
+export const JoinConfigSchema = cardConfig({});
+
+export const WaitUntilConfigSchema = cardConfig(
+	{
+		...target,
+		to: PropertyValueSchema.optional(),
+		above: z.number(message('number')).optional(),
+		below: z.number(message('number')).optional(),
+		timeout_seconds: DurationSchema(AUTOMATION_WAIT_MAX_SECONDS, 'timeoutMax'),
+	},
+	(config, report): void => {
+		const threshold = given(config.above) || given(config.below);
+
+		if (given(config.above) && given(config.below)) {
+			report(['below'], 'aboveAndBelow');
+		}
+
+		if (threshold && given(config.to)) {
+			report(['to'], 'thresholdAndValue');
+		}
+
+		// The backend needs a state to wait for; while none is entered the card is only unfinished, so
+		// `checkNodeConfig` does not report it, but the configuration is not complete
+		if (!threshold && !given(config.to)) {
+			report(['to'], 'waitNeedsState');
+		}
+	}
+);
+
+export const SunEventConfigSchema = cardConfig({
+	event: z.enum(AUTOMATION_SUN_EVENTS, message('sunEvent')),
+	offset_minutes: z
+		.number(message('offset'))
+		.int(message('offset'))
+		.min(-AUTOMATION_SUN_OFFSET_MAX_MINUTES, message('offset'))
+		.max(AUTOMATION_SUN_OFFSET_MAX_MINUTES, message('offset'))
+		.optional(),
+});
+
+export const SunDaylightConfigSchema = cardConfig({
+	state: z.enum(AUTOMATION_DAYLIGHT_STATES, message('daylight')),
+});
+
+/**
+ * A list of different values of one kind, at least one, as the "is one of" cards take them.
+ */
+export const optionListSchema = <T extends z.ZodType>(item: T, emptyKey: string, max: number, prefix: string = VALIDATION_PREFIX) =>
+	z
+		.array(item, { message: `${prefix}${emptyKey}` })
+		.min(1, { message: `${prefix}${emptyKey}` })
+		.max(max, { message: `${prefix}${emptyKey}` })
+		.refine((items) => new Set(items).size === items.length, message('listTwice'));
+
+export const DeviceButtonPressedConfigSchema = cardConfig({
+	...target,
+	events: z
+		.array(
+			z.string(message('buttonEvent')).min(1, message('buttonEvent')).max(AUTOMATION_BUTTON_EVENT_MAX_LENGTH, message('buttonEvent')),
+			message('buttonEvents')
+		)
+		.min(1, message('buttonEvents'))
+		.max(AUTOMATION_BUTTON_MAX_EVENTS, message('buttonEventsMax'))
+		.refine((events) => new Set(events).size === events.length, message('listTwice'))
+		.optional(),
+});
+
+export const DeviceConnectionChangedConfigSchema = cardConfig({
+	device_id: target.device_id,
+	to: z.enum(AUTOMATION_DEVICE_CONNECTIONS, message('connection')).optional(),
+});
+
+export const SceneWasRunConfigSchema = cardConfig({
+	scene_id: z.string(message('scene')).uuid(message('scene')),
+});
+
+const HouseModeSchema = z.enum(AUTOMATION_HOUSE_MODES, message('houseMode'));
+
+/**
+ * The rule of every "changes" card with a "to" and a "from": a change goes to another state than the one
+ * it comes from.
+ */
+export const changeRules: AutomationNodeConfigRules = (config, report): void => {
+	if (given(config.to) && config.to === config.from) report(['to'], 'sameState');
+};
+
+export const HouseModeChangedConfigSchema = cardConfig(
+	{
+		to: HouseModeSchema.optional(),
+		from: HouseModeSchema.optional(),
+	},
+	changeRules
+);
+
+export const HouseModeIsConfigSchema = cardConfig({
+	modes: optionListSchema(HouseModeSchema, 'houseModes', AUTOMATION_HOUSE_MODES.length),
+});
+
+export const HouseModeSetConfigSchema = cardConfig({
+	mode: HouseModeSchema,
+});
+
+const SecurityStateSchema = z.string(message('securityState'));
+
+export const SecurityStateChangedConfigSchema = cardConfig(
+	{
+		kind: z.enum(AUTOMATION_SECURITY_STATE_KINDS, message('securityKind')),
+		to: SecurityStateSchema.optional(),
+		from: SecurityStateSchema.optional(),
+	},
+	(config, report): void => {
+		const states = (AUTOMATION_SECURITY_STATE_KINDS as readonly unknown[]).includes(config.kind)
+			? AUTOMATION_SECURITY_STATES_BY_KIND[config.kind as AutomationSecurityStateKind]
+			: null;
+
+		let wrong = false;
+
+		for (const field of ['to', 'from'] as const) {
+			if (states !== null && typeof config[field] === 'string' && !states.includes(config[field])) {
+				report([field], 'securityState');
+
+				wrong = true;
+			}
+		}
+
+		if (!wrong) changeRules(config, report);
+	}
+);
+
+export const SecurityArmedIsConfigSchema = cardConfig({
+	states: optionListSchema(z.enum(AUTOMATION_ARMED_STATES, message('armedStates')), 'armedStates', AUTOMATION_ARMED_STATES.length),
+});
+
+export const SecurityArmConfigSchema = cardConfig({
+	...target,
+	armed_state: z.enum(AUTOMATION_ARM_STATES, message('armState')),
+});
+
+export const AutomationTargetConfigSchema = cardConfig({
+	automation_id: z.string(message('automation')).uuid(message('automation')),
+});
+
 export const AUTOMATION_BUILT_IN_CONFIG_SCHEMAS: Record<AutomationBuiltInNodeType, z.ZodType> = {
 	[AutomationBuiltInNodeType.DEVICE_PROPERTY_CHANGED]: DevicePropertyChangedConfigSchema,
 	[AutomationBuiltInNodeType.DEVICE_PROPERTY_COMPARE]: DevicePropertyCompareConfigSchema,
@@ -228,6 +388,23 @@ export const AUTOMATION_BUILT_IN_CONFIG_SCHEMAS: Record<AutomationBuiltInNodeTyp
 	[AutomationBuiltInNodeType.TIME_OF_DAY]: TimeOfDayConfigSchema,
 	[AutomationBuiltInNodeType.TIME_WINDOW]: TimeWindowConfigSchema,
 	[AutomationBuiltInNodeType.FLOW_DELAY]: DelayConfigSchema,
+	[AutomationBuiltInNodeType.FLOW_WAIT_UNTIL]: WaitUntilConfigSchema,
+	[AutomationBuiltInNodeType.FLOW_ANY]: JoinConfigSchema,
+	[AutomationBuiltInNodeType.FLOW_ALL]: JoinConfigSchema,
+	[AutomationBuiltInNodeType.SUN_EVENT]: SunEventConfigSchema,
+	[AutomationBuiltInNodeType.SUN_DAYLIGHT]: SunDaylightConfigSchema,
+	[AutomationBuiltInNodeType.DEVICE_BUTTON_PRESSED]: DeviceButtonPressedConfigSchema,
+	[AutomationBuiltInNodeType.DEVICE_CONNECTION_CHANGED]: DeviceConnectionChangedConfigSchema,
+	[AutomationBuiltInNodeType.SCENE_WAS_RUN]: SceneWasRunConfigSchema,
+	[AutomationBuiltInNodeType.HOUSE_MODE_CHANGED]: HouseModeChangedConfigSchema,
+	[AutomationBuiltInNodeType.HOUSE_MODE_IS]: HouseModeIsConfigSchema,
+	[AutomationBuiltInNodeType.HOUSE_MODE_SET]: HouseModeSetConfigSchema,
+	[AutomationBuiltInNodeType.SECURITY_STATE_CHANGED]: SecurityStateChangedConfigSchema,
+	[AutomationBuiltInNodeType.SECURITY_ARMED_IS]: SecurityArmedIsConfigSchema,
+	[AutomationBuiltInNodeType.SECURITY_ARM]: SecurityArmConfigSchema,
+	[AutomationBuiltInNodeType.AUTOMATION_ENABLE]: AutomationTargetConfigSchema,
+	[AutomationBuiltInNodeType.AUTOMATION_DISABLE]: AutomationTargetConfigSchema,
+	[AutomationBuiltInNodeType.AUTOMATION_RUN]: AutomationTargetConfigSchema,
 };
 
 const valueAt = (config: unknown, path: PropertyKey[]): unknown => {

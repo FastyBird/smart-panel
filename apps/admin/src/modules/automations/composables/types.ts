@@ -204,6 +204,8 @@ export interface IUseAutomationNodeLookups extends IAutomationNodeLookups {
 	ensureDevices: () => Promise<void>;
 	// Reads the scenes once, unless they are read already
 	ensureScenes: () => Promise<void>;
+	// Reads the automations once, unless they are read already
+	ensureAutomations: () => Promise<void>;
 }
 
 export interface IUseAutomationLiveRun {

@@ -44,6 +44,8 @@ export interface IUseSpaces {
 	zoneSpaces: ComputedRef<ISpace[]>;
 	floorZoneSpaces: ComputedRef<ISpace[]>;
 	fetching: ComputedRef<boolean>;
+	// Only the read of the whole collection, not of a single space
+	fetchingSpaces: ComputedRef<boolean>;
 	firstLoadFinished: ComputedRef<boolean>;
 	fetchSpaces: () => Promise<ISpace[]>;
 	findById: (id: ISpace['id']) => ISpace | null;

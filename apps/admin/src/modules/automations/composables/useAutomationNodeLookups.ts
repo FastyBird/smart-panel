@@ -1,11 +1,12 @@
 import { injectStoresManager } from '../../../common';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../devices/store/keys';
 import { scenesStoreKey } from '../../scenes/store/keys';
+import { automationsStoreKey } from '../store/keys';
 
 import type { IUseAutomationNodeLookups } from './types';
 
 /**
- * What the cards need to know of the devices, channels, properties and scenes they name, read from the
+ * What the cards need to know of the devices, channels, properties, scenes and automations they name, read from the
  * stores of the devices and scenes modules. A device is read with its channels and properties, so reading
  * the devices once is enough for every device card of a canvas.
  */
@@ -16,6 +17,7 @@ export const useAutomationNodeLookups = (): IUseAutomationNodeLookups => {
 	const channelsStore = storesManager.getStore(channelsStoreKey);
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 	const scenesStore = storesManager.getStore(scenesStoreKey);
+	const automationsStore = storesManager.getStore(automationsStoreKey);
 
 	const device: IUseAutomationNodeLookups['device'] = (id) => devicesStore.findById(id);
 
@@ -24,6 +26,8 @@ export const useAutomationNodeLookups = (): IUseAutomationNodeLookups => {
 	const property: IUseAutomationNodeLookups['property'] = (id) => propertiesStore.findById(id);
 
 	const scene: IUseAutomationNodeLookups['scene'] = (id) => scenesStore.findById(id);
+
+	const automation: IUseAutomationNodeLookups['automation'] = (id) => automationsStore.findById(id);
 
 	// Every card of a canvas asks; the stores share one request between them, and a failed read only
 	// leaves the names unknown
@@ -51,12 +55,26 @@ export const useAutomationNodeLookups = (): IUseAutomationNodeLookups => {
 		}
 	};
 
+	const ensureAutomations = async (): Promise<void> => {
+		if (automationsStore.firstLoadFinished() || automationsStore.fetching()) {
+			return;
+		}
+
+		try {
+			await automationsStore.fetch();
+		} catch {
+			// The summaries say "unknown automation" and the automation picker tries again
+		}
+	};
+
 	return {
 		device,
 		channel,
 		property,
 		scene,
+		automation,
 		ensureDevices,
 		ensureScenes,
+		ensureAutomations,
 	};
 };

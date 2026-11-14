@@ -179,6 +179,23 @@ export const AUTOMATION_NODE_TYPE_ICONS: Record<string, string> = {
 	'time.of-day': 'mdi:clock-outline',
 	'time.window': 'mdi:clock-time-four-outline',
 	'flow.delay': 'mdi:timer-sand',
+	'flow.wait-until': 'mdi:timer-pause-outline',
+	'flow.any': 'mdi:call-merge',
+	'flow.all': 'mdi:set-all',
+	'sun.event': 'mdi:weather-sunset',
+	'sun.daylight': 'mdi:theme-light-dark',
+	'device.button.pressed': 'mdi:gesture-tap',
+	'device.connection.changed': 'mdi:lan-disconnect',
+	'scene.was-run': 'mdi:palette-swatch-outline',
+	'house-mode.changed': 'mdi:home-switch-outline',
+	'house-mode.is': 'mdi:home-search-outline',
+	'house-mode.set': 'mdi:home-edit-outline',
+	'security.state.changed': 'mdi:shield-alert-outline',
+	'security.armed.is': 'mdi:shield-search',
+	'security.arm': 'mdi:shield-lock-outline',
+	'automation.enable': 'mdi:play-circle-outline',
+	'automation.disable': 'mdi:pause-circle-outline',
+	'automation.run': 'mdi:robot-outline',
 };
 
 export const AUTOMATION_FLOW_ICON = 'mdi:sitemap-outline';

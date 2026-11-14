@@ -222,6 +222,18 @@
 							"name": "Ustaw wartość urządzenia",
 							"description": "Ustawia jedną lub więcej wartości urządzeń."
 						}
+					},
+					"button": {
+						"pressed": {
+							"name": "Przycisk zostaje naciśnięty",
+							"description": "Uruchamia się po naciśnięciu przycisku: dowolnym albo tylko wybranym."
+						}
+					},
+					"connection": {
+						"changed": {
+							"name": "Urządzenie rozłącza się lub łączy",
+							"description": "Uruchamia się, gdy urządzenie traci połączenie, gdy je odzyskuje, albo w obu przypadkach."
+						}
 					}
 				},
 				"manual": {
@@ -240,6 +252,10 @@
 					"run": {
 						"name": "Uruchom scenę",
 						"description": "Uruchamia scenę."
+					},
+					"was-run": {
+						"name": "Scena została uruchomiona",
+						"description": "Uruchamia się, gdy scena została uruchomiona, skądkolwiek."
 					}
 				},
 				"time": {
@@ -256,6 +272,74 @@
 					"delay": {
 						"name": "Opóźnienie",
 						"description": "Czeka chwilę, zanim przebieg będzie kontynuowany."
+					},
+					"wait-until": {
+						"name": "Czekaj, aż",
+						"description": "Czeka, aż wartość urządzenia osiągnie stan, najdłużej przez wskazany czas. Przechodzi dalej wyjściem „out”, gdy to nastąpi lub stan już obowiązuje, w przeciwnym razie wyjściem „upłynął czas”."
+					},
+					"any": {
+						"name": "Dowolna",
+						"description": "Kontynuuje, gdy dotrze pierwsza z gałęzi do niego prowadzących; późniejsze gałęzie tego samego przebiegu kończą się tutaj."
+					},
+					"all": {
+						"name": "Wszystkie",
+						"description": "Kontynuuje, gdy w tym samym przebiegu dotrą wszystkie gałęzie do niego prowadzące."
+					}
+				},
+				"sun": {
+					"event": {
+						"name": "Wschód lub zachód słońca",
+						"description": "Uruchamia się o wschodzie lub zachodzie słońca w lokalizacji domu, albo kilka minut przed lub po nim."
+					},
+					"daylight": {
+						"name": "Dzień lub noc",
+						"description": "Przechodzi dalej wyjściem „tak” w dzień albo w nocy, zgodnie z wyborem, w przeciwnym razie wyjściem „nie”."
+					}
+				},
+				"house-mode": {
+					"changed": {
+						"name": "Tryb domu się zmienia",
+						"description": "Uruchamia się przy zmianie trybu domu: na tryb, z trybu albo przy dowolnej zmianie."
+					},
+					"is": {
+						"name": "Tryb domu to",
+						"description": "Przechodzi dalej wyjściem „tak”, gdy tryb domu jest jednym z wybranych trybów, w przeciwnym razie wyjściem „nie”."
+					},
+					"set": {
+						"name": "Ustaw tryb domu",
+						"description": "Zmienia tryb domu."
+					}
+				},
+				"security": {
+					"state": {
+						"changed": {
+							"name": "Stan zabezpieczeń się zmienia",
+							"description": "Uruchamia się, gdy alarm zostaje uzbrojony lub rozbrojony albo gdy zmienia się stan alarmu, np. gdy alarm się włącza."
+						}
+					},
+					"armed": {
+						"is": {
+							"name": "Alarm jest uzbrojony",
+							"description": "Przechodzi dalej wyjściem „tak”, gdy stan uzbrojenia alarmu jest jednym z wybranych stanów, w przeciwnym razie wyjściem „nie”."
+						}
+					},
+					"arm": {
+						"name": "Uzbrój alarm",
+						"description": "Uzbraja alarm: w domu, poza domem lub na noc. Automatyzacja nie może go rozbroić."
+					}
+				},
+				"automation": {
+					"enable": {
+						"name": "Włącz automatyzację",
+						"description": "Włącza inną automatyzację, aby jej wyzwalacze znów ją uruchamiały."
+					},
+					"disable": {
+						"name": "Wyłącz automatyzację",
+						"description": "Wyłącza inną automatyzację: jej wyzwalacze przestają działać, a jej aktywne przebiegi zostają anulowane."
+					},
+					"run": {
+						"name": "Uruchom automatyzację",
+						"description": "Uruchamia inną automatyzację tak, jakby została uruchomiona ręcznie."
 					}
 				}
 			},
@@ -456,6 +540,80 @@
 				"delay": {
 					"title": "Czekaj",
 					"hint": "Najwyżej godzinę. Opóźnienie nie przetrwa ponownego uruchomienia serwera."
+				},
+				"waitUntil": {
+					"mode": "Kontynuuj, gdy wartość",
+					"modes": {
+						"to": "przyjmie wartość",
+						"above": "jest powyżej progu",
+						"below": "jest poniżej progu"
+					},
+					"timeout": {
+						"title": "Czekaj najdłużej",
+						"hint": "Najwyżej godzinę. Gdy wartość nie osiągnie stanu na czas, przebieg przechodzi dalej wyjściem „upłynął czas”."
+					}
+				},
+				"sunEvent": {
+					"event": "Zdarzenie",
+					"placeholder": "Wybierz wschód lub zachód słońca",
+					"offset": {
+						"title": "Przesunięcie w minutach",
+						"hint": "Wartość ujemna uruchamia przed zdarzeniem, dodatnia po nim; najwyżej {hours} godzin w obie strony. Pozostaw puste dla samego zdarzenia."
+					}
+				},
+				"sun": {
+					"location": "Pory słońca są obliczane na podstawie lokalizacji domu ustawionej w ustawieniach systemu."
+				},
+				"daylight": {
+					"title": "Przejdź dalej wyjściem „tak”",
+					"hint": "Dzień trwa, dopóki słońce jest nad horyzontem w lokalizacji domu. Dzień polarny liczy się jako dzień, noc polarna jako noc."
+				},
+				"button": {
+					"events": {
+						"title": "Naciśnięcia",
+						"pick": "Każde naciśnięcie",
+						"type": "Każde naciśnięcie; wpisz naciśnięcie i naciśnij Enter",
+						"hint": "Pozostaw puste, aby uruchamiać przy każdym naciśnięciu. Naciśnięcia nazywają się tak, jak zgłasza je integracja, np. press, long_press lub double_press."
+					}
+				},
+				"device": {
+					"title": "Urządzenie",
+					"placeholder": "Wybierz urządzenie",
+					"empty": "Nie ma jeszcze urządzeń"
+				},
+				"connection": {
+					"title": "Uruchom, gdy urządzenie"
+				},
+				"sceneWasRun": {
+					"hint": "Uruchamia się przy każdym uruchomieniu sceny, niezależnie od tego, kto ją uruchomi: panel, administracja czy inna automatyzacja."
+				},
+				"change": {
+					"from": "Zmienia się z",
+					"to": "Zmienia się na",
+					"anyMode": "Dowolny tryb",
+					"anyState": "Dowolny stan"
+				},
+				"houseMode": {
+					"modes": "Tryby domu, które odpowiadają „tak”",
+					"mode": "Tryb domu",
+					"placeholder": "Wybierz tryb domu"
+				},
+				"security": {
+					"kind": "Obserwuj",
+					"states": "Stany uzbrojenia, które odpowiadają „tak”",
+					"armTo": "Uzbrój w trybie",
+					"armPlaceholder": "Wybierz sposób uzbrojenia",
+					"noDisarm": "Automatyzacja może uzbroić alarm, ale nigdy go nie rozbroi."
+				},
+				"automation": {
+					"title": "Automatyzacja",
+					"placeholder": "Wybierz automatyzację",
+					"empty": "Nie ma jeszcze innych automatyzacji",
+					"hints": {
+						"enable": "Jej wyzwalacze znów zaczną ją uruchamiać. Aby można ją było włączyć, jej przebieg musi być kompletny. Automatyzacja nie może włączyć samej siebie.",
+						"disable": "Jej wyzwalacze przestają działać, a jej aktywne przebiegi zostają anulowane. Automatyzacja nie może wyłączyć samej siebie.",
+						"run": "Uruchamia ją tak, jakby została uruchomiona ręcznie, bez czekania na jej zakończenie. Wyłączona automatyzacja nie zostanie uruchomiona."
+					}
 				}
 			},
 			"summaries": {
@@ -497,6 +655,64 @@
 					"everyDay": "codziennie",
 					"workdays": "Pn – Pt",
 					"weekend": "w weekendy"
+				},
+				"unknownAutomation": "nieznaną automatyzację",
+				"unknownSceneName": "Nieznana scena",
+				"waitUntil": {
+					"to": "Aż {target} będzie {value}, najdłużej {timeout}",
+					"above": "Aż {target} będzie powyżej {value}, najdłużej {timeout}",
+					"below": "Aż {target} będzie poniżej {value}, najdłużej {timeout}"
+				},
+				"join": {
+					"any": "Kontynuuje z pierwszą gałęzią",
+					"all": "Kontynuuje, gdy dotrą wszystkie gałęzie"
+				},
+				"sunEvent": {
+					"sunrise": {
+						"at": "O wschodzie słońca",
+						"before": "{duration} przed wschodem słońca",
+						"after": "{duration} po wschodzie słońca"
+					},
+					"sunset": {
+						"at": "O zachodzie słońca",
+						"before": "{duration} przed zachodem słońca",
+						"after": "{duration} po zachodzie słońca"
+					}
+				},
+				"daylight": {
+					"day": "Jest dzień",
+					"night": "Jest noc"
+				},
+				"button": {
+					"any": "{target} zostaje naciśnięty",
+					"events": "{target}: {events}"
+				},
+				"connection": {
+					"any": "{device} rozłącza się lub łączy",
+					"online": "{device} ponownie się łączy",
+					"offline": "{device} rozłącza się"
+				},
+				"sceneWasRun": "{scene} została uruchomiona",
+				"alternatives": "{first} lub {last}",
+				"change": {
+					"any": "{subject} się zmienia",
+					"to": "{subject} zmienia się na {to}",
+					"from": "{subject} zmienia się z {from}",
+					"fromTo": "{subject} zmienia się z {from} na {to}"
+				},
+				"subjects": {
+					"houseMode": "Tryb domu",
+					"armed": "Stan uzbrojenia",
+					"alarm": "Stan alarmu"
+				},
+				"houseModeIs": "Tryb domu: {modes}",
+				"houseModeSet": "Ustaw tryb domu: {mode}",
+				"armedIs": "Alarm: {states}",
+				"arm": "Uzbrój {device}: {state}",
+				"automation": {
+					"enable": "Włącz {automation}",
+					"disable": "Wyłącz {automation}",
+					"run": "Uruchom {automation}"
 				}
 			},
 			"validation": {
@@ -538,7 +754,62 @@
 				"title": "Tytuł jest wymagany.",
 				"titleMax": "Tytuł może mieć najwyżej 120 znaków.",
 				"message": "Wiadomość musi być tekstem.",
-				"messageMax": "Wiadomość może mieć najwyżej 1000 znaków."
+				"messageMax": "Wiadomość może mieć najwyżej 1000 znaków.",
+				"timeoutMax": "Limit czasu może wynosić najwyżej 1 godzinę.",
+				"offset": "Przesunięcie musi być całkowitą liczbą minut, najwyżej 6 godzin przed lub po.",
+				"sunEvent": "Wybierz wschód lub zachód słońca.",
+				"daylight": "Wybierz dzień lub noc.",
+				"buttonEvent": "Naciśnięcie musi być tekstem o długości od 1 do 64 znaków.",
+				"buttonEvents": "Potrzebne jest co najmniej jedno naciśnięcie albo żadne dla każdego naciśnięcia.",
+				"buttonEventsMax": "Można wybrać najwyżej 20 naciśnięć.",
+				"listTwice": "Wartość można wybrać tylko raz.",
+				"connection": "Wybierz połączenie lub rozłączenie.",
+				"houseMode": "Wybierz tryb domu.",
+				"houseModes": "Potrzebny jest co najmniej jeden tryb domu.",
+				"sameState": "Stan nie może zmienić się na ten sam stan, z którego się zmienia.",
+				"securityKind": "Wybierz stan uzbrojenia albo stan alarmu.",
+				"securityState": "Ten stan nie należy do obserwowanych stanów.",
+				"armedStates": "Potrzebny jest co najmniej jeden stan uzbrojenia.",
+				"armState": "Wybierz: w domu, poza domem lub na noc.",
+				"automation": "Trzeba wybrać automatyzację.",
+				"automationSelf": "Automatyzacja nie może działać sama na siebie.",
+				"waitNeedsState": "Wybierz stan, na który należy czekać: wartość albo próg."
+			},
+			"options": {
+				"sunEvents": {
+					"sunrise": "Wschód słońca",
+					"sunset": "Zachód słońca"
+				},
+				"daylight": {
+					"day": "W dzień",
+					"night": "W nocy"
+				},
+				"connections": {
+					"any": "rozłącza się lub łączy",
+					"online": "ponownie się łączy",
+					"offline": "rozłącza się"
+				},
+				"houseModes": {
+					"home": "W domu",
+					"away": "Poza domem",
+					"night": "Noc"
+				},
+				"armedStates": {
+					"disarmed": "Rozbrojony",
+					"armed_home": "Uzbrojony w domu",
+					"armed_away": "Uzbrojony poza domem",
+					"armed_night": "Uzbrojony na noc"
+				},
+				"alarmStates": {
+					"idle": "Spoczynek",
+					"pending": "Odliczanie",
+					"triggered": "Wyzwolony",
+					"silenced": "Wyciszony"
+				},
+				"securityKinds": {
+					"armed": "Stan uzbrojenia",
+					"alarm": "Stan alarmu"
+				}
 			}
 		},
 		"runs": {

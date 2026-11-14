@@ -573,5 +573,122 @@
 		"readOnly": "La edición requiere un propietario o administrador.",
 		"supplementalFailed": "No se pudieron cargar los sensores o el estado de ocupación. Actualiza para reintentar.",
 		"unsupportedSpace": "Este tipo de espacio ya no admite ocupación. Se conserva el borrador para revisarlo; guardar y reanudar no están disponibles."
+	},
+	"automations": {
+		"nodeTypes": {
+			"space": {
+				"occupancy": {
+					"changed": {
+						"name": "La ocupación de un espacio cambia",
+						"description": "Se inicia cuando una habitación o zona pasa a estar ocupada, vacía, o en ambos casos, según su detección de ocupación."
+					},
+					"is": {
+						"name": "El espacio está ocupado",
+						"description": "Continúa por «sí» cuando la detección de ocupación de una habitación o zona indica ocupada o vacía, según lo elegido, y por «no» en caso contrario."
+					}
+				},
+				"mode": {
+					"changed": {
+						"name": "El modo de un espacio cambia",
+						"description": "Se inicia cuando cambia el modo de actividad de una habitación o zona: a un modo, desde un modo o con cualquier cambio."
+					},
+					"is": {
+						"name": "El modo del espacio es",
+						"description": "Continúa por «sí» cuando el modo de actividad de una habitación o zona es uno de los modos elegidos, y por «no» en caso contrario."
+					},
+					"set": {
+						"name": "Establecer el modo del espacio",
+						"description": "Activa un modo de actividad de una habitación o zona, como lo hace el panel."
+					}
+				},
+				"lighting": {
+					"intent": {
+						"name": "Establecer la iluminación del espacio",
+						"description": "Enciende o apaga las luces de una habitación o zona, aplica un modo de iluminación, o enciende, apaga o atenúa las luces de un rol."
+					}
+				}
+			}
+		},
+		"fields": {
+			"space": {
+				"title": "Habitación o zona",
+				"placeholder": "Seleccione una habitación o zona",
+				"loadFailed": "No se pudieron cargar las habitaciones y zonas."
+			},
+			"occupancy": {
+				"when": "Iniciar cuando el espacio",
+				"anyChange": "pase a estar ocupado o vacío",
+				"is": "Continuar por «sí» cuando el espacio esté",
+				"hints": {
+					"changed": "Sigue la detección de ocupación del espacio: el estado en el que se ha asentado, no cada lectura de un sensor.",
+					"is": "Mientras la ocupación no se conoce, la condición continúa por «no»."
+				}
+			},
+			"mode": {
+				"modes": "Modos de actividad que responden «sí»",
+				"mode": "Modo de actividad",
+				"placeholder": "Seleccione un modo de actividad",
+				"hints": {
+					"changed": "Se inicia lo elija quien lo elija: una persona, una programación, la ocupación o una automatización.",
+					"is": "Lee el modo elegido para el espacio cuando el flujo llega a la condición.",
+					"set": "Activa el modo como lo hace el panel, sin pausar la ocupación del espacio. El modo tiene que estar configurado para el espacio."
+				}
+			},
+			"lighting": {
+				"intent": "Iluminación",
+				"intentPlaceholder": "Seleccione qué hacer con las luces",
+				"intents": {
+					"on": "Encender las luces",
+					"off": "Apagar las luces",
+					"set_mode": "Aplicar un modo de iluminación",
+					"role_on": "Encender las luces de un rol",
+					"role_off": "Apagar las luces de un rol",
+					"role_brightness": "Establecer el brillo de un rol"
+				},
+				"mode": "Modo de iluminación",
+				"modePlaceholder": "Seleccione un modo de iluminación",
+				"role": "Rol de iluminación",
+				"rolePlaceholder": "Seleccione un rol de iluminación",
+				"brightness": "Brillo",
+				"hint": "Las luces se eligen por sus roles en el espacio, como en el panel; las luces desconectadas se omiten."
+			}
+		},
+		"summaries": {
+			"unknownSpace": "Espacio desconocido",
+			"occupancyChanged": {
+				"any": "{space} pasa a estar ocupado o vacío",
+				"occupied": "{space} pasa a estar ocupado",
+				"vacant": "{space} pasa a estar vacío"
+			},
+			"occupancyIs": {
+				"occupied": "{space} está ocupado",
+				"vacant": "{space} está vacío"
+			},
+			"modeOf": "El modo de {space}",
+			"modeIs": "El modo de {space} es {modes}",
+			"modeSet": "Poner {space} en {mode}",
+			"lighting": {
+				"on": "Encender las luces: {space}",
+				"off": "Apagar las luces: {space}",
+				"set_mode": "{space}: modo de iluminación {mode}",
+				"role_on": "{space}: encender las luces del rol {role}",
+				"role_off": "{space}: apagar las luces del rol {role}",
+				"role_brightness": "{space}: luces del rol {role} al {brightness} %"
+			}
+		},
+		"validation": {
+			"space": "Hay que elegir una habitación o una zona.",
+			"occupancy": "Elija ocupado o vacío.",
+			"activityMode": "Elija un modo de actividad.",
+			"activityModes": "Se necesita al menos un modo de actividad.",
+			"lightingIntent": "Elija qué hacer con las luces.",
+			"lightingMode": "Elija un modo de iluminación.",
+			"lightingRole": "Elija un rol de iluminación.",
+			"brightness": "El brillo debe ser un número entero de 0 a 100.",
+			"notUsedByIntent": "Este valor no se aplica a la iluminación elegida.",
+			"sameState": "El modo no puede cambiar al mismo modo desde el que cambia.",
+			"spaceType": "Este espacio no es una habitación ni una zona; el bloque solo actúa sobre habitaciones y zonas.",
+			"required": "Este valor es necesario."
+		}
 	}
 }

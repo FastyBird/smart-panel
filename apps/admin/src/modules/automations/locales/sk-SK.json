@@ -222,6 +222,18 @@
 							"name": "Nastaviť hodnotu zariadenia",
 							"description": "Nastaví jednu alebo viac hodnôt zariadení."
 						}
+					},
+					"button": {
+						"pressed": {
+							"name": "Tlačidlo je stlačené",
+							"description": "Spustí sa pri stlačení tlačidla: pri akomkoľvek stlačení, alebo len pri vybraných stlačeniach."
+						}
+					},
+					"connection": {
+						"changed": {
+							"name": "Zariadenie sa odpojí alebo pripojí",
+							"description": "Spustí sa, keď zariadenie stratí spojenie, keď sa znova pripojí, alebo v oboch prípadoch."
+						}
 					}
 				},
 				"manual": {
@@ -240,6 +252,10 @@
 					"run": {
 						"name": "Spustiť scénu",
 						"description": "Spustí scénu."
+					},
+					"was-run": {
+						"name": "Scéna bola spustená",
+						"description": "Spustí sa, keď bola spustená scéna, odkiaľkoľvek."
 					}
 				},
 				"time": {
@@ -256,6 +272,74 @@
 					"delay": {
 						"name": "Oneskorenie",
 						"description": "Chvíľu počká, kým priebeh pokračuje."
+					},
+					"wait-until": {
+						"name": "Čakať, kým",
+						"description": "Čaká, kým hodnota zariadenia nedosiahne stav, najdlhšie stanovený čas. Pokračuje výstupom „out“, keď sa tak stane alebo stav už platí, inak výstupom „vypršalo“."
+					},
+					"any": {
+						"name": "Ktorákoľvek",
+						"description": "Pokračuje, hneď ako dorazí prvá z vetiev, ktoré doň vedú; neskoršie vetvy toho istého behu tu skončia."
+					},
+					"all": {
+						"name": "Všetky",
+						"description": "Pokračuje, až v tom istom behu dorazia všetky vetvy, ktoré doň vedú."
+					}
+				},
+				"sun": {
+					"event": {
+						"name": "Východ alebo západ slnka",
+						"description": "Spustí sa pri východe alebo západe slnka v mieste domu, prípadne o niekoľko minút skôr či neskôr."
+					},
+					"daylight": {
+						"name": "Deň alebo noc",
+						"description": "Pokračuje výstupom „áno“ cez deň, alebo v noci, podľa voľby, inak výstupom „nie“."
+					}
+				},
+				"house-mode": {
+					"changed": {
+						"name": "Režim domu sa zmení",
+						"description": "Spustí sa pri zmene režimu domu: na režim, z režimu, alebo pri akejkoľvek zmene."
+					},
+					"is": {
+						"name": "Režim domu je",
+						"description": "Pokračuje výstupom „áno“, keď je režim domu jedným z vybraných režimov, inak výstupom „nie“."
+					},
+					"set": {
+						"name": "Nastaviť režim domu",
+						"description": "Zmení režim domu."
+					}
+				},
+				"security": {
+					"state": {
+						"changed": {
+							"name": "Stav zabezpečenia sa zmení",
+							"description": "Spustí sa, keď je alarm zabezpečený alebo odistený, alebo keď sa zmení stav alarmu, napr. keď sa alarm spustí."
+						}
+					},
+					"armed": {
+						"is": {
+							"name": "Alarm je zabezpečený",
+							"description": "Pokračuje výstupom „áno“, keď je stav zabezpečenia alarmu jedným z vybraných stavov, inak výstupom „nie“."
+						}
+					},
+					"arm": {
+						"name": "Zabezpečiť alarm",
+						"description": "Zabezpečí alarm: doma, mimo domova alebo na noc. Automatizácia ho nemôže odistiť."
+					}
+				},
+				"automation": {
+					"enable": {
+						"name": "Povoliť automatizáciu",
+						"description": "Zapne inú automatizáciu, aby ju jej spúšťače znova spúšťali."
+					},
+					"disable": {
+						"name": "Zakázať automatizáciu",
+						"description": "Vypne inú automatizáciu: jej spúšťače prestanú fungovať a jej aktívne behy sa zrušia."
+					},
+					"run": {
+						"name": "Spustiť automatizáciu",
+						"description": "Spustí inú automatizáciu, ako keby bola spustená ručne."
 					}
 				}
 			},
@@ -456,6 +540,80 @@
 				"delay": {
 					"title": "Počkať",
 					"hint": "Najviac jednu hodinu. Čakanie neprežije reštart servera."
+				},
+				"waitUntil": {
+					"mode": "Pokračovať, keď hodnota",
+					"modes": {
+						"to": "nadobudne hodnotu",
+						"above": "je nad prahom",
+						"below": "je pod prahom"
+					},
+					"timeout": {
+						"title": "Čakať najdlhšie",
+						"hint": "Najviac jednu hodinu. Keď hodnota stav včas nedosiahne, priebeh pokračuje výstupom „vypršalo“."
+					}
+				},
+				"sunEvent": {
+					"event": "Udalosť",
+					"placeholder": "Vyberte východ alebo západ slnka",
+					"offset": {
+						"title": "Posun v minútach",
+						"hint": "Záporný posun spúšťa pred udalosťou, kladný po nej; najviac {hours} hodín oboma smermi. Nechajte prázdne pre samotnú udalosť."
+					}
+				},
+				"sun": {
+					"location": "Časy slnka sa počítajú z polohy domu nastavenej v nastaveniach systému."
+				},
+				"daylight": {
+					"title": "Pokračovať výstupom „áno“",
+					"hint": "Deň trvá, kým je slnko v mieste domu nad obzorom. Polárny deň sa počíta ako deň, polárna noc ako noc."
+				},
+				"button": {
+					"events": {
+						"title": "Stlačenia",
+						"pick": "Každé stlačenie",
+						"type": "Každé stlačenie; napíšte stlačenie a stlačte Enter",
+						"hint": "Nechajte prázdne pre spustenie pri každom stlačení. Stlačenia sa volajú tak, ako ich hlási integrácia, napr. press, long_press alebo double_press."
+					}
+				},
+				"device": {
+					"title": "Zariadenie",
+					"placeholder": "Vyberte zariadenie",
+					"empty": "Zatiaľ nie sú žiadne zariadenia"
+				},
+				"connection": {
+					"title": "Spustiť, keď sa zariadenie"
+				},
+				"sceneWasRun": {
+					"hint": "Spustí sa pri každom spustení scény, nech ju spustí ktokoľvek: panel, administrácia alebo iná automatizácia."
+				},
+				"change": {
+					"from": "Zmení sa z",
+					"to": "Zmení sa na",
+					"anyMode": "Akýkoľvek režim",
+					"anyState": "Akýkoľvek stav"
+				},
+				"houseMode": {
+					"modes": "Režimy domu, ktoré odpovedia „áno“",
+					"mode": "Režim domu",
+					"placeholder": "Vyberte režim domu"
+				},
+				"security": {
+					"kind": "Sledovať",
+					"states": "Stavy zabezpečenia, ktoré odpovedia „áno“",
+					"armTo": "Zabezpečiť na",
+					"armPlaceholder": "Vyberte spôsob zabezpečenia",
+					"noDisarm": "Automatizácia môže alarm zabezpečiť, ale nikdy ho neodistí."
+				},
+				"automation": {
+					"title": "Automatizácia",
+					"placeholder": "Vyberte automatizáciu",
+					"empty": "Zatiaľ nie sú žiadne iné automatizácie",
+					"hints": {
+						"enable": "Jej spúšťače ju začnú znova spúšťať. Aby sa dala povoliť, musí byť jej priebeh úplný. Automatizácia nemôže povoliť sama seba.",
+						"disable": "Jej spúšťače prestanú fungovať a jej aktívne behy sa zrušia. Automatizácia nemôže zakázať sama seba.",
+						"run": "Spustí ju, ako keby bola spustená ručne, a nečaká na jej dokončenie. Zakázaná automatizácia sa nespustí."
+					}
 				}
 			},
 			"summaries": {
@@ -497,6 +655,64 @@
 					"everyDay": "každý deň",
 					"workdays": "Po – Pi",
 					"weekend": "cez víkendy"
+				},
+				"unknownAutomation": "neznámu automatizáciu",
+				"unknownSceneName": "Neznáma scéna",
+				"waitUntil": {
+					"to": "Kým {target} nie je {value}, najdlhšie {timeout}",
+					"above": "Kým {target} nie je nad {value}, najdlhšie {timeout}",
+					"below": "Kým {target} nie je pod {value}, najdlhšie {timeout}"
+				},
+				"join": {
+					"any": "Pokračuje s prvou vetvou",
+					"all": "Pokračuje, až dorazia všetky vetvy"
+				},
+				"sunEvent": {
+					"sunrise": {
+						"at": "Pri východe slnka",
+						"before": "{duration} pred východom slnka",
+						"after": "{duration} po východe slnka"
+					},
+					"sunset": {
+						"at": "Pri západe slnka",
+						"before": "{duration} pred západom slnka",
+						"after": "{duration} po západe slnka"
+					}
+				},
+				"daylight": {
+					"day": "Je deň",
+					"night": "Je noc"
+				},
+				"button": {
+					"any": "{target} je stlačené",
+					"events": "{target}: {events}"
+				},
+				"connection": {
+					"any": "{device} sa odpojí alebo pripojí",
+					"online": "{device} sa znova pripojí",
+					"offline": "{device} sa odpojí"
+				},
+				"sceneWasRun": "{scene} bola spustená",
+				"alternatives": "{first} alebo {last}",
+				"change": {
+					"any": "{subject} sa zmení",
+					"to": "{subject} sa zmení na {to}",
+					"from": "{subject} sa zmení z {from}",
+					"fromTo": "{subject} sa zmení z {from} na {to}"
+				},
+				"subjects": {
+					"houseMode": "Režim domu",
+					"armed": "Stav zabezpečenia",
+					"alarm": "Stav alarmu"
+				},
+				"houseModeIs": "Režim domu je {modes}",
+				"houseModeSet": "Nastaviť režim domu: {mode}",
+				"armedIs": "Alarm: {states}",
+				"arm": "Zabezpečiť {device}: {state}",
+				"automation": {
+					"enable": "Povoliť {automation}",
+					"disable": "Zakázať {automation}",
+					"run": "Spustiť {automation}"
 				}
 			},
 			"validation": {
@@ -538,7 +754,62 @@
 				"title": "Nadpis je povinný.",
 				"titleMax": "Nadpis môže mať najviac 120 znakov.",
 				"message": "Správa musí byť text.",
-				"messageMax": "Správa môže mať najviac 1000 znakov."
+				"messageMax": "Správa môže mať najviac 1000 znakov.",
+				"timeoutMax": "Časový limit môže byť najviac 1 hodina.",
+				"offset": "Posun musí byť celý počet minút, najviac 6 hodín pred alebo po.",
+				"sunEvent": "Vyberte východ alebo západ slnka.",
+				"daylight": "Vyberte deň alebo noc.",
+				"buttonEvent": "Stlačenie musí byť text s dĺžkou 1 až 64 znakov.",
+				"buttonEvents": "Treba aspoň jedno stlačenie, alebo žiadne pre každé stlačenie.",
+				"buttonEventsMax": "Dá sa vybrať najviac 20 stlačení.",
+				"listTwice": "Hodnotu možno vybrať len raz.",
+				"connection": "Vyberte pripojenie alebo odpojenie.",
+				"houseMode": "Vyberte režim domu.",
+				"houseModes": "Treba aspoň jeden režim domu.",
+				"sameState": "Stav sa nemôže zmeniť na stav, z ktorého sa mení.",
+				"securityKind": "Vyberte stav zabezpečenia, alebo stav alarmu.",
+				"securityState": "Tento stav nepatrí medzi sledované stavy.",
+				"armedStates": "Treba aspoň jeden stav zabezpečenia.",
+				"armState": "Vyberte doma, mimo domova alebo na noc.",
+				"automation": "Treba vybrať automatizáciu.",
+				"automationSelf": "Automatizácia nemôže pôsobiť sama na seba.",
+				"waitNeedsState": "Vyberte stav, na ktorý sa má čakať: hodnotu, alebo prah."
+			},
+			"options": {
+				"sunEvents": {
+					"sunrise": "Východ slnka",
+					"sunset": "Západ slnka"
+				},
+				"daylight": {
+					"day": "Cez deň",
+					"night": "V noci"
+				},
+				"connections": {
+					"any": "odpojí alebo pripojí",
+					"online": "znova pripojí",
+					"offline": "odpojí"
+				},
+				"houseModes": {
+					"home": "Doma",
+					"away": "Preč",
+					"night": "Noc"
+				},
+				"armedStates": {
+					"disarmed": "Odistené",
+					"armed_home": "Zabezpečené doma",
+					"armed_away": "Zabezpečené mimo domova",
+					"armed_night": "Zabezpečené na noc"
+				},
+				"alarmStates": {
+					"idle": "V pokoji",
+					"pending": "Odpočítavanie",
+					"triggered": "Spustený",
+					"silenced": "Stíšený"
+				},
+				"securityKinds": {
+					"armed": "Stav zabezpečenia",
+					"alarm": "Stav alarmu"
+				}
 			}
 		},
 		"runs": {

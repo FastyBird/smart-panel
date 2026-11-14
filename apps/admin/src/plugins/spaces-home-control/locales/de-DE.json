@@ -573,5 +573,122 @@
 		"readOnly": "Die Bearbeitung erfordert einen Eigentümer oder Administrator.",
 		"supplementalFailed": "Belegungssensoren oder erfasster Zustand konnten nicht geladen werden. Bitte aktualisieren.",
 		"unsupportedSpace": "Dieser Raumtyp unterstützt keine Belegung mehr. Der Entwurf bleibt zur Prüfung erhalten; Speichern und Fortsetzen sind nicht verfügbar."
+	},
+	"automations": {
+		"nodeTypes": {
+			"space": {
+				"occupancy": {
+					"changed": {
+						"name": "Belegung des Bereichs ändert sich",
+						"description": "Startet, wenn ein Raum oder eine Zone belegt, frei oder beides wird, wie die Belegungserkennung meldet."
+					},
+					"is": {
+						"name": "Bereich ist belegt",
+						"description": "Fährt bei „ja“ fort, wenn die Belegungserkennung eines Raums oder einer Zone je nach Wahl belegt oder frei meldet, sonst bei „nein“."
+					}
+				},
+				"mode": {
+					"changed": {
+						"name": "Modus des Bereichs ändert sich",
+						"description": "Startet, wenn sich der Aktivitätsmodus eines Raums oder einer Zone ändert: zu einem Modus, von einem Modus oder bei jeder Änderung."
+					},
+					"is": {
+						"name": "Modus des Bereichs ist",
+						"description": "Fährt bei „ja“ fort, wenn der Aktivitätsmodus eines Raums oder einer Zone einer der gewählten Modi ist, sonst bei „nein“."
+					},
+					"set": {
+						"name": "Modus des Bereichs setzen",
+						"description": "Aktiviert einen Aktivitätsmodus eines Raums oder einer Zone, wie es das Panel tut."
+					}
+				},
+				"lighting": {
+					"intent": {
+						"name": "Beleuchtung des Bereichs setzen",
+						"description": "Schaltet die Lichter eines Raums oder einer Zone ein oder aus, wendet einen Lichtmodus an oder schaltet die Lichter einer Rolle ein, aus oder dimmt sie."
+					}
+				}
+			}
+		},
+		"fields": {
+			"space": {
+				"title": "Raum oder Zone",
+				"placeholder": "Raum oder Zone auswählen",
+				"loadFailed": "Die Räume und Zonen konnten nicht geladen werden."
+			},
+			"occupancy": {
+				"when": "Starten, wenn der Bereich",
+				"anyChange": "belegt oder frei wird",
+				"is": "Bei „ja“ fortfahren, wenn der Bereich",
+				"hints": {
+					"changed": "Folgt der Belegungserkennung des Bereichs: dem Zustand, auf den sie sich festgelegt hat, nicht jeder Sensormeldung.",
+					"is": "Solange die Belegung nicht bekannt ist, fährt die Bedingung bei „nein“ fort."
+				}
+			},
+			"mode": {
+				"modes": "Aktivitätsmodi, die „ja“ ergeben",
+				"mode": "Aktivitätsmodus",
+				"placeholder": "Aktivitätsmodus auswählen",
+				"hints": {
+					"changed": "Startet, egal wer den Modus wählt: eine Person, ein Zeitplan, die Belegung oder eine Automation.",
+					"is": "Liest den für den Bereich gewählten Modus, wenn der Ablauf die Bedingung erreicht.",
+					"set": "Aktiviert den Modus wie das Panel, ohne die Belegung des Bereichs zu pausieren. Der Modus muss für den Bereich eingerichtet sein."
+				}
+			},
+			"lighting": {
+				"intent": "Beleuchtung",
+				"intentPlaceholder": "Auswählen, was mit den Lichtern geschehen soll",
+				"intents": {
+					"on": "Lichter einschalten",
+					"off": "Lichter ausschalten",
+					"set_mode": "Lichtmodus anwenden",
+					"role_on": "Lichter einer Rolle einschalten",
+					"role_off": "Lichter einer Rolle ausschalten",
+					"role_brightness": "Helligkeit einer Rolle setzen"
+				},
+				"mode": "Lichtmodus",
+				"modePlaceholder": "Lichtmodus auswählen",
+				"role": "Lichtrolle",
+				"rolePlaceholder": "Lichtrolle auswählen",
+				"brightness": "Helligkeit",
+				"hint": "Die Lichter werden wie auf dem Panel nach ihren Rollen im Bereich gewählt; Lichter, die offline sind, werden übersprungen."
+			}
+		},
+		"summaries": {
+			"unknownSpace": "Unbekannter Bereich",
+			"occupancyChanged": {
+				"any": "{space} wird belegt oder frei",
+				"occupied": "{space} wird belegt",
+				"vacant": "{space} wird frei"
+			},
+			"occupancyIs": {
+				"occupied": "{space} ist belegt",
+				"vacant": "{space} ist frei"
+			},
+			"modeOf": "Modus von {space}",
+			"modeIs": "Modus von {space} ist {modes}",
+			"modeSet": "{space} auf {mode} setzen",
+			"lighting": {
+				"on": "Lichter ein: {space}",
+				"off": "Lichter aus: {space}",
+				"set_mode": "{space}: Lichtmodus {mode}",
+				"role_on": "{space}: Lichter der Rolle {role} ein",
+				"role_off": "{space}: Lichter der Rolle {role} aus",
+				"role_brightness": "{space}: Lichter der Rolle {role} auf {brightness} %"
+			}
+		},
+		"validation": {
+			"space": "Ein Raum oder eine Zone muss gewählt werden.",
+			"occupancy": "Belegt oder frei wählen.",
+			"activityMode": "Einen Aktivitätsmodus wählen.",
+			"activityModes": "Mindestens ein Aktivitätsmodus ist nötig.",
+			"lightingIntent": "Wählen, was mit den Lichtern geschehen soll.",
+			"lightingMode": "Einen Lichtmodus wählen.",
+			"lightingRole": "Eine Lichtrolle wählen.",
+			"brightness": "Die Helligkeit muss eine ganze Zahl von 0 bis 100 sein.",
+			"notUsedByIntent": "Dieser Wert gilt nicht für die gewählte Beleuchtung.",
+			"sameState": "Der Modus kann sich nicht zu dem Modus ändern, von dem er sich ändert.",
+			"spaceType": "Dieser Bereich ist weder ein Raum noch eine Zone; der Block wirkt nur auf Räume und Zonen.",
+			"required": "Dieser Wert wird benötigt."
+		}
 	}
 }
