@@ -232,18 +232,26 @@ describe('ProtectRatePacer', () => {
 			sleep: (ms, signal) => {
 				sleeps += 1;
 
-				// Every timer wakes 500 ms early, so both waiters wake while the pause is still running.
-				return sleeps > 20 ? Promise.reject(new Error('woken too often')) : clock.sleep(Math.max(1, ms - 500), signal);
+				// Both pacing timers wake 500 ms early, while the pause is still running; later timers are exact.
+				return sleeps > 20
+					? Promise.reject(new Error('woken too often'))
+					: clock.sleep(sleeps <= 2 ? ms - 500 : ms, signal);
 			},
 		});
-		const order: string[] = [];
+		const released: { name: string; at: number }[] = [];
+		const waiter = (name: string): Promise<number> =>
+			early.acquire().then(() => released.push({ name, at: clock.now() }));
 
 		early.backOff(1000);
 
-		await clock.run([early.acquire().then(() => order.push('a')), early.acquire().then(() => order.push('b'))]);
+		await clock.run([waiter('a'), waiter('b')]);
 
-		expect(order).toEqual(['a', 'b']);
-		expect(sleeps).toBe(2);
+		// Neither goes before the pause ends, and they stay in order and spaced.
+		expect(released).toEqual([
+			{ name: 'a', at: 1000 },
+			{ name: 'b', at: 1125 },
+		]);
+		expect(sleeps).toBe(4);
 	});
 
 	it('keeps releases 125 ms apart when the pacing and the spacing timers both resume late', async () => {
@@ -294,6 +302,55 @@ describe('ProtectRatePacer', () => {
 			{ name: 'a', at: 400 },
 			{ name: 'b', at: 700 },
 			{ name: 'c', at: 825 },
+		]);
+	});
+
+	it('holds a waiter in the release queue when a pause is announced while it waits', async () => {
+		let now = 0;
+		const sleeps: { ms: number; resolve: () => void }[] = [];
+		const paused = new ProtectRatePacer({
+			now: () => now,
+			sleep: (ms) => new Promise((resolve) => sleeps.push({ ms, resolve })),
+		});
+		const flush = async (): Promise<void> => {
+			for (let i = 0; i < 10; i++) {
+				await new Promise((resolve) => setImmediate(resolve));
+			}
+		};
+		const wake = async (at: number): Promise<void> => {
+			now = at;
+			sleeps.splice(0).forEach((s) => s.resolve());
+			await flush();
+		};
+		const released: { name: string; at: number }[] = [];
+		const waiter = (name: string): Promise<void> =>
+			paused.acquire().then(() => {
+				released.push({ name, at: now });
+			});
+
+		await paused.acquire(); // released at 0
+
+		const waiters = [waiter('a'), waiter('b')];
+
+		await wake(400); // both pacing timers resume late: `a` goes, `b` waits in the release queue until 525
+
+		expect(released).toEqual([{ name: 'a', at: 400 }]);
+		expect(sleeps.map((s) => s.ms)).toEqual([125]);
+
+		now = 410;
+		paused.backOff(1000); // paused until 1410
+
+		await wake(525);
+
+		expect(released).toHaveLength(1);
+		expect(sleeps.map((s) => s.ms)).toEqual([885]);
+
+		await wake(1410);
+		await Promise.all(waiters);
+
+		expect(released).toEqual([
+			{ name: 'a', at: 400 },
+			{ name: 'b', at: 1410 },
 		]);
 	});
 

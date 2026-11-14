@@ -198,8 +198,8 @@ export class ProtectRatePacer {
 
 	/**
 	 * Timers can resume late, several at once. Releases therefore take turns in FIFO order, and each one waits until a
-	 * full interval has passed since the previous actual release, re-checked after every sleep, because the sleep
-	 * itself can resume late too.
+	 * full interval has passed since the previous actual release and any pause has ended, re-checked after every sleep,
+	 * because the sleep itself can resume late and a pause can be announced while it waits.
 	 */
 	private async spaceFromLastRelease(signal?: AbortSignal): Promise<void> {
 		const previous = this.releaseTurn;
@@ -215,7 +215,9 @@ export class ProtectRatePacer {
 					throw signal.reason;
 				}
 
-				const wait = this.lastReleasedAt + pacingIntervalMs(this.policy, this.utilisation) - this.now();
+				const wait =
+					Math.max(this.lastReleasedAt + pacingIntervalMs(this.policy, this.utilisation), this.pausedUntil) -
+					this.now();
 
 				if (wait <= 0) {
 					this.lastReleasedAt = this.now();
