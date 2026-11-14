@@ -218,7 +218,12 @@ UP-4 `feat(installer): ship go2rtc with server installations`:
 The default `go2rtc.binary_path` in UP-3 and the install path in UP-4 must be the same constant; UP-3 lands first
 and UP-4 reads it from there.
 
-### Plan 4 — Protect foundation (UP-0, UP-5, UP-6)
+### Plan 4 — Protect foundation (UP-0, UP-5, UP-6) — written
+
+UP-0 ran against the maintainer's console on 2026-11-14 (PR #1623; results in the design doc §6). Step-level plans:
+`2026-11-14-cameras-plan-4b-protect-foundation.md` (UP-5) and `2026-11-14-cameras-plan-4c-protect-discovery.md` (UP-6).
+Where they deviate from the outline below (TLS `mode`/`server_name` instead of a boolean, the trigger rebuild in the
+migration, live-verified discovery TLVs, subnet broadcast), the plans win and say why.
 
 UP-5 `feat(backend): add UniFi Protect plugin foundation and API client`, modelled on `plugins/devices-homey`:
 
