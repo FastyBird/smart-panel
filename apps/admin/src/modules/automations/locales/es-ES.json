@@ -1115,6 +1115,26 @@
 				"notImported": "No se pudo importar la automatización.",
 				"changed": "El archivo cambió después de comprobarlo. Compruébelo de nuevo antes de importarlo."
 			}
+		},
+		"suggestions": {
+			"headings": {
+				"list": "Sugerido por Buddy"
+			},
+			"texts": {
+				"list": "Buddy ha notado rutinas que repites a la misma hora del día. Abre una para revisar su flujo en el editor; no se crea nada hasta que la guardes.",
+				"addHint": "El flujo sugerido por Buddy se abre en el editor una vez creada la automatización. Solo se guarda cuando lo guardas allí, y la automatización permanece desactivada hasta que la actives."
+			},
+			"buttons": {
+				"open": {
+					"title": "Abrir en el editor"
+				},
+				"dismiss": {
+					"title": "Descartar"
+				}
+			},
+			"messages": {
+				"notDismissed": "No se pudo descartar la sugerencia."
+			}
 		}
 	}
 }

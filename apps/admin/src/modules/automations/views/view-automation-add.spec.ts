@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
 	query: {} as Record<string, string>,
+	markApplied: vi.fn(),
 }));
 
 vi.mock('vue-i18n', () => ({
@@ -53,6 +54,10 @@ vi.mock('../../../common', async () => {
 		}),
 	};
 });
+
+vi.mock('../composables/useAutomationSuggestions', () => ({
+	useAutomationSuggestions: () => ({ markApplied: mocks.markApplied }),
+}));
 
 // The form is stubbed so the tests can report the progress of a submit the way the form does
 vi.mock('../components/components', async () => {
@@ -107,7 +112,7 @@ describe('ViewAutomationAdd', (): void => {
 			const form = wrapper.findComponent(AutomationAddForm);
 
 			expect(form.props('id')).toBe(draftId);
-			expect(form.props('initial')).toEqual({ name: 'Leak alarm', mode: AutomationMode.parallel });
+			expect(form.props('initial')).toEqual({ name: 'Leak alarm', mode: AutomationMode.parallel, spaceId: null, fromSuggestion: false });
 
 			form.vm.$emit('update:remote-form-result', FormResult.OK);
 
@@ -119,6 +124,18 @@ describe('ViewAutomationAdd', (): void => {
 
 			// Kept for the editor, which takes it
 			expect(peekAutomationDraft(draftId)?.graph).toEqual(graph);
+		});
+
+		it('does not mark a suggestion applied for a template draft', async (): Promise<void> => {
+			const wrapper = mount(ViewAutomationAdd);
+
+			wrapper.findComponent(AutomationAddForm).vm.$emit('update:remote-form-result', FormResult.OK);
+
+			await flushPromises();
+
+			expect(mocks.markApplied).not.toHaveBeenCalled();
+
+			wrapper.unmount();
 		});
 
 		it('counts as changed from the start, so leaving it asks first', async (): Promise<void> => {
@@ -160,6 +177,63 @@ describe('ViewAutomationAdd', (): void => {
 			expect(form.props('id')).not.toBe('b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a10');
 
 			wrapper.unmount();
+		});
+	});
+
+	describe('from a Buddy suggestion', (): void => {
+		const draftId = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a0a';
+		const graph = { version: 1, nodes: [{ id: 'n1', type: 'time.of-day', position: { x: 0, y: 0 }, config: { time: '19:00' } }], edges: [] };
+
+		beforeEach((): void => {
+			stashAutomationDraft(draftId, {
+				name: 'Living Room Evening',
+				mode: AutomationMode.single,
+				graph,
+				spaceId: 'space-1',
+				suggestionId: 'suggestion-1',
+			});
+
+			mocks.query = { draft: draftId };
+		});
+
+		it('starts in the space of the routine and marks the suggestion applied only once the automation is created', async (): Promise<void> => {
+			const wrapper = mount(ViewAutomationAdd);
+
+			const form = wrapper.findComponent(AutomationAddForm);
+
+			expect(form.props('initial')).toEqual({
+				name: 'Living Room Evening',
+				mode: AutomationMode.single,
+				spaceId: 'space-1',
+				fromSuggestion: true,
+			});
+
+			form.vm.$emit('update:remote-form-result', FormResult.WORKING);
+
+			await flushPromises();
+
+			expect(mocks.markApplied).not.toHaveBeenCalled();
+
+			form.vm.$emit('update:remote-form-result', FormResult.OK);
+
+			await flushPromises();
+
+			expect(mocks.markApplied).toHaveBeenCalledWith('suggestion-1');
+			expect(mocks.routerReplace).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: draftId } });
+
+			wrapper.unmount();
+
+			// Kept for the editor, which opens with the suggested flow as its unsaved working copy
+			expect(peekAutomationDraft(draftId)?.graph).toEqual(graph);
+		});
+
+		it('leaves the suggestion offered when the form is left without saving', (): void => {
+			const wrapper = mount(ViewAutomationAdd);
+
+			wrapper.unmount();
+
+			expect(mocks.markApplied).not.toHaveBeenCalled();
+			expect(peekAutomationDraft(draftId)).toBeNull();
 		});
 	});
 

@@ -721,6 +721,10 @@ export { AutomationsModuleDataNodeTypeKind as AutomationNodeKind } from './opena
 export { AutomationsModuleDataTemplateParameterType as AutomationTemplateParameterType } from './openapi';
 export { AutomationsModuleDataTemplateSource as AutomationTemplateSource } from './openapi';
 
+// Buddy Module Enums
+export { BuddyModuleDataSuggestionType as BuddySuggestionType } from './openapi';
+export { BuddyModuleSuggestionFeedbackFeedback as BuddySuggestionFeedback } from './openapi';
+
 // Weather Module Types
 // ====================
 export type WeatherModuleForecastHourSchema = components['schemas']['WeatherModuleDataForecastHour'];

@@ -14,7 +14,13 @@
 			show-icon
 			class="mb-4!"
 		>
-			{{ props.initial ? t('automations.templates.texts.addHint') : t('automations.texts.addHint') }}
+			{{
+				props.initial?.fromSuggestion
+					? t('automations.suggestions.texts.addHint')
+					: props.initial
+						? t('automations.templates.texts.addHint')
+						: t('automations.texts.addHint')
+			}}
 		</el-alert>
 
 		<el-form-item

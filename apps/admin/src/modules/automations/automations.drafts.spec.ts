@@ -30,6 +30,12 @@ describe('automation drafts', () => {
 		expect(peekAutomationDraft(id)).toBeNull();
 	});
 
+	it('keeps the space and the suggestion a draft comes from', () => {
+		stashAutomationDraft(id, { ...draft(), spaceId: 'space-1', suggestionId: 'suggestion-1' });
+
+		expect(takeAutomationDraft(id)).toEqual({ ...draft(), spaceId: 'space-1', suggestionId: 'suggestion-1' });
+	});
+
 	it('forgets a discarded draft', () => {
 		stashAutomationDraft(id, draft());
 

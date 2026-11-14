@@ -67,6 +67,17 @@ describe('AutomationAddForm', (): void => {
 		expect(wrapper.emitted('update:remote-form-changed')?.[0]).toEqual([true]);
 	});
 
+	it('says where the flow of a suggested automation goes', async (): Promise<void> => {
+		wrapper = mount(AutomationAddForm, {
+			props: { id: automationId, initial: { name: 'Living Room Evening', mode: AutomationMode.single, fromSuggestion: true } },
+		});
+
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('automations.suggestions.texts.addHint');
+		expect(wrapper.text()).not.toContain('automations.templates.texts.addHint');
+	});
+
 	it('does not take input while the automation is being created', async (): Promise<void> => {
 		let resolve: (value: unknown) => void = () => {};
 

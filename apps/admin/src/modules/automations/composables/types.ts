@@ -27,7 +27,12 @@ import type {
 	IAutomationRuntimeProblem,
 	IAutomationTriggerResult,
 } from '../store/runs.store.types';
-import type { IAutomationTemplate, IAutomationTemplateIssue, IAutomationTemplateParameter } from '../store/templates.store.types';
+import type {
+	IAutomationTemplate,
+	IAutomationTemplateDraft,
+	IAutomationTemplateIssue,
+	IAutomationTemplateParameter,
+} from '../store/templates.store.types';
 import type { IAutomationImportIssue, IAutomationImportMissingReference, IAutomationImportPreparation } from '../store/transfer.store.types';
 
 import { AutomationsFilterSchema } from './schemas';
@@ -299,6 +304,26 @@ export interface IUseAutomationTemplates {
 	parameterLabel: (template: IAutomationTemplate, parameter: IAutomationTemplateParameter) => string;
 	parameterDescription: (template: IAutomationTemplate, parameter: IAutomationTemplateParameter) => string | null;
 	parameterDefault: (template: IAutomationTemplate, parameter: IAutomationTemplateParameter) => number | string | null;
+}
+
+// An automation Buddy suggests for a routine it noticed, with the draft it opens in the editor with
+export interface IAutomationSuggestion {
+	id: string;
+	title: string;
+	reason: string;
+	spaceId: string | null;
+	draft: IAutomationTemplateDraft;
+}
+
+export interface IUseAutomationSuggestions {
+	suggestions: ComputedRef<IAutomationSuggestion[]>;
+	loading: ComputedRef<boolean>;
+	// The suggestions whose answer is on its way to the backend
+	answering: ComputedRef<IAutomationSuggestion['id'][]>;
+	fetchSuggestions: () => Promise<void>;
+	dismiss: (id: IAutomationSuggestion['id']) => Promise<void>;
+	markApplied: (id: IAutomationSuggestion['id']) => Promise<void>;
+	toDraft: (suggestion: IAutomationSuggestion) => IAutomationDraft;
 }
 
 // The answer to a device property question, with the ids the backend expects
