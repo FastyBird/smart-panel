@@ -221,4 +221,73 @@ describe('ProtectRatePacer', () => {
 
 		expect(pacer.policy).toEqual({ quota: 5, windowSeconds: 1 });
 	});
+
+	it('keeps FIFO order when sleep timers fire before the pause ends', async () => {
+		let sleeps = 0;
+		const early = new ProtectRatePacer({
+			now: clock.now,
+			sleep: () => {
+				sleeps += 1;
+
+				// Resolves at once and never advances the clock, like a timer that wakes early.
+				return sleeps > 20 ? Promise.reject(new Error('woken too often')) : Promise.resolve();
+			},
+		});
+		const order: string[] = [];
+
+		early.backOff(1000);
+
+		await Promise.all([early.acquire().then(() => order.push('a')), early.acquire().then(() => order.push('b'))]);
+
+		expect(order).toEqual(['a', 'b']);
+		expect(sleeps).toBe(2);
+	});
+
+	it('re-queues a waiter only when a longer pause was announced after its reservation', async () => {
+		const starts: number[] = [];
+
+		pacer.backOff(500);
+
+		const waiter = pacer.acquire().then(() => starts.push(clock.now()));
+
+		pacer.backOff(3000);
+		await clock.run([waiter]);
+
+		expect(starts).toHaveLength(1);
+		expect(starts[0]).toBeGreaterThanOrEqual(3000);
+	});
+
+	it('clamps the interval of an advertised policy to 60 seconds', async () => {
+		pacer.observe({ 'ratelimit-policy': '"1-in-1h"; q=1; w=3600' });
+
+		expect(pacer.policy).toEqual({ quota: 1, windowSeconds: 3600 });
+		expect(pacingIntervalMs(pacer.policy)).toBe(60000);
+
+		await pacer.acquire();
+		await clock.run([pacer.acquire()]);
+
+		expect(clock.now()).toBe(60000);
+	});
+
+	it('does not let an hour-long policy hide a stricter short one', () => {
+		expect(parseRateLimitPolicy('"a"; q=1; w=3600, "b"; q=1; w=7200')).toEqual({ quota: 1, windowSeconds: 7200 });
+	});
+
+	it('unrefs its sleep timers so an idle pacer never holds the process open', async () => {
+		const spy = jest.spyOn(global, 'setTimeout');
+
+		try {
+			const real = new ProtectRatePacer();
+
+			await real.acquire();
+
+			const pending = real.acquire();
+			const timer = spy.mock.results[spy.mock.results.length - 1].value as NodeJS.Timeout;
+
+			expect(timer.hasRef()).toBe(false);
+			await pending;
+		} finally {
+			spy.mockRestore();
+		}
+	});
 });

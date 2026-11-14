@@ -39,8 +39,12 @@ function param(item: string, name: string): number | null {
 	return match ? Number(match[1]) : null;
 }
 
+const rawIntervalMs = (policy: ProtectRatePolicy, utilisation: number): number =>
+	Math.ceil((policy.windowSeconds * 1000) / Math.max(1, Math.floor(policy.quota * utilisation)));
+
+/** Spacing between requests; clamped so that a hostile or odd advertised policy cannot stall the client for long. */
 export function pacingIntervalMs(policy: ProtectRatePolicy, utilisation: number = PROTECT_RATE_UTILISATION): number {
-	return Math.ceil((policy.windowSeconds * 1000) / Math.max(1, Math.floor(policy.quota * utilisation)));
+	return Math.min(PROTECT_MAX_RETRY_AFTER_MS, rawIntervalMs(policy, utilisation));
 }
 
 export function parseRateLimitPolicy(header: HeaderValue): ProtectRatePolicy | null {
@@ -56,7 +60,10 @@ export function parseRateLimitPolicy(header: HeaderValue): ProtectRatePolicy | n
 
 		const candidate = { quota, windowSeconds };
 
-		if (best === null || pacingIntervalMs(candidate) > pacingIntervalMs(best)) {
+		if (
+			best === null ||
+			rawIntervalMs(candidate, PROTECT_RATE_UTILISATION) > rawIntervalMs(best, PROTECT_RATE_UTILISATION)
+		) {
 			best = candidate;
 		}
 	}
@@ -110,7 +117,8 @@ export function parseRetryAfterMs(header: HeaderValue, nowMs: number): number | 
 	return Math.min(PROTECT_MAX_RETRY_AFTER_MS, Math.max(0, ms));
 }
 
-function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
+/** Abortable sleep whose timer is unref'd, so an idle waiter never keeps the process alive. */
+export function protectSleep(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve, reject) => {
 		if (signal?.aborted) {
 			reject(signal.reason as Error);
@@ -127,6 +135,7 @@ function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
 			resolve();
 		}, ms);
 
+		timer.unref();
 		signal?.addEventListener('abort', onAbort, { once: true });
 	});
 }
@@ -150,7 +159,7 @@ export class ProtectRatePacer {
 	) {
 		this.utilisation = options.utilisation ?? PROTECT_RATE_UTILISATION;
 		this.now = options.now ?? Date.now;
-		this.sleep = options.sleep ?? defaultSleep;
+		this.sleep = options.sleep ?? protectSleep;
 	}
 
 	async acquire(signal?: AbortSignal): Promise<void> {
@@ -160,7 +169,8 @@ export class ProtectRatePacer {
 
 		for (;;) {
 			const now = this.now();
-			const slot = Math.max(now, this.nextSlotAt, this.pausedUntil);
+			const pausedAtReservation = this.pausedUntil;
+			const slot = Math.max(now, this.nextSlotAt, pausedAtReservation);
 
 			this.nextSlotAt = slot + pacingIntervalMs(this.policy, this.utilisation);
 
@@ -168,8 +178,9 @@ export class ProtectRatePacer {
 				await this.sleep(slot - now, signal);
 			}
 
-			// A pause announced while this waiter slept pushes it to a new slot behind the earlier waiters.
-			if (this.now() >= this.pausedUntil) {
+			// Only a longer pause announced while this waiter slept pushes it to a new slot behind the earlier
+			// waiters; a timer that merely woke early must not reorder the queue.
+			if (this.pausedUntil <= pausedAtReservation) {
 				return;
 			}
 		}

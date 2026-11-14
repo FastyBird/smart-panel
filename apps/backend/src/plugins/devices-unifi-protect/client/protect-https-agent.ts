@@ -22,7 +22,11 @@ export interface ProtectAgentOptions {
 	/** Extra trusted CA (PEM) next to the system roots; used by tests only. */
 	trustedCa?: string | Buffer;
 	handshakeTimeoutMs?: number;
+	/** TCP keep-alive probe delay of pooled sockets; the agent's `keepAlive` setting is always on. */
+	keepAliveInitialDelayMs?: number;
 }
+
+const DEFAULT_KEEP_ALIVE_INITIAL_DELAY_MS = 30_000;
 
 const withExtraCa = (trustedCa: string | Buffer | undefined): (string | Buffer)[] | undefined =>
 	trustedCa === undefined ? undefined : [...tls.rootCertificates, trustedCa];
@@ -43,7 +47,11 @@ export class ProtectHttpsAgent extends https.Agent {
 	private peerFingerprintValue: string | null = null;
 
 	constructor(options: ProtectAgentOptions) {
-		super({ keepAlive: true, maxSockets: 4 });
+		super({
+			keepAlive: true,
+			keepAliveInitialDelay: options.keepAliveInitialDelayMs ?? DEFAULT_KEEP_ALIVE_INITIAL_DELAY_MS,
+			maxSockets: 4,
+		});
 
 		this.plan = planProtectTls(options.host, options.tls);
 		this.host = options.host;
@@ -71,9 +79,14 @@ export class ProtectHttpsAgent extends https.Agent {
 			clearTimeout(timer);
 			connection.removeListener('error', onError);
 			connection.removeListener('secureConnect', onSecureConnect);
+			// A late error (a reset after settling, or while the socket is being destroyed) must never go unhandled.
+			connection.on('error', () => undefined);
 
 			if (error !== null) {
 				connection.destroy();
+			} else {
+				// A renegotiating peer could swap the certificate we just verified.
+				connection.disableRenegotiation();
 			}
 
 			callback?.(error, error === null ? socket : undefined);
@@ -109,6 +122,8 @@ export class ProtectHttpsAgent extends https.Agent {
 			rejectUnauthorized: this.plan.rejectUnauthorized,
 			ca: this.ca,
 		});
+
+		connection.setKeepAlive(this.options.keepAlive === true, this.options.keepAliveInitialDelay ?? 0);
 		const timer = setTimeout(
 			() => settle(new ProtectApiError(ProtectErrorCategory.TIMEOUT, 'tls')),
 			this.handshakeTimeoutMs,

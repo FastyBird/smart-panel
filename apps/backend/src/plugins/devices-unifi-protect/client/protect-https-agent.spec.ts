@@ -76,7 +76,10 @@ describe('ProtectHttpsAgent', () => {
 		await server.close();
 	});
 
-	function agentFor(tlsSettings: ProtectTlsSettings, extra: { trustedCa?: string; handshakeTimeoutMs?: number } = {}) {
+	function agentFor(
+		tlsSettings: ProtectTlsSettings,
+		extra: { trustedCa?: string; handshakeTimeoutMs?: number; keepAliveInitialDelayMs?: number } = {},
+	) {
 		const agent = new ProtectHttpsAgent({ host: '127.0.0.1', port: server.port, tls: tlsSettings, ...extra });
 
 		agents.push(agent);
@@ -249,6 +252,85 @@ describe('ProtectHttpsAgent', () => {
 
 		expect(status).toBe(200);
 		expect(server.requests).toBe(1);
+	});
+
+	it('forwards keepAlive and the initial delay of the agent options to the socket', async () => {
+		const spy = jest.spyOn(net.Socket.prototype, 'setKeepAlive');
+
+		try {
+			const agent = agentFor(
+				{ mode: 'pinned', serverName: null, fingerprintSha256: PROTECT_TEST_TLS.fingerprints.selfSigned },
+				{ keepAliveInitialDelayMs: 4321 },
+			);
+
+			expect(agent.options.keepAlive).toBe(true);
+			expect(agent.options.keepAliveInitialDelay).toBe(4321);
+			expect((await get(agent)).status).toBe(200);
+			expect(spy).toHaveBeenCalledWith(true, 4321);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it('disables renegotiation on the verified socket before handing it over', async () => {
+		const spy = jest.spyOn(tls.TLSSocket.prototype, 'disableRenegotiation');
+
+		try {
+			const agent = agentFor({
+				mode: 'pinned',
+				serverName: null,
+				fingerprintSha256: PROTECT_TEST_TLS.fingerprints.selfSigned,
+			});
+
+			expect((await get(agent)).status).toBe(200);
+			expect(spy).toHaveBeenCalledTimes(1);
+
+			const mismatching = agentFor({
+				mode: 'pinned',
+				serverName: null,
+				fingerprintSha256: PROTECT_TEST_TLS.fingerprints.console,
+			});
+
+			await expect(get(mismatching)).rejects.toMatchObject({ category: 'tls_fingerprint_mismatch' });
+			expect(spy).toHaveBeenCalledTimes(1);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it('keeps an error listener on a refused socket so a late error cannot crash the process', async () => {
+		const sockets = new Set<tls.TLSSocket>();
+		// eslint-disable-next-line @typescript-eslint/unbound-method -- re-invoked with the real socket as `this`
+		const destroy = tls.TLSSocket.prototype.destroy;
+		const spy = jest.spyOn(tls.TLSSocket.prototype, 'destroy').mockImplementation(function (
+			this: tls.TLSSocket,
+			error?: Error,
+		) {
+			// The in-process test server's sockets share this prototype; keep the client side only.
+			if (this.remotePort === server.port) {
+				sockets.add(this);
+			}
+
+			return destroy.call(this, error) as tls.TLSSocket;
+		});
+
+		try {
+			const agent = agentFor({
+				mode: 'pinned',
+				serverName: null,
+				fingerprintSha256: PROTECT_TEST_TLS.fingerprints.console,
+			});
+
+			await expect(get(agent)).rejects.toMatchObject({ category: 'tls_fingerprint_mismatch' });
+			expect(sockets.size).toBe(1);
+
+			const [socket] = [...sockets];
+
+			expect(socket.listenerCount('error')).toBeGreaterThan(0);
+			expect(() => socket.emit('error', new Error('late'))).not.toThrow();
+		} finally {
+			spy.mockRestore();
+		}
 	});
 
 	it('reports a closed port as unreachable', async () => {
