@@ -417,9 +417,9 @@ export class ProtectApiClient {
 
 		deadlineTimer.unref();
 
-		// The caller's signal and the deadline (not the lifetime) go to the pacer and the sleeps, so both stop their
-		// timers; `close()` cancels via the race below.
-		const waitSignal = options.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal;
+		// Closing the client, the caller's signal and the deadline all reach the pacer and the sleeps, so their timers
+		// stop with the call; the race below decides which error the call ends with.
+		const waitSignal = AbortSignal.any([signal, deadline.signal]);
 		const guarded = <T>(promise: Promise<T>): Promise<T> =>
 			new Promise<T>((resolve, reject) => {
 				const onAbort = (): void => reject(cancelled);

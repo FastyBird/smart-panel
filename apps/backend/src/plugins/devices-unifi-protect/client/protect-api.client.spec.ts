@@ -617,8 +617,14 @@ describe('ProtectApiClient', () => {
 			expect(transport.requests).toHaveLength(1);
 		});
 
-		it('close() cancels a call that waits for its retry delay', async () => {
-			sleep.mockImplementation(() => new Promise<void>(() => undefined));
+		it('close() cancels a call that waits for its retry delay, and stops the sleep', async () => {
+			let sleepSignal: AbortSignal | undefined;
+
+			sleep.mockImplementation((_ms, signal) => {
+				sleepSignal = signal;
+
+				return new Promise<void>(() => undefined);
+			});
 			transport.queue(503);
 
 			const waiting = client.listCameras();
@@ -627,7 +633,27 @@ describe('ProtectApiClient', () => {
 			client.close();
 
 			await expect(waiting).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+			expect(sleepSignal?.aborted).toBe(true);
 			expect(transport.requests).toHaveLength(1);
+		});
+
+		it('close() cancels a call held by the pacer, and stops the pacing wait', async () => {
+			let pacingSignal: AbortSignal | undefined;
+
+			jest.spyOn(pacer, 'acquire').mockImplementation((signal) => {
+				pacingSignal = signal;
+
+				return new Promise(() => undefined);
+			});
+
+			const waiting = client.listCameras();
+
+			await new Promise((r) => setImmediate(r));
+			client.close();
+
+			await expect(waiting).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+			expect(pacingSignal?.aborted).toBe(true);
+			expect(transport.requests).toHaveLength(0);
 		});
 
 		it('cancels with the signal of the caller', async () => {
