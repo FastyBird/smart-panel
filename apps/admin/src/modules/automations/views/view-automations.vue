@@ -52,6 +52,7 @@
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small
+		:aria-label="t('automations.buttons.fromTemplate.title')"
 		data-test-id="automations-from-template"
 		@click="onAutomationFromTemplate"
 	>
