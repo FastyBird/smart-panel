@@ -67,6 +67,15 @@ const submittedKeys = (request: object): string[] =>
  * test uses the stored settings only; a candidate test uses only what it submits, including a new key, so the stored
  * key never travels to a submitted host. Every outcome is a result; this service never throws.
  */
+const MAX_DOMAIN_LENGTH = 253;
+const MAX_NAME_LENGTH = 128;
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const boundSystemText = (value: string | null, maxLength: number): string | null =>
+	value === null ? null : value.replace(CONTROL_CHARACTERS, '').slice(0, maxLength);
+
 @Injectable()
 export class ProtectConnectionTestService {
 	constructor(
@@ -287,13 +296,14 @@ export class ProtectConnectionTestService {
 			return;
 		}
 
-		result.directConnectDomain = system.directConnectDomain;
+		// These values come from the unauthenticated /api/system response, so they are bounded before they are returned.
+		const domain = boundSystemText(system.directConnectDomain, MAX_DOMAIN_LENGTH);
+
+		result.directConnectDomain = domain;
 		// Only a suggestion for the administrator to confirm; it is never used as the name the certificate is checked against.
-		result.suggestedServerName = isValidProtectServerName(system.directConnectDomain)
-			? system.directConnectDomain
-			: null;
-		result.consoleName = system.name;
-		result.consoleModel = system.shortname;
+		result.suggestedServerName = isValidProtectServerName(domain) ? domain : null;
+		result.consoleName = boundSystemText(system.name, MAX_NAME_LENGTH);
+		result.consoleModel = boundSystemText(system.shortname, MAX_NAME_LENGTH);
 	}
 
 	private applyFailure(result: ProtectTestConnectionModel, error: unknown): void {

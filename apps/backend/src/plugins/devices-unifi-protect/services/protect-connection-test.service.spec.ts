@@ -242,6 +242,23 @@ describe('ProtectConnectionTestService', () => {
 		expect(factory.create).not.toHaveBeenCalled();
 	});
 
+	it('bounds and cleans the unauthenticated system text', async () => {
+		fetchSystem.mockResolvedValue(
+			system({
+				directConnectDomain: `${'a'.repeat(300)}.example.com`,
+				name: `Con\u0000sole\n${'n'.repeat(300)}`,
+				shortname: `M${'m'.repeat(300)}\u001b`,
+			}),
+		);
+
+		const result = await service.testConnection(candidate({ host: '10.0.0.2' }));
+
+		expect(result.directConnectDomain).toBe('a'.repeat(253));
+		expect(result.suggestedServerName).toBeNull();
+		expect(result.consoleName).toBe(`Console${'n'.repeat(121)}`);
+		expect(result.consoleModel).toBe(`M${'m'.repeat(127)}`);
+	});
+
 	it('suggests only a valid DNS name', async () => {
 		fetchSystem.mockResolvedValue(system({ directConnectDomain: 'not a name!' }));
 
