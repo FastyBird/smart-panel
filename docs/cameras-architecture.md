@@ -326,6 +326,13 @@ configuration or a restart of the service by the extension manager (toggle the m
 - The API password and the instance secret stay registered with the secrets registry until the child has been confirmed
   stopped (exited, output drained), so whatever it prints while shutting down is redacted too. A stop that cannot be
   confirmed keeps them registered.
+- "Confirmed stopped" means the child's `close`: it exited and its stdout and stderr are drained, with the unterminated
+  tails flushed (redacted) into the ring. `Go2rtcProcessService.stop()` resolves only then; a call between `exit` and
+  `close` waits for the `close`, and the process state is kept until it. `isRunning()` turns `false` on `exit`.
+- `Go2rtcService.onManagedRunEnded(listener)` reports the generation of a managed run once its child is confirmed
+  stopped (after its secrets were released). It is silent for a run whose stop was rejected, whatever the relay status
+  says (`error`/`crashed`); such a run is reported by the next confirmed stop. Holders of secrets that the child may
+  still print (the streams service) release them on this signal, not on relay availability.
 
 ### Identity check
 
@@ -390,11 +397,11 @@ whose acquisition completes after the close is released at once.
 | last `release` | `DELETE /api/streams?src=<name>` after 30 s (`GO2RTC_STREAM_IDLE_GRACE_MS`), so a reload reuses the stream; then the secrets are released |
 | `PUT` answered with an HTTP error, or `resolveSource` fails | every joiner rejects; no entry; secrets released; the next `acquire` starts over |
 | `PUT` fails without an HTTP status (timeout, reset) | as above, but go2rtc may have created the stream: a compensating `DELETE` is queued behind it in the name queue and the secrets stay retained unless that `DELETE` is confirmed |
-| relay `generation` changes or the state leaves `running` | every entry is dropped; managed: no `DELETE` (the process and its file are gone); external (stop, disable, mode change, unreachable): best-effort `DELETE` of every entry through the client the entry was registered on |
+| relay `generation` changes or the state leaves `running` | every entry is dropped (no new `PUT`); managed: no `DELETE`, and the secrets of the dropped entries are retained for that generation until its process is confirmed gone (`onManagedRunEnded`), not released with the status change; external (stop, disable, mode change, unreachable): best-effort `DELETE` of every entry through the client the entry was registered on |
 | device deleted | its entries are deleted at once, whatever their count |
 | external relay becomes `running` | orphan sweep, see External mode |
 | module destroy | best-effort `DELETE` of every entry (and the deletions already in flight), bounded by 2 s |
-| a `DELETE` fails | the secrets of that stream stay registered (`retained`, keyed by relay and stream name) until a later `DELETE` of the name on that same relay succeeds, the managed process is gone (generation change or stop; its config file with it) or the module is destroyed (after its bounded `DELETE`s) |
+| a `DELETE` fails | the secrets of that stream stay registered (`retained`, keyed by relay and stream name) until a later `DELETE` of the name on that same relay succeeds, the managed process of that generation is confirmed gone (`onManagedRunEnded`; a status change or a new generation is not proof) or the module is destroyed (after its bounded `DELETE`s) |
 
 A relay is identified by its generation (managed: every spawn is a new relay) or its normalized base URL (external). A
 `DELETE` on one relay never releases what was retained for another: with an external relay A that was left with a
@@ -433,7 +440,7 @@ tick, and only afterwards does the gateway look up the camera and talk to go2rtc
 | path is not the live path | untouched, left to other listeners |
 | module configuration unreadable / module disabled | raw HTTP 503 / 404, the token is not consumed |
 | unknown, expired or already used token | raw HTTP 401; a token works once at most |
-| a plain request without `Upgrade`, any method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `HEAD`) | reaches Fastify and answers a fixed `426` `{ "error": "upgrade_required" }` with `Upgrade: websocket` (`CamerasLiveController`, hidden from OpenAPI, public, not throttled, not behind the module guard so that no refusal can echo the url); the session is not consumed |
+| a plain request without `Upgrade`, any method (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, `HEAD`) | answered with a fixed `426` `{ "error": "upgrade_required" }` with `Upgrade: websocket` by a Fastify `onRequest` hook (`LiveUpgradeRequiredHook`, registered at module init) before body parsing, routing, exception filters and loggers, so even a request that would fail to parse (malformed JSON under `Content-Type: application/json`) never reaches a filter that echoes the url; `CamerasLiveController` (hidden from OpenAPI, public, not throttled, not behind the module guard) is the fallback with the same answer; the session is not consumed |
 
 Refusals at the HTTP level are never upgraded. After the 101, limits are enforced with a close code, because the session
 is consumed at that point.
@@ -523,8 +530,9 @@ session token. Logs carry ids, stream names, fixed reason codes and error class 
 - The API password and instance secret never appear in the child's arguments or environment.
 - Close reasons are the fixed strings of the close code table.
 - **The session token travels in the URL query**, so: the upgrade never passes through Fastify, Fastify's request logger
-  is off (`main.ts`), and the gateway logs no URL. A plain request of any method to the live path does reach Fastify, where the live
-  controller answers a fixed `426` body that contains no part of the request (the token is not consumed). A
+  is off (`main.ts`), and the gateway logs no URL. A plain request of any method to the live path does reach Fastify, where an
+  `onRequest` hook answers a fixed `426` body that contains no part of the request before parsing, routing, filters or
+  loggers can see the url (the token is not consumed). A
   remote-access proxy in front of the backend must not log query strings for `/api/v1/modules/cameras/live`.
 - Text frames from go2rtc never reach the browser except a rebuilt, validated `mse` reply: go2rtc's `error` frame carries
   the camera source path and query.
