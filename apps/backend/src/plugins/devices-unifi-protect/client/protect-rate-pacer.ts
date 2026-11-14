@@ -150,7 +150,8 @@ export class ProtectRatePacer {
 
 	private nextSlotAt = 0;
 	private pausedUntil = 0;
-	private lastReleaseAt = Number.NEGATIVE_INFINITY;
+	private lastReleasedAt = Number.NEGATIVE_INFINITY;
+	private releaseTurn: Promise<void> = Promise.resolve();
 
 	private readonly utilisation: number;
 	private readonly now: () => number;
@@ -196,17 +197,36 @@ export class ProtectRatePacer {
 	}
 
 	/**
-	 * Timers that resume late release together, so each release is also spaced from the previous actual one. The
-	 * release time is claimed before sleeping, so several overdue waiters line up instead of sharing one gap.
+	 * Timers can resume late, several at once. Releases therefore take turns in FIFO order, and each one waits until a
+	 * full interval has passed since the previous actual release, re-checked after every sleep, because the sleep
+	 * itself can resume late too.
 	 */
 	private async spaceFromLastRelease(signal?: AbortSignal): Promise<void> {
-		const now = this.now();
-		const releaseAt = Math.max(now, this.lastReleaseAt + pacingIntervalMs(this.policy, this.utilisation));
+		const previous = this.releaseTurn;
+		let passTurn: () => void = () => undefined;
 
-		this.lastReleaseAt = releaseAt;
+		this.releaseTurn = new Promise((resolve) => (passTurn = resolve));
 
-		if (releaseAt > now) {
-			await this.sleep(releaseAt - now, signal);
+		try {
+			await previous;
+
+			for (;;) {
+				if (signal?.aborted) {
+					throw signal.reason;
+				}
+
+				const wait = this.lastReleasedAt + pacingIntervalMs(this.policy, this.utilisation) - this.now();
+
+				if (wait <= 0) {
+					this.lastReleasedAt = this.now();
+
+					return;
+				}
+
+				await this.sleep(wait, signal);
+			}
+		} finally {
+			passTurn();
 		}
 	}
 
