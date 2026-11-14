@@ -122,22 +122,26 @@ describe('extension SDK automation contract', () => {
 	});
 
 	it('rejects a mirror that narrows what a card handler accepts', () => {
-		/** The SDK condition as it would be if its `evaluate` took a narrower configuration than the backend's */
-		type Narrowed = Omit<Sdk.AutomationConditionNodeType<SampleConfig>, 'evaluate'> & {
-			evaluate(
-				config: SampleConfig & { extra: string },
-				context: Sdk.AutomationRunContext,
-			): Promise<Sdk.AutomationConditionResult>;
+		/** The SDK condition with its `evaluate` restated, so both sides of each comparison share one representation */
+		type WithEvaluate<TEvaluateConfig> = Omit<Sdk.AutomationConditionNodeType<SampleConfig>, 'evaluate'> & {
+			evaluate(config: TEvaluateConfig, context: Sdk.AutomationRunContext): Promise<Sdk.AutomationConditionResult>;
 		};
 
+		type Unchanged = WithEvaluate<SampleConfig>;
+		/** As it would be if its `evaluate` took a narrower configuration than the backend's */
+		type Narrowed = WithEvaluate<SampleConfig & { extra: string }>;
+
+		// Control: restating the same signature is the same type, so a difference below comes from the parameter alone
+		expect(same<Unchanged, WithEvaluate<SampleConfig>>(true)).toBe(true);
+
 		// Assignable both ways, because method parameters are compared bivariantly ...
-		expect(assignable<Narrowed, Backend.AutomationConditionNodeType<SampleConfig>>(true)).toBe(true);
-		expect(assignable<Backend.AutomationConditionNodeType<SampleConfig>, Narrowed>(true)).toBe(true);
+		expect(assignable<Narrowed, Unchanged>(true)).toBe(true);
+		expect(assignable<Unchanged, Narrowed>(true)).toBe(true);
 
 		// ... but not the same type, which is what the checks above ask for
-		const identical: Same<Narrowed, Backend.AutomationConditionNodeType<SampleConfig>> = false;
+		const identical: Same<Narrowed, Unchanged> = false;
 		// @ts-expect-error A narrowed handler parameter is drift: claiming the types are the same does not compile
-		const claimed: Same<Narrowed, Backend.AutomationConditionNodeType<SampleConfig>> = true;
+		const claimed: Same<Narrowed, Unchanged> = true;
 
 		expect([identical, claimed]).toEqual([false, true]);
 	});
