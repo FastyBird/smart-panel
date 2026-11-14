@@ -56,6 +56,7 @@ class AutomationsAdapter implements HttpClientAdapter {
   int listStatus = 200;
   int? enabledStatus;
   Completer<void>? gate;
+  Completer<void>? listGate;
 
   @override
   Future<ResponseBody> fetch(
@@ -66,10 +67,16 @@ class AutomationsAdapter implements HttpClientAdapter {
     requests.add(options);
 
     if (options.path == _listPath && options.method == 'GET') {
-      return _json(
+      // Read when the request arrives, answered when the gate opens
+      final response = _json(
         _envelope(options.path, 'GET', stored.values.toList()),
         listStatus,
       );
+      final held = listGate;
+      listGate = null;
+      if (held != null) await held.future;
+
+      return response;
     }
 
     final match = RegExp(
@@ -77,32 +84,37 @@ class AutomationsAdapter implements HttpClientAdapter {
     ).firstMatch(options.path);
 
     if (match != null && options.method == 'PATCH') {
+      final response = _patch(match.group(1)!, options);
       final held = gate;
       gate = null;
       if (held != null) await held.future;
 
-      final status = enabledStatus;
-      if (status != null) return _json({'error': 'refused'}, status);
-
-      final id = match.group(1)!;
-      // The body is encoded the way Dio sends it
-      final body = jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
-      final enabled = (body['data'] as Map)['enabled'] as bool;
-      final current = stored[id];
-
-      if (current == null) return _json({'error': 'not found'}, 404);
-
-      final next = {
-        ...current,
-        'enabled': enabled,
-        'revision': (current['revision'] as int) + 1,
-      };
-      stored[id] = next;
-
-      return _json(_envelope(options.path, 'PATCH', next), 200);
+      return response;
     }
 
     return _json({'error': 'unexpected'}, 500);
+  }
+
+  /// Applied when the request arrives, as the backend would
+  ResponseBody _patch(String id, RequestOptions options) {
+    final status = enabledStatus;
+    if (status != null) return _json({'error': 'refused'}, status);
+
+    // The body is encoded the way Dio sends it
+    final body = jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
+    final enabled = (body['data'] as Map)['enabled'] as bool;
+    final current = stored[id];
+
+    if (current == null) return _json({'error': 'not found'}, 404);
+
+    final next = {
+      ...current,
+      'enabled': enabled,
+      'revision': (current['revision'] as int) + 1,
+    };
+    stored[id] = next;
+
+    return _json(_envelope(options.path, 'PATCH', next), 200);
   }
 
   ResponseBody _json(Object body, int status) => ResponseBody.fromString(
@@ -273,6 +285,199 @@ void main() {
       );
       expect(service.getAutomation('a'), isNull);
     });
+  });
+
+  group('AutomationsRepository races', () {
+    Map<String, dynamic> live(
+      String id, {
+      bool enabled = false,
+      int revision = 1,
+      String name = 'Motion light',
+    }) => _automation(id, enabled: enabled, revision: revision, name: name);
+
+    test(
+      'a list read before a live update does not restore the older revision',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await repository.fetchAll();
+
+        final gate = Completer<void>();
+        adapter.listGate = gate;
+        final fetch = repository.fetchAll();
+        await pumpEventQueue();
+
+        repository.insert([live('a', enabled: true, revision: 2)]);
+        gate.complete();
+        await fetch;
+
+        expect(repository.getAutomation('a')!.revision, 2);
+        expect(repository.getAutomation('a')!.enabled, isTrue);
+      },
+    );
+
+    test(
+      'a list read before a deletion does not bring the automation back',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await repository.fetchAll();
+
+        final gate = Completer<void>();
+        adapter.listGate = gate;
+        final fetch = repository.fetchAll();
+        await pumpEventQueue();
+
+        repository.delete('a');
+        gate.complete();
+        await fetch;
+
+        expect(repository.getAutomation('a'), isNull);
+      },
+    );
+
+    test(
+      'a list read before a reset is dropped; one read after it decides',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await repository.fetchAll();
+
+        final gate = Completer<void>();
+        adapter.listGate = gate;
+        final fetch = repository.fetchAll();
+        await pumpEventQueue();
+
+        repository.clear();
+        gate.complete();
+        await fetch;
+
+        expect(repository.automations, isEmpty);
+
+        adapter.stored['b'] = _automation('b');
+        await repository.fetchAll();
+
+        expect(repository.automations.map((a) => a.id), ['a', 'b']);
+      },
+    );
+
+    test(
+      'a list keeps what was created after it was asked for and drops what is gone',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        adapter.stored['b'] = _automation('b');
+        await repository.fetchAll();
+        adapter.stored.remove('b');
+
+        final gate = Completer<void>();
+        adapter.listGate = gate;
+        final fetch = repository.fetchAll();
+        await pumpEventQueue();
+
+        repository.insert([live('c')]);
+        gate.complete();
+        await fetch;
+
+        expect(repository.automations.map((a) => a.id).toList()..sort(), [
+          'a',
+          'c',
+        ]);
+      },
+    );
+
+    test(
+      'a delayed switch answer does not overwrite a newer live update',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await service.initialize();
+
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await pumpEventQueue();
+
+        // Switched on (revision 2), then renamed and switched off in the admin
+        repository.insert([
+          live('a', enabled: false, revision: 3, name: 'Renamed'),
+        ]);
+        gate.complete();
+
+        expect(await result, AutomationToggleResult.success);
+        expect(repository.getAutomation('a')!.revision, 3);
+        expect(service.getAutomation('a')!.enabled, isFalse);
+        expect(service.getAutomation('a')!.name, 'Renamed');
+      },
+    );
+
+    test(
+      'a delayed switch answer does not bring a deleted automation back',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await service.initialize();
+
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await pumpEventQueue();
+
+        repository.delete('a');
+        gate.complete();
+        await result;
+
+        expect(service.getAutomation('a'), isNull);
+        expect(service.automationsForSpace('room'), isEmpty);
+      },
+    );
+  });
+
+  group('disposal', () {
+    test(
+      'a switch on its way when the module is torn down completes quietly',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        final socket = AutomationsSocket();
+        final module = AutomationsModuleService(
+          apiClient: ApiClient(dio),
+          socketService: socket,
+        );
+        await module.initialize();
+
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = module.service.setEnabled('a', true);
+        await pumpEventQueue();
+
+        module.dispose();
+        gate.complete();
+
+        expect(await result, AutomationToggleResult.success);
+        expect(
+          await module.service.setEnabled('a', false),
+          AutomationToggleResult.failed,
+        );
+      },
+    );
+
+    test(
+      'a refused switch after disposal does not touch the repository',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        final socket = AutomationsSocket();
+        final module = AutomationsModuleService(
+          apiClient: ApiClient(dio),
+          socketService: socket,
+        );
+        await module.initialize();
+
+        adapter.enabledStatus = 404;
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = module.service.setEnabled('a', true);
+        await pumpEventQueue();
+
+        module.dispose();
+        gate.complete();
+
+        expect(await result, AutomationToggleResult.notFound);
+      },
+    );
   });
 
   group('AutomationsModuleService', () {

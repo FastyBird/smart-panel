@@ -58,6 +58,10 @@ class AutomationsService extends ChangeNotifier {
 
   bool _initialized = false;
 
+  /// Set once disposed: a switch still on its way when the module is torn
+  /// down completes without touching this service.
+  bool _disposed = false;
+
   AutomationsService({required AutomationsRepository repository})
     : _repository = repository;
 
@@ -89,6 +93,8 @@ class AutomationsService extends ChangeNotifier {
         });
 
   Future<AutomationToggleResult> setEnabled(String id, bool enabled) async {
+    if (_disposed) return AutomationToggleResult.failed;
+
     if (_requested.containsKey(id)) return AutomationToggleResult.ignored;
 
     final current = _repository.getAutomation(id);
@@ -116,7 +122,8 @@ class AutomationsService extends ChangeNotifier {
       return AutomationToggleResult.failed;
     } finally {
       _requested.remove(id);
-      notifyListeners();
+
+      if (!_disposed) notifyListeners();
     }
   }
 
@@ -125,6 +132,8 @@ class AutomationsService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+
     if (_initialized) {
       _repository.removeListener(notifyListeners);
     }

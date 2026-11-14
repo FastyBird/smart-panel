@@ -20,6 +20,7 @@ Map<String, dynamic> _automation(
   String? spaceId = 'room',
   String status = 'ok',
   String? lastRunStatus,
+  int revision = 1,
 }) => {
   'id': id,
   'name': name,
@@ -28,7 +29,7 @@ Map<String, dynamic> _automation(
   'enabled': enabled,
   'space_id': spaceId,
   'mode': 'restart',
-  'revision': 1,
+  'revision': revision,
   'status': status,
   'last_triggered_at': null,
   'last_run_status': lastRunStatus,
@@ -229,7 +230,9 @@ void main() {
       expect(switchOf(tester, 'a').onChanged, isNotNull);
 
       // A change made in the admin arrives over the websocket
-      repository.insert([_automation('a', 'Hallway light', enabled: false)]);
+      repository.insert([
+        _automation('a', 'Hallway light', enabled: false, revision: 3),
+      ]);
       await tester.pump();
 
       expect(switchOf(tester, 'a').value, isFalse);
