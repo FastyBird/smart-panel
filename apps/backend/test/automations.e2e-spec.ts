@@ -2747,6 +2747,20 @@ describe('Automations module (e2e)', () => {
 			expect(await stored()).toMatchObject({ name: 'Panel switch', enabled: false, revision: 1 });
 		});
 
+		it.each<[string, unknown]>([
+			['the string "false"', 'false'],
+			['the string "true"', 'true'],
+			['1', 1],
+			['0', 0],
+			['null', null],
+		])('refuses %s for enabled and changes nothing', async (_label, enabled) => {
+			await asDisplay(request(app.getHttpServer()).patch(`${base}/${id}/enabled`))
+				.send({ data: { enabled } })
+				.expect(400);
+
+			expect(await stored()).toMatchObject({ enabled: false, revision: 1 });
+		});
+
 		it('cannot enable an automation whose graph is not complete', async () => {
 			const draftId = (
 				await service().create({ name: 'Panel draft', graph: draftGraph } as unknown as CreateAutomationDto)

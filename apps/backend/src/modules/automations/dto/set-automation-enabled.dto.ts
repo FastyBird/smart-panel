@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDefined, IsObject, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
@@ -11,6 +11,8 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 export class SetAutomationEnabledDto {
 	@ApiProperty({ description: 'Whether the automation is enabled', type: 'boolean', example: true })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsDefined({ message: '[{"field":"enabled","reason":"Enabled attribute is required."}]' })
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled: boolean;
