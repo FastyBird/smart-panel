@@ -146,6 +146,64 @@ describe('CamerasService', () => {
 		}
 	});
 
+	it('resolveSource passes an abort signal and fails after 10 s', async () => {
+		jest.useFakeTimers();
+
+		try {
+			providerA.resolveSource.mockReturnValue(new Promise(() => undefined));
+
+			const pending = service.resolveSource(camera, providerA, 'medium').catch((e: Error) => e);
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			const [, profileId, options] = providerA.resolveSource.mock.calls[0] as [
+				unknown,
+				string,
+				{ signal: AbortSignal },
+			];
+
+			expect(profileId).toBe('medium');
+			expect(options.signal.aborted).toBe(false);
+
+			await jest.advanceTimersByTimeAsync(10_001);
+
+			expect(await pending).toBeInstanceOf(CameraProviderTimeoutError);
+			expect(options.signal.aborted).toBe(true);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('resolveSource returns the provider source', async () => {
+		providerA.resolveSource.mockResolvedValue({ url: 'rtsp://cam.local/stream', transport: 'rtsp' });
+
+		await expect(service.resolveSource(camera, providerA, 'medium')).resolves.toEqual({
+			url: 'rtsp://cam.local/stream',
+			transport: 'rtsp',
+		});
+	});
+
+	it('resolveSource sanitizes provider errors', async () => {
+		const secretUrl = 'rtsps://fake-console:7441/SENTINELALIAS0123456789?enableSrtp';
+
+		providerA.resolveSource.mockRejectedValue(new Error(secretUrl));
+
+		const error = await service.resolveSource(camera, providerA, 'medium').catch((e: Error) => e);
+
+		expect(error).toBeInstanceOf(CameraUpstreamException);
+		expect((error as Error).message).toBe('Camera did not respond');
+		expect(JSON.stringify((error as Error).message)).not.toContain('SENTINELALIAS');
+	});
+
+	it('resolveSource keeps an offline camera as offline', async () => {
+		providerA.resolveSource.mockRejectedValue(new CameraOfflineException('x rtsp://secret'));
+
+		await expect(service.resolveSource(camera, providerA, 'medium')).rejects.toMatchObject({
+			name: 'CameraOfflineException',
+			message: 'Camera is offline',
+		});
+	});
+
 	it('passes an abort signal to listProfiles and aborts it on timeout', async () => {
 		jest.useFakeTimers();
 
