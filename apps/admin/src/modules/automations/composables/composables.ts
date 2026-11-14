@@ -15,6 +15,8 @@ export * from './useAutomationNodeTypes';
 export * from './useAutomationRunPresentation';
 export * from './useAutomationRunTrace';
 export * from './useAutomationSpaces';
+export * from './useAutomationTemplateForm';
+export * from './useAutomationTemplates';
 export * from './useAutomations';
 export * from './useAutomationsActions';
 export * from './useAutomationsDataSource';

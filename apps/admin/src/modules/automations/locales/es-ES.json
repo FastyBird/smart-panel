@@ -155,6 +155,9 @@
 			},
 			"flow": {
 				"title": "Editar flujo"
+			},
+			"fromTemplate": {
+				"title": "Desde plantilla"
 			}
 		},
 		"messages": {
@@ -949,6 +952,97 @@
 				"missing_reference": "Este bloque hace referencia a un dispositivo, propiedad, escena o espacio que ya no existe.",
 				"trigger_failed": "No se pudo iniciar este disparador.",
 				"safety_reducing_action": "Esta acción desbloquearía, desarmaría o abriría algo, lo que una automatización no puede hacer."
+			}
+		},
+		"templates": {
+			"headings": {
+				"pick": "Nueva desde plantilla"
+			},
+			"texts": {
+				"pick": "Elija qué debe hacer la automatización. Siguen unas preguntas y el editor se abre con el flujo listo.",
+				"loadFailed": "No se pudieron cargar las plantillas.",
+				"empty": "No hay plantillas disponibles.",
+				"hint": "Todavía no se guarda nada. A continuación nombrará la automatización; su flujo se abrirá luego en el editor, donde puede cambiarlo antes de guardarlo.",
+				"addHint": "El flujo generado desde la plantilla se abre en el editor en cuanto se crea la automatización. Solo se guarda cuando lo guarda allí, y la automatización permanece desactivada hasta que la active."
+			},
+			"buttons": {
+				"back": {
+					"title": "Atrás"
+				},
+				"continue": {
+					"title": "Continuar"
+				}
+			},
+			"messages": {
+				"invalidAnswers": "Algunas respuestas no son válidas. Revise las preguntas marcadas.",
+				"invalidGraph": "El flujo generado con estas respuestas no se puede guardar. Revise los dispositivos elegidos.",
+				"notGenerated": "No se pudo preparar la automatización desde la plantilla."
+			},
+			"items": {
+				"motion-light": {
+					"name": "Luz por movimiento",
+					"description": "Enciende una luz cuando se detecta movimiento y la apaga cuando no se ha visto movimiento durante un tiempo.",
+					"parameters": {
+						"motion": {
+							"label": "Sensor de movimiento",
+							"description": "El sensor que detecta movimiento o presencia."
+						},
+						"light": {
+							"label": "Luz",
+							"description": "La luz, el interruptor o el enchufe que se enciende y se apaga."
+						},
+						"off_after": {
+							"label": "Apagar tras no detectar movimiento durante"
+						}
+					}
+				},
+				"door-open-reminder": {
+					"name": "Aviso de puerta abierta",
+					"description": "Envía una notificación cuando una puerta o ventana se ha quedado abierta durante un tiempo.",
+					"parameters": {
+						"contact": {
+							"label": "Sensor de puerta o ventana",
+							"description": "El sensor de contacto de la puerta o ventana."
+						},
+						"open_for": {
+							"label": "Avisar si está abierta durante"
+						},
+						"title": {
+							"label": "Título de la notificación",
+							"default": "Se ha quedado una puerta abierta"
+						}
+					}
+				},
+				"away-heating-setback": {
+					"name": "Reducción de calefacción en ausencia",
+					"description": "Baja la calefacción mientras la casa está en modo ausente y la restablece cuando la casa sale del modo ausente.",
+					"parameters": {
+						"heater": {
+							"label": "Consigna de calefacción",
+							"description": "La temperatura objetivo de la calefacción."
+						},
+						"away_temperature": {
+							"label": "Temperatura en ausencia"
+						},
+						"home_temperature": {
+							"label": "Temperatura al volver"
+						}
+					}
+				},
+				"leak-alarm": {
+					"name": "Alarma de fuga de agua",
+					"description": "Envía una notificación crítica en cuanto un sensor de fugas detecta agua.",
+					"parameters": {
+						"leak": {
+							"label": "Sensor de fugas",
+							"description": "El sensor que detecta agua."
+						},
+						"title": {
+							"label": "Título de la notificación",
+							"default": "Fuga de agua detectada"
+						}
+					}
+				}
 			}
 		}
 	}

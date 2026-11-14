@@ -1,0 +1,39 @@
+version: '1.0'
+templates:
+  - id: leak-alarm
+    name: Leak alarm
+    description: Sends a critical notification as soon as a leak sensor detects water.
+    icon: mdi:water-alert
+    mode: restart
+    parameters:
+      - id: leak
+        type: property
+        label: Leak sensor
+        description: The sensor that detects water.
+        access: readable
+        channel_categories: [leak]
+        property_categories: [detected]
+        data_types: [bool]
+      - id: title
+        type: text
+        label: Notification title
+        max_length: 120
+        default: Water leak detected
+    graph:
+      nodes:
+        - id: n1
+          type: device.property.changed
+          position: { x: 0, y: 0 }
+          config:
+            device_id: { $param: leak.device_id }
+            channel_id: { $param: leak.channel_id }
+            property_id: { $param: leak.property_id }
+            to: true
+        - id: n2
+          type: notification.send
+          position: { x: 360, y: 0 }
+          config:
+            severity: critical
+            title: { $param: title }
+      edges:
+        - { id: e1, source: n1, source_port: out, target: n2, target_port: in }

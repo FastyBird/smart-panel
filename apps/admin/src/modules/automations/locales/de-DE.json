@@ -155,6 +155,9 @@
 			},
 			"flow": {
 				"title": "Ablauf bearbeiten"
+			},
+			"fromTemplate": {
+				"title": "Aus Vorlage"
 			}
 		},
 		"messages": {
@@ -949,6 +952,97 @@
 				"missing_reference": "Dieser Block verweist auf ein Gerät, eine Eigenschaft, eine Szene oder einen Bereich, die es nicht mehr gibt.",
 				"trigger_failed": "Dieser Auslöser konnte nicht gestartet werden.",
 				"safety_reducing_action": "Diese Aktion würde etwas entriegeln, unscharf schalten oder öffnen, was eine Automation nicht darf."
+			}
+		},
+		"templates": {
+			"headings": {
+				"pick": "Neu aus Vorlage"
+			},
+			"texts": {
+				"pick": "Wählen Sie, was die Automatisierung tun soll. Es folgen einige Fragen, und der Editor öffnet sich mit dem fertigen Ablauf.",
+				"loadFailed": "Die Vorlagen konnten nicht geladen werden.",
+				"empty": "Es sind keine Vorlagen verfügbar.",
+				"hint": "Noch wird nichts gespeichert. Als Nächstes benennen Sie die Automatisierung; ihr Ablauf öffnet sich dann im Editor, wo Sie ihn vor dem Speichern ändern können.",
+				"addHint": "Der aus der Vorlage erzeugte Ablauf öffnet sich im Editor, sobald die Automatisierung angelegt ist. Er wird erst gespeichert, wenn Sie ihn dort speichern, und die Automatisierung bleibt deaktiviert, bis Sie sie aktivieren."
+			},
+			"buttons": {
+				"back": {
+					"title": "Zurück"
+				},
+				"continue": {
+					"title": "Weiter"
+				}
+			},
+			"messages": {
+				"invalidAnswers": "Einige Antworten sind ungültig. Prüfen Sie die markierten Fragen.",
+				"invalidGraph": "Der aus diesen Antworten erzeugte Ablauf kann nicht gespeichert werden. Prüfen Sie die gewählten Geräte.",
+				"notGenerated": "Die Automatisierung konnte nicht aus der Vorlage vorbereitet werden."
+			},
+			"items": {
+				"motion-light": {
+					"name": "Bewegungslicht",
+					"description": "Schaltet ein Licht ein, wenn Bewegung erkannt wird, und wieder aus, wenn eine Weile keine Bewegung mehr erkannt wurde.",
+					"parameters": {
+						"motion": {
+							"label": "Bewegungsmelder",
+							"description": "Der Sensor, der Bewegung oder Anwesenheit erkennt."
+						},
+						"light": {
+							"label": "Licht",
+							"description": "Das Licht, der Schalter oder die Steckdose zum Ein- und Ausschalten."
+						},
+						"off_after": {
+							"label": "Ausschalten nach keiner Bewegung für"
+						}
+					}
+				},
+				"door-open-reminder": {
+					"name": "Erinnerung an offene Tür",
+					"description": "Sendet eine Benachrichtigung, wenn eine Tür oder ein Fenster eine Weile offen geblieben ist.",
+					"parameters": {
+						"contact": {
+							"label": "Tür- oder Fenstersensor",
+							"description": "Der Kontaktsensor der Tür oder des Fensters."
+						},
+						"open_for": {
+							"label": "Erinnern, wenn offen für"
+						},
+						"title": {
+							"label": "Titel der Benachrichtigung",
+							"default": "Eine Tür ist offen geblieben"
+						}
+					}
+				},
+				"away-heating-setback": {
+					"name": "Heizungsabsenkung bei Abwesenheit",
+					"description": "Senkt die Heizung, solange das Haus im Abwesenheitsmodus ist, und stellt sie wieder her, wenn das Haus den Abwesenheitsmodus verlässt.",
+					"parameters": {
+						"heater": {
+							"label": "Heizungssollwert",
+							"description": "Die Zieltemperatur der Heizung."
+						},
+						"away_temperature": {
+							"label": "Temperatur bei Abwesenheit"
+						},
+						"home_temperature": {
+							"label": "Temperatur bei Rückkehr"
+						}
+					}
+				},
+				"leak-alarm": {
+					"name": "Wasseralarm",
+					"description": "Sendet eine kritische Benachrichtigung, sobald ein Wassersensor Wasser erkennt.",
+					"parameters": {
+						"leak": {
+							"label": "Wassersensor",
+							"description": "Der Sensor, der Wasser erkennt."
+						},
+						"title": {
+							"label": "Titel der Benachrichtigung",
+							"default": "Wasserleck erkannt"
+						}
+					}
+				}
 			}
 		}
 	}

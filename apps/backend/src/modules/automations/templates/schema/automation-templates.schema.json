@@ -1,0 +1,159 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "automation-templates.schema.json",
+	"title": "Automation templates",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["version", "templates"],
+	"properties": {
+		"version": { "const": "1.0" },
+		"templates": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 64,
+			"items": { "$ref": "#/definitions/template" }
+		}
+	},
+	"definitions": {
+		"identifier": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+		"parameterId": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+		"graphId": { "type": "string", "minLength": 1, "maxLength": 64 },
+		"text": { "type": "string", "minLength": 1, "maxLength": 200 },
+		"longText": { "type": "string", "minLength": 1, "maxLength": 1000 },
+		"categories": {
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 32,
+			"uniqueItems": true,
+			"items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" }
+		},
+		"propertyParameter": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "type", "label", "access"],
+			"properties": {
+				"id": { "$ref": "#/definitions/parameterId" },
+				"type": { "const": "property" },
+				"label": { "$ref": "#/definitions/text" },
+				"description": { "$ref": "#/definitions/longText" },
+				"access": { "enum": ["readable", "writable"] },
+				"channel_categories": { "$ref": "#/definitions/categories" },
+				"property_categories": { "$ref": "#/definitions/categories" },
+				"data_types": {
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "enum": ["char", "uchar", "short", "ushort", "int", "uint", "float", "bool", "string", "enum"] }
+				}
+			}
+		},
+		"durationParameter": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "type", "label", "min", "max"],
+			"properties": {
+				"id": { "$ref": "#/definitions/parameterId" },
+				"type": { "const": "duration" },
+				"label": { "$ref": "#/definitions/text" },
+				"description": { "$ref": "#/definitions/longText" },
+				"min": { "type": "integer", "minimum": 1 },
+				"max": { "type": "integer", "minimum": 1, "maximum": 604800 },
+				"default": { "type": "integer", "minimum": 1, "maximum": 604800 }
+			}
+		},
+		"numberParameter": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "type", "label", "min", "max"],
+			"properties": {
+				"id": { "$ref": "#/definitions/parameterId" },
+				"type": { "const": "number" },
+				"label": { "$ref": "#/definitions/text" },
+				"description": { "$ref": "#/definitions/longText" },
+				"min": { "type": "number" },
+				"max": { "type": "number" },
+				"step": { "type": "number", "exclusiveMinimum": 0 },
+				"unit": { "type": "string", "minLength": 1, "maxLength": 16 },
+				"default": { "type": "number" }
+			}
+		},
+		"textParameter": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "type", "label", "max_length"],
+			"properties": {
+				"id": { "$ref": "#/definitions/parameterId" },
+				"type": { "const": "text" },
+				"label": { "$ref": "#/definitions/text" },
+				"description": { "$ref": "#/definitions/longText" },
+				"max_length": { "type": "integer", "minimum": 1, "maximum": 1000 },
+				"default": { "type": "string", "minLength": 1, "maxLength": 1000 }
+			}
+		},
+		"parameter": {
+			"oneOf": [
+				{ "$ref": "#/definitions/propertyParameter" },
+				{ "$ref": "#/definitions/durationParameter" },
+				{ "$ref": "#/definitions/numberParameter" },
+				{ "$ref": "#/definitions/textParameter" }
+			]
+		},
+		"node": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "type", "position", "config"],
+			"properties": {
+				"id": { "$ref": "#/definitions/graphId" },
+				"type": { "type": "string", "minLength": 1, "maxLength": 100 },
+				"position": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["x", "y"],
+					"properties": {
+						"x": { "type": "number", "minimum": -1000000, "maximum": 1000000 },
+						"y": { "type": "number", "minimum": -1000000, "maximum": 1000000 }
+					}
+				},
+				"config": { "type": "object" }
+			}
+		},
+		"edge": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "source", "source_port", "target", "target_port"],
+			"properties": {
+				"id": { "$ref": "#/definitions/graphId" },
+				"source": { "$ref": "#/definitions/graphId" },
+				"source_port": { "type": "string", "minLength": 1, "maxLength": 64 },
+				"target": { "$ref": "#/definitions/graphId" },
+				"target_port": { "type": "string", "minLength": 1, "maxLength": 64 }
+			}
+		},
+		"template": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "name", "description", "mode", "parameters", "graph"],
+			"properties": {
+				"id": { "$ref": "#/definitions/identifier" },
+				"name": { "type": "string", "minLength": 1, "maxLength": 100 },
+				"description": { "$ref": "#/definitions/longText" },
+				"icon": { "type": "string", "minLength": 1, "maxLength": 100 },
+				"mode": { "enum": ["single", "restart", "parallel"] },
+				"parameters": {
+					"type": "array",
+					"maxItems": 16,
+					"items": { "$ref": "#/definitions/parameter" }
+				},
+				"graph": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["nodes", "edges"],
+					"properties": {
+						"nodes": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/definitions/node" } },
+						"edges": { "type": "array", "maxItems": 400, "items": { "$ref": "#/definitions/edge" } }
+					}
+				}
+			}
+		}
+	}
+}

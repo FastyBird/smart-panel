@@ -609,6 +609,29 @@ describe('automation card forms', (): void => {
 	});
 
 	describe('duration', (): void => {
+		it('offers only the units a duration inside the range can be given in', async (): Promise<void> => {
+			await mountForm(AutomationDurationInput, { modelValue: undefined, min: 61, max: 90 });
+
+			const select = wrapper.find('[data-test-id="duration-unit"]').findComponent({ name: 'ElSelect' });
+			const options = wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value'));
+
+			expect(options).toEqual(['seconds']);
+			expect(select.props('modelValue')).toBe('seconds');
+
+			const amount = wrapper.find('[data-test-id="duration-amount"]').findComponent({ name: 'ElInputNumber' });
+
+			expect([amount.props('min'), amount.props('max')]).toEqual([61, 90]);
+		});
+
+		it('keeps a duration above its shortest when the unit is changed', async (): Promise<void> => {
+			await mountForm(AutomationDurationInput, { modelValue: 120, min: 61, max: 3600 });
+
+			// Shown as 2 minutes; the number stays and means seconds, as far as the shortest duration taken
+			wrapper.find('[data-test-id="duration-unit"]').findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', 'seconds');
+
+			expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([61]);
+		});
+
 		it('keeps a duration within its limit when the unit is changed', async (): Promise<void> => {
 			await mountForm(AutomationDurationInput, { modelValue: 120, max: 3600 });
 

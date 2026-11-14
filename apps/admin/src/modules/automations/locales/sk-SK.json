@@ -155,6 +155,9 @@
 			},
 			"flow": {
 				"title": "Upraviť priebeh"
+			},
+			"fromTemplate": {
+				"title": "Zo šablóny"
 			}
 		},
 		"messages": {
@@ -949,6 +952,97 @@
 				"missing_reference": "Tento blok odkazuje na zariadenie, vlastnosť, scénu alebo priestor, ktorý už neexistuje.",
 				"trigger_failed": "Tento spúšťač sa nepodarilo spustiť.",
 				"safety_reducing_action": "Táto akcia by odomkla, odistila alebo otvorila niečo, čo automatizácia nesmie."
+			}
+		},
+		"templates": {
+			"headings": {
+				"pick": "Nová zo šablóny"
+			},
+			"texts": {
+				"pick": "Vyberte, čo má automatizácia robiť. Nasleduje niekoľko otázok a editor sa otvorí s pripraveným tokom.",
+				"loadFailed": "Šablóny sa nepodarilo načítať.",
+				"empty": "Nie sú k dispozícii žiadne šablóny.",
+				"hint": "Zatiaľ sa nič neukladá. Ďalej automatizáciu pomenujete; jej tok sa potom otvorí v editore, kde ho môžete pred uložením upraviť.",
+				"addHint": "Tok vytvorený zo šablóny sa otvorí v editore, keď bude automatizácia vytvorená. Uloží sa, až keď ho tam uložíte, a automatizácia zostane vypnutá, kým ju nezapnete."
+			},
+			"buttons": {
+				"back": {
+					"title": "Späť"
+				},
+				"continue": {
+					"title": "Pokračovať"
+				}
+			},
+			"messages": {
+				"invalidAnswers": "Niektoré odpovede nie sú platné. Skontrolujte označené otázky.",
+				"invalidGraph": "Tok vytvorený z týchto odpovedí nie je možné uložiť. Skontrolujte vybrané zariadenia.",
+				"notGenerated": "Automatizáciu sa zo šablóny nepodarilo pripraviť."
+			},
+			"items": {
+				"motion-light": {
+					"name": "Svetlo podľa pohybu",
+					"description": "Rozsvieti svetlo, keď sa zistí pohyb, a zhasne ho, keď sa pohyb chvíľu neobjavil.",
+					"parameters": {
+						"motion": {
+							"label": "Senzor pohybu",
+							"description": "Senzor, ktorý zisťuje pohyb alebo prítomnosť."
+						},
+						"light": {
+							"label": "Svetlo",
+							"description": "Svetlo, spínač alebo zásuvka, ktorá sa má zapínať a vypínať."
+						},
+						"off_after": {
+							"label": "Zhasnúť po čase bez pohybu"
+						}
+					}
+				},
+				"door-open-reminder": {
+					"name": "Pripomienka otvorených dverí",
+					"description": "Pošle oznámenie, keď dvere alebo okno zostanú chvíľu otvorené.",
+					"parameters": {
+						"contact": {
+							"label": "Senzor dverí alebo okna",
+							"description": "Kontaktný senzor dverí alebo okna."
+						},
+						"open_for": {
+							"label": "Pripomenúť po čase otvorenia"
+						},
+						"title": {
+							"label": "Nadpis oznámenia",
+							"default": "Dvere zostali otvorené"
+						}
+					}
+				},
+				"away-heating-setback": {
+					"name": "Útlm kúrenia pri neprítomnosti",
+					"description": "Zníži kúrenie, kým je dom v režime neprítomnosti, a obnoví ho, keď dom tento režim opustí.",
+					"parameters": {
+						"heater": {
+							"label": "Požadovaná teplota kúrenia",
+							"description": "Cieľová teplota kúrenia."
+						},
+						"away_temperature": {
+							"label": "Teplota pri neprítomnosti"
+						},
+						"home_temperature": {
+							"label": "Teplota po návrate"
+						}
+					}
+				},
+				"leak-alarm": {
+					"name": "Alarm úniku vody",
+					"description": "Pošle kritické oznámenie, hneď ako senzor úniku zistí vodu.",
+					"parameters": {
+						"leak": {
+							"label": "Senzor úniku vody",
+							"description": "Senzor, ktorý zisťuje vodu."
+						},
+						"title": {
+							"label": "Nadpis oznámenia",
+							"default": "Zistený únik vody"
+						}
+					}
+				}
 			}
 		}
 	}

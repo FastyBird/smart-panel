@@ -155,6 +155,9 @@
 			},
 			"flow": {
 				"title": "Edit flow"
+			},
+			"fromTemplate": {
+				"title": "From template"
 			}
 		},
 		"messages": {
@@ -949,6 +952,97 @@
 				"missing_reference": "This block refers to a device, property, scene or space that no longer exists.",
 				"trigger_failed": "This trigger could not be started.",
 				"safety_reducing_action": "This action would unlock, disarm or open something, which an automation may not do."
+			}
+		},
+		"templates": {
+			"headings": {
+				"pick": "New from template"
+			},
+			"texts": {
+				"pick": "Choose what the automation should do. A few questions follow, and the editor opens with the flow ready.",
+				"loadFailed": "The templates could not be loaded.",
+				"empty": "No templates are available.",
+				"hint": "Nothing is saved yet. Next you name the automation; its flow then opens in the editor, where you can change it before you save it.",
+				"addHint": "The flow generated from the template opens in the editor once the automation is created. It is saved only when you save it there, and the automation stays disabled until you enable it."
+			},
+			"buttons": {
+				"back": {
+					"title": "Back"
+				},
+				"continue": {
+					"title": "Continue"
+				}
+			},
+			"messages": {
+				"invalidAnswers": "Some answers are not valid. Check the marked questions.",
+				"invalidGraph": "The flow generated from these answers could not be saved. Check the chosen devices.",
+				"notGenerated": "The automation could not be prepared from the template."
+			},
+			"items": {
+				"motion-light": {
+					"name": "Motion light",
+					"description": "Turns a light on when motion is detected and off again once no motion was seen for a while.",
+					"parameters": {
+						"motion": {
+							"label": "Motion sensor",
+							"description": "The sensor that detects motion or presence."
+						},
+						"light": {
+							"label": "Light",
+							"description": "The light, switch or outlet to turn on and off."
+						},
+						"off_after": {
+							"label": "Turn off after no motion for"
+						}
+					}
+				},
+				"door-open-reminder": {
+					"name": "Door open reminder",
+					"description": "Sends a notification when a door or window has been left open for a while.",
+					"parameters": {
+						"contact": {
+							"label": "Door or window sensor",
+							"description": "The contact sensor of the door or window."
+						},
+						"open_for": {
+							"label": "Remind when open for"
+						},
+						"title": {
+							"label": "Notification title",
+							"default": "A door has been left open"
+						}
+					}
+				},
+				"away-heating-setback": {
+					"name": "Away heating setback",
+					"description": "Lowers the heating while the house is in away mode and restores it when the house leaves away mode.",
+					"parameters": {
+						"heater": {
+							"label": "Heating setpoint",
+							"description": "The target temperature of the heater."
+						},
+						"away_temperature": {
+							"label": "Temperature while away"
+						},
+						"home_temperature": {
+							"label": "Temperature when back"
+						}
+					}
+				},
+				"leak-alarm": {
+					"name": "Leak alarm",
+					"description": "Sends a critical notification as soon as a leak sensor detects water.",
+					"parameters": {
+						"leak": {
+							"label": "Leak sensor",
+							"description": "The sensor that detects water."
+						},
+						"title": {
+							"label": "Notification title",
+							"default": "Water leak detected"
+						}
+					}
+				}
 			}
 		}
 	}

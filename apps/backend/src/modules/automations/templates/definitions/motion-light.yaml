@@ -1,0 +1,72 @@
+version: '1.0'
+templates:
+  - id: motion-light
+    name: Motion light
+    description: Turns a light on when motion is detected and off again once no motion was seen for a while.
+    icon: mdi:motion-sensor
+    # The two flows are independent and both end at once, so they may run side by side
+    mode: parallel
+    parameters:
+      - id: motion
+        type: property
+        label: Motion sensor
+        description: The sensor that detects motion or presence.
+        access: readable
+        channel_categories: [motion, occupancy]
+        property_categories: [detected]
+        data_types: [bool]
+      - id: light
+        type: property
+        label: Light
+        description: The light, switch or outlet to turn on and off.
+        access: writable
+        channel_categories: [light, switcher, outlet]
+        property_categories: ['on']
+        data_types: [bool]
+      - id: off_after
+        type: duration
+        label: Turn off after no motion for
+        min: 10
+        max: 86400
+        default: 120
+    graph:
+      nodes:
+        - id: n1
+          type: device.property.changed
+          position: { x: 0, y: 0 }
+          config:
+            device_id: { $param: motion.device_id }
+            channel_id: { $param: motion.channel_id }
+            property_id: { $param: motion.property_id }
+            to: true
+        - id: n2
+          type: device.property.set
+          position: { x: 360, y: 0 }
+          config:
+            writes:
+              - device_id: { $param: light.device_id }
+                channel_id: { $param: light.channel_id }
+                property_id: { $param: light.property_id }
+                value: true
+        # A "for" trigger and not a Delay: new motion simply never lets the duration complete (ADR 0003, decision 2)
+        - id: n3
+          type: device.property.changed
+          position: { x: 0, y: 240 }
+          config:
+            device_id: { $param: motion.device_id }
+            channel_id: { $param: motion.channel_id }
+            property_id: { $param: motion.property_id }
+            to: false
+            for_seconds: { $param: off_after }
+        - id: n4
+          type: device.property.set
+          position: { x: 360, y: 240 }
+          config:
+            writes:
+              - device_id: { $param: light.device_id }
+                channel_id: { $param: light.channel_id }
+                property_id: { $param: light.property_id }
+                value: false
+      edges:
+        - { id: e1, source: n1, source_port: out, target: n2, target_port: in }
+        - { id: e2, source: n3, source_port: out, target: n4, target_port: in }

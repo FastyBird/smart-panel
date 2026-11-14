@@ -1696,6 +1696,113 @@ describe('Automations module (e2e)', () => {
 			});
 		});
 
+		describe('templates', () => {
+			const templatesBase = '/modules/automations/templates';
+
+			it('lists the built-in templates with their questions', async () => {
+				const response = await request(app.getHttpServer())
+					.get(templatesBase)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				const templates = (response.body as { data: { id: string; source: string; parameters: { id: string }[] }[] })
+					.data;
+
+				expect(templates.map((template) => template.id)).toEqual([
+					'away-heating-setback',
+					'door-open-reminder',
+					'leak-alarm',
+					'motion-light',
+				]);
+				expect(templates.find((template) => template.id === 'motion-light')?.parameters.map((item) => item.id)).toEqual(
+					['motion', 'light', 'off_after'],
+				);
+				expect(templates[0]).not.toHaveProperty('graph');
+				expect(templates.every((template) => template.source === 'builtin')).toBe(true);
+			});
+
+			it('generates a draft that is saved as an ordinary enabled automation, with no link to the template', async () => {
+				const before = await request(app.getHttpServer())
+					.get(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				const generated = await request(app.getHttpServer())
+					.post(`${templatesBase}/motion-light/generate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { parameters: { motion: occupancy, light: lightOn, off_after: 300 } } })
+					.expect(200);
+
+				const draft = (generated.body as { data: { name: string; mode: string; graph: { nodes: unknown[] } } }).data;
+
+				expect(draft).toMatchObject({ name: 'Motion light', mode: 'parallel' });
+				expect(draft.graph.nodes).toEqual([
+					expect.objectContaining({ type: 'device.property.changed', config: { ...occupancy, to: true } }),
+					expect.objectContaining({ type: 'device.property.set', config: { writes: [{ ...lightOn, value: true }] } }),
+					expect.objectContaining({ config: { ...occupancy, to: false, for_seconds: 300 } }),
+					expect.objectContaining({ config: { writes: [{ ...lightOn, value: false }] } }),
+				]);
+
+				// Generating stores nothing
+				const after = await request(app.getHttpServer())
+					.get(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(200);
+
+				expect((after.body as { data: unknown[] }).data).toHaveLength((before.body as { data: unknown[] }).data.length);
+
+				const created = await request(app.getHttpServer())
+					.post(base)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { name: draft.name, mode: draft.mode, enabled: true, graph: draft.graph } })
+					.expect(201);
+
+				const automation = (created.body as { data: AutomationBody }).data;
+
+				expect(automation.enabled).toBe(true);
+				expect(JSON.stringify(automation)).not.toContain('motion-light');
+
+				await request(app.getHttpServer())
+					.delete(`${base}/${automation.id}`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.expect(204);
+			});
+
+			it('refuses answers that do not fit their questions with 422 and an issue per question', async () => {
+				const response = await request(app.getHttpServer())
+					.post(`${templatesBase}/motion-light/generate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { parameters: { motion: lightOn, light: occupancy, off_after: 5 } } })
+					.expect(422);
+
+				expect(response.body).toMatchObject({
+					code: 'automation-template-parameters-invalid',
+					issues: [
+						{ field: 'parameters.motion.channel_id', reason: 'This channel is not of a kind this question takes.' },
+						{ field: 'parameters.motion.property_id', reason: 'This property is not of a kind this question takes.' },
+						{ field: 'parameters.light.property_id', reason: 'This property can not be set.' },
+						{ field: 'parameters.light.channel_id', reason: 'This channel is not of a kind this question takes.' },
+						{ field: 'parameters.light.property_id', reason: 'This property is not of a kind this question takes.' },
+						{ field: 'parameters.off_after', reason: 'The duration must be between 10 and 86400 seconds.' },
+					],
+				});
+			});
+
+			it('answers 404 for a template that does not exist and 400 without answers', async () => {
+				await request(app.getHttpServer())
+					.post(`${templatesBase}/missing/generate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: { parameters: {} } })
+					.expect(404);
+
+				await request(app.getHttpServer())
+					.post(`${templatesBase}/leak-alarm/generate`)
+					.set('Authorization', `Bearer ${ownerToken}`)
+					.send({ data: {} })
+					.expect(400);
+			});
+		});
+
 		it('lists the space cards of the spaces-home-control plugin only while it is enabled', async () => {
 			const spaceCards = async (): Promise<string[]> => {
 				const response = await request(app.getHttpServer())
@@ -2593,6 +2700,20 @@ describe('Automations module (e2e)', () => {
 					}),
 			],
 			['GET /node-types', (token) => authorize(request(app.getHttpServer()).get(nodeTypesBase), token)],
+			[
+				'GET /templates',
+				(token) => authorize(request(app.getHttpServer()).get('/modules/automations/templates'), token),
+			],
+			[
+				'POST /templates/:id/generate',
+				(token) =>
+					authorize(
+						request(app.getHttpServer()).post('/modules/automations/templates/leak-alarm/generate'),
+						token,
+					).send({
+						data: { parameters: {} },
+					}),
+			],
 			[
 				'POST /automations/:id/trigger',
 				(token) => authorize(request(app.getHttpServer()).post(`${base}/${placeholderId}/trigger`), token).send({}),

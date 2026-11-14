@@ -4,7 +4,14 @@ import {
 	AutomationsModuleDataRunStepState as AutomationRunStepState,
 	AutomationsModuleDataTriggerResultOutcome as AutomationTriggerOutcome,
 } from '../../openapi';
-import { AutomationMode, AutomationNodeKind, AutomationRunStatus, AutomationStatus } from '../../openapi.constants';
+import {
+	AutomationMode,
+	AutomationNodeKind,
+	AutomationRunStatus,
+	AutomationStatus,
+	AutomationTemplateParameterType,
+	AutomationTemplateSource,
+} from '../../openapi.constants';
 
 export {
 	AutomationMode,
@@ -13,6 +20,8 @@ export {
 	AutomationRunStatus,
 	AutomationRunStepState,
 	AutomationStatus,
+	AutomationTemplateParameterType,
+	AutomationTemplateSource,
 	AutomationTriggerOutcome,
 };
 
@@ -71,6 +80,12 @@ export const AUTOMATION_DESCRIPTION_MAX_LENGTH = 1000;
 
 // Application error code of a save refused because of its graph (`error.details.code` of the 422 response)
 export const AUTOMATION_GRAPH_INVALID_ERROR_CODE = 'automation-graph-invalid';
+
+// Application error code of answers to a template the backend refused (`error.details.code` of the 422 response)
+export const AUTOMATION_TEMPLATE_PARAMETERS_INVALID_ERROR_CODE = 'automation-template-parameters-invalid';
+
+// The route query that names the template draft a new automation is created from
+export const AUTOMATION_TEMPLATE_DRAFT_QUERY = 'draft';
 
 // Filter value matching the automations that belong to no space
 export const WHOLE_HOME_SPACE_FILTER = 'whole_home';

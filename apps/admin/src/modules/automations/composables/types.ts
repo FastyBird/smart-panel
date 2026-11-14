@@ -13,6 +13,7 @@ import type {
 	AutomationTriggerRefusal,
 	FormResultType,
 } from '../automations.constants';
+import type { IAutomationDraft } from '../automations.drafts';
 import type { IAutomationRunAttention, IAutomationRunNodeOverlay, IAutomationRunOverlay } from '../automations.trace';
 import type { IAutomationNodePluginsComponents, IAutomationNodePluginsSchemas } from '../automations.types';
 import type { IAutomationNodeLookups } from '../nodes/nodes.summaries';
@@ -26,6 +27,7 @@ import type {
 	IAutomationRuntimeProblem,
 	IAutomationTriggerResult,
 } from '../store/runs.store.types';
+import type { IAutomationTemplate, IAutomationTemplateIssue, IAutomationTemplateParameter } from '../store/templates.store.types';
 
 import { AutomationsFilterSchema } from './schemas';
 
@@ -270,4 +272,42 @@ export interface IUseAutomationRunPresentation {
 	refusalText: (refusal: AutomationTriggerRefusal | null) => string;
 	outcomeText: (outcome: AutomationTriggerOutcome) => string;
 	nodeLabel: (nodeId: string, graph: Pick<IAutomationGraph, 'nodes'>, nodeTypes: IAutomationNodeType[]) => string | null;
+}
+
+export interface IUseAutomationTemplates {
+	templates: ComputedRef<IAutomationTemplate[]>;
+	loading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	loadFailed: Ref<boolean>;
+	fetchTemplates: () => Promise<void>;
+	templateName: (template: IAutomationTemplate) => string;
+	templateDescription: (template: IAutomationTemplate) => string;
+	parameterLabel: (template: IAutomationTemplate, parameter: IAutomationTemplateParameter) => string;
+	parameterDescription: (template: IAutomationTemplate, parameter: IAutomationTemplateParameter) => string | null;
+	parameterDefault: (template: IAutomationTemplate, parameter: IAutomationTemplateParameter) => number | string | null;
+}
+
+// The answer to a device property question, with the ids the backend expects
+export interface AutomationTemplatePropertyAnswer {
+	device_id: string | null;
+	channel_id: string | null;
+	property_id: string | null;
+}
+
+export interface IUseAutomationTemplateFormProps {
+	template: Ref<IAutomationTemplate | null>;
+}
+
+export interface IUseAutomationTemplateForm {
+	answers: Ref<Record<string, unknown>>;
+	issues: Ref<IAutomationTemplateIssue[]>;
+	submitting: Ref<boolean>;
+	complete: ComputedRef<boolean>;
+	otherErrors: ComputedRef<string[]>;
+	setAnswer: (parameterId: IAutomationTemplateParameter['id'], value: unknown) => void;
+	setPropertyAnswer: (parameterId: IAutomationTemplateParameter['id'], patch: Partial<AutomationTemplatePropertyAnswer>) => void;
+	propertyAnswer: (parameterId: IAutomationTemplateParameter['id']) => AutomationTemplatePropertyAnswer;
+	errorsAt: (parameterId: IAutomationTemplateParameter['id']) => string[];
+	submit: () => Promise<IAutomationDraft | null>;
+	reset: () => void;
 }

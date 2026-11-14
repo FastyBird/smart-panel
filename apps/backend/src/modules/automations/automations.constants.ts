@@ -84,3 +84,6 @@ export const AUTOMATION_RUN_INTERRUPTED_BY_RESTART = 'backend_restarted';
 
 // Application error code of a save refused because of its graph (error.details.code of the 422 response)
 export const AUTOMATION_GRAPH_INVALID_ERROR_CODE = 'automation-graph-invalid';
+
+// Application error code of answers to a template that were refused (error.details.code of the 422 response)
+export const AUTOMATION_TEMPLATE_PARAMETERS_INVALID_ERROR_CODE = 'automation-template-parameters-invalid';

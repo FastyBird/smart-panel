@@ -14,7 +14,7 @@
 			@update:model-value="onAmount"
 		/>
 		<el-select
-			:model-value="unit"
+			:model-value="shownUnit"
 			:disabled="props.disabled"
 			:name="`${props.name}-unit`"
 			:aria-label="t('automations.editor.fields.duration.unit')"
@@ -23,7 +23,7 @@
 			@update:model-value="onUnit"
 		>
 			<el-option
-				v-for="option in UNITS"
+				v-for="option in units"
 				:key="option"
 				:label="t(`automations.editor.fields.duration.units.${option}`)"
 				:value="option"
@@ -62,6 +62,7 @@ const UNIT_SECONDS: Record<Unit, number> = { seconds: 1, minutes: 60, hours: 360
 const props = withDefaults(defineProps<IAutomationDurationInputProps>(), {
 	name: 'duration',
 	disabled: false,
+	min: 1,
 });
 
 const emit = defineEmits<{
@@ -81,27 +82,41 @@ const unitOf = (seconds: number | undefined): Unit => {
 
 const unit = ref<Unit>(unitOf(props.modelValue));
 
+// A unit is offered only when some whole number of it lies inside the range; seconds always do
+const units = computed<Unit[]>((): Unit[] =>
+	UNITS.filter(
+		(option) => option === 'seconds' || Math.max(1, Math.ceil(props.min / UNIT_SECONDS[option])) <= Math.floor(props.max / UNIT_SECONDS[option])
+	)
+);
+
+// The unit chosen, unless the range leaves no value in it
+const shownUnit = computed<Unit>((): Unit => (units.value.includes(unit.value) ? unit.value : 'seconds'));
+
 // A duration changed from outside (undo) is shown in its own unit; one typed here keeps the unit chosen
 watch(
 	(): number | undefined => props.modelValue,
 	(seconds: number | undefined): void => {
-		if (typeof seconds === 'number' && seconds % UNIT_SECONDS[unit.value] !== 0) {
+		if (typeof seconds === 'number' && seconds % UNIT_SECONDS[shownUnit.value] !== 0) {
 			unit.value = unitOf(seconds);
 		}
 	}
 );
 
 const amount = computed<number | undefined>((): number | undefined =>
-	typeof props.modelValue === 'number' ? props.modelValue / UNIT_SECONDS[unit.value] : undefined
+	typeof props.modelValue === 'number' ? props.modelValue / UNIT_SECONDS[shownUnit.value] : undefined
 );
 
 const bounds = computed<IAutomationNumberBounds>(
 	(): IAutomationNumberBounds =>
-		numberInputBounds(amount.value, { min: 1, max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[unit.value])), precision: 0 })
+		numberInputBounds(amount.value, {
+			min: Math.max(1, Math.ceil(props.min / UNIT_SECONDS[shownUnit.value])),
+			max: Math.max(1, Math.floor(props.max / UNIT_SECONDS[shownUnit.value])),
+			precision: 0,
+		})
 );
 
 const onAmount = (value: number | null | undefined): void => {
-	emit('update:modelValue', typeof value === 'number' ? Math.round(value * UNIT_SECONDS[unit.value]) : undefined);
+	emit('update:modelValue', typeof value === 'number' ? Math.round(value * UNIT_SECONDS[shownUnit.value]) : undefined);
 };
 
 const onUnit = (next: Unit): void => {
@@ -110,9 +125,9 @@ const onUnit = (next: Unit): void => {
 	unit.value = next;
 
 	// The number entered stays and means the new unit: "5 minutes" becomes "5 hours", not "0.08 hours" -
-	// as far as the longest duration taken, which it stops at
+	// within the shortest and the longest duration taken, at which it stops
 	if (typeof current === 'number') {
-		emit('update:modelValue', Math.min(Math.round(current * UNIT_SECONDS[next]), props.max));
+		emit('update:modelValue', Math.min(Math.max(Math.round(current * UNIT_SECONDS[next]), props.min), props.max));
 	}
 };
 </script>

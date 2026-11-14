@@ -14,6 +14,14 @@
         "outDir": "dist"
       },
       {
+        "include": "modules/automations/templates/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "modules/automations/templates/definitions/**/*.yaml",
+        "outDir": "dist"
+      },
+      {
         "include": "plugins/devices-zigbee2mqtt/mappings/schema/**/*.json",
         "outDir": "dist"
       },

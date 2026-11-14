@@ -691,6 +691,9 @@ export type AutomationsModuleGraphSchema = components['schemas']['AutomationsMod
 export type AutomationsModuleGraphIssueSchema = components['schemas']['AutomationsModuleDataGraphIssue'];
 export type AutomationsModuleGraphValidationSchema = components['schemas']['AutomationsModuleDataGraphValidation'];
 export type AutomationsModuleNodeTypeSchema = components['schemas']['AutomationsModuleDataNodeType'];
+export type AutomationsModuleTemplateSchema = components['schemas']['AutomationsModuleDataTemplate'];
+export type AutomationsModuleTemplateParameterSchema = components['schemas']['AutomationsModuleDataTemplateParameter'];
+export type AutomationsModuleTemplateDraftSchema = components['schemas']['AutomationsModuleDataTemplateDraft'];
 
 // Automations Module Operations
 export type AutomationsModuleGetAutomationsOperation = operations['get-automations-module-automations'];
@@ -700,12 +703,16 @@ export type AutomationsModuleUpdateAutomationOperation = operations['update-auto
 export type AutomationsModuleDeleteAutomationOperation = operations['delete-automations-module-automation'];
 export type AutomationsModuleValidateGraphOperation = operations['validate-automations-module-automation-graph'];
 export type AutomationsModuleGetNodeTypesOperation = operations['get-automations-module-node-types'];
+export type AutomationsModuleGetTemplatesOperation = operations['get-automations-module-templates'];
+export type AutomationsModuleGenerateTemplateDraftOperation = operations['generate-automations-module-template-draft'];
 
 // Automations Module Enums
 export { AutomationsModuleCreateAutomationMode as AutomationMode } from './openapi';
 export { AutomationsModuleDataAutomationStatus as AutomationStatus } from './openapi';
 export { AutomationsModuleDataAutomationLast_run_status as AutomationRunStatus } from './openapi';
 export { AutomationsModuleDataNodeTypeKind as AutomationNodeKind } from './openapi';
+export { AutomationsModuleDataTemplateParameterType as AutomationTemplateParameterType } from './openapi';
+export { AutomationsModuleDataTemplateSource as AutomationTemplateSource } from './openapi';
 
 // Weather Module Types
 // ====================

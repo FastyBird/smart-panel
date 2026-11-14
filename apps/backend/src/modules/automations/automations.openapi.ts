@@ -2,6 +2,10 @@
  * OpenAPI extra models for Automations module
  */
 import { AutomationGraphDto, AutomationGraphEdgeDto, AutomationGraphNodeDto } from './dto/automation-graph.dto';
+import {
+	GenerateAutomationFromTemplateDto,
+	ReqGenerateAutomationFromTemplateDto,
+} from './dto/generate-from-template.dto';
 import { ReqTriggerAutomationDto, TriggerAutomationDto } from './dto/trigger-automation.dto';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
 import { ReqValidateAutomationGraphDto, ValidateAutomationGraphDto } from './dto/validate-graph.dto';
@@ -26,6 +30,11 @@ import {
 	AutomationSkippedTriggerModel,
 	AutomationTriggerCountersModel,
 } from './models/automation-runtime.model';
+import {
+	AutomationTemplateDraftModel,
+	AutomationTemplateModel,
+	AutomationTemplateParameterModel,
+} from './models/automation-templates.model';
 import { AutomationTriggerResultModel } from './models/automation-trigger-result.model';
 import {
 	AutomationGraphValidationResponseModel,
@@ -34,6 +43,8 @@ import {
 	AutomationRunResponseModel,
 	AutomationRunsResponseModel,
 	AutomationRuntimeResponseModel,
+	AutomationTemplateDraftResponseModel,
+	AutomationTemplatesResponseModel,
 	AutomationTriggerResultResponseModel,
 	AutomationsResponseModel,
 } from './models/automations-response.model';
@@ -54,6 +65,8 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	ReqValidateAutomationGraphDto,
 	TriggerAutomationDto,
 	ReqTriggerAutomationDto,
+	GenerateAutomationFromTemplateDto,
+	ReqGenerateAutomationFromTemplateDto,
 	// Response models
 	AutomationResponseModel,
 	AutomationsResponseModel,
@@ -63,6 +76,8 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	AutomationRuntimeResponseModel,
 	AutomationRunsResponseModel,
 	AutomationRunResponseModel,
+	AutomationTemplatesResponseModel,
+	AutomationTemplateDraftResponseModel,
 	// Data models
 	AutomationSummaryModel,
 	AutomationGraphModel,
@@ -83,6 +98,9 @@ export const AUTOMATIONS_SWAGGER_EXTRA_MODELS = [
 	AutomationRunTriggerModel,
 	AutomationRunStepModel,
 	AutomationRunStepResultModel,
+	AutomationTemplateModel,
+	AutomationTemplateParameterModel,
+	AutomationTemplateDraftModel,
 	// Entities
 	AutomationEntity,
 	AutomationRunEntity,

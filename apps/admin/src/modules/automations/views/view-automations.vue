@@ -47,6 +47,22 @@
 		<span class="uppercase">{{ t('automations.buttons.add.title') }}</span>
 	</app-bar-button>
 
+	<app-bar-button
+		v-if="!isMDDevice && isAutomationsListRoute"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		:aria-label="t('automations.buttons.fromTemplate.title')"
+		data-test-id="automations-from-template"
+		@click="onAutomationFromTemplate"
+	>
+		<template #icon>
+			<el-icon :size="20">
+				<icon icon="mdi:file-document-multiple-outline" />
+			</el-icon>
+		</template>
+	</app-bar-button>
+
 	<view-header
 		:heading="t('automations.headings.list')"
 		:sub-heading="t('automations.subHeadings.list')"
@@ -58,6 +74,7 @@
 					type="primary"
 					plain
 					class="px-4! ml-2!"
+					data-test-id="automations-add"
 					@click="onAutomationCreate"
 				>
 					<template #icon>
@@ -65,6 +82,19 @@
 					</template>
 
 					{{ t('automations.buttons.add.title') }}
+				</el-button>
+
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					data-test-id="automations-from-template"
+					@click="onAutomationFromTemplate"
+				>
+					<template #icon>
+						<icon icon="mdi:file-document-multiple-outline" />
+					</template>
+
+					{{ t('automations.buttons.fromTemplate.title') }}
 				</el-button>
 			</div>
 		</template>
@@ -99,7 +129,7 @@
 
 	<router-view
 		v-else
-		:key="props.id"
+		:key="detailKey"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -149,7 +179,7 @@
 
 					<suspense>
 						<router-view
-							:key="props.id"
+							:key="detailKey"
 							v-slot="{ Component }"
 						>
 							<component
@@ -163,6 +193,11 @@
 			</template>
 		</div>
 	</el-drawer>
+
+	<automation-template-dialog
+		v-model:visible="showTemplateDialog"
+		@generated="onTemplateGenerated"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -176,8 +211,8 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { AUTOMATION_DEFAULT_ICON, RouteNames } from '../automations.constants';
-import { ListAutomations, ListAutomationsAdjust } from '../components/components';
+import { AUTOMATION_DEFAULT_ICON, AUTOMATION_TEMPLATE_DRAFT_QUERY, RouteNames } from '../automations.constants';
+import { AutomationTemplateDialog, ListAutomations, ListAutomationsAdjust } from '../components/components';
 import { useAutomationSpaces, useAutomationsActions, useAutomationsDataSource } from '../composables/composables';
 import type { IAutomation } from '../store/automations.store.types';
 
@@ -221,9 +256,21 @@ const { updating, remove, setEnabled } = useAutomationsActions();
 
 const showDrawer = ref<boolean>(false);
 const adjustList = ref<boolean>(false);
+const showTemplateDialog = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 const remoteFormSaving = ref<boolean>(false);
+
+// Moved when an open add form is discarded for a new one: the same route again is no navigation at all
+const formGeneration = ref<number>(0);
+
+// The add form takes its automation id and its template draft once, when it is set up: a draft generated while
+// one is open is a new form, not the same one with another query
+const detailKey = computed<string>((): string => {
+	const draft = route.query[AUTOMATION_TEMPLATE_DRAFT_QUERY];
+
+	return `${props.id ?? ''}:${typeof draft === 'string' ? draft : ''}:${formGeneration.value}`;
+});
 
 const isAutomationsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.AUTOMATIONS;
@@ -244,16 +291,48 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const navigate = (name: string, params?: { id: IAutomation['id'] }): void => {
+const navigate = (name: string, params?: { id: IAutomation['id'] }, query?: Record<string, string>): void => {
 	if (isLGDevice.value) {
-		router.replace({ name, params });
+		router.replace({ name, params, query });
 	} else {
-		router.push({ name, params });
+		router.push({ name, params, query });
 	}
 };
 
 const onFormSaving = (saving: boolean): void => {
 	remoteFormSaving.value = saving;
+};
+
+// Whether what the form in the drawer holds may be thrown away: at once when nothing was changed, otherwise
+// when the user says so
+const mayDiscardForm = async (): Promise<boolean> => {
+	if (!remoteFormChanged.value) {
+		return true;
+	}
+
+	try {
+		await ElMessageBox.confirm(t('automations.texts.confirmDiscard'), t('automations.headings.discard'), {
+			confirmButtonText: t('automations.buttons.yes.title'),
+			cancelButtonText: t('automations.buttons.no.title'),
+			type: 'warning',
+		});
+
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+// Another form takes the place of the one in the drawer only when that one may go: never while it is being
+// saved, and after the same question closing the drawer asks when it holds changes. Asked before the template
+// dialog opens, so a "no" leaves the form - and the flow it was generated with - as they are, and no new draft
+// is made only to be thrown away.
+const mayReplaceForm = async (): Promise<boolean> => {
+	if (remoteFormSaving.value) {
+		return false;
+	}
+
+	return mayDiscardForm();
 };
 
 const onCloseDrawer = (done?: () => void): void => {
@@ -271,27 +350,13 @@ const onCloseDrawer = (done?: () => void): void => {
 		return;
 	}
 
-	if (!remoteFormChanged.value) {
-		navigate(RouteNames.AUTOMATIONS);
-
-		done?.();
-
-		return;
-	}
-
-	ElMessageBox.confirm(t('automations.texts.confirmDiscard'), t('automations.headings.discard'), {
-		confirmButtonText: t('automations.buttons.yes.title'),
-		cancelButtonText: t('automations.buttons.no.title'),
-		type: 'warning',
-	})
-		.then((): void => {
+	mayDiscardForm().then((discard: boolean): void => {
+		if (discard) {
 			navigate(RouteNames.AUTOMATIONS);
 
 			done?.();
-		})
-		.catch((): void => {
-			// Just ignore it
-		});
+		}
+	});
 };
 
 const onAutomationEdit = (id: IAutomation['id']): void => {
@@ -320,7 +385,34 @@ const onResetFilters = (): void => {
 };
 
 const onAutomationCreate = (): void => {
-	navigate(RouteNames.AUTOMATIONS_ADD);
+	mayReplaceForm().then((replace: boolean): void => {
+		if (!replace) {
+			return;
+		}
+
+		// Already on the add route: the form it shows was let go, so a new one takes its place. What the
+		// discarded one reported is not about the new one, which starts unchanged.
+		if (route.name === RouteNames.AUTOMATIONS_ADD) {
+			formGeneration.value += 1;
+			remoteFormChanged.value = false;
+		}
+
+		navigate(RouteNames.AUTOMATIONS_ADD);
+	});
+};
+
+const onAutomationFromTemplate = (): void => {
+	mayReplaceForm().then((replace: boolean): void => {
+		if (replace) {
+			showTemplateDialog.value = true;
+		}
+	});
+};
+
+// The generated flow waits under the id the new automation gets: the add form starts from its name and mode,
+// and the editor opens with the flow once the automation is created
+const onTemplateGenerated = (draftId: string): void => {
+	navigate(RouteNames.AUTOMATIONS_ADD, undefined, { [AUTOMATION_TEMPLATE_DRAFT_QUERY]: draftId });
 };
 
 const onAdjustList = (): void => {

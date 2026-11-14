@@ -5,7 +5,7 @@
 			:to="`#${teleportTarget}`"
 		>
 			<el-button
-				v-bind="props"
+				v-bind="{ ...props, ...$attrs }"
 				:size="props.small ? 'small' : 'large'"
 				:disabled="props.disabled"
 				:class="[
@@ -30,7 +30,7 @@
 	</template>
 	<template v-else>
 		<el-button
-			v-bind="props"
+			v-bind="{ ...props, ...$attrs }"
 			:size="props.small ? 'small' : 'large'"
 			:disabled="props.disabled"
 			:class="[
@@ -64,6 +64,9 @@ import { AppBarButtonAlign, type AppBarButtonProps } from './app-bar-button.type
 
 defineOptions({
 	name: 'AppBarButton',
+	// A teleported button is not the root of the component, so attributes - an accessible name above all - are
+	// handed to the button explicitly in both modes
+	inheritAttrs: false,
 });
 
 const props = withDefaults(defineProps<AppBarButtonProps>(), {

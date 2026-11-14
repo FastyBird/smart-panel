@@ -70,6 +70,20 @@ describe('useAutomationAddForm', () => {
 		expect(modeOptions.value[0]).toMatchObject({ label: 'automations.modes.single.title', description: 'automations.modes.single.description' });
 	});
 
+	it('starts from the name and mode of a template, and counts as changed from the start', async () => {
+		const { model, formChanged } = useAutomationAddForm({ id: automationId, initial: { name: 'Leak alarm', mode: AutomationMode.parallel } });
+
+		expect(model).toEqual({ id: automationId, name: 'Leak alarm', description: '', spaceId: null, mode: AutomationMode.parallel });
+		expect(formChanged.value).toBe(true);
+
+		model.name = '';
+
+		await nextTick();
+
+		// The flow generated from the template is lost with the form even when the fields are emptied
+		expect(formChanged.value).toBe(true);
+	});
+
 	it('notices a changed form', async () => {
 		const { model, formChanged } = useAutomationAddForm({ id: automationId });
 
