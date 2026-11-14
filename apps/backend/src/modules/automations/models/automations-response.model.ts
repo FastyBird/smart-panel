@@ -8,6 +8,7 @@ import { AutomationEntity } from '../entities/automations.entity';
 
 import { AutomationRunSummaryModel } from './automation-runs.model';
 import { AutomationRuntimeModel } from './automation-runtime.model';
+import { AutomationTemplateDraftModel, AutomationTemplateModel } from './automation-templates.model';
 import { AutomationTriggerResultModel } from './automation-trigger-result.model';
 import { AutomationSummaryModel } from './automations.model';
 import { AutomationGraphValidationModel } from './graph-validation.model';
@@ -118,4 +119,31 @@ export class AutomationRunResponseModel extends BaseSuccessResponseModel<Automat
 	})
 	@Expose()
 	declare data: AutomationRunEntity;
+}
+
+/**
+ * Response wrapper for array of AutomationTemplateModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResTemplates' })
+export class AutomationTemplatesResponseModel extends BaseSuccessResponseModel<AutomationTemplateModel[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(AutomationTemplateModel) },
+	})
+	@Expose()
+	declare data: AutomationTemplateModel[];
+}
+
+/**
+ * Response wrapper for AutomationTemplateDraftModel
+ */
+@ApiSchema({ name: 'AutomationsModuleResTemplateDraft' })
+export class AutomationTemplateDraftResponseModel extends BaseSuccessResponseModel<AutomationTemplateDraftModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => AutomationTemplateDraftModel,
+	})
+	@Expose()
+	declare data: AutomationTemplateDraftModel;
 }

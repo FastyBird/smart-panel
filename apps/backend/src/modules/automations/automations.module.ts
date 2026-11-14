@@ -1,4 +1,7 @@
+import { join } from 'path';
+
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
@@ -24,6 +27,7 @@ import { AUTOMATIONS_SWAGGER_EXTRA_MODELS } from './automations.openapi';
 import { AutomationsController } from './controllers/automations.controller';
 import { AutomationNodeTypesController } from './controllers/node-types.controller';
 import { AutomationRunsController } from './controllers/runs.controller';
+import { AutomationTemplatesController } from './controllers/templates.controller';
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
 import { AutomationRunEntity } from './entities/automation-runs.entity';
 import { AutomationEntity } from './entities/automations.entity';
@@ -42,6 +46,7 @@ import { AutomationsModuleResetService } from './services/module-reset.service';
 import { AutomationNodeTypeRegistryService } from './services/node-type-registry.service';
 import { AutomationStateTrackerService } from './services/state-tracker.service';
 import { AutomationTimeSourceService } from './services/time-source.service';
+import { AUTOMATION_TEMPLATES_LOCATIONS, AutomationTemplatesService } from './templates/automation-templates.service';
 
 @ApiTag({
 	tagName: AUTOMATIONS_MODULE_NAME,
@@ -51,6 +56,7 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([AutomationEntity, AutomationRunEntity]),
+		NestConfigModule,
 		DevicesModule,
 		SpacesModule,
 		ScenesModule,
@@ -58,7 +64,12 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 		WebsocketModule,
 		SeedModule,
 	],
-	controllers: [AutomationsController, AutomationNodeTypesController, AutomationRunsController],
+	controllers: [
+		AutomationsController,
+		AutomationNodeTypesController,
+		AutomationRunsController,
+		AutomationTemplatesController,
+	],
 	providers: [
 		// Core services
 		AutomationsService,
@@ -72,6 +83,15 @@ import { AutomationTimeSourceService } from './services/time-source.service';
 		AutomationEngineService,
 		// Built-in cards
 		AutomationBuiltInNodeTypesService,
+		// Templates
+		{
+			provide: AUTOMATION_TEMPLATES_LOCATIONS,
+			useValue: {
+				builtinDirectory: join(__dirname, 'templates/definitions'),
+				schemaPath: join(__dirname, 'templates/schema/automation-templates.schema.json'),
+			},
+		},
+		AutomationTemplatesService,
 		// Listeners
 		ReferenceCleanupListener,
 		WebsocketExchangeListener,
@@ -104,13 +124,17 @@ export class AutomationsModule implements OnModuleInit {
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly engine: AutomationEngineService,
 		private readonly safety: AutomationSafetyService,
+		private readonly templates: AutomationTemplatesService,
 	) {}
 
-	onModuleInit(): void {
+	async onModuleInit(): Promise<void> {
 		// Register the node types the module itself provides
 		for (const nodeType of this.builtInNodeTypes.create()) {
 			this.nodeTypeRegistry.register(nodeType);
 		}
+
+		// Templates are checked against the node types, so they are loaded once the module registered its own
+		await this.templates.load();
 
 		// No action of any run is executed before the safety policy let it through
 		this.engine.setActionPolicy(this.safety.checkAction);
@@ -182,6 +206,7 @@ The module stores, validates and runs automations. It provides the first set of 
 - **Run history** — every run leaves a record with its trace: what started it, the blocks it reached, the output each took, the value each condition saw and what each action answered. The last 50 runs of an automation are kept, for at most 30 days
 - **Interrupted runs stay visible** — a run waiting on a Delay is stored as \`running\`; when the backend restarts or loses power before it ends, it is shown as \`interrupted\`, which tells why a delayed action never happened
 - **Live runs** — \`AutomationsModule.Run.Started\` and \`AutomationsModule.Run.Completed\` are announced to owners and admins; the steps of a run (\`AutomationsModule.Run.Step\`) are sent only to the clients that watch that automation with the \`AutomationsModule.WatchAutomation\` websocket command
+- **Templates** — the common automations (motion light, door open reminder, away heating setback, leak alarm) are created from a few questions instead of a blank canvas. Templates are YAML definition files; your own are YAML files named \`module.automations.*.yaml\` in the configuration directory (or every \`*.yaml\` file under \`FB_AUTOMATIONS_TEMPLATES_PATH\` when it is set), and a template with the same ID replaces the built-in one. A template generates an ordinary graph that keeps no link to the template
 - **Space assignment** — an automation can be assigned to a room or zone for filtering
 - **Owner and admin only** — automations can be read and changed only by owners and admins
 - **Factory reset & seed hooks** — registers itself with the platform reset / seed pipeline
@@ -192,6 +217,8 @@ The module stores, validates and runs automations. It provides the first set of 
 - \`POST /api/v1/modules/automations/automations\` — create an automation
 - \`POST /api/v1/modules/automations/automations/validate\` — validate a graph without saving it
 - \`GET /api/v1/modules/automations/node-types\` — list the registered node types
+- \`GET /api/v1/modules/automations/templates\` — list the automation templates
+- \`POST /api/v1/modules/automations/templates/:id/generate\` — generate the draft of a new automation from a template and the answers to its questions, without storing anything
 - \`GET /api/v1/modules/automations/automations/:id\` — read a single automation with its graph
 - \`PATCH /api/v1/modules/automations/automations/:id\` — update an automation (requires the current revision)
 - \`DELETE /api/v1/modules/automations/automations/:id\` — delete an automation

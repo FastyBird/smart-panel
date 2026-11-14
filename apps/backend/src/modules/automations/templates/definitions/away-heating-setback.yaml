@@ -1,0 +1,66 @@
+version: '1.0'
+templates:
+  - id: away-heating-setback
+    name: Away heating setback
+    description: Lowers the heating while the house is in away mode and restores it when the house leaves away mode.
+    icon: mdi:radiator
+    # Setting back and restoring are independent and both end at once, so they may run side by side
+    mode: parallel
+    parameters:
+      - id: heater
+        type: property
+        label: Heating setpoint
+        description: The target temperature of the heater.
+        access: writable
+        channel_categories: [heater]
+        property_categories: [temperature]
+        data_types: [float, int, uint, short, ushort, char, uchar]
+      - id: away_temperature
+        type: number
+        label: Temperature while away
+        min: 5
+        max: 30
+        step: 0.5
+        unit: °C
+        default: 16
+      - id: home_temperature
+        type: number
+        label: Temperature when back
+        min: 5
+        max: 30
+        step: 0.5
+        unit: °C
+        default: 21
+    graph:
+      nodes:
+        - id: n1
+          type: house-mode.changed
+          position: { x: 0, y: 0 }
+          config:
+            to: away
+        - id: n2
+          type: device.property.set
+          position: { x: 360, y: 0 }
+          config:
+            writes:
+              - device_id: { $param: heater.device_id }
+                channel_id: { $param: heater.channel_id }
+                property_id: { $param: heater.property_id }
+                value: { $param: away_temperature }
+        - id: n3
+          type: house-mode.changed
+          position: { x: 0, y: 240 }
+          config:
+            from: away
+        - id: n4
+          type: device.property.set
+          position: { x: 360, y: 240 }
+          config:
+            writes:
+              - device_id: { $param: heater.device_id }
+                channel_id: { $param: heater.channel_id }
+                property_id: { $param: heater.property_id }
+                value: { $param: home_temperature }
+      edges:
+        - { id: e1, source: n1, source_port: out, target: n2, target_port: in }
+        - { id: e2, source: n3, source_port: out, target: n4, target_port: in }

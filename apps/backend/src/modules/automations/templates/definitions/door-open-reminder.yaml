@@ -1,0 +1,47 @@
+version: '1.0'
+templates:
+  - id: door-open-reminder
+    name: Door open reminder
+    description: Sends a notification when a door or window has been left open for a while.
+    icon: mdi:door-open
+    mode: restart
+    parameters:
+      - id: contact
+        type: property
+        label: Door or window sensor
+        description: The contact sensor of the door or window.
+        access: readable
+        channel_categories: [contact]
+        property_categories: [detected]
+        data_types: [bool]
+      - id: open_for
+        type: duration
+        label: Remind when open for
+        min: 30
+        max: 86400
+        default: 300
+      - id: title
+        type: text
+        label: Notification title
+        max_length: 120
+        default: A door has been left open
+    graph:
+      nodes:
+        - id: n1
+          type: device.property.changed
+          position: { x: 0, y: 0 }
+          config:
+            device_id: { $param: contact.device_id }
+            channel_id: { $param: contact.channel_id }
+            property_id: { $param: contact.property_id }
+            # A contact sensor reports "detected" while it is open
+            to: true
+            for_seconds: { $param: open_for }
+        - id: n2
+          type: notification.send
+          position: { x: 360, y: 0 }
+          config:
+            severity: warning
+            title: { $param: title }
+      edges:
+        - { id: e1, source: n1, source_port: out, target: n2, target_port: in }

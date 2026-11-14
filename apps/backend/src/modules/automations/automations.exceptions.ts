@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 
 import { AutomationGraphSaveIssue } from './graph/save-policy';
+import { AutomationTemplateParameterIssue } from './templates/template-generator';
 
 export class AutomationsException extends Error {
 	public constructor(message: string) {
@@ -71,5 +72,27 @@ export class AutomationsGraphValidationException extends AutomationsValidationEx
 	) {
 		super(message);
 		this.name = 'AutomationsGraphValidationException';
+	}
+}
+
+/** An automation template that is not loaded */
+export class AutomationsTemplateNotFoundException extends AutomationsNotFoundException {
+	public constructor(message: string) {
+		super(message);
+		this.name = 'AutomationsTemplateNotFoundException';
+	}
+}
+
+/**
+ * Answers to the questions of a template that were refused. Carries the issues so the caller can show each of
+ * them at its question.
+ */
+export class AutomationsTemplateParametersException extends AutomationsValidationException {
+	public constructor(
+		message: string,
+		public readonly issues: AutomationTemplateParameterIssue[],
+	) {
+		super(message);
+		this.name = 'AutomationsTemplateParametersException';
 	}
 }
