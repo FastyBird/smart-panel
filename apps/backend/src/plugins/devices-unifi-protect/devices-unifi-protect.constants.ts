@@ -73,3 +73,9 @@ export const PROTECT_ENDPOINTS = [
 ] as const;
 
 export type ProtectEndpoint = (typeof PROTECT_ENDPOINTS)[number];
+
+/**
+ * Injection token for an extra trusted CA (PEM) used by tests. The module registers it with `useValue: undefined`
+ * so that tests can override it; production never sets it.
+ */
+export const PROTECT_TRUSTED_CA = Symbol('PROTECT_TRUSTED_CA');
