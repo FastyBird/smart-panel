@@ -147,6 +147,18 @@ chown -R root:root "${APP_BASE_DIR}"
 chmod -R go-w "${APP_BASE_DIR}"
 chown -R smart-panel:smart-panel "${DATA_DIR}"
 
+# Install go2rtc (camera relay). --strict fails the image build instead of
+# shipping an image without the binary. --strict still exits 0 when an opt-out
+# (FB_SKIP_GO2RTC or the skip marker) is active in the build environment, so the
+# binary is checked explicitly.
+echo "Installing go2rtc..."
+if [ ! -f "${APP_INSTALL_DIR}/dist/go2rtc/install-go2rtc.sh" ] \
+	|| ! sh "${APP_INSTALL_DIR}/dist/go2rtc/install-go2rtc.sh" --strict \
+	|| [ ! -x /usr/local/lib/smart-panel/go2rtc/go2rtc ]; then
+	echo "ERROR: go2rtc installation failed" >&2
+	exit 1
+fi
+
 # Clean up temp files
 rm -rf /tmp/smart-panel-files
 

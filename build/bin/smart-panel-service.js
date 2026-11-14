@@ -745,6 +745,10 @@ program
 			await installer.runMigrations(dataDir);
 			spinner.succeed('Migrations complete');
 
+			// Camera relay binary from the new package, installed before the service restarts: the cameras relay checks
+			// for the binary once and does not retry until a config change or restart. A failure is only a warning.
+			installer.installGo2rtc();
+
 			// Start service if it was running before update
 			if (wasRunning) {
 				spinner.start('Starting service...');

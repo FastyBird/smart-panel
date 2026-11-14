@@ -12,6 +12,7 @@
 #   --version         Install specific version (e.g., --version 1.0.0)
 #   --port            Set HTTP port (default: 3000)
 #   --with-tailscale  Install Tailscale for remote access (daemon left disabled)
+#   --skip-go2rtc     Do not install the go2rtc camera relay (also skips it on later updates)
 #
 
 set -e
@@ -36,6 +37,7 @@ BETA=false
 PORT=$DEFAULT_PORT
 WITH_TAILSCALE=false
 TAILSCALE_INSTALLED=false
+SKIP_GO2RTC=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -57,6 +59,10 @@ while [[ $# -gt 0 ]]; do
 			;;
 		--with-tailscale)
 			WITH_TAILSCALE=true
+			shift
+			;;
+		--skip-go2rtc)
+			SKIP_GO2RTC=true
 			shift
 			;;
 		*)
@@ -138,7 +144,8 @@ get_version_id() {
 }
 
 get_arch() {
-	local arch=$(uname -m)
+	local arch
+	arch=$(uname -m)
 	case $arch in
 		armv7l|armv6l)
 			echo "armv7"
@@ -158,7 +165,8 @@ get_arch() {
 install_build_deps() {
 	print_step "Installing build dependencies..."
 
-	local distro=$(get_distro)
+	local distro
+	distro=$(get_distro)
 
 	case $distro in
 		debian|ubuntu|raspbian)
@@ -194,8 +202,10 @@ install_influxdb() {
 
 	print_step "Installing InfluxDB 1.8..."
 
-	local distro=$(get_distro)
-	local arch=$(uname -m)
+	local distro
+	distro=$(get_distro)
+	local arch
+	arch=$(uname -m)
 
 	case $distro in
 		debian|ubuntu|raspbian)
@@ -227,7 +237,7 @@ REPO
 
 	# Wait for InfluxDB to be ready
 	local ready=false
-	for i in $(seq 1 15); do
+	for _ in $(seq 1 15); do
 		if influx -execute "SHOW DATABASES" >/dev/null 2>&1; then
 			ready=true
 			break
@@ -252,7 +262,8 @@ install_nodejs() {
 	print_step "Checking Node.js installation..."
 
 	if command -v node &> /dev/null; then
-		local node_version=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+		local node_version
+		node_version=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
 		if [[ $node_version -ge $NODE_MIN_VERSION ]]; then
 			print_success "Node.js v$(node -v | cut -d'v' -f2) is installed"
 			return 0
@@ -265,7 +276,8 @@ install_nodejs() {
 
 	print_step "Installing Node.js v$NODE_MIN_VERSION..."
 
-	local distro=$(get_distro)
+	local distro
+	distro=$(get_distro)
 
 	case $distro in
 		debian|ubuntu|raspbian)
@@ -320,6 +332,49 @@ install_smart_panel() {
 	print_success "Smart Panel package installed"
 }
 
+find_go2rtc_installer() {
+	local global_root
+	global_root=$(npm root -g) || return 1
+
+	local installer="$global_root/@fastybird/smart-panel/node_modules/@fastybird/smart-panel-backend/dist/go2rtc/install-go2rtc.sh"
+
+	[[ -f "$installer" ]] || return 1
+
+	echo "$installer"
+}
+
+# Install the go2rtc camera relay. Optional: this function never returns non-zero,
+# so a missing or failing relay cannot abort the installation.
+install_go2rtc() {
+	if [[ "$SKIP_GO2RTC" == true ]]; then
+		local marker="${FB_GO2RTC_SKIP_FILE:-/etc/smart-panel/go2rtc.skip}"
+
+		if mkdir -p "$(dirname "$marker")" && touch "$marker"; then
+			print_step "go2rtc installation skipped (--skip-go2rtc); later updates skip it too"
+		else
+			print_warning "Could not write $marker; go2rtc will be installed again on the next update"
+		fi
+
+		return 0
+	fi
+
+	print_step "Installing go2rtc camera relay..."
+
+	local installer
+	if ! installer=$(find_go2rtc_installer); then
+		print_warning "This Smart Panel release does not bundle go2rtc; camera streaming is unavailable"
+		return 0
+	fi
+
+	if sh "$installer"; then
+		print_success "go2rtc step finished"
+	else
+		print_warning "go2rtc installation failed; camera streaming is unavailable until it is installed"
+	fi
+
+	return 0
+}
+
 configure_service() {
 	print_step "Configuring Smart Panel service..."
 
@@ -336,7 +391,8 @@ configure_service() {
 install_tailscale() {
 	print_step "Installing Tailscale..."
 
-	local distro=$(get_distro)
+	local distro
+	distro=$(get_distro)
 	local installed=false
 
 	# Every branch installs from a signed vendor package source for the
@@ -346,7 +402,8 @@ install_tailscale() {
 		debian|ubuntu|raspbian)
 			# Debian-family: add the signed keyring and apt source for the
 			# detected codename ourselves (same shape as install_influxdb()).
-			local codename=$(get_codename)
+			local codename
+			codename=$(get_codename)
 
 			if [[ "$codename" == "unknown" ]]; then
 				print_warning "Could not determine the ${distro} codename for the Tailscale apt source"
@@ -374,7 +431,8 @@ install_tailscale() {
 			fi
 			;;
 		centos|rhel|rocky|almalinux)
-			local version_id=$(get_version_id)
+			local version_id
+			version_id=$(get_version_id)
 			local major="${version_id%%.*}"
 			[[ -z "$major" || "$major" == "unknown" ]] && major="9"
 
@@ -412,7 +470,8 @@ install_tailscale() {
 }
 
 print_completion() {
-	local ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
+	local ip_addr
+	ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
 	[[ -z "$ip_addr" ]] && ip_addr="localhost"
 
 	echo ""
@@ -450,8 +509,10 @@ main() {
 	print_header
 
 	# System info
-	local distro=$(get_distro)
-	local arch=$(get_arch)
+	local distro
+	distro=$(get_distro)
+	local arch
+	arch=$(get_arch)
 	print_step "System: $distro ($arch)"
 	echo ""
 
@@ -466,6 +527,7 @@ main() {
 
 	# Install Smart Panel
 	install_smart_panel
+	install_go2rtc
 	configure_service
 
 	# Optional: Tailscale for remote access. Failure here must not abort

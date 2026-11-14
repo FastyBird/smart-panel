@@ -24,6 +24,7 @@ import {
 	getTypeOrmCliPath,
 	hasSystemd,
 	isRoot,
+	logger,
 	readFile,
 	setOwnership,
 	userExists,
@@ -35,6 +36,8 @@ const __dirname = dirname(__filename);
 
 const SERVICE_NAME = 'smart-panel';
 const SYSTEMD_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
+// Matches the update worker budget: three curl attempts of 300 s each, plus slack.
+const GO2RTC_INSTALL_TIMEOUT_MS = 960_000;
 
 export class LinuxInstaller implements BaseInstaller {
 	readonly platform = 'linux';
@@ -143,6 +146,10 @@ export class LinuxInstaller implements BaseInstaller {
 		// Set ownership after all file-creating operations complete
 		// This ensures database files created by migrations are owned by the service user
 		setOwnership(dataDir, user);
+
+		// Camera relay binary, installed before the service starts: the cameras relay checks for the binary once and
+		// does not retry until a config change or restart. Never fails the installation (snapshots are the fallback).
+		this.installGo2rtc();
 
 		// Start service if not skipped
 		if (!noStart) {
@@ -565,6 +572,36 @@ polkit.addRule(function (action, subject) {
 			],
 			{ stdio: 'inherit' },
 		);
+	}
+
+	/**
+	 * Installs the pinned go2rtc binary with the installer bundled in the backend release. Runs as root on a
+	 * root-owned package tree, before the service is (re)started so the cameras relay finds the binary. Every failure
+	 * is a warning: neither installation nor update may depend on go2rtc. The installer honours its own opt-outs
+	 * (FB_SKIP_GO2RTC=1, /etc/smart-panel/go2rtc.skip).
+	 */
+	installGo2rtc(): void {
+		const installer = join(getBackendPath(this.packageRoot), 'dist', 'go2rtc', 'install-go2rtc.sh');
+
+		if (!existsSync(installer)) {
+			logger.warning(`go2rtc installer not found (${installer}); camera streaming will use snapshots`);
+
+			return;
+		}
+
+		logger.step('Installing go2rtc camera relay...');
+
+		try {
+			execFileSync('/bin/sh', [installer], {
+				stdio: ['ignore', 'inherit', 'inherit'],
+				timeout: GO2RTC_INSTALL_TIMEOUT_MS,
+				killSignal: 'SIGKILL',
+			});
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+
+			logger.warning(`go2rtc installation failed (${reason}); camera streaming will use snapshots`);
+		}
 	}
 
 	private assertNoActivePrivilegedJobs(): void {

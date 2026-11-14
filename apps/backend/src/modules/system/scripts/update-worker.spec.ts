@@ -1,4 +1,5 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
 	chmodSync,
 	copyFileSync,
@@ -8,13 +9,14 @@ import {
 	readFileSync,
 	readdirSync,
 	readlinkSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	symlinkSync,
 	writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { DataSource } from 'typeorm';
 
 const WORKER = join(__dirname, 'update-worker.sh');
@@ -40,12 +42,22 @@ interface Fixture {
 	archiveSha256: string;
 }
 
+// Single-quotes a value for a generated shell script; an apostrophe in a path must not end the literal.
+function shq(value: string): string {
+	return "'" + value.replaceAll("'", "'\\''") + "'";
+}
+
 function writeExecutable(path: string, contents: string): void {
 	writeFileSync(path, contents, { mode: 0o700 });
 	chmodSync(path, 0o700);
 }
 
-function createFixture(): Fixture {
+interface FixtureOptions {
+	// dist/go2rtc/install-go2rtc.sh in the release archive: a script with this content.
+	go2rtcInstaller?: { content: string };
+}
+
+function createFixture(options: FixtureOptions = {}): Fixture {
 	const root = mkdtempSync(join(tmpdir(), 'smart-panel-update-worker-'));
 	const bin = join(root, 'bin');
 	const imageBase = join(root, 'images');
@@ -87,6 +99,12 @@ function createFixture(): Fixture {
 	copyFileSync(WORKER, installedWorker);
 	chmodSync(installedWorker, 0o700);
 	symlinkSync('v1.1.0-alpha.12', join(imageBase, 'current'));
+
+	if (options.go2rtcInstaller) {
+		mkdirSync(join(archiveRoot, 'dist', 'go2rtc'), { recursive: true });
+		const installer = join(archiveRoot, 'dist', 'go2rtc', 'install-go2rtc.sh');
+		writeExecutable(installer, options.go2rtcInstaller.content);
+	}
 
 	execFileSync('tar', ['-czf', archive, '-C', archiveRoot, '.']);
 
@@ -355,19 +373,16 @@ function runWorker(fixture: Fixture, overrides: Record<string, string> = {}): { 
 		rmSync(join(fixture.bin, 'node'), { force: true });
 	}
 
-	try {
-		const output = execFileSync('bash', [fixture.installedWorker, '1.1.0-alpha.15'], {
-			env,
-			encoding: 'utf8',
-			stdio: ['ignore', 'pipe', 'pipe'],
-		});
+	const result = spawnSync('bash', [fixture.installedWorker, '1.1.0-alpha.15'], {
+		env,
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'pipe'],
+	});
 
-		return { status: 'success', output };
-	} catch (error) {
-		const result = error as { stdout?: string; stderr?: string; status?: number };
-
-		return { status: String(result.status ?? 'unknown'), output: `${result.stdout ?? ''}${result.stderr ?? ''}` };
-	}
+	return {
+		status: result.status === 0 ? 'success' : String(result.status ?? 'unknown'),
+		output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
+	};
 }
 
 function createRealCliArchive(fixture: Fixture): { archive: string; database: string } {
@@ -1327,4 +1342,284 @@ describe('legacy image update worker lifecycle', () => {
 			rmSync(fixture.root, { recursive: true, force: true });
 		}
 	}, 15_000);
+});
+
+describe('go2rtc installer hook', () => {
+	// The helper-managed (root) branch cannot run the whole worker without root and systemd, so the hook function is
+	// extracted from the deployed script and executed on its own, exactly as written.
+	const hookFunction = (): string => {
+		const match = readFileSync(WORKER, 'utf8').match(/^install_go2rtc_nonfatal\(\) \{\n[\s\S]*?\n\}\n/m);
+		expect(match).not.toBeNull();
+
+		return match[0];
+	};
+
+	// `set -e` mirrors the worker: the hook must neither abort nor change the caller's exit status.
+	const runHook = (
+		root: string,
+		env: Record<string, string>,
+		releaseRoot: string,
+	): { code: number | null; stdout: string; stderr: string; elapsedMs: number } => {
+		const harness = join(root, 'hook-harness.sh');
+		writeFileSync(
+			harness,
+			`#!/bin/bash
+set -e
+HELPER_MANAGED="\${HELPER_MANAGED:-0}"
+GO2RTC_INSTALL_TIMEOUT_SECONDS="\${GO2RTC_INSTALL_TIMEOUT_SECONDS:-960}"
+${hookFunction()}
+install_go2rtc_nonfatal "$1"
+printf 'after-hook\\n'
+`,
+		);
+		const started = Date.now();
+		// The privileged helper sets umask 027 and the worker inherits it.
+		const result = spawnSync('bash', ['-c', 'umask 027; exec bash "$0" "$@"', harness, releaseRoot], {
+			env: { ...process.env, ...env },
+			encoding: 'utf8',
+			timeout: 25_000,
+		});
+
+		return { code: result.status, stdout: result.stdout, stderr: result.stderr, elapsedMs: Date.now() - started };
+	};
+
+	const makeRelease = (root: string, installer: { content: string } | { symlinkTarget: string } | null): string => {
+		const release = join(root, 'release');
+		mkdirSync(join(release, 'dist', 'go2rtc'), { recursive: true });
+		if (installer && 'content' in installer) {
+			writeExecutable(join(release, 'dist', 'go2rtc', 'install-go2rtc.sh'), installer.content);
+		} else if (installer && 'symlinkTarget' in installer) {
+			symlinkSync(installer.symlinkTarget, join(release, 'dist', 'go2rtc', 'install-go2rtc.sh'));
+		}
+
+		return release;
+	};
+
+	// The real installer refuses to install below a directory that is group- or world-writable anywhere up to /
+	// (/tmp is on Linux), so the fixtures live in the first base directory whose whole parent chain it accepts.
+	const chainIsTrusted = (dir: string): boolean => {
+		let current = realpathSync(dir);
+
+		for (;;) {
+			const info = statSync(current);
+
+			if ((info.uid !== 0 && info.uid !== process.getuid?.()) || (info.mode & 0o022) !== 0) {
+				return false;
+			}
+
+			const parent = dirname(current);
+
+			if (parent === current) {
+				return true;
+			}
+
+			current = parent;
+		}
+	};
+
+	// Candidates in order: FB_GO2RTC_TEST_SANDBOX (explicit override), the OS temp directory, a user-owned cache under
+	// $HOME, and a cache directory inside the checkout.
+	const trustedBase = (): string => {
+		const checkoutCache = join(__dirname, '..', '..', '..', '..', 'node_modules', '.cache');
+		const candidates = [
+			process.env.FB_GO2RTC_TEST_SANDBOX,
+			tmpdir(),
+			homedir() ? join(homedir(), '.cache', 'smart-panel-tests') : undefined,
+			checkoutCache,
+		];
+
+		for (const candidate of candidates) {
+			if (!candidate) {
+				continue;
+			}
+
+			try {
+				mkdirSync(candidate, { recursive: true, mode: 0o700 });
+
+				if (chainIsTrusted(candidate)) {
+					return candidate;
+				}
+			} catch {
+				// not usable here, try the next candidate
+			}
+		}
+
+		throw new Error(
+			'no directory with a trusted parent chain is available for the go2rtc hook fixtures; set FB_GO2RTC_TEST_SANDBOX to a directory whose ancestors are not group- or world-writable',
+		);
+	};
+
+	const withRoot = (run: (root: string) => void): void => {
+		const root = mkdtempSync(join(trustedBase(), 'smart-panel-go2rtc-hook-'));
+		try {
+			run(root);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	};
+
+	it('runs the release installer on the helper-managed path with a closed stdin', () => {
+		withRoot((root) => {
+			const ran = join(root, 'go2rtc-ran');
+			const release = makeRelease(root, {
+				content: `#!/bin/sh\nif read -r line; then echo "stdin-open" > ${shq(ran)}; else echo "stdin-closed $0" > ${shq(ran)}; fi\n`,
+			});
+			const result = runHook(root, { HELPER_MANAGED: '1' }, release);
+
+			expect(result.code).toBe(0);
+			expect(result.stdout).toContain('after-hook');
+			expect(result.stderr).not.toContain('did not complete');
+			const marker = readFileSync(ran, 'utf8');
+			expect(marker).toContain('stdin-closed');
+			expect(marker).toContain(join(release, 'dist', 'go2rtc', 'install-go2rtc.sh'));
+		});
+	});
+
+	it('leaves the installed go2rtc reachable by the service user under the helper umask', () => {
+		withRoot((root) => {
+			// The real installer, with curl and the pin replaced; a wrapper supplies the --dir the hook cannot pass.
+			const realInstaller = join(__dirname, '..', '..', '..', '..', '..', '..', 'build', 'go2rtc', 'install-go2rtc.sh');
+			const binary = '#!/bin/sh\necho "go2rtc version 9.9.9 (stub) linux/test"\n';
+			const digest = createHash('sha256').update(binary).digest('hex');
+			const parent = join(root, 'usr-local-lib-smart-panel');
+			const installDir = join(parent, 'go2rtc');
+			const stubBin = join(root, 'stub-bin');
+			mkdirSync(stubBin);
+			writeFileSync(join(root, 'served'), binary);
+			writeExecutable(
+				join(stubBin, 'curl'),
+				`#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && out="$2"; shift; done\ncp ${shq(join(root, 'served'))} "$out"\n`,
+			);
+			writeFileSync(
+				join(root, 'pin.env'),
+				[
+					'GO2RTC_VERSION=9.9.9',
+					...['AMD64', 'ARM64', 'ARM'].map((arch) => `GO2RTC_SHA256_LINUX_${arch}=${digest}`),
+				].join('\n') + '\n',
+			);
+			const release = makeRelease(root, {
+				content: `#!/bin/sh\nexec /bin/sh ${shq(realInstaller)} --arch amd64 --dir ${shq(installDir)}\n`,
+			});
+			copyFileSync(join(dirname(realInstaller), 'LICENSE'), join(release, 'dist', 'go2rtc', 'LICENSE'));
+			const result = runHook(
+				root,
+				{
+					HELPER_MANAGED: '1',
+					PATH: `${stubBin}:${process.env.PATH ?? ''}`,
+					FB_GO2RTC_PIN_FILE: join(root, 'pin.env'),
+					FB_GO2RTC_SKIP_FILE: join(root, 'no-such-marker'),
+				},
+				release,
+			);
+
+			expect(result.code).toBe(0);
+			expect(result.stderr).not.toContain('did not complete');
+			expect(statSync(parent).mode & 0o777).toBe(0o755);
+			expect(statSync(installDir).mode & 0o777).toBe(0o755);
+			expect(statSync(join(installDir, 'go2rtc')).mode & 0o777).toBe(0o755);
+		});
+	});
+
+	it('returns success and warns when the installer fails', () => {
+		withRoot((root) => {
+			const release = makeRelease(root, { content: '#!/bin/sh\nexit 7\n' });
+			const result = runHook(root, { HELPER_MANAGED: '1' }, release);
+
+			expect(result.code).toBe(0);
+			expect(result.stdout).toContain('after-hook');
+			expect(result.stderr).toContain('go2rtc installer did not complete; cameras fall back to snapshots');
+		});
+	});
+
+	it('returns success when the release has no installer', () => {
+		withRoot((root) => {
+			const release = makeRelease(root, null);
+			const result = runHook(root, { HELPER_MANAGED: '1' }, release);
+
+			expect(result.code).toBe(0);
+			expect(result.stdout).toContain('after-hook');
+			expect(result.stderr).toContain('go2rtc installer not found in this release; cameras fall back to snapshots');
+		});
+	});
+
+	it('bounds a hanging installer by the configured timeout', () => {
+		withRoot((root) => {
+			const release = makeRelease(root, { content: '#!/bin/sh\nexec sleep 30\n' });
+			const result = runHook(root, { HELPER_MANAGED: '1', GO2RTC_INSTALL_TIMEOUT_SECONDS: '1' }, release);
+
+			expect(result.code).toBe(0);
+			expect(result.elapsedMs).toBeLessThan(15_000);
+			expect(result.stdout).toContain('after-hook');
+			expect(result.stderr).toContain('go2rtc installer did not complete; cameras fall back to snapshots');
+		});
+	});
+
+	it('does not follow a symlinked installer', () => {
+		withRoot((root) => {
+			const ran = join(root, 'go2rtc-ran');
+			const target = join(root, 'elsewhere.sh');
+			writeExecutable(target, `#!/bin/sh\necho ran > ${shq(ran)}\n`);
+			const release = makeRelease(root, { symlinkTarget: target });
+			const result = runHook(root, { HELPER_MANAGED: '1' }, release);
+
+			expect(result.code).toBe(0);
+			expect(result.stdout).toContain('after-hook');
+			expect(existsSync(ran)).toBe(false);
+			expect(result.stderr).toContain('go2rtc installer not found in this release; cameras fall back to snapshots');
+		});
+	});
+
+	it('never runs a release script on the legacy sudo path and says why once', () => {
+		withRoot((root) => {
+			const ran = join(root, 'go2rtc-ran');
+			const release = makeRelease(root, { content: `#!/bin/sh\necho ran > ${shq(ran)}\n` });
+			const result = runHook(root, { HELPER_MANAGED: '0' }, release);
+
+			expect(result.code).toBe(0);
+			expect(result.stdout).toContain('after-hook');
+			expect(existsSync(ran)).toBe(false);
+			expect(
+				result.stderr.match(
+					/go2rtc is not installed by updates on this installation; install it with install-server\.sh or install-go2rtc\.sh/g,
+				),
+			).toHaveLength(1);
+		});
+	});
+
+	it('is called before the service is stopped on the image path and before native ownership on npm', () => {
+		const script = readFileSync(WORKER, 'utf8');
+		const calls = [...script.matchAll(/^\t*install_go2rtc_nonfatal "/gm)].map((match) => match.index);
+
+		expect(calls).toHaveLength(3);
+
+		const imageCall = script.indexOf('install_go2rtc_nonfatal "$NEW_VERSION_DIR"');
+		expect(imageCall).toBeGreaterThan(script.indexOf('provision_helper "$NEW_VERSION_DIR"'));
+		expect(imageCall).toBeLessThan(script.indexOf('# ── Stop/qualify service ──'));
+
+		const helperCall = script.indexOf('install_go2rtc_nonfatal "$NPM_BACKEND_ROOT"');
+		expect(helperCall).toBeGreaterThan(script.indexOf('provision_helper "$NPM_BACKEND_ROOT"'));
+		expect(helperCall).toBeLessThan(script.indexOf("mapfile -d '' native_dirs"));
+
+		const legacyCall = calls[2];
+		expect(legacyCall).toBeGreaterThan(script.indexOf('@fastybird/smart-panel@$VERSION" 2>&1'));
+		expect(legacyCall).toBeLessThan(script.indexOf('# Run database migrations\nupdate_status "migrating"'));
+	});
+
+	it('completes an image update without running a release installer on the legacy path', () => {
+		const fixture = createFixture({
+			go2rtcInstaller: { content: '#!/bin/sh\ncat "$SERVICE_STATE_FILE" > "$SERVICE_STATE_FILE.go2rtc-ran"\nexit 7\n' },
+		});
+		try {
+			const result = runWorker(fixture);
+
+			expect(result.status).toBe('success');
+			expect(readJson(fixture.statusFile).status).toBe('complete');
+			expect(result.output).toContain(
+				'go2rtc is not installed by updates on this installation; install it with install-server.sh or install-go2rtc.sh',
+			);
+			expect(existsSync(`${fixture.stateFile}.go2rtc-ran`)).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
 });

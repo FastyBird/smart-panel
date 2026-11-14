@@ -2,6 +2,7 @@ node_modules
 **/node_modules
 **/dist
 **/build
+!build/go2rtc
 **/.git
 **/.env.local
 **/.env.*.local

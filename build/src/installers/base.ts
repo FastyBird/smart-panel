@@ -84,6 +84,9 @@ export interface BaseInstaller {
 	/** Create admin user via backend CLI */
 	createAdminUser(dataDir: string, username: string, password: string): Promise<void>;
 
+	/** Install the go2rtc camera relay binary; never throws (a failure is a warning) */
+	installGo2rtc(): void;
+
 	/** Check prerequisites */
 	checkPrerequisites(): Promise<string[]>;
 
