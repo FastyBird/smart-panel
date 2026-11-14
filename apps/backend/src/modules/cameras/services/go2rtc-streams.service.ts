@@ -8,7 +8,6 @@ import { CAMERAS_MODULE_NAME, GO2RTC_STREAM_IDLE_GRACE_MS } from '../cameras.con
 import {
 	CameraUpstreamException,
 	CamerasNotFoundException,
-	Go2rtcApiError,
 	Go2rtcUnavailableException,
 	errorName,
 } from '../cameras.exceptions';
@@ -76,8 +75,8 @@ interface RetainedSecrets {
  * `GO2RTC_STREAM_IDLE_GRACE_MS` after the last viewer leaves, so a page reload reuses it.
  *
  * The source url is a secret: it lives in the go2rtc process and in the secrets registry, never in a log line, an
- * error message or a lease. A stream that could not be deleted, or whose PUT failed without an HTTP answer (it may have
- * been created), keeps its secrets registered (`retained`, by relay and name) until a later DELETE of that name on that
+ * error message or a lease. A stream that could not be deleted, or whose PUT failed (it may have
+ * been created, whatever the answer), keeps its secrets registered (`retained`, by relay and name) until a later DELETE of that name on that
  * same relay succeeds, the managed process is confirmed gone (`Go2rtcService.onManagedRunEnded`: exited and its output
  * drained, which the relay status does not prove: a child whose stop could not be confirmed may still print a source),
  * or, for an external relay only, the module is destroyed (a managed one stays until its run-ended signal, which
@@ -297,10 +296,9 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 			} catch (error) {
 				this.logger.warn(`go2rtc stream register failed name=${entry.name} error=${errorName(error)}`);
 
-				if (!(error instanceof Go2rtcApiError) || error.status === null) {
-					// No answer (timeout, reset): go2rtc may have created the stream anyway.
-					this.compensateUncertainPut(entry);
-				}
+				// Whatever the answer was (none, or an HTTP status): go2rtc creates the stream before it saves the config, so
+				// a rejected PUT (a 400 for a failed save) can still leave the stream registered.
+				this.compensateFailedPut(entry);
 
 				throw new CameraUpstreamException('Live stream could not be started');
 			}
@@ -320,11 +318,13 @@ export class Go2rtcStreamsService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
-	 * A PUT that ended without an HTTP status may have created the stream. A DELETE is queued behind the failed call
-	 * (the same name queue, so a later registration cannot be hit by it), and the secrets stay retained, and so
-	 * redactable, unless that DELETE is confirmed. An entry that was dropped meanwhile already has its DELETE queued.
+	 * Any failed PUT may have created the stream: with no HTTP status (timeout, reset) the outcome is unknown, and
+	 * go2rtc creates the stream before it saves the config, so even an HTTP error (400 for a failed save) can leave it
+	 * live. A DELETE is queued behind the failed call (the same name queue, so a later registration cannot be hit by
+	 * it), and the secrets stay retained, and so redactable, until that DELETE is confirmed (a 404 counts as deleted).
+	 * An entry that was dropped meanwhile already has its DELETE queued.
 	 */
-	private compensateUncertainPut(entry: StreamEntry): void {
+	private compensateFailedPut(entry: StreamEntry): void {
 		if (entry.dropped) {
 			return;
 		}

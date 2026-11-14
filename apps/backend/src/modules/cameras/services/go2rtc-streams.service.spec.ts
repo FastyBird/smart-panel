@@ -258,20 +258,46 @@ describe('Go2rtcStreamsService', () => {
 			expect((result as Error).message).toBe('Live stream could not be started');
 		}
 
+		await flush();
+
 		expect(secrets.list()).toEqual([]);
 
 		await expect(streams.acquire(camera, provider, 'medium')).resolves.toMatchObject({ streamName: name });
 		expect(client.putStream).toHaveBeenCalledTimes(2);
 	});
 
-	it('sends no compensating DELETE when the PUT was answered with an HTTP error', async () => {
-		client.putStream.mockRejectedValueOnce(new Go2rtcApiError(500));
+	describe('a PUT that is answered with an HTTP error', () => {
+		it('queues a compensating DELETE (go2rtc creates the stream before saving the config) and retains the source until it settles', async () => {
+			let confirmDelete!: () => void;
 
-		await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
-		await flush();
+			client.putStream.mockRejectedValueOnce(new Go2rtcApiError(400));
+			client.deleteStream.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					confirmDelete = resolve;
+				}),
+			);
 
-		expect(client.deleteStream).not.toHaveBeenCalled();
-		expect(secrets.list()).toEqual([]);
+			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await flush();
+
+			expect(client.deleteStream).toHaveBeenCalledWith(name);
+			expect(secrets.list()).toContain(SENT_URL);
+
+			confirmDelete();
+			await flush();
+
+			expect(secrets.list()).toEqual([]);
+		});
+
+		it('keeps the source retained when the compensating DELETE fails', async () => {
+			client.putStream.mockRejectedValueOnce(new Go2rtcApiError(400));
+			client.deleteStream.mockRejectedValueOnce(new Go2rtcApiError(500));
+
+			await expect(streams.acquire(camera, provider, 'medium')).rejects.toBeInstanceOf(CameraUpstreamException);
+			await flush();
+
+			expect(secrets.list()).toContain(SENT_URL);
+		});
 	});
 
 	describe('a PUT that fails without an HTTP status', () => {
