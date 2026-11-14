@@ -1,0 +1,14 @@
+{"_synthetic":true,"type":"update","item":{"id":"600cefafd5f365d6f83c4ef3","modelKey":"camera","state":"DISCONNECTED"}}
+{"_synthetic":true,"type":"update","item":{"id":"600cefafd5f365d6f83c4ef3","modelKey":"camera","state":"CONNECTED"}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000a01","modelKey":"camera","lcdMessage":{"type":"DO_NOT_DISTURB","resetAt":null,"text":"DO NOT DISTURB"}}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","isOpened":true,"openStatusChangedAt":1794400005000}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","isOpened":false,"openStatusChangedAt":1794400008000}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","isMotionDetected":true,"motionDetectedAt":1794400009000}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","isMotionDetected":false}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","leakDetectedAt":1794400012000}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","tamperingDetectedAt":1794400015000}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000b01","modelKey":"sensor","batteryStatus":{"percentage":9,"isLow":true}}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000c01","modelKey":"light","isLightOn":true,"isPirMotionDetected":true,"lastMotion":1794400020000}}
+{"_synthetic":true,"type":"update","item":{"id":"5f0000000000000000000c01","modelKey":"light","isLightOn":false,"isPirMotionDetected":false}}
+{"_synthetic":true,"type":"add","item":{"id":"5f0000000000000000000a02","modelKey":"camera","state":"CONNECTING","name":"Synthetic doorbell with package camera","type":"UVC G4 Doorbell Pro PoE","mac":"0CEA1400A002"}}
+{"_synthetic":true,"type":"remove","item":{"id":"5f0000000000000000000a02","modelKey":"camera"}}

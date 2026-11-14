@@ -1,0 +1,120 @@
+[
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000a01",
+		"modelKey": "camera",
+		"state": "CONNECTED",
+		"name": "Synthetic doorbell",
+		"type": "UVC G4 Doorbell Pro",
+		"guid": "00000000-0000-4000-8000-0000000000a1",
+		"mac": "0CEA1400A001",
+		"isMicEnabled": true,
+		"osdSettings": {
+			"isNameEnabled": true,
+			"isDateEnabled": true,
+			"isLogoEnabled": false,
+			"isDebugEnabled": false,
+			"overlayLocation": "topLeft"
+		},
+		"ledSettings": {
+			"isEnabled": true,
+			"welcomeLed": true,
+			"floodLed": false
+		},
+		"lcdMessage": {
+			"type": "LEAVE_PACKAGE_AT_DOOR",
+			"resetAt": null,
+			"text": "LEAVE PACKAGE AT DOOR"
+		},
+		"micVolume": 100,
+		"activePatrolSlot": null,
+		"videoMode": "default",
+		"hdrType": "auto",
+		"featureFlags": {
+			"supportFullHdSnapshot": true,
+			"hasHdr": true,
+			"smartDetectTypes": [
+				"person",
+				"vehicle",
+				"animal"
+			],
+			"smartDetectAudioTypes": [],
+			"videoModes": [
+				"default"
+			],
+			"hasMic": true,
+			"hasLedStatus": true,
+			"hasSpeaker": true,
+			"hasLcdScreen": true
+		},
+		"smartDetectSettings": {
+			"objectTypes": [
+				"person",
+				"vehicle",
+				"animal"
+			],
+			"audioTypes": []
+		},
+		"hasPackageCamera": false
+	},
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000a02",
+		"modelKey": "camera",
+		"state": "CONNECTED",
+		"name": "Synthetic doorbell with package camera",
+		"type": "UVC G4 Doorbell Pro PoE",
+		"guid": "00000000-0000-4000-8000-0000000000a2",
+		"mac": "0CEA1400A002",
+		"isMicEnabled": true,
+		"osdSettings": {
+			"isNameEnabled": true,
+			"isDateEnabled": true,
+			"isLogoEnabled": false,
+			"isDebugEnabled": false,
+			"overlayLocation": "topLeft"
+		},
+		"ledSettings": {
+			"isEnabled": true,
+			"welcomeLed": true,
+			"floodLed": false
+		},
+		"lcdMessage": {
+			"type": "LEAVE_PACKAGE_AT_DOOR",
+			"resetAt": null,
+			"text": "LEAVE PACKAGE AT DOOR"
+		},
+		"micVolume": 100,
+		"activePatrolSlot": null,
+		"videoMode": "default",
+		"hdrType": "auto",
+		"featureFlags": {
+			"supportFullHdSnapshot": true,
+			"hasHdr": true,
+			"smartDetectTypes": [
+				"person",
+				"vehicle",
+				"animal",
+				"package"
+			],
+			"smartDetectAudioTypes": [],
+			"videoModes": [
+				"default"
+			],
+			"hasMic": true,
+			"hasLedStatus": true,
+			"hasSpeaker": true,
+			"hasLcdScreen": true
+		},
+		"smartDetectSettings": {
+			"objectTypes": [
+				"person",
+				"vehicle",
+				"animal",
+				"package"
+			],
+			"audioTypes": []
+		},
+		"hasPackageCamera": true
+	}
+]

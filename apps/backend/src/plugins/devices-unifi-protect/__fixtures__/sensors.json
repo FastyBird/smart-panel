@@ -1,0 +1,392 @@
+[
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000b01",
+		"modelKey": "sensor",
+		"state": "CONNECTED",
+		"name": "Synthetic UP-Sense",
+		"mac": "0CEA1400B001",
+		"mountType": "door",
+		"batteryStatus": {
+			"percentage": 87,
+			"isLow": false
+		},
+		"stats": {
+			"light": {
+				"value": 120,
+				"status": "neutral"
+			},
+			"humidity": {
+				"value": 41,
+				"status": "neutral"
+			},
+			"temperature": {
+				"value": 21.4,
+				"status": "neutral"
+			}
+		},
+		"isOpened": false,
+		"openStatusChangedAt": 1794400000000,
+		"isMotionDetected": false,
+		"motionDetectedAt": null,
+		"motionSettings": {
+			"isEnabled": true,
+			"sensitivity": 100
+		},
+		"alarmTriggeredAt": null,
+		"alarmSettings": {
+			"isEnabled": false
+		},
+		"leakDetectedAt": null,
+		"externalLeakDetectedAt": null,
+		"leakSettings": {
+			"isInternalEnabled": true,
+			"isExternalEnabled": false
+		},
+		"tamperingDetectedAt": null,
+		"lightSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"humiditySettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"temperatureSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 0.1
+		},
+		"_state": "idle (closed, no motion, no leak, no tamper)"
+	},
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000b01",
+		"modelKey": "sensor",
+		"state": "CONNECTED",
+		"name": "Synthetic UP-Sense",
+		"mac": "0CEA1400B001",
+		"mountType": "door",
+		"batteryStatus": {
+			"percentage": 87,
+			"isLow": false
+		},
+		"stats": {
+			"light": {
+				"value": 120,
+				"status": "neutral"
+			},
+			"humidity": {
+				"value": 41,
+				"status": "neutral"
+			},
+			"temperature": {
+				"value": 21.4,
+				"status": "neutral"
+			}
+		},
+		"isOpened": true,
+		"openStatusChangedAt": 1794400005000,
+		"isMotionDetected": false,
+		"motionDetectedAt": null,
+		"motionSettings": {
+			"isEnabled": true,
+			"sensitivity": 100
+		},
+		"alarmTriggeredAt": null,
+		"alarmSettings": {
+			"isEnabled": false
+		},
+		"leakDetectedAt": null,
+		"externalLeakDetectedAt": null,
+		"leakSettings": {
+			"isInternalEnabled": true,
+			"isExternalEnabled": false
+		},
+		"tamperingDetectedAt": null,
+		"lightSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"humiditySettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"temperatureSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 0.1
+		},
+		"_state": "open"
+	},
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000b01",
+		"modelKey": "sensor",
+		"state": "CONNECTED",
+		"name": "Synthetic UP-Sense",
+		"mac": "0CEA1400B001",
+		"mountType": "door",
+		"batteryStatus": {
+			"percentage": 87,
+			"isLow": false
+		},
+		"stats": {
+			"light": {
+				"value": 120,
+				"status": "neutral"
+			},
+			"humidity": {
+				"value": 41,
+				"status": "neutral"
+			},
+			"temperature": {
+				"value": 21.4,
+				"status": "neutral"
+			}
+		},
+		"isOpened": false,
+		"openStatusChangedAt": 1794400000000,
+		"isMotionDetected": true,
+		"motionDetectedAt": 1794400009000,
+		"motionSettings": {
+			"isEnabled": true,
+			"sensitivity": 100
+		},
+		"alarmTriggeredAt": null,
+		"alarmSettings": {
+			"isEnabled": false
+		},
+		"leakDetectedAt": null,
+		"externalLeakDetectedAt": null,
+		"leakSettings": {
+			"isInternalEnabled": true,
+			"isExternalEnabled": false
+		},
+		"tamperingDetectedAt": null,
+		"lightSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"humiditySettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"temperatureSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 0.1
+		},
+		"_state": "motion"
+	},
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000b01",
+		"modelKey": "sensor",
+		"state": "CONNECTED",
+		"name": "Synthetic UP-Sense",
+		"mac": "0CEA1400B001",
+		"mountType": "leak",
+		"batteryStatus": {
+			"percentage": 87,
+			"isLow": false
+		},
+		"stats": {
+			"light": {
+				"value": 120,
+				"status": "neutral"
+			},
+			"humidity": {
+				"value": 41,
+				"status": "neutral"
+			},
+			"temperature": {
+				"value": 21.4,
+				"status": "neutral"
+			}
+		},
+		"isOpened": false,
+		"openStatusChangedAt": 1794400000000,
+		"isMotionDetected": false,
+		"motionDetectedAt": null,
+		"motionSettings": {
+			"isEnabled": true,
+			"sensitivity": 100
+		},
+		"alarmTriggeredAt": null,
+		"alarmSettings": {
+			"isEnabled": false
+		},
+		"leakDetectedAt": 1794400012000,
+		"externalLeakDetectedAt": null,
+		"leakSettings": {
+			"isInternalEnabled": true,
+			"isExternalEnabled": false
+		},
+		"tamperingDetectedAt": null,
+		"lightSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"humiditySettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"temperatureSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 0.1
+		},
+		"_state": "leak"
+	},
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000b01",
+		"modelKey": "sensor",
+		"state": "CONNECTED",
+		"name": "Synthetic UP-Sense",
+		"mac": "0CEA1400B001",
+		"mountType": "door",
+		"batteryStatus": {
+			"percentage": 87,
+			"isLow": false
+		},
+		"stats": {
+			"light": {
+				"value": 120,
+				"status": "neutral"
+			},
+			"humidity": {
+				"value": 41,
+				"status": "neutral"
+			},
+			"temperature": {
+				"value": 21.4,
+				"status": "neutral"
+			}
+		},
+		"isOpened": false,
+		"openStatusChangedAt": 1794400000000,
+		"isMotionDetected": false,
+		"motionDetectedAt": null,
+		"motionSettings": {
+			"isEnabled": true,
+			"sensitivity": 100
+		},
+		"alarmTriggeredAt": null,
+		"alarmSettings": {
+			"isEnabled": false
+		},
+		"leakDetectedAt": null,
+		"externalLeakDetectedAt": null,
+		"leakSettings": {
+			"isInternalEnabled": true,
+			"isExternalEnabled": false
+		},
+		"tamperingDetectedAt": 1794400015000,
+		"lightSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"humiditySettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"temperatureSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 0.1
+		},
+		"_state": "tamper"
+	},
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000b01",
+		"modelKey": "sensor",
+		"state": "CONNECTED",
+		"name": "Synthetic UP-Sense",
+		"mac": "0CEA1400B001",
+		"mountType": "door",
+		"batteryStatus": {
+			"percentage": 9,
+			"isLow": true
+		},
+		"stats": {
+			"light": {
+				"value": 120,
+				"status": "neutral"
+			},
+			"humidity": {
+				"value": 41,
+				"status": "neutral"
+			},
+			"temperature": {
+				"value": 21.4,
+				"status": "neutral"
+			}
+		},
+		"isOpened": false,
+		"openStatusChangedAt": 1794400000000,
+		"isMotionDetected": false,
+		"motionDetectedAt": null,
+		"motionSettings": {
+			"isEnabled": true,
+			"sensitivity": 100
+		},
+		"alarmTriggeredAt": null,
+		"alarmSettings": {
+			"isEnabled": false
+		},
+		"leakDetectedAt": null,
+		"externalLeakDetectedAt": null,
+		"leakSettings": {
+			"isInternalEnabled": true,
+			"isExternalEnabled": false
+		},
+		"tamperingDetectedAt": null,
+		"lightSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"humiditySettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 10
+		},
+		"temperatureSettings": {
+			"isEnabled": true,
+			"lowThreshold": null,
+			"highThreshold": null,
+			"margin": 0.1
+		},
+		"_state": "battery low"
+	}
+]

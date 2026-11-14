@@ -1,0 +1,21 @@
+[
+	{
+		"_synthetic": true,
+		"id": "5f0000000000000000000d01",
+		"modelKey": "chime",
+		"state": "CONNECTED",
+		"name": "Synthetic chime",
+		"mac": "0CEA1400D001",
+		"cameraIds": [
+			"5f0000000000000000000a01"
+		],
+		"ringSettings": [
+			{
+				"cameraId": "5f0000000000000000000a01",
+				"repeatTimes": 1,
+				"ringtoneId": "5f0000000000000000000e01",
+				"volume": 60
+			}
+		]
+	}
+]

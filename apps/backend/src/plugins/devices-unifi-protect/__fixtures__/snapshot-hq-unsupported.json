@@ -1,0 +1,4 @@
+{
+	"error": "Camera does not support full HD snapshot",
+	"name": "BAD_REQUEST"
+}
