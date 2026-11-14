@@ -379,8 +379,12 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 				state.pending++;
 				this.revalidations.set(key, state);
 
+				let checked: ICameraStreamProvider | null = null;
+
 				try {
 					const { device, provider } = await this.cameras.getProviderOrThrow(deviceId);
+
+					checked = provider;
 
 					await this.cameras.resolveProfile(device, provider, profileId);
 
@@ -392,15 +396,19 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 						`Live stream camera unavailable device=${deviceId} profile=${profileId} error=${errorName(error)}`,
 					);
 
-					// Only a newer passing check can spare sockets, and only those admitted under the provider it validated.
-					// Every other socket of this camera profile (on the checked, a stale or no provider yet) closes.
-					const spared = state.validated && state.validated.generation > generation ? state.validated.provider : null;
+					// A newer passing check spares only the sockets admitted under the provider it validated. A failure that a
+					// newer check has superseded but that is still pending judges only the provider it checked: the replacement
+					// is judged by its own check. The newest failure closes every other socket of this camera profile.
+					const newer = state.validated && state.validated.generation > generation ? state.validated.provider : null;
+					const supersededByPending = newer === null && generation < state.latest;
 
 					this.closeWhere(
 						(session, entry) =>
 							session.deviceId === deviceId &&
 							session.profileId === profileId &&
-							(spared === null || entry.provider !== spared),
+							(supersededByPending
+								? checked !== null && entry.provider === checked
+								: newer === null || entry.provider !== newer),
 						'REVOKED',
 					);
 				} finally {
