@@ -550,6 +550,146 @@ describe('LiveStreamGateway', () => {
 		expect(await live.closed).toEqual([4000, 'revoked']);
 	});
 
+	describe('provider instances during a re-validation', () => {
+		const pass = { id: 'medium', channelId: 'ch', available: true } as never;
+
+		async function openUnder(
+			owner: CameraSessionOwner,
+			under: FakeCameraStreamProvider,
+		): Promise<Awaited<ReturnType<typeof openLive>>> {
+			const resolved = await cameras.getProviderOrThrow('c1');
+
+			jest.spyOn(cameras, 'getProviderOrThrow').mockResolvedValueOnce({ device: resolved.device, provider: under });
+
+			return openLive(validToken('c1', owner));
+		}
+
+		it('keeps the sockets of the provider a newer passing check validated, and closes those of the older failing one', async () => {
+			const providerA = new FakeCameraStreamProvider('fake-cameras');
+			const providerB = new FakeCameraStreamProvider('fake-cameras');
+			const underA = await openUnder({ kind: 'user', id: 'u1' }, providerA);
+			const underB = await openUnder({ kind: 'user', id: 'u2' }, providerB);
+			const resolved = await cameras.getProviderOrThrow('c1');
+
+			let rejectOlder!: (error: Error) => void;
+
+			jest
+				.spyOn(cameras, 'getProviderOrThrow')
+				.mockResolvedValueOnce({ device: resolved.device, provider: providerA })
+				.mockResolvedValueOnce({ device: resolved.device, provider: providerB });
+
+			const resolveProfile = jest.spyOn(cameras, 'resolveProfile');
+
+			resolveProfile.mockImplementation((_device, checked) =>
+				checked === providerA
+					? new Promise((_resolve, reject) => {
+							rejectOlder = reject;
+						})
+					: Promise.resolve(pass),
+			);
+
+			const older = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+			await waitFor(() => resolveProfile.mock.calls.length === 1);
+
+			// The newer check (providerB) completes first and passes.
+			await gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+			rejectOlder(new CameraOfflineException('Camera is offline'));
+			await older;
+
+			expect(await underA.closed).toEqual([4000, 'revoked']);
+
+			await settle();
+
+			expect(underB.client.readyState).toBe(WebSocket.OPEN);
+			expect(gateway.getActiveCount()).toBe(1);
+		});
+
+		it('closes a socket on a third provider that is neither the checked nor the validated one', async () => {
+			const provider0 = new FakeCameraStreamProvider('fake-cameras');
+			const providerA = new FakeCameraStreamProvider('fake-cameras');
+			const providerB = new FakeCameraStreamProvider('fake-cameras');
+			const underZero = await openUnder({ kind: 'user', id: 'u0' }, provider0);
+			const underB = await openUnder({ kind: 'user', id: 'u2' }, providerB);
+			const resolved = await cameras.getProviderOrThrow('c1');
+
+			let rejectOlder!: (error: Error) => void;
+
+			jest
+				.spyOn(cameras, 'getProviderOrThrow')
+				.mockResolvedValueOnce({ device: resolved.device, provider: providerA })
+				.mockResolvedValueOnce({ device: resolved.device, provider: providerB });
+
+			const resolveProfile = jest.spyOn(cameras, 'resolveProfile');
+
+			resolveProfile.mockImplementation((_device, checked) =>
+				checked === providerA
+					? new Promise((_resolve, reject) => {
+							rejectOlder = reject;
+						})
+					: Promise.resolve(pass),
+			);
+
+			const older = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+			await waitFor(() => resolveProfile.mock.calls.length === 1);
+			await gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+			rejectOlder(new CameraOfflineException('Camera is offline'));
+			await older;
+
+			expect(await underZero.closed).toEqual([4000, 'revoked']);
+
+			await settle();
+
+			expect(underB.client.readyState).toBe(WebSocket.OPEN);
+		});
+
+		it('closes every socket of the camera profile when the newest check fails', async () => {
+			const providerA = new FakeCameraStreamProvider('fake-cameras');
+			const providerB = new FakeCameraStreamProvider('fake-cameras');
+			const underA = await openUnder({ kind: 'user', id: 'u1' }, providerA);
+			const underB = await openUnder({ kind: 'user', id: 'u2' }, providerB);
+
+			jest.spyOn(cameras, 'resolveProfile').mockRejectedValue(new CameraOfflineException('Camera is offline'));
+
+			await gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+			expect(await underA.closed).toEqual([4000, 'revoked']);
+			expect(await underB.closed).toEqual([4000, 'revoked']);
+		});
+	});
+
+	it('discards the result of an older check of the same provider that rejects after a newer one passed', async () => {
+		const live = await openLive(validToken('c1'));
+		const resolveProfile = jest.spyOn(cameras, 'resolveProfile');
+
+		let rejectOlder!: (error: Error) => void;
+
+		resolveProfile.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectOlder = reject;
+				}),
+		);
+
+		const older = gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+		await waitFor(() => resolveProfile.mock.calls.length === 1);
+
+		resolveProfile.mockResolvedValueOnce({ id: 'medium', channelId: 'ch', available: true } as never);
+
+		await gateway.handleConfigUpdated({ source: 'x', type: 'plugin' });
+
+		rejectOlder(new CameraOfflineException('Camera is offline'));
+		await older;
+		await settle();
+
+		expect(live.client.readyState).toBe(WebSocket.OPEN);
+		expect(gateway.getActiveCount()).toBe(1);
+	});
+
 	it('re-validates the cameras in parallel', async () => {
 		await openLive(validToken('c1'));
 		await openLive(validToken('c2'));

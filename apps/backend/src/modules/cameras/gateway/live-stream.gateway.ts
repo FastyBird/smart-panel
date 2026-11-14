@@ -40,6 +40,15 @@ interface LiveEntry {
 	provider: ICameraStreamProvider | null;
 }
 
+interface Revalidation {
+	/** Generation of the newest check started. */
+	latest: number;
+	/** Checks in flight; the state is dropped when the last one settles. */
+	pending: number;
+	/** The newest passing check and the provider instance it validated. */
+	validated: { generation: number; provider: ICameraStreamProvider } | null;
+}
+
 /**
  * Serves `CAMERAS_LIVE_PATH`: takes the raw HTTP `upgrade`, admits a camera session and proxies it to go2rtc through
  * one `LiveStreamConnection` per socket.
@@ -56,6 +65,9 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 	private readonly logger = createExtensionLogger(CAMERAS_MODULE_NAME, 'LiveStreamGateway');
 
 	private readonly entries = new Map<LiveStreamConnection, LiveEntry>();
+	/** Re-validation state per (device, profile) while a check for it is in flight. */
+	private readonly revalidations = new Map<string, Revalidation>();
+	private revalidationSeq = 0;
 
 	private wss: WebSocketServer | null = null;
 	private server: HttpServer | null = null;
@@ -359,17 +371,42 @@ export class LiveStreamGateway implements OnApplicationBootstrap, OnModuleDestro
 		}
 
 		await Promise.all(
-			[...targets.values()].map(async ({ deviceId, profileId }) => {
+			[...targets].map(async ([key, { deviceId, profileId }]) => {
+				const generation = ++this.revalidationSeq;
+				const state = this.revalidations.get(key) ?? { latest: 0, pending: 0, validated: null };
+
+				state.latest = generation;
+				state.pending++;
+				this.revalidations.set(key, state);
+
 				try {
 					const { device, provider } = await this.cameras.getProviderOrThrow(deviceId);
 
 					await this.cameras.resolveProfile(device, provider, profileId);
+
+					if (!state.validated || generation > state.validated.generation) {
+						state.validated = { generation, provider };
+					}
 				} catch (error) {
 					this.logger.warn(
 						`Live stream camera unavailable device=${deviceId} profile=${profileId} error=${errorName(error)}`,
 					);
 
-					this.closeWhere((session) => session.deviceId === deviceId && session.profileId === profileId, 'REVOKED');
+					// Only a newer passing check can spare sockets, and only those admitted under the provider it validated.
+					// Every other socket of this camera profile (on the checked, a stale or no provider yet) closes.
+					const spared = state.validated && state.validated.generation > generation ? state.validated.provider : null;
+
+					this.closeWhere(
+						(session, entry) =>
+							session.deviceId === deviceId &&
+							session.profileId === profileId &&
+							(spared === null || entry.provider !== spared),
+						'REVOKED',
+					);
+				} finally {
+					if (--state.pending === 0 && this.revalidations.get(key) === state) {
+						this.revalidations.delete(key);
+					}
 				}
 			}),
 		);
