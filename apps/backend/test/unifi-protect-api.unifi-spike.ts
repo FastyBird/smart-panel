@@ -285,6 +285,13 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 		if (connectedCameras().length === 0) {
 			throw new Error('No CONNECTED camera in the console inventory, so this check has nothing to verify');
 		}
+
+		// The stream / snapshot budgets are sized for MAX_CAMERAS; refuse before sending any request rather than overrun.
+		if (connectedCameras().length > MAX_CAMERAS) {
+			throw new Error(
+				`${connectedCameras().length} connected cameras exceed FB_UNIFI_SPIKE_MAX_CAMERAS (${MAX_CAMERAS}); raise it to run this check`,
+			);
+		}
 	};
 
 	/** One request, always aborted after TIMEOUT_MS. Authenticated requests only ever use a verified socket. */
@@ -540,7 +547,7 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 					}
 				}
 			},
-			MAX_CAMERAS * TIMEOUT_MS + SLACK_MS,
+			MAX_CAMERAS * (TIMEOUT_MS + REQUEST_SPACING_MS) + SLACK_MS,
 		);
 
 		it(
@@ -566,7 +573,7 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 					}
 				}
 			},
-			MAX_CAMERAS * 2 * TIMEOUT_MS + SLACK_MS,
+			MAX_CAMERAS * 2 * (TIMEOUT_MS + REQUEST_SPACING_MS) + SLACK_MS,
 		);
 	});
 
