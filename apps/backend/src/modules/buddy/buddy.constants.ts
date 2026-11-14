@@ -60,6 +60,7 @@ export enum MessageRole {
 
 export enum SuggestionType {
 	PATTERN_SCENE_CREATE = 'pattern_scene_create',
+	PATTERN_AUTOMATION_CREATE = 'pattern_automation_create',
 	LIGHTING_OPTIMISE = 'lighting_optimise',
 	GENERAL_TIP = 'general_tip',
 	ANOMALY_SENSOR_DRIFT = 'anomaly_sensor_drift',

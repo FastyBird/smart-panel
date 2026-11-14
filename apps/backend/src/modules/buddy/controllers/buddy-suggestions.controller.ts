@@ -69,7 +69,9 @@ export class BuddySuggestionsController {
 		summary: 'Submit suggestion feedback',
 		description:
 			'Records user feedback for a suggestion (applied or dismissed). ' +
-			'A cooldown is set to prevent the same suggestion type from reappearing for the same space.',
+			'A cooldown is set to prevent the same suggestion type from reappearing for the same space. ' +
+			'Applying a scene suggestion creates the scene; applying an automation suggestion creates nothing, ' +
+			'because the admin creates the automation from the draft the suggestion carries once the administrator saves it.',
 		operationId: 'create-buddy-module-suggestion-feedback',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Suggestion ID' })
