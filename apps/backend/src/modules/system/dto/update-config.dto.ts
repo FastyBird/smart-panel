@@ -232,7 +232,12 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { onboarding_completed?: unknown } }) =>
+			obj.onboarding_completed === null ? undefined : obj.onboarding_completed,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({
 		message: '[{"field":"onboarding_completed","reason":"Onboarding completed must be a boolean."}]',

@@ -90,7 +90,10 @@ export class UpdateSceneDto {
 
 	@ApiPropertyOptional({ description: 'Whether scene is enabled', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => (obj.enabled === null ? undefined : obj.enabled), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
@@ -101,7 +104,11 @@ export class UpdateSceneDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { triggerable?: unknown } }) => (obj.triggerable === null ? undefined : obj.triggerable),
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"triggerable","reason":"Triggerable must be a valid true or false."}]' })
 	triggerable?: boolean;

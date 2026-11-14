@@ -15,7 +15,7 @@
 			<el-select
 				:model-value="typeof props.config.automation_id === 'string' && props.config.automation_id !== '' ? props.config.automation_id : undefined"
 				:disabled="props.disabled"
-				:loading="areLoading"
+				:loading="fetchingAutomations"
 				:placeholder="t('automations.editor.fields.automation.placeholder')"
 				:no-data-text="t('automations.editor.fields.automation.empty')"
 				name="automation_id"
@@ -30,6 +30,12 @@
 					:disabled="automation.id === editedId"
 				/>
 			</el-select>
+			<automation-lookup-load-failed
+				v-if="automationsLoadFailed"
+				collection="automations"
+				:loading="fetchingAutomations"
+				@retry="retryAutomations"
+			/>
 			<el-text
 				tag="div"
 				size="small"
@@ -62,6 +68,8 @@ import { AutomationTargetConfigSchema } from '../../nodes/nodes.schemas';
 import type { IAutomation } from '../../store/automations.store.types';
 import { type IAutomationNodeFormProps, automationNodeFormEmits } from '../canvas/automation-node-form.types';
 
+import AutomationLookupLoadFailed from './automation-lookup-load-failed.vue';
+
 defineOptions({
 	name: 'AutomationAutomationTargetForm',
 });
@@ -88,9 +96,9 @@ const form = useAutomationNodeForm(props, emit, AutomationTargetConfigSchema);
 
 const { errorText } = form;
 
-const { automations, areLoading } = useAutomations();
+const { automations } = useAutomations();
 
-const { ensureAutomations } = useAutomationNodeLookups();
+const { ensureAutomations, automationsLoadFailed, fetchingAutomations, retryAutomations } = useAutomationNodeLookups();
 
 const action = computed<'enable' | 'disable' | 'run'>((): 'enable' | 'disable' | 'run' => ACTIONS[props.nodeType.type] ?? 'run');
 

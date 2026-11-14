@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -23,6 +23,8 @@ export class UpdateWeatherDataSourceConfigDto extends UpdatePluginConfigDto {
 		example: true,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean."}]' })
 	enabled?: boolean;

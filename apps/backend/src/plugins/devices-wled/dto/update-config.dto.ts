@@ -76,7 +76,10 @@ export class WledUpdateMdnsDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => (obj.enabled === null ? undefined : obj.enabled), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;
@@ -97,7 +100,10 @@ export class WledUpdateMdnsDto {
 		name: 'auto_add',
 	})
 	@Expose({ name: 'auto_add' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { auto_add?: unknown } }) => (obj.auto_add === null ? undefined : obj.auto_add), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_add","reason":"Auto add must be a boolean value."}]' })
 	autoAdd?: boolean;
@@ -113,7 +119,10 @@ export class WledUpdateWebSocketDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => (obj.enabled === null ? undefined : obj.enabled), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;

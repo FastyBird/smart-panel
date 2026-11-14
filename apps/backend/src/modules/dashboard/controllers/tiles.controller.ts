@@ -308,10 +308,12 @@ export class TilesController {
 		const { parent } = baseDtoInstance;
 
 		try {
-			const updatedTile = await this.tilesService.update(tile.id, dtoInstance, {
-				parentType: parent.type,
-				parentId: parent.id,
-			});
+			// The parent is optional on update: without it, the tile stays where it is
+			const updatedTile = await this.tilesService.update(
+				tile.id,
+				dtoInstance,
+				parent ? { parentType: parent.type, parentId: parent.id } : undefined,
+			);
 
 			this.logger.debug(`Successfully updated tile id=${updatedTile.id}`);
 

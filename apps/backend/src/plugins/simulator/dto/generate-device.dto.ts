@@ -70,7 +70,12 @@ export class GenerateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { required_channels_only?: unknown } }) =>
+			obj.required_channels_only === null ? undefined : obj.required_channels_only,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"required_channels_only","reason":"Required channels only must be a boolean."}]' })
 	required_channels_only?: boolean;
@@ -83,7 +88,12 @@ export class GenerateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { required_properties_only?: unknown } }) =>
+			obj.required_properties_only === null ? undefined : obj.required_properties_only,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({
 		message: '[{"field":"required_properties_only","reason":"Required properties only must be a boolean."}]',
@@ -98,7 +108,11 @@ export class GenerateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { auto_simulate?: unknown } }) => (obj.auto_simulate === null ? undefined : obj.auto_simulate),
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_simulate","reason":"Auto simulate must be a boolean."}]' })
 	auto_simulate?: boolean;

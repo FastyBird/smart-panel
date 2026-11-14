@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayNotEmpty,
 	IsArray,
@@ -125,6 +125,8 @@ export class ModbusBindingDto {
 
 	@ApiPropertyOptional({ description: 'Invert a boolean value', type: 'boolean', example: false })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { invert?: unknown } }) => obj.invert, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"invert","reason":"Invert must be a boolean."}]' })
 	invert?: boolean;

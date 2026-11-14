@@ -542,6 +542,7 @@
 					"title": "Szene",
 					"placeholder": "Szene auswählen",
 					"empty": "Es gibt noch keine Szenen",
+					"loadFailed": "Die Szenen konnten nicht geladen werden.",
 					"hint": "Bei jedem Lauf wird die Szene erneut geprüft: Eine Szene, die etwas entriegeln, unscharf schalten oder öffnen würde, wird nicht ausgeführt."
 				},
 				"notification": {
@@ -592,7 +593,8 @@
 				"device": {
 					"title": "Gerät",
 					"placeholder": "Gerät auswählen",
-					"empty": "Es gibt noch keine Geräte"
+					"empty": "Es gibt noch keine Geräte",
+					"loadFailed": "Die Geräte konnten nicht geladen werden."
 				},
 				"connection": {
 					"title": "Starten, wenn das Gerät"
@@ -622,6 +624,7 @@
 					"title": "Automation",
 					"placeholder": "Automation auswählen",
 					"empty": "Es gibt noch keine anderen Automationen",
+					"loadFailed": "Die Automatisierungen konnten nicht geladen werden.",
 					"hints": {
 						"enable": "Ihre Auslöser starten sie wieder. Um aktiviert zu werden, muss ihr Ablauf vollständig sein. Eine Automation kann sich nicht selbst aktivieren.",
 						"disable": "Ihre Auslöser stoppen und ihre aktiven Läufe werden abgebrochen. Eine Automation kann sich nicht selbst deaktivieren.",

@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayUnique,
 	IsArray,
@@ -90,6 +90,8 @@ export class UpdateMcpOAuthClientDto {
 
 	@ApiPropertyOptional({ description: 'Whether the OAuth client may begin or continue authorization', type: 'boolean' })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean()
 	enabled?: boolean;

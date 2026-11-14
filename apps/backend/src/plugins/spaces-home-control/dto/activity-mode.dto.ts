@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDefined, IsInt, IsUUID, Max, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
@@ -14,6 +14,8 @@ export class UpdateActivityModeDto {
 	expected_revision: number;
 	@ApiProperty({ description: 'Whether the mode is available for activation', type: 'boolean' })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsBoolean()
 	enabled: boolean;
 	@ApiProperty({ description: 'Per-space display order', type: 'integer', minimum: 0, maximum: 1000 })

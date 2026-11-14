@@ -93,7 +93,10 @@ export class CreateDeviceDto {
 
 	@ApiPropertyOptional({ description: 'Whether device is enabled', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => (obj.enabled === null ? undefined : obj.enabled), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
@@ -104,7 +107,10 @@ export class CreateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { hidden?: unknown } }) => (obj.hidden === null ? undefined : obj.hidden), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
 	hidden?: boolean;
