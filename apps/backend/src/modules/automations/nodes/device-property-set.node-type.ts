@@ -188,11 +188,11 @@ export const createDevicePropertySetNodeType = (
 		references: (config) => {
 			const references = new Map<string, AutomationNodeReference>();
 
-			for (const write of Array.isArray(config.writes) ? config.writes : []) {
+			for (const [index, write] of (Array.isArray(config.writes) ? config.writes : []).entries()) {
 				if (typeof write !== 'object' || write === null) continue;
 
-				for (const reference of devicePropertyReferences(write)) {
-					references.set(`${reference.kind}:${reference.id}`, reference);
+				for (const reference of devicePropertyReferences(write, ['writes', index])) {
+					references.set(`${reference.kind}:${reference.id}:${index}`, reference);
 				}
 			}
 

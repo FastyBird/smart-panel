@@ -32,7 +32,9 @@ describe('scene.run', () => {
 			kind: 'action',
 			ports: { inputs: ['in'], outputs: ['done', 'error'] },
 		});
-		expect(registered.references({ scene_id: SCENE_ID })).toEqual([{ kind: 'scene', id: SCENE_ID }]);
+		expect(registered.references({ scene_id: SCENE_ID })).toEqual([
+			{ kind: 'scene', id: SCENE_ID, path: ['scene_id'] },
+		]);
 		expect(registered.references({})).toEqual([]);
 		expect(card().timeoutSeconds).toBe(SCENE_RUN_TIMEOUT_SECONDS);
 	});

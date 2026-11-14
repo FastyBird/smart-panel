@@ -34,7 +34,9 @@ describe('AutomationTransferController', () => {
 					spaceId: null,
 					graph: GRAPH,
 				},
-				missingReferences: [{ kind: 'scene', id: 's1', usages: [{ nodeId: 'n1', field: 'scene_id' }] }],
+				missingReferences: [
+					{ kind: 'scene', id: 's1', usages: [{ nodeId: 'n1', field: 'scene_id' }], remappable: true },
+				],
 				issues: [],
 			}),
 		);
@@ -67,7 +69,9 @@ describe('AutomationTransferController', () => {
 		expect(prepareImport).toHaveBeenCalledWith('x', mappings);
 		expect(response.data).toEqual({
 			draft: { name: 'Night', description: null, icon: null, mode: 'restart', space_id: null, graph: GRAPH },
-			missing_references: [{ kind: 'scene', id: 's1', usages: [{ node_id: 'n1', field: 'scene_id' }] }],
+			missing_references: [
+				{ kind: 'scene', id: 's1', usages: [{ node_id: 'n1', field: 'scene_id' }], remappable: true },
+			],
 			issues: [],
 		});
 	});

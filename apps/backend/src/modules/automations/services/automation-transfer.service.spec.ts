@@ -9,6 +9,7 @@ import {
 	FAKE_STRICT_ACTION_TYPE,
 	FAKE_TRIGGER_TYPE,
 } from '../testing/fake-node-types';
+import { AutomationExportSource, automationExportProblem } from '../transfer/automation-yaml';
 
 import { AutomationTransferService } from './automation-transfer.service';
 import { AutomationsService } from './automations.service';
@@ -79,6 +80,11 @@ describe('AutomationTransferService', () => {
 			getOneOrThrow: jest.fn(() => Promise.resolve(AUTOMATION)),
 			findOne: jest.fn(() => Promise.resolve(null)),
 			checkGraph: (graph: unknown, enabled: boolean) => checkGraphForSave(graph, registry.lookup, { enabled, safety }),
+			assertExportable: (source: AutomationExportSource) => {
+				const problem = automationExportProblem(source);
+
+				if (problem !== null) throw new AutomationsGraphValidationException(problem, []);
+			},
 		};
 
 		const has = (set: () => Set<string>) => ({
@@ -130,8 +136,8 @@ describe('AutomationTransferService', () => {
 		const preparation = await service.prepareImport(await exported());
 
 		expect(preparation.missingReferences).toEqual([
-			{ kind: 'space', id: SPACE, usages: [{ nodeId: null, field: 'space_id' }] },
-			{ kind: 'scene', id: SCENE, usages: [{ nodeId: 'then', field: 'scene_id' }] },
+			{ kind: 'space', id: SPACE, usages: [{ nodeId: null, field: 'space_id' }], remappable: true },
+			{ kind: 'scene', id: SCENE, usages: [{ nodeId: 'then', field: 'scene_id' }], remappable: true },
 		]);
 		expect(preparation.draft.spaceId).toBeNull();
 		expect(preparation.draft.graph.nodes[1].config).toEqual({ level: 40, scene_id: SCENE });
@@ -154,6 +160,17 @@ describe('AutomationTransferService', () => {
 		expect(error).toBeInstanceOf(AutomationsImportException);
 		expect((error as AutomationsImportException).issues).toEqual([
 			{ field: 'mappings.0.to', reason: 'The scene to refer to instead does not exist.' },
+		]);
+	});
+
+	it('refuses a mapping of a reference the file does not hold', async () => {
+		const error = await service
+			.prepareImport(await exported(), [{ kind: 'device', id: SCENE, to: OTHER_SCENE }])
+			.catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(AutomationsImportException);
+		expect((error as AutomationsImportException).issues).toEqual([
+			{ field: 'mappings.0.id', reason: 'The file does not refer to this device.' },
 		]);
 	});
 

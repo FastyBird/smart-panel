@@ -93,8 +93,8 @@ const FILE_NAME_MAX_LENGTH = 64;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Serialises an automation into its YAML document */
-export const serializeAutomationYaml = (source: AutomationExportSource): string => {
+/** The YAML document of an automation, as a value */
+const toAutomationYamlDocument = (source: AutomationExportSource): Record<string, unknown> => {
 	const document: Record<string, unknown> = {
 		version: AUTOMATION_YAML_VERSION,
 		kind: AUTOMATION_YAML_KIND,
@@ -124,8 +124,13 @@ export const serializeAutomationYaml = (source: AutomationExportSource): string 
 		})),
 	};
 
+	return document;
+};
+
+/** Serialises an automation into its YAML document */
+export const serializeAutomationYaml = (source: AutomationExportSource): string => {
 	// A value used twice is written out twice: the import refuses aliases
-	const yaml = new Document(document, { aliasDuplicateObjects: false });
+	const yaml = new Document(toAutomationYamlDocument(source), { aliasDuplicateObjects: false });
 
 	yaml.commentBefore = ' Smart Panel automation';
 
@@ -144,6 +149,23 @@ export const automationExportFileName = (name: string): string => {
 		.replace(/-+$/g, '');
 
 	return `${slug !== '' ? slug : 'automation'}.yaml`;
+};
+
+/**
+ * Why an automation could not be imported again once exported: its YAML document is larger than an import file
+ * may be, or nests deeper. A save checks this, so every automation it stores can be restored from its export.
+ * Null when it fits.
+ */
+export const automationExportProblem = (source: AutomationExportSource): string | null => {
+	if (tooDeep(toAutomationYamlDocument(source), 0)) {
+		return `The configuration of a block may not be nested this deeply: an automation is kept to ${AUTOMATION_IMPORT_MAX_DEPTH} levels, so that it can be exported and imported again.`;
+	}
+
+	if (Buffer.byteLength(serializeAutomationYaml(source), 'utf8') > AUTOMATION_IMPORT_MAX_LENGTH) {
+		return `The automation is too large: exported, it would be larger than ${AUTOMATION_IMPORT_MAX_LENGTH / 1024} KB, the most that can be imported again. Remove blocks or shorten their configuration.`;
+	}
+
+	return null;
 };
 
 /** Whether a value nests deeper than the limit; stops looking as soon as it does */

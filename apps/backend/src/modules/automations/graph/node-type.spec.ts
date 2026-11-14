@@ -39,7 +39,7 @@ describe('normalizeAutomationNodeType', () => {
 			configSchema: fakeStrictAction.configSchema,
 		});
 		expect(registered.definition).toBe(fakeStrictAction);
-		expect(registered.references({ scene_id: 's-1' })).toEqual([{ kind: 'scene', id: 's-1' }]);
+		expect(registered.references({ scene_id: 's-1' })).toEqual([{ kind: 'scene', id: 's-1', path: ['scene_id'] }]);
 		expect(normalizeAutomationNodeType(fakeTrigger).references({})).toEqual([]);
 		expect(normalizeAutomationNodeType(fakeTrigger)).not.toHaveProperty('configSchema');
 	});

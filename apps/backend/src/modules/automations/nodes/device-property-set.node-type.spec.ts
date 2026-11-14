@@ -55,7 +55,7 @@ describe('device.property.set', () => {
 		executePropertyCommands = jest.fn((commands: DevicePropertyCommand[]) => Promise.resolve(accepted(commands)));
 	});
 
-	it('is an action with a done and an error output that lists everything it writes to, once', () => {
+	it('is an action with a done and an error output that lists everything it writes to, where each write holds it', () => {
 		const registered = normalizeAutomationNodeType(card());
 
 		expect(registered).toMatchObject({
@@ -64,13 +64,15 @@ describe('device.property.set', () => {
 			ports: { inputs: ['in'], outputs: ['done', 'error'] },
 		});
 		expect(registered.references({ writes: [on, level, other] })).toEqual([
-			{ kind: 'device', id: DEVICE_A },
-			{ kind: 'channel', id: CHANNEL_A },
-			{ kind: 'property', id: PROPERTY_BOOL },
-			{ kind: 'property', id: PROPERTY_NUMBER },
-			{ kind: 'device', id: DEVICE_B },
-			{ kind: 'channel', id: CHANNEL_B },
-			{ kind: 'property', id: PROPERTY_OTHER_DEVICE },
+			{ kind: 'device', id: DEVICE_A, path: ['writes', 0, 'device_id'] },
+			{ kind: 'channel', id: CHANNEL_A, path: ['writes', 0, 'channel_id'] },
+			{ kind: 'property', id: PROPERTY_BOOL, path: ['writes', 0, 'property_id'] },
+			{ kind: 'device', id: DEVICE_A, path: ['writes', 1, 'device_id'] },
+			{ kind: 'channel', id: CHANNEL_A, path: ['writes', 1, 'channel_id'] },
+			{ kind: 'property', id: PROPERTY_NUMBER, path: ['writes', 1, 'property_id'] },
+			{ kind: 'device', id: DEVICE_B, path: ['writes', 2, 'device_id'] },
+			{ kind: 'channel', id: CHANNEL_B, path: ['writes', 2, 'channel_id'] },
+			{ kind: 'property', id: PROPERTY_OTHER_DEVICE, path: ['writes', 2, 'property_id'] },
 		]);
 		expect(registered.references({})).toEqual([]);
 		expect(registered.references({ writes: [null, 'x'] })).toEqual([]);

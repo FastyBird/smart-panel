@@ -48,9 +48,9 @@ describe('device.property.changed', () => {
 			ports: { inputs: [], outputs: ['out'] },
 		});
 		expect(registered.references(target(PROPERTY_BOOL))).toEqual([
-			{ kind: 'device', id: DEVICE_A },
-			{ kind: 'channel', id: CHANNEL_A },
-			{ kind: 'property', id: PROPERTY_BOOL },
+			{ kind: 'device', id: DEVICE_A, path: ['device_id'] },
+			{ kind: 'channel', id: CHANNEL_A, path: ['channel_id'] },
+			{ kind: 'property', id: PROPERTY_BOOL, path: ['property_id'] },
 		]);
 		expect(registered.references({})).toEqual([]);
 	});

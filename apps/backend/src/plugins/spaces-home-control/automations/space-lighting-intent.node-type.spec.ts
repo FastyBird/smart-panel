@@ -38,7 +38,9 @@ describe('space.lighting.intent', () => {
 			ports: { inputs: ['in'], outputs: ['done', 'error'] },
 			owner: { kind: 'plugin', type: SPACES_HOME_CONTROL_PLUGIN_NAME },
 		});
-		expect(registered.references({ space_id: SPACE, intent: 'off' })).toEqual([{ kind: 'space', id: SPACE }]);
+		expect(registered.references({ space_id: SPACE, intent: 'off' })).toEqual([
+			{ kind: 'space', id: SPACE, path: ['space_id'] },
+		]);
 		expect(registered.commands({ space_id: SPACE, intent: 'off' })).toEqual([]);
 	});
 

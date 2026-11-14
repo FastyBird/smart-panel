@@ -1813,7 +1813,12 @@ describe('Automations module (e2e)', () => {
 					space_id: string | null;
 					graph: { version: number; nodes: { id: string; config: Record<string, unknown> }[]; edges: unknown[] };
 				};
-				missing_references: { kind: string; id: string; usages: { node_id: string | null; field: string }[] }[];
+				missing_references: {
+					kind: string;
+					id: string;
+					usages: { node_id: string | null; field: string | null }[];
+					remappable: boolean;
+				}[];
 				issues: IssueBody[];
 			}
 
@@ -1924,8 +1929,13 @@ describe('Automations module (e2e)', () => {
 					const unmapped = (await prepare(yaml).expect(200)).body as { data: PreparationBody };
 
 					expect(unmapped.data.missing_references).toEqual([
-						{ kind: 'space', id: space, usages: [{ node_id: null, field: 'space_id' }] },
-						{ kind: 'property', id: foreign.property_id, usages: [{ node_id: 'occupied', field: 'property_id' }] },
+						{ kind: 'space', id: space, usages: [{ node_id: null, field: 'space_id' }], remappable: true },
+						{
+							kind: 'property',
+							id: foreign.property_id,
+							usages: [{ node_id: 'occupied', field: 'property_id' }],
+							remappable: true,
+						},
 					]);
 					expect(unmapped.data.draft.space_id).toBeNull();
 
@@ -1937,12 +1947,12 @@ describe('Automations module (e2e)', () => {
 					expect(mapped.data.draft.graph).toEqual(original.graph);
 
 					const refused = await prepare(yaml, [
-						{ kind: 'scene', id: foreign.property_id, to: '0e000000-0000-4000-8000-000000000001' },
+						{ kind: 'space', id: space, to: '0e000000-0000-4000-8000-000000000001' },
 					]).expect(422);
 
 					expect(refused.body).toMatchObject({
 						code: 'automation-import-invalid',
-						issues: [{ field: 'mappings.0.to', reason: 'The scene to refer to instead does not exist.' }],
+						issues: [{ field: 'mappings.0.to', reason: 'The space to refer to instead does not exist.' }],
 					});
 				} finally {
 					await automationsService.remove(original.id);

@@ -27,6 +27,8 @@ export const AutomationGraphIssueCode = {
 	JOIN_NEVER_COMPLETES: 'join_never_completes',
 	/** An All can be completed by a run of some of the triggers leading to it, but not by every one */
 	JOIN_PARTLY_COMPLETES: 'join_partly_completes',
+	/** The automation is too large or nests too deeply to be exported and imported again */
+	GRAPH_TOO_LARGE: 'graph_too_large',
 } as const;
 
 export type AutomationGraphIssueCode = (typeof AutomationGraphIssueCode)[keyof typeof AutomationGraphIssueCode];

@@ -30,9 +30,11 @@ import { AutomationGraphDto } from '../dto/automation-graph.dto';
 import { CreateAutomationDto } from '../dto/create-automation.dto';
 import { UpdateAutomationDto } from '../dto/update-automation.dto';
 import { AutomationEntity } from '../entities/automations.entity';
+import { AutomationGraphIssueCode } from '../graph/graph-validator';
 import { AutomationGraphSaveCheck, checkGraphForSave } from '../graph/save-policy';
 import { AutomationGraphModel, createEmptyAutomationGraph } from '../models/automation-graph.model';
 import { AutomationSummaryModel } from '../models/automations.model';
+import { AutomationExportSource, automationExportProblem } from '../transfer/automation-yaml';
 
 import { AutomationSafetyService } from './automation-safety.service';
 import { AutomationNodeTypeRegistryService } from './node-type-registry.service';
@@ -179,6 +181,17 @@ export class AutomationsService {
 
 		await this.assertGraphCanBeSaved(graph, dtoInstance.enabled ?? false);
 
+		if (dtoInstance.graph) {
+			this.assertExportable({
+				name: dtoInstance.name,
+				description: dtoInstance.description ?? null,
+				icon: dtoInstance.icon ?? null,
+				mode: dtoInstance.mode ?? AutomationMode.RESTART,
+				spaceId: dtoInstance.space_id ?? null,
+				graph,
+			});
+		}
+
 		// The limit check and the insert run as one serialized step, so concurrent creates cannot both pass
 		// the check and exceed the limit.
 		await this.serializeCreate(async () => {
@@ -259,6 +272,19 @@ export class AutomationsService {
 
 		if (graph !== undefined || (dtoInstance.enabled === true && !existing.enabled)) {
 			await this.assertGraphCanBeSaved(graph ?? existing.graph, enabled);
+		}
+
+		// Only a submitted graph is held to the export limits: an automation stored before them stays readable and
+		// can be renamed or switched, and is saved again once its graph is brought within them
+		if (graph !== undefined) {
+			this.assertExportable({
+				name: dtoInstance.name ?? existing.name,
+				description: dtoInstance.description !== undefined ? dtoInstance.description : existing.description,
+				icon: dtoInstance.icon !== undefined ? dtoInstance.icon : existing.icon,
+				mode: dtoInstance.mode ?? existing.mode,
+				spaceId: dtoInstance.space_id !== undefined ? dtoInstance.space_id : existing.spaceId,
+				graph,
+			});
 		}
 
 		const changes: QueryDeepPartialEntity<AutomationEntity> = {
@@ -385,6 +411,24 @@ export class AutomationsService {
 				: `The automation graph cannot be saved: it has ${blocking} problem(s).`,
 			check.issues,
 		);
+	}
+
+	/**
+	 * Refuses an automation whose export could not be imported again: larger than an import file may be, or nested
+	 * deeper. Every automation that is saved can then be backed up and restored.
+	 */
+	assertExportable(source: AutomationExportSource): void {
+		const problem = automationExportProblem(source);
+
+		if (problem === null) {
+			return;
+		}
+
+		this.logger.error('[VALIDATION FAILED] The automation is too large to be exported');
+
+		throw new AutomationsGraphValidationException(`The automation graph cannot be saved: ${problem}`, [
+			{ severity: 'error', code: AutomationGraphIssueCode.GRAPH_TOO_LARGE, message: problem, blocking: true },
+		]);
 	}
 
 	private createRevisionConflict(id: string, revision: number): AutomationsRevisionConflictException {

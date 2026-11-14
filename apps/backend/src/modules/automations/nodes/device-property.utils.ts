@@ -34,12 +34,24 @@ export const DEVICE_PROPERTY_TARGET_SCHEMA = {
 /** JSON Schema of a single property value */
 export const PROPERTY_VALUE_SCHEMA = { type: ['string', 'number', 'boolean'] } as const;
 
-export const devicePropertyReferences = (config: Partial<DevicePropertyTargetDto>): AutomationNodeReference[] => {
+/** The device, channel and property a target names, each with where it is held; `at` is where the target is */
+export const devicePropertyReferences = (
+	config: Partial<DevicePropertyTargetDto>,
+	at: (string | number)[] = [],
+): AutomationNodeReference[] => {
 	const references: AutomationNodeReference[] = [];
 
-	if (typeof config.device_id === 'string') references.push({ kind: 'device', id: config.device_id });
-	if (typeof config.channel_id === 'string') references.push({ kind: 'channel', id: config.channel_id });
-	if (typeof config.property_id === 'string') references.push({ kind: 'property', id: config.property_id });
+	if (typeof config.device_id === 'string') {
+		references.push({ kind: 'device', id: config.device_id, path: [...at, 'device_id'] });
+	}
+
+	if (typeof config.channel_id === 'string') {
+		references.push({ kind: 'channel', id: config.channel_id, path: [...at, 'channel_id'] });
+	}
+
+	if (typeof config.property_id === 'string') {
+		references.push({ kind: 'property', id: config.property_id, path: [...at, 'property_id'] });
+	}
 
 	return references;
 };

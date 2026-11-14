@@ -60,12 +60,13 @@ export class AutomationImportReferenceUsageModel {
 
 	@ApiProperty({
 		description:
-			'Where the reference is held: the dot-separated path of the field in the node configuration, or `space_id` for the space of the automation',
+			'Where the reference is held: the dot-separated path of the field in the node configuration, or `space_id` for the space of the automation. Null when the card does not say where it holds it.',
 		type: 'string',
+		nullable: true,
 		example: 'writes.0.property_id',
 	})
 	@Expose()
-	field: string;
+	field: string | null;
 }
 
 /**
@@ -98,6 +99,15 @@ export class AutomationImportMissingReferenceModel {
 	@Expose()
 	@Type(() => AutomationImportReferenceUsageModel)
 	usages: AutomationImportReferenceUsageModel[];
+
+	@ApiProperty({
+		description:
+			'Whether the reference can be pointed at another entity through `mappings`: every use is in a field the card names. One that can not is fixed in the editor after the import.',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	remappable: boolean;
 }
 
 /**
@@ -212,6 +222,7 @@ export const createAutomationImportPreparationModel = (
 
 		missing.kind = reference.kind;
 		missing.id = reference.id;
+		missing.remappable = reference.remappable;
 		missing.usages = reference.usages.map((usage) =>
 			Object.assign(new AutomationImportReferenceUsageModel(), { node_id: usage.nodeId, field: usage.field }),
 		);

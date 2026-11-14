@@ -37,7 +37,9 @@ describe('device.connection.changed', () => {
 		const registered = normalizeAutomationNodeType(card());
 
 		expect(registered).toMatchObject({ type: DEVICE_CONNECTION_CHANGED_NODE_TYPE, kind: 'trigger' });
-		expect(registered.references({ device_id: DEVICE_A })).toEqual([{ kind: 'device', id: DEVICE_A }]);
+		expect(registered.references({ device_id: DEVICE_A })).toEqual([
+			{ kind: 'device', id: DEVICE_A, path: ['device_id'] },
+		]);
 		expect(registered.references({})).toEqual([]);
 	});
 

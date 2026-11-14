@@ -24,6 +24,7 @@ import {
 } from '../transfer/automation-yaml';
 import {
 	AutomationReferenceLookup,
+	AutomationReferenceUse,
 	AutomationResolvedReferenceMapping,
 	applyReferenceMappings,
 	collectReferenceUses,
@@ -159,9 +160,9 @@ export class AutomationTransferService {
 			})),
 		};
 
-		const resolved = await this.resolveMappings(mappings);
-
 		const uses = collectReferenceUses(graph, this.nodeTypeRegistry.lookup, dto.space_id ?? null);
+
+		const resolved = await this.resolveMappings(mappings, uses);
 
 		const mapped = applyReferenceMappings(graph, dto.space_id ?? null, uses, resolved);
 
@@ -184,19 +185,24 @@ export class AutomationTransferService {
 			);
 		}
 
+		const draft = {
+			name: dto.name,
+			description: dto.description ?? null,
+			icon: dto.icon ?? null,
+			mode: dto.mode ?? AutomationMode.RESTART,
+			spaceId: spaceMissing ? null : mapped.spaceId,
+			graph: mapped.graph,
+		};
+
+		// The same limit the create request holds the automation to, told before it is tried
+		this.automationsService.assertExportable(draft);
+
 		this.logger.debug(
 			`[IMPORT] Prepared an import with ${graph.nodes.length} node(s) and ${missing.length} missing reference(s)`,
 		);
 
 		return {
-			draft: {
-				name: dto.name,
-				description: dto.description ?? null,
-				icon: dto.icon ?? null,
-				mode: dto.mode ?? AutomationMode.RESTART,
-				spaceId: spaceMissing ? null : mapped.spaceId,
-				graph: mapped.graph,
-			},
+			draft,
 			missingReferences: missing,
 			issues: check.issues,
 		};
@@ -205,11 +211,27 @@ export class AutomationTransferService {
 	/** Looks up what each mapping points at; for a property, the channel and device it belongs to */
 	private async resolveMappings(
 		mappings: AutomationImportMappingRequest[],
+		uses: AutomationReferenceUse[],
 	): Promise<AutomationResolvedReferenceMapping[]> {
 		const problems: AutomationImportProblem[] = [];
 		const resolved: AutomationResolvedReferenceMapping[] = [];
 
 		for (const [index, mapping] of mappings.entries()) {
+			const used = uses.filter((use) => use.kind === mapping.kind && use.id === mapping.id);
+
+			// A mapping that would leave a use behind is refused instead of applied in part
+			if (used.length === 0 || used.some((use) => use.path === null)) {
+				problems.push({
+					field: `mappings.${index}.id`,
+					reason:
+						used.length === 0
+							? `The file does not refer to this ${mapping.kind}.`
+							: `This ${mapping.kind} can not be pointed elsewhere here: a block does not say where it holds it.`,
+				});
+
+				continue;
+			}
+
 			if (mapping.kind === 'property') {
 				const property = await this.propertiesService.findOne(mapping.to);
 				const info = property ? toDevicePropertyInfo(property) : null;

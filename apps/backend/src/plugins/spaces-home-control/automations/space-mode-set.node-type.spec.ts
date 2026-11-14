@@ -57,7 +57,7 @@ describe('space.mode.set', () => {
 			owner: { kind: 'plugin', type: SPACES_HOME_CONTROL_PLUGIN_NAME },
 		});
 		expect(registered.references({ space_id: SPACE, mode: ActivityMode.SLEEP })).toEqual([
-			{ kind: 'space', id: SPACE },
+			{ kind: 'space', id: SPACE, path: ['space_id'] },
 		]);
 		expect(registered.commands({ space_id: SPACE, mode: ActivityMode.SLEEP })).toEqual([]);
 	});

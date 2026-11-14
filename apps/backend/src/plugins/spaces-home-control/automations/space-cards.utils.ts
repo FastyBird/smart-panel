@@ -29,7 +29,7 @@ export const SPACE_ID_SCHEMA = {
 
 /** The space is a reference, so an automation using a space that is deleted is marked invalid */
 export const spaceReferences = (config: { space_id?: unknown }): AutomationNodeReference[] =>
-	typeof config?.space_id === 'string' ? [{ kind: 'space', id: config.space_id }] : [];
+	typeof config?.space_id === 'string' ? [{ kind: 'space', id: config.space_id, path: ['space_id'] }] : [];
 
 export const describeError = (error: unknown): string => (error instanceof Error ? error.message : 'unknown error');
 

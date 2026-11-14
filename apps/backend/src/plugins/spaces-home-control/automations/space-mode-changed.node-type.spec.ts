@@ -61,7 +61,7 @@ describe('space.mode.changed', () => {
 			kind: 'trigger',
 			owner: { kind: 'plugin', type: SPACES_HOME_CONTROL_PLUGIN_NAME },
 		});
-		expect(registered.references({ space_id: SPACE })).toEqual([{ kind: 'space', id: SPACE }]);
+		expect(registered.references({ space_id: SPACE })).toEqual([{ kind: 'space', id: SPACE, path: ['space_id'] }]);
 	});
 
 	it('needs a space and takes an optional mode to change to and from', async () => {

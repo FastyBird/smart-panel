@@ -40,11 +40,18 @@ const TYPES = new Map<string, RegisteredAutomationNodeType>([
 	[
 		'set',
 		nodeType('set', (config) =>
-			((config.writes as Record<string, unknown>[]) ?? []).flatMap((write) => devicePropertyReferences(write)),
+			((config.writes as Record<string, unknown>[]) ?? []).flatMap((write, index) =>
+				devicePropertyReferences(write, ['writes', index]),
+			),
 		),
 	],
-	['device', nodeType('device', (config) => [{ kind: 'device', id: config.device_id as string }])],
-	['scene', nodeType('scene', (config) => [{ kind: 'scene', id: config.scene_id as string }])],
+	['compare', nodeType('compare', (config) => devicePropertyReferences(config))],
+	['device', nodeType('device', (config) => [{ kind: 'device', id: config.device_id as string, path: ['device_id'] }])],
+	['scene', nodeType('scene', (config) => [{ kind: 'scene', id: config.scene_id as string, path: ['scene_id'] }])],
+	// A card that does not say where it holds its scene, as one built against an older SDK
+	['pathless', nodeType('pathless', (config) => [{ kind: 'scene', id: config.scene_id as string }])],
+	// A card that names a path that does not hold the id
+	['lying', nodeType('lying', (config) => [{ kind: 'scene', id: config.scene_id as string, path: ['elsewhere'] }])],
 	[
 		'broken',
 		nodeType('broken', () => {
@@ -120,8 +127,8 @@ describe('import references', () => {
 		};
 
 		expect(await findMissingReferences(collectReferenceUses(graph, lookup, SPACE), existence)).toEqual([
-			{ kind: 'space', id: SPACE, usages: [{ nodeId: null, field: 'space_id' }] },
-			{ kind: 'property', id: P1, usages: [{ nodeId: 'set', field: 'writes.0.property_id' }] },
+			{ kind: 'space', id: SPACE, usages: [{ nodeId: null, field: 'space_id' }], remappable: true },
+			{ kind: 'property', id: P1, usages: [{ nodeId: 'set', field: 'writes.0.property_id' }], remappable: true },
 			{
 				kind: 'device',
 				id: D1,
@@ -129,6 +136,7 @@ describe('import references', () => {
 					{ nodeId: 'offline', field: 'device_id' },
 					{ nodeId: 'again', field: 'device_id' },
 				],
+				remappable: true,
 			},
 		]);
 
@@ -157,5 +165,64 @@ describe('import references', () => {
 
 		// The graph that was mapped is left as it was
 		expect(GRAPH.nodes[0].config.writes?.[0]).toEqual({ ...target(D1, C1, P1), value: true });
+	});
+
+	it('rewrites only the fields the card names, never a value that merely equals an id', () => {
+		// A comparison against a literal that happens to be the id of the property, and of its device
+		const graph = {
+			nodes: [{ id: 'cmp', type: 'compare', config: { ...target(D1, C1, P1), operator: 'eq', value: P1, other: D1 } }],
+		};
+
+		const uses = collectReferenceUses(graph, lookup, null);
+
+		expect(uses).toEqual([
+			{
+				kind: 'property',
+				id: P1,
+				nodeId: 'cmp',
+				path: ['property_id'],
+				target: { channel: { id: C1, path: ['channel_id'] }, device: { id: D1, path: ['device_id'] } },
+			},
+		]);
+
+		const mapped = applyReferenceMappings(graph, null, uses, [
+			{ kind: 'property', id: P1, to: P9, channelId: C9, deviceId: D9 },
+		]);
+
+		expect(mapped.graph.nodes[0].config).toEqual({ ...target(D9, C9, P9), operator: 'eq', value: P1, other: D1 });
+	});
+
+	it('reports a reference held in a field the card does not name, but never rewrites it', async () => {
+		const graph = {
+			nodes: [
+				{ id: 'old', type: 'pathless', config: { scene_id: SCENE } },
+				{ id: 'wrong', type: 'lying', config: { scene_id: SCENE, elsewhere: 'x' } },
+			],
+		};
+
+		const uses = collectReferenceUses(graph, lookup, null);
+
+		expect(uses.map((use) => use.path)).toEqual([null, null]);
+
+		const existence: AutomationReferenceLookup = {
+			exists: () => Promise.resolve(false),
+			propertyTargetExists: () => Promise.resolve(false),
+		};
+
+		expect(await findMissingReferences(uses, existence)).toEqual([
+			{
+				kind: 'scene',
+				id: SCENE,
+				usages: [
+					{ nodeId: 'old', field: null },
+					{ nodeId: 'wrong', field: null },
+				],
+				remappable: false,
+			},
+		]);
+
+		const mapped = applyReferenceMappings(graph, null, uses, [{ kind: 'scene', id: SCENE, to: P9 }]);
+
+		expect(mapped.graph).toEqual(graph);
 	});
 });

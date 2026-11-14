@@ -3,11 +3,15 @@
  * a reference at another entity of the same kind. Framework-free (ADR 0003, decision 15).
  *
  * A node says what it refers to through `references()` of its node type, as it does for the cleanup when an
- * entity is removed; where in the configuration a reference is held is found by looking for its id. A device
- * property target - a property id next to the ids of its channel and device in one object, the way every device
- * card stores it - is one reference of kind `property`: it exists when the property belongs to that channel of
- * that device, and pointing it at another property moves the channel and the device with it. The space an
- * automation belongs to is a reference of kind `space` that no node holds.
+ * entity is removed, and where in its configuration each reference is held (`path`). Only that field is ever
+ * rewritten: a value that merely equals an id - the literal a comparison checks against, say - is left alone. A
+ * reference whose node type does not say where it is held, or whose path does not hold its id, is reported but
+ * can not be pointed elsewhere.
+ *
+ * A device property target - a property reference next to the channel and device references of the same object,
+ * the way every device card stores it - is one reference of kind `property`: it exists when the property belongs
+ * to that channel of that device, and pointing it at another property moves the channel and the device with it.
+ * The space an automation belongs to is a reference of kind `space` that no node holds.
  */
 import { AutomationNodeReferenceKind, AutomationNodeTypeLookup } from '../graph/node-type';
 
@@ -21,8 +25,11 @@ export interface AutomationReferenceUse {
 	id: string;
 	/** The node holding the reference; null for the space of the automation itself */
 	nodeId: string | null;
-	/** Where in the node configuration the id is held; `['space_id']` for the space of the automation */
-	path: AutomationConfigPath;
+	/**
+	 * Where in the node configuration the id is held; `['space_id']` for the space of the automation. Null when the
+	 * node type does not say, and then the reference can not be pointed elsewhere.
+	 */
+	path: AutomationConfigPath | null;
 	/** For a device property target: where its channel and device ids are held next to the property id */
 	target?: {
 		channel?: { id: string; path: AutomationConfigPath };
@@ -36,14 +43,16 @@ export interface AutomationReferenceGraph {
 
 export interface AutomationReferenceUsage {
 	nodeId: string | null;
-	/** The dot-separated path of the field holding it, in the node configuration or of the automation */
-	field: string;
+	/** The dot-separated path of the field holding it, in the node configuration or of the automation; null when unknown */
+	field: string | null;
 }
 
 export interface AutomationMissingReference {
 	kind: AutomationNodeReferenceKind;
 	id: string;
 	usages: AutomationReferenceUsage[];
+	/** Whether every use is in a known field, so a mapping points all of them elsewhere */
+	remappable: boolean;
 }
 
 /** What the import needs to know about the entities of the installation */
@@ -62,23 +71,8 @@ export interface AutomationResolvedReferenceMapping {
 	deviceId?: string;
 }
 
-const MAX_SEARCH_DEPTH = 32;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** Every place in the value that holds exactly this text */
-const findPaths = (value: unknown, id: string, path: AutomationConfigPath = []): AutomationConfigPath[] => {
-	if (value === id) return [path];
-
-	if (typeof value !== 'object' || value === null || path.length >= MAX_SEARCH_DEPTH) return [];
-
-	if (Array.isArray(value)) {
-		return (value as unknown[]).flatMap((item, index) => findPaths(item, id, [...path, index]));
-	}
-
-	return Object.entries(value).flatMap(([key, item]) => findPaths(item, id, [...path, key]));
-};
 
 const valueAt = (value: unknown, path: AutomationConfigPath): unknown => {
 	let current = value;
@@ -103,32 +97,63 @@ const setAt = (value: Record<string, unknown>, path: AutomationConfigPath, next:
 const samePath = (a: AutomationConfigPath, b: AutomationConfigPath): boolean =>
 	a.length === b.length && a.every((segment, index) => segment === b[index]);
 
+const isPath = (value: unknown): value is AutomationConfigPath =>
+	Array.isArray(value) &&
+	value.length > 0 &&
+	value.every((segment) => typeof segment === 'string' || (typeof segment === 'number' && Number.isInteger(segment)));
+
 export const formatConfigPath = (path: AutomationConfigPath): string => path.join('.');
+
+interface LocatedReference {
+	kind: AutomationNodeReferenceKind;
+	id: string;
+	/** Null when the node type gave none, or one that does not hold the id */
+	path: AutomationConfigPath | null;
+}
 
 const referencesOf = (
 	lookup: AutomationNodeTypeLookup,
 	node: AutomationReferenceGraph['nodes'][number],
-): { kind: AutomationNodeReferenceKind; id: string }[] => {
+): LocatedReference[] => {
 	const nodeType = lookup(node.type);
 
 	if (!nodeType || !isRecord(node.config)) return [];
 
+	let references: unknown;
+
 	try {
-		const references = nodeType.references(node.config);
-
-		const seen = new Set<string>();
-
-		return (Array.isArray(references) ? references : []).filter((reference) => {
-			if (typeof reference?.id !== 'string' || reference.id === '') return false;
-
-			const key = `${reference.kind}:${reference.id}`;
-
-			return seen.has(key) ? false : seen.add(key) !== undefined;
-		});
+		references = nodeType.references(node.config);
 	} catch {
 		// A node type that can not tell its references of this configuration refers to nothing that can be remapped
 		return [];
 	}
+
+	const seen = new Set<string>();
+	const located: LocatedReference[] = [];
+
+	for (const reference of Array.isArray(references) ? (references as unknown[]) : []) {
+		if (
+			!isRecord(reference) ||
+			typeof reference.kind !== 'string' ||
+			typeof reference.id !== 'string' ||
+			reference.id === ''
+		) {
+			continue;
+		}
+
+		// A path is trusted only when it holds the very id it is given for
+		const path =
+			isPath(reference.path) && valueAt(node.config, reference.path) === reference.id ? [...reference.path] : null;
+
+		const key = `${reference.kind}:${reference.id}:${path ? JSON.stringify(path) : ''}`;
+
+		if (seen.has(key)) continue;
+
+		seen.add(key);
+		located.push({ kind: reference.kind as AutomationNodeReferenceKind, id: reference.id, path });
+	}
+
+	return located;
 };
 
 /** Where a node holds each entity it refers to */
@@ -138,57 +163,52 @@ const usesOfNode = (
 ): AutomationReferenceUse[] => {
 	const references = referencesOf(lookup, node);
 
-	const located = references.map((reference) => ({ ...reference, paths: findPaths(node.config, reference.id) }));
-
 	const consumed: AutomationConfigPath[] = [];
 	const uses: AutomationReferenceUse[] = [];
 
+	// The channel or device reference held in the same object as a property reference
 	const sibling = (
 		kind: 'channel' | 'device',
 		parent: AutomationConfigPath,
 	): { id: string; path: AutomationConfigPath } | undefined => {
-		for (const reference of located) {
-			if (reference.kind !== kind) continue;
+		const reference = references.find(
+			(candidate) =>
+				candidate.kind === kind &&
+				candidate.path !== null &&
+				candidate.path.length === parent.length + 1 &&
+				samePath(candidate.path.slice(0, -1), parent),
+		);
 
-			const path = reference.paths.find(
-				(candidate) => candidate.length === parent.length + 1 && samePath(candidate.slice(0, -1), parent),
-			);
-
-			if (path) return { id: reference.id, path };
-		}
-
-		return undefined;
+		return reference && reference.path ? { id: reference.id, path: reference.path } : undefined;
 	};
 
-	for (const reference of located) {
-		if (reference.kind !== 'property') continue;
+	for (const reference of references) {
+		if (reference.kind !== 'property' || reference.path === null) continue;
 
-		for (const path of reference.paths) {
-			const parent = path.slice(0, -1);
-			const channel = sibling('channel', parent);
-			const device = sibling('device', parent);
+		const parent = reference.path.slice(0, -1);
+		const channel = sibling('channel', parent);
+		const device = sibling('device', parent);
 
-			if (channel) consumed.push(channel.path);
-			if (device) consumed.push(device.path);
+		if (channel) consumed.push(channel.path);
+		if (device) consumed.push(device.path);
 
-			uses.push({
-				kind: 'property',
-				id: reference.id,
-				nodeId: node.id,
-				path,
-				...(channel || device ? { target: { ...(channel ? { channel } : {}), ...(device ? { device } : {}) } } : {}),
-			});
-		}
+		uses.push({
+			kind: 'property',
+			id: reference.id,
+			nodeId: node.id,
+			path: reference.path,
+			...(channel || device ? { target: { ...(channel ? { channel } : {}), ...(device ? { device } : {}) } } : {}),
+		});
 	}
 
-	for (const reference of located) {
-		if (reference.kind === 'property') continue;
+	for (const reference of references) {
+		if (reference.kind === 'property' && reference.path !== null) continue;
 
-		for (const path of reference.paths) {
-			if (consumed.some((taken) => samePath(taken, path))) continue;
+		const path = reference.path;
 
-			uses.push({ kind: reference.kind, id: reference.id, nodeId: node.id, path });
-		}
+		if (path !== null && consumed.some((taken) => samePath(taken, path))) continue;
+
+		uses.push({ kind: reference.kind, id: reference.id, nodeId: node.id, path });
 	}
 
 	return uses;
@@ -248,12 +268,13 @@ export const findMissingReferences = async (
 		if (exists) continue;
 
 		const key = `${use.kind}:${use.id}`;
-		const entry = missing.get(key) ?? { kind: use.kind, id: use.id, usages: [] };
+		const entry = missing.get(key) ?? { kind: use.kind, id: use.id, usages: [], remappable: true };
 
 		entry.usages.push({
 			nodeId: use.nodeId,
-			field: use.nodeId === null ? AUTOMATION_SPACE_FIELD : formatConfigPath(use.path),
+			field: use.nodeId === null ? AUTOMATION_SPACE_FIELD : use.path !== null ? formatConfigPath(use.path) : null,
 		});
+		entry.remappable = entry.remappable && use.path !== null;
 
 		missing.set(key, entry);
 	}
@@ -262,9 +283,9 @@ export const findMissingReferences = async (
 };
 
 /**
- * Points references at other entities in a copy of the graph. Every use of a mapped reference is rewritten; a
- * property target gets the channel and device of the new property as well. Returns the space the automation
- * then belongs to.
+ * Points references at other entities in a copy of the graph. Only the field each use is held in is rewritten;
+ * a use in an unknown field is left as it is. A property target gets the channel and device of the new property
+ * as well. Returns the space the automation then belongs to.
  */
 export const applyReferenceMappings = <TGraph extends AutomationReferenceGraph>(
 	graph: TGraph,
@@ -292,7 +313,7 @@ export const applyReferenceMappings = <TGraph extends AutomationReferenceGraph>(
 
 		const node = nodes.get(use.nodeId);
 
-		if (!node || !isRecord(node.config)) continue;
+		if (!node || !isRecord(node.config) || use.path === null) continue;
 
 		setAt(node.config, use.path, mapping.to);
 
