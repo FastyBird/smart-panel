@@ -21,11 +21,13 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { DefaultProtectApiClientFactory, PROTECT_API_CLIENT_FACTORY } from './client/protect-api-client.factory';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME,
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_TYPE,
+	PROTECT_TRUSTED_CA,
 } from './devices-unifi-protect.constants';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-unifi-protect.openapi';
 import { CreateProtectChannelPropertyDto } from './dto/create-channel-property.dto';
@@ -56,7 +58,13 @@ import { ProtectConfigValidatorService } from './services/protect-config-validat
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [ProtectConfigValidatorService],
+	providers: [
+		ProtectConfigValidatorService,
+		// Tests override this extra trusted CA; production never sets it.
+		{ provide: PROTECT_TRUSTED_CA, useValue: undefined },
+		DefaultProtectApiClientFactory,
+		{ provide: PROTECT_API_CLIENT_FACTORY, useExisting: DefaultProtectApiClientFactory },
+	],
 })
 export class DevicesUnifiProtectPlugin implements OnModuleInit {
 	constructor(
