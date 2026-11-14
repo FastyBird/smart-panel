@@ -46,8 +46,8 @@ where they differ; they are restated in Global Constraints and in "Decisions mad
   `snapshot_min_interval_ms 2000` (500–60000), `poll_interval_ms 30000` (5000–600000).
 - TLS modes (spike): `verify` — chain and name checked, SNI/`servername` = `tls.server_name` (the console's
   `directConnectDomain`, which serves a valid public certificate) or the host when it is a DNS name; `pinned` — chain
-  not checked, SHA-256 of the presented leaf must equal `tls.fingerprint_sha256`; `insecure` — anything accepted, a
-  warning logged once per connector start and reported in `status.warnings` as `'tls_insecure'`. Fingerprints are
+  not checked, SHA-256 of the presented leaf must equal `tls.fingerprint_sha256`. There is no `insecure` mode: the API
+  key is never sent over a connection that is neither name-verified nor pinned. Fingerprints are
   stored and returned as 64 lowercase hex characters without colons; input accepts either case, with or without colons.
 - Client limits: per-attempt timeout `10_000` ms covering connect, headers and body; overall deadline `30_000` ms; at
   most `3` attempts; retry delay without `Retry-After` `500 * 2^(attempt-1)` ms ±20 %; `Retry-After` clamped to
@@ -109,6 +109,7 @@ where they differ; they are restated in Global Constraints and in "Decisions mad
 - **The domain is never learned silently.** `GET /api/system` is read only by test-connection (without the key and
   without verification, because it is informational) and returned as a suggestion; the admin saves `server_name`.
   Learning it at runtime would let anyone answering on the IP choose the name the certificate is checked against.
+- **No insecure TLS mode** (CodeRabbit on #1623): only `verify` and `pinned` exist; the key is never sent over an unverified connection. Pinning is always available because test-connection returns the presented fingerprint. A submitted `tls.mode: 'insecure'` is rejected with 400.
 - **Candidate test-connection needs a new key**, as in Homey (`services/homey-connection-test.service.ts:100-118`):
   the stored key is never paired with a submitted host.
 - **The connector never throws from `start()` for console outcomes.** Homey throws for non-retryable failures
@@ -203,7 +204,7 @@ export const PROTECT_RATE_UTILISATION = 0.8;
 export const PROTECT_DEFAULT_RATE_POLICY = { quota: 10, windowSeconds: 1 } as const;
 export const PROTECT_RECONNECT_INITIAL_DELAY_MS = 1000, PROTECT_RECONNECT_MAX_DELAY_MS = 60000,
 	PROTECT_RECONNECT_JITTER_RATIO = 0.2, PROTECT_HEALTH_CHECK_INTERVAL_MS = 60000;
-export const PROTECT_TLS_MODES = ['verify', 'pinned', 'insecure'] as const;
+export const PROTECT_TLS_MODES = ['verify', 'pinned'] as const;
 export type ProtectTlsMode = (typeof PROTECT_TLS_MODES)[number];
 export const PROTECT_STREAM_QUALITIES = ['high', 'medium', 'low'] as const;
 export type ProtectStreamQuality = (typeof PROTECT_STREAM_QUALITIES)[number];
@@ -254,7 +255,7 @@ export class ProtectConfigValidatorService implements IPluginConfigValidator, On
 string stays as submitted so validation fails on it). The secret uses no `null → undefined` transform (a `null` must
 survive, `plugin-secret-removal.spec.ts:78-95`). Readiness messages (fixed, no values): `UniFi Protect host is
 required` (`host`), `UniFi Protect host must be a hostname or IP address` (`host`), `UniFi Protect port must be
-between 1 and 65535` (`port`), `UniFi Protect API key is required` (`api_key`), `Unknown TLS mode` (`tls.mode`),
+between 1 and 65535` (`port`), `UniFi Protect API key is required` (`api_key`), `Unknown TLS mode` (`tls.mode`), `TLS server name is required when the host is an IP address` (`tls.server_name`),
 `Pinned TLS mode requires a SHA-256 certificate fingerprint` (`tls.fingerprint_sha256`), `TLS server name must be a
 DNS name` (`tls.server_name`).
 
@@ -288,7 +289,7 @@ it('loads a hand-edited config with an invalid host without validation errors', 
 // dto/update-config.dto.spec.ts
 it.each([
 	[{ host: 'https://192.168.1.1' }, 'host'], [{ port: 0 }, 'port'], [{ port: 65536 }, 'port'],
-	[{ tls: { mode: 'off' } }, 'mode'], [{ tls: { fingerprint_sha256: 'abc' } }, 'fingerprint_sha256'],
+	[{ tls: { mode: 'off' } }, 'mode'], [{ tls: { mode: 'insecure' } }, 'mode'], [{ tls: { fingerprint_sha256: 'abc' } }, 'fingerprint_sha256'],
 	[{ tls: { server_name: '10.0.0.1' } }, 'server_name'], [{ default_stream_quality: 'package' }, 'default_stream_quality'],
 	[{ snapshot_min_interval_ms: 499 }, 'snapshot_min_interval_ms'], [{ poll_interval_ms: 600001 }, 'poll_interval_ms'],
 	[{ stream_host_override: 'rtsps://h' }, 'stream_host_override'],
@@ -311,6 +312,8 @@ it.each([
 	[{ host: 'h.local', api_key: 'k', port: 70000 }, 'port'],
 	[{ host: 'h.local', api_key: 'k', tls: { mode: 'pinned' } }, 'tls.fingerprint_sha256'],
 	[{ host: 'h.local', api_key: 'k', tls: { mode: 'verify', server_name: '10.0.0.1' } }, 'tls.server_name'],
+	[{ host: '10.0.0.2', api_key: 'k', tls: { mode: 'verify' } }, 'tls.server_name'], // verify by IP without server_name is not ready
+	[{ host: 'h.local', api_key: 'k', tls: { mode: 'insecure' } }, 'tls.mode'],
 ])('blocks an enabled config missing %j', async (config, field) => {
 	const result = await service.validate({ enabled: true, ...config });
 	expect(result.valid).toBe(false);
@@ -481,7 +484,7 @@ Pattern: `plugins/devices-homey/devices-homey.plugin.ts:65-288` (module decorato
 Metadata: `name: 'UniFi Protect'`, `description: 'Connects Smart Panel to a UniFi Protect console over its local
 Integration API'`, `author: 'FastyBird'`, `defaultEnabled: false`, `links` as Homey. The readme follows Homey's
 headings (`# UniFi Protect`, *What you get*, *Setup*, *Configuration* table of every config field with its default,
-*TLS* explaining the three modes and that `insecure` is logged and shown as a warning, *Boundaries*). It must state:
+*TLS* explaining the two modes (`verify`, `pinned`) and that there is no insecure mode, *Boundaries*). It must state:
 Protect 7.2.105 or newer; create the API key in Protect → Integrations; the key is write-only and never returned;
 this version reads only and never changes console settings; the plugin never disables a camera microphone.
 
@@ -678,7 +681,7 @@ export function toProtectApiError(error: unknown, operation: ProtectOperation): 
 
 // client/protect-tls-policy.ts
 export interface ProtectTlsSettings { mode: ProtectTlsMode; serverName: string | null; fingerprintSha256: string | null }
-export interface ProtectTlsConnectPlan { servername: string | undefined; rejectUnauthorized: boolean; pinnedFingerprint: string | null; insecure: boolean }
+export interface ProtectTlsConnectPlan { servername: string | undefined; rejectUnauthorized: boolean; pinnedFingerprint: string | null }
 export function planProtectTls(host: string, settings: ProtectTlsSettings): ProtectTlsConnectPlan; // throws ProtectApiError(VALIDATION, 'tls')
 export function peerFingerprint(certificate: { fingerprint256?: string }): string | null; // normalized
 export function fingerprintsEqual(a: string, b: string): boolean; // timingSafeEqual on normalized buffers
@@ -705,11 +708,10 @@ export function protectTlsServerOptions(): https.ServerOptions; // SNICallback: 
 
 Plan table (`planProtectTls`; `servername = settings.serverName ?? (isIP(host) ? undefined : host)` in every mode):
 
-| mode | `rejectUnauthorized` | `pinnedFingerprint` | `insecure` |
-|---|---|---|---|
-| `verify` | `true` | `null` | `false` |
-| `pinned` | `false` | normalized fingerprint (missing → `VALIDATION`) | `false` |
-| `insecure` | `false` | `null` | `true` |
+| mode | `rejectUnauthorized` | `pinnedFingerprint` |
+|---|---|---|
+| `verify` | `true` | `null` |
+| `pinned` | `false` | normalized fingerprint (missing → `VALIDATION`) |
 
 `createConnection` calls `tls.connect({ ...options, host, port, servername: plan.servername, rejectUnauthorized:
 plan.rejectUnauthorized, ca: trustedCa })` and returns `undefined`; Node's `http.Agent` then waits for the callback
@@ -749,10 +751,9 @@ it.each([['ECONNREFUSED', 'unreachable'], ['DEPTH_ZERO_SELF_SIGNED_CERT', 'tls_u
 
 // client/protect-tls-policy.spec.ts
 it.each([
-	['verify', '10.0.0.2', null, { servername: undefined, rejectUnauthorized: true, pinnedFingerprint: null, insecure: false }],
+	['verify', '10.0.0.2', null, { servername: undefined, rejectUnauthorized: true, pinnedFingerprint: null }],
 	['verify', '10.0.0.2', 'abc.id.ui.direct', { servername: 'abc.id.ui.direct', rejectUnauthorized: true }],
 	['verify', 'unvr.local', null, { servername: 'unvr.local' }],
-	['insecure', '10.0.0.2', null, { rejectUnauthorized: false, insecure: true }],
 ])('plans %s for %s', (mode, host, serverName, expected) =>
 	expect(planProtectTls(host, { mode, serverName, fingerprintSha256: null } as ProtectTlsSettings)).toMatchObject(expected));
 it('requires a fingerprint in pinned mode', () =>
@@ -777,7 +778,6 @@ it('pinned mode refuses another certificate and sends no byte', async () => {
 		.rejects.toMatchObject({ category: 'tls_fingerprint_mismatch' });
 	expect(server.bytesReceived).toBe(0);
 });
-it('insecure mode accepts any certificate', async () => { /* 200 */ });
 it('reuses one verified socket for sequential requests', async () => { /* two GETs → one secureConnection */ });
 it('times out a server that never completes the handshake', async () => {
 	// net.createServer that accepts and stays silent; handshakeTimeoutMs 200 → category 'timeout' within 1 s
@@ -867,7 +867,6 @@ export class ProtectApiClient {
 	listLights(options?: ProtectCallOptions): Promise<ProtectLight[]>;
 	getRtspsStreams(cameraId: string, options?: ProtectCallOptions): Promise<ProtectRtspsStreams>;
 	getSnapshot(cameraId: string, options?: ProtectCallOptions & { highQuality?: boolean; channel?: 'main' | 'package' }): Promise<ProtectSnapshot>;
-	readonly tlsInsecure: boolean;
 	readonly peerFingerprint: string | null;
 	close(): void; // in-flight and later calls reject with CANCELLED
 }
@@ -1130,9 +1129,8 @@ Attempt and outcome table (`lastError` is always `PROTECT_ERROR_MESSAGES[categor
 | health check fails retryably | `disconnected` | reconnect, client closed |
 | health check sees an unsupported version | `version_unsupported` | none |
 
-Every continuation checks its captured generation; a mismatch closes the client it created and returns. `insecure`
-mode logs `TLS verification is disabled for the UniFi Protect console` once per start and puts `'tls_insecure'` in
-`warnings` whenever the saved mode is `insecure`. `onConfigChanged` returns `restartRequired: true` when `host`,
+Every continuation checks its captured generation; a mismatch closes the client it created and returns. There is no
+insecure mode, so the connector has no TLS warning. `onConfigChanged` returns `restartRequired: true` when `host`,
 `port`, `apiKey`, `tls.mode`, `tls.serverName` or `tls.fingerprintSha256` changed and the service is started; other
 fields never restart. Log lines: `UniFi Protect connected (Protect <version>)`, `UniFi Protect connection failed
 (<category>); retry in <ms> ms`, `UniFi Protect connection stopped (<category>)`.
@@ -1170,7 +1168,6 @@ it('moves to disconnected and reconnects when the health check fails', async () 
 it.each([['host', true], ['port', true], ['apiKey', true], ['tls.mode', true], ['tls.serverName', true], ['tls.fingerprintSha256', true],
 	['snapshotMinIntervalMs', false], ['pollIntervalMs', false], ['defaultStreamQuality', false], ['streamHostOverride', false]])(
 	'onConfigChanged for %s requires restart: %s', async (field, expected) => { /* … */ });
-it('warns once and reports tls_insecure in insecure mode', async () => { /* warn spy called once over two health checks */ });
 it('stop closes the client and clears every timer', async () => { /* jest.getTimerCount() === 0 */ });
 it('keeps the key out of status and logs', async () => {
 	// key PROTECT_SENTINEL_KEY_…; failing client throws new Error(`boom ${KEY}`)
@@ -1263,7 +1260,7 @@ Sequence (every failure stops and fills `errorCategory` / `error` from `PROTECT_
 3. `fetchProtectConsoleSystem` (no key; failures ignored) → `directConnectDomain`, `consoleName`,
    `consoleModel` (`hardware.shortname`).
 4. TLS decision without sending the key: `verify` needs `certificate.trusted` (else `tls_untrusted`); `pinned` needs
-   `fingerprintsEqual` (else `tls_fingerprint_mismatch`); `insecure` adds warning `tls_insecure`.
+   `fingerprintsEqual` (else `tls_fingerprint_mismatch`). The presented fingerprint is always returned, so a console without a usable domain can be pinned.
 5. Client from the factory: `getMetaInfo` → `applicationVersion`, `versionSupported`; unsupported → stop with
    `version_unsupported`; then `getNvr` → `nvrName`; `success = true`; the client is closed in `finally`.
 
@@ -1311,11 +1308,12 @@ it('closes the client even when a call fails', async () => { /* close called onc
 | candidate, `pinned` with the console fingerprint | `error_category: 'tls_fingerprint_mismatch'`; no request with the key |
 | candidate with a wrong key | `error_category: 'authentication'` |
 | `fake.set({ applicationVersion: '7.2.104' })`, candidate pinned | `error_category: 'version_unsupported'`, `version_supported: false` |
+| `PATCH` config `{ tls: { mode: 'insecure' } }` (or any unknown mode) | 400, config unchanged |
 | saved mode with an extra `host` field | 400 (validation pipe, `forbidNonWhitelisted`), no fake request |
 | saved mode before a key is stored | `error_category: 'validation'` |
 | `POST test-connection` as a user-role token | 403 |
 | `PATCH` config `{ enabled: true, host: '127.0.0.1', port, api_key: FAKE_PROTECT_API_KEY, tls: { mode: 'pinned', fingerprint_sha256: <self-signed, colon form> } }` | 200; `GET` config has `api_key_configured: true`, no `api_key`, normalized fingerprint; status becomes `connected` with `nvr_name`, `warnings: []` |
-| `fake.set({ applicationVersion: '7.2.104' })`, `PATCH tls.mode: 'insecure'` | status `version_unsupported`, `warnings: ['tls_insecure']` |
+| `fake.set({ applicationVersion: '7.2.104' })`, `PATCH` as above | status `version_unsupported`, `warnings: []` |
 | `PATCH` `api_key: 'wrong-key-0000'` | status `auth_failed`; the `meta/info` request count does not grow over the next 3 s |
 | `PATCH` the correct key and `port` = a closed local port (bind and close a `net` server to get one) | status `disconnected`, `last_error_category: 'unreachable'`, `next_retry_at` set |
 | `GET /api/v1/modules/extensions/services` | the connector entry has no `lastError` containing the sentinel |
@@ -1340,7 +1338,7 @@ pnpm --filter ./apps/admin run test:unit
 - [ ] **Step 8: Manual check against the real console** (not in CI; needs the maintainer's console and a key in the
   environment, never in a file in the repository). From `apps/backend`, a throwaway script in the session scratchpad
   that constructs `ProtectApiClient` three times — `verify` with `server_name` = the console's `directConnectDomain`,
-  `pinned` with the IP certificate's fingerprint, `insecure` — and calls `getMetaInfo`, `getNvr`, `listCameras`.
+  `pinned` with the IP certificate's fingerprint — and calls `getMetaInfo`, `getNvr`, `listCameras`.
   Record in the PR body only: Protect version, which modes succeeded, whether the console accepted `Host: <ip>` with
   SNI = the domain, and the observed request spacing. A failure of `verify` with the domain blocks the PR until the TLS
   decision is revisited.
@@ -1370,7 +1368,7 @@ git commit -m "feat(backend): test unifi protect connections and cover the plugi
 
 - **Spec coverage.** Issue #1181 acceptance: identifiers and child entities with the four columns (Tasks 1–3);
   config fields, `secretFields`, `api_key_configured`, readiness validator (Task 1; `tls.verify` replaced by
-  `tls.mode`, see Decisions); client with `X-API-KEY`, three TLS modes and persistent insecure warning, 80 % pacing,
+  `tls.mode`, see Decisions); client with `X-API-KEY`, two TLS modes (`verify`, `pinned`; no insecure mode), 80 % pacing,
   retries honouring `Retry-After`, timeouts, typed errors, redaction (Tasks 4–6, warning in Task 8); version gate ⇒
   `version_unsupported` (Tasks 4, 8, 9); connector with generation counter and backoff, `GET status`, `POST
   test-connection` with saved or candidate credentials returning the fingerprint (Tasks 8, 9); never calls

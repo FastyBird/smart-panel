@@ -71,6 +71,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/jest/bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:homey-spike": "jest --config ./test/jest-homey-spike.json --runInBand",
+    "test:unifi-spike": "jest --config ./test/jest-unifi-spike.json --runInBand",
     "test:virtual-thermostat-spike": "jest --config ./test/jest-virtual-thermostat-spike.json --runInBand --detectOpenHandles",
     "test:oauth-spike": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --experimental-vm-modules\" jest --config ./test/jest-oauth-spike.json --runInBand",
     "test:buddy-context-soak": "jest --config ./test/jest-buddy-context-soak.json --runInBand",
