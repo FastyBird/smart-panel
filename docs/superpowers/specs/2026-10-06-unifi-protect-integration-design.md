@@ -235,8 +235,10 @@ console's own `directConnectDomain` is never trusted; without an anchor the suit
   `Retry-After: 1`. The pacer targets 80 % (8 requests/s) and honours `Retry-After`.
 - **TLS:** by IP the console presents a self-signed certificate (`CN=unifi.local`). With SNI set to `directConnectDomain`
   (from `GET /api/system`) it presents a valid Let's Encrypt certificate. Default policy for UP-5: connect to the IP
-  with `servername = directConnectDomain` and full verification; fall back to certificate pinning, and to
-  "unverified" only as an explicit last resort. Validity on the RTSPS port was not tested (see below).
+  with `servername` set to the plugin's trusted `server_name` and full verification. `directConnectDomain` from the
+  unauthenticated `GET /api/system` may only be suggested to the admin; the `server_name` (or a certificate pin) is
+  configured or confirmed independently by the admin before the key is ever sent (Plan 4b). Fall back to certificate
+  pinning, and to "unverified" only as an explicit last resort. Validity on the RTSPS port was not tested (see below).
 - **Probes:** `GET /api/system` without auth returns `200` (`hardware.shortname`, `name`, `mac`,
   `directConnectDomain`, ...); `GET /proxy/protect/api` without auth returns `401` (Protect present).
 - **HQ snapshot:** `snapshot?highQuality=false` returns `200 image/jpeg` (about 58 KB, 0.4 s). `highQuality=true` on a
