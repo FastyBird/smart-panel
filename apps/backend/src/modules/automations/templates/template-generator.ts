@@ -459,7 +459,8 @@ export const sampleAutomationTemplateAnswers = (template: AutomationTemplate): A
 
 				break;
 			case 'text':
-				values[parameter.id] = parameter.default ?? 'Text';
+				// Trimmed, as a default is when it is used
+				values[parameter.id] = parameter.default?.trim() ?? 'Text';
 
 				break;
 		}

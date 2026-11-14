@@ -86,7 +86,15 @@ const HEATER = fakeProperty({
 	format: [0, 100],
 });
 
-const PROPERTIES = [MOTION, LIGHT, CONTACT, LEAK, HEATER];
+const INTEGER_HEATER = fakeProperty({
+	channelCategory: ChannelCategory.HEATER,
+	category: PropertyCategory.TEMPERATURE,
+	dataType: DataTypeType.UCHAR,
+	permissions: [PermissionType.READ_WRITE],
+	format: [0, 100],
+});
+
+const PROPERTIES = [MOTION, LIGHT, CONTACT, LEAK, HEATER, INTEGER_HEATER];
 
 const toEntity = (property: FakeProperty): ChannelPropertyEntity =>
 	({
@@ -249,18 +257,30 @@ describe('built-in automation templates', () => {
 		it('sets the heater back when the house goes away and restores it when it leaves away', async () => {
 			const draft = await service.generate('away-heating-setback', {
 				heater: answer(HEATER),
-				away_temperature: 15.5,
+				away_temperature: 15,
 				home_temperature: 22,
 			});
 
 			expect(draft.graph.nodes.map((node) => [node.type, node.config])).toEqual([
 				['house-mode.changed', { to: 'away' }],
-				['device.property.set', { writes: [{ ...answer(HEATER), value: 15.5 }] }],
+				['device.property.set', { writes: [{ ...answer(HEATER), value: 15 }] }],
 				['house-mode.changed', { from: 'away' }],
 				['device.property.set', { writes: [{ ...answer(HEATER), value: 22 }] }],
 			]);
 
 			await expectSavable(draft.graph);
+		});
+	});
+
+	it('asks for whole degrees, which an integer heater takes as well', async () => {
+		const draft = await service.generate('away-heating-setback', { heater: answer(INTEGER_HEATER) });
+
+		await expectSavable(draft.graph);
+
+		await expect(
+			service.generate('away-heating-setback', { heater: answer(HEATER), away_temperature: 16.5 }),
+		).rejects.toMatchObject({
+			issues: [{ field: 'parameters.away_temperature', reason: 'The number must be a multiple of 1 from 5.' }],
 		});
 	});
 

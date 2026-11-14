@@ -276,6 +276,13 @@ describe('generateAutomationTemplateGraph', () => {
 		expect(JSON.stringify(t)).toBe(before);
 	});
 
+	it('trims a text default in the sample answers, as it is trimmed when it is used', () => {
+		const t = template();
+		t.parameters[3] = { id: 'title', type: 'text', label: 'Title', max_length: 5, default: '  Hello  ' };
+
+		expect(sampleAutomationTemplateAnswers(t).title).toBe('Hello');
+	});
+
 	it('generates from the sample answers, which are inside the bounds', () => {
 		const t = template();
 		const values = sampleAutomationTemplateAnswers(t);
