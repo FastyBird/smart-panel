@@ -427,6 +427,135 @@ void main() {
     );
   });
 
+  group('AutomationsRepository overlapping requests', () {
+    Future<void> arrived() => pumpEventQueue();
+
+    List<String> ids() =>
+        repository.automations.map((a) => a.id).toList()..sort();
+
+    test(
+      'an older list finishing after a newer one does not bring back what it left out',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        adapter.stored['b'] = _automation('b');
+        await repository.fetchAll();
+
+        final older = Completer<void>();
+        adapter.listGate = older;
+        final first = repository.fetchAll();
+        await arrived();
+
+        // Deleted on the server, and the event was missed
+        adapter.stored.remove('b');
+        await repository.fetchAll();
+
+        expect(ids(), ['a']);
+
+        older.complete();
+        await first;
+
+        expect(ids(), ['a']);
+      },
+    );
+
+    test(
+      'an older list finishing after a newer one does not remove what the newer one added',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await repository.fetchAll();
+
+        final older = Completer<void>();
+        adapter.listGate = older;
+        final first = repository.fetchAll();
+        await arrived();
+
+        // Created on the server, and the event was missed
+        adapter.stored['c'] = _automation('c');
+        await repository.fetchAll();
+
+        expect(ids(), ['a', 'c']);
+
+        older.complete();
+        await first;
+
+        expect(ids(), ['a', 'c']);
+      },
+    );
+
+    test(
+      'a pending switch does not bring back an automation a newer list left out',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await service.initialize();
+
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await arrived();
+
+        adapter.stored.remove('a');
+        await repository.fetchAll();
+
+        expect(repository.getAutomation('a'), isNull);
+
+        gate.complete();
+        await result;
+
+        expect(repository.getAutomation('a'), isNull);
+        expect(service.automationsForSpace('room'), isEmpty);
+      },
+    );
+
+    test(
+      'an automation deleted and created again keeps the new one over an older answer',
+      () async {
+        adapter.stored['a'] = _automation('a', name: 'Old');
+        await service.initialize();
+
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await arrived();
+
+        repository.delete('a');
+        repository.insert([_automation('a', name: 'New')]);
+        gate.complete();
+        await result;
+
+        expect(repository.getAutomation('a')!.name, 'New');
+        expect(repository.getAutomation('a')!.enabled, isFalse);
+      },
+    );
+
+    test(
+      'pruned deletions do not stop the same id from coming back later',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await repository.fetchAll();
+
+        repository.delete('a');
+        expect(repository.getAutomation('a'), isNull);
+
+        repository.insert([_automation('a', name: 'Again')]);
+        expect(repository.getAutomation('a')!.name, 'Again');
+
+        adapter.stored['a'] = _automation('a', name: 'Again');
+        await repository.fetchAll();
+
+        expect(repository.getAutomation('a')!.name, 'Again');
+
+        // And after a list left it out, a later list or event can add it again
+        adapter.stored.remove('a');
+        await repository.fetchAll();
+        expect(repository.getAutomation('a'), isNull);
+
+        adapter.stored['a'] = _automation('a', name: 'Third');
+        await repository.fetchAll();
+        expect(repository.getAutomation('a')!.name, 'Third');
+      },
+    );
+  });
+
   group('disposal', () {
     test(
       'a switch on its way when the module is torn down completes quietly',

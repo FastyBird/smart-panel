@@ -33,14 +33,16 @@ class AutomationToggleException implements Exception {
 ///
 /// Live changes (websocket events) and REST answers (the list, a switch) race:
 /// an answer can be read before a change and arrive after it. Every change is
-/// therefore numbered, and an answer is merged against what happened while it
-/// was on its way:
-/// - an automation is replaced only by the same or a newer revision; at the
-///   same revision a live change made after the request started is kept;
-/// - an automation deleted (or a reset) after the request started is not
-///   brought back by it;
-/// - an automation missing from the list is dropped only when nothing changed
-///   it after the list was requested.
+/// therefore numbered, and every request remembers the number it started at.
+/// - A deletion seen by any source - a Deleted event, a list that leaves the
+///   automation out, a switch answered with 404 - is recorded at its number.
+/// - An answer is applied to an automation only when nothing deleted it and no
+///   reset happened after the request started; a newer revision then wins, and
+///   at the same revision so does a change made after the request started.
+/// - A list that started before the last list applied is dropped whole, so an
+///   older list can neither re-add nor remove anything relative to a newer one.
+/// - Records are pruned only when no request still in flight started before
+///   them, so a slow request always finds the changes it missed.
 class AutomationsRepository extends ChangeNotifier {
   final AutomationsModuleClient _apiClient;
 
@@ -52,11 +54,17 @@ class AutomationsRepository extends ChangeNotifier {
   /// The change number of the last change of each automation.
   final Map<String, int> _changedAt = {};
 
-  /// The change number at which each automation was deleted.
+  /// The change number at which each automation was seen deleted.
   final Map<String, int> _deletedAt = {};
 
-  /// The change number of the last reset; nothing before it survives.
+  /// The change number of the last reset; nothing read before it survives.
   int _resetAt = 0;
+
+  /// The start number of the last list that was applied.
+  int _listAppliedFrom = -1;
+
+  /// The start numbers of the requests still in flight.
+  final List<int> _inFlight = [];
 
   bool _disposed = false;
 
@@ -68,8 +76,9 @@ class AutomationsRepository extends ChangeNotifier {
   AutomationModel? getAutomation(String id) => _data[id];
 
   /// Inserts or replaces automations from a live event, skipping what cannot
-  /// be read and what is older than the stored revision. A live event about an
-  /// automation is proof it exists, so it lifts an earlier deletion.
+  /// be read and what is older than the stored revision. A live event is the
+  /// current truth, so it applies even to an automation deleted before; the
+  /// deletion stays recorded for the requests that started before it.
   void insert(List<Map<String, dynamic>> jsonList) {
     if (_disposed) return;
 
@@ -84,12 +93,12 @@ class AutomationsRepository extends ChangeNotifier {
 
       if (stored != null && automation.revision < stored.revision) continue;
 
-      _deletedAt.remove(automation.id);
       _changedAt[automation.id] = ++_seq;
       next[automation.id] = automation;
     }
 
     _replace(next);
+    _prune();
   }
 
   void delete(String id) {
@@ -97,19 +106,17 @@ class AutomationsRepository extends ChangeNotifier {
 
     _deletedAt[id] = _changedAt[id] = ++_seq;
 
-    if (!_data.containsKey(id)) return;
-
     _replace({..._data}..remove(id));
+    _prune();
   }
 
   void clear() {
     if (_disposed) return;
 
     _resetAt = ++_seq;
-    _changedAt.clear();
-    _deletedAt.clear();
 
     _replace({});
+    _prune();
   }
 
   /// Reads every automation and merges the list into what is held, so an
@@ -117,7 +124,7 @@ class AutomationsRepository extends ChangeNotifier {
   /// read keeps the current list: the panel must start even when the backend
   /// refuses it.
   Future<void> fetchAll() async {
-    final startedAt = _seq;
+    final startedAt = _begin();
 
     try {
       final response = await _apiClient.getAutomationsModuleAutomations();
@@ -149,6 +156,8 @@ class AutomationsRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint('[AUTOMATIONS MODULE] Unexpected error: $e');
       }
+    } finally {
+      _end(startedAt);
     }
   }
 
@@ -157,7 +166,7 @@ class AutomationsRepository extends ChangeNotifier {
   ///
   /// Throws an [AutomationToggleException] when it did not go through.
   Future<AutomationModel> setEnabled(String id, bool enabled) async {
-    final startedAt = _seq;
+    final startedAt = _begin();
 
     try {
       final response = await _apiClient
@@ -208,6 +217,8 @@ class AutomationsRepository extends ChangeNotifier {
       }
 
       throw const AutomationToggleException(AutomationToggleFailure.failed);
+    } finally {
+      _end(startedAt);
     }
   }
 
@@ -218,14 +229,39 @@ class AutomationsRepository extends ChangeNotifier {
     super.dispose();
   }
 
+  int _begin() {
+    _inFlight.add(_seq);
+
+    return _seq;
+  }
+
+  void _end(int startedAt) {
+    _inFlight.remove(startedAt);
+    _prune();
+  }
+
+  /// Forgets what no request in flight can have missed: everything numbered at
+  /// or before the earliest start, and everything when nothing is in flight.
+  void _prune() {
+    if (_inFlight.isEmpty) {
+      _changedAt.clear();
+      _deletedAt.clear();
+
+      return;
+    }
+
+    final earliest = _inFlight.reduce((a, b) => a < b ? a : b);
+
+    _changedAt.removeWhere((_, at) => at <= earliest);
+    _deletedAt.removeWhere((_, at) => at <= earliest);
+  }
+
   /// Whether an automation read by a request that started at [startedAt] may
   /// replace what is held now.
   bool _accepts(AutomationModel automation, int startedAt) {
     if (_resetAt > startedAt) return false;
 
-    final deletedAt = _deletedAt[automation.id];
-
-    if (deletedAt != null && deletedAt > startedAt) return false;
+    if ((_deletedAt[automation.id] ?? -1) > startedAt) return false;
 
     final stored = _data[automation.id];
 
@@ -235,35 +271,35 @@ class AutomationsRepository extends ChangeNotifier {
       return automation.revision > stored.revision;
     }
 
-    // Same revision: a live change made since the request started is newer
-    return (_changedAt[automation.id] ?? 0) <= startedAt;
+    // Same revision: a change made since the request started is newer
+    return (_changedAt[automation.id] ?? -1) <= startedAt;
   }
 
   void _mergeList(Map<String, AutomationModel> listed, int startedAt) {
-    // A reset since the request started: the list describes what is gone
-    if (_resetAt > startedAt) return;
+    // Read before a reset, or before a list that was already applied
+    if (_resetAt > startedAt || startedAt < _listAppliedFrom) return;
+
+    _listAppliedFrom = startedAt;
 
     final next = <String, AutomationModel>{};
 
     for (final entry in _data.entries) {
-      // Kept when listed (merged below) or changed after the list was asked for
       if (listed.containsKey(entry.key) ||
-          (_changedAt[entry.key] ?? 0) > startedAt) {
+          (_changedAt[entry.key] ?? -1) > startedAt) {
+        // Listed (merged below), or changed after the list was asked for
         next[entry.key] = entry.value;
+      } else {
+        // Left out of the list: deleted, as far as older requests are concerned
+        _deletedAt[entry.key] = _changedAt[entry.key] = ++_seq;
       }
     }
 
     for (final automation in listed.values) {
-      if (!_accepts(automation, startedAt)) continue;
-
-      next[automation.id] = automation;
-    }
-
-    // The list is newer than these deletions, so it decides from now on
-    _deletedAt.removeWhere((_, deletedAt) => deletedAt <= startedAt);
-
-    for (final id in next.keys) {
-      if (_data[id] != next[id]) _changedAt[id] = ++_seq;
+      if (_accepts(automation, startedAt) &&
+          next[automation.id] != automation) {
+        _changedAt[automation.id] = ++_seq;
+        next[automation.id] = automation;
+      }
     }
 
     _replace(next);
