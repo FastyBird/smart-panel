@@ -162,7 +162,8 @@ describe('Go2rtcProcessService', () => {
 		expect(joined).not.toContain('hunter2pass');
 		expect(joined).not.toContain('cam.local');
 		expect(joined).not.toContain('PW_SENTINEL_abcdef0123');
-		expect(lines.indexOf('next line ok')).toBe(lines.indexOf(GO2RTC_OVERLONG_LINE_MARKER) + 1);
+		// Other stub lines (stderr) may be stored between the two, so only the order is asserted.
+		expect(lines.indexOf('next line ok')).toBeGreaterThan(lines.indexOf(GO2RTC_OVERLONG_LINE_MARKER));
 	});
 
 	it('stores and redacts an unterminated tail when the child closes', async () => {
