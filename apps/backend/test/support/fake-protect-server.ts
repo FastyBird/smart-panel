@@ -103,9 +103,14 @@ export class FakeProtectServer {
 			...options,
 		};
 		this.server = https.createServer(protectTlsServerOptions(), (req, res) => this.handle(req, res));
-		this.server.on('secureConnection', (socket: TLSSocket) => {
+		// Tracked from the TCP connection, so stop() also ends a client still negotiating TLS (it never reaches
+		// `secureConnection`), instead of waiting for the handshake timeout.
+		this.server.on('connection', (socket: net.Socket) => {
 			this.sockets.add(socket);
 			socket.on('close', () => this.sockets.delete(socket));
+			socket.on('error', () => undefined);
+		});
+		this.server.on('secureConnection', (socket: TLSSocket) => {
 			socket.on('error', () => undefined);
 		});
 		this.server.on('tlsClientError', () => undefined);

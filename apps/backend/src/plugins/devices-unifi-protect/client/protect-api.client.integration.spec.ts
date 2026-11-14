@@ -1,4 +1,5 @@
 import * as https from 'https';
+import * as net from 'net';
 
 import { Logger } from '@nestjs/common';
 
@@ -16,6 +17,24 @@ import { fetchProtectConsoleSystem } from './protect-console-system';
 const CAMERA_ID = '600cefafd5f365d6f83c4ef3';
 const BASE = '/proxy/protect/integration/v1';
 const JSON_CT = { 'content-type': 'application/json; charset=utf-8' };
+
+describe('FakeProtectServer', () => {
+	it('stops at once while a client is still negotiating TLS', async () => {
+		const server = await FakeProtectServer.start();
+		const raw = net.connect(server.port, server.host);
+
+		raw.on('error', () => undefined);
+		await new Promise((resolve) => raw.once('connect', resolve));
+
+		const startedAt = Date.now();
+
+		// No TLS bytes are sent, so the connection never reaches `secureConnection`.
+		await server.stop();
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		raw.destroy();
+	});
+});
 
 describe('ProtectApiClient against the fake console', () => {
 	let fake: FakeProtectServer;

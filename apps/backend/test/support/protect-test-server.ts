@@ -27,10 +27,15 @@ export async function startProtectTestServer(
 		handler(req, res);
 	});
 
-	server.on('secureConnection', (socket: tls.TLSSocket) => {
-		state.secureConnections += 1;
+	// Tracked from the TCP connection, so close() also ends a client still negotiating TLS (it never reaches
+	// `secureConnection`), instead of waiting for the handshake timeout.
+	server.on('connection', (socket: net.Socket) => {
 		sockets.add(socket);
 		socket.on('close', () => sockets.delete(socket));
+		socket.on('error', () => undefined);
+	});
+	server.on('secureConnection', (socket: tls.TLSSocket) => {
+		state.secureConnections += 1;
 		socket.on('error', () => undefined);
 	});
 	server.on('tlsClientError', () => undefined);

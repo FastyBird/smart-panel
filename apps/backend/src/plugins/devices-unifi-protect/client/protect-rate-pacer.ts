@@ -36,7 +36,10 @@ function items(header: HeaderValue): string[] {
 function param(item: string, name: string): number | null {
 	const match = new RegExp(`(?:^|;)\\s*${name}=(\\d+)\\s*(?:;|$)`).exec(item);
 
-	return match ? Number(match[1]) : null;
+	const value = match ? Number(match[1]) : null;
+
+	// A digit run long enough to become Infinity (or lose precision) is not a usable parameter.
+	return value !== null && Number.isSafeInteger(value) ? value : null;
 }
 
 const rawIntervalMs = (policy: ProtectRatePolicy, utilisation: number): number =>
@@ -169,7 +172,6 @@ function waitForTurn(previous: Promise<void>, signal?: AbortSignal): Promise<voi
 export class ProtectRatePacer {
 	policy: ProtectRatePolicy = { ...PROTECT_DEFAULT_RATE_POLICY };
 
-	private nextSlotAt = 0;
 	private pausedUntil = 0;
 	private lastReleasedAt = Number.NEGATIVE_INFINITY;
 	private releaseTurn: Promise<void> = Promise.resolve();
@@ -190,39 +192,17 @@ export class ProtectRatePacer {
 		this.sleep = options.sleep ?? protectSleep;
 	}
 
+	/**
+	 * Waiters take turns in FIFO order. The waiter whose turn it is goes once a full interval has passed since the
+	 * previous actual release and any pause has ended, re-checked after every sleep, because a timer can resume late and
+	 * a pause can be announced while it waits. Only that waiter holds a timer, so nothing is reserved ahead: an aborted
+	 * waiter leaves at once and costs the waiters behind it no time.
+	 */
 	async acquire(signal?: AbortSignal): Promise<void> {
 		if (signal?.aborted) {
 			throw signal.reason;
 		}
 
-		for (;;) {
-			const now = this.now();
-			const pausedAtReservation = this.pausedUntil;
-			const slot = Math.max(now, this.nextSlotAt, pausedAtReservation);
-
-			this.nextSlotAt = slot + pacingIntervalMs(this.policy, this.utilisation);
-
-			if (slot > now) {
-				await this.sleep(slot - now, signal);
-			}
-
-			// Only a longer pause announced while this waiter slept, and still running, pushes it to a new slot behind
-			// the earlier waiters; a timer that merely woke early must not reorder the queue, and a newer pause that
-			// has already ended must not make the waiter queue again.
-			if (this.pausedUntil <= pausedAtReservation || this.now() >= this.pausedUntil) {
-				await this.spaceFromLastRelease(signal);
-
-				return;
-			}
-		}
-	}
-
-	/**
-	 * Timers can resume late, several at once. Releases therefore take turns in FIFO order, and each one waits until a
-	 * full interval has passed since the previous actual release and any pause has ended, re-checked after every sleep,
-	 * because the sleep itself can resume late and a pause can be announced while it waits.
-	 */
-	private async spaceFromLastRelease(signal?: AbortSignal): Promise<void> {
 		const previous = this.releaseTurn;
 		let passTurn: () => void = () => undefined;
 

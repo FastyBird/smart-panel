@@ -254,7 +254,7 @@ describe('ProtectRatePacer', () => {
 		expect(sleeps).toBe(4);
 	});
 
-	it('keeps releases 125 ms apart when the pacing and the spacing timers both resume late', async () => {
+	it('keeps releases 125 ms apart when timers resume late', async () => {
 		let now = 0;
 		const sleeps: { ms: number; resolve: () => void }[] = [];
 		const late = new ProtectRatePacer({
@@ -281,15 +281,18 @@ describe('ProtectRatePacer', () => {
 
 		const waiters = [waiter('a'), waiter('b'), waiter('c')];
 
-		expect(sleeps.map((s) => s.ms)).toEqual([125, 250, 375]);
+		await flush();
 
-		// All three pacing timers resume late, together.
+		// Only the waiter at the head of the queue holds a timer.
+		expect(sleeps.map((s) => s.ms)).toEqual([125]);
+
+		// Its timer resumes late.
 		await wake(400);
 
 		expect(released).toEqual([{ name: 'a', at: 400 }]);
 		expect(sleeps.map((s) => s.ms)).toEqual([125]);
 
-		// The spacing timer resumes late as well; only one waiter may go.
+		// The next timer resumes late as well; still only one waiter may go.
 		await wake(700);
 
 		expect(released.map((r) => r.name)).toEqual(['a', 'b']);
@@ -425,7 +428,23 @@ describe('ProtectRatePacer', () => {
 		]);
 	});
 
-	it('re-queues a waiter only when a longer pause was announced after its reservation', async () => {
+	it('costs a fresh acquisition no time for a batch of cancelled waiters', async () => {
+		await pacer.acquire(); // released at 0
+
+		const controller = new AbortController();
+		const cancelled = Array.from({ length: 240 }, () => pacer.acquire(controller.signal).catch(() => 'cancelled'));
+
+		controller.abort(new Error('cancelled'));
+
+		expect(await Promise.all(cancelled)).toEqual(Array.from({ length: 240 }, () => 'cancelled'));
+
+		await clock.run([pacer.acquire()]);
+
+		// Only the spacing from the one real release applies, not 240 reserved slots.
+		expect(clock.now()).toBe(125);
+	});
+
+	it('delays a waiter when a longer pause is announced while it waits', async () => {
 		const starts: number[] = [];
 
 		pacer.backOff(500);
@@ -439,7 +458,7 @@ describe('ProtectRatePacer', () => {
 		expect(starts[0]).toBeGreaterThanOrEqual(3000);
 	});
 
-	it('does not re-queue a waiter whose newer pause already ended when it woke', async () => {
+	it('does not hold a waiter for a newer pause that already ended when it woke', async () => {
 		const starts: number[] = [];
 
 		await pacer.acquire(); // takes the slot at 0; the next waiter sleeps until 125
@@ -464,6 +483,18 @@ describe('ProtectRatePacer', () => {
 		expect(clock.now()).toBe(60000);
 	});
 
+	it('ignores a policy or limit whose numbers are too large to be exact', () => {
+		const huge = '9'.repeat(309);
+
+		expect(parseRateLimitPolicy(`"x"; q=${huge}; w=${huge}`)).toBeNull();
+		expect(parseRateLimit(`"x"; r=0; t=${huge}`)).toBeNull();
+
+		pacer.observe({ 'ratelimit-policy': `"x"; q=${huge}; w=${huge}` });
+
+		expect(pacer.policy).toEqual({ quota: 10, windowSeconds: 1 });
+		expect(pacingIntervalMs(pacer.policy)).toBe(125);
+	});
+
 	it('does not let an hour-long policy hide a stricter short one', () => {
 		expect(parseRateLimitPolicy('"a"; q=1; w=3600, "b"; q=1; w=7200')).toEqual({ quota: 1, windowSeconds: 7200 });
 	});
@@ -477,6 +508,10 @@ describe('ProtectRatePacer', () => {
 			await real.acquire();
 
 			const pending = real.acquire();
+
+			// The second waiter starts its timer once it holds the release turn.
+			await new Promise((resolve) => setImmediate(resolve));
+
 			const timer = spy.mock.results[spy.mock.results.length - 1].value as NodeJS.Timeout;
 
 			expect(timer.hasRef()).toBe(false);

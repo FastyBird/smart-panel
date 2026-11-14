@@ -1,4 +1,5 @@
 import * as https from 'https';
+import * as net from 'net';
 
 import { ProtectTestServer, startProtectTestServer } from '../../../../test/support/protect-test-server';
 
@@ -154,6 +155,24 @@ describe('NodeProtectTransport', () => {
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(() => controller.abort()).not.toThrow();
 		expect(server?.requests).toHaveLength(0);
+	});
+
+	it('test server closes at once while a client is still negotiating TLS', async () => {
+		await open((_req, res) => res.end('{}'));
+
+		const raw = net.connect(server?.port ?? 0, '127.0.0.1');
+
+		raw.on('error', () => undefined);
+		await new Promise((resolve) => raw.once('connect', resolve));
+
+		const startedAt = Date.now();
+
+		// No TLS bytes are sent, so the connection never reaches `secureConnection`.
+		await server?.close();
+		server = undefined;
+
+		expect(Date.now() - startedAt).toBeLessThan(1000);
+		raw.destroy();
 	});
 
 	it('reports a connection closed mid-response with the raw reset code', async () => {
