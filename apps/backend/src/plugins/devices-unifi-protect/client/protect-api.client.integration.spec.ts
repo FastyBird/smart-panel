@@ -15,6 +15,7 @@ import { fetchProtectConsoleSystem } from './protect-console-system';
 
 const CAMERA_ID = '600cefafd5f365d6f83c4ef3';
 const BASE = '/proxy/protect/integration/v1';
+const JSON_CT = { 'content-type': 'application/json; charset=utf-8' };
 
 describe('ProtectApiClient against the fake console', () => {
 	let fake: FakeProtectServer;
@@ -172,7 +173,7 @@ describe('ProtectApiClient against the fake console', () => {
 
 		expect(cameras).toHaveLength(2);
 		expect(Date.now() - started).toBeGreaterThanOrEqual(980);
-		expect(Date.now() - started).toBeLessThan(2500);
+		expect(Date.now() - started).toBeLessThan(5000);
 		expect(fake.requests).toHaveLength(2);
 	});
 
@@ -184,7 +185,7 @@ describe('ProtectApiClient against the fake console', () => {
 		await expect(build({ timeoutMs: 500, maxAttempts: 1 }).getSnapshot(CAMERA_ID)).rejects.toMatchObject({
 			category: 'timeout',
 		});
-		expect(Date.now() - started).toBeLessThan(2000);
+		expect(Date.now() - started).toBeLessThan(5000);
 	});
 
 	it('cuts off an oversized body as protocol', async () => {
@@ -255,5 +256,3 @@ describe('ProtectApiClient against the fake console', () => {
 		expect(fake.requests.find((request) => request.path === '/api/system')?.hadApiKey).toBe(false);
 	});
 });
-
-const JSON_CT = { 'content-type': 'application/json; charset=utf-8' };

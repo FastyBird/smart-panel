@@ -7,9 +7,12 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
+import { ProtectStatusController } from './controllers/protect-status.controller';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from './devices-unifi-protect.constants';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-unifi-protect.openapi';
 import { DevicesUnifiProtectPlugin } from './devices-unifi-protect.plugin';
@@ -26,7 +29,9 @@ import {
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel } from './models/config.model';
+import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
+import { ProtectConnectorService } from './services/protect-connector.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
 
@@ -39,6 +44,18 @@ describe('DevicesUnifiProtectPlugin', () => {
 		const swaggerRegistry = { register: jest.fn() };
 		const discriminators = { register: jest.fn() };
 		const extensions = { registerPluginMetadata: jest.fn() };
+		const managedServiceManager = { register: jest.fn() };
+		const connector = {
+			owner: { kind: 'plugin', type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME },
+			serviceId: 'connector',
+			stop: jest.fn().mockResolvedValue(undefined),
+		};
+		let resetHandler: (() => Promise<{ success: boolean; reason?: string } | null>) | undefined;
+		const factoryReset = {
+			register: jest.fn((_name: string, handler: () => Promise<{ success: boolean; reason?: string } | null>) => {
+				resetHandler = handler;
+			}),
+		};
 		const plugin = new DevicesUnifiProtectPlugin(
 			configMapper as unknown as PluginsTypeMapperService,
 			devicesMapper as unknown as DevicesTypeMapperService,
@@ -47,6 +64,9 @@ describe('DevicesUnifiProtectPlugin', () => {
 			swaggerRegistry as unknown as SwaggerModelsRegistryService,
 			discriminators as unknown as ExtendedDiscriminatorService,
 			extensions as unknown as ExtensionsService,
+			managedServiceManager as unknown as ManagedServiceManagerService,
+			connector as unknown as ProtectConnectorService,
+			factoryReset as unknown as FactoryResetRegistryService,
 		);
 
 		return {
@@ -58,6 +78,16 @@ describe('DevicesUnifiProtectPlugin', () => {
 			swaggerRegistry,
 			discriminators,
 			extensions,
+			managedServiceManager,
+			connector,
+			factoryReset,
+			runFactoryReset: () => {
+				if (!resetHandler) {
+					throw new Error('factory reset handler was not registered');
+				}
+
+				return resetHandler();
+			},
 		};
 	};
 
@@ -105,6 +135,41 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('## Boundaries');
 		expect(metadata.readme).toContain('There is no insecure mode');
 		expect(metadata.readme).toContain('never disables a camera microphone');
+	});
+
+	it('registers the connector as a managed service and a factory-reset handler', async () => {
+		const { plugin, managedServiceManager, connector, factoryReset, runFactoryReset } = build();
+
+		plugin.onModuleInit();
+
+		expect(managedServiceManager.register).toHaveBeenCalledTimes(1);
+		expect(managedServiceManager.register).toHaveBeenCalledWith(connector);
+		expect(factoryReset.register).toHaveBeenCalledWith(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, expect.any(Function), 90);
+
+		await expect(runFactoryReset()).resolves.toEqual({ success: true });
+		expect(connector.stop).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports a factory-reset failure without leaking the error details beyond its message', async () => {
+		const { plugin, connector, runFactoryReset } = build();
+
+		connector.stop.mockRejectedValueOnce(new Error('stop failed'));
+		plugin.onModuleInit();
+
+		await expect(runFactoryReset()).resolves.toEqual({ success: false, reason: 'stop failed' });
+	});
+
+	it('provides and exports the connector and serves the status controller', () => {
+		const providers = Reflect.getMetadata('providers', DevicesUnifiProtectPlugin) as unknown[];
+		const controllers = Reflect.getMetadata('controllers', DevicesUnifiProtectPlugin) as unknown[];
+		const exported = Reflect.getMetadata('exports', DevicesUnifiProtectPlugin) as unknown[];
+
+		expect(providers).toContain(ProtectConnectorService);
+		expect(controllers).toEqual([ProtectStatusController]);
+		expect(exported).toContain(ProtectConnectorService);
+		expect(DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS).toEqual(
+			expect.arrayContaining([ProtectStatusModel, ProtectStatusResponseModel]),
+		);
 	});
 
 	it('maps the Protect type to the Protect entity and DTO classes in every type mapper', () => {

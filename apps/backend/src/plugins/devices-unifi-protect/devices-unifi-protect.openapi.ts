@@ -13,6 +13,7 @@ import {
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel, ProtectTlsConfigModel } from './models/config.model';
+import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
 
 export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectTlsConfigModel,
@@ -30,4 +31,6 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	UpdateProtectChannelDto,
 	CreateProtectChannelPropertyDto,
 	UpdateProtectChannelPropertyDto,
+	ProtectStatusModel,
+	ProtectStatusResponseModel,
 ];

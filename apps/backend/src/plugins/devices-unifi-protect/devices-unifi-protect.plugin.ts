@@ -16,12 +16,15 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
+import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { DefaultProtectApiClientFactory, PROTECT_API_CLIENT_FACTORY } from './client/protect-api-client.factory';
+import { ProtectStatusController } from './controllers/protect-status.controller';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME,
@@ -44,6 +47,7 @@ import {
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel } from './models/config.model';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
+import { ProtectConnectorService } from './services/protect-connector.service';
 
 @ApiTag({
 	tagName: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -64,7 +68,10 @@ import { ProtectConfigValidatorService } from './services/protect-config-validat
 		{ provide: PROTECT_TRUSTED_CA, useValue: undefined },
 		DefaultProtectApiClientFactory,
 		{ provide: PROTECT_API_CLIENT_FACTORY, useExisting: DefaultProtectApiClientFactory },
+		ProtectConnectorService,
 	],
+	controllers: [ProtectStatusController],
+	exports: [ProtectConnectorService],
 })
 export class DevicesUnifiProtectPlugin implements OnModuleInit {
 	constructor(
@@ -75,9 +82,26 @@ export class DevicesUnifiProtectPlugin implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
+		private readonly protectConnectorService: ProtectConnectorService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit(): void {
+		this.factoryResetRegistry.register(
+			DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				try {
+					await this.protectConnectorService.stop();
+
+					return { success: true };
+				} catch (error) {
+					return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
+				}
+			},
+			90,
+		);
+
 		this.configMapper.registerMapping<ProtectConfigModel, ProtectUpdatePluginConfigDto>({
 			type: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 			class: ProtectConfigModel,
@@ -189,6 +213,8 @@ Provider settings are managed in the Smart Panel admin application. The API key 
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+
+		this.managedServiceManager.register(this.protectConnectorService);
 	}
 
 	private registerDiscriminator(
