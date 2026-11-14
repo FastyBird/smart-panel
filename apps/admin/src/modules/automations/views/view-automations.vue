@@ -260,12 +260,15 @@ const showTemplateDialog = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 const remoteFormSaving = ref<boolean>(false);
 
+// Moved when an open add form is discarded for a new one: the same route again is no navigation at all
+const formGeneration = ref<number>(0);
+
 // The add form takes its automation id and its template draft once, when it is set up: a draft generated while
 // one is open is a new form, not the same one with another query
 const detailKey = computed<string>((): string => {
 	const draft = route.query[AUTOMATION_TEMPLATE_DRAFT_QUERY];
 
-	return `${props.id ?? ''}:${typeof draft === 'string' ? draft : ''}`;
+	return `${props.id ?? ''}:${typeof draft === 'string' ? draft : ''}:${formGeneration.value}`;
 });
 
 const isAutomationsListRoute = computed<boolean>((): boolean => {
@@ -382,9 +385,18 @@ const onResetFilters = (): void => {
 
 const onAutomationCreate = (): void => {
 	mayReplaceForm().then((replace: boolean): void => {
-		if (replace) {
-			navigate(RouteNames.AUTOMATIONS_ADD);
+		if (!replace) {
+			return;
 		}
+
+		// Already on the add route: the form it shows was let go, so a new one takes its place. What the
+		// discarded one reported is not about the new one, which starts unchanged.
+		if (route.name === RouteNames.AUTOMATIONS_ADD) {
+			formGeneration.value += 1;
+			remoteFormChanged.value = false;
+		}
+
+		navigate(RouteNames.AUTOMATIONS_ADD);
 	});
 };
 

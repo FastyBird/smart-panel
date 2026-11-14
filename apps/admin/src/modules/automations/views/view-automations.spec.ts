@@ -391,6 +391,30 @@ describe('ViewAutomations', (): void => {
 			confirm.mockRestore();
 		});
 
+		it('starts a new add form when the open one may be discarded', async (): Promise<void> => {
+			const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValueOnce('confirm' as never);
+
+			openRoute(addRoute);
+
+			await mountView();
+
+			wrapper.findComponent(DetailView).vm.$emit('update:remote-form-changed', true);
+
+			await flushPromises();
+
+			const mounted = mocks.detailMounts;
+
+			// The same route again is no navigation at all, so the form would stay with what was typed
+			await wrapper.find('[data-test-id="automations-add"]').trigger('click');
+			await flushPromises();
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(mocks.detailMounts).toBe(mounted + 1);
+			expect(wrapper.findComponent(DetailView).props('remoteFormChanged')).toBe(false);
+
+			confirm.mockRestore();
+		});
+
 		it('opens the template dialog once a changed form may be discarded', async (): Promise<void> => {
 			const confirm = vi.spyOn(ElMessageBox, 'confirm').mockResolvedValueOnce('confirm' as never);
 
