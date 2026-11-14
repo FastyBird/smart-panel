@@ -114,7 +114,16 @@ const emit = defineEmits(automationNodeFormEmits);
 
 const { t } = useI18n();
 
-const form = useAutomationNodeForm(props, emit, WaitUntilConfigSchema);
+// The contents of the configuration this form last saw or emitted (see `mode` below)
+let seen: string = JSON.stringify(props.config);
+
+const onConfig = (event: 'update:config', config: Record<string, unknown>, field: string): void => {
+	seen = JSON.stringify(config);
+
+	emit(event, config, field);
+};
+
+const form = useAutomationNodeForm(props, onConfig, WaitUntilConfigSchema);
 
 const { errorsAt, errorText } = form;
 
@@ -145,18 +154,24 @@ const modeOf = (config: Record<string, unknown>): WaitMode => {
 	return 'to';
 };
 
-// Kept here as well as read from the configuration: a threshold chosen with no value entered yet looks
-// like "becomes" in the configuration. A configuration changed from outside (an undo) is read again.
+/*
+ * Kept here as well as read from the configuration: a threshold chosen with no value entered yet looks
+ * like "becomes" in the configuration. So an edit made here keeps the state chosen, while a configuration
+ * changed from outside (an undo, a reload) is read again. The editor hands the whole graph over again with
+ * every edit, so a configuration with the contents this form emitted is no change.
+ */
 const mode = ref<WaitMode>(modeOf(props.config));
 
 watch(
 	(): Record<string, unknown> => props.config,
 	(config: Record<string, unknown>): void => {
-		const read = modeOf(config);
+		const contents = JSON.stringify(config);
 
-		if (read !== 'to' || isOperandGiven(config.to)) {
-			mode.value = read;
+		if (contents !== seen) {
+			mode.value = modeOf(config);
 		}
+
+		seen = contents;
 	}
 );
 

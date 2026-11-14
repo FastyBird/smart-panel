@@ -685,7 +685,9 @@
 			"lightingRole": "Wybierz rolę oświetlenia.",
 			"brightness": "Jasność musi być liczbą całkowitą od 0 do 100.",
 			"notUsedByIntent": "Ta wartość nie dotyczy wybranego oświetlenia.",
-			"sameState": "Tryb nie może zmienić się na ten sam tryb, z którego się zmienia."
+			"sameState": "Tryb nie może zmienić się na ten sam tryb, z którego się zmienia.",
+			"spaceType": "Ta przestrzeń nie jest pomieszczeniem ani strefą; blok działa tylko na pomieszczenia i strefy.",
+			"required": "Ta wartość jest wymagana."
 		}
 	}
 }

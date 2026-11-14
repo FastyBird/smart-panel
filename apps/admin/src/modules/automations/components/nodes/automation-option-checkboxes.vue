@@ -8,7 +8,7 @@
 		@update:model-value="onChange"
 	>
 		<el-checkbox
-			v-for="option in props.options"
+			v-for="option in shown"
 			:key="option.value"
 			:value="option.value"
 			:label="option.label"
@@ -20,13 +20,13 @@
 <script setup lang="ts">
 /*
  * Several of the values a card takes, as an "is one of" condition does. They are kept in the order of the
- * options; none picked leaves the key out, so the card reads as not configured yet.
+ * options, unknown stored values last; none picked leaves the key out, so the card reads as not configured yet.
  */
 import { computed } from 'vue';
 
 import { ElCheckbox, ElCheckboxGroup } from 'element-plus';
 
-import type { IAutomationOptionCheckboxesProps } from './automation-option-select.types';
+import type { IAutomationOption, IAutomationOptionCheckboxesProps } from './automation-option-select.types';
 
 defineOptions({
 	name: 'AutomationOptionCheckboxes',
@@ -45,8 +45,17 @@ const selected = computed<string[]>((): string[] =>
 	Array.isArray(props.modelValue) ? props.modelValue.filter((value): value is string => typeof value === 'string') : []
 );
 
+// A stored value this admin does not know (a mode of a newer backend) is listed by its value, and kept
+// until it is unchecked, as `AutomationOptionSelect` keeps one
+const shown = computed<IAutomationOption[]>((): IAutomationOption[] => [
+	...props.options,
+	...selected.value
+		.filter((value) => value !== '' && !props.options.some((option) => option.value === value))
+		.map((value) => ({ value, label: value })),
+]);
+
 const onChange = (value: (string | number | boolean)[]): void => {
-	const picked = props.options.map((option) => option.value).filter((option) => value.includes(option));
+	const picked = shown.value.map((option) => option.value).filter((option) => value.includes(option));
 
 	emit('update:modelValue', picked.length > 0 ? picked : undefined);
 };

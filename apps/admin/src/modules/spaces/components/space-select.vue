@@ -28,6 +28,7 @@
 					:key="item.id"
 					:label="item.name"
 					:value="item.id"
+					:disabled="group.disabled"
 				>
 					<div class="flex items-center gap-2">
 						<icon
@@ -67,9 +68,9 @@ import { ElOption, ElOptionGroup, ElSelect } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { useSpaces } from '../composables/useSpaces';
 import { SpaceType, getSpaceIcon } from '../spaces.constants';
 import type { ISpace } from '../store';
-import { useSpaces } from '../composables/useSpaces';
 
 import type { ISpaceSelectProps } from './space-select.types';
 
@@ -92,7 +93,7 @@ const { t } = useI18n();
 
 const { spaces, roomSpaces, zoneSpaces, fetching, findById } = useSpaces();
 
-const grouped = computed<boolean>(() => props.filter === 'all');
+const grouped = computed<boolean>(() => props.filter === 'all' || props.filter === 'rooms_and_zones');
 
 const flatOptions = computed<ISpace[]>(() => {
 	if (props.filter === 'room') {
@@ -105,7 +106,7 @@ const flatOptions = computed<ISpace[]>(() => {
 });
 
 const groupedOptions = computed(() => {
-	const groups: { type: SpaceType | 'other'; label: string; options: ISpace[] }[] = [];
+	const groups: { type: SpaceType | 'other'; label: string; options: ISpace[]; disabled?: boolean }[] = [];
 
 	const rooms = roomSpaces.value.slice().sort((a, b) => a.name.localeCompare(b.name));
 	const zones = zoneSpaces.value.slice().sort((a, b) => a.name.localeCompare(b.name));
@@ -114,8 +115,12 @@ const groupedOptions = computed(() => {
 	// Before this change the `filter="all"` path only rendered rooms and
 	// zones because `groupedOptions` had no bucket for the other types,
 	// silently hiding them from pickers (e.g. the display assignment form).
+	// With `rooms_and_zones`, a space of another type is listed only when it is the one selected, and
+	// cannot be picked: a stored choice keeps its name instead of showing as a bare id
+	const roomsAndZonesOnly = props.filter === 'rooms_and_zones';
 	const others = spaces.value
 		.filter((s) => s.type !== SpaceType.ROOM && s.type !== SpaceType.ZONE)
+		.filter((s) => !roomsAndZonesOnly || s.id === props.modelValue)
 		.slice()
 		.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -140,6 +145,7 @@ const groupedOptions = computed(() => {
 			type: 'other',
 			label: t('spacesModule.labels.others'),
 			options: others,
+			disabled: roomsAndZonesOnly,
 		});
 	}
 

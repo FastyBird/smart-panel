@@ -685,7 +685,9 @@
 			"lightingRole": "Eine Lichtrolle wählen.",
 			"brightness": "Die Helligkeit muss eine ganze Zahl von 0 bis 100 sein.",
 			"notUsedByIntent": "Dieser Wert gilt nicht für die gewählte Beleuchtung.",
-			"sameState": "Der Modus kann sich nicht zu dem Modus ändern, von dem er sich ändert."
+			"sameState": "Der Modus kann sich nicht zu dem Modus ändern, von dem er sich ändert.",
+			"spaceType": "Dieser Bereich ist weder ein Raum noch eine Zone; der Block wirkt nur auf Räume und Zonen.",
+			"required": "Dieser Wert wird benötigt."
 		}
 	}
 }

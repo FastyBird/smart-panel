@@ -76,6 +76,21 @@ describe('space card schemas', (): void => {
 			});
 		});
 
+		it.each([
+			['set_mode', ['mode']],
+			['role_on', ['role']],
+			['role_off', ['role']],
+			['role_brightness', ['role', 'brightness']],
+		])('needs the fields %s uses, while keeping them quiet until they are entered', (intent, fields): void => {
+			expect(SpaceLightingIntentConfigSchema.safeParse({ space_id: SPACE, intent }).success).toBe(false);
+			expect(checkNodeConfig(SpaceLightingIntentConfigSchema, { space_id: SPACE, intent })).toEqual({});
+
+			const issues = SpaceLightingIntentConfigSchema.safeParse({ space_id: SPACE, intent }).error?.issues ?? [];
+
+			expect(issues.map((issue) => issue.path.join('.')).sort()).toEqual([...fields].sort());
+			expect(issues.every((issue) => issue.message === key('required'))).toBe(true);
+		});
+
 		it('refuses the hidden role and a brightness out of range', (): void => {
 			expect(checkNodeConfig(SpaceLightingIntentConfigSchema, { space_id: SPACE, intent: 'role_on', role: 'hidden' })).toEqual({
 				role: [key('lightingRole')],

@@ -23,16 +23,22 @@ vi.mock('vue-i18n', () => ({
 }));
 
 const SPACE = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a07';
+const MASTER = '6f1a0e1c-7d4b-4c55-9f3e-3b6c2c1b0a08';
+
+const SPACES = [
+	{ id: SPACE, name: 'Living room', type: 'room' },
+	{ id: MASTER, name: 'Master', type: 'master' },
+];
 
 vi.mock('../../../../modules/spaces/composables/useSpaces', () => ({
 	useSpaces: () => ({
-		spaces: computed(() => [{ id: SPACE, name: 'Living room', type: 'room' }]),
-		roomSpaces: computed(() => [{ id: SPACE, name: 'Living room', type: 'room' }]),
+		spaces: computed(() => SPACES),
+		roomSpaces: computed(() => SPACES.filter((space) => space.type === 'room')),
 		zoneSpaces: computed(() => []),
 		fetching: computed(() => false),
 		firstLoadFinished: computed(() => false),
 		fetchSpaces: mocks.fetchSpaces,
-		findById: (id: string) => (id === SPACE ? { id: SPACE, name: 'Living room', type: 'room' } : null),
+		findById: (id: string) => SPACES.find((space) => space.id === id) ?? null,
 	}),
 }));
 
@@ -75,6 +81,16 @@ describe('space card forms', (): void => {
 		wrapper.findComponent({ name: 'SpaceSelect' }).vm.$emit('update:modelValue', SPACE);
 
 		expect(lastConfig()).toEqual({ space_id: SPACE });
+	});
+
+	it('offers only rooms and zones, and flags a stored space of another type', async (): Promise<void> => {
+		await mountForm(SpaceOccupancyForm, { nodeType: nodeType('space.occupancy.changed', AutomationNodeKind.trigger), config: { space_id: MASTER } });
+
+		expect(wrapper.findComponent({ name: 'SpaceSelect' }).props('filter')).toBe('rooms_and_zones');
+
+		await vi.waitFor((): void =>
+			expect(wrapper.find('[data-test-field="space_id"]').text()).toContain('spacesHomeControlPlugin.automations.validation.spaceType')
+		);
 	});
 
 	it('shows the occupancy trigger and the occupancy condition with their own fields', async (): Promise<void> => {

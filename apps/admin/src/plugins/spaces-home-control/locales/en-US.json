@@ -685,7 +685,9 @@
 			"lightingRole": "Choose a lighting role.",
 			"brightness": "The brightness must be a whole number from 0 to 100.",
 			"notUsedByIntent": "This value does not apply to the lighting chosen.",
-			"sameState": "The mode cannot change to the mode it changes from."
+			"sameState": "The mode cannot change to the mode it changes from.",
+			"spaceType": "This space is not a room or a zone; the card acts only on rooms and zones.",
+			"required": "This value is needed."
 		}
 	}
 }

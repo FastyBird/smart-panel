@@ -182,6 +182,23 @@ describe('automation card forms of the second catalogue', (): void => {
 			expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
 		});
 
+		it('reads the state again when an undo restores a condition without its value', async (): Promise<void> => {
+			const restored = { ...target, property_id: 'p-temperature', timeout_seconds: 60 };
+
+			await mountForm(AutomationWaitUntilForm, { nodeType: wait, config: restored });
+
+			select('mode').vm.$emit('update:modelValue', 'above');
+			await wrapper.setProps({ config: { ...restored, above: 21 } });
+
+			expect(select('mode').props('modelValue')).toBe('above');
+
+			// Undo: the configuration from before the threshold, which this form did not emit
+			await wrapper.setProps({ config: { ...restored } });
+
+			expect(select('mode').props('modelValue')).toBe('to');
+			expect(wrapper.emitted('update:invalid')?.at(-1)).toEqual([false]);
+		});
+
 		it('drops a threshold when a property that holds no number is picked', async (): Promise<void> => {
 			await mountForm(AutomationWaitUntilForm, { nodeType: wait, config: { ...target, property_id: 'p-temperature', above: 20 } });
 
@@ -272,6 +289,23 @@ describe('automation card forms of the second catalogue', (): void => {
 	});
 
 	describe('house mode is', (): void => {
+		it('keeps a stored mode it does not know until it is unchecked', async (): Promise<void> => {
+			await mountForm(AutomationHouseModeIsForm, {
+				nodeType: nodeType('house-mode.is', AutomationNodeKind.condition),
+				config: { modes: ['vacation'] },
+			});
+
+			expect(wrapper.find('[data-test-option="vacation"]').exists()).toBe(true);
+
+			wrapper.findComponent({ name: 'ElCheckboxGroup' }).vm.$emit('update:modelValue', ['vacation', 'home']);
+
+			expect(lastConfig()).toEqual({ modes: ['home', 'vacation'] });
+
+			wrapper.findComponent({ name: 'ElCheckboxGroup' }).vm.$emit('update:modelValue', ['home']);
+
+			expect(lastConfig()).toEqual({ modes: ['home'] });
+		});
+
 		it('keeps the modes in their order, and none as not configured', async (): Promise<void> => {
 			await mountForm(AutomationHouseModeIsForm, { nodeType: nodeType('house-mode.is', AutomationNodeKind.condition), config: {} });
 

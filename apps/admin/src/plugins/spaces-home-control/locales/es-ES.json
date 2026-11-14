@@ -685,7 +685,9 @@
 			"lightingRole": "Elija un rol de iluminación.",
 			"brightness": "El brillo debe ser un número entero de 0 a 100.",
 			"notUsedByIntent": "Este valor no se aplica a la iluminación elegida.",
-			"sameState": "El modo no puede cambiar al mismo modo desde el que cambia."
+			"sameState": "El modo no puede cambiar al mismo modo desde el que cambia.",
+			"spaceType": "Este espacio no es una habitación ni una zona; el bloque solo actúa sobre habitaciones y zonas.",
+			"required": "Este valor es necesario."
 		}
 	}
 }

@@ -685,7 +685,9 @@
 			"lightingRole": "Vyberte rolu osvetlenia.",
 			"brightness": "Jas musí byť celé číslo od 0 do 100.",
 			"notUsedByIntent": "Táto hodnota sa pre zvolené osvetlenie nepoužíva.",
-			"sameState": "Režim sa nemôže zmeniť na režim, z ktorého sa mení."
+			"sameState": "Režim sa nemôže zmeniť na režim, z ktorého sa mení.",
+			"spaceType": "Tento priestor nie je miestnosť ani zóna; blok pôsobí len na miestnosti a zóny.",
+			"required": "Táto hodnota je potrebná."
 		}
 	}
 }

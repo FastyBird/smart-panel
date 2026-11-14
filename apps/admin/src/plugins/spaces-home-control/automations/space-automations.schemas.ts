@@ -65,9 +65,12 @@ export const SpaceLightingIntentConfigSchema = spaceCard(
 
 		const used = SPACE_LIGHTING_FIELDS_OF_INTENT[config.intent as SpaceLightingIntent];
 
-		// A field another intent uses is refused by the backend, not ignored
+		// A field another intent uses is refused by the backend, not ignored; one the intent uses is required
 		for (const field of SPACE_LIGHTING_FIELDS) {
-			if (typeof config[field] !== 'undefined' && !used.includes(field)) report([field], 'notUsedByIntent');
+			const given = typeof config[field] !== 'undefined' && config[field] !== null;
+
+			if (given && !used.includes(field)) report([field], 'notUsedByIntent');
+			if (!given && used.includes(field)) report([field], 'required');
 		}
 	}
 );
