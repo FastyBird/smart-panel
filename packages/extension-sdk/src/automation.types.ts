@@ -62,6 +62,11 @@ export type AutomationNodeReferenceKind = 'device' | 'channel' | 'property' | 's
 export interface AutomationNodeReference {
 	kind: AutomationNodeReferenceKind;
 	id: string;
+	/**
+	 * Where in the configuration the id is held, as object keys and array indexes (`['writes', 0, 'property_id']`).
+	 * An import points a reference at another entity through it; a reference without one is left as it is.
+	 */
+	path?: (string | number)[];
 }
 
 export type AutomationNodeConfig = Record<string, unknown>;
