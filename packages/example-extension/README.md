@@ -48,3 +48,7 @@ the admin edits them with the generic form built from their `configSchema`. See
 pnpm --filter @fastybird/smart-panel-extension-sdk build
 cd packages/example-extension && npm test
 ```
+
+The tests run the TypeScript sources directly, which needs Node.js 22.18 or newer (the monorepo uses 24); the test
+script stops with a message on an older one. The `engines` range of the package is about its built output, which
+the backend loads.

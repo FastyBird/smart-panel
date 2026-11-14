@@ -75,6 +75,32 @@ describe('example automation cards', () => {
 			}
 		});
 
+		it('checks every field its schema declares as required, with its type', async () => {
+			const complete: Record<string, Record<string, unknown>> = {
+				trigger: { signal: 'door.bell' },
+				condition: { signal: 'door.bell', within_seconds: 60 },
+				action: { signal: 'door.bell' },
+			};
+
+			for (const [kind, card] of Object.entries(cards)) {
+				const required = card.configSchema?.required;
+
+				assert.ok(Array.isArray(required) && required.length > 0, kind);
+
+				for (const key of required as string[]) {
+					const missing = Object.fromEntries(Object.entries(complete[kind]).filter(([name]) => name !== key));
+
+					for (const config of [missing, { ...complete[kind], [key]: { wrong: 'type' } }]) {
+						assert.deepEqual(
+							(await card.validateConfig(config)).map((problem) => problem.field),
+							[key],
+							`${kind}.${key}`,
+						);
+					}
+				}
+			}
+		});
+
 		it('never repeats the submitted value in a reason', async () => {
 			const problems = await cards.trigger.validateConfig({ signal: 'SECRET-VALUE' });
 
