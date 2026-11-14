@@ -5,7 +5,7 @@
  * - the SDK resolves to the monorepo copy when the package is not installed, because the example extension
  *   is not part of the pnpm workspace (build the SDK first: `pnpm --filter @fastybird/smart-panel-extension-sdk build`).
  *
- * Both need Node.js 22.18 or newer (`module.registerHooks` and type stripping without a flag); the monorepo
+ * Both need Node.js 22.18+ on the 22 line or 23.6+ (`module.registerHooks` and type stripping without a flag); the monorepo
  * itself uses Node.js 24. The extension's own `engines` range is about where its built output runs, not this.
  */
 import { existsSync } from 'node:fs';
@@ -17,9 +17,12 @@ const SDK_IN_MONOREPO = new URL('../../extension-sdk/dist/index.js', import.meta
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 
-if (major < 22 || (major === 22 && minor < 18) || typeof nodeModule.registerHooks !== 'function') {
+// Type stripping is on by default from 22.18 on the 22 line and from 23.6 on the 23 line
+const stripsTypes = major > 23 || (major === 23 && minor >= 6) || (major === 22 && minor >= 18);
+
+if (!stripsTypes || typeof nodeModule.registerHooks !== 'function') {
 	console.error(
-		`The example extension tests need Node.js 22.18 or newer (the monorepo uses 24); this is ${process.version}.`,
+		`The example extension tests need Node.js 22.18+ on the 22 line or 23.6+ (the monorepo uses 24); this is ${process.version}.`,
 	);
 	process.exit(1);
 }

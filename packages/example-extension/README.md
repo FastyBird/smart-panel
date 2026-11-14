@@ -49,6 +49,6 @@ pnpm --filter @fastybird/smart-panel-extension-sdk build
 cd packages/example-extension && npm test
 ```
 
-The tests run the TypeScript sources directly, which needs Node.js 22.18 or newer (the monorepo uses 24); the test
+The tests run the TypeScript sources directly, which needs Node.js 22.18+ on the 22 line or 23.6+ (the monorepo uses 24); the test
 script stops with a message on an older one. The `engines` range of the package is about its built output, which
 the backend loads.
