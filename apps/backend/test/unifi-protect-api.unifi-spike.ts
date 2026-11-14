@@ -59,7 +59,7 @@ const HAS_TRUST_ANCHOR = SERVER_NAME !== undefined || FINGERPRINT !== undefined;
 const LIVE = CONFIGURED && HAS_TRUST_ANCHOR;
 
 /** Reads an integer setting; a non-integer, non-finite or out-of-range value is a configuration error, never a default. */
-const intSetting = (name: string, fallback: number, min: number): number => {
+const intSetting = (name: string, fallback: number, min: number, max: number): number => {
 	const raw = process.env[name];
 
 	if (raw === undefined || raw.trim() === '') {
@@ -68,16 +68,27 @@ const intSetting = (name: string, fallback: number, min: number): number => {
 
 	const value = Number(raw);
 
-	if (!Number.isSafeInteger(value) || value < min) {
-		throw new Error(`${name} must be an integer >= ${min}`);
+	if (!Number.isSafeInteger(value) || value < min || value > max) {
+		throw new Error(`${name} must be an integer between ${min} and ${max}`);
 	}
 
 	return value;
 };
 
-const TIMEOUT_MS = intSetting('FB_UNIFI_SPIKE_TIMEOUT_MS', 10_000, 1);
-const WS_IDLE_MS = intSetting('FB_UNIFI_SPIKE_WS_IDLE_MS', 0, 0);
-const MAX_CAMERAS = intSetting('FB_UNIFI_SPIKE_MAX_CAMERAS', 16, 1);
+const TIMEOUT_MS = intSetting('FB_UNIFI_SPIKE_TIMEOUT_MS', 10_000, 1, 120_000);
+const WS_IDLE_MS = intSetting('FB_UNIFI_SPIKE_WS_IDLE_MS', 0, 0, 3_600_000);
+const MAX_CAMERAS = intSetting('FB_UNIFI_SPIKE_MAX_CAMERAS', 16, 1, 256);
+
+/** Node clamps longer timer delays to 1 ms, so every delay and every derived Jest budget must stay below this. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+const assertTimerBudget = (name: string, ms: number): number => {
+	if (!Number.isSafeInteger(ms) || ms > MAX_TIMER_DELAY_MS) {
+		throw new Error(`${name} (${ms} ms) exceeds the ${MAX_TIMER_DELAY_MS} ms timer limit; lower the spike settings`);
+	}
+
+	return ms;
+};
 const BURST = process.env.FB_UNIFI_SPIKE_BURST === '1';
 
 /** Test budgets: an operation's own timeout plus headroom for the spacing delay. */
@@ -564,7 +575,7 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 					}
 				}
 			},
-			MAX_CAMERAS * (TIMEOUT_MS + REQUEST_SPACING_MS) + SLACK_MS,
+			assertTimerBudget('stream test budget', MAX_CAMERAS * (TIMEOUT_MS + REQUEST_SPACING_MS) + SLACK_MS),
 		);
 
 		it(
@@ -590,7 +601,7 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 					}
 				}
 			},
-			MAX_CAMERAS * 2 * (TIMEOUT_MS + REQUEST_SPACING_MS) + SLACK_MS,
+			assertTimerBudget('snapshot test budget', MAX_CAMERAS * 2 * (TIMEOUT_MS + REQUEST_SPACING_MS) + SLACK_MS),
 		);
 	});
 
@@ -617,7 +628,7 @@ describeLive('UniFi Protect Integration API (live, read-only)', () => {
 					socket.terminate();
 				}
 			},
-			TIMEOUT_MS * 2 + WS_IDLE_MS + SLACK_MS,
+			assertTimerBudget('WebSocket idle test budget', TIMEOUT_MS * 2 + WS_IDLE_MS + SLACK_MS),
 		);
 	});
 
