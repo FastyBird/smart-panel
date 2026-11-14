@@ -19,6 +19,9 @@
  * ExtensionsModule and NotificationsModule), so they are available to all extensions
  * without needing to import the modules explicitly. This simplifies extension
  * development and avoids circular dependency issues.
+ *
+ * AutomationNodeTypeRegistryService is not global: an extension that adds automation cards
+ * imports AutomationsModule into its own module first.
  */
 
 // Extensions service - for registering extension metadata (globally available)
@@ -55,3 +58,9 @@ export {
 	NotificationKind,
 	NotificationSeverity,
 } from './modules/notifications/notifications.constants';
+
+// Automations module - import it into an extension module that registers automation cards, then inject
+// the node type registry and register the cards in onModuleInit; see docs/extensions.md, "Adding automation
+// cards". Type the cards against the SDK's mirrors (`@fastybird/smart-panel-extension-sdk`).
+export { AutomationsModule } from './modules/automations/automations.module';
+export { AutomationNodeTypeRegistryService } from './modules/automations/services/node-type-registry.service';
