@@ -145,6 +145,27 @@ export function protectSleep(ms: number, signal?: AbortSignal): Promise<void> {
 	});
 }
 
+/** Waits for the previous release turn, but gives up at once when the waiter is aborted. */
+function waitForTurn(previous: Promise<void>, signal?: AbortSignal): Promise<void> {
+	if (!signal) {
+		return previous;
+	}
+
+	if (signal.aborted) {
+		return Promise.reject(signal.reason as Error);
+	}
+
+	return new Promise((resolve, reject) => {
+		const onAbort = (): void => reject(signal.reason as Error);
+
+		signal.addEventListener('abort', onAbort, { once: true });
+		void previous.then(() => {
+			signal.removeEventListener('abort', onAbort);
+			resolve();
+		});
+	});
+}
+
 export class ProtectRatePacer {
 	policy: ProtectRatePolicy = { ...PROTECT_DEFAULT_RATE_POLICY };
 
@@ -208,7 +229,7 @@ export class ProtectRatePacer {
 		this.releaseTurn = new Promise((resolve) => (passTurn = resolve));
 
 		try {
-			await previous;
+			await waitForTurn(previous, signal);
 
 			for (;;) {
 				if (signal?.aborted) {
@@ -228,7 +249,9 @@ export class ProtectRatePacer {
 				await this.sleep(wait, signal);
 			}
 		} finally {
-			passTurn();
+			// The turn passes on only after the previous one, even when this waiter was aborted early, so nobody
+			// behind it overtakes a release that is still in progress.
+			void previous.then(passTurn);
 		}
 	}
 

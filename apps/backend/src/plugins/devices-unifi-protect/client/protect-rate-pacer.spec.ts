@@ -354,6 +354,77 @@ describe('ProtectRatePacer', () => {
 		]);
 	});
 
+	it('rejects an aborted waiter behind a paused release turn at once, without letting others overtake', async () => {
+		let now = 0;
+		const sleeps: { ms: number; resolve: () => void; reject: (e: unknown) => void }[] = [];
+		const paced = new ProtectRatePacer({
+			now: () => now,
+			sleep: (ms, signal) =>
+				new Promise((resolve, reject) => {
+					const entry = { ms, resolve, reject };
+
+					sleeps.push(entry);
+					signal?.addEventListener('abort', () => {
+						const index = sleeps.indexOf(entry);
+
+						// Only a sleep that is still pending is cancelled; one that already woke is left alone.
+						if (index >= 0) {
+							sleeps.splice(index, 1);
+							reject(signal.reason as Error);
+						}
+					});
+				}),
+		});
+		const flush = async (): Promise<void> => {
+			for (let i = 0; i < 10; i++) {
+				await new Promise((resolve) => setImmediate(resolve));
+			}
+		};
+		const wake = async (at: number): Promise<void> => {
+			now = at;
+			sleeps.splice(0).forEach((s) => s.resolve());
+			await flush();
+		};
+		const released: { name: string; at: number }[] = [];
+		const waiter = (name: string, signal?: AbortSignal): Promise<void> =>
+			paced.acquire(signal).then(() => {
+				released.push({ name, at: now });
+			});
+		const controller = new AbortController();
+		const reason = new Error('cancelled');
+
+		await paced.acquire(); // released at 0
+
+		const x = waiter('x');
+		const a = waiter('a');
+		const b = waiter('b', controller.signal).catch((error: unknown) => error);
+
+		await wake(400); // `x` goes; `a` holds the release turn; `b` waits for it
+
+		now = 410;
+		paced.backOff(5000); // `a` is now held until 5410
+		await wake(525);
+
+		expect(released.map((r) => r.name)).toEqual(['x']);
+
+		controller.abort(reason);
+
+		await expect(b).resolves.toBe(reason);
+
+		const c = waiter('c');
+
+		await flush();
+		await wake(5410);
+		await wake(5535);
+		await Promise.all([x, a, c]);
+
+		expect(released).toEqual([
+			{ name: 'x', at: 400 },
+			{ name: 'a', at: 5410 },
+			{ name: 'c', at: 5535 },
+		]);
+	});
+
 	it('re-queues a waiter only when a longer pause was announced after its reservation', async () => {
 		const starts: number[] = [];
 
