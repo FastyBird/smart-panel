@@ -14,6 +14,7 @@ import { automationNodeTypesStoreKey, automationsStoreKey } from '../store/keys'
 
 import type { AutomationEditorSaveResult, IUseAutomationEditor } from './types';
 import { useAutomationGraphHistory } from './useAutomationGraphHistory';
+import { useAutomationSuggestions } from './useAutomationSuggestions';
 
 interface IUseAutomationEditorProps {
 	id: IAutomation['id'];
@@ -40,6 +41,11 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 	const flashMessage = useFlashMessage();
 
 	const history = useAutomationGraphHistory();
+
+	const { markApplied } = useAutomationSuggestions();
+
+	// The Buddy suggestion the working copy was opened with, marked applied once that copy is first saved
+	let pendingSuggestionId: string | null = null;
 
 	const automation = computed<IAutomation | null>((): IAutomation | null => data.value.get(id) ?? null);
 
@@ -122,6 +128,8 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 
 		if (draft !== null && history.graph.value.nodes.length === 0) {
 			history.commit(cloneGraph(draft.graph));
+
+			pendingSuggestionId = draft.suggestionId ?? null;
 		}
 
 		loaded.value = true;
@@ -224,6 +232,13 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			// Compared against what was sent: what was drawn while the save was under way is still unsaved
 			savedGraph.value = canonicalGraph(graph);
 			conflict.value = false;
+
+			// The suggested flow is saved now, so Buddy need not offer it again; a copy left unsaved keeps it offered
+			if (pendingSuggestionId !== null) {
+				void markApplied(pendingSuggestionId);
+
+				pendingSuggestionId = null;
+			}
 
 			flashMessage.success(t('automations.messages.edited', { automation: saved.name }));
 

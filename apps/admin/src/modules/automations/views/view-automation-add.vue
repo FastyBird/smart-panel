@@ -96,7 +96,6 @@ import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '
 import { AUTOMATION_TEMPLATE_DRAFT_QUERY, FormResult, type FormResultType, RouteNames } from '../automations.constants';
 import { type IAutomationDraft, discardAutomationDraft, peekAutomationDraft } from '../automations.drafts';
 import { AutomationAddForm } from '../components/components';
-import { useAutomationSuggestions } from '../composables/useAutomationSuggestions';
 
 import type { IViewAutomationAddProps } from './view-automation-add.types';
 
@@ -118,8 +117,6 @@ const route = useRoute();
 const router = useRouter();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
-
-const { markApplied } = useAutomationSuggestions();
 
 // Created from a template, the automation gets the id its generated flow waits under. After a reload the draft
 // is gone, and the form is the blank one.
@@ -182,11 +179,6 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			created = true;
-
-			// Buddy offered this automation: it is taken up now, so it is not offered again
-			if (templateDraft?.suggestionId !== undefined) {
-				void markApplied(templateDraft.suggestionId);
-			}
 
 			// A new automation has an empty flow: drawing it is the next thing to do. The flow takes the place of
 			// the form, so going back leads to the list and not to a form for yet another automation.

@@ -32,6 +32,8 @@ const SuggestionResponseSchema = z.object({
 const suggestions = ref<IAutomationSuggestion[]>([]);
 const loading = ref<boolean>(false);
 const answering = ref<IAutomationSuggestion['id'][]>([]);
+// Answered while this page is open: a list read before the answer arrived must not bring them back
+const answered = new Set<IAutomationSuggestion['id']>();
 
 let pendingFetch: Promise<void> | null = null;
 
@@ -62,8 +64,8 @@ const parseSuggestion = (item: unknown): IAutomationSuggestion | null => {
 /**
  * The automations Buddy suggests for routines it noticed. Each one carries the draft of the automation - a time
  * trigger and the device values the routine sets - which opens in the editor the way a template draft does. Nothing
- * is created until the administrator saves it; the suggestion is then marked applied. Dismissing one tells Buddy not
- * to offer it again.
+ * is created until the administrator saves it, and the suggestion is marked applied only once its flow is first saved
+ * in the editor. Dismissing one tells Buddy not to offer it again.
  *
  * Read from the buddy module, which may be disabled or not answer: there are then simply no suggestions.
  */
@@ -87,7 +89,7 @@ export const useAutomationSuggestions = (): IUseAutomationSuggestions => {
 
 				const items: unknown[] = Array.isArray(responseData?.data) ? responseData.data : [];
 
-				suggestions.value = items.map(parseSuggestion).filter((item): item is IAutomationSuggestion => item !== null);
+				suggestions.value = items.map(parseSuggestion).filter((item): item is IAutomationSuggestion => item !== null && !answered.has(item.id));
 			} catch {
 				// Suggestions are an extra: without the buddy module the list is just not offered any
 				suggestions.value = [];
@@ -113,6 +115,8 @@ export const useAutomationSuggestions = (): IUseAutomationSuggestions => {
 			if (error) {
 				return false;
 			}
+
+			answered.add(id);
 
 			suggestions.value = suggestions.value.filter((suggestion) => suggestion.id !== id);
 

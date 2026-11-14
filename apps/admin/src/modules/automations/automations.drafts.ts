@@ -12,7 +12,7 @@ export interface IAutomationDraft {
 	graph: IAutomationGraph;
 	// The space the new automation is assigned to; left out, the form starts with the whole home
 	spaceId?: string | null;
-	// The Buddy suggestion the draft comes from, marked applied once the automation is created
+	// The Buddy suggestion the draft comes from, marked applied once the editor first saves its flow
 	suggestionId?: string;
 }
 

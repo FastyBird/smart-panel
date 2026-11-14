@@ -21,7 +21,9 @@ vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
 }));
 
-const SUGGESTION = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a01';
+// A new one for every test: a suggestion answered in one test stays answered for the page, as in the admin
+let counter = 0;
+let suggestionId = '';
 const SPACE = 'b5f5f9a2-6a6c-4c0e-9d7f-1c1d3f1b2a02';
 
 const graph = {
@@ -39,7 +41,7 @@ const graph = {
 };
 
 const automationSuggestion = (overrides: Record<string, unknown> = {}) => ({
-	id: SUGGESTION,
+	id: suggestionId,
 	type: 'pattern_automation_create',
 	title: 'Automate this routine?',
 	reason: 'You perform 2 actions in Living Room around 7 PM regularly.',
@@ -56,6 +58,8 @@ describe('useAutomationSuggestions', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+
+		suggestionId = `b5f5f9a2-6a6c-4c0e-9d7f-${String(++counter).padStart(12, '0')}`;
 
 		get = vi.fn().mockResolvedValue({ data: { data: [] } });
 		post = vi.fn().mockResolvedValue({ data: { data: { success: true } } });
@@ -81,7 +85,7 @@ describe('useAutomationSuggestions', () => {
 		expect(get).toHaveBeenCalledWith('/modules/buddy/suggestions');
 		expect(suggestions.value).toEqual([
 			{
-				id: SUGGESTION,
+				id: suggestionId,
 				title: 'Automate this routine?',
 				reason: 'You perform 2 actions in Living Room around 7 PM regularly.',
 				spaceId: SPACE,
@@ -94,7 +98,7 @@ describe('useAutomationSuggestions', () => {
 			mode: 'single',
 			graph,
 			spaceId: SPACE,
-			suggestionId: SUGGESTION,
+			suggestionId: suggestionId,
 		});
 	});
 
@@ -126,10 +130,10 @@ describe('useAutomationSuggestions', () => {
 		const { suggestions, fetchSuggestions, dismiss } = useAutomationSuggestions();
 
 		await fetchSuggestions();
-		await dismiss(SUGGESTION);
+		await dismiss(suggestionId);
 
 		expect(post).toHaveBeenCalledWith('/modules/buddy/suggestions/{id}/feedback', {
-			params: { path: { id: SUGGESTION } },
+			params: { path: { id: suggestionId } },
 			body: { data: { feedback: 'dismissed' } },
 		});
 		expect(suggestions.value).toEqual([]);
@@ -144,9 +148,9 @@ describe('useAutomationSuggestions', () => {
 
 		await fetchSuggestions();
 
-		const pending = dismiss(SUGGESTION);
+		const pending = dismiss(suggestionId);
 
-		expect(answering.value).toEqual([SUGGESTION]);
+		expect(answering.value).toEqual([suggestionId]);
 
 		await pending;
 
@@ -155,16 +159,43 @@ describe('useAutomationSuggestions', () => {
 		expect(mockFlash.error).toHaveBeenCalledWith('automations.suggestions.messages.notDismissed');
 	});
 
+	it('does not bring back a suggestion answered while the list was being read', async () => {
+		get.mockResolvedValueOnce({ data: { data: [automationSuggestion()] } });
+
+		const { suggestions, fetchSuggestions, dismiss } = useAutomationSuggestions();
+
+		await fetchSuggestions();
+
+		// A read on its way captured the suggestion while it was still active
+		let answer: (value: unknown) => void = () => {};
+
+		get.mockReturnValueOnce(
+			new Promise((resolve) => {
+				answer = resolve;
+			})
+		);
+
+		const reading = fetchSuggestions();
+
+		await dismiss(suggestionId);
+
+		answer({ data: { data: [automationSuggestion(), automationSuggestion({ id: 'other' })] } });
+
+		await reading;
+
+		expect(suggestions.value.map((suggestion) => suggestion.id)).toEqual(['other']);
+	});
+
 	it('marks a suggestion applied once its automation is created', async () => {
 		get.mockResolvedValue({ data: { data: [automationSuggestion()] } });
 
 		const { suggestions, fetchSuggestions, markApplied } = useAutomationSuggestions();
 
 		await fetchSuggestions();
-		await markApplied(SUGGESTION);
+		await markApplied(suggestionId);
 
 		expect(post).toHaveBeenCalledWith('/modules/buddy/suggestions/{id}/feedback', {
-			params: { path: { id: SUGGESTION } },
+			params: { path: { id: suggestionId } },
 			body: { data: { feedback: 'applied' } },
 		});
 		expect(suggestions.value).toEqual([]);

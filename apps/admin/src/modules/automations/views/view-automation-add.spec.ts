@@ -196,7 +196,7 @@ describe('ViewAutomationAdd', (): void => {
 			mocks.query = { draft: draftId };
 		});
 
-		it('starts in the space of the routine and marks the suggestion applied only once the automation is created', async (): Promise<void> => {
+		it('starts in the space of the routine and hands the suggestion on to the editor, unanswered', async (): Promise<void> => {
 			const wrapper = mount(ViewAutomationAdd);
 
 			const form = wrapper.findComponent(AutomationAddForm);
@@ -218,13 +218,14 @@ describe('ViewAutomationAdd', (): void => {
 
 			await flushPromises();
 
-			expect(mocks.markApplied).toHaveBeenCalledWith('suggestion-1');
+			// Only a disabled automation with an empty flow exists now: the editor answers once the flow is saved
+			expect(mocks.markApplied).not.toHaveBeenCalled();
 			expect(mocks.routerReplace).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_FLOW, params: { id: draftId } });
 
 			wrapper.unmount();
 
 			// Kept for the editor, which opens with the suggested flow as its unsaved working copy
-			expect(peekAutomationDraft(draftId)?.graph).toEqual(graph);
+			expect(peekAutomationDraft(draftId)).toMatchObject({ graph, suggestionId: 'suggestion-1' });
 		});
 
 		it('leaves the suggestion offered when the form is left without saving', (): void => {

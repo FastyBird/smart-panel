@@ -343,6 +343,67 @@ describe('useAutomationEditor', () => {
 			expect(mockFlash.success).toHaveBeenCalledWith('automations.messages.edited Hallway motion light');
 		});
 
+		describe('of a flow Buddy suggested', () => {
+			const feedbackCalls = (): unknown[][] =>
+				mockBackendClient.POST.mock.calls.filter(([path]) => path === '/modules/buddy/suggestions/{id}/feedback');
+
+			const suggested = async (): Promise<ReturnType<typeof useAutomationEditor>> => {
+				stashAutomationDraft(automationId, {
+					name: 'Living Room Evening',
+					mode: AutomationMode.single,
+					graph: cloneGraph(graph),
+					suggestionId: 'suggestion-1',
+				});
+
+				return createEditor(detailRes({ graph: { version: 1, nodes: [], edges: [] } }));
+			};
+
+			it('marks the suggestion applied once the suggested flow is first saved, and only then', async () => {
+				const editor = await suggested();
+
+				// Opened, the flow is only a working copy
+				expect(feedbackCalls()).toEqual([]);
+
+				mockBackendClient.PATCH.mockResolvedValue(ok(detailRes({ revision: 4 })));
+
+				await expect(editor.save()).resolves.toBe('saved');
+
+				expect(feedbackCalls()).toEqual([
+					['/modules/buddy/suggestions/{id}/feedback', { params: { path: { id: 'suggestion-1' } }, body: { data: { feedback: 'applied' } } }],
+				]);
+
+				editor.updateGraph(withDelay());
+
+				mockBackendClient.PATCH.mockResolvedValue(ok(detailRes({ revision: 5, graph: withDelay() })));
+
+				await expect(editor.save()).resolves.toBe('saved');
+
+				expect(feedbackCalls()).toHaveLength(1);
+			});
+
+			it('leaves the suggestion offered while the suggested flow could not be saved', async () => {
+				const editor = await suggested();
+
+				mockBackendClient.PATCH.mockResolvedValue(refused(500));
+
+				await editor.save();
+
+				expect(feedbackCalls()).toEqual([]);
+			});
+		});
+
+		it('does not mark a suggestion for a flow generated from a template', async () => {
+			stashAutomationDraft(automationId, { name: 'Two flows', mode: AutomationMode.parallel, graph: cloneGraph(graph) });
+
+			const editor = await createEditor(detailRes({ graph: { version: 1, nodes: [], edges: [] } }));
+
+			mockBackendClient.PATCH.mockResolvedValue(ok(detailRes({ revision: 4 })));
+
+			await expect(editor.save()).resolves.toBe('saved');
+
+			expect(mockBackendClient.POST.mock.calls.filter(([path]) => String(path).includes('/buddy/'))).toEqual([]);
+		});
+
 		it('bases the next save on the revision the save returned', async () => {
 			const editor = await createEditor();
 
