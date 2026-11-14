@@ -278,7 +278,7 @@ export class FakeProtectServer {
 			);
 		}
 
-		if (resource === undefined || !(resource in DEVICE_FIXTURES) || segments.length > 3) {
+		if (resource === undefined || !Object.hasOwn(DEVICE_FIXTURES, resource) || segments.length > 3) {
 			return notFound();
 		}
 

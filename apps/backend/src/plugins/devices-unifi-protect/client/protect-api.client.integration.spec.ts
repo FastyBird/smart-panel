@@ -34,6 +34,35 @@ describe('FakeProtectServer', () => {
 		expect(Date.now() - startedAt).toBeLessThan(1000);
 		raw.destroy();
 	});
+
+	it.each(['toString', 'constructor', '__proto__'])('answers 404 for the inherited name %s', async (name) => {
+		const server = await FakeProtectServer.start();
+
+		try {
+			const status = await new Promise<number | undefined>((resolve, reject) => {
+				https
+					.get(
+						{
+							host: server.host,
+							port: server.port,
+							path: `/proxy/protect/integration/v1/${name}`,
+							headers: { 'X-API-KEY': FAKE_PROTECT_API_KEY },
+							// The fake console's own self-signed certificate; this request only probes its routing.
+							rejectUnauthorized: false,
+						},
+						(res) => {
+							res.resume();
+							resolve(res.statusCode);
+						},
+					)
+					.on('error', reject);
+			});
+
+			expect(status).toBe(404);
+		} finally {
+			await server.stop();
+		}
+	});
 });
 
 describe('ProtectApiClient against the fake console', () => {
