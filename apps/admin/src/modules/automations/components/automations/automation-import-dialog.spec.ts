@@ -83,7 +83,7 @@ const TargetStub = defineComponent({
 // A select that picks its first option when clicked
 const SelectStub = defineComponent({
 	name: 'ElSelect',
-	props: { modelValue: { type: String, default: undefined }, name: { type: String, default: '' } },
+	props: { modelValue: { type: String, default: undefined }, name: { type: String, default: '' }, disabled: { type: Boolean, default: false } },
 	emits: ['update:modelValue'],
 	setup(props, { emit, slots }) {
 		return () =>
@@ -205,6 +205,50 @@ describe('AutomationImportDialog', () => {
 		expect(add).toHaveBeenCalledWith({ data: expect.objectContaining({ name: 'Evening', enabled: false, graph }) });
 		expect(wrapper.emitted('imported')).toEqual([[CREATED]]);
 		expect(wrapper.emitted('update:visible')?.at(-1)).toEqual([false]);
+	});
+
+	it('locks every choice while the import is on its way, so what is shown is what is imported', async () => {
+		let created: (value: { id: string; name: string }) => void = () => undefined;
+
+		add.mockReturnValueOnce(
+			new Promise((resolve) => {
+				created = resolve;
+			})
+		);
+
+		await open();
+
+		await wrapper.find('textarea').setValue('version: 1');
+		await wrapper.find('[data-test-id="import-continue"]').trigger('click');
+		await flushPromises();
+
+		const scene = wrapper.find(`[data-test-reference="scene:${SCENE}"]`);
+
+		await scene.find('[data-test-id="pick-option"]').trigger('click');
+
+		expect(wrapper.findComponent(SelectStub).props('disabled')).toBe(false);
+
+		await wrapper.find('[data-test-id="import-create"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.findComponent(SelectStub).props('disabled')).toBe(true);
+		expect(wrapper.find('[data-test-id="import-property-target"]').attributes('inert')).toBeDefined();
+
+		// A pick that gets through anyway changes nothing
+		await wrapper.find('[data-test-id="pick-property"]').trigger('click');
+		wrapper.findComponent(SelectStub).vm.$emit('update:modelValue', undefined);
+		await flushPromises();
+
+		expect(scene.find('[data-test-select]').attributes('data-value')).toBe(OTHER_SCENE);
+
+		created({ id: CREATED, name: 'Evening' });
+		await flushPromises();
+
+		expect(prepareImport).toHaveBeenLastCalledWith({
+			yaml: 'version: 1',
+			mappings: [{ kind: AutomationReferenceKind.scene, id: SCENE, to: OTHER_SCENE }],
+		});
+		expect(wrapper.emitted('imported')).toEqual([[CREATED]]);
 	});
 
 	it('shows why the backend refused the file and stays on it', async () => {

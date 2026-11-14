@@ -103,19 +103,27 @@
 						</el-text>
 					</div>
 
-					<automation-node-target
+					<!-- The picker of the devices module has no disabled state: while the import is on its way it is made inert -->
+					<div
 						v-if="remappable(reference) && reference.kind === AutomationReferenceKind.property"
-						:device-id="propertyTarget(reference).device_id"
-						:channel-id="propertyTarget(reference).channel_id"
-						:property-id="propertyTarget(reference).property_id"
-						:prefix="`${referenceKey(reference)}.`"
-						@change="(patch) => onPropertyTarget(reference, patch)"
-					/>
+						:inert="submitting"
+						:class="{ 'automation-import-dialog__locked': submitting }"
+						data-test-id="import-property-target"
+					>
+						<automation-node-target
+							:device-id="propertyTarget(reference).device_id"
+							:channel-id="propertyTarget(reference).channel_id"
+							:property-id="propertyTarget(reference).property_id"
+							:prefix="`${referenceKey(reference)}.`"
+							@change="(patch) => onPropertyTarget(reference, patch)"
+						/>
+					</div>
 
 					<el-select
 						v-else-if="remappable(reference)"
 						:model-value="mappingFor(reference) ?? undefined"
 						:placeholder="t('automations.transfer.fields.mapping.placeholder')"
+						:disabled="submitting"
 						:name="referenceKey(reference)"
 						:aria-label="t('automations.transfer.fields.mapping.title', { kind: t(`automations.transfer.kinds.${reference.kind}`) })"
 						filterable
@@ -345,6 +353,11 @@ const onPropertyTarget = (
 	reference: IAutomationImportMissingReference,
 	patch: { device_id?: string; channel_id?: string; property_id?: string }
 ): void => {
+	// What is being imported was taken when the import started; a choice made meanwhile would only look applied
+	if (submitting.value) {
+		return;
+	}
+
 	const next: IPropertyTarget = { ...propertyTarget(reference) };
 
 	for (const field of ['device_id', 'channel_id', 'property_id'] as const) {
@@ -420,6 +433,11 @@ const onOpen = (): void => {
 <style scoped>
 .automation-import-dialog__reference {
 	border-color: var(--el-border-color);
+}
+
+.automation-import-dialog__locked {
+	opacity: 0.6;
+	pointer-events: none;
 }
 
 .automation-import-dialog__yaml :deep(textarea) {

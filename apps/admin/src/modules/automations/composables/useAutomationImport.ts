@@ -103,12 +103,21 @@ export const useAutomationImport = (): IUseAutomationImport => {
 	};
 
 	const setYaml = (text: string): void => {
+		// The text an import on its way was made from stays as it is
+		if (submitting.value) {
+			return;
+		}
+
 		generation += 1;
 
 		applyYaml(text);
 	};
 
 	const readFile = async (file: Blob): Promise<boolean> => {
+		if (submitting.value) {
+			return false;
+		}
+
 		if (file.size > AUTOMATION_IMPORT_MAX_LENGTH) {
 			flashMessage.error(t('automations.transfer.messages.tooLarge', { size: AUTOMATION_IMPORT_MAX_LENGTH / 1024 }));
 
@@ -138,6 +147,11 @@ export const useAutomationImport = (): IUseAutomationImport => {
 	};
 
 	const setMapping = (reference: Pick<IAutomationImportMissingReference, 'kind' | 'id'>, to: string | null): void => {
+		// The mappings of an import on its way were taken when it started
+		if (submitting.value) {
+			return;
+		}
+
 		const next = { ...mappings.value };
 
 		if (to === null || to === '') {

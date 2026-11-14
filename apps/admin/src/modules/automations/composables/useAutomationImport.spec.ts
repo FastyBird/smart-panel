@@ -277,7 +277,7 @@ describe('useAutomationImport', () => {
 		expect(add).not.toHaveBeenCalled();
 	});
 
-	it('drops a check that comes back for text that changed while it was made', async () => {
+	it('drops a check that comes back after the dialog was reset', async () => {
 		let answer: (value: IAutomationImportPreparation) => void = () => undefined;
 
 		prepareImport.mockReturnValueOnce(
@@ -292,7 +292,12 @@ describe('useAutomationImport', () => {
 
 		const pending = form.prepare();
 
+		// The text can not be changed while it is being checked
 		form.setYaml('second');
+
+		expect(form.yaml.value).toBe('first');
+
+		form.reset();
 
 		answer(preparation(SCENE, true));
 
@@ -336,5 +341,43 @@ describe('useAutomationImport', () => {
 		await form.create();
 
 		expect(prepareImport).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the mappings, the text and the file of an import on its way as they were when it started', async () => {
+		const form = useAutomationImport();
+
+		form.setYaml('version: 1');
+
+		await form.prepare();
+
+		form.setMapping({ kind: AutomationReferenceKind.scene, id: SCENE }, OTHER_SCENE);
+
+		let created: (value: { id: string; name: string }) => void = () => undefined;
+
+		add.mockReturnValueOnce(
+			new Promise((resolve) => {
+				created = resolve;
+			})
+		);
+		prepareImport.mockResolvedValueOnce(preparation(OTHER_SCENE, false));
+
+		const pending = form.create();
+
+		await Promise.resolve();
+
+		form.setMapping({ kind: AutomationReferenceKind.scene, id: SCENE }, null);
+		form.setYaml('other');
+
+		expect(await form.readFile(new Blob(['another file']))).toBe(false);
+		expect(form.mappingFor({ kind: AutomationReferenceKind.scene, id: SCENE })).toBe(OTHER_SCENE);
+		expect(form.yaml.value).toBe('version: 1');
+
+		created({ id: CREATED, name: 'Evening' });
+
+		expect(await pending).toBe(CREATED);
+		expect(prepareImport).toHaveBeenLastCalledWith({
+			yaml: 'version: 1',
+			mappings: [{ kind: AutomationReferenceKind.scene, id: SCENE, to: OTHER_SCENE }],
+		});
 	});
 });
