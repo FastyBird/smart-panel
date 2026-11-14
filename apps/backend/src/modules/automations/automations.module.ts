@@ -31,6 +31,7 @@ import { AutomationTemplatesController } from './controllers/templates.controlle
 import { UpdateAutomationsConfigDto } from './dto/update-config.dto';
 import { AutomationRunEntity } from './entities/automation-runs.entity';
 import { AutomationEntity } from './entities/automations.entity';
+import { DisplayExchangeListener } from './listeners/display-exchange.listener';
 import { ReferenceCleanupListener } from './listeners/reference-cleanup.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { AutomationsConfigModel } from './models/config.model';
@@ -95,6 +96,7 @@ import { AUTOMATION_TEMPLATES_LOCATIONS, AutomationTemplatesService } from './te
 		// Listeners
 		ReferenceCleanupListener,
 		WebsocketExchangeListener,
+		DisplayExchangeListener,
 		// Reset service
 		AutomationsModuleResetService,
 		// Seeder
