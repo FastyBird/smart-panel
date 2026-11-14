@@ -578,6 +578,71 @@ void main() {
     });
 
     test(
+      'a later list supersedes an earlier one that came back first',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        adapter.stored['x'] = _automation('x');
+        await repository.fetchAll();
+
+        adapter.stored['a'] = _automation('a', revision: 2);
+        final earlierGate = Completer<void>();
+        adapter.listGate = earlierGate;
+        final earlier = repository.fetchAll();
+        await arrived();
+
+        // Changed on the server again, events missed
+        adapter.stored['a'] = _automation('a', enabled: true, revision: 3);
+        adapter.stored.remove('x');
+        final laterGate = Completer<void>();
+        adapter.listGate = laterGate;
+        final later = repository.fetchAll();
+        await arrived();
+
+        earlierGate.complete();
+        await earlier;
+
+        expect(repository.getAutomation('a')!.revision, 2);
+        expect(repository.getAutomation('x'), isNotNull);
+
+        laterGate.complete();
+        await later;
+
+        expect(repository.getAutomation('a')!.revision, 3);
+        expect(repository.getAutomation('a')!.enabled, isTrue);
+        expect(repository.getAutomation('x'), isNull);
+      },
+    );
+
+    test(
+      'a switch answer started after a list that came back first still applies',
+      () async {
+        adapter.stored['a'] = _automation('a');
+        await service.initialize();
+
+        // Renamed on the server, event missed; the list reads it
+        adapter.stored['a'] = _automation('a', name: 'Renamed', revision: 2);
+        final listGate = Completer<void>();
+        adapter.listGate = listGate;
+        final list = repository.fetchAll();
+        await arrived();
+
+        final gate = Completer<void>();
+        adapter.gate = gate;
+        final result = service.setEnabled('a', true);
+        await arrived();
+
+        listGate.complete();
+        await list;
+        gate.complete();
+
+        expect(await result, AutomationToggleResult.success);
+        expect(repository.getAutomation('a')!.revision, 3);
+        expect(repository.getAutomation('a')!.enabled, isTrue);
+        expect(repository.getAutomation('a')!.name, 'Renamed');
+      },
+    );
+
+    test(
       'a delayed 404 does not remove an automation restored meanwhile',
       () async {
         adapter.stored['a'] = _automation('a', name: 'Old');

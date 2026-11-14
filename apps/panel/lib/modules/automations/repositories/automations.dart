@@ -35,16 +35,19 @@ class AutomationToggleException implements Exception {
 /// an answer can be read before a change and arrive after it. The model is
 /// request-relative, with no special cases:
 /// - Every request takes a fresh number when it starts (`++_seq`), and every
-///   applied change takes the next one: a live create, update, delete or
-///   reset, an item or removal applied from a list, an applied switch answer
-///   and an applied "gone" answer.
-/// - A deletion is a change like any other and is recorded as one, whatever
-///   reported it: a Deleted event, a list that leaves the automation out, or a
-///   switch answered with 404.
-/// - An answer is applied to an automation only when nothing changed or
-///   deleted it, and no reset happened, after the request started; an item
-///   must also be at least the stored revision. A 404 is an answer saying the
-///   automation is gone, handled exactly like a list leaving it out.
+///   live change takes the next one: a websocket create, update, delete or
+///   reset.
+/// - A change applied from an answer - an item or a removal from a list, a
+///   switch result, a 404 - is stamped with the request's start number: the
+///   answer shows the backend as it was when the request started. So a request
+///   that started later supersedes one that started earlier, whichever comes
+///   back first, and every answer yields to live changes made after its start.
+/// - A deletion is a change like any other, whatever reported it: a Deleted
+///   event, a list that leaves the automation out, or a switch answered with
+///   404 (an answer saying the automation is gone).
+/// - An answer is applied to an automation only when its last change and the
+///   last reset are older than the request's start; an item must also be at
+///   least the stored revision.
 /// - A list that started before the last applied list is dropped whole.
 /// - Records are pruned only up to the earliest start of a request still in
 ///   flight, and entirely once none is.
@@ -195,7 +198,7 @@ class AutomationsRepository extends ChangeNotifier {
       }
 
       if (!_disposed && _accepts(automation, startedAt)) {
-        _changedAt[id] = ++_seq;
+        _changedAt[id] = startedAt;
         _replace({..._data, id: automation});
       }
 
@@ -285,7 +288,7 @@ class AutomationsRepository extends ChangeNotifier {
   void _applyGone(Map<String, AutomationModel> next, String id, int startedAt) {
     if (!_unchangedSince(id, startedAt) || !next.containsKey(id)) return;
 
-    _changedAt[id] = ++_seq;
+    _changedAt[id] = startedAt;
     next.remove(id);
   }
 
@@ -304,7 +307,7 @@ class AutomationsRepository extends ChangeNotifier {
     for (final automation in listed.values) {
       if (_accepts(automation, startedAt) &&
           next[automation.id] != automation) {
-        _changedAt[automation.id] = ++_seq;
+        _changedAt[automation.id] = startedAt;
         next[automation.id] = automation;
       }
     }
