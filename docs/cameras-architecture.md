@@ -395,8 +395,8 @@ whose acquisition completes after the close is released at once.
 | `acquire` while that registration is in flight | joins it: one `resolveSource` and one `PUT` |
 | `acquire` on a registered entry, also inside the grace period | count + 1, grace timer cleared, no `PUT` |
 | last `release` | `DELETE /api/streams?src=<name>` after 30 s (`GO2RTC_STREAM_IDLE_GRACE_MS`), so a reload reuses the stream; then the secrets are released |
-| `PUT` answered with an HTTP error, or `resolveSource` fails | every joiner rejects; no entry; secrets released; the next `acquire` starts over |
-| `PUT` fails without an HTTP status (timeout, reset) | as above, but go2rtc may have created the stream: a compensating `DELETE` is queued behind it in the name queue and the secrets stay retained unless that `DELETE` is confirmed |
+| `resolveSource` fails | every joiner rejects; no entry; secrets released; the next `acquire` starts over |
+| `PUT` fails, with or without an HTTP status (timeout, reset, or a `400` for a failed config save) | as above, but go2rtc creates the stream before it saves the config (v1.9.15), so it may exist whatever the answer: a compensating `DELETE` is queued behind the `PUT` in the name queue and the secrets stay retained until that `DELETE` is confirmed (`404` counts as deleted) |
 | relay `generation` changes or the state leaves `running` | every entry is dropped (no new `PUT`); managed: no `DELETE`, and the secrets of the dropped entries are retained for that generation until its process is confirmed gone (`onManagedRunEnded`), not released with the status change; external (stop, disable, mode change, unreachable): best-effort `DELETE` of every entry through the client the entry was registered on |
 | device deleted | its entries are deleted at once, whatever their count |
 | external relay becomes `running` | orphan sweep, see External mode |
@@ -496,7 +496,7 @@ An open socket is no longer known to `CameraSessionService`, so the gateway subs
 | `DisplaysModule.Display.Deleted`, `DisplaysModule.Display.TokenRevoked` | the display's sockets close `revoked` |
 | `UsersModule.User.Deleted` | the user's sockets close `revoked` |
 | config update of `cameras-module` leaving it disabled or unreadable | every socket closes `module_disabled` |
-| config update of any plugin | every watched (device, profile) is re-validated once, in parallel: a provider that is now offline (disabled plugin) or a profile that is no longer available closes its sockets `revoked` |
+| config update of any plugin | every watched (device, profile) is re-validated once, in parallel: a provider that is now offline (disabled plugin) or a profile that is no longer available closes its sockets `revoked`, except those admitted under the provider instance that a newer passing check for the same (device, profile) validated (a stale result never closes those; sockets on any other provider, or without one yet, still close) |
 | relay status leaves `running`, or the generation changes | every socket closes `relay_unavailable` |
 
 ## Status route
@@ -537,8 +537,12 @@ session token. Logs carry ids, stream names, fixed reason codes and error class 
 - Text frames from go2rtc never reach the browser except a rebuilt, validated `mse` reply: go2rtc's `error` frame carries
   the camera source path and query.
 - A secret stays registered for as long as the stream it belongs to may exist: external streams are deleted on stop,
-  and a failed `DELETE` keeps the secret registered (see Stream registration). The process memory of the backend is the
-  only place the secrets live; an external go2rtc keeps them in its own config file until the stream is deleted.
+  and a failed `DELETE` keeps the secret registered (see Stream registration). Where source URLs live:
+  - the backend's process memory (the secrets registry and the sessions);
+  - the managed go2rtc's config file (`0600` in a `0700` directory), which holds the registered sources while the relay
+    runs and is deleted when it stops;
+  - an external go2rtc's own config file and its backups, which are outside this backend's control: it keeps a source
+    until the stream is deleted, and operators must protect that file and its backups.
 
 ## Not yet implemented
 
