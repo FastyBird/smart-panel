@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsBoolean, IsDefined, IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
@@ -60,6 +60,8 @@ export class BulkUpdateScenesDto {
 		example: true,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled: boolean;
 }

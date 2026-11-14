@@ -37,6 +37,8 @@ export class UpdateSignageInfoPanelSpaceDto extends UpdateSpaceDto {
 		example: true,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { show_clock?: unknown } }) => obj.show_clock, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"show_clock","reason":"show_clock must be a boolean."}]' })
 	show_clock?: boolean;
@@ -48,6 +50,8 @@ export class UpdateSignageInfoPanelSpaceDto extends UpdateSpaceDto {
 		example: true,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { show_weather?: unknown } }) => obj.show_weather, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"show_weather","reason":"show_weather must be a boolean."}]' })
 	show_weather?: boolean;
@@ -59,6 +63,8 @@ export class UpdateSignageInfoPanelSpaceDto extends UpdateSpaceDto {
 		example: true,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { show_announcements?: unknown } }) => obj.show_announcements, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({
 		message: '[{"field":"show_announcements","reason":"show_announcements must be a boolean."}]',
@@ -72,6 +78,8 @@ export class UpdateSignageInfoPanelSpaceDto extends UpdateSpaceDto {
 		example: false,
 	})
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { show_feed?: unknown } }) => obj.show_feed, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"show_feed","reason":"show_feed must be a boolean."}]' })
 	show_feed?: boolean;

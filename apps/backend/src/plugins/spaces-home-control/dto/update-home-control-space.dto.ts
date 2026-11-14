@@ -44,7 +44,12 @@ export class UpdateHomeControlSpaceDto extends UpdateSpaceDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { suggestions_enabled?: unknown } }) =>
+			obj.suggestions_enabled === null ? undefined : obj.suggestions_enabled,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"suggestions_enabled","reason":"Suggestions enabled must be a boolean."}]' })
 	suggestions_enabled?: boolean;

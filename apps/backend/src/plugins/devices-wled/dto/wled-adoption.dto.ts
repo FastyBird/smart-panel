@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMinSize,
 	IsArray,
@@ -57,6 +57,8 @@ export class WledAdoptDeviceDto extends WledProbeDto {
 
 	@ApiProperty({ description: 'Whether the adopted device is enabled', default: true, required: false })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean()
 	enabled?: boolean;

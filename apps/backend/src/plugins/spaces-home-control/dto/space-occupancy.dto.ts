@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	ArrayUnique,
@@ -28,6 +28,8 @@ export class UpdateSpaceOccupancyDto {
 
 	@ApiProperty({ type: 'boolean' })
 	@Expose()
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => obj.enabled, { toClassOnly: true })
 	@IsBoolean()
 	enabled: boolean;
 

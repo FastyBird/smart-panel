@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, Matches } from 'class-validator';
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -20,6 +20,8 @@ export class ReqInstallUpdateDto {
 		default: false,
 	})
 	@Expose({ name: 'allow_major' })
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { allow_major?: unknown } }) => obj.allow_major, { toClassOnly: true })
 	@IsOptional()
 	@IsBoolean()
 	allowMajor?: boolean;

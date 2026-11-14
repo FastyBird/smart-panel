@@ -127,7 +127,10 @@ export class UpdateDisplayDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { dark_mode?: unknown } }) => (obj.dark_mode === null ? undefined : obj.dark_mode), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"dark_mode","reason":"Dark mode must be a boolean."}]' })
 	dark_mode?: boolean;
@@ -172,7 +175,11 @@ export class UpdateDisplayDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { screen_saver?: unknown } }) => (obj.screen_saver === null ? undefined : obj.screen_saver),
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"screen_saver","reason":"Screen saver must be a boolean."}]' })
 	screen_saver?: boolean;
@@ -184,7 +191,12 @@ export class UpdateDisplayDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(
+		({ obj }: { obj: { screen_power_off?: unknown } }) =>
+			obj.screen_power_off === null ? undefined : obj.screen_power_off,
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"screen_power_off","reason":"Screen power off must be a boolean."}]' })
 	screen_power_off?: boolean;
@@ -258,7 +270,10 @@ export class UpdateDisplayDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { speaker?: unknown } }) => (obj.speaker === null ? undefined : obj.speaker), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"speaker","reason":"Speaker must be a boolean."}]' })
 	speaker?: boolean;
@@ -285,7 +300,10 @@ export class UpdateDisplayDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { microphone?: unknown } }) => (obj.microphone === null ? undefined : obj.microphone), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"microphone","reason":"Microphone must be a boolean."}]' })
 	microphone?: boolean;

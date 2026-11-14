@@ -28,7 +28,10 @@ export class UpdateRemoteAccessCloudflareTunnelPluginConfigDto extends UpdatePlu
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	// The raw JSON value: implicit conversion would turn the string "false" into true before it is validated
+	@Transform(({ obj }: { obj: { enabled?: unknown } }) => (obj.enabled === null ? undefined : obj.enabled), {
+		toClassOnly: true,
+	})
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean."}]' })
 	enabled?: boolean;
