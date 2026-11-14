@@ -532,6 +532,7 @@
 					"title": "Scena",
 					"placeholder": "Wybierz scenę",
 					"empty": "Nie ma jeszcze scen",
+					"loadFailed": "Nie udało się wczytać scen.",
 					"hint": "Przy każdym uruchomieniu scena jest sprawdzana ponownie: scena, która by coś odblokowała, rozbroiła lub otworzyła, nie zostanie uruchomiona."
 				},
 				"notification": {
@@ -582,7 +583,8 @@
 				"device": {
 					"title": "Urządzenie",
 					"placeholder": "Wybierz urządzenie",
-					"empty": "Nie ma jeszcze urządzeń"
+					"empty": "Nie ma jeszcze urządzeń",
+					"loadFailed": "Nie udało się wczytać urządzeń."
 				},
 				"connection": {
 					"title": "Uruchom, gdy urządzenie"
@@ -612,6 +614,7 @@
 					"title": "Automatyzacja",
 					"placeholder": "Wybierz automatyzację",
 					"empty": "Nie ma jeszcze innych automatyzacji",
+					"loadFailed": "Nie udało się wczytać automatyzacji.",
 					"hints": {
 						"enable": "Jej wyzwalacze znów zaczną ją uruchamiać. Aby można ją było włączyć, jej przebieg musi być kompletny. Automatyzacja nie może włączyć samej siebie.",
 						"disable": "Jej wyzwalacze przestają działać, a jej aktywne przebiegi zostają anulowane. Automatyzacja nie może wyłączyć samej siebie.",

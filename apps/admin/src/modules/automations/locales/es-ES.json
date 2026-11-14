@@ -532,6 +532,7 @@
 					"title": "Escena",
 					"placeholder": "Seleccione una escena",
 					"empty": "Aún no hay escenas",
+					"loadFailed": "No se pudieron cargar las escenas.",
 					"hint": "En cada ejecución la escena se vuelve a comprobar: una escena que desbloquearía, desarmaría o abriría algo no se ejecuta."
 				},
 				"notification": {
@@ -582,7 +583,8 @@
 				"device": {
 					"title": "Dispositivo",
 					"placeholder": "Seleccione un dispositivo",
-					"empty": "Aún no hay dispositivos"
+					"empty": "Aún no hay dispositivos",
+					"loadFailed": "No se pudieron cargar los dispositivos."
 				},
 				"connection": {
 					"title": "Iniciar cuando el dispositivo"
@@ -612,6 +614,7 @@
 					"title": "Automatización",
 					"placeholder": "Seleccione una automatización",
 					"empty": "Aún no hay otras automatizaciones",
+					"loadFailed": "No se pudieron cargar las automatizaciones.",
 					"hints": {
 						"enable": "Sus disparadores vuelven a iniciarla. Para activarla, su flujo tiene que estar completo. Una automatización no puede activarse a sí misma.",
 						"disable": "Sus disparadores se detienen y sus ejecuciones activas se cancelan. Una automatización no puede desactivarse a sí misma.",

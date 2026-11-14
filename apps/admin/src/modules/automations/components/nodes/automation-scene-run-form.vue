@@ -29,6 +29,12 @@
 					:value="scene.id"
 				/>
 			</el-select>
+			<automation-lookup-load-failed
+				v-if="scenesLoadFailed"
+				collection="scenes"
+				:loading="fetchingScenes"
+				@retry="retryScenes"
+			/>
 			<el-text
 				tag="div"
 				size="small"
@@ -58,6 +64,8 @@ import { useAutomationNodeLookups } from '../../composables/useAutomationNodeLoo
 import { SceneRunConfigSchema } from '../../nodes/nodes.schemas';
 import { type IAutomationNodeFormProps, automationNodeFormEmits } from '../canvas/automation-node-form.types';
 
+import AutomationLookupLoadFailed from './automation-lookup-load-failed.vue';
+
 defineOptions({
 	name: 'AutomationSceneRunForm',
 });
@@ -78,7 +86,7 @@ const { errorText } = form;
 
 const { scenes, fetching } = useScenes();
 
-const { ensureScenes } = useAutomationNodeLookups();
+const { ensureScenes, scenesLoadFailed, fetchingScenes, retryScenes } = useAutomationNodeLookups();
 
 const text = (value: unknown): string | undefined => (typeof value === 'string' && value !== '' ? value : undefined);
 

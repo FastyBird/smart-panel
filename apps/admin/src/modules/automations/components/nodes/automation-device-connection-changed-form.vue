@@ -29,6 +29,12 @@
 					:value="device.id"
 				/>
 			</el-select>
+			<automation-lookup-load-failed
+				v-if="devicesLoadFailed"
+				collection="devices"
+				:loading="fetchingDevices"
+				@retry="retryDevices"
+			/>
 		</el-form-item>
 
 		<el-form-item
@@ -66,6 +72,7 @@ import { AUTOMATION_DEVICE_CONNECTIONS } from '../../nodes/nodes.constants';
 import { DeviceConnectionChangedConfigSchema } from '../../nodes/nodes.schemas';
 import { type IAutomationNodeFormProps, automationNodeFormEmits } from '../canvas/automation-node-form.types';
 
+import AutomationLookupLoadFailed from './automation-lookup-load-failed.vue';
 import type { IAutomationOption } from './automation-option-select.types';
 import AutomationOptionSelect from './automation-option-select.vue';
 
@@ -89,7 +96,7 @@ const { errorText } = form;
 
 const { devices, areLoading } = useDevices();
 
-const { ensureDevices } = useAutomationNodeLookups();
+const { ensureDevices, devicesLoadFailed, fetchingDevices, retryDevices } = useAutomationNodeLookups();
 
 const sortedDevices = computed<IDevice[]>((): IDevice[] => [...devices.value].sort((a, b) => a.name.localeCompare(b.name)));
 
