@@ -177,6 +177,14 @@ const safeName = (value: unknown): string | null => (typeof value === 'string' &
 const detectionTypes = (item: Readonly<Record<string, unknown>>): string[] =>
 	Array.isArray(item.smartDetectTypes) ? (item.smartDetectTypes as string[]) : [];
 
+const MAX_TIMESTAMP_MS = 8.64e15;
+
+/** Absent or null, or a finite number inside the JavaScript date range. */
+const isValidTimestamp = (value: unknown): boolean =>
+	value === undefined ||
+	value === null ||
+	(typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAX_TIMESTAMP_MS);
+
 const isClosed = (end: unknown): boolean => end !== undefined && end !== null;
 
 export class ProtectEventTracker {
@@ -252,7 +260,8 @@ export class ProtectEventTracker {
 			typeof type !== 'string' ||
 			typeof device !== 'string' ||
 			!PROTECT_ID_PATTERN.test(device) ||
-			(start !== undefined && start !== null && !(typeof start === 'number' && Number.isFinite(start)))
+			!isValidTimestamp(start) ||
+			!isValidTimestamp(item.end)
 		) {
 			return { effects: [], ignored: [{ reason: 'invalid', name: safeName(type) }] };
 		}
@@ -344,6 +353,10 @@ export class ProtectEventTracker {
 			return this.seen.has(frame.id)
 				? { effects: [], ignored: [] }
 				: { effects: [], ignored: [{ reason: 'unknown_event', name: null }] };
+		}
+
+		if (!isValidTimestamp(frame.item.end)) {
+			return { effects: [], ignored: [{ reason: 'invalid', name: safeName(event.type) }] };
 		}
 
 		if (frame.action === 'remove') {

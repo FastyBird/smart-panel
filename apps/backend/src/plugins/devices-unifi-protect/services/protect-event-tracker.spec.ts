@@ -1,7 +1,12 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-import { ProtectEventEffect, ProtectEventTracker, ProtectTargetWrite } from './protect-event-tracker';
+import {
+	ProtectEventEffect,
+	ProtectEventTracker,
+	ProtectTargetWrite,
+	resolveProtectEventTargets,
+} from './protect-event-tracker';
 import { ProtectFrame, parseProtectFrame } from './protect-frame-merge';
 
 const CAMERA = '600cefafd5f365d6f83c4ef3';
@@ -338,20 +343,47 @@ describe('ProtectEventTracker', () => {
 	it('hands out effects that cannot alter later ones', () => {
 		const tracker = new ProtectEventTracker();
 		const first = tracker.apply(add(1, 'sensorWaterLeak', {}, SENSOR), 0);
+		const closed = tracker.apply(finish(1), 1);
 
-		for (const effect of first.effects) {
+		for (const effect of [...first.effects, ...closed.effects]) {
 			if (effect.kind === 'write') {
 				effect.writes[0].value = 'tampered';
+				effect.writes[0].channelIdentifier = 'tampered';
 				effect.writes.push({ channelIdentifier: 'x', mappingName: 'y', value: true });
 			}
 		}
 
-		const second = tracker.apply(add(2, 'sensorWaterLeak', {}, SENSOR), 1);
+		const reopened = tracker.apply(add(2, 'sensorWaterLeak', {}, SENSOR), 2);
+		const reclosed = tracker.apply(finish(2), 3);
 
-		expect(second.effects).toEqual([]);
-		expect(summary(writesOf(tracker.apply(add(3, 'sensorWaterLeak', {}, CAMERA), 2).effects))).toEqual([
-			'leak/leak_detected=true',
-			'leak/leak_level=high',
+		expect(summary(writesOf(reopened.effects))).toEqual(['leak/leak_detected=true', 'leak/leak_level=high']);
+		expect(summary(writesOf(reclosed.effects))).toEqual(['leak/leak_detected=false', 'leak/leak_level=low']);
+		expect(resolveProtectEventTargets('sensorWaterLeak', [])?.targets[0].start[0].value).toBe(true);
+	});
+
+	it('rejects timestamps outside the JavaScript date range', () => {
+		const tracker = new ProtectEventTracker();
+
+		const hugeStart = tracker.apply(add(1, 'motion', { start: 1e100 }), 0);
+
+		expect(hugeStart.effects).toEqual([]);
+		expect(hugeStart.ignored.map((entry) => entry.reason)).toEqual(['invalid']);
+		expect(tracker.nextDeadline()).toBeNull();
+		// not remembered as seen
+		expect(tracker.apply(add(1, 'motion'), 1).ignored).toEqual([]);
+
+		const hugeEnd = tracker.apply(frame('update', { id: eid(1), end: -1e100 }), 2);
+
+		expect(hugeEnd.effects).toEqual([]);
+		expect(hugeEnd.ignored.map((entry) => entry.reason)).toEqual(['invalid']);
+		expect(tracker.openTargets(CAMERA)).toEqual(new Set(['motion']));
+		expect(tracker.nextDeadline()).toBe(60_001);
+
+		expect(tracker.apply(add(2, 'sensorOpened', { start: 8.64e15 }, SENSOR), 3).ignored).toEqual([]);
+		expect(tracker.apply(add(3, 'sensorOpened', { start: -8.64e15 }, SENSOR), 3).ignored).toEqual([]);
+		expect(tracker.apply(add(4, 'sensorOpened', { start: 8.64e15 + 2 }, SENSOR), 3).ignored).toHaveLength(1);
+		expect(summary(writesOf(tracker.apply(finish(1, { end: 8.64e15 }), 4).effects))).toEqual([
+			'motion/camera_motion_detected=false',
 		]);
 	});
 
