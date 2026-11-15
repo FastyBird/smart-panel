@@ -1039,6 +1039,27 @@ backend is down are not copied; the panel ring overlay is UP-14); `Closes #1184`
 
 ---
 
+## Amendments after review (they win over the task text)
+
+- **Write retry (Task 4).** The synchronizer diffs a device's current mapped values against `lastWritten` (the last
+  successfully persisted value per property), not against the previous merged frame, so a failed write is retried by
+  the next frame or snapshot. Test: a failed write followed by an identical frame retries it.
+- **Event effect retry (Task 5).** A failed event effect (a start/end write or a ring publication) is kept in a bounded
+  per-device retry queue (32 entries, 3 attempts), retried on the next frame for that device and on each safety tick.
+  Successful effects are never re-emitted; a ring retry reuses the same `sourceOccurrenceId` (the Protect event id), so
+  it can never publish twice. Tests: a failed smoke start is retried; a failed ring is retried and published once.
+- **Timestamp range (Task 3).** The tracker rejects `start`/`end` outside the JavaScript date range (|t| > 8.64e15 ms)
+  as `invalid`, so `toISOString()` cannot throw. Test with `start: 1e100`.
+- **Stop after a lost session (Task 6).** The connector's `stop()` always emits `(null, 'stopped')`, also after the
+  session was already lost, and the realtime end handling is idempotent (issue resolved, synchronizer reset, timers
+  cleared). Test: "announces stopped even when not connected".
+- **Early event frames (Task 6).** Each subscription's frames are buffered from the moment its handler is registered,
+  not only in `priming`, with the same bound (1000) and parsing rules, so an event frame arriving while the other
+  socket is still connecting is applied after priming. Test.
+- **Stale poll results (Task 7).** Each poll captures the cycle generation when it starts; before `applySnapshot` its
+  result is discarded if the generation changed or the cycle reached streaming. Test: start a poll, open the sockets
+  and apply a newer frame, then resolve the stale poll read; `applySnapshot` is not called with it.
+
 ## Decisions recorded (for the PR body)
 
 1. `lightMotion` is ignored, not mapped to `motion` as the issue table says: the floodlight has no `motion` channel
