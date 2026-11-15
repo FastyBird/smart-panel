@@ -840,4 +840,31 @@ describe('ProtectApiClient', () => {
 	it('reports no peer fingerprint for an injected transport', () => {
 		expect(client.peerFingerprint).toBeNull();
 	});
+
+	describe('subscriptions', () => {
+		const handlers = { message: jest.fn(), pong: jest.fn(), closed: jest.fn() };
+
+		it('refuses to open a subscription without a TLS agent', async () => {
+			await expect(client.openSubscription('devices', handlers)).rejects.toMatchObject({
+				category: ProtectErrorCategory.VALIDATION,
+				operation: 'subscribe/devices',
+			});
+			expect(transport.requests).toHaveLength(0);
+		});
+
+		it('refuses to open a subscription after close', async () => {
+			client.close();
+
+			await expect(client.openSubscription('events', handlers)).rejects.toMatchObject({
+				category: ProtectErrorCategory.CANCELLED,
+				operation: 'subscribe/events',
+			});
+		});
+
+		it('refuses to open a subscription with an aborted signal', async () => {
+			await expect(client.openSubscription('events', handlers, { signal: AbortSignal.abort() })).rejects.toMatchObject({
+				category: ProtectErrorCategory.CANCELLED,
+			});
+		});
+	});
 });

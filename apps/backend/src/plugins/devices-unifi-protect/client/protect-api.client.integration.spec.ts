@@ -1,5 +1,7 @@
+import { readFileSync } from 'fs';
 import * as https from 'https';
 import * as net from 'net';
+import { join, resolve as resolvePath } from 'path';
 
 import { Logger } from '@nestjs/common';
 
@@ -8,8 +10,13 @@ import {
 	FAKE_PROTECT_API_KEY,
 	FakeProtectServer,
 } from '../../../../test/support/fake-protect-server';
-import { PROTECT_TEST_DIRECT_DOMAIN, PROTECT_TEST_TLS } from '../../../../test/support/protect-tls';
-import { ProtectApiError } from '../errors/protect-api.error';
+import {
+	PROTECT_TEST_DIRECT_DOMAIN,
+	PROTECT_TEST_TLS,
+	protectTlsServerOptions,
+} from '../../../../test/support/protect-tls';
+import { PROTECT_MAX_FRAME_BYTES } from '../devices-unifi-protect.constants';
+import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.error';
 
 import { ProtectApiClient, ProtectApiClientOptions } from './protect-api.client';
 import { fetchProtectConsoleSystem } from './protect-console-system';
@@ -356,5 +363,276 @@ describe('ProtectApiClient against the fake console', () => {
 
 		expect(system.directConnectDomain).toBe(PROTECT_TEST_DIRECT_DOMAIN);
 		expect(fake.requests.find((request) => request.path === '/api/system')?.hadApiKey).toBe(false);
+	});
+
+	describe('subscriptions', () => {
+		const firstLine = (name: string): string =>
+			readFileSync(join(resolvePath(__dirname, '../__fixtures__'), name), 'utf8').split('\n')[0];
+		const makeHandlers = (): {
+			message: jest.Mock<void, [string]>;
+			pong: jest.Mock<void, []>;
+			closed: jest.Mock<void, [ProtectApiError]>;
+		} => ({
+			message: jest.fn<void, [string]>(),
+			pong: jest.fn<void, []>(),
+			closed: jest.fn<void, [ProtectApiError]>(),
+		});
+		const until = async (predicate: () => boolean): Promise<void> => {
+			const startedAt = Date.now();
+
+			while (!predicate()) {
+				if (Date.now() - startedAt > 5000) {
+					throw new Error('condition not reached');
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			}
+		};
+
+		it('opens both subscriptions with the key and receives text frames', async () => {
+			const client = build();
+			const devices = makeHandlers();
+			const events = makeHandlers();
+			const deviceSub = await client.openSubscription('devices', devices);
+			const eventSub = await client.openSubscription('events', events);
+			const line = firstLine('ws-events.jsonl');
+
+			expect(deviceSub.topic).toBe('devices');
+			expect(eventSub.topic).toBe('events');
+			expect(fake.upgrades).toHaveLength(2);
+			expect(fake.upgrades.every((upgrade) => upgrade.hadApiKey)).toBe(true);
+			expect(fake.upgrades.map((upgrade) => upgrade.path)).toEqual([
+				`${BASE}/subscribe/devices`,
+				`${BASE}/subscribe/events`,
+			]);
+			expect(fake.requests).toHaveLength(0);
+
+			fake.sendFrame('events', JSON.parse(line));
+			await until(() => events.message.mock.calls.length === 1);
+
+			expect(events.message).toHaveBeenCalledWith(line);
+			expect(devices.message).not.toHaveBeenCalled();
+		});
+
+		it('ignores binary frames and reports pongs', async () => {
+			const client = build();
+			const handlers = makeHandlers();
+			const sub = await client.openSubscription('devices', handlers);
+
+			fake.sendRaw('devices', Buffer.from('x'), true);
+			sub.ping();
+			await until(() => handlers.pong.mock.calls.length === 1);
+
+			expect(handlers.message).not.toHaveBeenCalled();
+			expect(fake.pingsReceived).toBe(1);
+		});
+
+		it('reports a dropped socket once and nothing after close()', async () => {
+			const client = build();
+			const dropped = makeHandlers();
+			const closedByCaller = makeHandlers();
+
+			await client.openSubscription('devices', dropped);
+
+			const second = await client.openSubscription('events', closedByCaller);
+
+			second.close();
+			second.close();
+			fake.dropSubscriptions();
+			await until(() => dropped.closed.mock.calls.length === 1);
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(dropped.closed).toHaveBeenCalledTimes(1);
+			expect(dropped.closed.mock.calls[0][0]).toMatchObject({
+				category: ProtectErrorCategory.UNAVAILABLE,
+				operation: 'subscribe/devices',
+			});
+			expect(closedByCaller.closed).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[401, 'authentication'],
+			[403, 'authorization'],
+			[404, 'not_found'],
+			[503, 'unavailable'],
+		])('maps an upgrade answered %i to %s', async (status, category) => {
+			const client = build();
+
+			fake.refuseUpgrades({ status });
+
+			await expect(client.openSubscription('devices', makeHandlers())).rejects.toMatchObject({
+				category,
+				operation: 'subscribe/devices',
+				status,
+			});
+		});
+
+		it('maps a 429 upgrade with Retry-After and backs the pacer off', async () => {
+			const client = build();
+
+			fake.refuseUpgrades({ status: 429, headers: { 'retry-after': '2' } });
+
+			const failure = (await client
+				.openSubscription('events', makeHandlers())
+				.catch((e: unknown) => e)) as ProtectApiError;
+
+			expect(failure.category).toBe(ProtectErrorCategory.RATE_LIMITED);
+			expect(failure.retryAfterMs).toBeGreaterThanOrEqual(1900);
+			expect(failure.retryAfterMs).toBeLessThanOrEqual(2000);
+
+			// The pacer is paused, so a cancelled wait (not an upgrade) is what the next open sees.
+			const controller = new AbortController();
+			const next = client.openSubscription('events', makeHandlers(), { signal: controller.signal });
+
+			setTimeout(() => controller.abort(), 100);
+
+			await expect(next).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+			expect(fake.upgrades).toHaveLength(1);
+		});
+
+		it('backs the pacer off by the base delay for a 429 upgrade without Retry-After', async () => {
+			const client = build();
+
+			fake.refuseUpgrades({ status: 429 });
+
+			await expect(client.openSubscription('events', makeHandlers())).rejects.toMatchObject({
+				category: ProtectErrorCategory.RATE_LIMITED,
+				retryAfterMs: null,
+			});
+
+			const controller = new AbortController();
+			const next = client.openSubscription('events', makeHandlers(), { signal: controller.signal });
+
+			setTimeout(() => controller.abort(), 100);
+
+			// The 500 ms pause is longer than the 100 ms abort, so nothing reaches the console.
+			await expect(next).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+			expect(fake.upgrades).toHaveLength(1);
+		});
+
+		it('refuses a wrong pin before the key is sent', async () => {
+			const client = build({
+				tls: { mode: 'pinned', serverName: null, fingerprintSha256: PROTECT_TEST_TLS.fingerprints.console },
+			});
+
+			await expect(client.openSubscription('devices', makeHandlers())).rejects.toMatchObject({
+				category: ProtectErrorCategory.TLS_FINGERPRINT_MISMATCH,
+				operation: 'subscribe/devices',
+			});
+			expect(fake.upgrades).toHaveLength(0);
+		});
+
+		it('maps an opening handshake that times out to a timeout', async () => {
+			// TLS completes, then the upgrade is never answered: only the WebSocket handshake timeout can end it.
+			const silent = https.createServer(protectTlsServerOptions());
+
+			silent.on('upgrade', (_req, socket) => {
+				socket.on('error', () => undefined);
+			});
+			silent.on('tlsClientError', () => undefined);
+
+			await new Promise<void>((resolve) => silent.listen(0, '127.0.0.1', resolve));
+
+			try {
+				const client = new ProtectApiClient({
+					host: '127.0.0.1',
+					port: (silent.address() as net.AddressInfo).port,
+					apiKey: FAKE_PROTECT_API_KEY,
+					tls: { mode: 'pinned', serverName: null, fingerprintSha256: PROTECT_TEST_TLS.fingerprints.selfSigned },
+					timeoutMs: 200,
+				});
+
+				clients.push(client);
+
+				await expect(client.openSubscription('devices', makeHandlers())).rejects.toMatchObject({
+					category: ProtectErrorCategory.TIMEOUT,
+					operation: 'subscribe/devices',
+				});
+			} finally {
+				silent.closeAllConnections();
+				await new Promise<void>((resolve) => silent.close(() => resolve()));
+			}
+		});
+
+		it('closes a frame larger than the limit as a protocol failure', async () => {
+			const client = build();
+			const handlers = makeHandlers();
+
+			await client.openSubscription('events', handlers);
+			fake.sendRaw('events', 'x'.repeat(PROTECT_MAX_FRAME_BYTES + 1));
+			await until(() => handlers.closed.mock.calls.length === 1);
+
+			expect(handlers.closed.mock.calls[0][0]).toMatchObject({ category: ProtectErrorCategory.PROTOCOL });
+			expect(handlers.message).not.toHaveBeenCalled();
+		});
+
+		it('terminates subscriptions when the client is closed', async () => {
+			const client = build();
+			const handlers = makeHandlers();
+
+			await client.openSubscription('devices', handlers);
+			expect(fake.subscriptionCount('devices')).toBe(1);
+
+			client.close();
+			await until(() => fake.subscriptionCount('devices') === 0);
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			expect(handlers.closed).not.toHaveBeenCalled();
+		});
+
+		it('cancels a pending open when the client is closed', async () => {
+			const client = build();
+			const pending = client.openSubscription('devices', makeHandlers());
+
+			client.close();
+
+			await expect(pending).rejects.toMatchObject({ category: ProtectErrorCategory.CANCELLED });
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			expect(fake.subscriptionCount('devices')).toBe(0);
+		});
+
+		it('never puts the key into errors or log lines of a failed upgrade', async () => {
+			const client = build();
+			const errors: string[] = [];
+
+			fake.refuseUpgrades({ status: 401 });
+			errors.push(
+				(await client
+					.openSubscription('devices', makeHandlers())
+					.catch((e: unknown) => (e as Error).message)) as string,
+			);
+			errors.push(
+				await client.openSubscription('events', makeHandlers()).then(
+					() => 'opened',
+					(e: unknown) => JSON.stringify(e),
+				),
+			);
+
+			const material = [...errors, ...logged].join('\n');
+
+			expect(material).not.toContain(FAKE_PROTECT_API_KEY);
+			expect(material).toContain('subscribe/devices');
+			expect(logged.join('\n')).toContain('WS subscribe/devices failed (authentication)');
+			expect(logged.join('\n')).toContain('WS subscribe/events open');
+		});
+
+		it('serves the REST overlay and removals', async () => {
+			const client = build();
+			const [first, second] = await client.listCameras();
+
+			fake.updateDevice('cameras', first.id, { state: 'DISCONNECTED' });
+
+			expect((await client.listCameras())[0].state).toBe('DISCONNECTED');
+			expect((await client.getCamera(first.id)).state).toBe('DISCONNECTED');
+
+			fake.removeDevice('cameras', second.id);
+
+			expect((await client.listCameras()).map((camera) => camera.id)).not.toContain(second.id);
+			await expect(client.getCamera(second.id)).rejects.toMatchObject({ category: 'not_found' });
+
+			fake.reset();
+
+			expect((await client.getCamera(first.id)).state).not.toBe('DISCONNECTED');
+		});
 	});
 });

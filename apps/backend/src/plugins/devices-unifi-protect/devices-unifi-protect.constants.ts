@@ -42,6 +42,24 @@ export const PROTECT_RECONNECT_MAX_DELAY_MS = 60000;
 export const PROTECT_RECONNECT_JITTER_RATIO = 0.2;
 export const PROTECT_HEALTH_CHECK_INTERVAL_MS = 60000;
 
+export const PROTECT_SUBSCRIPTION_TOPICS = ['devices', 'events'] as const;
+
+export type ProtectSubscriptionTopic = (typeof PROTECT_SUBSCRIPTION_TOPICS)[number];
+
+export const PROTECT_WS_PING_INTERVAL_MS = 180_000;
+export const PROTECT_WS_PONG_TIMEOUT_MS = 30_000;
+export const PROTECT_MAX_FRAME_BYTES = 256 * 1024;
+export const PROTECT_MAX_BUFFERED_FRAMES = 1000;
+export const PROTECT_MAX_PENDING_FRAMES = 1000;
+export const PROTECT_DEGRADED_AFTER_FAILURES = 3;
+export const PROTECT_EVENT_SAFETY_TIMEOUT_MS = 60_000;
+export const PROTECT_MAX_SEEN_EVENTS = 1024;
+export const PROTECT_MAX_OPEN_EVENTS = 256;
+
+export const PROTECT_REALTIME_STATES = ['stopped', 'connecting', 'priming', 'streaming', 'polling'] as const;
+
+export type ProtectRealtimeState = (typeof PROTECT_REALTIME_STATES)[number];
+
 export const PROTECT_TLS_MODES = ['verify', 'pinned'] as const;
 
 export type ProtectTlsMode = (typeof PROTECT_TLS_MODES)[number];
@@ -64,7 +82,7 @@ export enum ProtectConnectionState {
 	ERROR = 'error',
 }
 
-// Plan 5 appends; the client never builds 'cameras/{id}/disable-mic-permanently'.
+// Plan 5 appended the two subscriptions; the client never builds 'cameras/{id}/disable-mic-permanently'.
 export const PROTECT_ENDPOINTS = [
 	'meta/info',
 	'nvrs',
@@ -76,6 +94,8 @@ export const PROTECT_ENDPOINTS = [
 	'sensors/{id}',
 	'lights',
 	'lights/{id}',
+	'subscribe/devices',
+	'subscribe/events',
 ] as const;
 
 export type ProtectEndpoint = (typeof PROTECT_ENDPOINTS)[number];
