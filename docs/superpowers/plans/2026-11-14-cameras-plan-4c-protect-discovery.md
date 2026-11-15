@@ -67,7 +67,7 @@ class-transformer, `@nestjs/swagger`, Jest, supertest. No migration, no config c
 
 - Request `01 00 00 00` to the subnet broadcast address on UDP 10001: the console replies with header version 1,
   command 0, 402 bytes. A second, non-console UniFi device replies with header version 0 and other TLVs.
-- Console TLVs: `0x01` MAC, `0x02` MAC+IPv4 (twice, plus a `0x2f` variant), `0x03` firmware `6.0.17`, `0x0a` uptime,
+- Console TLVs: `0x01` MAC, `0x02` MAC+IPv4 (once, plus a `0x2f` variant), `0x03` firmware `6.0.17`, `0x0a` uptime,
   `0x0b` hostname `Dream-Machine-Pro`, `0x0c` short model `UNVR`, `0x0d`/`0x0e`/`0x0f`/`0x14`/`0x17`/`0x20` other,
   `0x30` directConnectDomain `<hex>.id.ui.direct`, `0x32` JSON interface info, `0x33` UUID.
 - Non-console v0 device TLVs: `0x15` `uum_controller`, `0x16` version, `0x22` `tls://<ip>:12812`; no `0x0c`, no `0x30`.
@@ -75,7 +75,8 @@ class-transformer, `@nestjs/swagger`, Jest, supertest. No migration, no config c
 - `GET https://<ip>/api/system` (no auth) → 200 JSON: `hardware.shortname` `UNVR`, `name` `Dream Machine Pro`, `mac`,
   `deviceState`, `directConnectDomain`. `GET /proxy/protect/api` (no auth) → 401. By IP the certificate is
   self-signed (`CN=unifi.local`); with SNI = `directConnectDomain` it is a valid Let's Encrypt certificate.
-- The V2 request `02 08 00 00` was **not** sent during the spike; nothing is known about V2 replies.
+- The V2 request `02 08 00 00` was not sent during the spike. Verified live later: a console answers it with header
+  version 2, command byte 9 and a TLV payload with the same layout as its V1 reply (same types, lengths and order).
 
 ### Interface assumptions (UP-5 and UP-0 are planned in parallel; Task 1 Step 1 and Task 3 Step 1 verify them)
 
@@ -96,9 +97,11 @@ the task named at the end of the line.
    with `consoles: []`, warning `no_replies` and, when `/.dockerenv` exists, `container_network_isolated`; manual
    probe keeps working. → Task 4.
 2. **Another UniFi device that also answers with a short model** (access point, switch): it must not appear as a
-   console. It is probed, found not to be UniFi OS, dropped from `consoles` and counted in `other_unifi_devices`. A
+   console. It is probed, found not to be UniFi OS (or, with no 0x30 in its reply, refuses 443 or fails TLS), dropped
+   from `consoles` and counted in `other_unifi_devices`; at the 16-candidate cap a reply with 0x30 replaces a
+   short-model-only candidate, so such devices cannot crowd out a real console. A
    v0 reply and a reply with no TLV that identifies a console are counted, never listed. → Tasks 1 and 4.
-3. **A hostile or broken LAN device**: garbage, truncated, oversized datagrams, replies from another source port, the
+3. **A hostile or broken LAN device**: garbage, truncated, oversized datagrams, replies from another source port (counted as another UniFi device, never a candidate), the
    request echoed back, and a flood of replies with fresh MACs. Nothing throws, nothing is retained beyond 16
    candidates and 256 other-device identities (warning `candidate_limit_reached`). → Tasks 1 and 4.
 4. **`directConnectDomain` is valid for TLS but does not resolve to the console on this LAN** (router DNS rebinding
@@ -188,11 +191,11 @@ Specs sit next to their source (`*.spec.ts`). Tasks are ordered so each ends wit
   export const HAND_BUILT_CONSOLE_TLVS: ReadonlyArray<readonly [number, Buffer | string]>;
   ```
 - Value formats (decided here, because the live capture only names the TLVs): `0x01` is 6 bytes; `0x02` is 10 bytes
-  (6 MAC + 4 IPv4 octets, dotted decimal); `0x03`, `0x0b`, `0x0c`, `0x30` are UTF-8 strings (`0x30` must also satisfy `isDnsHostname`, else `null`); `0x33` is 16 bytes
-  rendered as lowercase `8-4-4-4-12` UUID. Any other length for those types drops that field (`null`, or the pair is
+  (6 MAC + 4 IPv4 octets, dotted decimal); `0x03`, `0x0b`, `0x0c`, `0x30` are UTF-8 strings (`0x30` must also satisfy `isDnsHostname`, else `null`); `0x33` is the UUID as a 36-byte
+  ASCII string (`8-4-4-4-12`, any case, output lowercased; anything not UUID-shaped is `null`). Any other length for those types drops that field (`null`, or the pair is
   skipped for `0x02`), it does not reject the reply. Unknown types are skipped. A scalar type seen twice keeps its
-  first value. Header: `>BBH` = version, command, length of the bytes after the header; versions 0 and 1 accepted,
-  any command byte accepted, bytes past the declared length ignored.
+  first value. Header: `>BBH` = version, command, length of the bytes after the header; versions 0, 1 and 2 accepted (3 and above are
+  `unsupported_version`; a V2 reply uses the same TLV rules as V1), any command byte accepted, bytes past the declared length ignored.
 
 - [ ] **Step 1: Verify the preconditions**
 
@@ -204,7 +207,7 @@ either is missing: stop and report which.
 
 Write a throwaway script in the session scratchpad (never in the repo) that walks `discovery-reply.bin` and prints
 `type:length` per TLV and the header. Expected: header `01 00` + big-endian length equal to `file size - 4`; one `0x01`
-of length 6; `0x02` of length 10 (twice); `0x30` and `0x0c` present; `0x33` of length 16. Also confirm `discovery-reply-v0.bin` has header version 0 and carries a `0x01` or a `0x02` TLV (the scan counts a
+of length 6; `0x02` of length 10 (once, plus a 10-byte `0x2f` variant); `0x30` and `0x0c` present; `0x33` of length 36. Also confirm `discovery-reply-v0.bin` has header version 0 and carries a `0x01` or a `0x02` TLV (the scan counts a
 non-console device only when it has an identity MAC). If a length differs from
 the table or the v0 fixture has no identity, stop and amend the "Value formats" paragraph of this plan before Step 3; do not bend the parser to a guess.
 
@@ -225,16 +228,16 @@ it.each(['','Unifi','a_b','-a.b','a-.b','a..b','1.2.3','a b','x'.repeat(64)+'.lo
   `readFileSync(join(__dirname, '..', '__fixtures__', '<name>'))`)
 
 `HAND_BUILT_CONSOLE_TLVS` = `0x01` `aa:bb:cc:00:00:01`, `0x02` same MAC + `192.168.1.10`, `0x03` `6.0.17`, `0x0b`
-`Dream-Machine-Pro`, `0x0c` `UNVR`, `0x30` `abc123.id.ui.direct`, `0x33` bytes `00112233-4455-6677-8899-aabbccddeeff`.
+`Dream-Machine-Pro`, `0x0c` `UNVR`, `0x30` `abc123.id.ui.direct`, `0x33` string `00112233-4455-6677-8899-aabbccddeeff`.
 
 ```ts
 it('parses a hand-built v1 console reply', () => expect(parseDiscoveryReply(buildDiscoveryReply({ version: 1, tlvs: HAND_BUILT_CONSOLE_TLVS }))).toEqual({
 	ok: true, reply: { headerVersion: 1, hwaddr: 'aa:bb:cc:00:00:01', addresses: [{ mac: 'aa:bb:cc:00:00:01', ip: '192.168.1.10' }],
 	firmware: '6.0.17', hostname: 'Dream-Machine-Pro', shortModel: 'UNVR', directConnectDomain: 'abc123.id.ui.direct',
 	uuid: '00112233-4455-6677-8899-aabbccddeeff' } }));
-it('parses the sanitized v1 fixture: header, length and fields', ...);   // fixture.length === 4 + fixture.readUInt16BE(2); headerVersion 1; firmware '6.0.17'; shortModel 'UNVR'; hostname 'Dream-Machine-Pro'; domain matches /^[0-9a-f]+\.id\.ui\.direct$/; hwaddr matches /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/; uuid matches the UUID regex; addresses.length >= 2; isProtectConsoleCandidate true
+it('parses the sanitized v1 fixture: header, length and fields', ...);   // fixture.length === 4 + fixture.readUInt16BE(2); headerVersion 1; firmware '6.0.17'; shortModel 'UNVR'; hostname 'Dream-Machine-Pro'; domain matches /^[0-9a-f]+\.id\.ui\.direct$/; hwaddr matches /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/; uuid matches the UUID regex; addresses.length >= 1; isProtectConsoleCandidate true
 it('parses the sanitized v0 fixture and does not treat it as a console', ...); // ok true; headerVersion 0; isProtectConsoleCandidate false
-it('accepts header versions 0 and 1 and rejects version 2', ...);            // 02 08 00 00 -> { ok:false, reason:'unsupported_version' }
+it('accepts header versions 0, 1 and 2 and rejects version 3', ...);          // version 3 and 0xff -> { ok:false, reason:'unsupported_version' }; the echoed request 02 08 00 00 parses ok with no identity MAC
 it('skips unknown TLV types and keeps them out of the model', ...);          // add 0x0a, 0x32 (JSON), 0x2f, 0xee; Object.keys(reply).sort() equals the 8 documented keys
 it('keeps the first value of a repeated scalar TLV and every 0x02 pair', ...);
 it.each([0,1,2,3])('rejects a %i byte datagram as truncated_header', ...);
@@ -244,7 +247,7 @@ it('rejects a TLV whose length runs past the end as truncated_tlv', ...);
 it('rejects a TLV header cut after two bytes as truncated_tlv', ...);
 it('rejects a TLV above 1024 bytes as oversized_tlv', ...);
 it('rejects a datagram above 4096 bytes as oversized_datagram', ...);
-it.each([ ['0x01 with 5 bytes','hwaddr'], ['0x33 with 15 bytes','uuid'], ['0x0b with invalid UTF-8 (0xff 0xfe)','hostname'],
+it.each([ ['0x01 with 5 bytes','hwaddr'], ['0x33 that is not UUID-shaped','uuid'], ['0x0b with invalid UTF-8 (0xff 0xfe)','hostname'],
           ['0x0c containing a control character','shortModel'], ['0x30 of 129 characters','directConnectDomain'], ['0x30 "not a host"','directConnectDomain'] ])
   ('drops %s but keeps the reply', ...);                                       // ok true, that field null, others intact
 it('skips a 0x02 TLV that is not 10 bytes', ...);
@@ -586,14 +589,21 @@ git commit -m "feat(backend): probe UniFi Protect consoles and their certificate
   each in its own `try/catch` (a multicast setup failure does not stop broadcast). (4) A send round (t = 0, 1667,
   3333 ms) sends, per ready interface, V1 then V2 to `<broadcast>:10001` and to `233.89.188.1:10001`; **never to
   `255.255.255.255`**. A send callback error records the interface's first error code; one successful send marks the
-  interface `ok`. (5) A message is dropped unless `rinfo.port === 10001`; then parsed; parse failures are logged at
-  `debug` with the reason code only; replies without an identity MAC are ignored; a candidate (rule of Task 1) is kept
+  interface `ok`. (5) Every message is parsed; parse failures are logged at
+  `debug` with the reason code only; replies without an identity MAC are ignored; a candidate (rule of Task 1) that
+  arrives from `rinfo.port === 10001` is kept
   in a `Map<mac, …>` (first `rinfo.address` is `host`, further addresses are appended to `addresses`, null fields are
-  filled from later replies), up to 16 (then `candidate_limit_reached`); any other reply with an identity MAC adds to a
+  filled from later replies), up to 16 (at the cap a new candidate reply that carries `directConnectDomain` (0x30) replaces the oldest candidate
+  that has none, i.e. only a short model (0x0c); if every candidate has 0x30 the reply is ignored; either way
+  `candidate_limit_reached` is raised); any other reply with an identity MAC, including a console-shaped reply from a
+  source port other than 10001 (live: the non-console device answers from an ephemeral port), adds to a
   `Set` (at most 256 entries, then ignored) counted as `otherUnifiDevices`. (6) At t = 5000 ms close every socket, finalise interface statuses, and if
   every interface is `error` finish `failed`/`all_interfaces_failed`. (7) Otherwise probe candidates with concurrency
-  8 (`probe({ host, port: PROTECT_PROBE_DEFAULT_PORT })`); a candidate whose probe status is `not_console` is dropped from `consoles` and
-  added to `otherUnifiDevices` (its MAC joins the same `Set`, so nothing is counted twice). (8) Warnings:
+  8 (`probe({ host, port: PROTECT_PROBE_DEFAULT_PORT })`); a candidate whose probe status is `not_console`, or is `unreachable` with failure
+  `connection_refused` or `tls_failure` while its reply carried no `directConnectDomain` (a UniFi OS console always
+  serves HTTPS on 443), is dropped from `consoles` and
+  added to `otherUnifiDevices` (its MAC joins the same `Set`, so nothing is counted twice); `timeout`,
+  `host_unreachable` and `dns_failure` keep it listed as an unreachable console. (8) Warnings:
   `some_interfaces_failed` when at least one but not all failed; `no_replies` when no UDP reply was kept or counted;
   `container_network_isolated` when `no_replies` and `env.isContainer()`. (9) `completed`, `finishedAt = now`.
 
@@ -627,7 +637,9 @@ it('de-duplicates replies with the same MAC and keeps every source address', ...
 it('de-duplicates across resend rounds', ...);
 it('drops a probed candidate that is not a console and counts it once', ...);                  // probe status 'not_console' -> consoles [], otherUnifiDevices 1 (also when its MAC replied twice)
 it('keeps a console whose probe is unreachable and reports the probe status', ...);
-it('ignores a reply from a source port other than 10001', ...);
+it('counts a console-shaped reply from another source port as another UniFi device, not a candidate', ...);
+it('moves a short-model-only candidate whose probe is refused (or fails TLS) to the other devices', ...);   // keeps it when 0x30 was present or the failure is timeout/host_unreachable/dns_failure
+it('lets a reply with the direct-connect domain replace a short-model-only candidate at the cap', ...);
 it('ignores the echoed request and replies without an identity MAC', ...);
 it('ignores malformed datagrams without throwing and without counting them', ...);              // truncated fixture prefixes, 5000 bytes, random bytes
 it('keeps at most 16 candidates and warns candidate_limit_reached', ...);                       // 20 distinct console MACs
@@ -832,7 +844,7 @@ payload). It awaits `scan()` and prints `status`, interface names and codes, per
 replaced by `***`. Run it twice: as is, and with the V1 datagrams dropped (V2 only).
 Expected as is: `completed`, at least one console with `model UNVR`, `protect present`, `certificate.valid true`,
 `other_unifi_devices >= 1`. The V2-only run is exploratory: record in the PR body whether any reply arrived and its
-`parseDiscoveryReply` outcome (`unsupported_version` is the expected answer); if a V2 reply parses differently than
+`parseDiscoveryReply` outcome (a V2 reply parses like a V1 reply with `headerVersion` 2); if a V2 reply parses differently than
 documented, file a follow-up issue, do not extend this PR. Do not commit the script or any capture.
 
 - [ ] **Step 6: Mark the issue done in the epic file**
@@ -867,7 +879,8 @@ then the line `🤖 Generated with [Claude Code](https://claude.com/claude-code)
    model, `0x15` product, `0x16` version, `0x2B` guid, `0x2F` primary address; live data shows `0x0c` is the short
    model, the GUID is `0x33`, and `0x14`/`0x15`/`0x16`/`0x2f` are unverified or mean something else. The host to
    probe is the datagram's source address instead of `0x2F`.
-3. V2 request is still sent (issue AC) but V2 replies are not parsed; nothing is known about them.
+3. V2 replies are parsed like V1 replies: live, a console answers the V2 request with header version 2, command 9 and
+   the same TLV layout as V1, so both requests drive the scan (header versions above 2 are `unsupported_version`).
 4. Probe addition beyond the issue: optional `port` (default 443) because the UP-5 config has a `port`; a
    `domain_resolves_to_host` check so `preferred_host` is never a name that cannot connect; non-unicast/link-local
    host rejection.

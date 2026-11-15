@@ -12,6 +12,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
+import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
 import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from './devices-unifi-protect.constants';
@@ -20,6 +21,7 @@ import { DevicesUnifiProtectPlugin } from './devices-unifi-protect.plugin';
 import { CreateProtectChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateProtectChannelDto } from './dto/create-channel.dto';
 import { CreateProtectDeviceDto } from './dto/create-device.dto';
+import { ProtectProbeDto, ProtectProbeRequestDto } from './dto/protect-discovery-probe.dto';
 import {
 	ProtectTestCandidateConnectionDto,
 	ProtectTestConnectionRequestDto,
@@ -36,6 +38,15 @@ import {
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel } from './models/config.model';
+import {
+	ProtectDiscoveredConsoleModel,
+	ProtectDiscoveryInterfaceModel,
+	ProtectDiscoveryModel,
+	ProtectDiscoveryResponseModel,
+	ProtectProbeCertificateModel,
+	ProtectProbeModel,
+	ProtectProbeResponseModel,
+} from './models/protect-discovery.model';
 import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
 import {
 	ProtectCertificateModel,
@@ -45,6 +56,8 @@ import {
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
+import { ProtectDiscoveryProbeService } from './services/protect-discovery-probe.service';
+import { ProtectDiscoveryService } from './services/protect-discovery.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
 
@@ -172,14 +185,16 @@ describe('DevicesUnifiProtectPlugin', () => {
 		await expect(runFactoryReset()).resolves.toEqual({ success: false, reason: 'stop failed' });
 	});
 
-	it('provides and exports the connector and serves the status and test-connection controllers', () => {
+	it('provides and exports the connector and serves the status, test-connection and discovery controllers', () => {
 		const providers = Reflect.getMetadata('providers', DevicesUnifiProtectPlugin) as unknown[];
 		const controllers = Reflect.getMetadata('controllers', DevicesUnifiProtectPlugin) as unknown[];
 		const exported = Reflect.getMetadata('exports', DevicesUnifiProtectPlugin) as unknown[];
 
 		expect(providers).toContain(ProtectConnectorService);
 		expect(providers).toContain(ProtectConnectionTestService);
-		expect(controllers).toEqual([ProtectStatusController, ProtectTestConnectionController]);
+		expect(providers).toEqual(expect.arrayContaining([ProtectDiscoveryService, ProtectDiscoveryProbeService]));
+		expect(controllers).toEqual([ProtectStatusController, ProtectTestConnectionController, ProtectDiscoveryController]);
+		expect(exported).not.toContain(ProtectDiscoveryService);
 		expect(exported).toContain(ProtectConnectorService);
 		expect(DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS).toEqual(
 			expect.arrayContaining([
@@ -192,6 +207,15 @@ describe('DevicesUnifiProtectPlugin', () => {
 				ProtectCertificateModel,
 				ProtectTestConnectionModel,
 				ProtectTestConnectionResponseModel,
+				ProtectDiscoveryInterfaceModel,
+				ProtectProbeCertificateModel,
+				ProtectProbeModel,
+				ProtectDiscoveredConsoleModel,
+				ProtectDiscoveryModel,
+				ProtectDiscoveryResponseModel,
+				ProtectProbeResponseModel,
+				ProtectProbeDto,
+				ProtectProbeRequestDto,
 			]),
 		);
 	});
