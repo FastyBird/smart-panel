@@ -385,7 +385,7 @@ describe('ProtectSynchronizerService', () => {
 		});
 
 		devices = [adopt(goldenCamera, CAMERA_PANEL, { name: 'My cam' })];
-		service.invalidateIndex();
+		service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
 		devicesService.update.mockClear();
 		service.enqueueFrame(IDENTITY, frameFor('update', { id: CAMERA_ID, modelKey: 'camera', name: 'Garage' }));
 		await service.idle();
@@ -429,7 +429,7 @@ describe('ProtectSynchronizerService', () => {
 
 		expect(properties.update).not.toHaveBeenCalled();
 
-		service.invalidateIndex();
+		service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
 		service.enqueueFrame(IDENTITY, frame);
 		await service.idle();
 
@@ -528,6 +528,128 @@ describe('ProtectSynchronizerService', () => {
 
 		expect(properties.update).not.toHaveBeenCalled();
 		expect(service.getCounters().framesIgnored).toBe(1);
+	});
+
+	it('bumps the snapshot sequence for every snapshot, as soon as it is enqueued', async () => {
+		expect(service.getSnapshotSequence()).toBe(0);
+
+		const first = service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(service.getSnapshotSequence()).toBe(1);
+
+		await first;
+		await service.applySnapshot(IDENTITY, snapshot([], false));
+
+		expect(service.getSnapshotSequence()).toBe(2);
+	});
+
+	it('resolves a removal issue raised before a reset when the device is seen again', async () => {
+		await prime();
+		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
+		await service.idle();
+
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+		service.reset();
+		notifications.resolve.mockClear();
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0]), entry('sensor', sensors[0])]));
+
+		expect(notifications.resolve).toHaveBeenCalledWith(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, REMOVAL_KEY);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0]), entry('sensor', sensors[0])]));
+
+		expect(notifications.resolve.mock.calls.filter((call) => call[1] === REMOVAL_KEY)).toHaveLength(1);
+	});
+
+	it('retries a failed removal resolve on the next sync of the device', async () => {
+		await prime();
+		service.reset();
+		notifications.resolve.mockClear();
+		notifications.resolve.mockRejectedValueOnce(new Error('down'));
+		await service.applySnapshot(IDENTITY, snapshot([entry('sensor', sensors[0])]));
+		await service.applySnapshot(IDENTITY, snapshot([entry('sensor', sensors[0])]));
+		await service.applySnapshot(IDENTITY, snapshot([entry('sensor', sensors[0])]));
+
+		expect(notifications.resolve.mock.calls.filter((call) => call[1] === REMOVAL_KEY)).toHaveLength(2);
+	});
+
+	it('retries a failed disconnected write for a removed device on the next snapshot, notifying once', async () => {
+		await prime();
+		connectivity.trySetConnectionState.mockResolvedValueOnce(false);
+		service.enqueueFrame(IDENTITY, frameFor('remove', { id: SENSOR_ID, modelKey: 'sensor' }));
+		await service.idle();
+
+		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(1);
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(2);
+		expect(connectivity.trySetConnectionState).toHaveBeenLastCalledWith(SENSOR_PANEL, { state: 'disconnected' });
+		expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+
+		expect(connectivity.trySetConnectionState).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not rebuild the index for events of another plugin', async () => {
+		devices = [];
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+		devices = [adopt(goldenCamera, CAMERA_PANEL)];
+
+		const frame = frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: true } });
+
+		service.invalidateIndex({ type: 'other-plugin' });
+		service.invalidateIndex(undefined);
+		service.enqueueFrame(IDENTITY, frame);
+		await service.idle();
+
+		expect(properties.update).not.toHaveBeenCalled();
+		expect(devicesService.findAll).toHaveBeenCalledTimes(1);
+	});
+
+	it('zeroes the counters on reset', async () => {
+		await prime();
+		service.countIgnoredFrame();
+		properties.update.mockRejectedValueOnce(new Error('down'));
+		service.enqueueFrame(IDENTITY, lineWith('"ledSettings":{"isEnabled":true}'));
+		await service.idle();
+
+		expect(service.getCounters().framesIgnored).toBe(1);
+		expect(service.getCounters().writesFailed).toBe(1);
+
+		service.reset();
+
+		expect(service.getCounters()).toEqual({
+			framesIgnored: 0,
+			writesFailed: 0,
+			ignoredEventCount: 0,
+			ignoredEventTypes: new Map(),
+		});
+	});
+
+	describe('values persisted elsewhere', () => {
+		const contact = (): string => prop(SENSOR_PANEL, 'contact', 'contact_detected');
+		const persisted = (type: string, value: boolean): Raw => ({ id: contact(), type, value: { value } });
+
+		it('records a value written by another writer so an identical frame writes nothing', async () => {
+			await prime();
+			service.recordPersistedValue(persisted(DEVICES_UNIFI_PROTECT_TYPE, true) as never);
+			service.enqueueFrame(IDENTITY, lineWith('"isOpened":true'));
+			await service.idle();
+
+			expect(properties.update).not.toHaveBeenCalled();
+		});
+
+		it('ignores the property of another plugin', async () => {
+			await prime();
+			service.recordPersistedValue(persisted('other-plugin', true) as never);
+			service.enqueueFrame(IDENTITY, lineWith('"isOpened":true'));
+			await service.idle();
+
+			expect(properties.update).toHaveBeenCalledWith(contact(), { type: DEVICES_UNIFI_PROTECT_TYPE, value: true });
+		});
 	});
 
 	describe('events', () => {
@@ -787,7 +909,7 @@ describe('ProtectSynchronizerService', () => {
 				logged.some((args) => args[0] === '[ProtectSynchronizerService] UniFi Protect ring could not be published'),
 			).toBe(true);
 
-			await jest.advanceTimersByTimeAsync(4999);
+			await jest.advanceTimersByTimeAsync(5999);
 			await flush();
 
 			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
@@ -806,13 +928,13 @@ describe('ProtectSynchronizerService', () => {
 			expect(JSON.stringify(logged)).not.toContain('SENTINEL');
 		});
 
-		it('gives up on a ring after three retries at 5, 15 and 45 seconds', async () => {
+		it('gives up on a ring after three retries at 6, 15 and 45 seconds', async () => {
 			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
 			occurrences.publishOccurrence.mockRejectedValue(new Error('down'));
 			await feed(eventFrame('0007', 'add'));
 
 			for (const [advance, calls] of [
-				[5000, 2],
+				[6000, 2],
 				[15_000, 3],
 				[45_000, 4],
 				[120_000, 4],
@@ -824,6 +946,81 @@ describe('ProtectSynchronizerService', () => {
 			}
 
 			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('logs each new ignored event type once at debug and never an unsafe name', async () => {
+			const debugSpy = jest.spyOn(Logger.prototype, 'debug');
+			const debugLines = (): string[] =>
+				debugSpy.mock.calls
+					.map((args) => args[0] as unknown)
+					.filter((line): line is string => typeof line === 'string' && line.includes('ignored event type'));
+
+			await prime();
+			await feed(eventFrame('0019', 'add'));
+
+			expect(debugLines()).toEqual([
+				'[ProtectSynchronizerService] UniFi Protect ignored event type sensorExtremeValues',
+			]);
+
+			await feed(
+				frameFor('add', {
+					id: eventId('0090'),
+					modelKey: 'event',
+					type: 'sensorExtremeValues',
+					start: 1,
+					device: SENSOR_ID,
+				}),
+			);
+			await feed(
+				frameFor('add', {
+					id: eventId('0091'),
+					modelKey: 'event',
+					type: 'bad name!',
+					start: 1,
+					device: SENSOR_ID,
+				}),
+			);
+
+			expect(debugLines()).toHaveLength(1);
+			expect(JSON.stringify(logged)).not.toContain('bad name');
+		});
+
+		it('stops logging names once the bounded name list is full', async () => {
+			await prime();
+
+			for (let index = 0; index < 40; index++) {
+				await feed(
+					frameFor('add', {
+						id: `5f0000000000000000${String(index).padStart(6, '0')}`,
+						modelKey: 'event',
+						type: `unknownType${index}`,
+						start: 1,
+						device: SENSOR_ID,
+					}),
+				);
+			}
+
+			expect(
+				logged.filter((args) => typeof args[0] === 'string' && args[0].includes('ignored event type')),
+			).toHaveLength(32);
+		});
+
+		it('reschedules the retry timer when the index rebuild throws', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			occurrences.publishOccurrence.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0007', 'add'));
+			service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+			devicesService.findAll.mockRejectedValueOnce(new Error('db down'));
+			await jest.advanceTimersByTimeAsync(6000);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(1000);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(2);
 		});
 
 		it('drains a queued event write before a snapshot reconciles the device', async () => {
@@ -891,7 +1088,7 @@ describe('ProtectSynchronizerService', () => {
 				},
 				adopt(goldenSensor, SENSOR_PANEL),
 			];
-			service.invalidateIndex();
+			service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
 			await jest.advanceTimersByTimeAsync(120_000);
 			await flush();
 

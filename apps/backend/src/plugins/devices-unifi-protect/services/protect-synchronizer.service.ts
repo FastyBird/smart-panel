@@ -77,7 +77,9 @@ type RetryEntry =
 type SyncMode = 'snapshot' | 'frame';
 
 const RING_FAILURE_TEXT = 'UniFi Protect ring could not be published';
-const RETRY_DELAYS_MS: readonly number[] = [5000, 15000, 45000];
+/** The first retry lies outside the core's 5 s duplicate window, so a retried ring is never swallowed as a duplicate. */
+const RETRY_DELAYS_MS: readonly number[] = [6000, 15000, 45000];
+const RETRY_MIN_RESCHEDULE_MS = 1000;
 const MAX_RETRY_ENTRIES = 32;
 const MAX_IGNORED_EVENT_NAMES = 32;
 const MAX_DROPPED_EVENT_IDS = 1024;
@@ -119,7 +121,13 @@ export class ProtectSynchronizerService {
 	/** Last successfully persisted value per property id. */
 	private readonly lastWritten = new Map<string, ProtectMappingScalar>();
 	private readonly lastState = new Map<string, string>();
+	/** Devices whose removal was handled (state write and notification attempted) since the last reset. */
 	private readonly removed = new Set<string>();
+	/** Removed devices whose `disconnected` write has not succeeded yet, and whose notification has not been sent. */
+	private readonly removalStatePending = new Set<string>();
+	private readonly removalNotifyPending = new Set<string>();
+	/** Devices whose `device_removed` issue was already settled since the last reset (bounded by adopted devices). */
+	private readonly removalChecked = new Set<string>();
 	/** Failed event effects per Protect device id, oldest first. */
 	private readonly retries = new Map<string, RetryEntry[]>();
 	private eventTimer: NodeJS.Timeout | null = null;
@@ -130,6 +138,7 @@ export class ProtectSynchronizerService {
 
 	private chain: Promise<void> = Promise.resolve();
 	private pending = 0;
+	private snapshotSequence = 0;
 	private generation = 0;
 	/** Generation of the task now running (tasks are serial); a mismatch with `generation` means a reset happened. */
 	private taskGeneration = 0;
@@ -155,6 +164,9 @@ export class ProtectSynchronizerService {
 
 	/** Serial; resolves when applied. Replaces the cache, diffs against stored values, reconciles removals. */
 	applySnapshot(identity: ProtectConsoleIdentity, snapshot: ProtectSnapshot): Promise<void> {
+		// Bumped when the snapshot is enqueued: a poll that read the console before this call is older than it.
+		this.snapshotSequence++;
+
 		return this.run(() => this.applySnapshotNow(identity, snapshot));
 	}
 
@@ -167,6 +179,11 @@ export class ProtectSynchronizerService {
 		void this.run(() => this.applyFrameNow(identity, frame));
 
 		return true;
+	}
+
+	/** Number of snapshots enqueued so far; a reader that captured an older value read stale data. */
+	getSnapshotSequence(): number {
+		return this.snapshotSequence;
 	}
 
 	/** Counts a frame the parser rejected. */
@@ -205,6 +222,9 @@ export class ProtectSynchronizerService {
 		this.lastWritten.clear();
 		this.lastState.clear();
 		this.removed.clear();
+		this.removalStatePending.clear();
+		this.removalNotifyPending.clear();
+		this.removalChecked.clear();
 		this.tracker.clear();
 		this.retries.clear();
 		this.droppedEventIds.clear();
@@ -213,6 +233,10 @@ export class ProtectSynchronizerService {
 		this.clearTimer('retryTimer');
 		this.lastFailureLogAt = null;
 		this.suppressedFailures = 0;
+		this.framesIgnored = 0;
+		this.writesFailed = 0;
+		this.ignoredEventCount = 0;
+		this.ignoredEventTypes.clear();
 	}
 
 	@OnEvent(EventType.DEVICE_CREATED)
@@ -224,7 +248,11 @@ export class ProtectSynchronizerService {
 	@OnEvent(EventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
-	invalidateIndex(): void {
+	invalidateIndex(payload?: { type?: string }): void {
+		if (payload?.type !== DEVICES_UNIFI_PROTECT_TYPE) {
+			return;
+		}
+
 		this.indexDirty = true;
 		this.indexGeneration++;
 	}
@@ -427,6 +455,11 @@ export class ProtectSynchronizerService {
 			name !== null && (this.ignoredEventTypes.has(name) || this.ignoredEventTypes.size < MAX_IGNORED_EVENT_NAMES)
 				? name
 				: INVALID_EVENT_NAME;
+
+		if (key !== INVALID_EVENT_NAME && !this.ignoredEventTypes.has(key)) {
+			// The tracker only hands out names that match its safe-name pattern (letters, digits, underscore).
+			this.logger.debug(`UniFi Protect ignored event type ${key}`);
+		}
 
 		this.ignoredEventTypes.set(key, (this.ignoredEventTypes.get(key) ?? 0) + 1);
 	}
@@ -656,16 +689,21 @@ export class ProtectSynchronizerService {
 			() => {
 				this.retryTimer = null;
 				void this.run(async () => {
-					if (this.eventIdentity !== null) {
-						await this.ensureIndex(this.eventIdentity);
-					}
+					try {
+						if (this.eventIdentity !== null) {
+							await this.ensureIndex(this.eventIdentity);
+						}
 
-					for (const protectDeviceId of [...this.retries.keys()]) {
-						await this.retryDevice(protectDeviceId, true);
+						for (const protectDeviceId of [...this.retries.keys()]) {
+							await this.retryDevice(protectDeviceId, true);
+						}
+					} finally {
+						// A failed index rebuild must not drop the queued retries.
+						this.scheduleRetryTimer();
 					}
 				});
 			},
-			Math.max(0, next - Date.now()),
+			Math.max(RETRY_MIN_RESCHEDULE_MS, next - Date.now()),
 		);
 		this.retryTimer.unref();
 	}
@@ -873,45 +911,68 @@ export class ProtectSynchronizerService {
 		}
 	}
 
+	/**
+	 * Marks a device the console no longer lists: `disconnected` plus one issue. The state write and the notification
+	 * are separate steps; whichever failed is retried the next time the removal is seen (next snapshot or remove frame).
+	 */
 	private async markRemoved(device: IndexedDevice): Promise<void> {
-		if (this.aborted() || this.removed.has(device.protectDeviceId)) {
-			return;
-		}
-
-		this.removed.add(device.protectDeviceId);
-
-		await this.setConnectionState(device, ConnectionState.DISCONNECTED);
+		const id = device.protectDeviceId;
 
 		if (this.aborted()) {
 			return;
 		}
 
+		if (!this.removed.has(id)) {
+			this.removed.add(id);
+			this.removalStatePending.add(id);
+			this.removalNotifyPending.add(id);
+		}
+
+		if (this.removalStatePending.has(id) && (await this.setConnectionState(device, ConnectionState.DISCONNECTED))) {
+			this.removalStatePending.delete(id);
+		}
+
+		if (this.aborted() || !this.removalNotifyPending.has(id)) {
+			return;
+		}
+
+		this.removalNotifyPending.delete(id);
+
 		await this.notifications.notify({
 			source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 			kind: NotificationKind.ISSUE,
-			key: removalKey(device.protectDeviceId),
+			key: removalKey(id),
 			severity: NotificationSeverity.WARNING,
 			title: 'UniFi Protect device removed',
 			message:
 				`${device.name} is no longer adopted on the UniFi Protect console. Smart Panel keeps the device and ` +
 				'shows it as disconnected; delete it in Smart Panel if it is no longer needed.',
-			data: { device_id: device.panelId, protect_device_id: device.protectDeviceId },
+			data: { device_id: device.panelId, protect_device_id: id },
 		});
 	}
 
+	/**
+	 * Resolves `device_removed:<id>` when the device is listed again. After a reset the in-memory `removed` set is
+	 * gone, so the first successful sync of each device resolves the issue unconditionally (a no-op when none is open).
+	 */
 	private async resolveRemoval(device: IndexedDevice): Promise<void> {
-		if (this.aborted() || !this.removed.has(device.protectDeviceId)) {
+		const id = device.protectDeviceId;
+
+		if (this.aborted() || (!this.removed.has(id) && this.removalChecked.has(id))) {
 			return;
 		}
 
 		try {
-			await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, removalKey(device.protectDeviceId));
+			await this.notifications.resolve(DEVICES_UNIFI_PROTECT_PLUGIN_NAME, removalKey(id));
 
 			if (this.aborted()) {
 				return;
 			}
 
-			this.removed.delete(device.protectDeviceId);
+			this.removed.delete(id);
+			this.removalStatePending.delete(id);
+			this.removalNotifyPending.delete(id);
+			this.removalChecked.add(id);
 		} catch {
 			this.logger.warn('UniFi Protect removal notification could not be resolved');
 		}
