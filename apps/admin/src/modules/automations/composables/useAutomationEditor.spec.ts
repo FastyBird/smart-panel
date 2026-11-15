@@ -381,6 +381,40 @@ describe('useAutomationEditor', () => {
 				expect(feedbackCalls()).toHaveLength(1);
 			});
 
+			it('does not mark the suggestion applied for a flow drawn anew after undoing past it', async () => {
+				const editor = await suggested();
+
+				editor.undo();
+
+				expect(editor.graph.value.nodes).toEqual([]);
+
+				editor.updateGraph({
+					version: 1,
+					nodes: [{ id: 'n_drawn001', type: 'manual.start', position: { x: 0, y: 0 }, config: {} }],
+					edges: [],
+				});
+
+				mockBackendClient.PATCH.mockResolvedValue(ok(detailRes({ revision: 4 })));
+
+				await expect(editor.save()).resolves.toBe('saved');
+
+				expect(feedbackCalls()).toEqual([]);
+			});
+
+			it('marks the suggestion applied for the suggested flow edited before it is saved', async () => {
+				const editor = await suggested();
+
+				editor.undo();
+				editor.redo();
+				editor.updateGraph(withDelay());
+
+				mockBackendClient.PATCH.mockResolvedValue(ok(detailRes({ revision: 4, graph: withDelay() })));
+
+				await expect(editor.save()).resolves.toBe('saved');
+
+				expect(feedbackCalls()).toHaveLength(1);
+			});
+
 			it('leaves the suggestion offered while the suggested flow could not be saved', async () => {
 				const editor = await suggested();
 

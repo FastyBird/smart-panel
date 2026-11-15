@@ -44,8 +44,14 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 
 	const { markApplied } = useAutomationSuggestions();
 
-	// The Buddy suggestion the working copy was opened with, marked applied once that copy is first saved
-	let pendingSuggestionId: string | null = null;
+	// The Buddy suggestion the working copy was opened with, and the nodes of the flow it suggested. It is marked
+	// applied by the first save of a flow that still holds those nodes: the suggested one, or one edited from it.
+	// Undone past and drawn anew, the flow holds other nodes - a new node never takes the id of a suggested one -
+	// and saving it says nothing about the suggestion.
+	let pendingSuggestion: { id: string; nodes: Pick<IAutomationGraphNode, 'id' | 'type'>[] } | null = null;
+
+	const holdsSuggestedFlow = (graph: IAutomationGraph, nodes: Pick<IAutomationGraphNode, 'id' | 'type'>[]): boolean =>
+		nodes.length > 0 && nodes.every((suggested) => graph.nodes.some((node) => node.id === suggested.id && node.type === suggested.type));
 
 	const automation = computed<IAutomation | null>((): IAutomation | null => data.value.get(id) ?? null);
 
@@ -91,7 +97,7 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		conflict.value = false;
 
 		// The working copy is replaced, so a suggested flow it held is no longer what a later save would store
-		pendingSuggestionId = null;
+		pendingSuggestion = null;
 
 		discardDraft();
 
@@ -132,7 +138,10 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		if (draft !== null && history.graph.value.nodes.length === 0) {
 			history.commit(cloneGraph(draft.graph));
 
-			pendingSuggestionId = draft.suggestionId ?? null;
+			pendingSuggestion =
+				draft.suggestionId !== undefined
+					? { id: draft.suggestionId, nodes: draft.graph.nodes.map((node) => ({ id: node.id, type: node.type })) }
+					: null;
 		}
 
 		loaded.value = true;
@@ -236,11 +245,12 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 			savedGraph.value = canonicalGraph(graph);
 			conflict.value = false;
 
-			// The suggested flow is saved now, so Buddy need not offer it again; a copy left unsaved keeps it offered
-			if (pendingSuggestionId !== null) {
-				void markApplied(pendingSuggestionId);
+			// The suggested flow is saved now, so Buddy need not offer it again; a copy left unsaved keeps it offered,
+			// and so does a saved flow that is not the suggested one
+			if (pendingSuggestion !== null && holdsSuggestedFlow(graph, pendingSuggestion.nodes)) {
+				void markApplied(pendingSuggestion.id);
 
-				pendingSuggestionId = null;
+				pendingSuggestion = null;
 			}
 
 			flashMessage.success(t('automations.messages.edited', { automation: saved.name }));
