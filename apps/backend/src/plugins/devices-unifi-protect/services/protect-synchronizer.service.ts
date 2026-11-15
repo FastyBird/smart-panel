@@ -244,15 +244,25 @@ export class ProtectSynchronizerService {
 	@OnEvent(EventType.DEVICE_DELETED)
 	@OnEvent(EventType.CHANNEL_CREATED)
 	@OnEvent(EventType.CHANNEL_UPDATED)
-	@OnEvent(EventType.CHANNEL_DELETED)
 	@OnEvent(EventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(EventType.CHANNEL_PROPERTY_UPDATED)
-	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
 	invalidateIndex(payload?: { type?: string }): void {
-		if (payload?.type !== DEVICES_UNIFI_PROTECT_TYPE) {
+		// An undefined type is not proof of another plugin: spread copies lose the entity's `type` getter.
+		if (payload?.type !== undefined && payload.type !== DEVICES_UNIFI_PROTECT_TYPE) {
 			return;
 		}
 
+		this.markIndexDirty();
+	}
+
+	/** The core emits `{ ...entity }` copies on delete, so `type` is gone: every delete refreshes the index. */
+	@OnEvent(EventType.CHANNEL_DELETED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
+	invalidateIndexOnDelete(): void {
+		this.markIndexDirty();
+	}
+
+	private markIndexDirty(): void {
 		this.indexDirty = true;
 		this.indexGeneration++;
 	}
@@ -670,6 +680,34 @@ export class ProtectSynchronizerService {
 		this.scheduleRetryTimer();
 	}
 
+	private chargeDueRetries(): void {
+		const now = Date.now();
+
+		for (const [protectDeviceId, entries] of [...this.retries]) {
+			const kept: RetryEntry[] = [];
+
+			for (const entry of entries) {
+				if (entry.dueAt > now) {
+					kept.push(entry);
+					continue;
+				}
+
+				entry.attempts++;
+
+				if (entry.attempts < RETRY_DELAYS_MS.length) {
+					entry.dueAt = now + RETRY_DELAYS_MS[entry.attempts];
+					kept.push(entry);
+				}
+			}
+
+			if (kept.length === 0) {
+				this.retries.delete(protectDeviceId);
+			} else {
+				this.retries.set(protectDeviceId, kept);
+			}
+		}
+	}
+
 	private scheduleRetryTimer(): void {
 		this.clearTimer('retryTimer');
 
@@ -691,7 +729,13 @@ export class ProtectSynchronizerService {
 				void this.run(async () => {
 					try {
 						if (this.eventIdentity !== null) {
-							await this.ensureIndex(this.eventIdentity);
+							try {
+								await this.ensureIndex(this.eventIdentity);
+							} catch (error) {
+								// A failed rebuild counts as an attempt, so a persistent failure reaches the cap.
+								this.chargeDueRetries();
+								throw error;
+							}
 						}
 
 						for (const protectDeviceId of [...this.retries.keys()]) {

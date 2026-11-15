@@ -4,7 +4,7 @@ import { join } from 'path';
 
 import { Logger } from '@nestjs/common';
 
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, DEVICES_UNIFI_PROTECT_TYPE } from '../devices-unifi-protect.constants';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 
@@ -601,11 +601,56 @@ describe('ProtectSynchronizerService', () => {
 		const frame = frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: true } });
 
 		service.invalidateIndex({ type: 'other-plugin' });
-		service.invalidateIndex(undefined);
 		service.enqueueFrame(IDENTITY, frame);
 		await service.idle();
 
 		expect(properties.update).not.toHaveBeenCalled();
+		expect(devicesService.findAll).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([EventType.CHANNEL_DELETED, EventType.CHANNEL_PROPERTY_DELETED])(
+		'rebuilds the index on %s even when the spread payload lost its type',
+		async (eventType) => {
+			const listened = (
+				Reflect.getMetadata('EVENT_LISTENER_METADATA', (service as any).invalidateIndexOnDelete) as {
+					event: string;
+				}[]
+			).map((metadata) => metadata.event);
+
+			expect(listened).toContain(eventType);
+
+			devices = [];
+			await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+			devices = [adopt(goldenCamera, CAMERA_PANEL)];
+
+			const spreadLike = { ...{ id: 'channel-1' } };
+
+			expect(spreadLike).not.toHaveProperty('type');
+
+			// The core emits `{ ...entity }` copies; the TypeORM `type` discriminator is a prototype getter.
+			service.invalidateIndexOnDelete();
+			service.enqueueFrame(
+				IDENTITY,
+				frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: true } }),
+			);
+			await service.idle();
+
+			expect(devicesService.findAll).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it('keeps the index for a non-delete event whose payload type is another plugin', async () => {
+		devices = [];
+		await service.applySnapshot(IDENTITY, snapshot([entry('camera', cameras[0])]));
+		devices = [adopt(goldenCamera, CAMERA_PANEL)];
+
+		service.invalidateIndex({ type: 'other-plugin' });
+		service.enqueueFrame(
+			IDENTITY,
+			frameFor('update', { id: CAMERA_ID, modelKey: 'camera', ledSettings: { isEnabled: true } }),
+		);
+		await service.idle();
+
 		expect(devicesService.findAll).toHaveBeenCalledTimes(1);
 	});
 
@@ -1017,10 +1062,35 @@ describe('ProtectSynchronizerService', () => {
 			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
 			expect(jest.getTimerCount()).toBe(1);
 
+			// The failed rebuild used up an attempt, so the next timer waits the second delay, not 1 s.
+			await jest.advanceTimersByTimeAsync(14_000);
+			await flush();
+
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+
 			await jest.advanceTimersByTimeAsync(1000);
 			await flush();
 
 			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops retrying after the cap while the index rebuild keeps failing', async () => {
+			devices = [adopt(goldenDoorbell, DOORBELL_PANEL)];
+			occurrences.publishOccurrence.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0007', 'add'));
+			service.invalidateIndex({ type: DEVICES_UNIFI_PROTECT_TYPE });
+			devicesService.findAll.mockRejectedValue(new Error('db down'));
+			await jest.advanceTimersByTimeAsync(6000 + 15_000 + 45_000);
+			await flush();
+
+			const calls = devicesService.findAll.mock.calls.length;
+
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(devicesService.findAll).toHaveBeenCalledTimes(calls);
+			expect(occurrences.publishOccurrence).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(0);
 		});
 
 		it('drains a queued event write before a snapshot reconciles the device', async () => {
