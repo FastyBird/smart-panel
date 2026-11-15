@@ -98,7 +98,7 @@ Sub-issues of #1175. PR titles are the issue titles unless stated otherwise.
 | UP-3 (done) | #1179 | M1 | `feat(backend): relay camera live streams through a managed go2rtc service` | UP-2, UP-0 |
 | UP-4 | #1180 | M1 | `feat(installer): ship go2rtc with server installations` | UP-0 |
 | UP-5 (done) | #1181 | M2 | `feat(backend): add UniFi Protect plugin foundation and API client` | D2–D4, D10 |
-| UP-6 | #1182 | M2 | `feat(backend): discover UniFi Protect consoles on the local network` | UP-5 |
+| UP-6 (done) | #1182 | M2 | `feat(backend): discover UniFi Protect consoles on the local network` | UP-5 |
 | UP-7 | #1183 | M2 | `feat(backend): map and adopt UniFi Protect cameras, doorbells, sensors and floodlights` | UP-1, UP-5, D9 |
 | UP-8 | #1184 | M2 | `feat(backend): sync UniFi Protect device state and events in real time` | UP-7 |
 | UP-9 | #1185 | M2 | `feat(backend): control UniFi Protect floodlights and camera settings` | UP-8 |
