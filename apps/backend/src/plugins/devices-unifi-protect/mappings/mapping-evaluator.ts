@@ -221,6 +221,29 @@ const fitsDataType = (value: ProtectMappingScalar, dataType: DataTypeType): bool
 	return false;
 };
 
+/** A numeric value must lie in the spec range `[min, max]`; an enum value must be listed in the spec format. */
+const withinFormat = (value: ProtectMappingScalar, mapping: ResolvedProtectPropertyMapping): boolean => {
+	const format = mapping.format;
+
+	if (value === null || format === null) {
+		return true;
+	}
+
+	if (mapping.dataType === DataTypeType.ENUM) {
+		return format.includes(value as string | number);
+	}
+
+	if (NUMERIC_DATA_TYPES.includes(mapping.dataType) && format.length === 2) {
+		const [minimum, maximum] = format;
+
+		if (typeof minimum === 'number' && typeof maximum === 'number' && typeof value === 'number') {
+			return value >= minimum && value <= maximum;
+		}
+	}
+
+	return true;
+};
+
 const streamStatus = (
 	kind: 'main' | 'package',
 	device: Readonly<Record<string, unknown>>,
@@ -276,7 +299,7 @@ const evaluateValue = (
 		result = streamStatus(source.stream_status, device, context.streams);
 	}
 
-	return fitsDataType(result, mapping.dataType) ? result : null;
+	return fitsDataType(result, mapping.dataType) && withinFormat(result, mapping) ? result : null;
 };
 
 const toDeviceName = (device: Readonly<Record<string, unknown>>, modelKey: string, id: string): string => {

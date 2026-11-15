@@ -264,6 +264,48 @@ describe('mapping evaluator', () => {
 		expect(value(mapped(infinite), 'humidity', 'humidity')).toBeNull();
 	});
 
+	it('nulls a numeric value outside the spec format and keeps the bounds', () => {
+		const battery = sensor();
+		battery.batteryStatus.percentage = 120;
+
+		expect(value(mapped(battery), 'battery', 'percentage')).toBeNull();
+
+		for (const [percentage, expected] of [
+			[0, 0],
+			[100, 100],
+			[-1, null],
+		] as const) {
+			battery.batteryStatus.percentage = percentage;
+
+			expect(value(mapped(battery), 'battery', 'percentage')).toBe(expected);
+		}
+
+		const cold = sensor();
+		cold.stats.temperature.value = -5;
+
+		expect(value(mapped(cold), 'temperature', 'temperature')).toBeNull();
+
+		cold.stats.temperature.value = 100;
+
+		expect(value(mapped(cold), 'temperature', 'temperature')).toBe(100);
+	});
+
+	it('nulls an enum value that is not in the spec format', () => {
+		const unknownMapping = structuredClone(mappings);
+		const status = unknownMapping.properties.find((property) => property.name === 'connection_state');
+
+		status.value = { constant: 'exploded' };
+
+		const result = evaluateProtectMapping(unknownMapping, {
+			nvr: NVR,
+			modelKey: 'camera',
+			device: camera(),
+			streams: null,
+		});
+
+		expect('device' in result && value(result.device, 'device_information', 'connection_state')).toBeNull();
+	});
+
 	it('returns unsupported_model for a chime and invalid_device for an id outside the pattern', () => {
 		const chime = fixture('chimes.json')[0];
 
