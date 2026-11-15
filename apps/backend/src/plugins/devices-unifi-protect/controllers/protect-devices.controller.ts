@@ -1,11 +1,4 @@
-import {
-	BadRequestException,
-	Controller,
-	Get,
-	NotFoundException,
-	Param,
-	ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -19,24 +12,13 @@ import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import { PROTECT_ID_PATTERN } from '../client/protect-endpoints';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME } from '../devices-unifi-protect.constants';
-import { ProtectConsoleUnavailableError, ProtectDeviceNotFoundError } from '../errors/protect-adoption.error';
 import {
 	ProtectInventoryDeviceResponseModel,
 	ProtectInventoryDevicesResponseModel,
 } from '../models/protect-inventory.model';
 import { ProtectInventoryService } from '../services/protect-inventory.service';
 
-const translate = (error: unknown): unknown => {
-	if (error instanceof ProtectConsoleUnavailableError) {
-		return new ServiceUnavailableException('The UniFi Protect console is not connected');
-	}
-
-	if (error instanceof ProtectDeviceNotFoundError) {
-		return new NotFoundException('UniFi Protect device not found');
-	}
-
-	return error;
-};
+import { translate } from './protect-error-translation';
 
 @ApiTags(DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME)
 @Controller('devices')

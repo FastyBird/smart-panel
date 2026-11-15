@@ -17,8 +17,8 @@ export { ProtectStreamOutcome };
 export interface ProtectStreamEnablementResult {
 	outcome: ProtectStreamOutcome;
 	quality: ProtectStreamQuality | null;
-	/** Quality names only, canonical order. */
-	enabledQualities: ProtectRtspsQuality[];
+	/** Quality names only, canonical order; null when the console state could not be read. */
+	enabledQualities: ProtectRtspsQuality[] | null;
 	failureCategory: ProtectErrorCategory | null;
 	/** For the camera status values; presence booleans, never URLs. */
 	availability: ProtectStreamAvailability | null;
@@ -79,26 +79,30 @@ export class ProtectAdoptionStreamsService {
 				return this.done(ProtectStreamOutcome.ENABLED, request, created);
 			}
 
-			return this.failed(request, ProtectErrorCategory.PROTOCOL, null);
+			return this.failed(request, ProtectErrorCategory.PROTOCOL, created);
 		} catch (error) {
 			const category = this.categoryOf(error);
 
 			if (category !== ProtectErrorCategory.BAD_REQUEST && category !== ProtectErrorCategory.PROTOCOL) {
-				return this.failed(request, category, null);
+				return this.failed(request, category, current);
 			}
 
 			// 400/409: the streams may already exist; one re-read decides.
+			let lastRead = current;
+
 			try {
 				const reread = toStreamAvailability(await client.getRtspsStreams(cameraId));
 
 				if (wanted.every((quality) => reread[quality])) {
 					return this.done(ProtectStreamOutcome.ALREADY_ENABLED, request, reread);
 				}
+
+				lastRead = reread;
 			} catch {
 				// The POST's category is the reported failure.
 			}
 
-			return this.failed(request, category, null);
+			return this.failed(request, category, lastRead);
 		}
 	}
 
@@ -116,17 +120,18 @@ export class ProtectAdoptionStreamsService {
 		};
 	}
 
+	/** `lastRead` is the last successful console read, or null when none succeeded. */
 	private failed(
 		request: ProtectStreamRequest,
 		category: ProtectErrorCategory,
-		availability: ProtectStreamAvailability | null,
+		lastRead: ProtectStreamAvailability | null,
 	): ProtectStreamEnablementResult {
 		return {
 			outcome: ProtectStreamOutcome.FAILED,
 			quality: request.quality,
-			enabledQualities: [],
+			enabledQualities: lastRead === null ? null : enabledOf(lastRead),
 			failureCategory: category,
-			availability,
+			availability: null,
 		};
 	}
 

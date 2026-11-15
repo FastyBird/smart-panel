@@ -87,6 +87,32 @@ describe('ProtectMappingPreviewService', () => {
 		expect(plain.ready_to_adopt).toBe(true);
 	});
 
+	it('does not load the adopted devices when preparing', async () => {
+		serve(fixture('cameras.json')[0], 'camera');
+
+		await service.prepare('600cefafd5f365d6f83c4ef3', 'camera');
+
+		expect(inventory.getAdoptedByIdentifier).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the medium default quality when the plugin config cannot be read', async () => {
+		serve(fixture('cameras.json')[0], 'camera');
+		service = new ProtectMappingPreviewService(
+			inventory as unknown as ProtectInventoryService,
+			loader,
+			validation as unknown as DeviceValidationService,
+			{
+				getPluginConfig: () => {
+					throw new Error('no config');
+				},
+			} as unknown as ConfigService,
+		);
+
+		const preview = await service.preview('600cefafd5f365d6f83c4ef3', 'camera');
+
+		expect(preview.stream).toMatchObject({ defaultQuality: 'medium' });
+	});
+
 	it('matches the golden channel properties for the camera', async () => {
 		serve(fixture('cameras.json')[0], 'camera');
 

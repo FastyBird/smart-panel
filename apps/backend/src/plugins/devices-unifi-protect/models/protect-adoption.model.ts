@@ -60,13 +60,15 @@ export class ProtectAdoptionStreamModel {
 
 	@ApiProperty({
 		name: 'enabled_qualities',
-		description: 'Qualities enabled on the console after adoption, never stream addresses',
+		description: 'Qualities enabled on the console after adoption; null when unknown',
 		enum: PROTECT_RTSPS_QUALITIES,
 		isArray: true,
+		nullable: true,
 	})
 	@Expose({ name: 'enabled_qualities' })
+	@IsOptional()
 	@IsArray()
-	enabledQualities: ProtectRtspsQuality[];
+	enabledQualities: ProtectRtspsQuality[] | null;
 
 	@ApiPropertyOptional({
 		name: 'failure_category',

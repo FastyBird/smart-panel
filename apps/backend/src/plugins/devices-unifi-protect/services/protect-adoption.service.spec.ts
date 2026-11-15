@@ -389,7 +389,6 @@ describe('ProtectAdoptionService', () => {
 		streams: { high: true, medium: false, low: false, package: false },
 		warnings: [],
 		readyToAdopt,
-		existing: null,
 	});
 
 	const url = (quality: string) => `rtsps://192.168.1.1:7441/SENTINELALIAS${quality}?enableSrtp`;
@@ -666,6 +665,18 @@ describe('ProtectAdoptionService', () => {
 		expect(fakes.ops()).toEqual([]);
 	});
 
+	it('accepts an identifier match without a mapping name and does not write one (A20)', async () => {
+		fakes.seed(mapped);
+		fakes.properties.find((candidate) => candidate.identifier === 'detected')!.protectMappingName = null;
+
+		const result = await service.adoptOne(SELECTION);
+
+		expect(result.status).not.toBe('failed');
+		expect(['updated', 'skipped']).toContain(result.status);
+		expect(fakes.properties.find((candidate) => candidate.identifier === 'detected')!.protectMappingName).toBeNull();
+		expect(fakes.calls.filter((call) => call.op === 'property.meta' && 'protectMappingName' in call.arg)).toEqual([]);
+	});
+
 	it('rolls back completed reconciliation steps when a later step fails', async () => {
 		fakes.seed(
 			withChannels(
@@ -786,6 +797,18 @@ describe('ProtectAdoptionService', () => {
 		fakes.connectionResult = false;
 
 		expect(await service.adoptOne(SELECTION)).toMatchObject({ status: 'created', warnings: ['values_incomplete'] });
+		expect(
+			logged.flat().some((line) => JSON.stringify(line).includes('connection state persistence was deferred')),
+		).toBe(true);
+	});
+
+	it('does not log a deferred connection state when only a value write fails', async () => {
+		fakes.onCreate = (dto) => {
+			fakes.failValueFor.add(dto.channels.find((item: any) => item.identifier === 'motion').properties[0].id);
+		};
+
+		expect(await service.adoptOne(SELECTION)).toMatchObject({ status: 'created', warnings: ['values_incomplete'] });
+		expect(logged.flat().some((line) => JSON.stringify(line).includes('connection state persistence'))).toBe(false);
 	});
 
 	it.each([
@@ -935,7 +958,7 @@ describe('ProtectAdoptionService', () => {
 				Object.assign(new ProtectAdoptDeviceDto(), { ...ENABLING, stream: { enabled: false } }),
 			);
 
-			expect(result.stream).toMatchObject({ status: 'not_requested', quality: null, enabledQualities: [] });
+			expect(result.stream).toMatchObject({ status: 'not_requested', quality: null, enabledQualities: ['high'] });
 			expect(client.getRtspsStreams).not.toHaveBeenCalled();
 			expect(client.createRtspsStreams).not.toHaveBeenCalled();
 		});

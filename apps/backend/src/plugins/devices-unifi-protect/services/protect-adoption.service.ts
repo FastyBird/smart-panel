@@ -17,6 +17,7 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_TYPE,
+	PROTECT_RTSPS_QUALITIES,
 	ProtectStreamQuality,
 } from '../devices-unifi-protect.constants';
 import { CreateProtectChannelDto } from '../dto/create-channel.dto';
@@ -40,7 +41,6 @@ import { ProtectErrorCategory } from '../errors/protect-api.error';
 import { ProtectMappedChannel, ProtectMappedDevice, ProtectMappedProperty } from '../mappings/mapping-evaluator';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 import { ProtectModelKey } from '../mappings/mapping.types';
-import { ProtectConfigModel } from '../models/config.model';
 import {
 	ProtectAdoptionFailureCode,
 	ProtectAdoptionResultModel,
@@ -52,12 +52,12 @@ import {
 
 import { ProtectAdoptionLockService } from './protect-adoption-lock.service';
 import { ProtectAdoptionStreamsService, ProtectStreamEnablementResult } from './protect-adoption-streams.service';
+import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectMappingPreviewService, ProtectPreparedMapping } from './protect-mapping-preview.service';
 
 const CONNECTION_STATE_IDENTIFIER = 'connection_state';
 const STATUS_IDENTIFIER = 'status';
 const STREAM_CHANNELS = ['camera.main', 'camera.package'] as const;
-const FALLBACK_STREAM_QUALITY: ProtectStreamQuality = 'medium';
 
 const FAILURE_MESSAGES: Record<ProtectAdoptionFailureCode, string> = {
 	[ProtectAdoptionFailureCode.UNAVAILABLE]: 'The UniFi Protect console is not connected',
@@ -415,8 +415,12 @@ export class ProtectAdoptionService {
 				currentProperties.find((candidate) => candidate.identifier === desired.identifier);
 
 			if (property !== undefined) {
-				// Category and mapping name cannot be updated; a candidate that differs is never adopted.
-				if (property.category !== desired.category || property.protectMappingName !== desired.mappingName) {
+				// Category and mapping name cannot be updated; a candidate that differs is never adopted. A missing
+				// mapping name (A20: connection_state recreated by the connectivity service) is accepted, not written.
+				if (
+					property.category !== desired.category ||
+					(property.protectMappingName !== null && property.protectMappingName !== desired.mappingName)
+				) {
 					throw new Error('A stored property does not match the mapped property');
 				}
 
@@ -756,15 +760,10 @@ export class ProtectAdoptionService {
 		const state = this.connectionState(device);
 
 		if (state !== null) {
-			try {
-				if (!(await this.connectivity.trySetConnectionState(deviceId, { state }))) {
-					complete = false;
-				}
-			} catch {
-				complete = false;
-			}
+			const stateWritten = await this.connectivity.trySetConnectionState(deviceId, { state }).catch(() => false);
 
-			if (!complete) {
+			if (!stateWritten) {
+				complete = false;
 				this.logger.warn('UniFi Protect connection state persistence was deferred until the next adoption');
 			}
 		}
@@ -888,10 +887,18 @@ export class ProtectAdoptionService {
 		}
 
 		if (selection.stream?.enabled === false) {
-			return { stream: this.streamModel(ProtectStreamOutcome.NOT_REQUESTED, null, [], null), complete: true };
+			return {
+				stream: this.streamModel(
+					ProtectStreamOutcome.NOT_REQUESTED,
+					null,
+					this.enabledQualitiesOf(prepared.streams),
+					null,
+				),
+				complete: true,
+			};
 		}
 
-		const quality = selection.stream?.quality ?? this.defaultQuality();
+		const quality = selection.stream?.quality ?? readDefaultStreamQuality(this.configService);
 		let result: ProtectStreamEnablementResult;
 
 		try {
@@ -903,7 +910,12 @@ export class ProtectAdoptionService {
 			this.logger.warn('RTSPS stream enablement finished (failed)');
 
 			return {
-				stream: this.streamModel(ProtectStreamOutcome.FAILED, quality, [], ProtectErrorCategory.UNAVAILABLE),
+				stream: this.streamModel(
+					ProtectStreamOutcome.FAILED,
+					quality,
+					this.enabledQualitiesOf(prepared.streams),
+					ProtectErrorCategory.UNAVAILABLE,
+				),
 				complete: true,
 			};
 		}
@@ -972,15 +984,11 @@ export class ProtectAdoptionService {
 		return this.writeValues(writes);
 	}
 
-	private defaultQuality(): ProtectStreamQuality {
-		try {
-			return (
-				this.configService.getPluginConfig<ProtectConfigModel>(DEVICES_UNIFI_PROTECT_PLUGIN_NAME)
-					.defaultStreamQuality ?? FALLBACK_STREAM_QUALITY
-			);
-		} catch {
-			return FALLBACK_STREAM_QUALITY;
-		}
+	/** Quality names from presence booleans; null when the console state is unknown. */
+	private enabledQualitiesOf(
+		availability: ProtectPreparedMapping['streams'],
+	): ProtectAdoptionStreamModel['enabledQualities'] {
+		return availability === null ? null : PROTECT_RTSPS_QUALITIES.filter((quality) => availability[quality]);
 	}
 
 	private streamModel(

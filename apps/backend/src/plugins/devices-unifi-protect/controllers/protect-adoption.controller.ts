@@ -1,12 +1,4 @@
-import {
-	Body,
-	Controller,
-	HttpCode,
-	NotFoundException,
-	Post,
-	ServiceUnavailableException,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -23,11 +15,6 @@ import { DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME } from '../devices-unifi-prot
 import { ProtectReqAdoptDeviceDto, ProtectReqBatchAdoptDevicesDto } from '../dto/protect-adoption.dto';
 import { ProtectReqMappingPreviewDto } from '../dto/protect-mapping-preview.dto';
 import {
-	ProtectConsoleUnavailableError,
-	ProtectDeviceNotFoundError,
-	ProtectUnsupportedDeviceError,
-} from '../errors/protect-adoption.error';
-import {
 	ProtectAdoptionResponseModel,
 	ProtectBatchAdoptionModel,
 	ProtectBatchAdoptionResponseModel,
@@ -36,21 +23,7 @@ import { ProtectMappingPreviewResponseModel } from '../models/protect-mapping-pr
 import { ProtectAdoptionService } from '../services/protect-adoption.service';
 import { ProtectMappingPreviewService } from '../services/protect-mapping-preview.service';
 
-const translate = (error: unknown): unknown => {
-	if (error instanceof ProtectConsoleUnavailableError) {
-		return new ServiceUnavailableException('The UniFi Protect console is not connected');
-	}
-
-	if (error instanceof ProtectDeviceNotFoundError) {
-		return new NotFoundException('UniFi Protect device not found');
-	}
-
-	if (error instanceof ProtectUnsupportedDeviceError) {
-		return new UnprocessableEntityException('The UniFi Protect device has no supported mapping');
-	}
-
-	return error;
-};
+import { translate } from './protect-error-translation';
 
 @ApiTags(DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME)
 @Controller()

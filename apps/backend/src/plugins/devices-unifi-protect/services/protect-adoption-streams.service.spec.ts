@@ -91,7 +91,7 @@ describe('ProtectAdoptionStreamsService', () => {
 
 		const result = await ensure('medium');
 
-		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'bad_request' });
+		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'bad_request', enabledQualities: [] });
 	});
 
 	it('reports a failed POST without throwing and calls the console once', async () => {
@@ -105,6 +105,7 @@ describe('ProtectAdoptionStreamsService', () => {
 		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'unavailable', availability: null });
 		expect(client.createRtspsStreams).toHaveBeenCalledTimes(1);
 		expect(client.getRtspsStreams).toHaveBeenCalledTimes(1);
+		expect(result.enabledQualities).toEqual([]);
 	});
 
 	it('fails without posting when the stream state cannot be read', async () => {
@@ -115,7 +116,7 @@ describe('ProtectAdoptionStreamsService', () => {
 		const result = await ensure('medium');
 
 		expect(client.createRtspsStreams).not.toHaveBeenCalled();
-		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'timeout' });
+		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'timeout', enabledQualities: null });
 	});
 
 	it('reports failed when the console answer lacks a requested quality', async () => {
@@ -124,7 +125,7 @@ describe('ProtectAdoptionStreamsService', () => {
 
 		const result = await ensure('medium');
 
-		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'protocol' });
+		expect(result).toMatchObject({ outcome: 'failed', failureCategory: 'protocol', enabledQualities: ['high'] });
 	});
 
 	it('maps a non-API error to unavailable and never rejects', async () => {

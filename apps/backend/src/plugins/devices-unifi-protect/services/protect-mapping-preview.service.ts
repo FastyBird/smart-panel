@@ -5,8 +5,7 @@ import {
 	DeviceValidationService,
 	ValidationIssueSeverity,
 } from '../../../modules/devices/services/device-validation.service';
-import { DEVICES_UNIFI_PROTECT_PLUGIN_NAME, ProtectRtspsQuality } from '../devices-unifi-protect.constants';
-import { ProtectDeviceEntity } from '../entities/devices-unifi-protect.entity';
+import { PROTECT_RTSPS_QUALITIES } from '../devices-unifi-protect.constants';
 import { ProtectUnsupportedDeviceError } from '../errors/protect-adoption.error';
 import {
 	ProtectMappedDevice,
@@ -18,7 +17,6 @@ import {
 } from '../mappings/mapping-evaluator';
 import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
 import { ProtectModelKey } from '../mappings/mapping.types';
-import { ProtectConfigModel } from '../models/config.model';
 import {
 	ProtectMappingPreviewChannelModel,
 	ProtectMappingPreviewDeviceModel,
@@ -30,6 +28,7 @@ import {
 	ProtectPreviewWarningSeverity,
 } from '../models/protect-mapping-preview.model';
 
+import { readDefaultStreamQuality } from './protect-default-stream-quality';
 import { ProtectFreshDevice, ProtectInventoryService } from './protect-inventory.service';
 
 export interface ProtectPreparedMapping {
@@ -38,7 +37,6 @@ export interface ProtectPreparedMapping {
 	streams: ProtectStreamAvailability | null;
 	warnings: ProtectMappingPreviewWarningModel[];
 	readyToAdopt: boolean;
-	existing: ProtectDeviceEntity | null;
 }
 
 const HEVC_CODEC = /^(h265|hevc)$/i;
@@ -122,9 +120,7 @@ export class ProtectMappingPreviewService {
 			);
 		}
 
-		const existing = (await this.inventory.getAdoptedByIdentifier()).get(result.device.identifier) ?? null;
-
-		return { fresh, device: result.device, streams, warnings, readyToAdopt, existing };
+		return { fresh, device: result.device, streams, warnings, readyToAdopt };
 	}
 
 	async preview(deviceId: string, modelKey: ProtectModelKey): Promise<ProtectMappingPreviewModel> {
@@ -168,8 +164,10 @@ export class ProtectMappingPreviewService {
 		model.warnings = prepared.warnings;
 		model.stream = device.protectModelKey === 'camera' ? this.toStreamModel(fresh, streams) : null;
 		model.readyToAdopt = prepared.readyToAdopt;
-		model.adopted = prepared.existing !== null;
-		model.adoptedDeviceId = prepared.existing?.id ?? null;
+		const existing = (await this.inventory.getAdoptedByIdentifier()).get(device.identifier) ?? null;
+
+		model.adopted = existing !== null;
+		model.adoptedDeviceId = existing?.id ?? null;
 
 		return model;
 	}
@@ -205,12 +203,9 @@ export class ProtectMappingPreviewService {
 
 	private toStreamModel(fresh: ProtectFreshDevice, streams: ProtectStreamAvailability | null) {
 		const model = new ProtectMappingPreviewStreamModel();
-		const qualities: ProtectRtspsQuality[] = ['high', 'medium', 'low', 'package'];
 
-		model.enabledQualities = streams === null ? null : qualities.filter((quality) => streams[quality]);
-		model.defaultQuality = this.configService.getPluginConfig<ProtectConfigModel>(
-			DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
-		).defaultStreamQuality;
+		model.enabledQualities = streams === null ? null : PROTECT_RTSPS_QUALITIES.filter((quality) => streams[quality]);
+		model.defaultQuality = readDefaultStreamQuality(this.configService);
 		model.packageCamera = fresh.entry.raw.hasPackageCamera === true;
 
 		return model;

@@ -20,13 +20,9 @@ import { PROTECT_ID_PATTERN } from '../client/protect-endpoints';
 import { PROTECT_STREAM_QUALITIES, ProtectStreamQuality } from '../devices-unifi-protect.constants';
 import { PROTECT_MODEL_KEYS, ProtectModelKey } from '../mappings/mapping.types';
 
-export const PROTECT_ADOPT_BATCH_MAX = 50;
+import { original } from './protect-original.transform';
 
-// Reads the original plain value: implicit conversion would otherwise turn a number or boolean into a string.
-const original =
-	(wireName: string) =>
-	({ obj }: { obj: Record<string, unknown> }): unknown =>
-		obj[wireName];
+export const PROTECT_ADOPT_BATCH_MAX = 50;
 
 @ApiSchema({ name: 'DevicesUnifiProtectPluginAdoptStream' })
 export class ProtectAdoptStreamDto {

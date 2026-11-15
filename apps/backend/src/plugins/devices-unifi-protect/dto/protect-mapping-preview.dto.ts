@@ -6,11 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PROTECT_ID_PATTERN } from '../client/protect-endpoints';
 import { PROTECT_MODEL_KEYS, ProtectModelKey } from '../mappings/mapping.types';
 
-// Reads the original plain value: implicit conversion would otherwise turn a number or boolean into a string.
-const original =
-	(wireName: string) =>
-	({ obj }: { obj: Record<string, unknown> }): unknown =>
-		obj[wireName];
+import { original } from './protect-original.transform';
 
 @ApiSchema({ name: 'DevicesUnifiProtectPluginMappingPreview' })
 export class ProtectMappingPreviewDto {
