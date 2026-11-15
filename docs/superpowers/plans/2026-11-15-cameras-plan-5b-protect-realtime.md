@@ -1047,7 +1047,9 @@ backend is down are not copied; the panel ring overlay is UP-14); `Closes #1184`
 - **Event effect retry (Task 5).** A failed event effect (a start/end write or a ring publication) is kept in a bounded
   per-device retry queue (32 entries, 3 attempts), retried on the next frame for that device and on each safety tick.
   Successful effects are never re-emitted; a ring retry reuses the same `sourceOccurrenceId` (the Protect event id), so
-  it can never publish twice. Tests: a failed smoke start is retried; a failed ring is retried and published once.
+  it can never publish twice. The queue has its own retry timer, independent of the tracker's deadline (rings are never
+  open): attempts at 5 s, 15 s and 45 s after the failure, cleared on reset and stop. Tests: a failed smoke start is
+  retried; a failed ring with no open event and no later frame is retried by the queue timer and published once.
 - **Timestamp range (Task 3).** The tracker rejects `start`/`end` outside the JavaScript date range (|t| > 8.64e15 ms)
   as `invalid`, so `toISOString()` cannot throw. Test with `start: 1e100`.
 - **Stop after a lost session (Task 6).** The connector's `stop()` always emits `(null, 'stopped')`, also after the
