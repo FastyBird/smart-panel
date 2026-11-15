@@ -47,6 +47,7 @@ import {
 	ProtectChannelPropertyEntity,
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
+import { ProtectMappingLoaderService } from './mappings/mapping-loader.service';
 import { ProtectConfigModel } from './models/config.model';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
@@ -76,6 +77,7 @@ import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './servi
 		DefaultProtectApiClientFactory,
 		{ provide: PROTECT_API_CLIENT_FACTORY, useExisting: DefaultProtectApiClientFactory },
 		ProtectConnectorService,
+		ProtectMappingLoaderService,
 		ProtectConnectionTestService,
 		ProtectDiscoveryService,
 		ProtectDiscoveryProbeService,

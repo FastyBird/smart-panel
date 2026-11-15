@@ -1,0 +1,125 @@
+{
+	"mappingName": "floodlight",
+	"category": "lighting",
+	"identifier": "0cea14003a69:5f0000000000000000000c01",
+	"name": "Synthetic floodlight",
+	"protectNvrId": "68b3ace392bf98c9fb76f70c",
+	"protectDeviceId": "5f0000000000000000000c01",
+	"protectModelKey": "light",
+	"channels": [
+		{
+			"identifier": "device_information",
+			"category": "device_information",
+			"name": "Device information",
+			"mappingName": "device_information",
+			"properties": [
+				{
+					"identifier": "manufacturer",
+					"category": "manufacturer",
+					"name": "Manufacturer",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "Ubiquiti",
+					"mappingName": "manufacturer"
+				},
+				{
+					"identifier": "model",
+					"category": "model",
+					"name": "Model",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "UP Floodlight",
+					"mappingName": "floodlight_model"
+				},
+				{
+					"identifier": "serial_number",
+					"category": "serial_number",
+					"name": "Serial number",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "0CEA1400C001",
+					"mappingName": "serial_number"
+				},
+				{
+					"identifier": "connection_state",
+					"category": "status",
+					"name": "Connection state",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"connected",
+						"disconnected",
+						"init",
+						"ready",
+						"running",
+						"sleeping",
+						"stopped",
+						"lost",
+						"alert",
+						"unknown"
+					],
+					"step": null,
+					"value": "connected",
+					"mappingName": "connection_state"
+				}
+			]
+		},
+		{
+			"identifier": "light",
+			"category": "light",
+			"name": "Light",
+			"mappingName": "floodlight_light",
+			"properties": [
+				{
+					"identifier": "on",
+					"category": "on",
+					"name": "On",
+					"dataType": "bool",
+					"permissions": [
+						"rw"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "light_on"
+				},
+				{
+					"identifier": "brightness",
+					"category": "brightness",
+					"name": "Brightness",
+					"dataType": "uchar",
+					"permissions": [
+						"rw"
+					],
+					"unit": "%",
+					"format": [
+						0,
+						100
+					],
+					"step": 1,
+					"value": 100,
+					"mappingName": "light_brightness"
+				}
+			]
+		}
+	]
+}

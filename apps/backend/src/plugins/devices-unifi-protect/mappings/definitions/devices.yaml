@@ -1,0 +1,33 @@
+version: 1
+kind: devices
+mappings:
+  - name: doorbell
+    priority: 10
+    match:
+      model_key: camera
+      when:
+        - any:
+            - path: featureFlags.hasLcdScreen
+              equals: true
+            - path: type
+              matches: doorbell
+    device:
+      category: doorbell
+  - name: camera
+    priority: 0
+    match:
+      model_key: camera
+    device:
+      category: camera
+  - name: sensor
+    priority: 0
+    match:
+      model_key: sensor
+    device:
+      category: sensor
+  - name: floodlight
+    priority: 0
+    match:
+      model_key: light
+    device:
+      category: lighting

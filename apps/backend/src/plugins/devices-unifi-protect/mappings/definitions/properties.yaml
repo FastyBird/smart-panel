@@ -1,0 +1,290 @@
+version: 1
+kind: properties
+mappings:
+  - name: manufacturer
+    channel: device_information
+    property:
+      identifier: 'manufacturer'
+      category: 'manufacturer'
+    value:
+      constant: 'Ubiquiti'
+  - name: camera_model
+    channel: device_information
+    devices: [camera, doorbell]
+    property:
+      identifier: 'model'
+      category: 'model'
+    value:
+      path: 'type'
+      default: 'UniFi Protect camera'
+  - name: sensor_model
+    channel: device_information
+    devices: [sensor]
+    property:
+      identifier: 'model'
+      category: 'model'
+    value:
+      path: 'type'
+      default: 'UP-Sense'
+  - name: floodlight_model
+    channel: device_information
+    devices: [floodlight]
+    property:
+      identifier: 'model'
+      category: 'model'
+    value:
+      path: 'type'
+      default: 'UP Floodlight'
+  - name: serial_number
+    channel: device_information
+    property:
+      identifier: 'serial_number'
+      category: 'serial_number'
+    value:
+      path: 'mac'
+  - name: connection_state
+    channel: device_information
+    property:
+      identifier: 'connection_state'
+      category: 'status'
+      name: 'Connection state'
+    value:
+      path: 'state'
+      transform:
+        type: 'map'
+        table: { 'CONNECTED': 'connected', 'CONNECTING': 'init', 'DISCONNECTED': 'disconnected' }
+        default: 'unknown'
+  - name: camera_main_status
+    channel: camera_main
+    property:
+      identifier: 'status'
+      category: 'status'
+    value:
+      stream_status: 'main'
+  - name: camera_main_source
+    channel: camera_main
+    property:
+      identifier: 'source'
+      category: 'source'
+    value:
+      template: 'unifi-protect:{id}:main'
+  - name: camera_package_status
+    channel: camera_package
+    property:
+      identifier: 'status'
+      category: 'status'
+    value:
+      stream_status: 'package'
+  - name: camera_package_source
+    channel: camera_package
+    property:
+      identifier: 'source'
+      category: 'source'
+    value:
+      template: 'unifi-protect:{id}:package'
+  - name: doorbell_event
+    channel: doorbell
+    property:
+      identifier: 'event'
+      category: 'event'
+  - name: camera_motion_detected
+    channel: camera_motion
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: object_detected
+    channel: object_detection
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: object_type
+    channel: object_detection
+    property:
+      identifier: 'object_type'
+      category: 'object_type'
+    value:
+      template: '{key}'
+  - name: smoke_alarm_sound_detected
+    channel: smoke_alarm_sound
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: co_alarm_sound_detected
+    channel: co_alarm_sound
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: sound_detected
+    channel: sound_detection
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: sound_type
+    channel: sound_detection
+    property:
+      identifier: 'sound_type'
+      category: 'sound_type'
+    value:
+      template: '{key}'
+  - name: camera_indicator_on
+    channel: camera_indicator
+    property:
+      identifier: 'on'
+      category: 'on'
+    value:
+      path: 'ledSettings.isEnabled'
+  - name: microphone_active
+    channel: camera_microphone
+    property:
+      identifier: 'active'
+      category: 'active'
+    value:
+      path: 'isMicEnabled'
+  - name: microphone_volume
+    channel: camera_microphone
+    property:
+      identifier: 'volume'
+      category: 'volume'
+      variant: percentage
+    value:
+      path: 'micVolume'
+      transform:
+        type: 'round'
+  - name: contact_detected
+    channel: sensor_contact
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      path: 'isOpened'
+  - name: contact_tampered
+    channel: sensor_contact
+    property:
+      identifier: 'tampered'
+      category: 'tampered'
+    value:
+      constant: false
+  - name: sensor_motion_detected
+    channel: sensor_motion
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      path: 'isMotionDetected'
+  - name: sensor_motion_tampered
+    channel: sensor_motion
+    property:
+      identifier: 'tampered'
+      category: 'tampered'
+    value:
+      constant: false
+  - name: leak_detected
+    channel: sensor_leak
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: leak_level
+    channel: sensor_leak
+    property:
+      identifier: 'level'
+      category: 'level'
+    value:
+      constant: 'low'
+  - name: sensor_smoke_detected
+    channel: sensor_smoke
+    property:
+      identifier: 'detected'
+      category: 'detected'
+    value:
+      constant: false
+  - name: temperature
+    channel: sensor_temperature
+    property:
+      identifier: 'temperature'
+      category: 'temperature'
+    value:
+      path: 'stats.temperature.value'
+  - name: humidity
+    channel: sensor_humidity
+    property:
+      identifier: 'humidity'
+      category: 'humidity'
+    value:
+      path: 'stats.humidity.value'
+      transform:
+        type: 'round'
+  - name: illuminance
+    channel: sensor_illuminance
+    property:
+      identifier: 'illuminance'
+      category: 'illuminance'
+    value:
+      path: 'stats.light.value'
+  - name: illuminance_level
+    channel: sensor_illuminance
+    property:
+      identifier: 'level'
+      category: 'level'
+    value:
+      path: 'stats.light.value'
+      transform:
+        type: 'thresholds'
+        thresholds:
+          [
+            { 'minimum': 500, 'value': 'bright' },
+            { 'minimum': 50, 'value': 'moderate' },
+            { 'minimum': 10, 'value': 'dusky' },
+          ]
+        default: 'dark'
+  - name: battery_percentage
+    channel: sensor_battery
+    property:
+      identifier: 'percentage'
+      category: 'percentage'
+      variant: percentage
+    value:
+      path: 'batteryStatus.percentage'
+      transform:
+        type: 'round'
+  - name: battery_status
+    channel: sensor_battery
+    property:
+      identifier: 'status'
+      category: 'status'
+    value:
+      path: 'batteryStatus.isLow'
+      transform:
+        type: 'map'
+        table: { 'true': 'low', 'false': 'ok' }
+  - name: light_on
+    channel: floodlight_light
+    property:
+      identifier: 'on'
+      category: 'on'
+    value:
+      path: 'isLightOn'
+  - name: light_brightness
+    channel: floodlight_light
+    property:
+      identifier: 'brightness'
+      category: 'brightness'
+      variant: percentage
+    value:
+      path: 'lightDeviceSettings.ledLevel'
+      transform:
+        type: 'scale'
+        input_range: [0, 6]
+        output_range: [0, 100]
+        round: true

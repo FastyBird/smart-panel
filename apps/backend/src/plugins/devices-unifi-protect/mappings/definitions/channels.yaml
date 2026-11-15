@@ -1,0 +1,169 @@
+version: 1
+kind: channels
+mappings:
+  - name: device_information
+    devices: [camera, doorbell, sensor, floodlight]
+    channel:
+      identifier: 'device_information'
+      category: device_information
+      name: 'Device information'
+  - name: camera_main
+    devices: [camera, doorbell]
+    channel:
+      identifier: 'camera.main'
+      category: camera
+      name: 'Camera'
+  - name: camera_package
+    devices: [camera, doorbell]
+    when:
+      - { path: hasPackageCamera, equals: true }
+    channel:
+      identifier: 'camera.package'
+      category: camera
+      name: 'Package camera'
+  - name: doorbell
+    devices: [doorbell]
+    channel:
+      identifier: 'doorbell'
+      category: doorbell
+      name: 'Doorbell'
+  - name: camera_motion
+    devices: [camera, doorbell]
+    channel:
+      identifier: 'motion'
+      category: motion
+      name: 'Motion'
+  - name: object_detection
+    devices: [camera, doorbell]
+    for_each:
+      path: featureFlags.smartDetectTypes
+      values:
+        person: { key: person, name: 'Person detection' }
+        vehicle: { key: vehicle, name: 'Vehicle detection' }
+        animal: { key: animal, name: 'Animal detection' }
+        package: { key: package, name: 'Package detection' }
+        licensePlate: { key: license_plate, name: 'License plate detection' }
+        face: { key: face, name: 'Face detection' }
+    channel:
+      identifier: 'object_detection.{key}'
+      category: object_detection
+      name: '{name}'
+  - name: smoke_alarm_sound
+    devices: [camera, doorbell]
+    when:
+      - { path: featureFlags.smartDetectAudioTypes, contains: alrmSmoke }
+    channel:
+      identifier: 'smoke'
+      category: smoke
+      name: 'Smoke alarm'
+  - name: co_alarm_sound
+    devices: [camera, doorbell]
+    when:
+      - { path: featureFlags.smartDetectAudioTypes, contains: alrmCmonx }
+    channel:
+      identifier: 'carbon_monoxide'
+      category: carbon_monoxide
+      name: 'Carbon monoxide alarm'
+  - name: sound_detection
+    devices: [camera, doorbell]
+    for_each:
+      path: featureFlags.smartDetectAudioTypes
+      ignore: [alrmSmoke, alrmCmonx]
+      values:
+        alrmGlassBreak: { key: glass_break, name: 'Glass break detection' }
+        alrmBurglar: { key: burglar_alarm, name: 'Burglar alarm detection' }
+        alrmSiren: { key: siren, name: 'Siren detection' }
+        alrmBabyCry: { key: baby_cry, name: 'Baby cry detection' }
+        alrmSpeak: { key: speech, name: 'Speech detection' }
+        alrmBark: { key: dog_bark, name: 'Dog bark detection' }
+        alrmCarHorn: { key: car_horn, name: 'Car horn detection' }
+    channel:
+      identifier: 'sound_detection.{key}'
+      category: sound_detection
+      name: '{name}'
+  - name: camera_indicator
+    devices: [camera, doorbell]
+    when:
+      - { path: featureFlags.hasLedStatus, equals: true }
+    channel:
+      identifier: 'indicator'
+      category: indicator
+      name: 'Status LED'
+  - name: camera_microphone
+    devices: [camera, doorbell]
+    when:
+      - { path: featureFlags.hasMic, equals: true }
+    channel:
+      identifier: 'microphone'
+      category: microphone
+      name: 'Microphone'
+  - name: sensor_contact
+    devices: [sensor]
+    when:
+      - { path: mountType, in: [door, window, garage] }
+    channel:
+      identifier: 'contact'
+      category: contact
+      name: 'Contact'
+  - name: sensor_motion
+    devices: [sensor]
+    when:
+      - { path: motionSettings.isEnabled, equals: true }
+    channel:
+      identifier: 'motion'
+      category: motion
+      name: 'Motion'
+  - name: sensor_leak
+    devices: [sensor]
+    when:
+      - { any: [{ path: mountType, equals: leak }, { path: leakSettings.isExternalEnabled, equals: true }] }
+    channel:
+      identifier: 'leak'
+      category: leak
+      name: 'Leak'
+  - name: sensor_smoke
+    devices: [sensor]
+    when:
+      - { path: alarmSettings.isEnabled, equals: true }
+    channel:
+      identifier: 'smoke'
+      category: smoke
+      name: 'Smoke alarm'
+  - name: sensor_temperature
+    devices: [sensor]
+    when:
+      - { path: temperatureSettings.isEnabled, equals: true }
+    channel:
+      identifier: 'temperature'
+      category: temperature
+      name: 'Temperature'
+  - name: sensor_humidity
+    devices: [sensor]
+    when:
+      - { path: humiditySettings.isEnabled, equals: true }
+    channel:
+      identifier: 'humidity'
+      category: humidity
+      name: 'Humidity'
+  - name: sensor_illuminance
+    devices: [sensor]
+    when:
+      - { path: lightSettings.isEnabled, equals: true }
+    channel:
+      identifier: 'illuminance'
+      category: illuminance
+      name: 'Illuminance'
+  - name: sensor_battery
+    devices: [sensor]
+    when:
+      - { path: batteryStatus.percentage, exists: true }
+    channel:
+      identifier: 'battery'
+      category: battery
+      name: 'Battery'
+  - name: floodlight_light
+    devices: [floodlight]
+    channel:
+      identifier: 'light'
+      category: light
+      name: 'Light'

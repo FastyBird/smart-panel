@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIRECTORY = __dirname;
@@ -24,6 +24,8 @@ const SYNTHETIC_JSON = [
 const SYNTHETIC_JSONL = ['ws-devices.jsonl', 'ws-events.jsonl'];
 const SYNTHETIC_OTHER = ['snapshot.jpg'];
 const NOT_FIXTURES = ['README.md', 'fixtures.spec.ts'];
+// Derived goldens (UP-7): a directory of JSON files, documented as one README row.
+const DIRECTORIES = ['expected'];
 
 const REDACTED_DOMAIN = '0cea14000000000000000000000000000000.id.ui.direct';
 const FAKE_MAC_PREFIX = '0CEA1400';
@@ -36,6 +38,10 @@ const RTSPS_URL = /rtsps:\/\/[^\s"'<>]+/g;
 // A 12 hex digit run that is not the tail of a UUID or part of a longer token.
 const MAC_PLAIN = /(?<![0-9a-z:-])[0-9a-f]{12}(?![0-9a-z:-])/gi;
 const MAC_SEPARATED = /(?<![0-9a-z:-])(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}(?![0-9a-z:-])/gi;
+
+const EXPECTED_JSON = existsSync(join(DIRECTORY, 'expected'))
+	? readdirSync(join(DIRECTORY, 'expected')).map((file) => `expected/${file}`)
+	: [];
 
 const read = (name: string): string => readFileSync(join(DIRECTORY, name), 'latin1');
 
@@ -59,18 +65,21 @@ describe('UniFi Protect fixtures', () => {
 			...SYNTHETIC_JSONL,
 			...SYNTHETIC_OTHER,
 			...NOT_FIXTURES,
+			...DIRECTORIES,
 		].sort();
 
 		expect(readdirSync(DIRECTORY).sort()).toEqual(known);
 
 		const readme = read('README.md');
 
-		for (const name of known.filter((file) => !NOT_FIXTURES.includes(file))) {
+		expect(readme).toContain('`expected/`');
+
+		for (const name of known.filter((file) => !NOT_FIXTURES.includes(file) && !DIRECTORIES.includes(file))) {
 			expect(readme).toContain(`\`${name}\``);
 		}
 	});
 
-	describe.each([...CAPTURED_JSON, ...SYNTHETIC_JSON])('%s', (name) => {
+	describe.each([...CAPTURED_JSON, ...SYNTHETIC_JSON, ...EXPECTED_JSON])('%s', (name) => {
 		it('parses as JSON', () => {
 			expect(() => {
 				JSON.parse(read(name));
@@ -142,7 +151,7 @@ describe('UniFi Protect fixtures', () => {
 		});
 	});
 
-	describe.each([...CAPTURED_JSON, ...CAPTURED_BINARY, ...SYNTHETIC_JSON, ...SYNTHETIC_JSONL])(
+	describe.each([...CAPTURED_JSON, ...CAPTURED_BINARY, ...SYNTHETIC_JSON, ...SYNTHETIC_JSONL, ...EXPECTED_JSON])(
 		'%s sanitization',
 		(name) => {
 			const text = (): string => read(name);
