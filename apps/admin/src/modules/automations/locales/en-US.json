@@ -1115,6 +1115,26 @@
 				"notImported": "The automation could not be imported.",
 				"changed": "The file changed after it was checked. Check it again before importing it."
 			}
+		},
+		"suggestions": {
+			"headings": {
+				"list": "Suggested by Buddy"
+			},
+			"texts": {
+				"list": "Buddy noticed routines you repeat at the same time of day. Open one to check its flow in the editor; nothing is created until you save it.",
+				"addHint": "The flow Buddy suggested opens in the editor once the automation is created. It is saved only when you save it there, and the automation stays disabled until you enable it."
+			},
+			"buttons": {
+				"open": {
+					"title": "Open in editor"
+				},
+				"dismiss": {
+					"title": "Dismiss"
+				}
+			},
+			"messages": {
+				"notDismissed": "The suggestion could not be dismissed."
+			}
 		}
 	}
 }

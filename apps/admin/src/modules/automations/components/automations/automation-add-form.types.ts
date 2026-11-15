@@ -7,6 +7,6 @@ export interface IAutomationAddFormProps {
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;
 	remoteFormChanged?: boolean;
-	// What the form starts with when the automation is created from a template
-	initial?: { name: string; mode: AutomationMode } | null;
+	// What the form starts with when the automation is created from a template or a Buddy suggestion
+	initial?: { name: string; mode: AutomationMode; spaceId?: string | null; fromSuggestion?: boolean } | null;
 }

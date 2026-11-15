@@ -358,6 +358,78 @@ describe('SuggestionEngineService', () => {
 		});
 	});
 
+	describe('automation suggestions', () => {
+		const automationResult = (metadata: Record<string, unknown> = {}): EvaluatorResult => ({
+			type: SuggestionType.PATTERN_AUTOMATION_CREATE,
+			title: 'Automate this routine?',
+			reason: 'You perform 2 actions in Living Room around 7 PM regularly.',
+			spaceId: 'space-1',
+			metadata: {
+				sequence: 'multi-action',
+				sequenceHash: 'hash-a',
+				draft: { name: 'Living Room Evening' },
+				...metadata,
+			},
+		});
+
+		it('stores the draft with the suggestion and does not announce it', async () => {
+			const [created] = await service.createFromEvaluatorResults([automationResult()]);
+
+			expect(created.type).toBe(SuggestionType.PATTERN_AUTOMATION_CREATE);
+			expect(created.metadata.draft).toEqual({ name: 'Living Room Evening' });
+			// The panel and the messaging channels could only "accept" it without anything happening
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+			expect(await service.getActiveSuggestions('space-1')).toHaveLength(1);
+		});
+
+		it('offers one automation per routine and space', async () => {
+			const created = await service.createFromEvaluatorResults([
+				automationResult(),
+				automationResult(),
+				automationResult({ sequenceHash: 'hash-b' }),
+			]);
+
+			expect(created.map((suggestion) => suggestion.metadata.sequenceHash)).toEqual(['hash-a', 'hash-b']);
+		});
+
+		it('is offered next to the scene suggestion for the same routine', async () => {
+			patternDetector.detectPatterns.mockReturnValue([makePattern()]);
+
+			await service.createFromEvaluatorResults([
+				automationResult({ sequence: 'single', sequenceHash: undefined, intentType: IntentType.LIGHT_TOGGLE }),
+			]);
+
+			const scenes = await service.generateSuggestions();
+
+			expect(scenes).toHaveLength(1);
+			expect(scenes[0].type).toBe(SuggestionType.PATTERN_SCENE_CREATE);
+		});
+
+		it('does not offer a routine again once it was answered', async () => {
+			const [dismissed] = await service.createFromEvaluatorResults([automationResult()]);
+
+			await service.recordFeedback(dismissed.id, SuggestionFeedback.DISMISSED);
+
+			// Past the cooldown, the routine is still in the action history
+			const feedbackAt = mockRepo._store.get(dismissed.id).feedbackAt;
+
+			mockRepo._store.get(dismissed.id).feedbackAt = new Date(feedbackAt.getTime() - 5 * 60 * 60 * 1000);
+
+			expect(await service.createFromEvaluatorResults([automationResult()])).toEqual([]);
+			expect(await service.createFromEvaluatorResults([automationResult({ sequenceHash: 'hash-b' })])).toHaveLength(1);
+		});
+
+		it('offers a routine again once its answer is older than the action history', async () => {
+			const [accepted] = await service.createFromEvaluatorResults([automationResult()]);
+
+			await service.recordFeedback(accepted.id, SuggestionFeedback.APPLIED);
+
+			mockRepo._store.get(accepted.id).feedbackAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+
+			expect(await service.createFromEvaluatorResults([automationResult()])).toHaveLength(1);
+		});
+	});
+
 	describe('concurrency', () => {
 		it('should not create duplicates when generateSuggestions and createFromEvaluatorResults overlap', async () => {
 			patternDetector.detectPatterns.mockReturnValue([makePattern({ spaceId: 'room-1' })]);

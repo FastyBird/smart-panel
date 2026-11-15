@@ -10,13 +10,23 @@ export interface IAutomationDraft {
 	name: string;
 	mode: AutomationMode;
 	graph: IAutomationGraph;
+	// The space the new automation is assigned to; left out, the form starts with the whole home
+	spaceId?: string | null;
+	// The Buddy suggestion the draft comes from, marked applied once the editor first saves its flow
+	suggestionId?: string;
 }
 
 // Held in memory only, by the id the new automation will get. A reload loses a draft that was not saved yet,
 // and the add form and the editor then start the way they always do.
 const drafts = new Map<string, IAutomationDraft>();
 
-const copy = (draft: IAutomationDraft): IAutomationDraft => ({ name: draft.name, mode: draft.mode, graph: cloneGraph(draft.graph) });
+const copy = (draft: IAutomationDraft): IAutomationDraft => ({
+	name: draft.name,
+	mode: draft.mode,
+	graph: cloneGraph(draft.graph),
+	...(draft.spaceId !== undefined ? { spaceId: draft.spaceId } : {}),
+	...(draft.suggestionId !== undefined ? { suggestionId: draft.suggestionId } : {}),
+});
 
 export const stashAutomationDraft = (id: string, draft: IAutomationDraft): void => {
 	drafts.set(id, copy(draft));

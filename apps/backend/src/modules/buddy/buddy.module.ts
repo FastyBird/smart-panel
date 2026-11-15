@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AutomationsModule } from '../automations/automations.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
@@ -35,6 +36,7 @@ import { MediaActivityEventListener } from './listeners/media-activity-event.lis
 import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
 import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
+import { AutomationSuggestionEvaluator } from './services/automation-suggestion-evaluator.service';
 import { BuddyContextPlannerService } from './services/buddy-context-planner.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
@@ -79,6 +81,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		WeatherModule,
 		EnergyModule,
 		HomeContextModule,
+		AutomationsModule,
 	],
 	controllers: [
 		BuddyConversationsController,
@@ -108,6 +111,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		AutomationSuggestionEvaluator,
 		SttProviderRegistryService,
 		SttProviderStatusService,
 		SttProviderService,
@@ -155,6 +159,7 @@ export class BuddyModule implements OnModuleInit {
 		private readonly energyEvaluator: EnergyEvaluator,
 		private readonly conflictDetector: ConflictDetectorEvaluator,
 		private readonly sceneSuggestion: SceneSuggestionEvaluator,
+		private readonly automationSuggestion: AutomationSuggestionEvaluator,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly homeContextTools: HomeContextToolProviderService,
 	) {}
@@ -186,6 +191,7 @@ export class BuddyModule implements OnModuleInit {
 		this.heartbeatService.registerEvaluator(this.energyEvaluator);
 		this.heartbeatService.registerEvaluator(this.conflictDetector);
 		this.heartbeatService.registerEvaluator(this.sceneSuggestion);
+		this.heartbeatService.registerEvaluator(this.automationSuggestion);
 		this.managedServiceManager.register(this.heartbeatService);
 		this.toolProviderRegistry.register(this.homeContextTools);
 		this.modulesMapperService.registerMapping<BuddyConfigModel, UpdateBuddyConfigDto>({

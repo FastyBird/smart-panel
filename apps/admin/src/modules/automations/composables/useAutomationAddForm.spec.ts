@@ -84,6 +84,15 @@ describe('useAutomationAddForm', () => {
 		expect(formChanged.value).toBe(true);
 	});
 
+	it('starts in the space of a suggested automation', () => {
+		const { model } = useAutomationAddForm({
+			id: automationId,
+			initial: { name: 'Living Room Evening', mode: AutomationMode.single, spaceId: 'space-1' },
+		});
+
+		expect(model).toEqual({ id: automationId, name: 'Living Room Evening', description: '', spaceId: 'space-1', mode: AutomationMode.single });
+	});
+
 	it('notices a changed form', async () => {
 		const { model, formChanged } = useAutomationAddForm({ id: automationId });
 

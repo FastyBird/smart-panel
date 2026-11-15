@@ -20,6 +20,7 @@ describe('BuddyModule home read tools', () => {
 		const registerManagedService = jest.fn();
 		const homeContextTools = {} as HomeContextToolProviderService;
 		const heartbeatService = { registerEvaluator: jest.fn() };
+		const automationSuggestion = { name: 'AutomationSuggestion' };
 		const module = new BuddyModule(
 			{ register: jest.fn() } as never,
 			{ registerMapping: jest.fn() } as never,
@@ -35,6 +36,7 @@ describe('BuddyModule home read tools', () => {
 			{} as never,
 			{} as never,
 			{} as never,
+			automationSuggestion as never,
 			{ register: registerToolProvider } as never,
 			homeContextTools,
 		);
@@ -43,5 +45,6 @@ describe('BuddyModule home read tools', () => {
 
 		expect(registerToolProvider).toHaveBeenCalledWith(homeContextTools);
 		expect(registerManagedService).toHaveBeenCalledWith(heartbeatService);
+		expect(heartbeatService.registerEvaluator).toHaveBeenCalledWith(automationSuggestion);
 	});
 });

@@ -1,6 +1,7 @@
 export type * from './automation-add-form.types';
 export type * from './automation-edit-form.types';
 export type * from './automation-import-dialog.types';
+export type * from './automation-suggestions.types';
 export type * from './automation-template-dialog.types';
 export type * from './automation-yaml-dialog.types';
 export type * from './automations-filter.types';

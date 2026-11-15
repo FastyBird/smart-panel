@@ -1115,6 +1115,26 @@
 				"notImported": "Die Automatisierung konnte nicht importiert werden.",
 				"changed": "Die Datei wurde nach der Prüfung geändert. Prüfen Sie sie vor dem Import erneut."
 			}
+		},
+		"suggestions": {
+			"headings": {
+				"list": "Von Buddy vorgeschlagen"
+			},
+			"texts": {
+				"list": "Buddy hat Abläufe bemerkt, die Sie zur gleichen Tageszeit wiederholen. Öffnen Sie einen Vorschlag, um seinen Ablauf im Editor zu prüfen; erstellt wird erst, wenn Sie speichern.",
+				"addHint": "Der von Buddy vorgeschlagene Ablauf öffnet sich im Editor, sobald die Automatisierung erstellt ist. Er wird erst gespeichert, wenn Sie ihn dort speichern, und die Automatisierung bleibt deaktiviert, bis Sie sie aktivieren."
+			},
+			"buttons": {
+				"open": {
+					"title": "Im Editor öffnen"
+				},
+				"dismiss": {
+					"title": "Verwerfen"
+				}
+			},
+			"messages": {
+				"notDismissed": "Der Vorschlag konnte nicht verworfen werden."
+			}
 		}
 	}
 }

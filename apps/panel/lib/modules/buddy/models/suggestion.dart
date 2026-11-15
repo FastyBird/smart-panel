@@ -3,6 +3,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 enum BuddySuggestionType {
 	patternSceneCreate,
+	patternAutomationCreate,
 	lightingOptimise,
 	generalTip,
 	anomalySensorDrift,
@@ -19,6 +20,8 @@ enum BuddySuggestionType {
 		switch (value) {
 			case 'pattern_scene_create':
 				return BuddySuggestionType.patternSceneCreate;
+			case 'pattern_automation_create':
+				return BuddySuggestionType.patternAutomationCreate;
 			case 'lighting_optimise':
 				return BuddySuggestionType.lightingOptimise;
 			case 'general_tip':
@@ -51,6 +54,8 @@ enum BuddySuggestionType {
 		switch (this) {
 			case BuddySuggestionType.patternSceneCreate:
 				return MdiIcons.autoFix;
+			case BuddySuggestionType.patternAutomationCreate:
+				return MdiIcons.robotOutline;
 			case BuddySuggestionType.lightingOptimise:
 				return MdiIcons.lightbulbOutline;
 			case BuddySuggestionType.anomalySensorDrift:
@@ -72,6 +77,11 @@ enum BuddySuggestionType {
 				return MdiIcons.lightbulbOnOutline;
 		}
 	}
+
+	/// Whether this suggestion can only be applied in the admin, where its
+	/// draft opens in the automation editor. The panel does not offer it:
+	/// accepting it here would mark it applied without creating anything.
+	bool get isAdminOnly => this == BuddySuggestionType.patternAutomationCreate;
 
 	/// Whether this suggestion type represents a conflict or anomaly
 	/// that should be displayed with warning styling.

@@ -30,3 +30,12 @@ pattern_rules:
       - range: [17, 21]
         label: "Evening"
       - default: "Night"
+
+  # Offers an automation for the routines the two rules above find; their thresholds decide what a routine is.
+  # Only applied in the admin, where the draft opens in the automation editor; it is never created by itself.
+  automation_routine:
+    enabled: true
+    suggestion_type: pattern_automation_create
+    messages:
+      title: "Automate this routine?"
+      reason: "You ${routineLabel} in ${spaceName} around ${timeLabel} regularly. Create an automation \"${automationName}\" that does it for you?"

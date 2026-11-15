@@ -15,8 +15,8 @@ import { useAutomationModes } from './useAutomationModes';
 
 interface IUseAutomationAddFormProps {
 	id: IAutomation['id'];
-	// What the form starts with when the automation is created from a template
-	initial?: { name: string; mode: AutomationMode } | null;
+	// What the form starts with when the automation is created from a template or a Buddy suggestion
+	initial?: { name: string; mode: AutomationMode; spaceId?: string | null } | null;
 }
 
 /**
@@ -43,7 +43,7 @@ export const useAutomationAddForm = ({ id, initial = null }: IUseAutomationAddFo
 		id,
 		name: initial?.name ?? '',
 		description: '',
-		spaceId: null,
+		spaceId: initial?.spaceId ?? null,
 		mode: initial?.mode ?? AutomationMode.restart,
 	});
 

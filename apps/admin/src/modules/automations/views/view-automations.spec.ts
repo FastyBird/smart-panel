@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { RouteNames } from '../automations.constants';
+import { discardAutomationDraft, peekAutomationDraft } from '../automations.drafts';
 import { ListAutomations, ListAutomationsAdjust } from '../components/components';
 
 import ViewAutomations from './view-automations.vue';
@@ -14,6 +15,8 @@ const mocks = vi.hoisted(() => ({
 	fetchAutomations: vi.fn(),
 	fetchSpaces: vi.fn(),
 	exportAutomation: vi.fn(),
+	fetchSuggestions: vi.fn(),
+	dismissSuggestion: vi.fn(),
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
 	route: null as unknown as { name: string; path: string; matched: { name: string }[]; query: Record<string, string> },
@@ -112,6 +115,12 @@ vi.mock('../components/components', async () => {
 			emits: ['update:visible', 'imported'],
 			template: '<div />',
 		}),
+		AutomationSuggestions: defineVueComponent({
+			name: 'AutomationSuggestions',
+			props: { suggestions: { type: Array, default: () => [] }, answering: { type: Array, default: () => [] } },
+			emits: ['open', 'dismiss'],
+			template: '<div />',
+		}),
 	};
 });
 
@@ -123,6 +132,17 @@ vi.mock('../composables/composables', async () => {
 	return {
 		useAutomationSpaces: () => ({ fetchSpaces: mocks.fetchSpaces }),
 		useAutomationExport: () => ({ exporting: () => false, exportAutomation: mocks.exportAutomation }),
+		useAutomationSuggestions: () => ({
+			suggestions: ref([]),
+			answering: ref([]),
+			fetchSuggestions: mocks.fetchSuggestions,
+			dismiss: mocks.dismissSuggestion,
+			toDraft: (suggestion: { id: string; spaceId: string | null; draft: Record<string, unknown> }) => ({
+				...suggestion.draft,
+				spaceId: suggestion.spaceId,
+				suggestionId: suggestion.id,
+			}),
+		}),
 		useAutomationsActions: () => ({ updating: ref([]), remove: vi.fn(), setEnabled: vi.fn() }),
 		useAutomationsDataSource: () => ({
 			fetchAutomations: mocks.fetchAutomations,
@@ -352,6 +372,54 @@ describe('ViewAutomations', (): void => {
 		await flushPromises();
 
 		expect(mocks.routerReplace).toHaveBeenCalledWith({ name: RouteNames.AUTOMATIONS_ADD, params: undefined, query: { draft: 'draft-1' } });
+	});
+
+	describe('suggested by Buddy', (): void => {
+		const suggestion = {
+			id: 'suggestion-1',
+			title: 'Automate this routine?',
+			reason: 'You perform 2 actions in Living Room around 7 PM regularly.',
+			spaceId: 'space-1',
+			draft: { name: 'Living Room Evening', mode: 'single', graph: { version: 1, nodes: [], edges: [] } },
+		};
+
+		it('reads the suggestions with the list', async (): Promise<void> => {
+			await mountView();
+
+			expect(mocks.fetchSuggestions).toHaveBeenCalledTimes(1);
+		});
+
+		it('opens the add form with the suggested draft, creating nothing', async (): Promise<void> => {
+			await mountView();
+
+			wrapper.findComponent({ name: 'AutomationSuggestions' }).vm.$emit('open', suggestion);
+
+			await flushPromises();
+
+			const [[to]] = mocks.routerReplace.mock.calls as [[{ name: string; query: { draft: string } }]];
+
+			expect(to.name).toBe(RouteNames.AUTOMATIONS_ADD);
+			expect(peekAutomationDraft(to.query.draft)).toEqual({
+				name: 'Living Room Evening',
+				mode: 'single',
+				graph: { version: 1, nodes: [], edges: [] },
+				spaceId: 'space-1',
+				suggestionId: 'suggestion-1',
+			});
+
+			discardAutomationDraft(to.query.draft);
+		});
+
+		it('dismisses a suggestion', async (): Promise<void> => {
+			await mountView();
+
+			wrapper.findComponent({ name: 'AutomationSuggestions' }).vm.$emit('dismiss', suggestion);
+
+			await flushPromises();
+
+			expect(mocks.dismissSuggestion).toHaveBeenCalledWith('suggestion-1');
+			expect(mocks.routerReplace).not.toHaveBeenCalled();
+		});
 	});
 
 	it('exports an automation of the list as YAML', async (): Promise<void> => {

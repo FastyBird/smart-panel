@@ -1115,6 +1115,26 @@
 				"notImported": "Nie udało się zaimportować automatyzacji.",
 				"changed": "Plik zmienił się po sprawdzeniu. Sprawdź go ponownie przed importem."
 			}
+		},
+		"suggestions": {
+			"headings": {
+				"list": "Zaproponowane przez Buddy"
+			},
+			"texts": {
+				"list": "Buddy zauważył czynności, które powtarzasz o tej samej porze dnia. Otwórz propozycję, aby sprawdzić jej przepływ w edytorze; nic nie zostanie utworzone, dopóki jej nie zapiszesz.",
+				"addHint": "Przepływ zaproponowany przez Buddy otworzy się w edytorze po utworzeniu automatyzacji. Zostanie zapisany dopiero, gdy go tam zapiszesz, a automatyzacja pozostanie wyłączona, dopóki jej nie włączysz."
+			},
+			"buttons": {
+				"open": {
+					"title": "Otwórz w edytorze"
+				},
+				"dismiss": {
+					"title": "Odrzuć"
+				}
+			},
+			"messages": {
+				"notDismissed": "Nie udało się odrzucić propozycji."
+			}
 		}
 	}
 }

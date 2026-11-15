@@ -123,7 +123,14 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const draftId = route.query[AUTOMATION_TEMPLATE_DRAFT_QUERY];
 const templateDraft: IAutomationDraft | null = typeof draftId === 'string' ? peekAutomationDraft(draftId) : null;
 
-const draft = templateDraft ? { name: templateDraft.name, mode: templateDraft.mode } : null;
+const draft = templateDraft
+	? {
+			name: templateDraft.name,
+			mode: templateDraft.mode,
+			spaceId: templateDraft.spaceId ?? null,
+			fromSuggestion: templateDraft.suggestionId !== undefined,
+		}
+	: null;
 
 const automationId = ref<string>(templateDraft !== null && typeof draftId === 'string' ? draftId : uuid());
 
