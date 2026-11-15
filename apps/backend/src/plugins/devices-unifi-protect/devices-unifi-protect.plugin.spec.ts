@@ -55,6 +55,8 @@ import {
 	ProtectTestConnectionModel,
 	ProtectTestConnectionResponseModel,
 } from './models/test-connection.model';
+import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
+import { ProtectAdoptionService } from './services/protect-adoption.service';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
@@ -204,6 +206,7 @@ describe('DevicesUnifiProtectPlugin', () => {
 			ProtectAdoptionController,
 		]);
 		expect(providers).toContain(ProtectInventoryService);
+		expect(providers).toEqual(expect.arrayContaining([ProtectAdoptionLockService, ProtectAdoptionService]));
 		expect(exported).not.toContain(ProtectDiscoveryService);
 		expect(exported).toContain(ProtectConnectorService);
 		expect(DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS).toEqual(

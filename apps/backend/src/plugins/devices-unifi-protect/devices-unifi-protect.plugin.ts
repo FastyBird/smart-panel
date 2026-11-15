@@ -51,6 +51,8 @@ import {
 } from './entities/devices-unifi-protect.entity';
 import { ProtectMappingLoaderService } from './mappings/mapping-loader.service';
 import { ProtectConfigModel } from './models/config.model';
+import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
+import { ProtectAdoptionService } from './services/protect-adoption.service';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
@@ -84,6 +86,8 @@ import { ProtectMappingPreviewService } from './services/protect-mapping-preview
 		ProtectMappingLoaderService,
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
+		ProtectAdoptionLockService,
+		ProtectAdoptionService,
 		ProtectConnectionTestService,
 		ProtectDiscoveryService,
 		ProtectDiscoveryProbeService,

@@ -20,13 +20,20 @@ import {
 import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME } from '../devices-unifi-protect.constants';
+import { ProtectReqAdoptDeviceDto, ProtectReqBatchAdoptDevicesDto } from '../dto/protect-adoption.dto';
 import { ProtectReqMappingPreviewDto } from '../dto/protect-mapping-preview.dto';
 import {
 	ProtectConsoleUnavailableError,
 	ProtectDeviceNotFoundError,
 	ProtectUnsupportedDeviceError,
 } from '../errors/protect-adoption.error';
+import {
+	ProtectAdoptionResponseModel,
+	ProtectBatchAdoptionModel,
+	ProtectBatchAdoptionResponseModel,
+} from '../models/protect-adoption.model';
 import { ProtectMappingPreviewResponseModel } from '../models/protect-mapping-preview.model';
+import { ProtectAdoptionService } from '../services/protect-adoption.service';
 import { ProtectMappingPreviewService } from '../services/protect-mapping-preview.service';
 
 const translate = (error: unknown): unknown => {
@@ -48,7 +55,10 @@ const translate = (error: unknown): unknown => {
 @ApiTags(DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME)
 @Controller()
 export class ProtectAdoptionController {
-	constructor(private readonly previews: ProtectMappingPreviewService) {}
+	constructor(
+		private readonly previews: ProtectMappingPreviewService,
+		private readonly adoption: ProtectAdoptionService,
+	) {}
 
 	@ApiOperation({
 		tags: [DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME],
@@ -76,5 +86,49 @@ export class ProtectAdoptionController {
 		} catch (error) {
 			throw translate(error);
 		}
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME],
+		summary: 'Adopt a UniFi Protect device',
+		description:
+			'Creates or reconciles the Smart Panel device for one UniFi Protect device. Adoption is idempotent: an adopted device is updated in place and keeps its identifiers. The response is always 200 with the outcome in the result.',
+		operationId: 'create-devices-unifi-protect-plugin-adoption',
+	})
+	@ApiBody({ type: ProtectReqAdoptDeviceDto })
+	@ApiSuccessResponse(ProtectAdoptionResponseModel, 'UniFi Protect device adoption processed successfully')
+	@ApiBadRequestResponse('Invalid adoption request')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('adopt')
+	@HttpCode(200)
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	async adopt(@Body() body: ProtectReqAdoptDeviceDto): Promise<ProtectAdoptionResponseModel> {
+		const response = new ProtectAdoptionResponseModel();
+		response.data = await this.adoption.adoptOne(body.data);
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_UNIFI_PROTECT_PLUGIN_API_TAG_NAME],
+		summary: 'Adopt several UniFi Protect devices',
+		description:
+			'Adopts up to 50 devices one after another in request order. A failing device does not stop the others; every device has its own outcome in the 200 response.',
+		operationId: 'create-devices-unifi-protect-plugin-batch-adoption',
+	})
+	@ApiBody({ type: ProtectReqBatchAdoptDevicesDto })
+	@ApiSuccessResponse(ProtectBatchAdoptionResponseModel, 'UniFi Protect batch adoption processed successfully')
+	@ApiBadRequestResponse('Invalid adoption request')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post('adopt/batch')
+	@HttpCode(200)
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	async adoptBatch(@Body() body: ProtectReqBatchAdoptDevicesDto): Promise<ProtectBatchAdoptionResponseModel> {
+		const response = new ProtectBatchAdoptionResponseModel();
+		response.data = Object.assign(new ProtectBatchAdoptionModel(), {
+			results: await this.adoption.adoptBatch(body.data.devices),
+		});
+
+		return response;
 	}
 }

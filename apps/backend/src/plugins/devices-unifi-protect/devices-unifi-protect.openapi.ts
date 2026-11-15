@@ -3,6 +3,13 @@ import { CreateProtectChannelDto } from './dto/create-channel.dto';
 import { CreateProtectDeviceChannelPropertyDto } from './dto/create-device-channel-property.dto';
 import { CreateProtectDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateProtectDeviceDto } from './dto/create-device.dto';
+import {
+	ProtectAdoptDeviceDto,
+	ProtectAdoptStreamDto,
+	ProtectBatchAdoptDevicesDto,
+	ProtectReqAdoptDeviceDto,
+	ProtectReqBatchAdoptDevicesDto,
+} from './dto/protect-adoption.dto';
 import { ProtectProbeDto, ProtectProbeRequestDto } from './dto/protect-discovery-probe.dto';
 import { ProtectMappingPreviewDto, ProtectReqMappingPreviewDto } from './dto/protect-mapping-preview.dto';
 import {
@@ -22,6 +29,12 @@ import {
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel, ProtectTlsConfigModel } from './models/config.model';
+import {
+	ProtectAdoptionResponseModel,
+	ProtectAdoptionResultModel,
+	ProtectBatchAdoptionModel,
+	ProtectBatchAdoptionResponseModel,
+} from './models/protect-adoption.model';
 import {
 	ProtectDiscoveredConsoleModel,
 	ProtectDiscoveryInterfaceModel,
@@ -99,4 +112,13 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectMappingPreviewStreamModel,
 	ProtectMappingPreviewModel,
 	ProtectMappingPreviewResponseModel,
+	ProtectAdoptStreamDto,
+	ProtectAdoptDeviceDto,
+	ProtectReqAdoptDeviceDto,
+	ProtectBatchAdoptDevicesDto,
+	ProtectReqBatchAdoptDevicesDto,
+	ProtectAdoptionResultModel,
+	ProtectBatchAdoptionModel,
+	ProtectAdoptionResponseModel,
+	ProtectBatchAdoptionResponseModel,
 ];
