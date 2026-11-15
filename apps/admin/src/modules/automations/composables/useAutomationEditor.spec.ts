@@ -390,6 +390,24 @@ describe('useAutomationEditor', () => {
 
 				expect(feedbackCalls()).toEqual([]);
 			});
+
+			it('does not mark the suggestion applied once its working copy was given up for the latest revision', async () => {
+				const editor = await suggested();
+
+				mockBackendClient.GET.mockResolvedValueOnce(ok(detailRes({ revision: 5, graph: withDelay() })));
+
+				await editor.reloadLatest();
+
+				expect(editor.graph.value).toEqual(withDelay());
+
+				editor.updateNodeConfig('d1', { seconds: 5 });
+
+				mockBackendClient.PATCH.mockResolvedValue(ok(detailRes({ revision: 6, graph: editor.graph.value })));
+
+				await expect(editor.save()).resolves.toBe('saved');
+
+				expect(feedbackCalls()).toEqual([]);
+			});
 		});
 
 		it('does not mark a suggestion for a flow generated from a template', async () => {

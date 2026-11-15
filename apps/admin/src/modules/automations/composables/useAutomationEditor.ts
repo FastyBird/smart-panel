@@ -90,6 +90,9 @@ export const useAutomationEditor = ({ id }: IUseAutomationEditorProps): IUseAuto
 		issues.value = [];
 		conflict.value = false;
 
+		// The working copy is replaced, so a suggested flow it held is no longer what a later save would store
+		pendingSuggestionId = null;
+
 		discardDraft();
 
 		history.reset(graph);
