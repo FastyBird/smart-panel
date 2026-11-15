@@ -996,12 +996,15 @@ git commit -m "feat(backend): preview the mapping of a UniFi Protect device"
   | stale exclusions: `DEVICE_INFORMATION` channels | same, plus properties whose `protectMappingName` is null |
   | Homey failure codes | `ProtectAdoptionFailureCode` |
 
-  5. **Terminal values** (both paths): every mapped property with `value !== null`, except `connection_state` and, on
-     re-adoption, any existing property whose value source is a `constant` (event-driven defaults such as `detected: false`
-     are written only when the property is created, so a live value set by UP-8 is never reset), through
+  5. **Terminal values** (both paths, after the creation transaction commits): every mapped property with
+     `value !== null`, except `connection_state` and any existing property whose value source is a `constant` and that
+     already has a stored value (event-driven defaults such as `detected: false` are written only while the property has
+     no stored value, so a live value set by UP-8 is never reset), through
      `channelsPropertiesService.update(id, { type, value }, { strictValuePersistence: true, comparePersistedValue: true,
      expectedPersistedState })`; a failed write is logged with a fixed text and left to the next adoption (Homey
-     behaviour). **Connectivity:** `connectivity.trySetConnectionState(deviceId, { state })` with the mapped
+     behaviour): the item still reports `created`/`updated` (the hierarchy and identity are committed) and carries the
+     warning `values_incomplete`; the next adoption of that device rewrites every path- and template-sourced value and
+     every constant-sourced value that is still unstored, so the incomplete state is resumable. **Connectivity:** `connectivity.trySetConnectionState(deviceId, { state })` with the mapped
      `connection_state` value as `ConnectionState`.
 - Controller additions: `@Post('adopt')` (operationId `create-devices-unifi-protect-plugin-adoption`) and
   `@Post('adopt/batch')` (`create-devices-unifi-protect-plugin-batch-adoption`), both `@HttpCode(200)`, owner/admin,
