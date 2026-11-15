@@ -715,6 +715,26 @@ describe('ProtectAdoptionService', () => {
 		expect(result).toMatchObject({ status: 'failed', failureCode: 'rollback_failed', message: MESSAGES[5] });
 	});
 
+	it('reports structure_incomplete when a stale removal fails and retries it on the next adoption', async () => {
+		fakes.seed(
+			withChannels([...mapped.channels, clone(channel('object_detection.animal'), 'object_detection.face', 'Face')]),
+		);
+		preview.prepare.mockResolvedValue(prepared(mapped));
+		fakes.failChannelRemove = true;
+
+		const first = await service.adoptOne(SELECTION);
+
+		expect(first).toMatchObject({ status: 'updated', failureCode: null, warnings: ['structure_incomplete'] });
+		expect(fakes.channels.map((item) => item.identifier)).toContain('object_detection.face');
+
+		fakes.failChannelRemove = false;
+
+		const second = await service.adoptOne(SELECTION);
+
+		expect(second).toMatchObject({ status: 'updated', warnings: [] });
+		expect(fakes.channels.map((item) => item.identifier)).not.toContain('object_detection.face');
+	});
+
 	it('never prunes the device information channel or a property without a mapping name', async () => {
 		fakes.seed(mapped);
 

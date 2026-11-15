@@ -311,7 +311,7 @@ export class ProtectAdoptionService {
 		// require a rollback. A failure is left to the next adoption instead of compensating with new points.
 		const complete = await this.applyTerminalValues(pendingValues, device, existing.id);
 
-		await this.structureLock.runExclusive(() => this.pruneStale(deferredRemovals));
+		const structureComplete = await this.structureLock.runExclusive(() => this.pruneStale(deferredRemovals));
 
 		return this.finishWithStreams(
 			selection,
@@ -319,6 +319,7 @@ export class ProtectAdoptionService {
 			changed ? ProtectAdoptionStatus.UPDATED : ProtectAdoptionStatus.SKIPPED,
 			existing.id,
 			complete,
+			structureComplete,
 		);
 	}
 
@@ -805,7 +806,10 @@ export class ProtectAdoptionService {
 			: null;
 	}
 
-	private async pruneStale(removals: readonly DeferredRemoval[]): Promise<void> {
+	/** Returns false when any removal failed; the next adoption retries it. */
+	private async pruneStale(removals: readonly DeferredRemoval[]): Promise<boolean> {
+		let complete = true;
+
 		for (const removal of removals) {
 			try {
 				if (removal.kind === 'property') {
@@ -842,9 +846,12 @@ export class ProtectAdoptionService {
 					await this.channelsService.remove(removal.id);
 				}
 			} catch {
+				complete = false;
 				this.logger.warn('UniFi Protect stale structure pruning was deferred until the next adoption');
 			}
 		}
+
+		return complete;
 	}
 
 	private async rollback(journal: readonly UndoOperation[]): Promise<boolean> {
@@ -871,10 +878,18 @@ export class ProtectAdoptionService {
 		status: ProtectAdoptionStatus,
 		panelDeviceId: string,
 		complete: boolean,
+		structureComplete = true,
 	): Promise<ProtectAdoptionResultModel> {
 		const outcome = await this.enableStreams(selection, prepared, panelDeviceId);
 
-		return this.success(selection, status, panelDeviceId, complete && outcome.complete, outcome.stream);
+		return this.success(
+			selection,
+			status,
+			panelDeviceId,
+			complete && outcome.complete,
+			outcome.stream,
+			structureComplete,
+		);
 	}
 
 	private async enableStreams(
@@ -1022,13 +1037,17 @@ export class ProtectAdoptionService {
 		panelDeviceId: string,
 		complete: boolean,
 		stream: ProtectAdoptionStreamModel | null = null,
+		structureComplete = true,
 	): ProtectAdoptionResultModel {
 		return this.result(selection.deviceId, selection.modelKey, {
 			status,
 			panelDeviceId,
 			failureCode: null,
 			message: null,
-			warnings: complete ? [] : [ProtectAdoptionWarningCode.VALUES_INCOMPLETE],
+			warnings: [
+				...(complete ? [] : [ProtectAdoptionWarningCode.VALUES_INCOMPLETE]),
+				...(structureComplete ? [] : [ProtectAdoptionWarningCode.STRUCTURE_INCOMPLETE]),
+			],
 			stream,
 		});
 	}

@@ -32,6 +32,8 @@ export enum ProtectAdoptionFailureCode {
 export enum ProtectAdoptionWarningCode {
 	/** The structure was saved but some current values were not written; the next adoption completes them. */
 	VALUES_INCOMPLETE = 'values_incomplete',
+	/** The structure was saved but a stale channel or property could not be removed; the next adoption retries it. */
+	STRUCTURE_INCOMPLETE = 'structure_incomplete',
 }
 
 export enum ProtectStreamOutcome {
@@ -129,7 +131,8 @@ export class ProtectAdoptionResultModel {
 	message: string | null;
 
 	@ApiProperty({
-		description: 'Warnings of a successful adoption',
+		description:
+			'Warnings of a successful adoption: values_incomplete (some values not written) or structure_incomplete (a stale channel or property was not removed); the next adoption completes both',
 		enum: ProtectAdoptionWarningCode,
 		isArray: true,
 	})
