@@ -1,0 +1,289 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"oneOf": [
+		{ "$ref": "#/definitions/deviceFile" },
+		{ "$ref": "#/definitions/channelFile" },
+		{ "$ref": "#/definitions/propertyFile" }
+	],
+	"definitions": {
+		"name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+		"nonEmptyString": { "type": "string", "minLength": 1 },
+		"scalar": { "type": ["boolean", "number", "string", "null"] },
+		"path": { "type": "string", "minLength": 1 },
+		"numberPair": {
+			"type": "array",
+			"items": { "type": "number" },
+			"minItems": 2,
+			"maxItems": 2
+		},
+		"condition": {
+			"oneOf": [
+				{
+					"type": "object",
+					"properties": { "path": { "$ref": "#/definitions/path" }, "equals": { "$ref": "#/definitions/scalar" } },
+					"required": ["path", "equals"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"path": { "$ref": "#/definitions/path" },
+						"in": { "type": "array", "items": { "$ref": "#/definitions/scalar" }, "minItems": 1 }
+					},
+					"required": ["path", "in"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": { "path": { "$ref": "#/definitions/path" }, "contains": { "type": "string" } },
+					"required": ["path", "contains"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"path": { "$ref": "#/definitions/path" },
+						"matches": { "$ref": "#/definitions/nonEmptyString" }
+					},
+					"required": ["path", "matches"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": { "path": { "$ref": "#/definitions/path" }, "exists": { "const": true } },
+					"required": ["path", "exists"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"any": { "type": "array", "items": { "$ref": "#/definitions/condition" }, "minItems": 1 }
+					},
+					"required": ["any"],
+					"additionalProperties": false
+				}
+			]
+		},
+		"conditions": { "type": "array", "items": { "$ref": "#/definitions/condition" } },
+		"transform": {
+			"oneOf": [
+				{
+					"type": "object",
+					"properties": {
+						"type": { "const": "map" },
+						"table": {
+							"type": "object",
+							"additionalProperties": { "$ref": "#/definitions/scalar" },
+							"minProperties": 1
+						},
+						"default": { "$ref": "#/definitions/scalar" }
+					},
+					"required": ["type", "table"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": { "const": "thresholds" },
+						"thresholds": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"minimum": { "type": "number" },
+									"value": { "$ref": "#/definitions/scalar" }
+								},
+								"required": ["minimum", "value"],
+								"additionalProperties": false
+							},
+							"minItems": 1
+						},
+						"default": { "$ref": "#/definitions/scalar" }
+					},
+					"required": ["type", "thresholds", "default"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": { "const": "scale" },
+						"input_range": { "$ref": "#/definitions/numberPair" },
+						"output_range": { "$ref": "#/definitions/numberPair" },
+						"round": { "type": "boolean" }
+					},
+					"required": ["type", "input_range", "output_range"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": { "const": "round" },
+						"precision": { "type": "integer", "minimum": 0, "maximum": 12 }
+					},
+					"required": ["type"],
+					"additionalProperties": false
+				}
+			]
+		},
+		"valueSource": {
+			"oneOf": [
+				{
+					"type": "object",
+					"properties": { "constant": { "$ref": "#/definitions/scalar" } },
+					"required": ["constant"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": { "template": { "$ref": "#/definitions/nonEmptyString" } },
+					"required": ["template"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": {
+						"path": { "$ref": "#/definitions/path" },
+						"default": { "$ref": "#/definitions/scalar" },
+						"transform": { "$ref": "#/definitions/transform" }
+					},
+					"required": ["path"],
+					"additionalProperties": false
+				},
+				{
+					"type": "object",
+					"properties": { "stream_status": { "enum": ["main", "package"] } },
+					"required": ["stream_status"],
+					"additionalProperties": false
+				}
+			]
+		},
+		"deviceMapping": {
+			"type": "object",
+			"properties": {
+				"name": { "$ref": "#/definitions/name" },
+				"priority": { "type": "integer", "minimum": -100000, "maximum": 100000 },
+				"match": {
+					"type": "object",
+					"properties": {
+						"model_key": { "enum": ["camera", "sensor", "light"] },
+						"when": { "$ref": "#/definitions/conditions" }
+					},
+					"required": ["model_key"],
+					"additionalProperties": false
+				},
+				"device": {
+					"type": "object",
+					"properties": { "category": { "$ref": "#/definitions/nonEmptyString" } },
+					"required": ["category"],
+					"additionalProperties": false
+				}
+			},
+			"required": ["name", "match", "device"],
+			"additionalProperties": false
+		},
+		"channelMapping": {
+			"type": "object",
+			"properties": {
+				"name": { "$ref": "#/definitions/name" },
+				"devices": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/name" },
+					"minItems": 1,
+					"uniqueItems": true
+				},
+				"when": { "$ref": "#/definitions/conditions" },
+				"for_each": {
+					"type": "object",
+					"properties": {
+						"path": { "$ref": "#/definitions/path" },
+						"values": {
+							"type": "object",
+							"additionalProperties": {
+								"type": "object",
+								"properties": {
+									"key": { "$ref": "#/definitions/nonEmptyString" },
+									"name": { "$ref": "#/definitions/nonEmptyString" }
+								},
+								"required": ["key", "name"],
+								"additionalProperties": false
+							},
+							"minProperties": 1
+						},
+						"ignore": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+					},
+					"required": ["path", "values"],
+					"additionalProperties": false
+				},
+				"channel": {
+					"type": "object",
+					"properties": {
+						"identifier": { "$ref": "#/definitions/nonEmptyString" },
+						"category": { "$ref": "#/definitions/nonEmptyString" },
+						"name": { "$ref": "#/definitions/nonEmptyString" }
+					},
+					"required": ["identifier", "category", "name"],
+					"additionalProperties": false
+				}
+			},
+			"required": ["name", "devices", "channel"],
+			"additionalProperties": false
+		},
+		"propertyMapping": {
+			"type": "object",
+			"properties": {
+				"name": { "$ref": "#/definitions/name" },
+				"channel": { "$ref": "#/definitions/name" },
+				"devices": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/name" },
+					"minItems": 1,
+					"uniqueItems": true
+				},
+				"property": {
+					"type": "object",
+					"properties": {
+						"identifier": { "$ref": "#/definitions/name" },
+						"category": { "$ref": "#/definitions/nonEmptyString" },
+						"name": { "$ref": "#/definitions/nonEmptyString" },
+						"variant": { "$ref": "#/definitions/nonEmptyString" }
+					},
+					"required": ["identifier", "category"],
+					"additionalProperties": false
+				},
+				"value": { "$ref": "#/definitions/valueSource" }
+			},
+			"required": ["name", "channel", "property"],
+			"additionalProperties": false
+		},
+		"deviceFile": {
+			"type": "object",
+			"properties": {
+				"version": { "const": 1 },
+				"kind": { "const": "devices" },
+				"mappings": { "type": "array", "items": { "$ref": "#/definitions/deviceMapping" } }
+			},
+			"required": ["version", "kind", "mappings"],
+			"additionalProperties": false
+		},
+		"channelFile": {
+			"type": "object",
+			"properties": {
+				"version": { "const": 1 },
+				"kind": { "const": "channels" },
+				"mappings": { "type": "array", "items": { "$ref": "#/definitions/channelMapping" } }
+			},
+			"required": ["version", "kind", "mappings"],
+			"additionalProperties": false
+		},
+		"propertyFile": {
+			"type": "object",
+			"properties": {
+				"version": { "const": 1 },
+				"kind": { "const": "properties" },
+				"mappings": { "type": "array", "items": { "$ref": "#/definitions/propertyMapping" } }
+			},
+			"required": ["version", "kind", "mappings"],
+			"additionalProperties": false
+		}
+	}
+}

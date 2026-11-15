@@ -54,6 +54,14 @@
         "outDir": "dist"
       },
       {
+        "include": "plugins/devices-unifi-protect/mappings/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-unifi-protect/mappings/definitions/**/*.yaml",
+        "outDir": "dist"
+      },
+      {
         "include": "plugins/devices-modbus/templates/schema/**/*.json",
         "outDir": "dist"
       },
