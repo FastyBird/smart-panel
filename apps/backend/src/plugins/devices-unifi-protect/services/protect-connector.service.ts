@@ -33,6 +33,17 @@ export interface ProtectConsoleIdentity {
 	nvrMacKey: string;
 }
 
+export interface ProtectSession {
+	/** Grows with every announced session. */
+	generation: number;
+	client: ProtectApiClient;
+	identity: ProtectConsoleIdentity;
+}
+
+export type ProtectSessionEnd = 'lost' | 'stopped';
+
+export type ProtectSessionListener = (session: ProtectSession | null, reason: ProtectSessionEnd | null) => void;
+
 const AUTH_CATEGORIES: readonly ProtectErrorCategory[] = [
 	ProtectErrorCategory.AUTHENTICATION,
 	ProtectErrorCategory.AUTHORIZATION,
@@ -66,6 +77,8 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 	private lastConnectedAt: Date | null = null;
 	private lastErrorCategory: ProtectErrorCategory | null = null;
 	private inflight: Promise<void> | null = null;
+	private sessionCounter = 0;
+	private readonly sessionListeners = new Set<ProtectSessionListener>();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -81,7 +94,10 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 			}
 
 			this.state = 'starting';
-			this.resetRuntime();
+
+			if (this.resetRuntime()) {
+				this.emitSession(null, 'stopped');
+			}
 
 			const generation = ++this.generation;
 			const config = this.readConfig();
@@ -110,6 +126,8 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 			this.startedConfig = null;
 			this.state = 'stopped';
 			this.logger.log('UniFi Protect connector stopped');
+			// Always announced, even when no session existed, so a listener's end handling is never skipped.
+			this.emitSession(null, 'stopped');
 
 			return Promise.resolve();
 		});
@@ -187,6 +205,18 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		return this.isConnected() && this.nvrId !== null && this.nvrMacKey !== null
 			? { nvrId: this.nvrId, nvrMacKey: this.nvrMacKey }
 			: null;
+	}
+
+	/**
+	 * Called with a session when the connector becomes connected and with `null` when that client closes. Listener
+	 * errors are caught and logged with a fixed text. Returns the unsubscribe function.
+	 */
+	onSessionChange(listener: ProtectSessionListener): () => void {
+		this.sessionListeners.add(listener);
+
+		return () => {
+			this.sessionListeners.delete(listener);
+		};
 	}
 
 	/** Resolves when the current connection attempt or health check has finished (tests, e2e). */
@@ -292,6 +322,13 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 			this.connectionState = ProtectConnectionState.CONNECTED;
 			this.logger.log(`UniFi Protect connected (Protect ${meta.applicationVersion})`);
 			this.scheduleHealthCheck(generation);
+
+			const identity = this.getConsoleIdentity();
+
+			// A console without a usable MAC is connected but cannot be mapped, so no session is announced.
+			if (identity !== null) {
+				this.emitSession({ generation: ++this.sessionCounter, client, identity }, null);
+			}
 		} catch (error) {
 			if (client !== null) {
 				this.discard(client);
@@ -408,6 +445,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		if (this.client !== null) {
 			this.client.close();
 			this.client = null;
+			this.emitSession(null, 'lost');
 		}
 	}
 
@@ -425,8 +463,24 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		}
 	}
 
-	/** Closes every client and timer and clears the connection facts; the generation is bumped by the caller. */
-	private resetRuntime(): void {
+	private emitSession(session: ProtectSession | null, reason: ProtectSessionEnd | null): void {
+		for (const listener of [...this.sessionListeners]) {
+			try {
+				listener(session, reason);
+			} catch {
+				// Nothing from the listener's error is kept: it may carry anything.
+				this.logger.warn('UniFi Protect session listener failed');
+			}
+		}
+	}
+
+	/**
+	 * Closes every client and timer and clears the connection facts; the generation is bumped by the caller. Returns
+	 * whether a connected client existed, so the caller can announce its end.
+	 */
+	private resetRuntime(): boolean {
+		const wasConnected = this.client !== null;
+
 		this.clearHealthTimer();
 		this.clearReconnectTimer();
 
@@ -445,6 +499,8 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		this.nvrMacKey = null;
 		this.lastConnectedAt = null;
 		this.lastErrorCategory = null;
+
+		return wasConnected;
 	}
 
 	/** A pending timer never keeps the process alive. */

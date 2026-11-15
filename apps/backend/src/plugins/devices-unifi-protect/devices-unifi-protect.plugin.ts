@@ -63,6 +63,12 @@ import { PROTECT_DISCOVERY_ENVIRONMENT, PROTECT_PROBE_TRANSPORT } from './servic
 import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './services/protect-discovery.service';
 import { ProtectInventoryService } from './services/protect-inventory.service';
 import { ProtectMappingPreviewService } from './services/protect-mapping-preview.service';
+import {
+	PROTECT_DEFAULT_REALTIME_TIMINGS,
+	PROTECT_REALTIME_TIMINGS,
+	ProtectRealtimeService,
+} from './services/protect-realtime.service';
+import { ProtectSynchronizerService } from './services/protect-synchronizer.service';
 
 @ApiTag({
 	tagName: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -87,6 +93,9 @@ import { ProtectMappingPreviewService } from './services/protect-mapping-preview
 		ProtectMappingLoaderService,
 		ProtectInventoryService,
 		ProtectMappingPreviewService,
+		ProtectSynchronizerService,
+		{ provide: PROTECT_REALTIME_TIMINGS, useValue: PROTECT_DEFAULT_REALTIME_TIMINGS },
+		ProtectRealtimeService,
 		ProtectAdoptionLockService,
 		ProtectAdoptionStreamsService,
 		ProtectAdoptionService,
