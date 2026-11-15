@@ -826,6 +826,80 @@ describe('ProtectSynchronizerService', () => {
 			expect(jest.getTimerCount()).toBe(0);
 		});
 
+		it('drains a queued event write before a snapshot reconciles the device', async () => {
+			const contact = prop(SENSOR_PANEL, 'contact', 'contact_detected');
+
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0008', 'add'));
+			await service.applySnapshot(IDENTITY, sensorSnapshot({ isOpened: false }));
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(contact).at(-1)).toBe(false);
+			expect(stored.get(contact)).not.toBe(true);
+		});
+
+		it('drains a queued tamper latch before a snapshot that reports it cleared', async () => {
+			const contact = prop(SENSOR_PANEL, 'contact', 'contact_tampered');
+			const motion = prop(SENSOR_PANEL, 'motion', 'sensor_motion_tampered');
+
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('down')).mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0012', 'add'));
+			await service.applySnapshot(IDENTITY, sensorSnapshot({ tamperingDetectedAt: null }));
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(contact).at(-1)).toBe(false);
+			expect(values(motion).at(-1)).toBe(false);
+		});
+
+		it('does not count updates of events dropped for a device that is not adopted', async () => {
+			await prime();
+
+			const add = frameFor('add', {
+				id: eventId('0040'),
+				modelKey: 'event',
+				type: 'motion',
+				start: 1,
+				device: 'ffffffffffffffffffffffff',
+			});
+
+			await feed(add);
+			await feed(frameFor('update', { id: eventId('0040'), modelKey: 'event', end: 2 }));
+			await feed(frameFor('remove', { id: eventId('0040'), modelKey: 'event' }));
+
+			expect(service.getCounters().framesIgnored).toBe(0);
+
+			await feed(frameFor('update', { id: eventId('0041'), modelKey: 'event', end: 2 }));
+
+			expect(service.getCounters().framesIgnored).toBe(1);
+		});
+
+		it('drops a queued write silently when its property is gone', async () => {
+			const smoke = prop(CAMERA_PANEL, 'smoke', 'smoke_alarm_sound_detected');
+
+			await prime();
+			properties.update.mockRejectedValueOnce(new Error('down'));
+			await feed(eventFrame('0005', 'add'));
+			properties.update.mockClear();
+			devices = [
+				{
+					...adopt(goldenCamera, CAMERA_PANEL),
+					channels: adopt(goldenCamera, CAMERA_PANEL).channels.filter((channel: Raw) => channel.identifier !== 'smoke'),
+				},
+				adopt(goldenSensor, SENSOR_PANEL),
+			];
+			service.invalidateIndex();
+			await jest.advanceTimersByTimeAsync(120_000);
+			await flush();
+
+			expect(values(smoke)).toEqual([]);
+			expect(service.getCounters().writesFailed).toBe(1);
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
 		it('keeps at most 32 queued failures per device', () => {
 			for (let index = 0; index < 40; index++) {
 				(service as any).queueRetry('device', {

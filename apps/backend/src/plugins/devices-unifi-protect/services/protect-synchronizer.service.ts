@@ -80,6 +80,7 @@ const RING_FAILURE_TEXT = 'UniFi Protect ring could not be published';
 const RETRY_DELAYS_MS: readonly number[] = [5000, 15000, 45000];
 const MAX_RETRY_ENTRIES = 32;
 const MAX_IGNORED_EVENT_NAMES = 32;
+const MAX_DROPPED_EVENT_IDS = 1024;
 const INVALID_EVENT_NAME = 'invalid';
 const DOORBELL_CHANNEL = 'doorbell';
 const DOORBELL_MAPPING = 'doorbell_event';
@@ -123,6 +124,8 @@ export class ProtectSynchronizerService {
 	private readonly retries = new Map<string, RetryEntry[]>();
 	private eventTimer: NodeJS.Timeout | null = null;
 	private retryTimer: NodeJS.Timeout | null = null;
+	/** Ids of events dropped for devices Smart Panel has not adopted (LRU), so their updates are not counted. */
+	private readonly droppedEventIds = new Map<string, true>();
 	private eventIdentity: ProtectConsoleIdentity | null = null;
 
 	private chain: Promise<void> = Promise.resolve();
@@ -204,6 +207,7 @@ export class ProtectSynchronizerService {
 		this.removed.clear();
 		this.tracker.clear();
 		this.retries.clear();
+		this.droppedEventIds.clear();
 		this.eventIdentity = null;
 		this.clearTimer('eventTimer');
 		this.clearTimer('retryTimer');
@@ -303,6 +307,7 @@ export class ProtectSynchronizerService {
 			const key = modelKey === undefined ? null : cacheKey(modelKey, device.protectDeviceId);
 
 			if (modelKey !== undefined && key !== null) {
+				await this.retryDevice(device.protectDeviceId);
 				await this.syncDevice(identity, device, modelKey, next.get(key), previous.get(key) ?? null, 'snapshot', null);
 			} else if (snapshot.complete) {
 				await this.markRemoved(device);
@@ -383,8 +388,19 @@ export class ProtectSynchronizerService {
 
 		const eventDevice = frame.action === 'add' ? frame.item.device : undefined;
 
+		if (frame.action !== 'add' && this.droppedEventIds.has(frame.id)) {
+			return;
+		}
+
 		// Events of devices Smart Panel has not adopted are not tracked at all.
 		if (typeof eventDevice === 'string' && !this.index.has(eventDevice)) {
+			this.droppedEventIds.delete(frame.id);
+			this.droppedEventIds.set(frame.id, true);
+
+			while (this.droppedEventIds.size > MAX_DROPPED_EVENT_IDS) {
+				this.droppedEventIds.delete(this.droppedEventIds.keys().next().value as string);
+			}
+
 			return;
 		}
 
@@ -586,7 +602,9 @@ export class ProtectSynchronizerService {
 
 			if (device !== undefined) {
 				if (entry.kind === 'write') {
+					// A property that left the index (channel removed) has nothing to write any more.
 					done =
+						device.properties.get(entry.key)?.id !== entry.propertyId ||
 						this.lastWritten.get(entry.propertyId) === entry.value ||
 						(await this.writeProperty(entry.propertyId, entry.value));
 				} else {
@@ -638,6 +656,10 @@ export class ProtectSynchronizerService {
 			() => {
 				this.retryTimer = null;
 				void this.run(async () => {
+					if (this.eventIdentity !== null) {
+						await this.ensureIndex(this.eventIdentity);
+					}
+
 					for (const protectDeviceId of [...this.retries.keys()]) {
 						await this.retryDevice(protectDeviceId, true);
 					}
