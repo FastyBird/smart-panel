@@ -202,7 +202,7 @@ Connects Smart Panel to a UniFi Protect console over its local Integration API. 
 
 ## What you get
 
-- A monitored connection to your Protect console, with its status and a test-connection check (this version creates no devices yet; device adoption comes in a later release)
+- Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and optional RTSPS stream enablement per camera
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
 - Certificate trust that never sends the API key over an unverified connection
 
@@ -239,7 +239,7 @@ There is no insecure mode: the API key is never sent over a connection that is n
 
 ## Boundaries
 
-This version only reads from the console and never changes console settings. The plugin never disables a camera microphone. Adoption, recording, users and firmware stay in Protect.
+Adoption can enable an RTSPS stream on the cameras you select; the plugin never deletes a stream and never changes other console settings. The plugin never disables a camera microphone. Recording, users and firmware stay in Protect.
 
 Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
 			links: {

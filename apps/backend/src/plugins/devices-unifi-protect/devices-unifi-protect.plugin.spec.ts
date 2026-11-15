@@ -166,6 +166,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('## Boundaries');
 		expect(metadata.readme).toContain('There is no insecure mode');
 		expect(metadata.readme).toContain('never disables a camera microphone');
+		expect(metadata.readme).toContain('never deletes a stream');
+		expect(metadata.readme).not.toContain('creates no devices yet');
 	});
 
 	it('registers the connector as a managed service and a factory-reset handler', async () => {
