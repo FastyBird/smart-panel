@@ -104,6 +104,26 @@ const getCurrentRepoVersion = (base, tag) => {
 	return null;
 }
 
+const getTaggedVersions = (base, tag) => {
+	if (tag === "latest") {
+		return [];
+	}
+
+	// A manually created release may reserve a version that was never published to npm.
+	// Query origin directly because the version-sync job uses a shallow checkout without tags.
+	// Fail if the query fails rather than risk overwriting an existing release's assets.
+	const refs = child_process.execFileSync(
+		"git",
+		["ls-remote", "--tags", "--refs", "origin", `refs/tags/v${base}-${tag}.*`],
+		{ encoding: "utf8", timeout: 30000 }
+	);
+	const prefix = `${base}-${tag}.`;
+
+	return refs.split("\n")
+		.map((line) => line.split(/\s+/)[1]?.replace(/^refs\/tags\/v/, ""))
+		.filter((version) => version?.startsWith(prefix) && /^\d+$/.test(version.slice(prefix.length)));
+};
+
 const extractBuildNumber = (existingVersions) => {
 	if (tag === "latest") {
 		return existingVersions.length; // e.g. 0, 1, 2, ...
@@ -213,23 +233,24 @@ const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 (async () => {
 	const baseVersion = parseBaseVersion(ref);
 
-	const allPublishedVersions = PACKAGES
-		.filter((pkg) => pkg.check === true)
-		.flatMap((pkg) =>
-			getPublishedVersions(pkg.name, baseVersion, tag)
-		);
+	const allExistingVersions = [
+		...getTaggedVersions(baseVersion, tag),
+		...PACKAGES
+			.filter((pkg) => pkg.check === true)
+			.flatMap((pkg) => getPublishedVersions(pkg.name, baseVersion, tag)),
+	];
 
 	// Also consider the current repo version as a baseline to avoid re-using
 	// versions that were published and then unpublished (npm 24h reservation)
 	const repoVersion = getCurrentRepoVersion(baseVersion, tag);
-	if (repoVersion && !allPublishedVersions.includes(repoVersion)) {
-		allPublishedVersions.push(repoVersion);
+	if (repoVersion && !allExistingVersions.includes(repoVersion)) {
+		allExistingVersions.push(repoVersion);
 	}
 	// Each package history is sorted, but concatenating them does not preserve
 	// order. This must run even when the repo version was already published.
-	allPublishedVersions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+	allExistingVersions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allPublishedVersions);
+	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allExistingVersions);
 
 	// A release must have exactly ONE identity. `fullVersion` is what gets written into
 	// every package.json, so it is also what the git tag, version.json and asset names
