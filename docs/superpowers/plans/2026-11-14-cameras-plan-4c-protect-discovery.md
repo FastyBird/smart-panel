@@ -96,9 +96,11 @@ the task named at the end of the line.
    with `consoles: []`, warning `no_replies` and, when `/.dockerenv` exists, `container_network_isolated`; manual
    probe keeps working. → Task 4.
 2. **Another UniFi device that also answers with a short model** (access point, switch): it must not appear as a
-   console. It is probed, found not to be UniFi OS, dropped from `consoles` and counted in `other_unifi_devices`. A
+   console. It is probed, found not to be UniFi OS (or, with no 0x30 in its reply, refuses 443 or fails TLS), dropped
+   from `consoles` and counted in `other_unifi_devices`; at the 16-candidate cap a reply with 0x30 replaces a
+   short-model-only candidate, so such devices cannot crowd out a real console. A
    v0 reply and a reply with no TLV that identifies a console are counted, never listed. → Tasks 1 and 4.
-3. **A hostile or broken LAN device**: garbage, truncated, oversized datagrams, replies from another source port, the
+3. **A hostile or broken LAN device**: garbage, truncated, oversized datagrams, replies from another source port (counted as another UniFi device, never a candidate), the
    request echoed back, and a flood of replies with fresh MACs. Nothing throws, nothing is retained beyond 16
    candidates and 256 other-device identities (warning `candidate_limit_reached`). → Tasks 1 and 4.
 4. **`directConnectDomain` is valid for TLS but does not resolve to the console on this LAN** (router DNS rebinding
@@ -586,14 +588,21 @@ git commit -m "feat(backend): probe UniFi Protect consoles and their certificate
   each in its own `try/catch` (a multicast setup failure does not stop broadcast). (4) A send round (t = 0, 1667,
   3333 ms) sends, per ready interface, V1 then V2 to `<broadcast>:10001` and to `233.89.188.1:10001`; **never to
   `255.255.255.255`**. A send callback error records the interface's first error code; one successful send marks the
-  interface `ok`. (5) A message is dropped unless `rinfo.port === 10001`; then parsed; parse failures are logged at
-  `debug` with the reason code only; replies without an identity MAC are ignored; a candidate (rule of Task 1) is kept
+  interface `ok`. (5) Every message is parsed; parse failures are logged at
+  `debug` with the reason code only; replies without an identity MAC are ignored; a candidate (rule of Task 1) that
+  arrives from `rinfo.port === 10001` is kept
   in a `Map<mac, …>` (first `rinfo.address` is `host`, further addresses are appended to `addresses`, null fields are
-  filled from later replies), up to 16 (then `candidate_limit_reached`); any other reply with an identity MAC adds to a
+  filled from later replies), up to 16 (at the cap a new candidate reply that carries `directConnectDomain` (0x30) replaces the oldest candidate
+  that has none, i.e. only a short model (0x0c); if every candidate has 0x30 the reply is ignored; either way
+  `candidate_limit_reached` is raised); any other reply with an identity MAC, including a console-shaped reply from a
+  source port other than 10001 (live: the non-console device answers from an ephemeral port), adds to a
   `Set` (at most 256 entries, then ignored) counted as `otherUnifiDevices`. (6) At t = 5000 ms close every socket, finalise interface statuses, and if
   every interface is `error` finish `failed`/`all_interfaces_failed`. (7) Otherwise probe candidates with concurrency
-  8 (`probe({ host, port: PROTECT_PROBE_DEFAULT_PORT })`); a candidate whose probe status is `not_console` is dropped from `consoles` and
-  added to `otherUnifiDevices` (its MAC joins the same `Set`, so nothing is counted twice). (8) Warnings:
+  8 (`probe({ host, port: PROTECT_PROBE_DEFAULT_PORT })`); a candidate whose probe status is `not_console`, or is `unreachable` with failure
+  `connection_refused` or `tls_failure` while its reply carried no `directConnectDomain` (a UniFi OS console always
+  serves HTTPS on 443), is dropped from `consoles` and
+  added to `otherUnifiDevices` (its MAC joins the same `Set`, so nothing is counted twice); `timeout`,
+  `host_unreachable` and `dns_failure` keep it listed as an unreachable console. (8) Warnings:
   `some_interfaces_failed` when at least one but not all failed; `no_replies` when no UDP reply was kept or counted;
   `container_network_isolated` when `no_replies` and `env.isContainer()`. (9) `completed`, `finishedAt = now`.
 
@@ -627,7 +636,9 @@ it('de-duplicates replies with the same MAC and keeps every source address', ...
 it('de-duplicates across resend rounds', ...);
 it('drops a probed candidate that is not a console and counts it once', ...);                  // probe status 'not_console' -> consoles [], otherUnifiDevices 1 (also when its MAC replied twice)
 it('keeps a console whose probe is unreachable and reports the probe status', ...);
-it('ignores a reply from a source port other than 10001', ...);
+it('counts a console-shaped reply from another source port as another UniFi device, not a candidate', ...);
+it('moves a short-model-only candidate whose probe is refused (or fails TLS) to the other devices', ...);   // keeps it when 0x30 was present or the failure is timeout/host_unreachable/dns_failure
+it('lets a reply with the direct-connect domain replace a short-model-only candidate at the cap', ...);
 it('ignores the echoed request and replies without an identity MAC', ...);
 it('ignores malformed datagrams without throwing and without counting them', ...);              // truncated fixture prefixes, 5000 bytes, random bytes
 it('keeps at most 16 candidates and warns candidate_limit_reached', ...);                       // 20 distinct console MACs
