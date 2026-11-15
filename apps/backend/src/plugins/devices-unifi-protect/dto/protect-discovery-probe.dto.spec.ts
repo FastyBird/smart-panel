@@ -35,6 +35,15 @@ describe('Protect probe DTO', () => {
 			expect((await checkImplicit({ host })).length).toBeGreaterThan(0);
 		});
 
+		it.each([true, '443', '8443'])('rejects the non-integer port %j', async (port) => {
+			expect((await checkImplicit({ host: '192.168.1.10', port })).length).toBeGreaterThan(0);
+		});
+
+		it('accepts an integer port and an omitted port', async () => {
+			expect(await checkImplicit({ host: '192.168.1.10', port: 8443 })).toEqual([]);
+			expect(await checkImplicit({ host: '192.168.1.10' })).toEqual([]);
+		});
+
 		it('still trims and lowercases a string host', async () => {
 			expect(buildImplicit({ host: ' UniFi.Local ' }).data.host).toBe('unifi.local');
 			expect(await checkImplicit({ host: ' UniFi.Local ' })).toEqual([]);

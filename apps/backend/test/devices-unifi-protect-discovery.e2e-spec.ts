@@ -333,6 +333,14 @@ describe('UniFi Protect discovery (e2e)', () => {
 		},
 	);
 
+	it.each([true, '443'])('rejects the non-integer port %j with 400', async (port) => {
+		const before = httpsRequests;
+		const response = await send('post', `${base}/probe`, ownerToken, { data: { host: '127.0.0.1', port } });
+
+		expect(response.status).toBe(400);
+		expect(httpsRequests).toBe(before);
+	});
+
 	it('rejects an unknown body property with 400', async () => {
 		const before = httpsRequests;
 		const response = await send('post', `${base}/probe`, ownerToken, {

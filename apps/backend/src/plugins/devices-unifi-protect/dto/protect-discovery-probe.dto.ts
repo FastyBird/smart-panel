@@ -29,6 +29,9 @@ export class ProtectProbeDto {
 		maximum: 65535,
 	})
 	@Expose()
+	// Reads the original plain value: implicit conversion has already turned `true` into 1 and '443' into 443 by the
+	// time `value` arrives, so only a JSON integer may reach the validators.
+	@Transform(({ obj, key }: { obj: Record<string, unknown>; key: string }) => obj[key])
 	@IsOptional()
 	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
 	@Min(1, { message: '[{"field":"port","reason":"Port must be between 1 and 65535."}]' })
