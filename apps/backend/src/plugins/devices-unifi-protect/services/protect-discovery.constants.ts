@@ -29,3 +29,25 @@ export enum ProtectDiscoveryParseFailure {
 	TRUNCATED_TLV = 'truncated_tlv',
 	OVERSIZED_TLV = 'oversized_tlv',
 }
+
+export enum ProtectPresence {
+	PRESENT = 'present',
+	ABSENT = 'absent',
+	UNKNOWN = 'unknown',
+}
+
+export enum ProtectProbeStatus {
+	CONSOLE = 'console',
+	NOT_CONSOLE = 'not_console',
+	UNREACHABLE = 'unreachable',
+}
+
+export enum ProtectProbeFailure {
+	TIMEOUT = 'timeout',
+	CONNECTION_REFUSED = 'connection_refused',
+	HOST_UNREACHABLE = 'host_unreachable',
+	DNS_FAILURE = 'dns_failure',
+	TLS_FAILURE = 'tls_failure',
+}
+
+export type ProtectTransportErrorKind = 'timeout' | 'refused' | 'unreachable' | 'dns' | 'tls' | 'protocol';
