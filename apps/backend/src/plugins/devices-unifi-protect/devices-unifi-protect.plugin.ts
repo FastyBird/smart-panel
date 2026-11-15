@@ -198,11 +198,11 @@ export class DevicesUnifiProtectPlugin implements OnModuleInit {
 
 > Plugin · by FastyBird · platform: devices
 
-Connects Smart Panel to a UniFi Protect console over its local Integration API. Protect remains responsible for adopting cameras, recording and firmware; Smart Panel reads the console's inventory for display.
+Connects Smart Panel to a UniFi Protect console over its local Integration API. Protect remains responsible for adopting cameras, recording and firmware; Smart Panel adopts the devices you select as its own devices.
 
 ## What you get
 
-- Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and optional RTSPS stream enablement per camera
+- Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and RTSPS stream enablement per camera (on by default, opt out with \`stream.enabled: false\`)
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
 - Certificate trust that never sends the API key over an unverified connection
 
@@ -239,9 +239,9 @@ There is no insecure mode: the API key is never sent over a connection that is n
 
 ## Boundaries
 
-Adoption can enable an RTSPS stream on the cameras you select; the plugin never deletes a stream and never changes other console settings. The plugin never disables a camera microphone. Recording, users and firmware stay in Protect.
+Adoption enables the RTSPS streams of every adopted camera unless the request opts out (\`stream.enabled: false\`); the plugin never deletes a stream and never changes other console settings. The plugin never disables a camera microphone. Recording, users and firmware stay in Protect.
 
-Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
+Adoption is API-only until the admin wizard (UP-12) ships. Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

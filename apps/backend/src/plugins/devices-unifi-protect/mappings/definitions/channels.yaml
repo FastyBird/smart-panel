@@ -1,3 +1,5 @@
+# Mapping `name` values are persisted identity: they are stored as `protectMappingName` on every adopted
+# channel and matched on re-adoption. Never rename one; a rename fails closed for every adopted device.
 version: 1
 kind: channels
 mappings:
