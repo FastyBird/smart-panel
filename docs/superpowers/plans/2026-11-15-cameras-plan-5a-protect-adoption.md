@@ -570,7 +570,8 @@ git commit -m "feat(backend): load and validate UniFi Protect mapping definition
   `constant`; `template` with `{id}` = device id and `{key}`; `path` (undefined or null → `default ?? null`, otherwise the
   transform); `stream_status` (below). Map keys compare `String(value)`; thresholds take the first `value >= minimum`;
   scale is linear and rounds to an integer when `round`; `round` uses `precision` (default 0). A result whose type does
-  not fit the data type (`bool` → boolean; `enum`/`string` → string; numeric → finite number) becomes `null`. Device
+  not fit the data type (`bool` → boolean; `enum`/`string` → string; numeric → finite number) becomes `null`; so does a
+  numeric value outside the spec `format` range `[min, max]` and an `enum` value not listed in the spec `format`. Device
   name: `device.name` trimmed, ≤ 255 characters and free of control characters, else `UniFi Protect <modelKey> <id>`.
   `stream_status`: `state` `CONNECTING` → `initializing`, `DISCONNECTED` → `offline`, `CONNECTED` → `available` when
   (`main`: `high || medium || low`; `package`: `package`) is true in `streams`, else `unavailable`; any other state →
@@ -995,7 +996,9 @@ git commit -m "feat(backend): preview the mapping of a UniFi Protect device"
   | stale exclusions: `DEVICE_INFORMATION` channels | same, plus properties whose `protectMappingName` is null |
   | Homey failure codes | `ProtectAdoptionFailureCode` |
 
-  5. **Terminal values** (both paths): every mapped property with `value !== null`, except `connection_state`, through
+  5. **Terminal values** (both paths): every mapped property with `value !== null`, except `connection_state` and, on
+     re-adoption, any existing property whose value source is a `constant` (event-driven defaults such as `detected: false`
+     are written only when the property is created, so a live value set by UP-8 is never reset), through
      `channelsPropertiesService.update(id, { type, value }, { strictValuePersistence: true, comparePersistedValue: true,
      expectedPersistedState })`; a failed write is logged with a fixed text and left to the next adoption (Homey
      behaviour). **Connectivity:** `connectivity.trySetConnectionState(deviceId, { state })` with the mapped
