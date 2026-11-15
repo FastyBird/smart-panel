@@ -25,10 +25,10 @@ UP-1, UP-2, UP-5 and UP-6 are merged on `main` (`14fbe76f3`); every interface be
 
 ---
 
-## Decisions for approval
+## Decisions (approved)
 
 The issue, the design and the roadmap disagree or leave these open. The plan is written for each recommendation; the
-"if not" line says what changes. Approve or amend before Task 1 starts.
+"if not" line says what changes. The maintainer approved every recommendation below on 2026-11-15, unchanged.
 
 **P1. Smoke and CO alarm sounds (`smartDetectAudioTypes` `alrmSmoke` / `alrmCmonx`).**
 Options: (a) map them to the existing `smoke` / `carbon_monoxide` channels (issue #1183 table, design §10.1 and §14a);
