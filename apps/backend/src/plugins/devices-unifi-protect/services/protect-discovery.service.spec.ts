@@ -272,6 +272,42 @@ describe('ProtectDiscoveryService', () => {
 		expect(probe.probe).toHaveBeenCalledTimes(1);
 	});
 
+	it('lists and probes a console that answers only with a V2 reply', async () => {
+		const scan = await scanWith([
+			[
+				buildDiscoveryReply({
+					version: 2,
+					command: 9,
+					tlvs: [
+						[0x01, macOf(5)],
+						[0x0b, 'console-5'],
+						[0x0c, 'UNVR'],
+					],
+				}),
+				'192.168.1.15',
+			],
+		]);
+
+		expect(scan.consoles).toHaveLength(1);
+		expect(scan.consoles[0].host).toBe('192.168.1.15');
+		expect(probe.probe).toHaveBeenCalledTimes(1);
+	});
+
+	it('de-duplicates a V1 and a V2 reply from the same MAC', async () => {
+		const tlvs = [
+			[0x01, macOf(6)],
+			[0x0b, 'console-6'],
+			[0x0c, 'UNVR'],
+		] as const;
+		const scan = await scanWith([
+			[buildDiscoveryReply({ version: 1, tlvs }), '192.168.1.16'],
+			[buildDiscoveryReply({ version: 2, command: 9, tlvs }), '192.168.1.16'],
+		]);
+
+		expect(scan.consoles).toHaveLength(1);
+		expect(probe.probe).toHaveBeenCalledTimes(1);
+	});
+
 	it('keeps at most eight source addresses per candidate, host first', async () => {
 		const reply = fixture('discovery-reply.bin');
 		const scan = await scanWith(Array.from({ length: 12 }, (_, n): [Buffer, string] => [reply, `192.168.1.${10 + n}`]));

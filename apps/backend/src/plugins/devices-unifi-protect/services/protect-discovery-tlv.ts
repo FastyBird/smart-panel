@@ -15,7 +15,7 @@ export interface ProtectDiscoveryAddress {
 }
 
 export interface ProtectDiscoveryReply {
-	headerVersion: 0 | 1;
+	headerVersion: 0 | 1 | 2;
 	hwaddr: string | null;
 	addresses: ProtectDiscoveryAddress[];
 	firmware: string | null;
@@ -64,7 +64,7 @@ export const parseDiscoveryReply = (datagram: Uint8Array): ProtectDiscoveryParse
 	const view = new DataView(datagram.buffer, datagram.byteOffset, datagram.byteLength);
 	const version = view.getUint8(0);
 
-	if (version !== 0 && version !== 1) {
+	if (version !== 0 && version !== 1 && version !== 2) {
 		return fail(ProtectDiscoveryParseFailure.UNSUPPORTED_VERSION);
 	}
 

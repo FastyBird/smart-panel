@@ -86,13 +86,57 @@ describe('parseDiscoveryReply', () => {
 		expect(isProtectConsoleCandidate(result.reply)).toBe(false);
 	});
 
-	it('accepts header versions 0 and 1 and rejects version 2', () => {
+	it('accepts header versions 0, 1 and 2 and rejects version 3 and above', () => {
 		expect(parseDiscoveryReply(buildDiscoveryReply({ version: 0, tlvs: [] })).ok).toBe(true);
 		expect(parseDiscoveryReply(buildDiscoveryReply({ version: 1, command: 7, tlvs: [] })).ok).toBe(true);
-		expect(parseDiscoveryReply(Uint8Array.of(0x02, 0x08, 0x00, 0x00))).toEqual({
-			ok: false,
-			reason: 'unsupported_version',
-		});
+		expect(parseDiscoveryReply(buildDiscoveryReply({ version: 2, command: 9, tlvs: [] })).ok).toBe(true);
+
+		for (const version of [3, 0xff]) {
+			expect(parseDiscoveryReply(buildDiscoveryReply({ version, tlvs: [] }))).toEqual({
+				ok: false,
+				reason: 'unsupported_version',
+			});
+		}
+	});
+
+	it('parses a hand-built v2 console reply to the same fields as v1', () => {
+		const v1 = parseDiscoveryReply(buildDiscoveryReply({ version: 1, tlvs: HAND_BUILT_CONSOLE_TLVS }));
+		const v2 = parseDiscoveryReply(buildDiscoveryReply({ version: 2, command: 9, tlvs: HAND_BUILT_CONSOLE_TLVS }));
+
+		if (!v1.ok || !v2.ok) {
+			throw new Error('unexpected parse failure');
+		}
+
+		expect(v2.reply).toEqual({ ...v1.reply, headerVersion: 2 });
+		expect(isProtectConsoleCandidate(v2.reply)).toBe(true);
+	});
+
+	it('parses the v1 fixture with header bytes rewritten to version 2, command 9', () => {
+		const bytes = Buffer.from(fixture('discovery-reply.bin'));
+		const v1 = parseDiscoveryReply(bytes);
+
+		bytes[0] = 2;
+		bytes[1] = 9;
+
+		const v2 = parseDiscoveryReply(bytes);
+
+		if (!v1.ok || !v2.ok) {
+			throw new Error('unexpected parse failure');
+		}
+
+		expect(v2.reply).toEqual({ ...v1.reply, headerVersion: 2 });
+	});
+
+	it('parses the echoed v2 request without an identity MAC', () => {
+		const result = parseDiscoveryReply(Uint8Array.of(0x02, 0x08, 0x00, 0x00));
+
+		if (!result.ok) {
+			throw new Error('unexpected parse failure');
+		}
+
+		expect(result.reply.headerVersion).toBe(2);
+		expect(replyIdentityMac(result.reply)).toBeNull();
+		expect(isProtectConsoleCandidate(result.reply)).toBe(false);
 	});
 
 	it('skips unknown TLV types and keeps them out of the model', () => {
