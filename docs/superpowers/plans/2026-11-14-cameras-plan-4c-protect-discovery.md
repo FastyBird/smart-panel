@@ -188,8 +188,8 @@ Specs sit next to their source (`*.spec.ts`). Tasks are ordered so each ends wit
   export const HAND_BUILT_CONSOLE_TLVS: ReadonlyArray<readonly [number, Buffer | string]>;
   ```
 - Value formats (decided here, because the live capture only names the TLVs): `0x01` is 6 bytes; `0x02` is 10 bytes
-  (6 MAC + 4 IPv4 octets, dotted decimal); `0x03`, `0x0b`, `0x0c`, `0x30` are UTF-8 strings (`0x30` must also satisfy `isDnsHostname`, else `null`); `0x33` is 16 bytes
-  rendered as lowercase `8-4-4-4-12` UUID. Any other length for those types drops that field (`null`, or the pair is
+  (6 MAC + 4 IPv4 octets, dotted decimal); `0x03`, `0x0b`, `0x0c`, `0x30` are UTF-8 strings (`0x30` must also satisfy `isDnsHostname`, else `null`); `0x33` is the UUID as a 36-byte
+  ASCII string (`8-4-4-4-12`, any case, output lowercased; anything not UUID-shaped is `null`). Any other length for those types drops that field (`null`, or the pair is
   skipped for `0x02`), it does not reject the reply. Unknown types are skipped. A scalar type seen twice keeps its
   first value. Header: `>BBH` = version, command, length of the bytes after the header; versions 0 and 1 accepted,
   any command byte accepted, bytes past the declared length ignored.
@@ -204,7 +204,7 @@ either is missing: stop and report which.
 
 Write a throwaway script in the session scratchpad (never in the repo) that walks `discovery-reply.bin` and prints
 `type:length` per TLV and the header. Expected: header `01 00` + big-endian length equal to `file size - 4`; one `0x01`
-of length 6; `0x02` of length 10 (twice); `0x30` and `0x0c` present; `0x33` of length 16. Also confirm `discovery-reply-v0.bin` has header version 0 and carries a `0x01` or a `0x02` TLV (the scan counts a
+of length 6; `0x02` of length 10 (twice); `0x30` and `0x0c` present; `0x33` of length 36. Also confirm `discovery-reply-v0.bin` has header version 0 and carries a `0x01` or a `0x02` TLV (the scan counts a
 non-console device only when it has an identity MAC). If a length differs from
 the table or the v0 fixture has no identity, stop and amend the "Value formats" paragraph of this plan before Step 3; do not bend the parser to a guess.
 
@@ -225,7 +225,7 @@ it.each(['','Unifi','a_b','-a.b','a-.b','a..b','1.2.3','a b','x'.repeat(64)+'.lo
   `readFileSync(join(__dirname, '..', '__fixtures__', '<name>'))`)
 
 `HAND_BUILT_CONSOLE_TLVS` = `0x01` `aa:bb:cc:00:00:01`, `0x02` same MAC + `192.168.1.10`, `0x03` `6.0.17`, `0x0b`
-`Dream-Machine-Pro`, `0x0c` `UNVR`, `0x30` `abc123.id.ui.direct`, `0x33` bytes `00112233-4455-6677-8899-aabbccddeeff`.
+`Dream-Machine-Pro`, `0x0c` `UNVR`, `0x30` `abc123.id.ui.direct`, `0x33` string `00112233-4455-6677-8899-aabbccddeeff`.
 
 ```ts
 it('parses a hand-built v1 console reply', () => expect(parseDiscoveryReply(buildDiscoveryReply({ version: 1, tlvs: HAND_BUILT_CONSOLE_TLVS }))).toEqual({
@@ -244,7 +244,7 @@ it('rejects a TLV whose length runs past the end as truncated_tlv', ...);
 it('rejects a TLV header cut after two bytes as truncated_tlv', ...);
 it('rejects a TLV above 1024 bytes as oversized_tlv', ...);
 it('rejects a datagram above 4096 bytes as oversized_datagram', ...);
-it.each([ ['0x01 with 5 bytes','hwaddr'], ['0x33 with 15 bytes','uuid'], ['0x0b with invalid UTF-8 (0xff 0xfe)','hostname'],
+it.each([ ['0x01 with 5 bytes','hwaddr'], ['0x33 that is not UUID-shaped','uuid'], ['0x0b with invalid UTF-8 (0xff 0xfe)','hostname'],
           ['0x0c containing a control character','shortModel'], ['0x30 of 129 characters','directConnectDomain'], ['0x30 "not a host"','directConnectDomain'] ])
   ('drops %s but keeps the reply', ...);                                       // ok true, that field null, others intact
 it('skips a 0x02 TLV that is not 10 bytes', ...);
