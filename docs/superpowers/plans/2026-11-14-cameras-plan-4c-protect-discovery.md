@@ -67,7 +67,7 @@ class-transformer, `@nestjs/swagger`, Jest, supertest. No migration, no config c
 
 - Request `01 00 00 00` to the subnet broadcast address on UDP 10001: the console replies with header version 1,
   command 0, 402 bytes. A second, non-console UniFi device replies with header version 0 and other TLVs.
-- Console TLVs: `0x01` MAC, `0x02` MAC+IPv4 (twice, plus a `0x2f` variant), `0x03` firmware `6.0.17`, `0x0a` uptime,
+- Console TLVs: `0x01` MAC, `0x02` MAC+IPv4 (once, plus a `0x2f` variant), `0x03` firmware `6.0.17`, `0x0a` uptime,
   `0x0b` hostname `Dream-Machine-Pro`, `0x0c` short model `UNVR`, `0x0d`/`0x0e`/`0x0f`/`0x14`/`0x17`/`0x20` other,
   `0x30` directConnectDomain `<hex>.id.ui.direct`, `0x32` JSON interface info, `0x33` UUID.
 - Non-console v0 device TLVs: `0x15` `uum_controller`, `0x16` version, `0x22` `tls://<ip>:12812`; no `0x0c`, no `0x30`.
@@ -204,7 +204,7 @@ either is missing: stop and report which.
 
 Write a throwaway script in the session scratchpad (never in the repo) that walks `discovery-reply.bin` and prints
 `type:length` per TLV and the header. Expected: header `01 00` + big-endian length equal to `file size - 4`; one `0x01`
-of length 6; `0x02` of length 10 (twice); `0x30` and `0x0c` present; `0x33` of length 36. Also confirm `discovery-reply-v0.bin` has header version 0 and carries a `0x01` or a `0x02` TLV (the scan counts a
+of length 6; `0x02` of length 10 (once, plus a 10-byte `0x2f` variant); `0x30` and `0x0c` present; `0x33` of length 36. Also confirm `discovery-reply-v0.bin` has header version 0 and carries a `0x01` or a `0x02` TLV (the scan counts a
 non-console device only when it has an identity MAC). If a length differs from
 the table or the v0 fixture has no identity, stop and amend the "Value formats" paragraph of this plan before Step 3; do not bend the parser to a guess.
 
@@ -232,7 +232,7 @@ it('parses a hand-built v1 console reply', () => expect(parseDiscoveryReply(buil
 	ok: true, reply: { headerVersion: 1, hwaddr: 'aa:bb:cc:00:00:01', addresses: [{ mac: 'aa:bb:cc:00:00:01', ip: '192.168.1.10' }],
 	firmware: '6.0.17', hostname: 'Dream-Machine-Pro', shortModel: 'UNVR', directConnectDomain: 'abc123.id.ui.direct',
 	uuid: '00112233-4455-6677-8899-aabbccddeeff' } }));
-it('parses the sanitized v1 fixture: header, length and fields', ...);   // fixture.length === 4 + fixture.readUInt16BE(2); headerVersion 1; firmware '6.0.17'; shortModel 'UNVR'; hostname 'Dream-Machine-Pro'; domain matches /^[0-9a-f]+\.id\.ui\.direct$/; hwaddr matches /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/; uuid matches the UUID regex; addresses.length >= 2; isProtectConsoleCandidate true
+it('parses the sanitized v1 fixture: header, length and fields', ...);   // fixture.length === 4 + fixture.readUInt16BE(2); headerVersion 1; firmware '6.0.17'; shortModel 'UNVR'; hostname 'Dream-Machine-Pro'; domain matches /^[0-9a-f]+\.id\.ui\.direct$/; hwaddr matches /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/; uuid matches the UUID regex; addresses.length >= 1; isProtectConsoleCandidate true
 it('parses the sanitized v0 fixture and does not treat it as a console', ...); // ok true; headerVersion 0; isProtectConsoleCandidate false
 it('accepts header versions 0 and 1 and rejects version 2', ...);            // 02 08 00 00 -> { ok:false, reason:'unsupported_version' }
 it('skips unknown TLV types and keeps them out of the model', ...);          // add 0x0a, 0x32 (JSON), 0x2f, 0xee; Object.keys(reply).sort() equals the 8 documented keys
