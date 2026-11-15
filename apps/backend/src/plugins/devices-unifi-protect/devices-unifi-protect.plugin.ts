@@ -24,6 +24,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { DefaultProtectApiClientFactory, PROTECT_API_CLIENT_FACTORY } from './client/protect-api-client.factory';
+import { ProtectAdoptionController } from './controllers/protect-adoption.controller';
 import { ProtectDevicesController } from './controllers/protect-devices.controller';
 import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
@@ -58,6 +59,7 @@ import { NodeProtectProbeTransport } from './services/protect-discovery-probe.tr
 import { PROTECT_DISCOVERY_ENVIRONMENT, PROTECT_PROBE_TRANSPORT } from './services/protect-discovery.constants';
 import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './services/protect-discovery.service';
 import { ProtectInventoryService } from './services/protect-inventory.service';
+import { ProtectMappingPreviewService } from './services/protect-mapping-preview.service';
 
 @ApiTag({
 	tagName: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -81,6 +83,7 @@ import { ProtectInventoryService } from './services/protect-inventory.service';
 		ProtectConnectorService,
 		ProtectMappingLoaderService,
 		ProtectInventoryService,
+		ProtectMappingPreviewService,
 		ProtectConnectionTestService,
 		ProtectDiscoveryService,
 		ProtectDiscoveryProbeService,
@@ -92,6 +95,7 @@ import { ProtectInventoryService } from './services/protect-inventory.service';
 		ProtectTestConnectionController,
 		ProtectDiscoveryController,
 		ProtectDevicesController,
+		ProtectAdoptionController,
 	],
 	exports: [ProtectConnectorService],
 })

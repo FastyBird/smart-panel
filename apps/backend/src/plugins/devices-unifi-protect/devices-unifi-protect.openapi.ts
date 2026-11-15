@@ -4,6 +4,7 @@ import { CreateProtectDeviceChannelPropertyDto } from './dto/create-device-chann
 import { CreateProtectDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateProtectDeviceDto } from './dto/create-device.dto';
 import { ProtectProbeDto, ProtectProbeRequestDto } from './dto/protect-discovery-probe.dto';
+import { ProtectMappingPreviewDto, ProtectReqMappingPreviewDto } from './dto/protect-mapping-preview.dto';
 import {
 	ProtectTestCandidateConnectionDto,
 	ProtectTestConnectionDto,
@@ -35,6 +36,15 @@ import {
 	ProtectInventoryDeviceResponseModel,
 	ProtectInventoryDevicesResponseModel,
 } from './models/protect-inventory.model';
+import {
+	ProtectMappingPreviewChannelModel,
+	ProtectMappingPreviewDeviceModel,
+	ProtectMappingPreviewModel,
+	ProtectMappingPreviewPropertyModel,
+	ProtectMappingPreviewResponseModel,
+	ProtectMappingPreviewStreamModel,
+	ProtectMappingPreviewWarningModel,
+} from './models/protect-mapping-preview.model';
 import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
 import {
 	ProtectCertificateModel,
@@ -80,4 +90,13 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectInventoryDeviceModel,
 	ProtectInventoryDevicesResponseModel,
 	ProtectInventoryDeviceResponseModel,
+	ProtectMappingPreviewDto,
+	ProtectReqMappingPreviewDto,
+	ProtectMappingPreviewDeviceModel,
+	ProtectMappingPreviewPropertyModel,
+	ProtectMappingPreviewChannelModel,
+	ProtectMappingPreviewWarningModel,
+	ProtectMappingPreviewStreamModel,
+	ProtectMappingPreviewModel,
+	ProtectMappingPreviewResponseModel,
 ];

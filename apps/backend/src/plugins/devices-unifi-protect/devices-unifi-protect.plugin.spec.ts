@@ -12,6 +12,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
+import { ProtectAdoptionController } from './controllers/protect-adoption.controller';
 import { ProtectDevicesController } from './controllers/protect-devices.controller';
 import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
@@ -200,6 +201,7 @@ describe('DevicesUnifiProtectPlugin', () => {
 			ProtectTestConnectionController,
 			ProtectDiscoveryController,
 			ProtectDevicesController,
+			ProtectAdoptionController,
 		]);
 		expect(providers).toContain(ProtectInventoryService);
 		expect(exported).not.toContain(ProtectDiscoveryService);
