@@ -42,7 +42,7 @@ export interface ProtectEventTarget {
 
 const SAFE_NAME = /^[A-Za-z0-9_]{1,64}$/;
 
-const OBJECT_TYPES: Readonly<Record<string, string>> = Object.freeze({
+export const OBJECT_TYPES: Readonly<Record<string, string>> = Object.freeze({
 	person: 'person',
 	vehicle: 'vehicle',
 	animal: 'animal',
@@ -51,7 +51,7 @@ const OBJECT_TYPES: Readonly<Record<string, string>> = Object.freeze({
 	face: 'face',
 });
 
-const AUDIO_TYPES: Readonly<Record<string, { channel: string; mapping: string }>> = Object.freeze({
+export const AUDIO_TYPES: Readonly<Record<string, { channel: string; mapping: string }>> = Object.freeze({
 	alrmSmoke: { channel: 'smoke', mapping: 'smoke_alarm_sound_detected' },
 	alrmCmonx: { channel: 'carbon_monoxide', mapping: 'co_alarm_sound_detected' },
 	alrmGlassBreak: { channel: 'sound_detection.glass_break', mapping: 'sound_detected' },

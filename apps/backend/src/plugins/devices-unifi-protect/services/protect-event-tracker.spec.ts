@@ -1,7 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { ProtectMappingLoaderService } from '../mappings/mapping-loader.service';
+
 import {
+	AUDIO_TYPES,
+	OBJECT_TYPES,
 	ProtectEventEffect,
 	ProtectEventTracker,
 	ProtectTargetWrite,
@@ -396,5 +400,69 @@ describe('ProtectEventTracker', () => {
 		expect(tracker.nextDeadline()).toBeNull();
 		expect(tracker.openTargets(CAMERA).size).toBe(0);
 		expect(tracker.apply(add(1, 'motion'), 1).ignored).toEqual([]);
+	});
+});
+
+describe('tracker types against the channel mappings', () => {
+	const mappings = new ProtectMappingLoaderService().getMappings();
+	const forEachOf = (name: string): { values: Record<string, { key: string }>; ignore: string[] } => {
+		const channel = mappings.channels.find((candidate) => candidate.name === name);
+
+		if (channel?.forEach === null || channel?.forEach === undefined) {
+			throw new Error(`channel mapping ${name} has no for_each`);
+		}
+
+		return channel.forEach;
+	};
+
+	it('maps every smart-detect object type to the channel the mapping creates for it', () => {
+		const expected = Object.fromEntries(
+			Object.entries(forEachOf('object_detection').values).map(([type, entry]) => [type, entry.key]),
+		);
+
+		expect(OBJECT_TYPES).toEqual(expected);
+	});
+
+	it('maps every audio type to the channel the mapping creates for it', () => {
+		const sound = forEachOf('sound_detection');
+		const fromMapping = Object.fromEntries(
+			Object.entries(sound.values).map(([type, entry]) => [type, `sound_detection.${entry.key}`]),
+		);
+
+		for (const type of sound.ignore) {
+			const dedicated = mappings.channels.find((candidate) =>
+				candidate.when.some((condition) => JSON.stringify(condition).includes(`"${type}"`)),
+			);
+
+			expect(dedicated).toBeDefined();
+			fromMapping[type] = dedicated?.identifier ?? '';
+		}
+
+		expect(Object.fromEntries(Object.entries(AUDIO_TYPES).map(([type, entry]) => [type, entry.channel]))).toEqual(
+			fromMapping,
+		);
+	});
+
+	it('uses property mappings that exist on the channel of each tracker pair', () => {
+		const channelOf = (identifier: string): string | undefined =>
+			mappings.channels.find(
+				(candidate) =>
+					candidate.identifier === identifier ||
+					(candidate.forEach !== null &&
+						Object.values(candidate.forEach.values).some(
+							(entry) => candidate.identifier.replace('{key}', entry.key) === identifier,
+						)),
+			)?.name;
+		const pairs = [
+			...Object.values(OBJECT_TYPES).map((key) => [`object_detection.${key}`, 'object_detected']),
+			...Object.values(AUDIO_TYPES).map((entry) => [entry.channel, entry.mapping]),
+		];
+
+		for (const [channel, mapping] of pairs) {
+			const property = mappings.properties.find((candidate) => candidate.name === mapping);
+
+			expect(channelOf(channel)).toBeDefined();
+			expect(property?.channel).toBe(channelOf(channel));
+		}
 	});
 });
