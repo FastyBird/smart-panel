@@ -229,9 +229,7 @@ describe('UniFi Protect real-time sync (e2e)', () => {
 				pingIntervalMs: 180_000,
 				pongTimeoutMs: 30_000,
 				degradedAfterFailures: 3,
-				// Quick reconnects at first; once the third failure has switched to polling the attempts slow down, like the
-				// real backoff does, so a poll read is not overtaken by a failed attempt (which discards it as stale).
-				reconnectDelay: (attempt: number) => (attempt < 2 ? 100 : 6000),
+				reconnectDelay: () => 100,
 			})
 			.compile();
 
@@ -518,8 +516,9 @@ describe('UniFi Protect real-time sync (e2e)', () => {
 
 		await awaitStatus({ connection_state: 'connected', realtime_state: 'streaming' }, 15_000);
 
-		// The issue is resolved by a fire-and-forget call in the same tick streaming starts.
-		await eventually(async () => expect(await issues()).toHaveLength(0), 2000);
+		// The issue resolves only after 30 s of stable streaming (unit tests); here it is still open, and the plugin
+		// stop in the next test resolves it.
+		expect(await issues()).toHaveLength(1);
 	}, 60_000);
 
 	it('stops the sockets when the plugin is disabled', async () => {
@@ -530,6 +529,15 @@ describe('UniFi Protect real-time sync (e2e)', () => {
 			expect(fake.subscriptionCount('events')).toBe(0);
 		}, 5000);
 		await awaitStatus({ realtime_state: 'stopped' }, 5000);
+		await eventually(
+			async () =>
+				expect(
+					(
+						await app.get(NotificationsService).findAll({ status: 'active', source: DEVICES_UNIFI_PROTECT_PLUGIN_NAME })
+					).filter((row) => row.key === 'realtime'),
+				).toHaveLength(0),
+			2000,
+		);
 	});
 
 	it('never leaked a secret into responses, logs, events, notifications or the database', async () => {

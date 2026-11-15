@@ -83,10 +83,12 @@ describe('ProtectRealtimeService', () => {
 		idle: jest.Mock;
 		reset: jest.Mock;
 		countIgnoredFrame: jest.Mock;
+		getSnapshotSequence: jest.Mock;
 		getCounters: jest.Mock;
 	};
 	let notifications: { notify: jest.Mock; resolve: jest.Mock };
 	let pollInterval: number;
+	let snapshotSequence: number;
 	let config: { getPluginConfig: jest.Mock };
 	let timings: ProtectRealtimeTimings;
 	let service: ProtectRealtimeService;
@@ -182,8 +184,10 @@ describe('ProtectRealtimeService', () => {
 				return unsubscribe;
 			}),
 		};
+		snapshotSequence = 0;
 		synchronizer = {
 			applySnapshot: jest.fn(() => {
+				snapshotSequence++;
 				order.push('applySnapshot');
 
 				return Promise.resolve();
@@ -196,6 +200,7 @@ describe('ProtectRealtimeService', () => {
 			idle: jest.fn(() => Promise.resolve()),
 			reset: jest.fn(),
 			countIgnoredFrame: jest.fn(),
+			getSnapshotSequence: jest.fn(() => snapshotSequence),
 			getCounters: jest.fn(() => ({ ignoredEventCount: 2 })),
 		};
 		notifications = {
@@ -795,6 +800,15 @@ describe('ProtectRealtimeService', () => {
 			await service.settle();
 
 			expect(service.getState()).toBe('streaming');
+			expect(notifications.resolve).not.toHaveBeenCalled();
+
+			await jest.advanceTimersByTimeAsync(29_999);
+
+			expect(notifications.resolve).not.toHaveBeenCalled();
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
 			expect(notifications.resolve).toHaveBeenCalledWith('devices-unifi-protect-plugin', 'realtime');
 
 			client.listCameras.mockClear();
@@ -810,14 +824,39 @@ describe('ProtectRealtimeService', () => {
 			await jest.advanceTimersByTimeAsync(4000);
 			await service.settle();
 
+			await jest.advanceTimersByTimeAsync(30_000);
+
 			expect(notifications.resolve).toHaveBeenCalledTimes(1);
 
 			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
-			await jest.advanceTimersByTimeAsync(8000);
+			await jest.advanceTimersByTimeAsync(1000);
 			await service.settle();
+			await jest.advanceTimersByTimeAsync(30_000);
 
 			expect(service.getState()).toBe('streaming');
 			expect(notifications.resolve).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the issue raised once when the console drops again within 30 s of recovering', async () => {
+			await failCycles(3);
+			openError = null;
+			await jest.advanceTimersByTimeAsync(4000);
+			await service.settle();
+			await jest.advanceTimersByTimeAsync(10_000);
+			sub('events').handlers.closed(failure(ProtectErrorCategory.UNREACHABLE));
+			// The unstable drop counts as a fourth failure, so the retry waits 8 s.
+			await jest.advanceTimersByTimeAsync(8000);
+			await service.settle();
+			await jest.advanceTimersByTimeAsync(29_999);
+
+			expect(service.getState()).toBe('streaming');
+			expect(notifications.resolve).not.toHaveBeenCalled();
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(1);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
 		});
 
 		it('resolves the notification when the connector stops', async () => {
@@ -868,6 +907,54 @@ describe('ProtectRealtimeService', () => {
 			await jest.advanceTimersByTimeAsync(0);
 
 			expect(service.getState()).toBe('streaming');
+			expect(synchronizer.applySnapshot).not.toHaveBeenCalled();
+		});
+
+		it('applies a poll although a reconnect attempt failed while it was reading', async () => {
+			await failCycles(3);
+			synchronizer.applySnapshot.mockClear();
+
+			const gate = deferred<void>();
+
+			client.listSensors.mockImplementationOnce(async () => {
+				await gate.promise;
+
+				return sensors.map((item) => ({ id: item.id, raw: item }));
+			});
+
+			// The poll starts 5 s after the third failure; the attempt at 12 s fails (generation bump) while the read is open.
+			await jest.advanceTimersByTimeAsync(5000);
+
+			expect(client.listSensors).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(7000);
+
+			expect(opens('devices')).toBe(5);
+
+			gate.resolve();
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(service.getState()).toBe('polling');
+			expect(synchronizer.applySnapshot).toHaveBeenCalledTimes(1);
+		});
+
+		it('discards a poll that a newer snapshot overtook', async () => {
+			await failCycles(3);
+			synchronizer.applySnapshot.mockClear();
+
+			const gate = deferred<void>();
+
+			client.listSensors.mockImplementationOnce(async () => {
+				await gate.promise;
+
+				return sensors.map((item) => ({ id: item.id, raw: item }));
+			});
+
+			await jest.advanceTimersByTimeAsync(5000);
+			snapshotSequence++;
+			gate.resolve();
+			await jest.advanceTimersByTimeAsync(0);
+
 			expect(synchronizer.applySnapshot).not.toHaveBeenCalled();
 		});
 

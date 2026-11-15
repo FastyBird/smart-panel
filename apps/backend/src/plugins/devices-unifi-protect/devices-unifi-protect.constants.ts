@@ -53,6 +53,8 @@ export const PROTECT_MAX_BUFFERED_FRAMES = 1000;
 export const PROTECT_MAX_PENDING_FRAMES = 1000;
 export const PROTECT_FAILURE_LOG_INTERVAL_MS = 60_000;
 export const PROTECT_DEGRADED_AFTER_FAILURES = 3;
+/** A streaming session that ends sooner counts as a failed cycle; the realtime issue resolves after this long. */
+export const PROTECT_STABLE_STREAM_MS = 30_000;
 export const PROTECT_EVENT_SAFETY_TIMEOUT_MS = 60_000;
 export const PROTECT_MAX_SEEN_EVENTS = 1024;
 export const PROTECT_MAX_OPEN_EVENTS = 256;

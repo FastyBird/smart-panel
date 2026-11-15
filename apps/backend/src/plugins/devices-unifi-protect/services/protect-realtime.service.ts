@@ -17,6 +17,7 @@ import {
 	PROTECT_DEGRADED_AFTER_FAILURES,
 	PROTECT_MAX_BUFFERED_FRAMES,
 	PROTECT_MAX_RETRY_AFTER_MS,
+	PROTECT_STABLE_STREAM_MS,
 	PROTECT_SUBSCRIPTION_TOPICS,
 	PROTECT_WS_PING_INTERVAL_MS,
 	PROTECT_WS_PONG_TIMEOUT_MS,
@@ -43,9 +44,6 @@ export interface ProtectRealtimeTimings {
 }
 
 export const PROTECT_REALTIME_NOTIFICATION_KEY = 'realtime';
-
-/** A streaming session that ends sooner than this after it started counts as a failed cycle. */
-const PROTECT_STABLE_STREAM_MS = 30_000;
 
 export const PROTECT_REALTIME_TIMINGS = Symbol('PROTECT_REALTIME_TIMINGS');
 
@@ -114,6 +112,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 	private reconnectTimer: NodeJS.Timeout | null = null;
 	private pingTimer: NodeJS.Timeout | null = null;
 	private pongTimer: NodeJS.Timeout | null = null;
+	private stableTimer: NodeJS.Timeout | null = null;
 	private awaitingPong = new Set<ProtectSubscriptionTopic>();
 	private inflight: Promise<void> | null = null;
 
@@ -210,6 +209,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		this.clearTimer('reconnectTimer');
 		this.clearTimer('pingTimer');
 		this.clearTimer('pongTimer');
+		this.clearTimer('stableTimer');
 	}
 
 	private closeSocket(socket: ProtectSubscription): void {
@@ -297,7 +297,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 			this.cycle = 'streaming';
 			this.streamingSince = Date.now();
 			this.stopPolling();
-			void this.resolveIssue();
+			this.scheduleStable(generation);
 			this.schedulePing(generation);
 		} catch (error) {
 			if (!this.isStale(generation)) {
@@ -404,6 +404,20 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		}
 
 		this.fail(generation, failure);
+	}
+
+	/** The realtime issue resolves only once the session has streamed for a while, so a flapping console does not toggle it. */
+	private scheduleStable(generation: number): void {
+		this.clearTimer('stableTimer');
+		this.stableTimer = this.unref(
+			setTimeout(() => {
+				this.stableTimer = null;
+
+				if (!this.isStale(generation)) {
+					void this.resolveIssue();
+				}
+			}, PROTECT_STABLE_STREAM_MS),
+		);
 	}
 
 	private schedulePing(generation: number): void {
@@ -550,7 +564,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 
 	private async poll(epoch: number): Promise<void> {
 		const session = this.session;
-		const generation = this.generation;
+		const sequence = this.synchronizer.getSnapshotSequence();
 
 		if (session === null) {
 			return;
@@ -559,8 +573,13 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		try {
 			const snapshot = await readConsoleSnapshot(session.client);
 
-			// A result is stale once the cycle restarted, streaming took over or polling stopped.
-			if (epoch !== this.pollEpoch || generation !== this.generation || this.cycle === 'streaming') {
+			// A result is stale once polling stopped, streaming took over or a newer snapshot was applied (a prime
+			// that began meanwhile counts). A failed reconnect attempt alone does not make the read stale.
+			if (
+				epoch !== this.pollEpoch ||
+				this.cycle === 'streaming' ||
+				sequence !== this.synchronizer.getSnapshotSequence()
+			) {
 				return;
 			}
 
@@ -630,7 +649,7 @@ export class ProtectRealtimeService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	private clearTimer(name: 'reconnectTimer' | 'pingTimer' | 'pongTimer' | 'pollTimer'): void {
+	private clearTimer(name: 'reconnectTimer' | 'pingTimer' | 'pongTimer' | 'pollTimer' | 'stableTimer'): void {
 		const timer = this[name];
 
 		if (timer !== null) {
