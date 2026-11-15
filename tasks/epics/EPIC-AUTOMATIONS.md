@@ -7,7 +7,7 @@ Type: epic
 Scope: backend, admin, panel, sdk, website, docs
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 Created: 2026-11-10
 GitHub: #1555
 
@@ -72,59 +72,71 @@ Flow does, and have the Smart Panel backend run them.
 
 ## 4. Acceptance criteria
 
+Status on 2026-11-15: every code sub-issue (AU-0 … AU-26) is merged. What is left is the hardware verification
+(AU-27, #1583); its results go to section 7. The criteria below are met in code and covered by tests; AU-27
+confirms them on real devices.
+
 - [x] The open decisions of the design are confirmed and recorded in ADR 0003 and the design doc (AU-0).
-- [ ] The reference scenario is drawn on one canvas, saved, survives a reload unchanged, and runs correctly against
-      the simulator: dimmed light at night, full light by day, light off after occupancy clears.
-- [ ] Triggers fire on transitions and threshold crossings only, never on repeated reports or at startup.
-- [ ] A property with no value, an invalid value or an offline device makes a condition take the `no` output and
-      cancels a pending "for" timer.
+- [x] The reference scenario is drawn on one canvas, saved, survives a reload unchanged, and runs correctly against
+      the simulator: dimmed light at night, full light by day, light off after occupancy clears. (AU-12, #1610:
+      backend e2e against simulator devices and an admin Playwright test.)
+- [x] Triggers fire on transitions and threshold crossings only, never on repeated reports or at startup. (AU-3,
+      AU-5: state tracker and device trigger unit tests.)
+- [x] A property with no value, an invalid value or an offline device makes a condition take the `no` output and
+      cancels a pending "for" timer. (AU-3, AU-5; the reference scenario e2e covers the sensor dropping offline.)
 - [x] Device writes from automations go through `PropertyCommandService` with the `automation` intent origin; Buddy
       does not learn them as user habits.
 - [x] An automation cannot unlock, disarm or open, directly or through a scene, including a scene edited after the
       automation was saved.
-- [ ] A runaway automation is suspended and the administrator is notified.
-- [ ] A finished or interrupted run can be inspected node by node in the admin. (Backend done with AU-13: runs
-      and traces are recorded and served; the admin view is AU-14.)
-- [ ] Deleting a referenced device, property, scene or space marks the automation invalid and shows the broken node.
-- [ ] Only `owner` and `admin` can create, edit or run automations.
-- [ ] Unit and e2e tests cover the engine semantics; the editor has a Playwright test for the reference scenario.
-- [ ] User documentation is published.
+- [x] A runaway automation is suspended and the administrator is notified. (AU-4: minute and hourly guards, the
+      suspension survives a restart and raises a notification.)
+- [x] A finished or interrupted run can be inspected node by node in the admin. (AU-13 records runs and traces;
+      AU-14, #1614, shows live and past runs on the canvas.)
+- [x] Deleting a referenced device, property, scene or space marks the automation invalid and shows the broken node.
+      (Reference cleanup listener; the editor outlines the nodes the issues name.)
+- [x] Only `owner` and `admin` can create, edit or run automations. (Covered by the automations e2e suite.)
+- [x] Unit and e2e tests cover the engine semantics; the editor has a Playwright test for the reference scenario.
+      (`apps/admin/e2e/automation-reference-scenario.spec.ts`, `automation-test-and-trace.spec.ts`.)
+- [x] User documentation is published. (AU-22, #1635: website page Admin Management → Automations and
+      `docs/automations-architecture.md`.)
+- [ ] The reference scenario and one heating, one cover and one alarm scenario behave correctly on a Raspberry Pi
+      installation with real devices, across a backend restart, device loss and a full day of triggers (AU-27).
 
 ## 5. Tasks
 
 Sub-issues of #1555. PR titles are the issue titles unless stated otherwise. The issue bodies carry the full
 acceptance criteria; the notes below are the summary.
 
-| ID | Issue | Phase | Task | Depends on |
-|---|---|---|---|---|
-| AU-0 | #1556 | 0 | Spike: Vue Flow in the admin build, engine walk prototype, open decisions | — |
-| AU-1 | #1557 | 1 | `feat(backend): add automations module with entity, migration and CRUD API` | AU-0 |
-| AU-2 | #1558 | 1 | `feat(backend): add automation node type registry and graph validation` | AU-1 |
-| AU-3 | #1559 | 1 | `feat(backend): track device state transitions for automation triggers` | AU-2 |
-| AU-4 | #1560 | 1 | `feat(backend): run automation graphs with modes, delays and guards` | AU-2 |
-| AU-5 | #1561 | 1 | `feat(backend): add device, time, scene and notification automation cards` | AU-3, AU-4 |
-| AU-6 | #1562 | 1 | `feat(backend): block safety-reducing actions from automations` | AU-4 |
-| AU-7 | #1563 | 1 | `feat(backend): mark automation commands with their own intent origin` | AU-5 |
-| AU-8 | #1564 | 1 | `refactor(admin): extract device property picker and value input` | — |
-| AU-9 | #1566 | 1 | `feat(admin): add automations module with list and stores` | AU-1 |
-| AU-10 | #1567 | 1 | `feat(admin): add the automation canvas editor` | AU-0, AU-2, AU-9 |
-| AU-11 | #1568 | 1 | `feat(admin): add configuration forms for the first automation cards` | AU-5, AU-8, AU-10 |
-| AU-12 | #1569 | 1 | `test(cross): cover the reference automation scenario end to end` | AU-5, AU-11 |
-| AU-13 | #1570 | 2 | `feat(backend): record automation runs and traces` | AU-4 |
-| AU-14 | #1571 | 2 | `feat(admin): test automations and show live and past runs` | AU-10, AU-13 |
-| AU-15 | #1572 | 2 | `feat(backend): add any, all and wait-until automation blocks` | AU-4 |
-| AU-16 | #1573 | 2 | `feat(cross): add sunrise and sunset automation cards` | AU-5 |
-| AU-17 | #1574 | 2 | `feat(backend): add button, connection, house mode and security automation cards` | AU-5 |
-| AU-18 | #1575 | 2 | `feat(backend): add space occupancy and activity mode automation cards` | AU-5 |
-| AU-19 | #1584 | 2 | `feat(admin): add forms for phase 2 automation cards` | AU-11, AU-15 … AU-18 |
-| AU-20 | #1576 | 2 | `feat(cross): create automations from templates` | AU-11 |
-| AU-21 | #1577 | 3 | `feat(panel): list and toggle a space's automations` | AU-1 |
-| AU-22 | #1578 | 3 | `docs(cross): document automations` | AU-14, AU-19 |
-| AU-23 | #1579 | 4 | `feat(backend): expose automations to Buddy and MCP` | AU-1 |
-| AU-24 | #1580 | 4 | `feat(backend): suggest automations from detected routines` | AU-23 |
-| AU-25 | #1581 | 4 | `feat(sdk): publish the automation node type contract` | AU-2 |
-| AU-26 | #1582 | 4 | `feat(cross): import and export automations as YAML` | AU-10 |
-| AU-27 | #1583 | 2 | Integrated verification on hardware | phase 1 and 2 merged |
+| ID | Issue | Phase | Task | Depends on | Status |
+|---|---|---|---|---|---|
+| AU-0 | #1556 | 0 | Spike: Vue Flow in the admin build, engine walk prototype, open decisions | — | merged in #1586 |
+| AU-1 | #1557 | 1 | `feat(backend): add automations module with entity, migration and CRUD API` | AU-0 | merged in #1587 |
+| AU-2 | #1558 | 1 | `feat(backend): add automation node type registry and graph validation` | AU-1 | merged in #1591 |
+| AU-3 | #1559 | 1 | `feat(backend): track device state transitions for automation triggers` | AU-2 | merged in #1592 |
+| AU-4 | #1560 | 1 | `feat(backend): run automation graphs with modes, delays and guards` | AU-2 | merged in #1593 |
+| AU-5 | #1561 | 1 | `feat(backend): add device, time, scene and notification automation cards` | AU-3, AU-4 | merged in #1594 |
+| AU-6 | #1562 | 1 | `feat(backend): block safety-reducing actions from automations` | AU-4 | merged in #1597 |
+| AU-7 | #1563 | 1 | `feat(backend): mark automation commands with their own intent origin` | AU-5 | merged in #1601 |
+| AU-8 | #1564 | 1 | `refactor(admin): extract device property picker and value input` | — | merged in #1600 |
+| AU-9 | #1566 | 1 | `feat(admin): add automations module with list and stores` | AU-1 | merged in #1602 |
+| AU-10 | #1567 | 1 | `feat(admin): add the automation canvas editor` | AU-0, AU-2, AU-9 | merged in #1608 |
+| AU-11 | #1568 | 1 | `feat(admin): add configuration forms for the first automation cards` | AU-5, AU-8, AU-10 | merged in #1609 |
+| AU-12 | #1569 | 1 | `test(cross): cover the reference automation scenario end to end` | AU-5, AU-11 | merged in #1610 |
+| AU-13 | #1570 | 2 | `feat(backend): record automation runs and traces` | AU-4 | merged in #1604 |
+| AU-14 | #1571 | 2 | `feat(admin): test automations and show live and past runs` | AU-10, AU-13 | merged in #1614 |
+| AU-15 | #1572 | 2 | `feat(backend): add any, all and wait-until automation blocks` | AU-4 | merged in #1617 |
+| AU-16 | #1573 | 2 | `feat(cross): add sunrise and sunset automation cards` | AU-5 | merged in #1618 |
+| AU-17 | #1574 | 2 | `feat(backend): add button, connection, house mode and security automation cards` | AU-5 | merged in #1619 |
+| AU-18 | #1575 | 2 | `feat(backend): add space occupancy and activity mode automation cards` | AU-5 | merged in #1620 |
+| AU-19 | #1584 | 2 | `feat(admin): add forms for phase 2 automation cards` | AU-11, AU-15 … AU-18 | merged in #1621 |
+| AU-20 | #1576 | 2 | `feat(cross): create automations from templates` | AU-11 | merged in #1622 |
+| AU-21 | #1577 | 3 | `feat(panel): list and toggle a space's automations` | AU-1 | merged in #1625 |
+| AU-22 | #1578 | 3 | `docs(cross): document automations` | AU-14, AU-19 | merged in #1635 |
+| AU-23 | #1579 | 4 | `feat(backend): expose automations to Buddy and MCP` | AU-1 | merged in #1626 |
+| AU-24 | #1580 | 4 | `feat(backend): suggest automations from detected routines` | AU-23 | merged in #1634 |
+| AU-25 | #1581 | 4 | `feat(sdk): publish the automation node type contract` | AU-2 | merged in #1628 |
+| AU-26 | #1582 | 4 | `feat(cross): import and export automations as YAML` | AU-10 | merged in #1630 |
+| AU-27 | #1583 | 2 | Integrated verification on hardware | phase 1 and 2 merged | open |
 
 ### Issue summaries
 
