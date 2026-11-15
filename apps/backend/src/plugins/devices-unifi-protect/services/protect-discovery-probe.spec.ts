@@ -60,6 +60,14 @@ describe('parseSystemInfo', () => {
 		expect(system.model).toBe('UNVR');
 	});
 
+	it('turns a malformed mac into null and keeps the rest', () => {
+		const system = parsed(JSON.stringify({ hardware: { shortname: 'UNVR' }, name: 'Console', mac: 'not-a-mac' }));
+
+		expect(system.mac).toBeNull();
+		expect(system.model).toBe('UNVR');
+		expect(system.name).toBe('Console');
+	});
+
 	it('ignores unknown keys and nulls absent optional fields', () => {
 		expect(parsed('{"hardware":{"shortname":"UDM","x":1},"other":{"a":1}}')).toEqual({
 			model: 'UDM',

@@ -42,6 +42,9 @@ describe('parseProbeHost', () => {
 		'a'.repeat(254),
 		`${'a'.repeat(64)}.local`,
 		'[::1]',
+		'::ffff:169.254.169.254',
+		'::ffff:a9fe:a9fe',
+		'fe80::1%en0',
 	])('rejects %j', (value) => {
 		expect(parseProbeHost(value)).toBeNull();
 	});
@@ -52,5 +55,9 @@ describe('parseProbeHost', () => {
 		expect(parseProbeHost('169.255.1.1')?.kind).toBe('ipv4');
 		expect(parseProbeHost('fec0::1')?.kind).toBe('ipv6');
 		expect(parseProbeHost('fe7f::1')?.kind).toBe('ipv6');
+	});
+
+	it('accepts an IPv4-mapped IPv6 address of a private host', () => {
+		expect(parseProbeHost('::ffff:192.168.1.10')).toEqual({ host: '::ffff:192.168.1.10', kind: 'ipv6' });
 	});
 });
