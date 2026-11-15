@@ -10,8 +10,13 @@ import { IsProtectProbeHost } from '../validators/protect-probe-host.validator';
 export class ProtectProbeDto {
 	@ApiProperty({ description: 'Console host name or IP address to probe', example: '192.168.1.10' })
 	@Expose()
-	// Trims and lowercases strings only; any other value reaches the validator unchanged.
-	@Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+	// Reads the original plain value: implicit conversion has already turned `true` into 'true' by the time `value`
+	// arrives. Trims and lowercases strings only; any other value reaches the validator unchanged.
+	@Transform(({ obj, key }: { obj: Record<string, unknown>; key: string }) => {
+		const original = obj[key];
+
+		return typeof original === 'string' ? original.trim().toLowerCase() : original;
+	})
 	@IsProtectProbeHost({
 		message: '[{"field":"host","reason":"Host must be an IP address or host name without scheme, path or port."}]',
 	})

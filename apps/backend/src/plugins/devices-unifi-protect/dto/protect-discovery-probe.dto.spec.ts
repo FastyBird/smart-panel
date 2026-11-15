@@ -25,6 +25,22 @@ describe('Protect probe DTO', () => {
 		expect(build({ host: ' UniFi.Local ' }).data.host).toBe('unifi.local');
 	});
 
+	describe('with implicit conversion, as the global pipe', () => {
+		const buildImplicit = (data: Record<string, unknown>): ProtectProbeRequestDto =>
+			plainToInstance(ProtectProbeRequestDto, { data }, { enableImplicitConversion: true });
+		const checkImplicit = (data: Record<string, unknown>) =>
+			validate(buildImplicit(data), { whitelist: true, forbidNonWhitelisted: true });
+
+		it.each([true, 5])('rejects the non-string host %j', async (host) => {
+			expect((await checkImplicit({ host })).length).toBeGreaterThan(0);
+		});
+
+		it('still trims and lowercases a string host', async () => {
+			expect(buildImplicit({ host: ' UniFi.Local ' }).data.host).toBe('unifi.local');
+			expect(await checkImplicit({ host: ' UniFi.Local ' })).toEqual([]);
+		});
+	});
+
 	it.each(['http://x', '192.168.1.10:443', '169.254.169.254', '', 5])('rejects host %j', async (host) => {
 		expect((await check({ host })).length).toBeGreaterThan(0);
 	});

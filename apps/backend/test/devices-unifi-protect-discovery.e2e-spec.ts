@@ -322,13 +322,16 @@ describe('UniFi Protect discovery (e2e)', () => {
 		expect(data).toMatchObject({ status: 'unreachable', failure: 'connection_refused', preferred_host: null });
 	});
 
-	it.each(['http://127.0.0.1', '127.0.0.1/api', '169.254.169.254', ''])('rejects host %j with 400', async (host) => {
-		const before = httpsRequests;
-		const response = await send('post', `${base}/probe`, ownerToken, { data: { host, port: serverPort } });
+	it.each(['http://127.0.0.1', '127.0.0.1/api', '169.254.169.254', '', true])(
+		'rejects host %j with 400',
+		async (host) => {
+			const before = httpsRequests;
+			const response = await send('post', `${base}/probe`, ownerToken, { data: { host, port: serverPort } });
 
-		expect(response.status).toBe(400);
-		expect(httpsRequests).toBe(before);
-	});
+			expect(response.status).toBe(400);
+			expect(httpsRequests).toBe(before);
+		},
+	);
 
 	it('rejects an unknown body property with 400', async () => {
 		const before = httpsRequests;
