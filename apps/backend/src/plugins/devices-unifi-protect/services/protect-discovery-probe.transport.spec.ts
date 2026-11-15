@@ -204,6 +204,28 @@ describe('NodeProtectProbeTransport', () => {
 				kind: 'refused',
 			});
 		});
+
+		it('checkCertificate times out when the peer accepts but never completes the handshake, and closes the socket', async () => {
+			const accepted: net.Socket[] = [];
+			const server = net.createServer((connection) => {
+				// Drain the ClientHello and ignore it, so the peer's close is observed.
+				connection.resume();
+				accepted.push(connection);
+			});
+			const target = await listen(server);
+			const result = await transport.checkCertificate(target, PROTECT_TEST_DIRECT_DOMAIN, 200);
+
+			expect(result).toEqual({ ok: false, kind: 'timeout', code: null });
+			expect(accepted).toHaveLength(1);
+			await new Promise<void>((resolve) => {
+				if (accepted[0].destroyed) {
+					resolve();
+				} else {
+					accepted[0].once('close', () => resolve());
+				}
+			});
+			expect(accepted[0].destroyed).toBe(true);
+		});
 	});
 
 	describe('resolveAll', () => {

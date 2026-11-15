@@ -32,6 +32,20 @@ describe('computeBroadcastAddress', () => {
 });
 
 describe('selectScanInterfaces', () => {
+	it('returns at most 16 interfaces after the stable sort', () => {
+		const many = Object.fromEntries(
+			Array.from({ length: 20 }, (_, n) => [
+				`eth${String(n).padStart(2, '0')}`,
+				[info(`10.0.${n}.5`, '255.255.255.0')],
+			]),
+		);
+		const result = selectScanInterfaces(many);
+
+		expect(result).toHaveLength(16);
+		expect(result[0].name).toBe('eth00');
+		expect(result[15].name).toBe('eth15');
+	});
+
 	it('keeps non-internal IPv4 interfaces with a broadcast address and skips lo, IPv6, /32 and 169.254/16', () => {
 		const result = selectScanInterfaces({
 			lo0: [info('127.0.0.1', '255.0.0.0', { internal: true })],

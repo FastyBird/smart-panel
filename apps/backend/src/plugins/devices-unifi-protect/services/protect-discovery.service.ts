@@ -28,6 +28,7 @@ import {
 	ProtectDiscoveryWarning,
 	ProtectInterfaceErrorCode,
 	ProtectInterfaceStatus,
+	ProtectProbeFailure,
 	ProtectProbeStatus,
 } from './protect-discovery.constants';
 
@@ -221,9 +222,10 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 			);
 		}
 
-		await Promise.race([Promise.all(states.map((s) => s.bound)), aborted]);
+		// A bind that never settles must not outlive the window.
+		const first = await Promise.race([Promise.all(states.map((s) => s.bound)), windowDone, aborted]);
 
-		if (!this.destroyed) {
+		if (!this.destroyed && first !== 'window') {
 			this.sendRound(states);
 		}
 
@@ -258,7 +260,7 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 		const consoles: ProtectDiscoveryScanConsole[] = [];
 
 		for (const entry of probed) {
-			if (entry.probe.status === ProtectProbeStatus.NOT_CONSOLE) {
+			if (this.isOtherDevice(entry)) {
 				others.add(entry.mac);
 			} else {
 				consoles.push(entry);
@@ -454,10 +456,6 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 		others: Set<string>,
 		state: { candidateLimitReached: boolean },
 	): void {
-		if (source.port !== PROTECT_DISCOVERY_PORT) {
-			return;
-		}
-
 		const parsed = parseDiscoveryReply(msg);
 
 		if ('reason' in parsed) {
@@ -473,7 +471,8 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 			return;
 		}
 
-		if (!isProtectConsoleCandidate(reply)) {
+		// A console answers from the discovery port; anything else only counts as another UniFi device.
+		if (source.port !== PROTECT_DISCOVERY_PORT || !isProtectConsoleCandidate(reply)) {
 			if (!candidates.has(mac) && (others.has(mac) || others.size < PROTECT_DISCOVERY_MAX_OTHER_DEVICES)) {
 				others.add(mac);
 			}
@@ -500,7 +499,17 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 		if (candidates.size >= PROTECT_DISCOVERY_MAX_CANDIDATES) {
 			state.candidateLimitReached = true;
 
-			return;
+			// A reply with the direct-connect domain outranks a short-model-only one (APs and switches).
+			const evictable =
+				reply.directConnectDomain === null
+					? undefined
+					: Array.from(candidates.values()).find((candidate) => candidate.directConnectDomain === null);
+
+			if (evictable === undefined) {
+				return;
+			}
+
+			candidates.delete(evictable.mac);
 		}
 
 		others.delete(mac);
@@ -514,6 +523,23 @@ export class ProtectDiscoveryService implements OnModuleDestroy {
 			directConnectDomain: reply.directConnectDomain,
 			uuid: reply.uuid,
 		});
+	}
+
+	/**
+	 * Not a console: the probe says so, or a short-model-only candidate (no direct-connect domain) refuses the
+	 * connection or fails TLS (a UniFi OS console always serves HTTPS on 443).
+	 */
+	private isOtherDevice(entry: ProtectDiscoveryScanConsole): boolean {
+		if (entry.probe.status === ProtectProbeStatus.NOT_CONSOLE) {
+			return true;
+		}
+
+		return (
+			entry.probe.status === ProtectProbeStatus.UNREACHABLE &&
+			entry.directConnectDomain === null &&
+			(entry.probe.failure === ProtectProbeFailure.CONNECTION_REFUSED ||
+				entry.probe.failure === ProtectProbeFailure.TLS_FAILURE)
+		);
 	}
 
 	private async probeAll(candidates: Candidate[]): Promise<ProtectDiscoveryScanConsole[]> {

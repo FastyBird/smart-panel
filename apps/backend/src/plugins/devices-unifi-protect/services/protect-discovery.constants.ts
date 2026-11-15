@@ -11,6 +11,8 @@ export const PROTECT_DISCOVERY_RESEND_ROUNDS = 3;
 export const PROTECT_DISCOVERY_MAX_DATAGRAM_BYTES = 4096;
 export const PROTECT_DISCOVERY_MAX_TLV_VALUE_BYTES = 1024;
 export const PROTECT_DISCOVERY_MAX_CANDIDATES = 16;
+/** Interfaces scanned at once (after the stable name/address sort). */
+export const PROTECT_DISCOVERY_MAX_INTERFACES = 16;
 /** Source addresses kept per candidate, host included. */
 export const PROTECT_DISCOVERY_MAX_ADDRESSES = 8;
 /** Tracked identities of non-console devices. */

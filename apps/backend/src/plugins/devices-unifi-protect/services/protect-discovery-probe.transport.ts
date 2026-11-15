@@ -170,7 +170,7 @@ export class NodeProtectProbeTransport implements ProtectProbeTransport {
 					validTo: Number.isNaN(parsed) ? null : new Date(parsed).toISOString(),
 				});
 			});
-			socket.once('error', (error) => {
+			socket.on('error', (error) => {
 				const code = errorCode(error);
 
 				if (code !== null && CERTIFICATE_VERDICT_CODES.has(code)) {

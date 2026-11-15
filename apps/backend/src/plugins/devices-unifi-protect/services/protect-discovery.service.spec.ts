@@ -18,6 +18,7 @@ import {
 	ProtectInterfaceErrorCode,
 	ProtectInterfaceStatus,
 	ProtectPresence,
+	ProtectProbeFailure,
 	ProtectProbeStatus,
 } from './protect-discovery.constants';
 import { ProtectDiscoveryScan, ProtectDiscoveryService } from './protect-discovery.service';
@@ -64,6 +65,15 @@ const consoleReply = (n: number): Buffer =>
 			[0x01, macOf(n)],
 			[0x0b, `console-${n}`],
 			[0x0c, 'UNVR'],
+		],
+	});
+const domainReply = (n: number): Buffer =>
+	buildDiscoveryReply({
+		tlvs: [
+			[0x01, macOf(n)],
+			[0x0b, `console-${n}`],
+			[0x0c, 'UNVR'],
+			[0x30, `${n.toString(16).padStart(8, '0')}.id.ui.direct`],
 		],
 	});
 const otherReply = (n: number): Buffer =>
@@ -337,7 +347,7 @@ describe('ProtectDiscoveryService', () => {
 		expect(scan.otherUnifiDevices).toBe(0);
 	});
 
-	it('ignores a reply from a source port other than 10001', async () => {
+	it('counts a console-shaped reply from another source port as another UniFi device, not a candidate', async () => {
 		const { done: promise } = await start();
 
 		sockets[0].reply(fixture('discovery-reply.bin'), '192.168.1.10', 40000);
@@ -345,9 +355,89 @@ describe('ProtectDiscoveryService', () => {
 		const scan = await finish(promise);
 
 		expect(scan.consoles).toEqual([]);
-		expect(scan.otherUnifiDevices).toBe(0);
-		expect(scan.warnings).toContain(ProtectDiscoveryWarning.NO_REPLIES);
+		expect(scan.otherUnifiDevices).toBe(1);
+		expect(scan.warnings).not.toContain(ProtectDiscoveryWarning.NO_REPLIES);
+		expect(probe.probe).not.toHaveBeenCalled();
 	});
+
+	it('counts a non-console reply from an ephemeral source port as another UniFi device', async () => {
+		const { done: promise } = await start();
+
+		sockets[0].reply(fixture('discovery-reply-v0.bin'), '192.168.1.11', 40464);
+
+		const scan = await finish(promise);
+
+		expect(scan.consoles).toEqual([]);
+		expect(scan.otherUnifiDevices).toBe(1);
+		expect(scan.warnings).not.toContain(ProtectDiscoveryWarning.NO_REPLIES);
+	});
+
+	it('moves a short-model-only candidate whose probe is refused to the other devices', async () => {
+		probe.probe.mockImplementation((target) =>
+			Promise.resolve({
+				...probeResult(target, ProtectProbeStatus.UNREACHABLE),
+				failure: ProtectProbeFailure.CONNECTION_REFUSED,
+				protect: ProtectPresence.UNKNOWN,
+			}),
+		);
+
+		const scan = await scanWith([
+			[consoleReply(1), '192.168.1.10'],
+			[consoleReply(1), '192.168.1.10'],
+		]);
+
+		expect(scan.consoles).toEqual([]);
+		expect(scan.otherUnifiDevices).toBe(1);
+		expect(scan.warnings).not.toContain(ProtectDiscoveryWarning.NO_REPLIES);
+	});
+
+	it('moves a short-model-only candidate with a TLS failure to the other devices', async () => {
+		probe.probe.mockImplementation((target) =>
+			Promise.resolve({
+				...probeResult(target, ProtectProbeStatus.UNREACHABLE),
+				failure: ProtectProbeFailure.TLS_FAILURE,
+				protect: ProtectPresence.UNKNOWN,
+			}),
+		);
+
+		const scan = await scanWith([[consoleReply(1), '192.168.1.10']]);
+
+		expect(scan.consoles).toEqual([]);
+		expect(scan.otherUnifiDevices).toBe(1);
+	});
+
+	it('keeps a refused candidate whose reply carried the direct-connect domain as a console', async () => {
+		probe.probe.mockImplementation((target) =>
+			Promise.resolve({
+				...probeResult(target, ProtectProbeStatus.UNREACHABLE),
+				failure: ProtectProbeFailure.CONNECTION_REFUSED,
+				protect: ProtectPresence.UNKNOWN,
+			}),
+		);
+
+		const scan = await scanWith([[domainReply(1), '192.168.1.10']]);
+
+		expect(scan.consoles).toHaveLength(1);
+		expect(scan.otherUnifiDevices).toBe(0);
+	});
+
+	it.each([ProtectProbeFailure.TIMEOUT, ProtectProbeFailure.HOST_UNREACHABLE, ProtectProbeFailure.DNS_FAILURE])(
+		'keeps a short-model-only candidate whose probe failed with %s as an unreachable console',
+		async (failure) => {
+			probe.probe.mockImplementation((target) =>
+				Promise.resolve({
+					...probeResult(target, ProtectProbeStatus.UNREACHABLE),
+					failure,
+					protect: ProtectPresence.UNKNOWN,
+				}),
+			);
+
+			const scan = await scanWith([[consoleReply(1), '192.168.1.10']]);
+
+			expect(scan.consoles).toHaveLength(1);
+			expect(scan.otherUnifiDevices).toBe(0);
+		},
+	);
 
 	it('ignores the echoed request and replies without an identity MAC', async () => {
 		const scan = await scanWith([
@@ -394,6 +484,47 @@ describe('ProtectDiscoveryService', () => {
 		expect(scan.consoles).toHaveLength(16);
 		expect(probe.probe).toHaveBeenCalledTimes(16);
 		expect(scan.warnings).toContain(ProtectDiscoveryWarning.CANDIDATE_LIMIT_REACHED);
+	});
+
+	it('lets a reply with the direct-connect domain replace a short-model-only candidate at the cap', async () => {
+		const scan = await scanWith([
+			...Array.from({ length: 20 }, (_, n): [Buffer, string] => [consoleReply(n), `192.168.1.${100 + n}`]),
+			[domainReply(500), '192.168.1.200'],
+		]);
+
+		expect(scan.consoles).toHaveLength(16);
+		expect(scan.consoles.map((c) => c.host)).toContain('192.168.1.200');
+		expect(scan.consoles.map((c) => c.host)).not.toContain('192.168.1.100');
+		expect(probe.probe).toHaveBeenCalledTimes(16);
+		expect(scan.warnings).toContain(ProtectDiscoveryWarning.CANDIDATE_LIMIT_REACHED);
+	});
+
+	it('ignores a further domain reply when every candidate already has the domain', async () => {
+		const scan = await scanWith(
+			Array.from({ length: 17 }, (_, n): [Buffer, string] => [domainReply(n), `192.168.1.${100 + n}`]),
+		);
+
+		expect(scan.consoles).toHaveLength(16);
+		expect(scan.consoles.map((c) => c.host)).not.toContain('192.168.1.116');
+		expect(scan.warnings).toContain(ProtectDiscoveryWarning.CANDIDATE_LIMIT_REACHED);
+	});
+
+	it('finishes at the window end when a bind never settles and a later scan starts fresh', async () => {
+		setup({ interfaces: EN0, bindHang: true });
+
+		const { done } = await start();
+		const scan = await finish(done);
+
+		expect(scan.status).toBe(ProtectDiscoveryStatus.FAILED);
+		expect(scan.failureReason).toBe(ProtectDiscoveryFailureReason.ALL_INTERFACES_FAILED);
+		expect(sockets[0].sends).toEqual([]);
+		expect(sockets[0].closed).toBe(true);
+
+		const second = service.scan();
+
+		await jest.advanceTimersByTimeAsync(0);
+		expect(sockets).toHaveLength(2);
+		await finish(second);
 	});
 
 	it('stops tracking other devices after 256 identities', async () => {

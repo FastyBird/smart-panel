@@ -1,6 +1,6 @@
 import * as os from 'os';
 
-import { ProtectInterfaceErrorCode } from './protect-discovery.constants';
+import { PROTECT_DISCOVERY_MAX_INTERFACES, ProtectInterfaceErrorCode } from './protect-discovery.constants';
 
 export interface ProtectScanInterface {
 	name: string;
@@ -60,9 +60,11 @@ export const selectScanInterfaces = (interfaces: NodeJS.Dict<os.NetworkInterface
 		}
 	}
 
-	return selected.sort((a, b) =>
-		a.name < b.name ? -1 : a.name > b.name ? 1 : a.address < b.address ? -1 : a.address > b.address ? 1 : 0,
-	);
+	return selected
+		.sort((a, b) =>
+			a.name < b.name ? -1 : a.name > b.name ? 1 : a.address < b.address ? -1 : a.address > b.address ? 1 : 0,
+		)
+		.slice(0, PROTECT_DISCOVERY_MAX_INTERFACES);
 };
 
 export const mapSocketErrorCode = (error: unknown): ProtectInterfaceErrorCode => {

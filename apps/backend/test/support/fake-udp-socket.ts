@@ -18,6 +18,8 @@ export interface FakeDiscoveryEnvironmentOptions {
 	/** Return an Error to fail that send; call `socket.reply(buf, fromAddress)` to answer. */
 	onSend?: (socket: FakeUdpSocket, msg: Buffer, port: number, address: string) => Error | null | void;
 	bindError?: (address: string) => NodeJS.ErrnoException | null;
+	/** `bind` never calls back and never errors. */
+	bindHang?: boolean;
 }
 
 /** In-memory stand-in for a bound `dgram` udp4 socket; everything asynchronous settles in microtasks. */
@@ -35,7 +37,7 @@ export class FakeUdpSocket extends EventEmitter implements ProtectDiscoverySocke
 	throwOn = new Set<string>();
 
 	constructor(
-		private readonly options: Pick<FakeDiscoveryEnvironmentOptions, 'onSend' | 'bindError'> = {},
+		private readonly options: Pick<FakeDiscoveryEnvironmentOptions, 'onSend' | 'bindError' | 'bindHang'> = {},
 		public readonly index = 0,
 	) {
 		super();
@@ -46,6 +48,10 @@ export class FakeUdpSocket extends EventEmitter implements ProtectDiscoverySocke
 
 		this.boundPort = port;
 		this.boundAddress = address;
+
+		if (this.options.bindHang) {
+			return this;
+		}
 
 		const error = this.options.bindError?.(address) ?? null;
 
@@ -146,7 +152,10 @@ export const createFakeDiscoveryEnvironment = (
 	const sockets: FakeUdpSocket[] = [];
 	const env: ProtectDiscoveryEnvironment = {
 		createSocket: () => {
-			const socket = new FakeUdpSocket({ onSend: opts.onSend, bindError: opts.bindError }, sockets.length);
+			const socket = new FakeUdpSocket(
+				{ onSend: opts.onSend, bindError: opts.bindError, bindHang: opts.bindHang },
+				sockets.length,
+			);
 
 			sockets.push(socket);
 
