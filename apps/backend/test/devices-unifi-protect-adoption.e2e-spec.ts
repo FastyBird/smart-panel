@@ -17,12 +17,15 @@ import { createGlobalExceptionFilters } from '../src/common/filters/global-filte
 import { ValidationExceptionFactory } from '../src/common/validation/validation-exception-factory';
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../src/modules/devices/services/channels.service';
+import { DeviceConnectivityService } from '../src/modules/devices/services/device-connectivity.service';
 import { DeviceValidationService } from '../src/modules/devices/services/device-validation.service';
+import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { PropertyValueService } from '../src/modules/devices/services/property-value.service';
 import { UserRole } from '../src/modules/users/users.constants';
 import {
 	DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
 	DEVICES_UNIFI_PROTECT_PLUGIN_PREFIX,
+	DEVICES_UNIFI_PROTECT_TYPE,
 	PROTECT_TRUSTED_CA,
 } from '../src/plugins/devices-unifi-protect/devices-unifi-protect.constants';
 import { DevicesUnifiProtectPlugin } from '../src/plugins/devices-unifi-protect/devices-unifi-protect.plugin';
@@ -50,7 +53,7 @@ interface AdoptionResult {
 	stream: {
 		status: string;
 		quality: string | null;
-		enabled_qualities: string[];
+		enabled_qualities: string[] | null;
 		failure_category: string | null;
 	} | null;
 }
@@ -58,6 +61,16 @@ interface AdoptionResult {
 interface Golden {
 	channels: { identifier: string }[];
 }
+
+const FIXTURE_CAMERAS = join(
+	__dirname,
+	'..',
+	'src',
+	'plugins',
+	'devices-unifi-protect',
+	'__fixtures__',
+	'cameras.json',
+);
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -328,14 +341,19 @@ describe('UniFi Protect adoption (e2e)', () => {
 	});
 
 	it('previews the captured camera cleanly and a package doorbell with stream warnings', async () => {
+		const before = await rowCounts();
 		const preview = async (id: string) =>
 			(
 				(await post(`${base}/mapping-preview`, ownerToken, { data: { device_id: id, model_key: 'camera' } })).body as {
-					data: { warnings: { code: string }[] };
+					data: { warnings: { code: string }[]; ready_to_adopt: boolean };
 				}
 			).data;
 
 		expect((await preview(FRONT_DOOR)).warnings).toEqual([]);
+		expect((await preview(FRONT_DOOR)).ready_to_adopt).toBe(true);
+		expect((await preview(PACKAGE_DOORBELL)).ready_to_adopt).toBe(true);
+		expect(await rowCounts()).toEqual(before);
+		expect(before[0]).toBe(0);
 		expect((await preview(PACKAGE_DOORBELL)).warnings.map((warning) => warning.code)).toEqual([
 			'stream_not_enabled',
 			'stream_not_enabled',
@@ -389,7 +407,8 @@ describe('UniFi Protect adoption (e2e)', () => {
 
 		expect(stream(FRONT_DOOR)).toMatchObject({ status: 'enabled', enabled_qualities: ['high', 'medium'] });
 		expect(stream(PACKAGE_DOORBELL)).toMatchObject({ status: 'enabled', enabled_qualities: ['high', 'package'] });
-		expect(stream(GARAGE)).toMatchObject({ status: 'not_requested' });
+		// Not requested: the console state is reported as read (the Garage camera starts with `high`).
+		expect(stream(GARAGE)).toMatchObject({ status: 'not_requested', enabled_qualities: ['high'] });
 		expect(stream(SENSOR)).toBeNull();
 		expect(stream(FLOODLIGHT)).toBeNull();
 		expect(fake.streamPosts).toEqual([
@@ -457,6 +476,122 @@ describe('UniFi Protect adoption (e2e)', () => {
 		]);
 		expect(fake.streamPosts).toHaveLength(posts);
 		expect(await rowCounts()).toEqual(devices);
+	});
+
+	it('reads one inventory device with its adoption state', async () => {
+		const response = await get(`${base}/devices/${FRONT_DOOR}`, ownerToken);
+		const device = (
+			response.body as { data: { id: string; model_key: string; adopted: boolean; adopted_device_id: string } }
+		).data;
+
+		expect(response.status).toBe(200);
+		expect(device).toMatchObject({
+			id: FRONT_DOOR,
+			model_key: 'camera',
+			adopted: true,
+			adopted_device_id: adopted.get(FRONT_DOOR),
+		});
+		expect((await get(`${base}/devices/5f00000000000000000fffff`, ownerToken)).status).toBe(404);
+	});
+
+	describe('re-adoption against real storage', () => {
+		const channelIds = async (panelId: string): Promise<Map<string, string>> => {
+			const channels = await app.get(ChannelsService).findAll(panelId);
+			const properties = app.get(ChannelsPropertiesService);
+			const ids = new Map<string, string>();
+
+			for (const channel of channels) {
+				ids.set(`channel:${channel.identifier}`, channel.id);
+
+				for (const property of await properties.findAll(channel.id)) {
+					ids.set(`${channel.identifier}:${property.identifier}`, property.id);
+				}
+			}
+
+			return ids;
+		};
+
+		it('accepts a connection_state property recreated without a mapping name (A20)', async () => {
+			const panelId = adopted.get(FRONT_DOOR);
+			const channels = app.get(ChannelsService);
+			const properties = app.get(ChannelsPropertiesService);
+			const information = (await channels.findAll(panelId)).find((entry) => entry.identifier === 'device_information');
+			const original = (await properties.findAll(information?.id)).find(
+				(entry) => entry.identifier === 'connection_state',
+			);
+
+			expect(original).toBeDefined();
+			await properties.remove(original?.id);
+			expect(
+				await app.get(DeviceConnectivityService).trySetConnectionState(panelId, { state: 'connected' as never }),
+			).toBe(true);
+
+			const recreated = (await properties.findAll(information?.id)).find(
+				(entry) => entry.identifier === 'connection_state',
+			);
+
+			expect(recreated).toBeDefined();
+			expect(recreated?.id).not.toBe(original?.id);
+			expect((recreated as unknown as { protectMappingName: string | null }).protectMappingName ?? null).toBeNull();
+
+			const result = await adoptOne({ device_id: FRONT_DOOR, model_key: 'camera', stream: { quality: 'medium' } });
+
+			expect(['updated', 'skipped']).toContain(result.status);
+			expect(result.failure_code).toBeNull();
+		});
+
+		it('updates a changed camera: adds and prunes detection channels, keeps the user name and untouched ids', async () => {
+			const panelId = adopted.get(FRONT_DOOR);
+			const rename = await request(app.getHttpServer())
+				.patch(`${api}/modules/devices/devices/${panelId}`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({ data: { type: DEVICES_UNIFI_PROTECT_TYPE, name: 'My renamed door' } });
+
+			expect(rename.status).toBe(200);
+
+			const before = await channelIds(panelId);
+
+			expect(before.has('channel:object_detection.vehicle')).toBe(true);
+			expect(before.has('channel:object_detection.animal')).toBe(true);
+			expect(before.has('channel:object_detection.license_plate')).toBe(false);
+
+			const camera = (
+				JSON.parse(readFileSync(FIXTURE_CAMERAS, 'utf8')) as { id: string; featureFlags?: Record<string, unknown> }[]
+			).find((entry) => entry.id === FRONT_DOOR);
+
+			fake.enqueue(
+				new RegExp(`/cameras/${FRONT_DOOR}$`),
+				{
+					status: 200,
+					headers: { 'content-type': 'application/json; charset=utf-8' },
+					body: JSON.stringify({
+						...camera,
+						featureFlags: { ...camera?.featureFlags, smartDetectTypes: ['person', 'licensePlate'] },
+					}),
+				},
+				'GET',
+			);
+
+			const result = await adoptOne({ device_id: FRONT_DOOR, model_key: 'camera', stream: { quality: 'medium' } });
+
+			expect(result).toMatchObject({ status: 'updated', failure_code: null, panel_device_id: panelId });
+
+			const after = await channelIds(panelId);
+
+			expect(after.has('channel:object_detection.license_plate')).toBe(true);
+			expect(after.has('channel:object_detection.vehicle')).toBe(false);
+			expect(after.has('channel:object_detection.animal')).toBe(false);
+
+			const pruned = /^(channel:)?object_detection\.(vehicle|animal)/;
+
+			for (const [key, id] of before) {
+				if (!pruned.test(key)) {
+					expect([key, after.get(key)]).toEqual([key, id]);
+				}
+			}
+
+			expect((await app.get(DevicesService).findOne(panelId))?.name).toBe('My renamed door');
+		});
 	});
 
 	it('keeps the adoption when the stream POST fails', async () => {
