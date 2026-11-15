@@ -24,6 +24,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { DefaultProtectApiClientFactory, PROTECT_API_CLIENT_FACTORY } from './client/protect-api-client.factory';
+import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
 import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
 import {
@@ -50,6 +51,10 @@ import { ProtectConfigModel } from './models/config.model';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
+import { ProtectDiscoveryProbeService } from './services/protect-discovery-probe.service';
+import { NodeProtectProbeTransport } from './services/protect-discovery-probe.transport';
+import { PROTECT_DISCOVERY_ENVIRONMENT, PROTECT_PROBE_TRANSPORT } from './services/protect-discovery.constants';
+import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './services/protect-discovery.service';
 
 @ApiTag({
 	tagName: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -72,8 +77,12 @@ import { ProtectConnectorService } from './services/protect-connector.service';
 		{ provide: PROTECT_API_CLIENT_FACTORY, useExisting: DefaultProtectApiClientFactory },
 		ProtectConnectorService,
 		ProtectConnectionTestService,
+		ProtectDiscoveryService,
+		ProtectDiscoveryProbeService,
+		{ provide: PROTECT_PROBE_TRANSPORT, useFactory: () => new NodeProtectProbeTransport() },
+		{ provide: PROTECT_DISCOVERY_ENVIRONMENT, useFactory: createNodeDiscoveryEnvironment },
 	],
-	controllers: [ProtectStatusController, ProtectTestConnectionController],
+	controllers: [ProtectStatusController, ProtectTestConnectionController, ProtectDiscoveryController],
 	exports: [ProtectConnectorService],
 })
 export class DevicesUnifiProtectPlugin implements OnModuleInit {

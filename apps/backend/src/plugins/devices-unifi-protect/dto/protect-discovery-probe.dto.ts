@@ -1,0 +1,43 @@
+import { Expose, Transform, Type } from 'class-transformer';
+import { IsDefined, IsInt, IsObject, IsOptional, Max, Min, ValidateNested } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { PROTECT_PROBE_DEFAULT_PORT } from '../services/protect-discovery.constants';
+import { IsProtectProbeHost } from '../validators/protect-probe-host.validator';
+
+@ApiSchema({ name: 'DevicesUnifiProtectPluginProbe' })
+export class ProtectProbeDto {
+	@ApiProperty({ description: 'Console host name or IP address to probe', example: '192.168.1.10' })
+	@Expose()
+	// Trims and lowercases strings only; any other value reaches the validator unchanged.
+	@Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+	@IsProtectProbeHost({
+		message: '[{"field":"host","reason":"Host must be an IP address or host name without scheme, path or port."}]',
+	})
+	host: string;
+
+	@ApiPropertyOptional({
+		description: 'Console HTTPS port',
+		example: PROTECT_PROBE_DEFAULT_PORT,
+		minimum: 1,
+		maximum: 65535,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
+	@Min(1, { message: '[{"field":"port","reason":"Port must be between 1 and 65535."}]' })
+	@Max(65535, { message: '[{"field":"port","reason":"Port must be between 1 and 65535."}]' })
+	port?: number;
+}
+
+@ApiSchema({ name: 'DevicesUnifiProtectPluginReqProbe' })
+export class ProtectProbeRequestDto {
+	@ApiProperty({ description: 'Host to probe', type: () => ProtectProbeDto })
+	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Probe data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Probe data must be an object."}]' })
+	@ValidateNested()
+	@Type(() => ProtectProbeDto)
+	data: ProtectProbeDto;
+}

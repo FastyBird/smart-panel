@@ -3,6 +3,7 @@ import { CreateProtectChannelDto } from './dto/create-channel.dto';
 import { CreateProtectDeviceChannelPropertyDto } from './dto/create-device-channel-property.dto';
 import { CreateProtectDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateProtectDeviceDto } from './dto/create-device.dto';
+import { ProtectProbeDto, ProtectProbeRequestDto } from './dto/protect-discovery-probe.dto';
 import {
 	ProtectTestCandidateConnectionDto,
 	ProtectTestConnectionDto,
@@ -20,6 +21,15 @@ import {
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
 import { ProtectConfigModel, ProtectTlsConfigModel } from './models/config.model';
+import {
+	ProtectDiscoveredConsoleModel,
+	ProtectDiscoveryInterfaceModel,
+	ProtectDiscoveryModel,
+	ProtectDiscoveryResponseModel,
+	ProtectProbeCertificateModel,
+	ProtectProbeModel,
+	ProtectProbeResponseModel,
+} from './models/protect-discovery.model';
 import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
 import {
 	ProtectCertificateModel,
@@ -53,4 +63,13 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectCertificateModel,
 	ProtectTestConnectionModel,
 	ProtectTestConnectionResponseModel,
+	ProtectDiscoveryInterfaceModel,
+	ProtectProbeCertificateModel,
+	ProtectProbeModel,
+	ProtectDiscoveredConsoleModel,
+	ProtectDiscoveryModel,
+	ProtectDiscoveryResponseModel,
+	ProtectProbeResponseModel,
+	ProtectProbeDto,
+	ProtectProbeRequestDto,
 ];
