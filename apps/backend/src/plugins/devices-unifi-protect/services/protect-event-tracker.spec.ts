@@ -289,6 +289,72 @@ describe('ProtectEventTracker', () => {
 		expect(tracker.apply(add(1, 'a b'), 0).ignored).toEqual([{ reason: 'unknown_type', name: null }]);
 	});
 
+	it('opens a smart detection that starts without known types', () => {
+		const tracker = new ProtectEventTracker();
+
+		expect(tracker.apply(add(1, 'smartDetectZone', { smartDetectTypes: ['pet'] }), 0).ignored).toEqual([
+			{ reason: 'unknown_detection_type', name: 'pet' },
+		]);
+		expect(tracker.nextDeadline()).toBe(60_000);
+
+		const grown = tracker.apply(frame('update', { id: eid(1), smartDetectTypes: ['pet', 'person', 'dog'] }), 1);
+
+		expect(summary(writesOf(grown.effects))).toEqual(['object_detection.person/object_detected=true']);
+		expect(grown.ignored).toEqual([
+			{ reason: 'unknown_detection_type', name: 'pet' },
+			{ reason: 'unknown_detection_type', name: 'dog' },
+		]);
+		expect(summary(writesOf(tracker.apply(finish(1), 2).effects))).toEqual([
+			'object_detection.person/object_detected=false',
+		]);
+
+		tracker.apply(add(2, 'smartAudioDetect', { smartDetectTypes: [] }), 3);
+		expect(tracker.expire(100_000)).toEqual([]);
+		expect(tracker.nextDeadline()).toBeNull();
+	});
+
+	it('refreshes the seen window when an event closes', () => {
+		const tracker = new ProtectEventTracker({ maxSeen: 2 });
+
+		tracker.apply(add(1, 'motion'), 0);
+		tracker.apply(add(2, 'sensorOpened', {}, SENSOR), 1);
+		tracker.apply(add(3, 'sensorOpened', {}, SENSOR), 2);
+		tracker.apply(finish(1), 3);
+
+		expect(tracker.apply(add(1, 'motion'), 4).ignored).toEqual([{ reason: 'duplicate', name: 'motion' }]);
+	});
+
+	it('never throws with a non-positive maxOpen', () => {
+		const tracker = new ProtectEventTracker({ maxOpen: 0 });
+
+		expect(() => {
+			tracker.apply(add(1, 'motion'), 0);
+			tracker.apply(add(2, 'sensorMotion', {}, SENSOR), 1);
+		}).not.toThrow();
+		expect(tracker.openTargets(CAMERA).size).toBe(0);
+		expect(tracker.openTargets(SENSOR)).toEqual(new Set(['motion']));
+	});
+
+	it('hands out effects that cannot alter later ones', () => {
+		const tracker = new ProtectEventTracker();
+		const first = tracker.apply(add(1, 'sensorWaterLeak', {}, SENSOR), 0);
+
+		for (const effect of first.effects) {
+			if (effect.kind === 'write') {
+				effect.writes[0].value = 'tampered';
+				effect.writes.push({ channelIdentifier: 'x', mappingName: 'y', value: true });
+			}
+		}
+
+		const second = tracker.apply(add(2, 'sensorWaterLeak', {}, SENSOR), 1);
+
+		expect(second.effects).toEqual([]);
+		expect(summary(writesOf(tracker.apply(add(3, 'sensorWaterLeak', {}, CAMERA), 2).effects))).toEqual([
+			'leak/leak_detected=true',
+			'leak/leak_level=high',
+		]);
+	});
+
 	it('forgets everything on clear', () => {
 		const tracker = new ProtectEventTracker();
 

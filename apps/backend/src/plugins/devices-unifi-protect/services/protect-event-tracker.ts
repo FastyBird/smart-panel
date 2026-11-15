@@ -75,6 +75,12 @@ const toggle = (channel: string, mapping: string): ProtectEventTarget => ({
 	end: [write(channel, mapping, false)],
 });
 
+const cloneTarget = (target: ProtectEventTarget): ProtectEventTarget => ({
+	key: target.key,
+	start: target.start.map((entry) => ({ ...entry })),
+	end: target.end.map((entry) => ({ ...entry })),
+});
+
 const SMART_OBJECT_TYPES: ReadonlySet<string> = new Set([
 	'smartDetectZone',
 	'smartDetectLine',
@@ -155,7 +161,7 @@ export function resolveProtectEventTargets(
 
 	const entry = FIXED[type];
 
-	return { kind: entry.kind, targets: [...entry.targets], unknownTypes: [] };
+	return { kind: entry.kind, targets: entry.targets.map(cloneTarget), unknownTypes: [] };
 }
 
 interface OpenEvent {
@@ -183,7 +189,7 @@ export class ProtectEventTracker {
 	constructor(options: { safetyTimeoutMs?: number; maxSeen?: number; maxOpen?: number } = {}) {
 		this.safetyTimeoutMs = options.safetyTimeoutMs ?? PROTECT_EVENT_SAFETY_TIMEOUT_MS;
 		this.maxSeen = options.maxSeen ?? PROTECT_MAX_SEEN_EVENTS;
-		this.maxOpen = options.maxOpen ?? PROTECT_MAX_OPEN_EVENTS;
+		this.maxOpen = Math.max(1, options.maxOpen ?? PROTECT_MAX_OPEN_EVENTS);
 	}
 
 	apply(frame: ProtectFrame, now: number): ProtectEventOutcome {
@@ -290,12 +296,8 @@ export class ProtectEventTracker {
 			ignored.push({ reason: 'unknown_detection_type', name: safeName(unknown) });
 		}
 
-		if (resolved.targets.length === 0) {
-			if (ignored.length === 0) {
-				ignored.push({ reason: 'unknown_detection_type', name: null });
-			}
-
-			return { effects: [], ignored };
+		if (resolved.targets.length === 0 && ignored.length === 0) {
+			ignored.push({ reason: 'unknown_detection_type', name: null });
 		}
 
 		const effects: ProtectEventEffect[] = [];
@@ -322,7 +324,7 @@ export class ProtectEventTracker {
 			return { effects, ignored };
 		}
 
-		while (this.open.size >= this.maxOpen) {
+		while (this.open.size > 0 && this.open.size >= this.maxOpen) {
 			const [oldestId, oldest] = this.open.entries().next().value as [string, OpenEvent];
 
 			effects.push(...this.close(oldestId, oldest));
@@ -402,6 +404,7 @@ export class ProtectEventTracker {
 
 	private close(id: string, event: OpenEvent): ProtectEventEffect[] {
 		this.open.delete(id);
+		this.remember(id);
 
 		const writes: ProtectTargetWrite[] = [];
 
@@ -430,7 +433,7 @@ export class ProtectEventTracker {
 
 	private pushWrite(effects: ProtectEventEffect[], protectDeviceId: string, writes: ProtectTargetWrite[]): void {
 		if (writes.length > 0) {
-			effects.push({ kind: 'write', protectDeviceId, writes });
+			effects.push({ kind: 'write', protectDeviceId, writes: writes.map((entry) => ({ ...entry })) });
 		}
 	}
 
