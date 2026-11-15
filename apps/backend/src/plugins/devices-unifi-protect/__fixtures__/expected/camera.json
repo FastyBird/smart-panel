@@ -1,0 +1,478 @@
+{
+	"mappingName": "camera",
+	"category": "camera",
+	"identifier": "0cea14003a69:600cefafd5f365d6f83c4ef3",
+	"name": "Front door",
+	"protectNvrId": "68b3ace392bf98c9fb76f70c",
+	"protectDeviceId": "600cefafd5f365d6f83c4ef3",
+	"protectModelKey": "camera",
+	"channels": [
+		{
+			"identifier": "device_information",
+			"category": "device_information",
+			"name": "Device information",
+			"mappingName": "device_information",
+			"properties": [
+				{
+					"identifier": "manufacturer",
+					"category": "manufacturer",
+					"name": "Manufacturer",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "Ubiquiti",
+					"mappingName": "manufacturer"
+				},
+				{
+					"identifier": "model",
+					"category": "model",
+					"name": "Model",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "UVC G5 Dome",
+					"mappingName": "camera_model"
+				},
+				{
+					"identifier": "serial_number",
+					"category": "serial_number",
+					"name": "Serial number",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "0CEA14008183",
+					"mappingName": "serial_number"
+				},
+				{
+					"identifier": "connection_state",
+					"category": "status",
+					"name": "Connection state",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"connected",
+						"disconnected",
+						"init",
+						"ready",
+						"running",
+						"sleeping",
+						"stopped",
+						"lost",
+						"alert",
+						"unknown"
+					],
+					"step": null,
+					"value": "connected",
+					"mappingName": "connection_state"
+				}
+			]
+		},
+		{
+			"identifier": "camera.main",
+			"category": "camera",
+			"name": "Camera",
+			"mappingName": "camera_main",
+			"properties": [
+				{
+					"identifier": "status",
+					"category": "status",
+					"name": "Status",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"available",
+						"in_use",
+						"unavailable",
+						"offline",
+						"initializing",
+						"error"
+					],
+					"step": null,
+					"value": "available",
+					"mappingName": "camera_main_status"
+				},
+				{
+					"identifier": "source",
+					"category": "source",
+					"name": "Source",
+					"dataType": "string",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": "unifi-protect:600cefafd5f365d6f83c4ef3:main",
+					"mappingName": "camera_main_source"
+				}
+			]
+		},
+		{
+			"identifier": "motion",
+			"category": "motion",
+			"name": "Motion",
+			"mappingName": "camera_motion",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "camera_motion_detected"
+				}
+			]
+		},
+		{
+			"identifier": "object_detection.person",
+			"category": "object_detection",
+			"name": "Person detection",
+			"mappingName": "object_detection",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "object_detected"
+				},
+				{
+					"identifier": "object_type",
+					"category": "object_type",
+					"name": "Object type",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"person",
+						"vehicle",
+						"animal",
+						"package",
+						"license_plate",
+						"face",
+						"unknown"
+					],
+					"step": null,
+					"value": "person",
+					"mappingName": "object_type"
+				}
+			]
+		},
+		{
+			"identifier": "object_detection.vehicle",
+			"category": "object_detection",
+			"name": "Vehicle detection",
+			"mappingName": "object_detection",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "object_detected"
+				},
+				{
+					"identifier": "object_type",
+					"category": "object_type",
+					"name": "Object type",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"person",
+						"vehicle",
+						"animal",
+						"package",
+						"license_plate",
+						"face",
+						"unknown"
+					],
+					"step": null,
+					"value": "vehicle",
+					"mappingName": "object_type"
+				}
+			]
+		},
+		{
+			"identifier": "object_detection.animal",
+			"category": "object_detection",
+			"name": "Animal detection",
+			"mappingName": "object_detection",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "object_detected"
+				},
+				{
+					"identifier": "object_type",
+					"category": "object_type",
+					"name": "Object type",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"person",
+						"vehicle",
+						"animal",
+						"package",
+						"license_plate",
+						"face",
+						"unknown"
+					],
+					"step": null,
+					"value": "animal",
+					"mappingName": "object_type"
+				}
+			]
+		},
+		{
+			"identifier": "smoke",
+			"category": "smoke",
+			"name": "Smoke alarm",
+			"mappingName": "smoke_alarm_sound",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "smoke_alarm_sound_detected"
+				}
+			]
+		},
+		{
+			"identifier": "carbon_monoxide",
+			"category": "carbon_monoxide",
+			"name": "Carbon monoxide alarm",
+			"mappingName": "co_alarm_sound",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "co_alarm_sound_detected"
+				}
+			]
+		},
+		{
+			"identifier": "sound_detection.baby_cry",
+			"category": "sound_detection",
+			"name": "Baby cry detection",
+			"mappingName": "sound_detection",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "sound_detected"
+				},
+				{
+					"identifier": "sound_type",
+					"category": "sound_type",
+					"name": "Sound type",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"glass_break",
+						"burglar_alarm",
+						"siren",
+						"baby_cry",
+						"speech",
+						"dog_bark",
+						"car_horn",
+						"unknown"
+					],
+					"step": null,
+					"value": "baby_cry",
+					"mappingName": "sound_type"
+				}
+			]
+		},
+		{
+			"identifier": "sound_detection.speech",
+			"category": "sound_detection",
+			"name": "Speech detection",
+			"mappingName": "sound_detection",
+			"properties": [
+				{
+					"identifier": "detected",
+					"category": "detected",
+					"name": "Detected",
+					"dataType": "bool",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "sound_detected"
+				},
+				{
+					"identifier": "sound_type",
+					"category": "sound_type",
+					"name": "Sound type",
+					"dataType": "enum",
+					"permissions": [
+						"ro"
+					],
+					"unit": null,
+					"format": [
+						"glass_break",
+						"burglar_alarm",
+						"siren",
+						"baby_cry",
+						"speech",
+						"dog_bark",
+						"car_horn",
+						"unknown"
+					],
+					"step": null,
+					"value": "speech",
+					"mappingName": "sound_type"
+				}
+			]
+		},
+		{
+			"identifier": "indicator",
+			"category": "indicator",
+			"name": "Status LED",
+			"mappingName": "camera_indicator",
+			"properties": [
+				{
+					"identifier": "on",
+					"category": "on",
+					"name": "On",
+					"dataType": "bool",
+					"permissions": [
+						"rw"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": false,
+					"mappingName": "camera_indicator_on"
+				}
+			]
+		},
+		{
+			"identifier": "microphone",
+			"category": "microphone",
+			"name": "Microphone",
+			"mappingName": "camera_microphone",
+			"properties": [
+				{
+					"identifier": "active",
+					"category": "active",
+					"name": "Active",
+					"dataType": "bool",
+					"permissions": [
+						"rw"
+					],
+					"unit": null,
+					"format": null,
+					"step": null,
+					"value": true,
+					"mappingName": "microphone_active"
+				},
+				{
+					"identifier": "volume",
+					"category": "volume",
+					"name": "Volume",
+					"dataType": "uchar",
+					"permissions": [
+						"ro"
+					],
+					"unit": "%",
+					"format": [
+						0,
+						100
+					],
+					"step": 1,
+					"value": 100,
+					"mappingName": "microphone_volume"
+				}
+			]
+		}
+	]
+}

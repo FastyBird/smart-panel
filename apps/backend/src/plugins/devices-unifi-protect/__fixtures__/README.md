@@ -32,6 +32,7 @@ Two kinds of files exist:
 | `chimes.json` | synthetic | chime |
 | `ws-devices.jsonl` | synthetic | `subscribe/devices` frames: camera state, doorbell LCD, sensor open/close/motion/leak/tamper/battery, light, add, remove |
 | `ws-events.jsonl` | synthetic | `subscribe/events` frames: motion, smartDetectZone person/vehicle, smartDetectLine, smartAudioDetect alrmSmoke/alrmBabyCry, ring, sensorOpened/Closed/Motion/WaterLeak/Tamper, lightMotion; each event is an `add` (`end: null`) followed by an `update` with `end` |
+| `expected/` | derived | golden mapping output per device type (UP-7), regenerated only with `PROTECT_UPDATE_GOLDEN=1` |
 | `snapshot.jpg` | synthetic | 32x18 gradient JPEG generated for tests, not a camera image |
 
 Event frames were **not** captured: the capture console saw no motion during the 6 minute observation (see section 6 of

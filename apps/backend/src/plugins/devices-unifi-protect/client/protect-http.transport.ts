@@ -6,13 +6,15 @@ import { ProtectApiError, ProtectErrorCategory } from '../errors/protect-api.err
 import { ProtectHeaders } from './protect-rate-pacer';
 
 export interface ProtectTransportRequest {
-	method: 'GET';
+	method: 'GET' | 'POST';
 	path: string;
 	headers: Record<string, string>;
 	/** One timer per request: it covers connect, headers and body. */
 	timeoutMs: number;
 	maxBytes: number;
 	signal?: AbortSignal;
+	/** Sent as `application/json` with its `Content-Length`. */
+	body?: Buffer;
 }
 
 export interface ProtectTransportResponse {
@@ -94,7 +96,14 @@ export class NodeProtectTransport implements ProtectTransport {
 						port: this.port,
 						method: request.method,
 						path: request.path,
-						headers: request.headers,
+						headers:
+							request.body === undefined
+								? request.headers
+								: {
+										...request.headers,
+										'Content-Type': 'application/json',
+										'Content-Length': String(request.body.length),
+									},
 						agent: this.agent,
 					},
 					(res: http.IncomingMessage) => {
@@ -140,7 +149,7 @@ export class NodeProtectTransport implements ProtectTransport {
 			}
 
 			req.on('error', (error) => fail(error));
-			req.end();
+			req.end(request.body);
 		});
 	}
 

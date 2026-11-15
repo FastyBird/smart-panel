@@ -12,6 +12,8 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
+import { ProtectAdoptionController } from './controllers/protect-adoption.controller';
+import { ProtectDevicesController } from './controllers/protect-devices.controller';
 import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
 import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
@@ -53,11 +55,14 @@ import {
 	ProtectTestConnectionModel,
 	ProtectTestConnectionResponseModel,
 } from './models/test-connection.model';
+import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
+import { ProtectAdoptionService } from './services/protect-adoption.service';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
 import { ProtectDiscoveryProbeService } from './services/protect-discovery-probe.service';
 import { ProtectDiscoveryService } from './services/protect-discovery.service';
+import { ProtectInventoryService } from './services/protect-inventory.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
 
@@ -161,6 +166,8 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(metadata.readme).toContain('## Boundaries');
 		expect(metadata.readme).toContain('There is no insecure mode');
 		expect(metadata.readme).toContain('never disables a camera microphone');
+		expect(metadata.readme).toContain('never deletes a stream');
+		expect(metadata.readme).not.toContain('creates no devices yet');
 	});
 
 	it('registers the connector as a managed service and a factory-reset handler', async () => {
@@ -193,7 +200,15 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(providers).toContain(ProtectConnectorService);
 		expect(providers).toContain(ProtectConnectionTestService);
 		expect(providers).toEqual(expect.arrayContaining([ProtectDiscoveryService, ProtectDiscoveryProbeService]));
-		expect(controllers).toEqual([ProtectStatusController, ProtectTestConnectionController, ProtectDiscoveryController]);
+		expect(controllers).toEqual([
+			ProtectStatusController,
+			ProtectTestConnectionController,
+			ProtectDiscoveryController,
+			ProtectDevicesController,
+			ProtectAdoptionController,
+		]);
+		expect(providers).toContain(ProtectInventoryService);
+		expect(providers).toEqual(expect.arrayContaining([ProtectAdoptionLockService, ProtectAdoptionService]));
 		expect(exported).not.toContain(ProtectDiscoveryService);
 		expect(exported).toContain(ProtectConnectorService);
 		expect(DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS).toEqual(

@@ -24,6 +24,8 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
 import { DefaultProtectApiClientFactory, PROTECT_API_CLIENT_FACTORY } from './client/protect-api-client.factory';
+import { ProtectAdoptionController } from './controllers/protect-adoption.controller';
+import { ProtectDevicesController } from './controllers/protect-devices.controller';
 import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
 import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
@@ -47,7 +49,11 @@ import {
 	ProtectChannelPropertyEntity,
 	ProtectDeviceEntity,
 } from './entities/devices-unifi-protect.entity';
+import { ProtectMappingLoaderService } from './mappings/mapping-loader.service';
 import { ProtectConfigModel } from './models/config.model';
+import { ProtectAdoptionLockService } from './services/protect-adoption-lock.service';
+import { ProtectAdoptionStreamsService } from './services/protect-adoption-streams.service';
+import { ProtectAdoptionService } from './services/protect-adoption.service';
 import { ProtectConfigValidatorService } from './services/protect-config-validator.service';
 import { ProtectConnectionTestService } from './services/protect-connection-test.service';
 import { ProtectConnectorService } from './services/protect-connector.service';
@@ -55,6 +61,8 @@ import { ProtectDiscoveryProbeService } from './services/protect-discovery-probe
 import { NodeProtectProbeTransport } from './services/protect-discovery-probe.transport';
 import { PROTECT_DISCOVERY_ENVIRONMENT, PROTECT_PROBE_TRANSPORT } from './services/protect-discovery.constants';
 import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './services/protect-discovery.service';
+import { ProtectInventoryService } from './services/protect-inventory.service';
+import { ProtectMappingPreviewService } from './services/protect-mapping-preview.service';
 
 @ApiTag({
 	tagName: DEVICES_UNIFI_PROTECT_PLUGIN_NAME,
@@ -76,13 +84,25 @@ import { ProtectDiscoveryService, createNodeDiscoveryEnvironment } from './servi
 		DefaultProtectApiClientFactory,
 		{ provide: PROTECT_API_CLIENT_FACTORY, useExisting: DefaultProtectApiClientFactory },
 		ProtectConnectorService,
+		ProtectMappingLoaderService,
+		ProtectInventoryService,
+		ProtectMappingPreviewService,
+		ProtectAdoptionLockService,
+		ProtectAdoptionStreamsService,
+		ProtectAdoptionService,
 		ProtectConnectionTestService,
 		ProtectDiscoveryService,
 		ProtectDiscoveryProbeService,
 		{ provide: PROTECT_PROBE_TRANSPORT, useFactory: () => new NodeProtectProbeTransport() },
 		{ provide: PROTECT_DISCOVERY_ENVIRONMENT, useFactory: createNodeDiscoveryEnvironment },
 	],
-	controllers: [ProtectStatusController, ProtectTestConnectionController, ProtectDiscoveryController],
+	controllers: [
+		ProtectStatusController,
+		ProtectTestConnectionController,
+		ProtectDiscoveryController,
+		ProtectDevicesController,
+		ProtectAdoptionController,
+	],
 	exports: [ProtectConnectorService],
 })
 export class DevicesUnifiProtectPlugin implements OnModuleInit {
@@ -178,11 +198,11 @@ export class DevicesUnifiProtectPlugin implements OnModuleInit {
 
 > Plugin · by FastyBird · platform: devices
 
-Connects Smart Panel to a UniFi Protect console over its local Integration API. Protect remains responsible for adopting cameras, recording and firmware; Smart Panel reads the console's inventory for display.
+Connects Smart Panel to a UniFi Protect console over its local Integration API. Protect remains responsible for adopting cameras, recording and firmware; Smart Panel adopts the devices you select as its own devices.
 
 ## What you get
 
-- A monitored connection to your Protect console, with its status and a test-connection check (this version creates no devices yet; device adoption comes in a later release)
+- Cameras, doorbells, UP-Sense sensors and floodlights adopted as Smart Panel devices, with a mapping preview and RTSPS stream enablement per camera (on by default, opt out with \`stream.enabled: false\`)
 - A fully local integration with no UniFi cloud account and no hosted Smart Panel bridge
 - Certificate trust that never sends the API key over an unverified connection
 
@@ -219,9 +239,9 @@ There is no insecure mode: the API key is never sent over a connection that is n
 
 ## Boundaries
 
-This version only reads from the console and never changes console settings. The plugin never disables a camera microphone. Adoption, recording, users and firmware stay in Protect.
+Adoption enables the RTSPS streams of every adopted camera unless the request opts out (\`stream.enabled: false\`); the plugin never deletes a stream and never changes other console settings. The plugin never disables a camera microphone. Recording, users and firmware stay in Protect.
 
-Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
+Adoption is API-only until the admin wizard (UP-12) ships. Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

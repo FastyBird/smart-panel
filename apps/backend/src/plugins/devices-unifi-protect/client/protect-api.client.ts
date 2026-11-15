@@ -7,7 +7,9 @@ import {
 	PROTECT_REQUEST_DEADLINE_MS,
 	PROTECT_REQUEST_TIMEOUT_MS,
 	PROTECT_RETRY_BASE_DELAY_MS,
+	PROTECT_RTSPS_QUALITIES,
 	ProtectEndpoint,
+	ProtectRtspsQuality,
 } from '../devices-unifi-protect.constants';
 import { ProtectApiError, ProtectErrorCategory, toProtectApiError } from '../errors/protect-api.error';
 
@@ -50,6 +52,8 @@ export interface ProtectCallOptions {
 }
 
 const RETRY_STATUSES: readonly number[] = [408, 429, 500, 502, 503, 504];
+// Creating a stream is idempotent (the body is the union of wanted qualities), but a 5xx may have half-applied.
+const STREAM_CREATE_RETRY_STATUSES: readonly number[] = [429];
 // A snapshot 503 means the camera cannot deliver one right now; repeating it only queues more work on the console.
 const SNAPSHOT_RETRY_STATUSES: readonly number[] = [408, 429];
 
@@ -196,6 +200,19 @@ function parseLight(value: unknown): ProtectLight | null {
 			};
 }
 
+function parseRtspsStreams(body: unknown): ProtectRtspsStreams {
+	if (!isObject(body)) {
+		throw protocolError('cameras/{id}/rtsps-stream');
+	}
+
+	return {
+		high: stringOrNull(body.high),
+		medium: stringOrNull(body.medium),
+		low: stringOrNull(body.low),
+		package: stringOrNull(body.package),
+	};
+}
+
 function parseNvr(value: unknown): ProtectNvr | null {
 	const candidate: unknown = Array.isArray(value) ? (value[0] as unknown) : value;
 
@@ -213,7 +230,7 @@ function parseNvr(value: unknown): ProtectNvr | null {
 }
 
 /**
- * Read-only client of the Protect Integration API: GET requests only, one retry policy, one rate pacer and one TLS
+ * Client of the Protect Integration API: reads, plus the one stream-creation POST; one retry policy, one rate pacer and one TLS
  * agent per console. The API key is sent as `X-API-KEY` and nowhere else; errors and logs carry endpoint templates,
  * statuses, durations and categories only.
  */
@@ -297,23 +314,72 @@ export class ProtectApiClient {
 		return this.getList('sensors', parseSensor, options);
 	}
 
+	async getSensor(sensorId: string, options: ProtectCallOptions = {}): Promise<ProtectSensor> {
+		const sensor = parseSensor(await this.getJson('sensors/{id}', { id: sensorId }, options));
+
+		if (sensor === null) {
+			throw protocolError('sensors/{id}');
+		}
+
+		return sensor;
+	}
+
 	listLights(options: ProtectCallOptions = {}): Promise<ProtectLight[]> {
 		return this.getList('lights', parseLight, options);
 	}
 
-	async getRtspsStreams(cameraId: string, options: ProtectCallOptions = {}): Promise<ProtectRtspsStreams> {
-		const body = await this.getJson('cameras/{id}/rtsps-stream', { id: cameraId }, options);
+	async getLight(lightId: string, options: ProtectCallOptions = {}): Promise<ProtectLight> {
+		const light = parseLight(await this.getJson('lights/{id}', { id: lightId }, options));
 
-		if (!isObject(body)) {
-			throw protocolError('cameras/{id}/rtsps-stream');
+		if (light === null) {
+			throw protocolError('lights/{id}');
 		}
 
-		return {
-			high: stringOrNull(body.high),
-			medium: stringOrNull(body.medium),
-			low: stringOrNull(body.low),
-			package: stringOrNull(body.package),
-		};
+		return light;
+	}
+
+	async getRtspsStreams(cameraId: string, options: ProtectCallOptions = {}): Promise<ProtectRtspsStreams> {
+		return parseRtspsStreams(await this.getJson('cameras/{id}/rtsps-stream', { id: cameraId }, options));
+	}
+
+	/**
+	 * The client's only write. SECRET result: the URLs carry bearer aliases. The qualities are validated before any
+	 * request; the body lists them in the given order.
+	 */
+	async createRtspsStreams(
+		cameraId: string,
+		qualities: readonly ProtectRtspsQuality[],
+		options: ProtectCallOptions = {},
+	): Promise<ProtectRtspsStreams> {
+		const endpoint = 'cameras/{id}/rtsps-stream';
+
+		if (
+			qualities.length === 0 ||
+			new Set(qualities).size !== qualities.length ||
+			!qualities.every((quality) => (PROTECT_RTSPS_QUALITIES as readonly string[]).includes(quality))
+		) {
+			throw new ProtectApiError(ProtectErrorCategory.VALIDATION, endpoint);
+		}
+
+		const response = await this.execute(
+			endpoint,
+			{ id: cameraId },
+			{
+				method: 'POST',
+				body: Buffer.from(JSON.stringify({ qualities })),
+				accept: 'application/json',
+				maxBytes: PROTECT_MAX_JSON_BYTES,
+				retryStatuses: STREAM_CREATE_RETRY_STATUSES,
+			},
+			options,
+		);
+		const parsed = parseJson(response.body);
+
+		if (parsed === undefined) {
+			throw protocolError(endpoint, response.status);
+		}
+
+		return parseRtspsStreams(parsed);
 	}
 
 	async getSnapshot(
@@ -333,7 +399,12 @@ export class ProtectApiClient {
 		const response = await this.execute(
 			'cameras/{id}/snapshot',
 			{ id: cameraId, query },
-			{ accept: 'image/jpeg', maxBytes: PROTECT_MAX_IMAGE_BYTES, retryStatuses: SNAPSHOT_RETRY_STATUSES },
+			{
+				method: 'GET',
+				accept: 'image/jpeg',
+				maxBytes: PROTECT_MAX_IMAGE_BYTES,
+				retryStatuses: SNAPSHOT_RETRY_STATUSES,
+			},
 			options,
 		);
 		const contentType = response.headers['content-type'];
@@ -360,7 +431,7 @@ export class ProtectApiClient {
 		const response = await this.execute(
 			endpoint,
 			params,
-			{ accept: 'application/json', maxBytes: PROTECT_MAX_JSON_BYTES, retryStatuses: RETRY_STATUSES },
+			{ method: 'GET', accept: 'application/json', maxBytes: PROTECT_MAX_JSON_BYTES, retryStatuses: RETRY_STATUSES },
 			options,
 		);
 		const parsed = parseJson(response.body);
@@ -396,7 +467,13 @@ export class ProtectApiClient {
 	private async execute(
 		endpoint: ProtectEndpoint,
 		params: { id?: string; query?: Record<string, string> },
-		request: { accept: string; maxBytes: number; retryStatuses: readonly number[] },
+		request: {
+			method: 'GET' | 'POST';
+			body?: Buffer;
+			accept: string;
+			maxBytes: number;
+			retryStatuses: readonly number[];
+		},
 		options: ProtectCallOptions,
 	): Promise<ProtectTransportResponse> {
 		const cancelled = new ProtectApiError(ProtectErrorCategory.CANCELLED, endpoint);
@@ -447,12 +524,13 @@ export class ProtectApiClient {
 
 				try {
 					response = await this.transport.request({
-						method: 'GET',
+						method: request.method,
 						path,
 						headers: { 'X-API-KEY': this.apiKey, Accept: request.accept },
 						timeoutMs: Math.max(1, Math.min(this.timeoutMs, deadlineAt - attemptStartedAt)),
 						maxBytes: request.maxBytes,
 						signal,
+						body: request.body,
 					});
 				} catch (error) {
 					if (signal.aborted) {
@@ -461,7 +539,7 @@ export class ProtectApiClient {
 
 					// A pooled keep-alive socket the console already closed: one immediate retry on a fresh socket.
 					if (attempt === 1 && (error as { code?: unknown } | null)?.code === 'ECONNRESET') {
-						this.logger.debug(`GET ${endpoint} connection reset, retrying once`);
+						this.logger.debug(`${request.method} ${endpoint} connection reset, retrying once`);
 
 						continue;
 					}
@@ -470,7 +548,7 @@ export class ProtectApiClient {
 				}
 
 				this.pacer.observe(response.headers);
-				this.log(endpoint, response.status, Date.now() - attemptStartedAt);
+				this.log(request.method, endpoint, response.status, Date.now() - attemptStartedAt);
 
 				if (response.status >= 200 && response.status < 300) {
 					return response;
@@ -515,7 +593,7 @@ export class ProtectApiClient {
 			: new ProtectApiError(typed.category, endpoint, { status: typed.status, retryAfterMs: typed.retryAfterMs });
 	}
 
-	private log(endpoint: ProtectEndpoint, status: number, durationMs: number): void {
-		this.logger.debug(redactProtectText(`GET ${endpoint} ${status} ${durationMs}ms`, [this.apiKey]));
+	private log(method: string, endpoint: ProtectEndpoint, status: number, durationMs: number): void {
+		this.logger.debug(redactProtectText(`${method} ${endpoint} ${status} ${durationMs}ms`, [this.apiKey]));
 	}
 }

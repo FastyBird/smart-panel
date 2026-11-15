@@ -50,6 +50,10 @@ export const PROTECT_STREAM_QUALITIES = ['high', 'medium', 'low'] as const;
 
 export type ProtectStreamQuality = (typeof PROTECT_STREAM_QUALITIES)[number];
 
+export const PROTECT_RTSPS_QUALITIES = ['high', 'medium', 'low', 'package'] as const;
+
+export type ProtectRtspsQuality = (typeof PROTECT_RTSPS_QUALITIES)[number];
+
 export enum ProtectConnectionState {
 	DISCONNECTED = 'disconnected',
 	CONNECTING = 'connecting',
@@ -69,7 +73,9 @@ export const PROTECT_ENDPOINTS = [
 	'cameras/{id}/rtsps-stream',
 	'cameras/{id}/snapshot',
 	'sensors',
+	'sensors/{id}',
 	'lights',
+	'lights/{id}',
 ] as const;
 
 export type ProtectEndpoint = (typeof PROTECT_ENDPOINTS)[number];
