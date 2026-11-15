@@ -30,6 +30,11 @@ import {
 	ProtectProbeModel,
 	ProtectProbeResponseModel,
 } from './models/protect-discovery.model';
+import {
+	ProtectInventoryDeviceModel,
+	ProtectInventoryDeviceResponseModel,
+	ProtectInventoryDevicesResponseModel,
+} from './models/protect-inventory.model';
 import { ProtectStatusModel, ProtectStatusResponseModel } from './models/status.model';
 import {
 	ProtectCertificateModel,
@@ -72,4 +77,7 @@ export const DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ProtectProbeResponseModel,
 	ProtectProbeDto,
 	ProtectProbeRequestDto,
+	ProtectInventoryDeviceModel,
+	ProtectInventoryDevicesResponseModel,
+	ProtectInventoryDeviceResponseModel,
 ];

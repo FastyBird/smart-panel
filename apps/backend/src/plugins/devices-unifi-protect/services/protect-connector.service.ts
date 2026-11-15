@@ -21,11 +21,17 @@ import {
 	ProtectErrorCategory,
 	toProtectApiError,
 } from '../errors/protect-api.error';
+import { toNvrMacKey } from '../mappings/mapping-evaluator';
 import { ProtectConfigModel } from '../models/config.model';
 import { ProtectStatusModel } from '../models/status.model';
 import { findProtectConfigError } from '../validators/protect-config.validators';
 
 import { calculateProtectReconnectDelay } from './protect-reconnect-backoff';
+
+export interface ProtectConsoleIdentity {
+	nvrId: string;
+	nvrMacKey: string;
+}
 
 const AUTH_CATEGORIES: readonly ProtectErrorCategory[] = [
 	ProtectErrorCategory.AUTHENTICATION,
@@ -56,6 +62,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 	private applicationVersion: string | null = null;
 	private nvrId: string | null = null;
 	private nvrName: string | null = null;
+	private nvrMacKey: string | null = null;
 	private lastConnectedAt: Date | null = null;
 	private lastErrorCategory: ProtectErrorCategory | null = null;
 	private inflight: Promise<void> | null = null;
@@ -175,6 +182,13 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		return this.isConnected() ? this.client : null;
 	}
 
+	/** The console's id and MAC key; null unless connected and the NVR reported a valid MAC. */
+	getConsoleIdentity(): ProtectConsoleIdentity | null {
+		return this.isConnected() && this.nvrId !== null && this.nvrMacKey !== null
+			? { nvrId: this.nvrId, nvrMacKey: this.nvrMacKey }
+			: null;
+	}
+
 	/** Resolves when the current connection attempt or health check has finished (tests, e2e). */
 	async settle(): Promise<void> {
 		let pending = this.inflight;
@@ -270,6 +284,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 			this.client = client;
 			this.nvrId = nvr.id;
 			this.nvrName = nvr.name;
+			this.nvrMacKey = toNvrMacKey(nvr.mac);
 			this.lastConnectedAt = new Date();
 			this.lastErrorCategory = null;
 			this.reconnectAttempt = 0;
@@ -427,6 +442,7 @@ export class ProtectConnectorService extends BaseManagedExtensionService {
 		this.applicationVersion = null;
 		this.nvrId = null;
 		this.nvrName = null;
+		this.nvrMacKey = null;
 		this.lastConnectedAt = null;
 		this.lastErrorCategory = null;
 	}

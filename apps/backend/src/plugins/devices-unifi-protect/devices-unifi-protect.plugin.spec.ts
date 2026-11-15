@@ -12,6 +12,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
+import { ProtectDevicesController } from './controllers/protect-devices.controller';
 import { ProtectDiscoveryController } from './controllers/protect-discovery.controller';
 import { ProtectStatusController } from './controllers/protect-status.controller';
 import { ProtectTestConnectionController } from './controllers/protect-test-connection.controller';
@@ -58,6 +59,7 @@ import { ProtectConnectionTestService } from './services/protect-connection-test
 import { ProtectConnectorService } from './services/protect-connector.service';
 import { ProtectDiscoveryProbeService } from './services/protect-discovery-probe.service';
 import { ProtectDiscoveryService } from './services/protect-discovery.service';
+import { ProtectInventoryService } from './services/protect-inventory.service';
 
 const SECRET_FIELDS = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];
 
@@ -193,7 +195,13 @@ describe('DevicesUnifiProtectPlugin', () => {
 		expect(providers).toContain(ProtectConnectorService);
 		expect(providers).toContain(ProtectConnectionTestService);
 		expect(providers).toEqual(expect.arrayContaining([ProtectDiscoveryService, ProtectDiscoveryProbeService]));
-		expect(controllers).toEqual([ProtectStatusController, ProtectTestConnectionController, ProtectDiscoveryController]);
+		expect(controllers).toEqual([
+			ProtectStatusController,
+			ProtectTestConnectionController,
+			ProtectDiscoveryController,
+			ProtectDevicesController,
+		]);
+		expect(providers).toContain(ProtectInventoryService);
 		expect(exported).not.toContain(ProtectDiscoveryService);
 		expect(exported).toContain(ProtectConnectorService);
 		expect(DEVICES_UNIFI_PROTECT_PLUGIN_SWAGGER_EXTRA_MODELS).toEqual(

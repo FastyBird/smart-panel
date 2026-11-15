@@ -900,4 +900,31 @@ describe('ProtectConnectorService', () => {
 		expect(Object.keys(afterReconnect)).not.toContain('apiKey');
 		expect(Object.keys(afterReconnect)).not.toContain('warnings');
 	});
+
+	it('exposes the console identity only while connected', async () => {
+		const client = fakeClient();
+
+		client.getNvr.mockResolvedValue({ ...NVR, id: '68b3ace392bf98c9fb76f70c', mac: '0CEA14003A69' });
+		queue(client);
+
+		expect(service.getConsoleIdentity()).toBeNull();
+
+		await service.start();
+		await service.settle();
+
+		expect(service.getConsoleIdentity()).toEqual({ nvrId: '68b3ace392bf98c9fb76f70c', nvrMacKey: '0cea14003a69' });
+
+		await service.stop();
+
+		expect(service.getConsoleIdentity()).toBeNull();
+	});
+
+	it('reports no console identity when the NVR has no usable MAC', async () => {
+		queue(fakeClient());
+		await service.start();
+		await service.settle();
+
+		expect(service.getClient()).not.toBeNull();
+		expect(service.getConsoleIdentity()).toBeNull();
+	});
 });
